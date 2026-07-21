@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "linear-ameltech": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.linear.app/mcp"
+      ],
+      "env": {
+        "MCP_REMOTE_CONFIG_DIR": "/home/taha/.mcp-auth-ameltech"
+      }
+    }
+  }
+}
