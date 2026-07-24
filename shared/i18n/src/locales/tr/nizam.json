@@ -1,0 +1,284 @@
+{
+  "Breadcrumbs": {
+    "home": "Ev"
+  },
+  "CardsTableHeader": {
+    "bulkActions": "Toplu İşlemler",
+    "downloadAsExcel": "Excel olarak indir",
+    "downloadSampleFile": "Örnek Dosyayı İndir",
+    "exportCards": "Dışa Aktar",
+    "importFromExcel": "Excel'den İçe Aktar"
+  },
+  "DataTable": {
+    "noResults": "Sonuç bulunamadı."
+  },
+  "DeckCards": {
+    "cardDeleted": "Kart Silindi",
+    "cardDeletedDescription": "{id} kimlik numaralı kart silindi.",
+    "cardsImported": "İthal Kartlar",
+    "cardsImportedDescription": "{count} kart başarıyla içe aktarıldı.",
+    "cardUpdated": "Kart Güncellendi",
+    "cardUpdatedDescription": "Kartvizit başarıyla güncellendi.",
+    "deleteError": "Silme Hatası",
+    "deleteErrorDescription": "Bilgi kartını silme işlemi başarısız oldu.",
+    "updateError": "Güncelleme Hatası",
+    "updateErrorDescription": "Bilgi kartı güncellenirken bir hata oluştu.",
+    "updateFailed": "Güncelleme Başarısız",
+    "updateFailedDescription": "Bilgi kartı güncellenemedi. Lütfen tekrar deneyin."
+  },
+  "DecksColumns": {
+    "areYouSure": "Emin misin?",
+    "delete": "Silmek",
+    "deleteConfirmation": "Bu deste ve ilgili tüm bilgiler silinecektir. Bu işlem geri alınamaz.",
+    "descriptionPlaceholder": "Deste açıklaması girin...",
+    "titlePlaceholder": "Deste başlığını girin..."
+  },
+  "DecksPage": {
+    "description": "Kart destelerinizi ve çalışma materyallerinizi yönetin.",
+    "Dialog": {
+      "cancelButton": "İptal",
+      "createButton": "Deste Oluştur",
+      "creatingButton": "Oluşturuluyor...",
+      "description": "Çalışma materyallerinizi organize etmek için yeni bir kart destesi oluşturun.",
+      "descriptionLabel": "Açıklama",
+      "descriptionPlaceholder": "Deste açıklamasını girin...",
+      "publicLabel": "Bu desteyi herkese açık yap",
+      "title": "Yeni Deste Oluştur",
+      "titleLabel": "Başlık *",
+      "titlePlaceholder": "Deste başlığını girin..."
+    },
+    "newDeckButton": "Yeni Deste",
+    "Table": {
+      "descriptionColumn": "Açıklama",
+      "titleColumn": "Başlık"
+    },
+    "title": "Kart Desteleri",
+    "Toast": {
+      "creationError": "Oluşturma Hatası",
+      "creationErrorMessage": "Deste oluşturulurken beklenmeyen bir hata oluştu.",
+      "creationFailed": "Oluşturma Başarısız",
+      "creationFailedMessage": "Deste oluşturulamadı. Lütfen tekrar deneyin.",
+      "deckCreated": "Deste Oluşturuldu",
+      "deckCreatedSuccess": "Yeni kart destesi başarıyla oluşturuldu.",
+      "titleRequired": "Deste başlığı gereklidir.",
+      "validationError": "Doğrulama Hatası"
+    }
+  },
+  "FlashcardColumns": {
+    "areYouSure": "Emin misin?",
+    "backFace": "Arka Yüz",
+    "backFacePlaceholder": "Geri dön...",
+    "delete": "Silmek",
+    "deleteConfirmation": "Bu kart ve ilgili tüm bilgiler silinecektir. Bu işlem geri alınamaz.",
+    "frontFace": "Ön Yüz",
+    "frontFacePlaceholder": "Ön içeriği gir..."
+  },
+  "HomePage": {
+    "greeting": "Selamünaleyküm!"
+  },
+  "ImportErrors": {
+    "row": "{row}. satırda hata",
+    "title": "Dosya içe aktarılamadı"
+  },
+  "KeycloakLogin": {
+    "signIn": "Giriş Yap"
+  },
+  "KosksPage": {
+    "courseCreatedAt": "Oluşturulma Tarihi",
+    "createNewCourse": "Yeni Kurs Oluştur",
+    "description": "Yönetiminiz altındaki görevleri ve kursları buradan görüntüleyebilirsiniz.",
+    "noCoursesAvailable": "Mevcut Kurs Yok",
+    "noCoursesAvailableDescription": "Başlamak için ilk kursunuzu oluşturun.",
+    "title": "Kosks"
+  },
+  "LessonTypes": {
+    "VIDEO": "Video",
+    "DOCUMENT": "Doküman",
+    "LIVE": "Canlı halka",
+    "QUIZ": "Sınav"
+  },
+  "Levels": {
+    "BEGINNER": "Başlangıç",
+    "INTERMEDIATE": "Orta",
+    "ADVANCED": "İleri"
+  },
+  "NavMain": {
+    "content": "İçerik"
+  },
+  "NavRoutes": {
+    "decks": "Desteler"
+  },
+  "NewCoursePage": {
+    "title": "Yeni Kurs Oluştur",
+    "subtitle": "Müfredat ekleyin, kaynakları bağlayın ve talebelere açın.",
+    "breadcrumbLearning": "Öğrenme",
+    "breadcrumbNew": "Yeni Kurs",
+    "cancel": "İptal",
+    "saveDraft": "Taslak Kaydet",
+    "publish": "Yayımla",
+    "publishing": "Kaydediliyor...",
+    "sectionBasic": "Temel bilgiler",
+    "sectionBasicHint": "Talebelerin köşk listesinde göreceği bilgiler.",
+    "fieldTitle": "Kurs adı",
+    "fieldSubtitle": "Alt başlık",
+    "fieldDescription": "Açıklama",
+    "fieldDescriptionHint": "Birkaç cümle ile dersin amacı ve hedef kitlesi.",
+    "fieldCategory": "Kategori",
+    "fieldLevel": "Seviye",
+    "fieldDuration": "Süre (hafta)",
+    "categoryPlaceholder": "Örn. Sarf",
+    "sectionTeachers": "Müderris ve kaynaklar",
+    "sectionTeachersHint": "Bu kursta ders verecek müderrisleri ve referans kaynaklarını ekleyin.",
+    "muderris": "Müderrisler",
+    "addMuderris": "Müderris ekle",
+    "muderrisNamePlaceholder": "Müderris adı",
+    "resources": "Bağlı kaynaklar",
+    "addResource": "Kaynak ekle",
+    "resourceNamePlaceholder": "Kaynak adı",
+    "resourceMetaPlaceholder": "Örn. PDF · 124 sayfa",
+    "sectionCurriculum": "Müfredat",
+    "sectionCurriculumHint": "Haftalar ve haftalara bağlı canlı dersler. Bu aşamada yalnızca canlı ders içeriği desteklenir.",
+    "week": "Hafta {number}",
+    "weekTitlePlaceholder": "Hafta başlığı",
+    "addWeek": "Hafta ekle",
+    "copyWeek": "Haftayı kopyala",
+    "weekCopySuffix": "(kopya)",
+    "addLesson": "Ders ekle",
+    "lessonTitlePlaceholder": "Ders başlığı",
+    "lessonDurationPlaceholder": "Süre",
+    "addLiveLesson": "Canlı ders ekle",
+    "newLiveLesson": "Yeni canlı ders",
+    "editLiveLesson": "Canlı dersi düzenle",
+    "liveLessonTitle": "Ders başlığı",
+    "liveLessonTitlePlaceholder": "örn. Birinci bab müzakeresi",
+    "liveLessonWhen": "Tarih ve saat",
+    "liveLessonDuration": "Süre (dk)",
+    "meetingUrl": "Toplantı bağlantısı",
+    "platformDetected": "bağlantıdan otomatik algılandı",
+    "platformUnknown": "Bilinmeyen platform",
+    "agendaTitle": "Müzakere akışı",
+    "agendaHint": "· talebe bu akışı ders sayfasında görür",
+    "agendaTimePlaceholder": "21:00",
+    "agendaStepPlaceholder": "Akış adımı başlığı",
+    "agendaAddStep": "Akış adımı ekle",
+    "saveLiveLesson": "Canlı dersi kaydet",
+    "cancelLiveLesson": "İptal",
+    "remove": "Kaldır",
+    "grantsCertificate": "İcâzet verilsin",
+    "grantsCertificateHint": "Müfredatı tamamlayan talebelere otomatik icâzet belgesi verilsin mi?",
+    "preview": "Önizleme",
+    "previewWeeks": "{count} hafta",
+    "previewLessons": "{count} ders",
+    "untitledCourse": "Kurs adı",
+    "created": "Kurs oluşturuldu.",
+    "validationTitle": "Kurs adı zorunludur.",
+    "validationMuderris": "En az bir müderris eklemelisiniz.",
+    "validationNoWeeks": "En az bir hafta eklemelisiniz.",
+    "validationEmptyWeek": "Her haftada en az bir ders bulunmalıdır.",
+    "editTitle": "Kursu Düzenle",
+    "breadcrumbEdit": "Düzenle",
+    "updated": "Kurs güncellendi.",
+    "requiresApproval": "Kayıt onayı gereksin",
+    "requiresApprovalHint": "Açık olduğunda talebelerin kaydı, siz onaylayana kadar beklemede kalır."
+  },
+  "SampleFile": {
+    "backWord": "Örnek Çeviri {index}",
+    "frontWord": "Örnek Kelime {index}"
+  },
+  "TableHeader": {
+    "cancel": "İptal etmek",
+    "createDeck": "Deste Oluştur",
+    "createNewDeck": "Yeni Deste Oluştur",
+    "createNewDeckDescription": "Çalışma materyallerinizi düzenlemek için yeni bir bilgi kartı destesi oluşturun.",
+    "creating": "Oluşturuluyor...",
+    "creationError": "Oluşturma Hatası",
+    "creationErrorDescription": "Deste oluşturulurken beklenmedik bir hata oluştu.",
+    "creationFailed": "Oluşturma Başarısız Oldu",
+    "creationFailedDescription": "Deste oluşturulamadı. Lütfen tekrar deneyin.",
+    "deckCreated": "Deste Oluşturuldu",
+    "deckCreatedDescription": "Yeni bilgi kartı destesi başarıyla oluşturuldu.",
+    "description": "Açıklama",
+    "descriptionPlaceholder": "Deste açıklaması girin...",
+    "flashcardDecks": "Bilgi Kartı Desteleri",
+    "makePublic": "Bu sunumu herkese açık yap",
+    "manageDecks": "Bilgi kartı destelerinizi ve çalışma materyallerinizi yönetin.",
+    "newDeck": "Yeni Güverte",
+    "title": "Başlık",
+    "titlePlaceholder": "Deste başlığını girin...",
+    "validationError": "Doğrulama Hatası",
+    "validationErrorDescription": "Deste başlığı zorunludur."
+  },
+  "Wizard": {
+    "BasicInfo": {
+      "descriptionLabel": "Ders Tanımı",
+      "descriptionPlaceholder": "Kurs içeriği hakkında bilgi verin...",
+      "endDateLabel": "Bitiş Tarihi",
+      "startDateLabel": "Başlangıç Tarihi",
+      "titleLabel": "Ders Adı",
+      "titlePlaceholder": "Örnek: Temel Fıkıh Dersleri"
+    },
+    "Buttons": {
+      "back": "Geri",
+      "cancel": "İptal etmek",
+      "create": "Kurs Oluştur",
+      "next": "Sonraki Adım"
+    },
+    "Curriculum": {
+      "addFirstWeek": "İlk haftayı ekleyin",
+      "addWeek": "Hafta Ekle",
+      "noSyllabus": "Henüz müfredat eklenmedi.",
+      "placeholders": {
+        "resources": "Kaynak kitaplar...",
+        "topic": "Konu başlığı..."
+      },
+      "table": {
+        "delete": "Silmek",
+        "order": "Emir",
+        "resources": "Kaynaklar",
+        "topic": "Başlık",
+        "week": "Hafta"
+      },
+      "title": "Haftalık Program"
+    },
+    "Header": {
+      "of": "/",
+      "step": "Adım",
+      "title": "Yeni Kurs Oluştur"
+    },
+    "Preview": {
+      "courseInfo": "Kurs Bilgileri",
+      "curriculumTitle": "Müfredat ({count} Hafta)",
+      "description": "Kursunuzu oluşturmadan önce bilgileri kontrol edin.",
+      "end": "Son",
+      "noCurriculum": "Müfredat eklenmedi.",
+      "readyMessage": "Tüm adımlar tamamlandı. Kursu oluşturmak için aşağıdaki butona tıklayabilirsiniz.",
+      "readyTitle": "Hazır!",
+      "start": "Başlangıç",
+      "teaserLabel": "Konuklara kaç haftalık konaklama yeri gösterilmelidir?",
+      "teaserNote": "Belirtilen hafta sayısı için içerik, kursu satın almamış kullanıcıların da erişimine açık olacaktır.",
+      "teaserOptions": {
+        "none": "Yok (Sadece Başlıklar)",
+        "oneWeek": "İlk 1 Hafta",
+        "threeWeeks": "İlk 3 Hafta",
+        "twoWeeks": "İlk 2 Hafta"
+      },
+      "teaserSettings": "Tanıtım Ayarları",
+      "title": "Kurs Önizlemesi"
+    },
+    "Steps": {
+      "basicInfo": "Temel Bilgiler",
+      "curriculum": "Müfredat",
+      "preview": "Önizleme"
+    },
+    "Validation": {
+      "descriptionRequired": "Ders tanımı zorunludur.",
+      "endDateBeforeStart": "Bitiş tarihi başlangıç tarihinden önce olamaz.",
+      "endDateRequired": "Bitiş tarihi gereklidir.",
+      "startDateRequired": "Başlangıç tarihi gereklidir.",
+      "syllabusMin": "En az 1 hafta eklemeniz gerekiyor.",
+      "titleRequired": "Ders başlığı zorunludur.",
+      "topicMin": "Konu başlığı en az 3 karakterden oluşmalıdır.",
+      "weekMin": "Hafta numarası 1'den küçük olamaz."
+    }
+  }
+}

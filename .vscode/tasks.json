@@ -1,0 +1,43 @@
+{
+  "tasks": [
+    {
+      "label": "Start All Apps (dev)",
+      "type": "npm",
+      "script": "dev",
+      "problemMatcher": [],
+      "detail": "Runs all applications in development mode."
+    },
+    {
+      "label": "Build Project",
+      "type": "npm",
+      "script": "build",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "detail": "Builds all packages and applications."
+    },
+    {
+      "label": "Lint Code",
+      "type": "npm",
+      "script": "lint",
+      "problemMatcher": ["$eslint-compact"],
+      "detail": "Lints the entire project."
+    },
+    {
+        "label": "Fix Linting Issues",
+        "type": "npm",
+        "script": "lint:fix",
+        "problemMatcher": ["$eslint-compact"],
+        "detail": "Fixes linting issues in the entire project."
+    },
+    {
+      "label": "Check Types",
+      "type": "npm",
+      "script": "check-types",
+      "problemMatcher": ["$tsc"],
+      "detail": "Runs TypeScript type checking for the entire project."
+    }
+  ]
+}

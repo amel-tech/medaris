@@ -1,0 +1,47 @@
+{
+    "name": "madrasah-keycloak-theme",
+    "version": "1.4.0",
+    "description": "Keycloak theme for Madrasah",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "storybook": "storybook dev -p 6006",
+        "clean": "rm -rf .turbo .next node_modules dist dist_keycloak",
+        "lint": "eslint . --max-warnings 0",
+        "lint:fix": "eslint . --max-warnings 0 --fix",
+        "build-keycloak-theme": "vite build && keycloakify build",
+        "build:keycloak": "keycloakify build",
+        "run-keycloak": "docker run -p 127.0.0.1:8080:8080 -e KC_BOOTSTRAP_ADMIN_USERNAME=admin -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin -v \"$(pwd)/dist_keycloak/keycloak-theme-for-kc-all-other-versions.jar:/opt/keycloak/providers/keycloak-theme.jar\" quay.io/keycloak/keycloak:26.3.2 start-dev",
+        "check-types": "tsc --noEmit"
+    },
+    "license": "MIT",
+    "keywords": [],
+    "dependencies": {
+        "@madrasah/ui": "*",
+        "keycloakify": "^11.8.54",
+        "react": "^19.1.1",
+        "react-dom": "^19.1.1",
+        "tailwindcss": "^4.1.11"
+    },
+    "devDependencies": {
+        "@madrasah/eslint-config": "*",
+        "@madrasah/typescript-config": "*",
+        "@storybook/react": "^8.1.10",
+        "@storybook/react-vite": "^8.1.10",
+        "@tailwindcss/vite": "^4.1.11",
+        "@types/react": "^18.3.23",
+        "@types/react-dom": "^18.3.7",
+        "@typescript-eslint/eslint-plugin": "^8.15.0",
+        "@typescript-eslint/parser": "^8.15.0",
+        "@vitejs/plugin-react": "^4.2.1",
+        "globals": "^15.12.0",
+        "prettier": "3.3.1",
+        "storybook": "^8.1.10",
+        "typescript": "^5.2.2",
+        "vite": "^5.0.8"
+    },
+    "optionalDependencies": {
+        "@rollup/rollup-linux-x64-gnu": "*",
+        "@rollup/rollup-darwin-arm64": "*"
+    }
+}

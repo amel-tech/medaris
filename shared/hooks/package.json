@@ -1,0 +1,27 @@
+{
+  "name": "@madrasah/hooks",
+  "version": "0.0.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "dist/**"
+  ],
+  "scripts": {
+    "build": "tsc --emitDeclarationOnly && esbuild src/index.ts --bundle --format=esm --outdir=dist --sourcemap",
+    "dev": "esbuild src/index.ts --bundle --format=esm --outdir=dist --sourcemap --watch",
+    "lint": "eslint \"src/**/*.ts*\"",
+    "clean": "rm -rf .turbo node_modules dist",
+    "check-types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "esbuild": "0.21.5",
+    "typescript": "^5.9.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

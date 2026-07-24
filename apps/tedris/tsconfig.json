@@ -1,0 +1,34 @@
+{
+  "extends": "@madrasah/typescript-config/nextjs.json",
+  "compilerOptions": {
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "incremental": true,
+    "moduleResolution": "bundler",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "noEmit": true,
+    "module": "esnext",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "target": "ES2017",
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "paths": {
+      "~/env": ["./env.ts"],
+      "~/features/*": ["./features/*"],
+      "~/components/*": ["./components/*"],
+      "~/lib/*": ["./lib/*"],
+      "~/hooks": ["./hooks"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules", ".next/**"]
+}

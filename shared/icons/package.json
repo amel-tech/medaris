@@ -1,0 +1,30 @@
+{
+  "name": "@madrasah/icons",
+  "version": "1.0.0",
+  "description": "Custom icon library extending Phosphor icons",
+  "license": "MIT",
+  "type": "module",
+  "author": "Madrasah Team",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf .turbo node_modules"
+  },
+  "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@madrasah/eslint-config": "*",
+    "@madrasah/typescript-config": "*",
+    "@types/react": "^19",
+    "@types/react-dom": "^19.1.7"
+  },
+  "exports": {
+    ".": "./src/csr/index.ts",
+    "./ssr": "./src/ssr/index.ts"
+  }
+}

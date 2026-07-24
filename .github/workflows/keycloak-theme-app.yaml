@@ -1,0 +1,88 @@
+name: Keycloak Theme Deploy
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  release:
+    types:
+      - created
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || startsWith(github.event.release.tag_name, 'keycloak-theme-') }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Setup Java and Maven
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      - name: Setup Maven
+        uses: stCarolas/setup-maven@v5
+        with:
+          maven-version: 3.9.6
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Keycloak theme
+        run: |
+          cd apps/keycloak-theme
+          npm run build-keycloak-theme
+
+      - name: Verify JAR file exists
+        run: |
+          cd apps/keycloak-theme
+          if [ ! -f "dist_keycloak/keycloak-theme-for-kc-all-other-versions.jar" ]; then
+            echo "JAR file not found!"
+            exit 1
+          fi
+          echo "JAR file found successfully"
+
+      - name: Copy JAR file to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.KC_SSH_HOST }}
+          username: ${{ secrets.KC_SSH_USERNAME }}
+          password: ${{ secrets.KC_SSH_PASSWORD }}
+          port: ${{ secrets.KC_SSH_PORT || 22 }}
+          source: "apps/keycloak-theme/dist_keycloak/keycloak-theme-for-kc-all-other-versions.jar"
+          target: "/opt/keycloak/themes"
+          strip_components: 3
+          overwrite: true
+
+      - name: Backup existing theme and activate new JAR
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.KC_SSH_HOST }}
+          username: ${{ secrets.KC_SSH_USERNAME }}
+          password: ${{ secrets.KC_SSH_PASSWORD }}
+          port: ${{ secrets.KC_SSH_PORT || 22 }}
+          script: |
+            set -e
+            if [ -f "/opt/keycloak/themes/madrasah-theme.jar" ]; then
+              echo "Backing up existing theme..."
+              cp /opt/keycloak/themes/madrasah-theme.jar /opt/keycloak/themes/madrasah-theme.jar.backup.$(date +%Y%m%d_%H%M%S)
+            else
+              echo "No existing theme to backup"
+            fi
+            echo "Activating new theme..."
+            mv -f /opt/keycloak/themes/keycloak-theme-for-kc-all-other-versions.jar /opt/keycloak/themes/madrasah-theme.jar
+
+      - name: Restart Keycloak at Coolify
+        run: | 
+         curl --request GET '${{ secrets.KEYCLOAK_COOLIFY_RESTART_WEBHOOK }}' --header 'Authorization: Bearer ${{ secrets.COOLIFY_DEPLOY_TOKEN }}'

@@ -1,0 +1,293 @@
+{
+  "CardsPage": {
+    "exploreTitle": "Keşfetmek",
+    "filterAll": "Tüm",
+    "filterPrivate": "Özel",
+    "filterPublic": "Halk",
+    "seeAll": "Tümünü Gör"
+  },
+  "CoursePage": {
+    "backToKosk": "Köşke dön",
+    "week": "Hafta {number}",
+    "lessonsCount": "{count} ders",
+    "weeks": "Hafta",
+    "lessons": "Ders",
+    "level": "Seviye",
+    "overallProgress": "Genel ilerleme",
+    "preview": "Ön izleme",
+    "weeksLessons": "{weeks} hafta · {lessons} ders",
+    "weeksLessonsShort": "{weeks} hafta · {lessons} ders",
+    "teacher": "Müderris",
+    "inProgress": "Devam ediyorsun",
+    "continue": "Derse devam et",
+    "enrolling": "Kaydolunuyor...",
+    "enroll": "Kayıt ol",
+    "enrolled": "Kursa kaydoldunuz.",
+    "save": "Kaydet",
+    "share": "Paylaş",
+    "duration": "Süre",
+    "certificate": "İcâzet",
+    "granted": "Veriliyor",
+    "notGranted": "Verilmiyor",
+    "tabOverview": "Genel Bakış",
+    "tabCurriculum": "Müfredat",
+    "tabTeachers": "Müderrisler",
+    "tabResources": "Kaynaklar",
+    "description": "Açıklama",
+    "noDescription": "Açıklama bulunmuyor.",
+    "curriculum": "Müfredat",
+    "viewFullSyllabus": "Tüm müfredatı gör",
+    "viewRemaining": "Kalan {count} haftayı gör",
+    "noResources": "Kaynak bulunmuyor.",
+    "courseResources": "Bu kursun kaynakları",
+    "icazetTitle": "İcâzet belgesi",
+    "icazetDescription": "Müfredatı tamamlayan talebelere müderris onaylı icâzet verilir.",
+    "requestEnroll": "Kayıt iste",
+    "requestSent": "Kayıt talebiniz gönderildi, onay bekleniyor.",
+    "pendingApproval": "Onay bekleniyor"
+  },
+  "CreateDeckButtonDialog": {
+    "cancel": "İptal etmek",
+    "cardCreated": "Kart Oluşturuldu",
+    "cardCreatedDescription": "Kartvizit başarıyla oluşturuldu.",
+    "createDeck": "Deste Oluştur",
+    "createNewDeck": "yeni deste oluştur",
+    "creationError": "Oluşturma Hatası",
+    "creationErrorDescription": "Bilgi kartı oluşturulurken bir hata oluştu.",
+    "creationFailed": "Oluşturma Başarısız",
+    "creationFailedDescription": "Bilgi kartı oluşturulamadı. Lütfen tekrar deneyin.",
+    "newDeck": "Yeni Deste"
+  },
+  "DataTable": {
+    "noResults": "Sonuç bulunamadı."
+  },
+  "DeckCard": {
+    "addedToCollection": "Koleksiyona Eklendi",
+    "addedToCollectionDescription": "Deste koleksiyonunuza başarıyla eklendi.",
+    "by": "ile",
+    "error": "Hata",
+    "errorDescription": "Koleksiyonunuzdaki {preposition} destesini {action} oluştururken bir hata oluştu.",
+    "failedToAdd": "Ekleme başarısız oldu",
+    "failedToAddDescription": "Desteyi koleksiyonunuza ekleyemediniz. Lütfen tekrar deneyin.",
+    "failedToRemove": "Kaldırılamadı",
+    "failedToRemoveDescription": "Desteyi koleksiyonunuzdan kaldırma işlemi başarısız oldu. Lütfen tekrar deneyin.",
+    "private": "Özel deste",
+    "public": "Herkese açık deste",
+    "removedFromCollection": "Koleksiyondan kaldırıldı",
+    "removedFromCollectionDescription": "Deste koleksiyonunuzdan başarıyla kaldırıldı."
+  },
+  "DeckCards": {
+    "cardDeleted": "Kart Silindi",
+    "cardDeletedDescription": "{id} kimlik numaralı kart silindi.",
+    "cardUpdated": "Kart Güncellendi",
+    "cardUpdatedDescription": "Bilgi kartı başarıyla güncellendi.",
+    "deleteError": "Silme Hatası",
+    "deleteErrorDescription": "Bilgi kartını silme işlemi başarısız oldu.",
+    "updateError": "Güncelleme Hatası",
+    "updateErrorDescription": "Bilgi kartı güncellenirken bir hata oluştu.",
+    "updateFailed": "Güncelleme Başarısız",
+    "updateFailedDescription": "Bilgi kartı güncellenemedi. Lütfen tekrar deneyin."
+  },
+  "DeckDetailClient": {
+    "adding": "Ekleniyor...",
+    "addToMyCollection": "Koleksiyonuma ekle",
+    "by": "ile",
+    "cards": "kartlar",
+    "noCardsDescription": "Bu destede henüz hiç bilgi kartı yok. Pratik yapmaya başlamak için birkaç kart ekleyin.",
+    "noCardsInDeck": "Bu destede hiç kart yok.",
+    "practiceNow": "Şimdi Pratik Yapın",
+    "rating": "derecelendirme",
+    "removeFromCollection": "Koleksiyondan kaldır",
+    "removing": "Kaldırılıyor...",
+    "sampleCards": "Örnek Kartlar",
+    "students": "öğrenciler"
+  },
+  "DeckForm": {
+    "addCard": "Kart Ekle",
+    "back": "Geri",
+    "backText": "Geri Metin",
+    "cards": "KARTLAR",
+    "frontText": "Ön Metin",
+    "save": "Kaydetmek"
+  },
+  "DeckMetaForm": {
+    "deckName": "Deste Adı",
+    "deckNamePlaceholder": "Deste Adı",
+    "description": "Açıklama",
+    "descriptionPlaceholder": "Açıklama",
+    "private": "Özel",
+    "public": "Halk",
+    "tags": "Etiketler",
+    "tagsPlaceholder": "Etiket ekle",
+    "whoCanSee": "Bu desteyi kimler görebilir?"
+  },
+  "DecksPage": {
+    "all": "Tümü",
+    "explore": "keşfetmek",
+    "noDecksInCollection": "Koleksiyonunuzda henüz hiç deste bulunmuyor.",
+    "private": "özel",
+    "public": "halk",
+    "seeAll": "tümünü gör"
+  },
+  "ExploreDecksClient": {
+    "all": "Tüm",
+    "deck": "deste",
+    "decks": "desteler",
+    "filter": "Filtrele",
+    "found": "kurmak",
+    "loadingMore": "Daha fazlası yükleniyor...",
+    "noDecksFound": "Hiçbir deste bulunamadı.",
+    "private": "Özel",
+    "public": "Halk",
+    "searchPlaceholder": "Başlığa, açıklamaya göre ara...",
+    "sortBy": "Göre sırala",
+    "titleAsc": "Başlık (A-Z)",
+    "titleDesc": "Başlık (Z-A)"
+  },
+  "FlashCardContent": {
+    "card": "Kart",
+    "flip": "Çevir",
+    "flipTooltip": "Kartı çevirin",
+    "markAsMemorized": "Hafızaya Alındı Olarak İşaretle",
+    "markAsMemorizedTooltip": "Ezbere alındı olarak işaretle",
+    "markAsToReviewLater": "Daha sonra incelemek üzere işaretle.",
+    "repeat": "Tekrarlamak",
+    "updating": "Guncelleniyor..."
+  },
+  "FlashCardList": {
+    "noCardsFound": "Henüz hiçbir kart bulunamadı."
+  },
+  "HomePage": {
+    "greeting": "Selamünaleyküm!"
+  },
+  "KeycloakLogout": {
+    "button": "Çıkış yap"
+  },
+  "KoskListPage": {
+    "title": "Köşkler",
+    "subtitle": "İlim halkalarını yürüten köşkleri keşfedin, takip edin ve derslerine katılın.",
+    "breadcrumbKosks": "Köşkler",
+    "searchPlaceholder": "Köşk ara...",
+    "featured": "Öne çıkan",
+    "verified": "Onaylı",
+    "follow": "Takip et",
+    "following": "Takipte",
+    "enterKosk": "Köşke gir",
+    "filterAll": "Tümü",
+    "filterFollowing": "Takip ettiklerim",
+    "filterRecommended": "Önerilen",
+    "filterNew": "Yeni açılanlar",
+    "sortPopular": "Sırala: Popüler",
+    "fields": "İlim alanları",
+    "allFields": "Tüm alanlar",
+    "uncategorized": "Diğer",
+    "allLevels": "Tüm seviyeler",
+    "statCourses": "Ders",
+    "statStudents": "Talebe",
+    "statMuderris": "Müderris",
+    "coursesShort": "ders",
+    "studentsShort": "talebe",
+    "openKoskTitle": "Köşk aç",
+    "openKoskHint": "Müderris misiniz? Kendi köşkünüzü açıp ders halkalarınızı başlatın.",
+    "apply": "Başvuru yap",
+    "empty": "Henüz köşk bulunmuyor.",
+    "prev": "Önceki",
+    "next": "Sonraki",
+    "pageOf": "{page} / {total}",
+    "continueTitle": "Kaldığın yerden devam et",
+    "continueCount": "{count} ders",
+    "allMyCourses": "Tüm derslerim",
+    "continue": "Devam et",
+    "completed": "tamamlandı"
+  },
+  "KoskPage": {
+    "kosks": "Köşkler",
+    "uncategorized": "Diğer",
+    "private": "Özel",
+    "courses": "Ders",
+    "students": "Talebe",
+    "filterAll": "Tümü",
+    "newCourse": "Yeni Kurs",
+    "categories": "Kategoriler",
+    "allCourses": "Tüm dersler",
+    "noCourses": "Bu köşkte henüz kurs yok.",
+    "weeksCount": "{count} hafta",
+    "lessonsCount": "{count} ders",
+    "resourcesCount": "{count} kaynak",
+    "coursesCount": "{count} ders",
+    "completed": "Tamamlandı",
+    "percentComplete": "%{percent} tamamlandı",
+    "enroll": "Kayıt ol"
+  },
+  "LearningPage": {
+    "title": "Öğrenme",
+    "subtitle": "Köşkler ve kurslar",
+    "empty": "Henüz köşk bulunmuyor."
+  },
+  "LessonPage": {
+    "backToCourse": "Kursa dön",
+    "platformNotice": "Bu halka şu platform üzerinden yapılacaktır",
+    "platformUnknown": "Harici platform",
+    "meetingLink": "Toplantı bağlantısı",
+    "copyLink": "Kopyala",
+    "copied": "Bağlantı kopyalandı.",
+    "joinOn": "{platform}'te katıl",
+    "opensNewTab": "Bağlantı yeni sekmede açılır. Toplantıya köşk hesabınızla katılabilirsiniz.",
+    "noMeetingLink": "Toplantı bağlantısı henüz eklenmedi. Müderris bağlantıyı paylaştığında burada görünecek.",
+    "agendaTitle": "Müzakere akışı",
+    "statusUnscheduled": "Tarih belirlenmedi",
+    "statusSoon": "{minutes} dk sonra",
+    "statusLive": "Şu an canlı",
+    "statusEnded": "Sona erdi",
+    "managesCircle": "Halkayı yönetiyor"
+  },
+  "LessonTypes": {
+    "VIDEO": "Video",
+    "DOCUMENT": "Doküman",
+    "LIVE": "Canlı halka",
+    "QUIZ": "Sınav"
+  },
+  "Levels": {
+    "BEGINNER": "Başlangıç",
+    "INTERMEDIATE": "Orta",
+    "ADVANCED": "İleri"
+  },
+  "SampleCards": {
+    "answer": "Cevap",
+    "noAnswer": "Cevap yok",
+    "noContent": "İçerik yok",
+    "question": "Soru"
+  },
+  "SyllabusModal": {
+    "fullSyllabus": "Tam Müfredat",
+    "downloadPdf": "PDF olarak indir",
+    "close": "Kapat",
+    "weeksTotal": "Toplam {count} hafta"
+  },
+  "TabView": {
+    "decks": "Desteler",
+    "home": "Ev",
+    "learning": "Öğrenme"
+  },
+  "UserHeaderMenu": {
+    "accountSettings": "Hesap Ayarları",
+    "helpAndSupport": "Yardım ve Destek",
+    "myLearning": "Öğrenimim",
+    "profile": "Profil",
+    "signOut": "oturumu Kapat",
+    "talebe": "Talebe"
+  },
+  "UserNotifications": {
+    "noNewNotifications": "Yeni bildirim yok."
+  },
+  "Version": {
+    "appVersion": "Uygulama sürümü"
+  },
+  "MyCoursesPage": {
+    "breadcrumb": "Derslerim",
+    "title": "Derslerim",
+    "subtitle": "Devam eden ders halkalarını tek yerden takip et.",
+    "empty": "Devam eden dersin bulunmuyor.",
+    "count": "{count} ders"
+  }
+}

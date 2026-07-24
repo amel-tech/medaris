@@ -1,0 +1,30 @@
+{
+  "concurrency": "15",
+  "globalDependencies": ["**/.env.*local"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**", "theme/main.css"]
+    },
+    "lint": {
+      "dependsOn": ["^lint"]
+    },
+    "check-types": {
+      "dependsOn": ["^check-types"]
+    },
+    "dev": {
+      "dependsOn": ["lint"],
+      "cache": false,
+      "persistent": true
+    },
+    "clean": {
+      "cache": false
+    },
+    "test": {
+      "dependsOn": ["^test"]
+    },
+    "distribute": {
+      "dependsOn": ["^distribute"]
+    }
+  }
+}

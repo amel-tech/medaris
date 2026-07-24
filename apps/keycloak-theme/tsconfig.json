@@ -1,0 +1,16 @@
+{
+    "extends": "@madrasah/typescript-config/react-library.json",
+    "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+            "@madrasah/ui/*": ["../../shared/ui/src/*"],
+            "react": ["./node_modules/@types/react"],
+        },
+        "jsx": "react-jsx",
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
+        "noEmit": true
+    },
+    "include": ["."],
+    "exclude": ["node_modules", "dist"]
+}
