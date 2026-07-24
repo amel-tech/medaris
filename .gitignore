@@ -1,2 +1,16 @@
 .rc-session.log
 .mcp-auth-ameltech/
+
+# --- merged from madrasah-backend (MDRS-9) ---
+node_modules
+.env
+.env.staging
+dist/
+*.log
+.DS_Store
+.vscode/
+.idea/
+.turbo
+.data/
+data/
+coverage/

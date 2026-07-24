@@ -1,0 +1,23 @@
+{
+  "ignores": [
+    "@types/*",
+    "eslint-*",
+    "prettier",
+    "@swc/*",
+    "typescript",
+    "ts-node",
+    "tsconfig-paths",
+    "@eslint/*",
+    "source-map-support",
+    "ts-loader",
+    "typescript-eslint",
+    "drizzle-orm",
+    "pg",
+    "pino-pretty",
+    "rimraf",
+    "husky",
+    "@nestjs/schematics",
+    "testcontainers"
+  ],
+  "skip-missing": false
+}
