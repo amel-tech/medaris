@@ -1,0 +1,13 @@
+{
+  "extends": "@madrasah/typescript-config/react-library",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@madrasah/ui/*": ["../../shared/ui/src/*"]
+    },
+    "moduleResolution": "bundler"
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
+}

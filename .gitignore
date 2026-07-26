@@ -1,2 +1,208 @@
 .rc-session.log
 .mcp-auth-ameltech/
+
+# --- merged from madrasah-backend (MDRS-9) ---
+node_modules
+.env
+.env.staging
+dist/
+*.log
+.DS_Store
+.vscode/
+.idea/
+.turbo
+.data/
+data/
+coverage/
+
+# --- merged from madrasah-frontend (MDRS-9) ---
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+.npm
+.yarn
+
+# Build outputs
+build/
+.next/
+out/
+.output/
+*.timestamp-*
+
+# Generated mock files
+apps/*/public/mocks/
+
+# Turborepo
+.turbo/
+
+# Testing
+.nyc_output/
+*.lcov
+
+# Environment files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Logs
+logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+.tsbuildinfo
+
+# ESLint
+.eslintcache
+
+# Prettier
+.prettiercache
+
+# Stylelint
+.stylelintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Storybook build outputs
+.out
+.storybook-out
+storybook-static
+
+# Nuxt.js build / generate output
+.nuxt
+
+# Vuepress build output
+.vuepress/dist
+
+# Temporary folders
+tmp/
+temp/
+
+# Server files
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# Deployment
+.vercel
+.netlify
+
+# Editor directories and files
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*~
+
+# IDE
+*.iml
+*.ipr
+*.iws
+
+# OS generated files
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+$RECYCLE.BIN/
+
+# Linux
+
+# Apple
+.AppleDouble
+.LSOverride
+
+# Backup files
+*.backup
+*.bak
+*.swp
+*.swo
+
+# Security
+*.pem
+*.key
+*.cert
+*.crt
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Compressed files
+*.zip
+*.tar.gz
+*.rar
+
+# Package files
+*.deb
+*.rpm
+
+# Mobile
+.expo/
+.expo-shared/
+
+# React Native
+.metro-health-check*
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# Contentful
+.contentful.json
+
+# Sanity
+.sanity/
+
+# Local Netlify folder

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "node",
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": true,
+  "separate-pull-requests": true,
+  "packages": {
+    "apps/keycloak-theme": {
+      "release-type": "node",
+      "package-name": "madrasah-keycloak-theme",
+      "include-component-in-tag": true,
+      "pull-request-title-pattern": "chore(keycloak-theme): release ${version}",
+      "pull-request-header": "Release for Keycloak Theme",
+      "component": "keycloak-theme",
+      "path": "apps/keycloak-theme",
+      "extra-files": ["shared/**"]
+    },
+    "apps/tedris": {
+      "release-type": "node",
+      "package-name": "tedris-web",
+      "include-component-in-tag": true,
+      "pull-request-title-pattern": "chore(tedris-web): release ${version}",
+      "pull-request-header": "Release for Tedris Web",
+      "component": "tedris-web",
+      "path": "apps/tedris",
+      "extra-files": ["shared/**"]
+    },
+    "apps/nizam": {
+      "release-type": "node",
+      "package-name": "nizam-web",
+      "include-component-in-tag": true,
+      "pull-request-title-pattern": "chore(nizam-web): release ${version}",
+      "pull-request-header": "Release for Nizam Web",
+      "component": "nizam-web",
+      "path": "apps/nizam",
+      "extra-files": ["shared/**"]
+    },
+    "apps/nazir": {
+      "release-type": "node",
+      "package-name": "nazir-web",
+      "include-component-in-tag": true,
+      "pull-request-title-pattern": "chore(nazir-web): release ${version}",
+      "pull-request-header": "Release for Nazir Web",
+      "component": "nazir-web",
+      "path": "apps/nazir",
+      "extra-files": ["shared/**"]
+    },
+    "apps/landing": {
+      "release-type": "node",
+      "package-name": "landing-web",
+      "include-component-in-tag": true,
+      "pull-request-title-pattern": "chore(landing-web): release ${version}",
+      "pull-request-header": "Release for Landing Web",
+      "component": "landing-web",
+      "path": "apps/landing",
+      "extra-files": ["shared/**"]
+    }
+  }
+}

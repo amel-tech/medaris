@@ -1,0 +1,53 @@
+{
+  "name": "@madrasah/common",
+  "version": "1.0.0",
+  "description": "Common DTOs and utilities for Madrasah services",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*",
+    "package.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "build:watch": "tsc -p tsconfig.json --watch",
+    "clean": "rimraf dist",
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "npm run build",
+    "audit": "npm audit",
+    "audit:ci": "audit-ci --config ../../audit-ci.json",
+    "depcheck": "depcheck --config=../../.depcheckrc.json"
+  },
+  "keywords": [
+    "madrasah",
+    "dto",
+    "common"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@nestjs/cache-manager": "^3.0.1",
+    "@nestjs/common": "^11.1.5",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/swagger": "^11.2.0",
+    "@types/multer": "^2.0.0",
+    "cache-manager": "^7.1.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "compression": "^1.8.1",
+    "exceljs": "^4.4.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "pino": "^9.7.0",
+    "pino-pretty": "^13.0.0",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "@types/compression": "^1.8.1",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.10.7",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.8.3"
+  }
+}

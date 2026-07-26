@@ -1,0 +1,78 @@
+@theme {
+
+  /* background-colors */
+  --background-color-neutral-primary: rgba(248, 250, 252, 1);
+  --background-color-neutral-secondary: rgba(241, 245, 249, 1);
+  --background-color-neutral-tertiary: rgba(226, 232, 240, 1);
+  --background-color-neutral-disabled: rgba(203, 213, 225, 1);
+  --background-color-neutralinverse-primary: rgba(15, 23, 42, 1);
+  --background-color-neutralinverse-secondary: rgba(30, 41, 59, 1);
+  --background-color-neutralinverse-tertiary: rgba(51, 65, 85, 1);
+  --background-color-brand-primary: rgba(12, 74, 110, 1);
+  --background-color-brand-secondary: rgba(3, 105, 161, 1);
+  --background-color-brand-tertiary: rgba(224, 242, 254, 1);
+  --background-color-success-subtle: rgba(220, 252, 231, 1);
+  --background-color-success-base: rgba(34, 197, 94, 1);
+  --background-color-success-bold: rgba(22, 163, 74, 1);
+  --background-color-warning-subtle: rgba(254, 249, 195, 1);
+  --background-color-warning-base: rgba(250, 204, 21, 1);
+  --background-color-warning-bold: rgba(234, 179, 8, 1);
+  --background-color-error-subtle: rgba(254, 226, 226, 1);
+  --background-color-error-base: rgba(239, 68, 68, 1);
+  --background-color-error-bold: rgba(220, 38, 38, 1);
+  --background-color-info-subtle: rgba(219, 234, 254, 1);
+  --background-color-info-base: rgba(37, 99, 235, 1);
+  --background-color-info-bold: rgba(29, 78, 216, 1);
+  --background-color-white: rgba(255, 255, 255, 1);
+  --background-color-black: rgba(0, 0, 0, 1);
+
+  /* text-colors */
+  --text-color-neutral-primary: rgba(17, 24, 39, 1);
+  --text-color-neutral-secondary: rgba(31, 41, 55, 1);
+  --text-color-neutral-tertiary: rgba(75, 85, 99, 1);
+  --text-color-neutral-disabled: rgba(107, 114, 128, 1);
+  --text-color-neutral-primary-2: rgba(255, 255, 255, 1);
+  --text-color-white: rgba(255, 255, 255, 1);
+  --text-color-black: rgba(0, 0, 0, 1);
+  --text-color-neutralinverse-primary: rgba(243, 244, 246, 1);
+  --text-color-neutralinverse-secondary: rgba(229, 231, 235, 1);
+  --text-color-neutralinverse-tertiary: rgba(209, 213, 219, 1);
+  --text-color-brand-primary: rgba(12, 74, 110, 1);
+  --text-color-brand-secondary: rgba(7, 89, 133, 1);
+  --text-color-brand-inverse: rgba(224, 242, 254, 1);
+  --text-color-success-primary: rgba(21, 128, 61, 1);
+  --text-color-success-secondary: rgba(22, 163, 74, 1);
+  --text-color-success-inverse: rgba(240, 253, 244, 1);
+  --text-color-warning-primary: rgba(234, 179, 8, 1);
+  --text-color-warning-secondary: rgba(250, 204, 21, 1);
+  --text-color-warning-inverse: rgba(254, 252, 232, 1);
+  --text-color-error-primary: rgba(220, 38, 38, 1);
+  --text-color-error-secondary: rgba(239, 68, 68, 1);
+  --text-color-error-inverse: rgba(254, 242, 242, 1);
+  --text-color-info-primary: rgba(37, 99, 235, 1);
+  --text-color-info-secondary: rgba(59, 130, 246, 1);
+  --text-color-info-inverse: rgba(239, 246, 255, 1);
+
+  /* border-colors */
+  --border-color-neutral-primary: rgba(229, 231, 235, 1);
+  --border-color-neutral-secondary: rgba(209, 213, 219, 1);
+  --border-color-neutral-tertiary: rgba(156, 163, 175, 1);
+  --border-color-neutralinverse-primary: rgba(31, 41, 55, 1);
+  --border-color-neutralinverse-secondary: rgba(55, 65, 81, 1);
+  --border-color-neutralinverse-tertiary: rgba(75, 85, 99, 1);
+  --border-color-brand-primary: rgba(12, 74, 110, 1);
+  --border-color-brand-secondary: rgba(7, 89, 133, 1);
+  --border-color-brand-inverse: rgba(224, 242, 254, 1);
+  --border-color-success-primary: rgba(21, 128, 61, 1);
+  --border-color-success-secondary: rgba(22, 163, 74, 1);
+  --border-color-success-inverse: rgba(240, 253, 244, 1);
+  --border-color-warning-primary: rgba(234, 179, 8, 1);
+  --border-color-warning-secondary: rgba(250, 204, 21, 1);
+  --border-color-warning-inverse: rgba(254, 252, 232, 1);
+  --border-color-error-primary: rgba(185, 28, 28, 1);
+  --border-color-error-secondary: rgba(220, 38, 38, 1);
+  --border-color-error-inverse: rgba(254, 242, 242, 1);
+  --border-color-info-primary: rgba(29, 78, 216, 1);
+  --border-color-info-secondary: rgba(37, 99, 235, 1);
+  --border-color-info-inverse: rgba(239, 246, 255, 1);
+}

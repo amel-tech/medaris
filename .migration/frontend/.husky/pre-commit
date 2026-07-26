@@ -1,0 +1,2 @@
+npm run check-types || exit 1
+npm run lint || exit 1
