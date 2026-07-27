@@ -2,12 +2,12 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { cn } from '@madrasah/ui/lib/utils'
+import { cn } from '@medaris/ui/lib/utils'
 import { useTranslations, useLocale } from 'next-intl'
 import { useRouter, usePathname } from '~/lib/i18n/navigation'
 import { locales } from '~/lib/i18n/routing'
 import { headerNavLinks, headerCtaHref } from './data'
-import { MadrasahLogoIcon } from '@madrasah/icons'
+import { MadrasahLogoIcon } from '@medaris/icons'
 
 const FALLBACK_HEADER_HEIGHT = 80
 

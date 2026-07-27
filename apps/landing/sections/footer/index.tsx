@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Mosque, GlobeSimple, Envelope } from '@madrasah/icons/ssr'
+import { Mosque, GlobeSimple, Envelope } from '@medaris/icons/ssr'
 import { getTranslations } from 'next-intl/server'
 import { footerExploreLinks, footerSupportLinks, footerLegalLinks } from './data'
 

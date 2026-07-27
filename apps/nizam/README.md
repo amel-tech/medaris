@@ -35,7 +35,7 @@ Open [http://localhost:4001](http://localhost:4001) with your browser to see the
 
 ## 🌍 Internationalization (i18n)
 
-Nizam uses **next-intl** for internationalization, integrating with the shared `@madrasah/i18n` package for centralized translation management.
+Nizam uses **next-intl** for internationalization, integrating with the shared `@medaris/i18n` package for centralized translation management.
 
 ### Supported Languages
 
@@ -98,7 +98,7 @@ export function Navigation() {
 - **`common`** - Shared translations (locale names, common UI elements)
 - **`nizam`** - Nizam-specific translations (components, features)
 
-See the readme of the `@madrasah/i18n` package for detailed instructions on adding new translations and managing them.
+See the readme of the `@medaris/i18n` package for detailed instructions on adding new translations and managing them.
 
 
 ## 🛠️ Built With
@@ -113,7 +113,7 @@ See the readme of the `@madrasah/i18n` package for detailed instructions on addi
 
 - [Next.js Documentation](https://nextjs.org/docs)
 - [next-intl Documentation](https://next-intl.dev/docs)
-- [Madrasah i18n Package](../../shared/i18n/README.md)
+- [Madrasah i18n Package](../../libs/i18n/README.md)
 
 ## 🤝 Contributing
 

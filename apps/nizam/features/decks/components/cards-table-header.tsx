@@ -1,5 +1,5 @@
-import { UploadIcon, DownloadIcon, FileCsvIcon, FileXlsIcon, FileArrowDownIcon } from '@madrasah/icons'
-import { Button } from '@madrasah/ui/components/button'
+import { UploadIcon, DownloadIcon, FileCsvIcon, FileXlsIcon, FileArrowDownIcon } from '@medaris/icons'
+import { Button } from '@medaris/ui/components/button'
 import { useRef } from 'react'
 import {
   DropdownMenu,
@@ -9,7 +9,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from '@madrasah/ui/components/dropdown-menu'
+} from '@medaris/ui/components/dropdown-menu'
 import { useTranslations } from 'next-intl'
 
 export const CardsTableHeader = ({

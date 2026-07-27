@@ -8,14 +8,14 @@ import {
   BookmarkSimpleIcon,
   LockIcon,
   GlobeIcon,
-} from '@madrasah/icons'
-import { Card } from '@madrasah/ui/components/card'
+} from '@medaris/icons'
+import { Card } from '@medaris/ui/components/card'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@madrasah/ui/components/tooltip'
-import { toastHelper } from '@madrasah/ui/lib/toast-helper'
+} from '@medaris/ui/components/tooltip'
+import { toastHelper } from '@medaris/ui/lib/toast-helper'
 import { addDeckToCollection, removeDeckFromCollection } from '~/features/flashcards/actions'
 import { useTranslations } from 'next-intl'
 

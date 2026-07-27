@@ -3,8 +3,8 @@ import { useIsPasswordRevealed } from 'keycloakify/tools/useIsPasswordRevealed'
 import type { KcClsx } from 'keycloakify/login/lib/kcClsx'
 import type { I18n } from '../i18n'
 
-import { Button } from '@madrasah/ui/components/button'
-import { EyeIcon, EyeSlashIcon } from '@madrasah/icons'
+import { Button } from '@medaris/ui/components/button'
+import { EyeIcon, EyeSlashIcon } from '@medaris/icons'
 
 export function PasswordWrapper(props: {
   kcClsx: KcClsx

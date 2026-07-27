@@ -1,4 +1,4 @@
-# @madrasah/services
+# @medaris/services
 
 Shared service layer for Madrasah applications with auto-generated API clients from OpenAPI specifications.
 
@@ -9,7 +9,7 @@ This package provides TypeScript API clients generated from OpenAPI/Swagger spec
 ## Structure
 
 ```
-shared/services/
+libs/services/
 ├── swagger-docs/           # OpenAPI specifications
 │   ├── tedrisat.json      # Tedrisat service API spec
 │   └── README.md          # Documentation for swagger specs
@@ -27,7 +27,7 @@ shared/services/
 ### Basic API Client Usage
 
 ```typescript
-import { createTedrisatAPIs, DeckInclude } from '@madrasah/services/tedrisat'
+import { createTedrisatAPIs, DeckInclude } from '@medaris/services/tedrisat'
 
 // Create API clients
 const { decks, cards, service } = createTedrisatAPIs({
@@ -49,7 +49,7 @@ const deck = await decks.getFlashcardDeckById({
 ### Server-Side Usage (Next.js)
 
 ```typescript
-import { createServerTedrisatAPIs } from '@madrasah/services/tedrisat'
+import { createServerTedrisatAPIs } from '@medaris/services/tedrisat'
 import { auth } from '~/lib/auth_options'
 
 // In server components or API routes
@@ -62,7 +62,7 @@ const decks = await decks.getAllFlashcardDecks()
 ### Client-Side Usage (React)
 
 ```typescript
-import { createTedrisatAPIs } from '@madrasah/services/tedrisat'
+import { createTedrisatAPIs } from '@medaris/services/tedrisat'
 import { useSession } from 'next-auth/react'
 
 function MyComponent() {
@@ -103,7 +103,7 @@ npm run build
 
 ### Available Services
 
-- **Tedrisat** (`@madrasah/services/tedrisat`) - Education management service
+- **Tedrisat** (`@medaris/services/tedrisat`) - Education management service
 
 ## Scripts
 

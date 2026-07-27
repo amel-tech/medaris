@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import { MedarisError } from '@madrasah/common';
+import { MedarisError } from '@medaris/common';
 import { RowError } from '../dto/flashcard-bulk-response.dto';
 
 export class BulkValidationError extends MedarisError {

@@ -1,4 +1,4 @@
-import { createServerTedrisatAPIs } from '@madrasah/services/tedrisat'
+import { createServerTedrisatAPIs } from '@medaris/services/tedrisat'
 import { env } from '~/env'
 import { auth } from '~/lib/auth_options'
 import { DeckCardsPage } from '~/features/flashcards/components/deck-cards-page'

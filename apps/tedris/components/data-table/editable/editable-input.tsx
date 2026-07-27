@@ -1,8 +1,8 @@
 import React from 'react'
 import { ColumnDef } from '@tanstack/react-table'
-import { Input } from '@madrasah/ui/components/input'
-import { Skeleton } from '@madrasah/ui/components/skeleton'
-import { cn } from '@madrasah/ui/lib/utils'
+import { Input } from '@medaris/ui/components/input'
+import { Skeleton } from '@medaris/ui/components/skeleton'
+import { cn } from '@medaris/ui/lib/utils'
 
 export const EditableInput: React.FC<{
   value: string

@@ -2,13 +2,13 @@
 
 import { useState, useTransition, type ReactElement } from 'react'
 import { useRouter } from 'next/navigation'
-import { PlusIcon } from '@madrasah/icons'
-import { Button } from '@madrasah/ui/components/button'
-import { Input } from '@madrasah/ui/components/input'
-import { Textarea } from '@madrasah/ui/components/textarea'
-import { Label } from '@madrasah/ui/components/label'
-import { Switch } from '@madrasah/ui/components/switch'
-import { toast } from '@madrasah/ui/components/sonner'
+import { PlusIcon } from '@medaris/icons'
+import { Button } from '@medaris/ui/components/button'
+import { Input } from '@medaris/ui/components/input'
+import { Textarea } from '@medaris/ui/components/textarea'
+import { Label } from '@medaris/ui/components/label'
+import { Switch } from '@medaris/ui/components/switch'
+import { toast } from '@medaris/ui/components/sonner'
 import {
   Dialog,
   DialogContent,
@@ -16,8 +16,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@madrasah/ui/components/dialog'
-import type { KoskResponse } from '@madrasah/services/tedrisat'
+} from '@medaris/ui/components/dialog'
+import type { KoskResponse } from '@medaris/services/tedrisat'
 import { createKosk, updateKosk } from '~/features/kosks/actions'
 
 export function KoskFormDialog({

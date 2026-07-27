@@ -10,8 +10,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@madrasah/ui/components/sidebar'
-import { MadrasahLogoIcon } from '@madrasah/icons'
+} from '@medaris/ui/components/sidebar'
+import { MadrasahLogoIcon } from '@medaris/icons'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { routes } from './nav-routes'

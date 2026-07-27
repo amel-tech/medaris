@@ -1,5 +1,5 @@
 import { getRequestConfig } from 'next-intl/server'
-import { resources } from '@madrasah/i18n'
+import { resources } from '@medaris/i18n'
 import { hasLocale } from 'next-intl'
 import { routing } from './routing'
 

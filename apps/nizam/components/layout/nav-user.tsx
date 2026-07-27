@@ -5,7 +5,7 @@ import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from '@madrasah/ui/components/avatar'
+} from '@medaris/ui/components/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,14 +13,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@madrasah/ui/components/dropdown-menu'
+} from '@medaris/ui/components/dropdown-menu'
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from '@madrasah/ui/components/sidebar'
-import { CaretUpDownIcon, SignOutIcon } from '@madrasah/icons'
+} from '@medaris/ui/components/sidebar'
+import { CaretUpDownIcon, SignOutIcon } from '@medaris/icons'
 
 export function NavUser({
   user,

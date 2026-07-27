@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Build script for @madrasah/tokens
+ * Build script for @medaris/tokens
  *
  * This script ensures all necessary files are generated and validates the package.
  */
@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const packageRoot = join(__dirname, '..');
 
-console.log('🔨 Building @madrasah/tokens...');
+console.log('🔨 Building @medaris/tokens...');
 
 // Check if required files exist
 const requiredFiles = ['input/main.css', 'index.js', 'index.d.ts', 'package.json'];
@@ -52,7 +52,7 @@ try {
 // Validate package.json
 try {
   const packageJson = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf-8'));
-  if (packageJson.name !== '@madrasah/tokens') {
+  if (packageJson.name !== '@medaris/tokens') {
     console.error('❌ package.json has incorrect name');
     process.exit(1);
   }
@@ -64,6 +64,6 @@ try {
 
 console.log('🎉 Build completed successfully!');
 console.log('\nPackage is ready to be used:');
-console.log('  npm install @madrasah/tokens');
-console.log('  import tokens from "@madrasah/tokens";');
-console.log('  @import "@madrasah/tokens/css"; // In your CSS file');
+console.log('  npm install @medaris/tokens');
+console.log('  import tokens from "@medaris/tokens";');
+console.log('  @import "@medaris/tokens/css"; // In your CSS file');

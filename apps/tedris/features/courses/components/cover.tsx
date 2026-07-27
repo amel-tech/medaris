@@ -1,4 +1,4 @@
-import { cn } from '@madrasah/ui/lib/utils'
+import { cn } from '@medaris/ui/lib/utils'
 
 /** Arabesque-pattern cover placeholder, tinted by an OKLCH hue. */
 export const CoverPlaceholder = ({

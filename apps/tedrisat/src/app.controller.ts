@@ -2,7 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AppService } from './app.service';
-import { AuthGuard, HealthCheckDto, ValidationError } from '@madrasah/common';
+import { AuthGuard, HealthCheckDto, ValidationError } from '@medaris/common';
 
 @ApiTags('Tedrisat Service')
 @Controller()

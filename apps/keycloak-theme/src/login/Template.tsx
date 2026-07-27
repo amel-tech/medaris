@@ -7,13 +7,13 @@ import type { I18n } from './i18n'
 import type { KcContext } from './KcContext'
 import type { ExtendedTemplateProps } from './types/TemplateProps'
 
-import { Button } from '@madrasah/ui/components/button'
-import { Alert, AlertDescription } from '@madrasah/ui/components/alert'
-import { cn } from '@madrasah/ui/lib/utils'
-import { Badge } from '@madrasah/ui/components/badge'
+import { Button } from '@medaris/ui/components/button'
+import { Alert, AlertDescription } from '@medaris/ui/components/alert'
+import { cn } from '@medaris/ui/lib/utils'
+import { Badge } from '@medaris/ui/components/badge'
 
 import BackgroundImage from './assets/background.png'
-import { CheckIcon, InfoIcon, WarningCircleIcon, XIcon } from '@madrasah/icons'
+import { CheckIcon, InfoIcon, WarningCircleIcon, XIcon } from '@medaris/icons'
 
 export default function Template(
   props: ExtendedTemplateProps<KcContext, I18n>,

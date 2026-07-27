@@ -1,5 +1,5 @@
 import { DeckCardsTable } from '~/features/flashcards/components/deck-cards-table'
-import type { FlashcardResponse } from '@madrasah/services/tedrisat'
+import type { FlashcardResponse } from '@medaris/services/tedrisat'
 
 export function DeckCardsPage({
   deckId,

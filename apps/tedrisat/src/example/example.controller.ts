@@ -16,7 +16,7 @@ import {
   ApiParam,
   ApiNotFoundResponse,
 } from '@nestjs/swagger';
-import { MedarisResponse } from '@madrasah/common';
+import { MedarisResponse } from '@medaris/common';
 import { CreateExampleDto } from './dto/create-example.dto';
 import { ExampleResponseDto } from './dto/example-response.dto';
 import { ExampleService } from './example.service';

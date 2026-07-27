@@ -1,8 +1,8 @@
 import React from 'react'
 import { ColumnDef } from '@tanstack/react-table'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@madrasah/ui/components/select'
-import { Skeleton } from '@madrasah/ui/components/skeleton'
-import { cn } from '@madrasah/ui/lib/utils'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@medaris/ui/components/select'
+import { Skeleton } from '@medaris/ui/components/skeleton'
+import { cn } from '@medaris/ui/lib/utils'
 
 export const EditableSelect: React.FC<{
   value: string

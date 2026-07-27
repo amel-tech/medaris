@@ -1,4 +1,4 @@
-/* Shadcn/UI theme configuration using @madrasah/tokens */
+/* Shadcn/UI theme configuration using @medaris/tokens */
 @theme {
   /* Map design tokens to shadcn/ui expected color names */
   --color-background: var(--background-color-neutral-primary);

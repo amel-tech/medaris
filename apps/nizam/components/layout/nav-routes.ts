@@ -1,4 +1,4 @@
-import { Icon, TableIcon, House } from '@madrasah/icons'
+import { Icon, TableIcon, House } from '@medaris/icons'
 
 export type NavigationRouteType = {
   title: string

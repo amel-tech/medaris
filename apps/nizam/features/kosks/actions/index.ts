@@ -10,7 +10,7 @@ import {
   type PendingEnrollmentResponse,
   type CreateKoskDto,
   type UpdateKoskDto,
-} from '@madrasah/services/tedrisat'
+} from '@medaris/services/tedrisat'
 import {
   authenticatedAction,
   type AuthenticatedActionResult,

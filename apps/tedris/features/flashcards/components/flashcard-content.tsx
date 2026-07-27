@@ -6,21 +6,21 @@ import {
   CircleNotchIcon,
   EyeIcon,
   RepeatIcon,
-} from '@madrasah/icons'
+} from '@medaris/icons'
 import { MouseEvent, TouchEvent, useEffect, useRef, useState } from 'react'
-import { Kbd } from '@madrasah/ui/components/kbd'
+import { Kbd } from '@medaris/ui/components/kbd'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@madrasah/ui/components/tooltip'
+} from '@medaris/ui/components/tooltip'
 import { useTranslations } from 'next-intl'
 
 import { toDisplay } from '../utils/flashCardUtils'
 
 import FlashCardComponent from './flashcard'
-import { FlashcardResponse } from '@madrasah/services/tedrisat'
-import { Button } from '@madrasah/ui/components/button'
+import { FlashcardResponse } from '@medaris/services/tedrisat'
+import { Button } from '@medaris/ui/components/button'
 
 type FlashCardContentProps = {
   card: FlashcardResponse

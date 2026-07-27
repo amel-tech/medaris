@@ -1,12 +1,12 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Button } from '@madrasah/ui/components/button'
-import { Input } from '@madrasah/ui/components/input'
-import { Label } from '@madrasah/ui/components/label'
-import { Textarea } from '@madrasah/ui/components/textarea'
-import { Switch } from '@madrasah/ui/components/switch'
-import { toastHelper } from '@madrasah/ui/lib/toast-helper'
+import { Button } from '@medaris/ui/components/button'
+import { Input } from '@medaris/ui/components/input'
+import { Label } from '@medaris/ui/components/label'
+import { Textarea } from '@medaris/ui/components/textarea'
+import { Switch } from '@medaris/ui/components/switch'
+import { toastHelper } from '@medaris/ui/lib/toast-helper'
 import {
   Dialog,
   DialogContent,
@@ -15,10 +15,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@madrasah/ui/components/dialog'
-import { PlusIcon } from '@madrasah/icons'
+} from '@medaris/ui/components/dialog'
+import { PlusIcon } from '@medaris/icons'
 import { createFlashcardDeck } from '~/features/decks/actions'
-import { CreateFlashcardDeckDto } from '@madrasah/services/tedrisat'
+import { CreateFlashcardDeckDto } from '@medaris/services/tedrisat'
 import { useTranslations } from 'next-intl'
 
 export function DecksTableHeader() {

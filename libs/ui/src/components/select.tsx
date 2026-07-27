@@ -2,9 +2,9 @@
 
 import * as React from "react"
 import * as SelectPrimitive from "@radix-ui/react-select"
-import { CheckIcon, CaretDownIcon, CaretUpIcon } from "@madrasah/icons"
+import { CheckIcon, CaretDownIcon, CaretUpIcon } from "@medaris/icons"
 
-import { cn } from "@madrasah/ui/lib/utils"
+import { cn } from "@medaris/ui/lib/utils"
 
 function Select({
   ...props

@@ -3,7 +3,7 @@
 import React from 'react'
 import { ColumnDef } from '@tanstack/react-table'
 import { createInputColumn } from '~/components/data-table/editable'
-import { FlashcardResponse } from '@madrasah/services/tedrisat'
+import { FlashcardResponse } from '@medaris/services/tedrisat'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -14,9 +14,9 @@ import {
   AlertDialogTrigger,
   AlertDialogCancel,
   AlertDialogAction,
-} from '@madrasah/ui/components/alert-dialog'
-import { TrashIcon } from '@madrasah/icons'
-import { Button } from '@madrasah/ui/components/button'
+} from '@medaris/ui/components/alert-dialog'
+import { TrashIcon } from '@medaris/icons'
+import { Button } from '@medaris/ui/components/button'
 
 export function useFlashcardColumns() {
   return React.useMemo<ColumnDef<FlashcardResponse>[]>(() => [

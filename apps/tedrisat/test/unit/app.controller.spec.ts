@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppController } from '../../src/app.controller';
 import { AppService } from '../../src/app.service';
-import { AuthGuardModule, LoggerModule } from '@madrasah/common';
+import { AuthGuardModule, LoggerModule } from '@medaris/common';
 import { ConfigModule } from '@nestjs/config';
 
 describe('AppController', () => {

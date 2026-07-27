@@ -3,8 +3,8 @@ import {
   ArrowRightIcon,
   CaretRightIcon,
   MadrasahLogoIcon,
-} from '@madrasah/icons/ssr'
-import type { EnrolledCourseResponse } from '@madrasah/services/tedrisat'
+} from '@medaris/icons/ssr'
+import type { EnrolledCourseResponse } from '@medaris/services/tedrisat'
 import { CoverPlaceholder } from './cover'
 
 export type ContinueCardLabels = {

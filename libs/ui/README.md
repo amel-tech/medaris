@@ -1,4 +1,4 @@
-# @madrasah/ui
+# @medaris/ui
 
 A shared UI component library for the Madrasah project, built with React, TypeScript, and Tailwind CSS.
 
@@ -25,17 +25,17 @@ Import components, styles, and utilities from the package:
 
 ```tsx
 // Components
-import { Button } from "@madrasah/ui/components/button";
-import { Select } from "@madrasah/ui/components/select";
+import { Button } from "@medaris/ui/components/button";
+import { Select } from "@medaris/ui/components/select";
 
 // Styles
-import "@madrasah/ui/globals.css";
+import "@medaris/ui/globals.css";
 
 // Utilities
-import { cn } from "@madrasah/ui/lib/utils";
+import { cn } from "@medaris/ui/lib/utils";
 
 // Hooks
-import { useTheme } from "@madrasah/ui/hooks/use-theme";
+import { useTheme } from "@medaris/ui/hooks/use-theme";
 ```
 
 ## Available Exports
@@ -64,7 +64,7 @@ import { useTheme } from "@madrasah/ui/hooks/use-theme";
 
 ### Adding New Components
 
-To add new shadcn/ui components to the library, open `shared/ui` and run:
+To add new shadcn/ui components to the library, open `libs/ui` and run:
 
 ```bash
 npx shadcn@latest add [component-name]

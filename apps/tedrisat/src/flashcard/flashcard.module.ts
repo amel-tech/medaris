@@ -8,7 +8,7 @@ import { FlashcardDeckRepository } from './flashcard-deck.repository';
 import { DatabaseService } from '../database/database.service';
 import { FlashcardRepository } from './flashcard.repository';
 import { FlashcardBulkService } from './flashcard-bulk.service';
-import { AuthGuardModule, ExcelModule } from '@madrasah/common';
+import { AuthGuardModule, ExcelModule } from '@medaris/common';
 
 @Module({
   imports: [AuthGuardModule, ExcelModule],

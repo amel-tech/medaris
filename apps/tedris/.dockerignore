@@ -75,8 +75,8 @@ apps/*
 !apps/tedris
 
 # Exclude shared packages source (we copy them separately)
-shared/*/src
-shared/*/node_modules
+libs/*/src
+libs/*/node_modules
 
 # Development tools
 .prettierrc*

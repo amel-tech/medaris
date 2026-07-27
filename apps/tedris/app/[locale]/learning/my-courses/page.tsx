@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
-import { Breadcrumbs } from '@madrasah/ui/components/breadcrumb'
+import { Breadcrumbs } from '@medaris/ui/components/breadcrumb'
 import { getMyCourses } from '~/features/courses/actions'
 import { ContinueCard } from '~/features/courses/components/continue-card'
 

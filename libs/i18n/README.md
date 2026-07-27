@@ -1,4 +1,4 @@
-# @madrasah/i18n
+# @medaris/i18n
 
 Internationalization (i18n) package for Madrasah applications, providing centralized translation resources and Tolgee integration.
 
@@ -49,7 +49,7 @@ npm run build
 Import the resources object to access all translations:
 
 ```typescript
-import { resources } from '@madrasah/i18n'
+import { resources } from '@medaris/i18n'
 
 // Access translations by language and namespace
 const englishCommon = resources.en.common
@@ -211,7 +211,7 @@ npm run clean
 ## File Structure
 
 ```
-shared/i18n/
+libs/i18n/
 ├── src/
 │   └── locales/
 │       ├── index.ts              # Main export

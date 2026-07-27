@@ -2,13 +2,13 @@
 
 import React from 'react'
 
-import { Button } from '@madrasah/ui/components/button'
-import ATFormGroupTextArea from '@madrasah/ui/custom/form-group-text-area'
+import { Button } from '@medaris/ui/components/button'
+import ATFormGroupTextArea from '@medaris/ui/custom/form-group-text-area'
 import FlashCard from '../flashcard'
 import { useRouter } from 'next/navigation'
-import { CaretLeftIcon } from '@madrasah/icons'
+import { CaretLeftIcon } from '@medaris/icons'
 import { useFieldArray, useForm } from 'react-hook-form'
-import { Form } from '@madrasah/ui/custom/form'
+import { Form } from '@medaris/ui/custom/form'
 import z from 'zod'
 import { useTranslations } from 'next-intl'
 

@@ -1,11 +1,11 @@
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 
-import { Button } from '@madrasah/ui/components/button'
+import { Button } from '@medaris/ui/components/button'
 
 import DeckCard from '~/features/flashcards/components/deck/deck-card'
 import CreateDeckButtonDialog from '~/features/flashcards/components/deckform/create-deck-button-dialog'
-import type { FlashcardDeckResponse } from '@madrasah/services/tedrisat'
+import type { FlashcardDeckResponse } from '@medaris/services/tedrisat'
 
 export async function CardsPage({ decks }: { decks: FlashcardDeckResponse[] }) {
   const t = await getTranslations('tedris')

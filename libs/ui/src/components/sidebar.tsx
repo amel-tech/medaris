@@ -3,27 +3,27 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, VariantProps } from "class-variance-authority"
-import { SidebarSimpleIcon } from "@madrasah/icons"
+import { SidebarSimpleIcon } from "@medaris/icons"
 
-import { useIsMobile } from "@madrasah/ui/hooks/use-mobile"
-import { cn } from "@madrasah/ui/lib/utils"
-import { Button } from "@madrasah/ui/components/button"
-import { Input } from "@madrasah/ui/components/input"
-import { Separator } from "@madrasah/ui/components/separator"
+import { useIsMobile } from "@medaris/ui/hooks/use-mobile"
+import { cn } from "@medaris/ui/lib/utils"
+import { Button } from "@medaris/ui/components/button"
+import { Input } from "@medaris/ui/components/input"
+import { Separator } from "@medaris/ui/components/separator"
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@madrasah/ui/components/sheet"
-import { Skeleton } from "@madrasah/ui/components/skeleton"
+} from "@medaris/ui/components/sheet"
+import { Skeleton } from "@medaris/ui/components/skeleton"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@madrasah/ui/components/tooltip"
+} from "@medaris/ui/components/tooltip"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -402,7 +402,6 @@ function SidebarGroupLabel({
   const Comp = asChild ? Slot : "div"
 
   return (
-  // @ts-expect-error known-issue
     <Comp
       data-slot="sidebar-group-label"
       data-sidebar="group-label"
@@ -424,7 +423,6 @@ function SidebarGroupAction({
   const Comp = asChild ? Slot : "button"
 
   return (
-  // @ts-expect-error known-issue
     <Comp
       data-slot="sidebar-group-action"
       data-sidebar="group-action"
@@ -515,7 +513,6 @@ function SidebarMenuButton({
   const { isMobile, state } = useSidebar()
 
   const button = (
-    // @ts-expect-error known-issue
     <Comp
       data-slot="sidebar-menu-button"
       data-sidebar="menu-button"
@@ -561,7 +558,6 @@ function SidebarMenuAction({
   const Comp = asChild ? Slot : "button"
 
   return (
-  // @ts-expect-error known-issue
     <Comp
       data-slot="sidebar-menu-action"
       data-sidebar="menu-action"
@@ -685,7 +681,6 @@ function SidebarMenuSubButton({
   const Comp = asChild ? Slot : "a"
 
   return (
-  // @ts-expect-error known-issue
     <Comp
       data-slot="sidebar-menu-sub-button"
       data-sidebar="menu-sub-button"

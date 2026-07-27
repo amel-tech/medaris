@@ -1,4 +1,4 @@
-import { ErrorContext, NotFoundError } from '@madrasah/common';
+import { ErrorContext, NotFoundError } from '@medaris/common';
 
 export class CourseNotFoundError extends NotFoundError {
   static readonly code = 'COURSE_NOT_FOUND';

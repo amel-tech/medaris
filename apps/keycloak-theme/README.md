@@ -4,7 +4,7 @@ A custom Keycloak theme for the Madrasah project, built with Keycloakify v11, Re
 
 ## Overview
 
-This theme provides a cohesive authentication experience for Madrasah users, integrating with the design system from [`@madrasah/ui`](../../shared/ui) and [`@madrasah/tokens`](../../shared/tokens) packages.
+This theme provides a cohesive authentication experience for Madrasah users, integrating with the design system from [`@medaris/ui`](../../libs/ui) and [`@medaris/tokens`](../../libs/tokens) packages.
 
 ## Tech Stack
 
@@ -124,10 +124,8 @@ Navigate to http://localhost:8080 and test your theme in a real Keycloak environ
 
 This theme leverages the monorepo's shared packages:
 
-- **[`@madrasah/ui`](../../shared/ui)**: UI components and utilities
-- **[`@madrasah/tokens`](../../shared/tokens)**: Design tokens and CSS variables
-- **[`@madrasah/typescript-config`](../../shared/typescript-config)**: TypeScript configuration
-- **[`@madrasah/eslint-config`](../../shared/eslint-config)**: ESLint rules
+- **[`@medaris/ui`](../../libs/ui)**: UI components and utilities
+- **[`@medaris/tokens`](../../libs/tokens)**: Design tokens and CSS variables
 
 ## Translations
 

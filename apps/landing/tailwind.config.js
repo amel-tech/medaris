@@ -4,8 +4,8 @@ const config = {
     './app/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './sections/**/*.{js,ts,jsx,tsx,mdx}',
-    '../../shared/ui/components/**/*.{js,ts,jsx,tsx}',
-    '../../shared/ui/src/**/*.{js,ts,jsx,tsx}',
+    '../../libs/ui/components/**/*.{js,ts,jsx,tsx}',
+    '../../libs/ui/src/**/*.{js,ts,jsx,tsx}',
   ],
 }
 

@@ -43,7 +43,7 @@ import {
   IncludeApiQuery,
   IncludeQuery,
 } from './decorators/include-query.decorator';
-import { AuthGuard, ExcelService } from '@madrasah/common';
+import { AuthGuard, ExcelService } from '@medaris/common';
 import { AuthorizedRequest } from './interfaces/authorized-request.interface';
 import { FlashcardBulkService } from './flashcard-bulk.service';
 import {

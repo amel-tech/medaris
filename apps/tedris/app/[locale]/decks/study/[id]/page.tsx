@@ -3,7 +3,7 @@ import {
   createServerTedrisatAPIs,
   type FlashcardDeckResponse,
   type FlashcardResponse,
-} from '@madrasah/services/tedrisat'
+} from '@medaris/services/tedrisat'
 import { auth } from '~/lib/auth_options'
 import { notFound } from 'next/navigation'
 import { StudyPage } from '~/features/flashcards/components/study-page'

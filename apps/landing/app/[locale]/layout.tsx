@@ -5,7 +5,7 @@ import { hasLocale, NextIntlClientProvider } from 'next-intl'
 import { setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import { routing } from '~/lib/i18n/routing'
-import '@madrasah/ui/globals.css'
+import '@medaris/ui/globals.css'
 import '../globals.css'
 
 export const metadata: Metadata = {

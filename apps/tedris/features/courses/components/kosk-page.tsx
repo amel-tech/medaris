@@ -7,13 +7,13 @@ import {
   BookOpenIcon as BookOpen,
   PlusIcon as Plus,
   MadrasahLogoIcon,
-} from '@madrasah/icons/ssr'
+} from '@medaris/icons/ssr'
 import type {
   CourseSummaryResponse,
   KoskResponse,
-} from '@madrasah/services/tedrisat'
-import { cn } from '@madrasah/ui/lib/utils'
-import { Breadcrumbs } from '@madrasah/ui/components/breadcrumb'
+} from '@medaris/services/tedrisat'
+import { cn } from '@medaris/ui/lib/utils'
+import { Breadcrumbs } from '@medaris/ui/components/breadcrumb'
 import { CoverPlaceholder, HueAvatar } from './cover'
 import { levelLabel } from './labels'
 

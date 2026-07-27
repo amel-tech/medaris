@@ -26,7 +26,7 @@ npm run generate:tedrisat
 1. Add the swagger specification file (e.g., `newservice.json`)
 2. Add generation script to `package.json`:
    ```json
-   "generate:newservice": "npx @openapitools/openapi-generator-cli generate -i swagger-docs/newservice.json -g typescript-fetch -o src/newservice/generated --additional-properties=typescriptThreePlus=true,supportsES6=true,npmName=@madrasah/newserviceapi"
+   "generate:newservice": "npx @openapitools/openapi-generator-cli generate -i swagger-docs/newservice.json -g typescript-fetch -o src/newservice/generated --additional-properties=typescriptThreePlus=true,supportsES6=true,npmName=@medaris/newserviceapi"
    ```
 3. Update the `generate:all` script to include the new service
 4. Add export in main package exports

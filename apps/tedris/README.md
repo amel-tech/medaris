@@ -47,7 +47,7 @@ NEXT_PUBLIC_NEXTAUTH_URL=http://localhost:4000
 
 ## 🌍 Internationalization (i18n)
 
-Tedris uses **next-intl** for internationalization, integrating with the shared `@madrasah/i18n` package for centralized translation management.
+Tedris uses **next-intl** for internationalization, integrating with the shared `@medaris/i18n` package for centralized translation management.
 
 ### Supported Languages
 
@@ -110,7 +110,7 @@ export function Navigation() {
 - **`common`** - Shared translations (locale names, common UI elements)
 - **`tedris`** - Tedris-specific translations (components, features)
 
-See the readme of the `@madrasah/i18n` package for detailed instructions on adding new translations and managing them.
+See the readme of the `@medaris/i18n` package for detailed instructions on adding new translations and managing them.
 
 ## 🔐 Keycloak OpenID Client Setup
 
@@ -224,10 +224,10 @@ apps/tedris/
 
 This application uses shared packages from the monorepo:
 
-- `@madrasah/ui` - Shared UI components
-- `@madrasah/utils` - Utility functions
-- `@madrasah/types` - TypeScript type definitions
-- `@madrasah/hooks` - Shared React hooks
+- `@medaris/ui` - Shared UI components
+- `@medaris/utils` - Utility functions
+- `@medaris/types` - TypeScript type definitions
+- `@medaris/hooks` - Shared React hooks
 
 ## 🐛 Troubleshooting
 

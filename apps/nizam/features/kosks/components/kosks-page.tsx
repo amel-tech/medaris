@@ -4,9 +4,9 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-} from '@madrasah/ui/components/card'
-import { HouseIcon, ArrowRightIcon } from '@madrasah/icons/ssr'
-import type { KoskResponse } from '@madrasah/services/tedrisat'
+} from '@medaris/ui/components/card'
+import { HouseIcon, ArrowRightIcon } from '@medaris/icons/ssr'
+import type { KoskResponse } from '@medaris/services/tedrisat'
 import { KoskFormDialog } from '~/features/kosks/components/kosk-form-dialog'
 
 export function KosksPage({

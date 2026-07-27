@@ -1,5 +1,5 @@
 import React from "react"
-import { cn } from "@madrasah/ui/lib/utils"
+import { cn } from "@medaris/ui/lib/utils"
 
 function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
   return (

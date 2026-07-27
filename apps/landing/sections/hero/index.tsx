@@ -1,4 +1,4 @@
-import { ArrowRight, ArrowLeft } from '@madrasah/icons/ssr'
+import { ArrowRight, ArrowLeft } from '@medaris/icons/ssr'
 import { getTranslations, getLocale } from 'next-intl/server'
 import { heroCtaHref } from './data'
 

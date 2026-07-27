@@ -14,18 +14,18 @@ import {
   HeadsetIcon as Headset,
   PencilSimpleIcon as PencilSimple,
   ShieldCheckIcon as ShieldCheck,
-} from '@madrasah/icons'
-import { Input } from '@madrasah/ui/components/input'
-import { Textarea } from '@madrasah/ui/components/textarea'
-import { Label } from '@madrasah/ui/components/label'
-import { toast } from '@madrasah/ui/components/sonner'
+} from '@medaris/icons'
+import { Input } from '@medaris/ui/components/input'
+import { Textarea } from '@medaris/ui/components/textarea'
+import { Label } from '@medaris/ui/components/label'
+import { toast } from '@medaris/ui/components/sonner'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@madrasah/ui/components/select'
+} from '@medaris/ui/components/select'
 import {
   CreateCourseDtoLevelEnum,
   CreateCourseDtoStatusEnum,
@@ -33,7 +33,7 @@ import {
   type CreateCourseDto,
   type CourseDetailResponse,
   type KoskResponse,
-} from '@madrasah/services/tedrisat'
+} from '@medaris/services/tedrisat'
 import {
   createKoskCourse,
   updateKoskCourse,

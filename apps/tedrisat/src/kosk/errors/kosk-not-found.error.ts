@@ -1,4 +1,4 @@
-import { ErrorContext, NotFoundError } from '@madrasah/common';
+import { ErrorContext, NotFoundError } from '@medaris/common';
 
 export class KoskNotFoundError extends NotFoundError {
   static readonly code = 'KOSK_NOT_FOUND';

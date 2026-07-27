@@ -3,7 +3,7 @@ import { ExampleController } from '../../../src/example/example.controller';
 import { ExampleService } from '../../../src/example/example.service';
 import { CreateExampleDto } from '../../../src/example/dto/create-example.dto';
 import { ExampleResponseDto } from '../../../src/example/dto/example-response.dto';
-import { MedarisResponse } from '@madrasah/common';
+import { MedarisResponse } from '@medaris/common';
 
 describe('ExampleController', () => {
   let controller: ExampleController;

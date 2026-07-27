@@ -8,10 +8,10 @@ import type { ExtendedPageProps } from '../types/PageProps'
 import type { KcContext } from '../KcContext'
 import type { I18n } from '../i18n'
 
-import { Label } from '@madrasah/ui/components/label'
-import { Checkbox } from '@madrasah/ui/components/checkbox'
-import { Button } from '@madrasah/ui/components/button'
-import { cn } from '@madrasah/ui/lib/utils'
+import { Label } from '@medaris/ui/components/label'
+import { Checkbox } from '@medaris/ui/components/checkbox'
+import { Button } from '@medaris/ui/components/button'
+import { cn } from '@medaris/ui/lib/utils'
 
 type RegisterProps = ExtendedPageProps<
   Extract<KcContext, { pageId: 'register.ftl' }>,

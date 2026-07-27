@@ -6,8 +6,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@madrasah/ui/components/dialog'
-import type { BulkFlashcardErrorResponse } from '@madrasah/services/tedrisat'
+} from '@medaris/ui/components/dialog'
+import type { BulkFlashcardErrorResponse } from '@medaris/services/tedrisat'
 import { useTranslations } from 'next-intl'
 
 export function ImportErrorsDialog({

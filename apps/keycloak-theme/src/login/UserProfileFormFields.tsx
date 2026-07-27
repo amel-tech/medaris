@@ -12,18 +12,18 @@ import type { Attribute } from 'keycloakify/login/KcContext'
 import type { KcContext } from './KcContext'
 import type { I18n } from './i18n'
 
-import { Input } from '@madrasah/ui/components/input'
-import { Label } from '@madrasah/ui/components/label'
-import { Checkbox } from '@madrasah/ui/components/checkbox'
-import { Button } from '@madrasah/ui/components/button'
+import { Input } from '@medaris/ui/components/input'
+import { Label } from '@medaris/ui/components/label'
+import { Checkbox } from '@medaris/ui/components/checkbox'
+import { Button } from '@medaris/ui/components/button'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@madrasah/ui/components/select'
-import { cn } from '@madrasah/ui/lib/utils'
+} from '@medaris/ui/components/select'
+import { cn } from '@medaris/ui/lib/utils'
 import { PasswordWrapper } from './components/PasswordWrapper'
 import { FieldContainer } from './components/FieldContainer'
 

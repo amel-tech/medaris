@@ -8,7 +8,7 @@ COPY turbo.json ./
 COPY tsconfig.json ./
 
 # Copy shared packages and configs
-COPY shared/ ./shared/
+COPY libs/ ./libs/
 COPY apps/tedris/ ./apps/tedris/
 
 # Copy .env.example as .env for build-time environment

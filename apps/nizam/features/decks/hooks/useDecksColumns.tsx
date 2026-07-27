@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { ColumnDef } from '@tanstack/react-table'
-import { FlashcardDeckResponse } from '@madrasah/services/tedrisat'
+import { FlashcardDeckResponse } from '@medaris/services/tedrisat'
 import { createInputColumn } from '~/components/data-table/editable'
 import {
   AlertDialog,
@@ -14,9 +14,9 @@ import {
   AlertDialogTrigger,
   AlertDialogCancel,
   AlertDialogAction,
-} from '@madrasah/ui/components/alert-dialog'
-import { Button } from '@madrasah/ui/components/button'
-import { EyeIcon, TrashIcon } from '@madrasah/icons'
+} from '@medaris/ui/components/alert-dialog'
+import { Button } from '@medaris/ui/components/button'
+import { EyeIcon, TrashIcon } from '@medaris/icons'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 
