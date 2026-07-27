@@ -1,12 +1,37 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "target": "ES2023",
+    "lib": [
+      "ES2023"
+    ],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "removeComments": true,
+    "noEmitOnError": false,
+    "sourceMap": true,
+    "incremental": true,
+    "composite": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "composite": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
-    "baseUrl": "./src"
+    "baseUrl": "./src",
+    "moduleDetection": "auto",
+    "noUncheckedIndexedAccess": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "isolatedModules": false,
+    "declarationMap": false
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
 }

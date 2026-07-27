@@ -1,13 +1,26 @@
 {
-  "extends": "@madrasah/typescript-config/react-library",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "lib": [
+      "es2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
-      "@madrasah/ui/*": ["../../shared/ui/src/*"]
-    },
-    "moduleResolution": "bundler"
+      "@/*": [
+        "./*"
+      ]
+    }
   },
-  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

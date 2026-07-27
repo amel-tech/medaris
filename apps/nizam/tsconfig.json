@@ -1,36 +1,53 @@
 {
-  "extends": "@madrasah/typescript-config/nextjs.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "incremental": true,
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "target": "ES2017",
     "plugins": [
       {
         "name": "next"
       }
     ],
-    "incremental": true,
-    "moduleResolution": "bundler",
-    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "module": "esnext",
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
     "jsx": "preserve",
-    "target": "ES2017",
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noEmit": true,
     "paths": {
       "~/env": [
         "./env.ts"
       ],
-      "~/components/*": ["./components/*"],
-      "~/hooks/*": ["./hooks/*"],
-      "~/lib/*": ["./lib/*"],
-      "~/features/*": ["./features/*"]
+      "~/components/*": [
+        "./components/*"
+      ],
+      "~/hooks/*": [
+        "./hooks/*"
+      ],
+      "~/lib/*": [
+        "./lib/*"
+      ],
+      "~/features/*": [
+        "./features/*"
+      ]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "next.config.js", "types/**/*.ts"],
-  "exclude": ["node_modules", ".next/**"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "next.config.js",
+    "types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next/**"
+  ]
 }
