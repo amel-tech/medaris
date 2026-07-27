@@ -1,9 +1,9 @@
 {
-  "name": "@madrasah/hooks",
+  "name": "@medaris/hooks",
   "version": "0.0.0",
-  "main": "./dist/index.js",
+  "main": "./src/index.ts",
   "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "types": "./src/index.ts",
   "sideEffects": false,
   "license": "MIT",
   "type": "module",
@@ -11,17 +11,15 @@
     "dist/**"
   ],
   "scripts": {
-    "build": "tsc --emitDeclarationOnly && esbuild src/index.ts --bundle --format=esm --outdir=dist --sourcemap",
-    "dev": "esbuild src/index.ts --bundle --format=esm --outdir=dist --sourcemap --watch",
-    "lint": "eslint \"src/**/*.ts*\"",
     "clean": "rm -rf .turbo node_modules dist",
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {
-    "esbuild": "0.21.5",
-    "typescript": "^5.9.2"
+    "typescript": "catalog:",
+    "@types/react": "catalog:"
   },
-  "publishConfig": {
-    "access": "public"
+  "private": true,
+  "dependencies": {
+    "react": "catalog:"
   }
 }

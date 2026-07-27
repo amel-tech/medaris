@@ -1,7 +1,7 @@
 {
-  "name": "@madrasah/tedrisatapi",
+  "name": "@medaris/tedrisatapi",
   "version": "0.1.4",
-  "description": "OpenAPI client for @madrasah/tedrisatapi",
+  "description": "OpenAPI client for @medaris/tedrisatapi",
   "author": "OpenAPI-Generator",
   "repository": {
     "type": "git",
@@ -17,5 +17,6 @@
   },
   "devDependencies": {
     "typescript": "^4.0 || ^5.0"
-  }
+  },
+  "private": true
 }

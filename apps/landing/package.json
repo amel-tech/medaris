@@ -1,5 +1,5 @@
 {
-  "name": "landing-web",
+  "name": "@medaris/landing-web",
   "version": "1.2.0",
   "private": true,
   "type": "module",
@@ -8,34 +8,28 @@
     "build": "next build",
     "start": "next start --port 4003",
     "clean": "rm -rf .turbo .next node_modules dist",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@madrasah/i18n": "^1.0.0",
-    "@madrasah/icons": "^1.0.0",
-    "@madrasah/ui": "^0.0.0",
-    "next-intl": "^4.4.0",
-    "@opentelemetry/api": "^1.9.0",
-    "@t3-oss/env-nextjs": "^0.13.8",
-    "@vercel/otel": "^1.13.0",
-    "next": "^16.1.6",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "zod": "^3.25.76"
+    "@medaris/i18n": "workspace:*",
+    "@medaris/icons": "workspace:*",
+    "@medaris/ui": "workspace:*",
+    "@opentelemetry/api": "catalog:",
+    "@t3-oss/env-nextjs": "catalog:",
+    "@vercel/otel": "catalog:",
+    "next": "catalog:",
+    "next-intl": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@madrasah/eslint-config": "^0.0.0",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19.1.10",
-    "@types/react-dom": "^19.1.7",
-    "eslint": "^9",
-    "eslint-config-next": "15.4.6",
-    "lightningcss": "^1.30.1",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@tailwindcss/postcss": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "lightningcss": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:"
   }
 }
