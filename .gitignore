@@ -1,6 +1,14 @@
 .rc-session.log
 .mcp-auth-ameltech/
 
+# --- local-only working directories (MDRS-23) ---
+# Never committed. `local_docs/` holds the Master Book (documentation vault +
+# its local dashboard); `.claude/` holds agent worktrees and session state;
+# `.playwright-mcp/` holds browser-session scratch output.
+local_docs/
+.claude/
+.playwright-mcp/
+
 # --- merged from madrasah-backend (MDRS-9) ---
 node_modules
 .env
