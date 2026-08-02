@@ -1,4 +1,4 @@
-export * from './meeting-platform.js'
+export * from './meeting-platform'
 
 export const formatDate = (date: Date): string => {
   return new Intl.DateTimeFormat('tr-TR', {

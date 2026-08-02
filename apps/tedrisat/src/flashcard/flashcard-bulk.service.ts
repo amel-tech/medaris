@@ -8,7 +8,7 @@ import { CreateFlashcardDto } from './dto/create-flashcard.dto';
 import { validate } from '@nestjs/class-validator';
 import { FlashcardService } from './flashcard.service';
 import { plainToClass } from '@nestjs/class-transformer';
-import { ExcelService } from '@madrasah/common';
+import { ExcelService } from '@medaris/common';
 import { FLASHCARD_EXCEL_CONFIG } from './dto/config-excel.dto';
 
 export type BulkAddResult =

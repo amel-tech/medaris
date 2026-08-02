@@ -9,7 +9,7 @@ import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 import * as schema from './schema';
-import { ILogger, LOGGER } from '@madrasah/common';
+import { ILogger, LOGGER } from '@medaris/common';
 import { join } from 'path';
 
 @Injectable()

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState, useTransition } from 'react'
-import type { FlashcardResponse } from '@madrasah/services/tedrisat'
+import type { FlashcardResponse } from '@medaris/services/tedrisat'
 import { updateFlashcardProgress } from '../actions'
 
 function deriveMemorized(cards: FlashcardResponse[]): Set<string> {

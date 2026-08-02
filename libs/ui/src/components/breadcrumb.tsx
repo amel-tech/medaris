@@ -1,8 +1,8 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
-import { CaretRightIcon, DotsThreeIcon } from "@madrasah/icons/ssr"
+import { CaretRightIcon, DotsThreeIcon } from "@medaris/icons/ssr"
 
-import { cn } from "@madrasah/ui/lib/utils"
+import { cn } from "@medaris/ui/lib/utils"
 
 function Breadcrumb({ ...props }: React.ComponentProps<"nav">) {
   return <nav aria-label="breadcrumb" data-slot="breadcrumb" {...props} />
@@ -41,7 +41,6 @@ function BreadcrumbLink({
   const Comp = asChild ? Slot : "a"
 
   return (
-    // @ts-expect-error known-issue
     <Comp
       data-slot="breadcrumb-link"
       className={cn("hover:text-foreground transition-colors", className)}

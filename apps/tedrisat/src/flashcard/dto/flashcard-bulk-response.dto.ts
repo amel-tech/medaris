@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { OmitType } from '@nestjs/swagger';
 import { ValidationError } from 'class-validator';
-import { ErrorResponse } from '@madrasah/common';
+import { ErrorResponse } from '@medaris/common';
 
 export class FieldError {
   @ApiProperty({ example: 'front' })

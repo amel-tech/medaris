@@ -5,18 +5,18 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 
-import { Input } from '@madrasah/ui/components/input'
+import { Input } from '@medaris/ui/components/input'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@madrasah/ui/components/select'
-import { MagnifyingGlassIcon } from '@madrasah/icons'
+} from '@medaris/ui/components/select'
+import { MagnifyingGlassIcon } from '@medaris/icons'
 
 import DeckCard from '~/features/flashcards/components/deck/deck-card'
-import type { FlashcardDeckResponse } from '@madrasah/services/tedrisat'
+import type { FlashcardDeckResponse } from '@medaris/services/tedrisat'
 
 type SortOption = 'title-asc' | 'title-desc'
 type FilterOption = 'all' | 'public' | 'private'

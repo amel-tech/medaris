@@ -7,7 +7,7 @@ import {
   createServerTedrisatAPIs,
   type FlashcardDeckResponse,
   type CreateFlashcardProgressDto,
-} from '@madrasah/services/tedrisat'
+} from '@medaris/services/tedrisat'
 import { authenticatedAction } from '~/lib/authenticated-action'
 import { auth } from '~/lib/auth_options'
 import { env } from '~/env'

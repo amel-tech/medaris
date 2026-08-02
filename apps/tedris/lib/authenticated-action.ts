@@ -1,6 +1,6 @@
 import { auth } from '~/lib/auth_options'
-import { createServerTedrisatAPIs, ResponseError } from '@madrasah/services/tedrisat'
-import { getErrorMessage } from '@madrasah/services/utils'
+import { createServerTedrisatAPIs, ResponseError } from '@medaris/services/tedrisat'
+import { getErrorMessage } from '@medaris/services/utils'
 import { env } from '~/env'
 
 // Infer the API client type so intellisense recognizes the 'api' parameter.

@@ -1,4 +1,4 @@
-import { ChartLineUp, UsersThree, Medal } from '@madrasah/icons/ssr'
+import { ChartLineUp, UsersThree, Medal } from '@medaris/icons/ssr'
 import { getTranslations } from 'next-intl/server'
 import { featuresSideCards } from './data'
 

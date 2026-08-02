@@ -11,10 +11,10 @@
   },
   "iconLibrary": "phosphoricons",
   "aliases": {
-    "components": "@madrasah/ui/components",
-    "utils": "@madrasah/ui/lib/utils",
-    "hooks": "@madrasah/ui/hooks",
-    "lib": "@madrasah/ui/lib",
-    "ui": "@madrasah/ui/components"
+    "components": "@medaris/ui/components",
+    "utils": "@medaris/ui/lib/utils",
+    "hooks": "@medaris/ui/hooks",
+    "lib": "@medaris/ui/lib",
+    "ui": "@medaris/ui/components"
   }
 }

@@ -2,11 +2,11 @@
 
 import { useDecksColumns } from '~/features/decks/hooks/useDecksColumns'
 import { DataTable } from '~/components/data-table'
-import { FlashcardDeckResponse } from '@madrasah/services/tedrisat'
+import { FlashcardDeckResponse } from '@medaris/services/tedrisat'
 import { createDefaultColumn } from '~/components/data-table/editable'
 import { DecksTableHeader } from './decks-table-header'
 import { deleteFlashcardDeck, updateFlashcardDeck } from '~/features/decks/actions'
-import { toastHelper } from '@madrasah/ui/lib/toast-helper'
+import { toastHelper } from '@medaris/ui/lib/toast-helper'
 
 export default function Decks({
   decks,

@@ -1,4 +1,4 @@
-import { resources } from '@madrasah/i18n'
+import { resources } from '@medaris/i18n'
 
 declare module 'next-intl' {
   interface AppConfig {

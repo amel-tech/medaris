@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { HealthCheckDto, LOGGER, ILogger } from '@madrasah/common';
+import { HealthCheckDto, LOGGER, ILogger } from '@medaris/common';
 import { configuration } from './config';
 const { version } = configuration();
 

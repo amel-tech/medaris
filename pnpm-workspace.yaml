@@ -1,0 +1,220 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# medaris workspace — single pnpm workspace, catalog-driven (MDRS-10).
+#
+# Authored from the MDRS-8 deliverable (docs/migration/pnpm-workspace.draft.yaml);
+# version rationale and the full conflict table live in
+# docs/migration/mdrs-8-dependency-reconciliation.md. Pins follow ADR-001 §D8:
+# tilde/exact for framework-critical existing deps (a fresh pnpm resolve
+# re-floats every caret = a hidden upgrade), caret for the harmless long tail.
+#
+# Adding a dependency: add it here first, then reference it as `catalog:` from
+# the package. A bare version string in a workspace package.json is a bug.
+# ─────────────────────────────────────────────────────────────────────────────
+
+packages:
+  # Explicit enumeration, no globs (ADR-001 §D11) — 16 real packages.
+  # An unregistered package fails loudly instead of being silently ignored.
+  - 'apps/tedrisat'
+  - 'apps/teskilat'
+  - 'apps/tedris'
+  - 'apps/nizam'
+  - 'apps/nazir'
+  - 'apps/landing'
+  - 'apps/keycloak-theme'
+  - 'libs/common'
+  - 'libs/ui'
+  - 'libs/icons'
+  - 'libs/tokens'
+  - 'libs/hooks'
+  - 'libs/services'
+  - 'libs/i18n'
+  - 'libs/types'
+  - 'libs/utils'
+  # Reserved names — docs-only, create nothing now (ADR-001 §D1):
+  #   apps/muhasebe, apps/e2e, apps/web, apps/docs,
+  #   libs/errors, libs/validation, libs/config
+  # Adding one = a line here + release-please component + manifest entry +
+  # commitlint scope, in a single PR (§D10).
+
+# pnpm 11 defaults this to `install`, which can prune devDeps and then abort in
+# non-TTY contexts (husky hooks, CI) with ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY.
+verifyDepsBeforeRun: warn
+
+# ── Build-script decisions (MDRS-8 §3, ADR-001 §D11) ─────────────────────────
+# pnpm 11 replaces pnpm 10's `onlyBuiltDependencies` list with this map, and
+# every dependency carrying an install script must be decided explicitly — an
+# undecided one aborts the install. Approve real native builds; deny watchers
+# and telemetry. This list is exactly what pnpm's own scan of the merged tree
+# reported: MDRS-8 predicted 8 entries from `hasInstallScript` in the two npm
+# locks, but `nx`, `lightningcss`, `@tailwindcss/oxide` and `unrs-resolver`
+# ship no install script at the pinned versions (nx is not in the graph until
+# MDRS-11), while `@parcel/watcher`, `@scarf/scarf`, `cpu-features`,
+# `protobufjs` and `ssh2` do and had to be denied here rather than in a comment.
+allowBuilds:
+  '@swc/core': true # backend — NestJS SWC transform (native)
+  esbuild: true # both — bundler (native)
+  sharp: true # frontend — Next.js image optimization
+  '@openapitools/openapi-generator-cli': true # libs/services — postinstall fetches the generator jar
+  '@parcel/watcher': false # file watcher — nothing here needs it at install time
+  '@scarf/scarf': false # telemetry
+  '@scarf/scarf-js': false # telemetry (alternate package name)
+  protobufjs: false # OTel transitive; the prebuilt JS is what we use
+  cpu-features: false # optional native probe pulled in by ssh2
+  ssh2: false # testcontainers transitive; the JS fallback is sufficient
+
+# ── Security floors ──────────────────────────────────────────────────────────
+# Deliberately empty (MDRS-8 §6): every high/critical advisory except xlsx
+# reports fixAvailable:true, so a parent bump resolves it — MDRS-21's pass, not
+# a speculative floor here. xlsx@0.18.5 is unfloorable (no patched npm version)
+# and is tracked as FU-5 (replace, not override). An `overrides: {}` key is not
+# written out because pnpm strips empty maps on write; add real entries here.
+
+catalog:
+  # ═══ Toolchain — ADR-001 §D8 normative (do not re-decide here) ═══
+  nx: 23.0.0 # exact; every @nx/* pinned to the same version
+  '@nx/js': 23.0.0
+  '@nx/eslint': 23.0.0
+  '@nx/eslint-plugin': 23.0.0
+  '@nx/nest': 23.0.0
+  '@nx/next': 23.0.0
+  '@nx/vite': 23.0.0
+  '@nx/vitest': 23.0.0
+  typescript: ~5.9.3 # last JS-based line; tilde ≈ frozen
+  '@types/node': ^22 # PROD floor (node:22-alpine), not dev Node 24
+  '@biomejs/biome': 2.4.4 # exact — the reformat commit must be byte-reproducible
+  eslint: ^10.5.0 # boundaries-ONLY surface (MDRS-12)
+  typescript-eslint: ^8.62.0
+  vitest: ^4.1.9
+  '@vitest/coverage-v8': ^4.1.9
+  '@vitest/ui': ^4.1.9
+  '@swc/core': ~1.15.43 # floors backend 1.15.33; emitDecoratorMetadata under Vitest
+  husky: ^9.1.7
+  lint-staged: ^17.0.8
+  '@commitlint/cli': ^21.0.2
+  '@commitlint/config-conventional': ^21.0.2
+
+  # ── Jest: NOT part of the target toolchain (ADR §D9 locks Vitest) ──────────
+  # Deliberately retained through MDRS-10 only. The pnpm strict node_modules
+  # layout is exactly what breaks NestJS resolution, and these 10 backend suites
+  # are the only signal that it did not. MDRS-20 deletes these four entries with
+  # the Vitest conversion. See docs/migration/mdrs-10-pnpm-workspace.md §4.
+  jest: ^29.7.0
+  '@types/jest': ^29.5.14
+  ts-jest: ^29.2.5
+  jest-junit: ^16.0.0
+
+  # ═══ Backend runtime & framework ═══
+  '@nestjs/common': ~11.1.19
+  '@nestjs/core': ~11.1.19
+  '@nestjs/platform-express': ~11.1.19
+  '@nestjs/testing': ~11.1.19
+  '@nestjs/config': ^4.0.2
+  '@nestjs/cache-manager': ^3.0.1
+  '@nestjs/swagger': ^11.2.0
+  '@nestjs/cli': ^11.0.10
+  '@nestjs/schematics': ^11.0.7
+  '@nestjs/class-transformer': ^0.4.0 # NestJS fork (tedrisat)
+  '@nestjs/class-validator': ^0.13.4 # NestJS fork (tedrisat)
+  class-transformer: ^0.5.1 # standalone (libs/common) — coexists intentionally
+  class-validator: ^0.14.2 # standalone (libs/common, tedrisat)
+  drizzle-orm: ^0.45.2
+  drizzle-kit: ^0.31.4
+  pg: ^8.16.3
+  '@types/pg': ^8.15.4
+  cache-manager: ^7.1.1
+  compression: ^1.8.1
+  '@types/compression': ^1.8.1
+  helmet: ^8.1.0
+  exceljs: ^4.4.0
+  jsonwebtoken: ^9.0.2
+  '@types/jsonwebtoken': ^9.0.10
+  pino: ^9.7.0
+  pino-pretty: ^13.0.0
+  winston: ^3.17.0
+  '@types/express': ^5.0.0
+  '@types/multer': ^2.0.0 # ADR §D4: runtime → dev
+  '@opentelemetry/sdk-node': ^0.208.0 # reconciled up from tedrisat's ^0.207
+  '@opentelemetry/exporter-trace-otlp-grpc': ^0.208.0
+  '@opentelemetry/auto-instrumentations-node': ^0.67.2
+  '@opentelemetry/resources': ^2.0.1
+  '@opentelemetry/semantic-conventions': ^1.36.0
+
+  # ═══ Backend build / test tooling ═══
+  '@swc/cli': ^0.7.8
+  ts-node: ^10.9.2
+  ts-loader: ^9.5.2
+  tsconfig-paths: ^4.2.0
+  source-map-support: ^0.5.21
+  rimraf: ^6.0.1
+  supertest: ^7.0.0
+  '@types/supertest': ^6.0.2
+  testcontainers: ^11.5.1
+  '@testcontainers/postgresql': ^11.5.1
+  audit-ci: ^7.1.0
+  depcheck: ^1.4.7
+
+  # ═══ Frontend runtime & framework ═══
+  next: ~16.1.6
+  react: ~19.1.1
+  react-dom: ~19.1.1
+  '@types/react': ^19
+  '@types/react-dom': ^19
+  '@radix-ui/react-alert-dialog': ^1.1.15
+  '@radix-ui/react-avatar': ^1.1.10
+  '@radix-ui/react-checkbox': ^1.3.2
+  '@radix-ui/react-collapsible': ^1.1.12
+  '@radix-ui/react-context-menu': ^2.2.16
+  '@radix-ui/react-dialog': ^1.1.15
+  '@radix-ui/react-dropdown-menu': ^2.1.15
+  '@radix-ui/react-hover-card': ^1.1.14
+  '@radix-ui/react-label': ^2.1.7
+  '@radix-ui/react-popover': ^1.1.15
+  '@radix-ui/react-select': ^2.2.5
+  '@radix-ui/react-separator': ^1.1.7
+  '@radix-ui/react-slot': ^1.2.3
+  '@radix-ui/react-switch': ^1.2.6
+  '@radix-ui/react-tabs': ^1.1.13
+  '@radix-ui/react-tooltip': ^1.2.8
+  '@phosphor-icons/react': ^2.1.10
+  '@tanstack/react-table': ^8.21.3
+  '@hookform/resolvers': ^5.2.2
+  react-hook-form: ^7.64.0
+  sonner: ^2.0.7
+  next-themes: ^0.4.6
+  next-auth: ^4.24.11
+  next-intl: ^4.4.0
+  '@t3-oss/env-nextjs': ^0.13.8
+  '@fontsource/scheherazade-new': ^5.2.8
+  dotenv: ^16.5.0 # libs/i18n runtime
+  class-variance-authority: ^0.7.1
+  clsx: ^2.1.1
+  tailwind-merge: ^3.3.1 # unified to ui's major; tedris v1→v3 port = FU-2
+  tailwindcss-animate: ^1.0.7
+  tw-animate-css: ^1.3.7
+  zod: ~3.25.76 # FU-3 resolved: libs/ui never imported zod, so no v4 port and
+  #                 no per-package exception — the v3 line is now uncontested.
+  '@opentelemetry/api': ^1.9.0
+  '@vercel/otel': ^1.13.0
+  xlsx: ^0.18.5 # ⚠ security FU-5 (unfloorable; replace SheetJS)
+
+  # ═══ Frontend build / styling / codegen ═══
+  tailwindcss: ~4.1.13
+  '@tailwindcss/postcss': ^4.1.12
+  '@tailwindcss/vite': ^4.1.11
+  lightningcss: ^1.30.1
+  postcss: ^8
+  autoprefixer: ^10.4.21
+  esbuild: ^0.21.5
+  jiti: ^2.5.1
+  onchange: ^7.1.0 # libs/services watch; MDRS-11 may replace with an Nx target
+  '@next/bundle-analyzer': ^15.4.6 # lags Next 16; bump in MDRS-21
+  '@openapitools/openapi-generator-cli': ^2.24.0
+  '@tolgee/cli': ^2.10.2
+
+  # ═══ keycloak-theme island — frozen through the merge (ADR §D8 exception #1) ═══
+  vite: ~5.4.21
+  '@vitejs/plugin-react': ^4.2.1
+  keycloakify: ~11.9.6
+  '@storybook/react': ^8.1.10
+  '@storybook/react-vite': ^8.1.10
+  storybook: ^8.1.10

@@ -1,5 +1,5 @@
 import './index.css'
-import '@madrasah/ui/globals.css'
+import '@medaris/ui/globals.css'
 
 import { Suspense, lazy } from 'react'
 import type { ClassKey } from 'keycloakify/login'

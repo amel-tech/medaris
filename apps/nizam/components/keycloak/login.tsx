@@ -3,8 +3,8 @@
 import {
   SidebarMenu,
   SidebarMenuButton,
-} from '@madrasah/ui/components/sidebar'
-import { SignInIcon } from '@madrasah/icons'
+} from '@medaris/ui/components/sidebar'
+import { SignInIcon } from '@medaris/icons'
 import { signIn } from 'next-auth/react'
 import { useLocale, useTranslations } from 'next-intl'
 

@@ -1,5 +1,5 @@
 /**
- * Type definitions for @madrasah/tokens
+ * Type definitions for @medaris/tokens
  */
 
 export interface TokenValue {

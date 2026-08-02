@@ -1,6 +1,6 @@
 // users/config/user-excel.config.ts
 
-import { ExcelSheetConfig } from '@madrasah/common';
+import { ExcelSheetConfig } from '@medaris/common';
 import { PickType } from '@nestjs/swagger';
 import { CreateFlashcardDto } from './create-flashcard.dto';
 import { FlashcardType } from '../domain/flashcard-type.enum';

@@ -1,5 +1,5 @@
 'use client'
-import { Toaster } from '@madrasah/ui/components/sonner'
+import { Toaster } from '@medaris/ui/components/sonner'
 import { SessionProvider } from 'next-auth/react'
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {

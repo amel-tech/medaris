@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckIcon, XIcon, UserCircleIcon, BellIcon } from '@madrasah/icons'
-import { Button } from '@madrasah/ui/components/button'
-import { Card, CardContent } from '@madrasah/ui/components/card'
+import { CheckIcon, XIcon, UserCircleIcon, BellIcon } from '@medaris/icons'
+import { Button } from '@medaris/ui/components/button'
+import { Card, CardContent } from '@medaris/ui/components/card'
 import {
   Dialog,
   DialogContent,
@@ -12,9 +12,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@madrasah/ui/components/dialog'
-import { toast } from '@madrasah/ui/components/sonner'
-import type { PendingEnrollmentResponse } from '@madrasah/services/tedrisat'
+} from '@medaris/ui/components/dialog'
+import { toast } from '@medaris/ui/components/sonner'
+import type { PendingEnrollmentResponse } from '@medaris/services/tedrisat'
 import { approveEnrollment, rejectEnrollment } from '~/features/kosks/actions/courses'
 
 export function PendingRequests({

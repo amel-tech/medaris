@@ -10,7 +10,7 @@ import {
   GlobalExceptionFilter,
   LoggerFactory,
   MedarisValidationPipe,
-} from '@madrasah/common';
+} from '@medaris/common';
 
 // Fixed user id injected by the stubbed AuthGuard in tests.
 export const TEST_USER_ID = '623fdf08-fd0e-481b-a927-4a1c15135e62';

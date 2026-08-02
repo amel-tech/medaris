@@ -1,6 +1,6 @@
 'use server'
 
-import { CreateFlashcardDeckDto } from '@madrasah/services/tedrisat'
+import { CreateFlashcardDeckDto } from '@medaris/services/tedrisat'
 import { revalidatePath } from 'next/cache'
 import { authenticatedAction } from '~/lib/authenticated-action'
 

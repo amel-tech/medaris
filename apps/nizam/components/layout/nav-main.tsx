@@ -1,12 +1,12 @@
 'use client'
-import { CaretRightIcon } from '@madrasah/icons'
+import { CaretRightIcon } from '@medaris/icons'
 import { useTranslations } from 'next-intl'
 
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '@madrasah/ui/components/collapsible'
+} from '@medaris/ui/components/collapsible'
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -17,8 +17,8 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-} from '@madrasah/ui/components/sidebar'
-import { cn } from '@madrasah/ui/lib/utils'
+} from '@medaris/ui/components/sidebar'
+import { cn } from '@medaris/ui/lib/utils'
 import { NavigationRouteType } from './nav-routes'
 
 export function NavMain({

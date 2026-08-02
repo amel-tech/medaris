@@ -1,11 +1,11 @@
 'use client'
 
-import { CaretLeftIcon, CaretRightIcon } from '@madrasah/icons'
+import { CaretLeftIcon, CaretRightIcon } from '@medaris/icons'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 
 import FlashCardContent from './flashcard-content'
-import { FlashcardResponse } from '@madrasah/services/tedrisat'
+import { FlashcardResponse } from '@medaris/services/tedrisat'
 import { useFlashCards } from '../hooks/useFlashCards'
 
 type FlashCardListProps = {

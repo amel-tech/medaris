@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { toast } from '@madrasah/ui/components/sonner'
+import { toast } from '@medaris/ui/components/sonner'
 import {
   ArrowRightIcon as ArrowRight,
   PlayIcon as Play,
@@ -15,13 +15,13 @@ import {
   FilePdfIcon as FilePdf,
   FileTextIcon as FileText,
   BookOpenIcon as BookOpen,
-} from '@madrasah/icons'
-import { cn } from '@madrasah/ui/lib/utils'
-import { Breadcrumbs } from '@madrasah/ui/components/breadcrumb'
+} from '@medaris/icons'
+import { cn } from '@medaris/ui/lib/utils'
+import { Breadcrumbs } from '@medaris/ui/components/breadcrumb'
 import type {
   CourseDetailResponse,
   ResourceResponse,
-} from '@madrasah/services/tedrisat'
+} from '@medaris/services/tedrisat'
 import { CoverPlaceholder, HueAvatar } from './cover'
 import { WeekModule, SyllabusModal } from './syllabus'
 import { nextLiveLesson } from './lesson-page'

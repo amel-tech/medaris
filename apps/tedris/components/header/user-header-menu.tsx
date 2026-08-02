@@ -2,7 +2,7 @@
 
 import { signOut, useSession } from 'next-auth/react'
 import { useTranslations } from 'next-intl'
-import { BookIcon, CaretDownIcon, CircleNotchIcon, GearIcon, QuestionIcon, SignOutIcon, UserIcon } from '@madrasah/icons'
+import { BookIcon, CaretDownIcon, CircleNotchIcon, GearIcon, QuestionIcon, SignOutIcon, UserIcon } from '@medaris/icons'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +10,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@madrasah/ui/components/dropdown-menu'
+} from '@medaris/ui/components/dropdown-menu'
 import { UserAvatar } from '~/features/user-avatar'
 import Version from './version'
 

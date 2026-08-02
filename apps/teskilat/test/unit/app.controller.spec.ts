@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppController } from '../../src/app.controller';
 import { AppService } from '../../src/app.service';
-import { LoggerModule } from '@madrasah/common';
+import { LoggerModule } from '@medaris/common';
 
 describe('AppController', () => {
   let appController: AppController;

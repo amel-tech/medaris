@@ -1,7 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AppService } from './app.service';
-import { HealthCheckDto } from '@madrasah/common';
+import { HealthCheckDto } from '@medaris/common';
 
 @ApiTags('Teskilat Service')
 @Controller()

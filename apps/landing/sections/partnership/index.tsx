@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import { BookOpen, SealCheck } from '@madrasah/icons/ssr'
+import { BookOpen, SealCheck } from '@medaris/icons/ssr'
 import { getTranslations } from 'next-intl/server'
 import { partnershipImage, partnershipFeatures } from './data'
 

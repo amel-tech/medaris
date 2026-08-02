@@ -2,9 +2,9 @@ import z from 'zod'
 import { Control } from 'react-hook-form'
 import { useTranslations } from 'next-intl'
 
-import ATFormGroup from '@madrasah/ui/custom/form-group'
-import ATFormGroupTextArea from '@madrasah/ui/custom/form-group-text-area'
-import ATFormGroupTabs from '@madrasah/ui/custom/form-group-tabs'
+import ATFormGroup from '@medaris/ui/custom/form-group'
+import ATFormGroupTextArea from '@medaris/ui/custom/form-group-text-area'
+import ATFormGroupTabs from '@medaris/ui/custom/form-group-tabs'
 import { deckMetaFormSchema } from '~/features/flashcards/validations/deck-meta-form-schema'
 
 interface IDeckMetaFormProps {

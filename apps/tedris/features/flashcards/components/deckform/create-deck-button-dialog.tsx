@@ -1,7 +1,7 @@
 'use client'
 
-import { PlusIcon } from '@madrasah/icons'
-import { Button } from '@madrasah/ui/components/button'
+import { PlusIcon } from '@medaris/icons'
+import { Button } from '@medaris/ui/components/button'
 import {
   Dialog,
   DialogClose,
@@ -10,17 +10,17 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@madrasah/ui/components/dialog'
+} from '@medaris/ui/components/dialog'
 import DeckMetaForm from './deck-meta-form'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
-import { Form } from '@madrasah/ui/custom/form'
+import { Form } from '@medaris/ui/custom/form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { toastHelper } from '@madrasah/ui/lib/toast-helper'
+import { toastHelper } from '@medaris/ui/lib/toast-helper'
 import z from 'zod'
 import { deckMetaFormSchema } from '../../validations/deck-meta-form-schema'
 import { createFlashCardDeck } from '~/features/flashcards/actions'
-import { CreateFlashcardDeckDto } from '@madrasah/services/tedrisat'
+import { CreateFlashcardDeckDto } from '@medaris/services/tedrisat'
 import { useTranslations } from 'next-intl'
 
 export default function CreateDeckButtonDialog() {

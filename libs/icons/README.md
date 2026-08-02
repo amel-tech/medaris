@@ -1,4 +1,4 @@
-# @madrasah/icons
+# @medaris/icons
 
 Custom icon library extending Phosphor Icons with Madrasah-specific icons.
 
@@ -14,7 +14,7 @@ Custom icon library extending Phosphor Icons with Madrasah-specific icons.
 This package is internal to the Madrasah monorepo:
 
 ```bash
-npm install @madrasah/icons
+npm install @medaris/icons
 ```
 
 ## Usage
@@ -22,7 +22,7 @@ npm install @madrasah/icons
 ### Import All Phosphor Icons
 
 ```tsx
-import { HeartIcon, StarIcon, HouseIcon } from "@madrasah/icons";
+import { HeartIcon, StarIcon, HouseIcon } from "@medaris/icons";
 
 export function MyComponent() {
   return (
@@ -39,7 +39,7 @@ export function MyComponent() {
 For server-side rendering (SSR) compatibility, import icons from the `ssr` submodule:
 
 ```tsx
-import { HeartIcon, StarIcon, HouseIcon } from "@madrasah/icons/ssr";
+import { HeartIcon, StarIcon, HouseIcon } from "@medaris/icons/ssr";
 export function MyComponent() {
   return (
     <div>
@@ -54,9 +54,9 @@ export function MyComponent() {
 ### Import Custom Icons
 
 ```tsx
-import { MadrasahLogo } from "@madrasah/icons/custom";
+import { MadrasahLogo } from "@medaris/icons/custom";
 // for SSR-compatible import:
-// import { MadrasahLogo } from "@madrasah/icons/custom/ssr";
+// import { MadrasahLogo } from "@medaris/icons/custom/ssr";
 
 export function Header() {
   return (

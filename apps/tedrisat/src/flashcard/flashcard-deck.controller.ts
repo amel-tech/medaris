@@ -34,7 +34,7 @@ import {
   IncludeApiQuery,
   IncludeQuery,
 } from './decorators/include-query.decorator';
-import { AuthGuard } from '@madrasah/common';
+import { AuthGuard } from '@medaris/common';
 import { AuthorizedRequest } from './interfaces/authorized-request.interface';
 import { FlashcardDeckUserResponse } from './dto/flashcard-deck-user-response.dto';
 

@@ -1,6 +1,6 @@
 {
-  "name": "@madrasah/tokens",
-  "version": "1.0.0",
+  "name": "@medaris/tokens",
+  "version": "0.0.0",
   "description": "Design tokens package for Madrasah projects",
   "license": "ISC",
   "author": "",
@@ -21,19 +21,20 @@
     "build/*"
   ],
   "scripts": {
-    "build": "npm run process && node scripts/build.js",
+    "build": "pnpm run process && node scripts/build.js",
     "process": "node scripts/process-tokens.js",
     "clean": "rm -rf .turbo node_modules dist",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "pnpm run build",
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {
-    "@types/node": "^24.3.0"
+    "@types/node": "catalog:"
   },
   "keywords": [
     "design-tokens",
     "tailwindcss",
     "css-variables",
     "theme"
-  ]
+  ],
+  "private": true
 }

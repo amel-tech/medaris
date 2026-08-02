@@ -1,6 +1,6 @@
 import DeckCards from '~/features/decks/components/cards'
 
-import { createServerTedrisatAPIs } from '@madrasah/services/tedrisat'
+import { createServerTedrisatAPIs } from '@medaris/services/tedrisat'
 import { env } from '~/env'
 import { auth } from '~/lib/auth_options'
 

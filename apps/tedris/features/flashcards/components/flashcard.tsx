@@ -1,7 +1,7 @@
 'use client'
 
-import { Card } from '@madrasah/ui/components/card'
-import { cn } from '@madrasah/ui/lib/utils'
+import { Card } from '@medaris/ui/components/card'
+import { cn } from '@medaris/ui/lib/utils'
 import { ReactNode } from 'react'
 
 interface FlashCardProps {

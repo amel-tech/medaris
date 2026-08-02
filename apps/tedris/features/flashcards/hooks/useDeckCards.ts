@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { FlashcardResponse } from '@madrasah/services/tedrisat'
+import type { FlashcardResponse } from '@medaris/services/tedrisat'
 
 interface UseDeckCardsResult {
   cards: FlashcardResponse[] | null

@@ -1,6 +1,6 @@
 'use client'
 import { SessionProvider, signOut, useSession } from 'next-auth/react'
-import { Button } from '@madrasah/ui/components/button'
+import { Button } from '@medaris/ui/components/button'
 import { env } from '~/env'
 import { useTranslations } from 'next-intl'
 

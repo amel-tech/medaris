@@ -1,7 +1,7 @@
 import React from 'react'
 import { ColumnDef } from '@tanstack/react-table'
-import { Skeleton } from '@madrasah/ui/components/skeleton'
-import { cn } from '@madrasah/ui/lib/utils'
+import { Skeleton } from '@medaris/ui/components/skeleton'
+import { cn } from '@medaris/ui/lib/utils'
 
 export const EditableTextarea: React.FC<{
   value: string

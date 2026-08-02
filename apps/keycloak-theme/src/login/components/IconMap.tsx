@@ -1,3 +1,4 @@
+import type React from 'react'
 import {
   GoogleLogoIcon,
   FacebookLogoIcon,
@@ -10,7 +11,7 @@ import {
   PaypalLogoIcon,
   Icon,
   IconProps,
-} from '@madrasah/icons'
+} from '@medaris/icons'
 
 type IconMapProps = IconProps & {
   alias: string
@@ -28,7 +29,7 @@ const iconComponents: Record<string, Icon> = {
   paypal: PaypalLogoIcon,
 }
 
-export const IconMap = (props: IconMapProps): JSX.Element | null => {
+export const IconMap = (props: IconMapProps): React.JSX.Element | null => {
   const { alias, ...iconProps } = props
   const IconComponent = iconComponents[alias]
 

@@ -1,4 +1,4 @@
-import { ErrorContext, ForbiddenError } from '@madrasah/common';
+import { ErrorContext, ForbiddenError } from '@medaris/common';
 
 export class KoskForbiddenError extends ForbiddenError {
   static readonly code = 'KOSK_FORBIDDEN';

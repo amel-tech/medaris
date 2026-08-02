@@ -1,28 +1,26 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Medaris base",
+  "//": "ADR-001 §D7: strict, NodeNext, NO paths aliases anywhere. Cross-package resolution goes through pnpm's node_modules links (workspace:*), not tsconfig paths. NestJS packages restore their commonjs + decorator settings in their own tsconfig.json — see docs/migration/mdrs-10-pnpm-workspace.md §5.",
   "compilerOptions": {
-    "target": "ES2023",
-    "lib": ["ES2023"],
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "allowSyntheticDefaultImports": true,
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "moduleDetection": "force",
     "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "isolatedModules": true,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
     "declaration": true,
-    "removeComments": true,
-    "noEmitOnError": false,
-    "sourceMap": true,
-    "incremental": true,
-    "composite": false,
-    "baseUrl": ".",
-    "paths": {
-      "@madrasah/common": ["libs/common/src/index.ts"],
-      "@madrasah/common/*": ["libs/common/src/*"]
-    }
+    "declarationMap": true,
+    "incremental": false
   },
-  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
+  "exclude": ["node_modules", "dist"]
 }

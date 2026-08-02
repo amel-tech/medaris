@@ -1,13 +1,13 @@
 import Link from 'next/link'
-import { Button } from '@madrasah/ui/components/button'
-import { Badge } from '@madrasah/ui/components/badge'
+import { Button } from '@medaris/ui/components/button'
+import { Badge } from '@medaris/ui/components/badge'
 import {
   PlusIcon,
   PencilSimpleIcon,
   CalendarBlankIcon,
   PlayCircleIcon,
   BookOpenIcon,
-} from '@madrasah/icons/ssr'
+} from '@medaris/icons/ssr'
 import { KoskFormDialog } from '~/features/kosks/components/kosk-form-dialog'
 import {
   Card,
@@ -15,12 +15,12 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-} from '@madrasah/ui/components/card'
+} from '@medaris/ui/components/card'
 import type {
   KoskResponse,
   CourseSummaryResponse,
   PendingEnrollmentResponse,
-} from '@madrasah/services/tedrisat'
+} from '@medaris/services/tedrisat'
 import { PendingRequests } from '~/features/kosks/components/pending-requests'
 
 const LEVEL_LABELS: Record<string, string> = {

@@ -3,9 +3,9 @@
 import { Locale, useLocale, useTranslations } from 'next-intl'
 import { routing, MadrasahLocale } from '~/lib/i18n/routing'
 import { usePathname, useRouter } from '~/lib/i18n/navigation'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@madrasah/ui/components/dropdown-menu'
-import { GlobeIcon } from '@madrasah/icons'
-import { Button } from '@madrasah/ui/components/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@medaris/ui/components/dropdown-menu'
+import { GlobeIcon } from '@medaris/icons'
+import { Button } from '@medaris/ui/components/button'
 import { useParams } from 'next/navigation'
 
 export default function LocaleSwitcher() {

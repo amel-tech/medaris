@@ -5,7 +5,7 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "../../shared/ui/src/styles/globals.css",
+    "css": "../../libs/ui/src/styles/globals.css",
     "baseColor": "neutral",
     "cssVariables": true
   },
@@ -13,8 +13,8 @@
     "components": "@/components",
     "hooks": "@/hooks",
     "lib": "@/lib",
-    "types": "@madrasah/types",
-    "utils": "@madrasah/ui/lib/utils",
-    "ui": "@madrasah/ui/components"
+    "types": "@medaris/types",
+    "utils": "@medaris/ui/lib/utils",
+    "ui": "@medaris/ui/components"
   }
 }

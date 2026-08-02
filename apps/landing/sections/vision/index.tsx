@@ -1,4 +1,4 @@
-import { GraduationCap, Devices, Leaf } from '@madrasah/icons/ssr'
+import { GraduationCap, Devices, Leaf } from '@medaris/icons/ssr'
 import { getTranslations } from 'next-intl/server'
 
 const bentoIcons = { GraduationCap, Devices, Leaf } as const

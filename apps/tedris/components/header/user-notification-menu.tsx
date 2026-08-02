@@ -1,9 +1,9 @@
-import { BellIcon } from '@madrasah/icons/ssr'
+import { BellIcon } from '@medaris/icons/ssr'
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from '@madrasah/ui/components/hover-card'
+} from '@medaris/ui/components/hover-card'
 import { useTranslations } from 'next-intl'
 
 export const UserNotifications = () => {

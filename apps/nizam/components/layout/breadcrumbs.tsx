@@ -3,7 +3,7 @@
 import {
   Breadcrumbs as UiBreadcrumbs,
   type BreadcrumbEntry,
-} from '@madrasah/ui/components/breadcrumb'
+} from '@medaris/ui/components/breadcrumb'
 import { useTranslations } from 'next-intl'
 import { useBreadcrumb } from '~/hooks/useBreadcrumb'
 import { NavigationRouteType } from './nav-routes'

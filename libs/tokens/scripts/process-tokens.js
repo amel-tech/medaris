@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Token processing script for @madrasah/tokens
+ * Token processing script for @medaris/tokens
  *
  * This script processes the input/main.css file and transforms semantic tokens
  * to reference namespaced primitive tokens in the Tailwind CSS v4 format.

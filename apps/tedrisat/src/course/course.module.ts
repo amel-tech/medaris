@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { AuthGuardModule } from '@madrasah/common';
+import { AuthGuardModule } from '@medaris/common';
 import { DatabaseService } from '../database/database.service';
 import { KoskModule } from '../kosk/kosk.module';
 import { CourseController } from './course.controller';

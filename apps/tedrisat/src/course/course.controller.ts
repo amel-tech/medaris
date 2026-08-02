@@ -12,7 +12,7 @@ import {
   UseGuards,
   UsePipes,
 } from '@nestjs/common';
-import { MedarisValidationPipe } from '@madrasah/common';
+import { MedarisValidationPipe } from '@medaris/common';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
@@ -21,7 +21,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { AuthGuard } from '@madrasah/common';
+import { AuthGuard } from '@medaris/common';
 import { CourseService } from './course.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';

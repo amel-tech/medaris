@@ -11,17 +11,17 @@ import {
   DownloadSimpleIcon as DownloadSimple,
   XIcon as X,
   CalendarBlankIcon as CalendarBlank,
-} from '@madrasah/icons'
+} from '@medaris/icons'
 import {
   Dialog,
   DialogContent,
-} from '@madrasah/ui/components/dialog'
-import { cn } from '@madrasah/ui/lib/utils'
+} from '@medaris/ui/components/dialog'
+import { cn } from '@medaris/ui/lib/utils'
 import type {
   CourseDetailResponse,
   LessonResponse,
   WeekResponse,
-} from '@madrasah/services/tedrisat'
+} from '@medaris/services/tedrisat'
 import { lessonTypeLabel } from './labels'
 
 export const LessonTypeIcon = ({ type, size = 14 }: { type: string, size?: number }) => {

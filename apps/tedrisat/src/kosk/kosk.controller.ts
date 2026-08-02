@@ -22,7 +22,7 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-import { AuthGuard } from '@madrasah/common';
+import { AuthGuard } from '@medaris/common';
 import { KoskService } from './kosk.service';
 import { CreateKoskDto } from './dto/create-kosk.dto';
 import { UpdateKoskDto } from './dto/update-kosk.dto';

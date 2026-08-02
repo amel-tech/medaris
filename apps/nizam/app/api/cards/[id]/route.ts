@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { env } from '~/env'
-import { createServerTedrisatAPIs } from '@madrasah/services/tedrisat'
+import { createServerTedrisatAPIs } from '@medaris/services/tedrisat'
 import { auth } from '~/lib/auth_options'
 
 export async function GET({ params }: { params: Promise<{ id: string }> }) {

@@ -1,11 +1,11 @@
-# @madrasah/tokens
+# @medaris/tokens
 
 Design tokens package for Madrasah projects, optimized for Tailwind CSS v4 with semantic naming conventions.
 
 ## Installation
 
 ```bash
-npm install @madrasah/tokens
+npm install @medaris/tokens
 ```
 
 ## Architecture
@@ -62,7 +62,7 @@ Tailwind CSS v4 reads CSS variables directly, so you just need to import the the
 
 ```css
 /* globals.css or main.css */
-@import "@madrasah/tokens/css";
+@import "@medaris/tokens/css";
 @import "tailwindcss";
 ```
 
@@ -86,7 +86,7 @@ Tailwind CSS v4 reads CSS variables directly, so you just need to import the the
 You can also import tokens as JavaScript objects:
 
 ```javascript
-import tokens from "@madrasah/tokens";
+import tokens from "@medaris/tokens";
 
 // Access parsed token values
 console.log(tokens["background-color-brand-primary"]); // rgba(12, 74, 110, 1)

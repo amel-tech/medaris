@@ -4,21 +4,21 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 
-import { Button } from '@madrasah/ui/components/button'
-import { Badge } from '@madrasah/ui/components/badge'
+import { Button } from '@medaris/ui/components/button'
+import { Badge } from '@medaris/ui/components/badge'
 import {
   CardsIcon,
   StarIcon,
   StudentIcon,
   ArrowRightIcon,
   BookmarkSimpleIcon,
-} from '@madrasah/icons'
-import { toastHelper } from '@madrasah/ui/lib/toast-helper'
+} from '@medaris/icons'
+import { toastHelper } from '@medaris/ui/lib/toast-helper'
 
 import type {
   FlashcardDeckResponse,
   FlashcardResponse,
-} from '@madrasah/services/tedrisat'
+} from '@medaris/services/tedrisat'
 import { SampleCards } from '~/features/flashcards/components/sample-cards'
 import {
   addDeckToCollection,

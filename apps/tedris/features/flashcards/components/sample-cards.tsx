@@ -1,8 +1,8 @@
 'use client'
 
-import { Card } from '@madrasah/ui/components/card'
+import { Card } from '@medaris/ui/components/card'
 import { toDisplay } from '~/features/flashcards/utils/flashCardUtils'
-import type { FlashcardResponse } from '@madrasah/services/tedrisat'
+import type { FlashcardResponse } from '@medaris/services/tedrisat'
 import { useTranslations } from 'next-intl'
 
 interface SampleCardsProps {

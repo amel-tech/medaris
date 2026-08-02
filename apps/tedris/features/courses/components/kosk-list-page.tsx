@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { toast } from '@madrasah/ui/components/sonner'
+import { toast } from '@medaris/ui/components/sonner'
 import {
   MagnifyingGlassIcon as Search,
   StarIcon as Star,
@@ -12,13 +12,13 @@ import {
   CaretDownIcon as CaretDown,
   ArrowRightIcon as ArrowRight,
   MadrasahLogoIcon,
-} from '@madrasah/icons'
-import { cn } from '@madrasah/ui/lib/utils'
-import { Breadcrumbs } from '@madrasah/ui/components/breadcrumb'
+} from '@medaris/icons'
+import { cn } from '@medaris/ui/lib/utils'
+import { Breadcrumbs } from '@medaris/ui/components/breadcrumb'
 import type {
   EnrolledCourseResponse,
   KoskResponse,
-} from '@madrasah/services/tedrisat'
+} from '@medaris/services/tedrisat'
 import { CoverPlaceholder } from './cover'
 import { ContinueCard } from './continue-card'
 import { followKosk, unfollowKosk } from '../actions'

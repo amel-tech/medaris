@@ -1,6 +1,6 @@
 'use client'
 
-import { cn } from '@madrasah/ui/lib/utils'
+import { cn } from '@medaris/ui/lib/utils'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { usePathname } from '~/lib/i18n/navigation'

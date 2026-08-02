@@ -5,7 +5,7 @@ import {
   type CreateCourseDto,
   type CourseDetailResponse,
   type EnrollmentResponse,
-} from '@madrasah/services/tedrisat'
+} from '@medaris/services/tedrisat'
 import {
   authenticatedAction,
   type AuthenticatedActionResult,

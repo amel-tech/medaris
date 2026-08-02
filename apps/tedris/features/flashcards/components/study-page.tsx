@@ -1,5 +1,5 @@
 import FlashCardList from '~/features/flashcards/components/flashcard-list'
-import type { FlashcardResponse } from '@madrasah/services/tedrisat'
+import type { FlashcardResponse } from '@medaris/services/tedrisat'
 
 export function StudyPage({ cards }: { cards: FlashcardResponse[] }) {
   return (

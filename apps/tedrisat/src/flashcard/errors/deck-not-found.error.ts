@@ -1,4 +1,4 @@
-import { ErrorContext, NotFoundError } from '@madrasah/common';
+import { ErrorContext, NotFoundError } from '@medaris/common';
 
 export class DeckNotFoundError extends NotFoundError {
   static readonly code = 'DECK_NOT_FOUND';

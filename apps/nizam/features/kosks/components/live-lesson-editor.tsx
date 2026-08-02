@@ -7,10 +7,10 @@ import {
   TrashIcon as Trash,
   XIcon as X,
   CheckIcon as Check,
-} from '@madrasah/icons'
-import { Input } from '@madrasah/ui/components/input'
-import { Label } from '@madrasah/ui/components/label'
-import { resolveMeetingPlatform } from '@madrasah/utils'
+} from '@medaris/icons'
+import { Input } from '@medaris/ui/components/input'
+import { Label } from '@medaris/ui/components/label'
+import { resolveMeetingPlatform } from '@medaris/utils'
 
 export type AgendaStepDraft = { time: string, title: string }
 

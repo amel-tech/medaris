@@ -1,0 +1,16 @@
+{
+  "name": "@medaris/source",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Medaris monorepo — 7 apps, 9 libs, one pnpm workspace",
+  "packageManager": "pnpm@11.4.0",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=11.0.0"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter=./apps/* --filter=./libs/* run build",
+    "check-types": "pnpm -r run check-types",
+    "test": "pnpm -r run test"
+  }
+}

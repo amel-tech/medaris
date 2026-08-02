@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { toast } from '@madrasah/ui/components/sonner'
+import { toast } from '@medaris/ui/components/sonner'
 import {
   ArrowLeftIcon as ArrowLeft,
   ArrowRightIcon as ArrowRight,
@@ -12,14 +12,14 @@ import {
   CopyIcon as Copy,
   HeadsetIcon as Headset,
   LinkIcon as LinkGlyph,
-} from '@madrasah/icons'
-import { cn } from '@madrasah/ui/lib/utils'
-import { resolveMeetingPlatform } from '@madrasah/utils'
+} from '@medaris/icons'
+import { cn } from '@medaris/ui/lib/utils'
+import { resolveMeetingPlatform } from '@medaris/utils'
 import type {
   CourseDetailResponse,
   LessonResponse,
   WeekResponse,
-} from '@madrasah/services/tedrisat'
+} from '@medaris/services/tedrisat'
 import { HueAvatar } from './cover'
 import { LessonTypeIcon } from './syllabus'
 import { LiveStatusBadge } from './live-status-badge'

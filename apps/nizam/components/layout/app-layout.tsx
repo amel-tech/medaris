@@ -1,12 +1,12 @@
 'use client'
 
 import { AppSidebar } from '~/components/layout/app-sidebar'
-import { Separator } from '@madrasah/ui/components/separator'
+import { Separator } from '@medaris/ui/components/separator'
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from '@madrasah/ui/components/sidebar'
+} from '@medaris/ui/components/sidebar'
 import { Breadcrumbs } from './breadcrumbs'
 
 import { routes } from './nav-routes'
