@@ -15,7 +15,14 @@
       "~/*": [
         "./src/*"
       ]
-    }
+    },
+    "composite": true,
+    "incremental": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "rootDir": "./src",
+    "outDir": "./.tsbuild",
+    "tsBuildInfoFile": "./.tsbuild/.tsbuildinfo"
   },
   "include": [
     "src/**/*.ts"

@@ -36,8 +36,8 @@ packages:
   # Adding one = a line here + release-please component + manifest entry +
   # commitlint scope, in a single PR (§D10).
 
-# pnpm 11 defaults this to `install`, which can prune devDeps and then abort in
-# non-TTY contexts (husky hooks, CI) with ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY.
+  # pnpm 11 defaults this to `install`, which can prune devDeps and then abort in
+  # non-TTY contexts (husky hooks, CI) with ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY.
 verifyDepsBeforeRun: warn
 
 # ── Build-script decisions (MDRS-8 §3, ADR-001 §D11) ─────────────────────────
@@ -47,10 +47,16 @@ verifyDepsBeforeRun: warn
 # and telemetry. This list is exactly what pnpm's own scan of the merged tree
 # reported: MDRS-8 predicted 8 entries from `hasInstallScript` in the two npm
 # locks, but `nx`, `lightningcss`, `@tailwindcss/oxide` and `unrs-resolver`
-# ship no install script at the pinned versions (nx is not in the graph until
-# MDRS-11), while `@parcel/watcher`, `@scarf/scarf`, `cpu-features`,
-# `protobufjs` and `ssh2` do and had to be denied here rather than in a comment.
+# ship no install script at the pinned versions, while `@parcel/watcher`,
+# `@scarf/scarf`, `cpu-features`, `protobufjs` and `ssh2` do and had to be
+# denied here rather than in a comment.
+#
+# MDRS-11 correction: `nx` DOES carry a postinstall script (it fetches the
+# platform-native `@nx/nx-<os>-<arch>` binary). MDRS-10 recorded it as
+# script-free, but nx was not in the dependency graph then, so pnpm never
+# scanned it. It is approved here per ADR §D11, which pre-approved nx.
 allowBuilds:
+  nx: true # root task runner — postinstall fetches the native nx binary
   '@swc/core': true # backend — NestJS SWC transform (native)
   esbuild: true # both — bundler (native)
   sharp: true # frontend — Next.js image optimization

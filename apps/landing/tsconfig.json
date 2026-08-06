@@ -53,5 +53,16 @@
   "exclude": [
     "node_modules",
     ".next/**"
+  ],
+  "references": [
+    {
+      "path": "../../libs/i18n"
+    },
+    {
+      "path": "../../libs/icons"
+    },
+    {
+      "path": "../../libs/ui"
+    }
   ]
 }

@@ -1,0 +1,25 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "landing-web",
+  "targets": {
+    "build": {
+      "inputs": [
+        "production",
+        "^production",
+        {
+          "env": "NEXT_PUBLIC_TEDRIS_APP_URL"
+        },
+        {
+          "env": "OTEL_EXPORTER_OTLP_ENDPOINT"
+        },
+        {
+          "env": "OTEL_SERVICE_NAME"
+        }
+      ],
+      "outputs": [
+        "{projectRoot}/.next",
+        "!{projectRoot}/.next/cache"
+      ]
+    }
+  }
+}

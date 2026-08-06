@@ -112,9 +112,9 @@ All icons from [@phosphor-icons/react](https://phosphoricons.com/) are available
 ## Development
 
 ```bash
-# Lint the code
-npm run lint
-
-# Type check
-npm run type-check
+# Type check this package (emits declarations into .tsbuild/ for the
+# TypeScript project-reference graph — see nx.json / root tsconfig.json)
+pnpm nx run icons:typecheck
 ```
+
+Linting arrives with MDRS-12; there is no `lint` script today.

@@ -44,6 +44,10 @@ apps/*/public/mocks/
 # Turborepo
 .turbo/
 
+# Nx (MDRS-11) — local task cache and the daemon's project-graph snapshot
+.nx/cache/
+.nx/workspace-data/
+
 # Testing
 .nyc_output/
 *.lcov
@@ -214,3 +218,7 @@ firestore-debug.log
 .sanity/
 
 # Local Netlify folder
+
+# TypeScript project-reference declaration output (MDRS-11) — never shipped,
+# consumers resolve packages to src/ via pnpm workspace links.
+.tsbuild/

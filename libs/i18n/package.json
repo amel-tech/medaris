@@ -12,7 +12,8 @@
     "pull": "tolgee pull",
     "push": "tolgee push",
     "sync": "tolgee sync",
-    "clean": "rm -rf dist"
+    "typecheck": "tsc -b tsconfig.json",
+    "clean": "rm -rf dist .tsbuild"
   },
   "dependencies": {
     "dotenv": "catalog:"

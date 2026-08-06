@@ -1,0 +1,108 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "defaultBase": "main",
+  "analytics": false,
+  "neverConnectToCloud": true,
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "production": [
+      "default",
+      "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)",
+      "!{projectRoot}/test/**/*",
+      "!{projectRoot}/jest.config.*",
+      "!{projectRoot}/jest-e2e.json",
+      "!{projectRoot}/**/*.stories.@(js|jsx|ts|tsx|mdx)",
+      "!{projectRoot}/.storybook/**/*",
+      "!{projectRoot}/CHANGELOG.md",
+      "!{projectRoot}/README.md"
+    ],
+    "sharedGlobals": [
+      "{workspaceRoot}/pnpm-workspace.yaml",
+      "{workspaceRoot}/pnpm-lock.yaml",
+      "{workspaceRoot}/tsconfig.base.json",
+      "{workspaceRoot}/tsconfig.json",
+      "{workspaceRoot}/.nvmrc",
+      "{workspaceRoot}/.github/workflows/ci.yml",
+      "{workspaceRoot}/vitest.config.ts",
+      {
+        "runtime": "cat .env*.local apps/*/.env*.local 2>/dev/null | shasum"
+      }
+    ]
+  },
+  "targetDefaults": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"],
+      "outputs": ["{projectRoot}/dist"],
+      "cache": true
+    },
+    "typecheck": {
+      "dependsOn": ["^build", "^typecheck"],
+      "inputs": ["default", "^production"],
+      "outputs": [
+        "{projectRoot}/.tsbuild",
+        "{projectRoot}/tsconfig.tsbuildinfo"
+      ],
+      "cache": true
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production"],
+      "outputs": ["{projectRoot}/coverage", "{projectRoot}/test-results"],
+      "cache": true
+    },
+    "test:coverage": {
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production"],
+      "outputs": ["{projectRoot}/coverage"],
+      "cache": true
+    },
+    "test:e2e": {
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production"],
+      "cache": false
+    },
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "continuous": true
+    },
+    "start": {
+      "dependsOn": ["^build", "build"],
+      "cache": false,
+      "continuous": true
+    },
+    "start:dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "continuous": true
+    },
+    "start:debug": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "continuous": true
+    },
+    "start:prod": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "continuous": true
+    },
+    "storybook": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "continuous": true
+    },
+    "run-keycloak": {
+      "cache": false,
+      "continuous": true
+    },
+    "dev:tedrisat": {
+      "cache": false,
+      "continuous": true
+    },
+    "db:migrate": {
+      "dependsOn": ["db:generate"],
+      "cache": false
+    }
+  }
+}

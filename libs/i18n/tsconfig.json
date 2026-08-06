@@ -8,7 +8,13 @@
     ],
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "outDir": "./dist"
+    "outDir": "./.tsbuild",
+    "composite": true,
+    "incremental": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "rootDir": "./src",
+    "tsBuildInfoFile": "./.tsbuild/.tsbuildinfo"
   },
   "include": [
     "src/**/*",

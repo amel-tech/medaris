@@ -10,7 +10,13 @@
     "moduleResolution": "bundler",
     "jsx": "react",
     "baseUrl": ".",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "composite": true,
+    "incremental": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "outDir": "./.tsbuild",
+    "tsBuildInfoFile": "./.tsbuild/.tsbuildinfo"
   },
   "include": [
     "src/**/*.ts",

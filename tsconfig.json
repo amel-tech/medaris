@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "//": "ADR-001 §D1: solution-style project references. Holds no files of its own — `tsc -b` here emits every referenced library's declarations in dependency order. Apps are absent by construction: a reference target must set `composite: true`, which TypeScript forbids alongside the `noEmit: true` Next requires. Apps are type-checked per project by `nx run-many -t typecheck`. See docs/migration/mdrs-11-nx-task-orchestration.md §5.",
+  "files": [],
+  "references": [
+    {
+      "path": "./libs/common"
+    },
+    {
+      "path": "./libs/icons"
+    },
+    {
+      "path": "./libs/ui"
+    },
+    {
+      "path": "./libs/services"
+    },
+    {
+      "path": "./libs/i18n"
+    },
+    {
+      "path": "./libs/utils"
+    }
+  ]
+}

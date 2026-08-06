@@ -1,0 +1,16 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "tokens",
+  "targets": {
+    "build": {
+      "outputs": [
+        "{projectRoot}/theme/main.css"
+      ]
+    },
+    "process": {
+      "outputs": [
+        "{projectRoot}/theme/main.css"
+      ]
+    }
+  }
+}

@@ -6,11 +6,15 @@
       "DOM",
       "DOM.Iterable"
     ],
-    "outDir": "./dist",
+    "outDir": "./.tsbuild",
     "rootDir": "./src",
     "noEmit": false,
     "module": "ESNext",
-    "moduleResolution": "Bundler"
+    "moduleResolution": "Bundler",
+    "composite": true,
+    "incremental": true,
+    "emitDeclarationOnly": true,
+    "tsBuildInfoFile": "./.tsbuild/.tsbuildinfo"
   },
   "include": [
     "src/**/*"

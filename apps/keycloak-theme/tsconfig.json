@@ -24,5 +24,13 @@
   "exclude": [
     "node_modules",
     "dist"
+  ],
+  "references": [
+    {
+      "path": "../../libs/icons"
+    },
+    {
+      "path": "../../libs/ui"
+    }
   ]
 }
