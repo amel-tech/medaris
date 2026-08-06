@@ -22,8 +22,8 @@
     "dev:tedrisat": "onchange 'swagger-docs/tedrisat.json' --initial -- pnpm run generate:tedrisat && pnpm run build:tedrisat",
     "generate": "pnpm run generate:tedrisat && pnpm run lint:fix",
     "generate:tedrisat": "openapi-generator-cli generate -i swagger-docs/tedrisat.json -g typescript-fetch -o src/tedrisat/generated --additional-properties=typescriptThreePlus=true,supportsES6=true,npmName=@medaris/tedrisatapi",
-    "clean": "rm -rf .turbo node_modules dist src/*/generated",
-    "check-types": "tsc --noEmit"
+    "clean": "rm -rf .turbo node_modules dist .tsbuild src/*/generated",
+    "typecheck": "tsc -b tsconfig.json"
   },
   "devDependencies": {
     "@openapitools/openapi-generator-cli": "catalog:",

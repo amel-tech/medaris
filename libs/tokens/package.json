@@ -25,7 +25,7 @@
     "process": "node scripts/process-tokens.js",
     "clean": "rm -rf .turbo node_modules dist",
     "prepublishOnly": "pnpm run build",
-    "check-types": "tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/node": "catalog:"

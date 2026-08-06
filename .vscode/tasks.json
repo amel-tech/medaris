@@ -35,7 +35,7 @@
     {
       "label": "Check Types",
       "type": "npm",
-      "script": "check-types",
+      "script": "typecheck",
       "problemMatcher": ["$tsc"],
       "detail": "Runs TypeScript type checking for the entire project."
     }

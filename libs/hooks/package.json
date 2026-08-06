@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "clean": "rm -rf .turbo node_modules dist",
-    "check-types": "tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "typescript": "catalog:",

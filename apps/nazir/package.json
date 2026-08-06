@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start --port 4002",
     "clean": "rm -rf .turbo .next node_modules dist",
-    "check-types": "tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@medaris/ui": "workspace:*",

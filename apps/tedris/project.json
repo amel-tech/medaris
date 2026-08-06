@@ -1,0 +1,58 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "tedris-web",
+  "targets": {
+    "build": {
+      "inputs": [
+        "production",
+        "^production",
+        {
+          "env": "API_MOCKING"
+        },
+        {
+          "env": "KEYCLOAK_CLIENT_ID"
+        },
+        {
+          "env": "KEYCLOAK_CLIENT_SECRET"
+        },
+        {
+          "env": "KEYCLOAK_ISSUER"
+        },
+        {
+          "env": "NEXTAUTH_SECRET"
+        },
+        {
+          "env": "NEXTAUTH_URL"
+        },
+        {
+          "env": "NEXT_PUBLIC_API_MOCKING"
+        },
+        {
+          "env": "NEXT_PUBLIC_KEYCLOAK_CLIENT_ID"
+        },
+        {
+          "env": "NEXT_PUBLIC_KEYCLOAK_ISSUER"
+        },
+        {
+          "env": "NEXT_PUBLIC_NEXTAUTH_URL"
+        },
+        {
+          "env": "NEXT_PUBLIC_TEDRISAT_API_BASE_URL"
+        },
+        {
+          "env": "OTEL_EXPORTER_OTLP_ENDPOINT"
+        },
+        {
+          "env": "OTEL_SERVICE_NAME"
+        },
+        {
+          "env": "TEDRISAT_API_BASE_URL"
+        }
+      ],
+      "outputs": [
+        "{projectRoot}/.next",
+        "!{projectRoot}/.next/cache"
+      ]
+    }
+  }
+}

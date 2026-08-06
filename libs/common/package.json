@@ -13,7 +13,7 @@
     "build": "pnpm run clean && tsc -p tsconfig.json",
     "build:watch": "tsc -p tsconfig.json --watch",
     "clean": "rimraf dist",
-    "type-check": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm run build",
     "audit": "pnpm audit",
     "audit:ci": "audit-ci --config ../../audit-ci.json",
