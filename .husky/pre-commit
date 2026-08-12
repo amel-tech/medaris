@@ -1,0 +1,7 @@
+# Format + autofix the staged files only (MDRS-14).
+#
+# Deliberately NOT a full `lint`/`typecheck`/`build`: the two pre-merge hooks
+# ran repo-wide `npm run lint` (and the frontend also `check-types`), which in a
+# 16-package workspace is minutes per commit. Whole-repo verification is the
+# gate's job, not the hook's. Config lives under "lint-staged" in package.json.
+pnpm exec lint-staged
