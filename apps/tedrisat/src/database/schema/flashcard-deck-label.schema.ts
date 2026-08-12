@@ -1,48 +1,48 @@
+import { relations } from "drizzle-orm";
 import {
-  pgTable as table,
   integer,
+  pgTable as table,
   text,
-  uuid,
   timestamp,
-} from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
-import { decks } from './flashcard-deck.schema';
-import { Scope } from '../../flashcard/domain/flashcard-label.enum';
+  uuid,
+} from "drizzle-orm/pg-core";
+import type { Scope } from "../../flashcard/domain/flashcard-label.enum";
+import { decks } from "./flashcard-deck.schema";
 
 // Tables
-export const deckLabels = table('deck_label', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  title: text('title').notNull(),
-  scope: text('scope').$type<Scope>().notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  createdBy: uuid('created_by').notNull(),
+export const deckLabels = table("deck_label", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  scope: text("scope").$type<Scope>().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdBy: uuid("created_by").notNull(),
 });
 
-export const deckLabelings = table('deck_labelings', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  labelId: uuid('label_id')
+export const deckLabelings = table("deck_labelings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  labelId: uuid("label_id")
     .notNull()
-    .references(() => deckLabels.id, { onDelete: 'cascade' }),
-  privateToUserId: uuid('private_to_user_id'),
-  deckId: uuid('deck_id')
+    .references(() => deckLabels.id, { onDelete: "cascade" }),
+  privateToUserId: uuid("private_to_user_id"),
+  deckId: uuid("deck_id")
     .notNull()
     .references(() => decks.id, {
-      onDelete: 'cascade',
+      onDelete: "cascade",
     }),
-  createdBy: uuid('created_by').notNull(),
-  createdAt: timestamp('create_at').notNull().defaultNow(),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: timestamp("create_at").notNull().defaultNow(),
 });
 
-export const deckLabelsStats = table('deck_label_stats', {
-  id: uuid('id').notNull().primaryKey().defaultRandom(),
+export const deckLabelsStats = table("deck_label_stats", {
+  id: uuid("id").notNull().primaryKey().defaultRandom(),
 
-  labelId: uuid('label_id')
+  labelId: uuid("label_id")
     .notNull()
-    .references(() => deckLabels.id, { onDelete: 'cascade' }),
+    .references(() => deckLabels.id, { onDelete: "cascade" }),
 
-  usageCount: integer('usage_count').notNull().default(0),
+  usageCount: integer("usage_count").notNull().default(0),
 
-  lastUsedAt: timestamp('last_used_at', { mode: 'date' }).notNull(),
+  lastUsedAt: timestamp("last_used_at", { mode: "date" }).notNull(),
 });
 
 // ORM Relations
@@ -68,5 +68,5 @@ export const deckLabelStatsRelations = relations(
       fields: [deckLabelsStats.labelId],
       references: [deckLabels.id],
     }),
-  }),
+  })
 );

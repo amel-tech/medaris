@@ -1,16 +1,17 @@
-import { LoggerService } from '@nestjs/common';
-import { LoggerConfig } from './logger.interface';
-import { PinoLogger } from './pino.logger';
-import { WinstonLogger } from './winston.logger';
+import type { LoggerService } from "@nestjs/common";
+import type { LoggerConfig } from "./logger.interface";
+import { PinoLogger } from "./pino.logger";
+import { WinstonLogger } from "./winston.logger";
 
 export enum LoggerType {
-  PINO = 'pino',
-  WINSTON = 'winston',
+  PINO = "pino",
+  WINSTON = "winston",
 }
 
 export class LoggerFactory {
   static create(type?: LoggerType, config?: LoggerConfig): LoggerService {
-    const loggerType = type || (process.env.LOGGER_TYPE as LoggerType) || LoggerType.PINO;
+    const loggerType =
+      type || (process.env.LOGGER_TYPE as LoggerType) || LoggerType.PINO;
     switch (loggerType) {
       case LoggerType.PINO:
         return new PinoLogger(config);

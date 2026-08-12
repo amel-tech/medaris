@@ -1,4 +1,4 @@
 export enum CourseStatus {
-  DRAFT = 'DRAFT',
-  PUBLISHED = 'PUBLISHED',
+  DRAFT = "DRAFT",
+  PUBLISHED = "PUBLISHED",
 }

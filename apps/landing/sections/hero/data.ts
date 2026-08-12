@@ -1,1 +1,1 @@
-export const heroCtaHref = '#stay-updated'
+export const heroCtaHref = "#stay-updated";

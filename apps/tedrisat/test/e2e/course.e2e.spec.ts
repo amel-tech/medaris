@@ -1,47 +1,54 @@
-import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { DatabaseService } from '../../src/database/database.service';
-import { kosks } from '../../src/database/schema/kosk.schema';
-import { courses } from '../../src/database/schema/course.schema';
-import { CourseStatus } from '../../src/course/domain/course-status.enum';
-import { createTestApp, TEST_USER_ID } from '../helpers/test-app.helper';
-import { TestDatabaseUtils } from '../helpers/test-database.helper';
+import type { INestApplication } from "@nestjs/common";
+import request from "supertest";
+import { CourseStatus } from "../../src/course/domain/course-status.enum";
+import { DatabaseService } from "../../src/database/database.service";
+import { courses } from "../../src/database/schema/course.schema";
+import { kosks } from "../../src/database/schema/kosk.schema";
+import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
+import { TestDatabaseUtils } from "../helpers/test-database.helper";
 
-const MISSING_UUID = '00000000-0000-0000-0000-000000000000';
+const MISSING_UUID = "00000000-0000-0000-0000-000000000000";
 
 const coursePayload = () => ({
-  title: 'Bina ve İzhar Şerhi',
-  subtitle: 'Klasik sarf metni',
-  category: 'Sarf',
-  level: 'INTERMEDIATE',
-  language: 'Türkçe / Arapça',
+  title: "Bina ve İzhar Şerhi",
+  subtitle: "Klasik sarf metni",
+  category: "Sarf",
+  level: "INTERMEDIATE",
+  language: "Türkçe / Arapça",
   coverHue: 145,
   durationWeeks: 10,
-  status: 'PUBLISHED',
+  status: "PUBLISHED",
   grantsCertificate: true,
-  muderris: [{ name: 'Müderris Ahmed Hilmi', title: 'Sarf Müderrisi', avatarHue: 145 }],
-  resources: [{ name: 'Bina ve İzhar', meta: 'PDF · 124 sayfa', type: 'pdf' }],
+  muderris: [
+    { name: "Müderris Ahmed Hilmi", title: "Sarf Müderrisi", avatarHue: 145 },
+  ],
+  resources: [{ name: "Bina ve İzhar", meta: "PDF · 124 sayfa", type: "pdf" }],
   weeks: [
     {
       weekNumber: 2,
-      title: 'İkinci Bab',
-      lessons: [{ title: 'Ölçme', type: 'QUIZ', duration: '10 soru' }],
+      title: "İkinci Bab",
+      lessons: [{ title: "Ölçme", type: "QUIZ", duration: "10 soru" }],
     },
     {
       weekNumber: 1,
-      title: 'Birinci Bab',
-      summary: 'Müfredat tanıtımı',
+      title: "Birinci Bab",
+      summary: "Müfredat tanıtımı",
       lessons: [
-        { title: 'Açılış', type: 'VIDEO', duration: '12 dk', isPreview: true },
-        { title: 'Şerh', type: 'VIDEO', duration: '28 dk', kaynak: 'Bina · s. 4-9' },
+        { title: "Açılış", type: "VIDEO", duration: "12 dk", isPreview: true },
+        {
+          title: "Şerh",
+          type: "VIDEO",
+          duration: "28 dk",
+          kaynak: "Bina · s. 4-9",
+        },
       ],
     },
   ],
 });
 
-const OTHER_USER_ID = '11111111-1111-1111-1111-111111111111';
+const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";
 
-describe('CourseController (e2e)', () => {
+describe("CourseController (e2e)", () => {
   let app: INestApplication;
   let databaseService: DatabaseService;
   let dbUtils: TestDatabaseUtils;
@@ -55,16 +62,16 @@ describe('CourseController (e2e)', () => {
 
   beforeEach(async () => {
     // Deleting köşks cascades to courses → weeks/lessons/müderris/resources/enrollments.
-    await dbUtils.cleanTables('kosks');
+    await dbUtils.cleanTables("kosks");
     const kosk = await request(app.getHttpServer())
-      .post('/kosks')
-      .send({ name: 'Süleymaniye Köşkü' })
+      .post("/kosks")
+      .send({ name: "Süleymaniye Köşkü" })
       .expect(201);
     koskId = kosk.body.id;
   });
 
   afterAll(async () => {
-    await dbUtils.cleanTables('kosks');
+    await dbUtils.cleanTables("kosks");
     await app.close();
   });
 
@@ -73,43 +80,46 @@ describe('CourseController (e2e)', () => {
       .post(`/kosks/${koskId}/courses`)
       .send(coursePayload());
 
-  describe('POST /kosks/:koskId/courses', () => {
-    it('creates a course with its nested weeks, lessons, müderris and resources', () => {
+  describe("POST /kosks/:koskId/courses", () => {
+    it("creates a course with its nested weeks, lessons, müderris and resources", () => {
       return createCourse()
         .expect(201)
         .expect((res) => {
-          expect(res.body).toHaveProperty('id');
-          expect(res.body).toHaveProperty('koskId', koskId);
-          expect(res.body).toHaveProperty('authorId', TEST_USER_ID);
+          expect(res.body).toHaveProperty("id");
+          expect(res.body).toHaveProperty("koskId", koskId);
+          expect(res.body).toHaveProperty("authorId", TEST_USER_ID);
           expect(res.body.muderris).toHaveLength(1);
           expect(res.body.resources).toHaveLength(1);
           expect(res.body.weeks).toHaveLength(2);
           // weeks come back ordered by weekNumber
-          expect(res.body.weeks[0]).toHaveProperty('weekNumber', 1);
-          expect(res.body.weeks[1]).toHaveProperty('weekNumber', 2);
+          expect(res.body.weeks[0]).toHaveProperty("weekNumber", 1);
+          expect(res.body.weeks[1]).toHaveProperty("weekNumber", 2);
           expect(res.body.weeks[0].lessons).toHaveLength(2);
-          expect(res.body.weeks[0].lessons[0]).toHaveProperty('isPreview', true);
-          expect(res.body).toHaveProperty('enrollment', null);
+          expect(res.body.weeks[0].lessons[0]).toHaveProperty(
+            "isPreview",
+            true
+          );
+          expect(res.body).toHaveProperty("enrollment", null);
         });
     });
 
-    it('returns 404 when the köşk does not exist', () => {
+    it("returns 404 when the köşk does not exist", () => {
       return request(app.getHttpServer())
         .post(`/kosks/${MISSING_UUID}/courses`)
         .send(coursePayload())
         .expect(404);
     });
 
-    it('rejects an invalid lesson type', () => {
+    it("rejects an invalid lesson type", () => {
       const payload = coursePayload();
-      payload.weeks[0].lessons[0].type = 'BOGUS';
+      payload.weeks[0].lessons[0].type = "BOGUS";
       return request(app.getHttpServer())
         .post(`/kosks/${koskId}/courses`)
         .send(payload)
         .expect(400);
     });
 
-    it('rejects a missing title', () => {
+    it("rejects a missing title", () => {
       const payload: Record<string, unknown> = coursePayload();
       delete payload.title;
       return request(app.getHttpServer())
@@ -119,8 +129,8 @@ describe('CourseController (e2e)', () => {
     });
   });
 
-  describe('GET /kosks/:koskId/courses', () => {
-    it('returns course summaries with aggregate counts', async () => {
+  describe("GET /kosks/:koskId/courses", () => {
+    it("returns course summaries with aggregate counts", async () => {
       await createCourse().expect(201);
       return request(app.getHttpServer())
         .get(`/kosks/${koskId}/courses`)
@@ -128,36 +138,39 @@ describe('CourseController (e2e)', () => {
         .expect((res) => {
           expect(res.body).toHaveLength(1);
           const c = res.body[0];
-          expect(c).toHaveProperty('weekCount', 2);
-          expect(c).toHaveProperty('lessonCount', 3);
-          expect(c).toHaveProperty('resourceCount', 1);
+          expect(c).toHaveProperty("weekCount", 2);
+          expect(c).toHaveProperty("lessonCount", 3);
+          expect(c).toHaveProperty("resourceCount", 1);
           expect(c.muderris).toHaveLength(1);
-          expect(c).toHaveProperty('enrollment', null);
+          expect(c).toHaveProperty("enrollment", null);
         });
     });
   });
 
-  describe('GET /courses/:id', () => {
-    it('returns 404 for a missing course', () => {
+  describe("GET /courses/:id", () => {
+    it("returns 404 for a missing course", () => {
       return request(app.getHttpServer())
         .get(`/courses/${MISSING_UUID}`)
         .expect(404);
     });
 
-    it('returns the full detail with ordered lessons', async () => {
+    it("returns the full detail with ordered lessons", async () => {
       const created = await createCourse().expect(201);
       return request(app.getHttpServer())
         .get(`/courses/${created.body.id}`)
         .expect(200)
         .expect((res) => {
-          expect(res.body.weeks[0].lessons[0]).toHaveProperty('title', 'Açılış');
-          expect(res.body.weeks[0].lessons[1]).toHaveProperty('title', 'Şerh');
+          expect(res.body.weeks[0].lessons[0]).toHaveProperty(
+            "title",
+            "Açılış"
+          );
+          expect(res.body.weeks[0].lessons[1]).toHaveProperty("title", "Şerh");
         });
     });
   });
 
-  describe('enrollment + progress', () => {
-    it('enrolls the talebe and tracks progress, completing at 100%', async () => {
+  describe("enrollment + progress", () => {
+    it("enrolls the talebe and tracks progress, completing at 100%", async () => {
       const created = await createCourse().expect(201);
       const id = created.body.id;
 
@@ -165,9 +178,9 @@ describe('CourseController (e2e)', () => {
         .post(`/courses/${id}/enroll`)
         .expect(201)
         .expect((res) => {
-          expect(res.body).toHaveProperty('userId', TEST_USER_ID);
-          expect(res.body).toHaveProperty('progress', 0);
-          expect(res.body).toHaveProperty('status', 'ENROLLED');
+          expect(res.body).toHaveProperty("userId", TEST_USER_ID);
+          expect(res.body).toHaveProperty("progress", 0);
+          expect(res.body).toHaveProperty("status", "ENROLLED");
         });
 
       await request(app.getHttpServer())
@@ -175,8 +188,8 @@ describe('CourseController (e2e)', () => {
         .send({ progress: 35 })
         .expect(200)
         .expect((res) => {
-          expect(res.body).toHaveProperty('progress', 35);
-          expect(res.body).toHaveProperty('status', 'ENROLLED');
+          expect(res.body).toHaveProperty("progress", 35);
+          expect(res.body).toHaveProperty("status", "ENROLLED");
         });
 
       await request(app.getHttpServer())
@@ -184,7 +197,7 @@ describe('CourseController (e2e)', () => {
         .send({ progress: 100 })
         .expect(200)
         .expect((res) => {
-          expect(res.body).toHaveProperty('status', 'COMPLETED');
+          expect(res.body).toHaveProperty("status", "COMPLETED");
         });
 
       // detail reflects the current user's enrollment
@@ -192,12 +205,12 @@ describe('CourseController (e2e)', () => {
         .get(`/courses/${id}`)
         .expect(200)
         .expect((res) => {
-          expect(res.body.enrollment).toHaveProperty('progress', 100);
-          expect(res.body.enrollment).toHaveProperty('status', 'COMPLETED');
+          expect(res.body.enrollment).toHaveProperty("progress", 100);
+          expect(res.body.enrollment).toHaveProperty("status", "COMPLETED");
         });
     });
 
-    it('rejects out-of-range progress', async () => {
+    it("rejects out-of-range progress", async () => {
       const created = await createCourse().expect(201);
       return request(app.getHttpServer())
         .put(`/courses/${created.body.id}/progress`)
@@ -206,8 +219,8 @@ describe('CourseController (e2e)', () => {
     });
   });
 
-  describe('GET /courses/enrolled', () => {
-    it('returns the talebe enrolled courses with köşk name and progress', async () => {
+  describe("GET /courses/enrolled", () => {
+    it("returns the talebe enrolled courses with köşk name and progress", async () => {
       const created = await createCourse().expect(201);
       const id = created.body.id;
 
@@ -221,25 +234,25 @@ describe('CourseController (e2e)', () => {
         .expect(200);
 
       return request(app.getHttpServer())
-        .get('/courses/enrolled')
+        .get("/courses/enrolled")
         .expect(200)
         .expect((res) => {
           expect(res.body).toHaveLength(1);
           const c = res.body[0];
-          expect(c).toHaveProperty('id', id);
-          expect(c).toHaveProperty('koskName', 'Süleymaniye Köşkü');
-          expect(c).toHaveProperty('weekCount', 2);
-          expect(c).toHaveProperty('lessonCount', 3);
+          expect(c).toHaveProperty("id", id);
+          expect(c).toHaveProperty("koskName", "Süleymaniye Köşkü");
+          expect(c).toHaveProperty("weekCount", 2);
+          expect(c).toHaveProperty("lessonCount", 3);
           expect(c.muderris).toHaveLength(1);
-          expect(c.enrollment).toHaveProperty('progress', 35);
-          expect(c.enrollment).toHaveProperty('status', 'ENROLLED');
+          expect(c.enrollment).toHaveProperty("progress", 35);
+          expect(c.enrollment).toHaveProperty("status", "ENROLLED");
         });
     });
 
-    it('returns an empty list when the talebe is not enrolled in anything', async () => {
+    it("returns an empty list when the talebe is not enrolled in anything", async () => {
       await createCourse().expect(201);
       return request(app.getHttpServer())
-        .get('/courses/enrolled')
+        .get("/courses/enrolled")
         .expect(200)
         .expect((res) => {
           expect(res.body).toEqual([]);
@@ -247,61 +260,61 @@ describe('CourseController (e2e)', () => {
     });
   });
 
-  describe('PATCH/DELETE /courses/:id', () => {
-    it('updates course-level fields', async () => {
+  describe("PATCH/DELETE /courses/:id", () => {
+    it("updates course-level fields", async () => {
       const created = await createCourse().expect(201);
       return request(app.getHttpServer())
         .patch(`/courses/${created.body.id}`)
-        .send({ title: 'Yeni Başlık', status: 'DRAFT' })
+        .send({ title: "Yeni Başlık", status: "DRAFT" })
         .expect(200)
         .expect((res) => {
-          expect(res.body).toHaveProperty('title', 'Yeni Başlık');
-          expect(res.body).toHaveProperty('status', 'DRAFT');
+          expect(res.body).toHaveProperty("title", "Yeni Başlık");
+          expect(res.body).toHaveProperty("status", "DRAFT");
           // nested data is preserved
           expect(res.body.weeks).toHaveLength(2);
         });
     });
 
-    it('replaces a course including its curriculum', async () => {
-      const created = await createCourse().expect(201)
-      const id = created.body.id
+    it("replaces a course including its curriculum", async () => {
+      const created = await createCourse().expect(201);
+      const id = created.body.id;
 
-      const payload = coursePayload()
-      payload.title = 'Güncellenmiş Kurs'
-      payload.status = 'PUBLISHED'
-      payload.muderris = []
-      payload.resources = []
+      const payload = coursePayload();
+      payload.title = "Güncellenmiş Kurs";
+      payload.status = "PUBLISHED";
+      payload.muderris = [];
+      payload.resources = [];
       payload.weeks = [
         {
           weekNumber: 1,
-          title: 'Tek Hafta',
-          lessons: [{ title: 'Yeni Ders', type: 'VIDEO', duration: '20 dk' }],
+          title: "Tek Hafta",
+          lessons: [{ title: "Yeni Ders", type: "VIDEO", duration: "20 dk" }],
         },
-      ]
+      ];
 
       return request(app.getHttpServer())
         .put(`/courses/${id}`)
         .send(payload)
         .expect(200)
         .expect((res) => {
-          expect(res.body).toHaveProperty('title', 'Güncellenmiş Kurs')
-          expect(res.body).toHaveProperty('status', 'PUBLISHED')
+          expect(res.body).toHaveProperty("title", "Güncellenmiş Kurs");
+          expect(res.body).toHaveProperty("status", "PUBLISHED");
           // curriculum fully replaced (was 2 weeks / 1 müderris / 1 resource)
-          expect(res.body.weeks).toHaveLength(1)
-          expect(res.body.weeks[0].lessons).toHaveLength(1)
-          expect(res.body.muderris).toHaveLength(0)
-          expect(res.body.resources).toHaveLength(0)
-        })
-    })
+          expect(res.body.weeks).toHaveLength(1);
+          expect(res.body.weeks[0].lessons).toHaveLength(1);
+          expect(res.body.muderris).toHaveLength(0);
+          expect(res.body.resources).toHaveLength(0);
+        });
+    });
 
-    it('preserves ids of retained weeks and lessons on replace', async () => {
-      const created = await createCourse().expect(201)
-      const id = created.body.id
+    it("preserves ids of retained weeks and lessons on replace", async () => {
+      const created = await createCourse().expect(201);
+      const id = created.body.id;
       const detail = (
         await request(app.getHttpServer()).get(`/courses/${id}`).expect(200)
-      ).body
-      const week1 = detail.weeks[0]
-      const lesson1 = week1.lessons[0]
+      ).body;
+      const week1 = detail.weeks[0];
+      const lesson1 = week1.lessons[0];
 
       const payload = {
         title: detail.title,
@@ -309,65 +322,69 @@ describe('CourseController (e2e)', () => {
           {
             id: week1.id,
             weekNumber: 1,
-            title: 'Birinci Bab (düzenlendi)',
+            title: "Birinci Bab (düzenlendi)",
             lessons: [
-              { id: lesson1.id, title: 'Açılış (düzenlendi)', type: lesson1.type },
-              { title: 'Yeni eklenen ders', type: 'VIDEO' },
+              {
+                id: lesson1.id,
+                title: "Açılış (düzenlendi)",
+                type: lesson1.type,
+              },
+              { title: "Yeni eklenen ders", type: "VIDEO" },
             ],
           },
         ],
-        muderris: detail.muderris.map((m: { id: string, name: string }) => ({
+        muderris: detail.muderris.map((m: { id: string; name: string }) => ({
           id: m.id,
           name: m.name,
         })),
-        resources: detail.resources.map((r: { id: string, name: string }) => ({
+        resources: detail.resources.map((r: { id: string; name: string }) => ({
           id: r.id,
           name: r.name,
         })),
-      }
+      };
 
       const updated = (
         await request(app.getHttpServer())
           .put(`/courses/${id}`)
           .send(payload)
           .expect(200)
-      ).body
+      ).body;
 
-      expect(updated.weeks).toHaveLength(1)
-      expect(updated.weeks[0].id).toBe(week1.id) // week id preserved
-      expect(updated.weeks[0].title).toBe('Birinci Bab (düzenlendi)')
-      expect(updated.weeks[0].lessons).toHaveLength(2) // kept + new
-      expect(updated.weeks[0].lessons[0].id).toBe(lesson1.id) // lesson id preserved
-      expect(updated.weeks[0].lessons[0].title).toBe('Açılış (düzenlendi)')
-      expect(updated.muderris[0].id).toBe(detail.muderris[0].id) // müderris id preserved
-    })
+      expect(updated.weeks).toHaveLength(1);
+      expect(updated.weeks[0].id).toBe(week1.id); // week id preserved
+      expect(updated.weeks[0].title).toBe("Birinci Bab (düzenlendi)");
+      expect(updated.weeks[0].lessons).toHaveLength(2); // kept + new
+      expect(updated.weeks[0].lessons[0].id).toBe(lesson1.id); // lesson id preserved
+      expect(updated.weeks[0].lessons[0].title).toBe("Açılış (düzenlendi)");
+      expect(updated.muderris[0].id).toBe(detail.muderris[0].id); // müderris id preserved
+    });
 
-    it('returns 404 when replacing a missing course', () => {
+    it("returns 404 when replacing a missing course", () => {
       return request(app.getHttpServer())
         .put(`/courses/${MISSING_UUID}`)
         .send(coursePayload())
-        .expect(404)
-    })
+        .expect(404);
+    });
 
-    it('round-trips live-session fields through create, read and replace', async () => {
-      const scheduledAt = '2026-08-10T18:00:00.000Z';
+    it("round-trips live-session fields through create, read and replace", async () => {
+      const scheduledAt = "2026-08-10T18:00:00.000Z";
       const agenda = [
-        { time: '21:00', title: 'Açılış ve geçen haftanın özeti' },
-        { time: '21:15', title: 'Metin müzakeresi' },
+        { time: "21:00", title: "Açılış ve geçen haftanın özeti" },
+        { time: "21:15", title: "Metin müzakeresi" },
       ];
       const payload = {
         ...coursePayload(),
         weeks: [
           {
             weekNumber: 1,
-            title: 'Birinci Bab',
+            title: "Birinci Bab",
             lessons: [
               {
-                title: 'Açılış halkası',
-                type: 'LIVE',
-                duration: '60 dk',
+                title: "Açılış halkası",
+                type: "LIVE",
+                duration: "60 dk",
                 scheduledAt,
-                meetingUrl: 'https://meet.google.com/bqx-mfzn-rde',
+                meetingUrl: "https://meet.google.com/bqx-mfzn-rde",
                 agenda,
               },
             ],
@@ -383,11 +400,11 @@ describe('CourseController (e2e)', () => {
       ).body;
       const lesson = created.weeks[0].lessons[0];
       expect(new Date(lesson.scheduledAt).toISOString()).toBe(scheduledAt);
-      expect(lesson.meetingUrl).toBe('https://meet.google.com/bqx-mfzn-rde');
+      expect(lesson.meetingUrl).toBe("https://meet.google.com/bqx-mfzn-rde");
       expect(lesson.agenda).toEqual(agenda);
 
       // Replace keeps the lesson row (same id) and updates the live fields.
-      const newScheduledAt = '2026-08-17T18:00:00.000Z';
+      const newScheduledAt = "2026-08-17T18:00:00.000Z";
       const replaced = (
         await request(app.getHttpServer())
           .put(`/courses/${created.id}`)
@@ -397,15 +414,15 @@ describe('CourseController (e2e)', () => {
               {
                 id: created.weeks[0].id,
                 weekNumber: 1,
-                title: 'Birinci Bab',
+                title: "Birinci Bab",
                 lessons: [
                   {
                     id: lesson.id,
                     title: lesson.title,
-                    type: 'LIVE',
+                    type: "LIVE",
                     scheduledAt: newScheduledAt,
-                    meetingUrl: 'https://zoom.us/j/8842031567',
-                    agenda: [{ time: '21:00', title: 'Tek adım' }],
+                    meetingUrl: "https://zoom.us/j/8842031567",
+                    agenda: [{ time: "21:00", title: "Tek adım" }],
                   },
                 ],
               },
@@ -415,20 +432,24 @@ describe('CourseController (e2e)', () => {
       ).body;
       const updatedLesson = replaced.weeks[0].lessons[0];
       expect(updatedLesson.id).toBe(lesson.id);
-      expect(new Date(updatedLesson.scheduledAt).toISOString()).toBe(newScheduledAt);
-      expect(updatedLesson.meetingUrl).toBe('https://zoom.us/j/8842031567');
-      expect(updatedLesson.agenda).toEqual([{ time: '21:00', title: 'Tek adım' }]);
+      expect(new Date(updatedLesson.scheduledAt).toISOString()).toBe(
+        newScheduledAt
+      );
+      expect(updatedLesson.meetingUrl).toBe("https://zoom.us/j/8842031567");
+      expect(updatedLesson.agenda).toEqual([
+        { time: "21:00", title: "Tek adım" },
+      ]);
     });
 
-    it('rejects a malformed meeting URL', () => {
+    it("rejects a malformed meeting URL", () => {
       const payload = {
         ...coursePayload(),
         weeks: [
           {
             weekNumber: 1,
-            title: 'Birinci Bab',
+            title: "Birinci Bab",
             lessons: [
-              { title: 'Canlı ders', type: 'LIVE', meetingUrl: 'not-a-url' },
+              { title: "Canlı ders", type: "LIVE", meetingUrl: "not-a-url" },
             ],
           },
         ],
@@ -439,7 +460,7 @@ describe('CourseController (e2e)', () => {
         .expect(400);
     });
 
-    it('deletes a course', async () => {
+    it("deletes a course", async () => {
       const created = await createCourse().expect(201);
       await request(app.getHttpServer())
         .delete(`/courses/${created.body.id}`)
@@ -451,28 +472,31 @@ describe('CourseController (e2e)', () => {
     });
   });
 
-  describe('enrollment approval', () => {
-    const approvalCourse = () => ({ ...coursePayload(), requiresApproval: true });
+  describe("enrollment approval", () => {
+    const approvalCourse = () => ({
+      ...coursePayload(),
+      requiresApproval: true,
+    });
 
-    it('holds the enrollment as PENDING and supports the approve flow', async () => {
+    it("holds the enrollment as PENDING and supports the approve flow", async () => {
       const created = await request(app.getHttpServer())
         .post(`/kosks/${koskId}/courses`)
         .send(approvalCourse())
         .expect(201);
-      expect(created.body).toHaveProperty('requiresApproval', true);
+      expect(created.body).toHaveProperty("requiresApproval", true);
       const id = created.body.id;
 
       await request(app.getHttpServer())
         .post(`/courses/${id}/enroll`)
         .expect(201)
         .expect((res) => {
-          expect(res.body).toHaveProperty('status', 'PENDING');
-          expect(res.body).toHaveProperty('studentName', 'test');
+          expect(res.body).toHaveProperty("status", "PENDING");
+          expect(res.body).toHaveProperty("studentName", "test");
         });
 
       // pending enrollments are hidden from the student's enrolled list
       await request(app.getHttpServer())
-        .get('/courses/enrolled')
+        .get("/courses/enrolled")
         .expect(200)
         .expect((res) => expect(res.body).toEqual([]));
 
@@ -482,18 +506,18 @@ describe('CourseController (e2e)', () => {
         .expect(200)
         .expect((res) => {
           expect(res.body).toHaveLength(1);
-          expect(res.body[0]).toHaveProperty('userId', TEST_USER_ID);
-          expect(res.body[0]).toHaveProperty('courseTitle', created.body.title);
-          expect(res.body[0]).toHaveProperty('status', 'PENDING');
+          expect(res.body[0]).toHaveProperty("userId", TEST_USER_ID);
+          expect(res.body[0]).toHaveProperty("courseTitle", created.body.title);
+          expect(res.body[0]).toHaveProperty("status", "PENDING");
         });
 
       await request(app.getHttpServer())
         .post(`/courses/${id}/enrollments/${TEST_USER_ID}/approve`)
         .expect(201)
-        .expect((res) => expect(res.body).toHaveProperty('status', 'ENROLLED'));
+        .expect((res) => expect(res.body).toHaveProperty("status", "ENROLLED"));
 
       await request(app.getHttpServer())
-        .get('/courses/enrolled')
+        .get("/courses/enrolled")
         .expect(200)
         .expect((res) => expect(res.body).toHaveLength(1));
 
@@ -503,7 +527,7 @@ describe('CourseController (e2e)', () => {
         .expect((res) => expect(res.body).toEqual([]));
     });
 
-    it('rejects a pending enrollment by deleting it', async () => {
+    it("rejects a pending enrollment by deleting it", async () => {
       const created = await request(app.getHttpServer())
         .post(`/kosks/${koskId}/courses`)
         .send(approvalCourse())
@@ -517,7 +541,7 @@ describe('CourseController (e2e)', () => {
       await request(app.getHttpServer())
         .delete(`/courses/${id}/enrollments/${TEST_USER_ID}`)
         .expect(200)
-        .expect((res) => expect(res.text).toBe('true'));
+        .expect((res) => expect(res.text).toBe("true"));
 
       await request(app.getHttpServer())
         .get(`/kosks/${koskId}/enrollments/pending`)
@@ -525,15 +549,15 @@ describe('CourseController (e2e)', () => {
         .expect((res) => expect(res.body).toEqual([]));
     });
 
-    it('enrolls directly when approval is not required', async () => {
+    it("enrolls directly when approval is not required", async () => {
       const created = await createCourse().expect(201);
       return request(app.getHttpServer())
         .post(`/courses/${created.body.id}/enroll`)
         .expect(201)
-        .expect((res) => expect(res.body).toHaveProperty('status', 'ENROLLED'));
+        .expect((res) => expect(res.body).toHaveProperty("status", "ENROLLED"));
     });
 
-    it('does not let a pending talebe self-promote via progress', async () => {
+    it("does not let a pending talebe self-promote via progress", async () => {
       const created = await request(app.getHttpServer())
         .post(`/kosks/${koskId}/courses`)
         .send(approvalCourse())
@@ -543,7 +567,7 @@ describe('CourseController (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/courses/${id}/enroll`)
         .expect(201)
-        .expect((res) => expect(res.body).toHaveProperty('status', 'PENDING'));
+        .expect((res) => expect(res.body).toHaveProperty("status", "PENDING"));
 
       // recording progress on a pending enrollment must be refused
       await request(app.getHttpServer())
@@ -557,11 +581,11 @@ describe('CourseController (e2e)', () => {
         .expect(200)
         .expect((res) => {
           expect(res.body).toHaveLength(1);
-          expect(res.body[0]).toHaveProperty('status', 'PENDING');
+          expect(res.body[0]).toHaveProperty("status", "PENDING");
         });
     });
 
-    it('refuses progress when the talebe is not enrolled', async () => {
+    it("refuses progress when the talebe is not enrolled", async () => {
       const created = await createCourse().expect(201);
       return request(app.getHttpServer())
         .put(`/courses/${created.body.id}/progress`)
@@ -569,14 +593,16 @@ describe('CourseController (e2e)', () => {
         .expect(404);
     });
 
-    it('does not reject an already-approved (active) enrollment', async () => {
+    it("does not reject an already-approved (active) enrollment", async () => {
       const created = await request(app.getHttpServer())
         .post(`/kosks/${koskId}/courses`)
         .send(approvalCourse())
         .expect(201);
       const id = created.body.id;
 
-      await request(app.getHttpServer()).post(`/courses/${id}/enroll`).expect(201);
+      await request(app.getHttpServer())
+        .post(`/courses/${id}/enroll`)
+        .expect(201);
       await request(app.getHttpServer())
         .post(`/courses/${id}/enrollments/${TEST_USER_ID}/approve`)
         .expect(201);
@@ -588,18 +614,18 @@ describe('CourseController (e2e)', () => {
 
       // the active enrollment is untouched
       await request(app.getHttpServer())
-        .get('/courses/enrolled')
+        .get("/courses/enrolled")
         .expect(200)
         .expect((res) => {
           expect(res.body).toHaveLength(1);
-          expect(res.body[0]).toHaveProperty('id', id);
+          expect(res.body[0]).toHaveProperty("id", id);
         });
     });
 
-    it('forbids listing pending enrollments for a köşk owned by someone else', async () => {
+    it("forbids listing pending enrollments for a köşk owned by someone else", async () => {
       const [otherKosk] = await databaseService.db
         .insert(kosks)
-        .values({ ownerId: OTHER_USER_ID, name: 'Başka Köşk' })
+        .values({ ownerId: OTHER_USER_ID, name: "Başka Köşk" })
         .returning();
       return request(app.getHttpServer())
         .get(`/kosks/${otherKosk.id}/enrollments/pending`)
@@ -607,19 +633,19 @@ describe('CourseController (e2e)', () => {
     });
   });
 
-  describe('ownership', () => {
-    it('forbids course mutations on a köşk owned by someone else', async () => {
+  describe("ownership", () => {
+    it("forbids course mutations on a köşk owned by someone else", async () => {
       // köşk + course owned by a different user, inserted directly
       const [otherKosk] = await databaseService.db
         .insert(kosks)
-        .values({ ownerId: OTHER_USER_ID, name: 'Başka Köşk' })
+        .values({ ownerId: OTHER_USER_ID, name: "Başka Köşk" })
         .returning();
       const [otherCourse] = await databaseService.db
         .insert(courses)
         .values({
           koskId: otherKosk.id,
           authorId: OTHER_USER_ID,
-          title: 'Başka Kurs',
+          title: "Başka Kurs",
         })
         .returning();
 
@@ -631,7 +657,7 @@ describe('CourseController (e2e)', () => {
 
       await request(app.getHttpServer())
         .patch(`/courses/${otherCourse.id}`)
-        .send({ title: 'Ele geçirildi' })
+        .send({ title: "Ele geçirildi" })
         .expect(403);
 
       await request(app.getHttpServer())
@@ -644,17 +670,17 @@ describe('CourseController (e2e)', () => {
         .expect(403);
     });
 
-    it('hides DRAFT courses from non-owners', async () => {
+    it("hides DRAFT courses from non-owners", async () => {
       const [otherKosk] = await databaseService.db
         .insert(kosks)
-        .values({ ownerId: OTHER_USER_ID, name: 'Başka Köşk' })
+        .values({ ownerId: OTHER_USER_ID, name: "Başka Köşk" })
         .returning();
       const [draft] = await databaseService.db
         .insert(courses)
         .values({
           koskId: otherKosk.id,
           authorId: OTHER_USER_ID,
-          title: 'Taslak Kurs',
+          title: "Taslak Kurs",
           status: CourseStatus.DRAFT,
         })
         .returning();
@@ -663,7 +689,7 @@ describe('CourseController (e2e)', () => {
         .values({
           koskId: otherKosk.id,
           authorId: OTHER_USER_ID,
-          title: 'Yayınlanmış Kurs',
+          title: "Yayınlanmış Kurs",
           status: CourseStatus.PUBLISHED,
         })
         .returning();
@@ -684,7 +710,7 @@ describe('CourseController (e2e)', () => {
         .expect(200)
         .expect((res) => {
           expect(res.body).toHaveLength(1);
-          expect(res.body[0]).toHaveProperty('id', published.id);
+          expect(res.body[0]).toHaveProperty("id", published.id);
         });
     });
   });

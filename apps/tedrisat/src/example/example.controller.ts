@@ -1,42 +1,42 @@
+import { MedarisResponse } from "@medaris/common";
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Param,
+  Controller,
   Delete,
-  ParseIntPipe,
+  Get,
   HttpCode,
   HttpStatus,
-} from '@nestjs/common';
+  Param,
+  ParseIntPipe,
+  Post,
+} from "@nestjs/common";
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
   ApiNotFoundResponse,
-} from '@nestjs/swagger';
-import { MedarisResponse } from '@medaris/common';
-import { CreateExampleDto } from './dto/create-example.dto';
-import { ExampleResponseDto } from './dto/example-response.dto';
-import { ExampleService } from './example.service';
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from "@nestjs/swagger";
+import type { CreateExampleDto } from "./dto/create-example.dto";
+import type { ExampleResponseDto } from "./dto/example-response.dto";
+import type { ExampleService } from "./example.service";
 
-@ApiTags('Examples')
-@Controller('examples')
+@ApiTags("Examples")
+@Controller("examples")
 export class ExampleController {
   constructor(private readonly exampleService: ExampleService) {}
 
   @Get()
   @ApiOperation({
-    summary: 'Get all examples',
+    summary: "Get all examples",
     description:
-      'Retrieves a complete list of all available examples in the system',
-    operationId: 'getAllExamples',
+      "Retrieves a complete list of all available examples in the system",
+    operationId: "getAllExamples",
   })
-  @ApiResponse({ status: 200, description: 'List of examples' })
+  @ApiResponse({ status: 200, description: "List of examples" })
   @ApiResponse({
     status: 200,
-    description: 'List of examples',
+    description: "List of examples",
     type: MedarisResponse<ExampleResponseDto[]>,
   })
   async getAllExamples(): Promise<MedarisResponse<ExampleResponseDto[]>> {
@@ -44,21 +44,21 @@ export class ExampleController {
     return MedarisResponse.success(examples);
   }
 
-  @Get(':id')
+  @Get(":id")
   @ApiOperation({
-    summary: 'Get example by ID',
-    description: 'Retrieves a specific example by its unique identifier',
-    operationId: 'getExampleById',
+    summary: "Get example by ID",
+    description: "Retrieves a specific example by its unique identifier",
+    operationId: "getExampleById",
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Example ID' })
+  @ApiParam({ name: "id", type: Number, description: "Example ID" })
   @ApiResponse({
     status: 200,
-    description: 'Example found',
+    description: "Example found",
     type: MedarisResponse<ExampleResponseDto>,
   })
-  @ApiNotFoundResponse({ description: 'Example not found' })
+  @ApiNotFoundResponse({ description: "Example not found" })
   async getExampleById(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number
   ): Promise<MedarisResponse<ExampleResponseDto>> {
     const example = await this.exampleService.getExampleById(id);
     return MedarisResponse.success(example);
@@ -67,38 +67,38 @@ export class ExampleController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: 'Create a new example',
+    summary: "Create a new example",
     description:
-      'Creates a new example with the provided data and returns the created example',
-    operationId: 'createExample',
+      "Creates a new example with the provided data and returns the created example",
+    operationId: "createExample",
   })
   @ApiResponse({
     status: 201,
-    description: 'Example created successfully',
+    description: "Example created successfully",
     type: MedarisResponse<ExampleResponseDto>,
   })
   async createExample(
-    @Body() createExampleDto: CreateExampleDto,
+    @Body() createExampleDto: CreateExampleDto
   ): Promise<MedarisResponse<ExampleResponseDto>> {
     const example = await this.exampleService.createExample(createExampleDto);
     return MedarisResponse.success(example);
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @ApiOperation({
-    summary: 'Delete example by ID',
+    summary: "Delete example by ID",
     description:
-      'Permanently deletes an example by its ID. This action cannot be undone.',
-    operationId: 'deleteExample',
+      "Permanently deletes an example by its ID. This action cannot be undone.",
+    operationId: "deleteExample",
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Example ID' })
+  @ApiParam({ name: "id", type: Number, description: "Example ID" })
   @ApiResponse({
     status: 200,
-    description: 'Example deleted successfully',
+    description: "Example deleted successfully",
     type: MedarisResponse<boolean>,
   })
   async deleteExample(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number
   ): Promise<MedarisResponse<boolean>> {
     const result = await this.exampleService.deleteExample(id);
     return MedarisResponse.success(result);

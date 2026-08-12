@@ -1,11 +1,11 @@
-import { ErrorContext, ForbiddenError } from '@medaris/common';
+import { type ErrorContext, ForbiddenError } from "@medaris/common";
 
 export class KoskForbiddenError extends ForbiddenError {
-  static readonly code = 'KOSK_FORBIDDEN';
+  static readonly code = "KOSK_FORBIDDEN";
 
   constructor(
-    message = 'You are not the owner of this köşk',
-    context?: ErrorContext,
+    message = "You are not the owner of this köşk",
+    context?: ErrorContext
   ) {
     super(KoskForbiddenError.code, message, context);
   }

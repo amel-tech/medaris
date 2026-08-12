@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import { SessionProvider } from 'next-auth/react'
-import { Toaster } from '@medaris/ui/components/sonner'
+import { Toaster } from "@medaris/ui/components/sonner";
+import { SessionProvider } from "next-auth/react";
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
@@ -9,5 +9,5 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
       {children}
       <Toaster />
     </SessionProvider>
-  )
+  );
 }

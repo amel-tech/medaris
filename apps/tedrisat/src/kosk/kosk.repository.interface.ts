@@ -67,7 +67,7 @@ export interface IKoskRepository {
   findAll(
     userId: string,
     limit: number,
-    offset: number,
+    offset: number
   ): Promise<IKoskWithStats[]>;
   count(): Promise<number>;
   findById(id: string, userId: string): Promise<IKoskWithStats | null>;

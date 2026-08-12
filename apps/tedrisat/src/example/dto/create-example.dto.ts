@@ -1,10 +1,10 @@
-import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
+import { IsNotEmpty, IsString, MaxLength } from "class-validator";
 
 export class CreateExampleDto {
   @ApiProperty({
-    description: 'Example name',
-    example: 'Sample Example',
+    description: "Example name",
+    example: "Sample Example",
     maxLength: 255,
   })
   @IsString()

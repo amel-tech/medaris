@@ -1,25 +1,27 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AppController } from '../../src/app.controller';
-import { AppService } from '../../src/app.service';
-import { AuthGuardModule, LoggerModule } from '@medaris/common';
-import { ConfigModule } from '@nestjs/config';
+import { AuthGuardModule, LoggerModule } from "@medaris/common";
+import { ConfigModule } from "@nestjs/config";
+import { Test, type TestingModule } from "@nestjs/testing";
+import { AppController } from "../../src/app.controller";
+import { AppService } from "../../src/app.service";
 
-describe('AppController', () => {
+describe("AppController", () => {
   let appController: AppController;
 
   beforeEach(async () => {
     const app: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
-          load: [() => ({
-            keycloak: {
-              jwksUrl: 'test-url'
-            },
-          })],
+          load: [
+            () => ({
+              keycloak: {
+                jwksUrl: "test-url",
+              },
+            }),
+          ],
           isGlobal: true,
         }),
         LoggerModule.forRoot(),
-        AuthGuardModule
+        AuthGuardModule,
       ],
       controllers: [AppController],
       providers: [AppService],
@@ -28,10 +30,10 @@ describe('AppController', () => {
     appController = app.get<AppController>(AppController);
   });
 
-  describe('root', () => {
+  describe("root", () => {
     it('should return "Hello World!"', () => {
       expect(appController.getHello()).toBe(
-        'Tedrisat Hizmetinden Selamun Aleyküm!',
+        "Tedrisat Hizmetinden Selamun Aleyküm!"
       );
     });
   });

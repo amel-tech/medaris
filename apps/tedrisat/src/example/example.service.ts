@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
-import { IExample } from './example.interface';
-import { ExampleRepository } from './example.repository';
-import { CreateExampleDto } from './dto/create-example.dto';
-import { ExampleNotFoundError } from './errors/example-not-found.error';
+import { Injectable } from "@nestjs/common";
+import type { CreateExampleDto } from "./dto/create-example.dto";
+import { ExampleNotFoundError } from "./errors/example-not-found.error";
+import type { IExample } from "./example.interface";
+import type { ExampleRepository } from "./example.repository";
 
 @Injectable()
 export class ExampleService {

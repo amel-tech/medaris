@@ -1,12 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ExampleRepository } from '../../../src/example/example.repository';
-import { DatabaseService } from '../../../src/database/database.service';
-import {
-  IExample,
+import { Test, type TestingModule } from "@nestjs/testing";
+import { DatabaseService } from "../../../src/database/database.service";
+import type {
   ICreateExample,
-} from '../../../src/example/example.interface';
+  IExample,
+} from "../../../src/example/example.interface";
+import { ExampleRepository } from "../../../src/example/example.repository";
 
-describe('ExampleRepository', () => {
+describe("ExampleRepository", () => {
   let repository: ExampleRepository;
 
   const mockRepository = {
@@ -33,21 +33,21 @@ describe('ExampleRepository', () => {
     jest.clearAllMocks();
   });
 
-  describe('findAll', () => {
-    it('should return all examples', async () => {
+  describe("findAll", () => {
+    it("should return all examples", async () => {
       // Arrange
       const mockExamples: IExample[] = [
         {
           id: 1,
-          name: 'Example 1',
-          createdAt: new Date('2024-01-01'),
-          updatedAt: new Date('2024-01-01'),
+          name: "Example 1",
+          createdAt: new Date("2024-01-01"),
+          updatedAt: new Date("2024-01-01"),
         },
         {
           id: 2,
-          name: 'Example 2',
-          createdAt: new Date('2024-01-02'),
-          updatedAt: new Date('2024-01-02'),
+          name: "Example 2",
+          createdAt: new Date("2024-01-02"),
+          updatedAt: new Date("2024-01-02"),
         },
       ];
 
@@ -61,7 +61,7 @@ describe('ExampleRepository', () => {
       expect(result).toEqual(mockExamples);
     });
 
-    it('should return empty array when no examples exist', async () => {
+    it("should return empty array when no examples exist", async () => {
       // Arrange
       mockRepository.findAll.mockResolvedValue([]);
 
@@ -73,9 +73,9 @@ describe('ExampleRepository', () => {
       expect(result).toEqual([]);
     });
 
-    it('should handle database errors', async () => {
+    it("should handle database errors", async () => {
       // Arrange
-      const error = new Error('Database connection failed');
+      const error = new Error("Database connection failed");
       mockRepository.findAll.mockRejectedValue(error);
 
       // Act & Assert
@@ -83,14 +83,14 @@ describe('ExampleRepository', () => {
     });
   });
 
-  describe('findById', () => {
-    it('should return an example when found', async () => {
+  describe("findById", () => {
+    it("should return an example when found", async () => {
       // Arrange
       const mockExample: IExample = {
         id: 1,
-        name: 'Example 1',
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
+        name: "Example 1",
+        createdAt: new Date("2024-01-01"),
+        updatedAt: new Date("2024-01-01"),
       };
       const exampleId = 1;
 
@@ -104,7 +104,7 @@ describe('ExampleRepository', () => {
       expect(result).toEqual(mockExample);
     });
 
-    it('should return null when example is not found', async () => {
+    it("should return null when example is not found", async () => {
       // Arrange
       const exampleId = 999;
       mockRepository.findById.mockResolvedValue(null);
@@ -117,10 +117,10 @@ describe('ExampleRepository', () => {
       expect(result).toBeNull();
     });
 
-    it('should handle database errors', async () => {
+    it("should handle database errors", async () => {
       // Arrange
       const exampleId = 1;
-      const error = new Error('Database connection failed');
+      const error = new Error("Database connection failed");
       mockRepository.findById.mockRejectedValue(error);
 
       // Act & Assert
@@ -128,18 +128,18 @@ describe('ExampleRepository', () => {
     });
   });
 
-  describe('create', () => {
-    it('should create and return a new example', async () => {
+  describe("create", () => {
+    it("should create and return a new example", async () => {
       // Arrange
       const createExample: ICreateExample = {
-        name: 'New Example',
+        name: "New Example",
       };
 
       const mockCreatedExample: IExample = {
         id: 1,
-        name: 'New Example',
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
+        name: "New Example",
+        createdAt: new Date("2024-01-01"),
+        updatedAt: new Date("2024-01-01"),
       };
 
       mockRepository.create.mockResolvedValue(mockCreatedExample);
@@ -152,12 +152,12 @@ describe('ExampleRepository', () => {
       expect(result).toEqual(mockCreatedExample);
     });
 
-    it('should handle database errors during creation', async () => {
+    it("should handle database errors during creation", async () => {
       // Arrange
       const createExample: ICreateExample = {
-        name: 'New Example',
+        name: "New Example",
       };
-      const error = new Error('Database constraint violation');
+      const error = new Error("Database constraint violation");
       mockRepository.create.mockRejectedValue(error);
 
       // Act & Assert
@@ -165,8 +165,8 @@ describe('ExampleRepository', () => {
     });
   });
 
-  describe('delete', () => {
-    it('should delete example and return true when successful', async () => {
+  describe("delete", () => {
+    it("should delete example and return true when successful", async () => {
       // Arrange
       const exampleId = 1;
       mockRepository.delete.mockResolvedValue(true);
@@ -179,7 +179,7 @@ describe('ExampleRepository', () => {
       expect(result).toBe(true);
     });
 
-    it('should return false when example does not exist', async () => {
+    it("should return false when example does not exist", async () => {
       // Arrange
       const exampleId = 999;
       mockRepository.delete.mockResolvedValue(false);
@@ -192,10 +192,10 @@ describe('ExampleRepository', () => {
       expect(result).toBe(false);
     });
 
-    it('should handle database errors during deletion', async () => {
+    it("should handle database errors during deletion", async () => {
       // Arrange
       const exampleId = 1;
-      const error = new Error('Database connection failed');
+      const error = new Error("Database connection failed");
       mockRepository.delete.mockRejectedValue(error);
 
       // Act & Assert

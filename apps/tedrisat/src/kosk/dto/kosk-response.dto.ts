@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class KoskResponse {
   @ApiProperty()
@@ -7,10 +7,10 @@ export class KoskResponse {
   @ApiProperty()
   ownerId!: string;
 
-  @ApiProperty({ example: 'Süleymaniye Köşkü' })
+  @ApiProperty({ example: "Süleymaniye Köşkü" })
   name!: string;
 
-  @ApiPropertyOptional({ type: String, example: '@suleymaniye' })
+  @ApiPropertyOptional({ type: String, example: "@suleymaniye" })
   handle!: string | null;
 
   @ApiPropertyOptional({ type: String })
@@ -22,13 +22,13 @@ export class KoskResponse {
   @ApiProperty({ example: true })
   isPrivate!: boolean;
 
-  @ApiPropertyOptional({ type: String, example: 'Tefsir & Hadis' })
+  @ApiPropertyOptional({ type: String, example: "Tefsir & Hadis" })
   field!: string | null;
 
-  @ApiPropertyOptional({ type: String, example: 'ALL' })
+  @ApiPropertyOptional({ type: String, example: "ALL" })
   level!: string | null;
 
-  @ApiProperty({ type: [String], example: ['Tefsir', 'Hadis'] })
+  @ApiProperty({ type: [String], example: ["Tefsir", "Hadis"] })
   tags!: string[];
 
   @ApiProperty({ example: false })
@@ -44,21 +44,21 @@ export class KoskResponse {
   ratingCount!: number;
 
   @ApiProperty({
-    description: 'Courses published under this köşk',
+    description: "Courses published under this köşk",
     example: 14,
   })
   courseCount!: number;
 
-  @ApiProperty({ description: 'Distinct enrolled talebe', example: 482 })
+  @ApiProperty({ description: "Distinct enrolled talebe", example: 482 })
   studentCount!: number;
 
-  @ApiProperty({ description: 'Distinct müderris', example: 6 })
+  @ApiProperty({ description: "Distinct müderris", example: 6 })
   muderrisCount!: number;
 
   @ApiProperty({ example: 240 })
   followerCount!: number;
 
-  @ApiProperty({ description: 'Whether the current talebe follows this köşk' })
+  @ApiProperty({ description: "Whether the current talebe follows this köşk" })
   isFollowing!: boolean;
 
   @ApiProperty()

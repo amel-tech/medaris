@@ -116,12 +116,8 @@
           "name": "deck_tags_decks_deck_id_decks_id_fk",
           "tableFrom": "deck_tags_decks",
           "tableTo": "decks",
-          "columnsFrom": [
-            "deck_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["deck_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -129,12 +125,8 @@
           "name": "deck_tags_decks_deck_tag_id_deck_tags_id_fk",
           "tableFrom": "deck_tags_decks",
           "tableTo": "deck_tags",
-          "columnsFrom": [
-            "deck_tag_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["deck_tag_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -243,10 +235,7 @@
       "compositePrimaryKeys": {
         "flashcard_progress_user_id_flashcard_id_pk": {
           "name": "flashcard_progress_user_id_flashcard_id_pk",
-          "columns": [
-            "user_id",
-            "flashcard_id"
-          ]
+          "columns": ["user_id", "flashcard_id"]
         }
       },
       "uniqueConstraints": {},
@@ -332,12 +321,8 @@
           "name": "flashcards_deck_id_decks_id_fk",
           "tableFrom": "flashcards",
           "tableTo": "decks",
-          "columnsFrom": [
-            "deck_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["deck_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -353,19 +338,12 @@
     "public.flashcard_user_status": {
       "name": "flashcard_user_status",
       "schema": "public",
-      "values": [
-        "NEW",
-        "LEARNING",
-        "MASTERED"
-      ]
+      "values": ["NEW", "LEARNING", "MASTERED"]
     },
     "public.flashcard_type": {
       "name": "flashcard_type",
       "schema": "public",
-      "values": [
-        "VOCABULARY",
-        "HADEETH"
-      ]
+      "values": ["VOCABULARY", "HADEETH"]
     }
   },
   "schemas": {},

@@ -1,1 +1,1 @@
-export const waitlistSectionId = 'stay-updated'
+export const waitlistSectionId = "stay-updated";

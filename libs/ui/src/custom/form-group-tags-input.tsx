@@ -1,18 +1,18 @@
-import React from "react"
-import { Label } from "../components/label"
-import { cn } from "../lib/utils"
-import { FormField, FormItem } from "./form"
-import { Control, FieldValues, Path } from "react-hook-form"
-import { TagsInput, type TagsInputProps } from "./tags-input"
+import React from "react";
+import type { Control, FieldValues, Path } from "react-hook-form";
+import { Label } from "../components/label";
+import { cn } from "../lib/utils";
+import { FormField, FormItem } from "./form";
+import { TagsInput, type TagsInputProps } from "./tags-input";
 
 interface IATFormGroupTagsInputProps<T extends FieldValues = FieldValues>
   extends Omit<TagsInputProps, "id" | "value" | "onChange" | "name"> {
-  name: Path<T>
-  label?: string
-  wrapperClass?: string
-  description?: string
-  required?: boolean
-  control: Control<T>
+  name: Path<T>;
+  label?: string;
+  wrapperClass?: string;
+  description?: string;
+  required?: boolean;
+  control: Control<T>;
 }
 
 function ATFormGroupTagsInput<T extends FieldValues = FieldValues>({
@@ -39,9 +39,7 @@ function ATFormGroupTagsInput<T extends FieldValues = FieldValues>({
           )}
 
           {description && (
-            <p className="text-sm text-muted-foreground mb-2">
-              {description}
-            </p>
+            <p className="text-sm text-muted-foreground mb-2">{description}</p>
           )}
 
           <TagsInput
@@ -50,7 +48,7 @@ function ATFormGroupTagsInput<T extends FieldValues = FieldValues>({
             onChange={field.onChange}
             className={cn(
               error && "border-red-500 focus-within:border-red-500",
-              className,
+              className
             )}
             variant={error ? "destructive" : "default"}
             {...props}
@@ -62,8 +60,8 @@ function ATFormGroupTagsInput<T extends FieldValues = FieldValues>({
         </FormItem>
       )}
     />
-  )
+  );
 }
 
-export default ATFormGroupTagsInput
-export type { IATFormGroupTagsInputProps }
+export default ATFormGroupTagsInput;
+export type { IATFormGroupTagsInputProps };

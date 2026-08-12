@@ -40,7 +40,7 @@ export interface IFlashcardDeckRepository {
   findAllVisibleToUser(
     userId: string,
     filters?: IFlashcardDeckFilters,
-    include?: Set<string>,
+    include?: Set<string>
   ): Promise<IFlashcardDeck[]>;
   findAllByUser(userId: string): Promise<IFlashcardDeck[]>; // not by author
 
@@ -48,19 +48,19 @@ export interface IFlashcardDeckRepository {
   create(deck: ICreateFlashcardDeck): Promise<IFlashcardDeck>;
   addToUserCollection(
     userId: string,
-    deckId: string,
+    deckId: string
   ): Promise<IFlashcardDeckUserCollectionItem>;
 
   // UPDATE
   update(
     id: string,
-    updates: IUpdateFlashcardDeck,
+    updates: IUpdateFlashcardDeck
   ): Promise<IFlashcardDeck | null>;
 
   // DELETE
   delete(id: string): Promise<boolean>;
   removeFromUserCollection(
     userId: string,
-    deckId: string,
+    deckId: string
   ): Promise<IFlashcardDeckUserCollectionItem>;
 }

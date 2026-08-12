@@ -1,16 +1,16 @@
-import { Injectable } from '@nestjs/common';
-import {
+import { Injectable } from "@nestjs/common";
+import { eq, sql } from "drizzle-orm";
+import type { DatabaseService } from "../database/database.service";
+import { flashcardProgress, flashcards } from "../database/schema";
+import { CardIncludeEnum } from "./domain/card-include.enum";
+import type {
   ICreateFlashcard,
   ICreateFlashcardProgress,
   IFlashcard,
   IFlashcardProgress,
   IFlashcardRepository,
   IUpdateFlashcard,
-} from './flashcard.repository.interface';
-import { DatabaseService } from '../database/database.service';
-import { flashcardProgress, flashcards } from '../database/schema';
-import { eq, sql } from 'drizzle-orm';
-import { CardIncludeEnum } from './domain/card-include.enum';
+} from "./flashcard.repository.interface";
 
 /** Overrides for includes that need custom config (e.g. a where clause). */
 const cardIncludeOverrides: Partial<
@@ -27,7 +27,7 @@ function buildWith(include: Set<CardIncludeEnum> | undefined, userId: string) {
     [...include].map((key) => [
       key,
       cardIncludeOverrides[key]?.(userId) ?? true,
-    ]),
+    ])
   );
 }
 
@@ -38,7 +38,7 @@ export class FlashcardRepository implements IFlashcardRepository {
   async findById(
     id: string,
     userId: string,
-    include?: Set<CardIncludeEnum>,
+    include?: Set<CardIncludeEnum>
   ): Promise<IFlashcard | null> {
     const result = await this.databaseService.db.query.flashcards.findFirst({
       where: eq(flashcards.id, id),
@@ -51,7 +51,7 @@ export class FlashcardRepository implements IFlashcardRepository {
   async findByDeckId(
     deckId: string,
     userId: string,
-    include?: Set<CardIncludeEnum>,
+    include?: Set<CardIncludeEnum>
   ): Promise<IFlashcard[]> {
     return this.databaseService.db.query.flashcards.findMany({
       where: eq(flashcards.deckId, deckId),
@@ -65,7 +65,7 @@ export class FlashcardRepository implements IFlashcardRepository {
 
   async update(
     id: string,
-    updates: IUpdateFlashcard,
+    updates: IUpdateFlashcard
   ): Promise<IFlashcard | null> {
     return this.databaseService.db
       .update(flashcards)
@@ -87,7 +87,7 @@ export class FlashcardRepository implements IFlashcardRepository {
   // flashcard-progress
 
   async replaceManyProgress(
-    updates: ICreateFlashcardProgress[],
+    updates: ICreateFlashcardProgress[]
   ): Promise<IFlashcardProgress[]> {
     return this.databaseService.db
       .insert(flashcardProgress)

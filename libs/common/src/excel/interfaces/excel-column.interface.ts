@@ -1,10 +1,10 @@
 // interfaces/excel-column.interface.ts
 
 export interface ExcelColumnOptions {
-  header: string;          
-  width?: number;          
-  order?: number;          
-  transform?: (value: any) => any; 
+  header: string;
+  width?: number;
+  order?: number;
+  transform?: (value: any) => any;
   format?: (value: any) => any;
 }
 
@@ -15,7 +15,7 @@ export interface ExcelColumnMetadata extends ExcelColumnOptions {
 export interface ExcelSheetConfig<T> {
   sheetName?: string;
   columns: ExcelColumnConfig<T>[];
-  examples?: T[];      
+  examples?: T[];
 }
 
 export type ExcelColumnConfig<T> = {
@@ -27,7 +27,7 @@ export type ExcelColumnConfig<T> = {
 };
 
 export interface ExcelParseOptions {
-  requireAllColumns?: boolean; 
+  requireAllColumns?: boolean;
   minRows?: number;
   maxRows?: number;
   allowEmptyRows?: boolean;
@@ -37,10 +37,9 @@ export class ExcelParseException extends Error {
   constructor(
     message: string,
     public readonly code: string,
-    public readonly details?: any,
+    public readonly details?: any
   ) {
     super(message);
-    this.name = 'ExcelParseException';
+    this.name = "ExcelParseException";
   }
 }
-

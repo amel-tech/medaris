@@ -1,20 +1,20 @@
-import React from "react"
-import { Label } from "../components/label"
-import { Textarea } from "../components/textarea"
-import { cn } from "../lib/utils"
-import { FormField, FormItem } from "./form"
-import { Control, FieldValues, Path } from "react-hook-form"
+import type React from "react";
+import type { Control, FieldValues, Path } from "react-hook-form";
+import { Label } from "../components/label";
+import { Textarea } from "../components/textarea";
+import { cn } from "../lib/utils";
+import { FormField, FormItem } from "./form";
 
 interface IATFormGroupTextAreaProps<T extends FieldValues = FieldValues> {
-  name: Path<T>
-  label?: string
-  wrapperClass?: string
-  placeholder?: string
-  required?: boolean
-  rows?: number
-  control: Control<T>
-  inputClassName?: string
-  onChange?: React.ChangeEventHandler<HTMLTextAreaElement>
+  name: Path<T>;
+  label?: string;
+  wrapperClass?: string;
+  placeholder?: string;
+  required?: boolean;
+  rows?: number;
+  control: Control<T>;
+  inputClassName?: string;
+  onChange?: React.ChangeEventHandler<HTMLTextAreaElement>;
 }
 
 function ATFormGroupTextArea<T extends FieldValues = FieldValues>({
@@ -49,11 +49,13 @@ function ATFormGroupTextArea<T extends FieldValues = FieldValues>({
             {...field}
             {...(onChange && { onChange: onChange })}
           />
-          {error && (<small className="text-red-500 text-xs">{error.message}</small>)}
+          {error && (
+            <small className="text-red-500 text-xs">{error.message}</small>
+          )}
         </FormItem>
       )}
     />
-  )
+  );
 }
 
-export default ATFormGroupTextArea
+export default ATFormGroupTextArea;

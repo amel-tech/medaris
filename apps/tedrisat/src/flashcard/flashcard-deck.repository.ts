@@ -1,15 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { and, eq, exists, or, SQL } from 'drizzle-orm';
-import { DatabaseService } from '../database/database.service';
-import { decks, decksUsers } from '../database/schema/flashcard-deck.schema';
-import {
+import { Injectable } from "@nestjs/common";
+import { and, eq, exists, or, type SQL } from "drizzle-orm";
+import type { DatabaseService } from "../database/database.service";
+import { decks, decksUsers } from "../database/schema/flashcard-deck.schema";
+import type {
   ICreateFlashcardDeck,
   IFlashcardDeck,
   IFlashcardDeckFilters,
   IFlashcardDeckRepository,
   IFlashcardDeckUserCollectionItem,
   IUpdateFlashcardDeck,
-} from './flashcard-deck.repository.interface';
+} from "./flashcard-deck.repository.interface";
 
 @Injectable()
 export class FlashcardDeckRepository implements IFlashcardDeckRepository {
@@ -21,7 +21,7 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
 
   async findByFilter(
     filter: SQL,
-    include?: Set<string>,
+    include?: Set<string>
   ): Promise<IFlashcardDeck[]> {
     const withClause: Record<string, any> = {};
 
@@ -42,10 +42,10 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
 
   async findById(
     id: string,
-    include?: Set<string>,
+    include?: Set<string>
   ): Promise<IFlashcardDeck | null> {
     return this.findByFilter(eq(decks.id, id), include).then(
-      (result) => result[0] || null,
+      (result) => result[0] || null
     );
   }
 
@@ -57,7 +57,7 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
   async findAllVisibleToUser(
     userId: string,
     filters?: IFlashcardDeckFilters,
-    include?: Set<string>,
+    include?: Set<string>
   ): Promise<IFlashcardDeck[]> {
     // TODO: handle pagination
     const { isPublic } = filters ?? {};
@@ -85,8 +85,8 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
           .select()
           .from(decksUsers)
           .where(
-            and(eq(decksUsers.deckId, decks.id), eq(decksUsers.userId, userId)),
-          ),
+            and(eq(decksUsers.deckId, decks.id), eq(decksUsers.userId, userId))
+          )
       ),
     });
   }
@@ -101,7 +101,7 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
 
   async addToUserCollection(
     userId: string,
-    deckId: string,
+    deckId: string
   ): Promise<IFlashcardDeckUserCollectionItem> {
     const [createdUser] = await this.databaseService.db
       .insert(decksUsers)
@@ -112,7 +112,7 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
 
   async update(
     id: string,
-    updates: IUpdateFlashcardDeck,
+    updates: IUpdateFlashcardDeck
   ): Promise<IFlashcardDeck | null> {
     // TODO?: verify deck author
     return this.databaseService.db
@@ -134,7 +134,7 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
 
   async removeFromUserCollection(
     userId: string,
-    deckId: string,
+    deckId: string
   ): Promise<IFlashcardDeckUserCollectionItem> {
     const [deletedUser] = await this.databaseService.db
       .delete(decksUsers)

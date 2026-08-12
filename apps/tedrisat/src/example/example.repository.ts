@@ -1,12 +1,12 @@
-import { Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
-import { DatabaseService } from '../database/database.service';
-import {
-  IExampleRepository,
-  IExample,
+import { Injectable } from "@nestjs/common";
+import { eq } from "drizzle-orm";
+import type { DatabaseService } from "../database/database.service";
+import { examples, type NewExample } from "../database/schema/example.schema";
+import type {
   ICreateExample,
-} from './example.interface';
-import { examples, NewExample } from '../database/schema/example.schema';
+  IExample,
+  IExampleRepository,
+} from "./example.interface";
 
 @Injectable()
 export class ExampleRepository implements IExampleRepository {

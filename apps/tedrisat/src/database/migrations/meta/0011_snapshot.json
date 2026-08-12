@@ -91,12 +91,8 @@
           "name": "deck_labelings_label_id_deck_label_id_fk",
           "tableFrom": "deck_labelings",
           "tableTo": "deck_label",
-          "columnsFrom": [
-            "label_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["label_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -104,12 +100,8 @@
           "name": "deck_labelings_deck_id_decks_id_fk",
           "tableFrom": "deck_labelings",
           "tableTo": "decks",
-          "columnsFrom": [
-            "deck_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["deck_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -188,12 +180,8 @@
           "name": "deck_labels_decks_deck_id_decks_id_fk",
           "tableFrom": "deck_labels_decks",
           "tableTo": "decks",
-          "columnsFrom": [
-            "deck_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["deck_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -201,12 +189,8 @@
           "name": "deck_labels_decks_deck_label_id_deck_label_id_fk",
           "tableFrom": "deck_labels_decks",
           "tableTo": "deck_label",
-          "columnsFrom": [
-            "deck_label_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["deck_label_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -254,12 +238,8 @@
           "name": "deck_label_stats_lable_id_deck_label_id_fk",
           "tableFrom": "deck_label_stats",
           "tableTo": "deck_label",
-          "columnsFrom": [
-            "lable_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["lable_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -359,12 +339,8 @@
           "name": "decks_users_deck_id_decks_id_fk",
           "tableFrom": "decks_users",
           "tableTo": "decks",
-          "columnsFrom": [
-            "deck_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["deck_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -372,10 +348,7 @@
       "compositePrimaryKeys": {
         "decks_users_user_id_deck_id_pk": {
           "name": "decks_users_user_id_deck_id_pk",
-          "columns": [
-            "user_id",
-            "deck_id"
-          ]
+          "columns": ["user_id", "deck_id"]
         }
       },
       "uniqueConstraints": {},
@@ -421,12 +394,8 @@
           "name": "flashcard_label_stats_label_id_flashcard_labels_id_fk",
           "tableFrom": "flashcard_label_stats",
           "tableTo": "flashcard_labels",
-          "columnsFrom": [
-            "label_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["label_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -486,12 +455,8 @@
           "name": "Flashcard_labeling_label_id_flashcard_labels_id_fk",
           "tableFrom": "Flashcard_labeling",
           "tableTo": "flashcard_labels",
-          "columnsFrom": [
-            "label_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["label_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -499,12 +464,8 @@
           "name": "Flashcard_labeling_flashcard_id_flashcards_id_fk",
           "tableFrom": "Flashcard_labeling",
           "tableTo": "flashcards",
-          "columnsFrom": [
-            "flashcard_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["flashcard_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -595,10 +556,7 @@
       "compositePrimaryKeys": {
         "flashcard_progress_user_id_flashcard_id_pk": {
           "name": "flashcard_progress_user_id_flashcard_id_pk",
-          "columns": [
-            "user_id",
-            "flashcard_id"
-          ]
+          "columns": ["user_id", "flashcard_id"]
         }
       },
       "uniqueConstraints": {},
@@ -674,12 +632,8 @@
           "name": "flashcards_deck_id_decks_id_fk",
           "tableFrom": "flashcards",
           "tableTo": "decks",
-          "columnsFrom": [
-            "deck_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["deck_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -871,12 +825,8 @@
           "name": "course_muderris_course_id_courses_id_fk",
           "tableFrom": "course_muderris",
           "tableTo": "courses",
-          "columnsFrom": [
-            "course_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["course_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -942,12 +892,8 @@
           "name": "course_resources_course_id_courses_id_fk",
           "tableFrom": "course_resources",
           "tableTo": "courses",
-          "columnsFrom": [
-            "course_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["course_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1021,12 +967,8 @@
           "name": "course_weeks_course_id_courses_id_fk",
           "tableFrom": "course_weeks",
           "tableTo": "courses",
-          "columnsFrom": [
-            "course_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["course_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1153,12 +1095,8 @@
           "name": "courses_kosk_id_kosks_id_fk",
           "tableFrom": "courses",
           "tableTo": "kosks",
-          "columnsFrom": [
-            "kosk_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["kosk_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1232,12 +1170,8 @@
           "name": "enrollments_course_id_courses_id_fk",
           "tableFrom": "enrollments",
           "tableTo": "courses",
-          "columnsFrom": [
-            "course_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["course_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1245,10 +1179,7 @@
       "compositePrimaryKeys": {
         "enrollments_user_id_course_id_pk": {
           "name": "enrollments_user_id_course_id_pk",
-          "columns": [
-            "user_id",
-            "course_id"
-          ]
+          "columns": ["user_id", "course_id"]
         }
       },
       "uniqueConstraints": {},
@@ -1350,12 +1281,8 @@
           "name": "lessons_week_id_course_weeks_id_fk",
           "tableFrom": "lessons",
           "tableTo": "course_weeks",
-          "columnsFrom": [
-            "week_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["week_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1396,12 +1323,8 @@
           "name": "kosk_followers_kosk_id_kosks_id_fk",
           "tableFrom": "kosk_followers",
           "tableTo": "kosks",
-          "columnsFrom": [
-            "kosk_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["kosk_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1409,10 +1332,7 @@
       "compositePrimaryKeys": {
         "kosk_followers_user_id_kosk_id_pk": {
           "name": "kosk_followers_user_id_kosk_id_pk",
-          "columns": [
-            "user_id",
-            "kosk_id"
-          ]
+          "columns": ["user_id", "kosk_id"]
         }
       },
       "uniqueConstraints": {},
@@ -1425,55 +1345,32 @@
     "public.flashcard_user_status": {
       "name": "flashcard_user_status",
       "schema": "public",
-      "values": [
-        "NEW",
-        "LEARNING",
-        "MASTERED"
-      ]
+      "values": ["NEW", "LEARNING", "MASTERED"]
     },
     "public.flashcard_type": {
       "name": "flashcard_type",
       "schema": "public",
-      "values": [
-        "VOCABULARY",
-        "HADEETH"
-      ]
+      "values": ["VOCABULARY", "HADEETH"]
     },
     "public.course_level": {
       "name": "course_level",
       "schema": "public",
-      "values": [
-        "BEGINNER",
-        "INTERMEDIATE",
-        "ADVANCED"
-      ]
+      "values": ["BEGINNER", "INTERMEDIATE", "ADVANCED"]
     },
     "public.course_status": {
       "name": "course_status",
       "schema": "public",
-      "values": [
-        "DRAFT",
-        "PUBLISHED"
-      ]
+      "values": ["DRAFT", "PUBLISHED"]
     },
     "public.enrollment_status": {
       "name": "enrollment_status",
       "schema": "public",
-      "values": [
-        "PENDING",
-        "ENROLLED",
-        "COMPLETED"
-      ]
+      "values": ["PENDING", "ENROLLED", "COMPLETED"]
     },
     "public.lesson_type": {
       "name": "lesson_type",
       "schema": "public",
-      "values": [
-        "VIDEO",
-        "DOCUMENT",
-        "LIVE",
-        "QUIZ"
-      ]
+      "values": ["VIDEO", "DOCUMENT", "LIVE", "QUIZ"]
     }
   },
   "schemas": {},

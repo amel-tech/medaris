@@ -1,4 +1,4 @@
-import { ErrorContext } from '../../types';
+import type { ErrorContext } from "../../types";
 
 export abstract class MedarisError extends Error {
   public readonly code: string;
@@ -9,7 +9,7 @@ export abstract class MedarisError extends Error {
     code: string,
     status: number,
     message?: string,
-    context?: ErrorContext,
+    context?: ErrorContext
   ) {
     super(message || code);
     this.code = code;

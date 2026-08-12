@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import * as winston from 'winston';
-import { ILogger, LoggerConfig, LogLevel } from './logger.interface';
+import { Injectable } from "@nestjs/common";
+import * as winston from "winston";
+import { type ILogger, type LoggerConfig, LogLevel } from "./logger.interface";
 
 @Injectable()
 export class WinstonLogger implements ILogger {
@@ -14,31 +14,33 @@ export class WinstonLogger implements ILogger {
     transports.push(
       new winston.transports.Console({
         format: winston.format.combine(
-          winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+          winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
           winston.format.errors({ stack: true }),
           winston.format.colorize({ all: true }),
-          winston.format.printf(({ timestamp, level, message, context, trace, ...meta }) => {
-            let log = `${timestamp} [${level}]`;
-            if (context) log += ` [${context}]`;
-            log += ` ${message}`;
-            if (trace) log += `\n${trace}`;
-            if (Object.keys(meta).length > 0) {
-              log += `\n${JSON.stringify(meta, null, 2)}`;
+          winston.format.printf(
+            ({ timestamp, level, message, context, trace, ...meta }) => {
+              let log = `${timestamp} [${level}]`;
+              if (context) log += ` [${context}]`;
+              log += ` ${message}`;
+              if (trace) log += `\n${trace}`;
+              if (Object.keys(meta).length > 0) {
+                log += `\n${JSON.stringify(meta, null, 2)}`;
+              }
+              return log;
             }
-            return log;
-          })
+          )
         ),
       })
     );
 
     // File transports for production or when explicitly enabled
-    if (config?.enableFileLogging || process.env.NODE_ENV === 'production') {
-      const logDir = config?.logDirectory || './logs';
-      
+    if (config?.enableFileLogging || process.env.NODE_ENV === "production") {
+      const logDir = config?.logDirectory || "./logs";
+
       transports.push(
         new winston.transports.File({
           filename: `${logDir}/error.log`,
-          level: 'error',
+          level: "error",
           format: winston.format.combine(
             winston.format.timestamp(),
             winston.format.errors({ stack: true }),
@@ -67,13 +69,13 @@ export class WinstonLogger implements ILogger {
 
   private mapLogLevel(level: LogLevel): string {
     const levelMap: Record<LogLevel, string> = {
-      [LogLevel.ERROR]: 'error',
-      [LogLevel.WARN]: 'warn',
-      [LogLevel.INFO]: 'info',
-      [LogLevel.DEBUG]: 'debug',
-      [LogLevel.VERBOSE]: 'verbose',
+      [LogLevel.ERROR]: "error",
+      [LogLevel.WARN]: "warn",
+      [LogLevel.INFO]: "info",
+      [LogLevel.DEBUG]: "debug",
+      [LogLevel.VERBOSE]: "verbose",
     };
-    return levelMap[level] || 'info';
+    return levelMap[level] || "info";
   }
 
   setContext(context: string): void {
@@ -86,7 +88,11 @@ export class WinstonLogger implements ILogger {
   }
 
   error(message: string, error?: Error | any, trace?: string) {
-    const logData = { context: this.context, ...(error && { error }), ...(trace && { trace }) };
+    const logData = {
+      context: this.context,
+      ...(error && { error }),
+      ...(trace && { trace }),
+    };
     this.logger.error(message, logData);
   }
 

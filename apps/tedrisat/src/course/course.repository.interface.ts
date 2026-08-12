@@ -1,7 +1,7 @@
-import { CourseLevel } from './domain/course-level.enum';
-import { CourseStatus } from './domain/course-status.enum';
-import { EnrollmentStatus } from './domain/enrollment-status.enum';
-import { LessonType } from './domain/lesson-type.enum';
+import type { CourseLevel } from "./domain/course-level.enum";
+import type { CourseStatus } from "./domain/course-status.enum";
+import type { EnrollmentStatus } from "./domain/enrollment-status.enum";
+import type { LessonType } from "./domain/lesson-type.enum";
 
 /** One step of a live lesson's müzakere akışı (agenda). */
 export interface IAgendaStep {
@@ -187,13 +187,13 @@ export interface IUpdateCourse {
   requiresApproval?: boolean;
 }
 
-export type IReplaceCourse = Omit<ICreateCourse, 'koskId' | 'authorId'>;
+export type IReplaceCourse = Omit<ICreateCourse, "koskId" | "authorId">;
 
 export interface ICourseRepository {
   findSummariesByKosk(
     koskId: string,
     userId: string,
-    includeDrafts: boolean,
+    includeDrafts: boolean
   ): Promise<ICourseSummary[]>;
   findDetailById(id: string, userId: string): Promise<ICourseDetail | null>;
   findEnrolledByUser(userId: string): Promise<IEnrolledCourse[]>;
@@ -203,26 +203,26 @@ export interface ICourseRepository {
   replace(
     id: string,
     userId: string,
-    data: IReplaceCourse,
+    data: IReplaceCourse
   ): Promise<ICourseDetail>;
   delete(id: string): Promise<boolean>;
   enroll(
     userId: string,
     courseId: string,
-    options?: IEnrollOptions,
+    options?: IEnrollOptions
   ): Promise<IEnrollment>;
   findEnrollment(userId: string, courseId: string): Promise<IEnrollment | null>;
   findPendingByKosk(koskId: string): Promise<IPendingEnrollment[]>;
   setEnrollmentStatus(
     userId: string,
     courseId: string,
-    status: EnrollmentStatus,
+    status: EnrollmentStatus
   ): Promise<IEnrollment | null>;
   deleteEnrollment(userId: string, courseId: string): Promise<boolean>;
   updateProgress(
     userId: string,
     courseId: string,
     progress: number,
-    status: EnrollmentStatus,
+    status: EnrollmentStatus
   ): Promise<IEnrollment | null>;
 }

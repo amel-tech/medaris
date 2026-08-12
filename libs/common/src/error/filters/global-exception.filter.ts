@@ -1,14 +1,14 @@
 import {
-  ExceptionFilter,
+  type ArgumentsHost,
   Catch,
-  ArgumentsHost,
+  type ExceptionFilter,
   HttpException,
   HttpStatus,
-  LoggerService,
-} from '@nestjs/common';
-import { MedarisError } from '../errors/base/medaris.error';
-import { RawBodyError } from '../errors/base/raw-body.error';
-import { ErrorResponse } from '../types/error-response.type';
+  type LoggerService,
+} from "@nestjs/common";
+import { MedarisError } from "../errors/base/medaris.error";
+import { RawBodyError } from "../errors/base/raw-body.error";
+import type { ErrorResponse } from "../types/error-response.type";
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -26,19 +26,25 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       return;
     } else if (exception instanceof MedarisError) {
       errorResponse = {
-        type: 'APP_ERROR',
+        type: "APP_ERROR",
         code: exception.code,
         status: exception.status,
         message: exception.message,
         context: exception.context,
         timestamp: new Date().toISOString(),
       };
-      this.logger.error(`${exception.code}: ${exception.message}`, exception.context);
+      this.logger.error(
+        `${exception.code}: ${exception.message}`,
+        exception.context
+      );
     } else if (exception instanceof HttpException) {
       const httpResponse = exception.getResponse();
-      const message = typeof httpResponse === 'string' ? httpResponse : (httpResponse as Record<string, unknown>).message as string;
+      const message =
+        typeof httpResponse === "string"
+          ? httpResponse
+          : ((httpResponse as Record<string, unknown>).message as string);
       errorResponse = {
-        type: 'HTTP_ERROR',
+        type: "HTTP_ERROR",
         status: exception.getStatus(),
         message,
         timestamp: new Date().toISOString(),
@@ -46,12 +52,15 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       this.logger.error(`HTTP_ERROR-${exception.getStatus()}: ${message}`);
     } else {
       errorResponse = {
-        type: 'UNKNOWN_ERROR',
+        type: "UNKNOWN_ERROR",
         status: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: exception instanceof Error ? exception.message : `Internal server error: ${String(exception)}`,
+        message:
+          exception instanceof Error
+            ? exception.message
+            : `Internal server error: ${String(exception)}`,
         timestamp: new Date().toISOString(),
       };
-      this.logger.error('UNEXPECTED_ERROR', exception);
+      this.logger.error("UNEXPECTED_ERROR", exception);
     }
 
     response.status(errorResponse.status).json(errorResponse);

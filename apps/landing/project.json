@@ -17,10 +17,7 @@
           "env": "OTEL_SERVICE_NAME"
         }
       ],
-      "outputs": [
-        "{projectRoot}/.next",
-        "!{projectRoot}/.next/cache"
-      ]
+      "outputs": ["{projectRoot}/.next", "!{projectRoot}/.next/cache"]
     }
   }
 }

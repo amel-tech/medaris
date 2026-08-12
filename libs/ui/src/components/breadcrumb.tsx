@@ -1,11 +1,11 @@
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { CaretRightIcon, DotsThreeIcon } from "@medaris/icons/ssr"
+import { CaretRightIcon, DotsThreeIcon } from "@medaris/icons/ssr";
+import { Slot } from "@radix-ui/react-slot";
+import * as React from "react";
 
-import { cn } from "../lib/utils"
+import { cn } from "../lib/utils";
 
 function Breadcrumb({ ...props }: React.ComponentProps<"nav">) {
-  return <nav aria-label="breadcrumb" data-slot="breadcrumb" {...props} />
+  return <nav aria-label="breadcrumb" data-slot="breadcrumb" {...props} />;
 }
 
 function BreadcrumbList({ className, ...props }: React.ComponentProps<"ol">) {
@@ -14,11 +14,11 @@ function BreadcrumbList({ className, ...props }: React.ComponentProps<"ol">) {
       data-slot="breadcrumb-list"
       className={cn(
         "text-muted-foreground flex flex-wrap items-center gap-1.5 text-sm break-words sm:gap-2.5",
-        className,
+        className
       )}
       {...props}
     />
-  )
+  );
 }
 
 function BreadcrumbItem({ className, ...props }: React.ComponentProps<"li">) {
@@ -28,7 +28,7 @@ function BreadcrumbItem({ className, ...props }: React.ComponentProps<"li">) {
       className={cn("inline-flex items-center gap-1.5", className)}
       {...props}
     />
-  )
+  );
 }
 
 function BreadcrumbLink({
@@ -36,9 +36,9 @@ function BreadcrumbLink({
   className,
   ...props
 }: React.ComponentProps<"a"> & {
-  asChild?: boolean
+  asChild?: boolean;
 }) {
-  const Comp = asChild ? Slot : "a"
+  const Comp = asChild ? Slot : "a";
 
   return (
     <Comp
@@ -46,7 +46,7 @@ function BreadcrumbLink({
       className={cn("hover:text-foreground transition-colors", className)}
       {...props}
     />
-  )
+  );
 }
 
 function BreadcrumbPage({ className, ...props }: React.ComponentProps<"span">) {
@@ -59,7 +59,7 @@ function BreadcrumbPage({ className, ...props }: React.ComponentProps<"span">) {
       className={cn("text-foreground font-normal", className)}
       {...props}
     />
-  )
+  );
 }
 
 function BreadcrumbSeparator({
@@ -77,7 +77,7 @@ function BreadcrumbSeparator({
     >
       {children ?? <CaretRightIcon />}
     </span>
-  )
+  );
 }
 
 function BreadcrumbEllipsis({
@@ -95,14 +95,14 @@ function BreadcrumbEllipsis({
       <DotsThreeIcon className="size-4" />
       <span className="sr-only">More</span>
     </span>
-  )
+  );
 }
 
 export type BreadcrumbEntry = {
-  label: React.ReactNode
+  label: React.ReactNode;
   /** When set (and not the last item) the crumb is a link. */
-  href?: string
-}
+  href?: string;
+};
 
 /**
  * Data-driven breadcrumb trail. Pass an ordered `items` array; the last item
@@ -116,42 +116,38 @@ function Breadcrumbs({
   linkComponent,
   className,
 }: {
-  items: BreadcrumbEntry[]
-  linkComponent?: React.ElementType
-  className?: string
+  items: BreadcrumbEntry[];
+  linkComponent?: React.ElementType;
+  className?: string;
 }) {
-  const LinkComponent = linkComponent ?? "a"
+  const LinkComponent = linkComponent ?? "a";
 
   return (
     <Breadcrumb className={className}>
       <BreadcrumbList>
         {items.map((item, index) => {
-          const isLast = index === items.length - 1
-          const key = `${index}-${typeof item.label === "string" ? item.label : ""}`
+          const isLast = index === items.length - 1;
+          const key = `${index}-${typeof item.label === "string" ? item.label : ""}`;
           return (
             <React.Fragment key={key}>
               <BreadcrumbItem>
-                {isLast
-                  ? (
-                      <BreadcrumbPage>{item.label}</BreadcrumbPage>
-                    )
-                  : item.href
-                    ? (
-                        <BreadcrumbLink asChild>
-                          <LinkComponent href={item.href}>{item.label}</LinkComponent>
-                        </BreadcrumbLink>
-                      )
-                    : (
-                        <span>{item.label}</span>
-                      )}
+                {isLast ? (
+                  <BreadcrumbPage>{item.label}</BreadcrumbPage>
+                ) : item.href ? (
+                  <BreadcrumbLink asChild>
+                    <LinkComponent href={item.href}>{item.label}</LinkComponent>
+                  </BreadcrumbLink>
+                ) : (
+                  <span>{item.label}</span>
+                )}
               </BreadcrumbItem>
               {!isLast && <BreadcrumbSeparator />}
             </React.Fragment>
-          )
+          );
         })}
       </BreadcrumbList>
     </Breadcrumb>
-  )
+  );
 }
 
 export {
@@ -163,4 +159,4 @@ export {
   BreadcrumbPage,
   BreadcrumbSeparator,
   BreadcrumbEllipsis,
-}
+};

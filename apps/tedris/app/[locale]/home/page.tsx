@@ -1,6 +1,6 @@
-import { useTranslations } from 'next-intl'
+import { useTranslations } from "next-intl";
 
 export default function Home() {
-  const t = useTranslations('tedris')
-  return <div>{t('TabView.home')}</div>
+  const t = useTranslations("tedris");
+  return <div>{t("TabView.home")}</div>;
 }

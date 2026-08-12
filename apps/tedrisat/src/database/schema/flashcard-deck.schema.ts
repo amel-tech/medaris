@@ -1,35 +1,35 @@
+import { relations } from "drizzle-orm";
 import {
-  pgTable as table,
-  uuid,
-  text,
-  timestamp,
   boolean,
   primaryKey,
-} from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
-import { flashcards } from './flashcard.schema';
+  pgTable as table,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
+import { flashcards } from "./flashcard.schema";
 
 // Tables
-export const decks = table('decks', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  authorId: uuid('author_id').notNull(),
-  title: text('title').notNull(),
-  description: text('description'),
-  isPublic: boolean('is_public').default(false).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+export const decks = table("decks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  authorId: uuid("author_id").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  isPublic: boolean("is_public").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const decksUsers = table(
-  'decks_users',
+  "decks_users",
   {
-    userId: uuid('user_id').notNull(),
-    deckId: uuid('deck_id')
-      .references(() => decks.id, { onDelete: 'cascade' })
+    userId: uuid("user_id").notNull(),
+    deckId: uuid("deck_id")
+      .references(() => decks.id, { onDelete: "cascade" })
       .notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [primaryKey({ columns: [table.userId, table.deckId] })],
+  (table) => [primaryKey({ columns: [table.userId, table.deckId] })]
 );
 
 // ORM Relations

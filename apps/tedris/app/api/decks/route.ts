@@ -1,27 +1,26 @@
-import { NextResponse } from 'next/server'
-import { env } from '~/env'
-import { createServerTedrisatAPIs } from '@medaris/services/tedrisat'
-import { auth } from '~/lib/auth_options'
+import { createServerTedrisatAPIs } from "@medaris/services/tedrisat";
+import { NextResponse } from "next/server";
+import { env } from "~/env";
+import { auth } from "~/lib/auth_options";
 
 export async function GET() {
   try {
     // Check if mocking is enabled
     // Direct API usage - no wrapper layers
-    const session = await auth()
+    const session = await auth();
     const API = await createServerTedrisatAPIs(
       session?.accessToken,
-      env.TEDRISAT_API_BASE_URL,
-    )
+      env.TEDRISAT_API_BASE_URL
+    );
 
-    const result = await API.decks.getAllFlashcardDecks()
+    const result = await API.decks.getAllFlashcardDecks();
 
-    return NextResponse.json({ data: result, error: null })
-  }
-  catch (error) {
-    console.error('Error fetching decks:', error)
+    return NextResponse.json({ data: result, error: null });
+  } catch (error) {
+    console.error("Error fetching decks:", error);
     return NextResponse.json(
-      { data: null, error: 'Failed to fetch decks' },
-      { status: 500 },
-    )
+      { data: null, error: "Failed to fetch decks" },
+      { status: 500 }
+    );
   }
 }

@@ -1,12 +1,12 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CourseLevel } from '../domain/course-level.enum';
-import { CourseStatus } from '../domain/course-status.enum';
-import { EnrollmentStatus } from '../domain/enrollment-status.enum';
-import { LessonType } from '../domain/lesson-type.enum';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { CourseLevel } from "../domain/course-level.enum";
+import { CourseStatus } from "../domain/course-status.enum";
+import { EnrollmentStatus } from "../domain/enrollment-status.enum";
+import { LessonType } from "../domain/lesson-type.enum";
 
 export class AgendaStepResponse {
-  @ApiProperty({ example: '21:00' }) time!: string;
-  @ApiProperty({ example: 'Açılış ve geçen haftanın özeti' }) title!: string;
+  @ApiProperty({ example: "21:00" }) time!: string;
+  @ApiProperty({ example: "Açılış ve geçen haftanın özeti" }) title!: string;
 }
 
 export class LessonResponse {
@@ -60,7 +60,7 @@ export class EnrollmentResponse {
   @ApiProperty() courseId!: string;
   @ApiPropertyOptional({ type: String }) studentName!: string | null;
   @ApiPropertyOptional({ type: String }) studentEmail!: string | null;
-  @ApiProperty({ description: 'Percent complete, 0-100' }) progress!: number;
+  @ApiProperty({ description: "Percent complete, 0-100" }) progress!: number;
   @ApiProperty({ enum: EnrollmentStatus }) status!: EnrollmentStatus;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;

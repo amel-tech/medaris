@@ -1,41 +1,41 @@
-import { Injectable } from '@nestjs/common';
+import type { ExcelService } from "@medaris/common";
+import { plainToClass } from "@nestjs/class-transformer";
+import { validate } from "@nestjs/class-validator";
+import { Injectable } from "@nestjs/common";
+import { FLASHCARD_EXCEL_CONFIG } from "./dto/config-excel.dto";
+import { CreateFlashcardDto } from "./dto/create-flashcard.dto";
 import {
-  BulkFlashcardResponse,
-  RowError,
+  type BulkFlashcardResponse,
   flattenValidationErrors,
-} from './dto/flashcard-bulk-response.dto';
-import { CreateFlashcardDto } from './dto/create-flashcard.dto';
-import { validate } from '@nestjs/class-validator';
-import { FlashcardService } from './flashcard.service';
-import { plainToClass } from '@nestjs/class-transformer';
-import { ExcelService } from '@medaris/common';
-import { FLASHCARD_EXCEL_CONFIG } from './dto/config-excel.dto';
+  type RowError,
+} from "./dto/flashcard-bulk-response.dto";
+import type { FlashcardService } from "./flashcard.service";
 
 export type BulkAddResult =
   | { success: true; data: BulkFlashcardResponse }
-  | { success: false; error: 'VALIDATION_FAILED'; rowErrors: RowError[] };
+  | { success: false; error: "VALIDATION_FAILED"; rowErrors: RowError[] };
 
 @Injectable()
 export class FlashcardBulkService {
   constructor(
     private readonly cardService: FlashcardService,
-    private readonly excelService: ExcelService,
+    private readonly excelService: ExcelService
   ) {}
 
   public async addFlashcards(
     deckId: string,
     authorId: string,
-    cards: CreateFlashcardDto[],
+    cards: CreateFlashcardDto[]
   ): Promise<BulkAddResult> {
     const [rowErrors, isError] = await this.validateCards(cards);
     if (isError) {
-      return { success: false, error: 'VALIDATION_FAILED', rowErrors };
+      return { success: false, error: "VALIDATION_FAILED", rowErrors };
     }
 
     const flashCards = await this.cardService.createMany(
       deckId,
       authorId,
-      cards,
+      cards
     );
     return { success: true, data: { count: flashCards.length } };
   }
@@ -44,7 +44,7 @@ export class FlashcardBulkService {
     deckId: string,
     userId: string,
     title: string,
-    format: 'xlsx' | 'csv' = 'xlsx',
+    format: "xlsx" | "csv" = "xlsx"
   ) {
     const cards = await this.cardService.findByDeckId(deckId, userId);
     const data = cards.map((card) => ({
@@ -57,12 +57,12 @@ export class FlashcardBulkService {
       data,
       FLASHCARD_EXCEL_CONFIG,
       title,
-      format,
+      format
     );
   }
 
   private async validateCards(
-    cards: CreateFlashcardDto[],
+    cards: CreateFlashcardDto[]
   ): Promise<[rowErrors: RowError[], isError: boolean]> {
     const rowErrors: RowError[] = [];
     const items = plainToClass(CreateFlashcardDto, cards);

@@ -1,9 +1,9 @@
-import { env } from './env'
+import { DiagConsoleLogger, DiagLogLevel, diag } from "@opentelemetry/api";
 
-import { registerOTel, OTLPHttpJsonTraceExporter } from '@vercel/otel'
-import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api'
+import { OTLPHttpJsonTraceExporter, registerOTel } from "@vercel/otel";
+import { env } from "./env";
 
-diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ERROR) // set diaglog level to DEBUG when debugging
+diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ERROR); // set diaglog level to DEBUG when debugging
 
 export async function register() {
   registerOTel({
@@ -11,5 +11,5 @@ export async function register() {
     traceExporter: new OTLPHttpJsonTraceExporter({
       url: env.OTEL_EXPORTER_OTLP_ENDPOINT,
     }),
-  })
+  });
 }

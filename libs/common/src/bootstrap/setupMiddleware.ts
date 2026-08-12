@@ -1,12 +1,11 @@
 // packages/shared/src/bootstrap/setup-middleware.ts
 
-import { INestApplication, LoggerService } from '@nestjs/common';
-import helmet from 'helmet';
-import compression from 'compression';
-import { GlobalExceptionFilter } from '../error/filters/global-exception.filter'
-import { corsConfig } from '../config';
+import type { INestApplication, LoggerService } from "@nestjs/common";
+import compression from "compression";
+import helmet from "helmet";
+import { corsConfig } from "../config";
+import { GlobalExceptionFilter } from "../error/filters/global-exception.filter";
 import { MedarisValidationPipe } from "../pipes";
-
 
 export function applyGlobalMiddleware(
   app: INestApplication,

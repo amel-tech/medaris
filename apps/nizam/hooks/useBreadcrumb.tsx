@@ -1,14 +1,14 @@
-import { useCallback, useMemo } from 'react'
-import { usePathname } from '~/lib/i18n/navigation'
+import { useCallback, useMemo } from "react";
+import { usePathname } from "~/lib/i18n/navigation";
 
 interface Route {
-  title: string
-  url: string
-  items?: Route[]
+  title: string;
+  url: string;
+  items?: Route[];
 }
 
 export function useBreadcrumb(routes: { navMain: Route[] }) {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   const findBreadcrumbs = useCallback(
     (routes: Route[], path: string): Route[] => {
@@ -16,18 +16,18 @@ export function useBreadcrumb(routes: { navMain: Route[] }) {
         if (path.startsWith(route.url)) {
           const childBreadcrumbs = route.items
             ? findBreadcrumbs(route.items, path)
-            : []
-          return [route, ...childBreadcrumbs]
+            : [];
+          return [route, ...childBreadcrumbs];
         }
       }
-      return []
+      return [];
     },
-    [],
-  )
+    []
+  );
 
   const breadcrumbs = useMemo(() => {
-    return findBreadcrumbs(routes.navMain, pathname)
-  }, [pathname, routes, findBreadcrumbs])
+    return findBreadcrumbs(routes.navMain, pathname);
+  }, [pathname, routes, findBreadcrumbs]);
 
-  return breadcrumbs
+  return breadcrumbs;
 }

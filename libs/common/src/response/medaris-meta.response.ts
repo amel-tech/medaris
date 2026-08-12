@@ -1,9 +1,9 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { MedarisMetaPaginationResponse } from "./medaris-meta-pagination.response";
+import type { MedarisMetaPaginationResponse } from "./medaris-meta-pagination.response";
 
 export class MedarisMetaResponse {
-    @ApiPropertyOptional()
-    pagination?: MedarisMetaPaginationResponse
+  @ApiPropertyOptional()
+  pagination?: MedarisMetaPaginationResponse;
 
-    [key: string]: unknown
+  [key: string]: unknown;
 }

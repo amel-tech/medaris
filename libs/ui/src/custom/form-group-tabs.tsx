@@ -1,23 +1,23 @@
-import React from "react"
-import { Label } from "../components/label"
-import { FieldValues, Path, Control } from "react-hook-form"
-import { FormField, FormItem } from "./form"
-import { Tabs, TabsList, TabsTrigger } from "../components/tabs"
+import type React from "react";
+import type { Control, FieldValues, Path } from "react-hook-form";
+import { Label } from "../components/label";
+import { Tabs, TabsList, TabsTrigger } from "../components/tabs";
+import { FormField, FormItem } from "./form";
 
 interface IATFormGroupProps<T extends FieldValues = FieldValues> {
-  name: Path<T>
-  label?: string
-  wrapperClass?: string
-  required?: boolean
-  control: Control<T>
-  tabs: TabOption[]
-  type?: string
-  onChange?: React.ChangeEventHandler<HTMLInputElement>
+  name: Path<T>;
+  label?: string;
+  wrapperClass?: string;
+  required?: boolean;
+  control: Control<T>;
+  tabs: TabOption[];
+  type?: string;
+  onChange?: React.ChangeEventHandler<HTMLInputElement>;
 }
 
 interface TabOption {
-  value: string | boolean
-  label: string
+  value: string | boolean;
+  label: string;
 }
 
 function ATFormGroupTabs<T extends FieldValues = FieldValues>({
@@ -43,26 +43,27 @@ function ATFormGroupTabs<T extends FieldValues = FieldValues>({
           <Tabs
             value={String(field.value)}
             onValueChange={(opt) => {
-              if (opt === "true") return field.onChange(true)
-              if (opt === "false") return field.onChange(false)
-              field.onChange(opt)
+              if (opt === "true") return field.onChange(true);
+              if (opt === "false") return field.onChange(false);
+              field.onChange(opt);
             }}
             className="w-[400px]"
           >
             <TabsList>
-              {tabs.map(tab => (
+              {tabs.map((tab) => (
                 <TabsTrigger key={tab.label} value={String(tab.value)}>
                   {tab.label}
                 </TabsTrigger>
               ))}
             </TabsList>
           </Tabs>
-          {error && (<small className="text-red-500 text-xs">{error.message}</small>)}
+          {error && (
+            <small className="text-red-500 text-xs">{error.message}</small>
+          )}
         </FormItem>
       )}
     />
-
-  )
+  );
 }
 
-export default ATFormGroupTabs
+export default ATFormGroupTabs;

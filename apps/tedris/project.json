@@ -50,10 +50,7 @@
           "env": "TEDRISAT_API_BASE_URL"
         }
       ],
-      "outputs": [
-        "{projectRoot}/.next",
-        "!{projectRoot}/.next/cache"
-      ]
+      "outputs": ["{projectRoot}/.next", "!{projectRoot}/.next/cache"]
     }
   }
 }

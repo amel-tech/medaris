@@ -23,7 +23,10 @@
   "coverageReporters": ["json-summary", "text", "html"],
   "reporters": [
     "default",
-    ["jest-junit", { "outputDirectory": "./coverage", "outputName": "junit.xml" }]
+    [
+      "jest-junit",
+      { "outputDirectory": "./coverage", "outputName": "junit.xml" }
+    ]
   ],
   "moduleNameMapper": {
     "^@/(.*)$": "<rootDir>/src/$1"

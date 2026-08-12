@@ -3,10 +3,10 @@ import {
   IsString,
   MaxLength,
   MinLength,
-} from '@nestjs/class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { Scope } from '../domain/flashcard-label.enum';
-import { IsOptional, IsUUID } from 'class-validator';
+} from "@nestjs/class-validator";
+import { ApiProperty } from "@nestjs/swagger";
+import { IsOptional, IsUUID } from "class-validator";
+import { Scope } from "../domain/flashcard-label.enum";
 export class CreateFlashcardLabelDto {
   @ApiProperty()
   @IsString()

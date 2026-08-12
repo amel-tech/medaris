@@ -1,32 +1,32 @@
-import { toast } from "../components/sonner"
+import { toast } from "../components/sonner";
 
 interface ToastArgs {
-  title: string
-  description: string
-  id?: string | number
+  title: string;
+  description: string;
+  id?: string | number;
 }
 
 interface LogContext {
-  timestamp: Date
-  level: "error" | "success" | "info" | "warning"
-  title: string
-  description: string
-  userId?: string
-  sessionId?: string
-  [key: string]: unknown
+  timestamp: Date;
+  level: "error" | "success" | "info" | "warning";
+  title: string;
+  description: string;
+  userId?: string;
+  sessionId?: string;
+  [key: string]: unknown;
 }
 
 export class ToastHelper {
-  private static instance: ToastHelper
-  private logCallback?: (context: LogContext) => void
+  private static instance: ToastHelper;
+  private logCallback?: (context: LogContext) => void;
 
-  private constructor() { }
+  private constructor() {}
 
   static getInstance(): ToastHelper {
     if (!ToastHelper.instance) {
-      ToastHelper.instance = new ToastHelper()
+      ToastHelper.instance = new ToastHelper();
     }
-    return ToastHelper.instance
+    return ToastHelper.instance;
   }
 
   /**
@@ -34,29 +34,32 @@ export class ToastHelper {
    * @param callback Function to call when logging toast messages
    */
   setLogCallback(callback: (context: LogContext) => void) {
-    this.logCallback = callback
+    this.logCallback = callback;
   }
 
-  private log(level: LogContext["level"], args: ToastArgs, additionalContext?: Record<string, unknown>) {
+  private log(
+    level: LogContext["level"],
+    args: ToastArgs,
+    additionalContext?: Record<string, unknown>
+  ) {
     const context: LogContext = {
       timestamp: new Date(),
       level,
       title: args.title,
       description: args.description,
       ...additionalContext,
-    }
+    };
 
     // Use custom callback if set, otherwise default to console.log
     if (this.logCallback) {
-      this.logCallback(context)
-    }
-    else {
+      this.logCallback(context);
+    } else {
       console.log(`[Toast ${level.toUpperCase()}]`, {
         title: context.title,
         description: context.description,
         timestamp: context.timestamp,
         ...additionalContext,
-      })
+      });
     }
   }
 
@@ -64,8 +67,8 @@ export class ToastHelper {
     toast.error(args.title, {
       description: args.description,
       ...(args.id && { id: args.id }),
-    })
-    this.log("error", args, additionalContext)
+    });
+    this.log("error", args, additionalContext);
   }
 
   /**
@@ -77,24 +80,24 @@ export class ToastHelper {
     toast.success(args.title, {
       description: args.description,
       ...(args.id && { id: args.id }),
-    })
-    this.log("success", args, additionalContext)
+    });
+    this.log("success", args, additionalContext);
   }
 
   info(args: ToastArgs, additionalContext?: Record<string, unknown>) {
     toast.info(args.title, {
       description: args.description,
       ...(args.id && { id: args.id }),
-    })
-    this.log("info", args, additionalContext)
+    });
+    this.log("info", args, additionalContext);
   }
 
   warning(args: ToastArgs, additionalContext?: Record<string, unknown>) {
     toast.warning(args.title, {
       description: args.description,
       ...(args.id && { id: args.id }),
-    })
-    this.log("warning", args, additionalContext)
+    });
+    this.log("warning", args, additionalContext);
   }
 
   /**
@@ -103,7 +106,7 @@ export class ToastHelper {
    * @returns Toast ID for updating the toast
    */
   loading(message: string) {
-    return toast.loading(message)
+    return toast.loading(message);
   }
 
   /**
@@ -111,16 +114,16 @@ export class ToastHelper {
    * @param toastId Toast ID to dismiss
    */
   dismiss(toastId?: string | number) {
-    toast.dismiss(toastId)
+    toast.dismiss(toastId);
   }
 
   /**
    * Dismiss all toasts
    */
   dismissAll() {
-    toast.dismiss()
+    toast.dismiss();
   }
 }
 
 // Export a singleton instance for easy usage
-export const toastHelper = ToastHelper.getInstance()
+export const toastHelper = ToastHelper.getInstance();

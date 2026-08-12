@@ -1,12 +1,10 @@
-@import 'tailwindcss';
-@import '@medaris/tokens/css';
-@import '@fontsource/scheherazade-new';
- 
-@theme {
-  --font-scheherazade: 'Scheherazade New', serif;
-}
- 
+@import "tailwindcss";
+@import "@medaris/tokens/css";
+@import "@fontsource/scheherazade-new";
 
+@theme {
+  --font-scheherazade: "Scheherazade New", serif;
+}
 
 @font-face {
   font-family: "UthmanNaskh";

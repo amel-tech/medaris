@@ -1,6 +1,6 @@
-import { Injectable} from '@nestjs/common';
-import pino from 'pino';
-import { ILogger, LoggerConfig, LogLevel } from './logger.interface';
+import { Injectable } from "@nestjs/common";
+import pino from "pino";
+import { type ILogger, type LoggerConfig, LogLevel } from "./logger.interface";
 
 @Injectable()
 export class PinoLogger implements ILogger {
@@ -16,30 +16,29 @@ export class PinoLogger implements ILogger {
 
     // Enable pretty printing in development
     pinoConfig.transport = {
-      target: 'pino-pretty',
+      target: "pino-pretty",
       options: {
         colorize: true,
-        translateTime: 'SYS:standard',
-        ignore: 'pid,hostname',
+        translateTime: "SYS:standard",
+        ignore: "pid,hostname",
         levelFirst: true,
       },
     };
 
-
     // Add file transport for production if enabled
-    if (config?.enableFileLogging && process.env.NODE_ENV === 'production') {
-      const logDir = config.logDirectory || './logs';
+    if (config?.enableFileLogging && process.env.NODE_ENV === "production") {
+      const logDir = config.logDirectory || "./logs";
       pinoConfig.transport = {
         targets: [
           {
-            target: 'pino/file',
+            target: "pino/file",
             options: { destination: `${logDir}/app.log` },
-            level: 'info',
+            level: "info",
           },
           {
-            target: 'pino/file',
+            target: "pino/file",
             options: { destination: `${logDir}/error.log` },
-            level: 'error',
+            level: "error",
           },
         ],
       };
@@ -60,7 +59,7 @@ export class PinoLogger implements ILogger {
 
   error(message: string, error?: Error | any) {
     const errorData: any = { context: this.context };
-    
+
     if (error) {
       if (error instanceof Error) {
         errorData.error = {

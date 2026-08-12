@@ -1,12 +1,15 @@
 import {
-  PipeTransform,
-  ValidationError,
+  type PipeTransform,
+  type ValidationError,
   ValidationPipe,
-  ValidationPipeOptions,
+  type ValidationPipeOptions,
 } from "@nestjs/common";
 import { ValidationError as MedarisValidationError } from "../error";
 
-export class MedarisValidationPipe extends ValidationPipe implements PipeTransform<any, any> {
+export class MedarisValidationPipe
+  extends ValidationPipe
+  implements PipeTransform<any, any>
+{
   constructor(opts: ValidationPipeOptions = {}) {
     const defaultOptions: ValidationPipeOptions = {
       whitelist: true,
@@ -17,10 +20,10 @@ export class MedarisValidationPipe extends ValidationPipe implements PipeTransfo
           value: e.value,
           constraints: e.constraints,
         }));
-        
-        const propertyNames = errors.map(e => e.property).join(', ');
+
+        const propertyNames = errors.map((e) => e.property).join(", ");
         const errorMessage = `Validation error for properties: ${propertyNames}`;
-        
+
         throw new MedarisValidationError(errorMessage, {
           errors: validationErrors,
         });

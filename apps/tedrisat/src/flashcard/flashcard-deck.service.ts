@@ -1,12 +1,12 @@
-import { Injectable } from '@nestjs/common';
-import { FlashcardDeckRepository } from './flashcard-deck.repository';
-import {
+import { Injectable } from "@nestjs/common";
+import type { FlashcardDeckRepository } from "./flashcard-deck.repository";
+import type {
   ICreateFlashcardDeck,
   IFlashcardDeck,
   IFlashcardDeckFilters,
   IFlashcardDeckUserCollectionItem,
   IUpdateFlashcardDeck,
-} from './flashcard-deck.repository.interface';
+} from "./flashcard-deck.repository.interface";
 
 @Injectable()
 export class FlashcardDeckService {
@@ -14,7 +14,7 @@ export class FlashcardDeckService {
 
   async findById(
     id: string,
-    include?: string[],
+    include?: string[]
   ): Promise<IFlashcardDeck | null> {
     const includeSet = new Set(include);
     return this.deckRepo.findById(id, includeSet);
@@ -28,7 +28,7 @@ export class FlashcardDeckService {
   async findAllVisibleToUser(
     userId: string,
     filters?: IFlashcardDeckFilters,
-    include?: string[],
+    include?: string[]
   ): Promise<IFlashcardDeck[]> {
     const includeSet = new Set(include);
     return this.deckRepo.findAllVisibleToUser(userId, filters, includeSet);
@@ -44,14 +44,14 @@ export class FlashcardDeckService {
 
   async addToUserCollection(
     userId: string,
-    deckId: string,
+    deckId: string
   ): Promise<IFlashcardDeckUserCollectionItem> {
     return this.deckRepo.addToUserCollection(userId, deckId);
   }
 
   async update(
     id: string,
-    updates: IUpdateFlashcardDeck,
+    updates: IUpdateFlashcardDeck
   ): Promise<IFlashcardDeck | null> {
     return this.deckRepo.update(id, updates);
   }
@@ -62,7 +62,7 @@ export class FlashcardDeckService {
 
   async removeFromUserCollection(
     userId: string,
-    deckId: string,
+    deckId: string
   ): Promise<IFlashcardDeckUserCollectionItem> {
     return this.deckRepo.removeFromUserCollection(userId, deckId);
   }

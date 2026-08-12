@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from "zod";
 
 export const deckCardsFormSchema = z.object({
   cards: z.array(
@@ -7,6 +7,6 @@ export const deckCardsFormSchema = z.object({
         front: z.string().min(1).max(1000),
         back: z.string().min(1).max(1000),
       }),
-    }),
+    })
   ),
-})
+});

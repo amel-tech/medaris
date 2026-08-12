@@ -1,14 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import { KoskRepository } from './kosk.repository';
-import {
+import { Injectable } from "@nestjs/common";
+import { KoskForbiddenError } from "./errors/kosk-forbidden.error";
+import { KoskNotFoundError } from "./errors/kosk-not-found.error";
+import type { KoskRepository } from "./kosk.repository";
+import type {
   ICreateKosk,
   IKosk,
   IKoskWithStats,
   IPaginatedKosks,
   IUpdateKosk,
-} from './kosk.repository.interface';
-import { KoskNotFoundError } from './errors/kosk-not-found.error';
-import { KoskForbiddenError } from './errors/kosk-forbidden.error';
+} from "./kosk.repository.interface";
 
 @Injectable()
 export class KoskService {
@@ -17,7 +17,7 @@ export class KoskService {
   async findAll(
     userId: string,
     page: number,
-    limit: number,
+    limit: number
   ): Promise<IPaginatedKosks> {
     const offset = (page - 1) * limit;
     const [items, total] = await Promise.all([
@@ -59,7 +59,7 @@ export class KoskService {
   async update(
     id: string,
     userId: string,
-    updates: IUpdateKosk,
+    updates: IUpdateKosk
   ): Promise<IKosk> {
     await this.assertOwner(id, userId);
     const updated = await this.koskRepo.update(id, updates);

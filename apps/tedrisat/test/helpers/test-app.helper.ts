@@ -1,29 +1,29 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ExecutionContext, INestApplication } from '@nestjs/common';
-import { join } from 'path';
-import {
-  PostgreSqlContainer,
-  StartedPostgreSqlContainer,
-} from '@testcontainers/postgresql';
 import {
   AuthGuard,
   GlobalExceptionFilter,
   LoggerFactory,
   MedarisValidationPipe,
-} from '@medaris/common';
+} from "@medaris/common";
+import type { ExecutionContext, INestApplication } from "@nestjs/common";
+import { Test, type TestingModule } from "@nestjs/testing";
+import {
+  PostgreSqlContainer,
+  type StartedPostgreSqlContainer,
+} from "@testcontainers/postgresql";
+import { join } from "path";
 
 // Fixed user id injected by the stubbed AuthGuard in tests.
-export const TEST_USER_ID = '623fdf08-fd0e-481b-a927-4a1c15135e62';
+export const TEST_USER_ID = "623fdf08-fd0e-481b-a927-4a1c15135e62";
 
 // Global container instance to be shared across all tests
 let globalPostgresContainer: StartedPostgreSqlContainer | null = null;
 
 // Handle cleanup on process termination
-process.on('SIGINT', () => {
+process.on("SIGINT", () => {
   void stopTestDatabase().then(() => process.exit(0));
 });
 
-process.on('SIGTERM', () => {
+process.on("SIGTERM", () => {
   void stopTestDatabase().then(() => process.exit(0));
 });
 
@@ -37,37 +37,37 @@ export async function startTestDatabase(): Promise<StartedPostgreSqlContainer> {
     return globalPostgresContainer;
   }
 
-  console.log('Starting PostgreSQL container for tests...');
+  console.log("Starting PostgreSQL container for tests...");
 
-  globalPostgresContainer = await new PostgreSqlContainer('postgres:17-alpine')
-    .withDatabase('tedrisat_test')
-    .withUsername('testuser')
-    .withPassword('testpass')
+  globalPostgresContainer = await new PostgreSqlContainer("postgres:17-alpine")
+    .withDatabase("tedrisat_test")
+    .withUsername("testuser")
+    .withPassword("testpass")
     .withExposedPorts(5432)
     .start();
 
   // Must be set BEFORE AppModule is imported/compiled so that
   // configuration() reads these values instead of the defaults.
-  process.env.NODE_ENV = 'test';
+  process.env.NODE_ENV = "test";
   process.env.DB_HOST = globalPostgresContainer.getHost();
   process.env.DB_PORT = String(globalPostgresContainer.getMappedPort(5432));
   process.env.DB_USERNAME = globalPostgresContainer.getUsername();
   process.env.DB_PASSWORD = globalPostgresContainer.getPassword();
   process.env.DB_NAME = globalPostgresContainer.getDatabase();
-  process.env.DB_SSL = 'false';
-  process.env.AUTO_MIGRATIONS_ENABLED = 'true';
+  process.env.DB_SSL = "false";
+  process.env.AUTO_MIGRATIONS_ENABLED = "true";
   process.env.AUTO_MIGRATIONS_FOLDER = join(
     __dirname,
-    '../../src/database/migrations',
+    "../../src/database/migrations"
   );
-  process.env.LOG_LEVEL = 'info';
-  process.env.OTEL_ENABLED = 'false';
-  process.env.SWAGGER_ENABLED = 'false';
+  process.env.LOG_LEVEL = "info";
+  process.env.OTEL_ENABLED = "false";
+  process.env.SWAGGER_ENABLED = "false";
   process.env.KEYCLOAK_JWKS_URL =
-    'https://auth.medaris.app/realms/amel-tech-dev/protocol/openid-connect/certs';
+    "https://auth.medaris.app/realms/amel-tech-dev/protocol/openid-connect/certs";
 
   console.log(
-    `PostgreSQL container started at ${globalPostgresContainer.getConnectionUri()}`,
+    `PostgreSQL container started at ${globalPostgresContainer.getConnectionUri()}`
   );
 
   return globalPostgresContainer;
@@ -79,7 +79,7 @@ export async function startTestDatabase(): Promise<StartedPostgreSqlContainer> {
  */
 export async function stopTestDatabase(): Promise<void> {
   if (globalPostgresContainer) {
-    console.log('Stopping PostgreSQL container...');
+    console.log("Stopping PostgreSQL container...");
     await globalPostgresContainer.stop();
     globalPostgresContainer = null;
   }
@@ -100,7 +100,7 @@ export async function createTestApp(options?: {
   await startTestDatabase();
 
   // Import AppModule lazily so configuration() runs after env vars are set.
-  const { AppModule } = await import('../../src/app.module');
+  const { AppModule } = await import("../../src/app.module");
 
   const builder = Test.createTestingModule({
     imports: [AppModule],
@@ -113,7 +113,7 @@ export async function createTestApp(options?: {
         const request = context
           .switchToHttp()
           .getRequest<{ user: { sub: string; preferred_username: string } }>();
-        request.user = { sub: userId, preferred_username: 'test' };
+        request.user = { sub: userId, preferred_username: "test" };
         return true;
       },
     });

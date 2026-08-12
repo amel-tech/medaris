@@ -1,14 +1,14 @@
 import {
-  IsString,
   IsBoolean,
   IsOptional,
+  IsString,
+  MaxLength,
   MinLength,
-} from '@nestjs/class-validator';
-import { MaxLength } from '@nestjs/class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+} from "@nestjs/class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class CreateFlashcardDeckDto {
-  @ApiProperty({ example: 'Colours - Vocabulary Deck' })
+  @ApiProperty({ example: "Colours - Vocabulary Deck" })
   @IsString()
   @MinLength(5)
   @MaxLength(100)

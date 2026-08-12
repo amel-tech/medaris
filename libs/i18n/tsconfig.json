@@ -2,10 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "isolatedModules": false,
-    "lib": [
-      "ESNext",
-      "DOM"
-    ],
+    "lib": ["ESNext", "DOM"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "outDir": "./.tsbuild",
@@ -16,11 +13,6 @@
     "rootDir": "./src",
     "tsBuildInfoFile": "./.tsbuild/.tsbuildinfo"
   },
-  "include": [
-    "src/**/*",
-    "src/**/*.json"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["src/**/*", "src/**/*.json"],
+  "exclude": ["node_modules"]
 }

@@ -1,35 +1,37 @@
-import { getRequestConfig } from 'next-intl/server'
-import { resources } from '@medaris/i18n'
-import { hasLocale } from 'next-intl'
-import { routing } from './routing'
+import { resources } from "@medaris/i18n";
+import { hasLocale } from "next-intl";
+import { getRequestConfig } from "next-intl/server";
+import { routing } from "./routing";
 
-const resolveMessagesForLang = async (locale: keyof typeof resources, ns: string[] = ['common']) => {
-  const messages = resources[locale]
+const resolveMessagesForLang = async (
+  locale: keyof typeof resources,
+  ns: string[] = ["common"]
+) => {
+  const messages = resources[locale];
 
   if (ns) {
     return Object.fromEntries(
-      Object.entries(messages).filter(([key]) => ns.includes(key)),
-    )
+      Object.entries(messages).filter(([key]) => ns.includes(key))
+    );
   }
 
-  return messages
-}
+  return messages;
+};
 
-export default getRequestConfig(async ({
-  requestLocale,
-}) => {
-  const requested = await requestLocale
+export default getRequestConfig(async ({ requestLocale }) => {
+  const requested = await requestLocale;
   const locale = hasLocale(routing.locales, requested)
     ? requested
-    : routing.defaultLocale
+    : routing.defaultLocale;
 
-  const messages = await resolveMessagesForLang(locale,
+  const messages = await resolveMessagesForLang(
+    locale,
     // Load only app-specific namespaces. This prevents using cross-app locale strings.
-    ['common', 'tedris'],
-  )
+    ["common", "tedris"]
+  );
 
   return {
     locale,
     messages,
-  }
-})
+  };
+});

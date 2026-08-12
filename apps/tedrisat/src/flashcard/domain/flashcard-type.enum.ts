@@ -1,4 +1,4 @@
 export enum FlashcardType {
-  VOCABULARY = 'VOCABULARY',
-  HADEETH = 'HADEETH',
+  VOCABULARY = "VOCABULARY",
+  HADEETH = "HADEETH",
 }

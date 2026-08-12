@@ -4,14 +4,10 @@
   "targets": {
     "lint": {},
     "build": {
-      "outputs": [
-        "{projectRoot}/theme/main.css"
-      ]
+      "outputs": ["{projectRoot}/theme/main.css"]
     },
     "process": {
-      "outputs": [
-        "{projectRoot}/theme/main.css"
-      ]
+      "outputs": ["{projectRoot}/theme/main.css"]
     }
   }
 }

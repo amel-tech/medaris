@@ -1,7 +1,7 @@
-import { ErrorContext, NotFoundError } from '@medaris/common';
+import { type ErrorContext, NotFoundError } from "@medaris/common";
 
 export class DeckNotFoundError extends NotFoundError {
-  static readonly code = 'DECK_NOT_FOUND';
+  static readonly code = "DECK_NOT_FOUND";
 
   constructor(deckId: string, context?: ErrorContext) {
     super(DeckNotFoundError.code, `Deck with id ${deckId} not found`, context);

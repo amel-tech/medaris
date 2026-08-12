@@ -1,34 +1,33 @@
-'use client'
+"use client";
 
-import React from 'react'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { CaretLeftIcon } from "@medaris/icons";
+import { Button } from "@medaris/ui/components/button";
+import { Form } from "@medaris/ui/custom/form";
+import ATFormGroupTextArea from "@medaris/ui/custom/form-group-text-area";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import React from "react";
+import { useFieldArray, useForm } from "react-hook-form";
+import type z from "zod";
 
-import { Button } from '@medaris/ui/components/button'
-import ATFormGroupTextArea from '@medaris/ui/custom/form-group-text-area'
-import FlashCard from '../flashcard'
-import { useRouter } from 'next/navigation'
-import { CaretLeftIcon } from '@medaris/icons'
-import { useFieldArray, useForm } from 'react-hook-form'
-import { Form } from '@medaris/ui/custom/form'
-import z from 'zod'
-import { useTranslations } from 'next-intl'
-
-import { deckCardsFormSchema } from '~/features/flashcards/validations/deck-cards-form-schema'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { deckCardsFormSchema } from "~/features/flashcards/validations/deck-cards-form-schema";
+import FlashCard from "../flashcard";
 
 interface IDeckFormProps {
-  id?: number
+  id?: number;
 }
 
 interface ICard {
   content: {
-    front: string
-    back: string
-  }
+    front: string;
+    back: string;
+  };
 }
 
 function DeckForm({ id }: IDeckFormProps) {
-  const t = useTranslations('tedris')
-  const router = useRouter()
+  const t = useTranslations("tedris");
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof deckCardsFormSchema>>({
     resolver: zodResolver(deckCardsFormSchema),
@@ -36,36 +35,35 @@ function DeckForm({ id }: IDeckFormProps) {
       cards: [
         {
           content: {
-            front: '',
-            back: '',
+            front: "",
+            back: "",
           },
         },
       ],
     },
-  })
+  });
 
   const onAddCard = () => {
     append({
       content: {
-        front: '',
-        back: '',
+        front: "",
+        back: "",
       },
-    })
-  }
+    });
+  };
 
   const { fields, append } = useFieldArray({
     control: form.control,
-    name: 'cards',
-  })
+    name: "cards",
+  });
 
   const onSubmit = (data: { cards: ICard[] }) => {
     if (id) {
-      console.log('update: ', data)
+      console.log("update: ", data);
+    } else {
+      console.log("create: ", data);
     }
-    else {
-      console.log('create: ', data)
-    }
-  }
+  };
 
   return (
     <>
@@ -77,39 +75,39 @@ function DeckForm({ id }: IDeckFormProps) {
               className="cursor-pointer flex items-center gap-2"
             >
               <CaretLeftIcon />
-              {t('DeckForm.back')}
+              {t("DeckForm.back")}
             </div>
-            <Button type="submit">{t('DeckForm.save')}</Button>
+            <Button type="submit">{t("DeckForm.save")}</Button>
           </div>
 
           <div>
-            <h4 className="mb-4">{t('DeckForm.cards')}</h4>
+            <h4 className="mb-4">{t("DeckForm.cards")}</h4>
             {fields.map((_, index) => (
               <div key={index} className="grid grid-cols-3 gap-4 mb-8">
                 <FlashCard>
                   <ATFormGroupTextArea
                     name={`cards.${index}.content.front`}
-                    placeholder={t('DeckForm.frontText')}
+                    placeholder={t("DeckForm.frontText")}
                     control={form.control}
                   />
                 </FlashCard>
                 <FlashCard>
                   <ATFormGroupTextArea
                     name={`cards.${index}.content.back`}
-                    placeholder={t('DeckForm.backText')}
+                    placeholder={t("DeckForm.backText")}
                     control={form.control}
                   />
                 </FlashCard>
               </div>
             ))}
             <Button variant="secondary" className="w-full" onClick={onAddCard}>
-              {t('DeckForm.addCard')}
+              {t("DeckForm.addCard")}
             </Button>
           </div>
         </form>
       </Form>
     </>
-  )
+  );
 }
 
-export default DeckForm
+export default DeckForm;

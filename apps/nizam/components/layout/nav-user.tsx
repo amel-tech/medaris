@@ -1,11 +1,11 @@
-'use client'
+"use client";
 
-import { signOut } from 'next-auth/react'
+import { CaretUpDownIcon, SignOutIcon } from "@medaris/icons";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from '@medaris/ui/components/avatar'
+} from "@medaris/ui/components/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,26 +13,29 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@medaris/ui/components/dropdown-menu'
+} from "@medaris/ui/components/dropdown-menu";
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from '@medaris/ui/components/sidebar'
-import { CaretUpDownIcon, SignOutIcon } from '@medaris/icons'
+} from "@medaris/ui/components/sidebar";
+import { signOut } from "next-auth/react";
 
 export function NavUser({
   user,
 }: {
   user: {
-    name: string
-    email: string
-    avatar: string
-  }
+    name: string;
+    email: string;
+    avatar: string;
+  };
 }) {
-  const { isMobile } = useSidebar()
-  const nameInitials = user.name.split(' ').map(name => name.charAt(0).toUpperCase()).join('')
+  const { isMobile } = useSidebar();
+  const nameInitials = user.name
+    .split(" ")
+    .map((name) => name.charAt(0).toUpperCase())
+    .join("");
 
   return (
     <SidebarMenu>
@@ -58,7 +61,7 @@ export function NavUser({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-            side={isMobile ? 'bottom' : 'right'}
+            side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={4}
           >
@@ -66,7 +69,9 @@ export function NavUser({
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">{nameInitials}</AvatarFallback>
+                  <AvatarFallback className="rounded-lg">
+                    {nameInitials}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
@@ -83,5 +88,5 @@ export function NavUser({
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }

@@ -1,20 +1,20 @@
-import { setRequestLocale } from 'next-intl/server'
-import { HeaderSection } from '~/features/header'
-import { HeroSection } from '~/features/hero'
-import { VisionSection } from '~/features/vision'
-import { FeaturesSection } from '~/features/features'
-import { CurriculumSection } from '~/features/curriculum'
-import { PartnershipSection } from '~/features/partnership'
-import { WaitlistSection } from '~/features/waitlist'
-import { FooterSection } from '~/features/footer'
+import { setRequestLocale } from "next-intl/server";
+import { CurriculumSection } from "~/features/curriculum";
+import { FeaturesSection } from "~/features/features";
+import { FooterSection } from "~/features/footer";
+import { HeaderSection } from "~/features/header";
+import { HeroSection } from "~/features/hero";
+import { PartnershipSection } from "~/features/partnership";
+import { VisionSection } from "~/features/vision";
+import { WaitlistSection } from "~/features/waitlist";
 
 export default async function Home({
   params,
 }: {
-  params: Promise<{ locale: string }>
+  params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params
-  setRequestLocale(locale)
+  const { locale } = await params;
+  setRequestLocale(locale);
 
   return (
     <div className="bg-background-light text-gray-800 font-sans">
@@ -39,5 +39,5 @@ export default async function Home({
       <WaitlistSection />
       <FooterSection />
     </div>
-  )
+  );
 }

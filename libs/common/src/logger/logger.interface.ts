@@ -1,4 +1,4 @@
-import { LoggerService } from "@nestjs/common";
+import type { LoggerService } from "@nestjs/common";
 
 export interface ILogger extends LoggerService {
   log(message: string, data?: any): void;
@@ -10,11 +10,11 @@ export interface ILogger extends LoggerService {
 }
 
 export enum LogLevel {
-  ERROR = 'error',
-  WARN = 'warn',
-  INFO = 'info',
-  DEBUG = 'debug',
-  VERBOSE = 'verbose',
+  ERROR = "error",
+  WARN = "warn",
+  INFO = "info",
+  DEBUG = "debug",
+  VERBOSE = "verbose",
 }
 
 export interface LoggerConfig {
