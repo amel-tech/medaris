@@ -113,11 +113,25 @@ The fix is a `biome.json` `overrides` entry turning `useImportType` off for
 1. **An override does not inherit the top-level `formatter` / `javascript.formatter`
    blocks.** Omit them and Biome reformats every matched file with its own defaults —
    tabs — which is why the override repeats indent style, width and quote settings.
-2. **Do not put comments inside the `overrides` array.** Biome accepts `//` comments
-   elsewhere in `biome.json`, but a comment inside an override object made it silently
-   drop that override's `includes`, so the override matched the whole repo and
-   tab-reformatted every JSON file it touched. `biome.json` is kept comment-free for
-   this reason; this file is where the explanations live instead.
+2. **`biome.json` must contain no `//` comments at all.** This is not a style preference,
+   it is load-bearing, and it bit twice:
+   - a comment *inside* an override object made Biome silently drop that object's
+     `includes`, so the override matched the whole repo and tab-reformatted every JSON
+     file it touched;
+   - later, a comment placed *immediately above* the `overrides` key — outside the array,
+     which looked safe — silently disabled the override **entirely**:
+     `biome check --write apps/teskilat/src/app.controller.ts` promptly rewrote
+     `import { AppService }` to `import type { AppService }`, i.e. reintroduced the exact
+     DI break this override exists to prevent.
+
+   There is no error and no warning in either case; the config simply stops doing what it
+   says. The only safe rule is a comment-free `biome.json`, verifiable with
+   `node -e "JSON.parse(require('fs').readFileSync('biome.json','utf8'))"` — if that
+   throws, the override may already be off. **The override therefore duplicates the
+   `formatter` and `javascript.formatter` blocks with no comment explaining why; that
+   duplication is deliberate, and if you change a formatter setting at the root you must
+   change it in the override too.** This document is the only place that explanation can
+   live.
 
 The override is scoped to `**/*.{ts,mts,cts}` rather than the whole package directory so
 those packages' JSON files stay under the root formatter config. Only `.ts` exists in them

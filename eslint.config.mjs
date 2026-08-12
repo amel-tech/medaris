@@ -24,6 +24,16 @@ export default [
       "libs/services/src/**/generated/**",
       "libs/services/swagger-docs/**",
       "libs/tokens/theme/**",
+      // The four below keep this list in step with biome.json's `files.includes`.
+      // Biome additionally honours .gitignore via `vcs.useIgnoreFile`; ESLint's flat
+      // config does not, so anything gitignored-but-present has to be repeated here or
+      // `module-boundaries` will parse it. `dist_keycloak` and the dev-resources
+      // directory only exist after `keycloakify build`, which is exactly when this
+      // matters — that run drops minified bundles into the tree.
+      "apps/keycloak-theme/dist_keycloak/**",
+      "apps/keycloak-theme/public/keycloakify-dev-resources/**",
+      "apps/*/public/mocks/**",
+      "**/*.min.js",
     ],
   },
   {
