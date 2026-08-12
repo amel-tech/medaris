@@ -387,15 +387,37 @@ Restricting to projects with a `build` target gives the same answer
 (`["tedrisat"]` / `["nizam-web"]`), so the isolation holds at the build-task
 level, not just in the project list.
 
-**Honest limitation.** This PR cannot itself be the real-PR demonstration: it
-edits `nx.json`, `package.json` and `.github/workflows/ci.yaml`, all
-`sharedGlobals` inputs, so it correctly affects **all 16 projects**. Rather than
-leave the AC on a one-off observation, the property is encoded as
-`tools/ci/assert-affected-isolation.mjs` and runs in `verify` on every PR: it
-asserts that a leaf file in one app affects exactly that one project, and fails
-otherwise. So the mechanism is proven locally and re-proven continuously, but
-the specific observation "an app-only PR ran only that app's build" will first be
-visible on the next app-only PR. See §7.
+**Verified on a real PR — with one precise caveat.** The AC asks for real-PR
+verification, and the isolation assertion ran inside PR #15's own `Verify` job
+(run `31564219262`), against the real project graph on a GitHub runner:
+
+```
+✔ backend-only change (NestJS app)
+    affected: ["tedrisat"]
+✔ frontend-only change (Next.js app)
+    affected: ["nizam-web"]
+✔ affected-isolation: each stack's changes stay within it.
+```
+
+So "a backend-only change does not trigger frontend builds, and vice versa" is
+demonstrated in CI, not merely locally — and because the assertion is a workflow
+step rather than a one-time observation, every future PR re-proves it.
+
+The caveat, stated precisely: what this PR could **not** show is its *own*
+affected set being narrow. It edits `nx.json`, `package.json` and
+`.github/workflows/ci.yaml`, all `sharedGlobals` inputs, so its own affected set
+is correctly all 16 projects, and CI logged exactly that:
+
+```
+NX_BASE=c59d4673190caa3bdb15615b287d91ea0707ae76
+--- projects affected by this change ---
+keycloak-theme services tedris-web nizam-web tedrisat teskilat landing-web
+common tokens ui nazir-web hooks icons types utils i18n
+```
+
+That is the right outcome for a root-config change, not a failure of `affected`.
+The end-to-end observation "an app-only PR built only that app" belongs to the
+first app-only PR; MDRS-19 should confirm it at cutover. See §7.
 
 ## 5. What review found
 
@@ -479,6 +501,22 @@ ecosystem, directory, grouping and schedule together, which is a dependency-poli
 change rather than CI plumbing, and a careless conversion spams the queue.
 Assigned to **MDRS-21** with the dependency work.
 
+Three such PRs are **already open and already dead**, opened against the npm
+directory layout before the pnpm catalog migration:
+
+| PR | Bump | Directory |
+| --- | --- | --- |
+| #8 | `@swc/cli` 0.7.10 → 0.8.1 | `/apps/tedrisat` |
+| #7 | `class-validator` 0.14.4 → 0.15.1 | `/apps/tedrisat` |
+| #6 | `@swc/cli` 0.7.10 → 0.8.1 | `/apps/teskilat` |
+
+None can merge: the versions they target now live in `pnpm-workspace.yaml`'s
+catalog, the app `package.json` files carry `catalog:` instead of a version
+range, and there is no per-app lockfile for Dependabot to update. **They should be
+closed**, and the bumps re-taken as catalog edits. Deliberately left untouched
+here — closing dependency PRs is MDRS-21's call, made together with the ecosystem
+migration above, not a side effect of a CI task.
+
 ## 6. Not verified
 
 Everything here is unverifiable from this branch, and none of it is claimed as
@@ -519,7 +557,7 @@ working:
 | **MDRS-18** | README/`CONTRIBUTING.md` need the Nx target vocabulary and CI behaviour — see the handoff below. |
 | **MDRS-19** | Create branch protection on `main` with the 5 check names in §6.1. Confirm on the first app-only PR that only that stack's builds ran. |
 | **MDRS-20** | Frontend test coverage is zero; `tedris-web`'s `test` target is an `echo`. Also owns `test:e2e`, which is what the Postgres service is there for, and restoring PR coverage reporting (dropped here — see §1). |
-| **MDRS-21** | Drive `tools/ci/biome-baseline.json` to `{0,0,0}` and empty `audit-ci.json`'s 31-entry allowlist. Both are ratchets designed to be lowered. Also migrate `.github/dependabot.yaml` off `package-ecosystem: npm` — see §5 #6, its PRs cannot pass this pipeline. |
+| **MDRS-21** | Drive `tools/ci/biome-baseline.json` to `{0,0,0}` and empty `audit-ci.json`'s 31-entry allowlist. Both are ratchets designed to be lowered. Also migrate `.github/dependabot.yaml` off `package-ecosystem: npm` and close the 3 already-dead Dependabot PRs (#6, #7, #8) — see §5 #6; none of them can pass this pipeline. |
 | unassigned | Add `actionlint` to CI (all 9 workflows pass it today). Pin the first-party `actions/*` refs repo-wide (7 deploy workflows + these 2). Extend `depcheck` beyond its 3 projects. Consider a `[22, 24]` Node matrix. The 3 per-package `audit:ci` scripts are redundant under a single lockfile and could be dropped. |
 
 ## Handoff to MDRS-18 (docs)
