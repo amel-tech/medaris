@@ -23,9 +23,11 @@
       "!**/.migration",
       "!**/routeTree.gen.ts",
       "!apps/keycloak-theme/src/kc.gen.tsx",
+      "!apps/keycloak-theme/.keycloakify",
       "!apps/keycloak-theme/dist_keycloak",
       "!apps/keycloak-theme/public/keycloakify-dev-resources",
       "!libs/services/src/**/generated",
+      "!libs/services/swagger-docs",
       "!**/pnpm-lock.yaml",
       "!**/*.min.js",
       "!**/*.min.css"

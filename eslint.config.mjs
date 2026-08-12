@@ -20,7 +20,9 @@ export default [
       ".migration/**",
       "**/routeTree.gen.ts",
       "apps/keycloak-theme/src/kc.gen.tsx",
+      "apps/keycloak-theme/.keycloakify/**",
       "libs/services/src/**/generated/**",
+      "libs/services/swagger-docs/**",
     ],
   },
   {

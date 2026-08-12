@@ -45,7 +45,12 @@ turned out to be **insufficient on ESLint 10** — see §5.
 Modelled on R1's, with madrasah's generated artifacts added to `files.includes`:
 
 - `apps/keycloak-theme/src/kc.gen.tsx` — Keycloakify codegen
+- `apps/keycloak-theme/.keycloakify` — Keycloakify's realm fixture; the sweep
+  reflowed all 2 420 lines of it before it was excluded
 - `libs/services/src/**/generated` — the OpenAPI generator's 60-file output
+- `libs/services/swagger-docs` — the OpenAPI spec that *feeds* that generator; it is
+  exported from the running tedrisat API, so reformatting it is churn the next export
+  undoes
 - `**/routeTree.gen.ts` — TanStack Router codegen (none today; kept so the first one
   added is excluded by default)
 - `dist`, `build`, `out`, `out-tsc`, `.next`, `.output`, `.tsbuild`, `coverage`,
