@@ -278,10 +278,37 @@ it is keyboard-reachable.
   real tags land. It is set per ADR §D5 and passes today, but MDRS-10 dropped the builds
   for `hooks`, `types` and `utils` (§D7), so the buildable/non-buildable split is not
   what the ADR assumed when it wrote that flag.
-- **MDRS-14 owns the pre-commit hook.** `lint-staged` should call
-  `biome check --write --no-errors-on-unmatched` on `**/*.{ts,tsx,js,jsx,json,css}` —
-  R1's exact glob and flags. Root scripts it can lean on instead: `lint` (Nx-cached,
-  per-project), `lint:fix` (`biome check --write .`), `format`, `format:check`.
+- **MDRS-14 owns the pre-commit hook.** The exact `lint-staged` entry, matching R1:
+
+  ```jsonc
+  "lint-staged": {
+    "**/*.{ts,tsx,js,jsx,json,css}": [
+      "biome check --write --no-errors-on-unmatched"
+    ]
+  }
+  ```
+
+  `--no-errors-on-unmatched` is **not optional**, and this was measured rather than
+  assumed. `biome check --write` given a file list in which every entry is excluded by
+  `biome.json` exits **1** with *"No files were processed in the specified paths"*; with
+  the flag it exits **0**. That is a real commit-blocking scenario here, because three of
+  the exclusions are files developers routinely stage: the regenerated OpenAPI client,
+  the OpenAPI spec, and `libs/tokens/theme/main.css` after any `build`. Files Biome does
+  not handle at all (a stray `.md`) are skipped silently either way.
+
+  **The `useImportType` override protects lint-staged automatically** — no special
+  handling needed. Verified directly: `biome check --write apps/teskilat/src/app.controller.ts`
+  leaves `import { AppService }` untouched and reports no fixes, because the override
+  matches the path. The hook cannot reintroduce the DI breakage of §3. The standing risk
+  is the *opposite* direction — a **new** NestJS package that nobody adds to
+  `overrides.includes` will get `import type` applied by the hook and fail at runtime.
+
+  Root scripts available to lean on instead of re-deriving commands — these are the final
+  names: `lint` (`nx run-many -t lint`, Nx-cached, per-project), `lint:fix`
+  (`biome check --write .`), `format` (`biome format --write .`), `format:check`
+  (`biome format .`), `module-boundaries` (`nx run-many -t module-boundaries`).
+  `affected` now includes `lint` alongside `typecheck test build`.
+
   Note that MDRS-11's doc §7 records husky/commitlint as *MDRS-12's* share of
   `.migration/`; that assignment moved to **MDRS-14** and nothing under `.migration/`
   was touched here (4 files remain: 2× `commitlint.config.js`, 2× `release-please-config.json`).
