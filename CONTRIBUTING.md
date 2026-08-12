@@ -238,4 +238,94 @@ hide, there is no patch to re-apply.
 <!-- MDRS-13 ANCHOR — insert "## Project layers and tags" here.
      One-screen mirror of the CLAUDE.md tag table (ADR-001 §D5). -->
 
-<!-- MDRS-18 ANCHOR — insert "## Module boundaries" and "## Adding a lib" here. -->
+## Module boundaries
+
+ESLint exists in this repo for exactly one purpose: running
+`@nx/enforce-module-boundaries`. All formatting and linting is Biome's job. Do
+not add style rules to `eslint.config.mjs` — they belong in `biome.json` or
+nowhere.
+
+Run the check on its own:
+
+```bash
+pnpm module-boundaries          # nx run-many -t module-boundaries
+```
+
+It also runs in CI as part of `nx affected`.
+
+### What is enforced today
+
+Honestly: very little. `depConstraints` holds a single permissive entry
+(`sourceTag: "*"` may depend on `"*"`) and **no project carries `tags`**. The
+rule is wired up and green so that adding the taxonomy is the only remaining
+step — that taxonomy (`scope:*` and `platform:*`, per ADR-001 §D5) is MDRS-13's
+deliverable, and its anchor sits directly above this section.
+
+Until those tags land, the boundary you must respect is a convention rather than
+a gate:
+
+- An **app** may depend on any `@medaris/*` library.
+- A **library must never import from an app.** There is no technical barrier
+  stopping you today; the tags are what will make it fail.
+- Backend libraries and frontend libraries are not yet separated by the linter.
+  `libs/common` is backend-only in practice (it is the NestJS shared layer);
+  `libs/ui`, `libs/hooks`, `libs/icons`, and `libs/tokens` are frontend-only.
+  Crossing that line compiles, but it is the exact mistake MDRS-13 exists to
+  stop — do not introduce one in the meantime.
+
+## Adding a library
+
+Libraries live in `libs/<name>` and resolve as `@medaris/<name>` through the
+pnpm workspace. There are **no `paths` aliases** in `tsconfig.base.json`;
+resolution is entirely workspace-link based, so a correct `package.json` is what
+makes the import work.
+
+1. **Create the package.** `libs/<name>/package.json`, modelled on an existing
+   leaf library such as `libs/utils`:
+
+   ```jsonc
+   {
+     "name": "@medaris/<name>",
+     "version": "0.0.0",
+     "main": "./src/index.ts",
+     "types": "./src/index.ts",
+     "module": "./dist/index.js",
+     "type": "module",
+     "sideEffects": false,
+     "private": true,
+     "files": ["dist/**"],
+     "scripts": { "typecheck": "tsc -b tsconfig.json" },
+     "devDependencies": { "typescript": "catalog:" }
+   }
+   ```
+
+   Consumers import the **source** (`main`/`types` point at `src/index.ts`), so
+   a plain library needs no build step. Add a `build` script only if something
+   genuinely consumes `dist/` — `libs/common` does, because the Nest apps fail
+   at boot with `TS2307` without it.
+
+2. **Add `tsconfig.json`** extending `tsconfig.base.json`, with a `src/index.ts`
+   barrel as the single public entry point. Do not let consumers deep-import
+   past the barrel.
+
+3. **Pin dependencies through the catalog.** Use `"catalog:"` rather than a
+   version range so the workspace keeps one version per dependency. New
+   dependencies get added to `pnpm-workspace.yaml`'s catalog first.
+
+4. **Wire the consumer.** Add `"@medaris/<name>": "workspace:*"` to the
+   dependent's `package.json`, then `pnpm install`. Nx infers the project graph
+   from the workspace — there is no project registry to edit by hand.
+
+5. **Add the scope.** A new library needs its name in the `scope-enum` in
+   `commitlint.config.mjs`, or every commit touching it will be rejected. See
+   the scope list earlier in this document.
+
+6. **Verify before opening a pull request.**
+
+   ```bash
+   pnpm nx run-many -t typecheck test build lint module-boundaries --skip-nx-cache
+   pnpm graph        # confirm the new edge is the one you intended
+   ```
+
+When MDRS-13 lands, step 1 will also require choosing `scope:*` and `platform:*`
+tags; the anchor above marks where that instruction goes.
