@@ -201,6 +201,7 @@ Every command below was run in this worktree, from a clean `pnpm install`, with
 | `pnpm nx run-many -t lint` | ✅ 16 projects (`biome check` per project) |
 | `pnpm nx run-many -t module-boundaries` | ✅ 16 projects |
 | `pnpm exec biome check .` | ✅ repo-wide, 548 files, 0 errors |
+| `pnpm nx affected -t lint --base=origin/main` | ✅ resolves, runs all 16 (root config changed) |
 
 Next-app builds use placeholder values copied from each app's committed `.env.example`
 into a gitignored `.env.local`, exactly as MDRS-10 §7 and MDRS-11 §6 did. No `.env` is
@@ -229,7 +230,6 @@ committed and no real secret was needed.
     was not, the reorder *starts* applying `tw-animate-css` and `@medaris/tokens/css`
     where they previously did nothing. This is the one change in the PR that could alter
     rendering, and the cheapest way to settle it is to open `landing` before and after.
-- **`nx affected -t lint` was not exercised against a real base.** Only `run-many` was.
 - **Biome's remaining warnings/infos were not fixed** — 94 warnings and 27 infos
   survive (mostly `noExplicitAny` ×55, `noNonNullAssertion` ×11, `useIsArray` ×7,
   `useNodejsImportProtocol` ×12). They do not fail `biome check`. Left deliberately:
