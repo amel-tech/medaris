@@ -2,18 +2,24 @@
 #
 #   git config blame.ignoreRevsFile .git-blame-ignore-revs
 #
-# GitHub honours this file automatically. Add a SHA here only if the commit
-# changes no behaviour at all — a bulk formatter run, nothing else.
+# GitHub honours this file automatically.
 #
-# ⚠️  A SHA is only effective while it stays an ancestor of the branch you
-# blame. A squash merge rewrites the branch into one new commit, which leaves
-# the original SHA unreachable from `main` and the entry silently inert — no
-# error, just unfiltered blame. If you squash-merge a PR whose reformat commit
-# is listed here, re-point the entry at the squashed SHA in a follow-up commit
-# or drop it. See docs/migration/mdrs-12-biome.md §12.
-
-# style(repo): biome format sweep — Biome 2.4.4 adoption, 493 files (MDRS-12).
-# Recorded pre-merge from branch
-# argedikas/mdrs-12-adopt-biome-reduce-eslint-to-a-boundaries-only-shell.
-# See docs/migration/mdrs-12-biome.md §7.
-4c92fc4ef7ec42188ef44fd37167513ef06e7674
+# The bar for adding a SHA: the commit changes no behaviour at all — a bulk
+# formatter run, nothing else. Two things disqualify a commit, and MDRS-12's
+# sweep hit both, which is why this file is currently empty:
+#
+#   1. It must be formatting only. A `biome check --write` run is NOT: alongside
+#      whitespace it applies lint autofixes. MDRS-12's sweep added 262 `import
+#      type` lines (useImportType) and rewrote a regex character class
+#      (noUselessEscapeInRegex). The `import type` rewrite went on to break
+#      NestJS dependency injection — see docs/migration/mdrs-12-biome.md §3.
+#      To qualify, run `biome format --write` alone, not `check --write`.
+#
+#   2. The SHA must stay reachable from the branch you blame. A squash merge
+#      rewrites the branch into one new commit, leaving the original SHA
+#      unreachable from `main` and the entry silently inert — no error, blame
+#      just stays unfiltered. Either merge such a PR with a merge commit, or
+#      add the post-merge SHA afterwards.
+#
+# So: isolate a `biome format --write` commit, land it without squashing, and
+# add that SHA here.

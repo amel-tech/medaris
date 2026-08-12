@@ -21,10 +21,10 @@ repo, and a single ESLint config survives for the one thing Biome cannot do:
 | Formatter | none (3 orphan prettier files, no prettier installed) | Biome 2.4.4, root `biome.json` |
 | Linter | none | Biome (format + lint + import assist) |
 | ESLint | absent | `eslint.config.mjs`, **boundaries-only** |
-| Nx `lint` target | did not exist | `biome check {projectRoot}`, 16 projects, cached |
+| Nx `lint` target | did not exist | `biome check {projectRoot}`, 16 projects, cached — **workspace root not covered, §10** |
 | Nx `module-boundaries` target | did not exist | `@nx/eslint/plugin`, 16 projects |
 | Root scripts | no `lint` / `format` | `lint`, `lint:fix`, `format`, `format:check`, `module-boundaries` |
-| Editor default formatter | ESLint fix-on-save, `formatOnSave: false` | Biome, `formatOnSave: true` |
+| Editor config | ESLint fix-on-save, `formatOnSave: false` | Biome, `formatOnSave: true` — what the file *says*; not exercised in a real editor (§10) |
 
 ## 2. The split, and why ESLint survives at all
 
@@ -167,18 +167,34 @@ Fix: the 21 stale directive lines were deleted from the 8 source files that carr
 them (`apps/tedrisat/{drizzle.config.ts,src/main.ts}`,
 `apps/{nizam,tedris}/types/react-table.d.ts`, `apps/{nizam,tedris}/middleware.ts`,
 `apps/keycloak-theme/src/login/KcContext.ts`, `libs/ui/src/components/badge.tsx`).
-The 21 named four rule families: `no-explicit-any` (the bulk), `prettier/prettier`,
-`no-unsafe-call` / `no-unsafe-member-access`, `no-unused-vars`, and
-`no-empty-object-type`. Nothing is lost:
+The exact breakdown of the 21: `no-explicit-any` ×9, `no-unsafe-call` ×5,
+`prettier/prettier` ×5, `no-unsafe-member-access` ×3, `no-unused-vars` ×2,
+`no-empty-object-type` ×1.
 
-- `prettier/prettier` — prettier is gone; Biome formats these lines now.
-- `no-explicit-any`, `no-unused-vars`, `no-empty-object-type` — Biome's counterparts are
-  either off (`noEmptyInterface`) or warning-level (`noExplicitAny`, `noUnusedVariables`),
-  so `biome check` stays at 0 errors.
-- `no-unsafe-call` / `no-unsafe-member-access` — **Biome has no counterpart at all**;
-  these are type-aware rules and Biome does not do type-aware linting. That coverage is
-  genuinely gone, and it left with the general ESLint config by ADR §D5's decision, not
-  by anything chosen here.
+**13 of the 21 are replaced. 8 are not, and that is a real loss of coverage.**
+
+| Directive | ×  | Replacement |
+| -- | -- | -- |
+| `prettier/prettier` | 5 | Biome's formatter owns these lines now |
+| `no-explicit-any` | 9 | `suspicious/noExplicitAny`, **warning-level** |
+| `no-unused-vars` | 2 | `correctness/noUnusedVariables`, warning-level |
+| `no-empty-object-type` | 1 | `suspicious/noEmptyInterface`, deliberately **off** |
+| `no-unsafe-call` | 5 | **none** |
+| `no-unsafe-member-access` | 3 | **none** |
+
+The last two are **type-aware** rules: they need the type checker to know that a value is
+`any` before they can flag a call or a member access on it. Biome does not use a type
+checker, so it has no counterpart and cannot acquire one by configuration. The same is
+true of the whole type-aware family, which is now **absent repo-wide**, not just at these
+8 sites — `no-floating-promises`, `no-misused-promises` and `await-thenable` are the ones
+most likely to matter in the two NestJS apps, where an unawaited promise is a silent bug.
+
+That coverage left with the general ESLint config, which is ADR §D5's decision and not
+something chosen here. But nothing in this PR replaces it, and nothing else in the
+toolchain will: it is a **gap, not a migration**. Recovering it means a second,
+type-aware ESLint pass scoped to the Nest apps — see §13. Note also that the four
+warning-level replacements above do not fail `biome check` at all, so those 12 sites are
+now reported rather than enforced.
 
 `reportUnusedDisableDirectives: "off"` is still set, per ADR.
 
@@ -204,9 +220,27 @@ by `typecheck` + `build` (§8), not by inspection.
 
 `biome check --write` was run repo-wide as **one isolated commit**
 (`style(repo): biome format sweep`, 493 files), separate from the config commit, so the
-config diff stays reviewable. Its SHA is recorded in `.git-blame-ignore-revs`.
-`@biomejs/biome` is pinned **exact at 2.4.4** in the catalog precisely so that commit is
-byte-reproducible (ADR §D8).
+config diff stays reviewable. `@biomejs/biome` is pinned **exact at 2.4.4** in the catalog
+precisely so that commit is byte-reproducible (ADR §D8).
+
+**`.git-blame-ignore-revs` does not list it, and is empty of SHAs.** The acceptance
+criteria asked for the sweep to be listed there, and it was, until two measurements said
+it did not qualify:
+
+- **`biome check --write` is not a formatter run.** It applies lint autofixes too: the
+  sweep added **262 `import type` lines** and rewrote a regex character class
+  (`[^a-z0-9_\-]` → `[^a-z0-9_-]`, semantically identical but still not whitespace). The
+  `import type` half went on to break NestJS DI (§3). A commit carrying that is not
+  "changes no behaviour at all", which is the bar the file itself sets.
+- **The squash merge orphaned the SHA anyway.** MDRS-12 landed on `main` as a single
+  squashed commit, so the branch's `4c92fc4` is not an ancestor of `main` and any entry
+  naming it is silently inert — no error, `git blame` simply stays unfiltered.
+
+Either reason alone is enough; together they make the entry actively misleading, because a
+present-but-inert entry reads as a working blame filter. The file now documents both the
+bar and the two traps, so the next genuine reformat commit — `biome format --write` on its
+own, landed without squashing — can be added correctly. That leaves `git blame` polluted by
+this sweep, which is the honest cost of squash-merging it.
 
 Two of the sweep's own edits had to be undone in the commit after it, both caught by the
 gate rather than by reading the diff:
@@ -240,12 +274,18 @@ Every command below was run in this worktree, from a clean `pnpm install`, with
 | Command | Result |
 | -- | -- |
 | `pnpm nx run-many -t typecheck` | ✅ 16 projects |
-| `pnpm nx run-many -t test` | ✅ 3 projects, 8 suites, **89/89 tests** |
+| `pnpm nx run-many -t test` | ✅ **91/91 tests, 10 suites** — see the caveat below |
 | `pnpm nx run-many -t build` | ✅ 8 projects (see §10 for the keycloak-theme caveat) |
-| `pnpm nx run-many -t lint` | ✅ 16 projects (`biome check` per project) |
+| `pnpm nx run-many -t lint` | ✅ 16 projects (`biome check` per project — see §10 for the root-file gap) |
 | `pnpm nx run-many -t module-boundaries` | ✅ 16 projects |
-| `pnpm exec biome check .` | ✅ repo-wide, 548 files, 0 errors |
+| `pnpm exec biome check .` | ✅ repo-wide, 520 files, 0 errors (94 warnings, 27 infos) |
 | `pnpm nx affected -t lint --base=origin/main` | ✅ resolves, runs all 16 (root config changed) |
+
+**`nx run-many -t test` reports "3 projects", and that number flatters the result.** Only
+two of the three run anything: `tedrisat` (89 tests, 8 suites) and `teskilat` (2 tests,
+2 suites). The third, `tedris-web`, has `"test": "echo 'Tests not implemented'"` — it exits
+0 without executing a single test, so Nx counts it as a pass. Read the gate as **91 tests
+across the two NestJS apps and nothing else**; §10 spells out what that leaves uncovered.
 
 Next-app builds use placeholder values copied from each app's committed `.env.example`
 into a gitignored `.env.local`, exactly as MDRS-10 §7 and MDRS-11 §6 did. No `.env` is
@@ -270,10 +310,40 @@ committed and no real secret was needed.
     resets `button` background and border, which was reasoned about, not observed;
   - the `libs/ui/src/styles/globals.css` `@import` reorder — **this one was settled in
     review and is not a risk**, see §12.
+- **The frontend has zero test coverage, and the diff is heaviest exactly there.** All 91
+  tests belong to the two NestJS apps (§9). Behind the **156 changed `.tsx` files** there
+  is nothing but `typecheck` and `build`, and neither can see a render change — they
+  confirm the code compiles, not that anything still looks or behaves the same. The format
+  sweep touched more frontend lines than backend ones, so the least-verified half of this
+  PR is also the largest. Reading the JSX whitespace diff (65 `{' '}` removed, 26 `{" "}`
+  added, net −39, each one checked for equivalent rendering) is the only evidence there is,
+  and reading is not testing.
+- **`nx run-many -t lint` never lints the workspace root.** The `lint` target is
+  `biome check {projectRoot}` and all 16 projects live under `apps/` or `libs/`; the root
+  is not an Nx project (there is no root `project.json`). So these 12 tracked files are
+  covered by `biome check .` but by **no** `lint` invocation:
+  `.depcheckrc.json`, `.mcp.json`, `.vscode/{extensions,settings,tasks}.json`,
+  `audit-ci.json`, `biome.json`, `eslint.config.mjs`, `nx.json`, `package.json`,
+  `tsconfig.json`, `tsconfig.base.json`. `eslint.config.mjs` is real code. `nx affected -t
+  lint` has the same hole, and worse: a docs-only or root-config-only change yields zero
+  affected projects, so it lints nothing at all. The local gate did not catch this because
+  `biome check .` was also run by hand. **MDRS-15 owns the fix** — a root `biome ci .` step
+  in CI. Deliberately not fixed with a second local script, which would race the cached
+  per-project target.
+- **`biome check` exits 0 when only warnings remain** — measured: 520 files, 94 warnings,
+  27 infos, and both `biome check .` and `biome ci .` return **exit 0**. The `lint` target
+  therefore cannot fail on a warn-severity rule, so the 94 warnings are reported and never
+  enforced. Closing that needs `--error-on-warnings` or a ratchet in CI (**MDRS-15**) and
+  the diagnostics actually fixed (**MDRS-21**).
+- **`.vscode/settings.json` was not exercised in a real editor.** `formatOnSave: true`,
+  `source.fixAll.biome` and `source.organizeImports.biome` are written per Biome's
+  documented action ids, but confirming they fire needs a live VS Code session with the
+  Biome extension installed. The `.vscode` row in §1 describes what the file now says,
+  not an observed behaviour.
 - **Biome's remaining warnings/infos were not fixed** — 94 warnings and 27 infos
   survive (mostly `noExplicitAny` ×55, `noNonNullAssertion` ×11, `useIsArray` ×7,
-  `useNodejsImportProtocol` ×12). They do not fail `biome check`. Left deliberately:
-  each is a real code change and belongs in the owning app's PR, not in a
+  `useNodejsImportProtocol` ×12). They do not fail `biome check` (see above). Left
+  deliberately: each is a real code change and belongs in the owning app's PR, not in a
   tooling-adoption diff.
 
 ## 11. The 27 Biome errors the sweep could not fix
@@ -327,23 +397,24 @@ and its `linter.rules` block does *not* clobber `recommended: true` — `biome c
 apps/tedrisat` still reports its 10 warnings and `libs/common` its 39. So the override
 narrows exactly one rule and nothing else.
 
-### ⚠️ The squash merge orphans the `.git-blame-ignore-revs` entry
+### One acceptance criterion was not met: the isolated reformat commit
 
-This is the one thing a reader of `main` needs to know. `.git-blame-ignore-revs` pins
-`4c92fc4…`, the sweep commit **on this branch**. The `/mdrs` workflow squash-merges, which
-rewrites all six commits into one new commit on `main` — so after the merge:
+MDRS-12 asked for the bulk reformat to be an isolated commit listed in
+`.git-blame-ignore-revs`. On the branch it was both. On `main` it is neither, and the
+record should say so plainly:
 
-- the pinned SHA is no longer an ancestor of `main`, and the entry is inert. It does not
-  error; `git blame` simply stays polluted by the reformat;
-- there is no isolated reformat commit on `main` at all, which is the outcome MDRS-12's
-  acceptance criteria asked for.
+- MDRS-12 was **squash-merged** as `6bc1296`, so all six branch commits — the config
+  commit, the sweep, the fixes — are one commit on `main`. There is no isolated reformat
+  commit to point at.
+- The entry naming the branch's sweep SHA was therefore removed rather than left inert
+  (§7 gives the second, independent reason: `biome check --write` carries lint autofixes,
+  so that commit never met the file's own bar).
 
-The branch history is still reachable via `refs/pull/<N>/head`, so nothing is lost — but
-neither the file nor the AC delivers what it promises on `main`. **Whoever merges should
-decide** between a merge commit (preserves both the isolation and the SHA, as PRs #2 and
-#3 did) and squash (matches the `/mdrs` default; then the entry should be re-pointed at
-the squashed SHA in a follow-up, or dropped). This was escalated rather than decided here,
-because the merge strategy is not this issue's call to make.
+Nothing is destroyed — the branch history stays reachable via `refs/pull/12/head` — but
+`git blame` on `main` is polluted by the reformat and no config filters it. The remedy is
+not retroactive: it is to run the next bulk reformat as `biome format --write` alone and
+land it **without** squashing, which the rewritten `.git-blame-ignore-revs` now spells out.
+This was escalated before the merge; squash was the answer, and this is its cost.
 
 ## 13. Follow-ups
 
@@ -392,9 +463,18 @@ because the merge strategy is not this issue's call to make.
   Note that MDRS-11's doc §7 records husky/commitlint as *MDRS-12's* share of
   `.migration/`; that assignment moved to **MDRS-14** and nothing under `.migration/`
   was touched here (4 files remain: 2× `commitlint.config.js`, 2× `release-please-config.json`).
-- **MDRS-15 owns the CI lint job.** `nx affected -t lint module-boundaries` is the
-  command; `nx.json`'s `sharedGlobals` already lists `.github/workflows/ci.yml`, which
-  does not exist yet.
+- **MDRS-15 owns the CI lint job, and it has three jobs to do, not one.**
+  1. `nx affected -t lint module-boundaries` as the per-project gate; `nx.json`'s
+     `sharedGlobals` already lists `.github/workflows/ci.yml`, which does not exist yet.
+  2. **A root `biome ci .` step, separately.** `nx run-many -t lint` cannot see the
+     workspace root — 12 tracked files including `eslint.config.mjs` are linted by nobody
+     (§10). Adding a second *local* script instead would race the cached per-project
+     target, so CI is the right place. Alternatively, make the root an Nx project; that is
+     the bigger change.
+  3. **Decide whether warnings should fail.** `biome check` and `biome ci` both exit 0 with
+     94 warnings outstanding (§10), so today the `lint` target cannot fail on a
+     warn-severity rule. `--error-on-warnings` makes it fail immediately, which needs
+     MDRS-21's cleanup first, or a ratchet that caps the count and lowers it over time.
 - **FU-8 from MDRS-11 is closed.** `.vscode/tasks.json`'s "Lint Code" / "Fix Linting
   Issues" tasks pointed at root `lint` / `lint:fix` scripts that did not exist. Both
   scripts now exist. The tasks' `problemMatcher` is still `$eslint-compact`, which no
@@ -417,10 +497,17 @@ because the merge strategy is not this issue's call to make.
 - **The 6 `biome-ignore` suppressions in §11 are real a11y debt**, not false positives.
   They want an a11y pass over `apps/landing` and `libs/ui` with design input; no MDRS
   issue owns that today.
-- **`no-unsafe-call` / `no-unsafe-member-access` coverage is gone for good** (§5). Biome
-  does no type-aware linting, so nothing in the new toolchain replaces it. If the team
-  wants it back it needs `typescript-eslint`'s type-checked preset in
-  `eslint.config.mjs`, which contradicts ADR §D5's "boundaries only" — a decision, not an
-  oversight.
-- **Re-point or drop the `.git-blame-ignore-revs` entry after merge** if this PR is
-  squashed (§12).
+- **Type-aware linting is gone repo-wide and needs an owner** (§5). `no-unsafe-call` ×5 and
+  `no-unsafe-member-access` ×3 lost their suppressed sites, but the real gap is the whole
+  family — `no-floating-promises`, `no-misused-promises`, `await-thenable` — which now runs
+  nowhere. In the two NestJS apps an unawaited promise is a silent bug, so this is the
+  highest-value item on this list. Concretely: a **second** flat-config block in
+  `eslint.config.mjs` carrying `typescript-eslint`'s `recommendedTypeChecked` with
+  `parserOptions.project`, scoped to `apps/{tedrisat,teskilat}/**` and `libs/common/**`
+  only. That widens ESLint past "boundaries only", so it contradicts ADR §D5 as written and
+  needs an ADR amendment plus its own issue — it is a decision the team has not made, not an
+  oversight here. It is also slow (type-aware linting needs a full program), which is why it
+  should stay scoped to the three packages rather than the whole repo.
+- **Add the next bulk reformat to `.git-blame-ignore-revs` properly** (§7, §12): run
+  `biome format --write` on its own — not `check --write`, which carries lint autofixes —
+  and land it without squashing.
