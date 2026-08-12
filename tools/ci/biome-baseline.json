@@ -1,0 +1,14 @@
+{
+  "$comment": [
+    "Ratchet baseline for the workspace-root Biome gate (MDRS-15).",
+    "Measured on origin/main c59d467 with @biomejs/biome 2.4.4:",
+    "`biome ci .` checked 521 files and reported 0 errors, 94 warnings, 27 infos",
+    "while still exiting 0 — so the per-project `lint` target could never fail on a",
+    "warn-severity rule. These counts are the ceiling: CI fails when any count grows.",
+    "Driving them to zero is MDRS-21's job. When you fix diagnostics, lower the",
+    "numbers here in the same PR (the gate prints the new values for you)."
+  ],
+  "errors": 0,
+  "warnings": 94,
+  "infos": 27
+}

@@ -1,0 +1,80 @@
+name: CodeQL
+
+# Merged from the two identical inherited configs (MDRS-15):
+# .migration/{backend,frontend}/.github/workflows/codeql.yaml. They differed
+# only in whitespace — both analysed `languages: typescript` over their own
+# repo root.
+#
+# On "covering both stacks": both stacks ARE TypeScript, and CodeQL's
+# javascript-typescript extractor analyses the whole checkout, so one matrix
+# entry now spans what previously took two repos — apps/tedrisat, apps/teskilat
+# and libs/common (NestJS) plus apps/tedris, apps/nizam, apps/nazir,
+# apps/landing, apps/keycloak-theme and the shared libs (Next/React). The
+# matrix earns its keep by adding `actions`, which analyses the workflow files
+# themselves — worth having in a repo whose CI is this much of the surface.
+#
+# Kept as a separate workflow from ci.yaml on purpose: it needs
+# security-events: write to upload SARIF, and it runs on a schedule that the
+# quality gates should not.
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  schedule:
+    - cron: "0 9 1 * *" # Every month at 09:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      # One language failing must not hide the other's findings.
+      fail-fast: false
+      matrix:
+        include:
+          - language: javascript-typescript
+          - language: actions
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # No build step: both languages use CodeQL's no-build extraction, so the
+      # analysis does not need pnpm install or a compiled tree.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: +security-extended,security-and-quality
+          config: |
+            paths-ignore:
+              - '**/dist'
+              - '**/build'
+              - '**/.next'
+              - '**/coverage'
+              - '.migration'
+              - 'libs/services/src/**/generated'
+              - 'apps/keycloak-theme/src/kc.gen.tsx'
+
+      - name: Run CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
