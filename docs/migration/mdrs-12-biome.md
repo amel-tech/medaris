@@ -224,9 +224,11 @@ committed and no real secret was needed.
     `<button type="button">` — visually identical only because Tailwind's preflight
     resets `button` background and border, which was reasoned about, not observed;
   - `libs/ui/src/styles/globals.css` `@import` reordering. The two imports that sat
-    after `@source` were invalid CSS and were being dropped by the parser, so moving
-    them up may **start** applying `tw-animate-css` and `@medaris/tokens/css` where they
-    previously did nothing. This is the one change in the PR that could alter rendering.
+    after `@source` violate the CSS spec's ordering rule, which is what Biome flagged.
+    **Whether Tailwind's own parser was already tolerating them was not tested** — if it
+    was not, the reorder *starts* applying `tw-animate-css` and `@medaris/tokens/css`
+    where they previously did nothing. This is the one change in the PR that could alter
+    rendering, and the cheapest way to settle it is to open `landing` before and after.
 - **`nx affected -t lint` was not exercised against a real base.** Only `run-many` was.
 - **Biome's remaining warnings/infos were not fixed** — 94 warnings and 27 infos
   survive (mostly `noExplicitAny` ×55, `noNonNullAssertion` ×11, `useIsArray` ×7,

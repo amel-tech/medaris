@@ -98,8 +98,8 @@ function LanguageSelector() {
       </button>
       {isOpen && (
         <>
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: click-outside scrim; making it a <button> paints the browser's default button background over the page */}
-          {/* biome-ignore lint/a11y/useKeyWithClickEvents: dismissal wants an Escape handler on the menu, not a key handler on the scrim — a UX change, not a lint fix (MDRS-12 §10) */}
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: click-outside scrim, not a control — a <button> here would add a full-screen tab stop between the trigger and the menu items */}
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard dismissal wants an Escape handler on the menu, not a key handler on the scrim — a UX change, not a lint fix (see docs/migration/mdrs-12-biome.md §11) */}
           <div
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}

@@ -1,7 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
 
-/* All @import rules must precede every other at-rule, @source included —
-   otherwise the later imports are invalid CSS and get dropped. */
+/* Per the CSS spec every @import must precede all other at-rules, @source
+   included; Biome's noInvalidPositionAtImportRule flags the original order.
+   Whether Tailwind's own parser tolerated it was not tested — the reorder is
+   valid either way. */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "@medaris/tokens/css";
