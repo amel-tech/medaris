@@ -186,6 +186,31 @@ bug in `.husky/` worth its own commit.
 is fine: `lint-staged` passes `--no-errors-on-unmatched`, so an ignored or
 unknown file is skipped rather than failing the commit.
 
+### Do not partially stage a file the formatter will reflow
+
+**Stage whole files.** If you stage only some hunks of a file (`git add -p`) and
+leave other edits unstaged *in the same region*, the working-tree copy can come
+back corrupted — and the commit still succeeds.
+
+This is inherent to running an autofixing formatter from a hook, not a bug in
+our setup. `lint-staged` hides your unstaged edits, lets Biome rewrite the file,
+then re-applies them as a patch. If Biome reflowed the lines that patch targets
+(a one-line arrow function becoming three, say), it re-applies at the wrong
+offset. Reproduced here: an unstaged line landed *inside* the body of the
+function Biome had just expanded, producing `TS1184` — and `lint-staged` exited
+**0**.
+
+If it happens, `git stash list` will be **empty** — the backup `lint-staged`
+made is a dangling commit, not a stash entry. Find it with:
+
+```bash
+git fsck --no-reflogs --lost-found | grep commit   # look for "WIP on <branch>"
+git show <sha>                                     # your pre-hook state
+```
+
+Staging whole files avoids the situation entirely: with nothing unstaged to
+hide, there is no patch to re-apply.
+
 <!-- MDRS-13 ANCHOR — insert "## Project layers and tags" here.
      One-screen mirror of the CLAUDE.md tag table (ADR-001 §D5). -->
 

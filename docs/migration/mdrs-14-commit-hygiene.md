@@ -260,6 +260,61 @@ The dummy values were passed inline for the duration of the command only. No
 `.env` file was created, and `git status` after the gate shows no untracked env
 file.
 
+### 2.8 Partial staging corrupts the working tree — found, not fixed
+
+This was going to be filed as unverified. It was tested instead, and it is the
+one genuinely bad behaviour in this setup.
+
+`libs/utils/src/index.ts` was given two badly-formatted additions on adjacent
+lines. The first was staged; the second left unstaged (`git status` → `MM`).
+Running `pnpm exec lint-staged`:
+
+```
+⋯ Hiding unstaged changes to partially staged files…
+✔ Done hiding unstaged changes to partially staged files!
+      ✔ biome check --write --no-errors-on-unmatched
+✔ Done staging changes from tasks!
+⋯ Restoring unstaged changes…
+===LINT_STAGED_EXIT=0===
+```
+
+Exit **0**. The staged blob is correct. The **working tree is not**:
+
+```ts
+export const probeStaged = (x: number): number => {
+export const   probeUnstaged = (y:number):number=>{return y*3}
+  return x * 2;
+};
+```
+
+The unstaged line was re-applied *inside* the body of the function Biome had
+just expanded from one line to three. `tsc` on the result:
+`libs/utils/src/index.ts(26,1): error TS1184: Modifiers cannot appear here.`
+
+**Mechanism.** For partially staged files lint-staged hides the unstaged edits,
+runs the task, re-stages, then re-applies the hidden edits as a patch. Biome
+reflowed exactly the region that patch targeted, so the offsets no longer
+correspond and it lands in the wrong place. Inherent to *any* autofixing
+formatter invoked from a hook — not specific to Biome or to this config — and
+the adjacency in this test is the worst case; unstaged edits far from the
+reformatted region are unaffected.
+
+**Recovery is real but undiscoverable.** lint-staged does back the file up
+(`Done backing up original state (183afe6)`) and that commit still resolves
+afterwards (`git cat-file -t 183afe6` → `commit`, containing the pre-hook state).
+But `git stash list` is **empty** — the cleanup step drops the stash ref, leaving
+a dangling commit findable only via `git fsck --lost-found`. A developer hitting
+this has no obvious way back.
+
+**Not fixed here, deliberately.** The only complete fix is to stop autofixing —
+`biome check` without `--write`, failing the commit instead of repairing it.
+That would eliminate the class outright, but `biome check --write` is MDRS-12's
+explicit handoff and dropping `--write` is a real UX change (every formatting
+nit becomes a rejected commit). Changing it unilaterally is outside this task's
+scope lock. Documented in `CONTRIBUTING.md` under "Do not partially stage a file
+the formatter will reflow", with the `git fsck` recovery, and left as a decision
+for the team. If it bites people in practice, dropping `--write` is the fix.
+
 ## 3. What was NOT verified
 
 1. **Nothing lints the commit that actually reaches `main`.** PRs are
@@ -283,9 +338,7 @@ file.
    non-TTY environment again — `PATH` there often lacks `pnpm`).
 5. **No editor/GUI path.** Only `git commit -m` was exercised, never an
    interactive editor session or `prepare-commit-msg`.
-6. **`lint-staged` partial-staging.** Not tested with a file that has both
-   staged and unstaged hunks, which is where lint-staged's stash logic is most
-   likely to surprise.
+6. *(Moved — this was tested. See §2.8, which found a real problem.)*
 7. **The frontend builds were never verified against real configuration.**
    §2.7's greens for `nizam-web` and `tedris-web` used dummy env values chosen
    to satisfy the zod schema (`https://example.invalid`, `dummy`). That proves
