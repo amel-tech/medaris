@@ -387,9 +387,11 @@ Restricting to projects with a `build` target gives the same answer
 (`["tedrisat"]` / `["nizam-web"]`), so the isolation holds at the build-task
 level, not just in the project list.
 
-**Verified on a real PR — with one precise caveat.** The AC asks for real-PR
-verification, and the isolation assertion ran inside PR #15's own `Verify` job
-(run `31564219262`), against the real project graph on a GitHub runner:
+**Partly verified. Read the two halves separately — they prove different things.**
+
+*Verified in CI:* the isolation assertion ran inside PR #15's own `Verify` job
+(run `31564219262`, job `94012638632`), against the real project graph on a
+GitHub runner:
 
 ```
 ✔ backend-only change (NestJS app)
@@ -399,14 +401,24 @@ verification, and the isolation assertion ran inside PR #15's own `Verify` job
 ✔ affected-isolation: each stack's changes stay within it.
 ```
 
-So "a backend-only change does not trigger frontend builds, and vice versa" is
-demonstrated in CI, not merely locally — and because the assertion is a workflow
-step rather than a one-time observation, every future PR re-proves it.
+**NOT verified, and this AC must not be marked satisfied.** Two independent
+reasons, both worth stating because they are different gaps:
 
-The caveat, stated precisely: what this PR could **not** show is its *own*
-affected set being narrow. It edits `nx.json`, `package.json` and
-`.github/workflows/ci.yaml`, all `sharedGlobals` inputs, so its own affected set
-is correctly all 16 projects, and CI logged exactly that:
+1. **This PR's diff cannot show the distinction at all.** It edits `nx.json`,
+   `package.json` and `.github/workflows/ci.yaml` — all `sharedGlobals` inputs,
+   which by definition mark every project affected. So its real affected set is
+   all 16 projects. `nx affected` is behaving correctly; this diff simply cannot
+   demonstrate separation.
+2. **The assertion above overrides the changed-file set.** It passes
+   `--files=<leaf file>` rather than letting Nx derive changes from the diff. That
+   proves the *project graph* isolates the stacks, which is the substantive
+   property — but it bypasses the `nx-set-shas` → `NX_BASE` → git-diff → affected
+   path. The full chain, from a real narrow diff through to only one stack's
+   builds running, is therefore still unobserved.
+
+What *is* verified around it: `nrwl/nx-set-shas` set `NX_BASE` to the true merge
+base with `fetch-depth: 0`, and all five targets ran green across 16 projects. CI
+logged the all-16 affected set explicitly:
 
 ```
 NX_BASE=c59d4673190caa3bdb15615b287d91ea0707ae76
@@ -416,8 +428,12 @@ common tokens ui nazir-web hooks icons types utils i18n
 ```
 
 That is the right outcome for a root-config change, not a failure of `affected`.
-The end-to-end observation "an app-only PR built only that app" belongs to the
-first app-only PR; MDRS-19 should confirm it at cutover. See §7.
+
+**Follow-up owner: MDRS-19** (cutover). On the first PR that touches exactly one
+app, read the `Report affected projects` step and confirm the list contains only
+that app and its dependents — no projects from the other stack. Until that is
+observed, AC #2 stays **unmet** in this record, deliberately: writing an
+unverified number down is what cost MDRS-12 a separate correction PR (#13). See §7.
 
 ## 5. What review found
 
@@ -522,7 +538,12 @@ migration above, not a side effect of a CI task.
 Everything here is unverifiable from this branch, and none of it is claimed as
 working:
 
-1. **Branch protection.** `main` has **no** branch protection —
+1. **AC #2 — the backend/frontend affected split — is NOT met by this PR.**
+   Spelled out in §4: this diff touches `sharedGlobals`, so all 16 projects are
+   correctly affected, and the isolation assertion proves the *project graph*
+   rather than the git-diff → affected path. Assigned to **MDRS-19**. Of the six
+   acceptance criteria this is the one left open; the other five are met.
+2. **Branch protection.** `main` has **no** branch protection —
    `gh api repos/amel-tech/medaris/branches/main/protection` returns 404. So no
    stale required check is blocking PRs, and AC #6 is not blocked. But creating
    protection is a repository-settings change, not a code change, and is not done
@@ -530,22 +551,22 @@ working:
    once: **`Commit hygiene`**, **`Verify`**, **`Security gates`**,
    **`Analyze (javascript-typescript)`**, **`Analyze (actions)`**. Assigned to
    **MDRS-19** (cutover).
-2. **`nrwl/nx-set-shas` on push-to-main.** On the very first run there is no
+3. **`nrwl/nx-set-shas` on push-to-main.** On the very first run there is no
    prior successful `ci.yaml` run to use as a base, so it falls back. Expected to
    self-correct from the second run; not observed.
-3. ~~CodeQL `actions` language with `+security-extended,security-and-quality`.~~
+4. ~~CodeQL `actions` language with `+security-extended,security-and-quality`.~~
    **Resolved on PR #15:** `Analyze (actions)` passed in 50s and
    `Analyze (javascript-typescript)` in 1m21s, so both query suites exist for
    both languages. `fail-fast: false` is retained anyway, so a future failure in
    one cannot mask the other's findings.
-4. ~~The Postgres service.~~ **Removed** after review showed it could never be
+5. ~~The Postgres service.~~ **Removed** after review showed it could never be
    used — see §5 #1. Nothing in this pipeline needs a database, and `test:e2e`
    brings its own via Testcontainers.
-5. **`commitlint --from/--to` over the PR range.** Both the title check and the
+6. **`commitlint --from/--to` over the PR range.** Both the title check and the
    range check passed on PR #15 (`Commit hygiene`, 38s), but the range check has
    not been exercised against unusual histories — force-pushed or rebased
    branches, or a PR whose base branch moved underneath it.
-6. **Node 22 prod floor.** CI builds on `.nvmrc` (24) only; `node:22-alpine` is
+7. **Node 22 prod floor.** CI builds on `.nvmrc` (24) only; `node:22-alpine` is
    what production runs. Not exercised.
 
 ## 7. Follow-ups
