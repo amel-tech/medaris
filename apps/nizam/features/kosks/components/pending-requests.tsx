@@ -1,10 +1,9 @@
-'use client'
+"use client";
 
-import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
-import { CheckIcon, XIcon, UserCircleIcon, BellIcon } from '@medaris/icons'
-import { Button } from '@medaris/ui/components/button'
-import { Card, CardContent } from '@medaris/ui/components/card'
+import { BellIcon, CheckIcon, UserCircleIcon, XIcon } from "@medaris/icons";
+import type { PendingEnrollmentResponse } from "@medaris/services/tedrisat";
+import { Button } from "@medaris/ui/components/button";
+import { Card, CardContent } from "@medaris/ui/components/card";
 import {
   Dialog,
   DialogContent,
@@ -12,45 +11,49 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@medaris/ui/components/dialog'
-import { toast } from '@medaris/ui/components/sonner'
-import type { PendingEnrollmentResponse } from '@medaris/services/tedrisat'
-import { approveEnrollment, rejectEnrollment } from '~/features/kosks/actions/courses'
+} from "@medaris/ui/components/dialog";
+import { toast } from "@medaris/ui/components/sonner";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import {
+  approveEnrollment,
+  rejectEnrollment,
+} from "~/features/kosks/actions/courses";
 
 export function PendingRequests({
   koskId,
   requests,
 }: {
-  koskId: string
-  requests: PendingEnrollmentResponse[]
+  koskId: string;
+  requests: PendingEnrollmentResponse[];
 }) {
-  const router = useRouter()
-  const [open, setOpen] = useState(false)
-  const [pending, startTransition] = useTransition()
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
   // Track which row is acting so only its buttons disable.
-  const [actingKey, setActingKey] = useState<string | null>(null)
+  const [actingKey, setActingKey] = useState<string | null>(null);
 
-  if (requests.length === 0) return null
+  if (requests.length === 0) return null;
 
   const act = (
     req: PendingEnrollmentResponse,
     fn: typeof approveEnrollment | typeof rejectEnrollment,
-    successMsg: string,
+    successMsg: string
   ) => {
-    setActingKey(`${req.courseId}:${req.userId}`)
+    setActingKey(`${req.courseId}:${req.userId}`);
     startTransition(async () => {
-      const res = await fn(koskId, req.courseId, req.userId)
-      setActingKey(null)
+      const res = await fn(koskId, req.courseId, req.userId);
+      setActingKey(null);
       if (res.success === false) {
-        toast.error(res.error)
-        return
+        toast.error(res.error);
+        return;
       }
-      toast.success(successMsg)
+      toast.success(successMsg);
       // Close the modal once the last request is handled.
-      if (requests.length <= 1) setOpen(false)
-      router.refresh()
-    })
-  }
+      if (requests.length <= 1) setOpen(false);
+      router.refresh();
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -73,8 +76,8 @@ export function PendingRequests({
 
         <div className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto">
           {requests.map((req) => {
-            const key = `${req.courseId}:${req.userId}`
-            const busy = pending && actingKey === key
+            const key = `${req.courseId}:${req.userId}`;
+            const busy = pending && actingKey === key;
             return (
               <Card key={key}>
                 <CardContent className="flex items-center gap-4 py-4">
@@ -97,7 +100,9 @@ export function PendingRequests({
                       size="sm"
                       disabled={busy}
                       className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
-                      onClick={() => act(req, approveEnrollment, 'Kayıt onaylandı.')}
+                      onClick={() =>
+                        act(req, approveEnrollment, "Kayıt onaylandı.")
+                      }
                     >
                       <CheckIcon className="size-4" />
                       Onayla
@@ -107,7 +112,9 @@ export function PendingRequests({
                       variant="outline"
                       disabled={busy}
                       className="gap-1.5"
-                      onClick={() => act(req, rejectEnrollment, 'Kayıt reddedildi.')}
+                      onClick={() =>
+                        act(req, rejectEnrollment, "Kayıt reddedildi.")
+                      }
                     >
                       <XIcon className="size-4" />
                       Reddet
@@ -115,10 +122,10 @@ export function PendingRequests({
                   </div>
                 </CardContent>
               </Card>
-            )
+            );
           })}
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

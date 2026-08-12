@@ -1,18 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable } from "@nestjs/common";
+import { FlashcardLabelRepository } from "./flashcard-label.reporsitory";
 import {
   ICreateFlashcardLabel,
   IFlashcardLabel,
   IFlashcardLabeling,
   IFlashcardLabelStats,
-} from './flashcard-label.reporsitory.interface';
-
-import { FlashcardLabelRepository } from './flashcard-label.reporsitory';
+} from "./flashcard-label.reporsitory.interface";
 
 @Injectable()
 export class FlashcardLabelService {
   constructor(private readonly flashcardLabelRepo: FlashcardLabelRepository) {}
   async createLabel(
-    createLabelDto: ICreateFlashcardLabel,
+    createLabelDto: ICreateFlashcardLabel
   ): Promise<IFlashcardLabel> {
     return await this.flashcardLabelRepo.createLabel(createLabelDto);
   }
@@ -20,10 +19,10 @@ export class FlashcardLabelService {
     return await this.flashcardLabelRepo.delete(labelId);
   }
   async flashcardLabeling(
-    newLabeling: IFlashcardLabeling,
+    newLabeling: IFlashcardLabeling
   ): Promise<IFlashcardLabeling> {
     const labelStats = await this.flashcardLabelRepo.getLabelStats(
-      newLabeling.labelId,
+      newLabeling.labelId
     );
     if (labelStats) {
       await this.flashcardLabelRepo.updateLabelStats(newLabeling.labelId);

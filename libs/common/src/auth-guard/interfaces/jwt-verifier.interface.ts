@@ -7,5 +7,5 @@ export interface IJwtVerifier {
    * @throws {JwtMissingKidError} If the 'kid' is missing from header.
    * @throws {JwtVerificationError} If token verification fails.
    */
-    verifyToken(token: string): Promise<any>;
+  verifyToken(token: string): Promise<any>;
 }

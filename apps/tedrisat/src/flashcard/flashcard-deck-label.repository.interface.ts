@@ -1,4 +1,4 @@
-import { Scope } from './domain/flashcard-label.enum';
+import { Scope } from "./domain/flashcard-label.enum";
 
 export interface IFlashcardDeckLabel {
   id: string;
@@ -30,11 +30,11 @@ export interface IFlashcardDeckLabelRepository {
   delete(labelId: string): Promise<boolean>;
 
   deckLabeling(
-    newLabeling: IFlashcardDeckLabeling,
+    newLabeling: IFlashcardDeckLabeling
   ): Promise<IFlashcardDeckLabeling>;
 
   createLabelStats(
-    useLabel: IFlashcardDeckLabelStats,
+    useLabel: IFlashcardDeckLabelStats
   ): Promise<IFlashcardDeckLabelStats>;
 
   updateLabelStats(labelId: string): Promise<IFlashcardDeckLabelStats>;

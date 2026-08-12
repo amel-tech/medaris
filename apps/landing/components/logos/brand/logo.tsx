@@ -5,14 +5,27 @@
  * Used in Header and Footer sections
  */
 
-import type { ComponentPropsWithoutRef } from 'react'
+import type { ComponentPropsWithoutRef } from "react";
 
-export interface BrandLogoProps extends Omit<ComponentPropsWithoutRef<'svg'>, 'width' | 'height'> {
-  readonly width?: number | string
-  readonly height?: number | string
+export interface BrandLogoProps
+  extends Omit<ComponentPropsWithoutRef<"svg">, "width" | "height"> {
+  readonly width?: number | string;
+  readonly height?: number | string;
+  /**
+   * Accessible name, rendered as the <title> child. Pass aria-hidden="true"
+   * instead when the mark sits next to the brand name in text, so screen
+   * readers do not announce it twice.
+   */
+  readonly title?: string;
 }
 
-export function BrandLogo({ width = 45, height = 45, className, ...props }: BrandLogoProps) {
+export function BrandLogo({
+  width = 45,
+  height = 45,
+  className,
+  title = "Medaris",
+  ...props
+}: BrandLogoProps) {
   return (
     <svg
       width={width}
@@ -23,8 +36,16 @@ export function BrandLogo({ width = 45, height = 45, className, ...props }: Bran
       className={className}
       {...props}
     >
+      <title>{title}</title>
       <g filter="url(#filter0_dd_1209_2592)">
-        <rect x="2.34204" y="2.34212" width="40" height="40" rx="6.24563" fill="#004F80" />
+        <rect
+          x="2.34204"
+          y="2.34212"
+          width="40"
+          height="40"
+          rx="6.24563"
+          fill="#004F80"
+        />
       </g>
       <g filter="url(#filter1_i_1209_2592)">
         <path
@@ -60,7 +81,11 @@ export function BrandLogo({ width = 45, height = 45, className, ...props }: Bran
             type="matrix"
             values="0 0 0 0 0.164706 0 0 0 0 0.364706 0 0 0 0 0.2 0 0 0 1 0"
           />
-          <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1209_2592" />
+          <feBlend
+            mode="normal"
+            in2="BackgroundImageFix"
+            result="effect1_dropShadow_1209_2592"
+          />
           <feColorMatrix
             in="SourceAlpha"
             type="matrix"
@@ -70,9 +95,21 @@ export function BrandLogo({ width = 45, height = 45, className, ...props }: Bran
           <feOffset />
           <feGaussianBlur stdDeviation="1.17106" />
           <feComposite in2="hardAlpha" operator="out" />
-          <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0" />
-          <feBlend mode="normal" in2="effect1_dropShadow_1209_2592" result="effect2_dropShadow_1209_2592" />
-          <feBlend mode="normal" in="SourceGraphic" in2="effect2_dropShadow_1209_2592" result="shape" />
+          <feColorMatrix
+            type="matrix"
+            values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"
+          />
+          <feBlend
+            mode="normal"
+            in2="effect1_dropShadow_1209_2592"
+            result="effect2_dropShadow_1209_2592"
+          />
+          <feBlend
+            mode="normal"
+            in="SourceGraphic"
+            in2="effect2_dropShadow_1209_2592"
+            result="shape"
+          />
         </filter>
         <filter
           id="filter1_i_1209_2592"
@@ -84,7 +121,12 @@ export function BrandLogo({ width = 45, height = 45, className, ...props }: Bran
           colorInterpolationFilters="sRGB"
         >
           <feFlood floodOpacity="0" result="BackgroundImageFix" />
-          <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
+          <feBlend
+            mode="normal"
+            in="SourceGraphic"
+            in2="BackgroundImageFix"
+            result="shape"
+          />
           <feColorMatrix
             in="SourceAlpha"
             type="matrix"
@@ -94,10 +136,17 @@ export function BrandLogo({ width = 45, height = 45, className, ...props }: Bran
           <feOffset />
           <feGaussianBlur stdDeviation="0.292764" />
           <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
-          <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3 0" />
-          <feBlend mode="normal" in2="shape" result="effect1_innerShadow_1209_2592" />
+          <feColorMatrix
+            type="matrix"
+            values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3 0"
+          />
+          <feBlend
+            mode="normal"
+            in2="shape"
+            result="effect1_innerShadow_1209_2592"
+          />
         </filter>
       </defs>
     </svg>
-  )
+  );
 }

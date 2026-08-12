@@ -1,11 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ExampleController } from '../../../src/example/example.controller';
-import { ExampleService } from '../../../src/example/example.service';
-import { CreateExampleDto } from '../../../src/example/dto/create-example.dto';
-import { ExampleResponseDto } from '../../../src/example/dto/example-response.dto';
-import { MedarisResponse } from '@medaris/common';
+import { MedarisResponse } from "@medaris/common";
+import { Test, TestingModule } from "@nestjs/testing";
+import { CreateExampleDto } from "../../../src/example/dto/create-example.dto";
+import { ExampleResponseDto } from "../../../src/example/dto/example-response.dto";
+import { ExampleController } from "../../../src/example/example.controller";
+import { ExampleService } from "../../../src/example/example.service";
 
-describe('ExampleController', () => {
+describe("ExampleController", () => {
   let controller: ExampleController;
   let service: ExampleService;
 
@@ -35,21 +35,21 @@ describe('ExampleController', () => {
     jest.clearAllMocks();
   });
 
-  describe('getAllExamples', () => {
-    it('should return an array of examples wrapped in MedarisResponse', async () => {
+  describe("getAllExamples", () => {
+    it("should return an array of examples wrapped in MedarisResponse", async () => {
       // Arrange
       const mockExamples: ExampleResponseDto[] = [
         {
           id: 1,
-          name: 'Example 1',
-          createdAt: new Date('2024-01-01'),
-          updatedAt: new Date('2024-01-01'),
+          name: "Example 1",
+          createdAt: new Date("2024-01-01"),
+          updatedAt: new Date("2024-01-01"),
         },
         {
           id: 2,
-          name: 'Example 2',
-          createdAt: new Date('2024-01-02'),
-          updatedAt: new Date('2024-01-02'),
+          name: "Example 2",
+          createdAt: new Date("2024-01-02"),
+          updatedAt: new Date("2024-01-02"),
         },
       ];
 
@@ -65,7 +65,7 @@ describe('ExampleController', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should return empty array when no examples exist', async () => {
+    it("should return empty array when no examples exist", async () => {
       // Arrange
       mockExampleService.getAllExamples.mockResolvedValue([]);
 
@@ -80,14 +80,14 @@ describe('ExampleController', () => {
     });
   });
 
-  describe('getExampleById', () => {
-    it('should return a single example wrapped in MedarisResponse', async () => {
+  describe("getExampleById", () => {
+    it("should return a single example wrapped in MedarisResponse", async () => {
       // Arrange
       const mockExample: ExampleResponseDto = {
         id: 1,
-        name: 'Example 1',
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
+        name: "Example 1",
+        createdAt: new Date("2024-01-01"),
+        updatedAt: new Date("2024-01-01"),
       };
       const exampleId = 1;
 
@@ -104,10 +104,10 @@ describe('ExampleController', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should throw error when example not found', async () => {
+    it("should throw error when example not found", async () => {
       // Arrange
       const exampleId = 999;
-      const error = new Error('Example not found');
+      const error = new Error("Example not found");
 
       mockExampleService.getExampleById.mockRejectedValue(error);
 
@@ -118,18 +118,18 @@ describe('ExampleController', () => {
     });
   });
 
-  describe('createExample', () => {
-    it('should create and return a new example wrapped in MedarisResponse', async () => {
+  describe("createExample", () => {
+    it("should create and return a new example wrapped in MedarisResponse", async () => {
       // Arrange
       const createExampleDto: CreateExampleDto = {
-        name: 'New Example',
+        name: "New Example",
       };
 
       const mockCreatedExample: ExampleResponseDto = {
         id: 1,
-        name: 'New Example',
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
+        name: "New Example",
+        createdAt: new Date("2024-01-01"),
+        updatedAt: new Date("2024-01-01"),
       };
 
       mockExampleService.createExample.mockResolvedValue(mockCreatedExample);
@@ -145,26 +145,26 @@ describe('ExampleController', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should handle validation errors', async () => {
+    it("should handle validation errors", async () => {
       // Arrange
       const createExampleDto: CreateExampleDto = {
-        name: 'New Example',
+        name: "New Example",
       };
-      const validationError = new Error('Validation failed');
+      const validationError = new Error("Validation failed");
 
       mockExampleService.createExample.mockRejectedValue(validationError);
 
       // Act & Assert
       await expect(controller.createExample(createExampleDto)).rejects.toThrow(
-        validationError,
+        validationError
       );
       expect(service.createExample).toHaveBeenCalledWith(createExampleDto);
       expect(service.createExample).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('deleteExample', () => {
-    it('should delete example and return true wrapped in MedarisResponse', async () => {
+  describe("deleteExample", () => {
+    it("should delete example and return true wrapped in MedarisResponse", async () => {
       // Arrange
       const exampleId = 1;
       mockExampleService.deleteExample.mockResolvedValue(true);
@@ -180,7 +180,7 @@ describe('ExampleController', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should return false when example does not exist', async () => {
+    it("should return false when example does not exist", async () => {
       // Arrange
       const exampleId = 999;
       mockExampleService.deleteExample.mockResolvedValue(false);

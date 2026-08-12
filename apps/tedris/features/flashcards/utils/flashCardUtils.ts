@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import { FlashcardResponse } from '@medaris/services/tedrisat'
+import type { FlashcardResponse } from "@medaris/services/tedrisat";
 
 export function toDisplay(card: FlashcardResponse): FlashcardResponse {
-  return card
+  return card;
 }

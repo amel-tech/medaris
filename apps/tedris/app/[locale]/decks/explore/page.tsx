@@ -1,20 +1,24 @@
-import { ExploreDecksPage } from '~/features/flashcards/components/explore-decks-page'
-import { getDecks, getMyDecks, parseDeckFilter } from '~/features/flashcards/actions'
+import {
+  getDecks,
+  getMyDecks,
+  parseDeckFilter,
+} from "~/features/flashcards/actions";
+import { ExploreDecksPage } from "~/features/flashcards/components/explore-decks-page";
 
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string }>
+  searchParams: Promise<{ filter?: string }>;
 }) {
-  const { filter: filterParam } = await searchParams
-  const filter = await parseDeckFilter(filterParam)
+  const { filter: filterParam } = await searchParams;
+  const filter = await parseDeckFilter(filterParam);
 
   const [decks, userDecks] = await Promise.all([
     getDecks(filter),
-    getMyDecks('all'),
-  ])
+    getMyDecks("all"),
+  ]);
 
-  const userDeckIds = new Set((userDecks ?? []).map(deck => deck.id))
+  const userDeckIds = new Set((userDecks ?? []).map((deck) => deck.id));
 
   return (
     <ExploreDecksPage
@@ -22,5 +26,5 @@ export default async function Page({
       userDeckIds={Array.from(userDeckIds)}
       filter={filter}
     />
-  )
+  );
 }

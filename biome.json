@@ -1,0 +1,114 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.4/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "ignoreUnknown": false,
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/build",
+      "!**/out",
+      "!**/out-tsc",
+      "!**/.next",
+      "!**/.output",
+      "!**/.tsbuild",
+      "!**/coverage",
+      "!**/.nx",
+      "!**/node_modules/.cache",
+      "!**/storybook-static",
+      "!**/.migration",
+      "!**/routeTree.gen.ts",
+      "!apps/keycloak-theme/src/kc.gen.tsx",
+      "!apps/keycloak-theme/.keycloakify",
+      "!apps/keycloak-theme/dist_keycloak",
+      "!apps/keycloak-theme/public/keycloakify-dev-resources",
+      "!libs/services/src/**/generated",
+      "!libs/services/swagger-docs",
+      "!libs/tokens/theme/main.css",
+      "!apps/tedrisat/src/database/migrations/meta",
+      "!libs/i18n/src/locales/**/*.json",
+      "!**/pnpm-lock.yaml",
+      "!**/*.min.js",
+      "!**/*.min.css"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 80
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "complexity": {
+        "noStaticOnlyClass": "off"
+      },
+      "style": {
+        "useImportType": "error",
+        "useConsistentTypeDefinitions": "off"
+      },
+      "suspicious": {
+        "noEmptyInterface": "off"
+      }
+    }
+  },
+  "javascript": {
+    "parser": {
+      "unsafeParameterDecoratorsEnabled": true
+    },
+    "formatter": {
+      "quoteStyle": "double",
+      "trailingCommas": "es5",
+      "arrowParentheses": "always",
+      "semicolons": "always"
+    }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "apps/tedrisat/**/*.{ts,mts,cts}",
+        "apps/teskilat/**/*.{ts,mts,cts}",
+        "libs/common/**/*.{ts,mts,cts}"
+      ],
+      "formatter": {
+        "enabled": true,
+        "indentStyle": "space",
+        "indentWidth": 2,
+        "lineWidth": 80
+      },
+      "javascript": {
+        "formatter": {
+          "quoteStyle": "double",
+          "trailingCommas": "es5",
+          "arrowParentheses": "always",
+          "semicolons": "always"
+        }
+      },
+      "linter": {
+        "rules": {
+          "style": {
+            "useImportType": "off"
+          }
+        }
+      }
+    }
+  ]
+}

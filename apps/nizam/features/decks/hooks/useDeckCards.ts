@@ -1,53 +1,50 @@
-import { useCallback, useEffect, useState } from 'react'
-import type { FlashcardResponse } from '@medaris/services/tedrisat'
+import type { FlashcardResponse } from "@medaris/services/tedrisat";
+import { useCallback, useEffect, useState } from "react";
 
 interface UseDeckCardsResult {
-  cards: FlashcardResponse[] | null
-  loading: boolean
-  error: string | null
-  refetch: () => void
+  cards: FlashcardResponse[] | null;
+  loading: boolean;
+  error: string | null;
+  refetch: () => void;
 }
 
 export function useDeckCards(deckId: string): UseDeckCardsResult {
-  const [cards, setCards] = useState<FlashcardResponse[] | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [cards, setCards] = useState<FlashcardResponse[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchCards = useCallback(async () => {
     try {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
-      const result = await fetch(`/api/decks/${deckId}/cards`)
+      const result = await fetch(`/api/decks/${deckId}/cards`);
 
       if (!result.ok) {
-        const errorData = await result.json()
-        setError(errorData.error)
-        setCards(null)
+        const errorData = await result.json();
+        setError(errorData.error);
+        setCards(null);
+      } else {
+        setCards(await result.json());
       }
-      else {
-        setCards(await result.json())
-      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch cards");
+      setCards(null);
+    } finally {
+      setLoading(false);
     }
-    catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch cards')
-      setCards(null)
-    }
-    finally {
-      setLoading(false)
-    }
-  }, [deckId])
+  }, [deckId]);
 
   useEffect(() => {
     if (deckId) {
-      fetchCards()
+      fetchCards();
     }
-  }, [deckId, fetchCards])
+  }, [deckId, fetchCards]);
 
   return {
     cards,
     loading,
     error,
     refetch: fetchCards,
-  }
+  };
 }

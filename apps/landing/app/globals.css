@@ -1,11 +1,11 @@
-@import 'tailwindcss';
-@import '@medaris/tokens/css';
+@import "tailwindcss";
+@import "@medaris/tokens/css";
 
 :root {
   --header-height: 80px;
-  --primary: #143C56;
-  --secondary: #C69C6D;
-  --background-light: #FAFAF9;
+  --primary: #143c56;
+  --secondary: #c69c6d;
+  --background-light: #fafaf9;
   --background-dark: #111827;
 }
 
@@ -18,31 +18,36 @@
 }
 
 @theme {
-  --color-primary: #143C56;
-  --color-secondary: #C69C6D;
-  --color-background-light: #FAFAF9;
+  --color-primary: #143c56;
+  --color-secondary: #c69c6d;
+  --color-background-light: #fafaf9;
   --color-background-dark: #111827;
-  --color-gray-50: #F9FAFB;
-  --color-gray-100: #F3F4F6;
-  --color-gray-200: #E5E7EB;
-  --color-gray-300: #D1D5DB;
-  --color-gray-400: #9CA3AF;
-  --color-gray-500: #6B7280;
-  --color-gray-600: #4B5563;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
   --color-gray-700: #374151;
-  --color-gray-800: #1F2937;
+  --color-gray-800: #1f2937;
   --color-gray-900: #111827;
-  --color-white: #FFFFFF;
-  --font-display: 'Playfair Display', serif;
+  --color-white: #ffffff;
+  --font-display: "Playfair Display", serif;
 }
 
 [dir="rtl"] {
-  --font-display: var(--font-display-arabic), 'Amiri', serif;
+  --font-display: var(--font-display-arabic), "Amiri", serif;
 }
 
 .geometric-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(198, 156, 109, 0.2), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(198, 156, 109, 0.2),
+    transparent
+  );
   position: relative;
 }
 
@@ -74,11 +79,26 @@
 }
 
 .concentric-mask {
-  background: radial-gradient(circle, transparent 30%, rgba(198, 156, 109, 0.05) 31%, rgba(198, 156, 109, 0.05) 33%, transparent 34%, transparent 50%, rgba(198, 156, 109, 0.03) 51%, rgba(198, 156, 109, 0.03) 53%, transparent 54%);
+  background: radial-gradient(
+    circle,
+    transparent 30%,
+    rgba(198, 156, 109, 0.05) 31%,
+    rgba(198, 156, 109, 0.05) 33%,
+    transparent 34%,
+    transparent 50%,
+    rgba(198, 156, 109, 0.03) 51%,
+    rgba(198, 156, 109, 0.03) 53%,
+    transparent 54%
+  );
 }
 
 .course-card-overlay {
-  background: linear-gradient(to top, rgba(20, 60, 86, 0.9) 0%, rgba(20, 60, 86, 0.4) 40%, transparent 100%);
+  background: linear-gradient(
+    to top,
+    rgba(20, 60, 86, 0.9) 0%,
+    rgba(20, 60, 86, 0.4) 40%,
+    transparent 100%
+  );
 }
 
 .rosette-watermark {

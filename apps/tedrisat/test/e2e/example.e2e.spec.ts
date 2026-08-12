@@ -1,10 +1,10 @@
-import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { CreateExampleDto } from '../../src/example/dto/create-example.dto';
-import { DatabaseService } from '../../src/database/database.service';
-import { createTestApp } from '../helpers/test-app.helper';
+import { INestApplication } from "@nestjs/common";
+import request from "supertest";
+import { DatabaseService } from "../../src/database/database.service";
+import { CreateExampleDto } from "../../src/example/dto/create-example.dto";
+import { createTestApp } from "../helpers/test-app.helper";
 
-describe('ExampleController (e2e)', () => {
+describe("ExampleController (e2e)", () => {
   let app: INestApplication;
   let databaseService: DatabaseService;
 
@@ -18,74 +18,74 @@ describe('ExampleController (e2e)', () => {
     // Clean up database before each test
     if (databaseService?.db) {
       try {
-        await databaseService.db.execute('DELETE FROM examples');
+        await databaseService.db.execute("DELETE FROM examples");
       } catch (error) {
         // If table doesn't exist or other errors, continue with tests
-        console.warn('Database cleanup failed:', error);
+        console.warn("Database cleanup failed:", error);
       }
     }
   });
 
-  describe('/examples (GET)', () => {
-    it('should return empty array when no examples exist', () => {
+  describe("/examples (GET)", () => {
+    it("should return empty array when no examples exist", () => {
       return request(app.getHttpServer())
-        .get('/examples')
+        .get("/examples")
         .expect(200)
         .expect((res) => {
-          expect(res.body).toHaveProperty('success', true);
-          expect(res.body).toHaveProperty('data');
+          expect(res.body).toHaveProperty("success", true);
+          expect(res.body).toHaveProperty("data");
           expect(Array.isArray(res.body.data)).toBe(true);
           expect(res.body.data).toHaveLength(0);
         });
     });
 
-    it('should return examples when they exist', async () => {
+    it("should return examples when they exist", async () => {
       // First create an example
       const createDto: CreateExampleDto = {
-        name: 'Test Example',
+        name: "Test Example",
       };
 
       await request(app.getHttpServer())
-        .post('/examples')
+        .post("/examples")
         .send(createDto)
         .expect(201);
 
       // Then get all examples
       return request(app.getHttpServer())
-        .get('/examples')
+        .get("/examples")
         .expect(200)
         .expect((res) => {
-          expect(res.body).toHaveProperty('success', true);
-          expect(res.body).toHaveProperty('data');
+          expect(res.body).toHaveProperty("success", true);
+          expect(res.body).toHaveProperty("data");
           expect(Array.isArray(res.body.data)).toBe(true);
           expect(res.body.data).toHaveLength(1);
-          expect(res.body.data[0]).toHaveProperty('id');
-          expect(res.body.data[0]).toHaveProperty('name', 'Test Example');
-          expect(res.body.data[0]).toHaveProperty('createdAt');
-          expect(res.body.data[0]).toHaveProperty('updatedAt');
+          expect(res.body.data[0]).toHaveProperty("id");
+          expect(res.body.data[0]).toHaveProperty("name", "Test Example");
+          expect(res.body.data[0]).toHaveProperty("createdAt");
+          expect(res.body.data[0]).toHaveProperty("updatedAt");
         });
     });
   });
 
-  describe('/examples/:id (GET)', () => {
-    it('should return 404 when example does not exist', () => {
+  describe("/examples/:id (GET)", () => {
+    it("should return 404 when example does not exist", () => {
       return request(app.getHttpServer())
-        .get('/examples/999')
+        .get("/examples/999")
         .expect(404)
         .expect((res) => {
-          expect(res.body).toHaveProperty('message');
-          expect(res.body.message).toContain('Example with id 999 not found');
+          expect(res.body).toHaveProperty("message");
+          expect(res.body.message).toContain("Example with id 999 not found");
         });
     });
 
-    it('should return example when it exists', async () => {
+    it("should return example when it exists", async () => {
       // First create an example
       const createDto: CreateExampleDto = {
-        name: 'Test Example',
+        name: "Test Example",
       };
 
       const createResponse = await request(app.getHttpServer())
-        .post('/examples')
+        .post("/examples")
         .send(createDto)
         .expect(201);
 
@@ -96,124 +96,124 @@ describe('ExampleController (e2e)', () => {
         .get(`/examples/${createdId}`)
         .expect(200)
         .expect((res) => {
-          expect(res.body).toHaveProperty('success', true);
-          expect(res.body).toHaveProperty('data');
-          expect(res.body.data).toHaveProperty('id', createdId);
-          expect(res.body.data).toHaveProperty('name', 'Test Example');
-          expect(res.body.data).toHaveProperty('createdAt');
-          expect(res.body.data).toHaveProperty('updatedAt');
+          expect(res.body).toHaveProperty("success", true);
+          expect(res.body).toHaveProperty("data");
+          expect(res.body.data).toHaveProperty("id", createdId);
+          expect(res.body.data).toHaveProperty("name", "Test Example");
+          expect(res.body.data).toHaveProperty("createdAt");
+          expect(res.body.data).toHaveProperty("updatedAt");
         });
     });
 
-    it('should return 400 for invalid ID format', () => {
+    it("should return 400 for invalid ID format", () => {
       return request(app.getHttpServer())
-        .get('/examples/invalid-id')
+        .get("/examples/invalid-id")
         .expect(400)
         .expect((res) => {
-          expect(res.body).toHaveProperty('message');
-          expect(res.body.message).toContain('Validation failed');
+          expect(res.body).toHaveProperty("message");
+          expect(res.body.message).toContain("Validation failed");
         });
     });
   });
 
-  describe('/examples (POST)', () => {
-    it('should create a new example with valid data', () => {
+  describe("/examples (POST)", () => {
+    it("should create a new example with valid data", () => {
       const createDto: CreateExampleDto = {
-        name: 'New Test Example',
+        name: "New Test Example",
       };
 
       return request(app.getHttpServer())
-        .post('/examples')
+        .post("/examples")
         .send(createDto)
         .expect(201)
         .expect((res) => {
-          expect(res.body).toHaveProperty('success', true);
-          expect(res.body).toHaveProperty('data');
-          expect(res.body.data).toHaveProperty('id');
-          expect(res.body.data).toHaveProperty('name', 'New Test Example');
-          expect(res.body.data).toHaveProperty('createdAt');
-          expect(res.body.data).toHaveProperty('updatedAt');
+          expect(res.body).toHaveProperty("success", true);
+          expect(res.body).toHaveProperty("data");
+          expect(res.body.data).toHaveProperty("id");
+          expect(res.body.data).toHaveProperty("name", "New Test Example");
+          expect(res.body.data).toHaveProperty("createdAt");
+          expect(res.body.data).toHaveProperty("updatedAt");
         });
     });
 
-    it('should return 400 for missing name', () => {
+    it("should return 400 for missing name", () => {
       return request(app.getHttpServer())
-        .post('/examples')
+        .post("/examples")
         .send({})
         .expect(400)
         .expect((res) => {
-          expect(res.body).toHaveProperty('context');
-          expect(res.body.context).toHaveProperty('errors');
+          expect(res.body).toHaveProperty("context");
+          expect(res.body.context).toHaveProperty("errors");
           expect(Array.isArray(res.body.context.errors)).toBe(true);
-          expect(res.body.context.errors[0]).toHaveProperty('property', 'name');
+          expect(res.body.context.errors[0]).toHaveProperty("property", "name");
           expect(res.body.context.errors[0]).toHaveProperty(
-            'constraints.isNotEmpty',
-            'name should not be empty',
+            "constraints.isNotEmpty",
+            "name should not be empty"
           );
         });
     });
 
-    it('should return 400 for empty name', () => {
+    it("should return 400 for empty name", () => {
       return request(app.getHttpServer())
-        .post('/examples')
-        .send({ name: '' })
+        .post("/examples")
+        .send({ name: "" })
         .expect(400)
         .expect((res) => {
-          expect(res.body).toHaveProperty('context');
-          expect(res.body.context).toHaveProperty('errors');
+          expect(res.body).toHaveProperty("context");
+          expect(res.body.context).toHaveProperty("errors");
           expect(Array.isArray(res.body.context.errors)).toBe(true);
-          expect(res.body.context.errors[0]).toHaveProperty('property', 'name');
+          expect(res.body.context.errors[0]).toHaveProperty("property", "name");
           expect(res.body.context.errors[0]).toHaveProperty(
-            'constraints.isNotEmpty',
-            'name should not be empty',
+            "constraints.isNotEmpty",
+            "name should not be empty"
           );
         });
     });
 
-    it('should return 400 for name that is too long', () => {
-      const longName = 'a'.repeat(256); // Exceeds maxLength of 255
+    it("should return 400 for name that is too long", () => {
+      const longName = "a".repeat(256); // Exceeds maxLength of 255
 
       return request(app.getHttpServer())
-        .post('/examples')
+        .post("/examples")
         .send({ name: longName })
         .expect(400)
         .expect((res) => {
-          expect(res.body.context).toHaveProperty('errors');
+          expect(res.body.context).toHaveProperty("errors");
           expect(Array.isArray(res.body.context.errors)).toBe(true);
-          expect(res.body.context.errors[0]).toHaveProperty('property', 'name');
+          expect(res.body.context.errors[0]).toHaveProperty("property", "name");
           expect(res.body.context.errors[0]).toHaveProperty(
-            'constraints.maxLength',
-            'name must be shorter than or equal to 255 characters',
+            "constraints.maxLength",
+            "name must be shorter than or equal to 255 characters"
           );
         });
     });
 
-    it('should return 400 for non-string name', () => {
+    it("should return 400 for non-string name", () => {
       return request(app.getHttpServer())
-        .post('/examples')
+        .post("/examples")
         .send({ name: 123 })
         .expect(400)
         .expect((res) => {
-          expect(res.body.context).toHaveProperty('errors');
+          expect(res.body.context).toHaveProperty("errors");
           expect(Array.isArray(res.body.context.errors)).toBe(true);
-          expect(res.body.context.errors[0]).toHaveProperty('property', 'name');
+          expect(res.body.context.errors[0]).toHaveProperty("property", "name");
           expect(res.body.context.errors[0]).toHaveProperty(
-            'constraints.isString',
-            'name must be a string',
+            "constraints.isString",
+            "name must be a string"
           );
         });
     });
   });
 
-  describe('/examples/:id (DELETE)', () => {
-    it('should delete an existing example', async () => {
+  describe("/examples/:id (DELETE)", () => {
+    it("should delete an existing example", async () => {
       // First create an example
       const createDto: CreateExampleDto = {
-        name: 'Example to Delete',
+        name: "Example to Delete",
       };
 
       const createResponse = await request(app.getHttpServer())
-        .post('/examples')
+        .post("/examples")
         .send(createDto)
         .expect(201);
 
@@ -224,8 +224,8 @@ describe('ExampleController (e2e)', () => {
         .delete(`/examples/${createdId}`)
         .expect(200)
         .expect((res) => {
-          expect(res.body).toHaveProperty('success', true);
-          expect(res.body).toHaveProperty('data', true);
+          expect(res.body).toHaveProperty("success", true);
+          expect(res.body).toHaveProperty("data", true);
         });
 
       // Verify it was deleted
@@ -234,23 +234,23 @@ describe('ExampleController (e2e)', () => {
         .expect(404);
     });
 
-    it('should return false when deleting non-existent example', () => {
+    it("should return false when deleting non-existent example", () => {
       return request(app.getHttpServer())
-        .delete('/examples/999')
+        .delete("/examples/999")
         .expect(200)
         .expect((res) => {
-          expect(res.body).toHaveProperty('success', true);
-          expect(res.body).toHaveProperty('data', false);
+          expect(res.body).toHaveProperty("success", true);
+          expect(res.body).toHaveProperty("data", false);
         });
     });
 
-    it('should return 400 for invalid ID format', () => {
+    it("should return 400 for invalid ID format", () => {
       return request(app.getHttpServer())
-        .delete('/examples/invalid-id')
+        .delete("/examples/invalid-id")
         .expect(400)
         .expect((res) => {
-          expect(res.body).toHaveProperty('message');
-          expect(res.body.message).toContain('Validation failed');
+          expect(res.body).toHaveProperty("message");
+          expect(res.body.message).toContain("Validation failed");
         });
     });
   });
@@ -259,9 +259,9 @@ describe('ExampleController (e2e)', () => {
     // Clean up database after all tests
     if (databaseService?.db) {
       try {
-        await databaseService.db.execute('DELETE FROM examples');
+        await databaseService.db.execute("DELETE FROM examples");
       } catch (error) {
-        console.warn('Final database cleanup failed:', error);
+        console.warn("Final database cleanup failed:", error);
       }
     }
 

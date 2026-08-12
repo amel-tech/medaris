@@ -1,8 +1,8 @@
-import { createEnv } from '@t3-oss/env-nextjs'
-import { z } from 'zod'
+import { createEnv } from "@t3-oss/env-nextjs";
+import { z } from "zod";
 
 export const env = createEnv({
-  isServer: typeof window === 'undefined',
+  isServer: typeof window === "undefined",
   emptyStringAsUndefined: false,
   server: {
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().min(1).url().optional(),
@@ -16,4 +16,4 @@ export const env = createEnv({
     OTEL_SERVICE_NAME: process.env.OTEL_SERVICE_NAME,
     NEXT_PUBLIC_TEDRIS_APP_URL: process.env.NEXT_PUBLIC_TEDRIS_APP_URL,
   },
-})
+});

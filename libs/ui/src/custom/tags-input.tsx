@@ -1,17 +1,18 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { XIcon, CaretDownIcon } from "@medaris/icons"
-
-import { cn } from "@medaris/ui/lib/utils"
-import { Badge } from "../components/badge"
+import { CaretDownIcon, XIcon } from "@medaris/icons";
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
+import { Badge } from "../components/badge";
+import { cn } from "../lib/utils";
 
 const tagsInputVariants = cva(
   "flex min-h-9 w-full flex-wrap gap-2 rounded-md border border-input bg-transparent text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
   {
     variants: {
       variant: {
-        default: "focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px]",
-        destructive: "border-destructive focus-within:border-destructive focus-within:ring-destructive/20 dark:focus-within:ring-destructive/40",
+        default:
+          "focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px]",
+        destructive:
+          "border-destructive focus-within:border-destructive focus-within:ring-destructive/20 dark:focus-within:ring-destructive/40",
       },
       size: {
         default: "min-h-9 px-3 py-2",
@@ -23,8 +24,8 @@ const tagsInputVariants = cva(
       variant: "default",
       size: "default",
     },
-  },
-)
+  }
+);
 
 const tagVariants = cva(
   "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
@@ -32,38 +33,40 @@ const tagVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/90",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/90",
         destructive: "bg-destructive text-white hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        outline:
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
       },
     },
     defaultVariants: {
       variant: "default",
     },
-  },
-)
+  }
+);
 
 interface TagsInputProps
   extends Omit<React.ComponentProps<"div">, "onChange" | "value">,
-  VariantProps<typeof tagsInputVariants> {
-  value?: string[]
-  defaultValue?: string[]
-  onChange?: (tags: string[]) => void
-  onTagAdd?: (tag: string) => void
-  onTagRemove?: (tag: string, index: number) => void
-  placeholder?: string
-  maxTags?: number
-  allowDuplicates?: boolean
-  tagVariant?: VariantProps<typeof tagVariants>["variant"]
-  suggestions?: string[]
-  separators?: string[]
-  disabled?: boolean
-  readOnly?: boolean
-  autoFocus?: boolean
-  name?: string
-  id?: string
-  showDropdownTrigger?: boolean
-  dropdownPlaceholder?: string
+    VariantProps<typeof tagsInputVariants> {
+  value?: string[];
+  defaultValue?: string[];
+  onChange?: (tags: string[]) => void;
+  onTagAdd?: (tag: string) => void;
+  onTagRemove?: (tag: string, index: number) => void;
+  placeholder?: string;
+  maxTags?: number;
+  allowDuplicates?: boolean;
+  tagVariant?: VariantProps<typeof tagVariants>["variant"];
+  suggestions?: string[];
+  separators?: string[];
+  disabled?: boolean;
+  readOnly?: boolean;
+  autoFocus?: boolean;
+  name?: string;
+  id?: string;
+  showDropdownTrigger?: boolean;
+  dropdownPlaceholder?: string;
 }
 
 const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
@@ -92,236 +95,237 @@ const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
       dropdownPlaceholder = "",
       ...props
     },
-    ref,
+    ref
   ) => {
-    const [tags, setTags] = React.useState<string[]>(value || defaultValue)
-    const [inputValue, setInputValue] = React.useState("")
-    const [activeTagIndex, setActiveTagIndex] = React.useState<number | null>(null)
-    const [showSuggestions, setShowSuggestions] = React.useState(false)
-    const [activeSuggestionIndex, setActiveSuggestionIndex] = React.useState(0)
-    const [isDropdownOpen, setIsDropdownOpen] = React.useState(false)
+    const [tags, setTags] = React.useState<string[]>(value || defaultValue);
+    const [inputValue, setInputValue] = React.useState("");
+    const [activeTagIndex, setActiveTagIndex] = React.useState<number | null>(
+      null
+    );
+    const [showSuggestions, setShowSuggestions] = React.useState(false);
+    const [activeSuggestionIndex, setActiveSuggestionIndex] = React.useState(0);
+    const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
 
-    const inputRef = React.useRef<HTMLInputElement>(null)
-    const containerRef = React.useRef<HTMLDivElement>(null)
+    const inputRef = React.useRef<HTMLInputElement>(null);
+    const containerRef = React.useRef<HTMLDivElement>(null);
 
     // Controlled vs uncontrolled
-    const isControlled = value !== undefined
-    const currentTags = isControlled ? value : tags
+    const isControlled = value !== undefined;
+    const currentTags = isControlled ? value : tags;
 
     // Filter suggestions based on input or show all for dropdown
     const filteredSuggestions = React.useMemo(() => {
       if (isDropdownOpen && !inputValue.trim()) {
         // Show all available suggestions when dropdown is opened without input
         return suggestions.filter(
-          suggestion => allowDuplicates || !currentTags.includes(suggestion),
-        )
+          (suggestion) => allowDuplicates || !currentTags.includes(suggestion)
+        );
       }
-      if (!inputValue.trim()) return []
+      if (!inputValue.trim()) return [];
       return suggestions.filter(
-        suggestion =>
-          suggestion.toLowerCase().includes(inputValue.toLowerCase())
-          && (allowDuplicates || !currentTags.includes(suggestion)),
-      )
-    }, [inputValue, suggestions, currentTags, allowDuplicates, isDropdownOpen])
+        (suggestion) =>
+          suggestion.toLowerCase().includes(inputValue.toLowerCase()) &&
+          (allowDuplicates || !currentTags.includes(suggestion))
+      );
+    }, [inputValue, suggestions, currentTags, allowDuplicates, isDropdownOpen]);
 
     const updateTags = React.useCallback(
       (newTags: string[]) => {
         if (!isControlled) {
-          setTags(newTags)
+          setTags(newTags);
         }
-        onChange?.(newTags)
+        onChange?.(newTags);
       },
-      [isControlled, onChange],
-    )
+      [isControlled, onChange]
+    );
 
     const addTag = React.useCallback(
       (tag: string) => {
-        const trimmedTag = tag.trim()
-        if (!trimmedTag) return
+        const trimmedTag = tag.trim();
+        if (!trimmedTag) return;
 
-        if (maxTags && currentTags.length >= maxTags) return
-        if (!allowDuplicates && currentTags.includes(trimmedTag)) return
+        if (maxTags && currentTags.length >= maxTags) return;
+        if (!allowDuplicates && currentTags.includes(trimmedTag)) return;
 
-        const newTags = [...currentTags, trimmedTag]
-        updateTags(newTags)
-        onTagAdd?.(trimmedTag)
-        setInputValue("")
-        setShowSuggestions(false)
-        setIsDropdownOpen(false)
-        setActiveSuggestionIndex(0)
+        const newTags = [...currentTags, trimmedTag];
+        updateTags(newTags);
+        onTagAdd?.(trimmedTag);
+        setInputValue("");
+        setShowSuggestions(false);
+        setIsDropdownOpen(false);
+        setActiveSuggestionIndex(0);
       },
-      [currentTags, maxTags, allowDuplicates, updateTags, onTagAdd],
-    )
+      [currentTags, maxTags, allowDuplicates, updateTags, onTagAdd]
+    );
 
     const removeTag = React.useCallback(
       (index: number) => {
-        const tagToRemove = currentTags[index] || ""
-        const newTags = currentTags.filter((_, i) => i !== index)
-        updateTags(newTags)
-        onTagRemove?.(tagToRemove, index)
-        setActiveTagIndex(null)
-        inputRef.current?.focus()
+        const tagToRemove = currentTags[index] || "";
+        const newTags = currentTags.filter((_, i) => i !== index);
+        updateTags(newTags);
+        onTagRemove?.(tagToRemove, index);
+        setActiveTagIndex(null);
+        inputRef.current?.focus();
       },
-      [currentTags, updateTags, onTagRemove],
-    )
+      [currentTags, updateTags, onTagRemove]
+    );
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newValue = e.target.value
-      setInputValue(newValue)
-      const shouldShow = (newValue.trim().length > 0 || isDropdownOpen) && filteredSuggestions.length > 0
-      setShowSuggestions(shouldShow)
-      setActiveSuggestionIndex(0)
-    }
+      const newValue = e.target.value;
+      setInputValue(newValue);
+      const shouldShow =
+        (newValue.trim().length > 0 || isDropdownOpen) &&
+        filteredSuggestions.length > 0;
+      setShowSuggestions(shouldShow);
+      setActiveSuggestionIndex(0);
+    };
 
     const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (disabled || readOnly) return
+      if (disabled || readOnly) return;
 
       switch (e.key) {
         case "Enter":
         case "Tab":
-          e.preventDefault()
+          e.preventDefault();
           if (showSuggestions && filteredSuggestions[activeSuggestionIndex]) {
-            addTag(filteredSuggestions[activeSuggestionIndex])
+            addTag(filteredSuggestions[activeSuggestionIndex]);
+          } else if (inputValue.trim()) {
+            addTag(inputValue);
           }
-          else if (inputValue.trim()) {
-            addTag(inputValue)
-          }
-          break
+          break;
 
         case "Backspace":
           if (!inputValue && currentTags.length > 0) {
             if (activeTagIndex !== null) {
-              removeTag(activeTagIndex)
-            }
-            else {
-              setActiveTagIndex(currentTags.length - 1)
+              removeTag(activeTagIndex);
+            } else {
+              setActiveTagIndex(currentTags.length - 1);
             }
           }
-          break
+          break;
 
         case "Delete":
           if (activeTagIndex !== null) {
-            removeTag(activeTagIndex)
+            removeTag(activeTagIndex);
           }
-          break
+          break;
 
         case "ArrowLeft":
           if (!inputValue && currentTags.length > 0) {
-            e.preventDefault()
-            setActiveTagIndex(prev =>
-              prev === null ? currentTags.length - 1 : Math.max(0, prev - 1),
-            )
+            e.preventDefault();
+            setActiveTagIndex((prev) =>
+              prev === null ? currentTags.length - 1 : Math.max(0, prev - 1)
+            );
           }
-          break
+          break;
 
         case "ArrowRight":
           if (!inputValue && activeTagIndex !== null) {
-            e.preventDefault()
+            e.preventDefault();
             if (activeTagIndex === currentTags.length - 1) {
-              setActiveTagIndex(null)
-              inputRef.current?.focus()
-            }
-            else {
-              setActiveTagIndex(activeTagIndex + 1)
+              setActiveTagIndex(null);
+              inputRef.current?.focus();
+            } else {
+              setActiveTagIndex(activeTagIndex + 1);
             }
           }
-          break
+          break;
 
         case "ArrowDown":
           if (showSuggestions) {
-            e.preventDefault()
-            setActiveSuggestionIndex(prev =>
-              prev < filteredSuggestions.length - 1 ? prev + 1 : 0,
-            )
+            e.preventDefault();
+            setActiveSuggestionIndex((prev) =>
+              prev < filteredSuggestions.length - 1 ? prev + 1 : 0
+            );
           }
-          break
+          break;
 
         case "ArrowUp":
           if (showSuggestions) {
-            e.preventDefault()
-            setActiveSuggestionIndex(prev =>
-              prev > 0 ? prev - 1 : filteredSuggestions.length - 1,
-            )
+            e.preventDefault();
+            setActiveSuggestionIndex((prev) =>
+              prev > 0 ? prev - 1 : filteredSuggestions.length - 1
+            );
           }
-          break
+          break;
 
         case "Escape":
-          setShowSuggestions(false)
-          setIsDropdownOpen(false)
-          setActiveTagIndex(null)
-          break
+          setShowSuggestions(false);
+          setIsDropdownOpen(false);
+          setActiveTagIndex(null);
+          break;
 
         default:
           // Handle separators
           if (separators.includes(e.key)) {
-            e.preventDefault()
+            e.preventDefault();
             if (inputValue.trim()) {
-              addTag(inputValue)
+              addTag(inputValue);
             }
           }
-          break
+          break;
       }
-    }
+    };
 
     const handleContainerClick = () => {
       if (!disabled && !readOnly) {
-        inputRef.current?.focus()
+        inputRef.current?.focus();
         // Show dropdown when container is clicked, like a select
         if (suggestions.length > 0) {
-          setShowSuggestions(true)
+          setShowSuggestions(true);
           if (!inputValue.trim()) {
-            setIsDropdownOpen(true)
+            setIsDropdownOpen(true);
           }
         }
       }
-    }
+    };
 
     const handleSuggestionClick = (suggestion: string) => {
-      addTag(suggestion)
-      inputRef.current?.focus()
-    }
+      addTag(suggestion);
+      inputRef.current?.focus();
+    };
 
     const handleDropdownToggle = () => {
-      if (disabled || readOnly) return
+      if (disabled || readOnly) return;
 
-      const newIsOpen = !isDropdownOpen
-      setIsDropdownOpen(newIsOpen)
+      const newIsOpen = !isDropdownOpen;
+      setIsDropdownOpen(newIsOpen);
 
       if (newIsOpen) {
-        setShowSuggestions(suggestions.length > 0)
-        setActiveSuggestionIndex(0)
-        inputRef.current?.focus()
+        setShowSuggestions(suggestions.length > 0);
+        setActiveSuggestionIndex(0);
+        inputRef.current?.focus();
+      } else {
+        setShowSuggestions(false);
       }
-      else {
-        setShowSuggestions(false)
-      }
-    }
+    };
 
     React.useEffect(() => {
       if (autoFocus && inputRef.current) {
-        inputRef.current.focus()
+        inputRef.current.focus();
       }
-    }, [autoFocus])
+    }, [autoFocus]);
 
     // Sync external value changes
     React.useEffect(() => {
       if (isControlled && value) {
-        setTags(value)
+        setTags(value);
       }
-    }, [value, isControlled])
+    }, [value, isControlled]);
 
     return (
       <div className="relative">
+        {/* biome-ignore lint/a11y/useSemanticElements: cannot be a <button> — it wraps the tag badges and the text <input> it focuses, and a button may not contain form controls */}
         <div
           ref={ref}
           data-slot="tags-input"
           className={cn(tagsInputVariants({ variant, size }), className)}
           onClick={handleContainerClick}
           onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
-            if (disabled || readOnly) return
+            if (disabled || readOnly) return;
             if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault()
-              inputRef.current?.focus()
+              e.preventDefault();
+              inputRef.current?.focus();
             }
           }}
           tabIndex={disabled || readOnly ? -1 : 0}
@@ -336,12 +340,12 @@ const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
               className={cn(
                 "cursor-default select-none",
                 activeTagIndex === index && "ring-2 ring-ring ring-offset-1",
-                !disabled && !readOnly && "group",
+                !disabled && !readOnly && "group"
               )}
               onClick={(e) => {
-                e.stopPropagation()
+                e.stopPropagation();
                 if (!disabled && !readOnly) {
-                  setActiveTagIndex(index)
+                  setActiveTagIndex(index);
                 }
               }}
             >
@@ -351,8 +355,8 @@ const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
                   type="button"
                   className="ml-1 rounded-sm opacity-70 hover:opacity-100 focus:outline-none focus:ring-1 focus:ring-ring"
                   onClick={(e) => {
-                    e.stopPropagation()
-                    removeTag(index)
+                    e.stopPropagation();
+                    removeTag(index);
                   }}
                   aria-label={`Remove ${tag} tag`}
                 >
@@ -369,26 +373,29 @@ const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
             onChange={handleInputChange}
             onKeyDown={handleInputKeyDown}
             onFocus={() => {
-              setActiveTagIndex(null)
+              setActiveTagIndex(null);
               // Show dropdown on focus if there are suggestions available
               if (suggestions.length > 0) {
-                setShowSuggestions(true)
+                setShowSuggestions(true);
                 if (!inputValue.trim()) {
-                  setIsDropdownOpen(true)
+                  setIsDropdownOpen(true);
                 }
               }
             }}
             onBlur={(e) => {
               // Don't hide if clicking on dropdown trigger or suggestions
-              const relatedTarget = e.relatedTarget as HTMLElement
-              if (relatedTarget && containerRef.current?.contains(relatedTarget)) {
-                return
+              const relatedTarget = e.relatedTarget as HTMLElement;
+              if (
+                relatedTarget &&
+                containerRef.current?.contains(relatedTarget)
+              ) {
+                return;
               }
               // Delay hiding suggestions to allow clicking
               setTimeout(() => {
-                setShowSuggestions(false)
-                setIsDropdownOpen(false)
-              }, 150)
+                setShowSuggestions(false);
+                setIsDropdownOpen(false);
+              }, 150);
             }}
             placeholder={currentTags.length === 0 ? placeholder : ""}
             disabled={disabled}
@@ -410,18 +417,22 @@ const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
               type="button"
               className={cn(
                 "ml-2 flex items-center justify-center rounded-sm p-1 transition-colors hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-1 focus:ring-ring",
-                disabled || readOnly ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
+                disabled || readOnly
+                  ? "opacity-50 cursor-not-allowed"
+                  : "cursor-pointer"
               )}
               onClick={handleDropdownToggle}
               disabled={disabled || readOnly}
-              aria-label={isDropdownOpen ? "Close suggestions" : "Open suggestions"}
+              aria-label={
+                isDropdownOpen ? "Close suggestions" : "Open suggestions"
+              }
               aria-expanded={isDropdownOpen}
               aria-haspopup="listbox"
             >
               <CaretDownIcon
                 className={cn(
                   "size-4 transition-transform duration-200",
-                  isDropdownOpen && "rotate-180",
+                  isDropdownOpen && "rotate-180"
                 )}
               />
             </button>
@@ -429,11 +440,7 @@ const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
 
           {/* Hidden input for form submission */}
           {name && (
-            <input
-              type="hidden"
-              name={name}
-              value={currentTags.join(",")}
-            />
+            <input type="hidden" name={name} value={currentTags.join(",")} />
           )}
         </div>
 
@@ -459,7 +466,7 @@ const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
                     "w-full text-left px-2 py-1.5 text-sm rounded-sm transition-colors focus:outline-none",
                     index === activeSuggestionIndex
                       ? "bg-accent text-accent-foreground"
-                      : "hover:bg-accent hover:text-accent-foreground",
+                      : "hover:bg-accent hover:text-accent-foreground"
                   )}
                   onClick={() => handleSuggestionClick(suggestion)}
                   onMouseEnter={() => setActiveSuggestionIndex(index)}
@@ -475,14 +482,15 @@ const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
 
         {/* Screen reader description */}
         <div id={`${id}-description`} className="sr-only">
-          Use Enter, Tab, or comma to add tags. Use Backspace to remove the last tag. Use arrow keys to navigate between tags.
+          Use Enter, Tab, or comma to add tags. Use Backspace to remove the last
+          tag. Use arrow keys to navigate between tags.
         </div>
       </div>
-    )
-  },
-)
+    );
+  }
+);
 
-TagsInput.displayName = "TagsInput"
+TagsInput.displayName = "TagsInput";
 
-export { TagsInput, tagsInputVariants, tagVariants }
-export type { TagsInputProps }
+export { TagsInput, tagsInputVariants, tagVariants };
+export type { TagsInputProps };

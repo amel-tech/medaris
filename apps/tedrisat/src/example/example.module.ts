@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
-import { ExampleService } from './example.service';
-import { ExampleRepository } from './example.repository';
-import { ExampleController } from './example.controller';
-import { DatabaseModule } from '../database/database.module';
+import { Module } from "@nestjs/common";
+import { DatabaseModule } from "../database/database.module";
+import { ExampleController } from "./example.controller";
+import { ExampleRepository } from "./example.repository";
+import { ExampleService } from "./example.service";
 
 @Module({
   imports: [DatabaseModule],

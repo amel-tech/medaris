@@ -1,19 +1,16 @@
-'use client'
+"use client";
 
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-} from '@medaris/ui/components/sidebar'
-import { SignInIcon } from '@medaris/icons'
-import { signIn } from 'next-auth/react'
-import { useLocale, useTranslations } from 'next-intl'
+import { SignInIcon } from "@medaris/icons";
+import { SidebarMenu, SidebarMenuButton } from "@medaris/ui/components/sidebar";
+import { signIn } from "next-auth/react";
+import { useLocale, useTranslations } from "next-intl";
 
 const KeycloakLogin = () => {
-  const t = useTranslations('nizam')
-  const locale = useLocale()
+  const t = useTranslations("nizam");
+  const locale = useLocale();
   const handleButtonClick = () => {
-    signIn('keycloak', { redirect: true }, { ui_locales: locale })
-  }
+    signIn("keycloak", { redirect: true }, { ui_locales: locale });
+  };
 
   return (
     <SidebarMenu>
@@ -25,10 +22,12 @@ const KeycloakLogin = () => {
         <span>
           <SignInIcon size={20} />
         </span>
-        <span className="truncate font-medium">{t('KeycloakLogin.signIn')}</span>
+        <span className="truncate font-medium">
+          {t("KeycloakLogin.signIn")}
+        </span>
       </SidebarMenuButton>
     </SidebarMenu>
-  )
-}
+  );
+};
 
-export default KeycloakLogin
+export default KeycloakLogin;

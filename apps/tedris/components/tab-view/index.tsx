@@ -1,13 +1,13 @@
-'use client'
+"use client";
 
-import { cn } from '@medaris/ui/lib/utils'
-import { useTranslations } from 'next-intl'
-import Link from 'next/link'
-import { usePathname } from '~/lib/i18n/navigation'
+import { cn } from "@medaris/ui/lib/utils";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { usePathname } from "~/lib/i18n/navigation";
 
 export const TabView = ({ children }: { children: React.ReactNode }) => {
-  const t = useTranslations('tedris')
-  const pathname = usePathname()
+  const t = useTranslations("tedris");
+  const pathname = usePathname();
 
   return (
     <>
@@ -16,38 +16,38 @@ export const TabView = ({ children }: { children: React.ReactNode }) => {
           <Link
             href="/home"
             className={cn(
-              'px-4 py-2 text-sm font-medium',
-              pathname.startsWith('/home')
-              && 'text-brand-primary border-b-2 border-brand-primary',
+              "px-4 py-2 text-sm font-medium",
+              pathname.startsWith("/home") &&
+                "text-brand-primary border-b-2 border-brand-primary"
             )}
           >
-            <span>{t('TabView.home')}</span>
+            <span>{t("TabView.home")}</span>
           </Link>
           <Link
             prefetch
             href="/learning"
             className={cn(
-              'px-4 py-2 text-sm font-medium',
-              pathname.startsWith('/learning')
-              && 'text-brand-primary border-b-2 border-brand-primary',
+              "px-4 py-2 text-sm font-medium",
+              pathname.startsWith("/learning") &&
+                "text-brand-primary border-b-2 border-brand-primary"
             )}
           >
-            <span>{t('TabView.learning')}</span>
+            <span>{t("TabView.learning")}</span>
           </Link>
           <Link
             prefetch
             href="/decks"
             className={cn(
-              'px-4 py-2 text-sm font-medium',
-              pathname.startsWith('/decks')
-              && 'text-brand-primary border-b-2 border-brand-primary',
+              "px-4 py-2 text-sm font-medium",
+              pathname.startsWith("/decks") &&
+                "text-brand-primary border-b-2 border-brand-primary"
             )}
           >
-            <span>{t('TabView.decks')}</span>
+            <span>{t("TabView.decks")}</span>
           </Link>
         </div>
       </div>
       <main className="container mx-auto py-2 grow-1 h-full">{children}</main>
     </>
-  )
-}
+  );
+};

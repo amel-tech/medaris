@@ -1,21 +1,21 @@
-import type React from 'react'
 import {
-  GoogleLogoIcon,
   FacebookLogoIcon,
-  InstagramLogoIcon,
-  TwitterLogoIcon,
-  LinkedinLogoIcon,
-  StackOverflowLogoIcon,
   GithubLogoIcon,
   GitlabLogoIcon,
+  GoogleLogoIcon,
+  type Icon,
+  type IconProps,
+  InstagramLogoIcon,
+  LinkedinLogoIcon,
   PaypalLogoIcon,
-  Icon,
-  IconProps,
-} from '@medaris/icons'
+  StackOverflowLogoIcon,
+  TwitterLogoIcon,
+} from "@medaris/icons";
+import type React from "react";
 
 type IconMapProps = IconProps & {
-  alias: string
-}
+  alias: string;
+};
 
 const iconComponents: Record<string, Icon> = {
   google: GoogleLogoIcon,
@@ -27,11 +27,11 @@ const iconComponents: Record<string, Icon> = {
   github: GithubLogoIcon,
   gitlab: GitlabLogoIcon,
   paypal: PaypalLogoIcon,
-}
+};
 
 export const IconMap = (props: IconMapProps): React.JSX.Element | null => {
-  const { alias, ...iconProps } = props
-  const IconComponent = iconComponents[alias]
+  const { alias, ...iconProps } = props;
+  const IconComponent = iconComponents[alias];
 
-  return IconComponent ? <IconComponent {...iconProps} /> : null
-}
+  return IconComponent ? <IconComponent {...iconProps} /> : null;
+};

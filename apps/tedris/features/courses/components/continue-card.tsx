@@ -1,25 +1,25 @@
-import Link from 'next/link'
 import {
   ArrowRightIcon,
   CaretRightIcon,
   MadrasahLogoIcon,
-} from '@medaris/icons/ssr'
-import type { EnrolledCourseResponse } from '@medaris/services/tedrisat'
-import { CoverPlaceholder } from './cover'
+} from "@medaris/icons/ssr";
+import type { EnrolledCourseResponse } from "@medaris/services/tedrisat";
+import Link from "next/link";
+import { CoverPlaceholder } from "./cover";
 
 export type ContinueCardLabels = {
-  continue: string
-  completed: string
-}
+  continue: string;
+  completed: string;
+};
 
 export const ContinueCard = ({
   course,
   labels,
 }: {
-  course: EnrolledCourseResponse
-  labels: ContinueCardLabels
+  course: EnrolledCourseResponse;
+  labels: ContinueCardLabels;
 }) => {
-  const progress = Math.min(100, Math.max(0, course.enrollment.progress))
+  const progress = Math.min(100, Math.max(0, course.enrollment.progress));
 
   return (
     <Link
@@ -65,19 +65,14 @@ export const ContinueCard = ({
           </div>
           <div className="mt-2 flex items-center justify-between">
             <span className="text-[11px] text-muted-foreground">
-              %
-              {progress}
-              {' '}
-              {labels.completed}
+              %{progress} {labels.completed}
             </span>
             <span className="inline-flex items-center gap-1 text-xs font-semibold">
-              {labels.continue}
-              {' '}
-              <ArrowRightIcon size={13} />
+              {labels.continue} <ArrowRightIcon size={13} />
             </span>
           </div>
         </div>
       </div>
     </Link>
-  )
-}
+  );
+};

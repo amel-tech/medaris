@@ -1,59 +1,57 @@
-'use client'
+"use client";
 
-import { CaretLeftIcon, CaretRightIcon } from '@medaris/icons'
-import { useCallback, useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
-
-import FlashCardContent from './flashcard-content'
-import { FlashcardResponse } from '@medaris/services/tedrisat'
-import { useFlashCards } from '../hooks/useFlashCards'
+import { CaretLeftIcon, CaretRightIcon } from "@medaris/icons";
+import type { FlashcardResponse } from "@medaris/services/tedrisat";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useState } from "react";
+import { useFlashCards } from "../hooks/useFlashCards";
+import FlashCardContent from "./flashcard-content";
 
 type FlashCardListProps = {
-  cards: FlashcardResponse[]
-}
+  cards: FlashcardResponse[];
+};
 
 export default function FlashCardList({ cards }: FlashCardListProps) {
-  const t = useTranslations('tedris')
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [key, setKey] = useState(0)
-  const { isCardMemorized, toggleMemorized, isPending } = useFlashCards(cards)
+  const t = useTranslations("tedris");
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [key, setKey] = useState(0);
+  const { isCardMemorized, toggleMemorized, isPending } = useFlashCards(cards);
 
   const handlePrevious = useCallback(() => {
-    setCurrentIndex(prev => (prev > 0 ? prev - 1 : cards.length - 1))
-    setKey(prev => prev + 1)
-  }, [cards.length])
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : cards.length - 1));
+    setKey((prev) => prev + 1);
+  }, [cards.length]);
 
   const handleNext = useCallback(() => {
-    setCurrentIndex(prev => (prev < cards.length - 1 ? prev + 1 : 0))
-    setKey(prev => prev + 1)
-  }, [cards.length])
+    setCurrentIndex((prev) => (prev < cards.length - 1 ? prev + 1 : 0));
+    setKey((prev) => prev + 1);
+  }, [cards.length]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') {
-        handlePrevious()
+      if (e.key === "ArrowLeft") {
+        handlePrevious();
+      } else if (e.key === "ArrowRight") {
+        handleNext();
       }
-      else if (e.key === 'ArrowRight') {
-        handleNext()
-      }
-    }
+    };
 
-    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener("keydown", onKeyDown);
 
     return () => {
-      window.removeEventListener('keydown', onKeyDown)
-    }
-  }, [cards.length, handleNext, handlePrevious])
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [cards.length, handleNext, handlePrevious]);
 
   if (!cards.length) {
     return (
       <div className="flex items-center justify-center">
-        <p className="text-gray-500">{t('FlashCardList.noCardsFound')}</p>
+        <p className="text-gray-500">{t("FlashCardList.noCardsFound")}</p>
       </div>
-    )
+    );
   }
 
-  const currentCard = cards[currentIndex]
+  const currentCard = cards[currentIndex];
 
   return (
     <div className="mx-auto relative h-full w-full max-w-3xl">
@@ -69,6 +67,7 @@ export default function FlashCardList({ cards }: FlashCardListProps) {
 
       <div className="mt-4 flex items-center justify-between">
         <button
+          type="button"
           onClick={handlePrevious}
           className="rounded-full p-2 transition-colors hover:bg-gray-100"
         >
@@ -76,10 +75,11 @@ export default function FlashCardList({ cards }: FlashCardListProps) {
         </button>
         <span className="text-sm text-gray-500">
           {currentIndex + 1}
-          {' / '}
+          {" / "}
           {cards.length}
         </span>
         <button
+          type="button"
           onClick={handleNext}
           className="rounded-full p-2 transition-colors hover:bg-gray-100"
         >
@@ -87,5 +87,5 @@ export default function FlashCardList({ cards }: FlashCardListProps) {
         </button>
       </div>
     </div>
-  )
+  );
 }

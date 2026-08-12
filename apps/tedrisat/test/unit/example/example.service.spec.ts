@@ -1,11 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ExampleService } from '../../../src/example/example.service';
-import { ExampleRepository } from '../../../src/example/example.repository';
-import { CreateExampleDto } from '../../../src/example/dto/create-example.dto';
-import { IExample } from '../../../src/example/example.interface';
-import { ExampleNotFoundError } from '../../../src/example/errors/example-not-found.error';
+import { Test, TestingModule } from "@nestjs/testing";
+import { CreateExampleDto } from "../../../src/example/dto/create-example.dto";
+import { ExampleNotFoundError } from "../../../src/example/errors/example-not-found.error";
+import { IExample } from "../../../src/example/example.interface";
+import { ExampleRepository } from "../../../src/example/example.repository";
+import { ExampleService } from "../../../src/example/example.service";
 
-describe('ExampleService', () => {
+describe("ExampleService", () => {
   let service: ExampleService;
   let repository: ExampleRepository;
 
@@ -35,21 +35,21 @@ describe('ExampleService', () => {
     jest.clearAllMocks();
   });
 
-  describe('getAllExamples', () => {
-    it('should return an array of examples', async () => {
+  describe("getAllExamples", () => {
+    it("should return an array of examples", async () => {
       // Arrange
       const mockExamples: IExample[] = [
         {
           id: 1,
-          name: 'Example 1',
-          createdAt: new Date('2024-01-01'),
-          updatedAt: new Date('2024-01-01'),
+          name: "Example 1",
+          createdAt: new Date("2024-01-01"),
+          updatedAt: new Date("2024-01-01"),
         },
         {
           id: 2,
-          name: 'Example 2',
-          createdAt: new Date('2024-01-02'),
-          updatedAt: new Date('2024-01-02'),
+          name: "Example 2",
+          createdAt: new Date("2024-01-02"),
+          updatedAt: new Date("2024-01-02"),
         },
       ];
 
@@ -64,7 +64,7 @@ describe('ExampleService', () => {
       expect(result).toHaveLength(2);
     });
 
-    it('should return empty array when no examples exist', async () => {
+    it("should return empty array when no examples exist", async () => {
       // Arrange
       mockExampleRepository.findAll.mockResolvedValue([]);
 
@@ -77,9 +77,9 @@ describe('ExampleService', () => {
       expect(result).toHaveLength(0);
     });
 
-    it('should handle repository errors', async () => {
+    it("should handle repository errors", async () => {
       // Arrange
-      const error = new Error('Database connection failed');
+      const error = new Error("Database connection failed");
       mockExampleRepository.findAll.mockRejectedValue(error);
 
       // Act & Assert
@@ -88,14 +88,14 @@ describe('ExampleService', () => {
     });
   });
 
-  describe('getExampleById', () => {
-    it('should return an example when found', async () => {
+  describe("getExampleById", () => {
+    it("should return an example when found", async () => {
       // Arrange
       const mockExample: IExample = {
         id: 1,
-        name: 'Example 1',
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
+        name: "Example 1",
+        createdAt: new Date("2024-01-01"),
+        updatedAt: new Date("2024-01-01"),
       };
       const exampleId = 1;
 
@@ -110,25 +110,25 @@ describe('ExampleService', () => {
       expect(result).toEqual(mockExample);
     });
 
-    it('should throw ExampleNotFoundError when example is not found', async () => {
+    it("should throw ExampleNotFoundError when example is not found", async () => {
       // Arrange
       const exampleId = 999;
       mockExampleRepository.findById.mockResolvedValue(null);
 
       // Act & Assert
       await expect(service.getExampleById(exampleId)).rejects.toThrow(
-        ExampleNotFoundError,
+        ExampleNotFoundError
       );
       await expect(service.getExampleById(exampleId)).rejects.toThrow(
-        'Example with id 999 not found',
+        "Example with id 999 not found"
       );
       expect(repository.findById).toHaveBeenCalledWith(exampleId);
     });
 
-    it('should handle repository errors', async () => {
+    it("should handle repository errors", async () => {
       // Arrange
       const exampleId = 1;
-      const error = new Error('Database connection failed');
+      const error = new Error("Database connection failed");
       mockExampleRepository.findById.mockRejectedValue(error);
 
       // Act & Assert
@@ -138,18 +138,18 @@ describe('ExampleService', () => {
     });
   });
 
-  describe('createExample', () => {
-    it('should create and return a new example', async () => {
+  describe("createExample", () => {
+    it("should create and return a new example", async () => {
       // Arrange
       const createExampleDto: CreateExampleDto = {
-        name: 'New Example',
+        name: "New Example",
       };
 
       const mockCreatedExample: IExample = {
         id: 1,
-        name: 'New Example',
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
+        name: "New Example",
+        createdAt: new Date("2024-01-01"),
+        updatedAt: new Date("2024-01-01"),
       };
 
       mockExampleRepository.create.mockResolvedValue(mockCreatedExample);
@@ -163,25 +163,25 @@ describe('ExampleService', () => {
       expect(result).toEqual(mockCreatedExample);
     });
 
-    it('should handle repository errors during creation', async () => {
+    it("should handle repository errors during creation", async () => {
       // Arrange
       const createExampleDto: CreateExampleDto = {
-        name: 'New Example',
+        name: "New Example",
       };
-      const error = new Error('Database constraint violation');
+      const error = new Error("Database constraint violation");
       mockExampleRepository.create.mockRejectedValue(error);
 
       // Act & Assert
       await expect(service.createExample(createExampleDto)).rejects.toThrow(
-        error,
+        error
       );
       expect(repository.create).toHaveBeenCalledWith(createExampleDto);
       expect(repository.create).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('deleteExample', () => {
-    it('should delete example and return true when successful', async () => {
+  describe("deleteExample", () => {
+    it("should delete example and return true when successful", async () => {
       // Arrange
       const exampleId = 1;
       mockExampleRepository.delete.mockResolvedValue(true);
@@ -195,7 +195,7 @@ describe('ExampleService', () => {
       expect(result).toBe(true);
     });
 
-    it('should return false when example does not exist', async () => {
+    it("should return false when example does not exist", async () => {
       // Arrange
       const exampleId = 999;
       mockExampleRepository.delete.mockResolvedValue(false);
@@ -209,10 +209,10 @@ describe('ExampleService', () => {
       expect(result).toBe(false);
     });
 
-    it('should handle repository errors during deletion', async () => {
+    it("should handle repository errors during deletion", async () => {
       // Arrange
       const exampleId = 1;
-      const error = new Error('Database connection failed');
+      const error = new Error("Database connection failed");
       mockExampleRepository.delete.mockRejectedValue(error);
 
       // Act & Assert

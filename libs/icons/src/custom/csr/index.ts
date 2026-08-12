@@ -1,5 +1,3 @@
-import MadrasahLogoIcon from './MadrasahLogoIcon'
+import MadrasahLogoIcon from "./MadrasahLogoIcon";
 
-export {
-  MadrasahLogoIcon,
-}
+export { MadrasahLogoIcon };

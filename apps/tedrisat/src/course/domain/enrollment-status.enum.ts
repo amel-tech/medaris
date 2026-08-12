@@ -1,5 +1,5 @@
 export enum EnrollmentStatus {
-  PENDING = 'PENDING',
-  ENROLLED = 'ENROLLED',
-  COMPLETED = 'COMPLETED',
+  PENDING = "PENDING",
+  ENROLLED = "ENROLLED",
+  COMPLETED = "COMPLETED",
 }

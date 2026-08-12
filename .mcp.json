@@ -3,11 +3,7 @@
     "linear-ameltech": {
       "type": "stdio",
       "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://mcp.linear.app/mcp"
-      ],
+      "args": ["-y", "mcp-remote", "https://mcp.linear.app/mcp"],
       "env": {
         "MCP_REMOTE_CONFIG_DIR": "${HOME}/.mcp-auth-ameltech"
       }

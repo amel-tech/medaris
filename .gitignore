@@ -16,7 +16,10 @@ node_modules
 dist/
 *.log
 .DS_Store
-.vscode/
+# `.vscode/*` (with the negations further down) — NOT a bare `.vscode/`, which
+# excludes the directory outright and makes `git add` refuse the four editor
+# config files this repo does track (MDRS-12).
+.vscode/*
 .idea/
 .turbo
 .data/

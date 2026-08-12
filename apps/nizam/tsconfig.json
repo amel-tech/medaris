@@ -2,11 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "incremental": true,
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "module": "esnext",
     "moduleResolution": "bundler",
     "noUnusedLocals": false,
@@ -21,21 +17,11 @@
     "jsx": "preserve",
     "noEmit": true,
     "paths": {
-      "~/env": [
-        "./env.ts"
-      ],
-      "~/components/*": [
-        "./components/*"
-      ],
-      "~/hooks/*": [
-        "./hooks/*"
-      ],
-      "~/lib/*": [
-        "./lib/*"
-      ],
-      "~/features/*": [
-        "./features/*"
-      ]
+      "~/env": ["./env.ts"],
+      "~/components/*": ["./components/*"],
+      "~/hooks/*": ["./hooks/*"],
+      "~/lib/*": ["./lib/*"],
+      "~/features/*": ["./features/*"]
     }
   },
   "include": [
@@ -46,10 +32,7 @@
     "next.config.js",
     "types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    ".next/**"
-  ],
+  "exclude": ["node_modules", ".next/**"],
   "references": [
     {
       "path": "../../libs/i18n"

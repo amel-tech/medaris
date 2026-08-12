@@ -1,12 +1,8 @@
-'use client'
+"use client";
 
-import React, { useState } from 'react'
-import { Button } from '@medaris/ui/components/button'
-import { Input } from '@medaris/ui/components/input'
-import { Label } from '@medaris/ui/components/label'
-import { Textarea } from '@medaris/ui/components/textarea'
-import { Switch } from '@medaris/ui/components/switch'
-import { toastHelper } from '@medaris/ui/lib/toast-helper'
+import { PlusIcon } from "@medaris/icons";
+import type { CreateFlashcardDeckDto } from "@medaris/services/tedrisat";
+import { Button } from "@medaris/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -15,110 +11,119 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@medaris/ui/components/dialog'
-import { PlusIcon } from '@medaris/icons'
-import { createFlashcardDeck } from '~/features/decks/actions'
-import { CreateFlashcardDeckDto } from '@medaris/services/tedrisat'
-import { useTranslations } from 'next-intl'
+} from "@medaris/ui/components/dialog";
+import { Input } from "@medaris/ui/components/input";
+import { Label } from "@medaris/ui/components/label";
+import { Switch } from "@medaris/ui/components/switch";
+import { Textarea } from "@medaris/ui/components/textarea";
+import { toastHelper } from "@medaris/ui/lib/toast-helper";
+import { useTranslations } from "next-intl";
+import type React from "react";
+import { useState } from "react";
+import { createFlashcardDeck } from "~/features/decks/actions";
 
 export function DecksTableHeader() {
-  const t = useTranslations('nizam')
-  const [open, setOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const t = useTranslations("nizam");
+  const [open, setOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<CreateFlashcardDeckDto>({
-    title: '',
-    description: '',
+    title: "",
+    description: "",
     isPublic: false,
-  })
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!formData.title.trim()) {
       toastHelper.error({
-        title: t('TableHeader.validationError'),
-        description: t('TableHeader.validationErrorDescription'),
-      })
-      return
+        title: t("TableHeader.validationError"),
+        description: t("TableHeader.validationErrorDescription"),
+      });
+      return;
     }
 
-    setIsLoading(true)
-    const result = await createFlashcardDeck(formData)
+    setIsLoading(true);
+    const result = await createFlashcardDeck(formData);
     if (result.success) {
       toastHelper.success({
-        title: t('TableHeader.deckCreated'),
-        description: t('TableHeader.deckCreatedDescription'),
-      })
-      setOpen(false)
+        title: t("TableHeader.deckCreated"),
+        description: t("TableHeader.deckCreatedDescription"),
+      });
+      setOpen(false);
       setFormData({
-        title: '',
-        description: '',
+        title: "",
+        description: "",
         isPublic: false,
-      })
-    }
-    else {
+      });
+    } else {
       toastHelper.error({
-        title: t('TableHeader.creationError'),
+        title: t("TableHeader.creationError"),
         description: result.error,
-      })
+      });
     }
-    setIsLoading(false)
-  }
+    setIsLoading(false);
+  };
 
-  const handleInputChange = (field: keyof CreateFlashcardDeckDto, value: string | boolean) => {
-    setFormData(prev => ({
+  const handleInputChange = (
+    field: keyof CreateFlashcardDeckDto,
+    value: string | boolean
+  ) => {
+    setFormData((prev) => ({
       ...prev,
       [field]: value,
-    }))
-  }
+    }));
+  };
 
   return (
     <div className="flex items-center justify-between mb-4">
       <div>
-        <h1 className="text-2xl font-bold">{t('TableHeader.flashcardDecks')}</h1>
-        <p className="text-muted-foreground">{t('TableHeader.manageDecks')}</p>
+        <h1 className="text-2xl font-bold">
+          {t("TableHeader.flashcardDecks")}
+        </h1>
+        <p className="text-muted-foreground">{t("TableHeader.manageDecks")}</p>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button>
             <PlusIcon className="h-4 w-4" />
-            {t('TableHeader.newDeck')}
+            {t("TableHeader.newDeck")}
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">
           <form onSubmit={handleSubmit}>
             <DialogHeader>
-              <DialogTitle>{t('TableHeader.createNewDeck')}</DialogTitle>
+              <DialogTitle>{t("TableHeader.createNewDeck")}</DialogTitle>
               <DialogDescription>
-                {t('TableHeader.createNewDeckDescription')}
+                {t("TableHeader.createNewDeckDescription")}
               </DialogDescription>
             </DialogHeader>
 
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="title">
-                  {t('TableHeader.title')}
-                  {' '}
-                  *
-                </Label>
+                <Label htmlFor="title">{t("TableHeader.title")} *</Label>
                 <Input
                   id="title"
                   value={formData.title}
-                  onChange={e => handleInputChange('title', e.target.value)}
-                  placeholder={t('TableHeader.titlePlaceholder')}
+                  onChange={(e) => handleInputChange("title", e.target.value)}
+                  placeholder={t("TableHeader.titlePlaceholder")}
                   required
                   disabled={isLoading}
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="description">{t('TableHeader.description')}</Label>
+                <Label htmlFor="description">
+                  {t("TableHeader.description")}
+                </Label>
                 <Textarea
                   id="description"
-                  value={formData.description || ''}
-                  onChange={e => handleInputChange('description', e.target.value)}
-                  placeholder={t('TableHeader.descriptionPlaceholder')}
+                  value={formData.description || ""}
+                  onChange={(e) =>
+                    handleInputChange("description", e.target.value)
+                  }
+                  placeholder={t("TableHeader.descriptionPlaceholder")}
                   rows={3}
                   disabled={isLoading}
                 />
@@ -128,10 +133,12 @@ export function DecksTableHeader() {
                 <Switch
                   id="isPublic"
                   checked={formData.isPublic}
-                  onCheckedChange={(checked: boolean) => handleInputChange('isPublic', checked)}
+                  onCheckedChange={(checked: boolean) =>
+                    handleInputChange("isPublic", checked)
+                  }
                   disabled={isLoading}
                 />
-                <Label htmlFor="isPublic">{t('TableHeader.makePublic')}</Label>
+                <Label htmlFor="isPublic">{t("TableHeader.makePublic")}</Label>
               </div>
             </div>
 
@@ -142,15 +149,17 @@ export function DecksTableHeader() {
                 onClick={() => setOpen(false)}
                 disabled={isLoading}
               >
-                {t('TableHeader.cancel')}
+                {t("TableHeader.cancel")}
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? t('TableHeader.creating') : t('TableHeader.createDeck')}
+                {isLoading
+                  ? t("TableHeader.creating")
+                  : t("TableHeader.createDeck")}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

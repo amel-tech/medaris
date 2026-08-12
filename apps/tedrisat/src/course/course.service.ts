@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { CourseRepository } from './course.repository';
-import { KoskService } from '../kosk/kosk.service';
+import { Injectable } from "@nestjs/common";
+import { KoskService } from "../kosk/kosk.service";
+import { CourseRepository } from "./course.repository";
 import {
   ICourse,
   ICourseDetail,
@@ -11,11 +11,11 @@ import {
   IPendingEnrollment,
   IReplaceCourse,
   IUpdateCourse,
-} from './course.repository.interface';
-import { CourseNotFoundError } from './errors/course-not-found.error';
-import { EnrollmentNotFoundError } from './errors/enrollment-not-found.error';
-import { CourseStatus } from './domain/course-status.enum';
-import { EnrollmentStatus } from './domain/enrollment-status.enum';
+} from "./course.repository.interface";
+import { CourseStatus } from "./domain/course-status.enum";
+import { EnrollmentStatus } from "./domain/enrollment-status.enum";
+import { CourseNotFoundError } from "./errors/course-not-found.error";
+import { EnrollmentNotFoundError } from "./errors/enrollment-not-found.error";
 
 export interface StudentIdentity {
   name?: string | null;
@@ -26,12 +26,12 @@ export interface StudentIdentity {
 export class CourseService {
   constructor(
     private readonly courseRepo: CourseRepository,
-    private readonly koskService: KoskService,
+    private readonly koskService: KoskService
   ) {}
 
   async findSummariesByKosk(
     koskId: string,
-    userId: string,
+    userId: string
   ): Promise<ICourseSummary[]> {
     const kosk = await this.koskService.findById(koskId, userId); // throws if köşk is missing
     // Only the köşk owner sees DRAFT courses; everyone else gets PUBLISHED only.
@@ -71,7 +71,7 @@ export class CourseService {
   async create(
     koskId: string,
     authorId: string,
-    course: Omit<ICreateCourse, 'koskId' | 'authorId'>,
+    course: Omit<ICreateCourse, "koskId" | "authorId">
   ): Promise<ICourseDetail> {
     await this.koskService.assertOwner(koskId, authorId); // köşk owner only
     return this.courseRepo.create({ ...course, koskId, authorId });
@@ -80,7 +80,7 @@ export class CourseService {
   async update(
     id: string,
     userId: string,
-    updates: IUpdateCourse,
+    updates: IUpdateCourse
   ): Promise<ICourse> {
     await this.assertCourseOwner(id, userId);
     const updated = await this.courseRepo.update(id, updates);
@@ -93,7 +93,7 @@ export class CourseService {
   async replace(
     id: string,
     userId: string,
-    data: IReplaceCourse,
+    data: IReplaceCourse
   ): Promise<ICourseDetail> {
     await this.assertCourseOwner(id, userId);
     return this.courseRepo.replace(id, userId, data);
@@ -107,7 +107,7 @@ export class CourseService {
   async enroll(
     userId: string,
     courseId: string,
-    student: StudentIdentity = {},
+    student: StudentIdentity = {}
   ): Promise<IEnrollment> {
     const course = await this.getDetail(courseId, userId); // throws if missing
     const status = course.requiresApproval
@@ -122,7 +122,7 @@ export class CourseService {
 
   async findPendingEnrollments(
     koskId: string,
-    userId: string,
+    userId: string
   ): Promise<IPendingEnrollment[]> {
     await this.koskService.assertOwner(koskId, userId); // köşk owner only
     return this.courseRepo.findPendingByKosk(koskId);
@@ -131,13 +131,13 @@ export class CourseService {
   async approveEnrollment(
     courseId: string,
     ownerId: string,
-    studentId: string,
+    studentId: string
   ): Promise<IEnrollment> {
     await this.assertCourseOwner(courseId, ownerId);
     const updated = await this.courseRepo.setEnrollmentStatus(
       studentId,
       courseId,
-      EnrollmentStatus.ENROLLED,
+      EnrollmentStatus.ENROLLED
     );
     if (!updated) {
       throw new EnrollmentNotFoundError(courseId);
@@ -148,7 +148,7 @@ export class CourseService {
   async rejectEnrollment(
     courseId: string,
     ownerId: string,
-    studentId: string,
+    studentId: string
   ): Promise<boolean> {
     await this.assertCourseOwner(courseId, ownerId);
     // Only pending requests can be rejected; deleting an active or completed
@@ -164,7 +164,7 @@ export class CourseService {
     userId: string,
     courseId: string,
     progress: number,
-    status?: EnrollmentStatus,
+    status?: EnrollmentStatus
   ): Promise<IEnrollment> {
     // Progress can only be recorded against an active enrollment. A pending
     // (awaiting-approval) or missing enrollment must not be silently promoted,
@@ -182,7 +182,7 @@ export class CourseService {
       userId,
       courseId,
       progress,
-      resolvedStatus,
+      resolvedStatus
     );
     return updated as IEnrollment;
   }

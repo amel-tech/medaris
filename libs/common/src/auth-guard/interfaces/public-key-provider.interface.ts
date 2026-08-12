@@ -4,5 +4,5 @@ export interface IPublicKeyProvider {
    * @param kid The key ID for which to retrieve the public key.
    * @returns A promise that resolves to the public key as a string.
    */
-    getKey(kid: string): Promise<string>;
+  getKey(kid: string): Promise<string>;
 }

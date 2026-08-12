@@ -1,62 +1,62 @@
-'use server'
+"use server";
 
-import { revalidatePath } from 'next/cache'
+import type {
+  CourseDetailResponse,
+  CreateCourseDto,
+  EnrollmentResponse,
+} from "@medaris/services/tedrisat";
+import { revalidatePath } from "next/cache";
 import {
-  type CreateCourseDto,
-  type CourseDetailResponse,
-  type EnrollmentResponse,
-} from '@medaris/services/tedrisat'
-import {
-  authenticatedAction,
   type AuthenticatedActionResult,
-} from '~/lib/authenticated-action'
+  authenticatedAction,
+} from "~/lib/authenticated-action";
 
 export const createKoskCourse = async (
   koskId: string,
-  course: CreateCourseDto,
+  course: CreateCourseDto
 ): Promise<AuthenticatedActionResult<CourseDetailResponse>> => {
-  const result = await authenticatedAction(api =>
-    api.courses.createCourse({ koskId, createCourseDto: course }),
-  )
-  if (result.success) revalidatePath(`/kosks/${koskId}`)
-  return result
-}
+  const result = await authenticatedAction((api) =>
+    api.courses.createCourse({ koskId, createCourseDto: course })
+  );
+  if (result.success) revalidatePath(`/kosks/${koskId}`);
+  return result;
+};
 
 export const updateKoskCourse = async (
   koskId: string,
   courseId: string,
-  course: CreateCourseDto,
+  course: CreateCourseDto
 ): Promise<AuthenticatedActionResult<CourseDetailResponse>> => {
-  const result = await authenticatedAction(api =>
-    api.courses.replaceCourse({ id: courseId, createCourseDto: course }),
-  )
+  const result = await authenticatedAction((api) =>
+    api.courses.replaceCourse({ id: courseId, createCourseDto: course })
+  );
   if (result.success) {
-    revalidatePath(`/kosks/${koskId}`)
-    revalidatePath(`/kosks/${koskId}/courses/${courseId}/edit`)
+    revalidatePath(`/kosks/${koskId}`);
+    revalidatePath(`/kosks/${koskId}/courses/${courseId}/edit`);
   }
-  return result
-}
+  return result;
+};
 
 export const approveEnrollment = async (
   koskId: string,
   courseId: string,
-  userId: string,
+  userId: string
 ): Promise<AuthenticatedActionResult<EnrollmentResponse>> => {
-  const result = await authenticatedAction(api =>
-    api.courses.approveEnrollment({ id: courseId, userId }),
-  )
-  if (result.success) revalidatePath(`/kosks/${koskId}`)
-  return result
-}
+  const result = await authenticatedAction((api) =>
+    api.courses.approveEnrollment({ id: courseId, userId })
+  );
+  if (result.success) revalidatePath(`/kosks/${koskId}`);
+  return result;
+};
 
 export const rejectEnrollment = async (
   koskId: string,
   courseId: string,
-  userId: string,
+  userId: string
 ): Promise<AuthenticatedActionResult<boolean>> => {
-  const result = await authenticatedAction(api =>
-    api.courses.rejectEnrollment({ id: courseId, userId }),
-  )
-  if (result.success) revalidatePath(`/kosks/${koskId}`)
-  return result
-}
+  const result = await authenticatedAction((api) =>
+    api.courses.rejectEnrollment({ id: courseId, userId })
+  );
+  if (result.success) revalidatePath(`/kosks/${koskId}`);
+  return result;
+};

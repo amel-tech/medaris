@@ -22,10 +22,6 @@
     "@tolgee/cli": "catalog:",
     "typescript": "catalog:"
   },
-  "eslintIgnore": [
-    "/node_modules",
-    "/dist"
-  ],
   "exports": {
     ".": {
       "types": "./src/locales/index.ts",

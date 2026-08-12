@@ -8,12 +8,12 @@
  */
 export async function getTailwindConfig() {
   // Using dynamic import to load the CommonJS module
-  const config = await import('./build/web/tailwind.config.js');
+  const config = await import("./build/web/tailwind.config.js");
   return config.default || config;
 }
 
 // Export a direct reference to the config file path for tools that need to require it directly
-export const tailwindConfigPath = './build/web/tailwind.config.js';
+export const tailwindConfigPath = "./build/web/tailwind.config.js";
 
 // Export a CommonJS-compatible version for backwards compatibility
 const defaultExport = {

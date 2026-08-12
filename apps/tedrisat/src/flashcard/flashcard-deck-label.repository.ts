@@ -1,21 +1,23 @@
-import { Injectable } from '@nestjs/common';
-import { eq, sql } from 'drizzle-orm';
+import { Injectable } from "@nestjs/common";
+import { eq, sql } from "drizzle-orm";
+import { DatabaseService } from "../database/database.service";
 import {
   deckLabelings,
   deckLabels,
   deckLabelsStats,
-} from '../database/schema/flashcard-deck-label.schema';
+} from "../database/schema/flashcard-deck-label.schema";
 import {
   ICreateFlashcardDeckLabel,
   IFlashcardDeckLabel,
   IFlashcardDeckLabeling,
   IFlashcardDeckLabelRepository,
   IFlashcardDeckLabelStats,
-} from './flashcard-deck-label.repository.interface';
-import { DatabaseService } from '../database/database.service';
+} from "./flashcard-deck-label.repository.interface";
 
 @Injectable()
-export class FlashcardDeckLabelRepository implements IFlashcardDeckLabelRepository {
+export class FlashcardDeckLabelRepository
+  implements IFlashcardDeckLabelRepository
+{
   constructor(private readonly databaseService: DatabaseService) {}
   async getById(tagId: string): Promise<IFlashcardDeckLabel> {
     const [result] = await this.databaseService.db
@@ -26,7 +28,7 @@ export class FlashcardDeckLabelRepository implements IFlashcardDeckLabelReposito
   }
 
   async create(
-    newTag: ICreateFlashcardDeckLabel,
+    newTag: ICreateFlashcardDeckLabel
   ): Promise<IFlashcardDeckLabel> {
     const [created] = await this.databaseService.db
       .insert(deckLabels)
@@ -42,7 +44,7 @@ export class FlashcardDeckLabelRepository implements IFlashcardDeckLabelReposito
     return deleted.length > 0;
   }
   async deckLabeling(
-    newLabeling: IFlashcardDeckLabeling,
+    newLabeling: IFlashcardDeckLabeling
   ): Promise<IFlashcardDeckLabeling> {
     const labelingToInsert = {
       labelId: newLabeling.labelId,
@@ -63,7 +65,7 @@ export class FlashcardDeckLabelRepository implements IFlashcardDeckLabelReposito
     };
   }
   async createLabelStats(
-    useLabel: IFlashcardDeckLabelStats,
+    useLabel: IFlashcardDeckLabelStats
   ): Promise<IFlashcardDeckLabelStats> {
     const cretedStats = await this.databaseService.db
       .insert(deckLabelsStats)

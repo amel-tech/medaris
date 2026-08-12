@@ -1,6 +1,11 @@
-import { UploadIcon, DownloadIcon, FileCsvIcon, FileXlsIcon, FileArrowDownIcon } from '@medaris/icons'
-import { Button } from '@medaris/ui/components/button'
-import { useRef } from 'react'
+import {
+  DownloadIcon,
+  FileArrowDownIcon,
+  FileCsvIcon,
+  FileXlsIcon,
+  UploadIcon,
+} from "@medaris/icons";
+import { Button } from "@medaris/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,8 +14,9 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from '@medaris/ui/components/dropdown-menu'
-import { useTranslations } from 'next-intl'
+} from "@medaris/ui/components/dropdown-menu";
+import { useTranslations } from "next-intl";
+import { useRef } from "react";
 
 export const CardsTableHeader = ({
   title,
@@ -19,26 +25,26 @@ export const CardsTableHeader = ({
   onClickDownloadSampleFile,
   onClickExportCards,
 }: {
-  title: string
-  description: string
-  onDeckFileImport: (file: File) => void
-  onClickDownloadSampleFile: (format: 'csv' | 'xlsx') => void
-  onClickExportCards: (format: 'csv' | 'xlsx') => void
+  title: string;
+  description: string;
+  onDeckFileImport: (file: File) => void;
+  onClickDownloadSampleFile: (format: "csv" | "xlsx") => void;
+  onClickExportCards: (format: "csv" | "xlsx") => void;
 }) => {
-  const t = useTranslations('nizam')
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const t = useTranslations("nizam");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUploadClick = () => {
-    fileInputRef.current?.click()
-  }
+    fileInputRef.current?.click();
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
-      onDeckFileImport(file)
-      e.target.value = ''
+      onDeckFileImport(file);
+      e.target.value = "";
     }
-  }
+  };
   return (
     <div className="flex items-end justify-between mb-4">
       <div>
@@ -50,63 +56,55 @@ export const CardsTableHeader = ({
           ref={fileInputRef}
           type="file"
           accept=".xlsx,.xls,.csv"
-          style={{ display: 'none' }}
+          style={{ display: "none" }}
           onChange={handleFileChange}
         />
         <DropdownMenu modal>
           <DropdownMenuTrigger asChild>
             <Button variant="outline">
-              {t('CardsTableHeader.bulkActions')}
+              {t("CardsTableHeader.bulkActions")}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-60">
             <DropdownMenuItem onClick={handleUploadClick}>
-              <UploadIcon className="text-gray-500" size={18} />
-              {' '}
-              {t('CardsTableHeader.importFromExcel')}
+              <UploadIcon className="text-gray-500" size={18} />{" "}
+              {t("CardsTableHeader.importFromExcel")}
             </DropdownMenuItem>
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                <DownloadIcon className="text-gray-500 mr-1.5" size={18} />
-                {' '}
-                {t('CardsTableHeader.exportCards')}
+                <DownloadIcon className="text-gray-500 mr-1.5" size={18} />{" "}
+                {t("CardsTableHeader.exportCards")}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                <DropdownMenuItem onClick={() => onClickExportCards('csv')}>
-                  <FileCsvIcon />
-                  {' '}
-                  CSV
+                <DropdownMenuItem onClick={() => onClickExportCards("csv")}>
+                  <FileCsvIcon /> CSV
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onClickExportCards('xlsx')}>
-                  <FileXlsIcon />
-                  {' '}
-                  Excel
+                <DropdownMenuItem onClick={() => onClickExportCards("xlsx")}>
+                  <FileXlsIcon /> Excel
                 </DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                <FileArrowDownIcon className="text-gray-500 mr-1.5" size={18} />
-                {' '}
-                {t('CardsTableHeader.downloadSampleFile')}
+                <FileArrowDownIcon className="text-gray-500 mr-1.5" size={18} />{" "}
+                {t("CardsTableHeader.downloadSampleFile")}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                <DropdownMenuItem onClick={() => onClickDownloadSampleFile('csv')}>
-                  <FileCsvIcon />
-                  {' '}
-                  CSV
+                <DropdownMenuItem
+                  onClick={() => onClickDownloadSampleFile("csv")}
+                >
+                  <FileCsvIcon /> CSV
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onClickDownloadSampleFile('xlsx')}>
-                  <FileXlsIcon />
-                  {' '}
-                  Excel
+                <DropdownMenuItem
+                  onClick={() => onClickDownloadSampleFile("xlsx")}
+                >
+                  <FileXlsIcon /> Excel
                 </DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           </DropdownMenuContent>
         </DropdownMenu>
-
       </div>
     </div>
-  )
-}
+  );
+};

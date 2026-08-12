@@ -1,1 +1,1 @@
-export * from './cors.config';
+export * from "./cors.config";

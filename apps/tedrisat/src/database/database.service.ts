@@ -1,16 +1,16 @@
+import { ILogger, LOGGER } from "@medaris/common";
 import {
-  Injectable,
-  OnModuleInit,
-  OnModuleDestroy,
   Inject,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import { Pool } from 'pg';
-import * as schema from './schema';
-import { ILogger, LOGGER } from '@medaris/common';
-import { join } from 'path';
+  Injectable,
+  OnModuleDestroy,
+  OnModuleInit,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { drizzle, NodePgDatabase } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { join } from "path";
+import { Pool } from "pg";
+import * as schema from "./schema";
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
@@ -19,19 +19,19 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private configService: ConfigService,
-    @Inject(LOGGER) private readonly logger: ILogger,
+    @Inject(LOGGER) private readonly logger: ILogger
   ) {
     this.logger.setContext(DatabaseService.name);
   }
 
   async onModuleInit() {
     this.pool = new Pool({
-      host: this.configService.get('database.host'),
-      port: this.configService.get('database.port'),
-      user: this.configService.get('database.username'),
-      password: this.configService.get('database.password'),
-      database: this.configService.get('database.database'),
-      ssl: this.configService.get('database.ssl'),
+      host: this.configService.get("database.host"),
+      port: this.configService.get("database.port"),
+      user: this.configService.get("database.username"),
+      password: this.configService.get("database.password"),
+      database: this.configService.get("database.database"),
+      ssl: this.configService.get("database.ssl"),
     });
 
     this.db = drizzle(this.pool, { schema });
@@ -40,10 +40,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     // Test connection
     try {
-      await this.pool.query('SELECT 1');
-      this.logger.log('Database connected successfully');
+      await this.pool.query("SELECT 1");
+      this.logger.log("Database connected successfully");
     } catch (error) {
-      this.logger.error('Database connection failed:', error);
+      this.logger.error("Database connection failed:", error);
       throw error;
     }
   }
@@ -56,24 +56,24 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     const autoMigrations = this.configService.get<{
       enabled: boolean;
       migrationsFolder: string;
-    }>('autoMigrations', { enabled: false, migrationsFolder: '' });
+    }>("autoMigrations", { enabled: false, migrationsFolder: "" });
 
     const { enabled, migrationsFolder } = autoMigrations;
 
     if (enabled) {
       const resolvedFolder = migrationsFolder
         ? migrationsFolder
-        : join(__dirname, './migrations');
+        : join(__dirname, "./migrations");
 
       return migrate(this.db, { migrationsFolder: resolvedFolder })
         .then(() => {
-          this.logger.log('Migrations completed successfully');
+          this.logger.log("Migrations completed successfully");
         })
         .catch((error) => {
-          this.logger.error('Migrations failed', error);
+          this.logger.error("Migrations failed", error);
         });
     }
 
-    this.logger.log('Auto migrations are disabled');
+    this.logger.log("Auto migrations are disabled");
   }
 }

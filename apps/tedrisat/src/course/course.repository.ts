@@ -1,14 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import { and, eq, inArray, ne } from 'drizzle-orm';
-import { DatabaseService } from '../database/database.service';
+import { Injectable } from "@nestjs/common";
+import { and, eq, inArray, ne } from "drizzle-orm";
+import { DatabaseService } from "../database/database.service";
 import {
   courseMuderris,
   courseResources,
-  courseWeeks,
   courses,
+  courseWeeks,
   enrollments,
   lessons,
-} from '../database/schema/course.schema';
+} from "../database/schema/course.schema";
 import {
   ICourse,
   ICourseDetail,
@@ -21,9 +21,9 @@ import {
   IPendingEnrollment,
   IReplaceCourse,
   IUpdateCourse,
-} from './course.repository.interface';
-import { CourseStatus } from './domain/course-status.enum';
-import { EnrollmentStatus } from './domain/enrollment-status.enum';
+} from "./course.repository.interface";
+import { CourseStatus } from "./domain/course-status.enum";
+import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 
 @Injectable()
 export class CourseRepository implements ICourseRepository {
@@ -36,7 +36,7 @@ export class CourseRepository implements ICourseRepository {
   async findSummariesByKosk(
     koskId: string,
     userId: string,
-    includeDrafts: boolean,
+    includeDrafts: boolean
   ): Promise<ICourseSummary[]> {
     const rows = await this.db.query.courses.findMany({
       // DRAFT courses are only visible to the köşk owner.
@@ -44,7 +44,7 @@ export class CourseRepository implements ICourseRepository {
         ? eq(courses.koskId, koskId)
         : and(
             eq(courses.koskId, koskId),
-            eq(courses.status, CourseStatus.PUBLISHED),
+            eq(courses.status, CourseStatus.PUBLISHED)
           ),
       with: {
         weeks: { with: { lessons: true } },
@@ -69,7 +69,7 @@ export class CourseRepository implements ICourseRepository {
 
   async findDetailById(
     id: string,
-    userId: string,
+    userId: string
   ): Promise<ICourseDetail | null> {
     const row = await this.db.query.courses.findFirst({
       where: eq(courses.id, id),
@@ -95,7 +95,7 @@ export class CourseRepository implements ICourseRepository {
     const rows = await this.db.query.enrollments.findMany({
       where: and(
         eq(enrollments.userId, userId),
-        ne(enrollments.status, EnrollmentStatus.PENDING),
+        ne(enrollments.status, EnrollmentStatus.PENDING)
       ),
       with: {
         course: {
@@ -149,7 +149,7 @@ export class CourseRepository implements ICourseRepository {
             bio: m.bio,
             avatarHue: m.avatarHue,
             orderIndex: i,
-          })),
+          }))
         );
       }
 
@@ -162,7 +162,7 @@ export class CourseRepository implements ICourseRepository {
             type: r.type,
             url: r.url,
             orderIndex: i,
-          })),
+          }))
         );
       }
 
@@ -191,7 +191,7 @@ export class CourseRepository implements ICourseRepository {
               agenda: l.agenda,
               isPreview: l.isPreview ?? false,
               orderIndex: li,
-            })),
+            }))
           );
         }
       }
@@ -207,7 +207,7 @@ export class CourseRepository implements ICourseRepository {
   async replace(
     id: string,
     userId: string,
-    data: IReplaceCourse,
+    data: IReplaceCourse
   ): Promise<ICourseDetail> {
     const { weeks = [], muderris = [], resources = [], ...courseData } = data;
 
@@ -223,7 +223,7 @@ export class CourseRepository implements ICourseRepository {
         .from(courseMuderris)
         .where(eq(courseMuderris.courseId, id));
       const muderrisKeep = new Set(
-        muderris.map((m) => m.id).filter((x): x is string => Boolean(x)),
+        muderris.map((m) => m.id).filter((x): x is string => Boolean(x))
       );
       const muderrisToDelete = existingMuderris
         .filter((e) => !muderrisKeep.has(e.id))
@@ -260,7 +260,7 @@ export class CourseRepository implements ICourseRepository {
         .from(courseResources)
         .where(eq(courseResources.courseId, id));
       const resourcesKeep = new Set(
-        resources.map((r) => r.id).filter((x): x is string => Boolean(x)),
+        resources.map((r) => r.id).filter((x): x is string => Boolean(x))
       );
       const resourcesToDelete = existingResources
         .filter((e) => !resourcesKeep.has(e.id))
@@ -299,7 +299,7 @@ export class CourseRepository implements ICourseRepository {
       const weeksKeep = new Set(
         weeks
           .map((w) => w.id)
-          .filter((x): x is string => Boolean(x) && existingWeekIds.has(x!)),
+          .filter((x): x is string => Boolean(x) && existingWeekIds.has(x!))
       );
       const weeksToDelete = existingWeeks
         .filter((w) => !weeksKeep.has(w.id))
@@ -337,8 +337,8 @@ export class CourseRepository implements ICourseRepository {
             (week.lessons ?? [])
               .map((l) => l.id)
               .filter(
-                (x): x is string => Boolean(x) && existingLessonIds.has(x!),
-              ),
+                (x): x is string => Boolean(x) && existingLessonIds.has(x!)
+              )
           );
           const lessonsToDelete = existingLessons
             .filter((l) => !lessonsKeep.has(l.id))
@@ -389,7 +389,7 @@ export class CourseRepository implements ICourseRepository {
                 agenda: l.agenda,
                 isPreview: l.isPreview ?? false,
                 orderIndex: li,
-              })),
+              }))
             );
           }
         }
@@ -428,7 +428,7 @@ export class CourseRepository implements ICourseRepository {
   async enroll(
     userId: string,
     courseId: string,
-    options: IEnrollOptions = {},
+    options: IEnrollOptions = {}
   ): Promise<IEnrollment> {
     const [enrollment] = await this.db
       .insert(enrollments)
@@ -466,8 +466,8 @@ export class CourseRepository implements ICourseRepository {
       .where(
         and(
           eq(courses.koskId, koskId),
-          eq(enrollments.status, EnrollmentStatus.PENDING),
-        ),
+          eq(enrollments.status, EnrollmentStatus.PENDING)
+        )
       )
       .orderBy(enrollments.createdAt);
     return rows;
@@ -476,13 +476,13 @@ export class CourseRepository implements ICourseRepository {
   async setEnrollmentStatus(
     userId: string,
     courseId: string,
-    status: EnrollmentStatus,
+    status: EnrollmentStatus
   ): Promise<IEnrollment | null> {
     return this.db
       .update(enrollments)
       .set({ status, updatedAt: new Date() })
       .where(
-        and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId)),
+        and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId))
       )
       .returning()
       .then((result) => result[0] || null);
@@ -492,7 +492,7 @@ export class CourseRepository implements ICourseRepository {
     const deleted = await this.db
       .delete(enrollments)
       .where(
-        and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId)),
+        and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId))
       )
       .returning();
     return deleted.length > 0;
@@ -500,13 +500,13 @@ export class CourseRepository implements ICourseRepository {
 
   async findEnrollment(
     userId: string,
-    courseId: string,
+    courseId: string
   ): Promise<IEnrollment | null> {
     return this.db
       .select()
       .from(enrollments)
       .where(
-        and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId)),
+        and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId))
       )
       .limit(1)
       .then((result) => result[0] || null);
@@ -516,13 +516,13 @@ export class CourseRepository implements ICourseRepository {
     userId: string,
     courseId: string,
     progress: number,
-    status: EnrollmentStatus,
+    status: EnrollmentStatus
   ): Promise<IEnrollment | null> {
     return this.db
       .update(enrollments)
       .set({ progress, status, updatedAt: new Date() })
       .where(
-        and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId)),
+        and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId))
       )
       .returning()
       .then((result) => result[0] || null);

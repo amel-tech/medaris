@@ -1,53 +1,58 @@
-'use client'
+"use client";
 
-import { useDecksColumns } from '~/features/decks/hooks/useDecksColumns'
-import { DataTable } from '~/components/data-table'
-import { FlashcardDeckResponse } from '@medaris/services/tedrisat'
-import { createDefaultColumn } from '~/components/data-table/editable'
-import { DecksTableHeader } from './decks-table-header'
-import { deleteFlashcardDeck, updateFlashcardDeck } from '~/features/decks/actions'
-import { toastHelper } from '@medaris/ui/lib/toast-helper'
+import type { FlashcardDeckResponse } from "@medaris/services/tedrisat";
+import { toastHelper } from "@medaris/ui/lib/toast-helper";
+import { DataTable } from "~/components/data-table";
+import { createDefaultColumn } from "~/components/data-table/editable";
+import {
+  deleteFlashcardDeck,
+  updateFlashcardDeck,
+} from "~/features/decks/actions";
+import { useDecksColumns } from "~/features/decks/hooks/useDecksColumns";
+import { DecksTableHeader } from "./decks-table-header";
 
-export default function Decks({
-  decks,
-}: {
-  decks: FlashcardDeckResponse[]
-}) {
-  const columns = useDecksColumns()
+export default function Decks({ decks }: { decks: FlashcardDeckResponse[] }) {
+  const columns = useDecksColumns();
 
   const handleRowDelete = async (id: string) => {
-    const result = await deleteFlashcardDeck(id)
+    const result = await deleteFlashcardDeck(id);
     if (result.success) {
-      toastHelper.success({ title: 'Card Deleted', description: `Card with ID ${id} was deleted.` }, { cardId: id })
-      return true
+      toastHelper.success(
+        {
+          title: "Card Deleted",
+          description: `Card with ID ${id} was deleted.`,
+        },
+        { cardId: id }
+      );
+      return true;
     }
     toastHelper.error({
-      title: 'Delete Error',
+      title: "Delete Error",
       description: result.error,
-    })
-    return false
-  }
+    });
+    return false;
+  };
 
   const handleRowUpdate = async (updatedRow: FlashcardDeckResponse) => {
     const result = await updateFlashcardDeck(updatedRow.id, {
       title: updatedRow.title,
       description: updatedRow.description,
-    })
+    });
     if (result.success) {
       toastHelper.success({
-        title: 'Card Updated',
-        description: 'Flashcard was updated successfully.',
-      })
-      return true
+        title: "Card Updated",
+        description: "Flashcard was updated successfully.",
+      });
+      return true;
     }
     toastHelper.error({
-      title: 'Update Error',
+      title: "Update Error",
       description: result.error,
-    })
-    return false
-  }
+    });
+    return false;
+  };
 
-  const defaultColumn = createDefaultColumn<FlashcardDeckResponse>()
+  const defaultColumn = createDefaultColumn<FlashcardDeckResponse>();
 
   return (
     <div>
@@ -60,5 +65,5 @@ export default function Decks({
         onRowUpdate={handleRowUpdate}
       />
     </div>
-  )
+  );
 }

@@ -1,9 +1,9 @@
-import { Module } from '@nestjs/common';
-import { AuthGuardModule } from '@medaris/common';
-import { DatabaseService } from '../database/database.service';
-import { KoskController } from './kosk.controller';
-import { KoskService } from './kosk.service';
-import { KoskRepository } from './kosk.repository';
+import { AuthGuardModule } from "@medaris/common";
+import { Module } from "@nestjs/common";
+import { DatabaseService } from "../database/database.service";
+import { KoskController } from "./kosk.controller";
+import { KoskRepository } from "./kosk.repository";
+import { KoskService } from "./kosk.service";
 
 @Module({
   imports: [AuthGuardModule],

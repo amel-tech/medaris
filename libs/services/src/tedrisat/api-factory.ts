@@ -1,51 +1,51 @@
 import {
   Configuration,
-  FlashcardDecksApi,
-  FlashcardCardsApi,
-  TedrisatServiceApi,
-  KosksApi,
   CoursesApi,
-} from './generated/src'
+  FlashcardCardsApi,
+  FlashcardDecksApi,
+  KosksApi,
+  TedrisatServiceApi,
+} from "./generated/src";
 
 // Re-export types that are used in other apps
 export type {
-  FlashcardDeckResponse,
-  FlashcardResponse,
+  CourseDetailResponse,
+  CourseSummaryResponse,
+  CreateCourseDto,
   CreateFlashcardDeckDto,
   CreateFlashcardDto,
-  UpdateFlashcardDeckDto,
-  UpdateFlashcardDto,
-  KoskResponse,
-  PaginatedKoskResponse,
   CreateKoskDto,
-  UpdateKoskDto,
-  CourseSummaryResponse,
-  EnrolledCourseResponse,
-  CourseDetailResponse,
-  WeekResponse,
-  LessonResponse,
-  MuderrisResponse,
-  ResourceResponse,
-  EnrollmentResponse,
-  PendingEnrollmentResponse,
-  CreateCourseDto,
-  CreateWeekDto,
   CreateLessonDto,
   CreateMuderrisDto,
   CreateResourceDto,
+  CreateWeekDto,
+  EnrolledCourseResponse,
+  EnrollmentResponse,
+  FlashcardDeckResponse,
+  FlashcardResponse,
+  KoskResponse,
+  LessonResponse,
+  MuderrisResponse,
+  PaginatedKoskResponse,
+  PendingEnrollmentResponse,
+  ResourceResponse,
   UpdateCourseDto,
+  UpdateFlashcardDeckDto,
+  UpdateFlashcardDto,
+  UpdateKoskDto,
   UpdateProgressDto,
-} from './generated/src'
+  WeekResponse,
+} from "./generated/src";
 
-// Re-export enum constants (they are used at runtime as values)
-import { FlashcardResponseTypeEnum } from './generated/src/models/FlashcardResponse'
-import { CreateFlashcardDtoTypeEnum } from './generated/src/models/CreateFlashcardDto'
-import { CreateLessonDtoTypeEnum } from './generated/src/models/CreateLessonDto'
 import {
   CreateCourseDtoLevelEnum,
   CreateCourseDtoStatusEnum,
-} from './generated/src/models/CreateCourseDto'
-import { EnrollmentResponseStatusEnum } from './generated/src/models/EnrollmentResponse'
+} from "./generated/src/models/CreateCourseDto";
+import { CreateFlashcardDtoTypeEnum } from "./generated/src/models/CreateFlashcardDto";
+import { CreateLessonDtoTypeEnum } from "./generated/src/models/CreateLessonDto";
+import { EnrollmentResponseStatusEnum } from "./generated/src/models/EnrollmentResponse";
+// Re-export enum constants (they are used at runtime as values)
+import { FlashcardResponseTypeEnum } from "./generated/src/models/FlashcardResponse";
 
 export {
   FlashcardResponseTypeEnum,
@@ -54,11 +54,11 @@ export {
   CreateCourseDtoLevelEnum,
   CreateCourseDtoStatusEnum,
   EnrollmentResponseStatusEnum,
-}
+};
 
 export interface TedrisatAPIConfig {
-  baseUrl: string
-  token?: string
+  baseUrl: string;
+  token?: string;
 }
 
 /**
@@ -73,7 +73,7 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
           Authorization: `Bearer ${config.token}`,
         }
       : undefined,
-  })
+  });
 
   return {
     decks: new FlashcardDecksApi(configuration),
@@ -81,7 +81,7 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     service: new TedrisatServiceApi(configuration),
     kosks: new KosksApi(configuration),
     courses: new CoursesApi(configuration),
-  }
+  };
 }
 
 /**
@@ -89,7 +89,7 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
  */
 export async function createServerTedrisatAPIs(
   token: string | undefined,
-  baseUrl: string,
+  baseUrl: string
 ) {
-  return createTedrisatAPIs({ baseUrl, token })
+  return createTedrisatAPIs({ baseUrl, token });
 }

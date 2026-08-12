@@ -1,4 +1,4 @@
-import { DatabaseService } from '../../src/database/database.service';
+import { DatabaseService } from "../../src/database/database.service";
 
 /**
  * Utility class for managing test database operations
@@ -12,7 +12,7 @@ export class TestDatabaseUtils {
    */
   async cleanDatabase(): Promise<void> {
     if (!this.databaseService?.db) {
-      console.warn('Database service not available for cleanup');
+      console.warn("Database service not available for cleanup");
       return;
     }
 
@@ -27,7 +27,7 @@ export class TestDatabaseUtils {
 
       // Disable foreign key checks temporarily
       await this.databaseService.db.execute(
-        'SET session_replication_role = replica',
+        "SET session_replication_role = replica"
       );
 
       // Truncate all tables
@@ -35,12 +35,12 @@ export class TestDatabaseUtils {
         for (const row of result.rows) {
           if (
             row &&
-            typeof row === 'object' &&
-            'tablename' in row &&
-            typeof row.tablename === 'string'
+            typeof row === "object" &&
+            "tablename" in row &&
+            typeof row.tablename === "string"
           ) {
             await this.databaseService.db.execute(
-              `TRUNCATE TABLE "${row.tablename}" RESTART IDENTITY CASCADE`,
+              `TRUNCATE TABLE "${row.tablename}" RESTART IDENTITY CASCADE`
             );
           }
         }
@@ -48,12 +48,12 @@ export class TestDatabaseUtils {
 
       // Re-enable foreign key checks
       await this.databaseService.db.execute(
-        'SET session_replication_role = DEFAULT',
+        "SET session_replication_role = DEFAULT"
       );
 
-      console.log('Database cleaned successfully');
+      console.log("Database cleaned successfully");
     } catch (error) {
-      console.warn('Database cleanup failed:', error);
+      console.warn("Database cleanup failed:", error);
       // Don't throw to avoid breaking tests
     }
   }
@@ -63,7 +63,7 @@ export class TestDatabaseUtils {
    */
   async cleanTables(...tableNames: string[]): Promise<void> {
     if (!this.databaseService?.db) {
-      console.warn('Database service not available for table cleanup');
+      console.warn("Database service not available for table cleanup");
       return;
     }
 
@@ -71,9 +71,9 @@ export class TestDatabaseUtils {
       for (const tableName of tableNames) {
         await this.databaseService.db.execute(`DELETE FROM "${tableName}"`);
       }
-      console.log(`Tables cleaned: ${tableNames.join(', ')}`);
+      console.log(`Tables cleaned: ${tableNames.join(", ")}`);
     } catch (error) {
-      console.warn('Table cleanup failed:', error);
+      console.warn("Table cleanup failed:", error);
     }
   }
 
@@ -86,10 +86,10 @@ export class TestDatabaseUtils {
     }
 
     try {
-      await this.databaseService.db.execute('SELECT 1');
+      await this.databaseService.db.execute("SELECT 1");
       return true;
     } catch (error) {
-      console.error('Database connection check failed:', error);
+      console.error("Database connection check failed:", error);
       return false;
     }
   }

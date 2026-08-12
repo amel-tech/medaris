@@ -1,18 +1,18 @@
-import { Injectable } from '@nestjs/common';
-import { DatabaseService } from '../database/database.service';
+import { Injectable } from "@nestjs/common";
+import { eq, sql } from "drizzle-orm";
+import { DatabaseService } from "../database/database.service";
+import {
+  flashcardLabelings,
+  flashcardLabelStats,
+  flashcardLabels,
+} from "../database/schema/flashcard-label.schema";
 import {
   ICreateFlashcardLabel,
   IFlashcardLabel,
   IFlashcardLabeling,
   IFlashcardLabelRepository,
   IFlashcardLabelStats,
-} from './flashcard-label.reporsitory.interface';
-import {
-  flashcardLabels,
-  flashcardLabelings,
-  flashcardLabelStats,
-} from '../database/schema/flashcard-label.schema';
-import { eq, sql } from 'drizzle-orm';
+} from "./flashcard-label.reporsitory.interface";
 
 @Injectable()
 export class FlashcardLabelRepository implements IFlashcardLabelRepository {
@@ -43,7 +43,7 @@ export class FlashcardLabelRepository implements IFlashcardLabelRepository {
     return label[0];
   }
   async flashcardLabeling(
-    newLabeling: IFlashcardLabeling,
+    newLabeling: IFlashcardLabeling
   ): Promise<IFlashcardLabeling> {
     const labelingToInsert = {
       labelId: newLabeling.labelId,
@@ -59,7 +59,7 @@ export class FlashcardLabelRepository implements IFlashcardLabelRepository {
     return labeling;
   }
   async createLabelStats(
-    newStats: IFlashcardLabelStats,
+    newStats: IFlashcardLabelStats
   ): Promise<IFlashcardLabelStats> {
     const stats = await this.databaseService.db
       .insert(flashcardLabelStats)

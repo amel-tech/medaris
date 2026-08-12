@@ -2,6 +2,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "name": "landing-web",
   "targets": {
+    "lint": {},
     "build": {
       "inputs": [
         "production",
@@ -16,10 +17,7 @@
           "env": "OTEL_SERVICE_NAME"
         }
       ],
-      "outputs": [
-        "{projectRoot}/.next",
-        "!{projectRoot}/.next/cache"
-      ]
+      "outputs": ["{projectRoot}/.next", "!{projectRoot}/.next/cache"]
     }
   }
 }

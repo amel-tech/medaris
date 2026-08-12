@@ -1,146 +1,139 @@
-'use server'
+"use server";
 
-import { revalidatePath } from 'next/cache'
 import {
-  createServerTedrisatAPIs,
-  type KoskResponse,
-  type PaginatedKoskResponse,
-  type CourseSummaryResponse,
   type CourseDetailResponse,
+  type CourseSummaryResponse,
+  createServerTedrisatAPIs,
   type EnrolledCourseResponse,
   type EnrollmentResponse,
-} from '@medaris/services/tedrisat'
+  type KoskResponse,
+  type PaginatedKoskResponse,
+} from "@medaris/services/tedrisat";
+import { revalidatePath } from "next/cache";
+import { env } from "~/env";
+import { auth } from "~/lib/auth_options";
 import {
-  authenticatedAction,
   type AuthenticatedActionResult,
-} from '~/lib/authenticated-action'
-import { auth } from '~/lib/auth_options'
-import { env } from '~/env'
+  authenticatedAction,
+} from "~/lib/authenticated-action";
 
 export const getKosks = async (
   page = 1,
-  limit = 12,
+  limit = 12
 ): Promise<PaginatedKoskResponse> => {
   try {
-    const session = await auth()
+    const session = await auth();
     const { kosks } = await createServerTedrisatAPIs(
       session?.accessToken,
-      env.TEDRISAT_API_BASE_URL,
-    )
-    return await kosks.getAllKosks({ page, limit })
+      env.TEDRISAT_API_BASE_URL
+    );
+    return await kosks.getAllKosks({ page, limit });
+  } catch (error) {
+    console.error("Error fetching köşks:", error);
+    return { items: [], total: 0, page, limit };
   }
-  catch (error) {
-    console.error('Error fetching köşks:', error)
-    return { items: [], total: 0, page, limit }
-  }
-}
+};
 
-export const getKosk = async (
-  koskId: string,
-): Promise<KoskResponse | null> => {
+export const getKosk = async (koskId: string): Promise<KoskResponse | null> => {
   try {
-    const session = await auth()
+    const session = await auth();
     const { kosks } = await createServerTedrisatAPIs(
       session?.accessToken,
-      env.TEDRISAT_API_BASE_URL,
-    )
-    return await kosks.getKoskById({ id: koskId })
+      env.TEDRISAT_API_BASE_URL
+    );
+    return await kosks.getKoskById({ id: koskId });
+  } catch (error) {
+    console.error("Error fetching köşk:", error);
+    return null;
   }
-  catch (error) {
-    console.error('Error fetching köşk:', error)
-    return null
-  }
-}
+};
 
 export const getKoskCourses = async (
-  koskId: string,
+  koskId: string
 ): Promise<CourseSummaryResponse[]> => {
   try {
-    const session = await auth()
+    const session = await auth();
     const { courses } = await createServerTedrisatAPIs(
       session?.accessToken,
-      env.TEDRISAT_API_BASE_URL,
-    )
-    return await courses.getCoursesByKosk({ koskId })
+      env.TEDRISAT_API_BASE_URL
+    );
+    return await courses.getCoursesByKosk({ koskId });
+  } catch (error) {
+    console.error("Error fetching köşk courses:", error);
+    return [];
   }
-  catch (error) {
-    console.error('Error fetching köşk courses:', error)
-    return []
-  }
-}
+};
 
 export const getCourse = async (
-  courseId: string,
+  courseId: string
 ): Promise<CourseDetailResponse | null> => {
   try {
-    const session = await auth()
+    const session = await auth();
     const { courses } = await createServerTedrisatAPIs(
       session?.accessToken,
-      env.TEDRISAT_API_BASE_URL,
-    )
-    return await courses.getCourseById({ id: courseId })
+      env.TEDRISAT_API_BASE_URL
+    );
+    return await courses.getCourseById({ id: courseId });
+  } catch (error) {
+    console.error("Error fetching course:", error);
+    return null;
   }
-  catch (error) {
-    console.error('Error fetching course:', error)
-    return null
-  }
-}
+};
 
 export const getMyCourses = async (): Promise<EnrolledCourseResponse[]> => {
   try {
-    const session = await auth()
+    const session = await auth();
     const { courses } = await createServerTedrisatAPIs(
       session?.accessToken,
-      env.TEDRISAT_API_BASE_URL,
-    )
-    return await courses.getEnrolledCourses()
+      env.TEDRISAT_API_BASE_URL
+    );
+    return await courses.getEnrolledCourses();
+  } catch (error) {
+    console.error("Error fetching enrolled courses:", error);
+    return [];
   }
-  catch (error) {
-    console.error('Error fetching enrolled courses:', error)
-    return []
-  }
-}
+};
 
 export const followKosk = async (
-  koskId: string,
+  koskId: string
 ): Promise<AuthenticatedActionResult<boolean>> => {
-  const result = await authenticatedAction(api =>
-    api.kosks.followKosk({ id: koskId }),
-  )
-  if (result.success) revalidatePath('/learning')
-  return result
-}
+  const result = await authenticatedAction((api) =>
+    api.kosks.followKosk({ id: koskId })
+  );
+  if (result.success) revalidatePath("/learning");
+  return result;
+};
 
 export const unfollowKosk = async (
-  koskId: string,
+  koskId: string
 ): Promise<AuthenticatedActionResult<boolean>> => {
-  const result = await authenticatedAction(api =>
-    api.kosks.unfollowKosk({ id: koskId }),
-  )
-  if (result.success) revalidatePath('/learning')
-  return result
-}
+  const result = await authenticatedAction((api) =>
+    api.kosks.unfollowKosk({ id: koskId })
+  );
+  if (result.success) revalidatePath("/learning");
+  return result;
+};
 
 export const enrollInCourse = async (
-  courseId: string,
+  courseId: string
 ): Promise<AuthenticatedActionResult<EnrollmentResponse>> => {
-  const result = await authenticatedAction(api =>
-    api.courses.enrollInCourse({ id: courseId }),
-  )
-  if (result.success) revalidatePath(`/courses/${courseId}`)
-  return result
-}
+  const result = await authenticatedAction((api) =>
+    api.courses.enrollInCourse({ id: courseId })
+  );
+  if (result.success) revalidatePath(`/courses/${courseId}`);
+  return result;
+};
 
 export const updateCourseProgress = async (
   courseId: string,
-  progress: number,
+  progress: number
 ): Promise<AuthenticatedActionResult<EnrollmentResponse>> => {
-  const result = await authenticatedAction(api =>
+  const result = await authenticatedAction((api) =>
     api.courses.updateCourseProgress({
       id: courseId,
       updateProgressDto: { progress },
-    }),
-  )
-  if (result.success) revalidatePath(`/courses/${courseId}`)
-  return result
-}
+    })
+  );
+  if (result.success) revalidatePath(`/courses/${courseId}`);
+  return result;
+};

@@ -1,35 +1,38 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
 import {
+  BookmarkSimpleIcon,
   CardsIcon,
+  GlobeIcon,
+  LockIcon,
   StarIcon,
   StudentIcon,
-  BookmarkSimpleIcon,
-  LockIcon,
-  GlobeIcon,
-} from '@medaris/icons'
-import { Card } from '@medaris/ui/components/card'
+} from "@medaris/icons";
+import { Card } from "@medaris/ui/components/card";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@medaris/ui/components/tooltip'
-import { toastHelper } from '@medaris/ui/lib/toast-helper'
-import { addDeckToCollection, removeDeckFromCollection } from '~/features/flashcards/actions'
-import { useTranslations } from 'next-intl'
+} from "@medaris/ui/components/tooltip";
+import { toastHelper } from "@medaris/ui/lib/toast-helper";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+import {
+  addDeckToCollection,
+  removeDeckFromCollection,
+} from "~/features/flashcards/actions";
 
 type Props = {
-  deckId: string
-  title: string
-  cardCount?: number
-  downloadCount?: number
-  description?: string
-  author?: string
-  rating?: number
-  isInCollection?: boolean
-  isPublic?: boolean
-}
+  deckId: string;
+  title: string;
+  cardCount?: number;
+  downloadCount?: number;
+  description?: string;
+  author?: string;
+  rating?: number;
+  isInCollection?: boolean;
+  isPublic?: boolean;
+};
 
 function DeckCard({
   deckId,
@@ -42,61 +45,66 @@ function DeckCard({
   isInCollection: initialIsInCollection = false,
   isPublic,
 }: Props) {
-  const t = useTranslations('tedris')
-  const [isInCollection, setIsInCollection] = useState(initialIsInCollection)
-  const [isProcessing, setIsProcessing] = useState(false)
+  const t = useTranslations("tedris");
+  const [isInCollection, setIsInCollection] = useState(initialIsInCollection);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Sync state when prop changes
   useEffect(() => {
-    setIsInCollection(initialIsInCollection)
-  }, [initialIsInCollection])
+    setIsInCollection(initialIsInCollection);
+  }, [initialIsInCollection]);
 
   const handleRemoveDeckFromCollection = async () => {
-    const result = await removeDeckFromCollection(deckId)
+    const result = await removeDeckFromCollection(deckId);
     if (result.success) {
-      setIsInCollection(false)
+      setIsInCollection(false);
       toastHelper.success({
-        title: t('DeckCard.removedFromCollection'),
-        description: t('DeckCard.removedFromCollectionDescription'),
-      })
-    }
-    else {
+        title: t("DeckCard.removedFromCollection"),
+        description: t("DeckCard.removedFromCollectionDescription"),
+      });
+    } else {
       toastHelper.error({
-        title: t('DeckCard.error'),
-        description: t('DeckCard.errorDescription', { action: 'removing', preposition: 'from' }),
-      })
+        title: t("DeckCard.error"),
+        description: t("DeckCard.errorDescription", {
+          action: "removing",
+          preposition: "from",
+        }),
+      });
     }
-  }
+  };
 
   const handleAddDeckToCollection = async () => {
-    const result = await addDeckToCollection(deckId)
+    const result = await addDeckToCollection(deckId);
     if (result.success) {
-      setIsInCollection(true)
+      setIsInCollection(true);
       toastHelper.success({
-        title: t('DeckCard.addedToCollection'),
-        description: t('DeckCard.addedToCollectionDescription'),
-      })
-    }
-    else {
+        title: t("DeckCard.addedToCollection"),
+        description: t("DeckCard.addedToCollectionDescription"),
+      });
+    } else {
       toastHelper.error({
-        title: t('DeckCard.error'),
-        description: t('DeckCard.errorDescription', { action: 'adding', preposition: 'to' }),
-      })
+        title: t("DeckCard.error"),
+        description: t("DeckCard.errorDescription", {
+          action: "adding",
+          preposition: "to",
+        }),
+      });
     }
-  }
+  };
 
-  const handleBookmarkClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsProcessing(true)
+  const handleBookmarkClick = async (
+    e: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsProcessing(true);
     if (isInCollection) {
-      await handleRemoveDeckFromCollection()
+      await handleRemoveDeckFromCollection();
+    } else {
+      await handleAddDeckToCollection();
     }
-    else {
-      await handleAddDeckToCollection()
-    }
-    setIsProcessing(false)
-  }
+    setIsProcessing(false);
+  };
 
   return (
     <Card className="p-6 gap-0 hover:bg-neutral-100 has-[.bookmark-icon:hover]:bg-white cursor-pointer transition-all duration-200 ease-in-out h-full">
@@ -106,27 +114,25 @@ function DeckCard({
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="inline-flex">
-                  {isPublic
-                    ? (
-                        <GlobeIcon
-                          size={16}
-                          weight="regular"
-                          className="text-neutral-tertiary shrink-0"
-                          aria-label={t('DeckCard.public')}
-                        />
-                      )
-                    : (
-                        <LockIcon
-                          size={16}
-                          weight="fill"
-                          className="text-neutral-tertiary shrink-0"
-                          aria-label={t('DeckCard.private')}
-                        />
-                      )}
+                  {isPublic ? (
+                    <GlobeIcon
+                      size={16}
+                      weight="regular"
+                      className="text-neutral-tertiary shrink-0"
+                      aria-label={t("DeckCard.public")}
+                    />
+                  ) : (
+                    <LockIcon
+                      size={16}
+                      weight="fill"
+                      className="text-neutral-tertiary shrink-0"
+                      aria-label={t("DeckCard.private")}
+                    />
+                  )}
                 </span>
               </TooltipTrigger>
               <TooltipContent>
-                {isPublic ? t('DeckCard.public') : t('DeckCard.private')}
+                {isPublic ? t("DeckCard.public") : t("DeckCard.private")}
               </TooltipContent>
             </Tooltip>
           )}
@@ -138,13 +144,14 @@ function DeckCard({
           disabled={isProcessing}
           className="bookmark-icon cursor-pointer hover:bg-neutral-300 h-8 w-8 flex justify-center items-center rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <BookmarkSimpleIcon size={20} weight={isInCollection ? 'fill' : 'regular'} />
+          <BookmarkSimpleIcon
+            size={20}
+            weight={isInCollection ? "fill" : "regular"}
+          />
         </button>
       </div>
       <div className="text-sm mb-2">
-        {t('DeckCard.by')}
-        {' '}
-        {author}
+        {t("DeckCard.by")} {author}
       </div>
       <div className="flex items-center mb-2 text-sm">
         <div className="text-neutral-tertiary flex items-center mr-4">
@@ -162,7 +169,7 @@ function DeckCard({
       </div>
       <div className="text-sm text-neutral-tertiary">{description}</div>
     </Card>
-  )
+  );
 }
 
-export default DeckCard
+export default DeckCard;

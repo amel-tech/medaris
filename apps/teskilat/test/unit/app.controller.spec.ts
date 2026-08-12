@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AppController } from '../../src/app.controller';
-import { AppService } from '../../src/app.service';
-import { LoggerModule } from '@medaris/common';
+import { LoggerModule } from "@medaris/common";
+import { Test, TestingModule } from "@nestjs/testing";
+import { AppController } from "../../src/app.controller";
+import { AppService } from "../../src/app.service";
 
-describe('AppController', () => {
+describe("AppController", () => {
   let appController: AppController;
 
   beforeEach(async () => {
@@ -16,10 +16,10 @@ describe('AppController', () => {
     appController = app.get<AppController>(AppController);
   });
 
-  describe('root', () => {
+  describe("root", () => {
     it('should return "Hello World!"', () => {
       expect(appController.getHello()).toBe(
-        'Teşkilat Hizmetinden Selamun Aleyküm!',
+        "Teşkilat Hizmetinden Selamun Aleyküm!"
       );
     });
   });

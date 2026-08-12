@@ -1,29 +1,28 @@
-import { useState } from 'react'
-import { kcSanitize } from 'keycloakify/lib/kcSanitize'
-import { clsx } from 'keycloakify/tools/clsx'
-import { getKcClsx } from 'keycloakify/login/lib/kcClsx'
-import type { KcContext } from '../KcContext'
-import type { I18n } from '../i18n'
-import type { ExtendedPageProps } from '../types/PageProps'
-
-import { Input } from '@medaris/ui/components/input'
-import { Separator } from '@medaris/ui/components/separator'
-import { Label } from '@medaris/ui/components/label'
-import { Checkbox } from '@medaris/ui/components/checkbox'
-import { cn } from '@medaris/ui/lib/utils'
-import { Button } from '@medaris/ui/components/button'
-import { PasswordWrapper } from '../components/PasswordWrapper'
-import { FieldContainer } from '../components/FieldContainer'
+import { Button } from "@medaris/ui/components/button";
+import { Checkbox } from "@medaris/ui/components/checkbox";
+import { Input } from "@medaris/ui/components/input";
+import { Label } from "@medaris/ui/components/label";
+import { Separator } from "@medaris/ui/components/separator";
+import { cn } from "@medaris/ui/lib/utils";
+import { kcSanitize } from "keycloakify/lib/kcSanitize";
+import { getKcClsx } from "keycloakify/login/lib/kcClsx";
+import { clsx } from "keycloakify/tools/clsx";
+import { useState } from "react";
+import { FieldContainer } from "../components/FieldContainer";
+import { PasswordWrapper } from "../components/PasswordWrapper";
+import type { I18n } from "../i18n";
+import type { KcContext } from "../KcContext";
+import type { ExtendedPageProps } from "../types/PageProps";
 
 export default function Login(
-  props: ExtendedPageProps<Extract<KcContext, { pageId: 'login.ftl' }>, I18n>,
+  props: ExtendedPageProps<Extract<KcContext, { pageId: "login.ftl" }>, I18n>
 ) {
-  const { kcContext, i18n, doUseDefaultCss, Template, classes } = props
+  const { kcContext, i18n, doUseDefaultCss, Template, classes } = props;
 
   const { kcClsx } = getKcClsx({
     doUseDefaultCss,
     classes,
-  })
+  });
 
   const {
     social,
@@ -34,14 +33,14 @@ export default function Login(
     auth,
     registrationDisabled,
     messagesPerField,
-  } = kcContext
+  } = kcContext;
 
-  const { msg, msgStr, advancedMsg } = i18n
+  const { msg, msgStr, advancedMsg } = i18n;
 
-  const [isLoginButtonDisabled, setIsLoginButtonDisabled] = useState(false)
+  const [isLoginButtonDisabled, setIsLoginButtonDisabled] = useState(false);
 
-  const displayRegisterationNodes
-    = realm.password && realm.registrationAllowed && !registrationDisabled
+  const displayRegisterationNodes =
+    realm.password && realm.registrationAllowed && !registrationDisabled;
 
   return (
     <Template
@@ -49,99 +48,96 @@ export default function Login(
       i18n={i18n}
       doUseDefaultCss={false}
       classes={classes}
-      displayMessage={!messagesPerField.existsError('username', 'password')}
-      headerNode={advancedMsg('loginAccountTitle')}
-      headerSubNode={advancedMsg('loginAccountSubtitle')}
+      displayMessage={!messagesPerField.existsError("username", "password")}
+      headerNode={advancedMsg("loginAccountTitle")}
+      headerSubNode={advancedMsg("loginAccountSubtitle")}
       displayInfo={displayRegisterationNodes}
-      infoNode={(
+      infoNode={
         <div id="kc-registration-container" className="text-center">
           <div id="kc-registration">
             <span className="text-sm text-gray-600">
-              {msg('noAccount')}
-              {' '}
+              {msg("noAccount")}{" "}
               <a
                 tabIndex={0}
                 href={url.registrationUrl}
                 className="text-brand-primary hover:underline font-medium"
               >
-                {msg('doRegister')}
+                {msg("doRegister")}
               </a>
             </span>
           </div>
         </div>
-      )}
-      socialProvidersNode={(
+      }
+      socialProvidersNode={
         <>
-          {realm.password
-            && social?.providers !== undefined
-            && social.providers.length !== 0 && (
-            <div
-              id="kc-social-providers"
-              className={kcClsx('kcFormSocialAccountSectionClass')}
-            >
-              <Separator
-                label={msgStr('identity-provider-login-label')}
-                className="my-4"
-              />
-              <ul
-                className={cn(
-                  kcClsx(
-                    'kcFormSocialAccountListClass',
-                    social.providers.length > 3
-                    && 'kcFormSocialAccountListGridClass',
-                  ),
-                  'flex flex-col gap-2',
-                )}
+          {realm.password &&
+            social?.providers !== undefined &&
+            social.providers.length !== 0 && (
+              <div
+                id="kc-social-providers"
+                className={kcClsx("kcFormSocialAccountSectionClass")}
               >
-                {social.providers.map((...[p, , providers]) => (
-                  <li key={p.alias}>
-                    <a href={p.loginUrl}>
-                      <Button
-                        variant="outline"
-                        id={`social-${p.alias}`}
-                        className={cn(
-                          kcClsx(
-                            'kcFormSocialAccountListButtonClass',
-                            providers.length > 3
-                            && 'kcFormSocialAccountGridItem',
-                          ),
-                          'w-full',
-                        )}
-                        type="button"
-                        size="sm"
-                      >
-                        <span
-                          className={clsx(
-                            kcClsx('kcFormSocialAccountNameClass'),
-                            p.iconClasses && 'kc-social-icon-text',
+                <Separator
+                  label={msgStr("identity-provider-login-label")}
+                  className="my-4"
+                />
+                <ul
+                  className={cn(
+                    kcClsx(
+                      "kcFormSocialAccountListClass",
+                      social.providers.length > 3 &&
+                        "kcFormSocialAccountListGridClass"
+                    ),
+                    "flex flex-col gap-2"
+                  )}
+                >
+                  {social.providers.map((...[p, , providers]) => (
+                    <li key={p.alias}>
+                      <a href={p.loginUrl}>
+                        <Button
+                          variant="outline"
+                          id={`social-${p.alias}`}
+                          className={cn(
+                            kcClsx(
+                              "kcFormSocialAccountListButtonClass",
+                              providers.length > 3 &&
+                                "kcFormSocialAccountGridItem"
+                            ),
+                            "w-full"
                           )}
-                          dangerouslySetInnerHTML={{
-                            __html: kcSanitize(p.displayName),
-                          }}
+                          type="button"
+                          size="sm"
                         >
-                        </span>
-                      </Button>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+                          <span
+                            className={clsx(
+                              kcClsx("kcFormSocialAccountNameClass"),
+                              p.iconClasses && "kc-social-icon-text"
+                            )}
+                            dangerouslySetInnerHTML={{
+                              __html: kcSanitize(p.displayName),
+                            }}
+                          ></span>
+                        </Button>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
         </>
-      )}
+      }
     >
       {displayRegisterationNodes && (
         <div className="mx-auto flex flex-row gap-1 w-fit bg-gray-100 border border-gray-200 rounded-lg overflow-hidden font-medium text-sm mb-8 p-1">
-          {' '}
+          {" "}
           <a href={url.registrationUrl}>
             <div className="py-2 px-4 rounded-md text-gray-600 hover:text-gray-800 hover:bg-gray-50 transition-all duration-200">
-              {msg('doRegister')}
-            </div>
-            {' '}
+              {msg("doRegister")}
+            </div>{" "}
           </a>
           <div className="py-2 px-4 rounded-md bg-brand-primary text-white shadow-sm">
-            {' '}
-            {msg('doLogIn')}
+            {" "}
+            {msg("doLogIn")}
           </div>
         </div>
       )}
@@ -152,8 +148,8 @@ export default function Login(
             <form
               id="kc-form-login"
               onSubmit={() => {
-                setIsLoginButtonDisabled(true)
-                return true
+                setIsLoginButtonDisabled(true);
+                return true;
               }}
               action={url.loginAction}
               method="post"
@@ -161,45 +157,42 @@ export default function Login(
             >
               {!usernameHidden && (
                 <FieldContainer>
-                  {' '}
+                  {" "}
                   {/* Modüler field container */}
                   <Label htmlFor="username" className="text-gray-600">
                     {!realm.loginWithEmailAllowed
-                      ? msg('username')
+                      ? msg("username")
                       : !realm.registrationEmailAsUsername
-                          ? msg('usernameOrEmail')
-                          : msg('email')}
+                        ? msg("usernameOrEmail")
+                        : msg("email")}
                   </Label>
                   <Input
                     tabIndex={0}
                     type="text"
                     name="username"
-                    defaultValue={login.username ?? ''}
+                    defaultValue={login.username ?? ""}
                     id="username"
                     placeholder={
                       !realm.loginWithEmailAllowed
-                        ? msgStr('username')
+                        ? msgStr("username")
                         : !realm.registrationEmailAsUsername
-                            ? msgStr('usernameOrEmail')
-                            : msgStr('email')
+                          ? msgStr("usernameOrEmail")
+                          : msgStr("email")
                     }
                     autoComplete="username"
                     className={cn(
-                      messagesPerField.existsError('username', 'password')
-                      && 'border border-error-secondary !text-error-primary placeholder:text-error-primary',
+                      messagesPerField.existsError("username", "password") &&
+                        "border border-error-secondary !text-error-primary placeholder:text-error-primary"
                     )}
                   />
-                  {messagesPerField.existsError('username', 'password') && (
+                  {messagesPerField.existsError("username", "password") && (
                     <span
                       id="input-error"
                       className="text-error-secondary"
                       aria-live="polite"
                       dangerouslySetInnerHTML={{
                         __html: kcSanitize(
-                          messagesPerField.getFirstError(
-                            'username',
-                            'password',
-                          ),
+                          messagesPerField.getFirstError("username", "password")
                         ),
                       }}
                     />
@@ -208,13 +201,13 @@ export default function Login(
               )}
 
               <FieldContainer>
-                {' '}
+                {" "}
                 {/* Modüler field container */}
                 <Label
                   htmlFor="password"
-                  className={cn(kcClsx('kcLabelClass'), 'text-gray-600')}
+                  className={cn(kcClsx("kcLabelClass"), "text-gray-600")}
                 >
-                  {msg('password')}
+                  {msg("password")}
                 </Label>
                 <PasswordWrapper
                   kcClsx={kcClsx}
@@ -228,33 +221,30 @@ export default function Login(
                     name="password"
                     autoComplete="current-password"
                     aria-invalid={messagesPerField.existsError(
-                      'username',
-                      'password',
+                      "username",
+                      "password"
                     )}
-                    placeholder={msgStr('password')}
+                    placeholder={msgStr("password")}
                     className={cn(
-                      'w-full pr-10',
-                      messagesPerField.existsError('username', 'password')
-                      && 'border border-error-secondary !text-error-primary placeholder:text-error-primary',
+                      "w-full pr-10",
+                      messagesPerField.existsError("username", "password") &&
+                        "border border-error-secondary !text-error-primary placeholder:text-error-primary"
                     )}
                   />
                 </PasswordWrapper>
-                {usernameHidden
-                  && messagesPerField.existsError('username', 'password') && (
-                  <span
-                    id="input-error"
-                    className="text-error-secondary"
-                    aria-live="polite"
-                    dangerouslySetInnerHTML={{
-                      __html: kcSanitize(
-                        messagesPerField.getFirstError(
-                          'username',
-                          'password',
+                {usernameHidden &&
+                  messagesPerField.existsError("username", "password") && (
+                    <span
+                      id="input-error"
+                      className="text-error-secondary"
+                      aria-live="polite"
+                      dangerouslySetInnerHTML={{
+                        __html: kcSanitize(
+                          messagesPerField.getFirstError("username", "password")
                         ),
-                      ),
-                    }}
-                  />
-                )}
+                      }}
+                    />
+                  )}
               </FieldContainer>
 
               <div className="flex flex-row justify-between items-center gap-2">
@@ -267,7 +257,7 @@ export default function Login(
                         defaultChecked={!!login.rememberMe}
                       />
                       <Label htmlFor="rememberMe" className="text-sm">
-                        {msg('rememberMe')}
+                        {msg("rememberMe")}
                       </Label>
                     </div>
                   )}
@@ -279,7 +269,7 @@ export default function Login(
                       href={url.loginResetCredentialsUrl}
                       className="text-brand-primary hover:underline text-sm"
                     >
-                      {msg('doForgotPassword')}
+                      {msg("doForgotPassword")}
                     </a>
                   )}
                 </div>
@@ -298,7 +288,7 @@ export default function Login(
                   className="w-full bg-brand-primary text-white h-[48px] hover:bg-brand-primary/90 disabled:opacity-50 font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                   type="submit"
                 >
-                  {msgStr('doLogIn')}
+                  {msgStr("doLogIn")}
                 </Button>
               </div>
             </form>
@@ -306,5 +296,5 @@ export default function Login(
         </div>
       </div>
     </Template>
-  )
+  );
 }

@@ -1,11 +1,11 @@
-import { ErrorContext } from '../../types';
-import { MedarisError } from './medaris.error';
+import { ErrorContext } from "../../types";
+import { MedarisError } from "./medaris.error";
 
 export class ConflictError extends MedarisError {
   protected constructor(
-    code: string = 'CONFLICT',
+    code: string = "CONFLICT",
     message?: string,
-    context?: ErrorContext,
+    context?: ErrorContext
   ) {
     super(code, 409, message, context);
   }

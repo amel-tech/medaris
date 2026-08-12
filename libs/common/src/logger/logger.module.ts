@@ -1,8 +1,8 @@
-import { DynamicModule, Global, Module, Provider } from '@nestjs/common';
-import { LoggerConfig } from './logger.interface';
-import { LoggerFactory, LoggerType } from './logger.factory';
+import { DynamicModule, Global, Module, Provider } from "@nestjs/common";
+import { LoggerFactory, LoggerType } from "./logger.factory";
+import { LoggerConfig } from "./logger.interface";
 
-export const LOGGER = 'LOGGER';
+export const LOGGER = "LOGGER";
 
 @Global()
 @Module({})

@@ -1,3 +1,3 @@
 export enum CardIncludeEnum {
-  Progress = 'progress',
+  Progress = "progress",
 }

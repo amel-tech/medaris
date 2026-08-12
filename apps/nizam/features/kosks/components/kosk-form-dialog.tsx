@@ -1,14 +1,8 @@
-'use client'
+"use client";
 
-import { useState, useTransition, type ReactElement } from 'react'
-import { useRouter } from 'next/navigation'
-import { PlusIcon } from '@medaris/icons'
-import { Button } from '@medaris/ui/components/button'
-import { Input } from '@medaris/ui/components/input'
-import { Textarea } from '@medaris/ui/components/textarea'
-import { Label } from '@medaris/ui/components/label'
-import { Switch } from '@medaris/ui/components/switch'
-import { toast } from '@medaris/ui/components/sonner'
+import { PlusIcon } from "@medaris/icons";
+import type { KoskResponse } from "@medaris/services/tedrisat";
+import { Button } from "@medaris/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -16,65 +10,69 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@medaris/ui/components/dialog'
-import type { KoskResponse } from '@medaris/services/tedrisat'
-import { createKosk, updateKosk } from '~/features/kosks/actions'
+} from "@medaris/ui/components/dialog";
+import { Input } from "@medaris/ui/components/input";
+import { Label } from "@medaris/ui/components/label";
+import { toast } from "@medaris/ui/components/sonner";
+import { Switch } from "@medaris/ui/components/switch";
+import { Textarea } from "@medaris/ui/components/textarea";
+import { useRouter } from "next/navigation";
+import { type ReactElement, useState, useTransition } from "react";
+import { createKosk, updateKosk } from "~/features/kosks/actions";
 
 export function KoskFormDialog({
   kosk,
   trigger,
 }: {
-  kosk?: KoskResponse
-  trigger?: ReactElement
+  kosk?: KoskResponse;
+  trigger?: ReactElement;
 }) {
-  const router = useRouter()
-  const isEdit = Boolean(kosk)
-  const [open, setOpen] = useState(false)
-  const [pending, startTransition] = useTransition()
+  const router = useRouter();
+  const isEdit = Boolean(kosk);
+  const [open, setOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
 
-  const [name, setName] = useState(kosk?.name ?? '')
-  const [handle, setHandle] = useState(kosk?.handle ?? '')
-  const [description, setDescription] = useState(kosk?.description ?? '')
-  const [isPrivate, setIsPrivate] = useState(kosk?.isPrivate ?? true)
+  const [name, setName] = useState(kosk?.name ?? "");
+  const [handle, setHandle] = useState(kosk?.handle ?? "");
+  const [description, setDescription] = useState(kosk?.description ?? "");
+  const [isPrivate, setIsPrivate] = useState(kosk?.isPrivate ?? true);
 
   const reset = () => {
-    setName(kosk?.name ?? '')
-    setHandle(kosk?.handle ?? '')
-    setDescription(kosk?.description ?? '')
-    setIsPrivate(kosk?.isPrivate ?? true)
-  }
+    setName(kosk?.name ?? "");
+    setHandle(kosk?.handle ?? "");
+    setDescription(kosk?.description ?? "");
+    setIsPrivate(kosk?.isPrivate ?? true);
+  };
 
   const submit = () => {
     if (name.trim().length < 2) {
-      toast.error('Köşk adı en az 2 karakter olmalıdır.')
-      return
+      toast.error("Köşk adı en az 2 karakter olmalıdır.");
+      return;
     }
     const dto = {
       name: name.trim(),
       handle: handle.trim() || undefined,
       description: description.trim() || undefined,
       isPrivate,
-    }
+    };
     startTransition(async () => {
-      const res = kosk
-        ? await updateKosk(kosk.id, dto)
-        : await createKosk(dto)
+      const res = kosk ? await updateKosk(kosk.id, dto) : await createKosk(dto);
       if (res.success === false) {
-        toast.error(res.error)
-        return
+        toast.error(res.error);
+        return;
       }
-      toast.success(isEdit ? 'Köşk güncellendi.' : 'Köşk oluşturuldu.')
-      setOpen(false)
-      router.refresh()
-    })
-  }
+      toast.success(isEdit ? "Köşk güncellendi." : "Köşk oluşturuldu.");
+      setOpen(false);
+      router.refresh();
+    });
+  };
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        setOpen(next)
-        if (!next) reset()
+        setOpen(next);
+        if (!next) reset();
       }}
     >
       <DialogTrigger asChild>
@@ -87,7 +85,9 @@ export function KoskFormDialog({
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Köşkü Düzenle' : 'Yeni Köşk Oluştur'}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Köşkü Düzenle" : "Yeni Köşk Oluştur"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col gap-4 py-2">
@@ -99,28 +99,32 @@ export function KoskFormDialog({
             <Input
               id="kosk-name"
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value)}
               placeholder="Örn. Süleymaniye Köşkü"
             />
           </div>
 
           <div>
-            <Label htmlFor="kosk-handle" className="mb-1.5">Kullanıcı adı</Label>
+            <Label htmlFor="kosk-handle" className="mb-1.5">
+              Kullanıcı adı
+            </Label>
             <Input
               id="kosk-handle"
               value={handle}
-              onChange={e => setHandle(e.target.value)}
+              onChange={(e) => setHandle(e.target.value)}
               placeholder="@suleymaniye"
             />
           </div>
 
           <div>
-            <Label htmlFor="kosk-description" className="mb-1.5">Açıklama</Label>
+            <Label htmlFor="kosk-description" className="mb-1.5">
+              Açıklama
+            </Label>
             <Textarea
               id="kosk-description"
               rows={3}
               value={description}
-              onChange={e => setDescription(e.target.value)}
+              onChange={(e) => setDescription(e.target.value)}
               placeholder="Köşkün sunduğu dersler ve odak alanları."
             />
           </div>
@@ -137,16 +141,24 @@ export function KoskFormDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={pending}>
+          <Button
+            variant="outline"
+            onClick={() => setOpen(false)}
+            disabled={pending}
+          >
             İptal
           </Button>
           <Button onClick={submit} disabled={pending}>
             {pending
-              ? (isEdit ? 'Kaydediliyor...' : 'Oluşturuluyor...')
-              : (isEdit ? 'Kaydet' : 'Oluştur')}
+              ? isEdit
+                ? "Kaydediliyor..."
+                : "Oluşturuluyor..."
+              : isEdit
+                ? "Kaydet"
+                : "Oluştur"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -1,10 +1,10 @@
-import process from 'process';
-import { NodeSDK } from '@opentelemetry/sdk-node';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { resourceFromAttributes } from '@opentelemetry/resources';
-import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
-import { configuration } from './config';
+import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
+import { resourceFromAttributes } from "@opentelemetry/resources";
+import { NodeSDK } from "@opentelemetry/sdk-node";
+import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import process from "process";
+import { configuration } from "./config";
 
 const {
   otel: { enabled, serviceName },
@@ -20,8 +20,8 @@ if (enabled) {
     instrumentations: [getNodeAutoInstrumentations()],
     resource: resourceFromAttributes({
       [ATTR_SERVICE_NAME]: serviceName,
-      'service.version': version,
-      'deployment.environment': environment,
+      "service.version": version,
+      "deployment.environment": environment,
     }),
   });
 
@@ -31,13 +31,13 @@ if (enabled) {
   console.log(`OpenTelemetry SDK started for service: ${serviceName}`);
 
   // gracefully shut down the SDK on process exit
-  process.on('SIGTERM', () => {
+  process.on("SIGTERM", () => {
     sdk
       .shutdown()
-      .then(() => console.log('Tracing terminated'))
-      .catch((error) => console.log('Error terminating tracing', error))
+      .then(() => console.log("Tracing terminated"))
+      .catch((error) => console.log("Error terminating tracing", error))
       .finally(() => process.exit(0));
   });
 } else {
-  console.log('OpenTelemetry is disabled. Skipping initialization.');
+  console.log("OpenTelemetry is disabled. Skipping initialization.");
 }

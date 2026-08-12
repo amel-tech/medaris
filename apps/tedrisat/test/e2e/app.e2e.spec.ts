@@ -1,30 +1,30 @@
-import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { createTestApp } from '../helpers/test-app.helper';
+import { INestApplication } from "@nestjs/common";
+import request from "supertest";
+import { createTestApp } from "../helpers/test-app.helper";
 
-describe('AppController (e2e)', () => {
+describe("AppController (e2e)", () => {
   let app: INestApplication;
 
   beforeEach(async () => {
     app = await createTestApp();
   });
 
-  it('/ (GET)', () => {
+  it("/ (GET)", () => {
     return request(app.getHttpServer())
-      .get('/')
+      .get("/")
       .expect(200)
-      .expect('Tedrisat Hizmetinden Selamun Aleyküm!');
+      .expect("Tedrisat Hizmetinden Selamun Aleyküm!");
   });
 
-  it('/health (GET)', () => {
+  it("/health (GET)", () => {
     return request(app.getHttpServer())
-      .get('/health')
+      .get("/health")
       .expect(200)
       .expect((res) => {
-        expect(res.body).toHaveProperty('service', 'tedrisat');
-        expect(res.body).toHaveProperty('status', 'ok');
-        expect(res.body).toHaveProperty('version');
-        expect(res.body).toHaveProperty('environment');
+        expect(res.body).toHaveProperty("service", "tedrisat");
+        expect(res.body).toHaveProperty("status", "ok");
+        expect(res.body).toHaveProperty("version");
+        expect(res.body).toHaveProperty("environment");
       });
   });
 

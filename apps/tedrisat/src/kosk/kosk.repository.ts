@@ -1,19 +1,19 @@
-import { Injectable } from '@nestjs/common';
-import { and, desc, eq, sql } from 'drizzle-orm';
-import { DatabaseService } from '../database/database.service';
-import { kosks, koskFollowers } from '../database/schema/kosk.schema';
+import { Injectable } from "@nestjs/common";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { DatabaseService } from "../database/database.service";
 import {
-  courses,
   courseMuderris,
+  courses,
   enrollments,
-} from '../database/schema/course.schema';
+} from "../database/schema/course.schema";
+import { koskFollowers, kosks } from "../database/schema/kosk.schema";
 import {
   ICreateKosk,
   IKosk,
   IKoskRepository,
   IKoskWithStats,
   IUpdateKosk,
-} from './kosk.repository.interface';
+} from "./kosk.repository.interface";
 
 @Injectable()
 export class KoskRepository implements IKoskRepository {
@@ -28,23 +28,23 @@ export class KoskRepository implements IKoskRepository {
       kosk: kosks,
       courseCount:
         sql<number>`(select count(*) from ${courses} c where c.kosk_id = "kosks"."id")`.mapWith(
-          Number,
+          Number
         ),
       studentCount:
         sql<number>`(select count(distinct e.user_id) from ${enrollments} e join ${courses} c on e.course_id = c.id where c.kosk_id = "kosks"."id")`.mapWith(
-          Number,
+          Number
         ),
       muderrisCount:
         sql<number>`(select count(distinct cm.id) from ${courseMuderris} cm join ${courses} c on cm.course_id = c.id where c.kosk_id = "kosks"."id")`.mapWith(
-          Number,
+          Number
         ),
       followerCount:
         sql<number>`(select count(*) from ${koskFollowers} kf where kf.kosk_id = "kosks"."id")`.mapWith(
-          Number,
+          Number
         ),
       isFollowing:
         sql<boolean>`exists(select 1 from ${koskFollowers} kf where kf.kosk_id = "kosks"."id" and kf.user_id = ${userId})`.mapWith(
-          Boolean,
+          Boolean
         ),
     };
   }
@@ -70,7 +70,7 @@ export class KoskRepository implements IKoskRepository {
   async findAll(
     userId: string,
     limit: number,
-    offset: number,
+    offset: number
   ): Promise<IKoskWithStats[]> {
     const rows = await this.db
       .select(this.statsSelect(userId))
@@ -139,7 +139,7 @@ export class KoskRepository implements IKoskRepository {
     const deleted = await this.db
       .delete(koskFollowers)
       .where(
-        and(eq(koskFollowers.userId, userId), eq(koskFollowers.koskId, koskId)),
+        and(eq(koskFollowers.userId, userId), eq(koskFollowers.koskId, koskId))
       )
       .returning();
     return deleted.length > 0;

@@ -1,48 +1,48 @@
-import { IsString, IsDateString, IsIn } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
+import { IsDateString, IsIn, IsString } from "class-validator";
 
 export class HealthCheckDto {
   @ApiProperty({
-    description: 'Service health status',
-    enum: ['ok', 'error', 'degraded'],
-    example: 'ok'
+    description: "Service health status",
+    enum: ["ok", "error", "degraded"],
+    example: "ok",
   })
-  @IsIn(['ok', 'error', 'degraded'])
-  status: 'ok' | 'error' | 'degraded';
+  @IsIn(["ok", "error", "degraded"])
+  status: "ok" | "error" | "degraded";
 
   @ApiProperty({
-    description: 'Timestamp when health check was performed',
-    example: '2024-01-01T00:00:00.000Z'
+    description: "Timestamp when health check was performed",
+    example: "2024-01-01T00:00:00.000Z",
   })
   @IsDateString()
   timestamp: string;
 
   @ApiProperty({
-    description: 'Name of the service',
-    example: 'teskilat'
+    description: "Name of the service",
+    example: "teskilat",
   })
   @IsString()
   service: string;
 
   @ApiProperty({
-    description: 'Version of the service',
-    example: '1.0.0',
-    required: false
+    description: "Version of the service",
+    example: "1.0.0",
+    required: false,
   })
   @IsString()
   version?: string;
 
   @ApiProperty({
-    description: 'Environment the service is running in',
-    example: 'development',
-    required: false
+    description: "Environment the service is running in",
+    example: "development",
+    required: false,
   })
   @IsString()
   environment?: string;
 
   constructor(
     service: string,
-    status: 'ok' | 'error' | 'degraded' = 'ok',
+    status: "ok" | "error" | "degraded" = "ok",
     version?: string,
     environment?: string
   ) {

@@ -1,0 +1,19 @@
+# Commits that only reformat. `git blame` skips these when configured with:
+#
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# GitHub honours this file automatically. Add a SHA here only if the commit
+# changes no behaviour at all — a bulk formatter run, nothing else.
+#
+# ⚠️  A SHA is only effective while it stays an ancestor of the branch you
+# blame. A squash merge rewrites the branch into one new commit, which leaves
+# the original SHA unreachable from `main` and the entry silently inert — no
+# error, just unfiltered blame. If you squash-merge a PR whose reformat commit
+# is listed here, re-point the entry at the squashed SHA in a follow-up commit
+# or drop it. See docs/migration/mdrs-12-biome.md §12.
+
+# style(repo): biome format sweep — Biome 2.4.4 adoption, 493 files (MDRS-12).
+# Recorded pre-merge from branch
+# argedikas/mdrs-12-adopt-biome-reduce-eslint-to-a-boundaries-only-shell.
+# See docs/migration/mdrs-12-biome.md §7.
+4c92fc4ef7ec42188ef44fd37167513ef06e7674

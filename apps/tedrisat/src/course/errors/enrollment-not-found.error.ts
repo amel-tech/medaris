@@ -1,13 +1,13 @@
-import { ErrorContext, NotFoundError } from '@medaris/common';
+import { ErrorContext, NotFoundError } from "@medaris/common";
 
 export class EnrollmentNotFoundError extends NotFoundError {
-  static readonly code = 'ENROLLMENT_NOT_FOUND';
+  static readonly code = "ENROLLMENT_NOT_FOUND";
 
   constructor(courseId: string, context?: ErrorContext) {
     super(
       EnrollmentNotFoundError.code,
       `No enrollment found for course ${courseId}`,
-      context,
+      context
     );
   }
 }

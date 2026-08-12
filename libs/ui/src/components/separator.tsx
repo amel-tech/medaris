@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import * as SeparatorPrimitive from "@radix-ui/react-separator"
+import * as SeparatorPrimitive from "@radix-ui/react-separator";
+import type * as React from "react";
 
-import { cn } from "@medaris/ui/lib/utils"
+import { cn } from "../lib/utils";
 
 interface SeparatorProps
   extends Omit<
     React.ComponentProps<typeof SeparatorPrimitive.Root>,
     "children"
   > {
-  label?: string
-  labelClassName?: string
+  label?: string;
+  labelClassName?: string;
 }
 
 function Separator({
@@ -29,20 +29,20 @@ function Separator({
         className={cn(
           "relative flex items-center",
           orientation === "vertical" ? "flex-col h-full" : "w-full",
-          className,
+          className
         )}
       >
         <div
           className={cn(
             "bg-border shrink-0",
-            orientation === "horizontal" ? "h-px flex-1" : "w-px flex-1",
+            orientation === "horizontal" ? "h-px flex-1" : "w-px flex-1"
           )}
         />
         <span
           className={cn(
             "bg-background px-3 py-1 text-sm text-muted-foreground whitespace-nowrap",
             orientation === "vertical" ? "rotate-90" : "",
-            labelClassName,
+            labelClassName
           )}
         >
           {label}
@@ -50,11 +50,11 @@ function Separator({
         <div
           className={cn(
             "bg-border shrink-0",
-            orientation === "horizontal" ? "h-px flex-1" : "w-px flex-1",
+            orientation === "horizontal" ? "h-px flex-1" : "w-px flex-1"
           )}
         />
       </div>
-    )
+    );
   }
 
   // Default separator without label
@@ -65,11 +65,11 @@ function Separator({
       orientation={orientation}
       className={cn(
         "bg-border shrink-0 data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-px",
-        className,
+        className
       )}
       {...props}
     />
-  )
+  );
 }
 
-export { Separator }
+export { Separator };

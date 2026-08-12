@@ -1,3 +1,5 @@
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
@@ -13,20 +15,18 @@ import {
   Min,
   MinLength,
   ValidateNested,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CourseLevel } from '../domain/course-level.enum';
-import { CourseStatus } from '../domain/course-status.enum';
-import { LessonType } from '../domain/lesson-type.enum';
+} from "class-validator";
+import { CourseLevel } from "../domain/course-level.enum";
+import { CourseStatus } from "../domain/course-status.enum";
+import { LessonType } from "../domain/lesson-type.enum";
 
 export class AgendaStepDto {
-  @ApiProperty({ example: '21:00' })
+  @ApiProperty({ example: "21:00" })
   @IsString()
   @MaxLength(40)
   time!: string;
 
-  @ApiProperty({ example: 'Açılış ve geçen haftanın özeti' })
+  @ApiProperty({ example: "Açılış ve geçen haftanın özeti" })
   @IsString()
   @MinLength(1)
   @MaxLength(200)
@@ -35,13 +35,13 @@ export class AgendaStepDto {
 
 export class CreateLessonDto {
   @ApiPropertyOptional({
-    description: 'Existing lesson id (preserved on replace)',
+    description: "Existing lesson id (preserved on replace)",
   })
   @IsOptional()
   @IsUUID()
   id?: string;
 
-  @ApiProperty({ example: 'Birinci babın îsâgûcîsi' })
+  @ApiProperty({ example: "Birinci babın îsâgûcîsi" })
   @IsString()
   @MinLength(1)
   @MaxLength(200)
@@ -51,21 +51,21 @@ export class CreateLessonDto {
   @IsEnum(LessonType)
   type!: LessonType;
 
-  @ApiPropertyOptional({ example: '28 dk' })
+  @ApiPropertyOptional({ example: "28 dk" })
   @IsOptional()
   @IsString()
   @MaxLength(40)
   duration?: string;
 
-  @ApiPropertyOptional({ example: 'Bina · s. 4-9' })
+  @ApiPropertyOptional({ example: "Bina · s. 4-9" })
   @IsOptional()
   @IsString()
   @MaxLength(120)
   kaynak?: string;
 
   @ApiPropertyOptional({
-    example: '2026-06-18T19:00:00.000Z',
-    description: 'When the live session starts (type = LIVE).',
+    example: "2026-06-18T19:00:00.000Z",
+    description: "When the live session starts (type = LIVE).",
   })
   @IsOptional()
   @Type(() => Date)
@@ -73,9 +73,9 @@ export class CreateLessonDto {
   scheduledAt?: Date;
 
   @ApiPropertyOptional({
-    example: 'https://meet.google.com/bqx-mfzn-rde',
+    example: "https://meet.google.com/bqx-mfzn-rde",
     description:
-      'External meeting link (Meet/Zoom/Jitsi…). The platform is resolved from the URL on the client.',
+      "External meeting link (Meet/Zoom/Jitsi…). The platform is resolved from the URL on the client.",
   })
   @IsOptional()
   @IsUrl({ require_protocol: true })
@@ -84,7 +84,7 @@ export class CreateLessonDto {
 
   @ApiPropertyOptional({
     type: [AgendaStepDto],
-    description: 'Müzakere akışı — agenda steps shown to students.',
+    description: "Müzakere akışı — agenda steps shown to students.",
   })
   @IsOptional()
   @IsArray()
@@ -100,7 +100,7 @@ export class CreateLessonDto {
 
 export class CreateWeekDto {
   @ApiPropertyOptional({
-    description: 'Existing week id (preserved on replace)',
+    description: "Existing week id (preserved on replace)",
   })
   @IsOptional()
   @IsUUID()
@@ -111,14 +111,14 @@ export class CreateWeekDto {
   @Min(1)
   weekNumber!: number;
 
-  @ApiProperty({ example: 'Sülâsî Mücerred — Birinci Bab' })
+  @ApiProperty({ example: "Sülâsî Mücerred — Birinci Bab" })
   @IsString()
   @MinLength(1)
   @MaxLength(200)
   title!: string;
 
   @ApiPropertyOptional({
-    example: 'Müfredat tanıtımı ve birinci babın îsâgûcîsi.',
+    example: "Müfredat tanıtımı ve birinci babın îsâgûcîsi.",
   })
   @IsOptional()
   @IsString()
@@ -134,24 +134,24 @@ export class CreateWeekDto {
 
 export class CreateMuderrisDto {
   @ApiPropertyOptional({
-    description: 'Existing müderris row id (preserved on replace)',
+    description: "Existing müderris row id (preserved on replace)",
   })
   @IsOptional()
   @IsUUID()
   id?: string;
 
-  @ApiPropertyOptional({ description: 'Linked platform user id, if any' })
+  @ApiPropertyOptional({ description: "Linked platform user id, if any" })
   @IsOptional()
   @IsUUID()
   userId?: string;
 
-  @ApiProperty({ example: 'Müderris Ahmed Hilmi' })
+  @ApiProperty({ example: "Müderris Ahmed Hilmi" })
   @IsString()
   @MinLength(1)
   @MaxLength(120)
   name!: string;
 
-  @ApiPropertyOptional({ example: 'Sarf ve Nahiv Müderrisi' })
+  @ApiPropertyOptional({ example: "Sarf ve Nahiv Müderrisi" })
   @IsOptional()
   @IsString()
   @MaxLength(120)
@@ -173,25 +173,25 @@ export class CreateMuderrisDto {
 
 export class CreateResourceDto {
   @ApiPropertyOptional({
-    description: 'Existing resource row id (preserved on replace)',
+    description: "Existing resource row id (preserved on replace)",
   })
   @IsOptional()
   @IsUUID()
   id?: string;
 
-  @ApiProperty({ example: 'Bina ve İzhar — Klasik metin' })
+  @ApiProperty({ example: "Bina ve İzhar — Klasik metin" })
   @IsString()
   @MinLength(1)
   @MaxLength(200)
   name!: string;
 
-  @ApiPropertyOptional({ example: 'PDF · 124 sayfa' })
+  @ApiPropertyOptional({ example: "PDF · 124 sayfa" })
   @IsOptional()
   @IsString()
   @MaxLength(120)
   meta?: string;
 
-  @ApiPropertyOptional({ example: 'pdf' })
+  @ApiPropertyOptional({ example: "pdf" })
   @IsOptional()
   @IsString()
   @MaxLength(40)
@@ -205,14 +205,14 @@ export class CreateResourceDto {
 }
 
 export class CreateCourseDto {
-  @ApiProperty({ example: 'Bina ve İzhar Şerhi' })
+  @ApiProperty({ example: "Bina ve İzhar Şerhi" })
   @IsString()
   @MinLength(2)
   @MaxLength(200)
   title!: string;
 
   @ApiPropertyOptional({
-    example: 'Klasik sarf metni — şerh, illet ve tatbiki örneklerle.',
+    example: "Klasik sarf metni — şerh, illet ve tatbiki örneklerle.",
   })
   @IsOptional()
   @IsString()
@@ -225,7 +225,7 @@ export class CreateCourseDto {
   @MaxLength(2000)
   description?: string;
 
-  @ApiPropertyOptional({ example: 'Sarf' })
+  @ApiPropertyOptional({ example: "Sarf" })
   @IsOptional()
   @IsString()
   @MaxLength(60)
@@ -236,7 +236,7 @@ export class CreateCourseDto {
   @IsEnum(CourseLevel)
   level?: CourseLevel;
 
-  @ApiPropertyOptional({ example: 'Türkçe / Arapça' })
+  @ApiPropertyOptional({ example: "Türkçe / Arapça" })
   @IsOptional()
   @IsString()
   @MaxLength(60)
@@ -267,7 +267,7 @@ export class CreateCourseDto {
 
   @ApiPropertyOptional({
     example: false,
-    description: 'When true, enrollments need köşk-owner approval.',
+    description: "When true, enrollments need köşk-owner approval.",
   })
   @IsOptional()
   @IsBoolean()

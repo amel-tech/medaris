@@ -26,11 +26,11 @@
       "detail": "Lints the entire project."
     },
     {
-        "label": "Fix Linting Issues",
-        "type": "npm",
-        "script": "lint:fix",
-        "problemMatcher": ["$eslint-compact"],
-        "detail": "Fixes linting issues in the entire project."
+      "label": "Fix Linting Issues",
+      "type": "npm",
+      "script": "lint:fix",
+      "problemMatcher": ["$eslint-compact"],
+      "detail": "Fixes linting issues in the entire project."
     },
     {
       "label": "Check Types",

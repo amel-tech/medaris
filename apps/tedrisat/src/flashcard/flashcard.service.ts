@@ -1,21 +1,21 @@
-import { Injectable } from '@nestjs/common';
-import { FlashcardRepository } from './flashcard.repository';
+import { Injectable } from "@nestjs/common";
+import { CardIncludeEnum } from "./domain/card-include.enum";
+import { CreateFlashcardDto } from "./dto/create-flashcard.dto";
+import { CreateFlashcardProgressDto } from "./dto/create-flashcard-progress.dto";
+import { FlashcardRepository } from "./flashcard.repository";
 import {
   ICreateFlashcard,
   IFlashcard,
   IFlashcardProgress,
   IUpdateFlashcard,
-} from './flashcard.repository.interface';
-import { CreateFlashcardDto } from './dto/create-flashcard.dto';
-import { CreateFlashcardProgressDto } from './dto/create-flashcard-progress.dto';
-import { CardIncludeEnum } from './domain/card-include.enum';
+} from "./flashcard.repository.interface";
 
 const validIncludes = new Set<string>(Object.values(CardIncludeEnum));
 
 function toIncludeSet(include?: string[]): Set<CardIncludeEnum> {
   if (!include) return new Set();
   return new Set(
-    include.filter((v): v is CardIncludeEnum => validIncludes.has(v)),
+    include.filter((v): v is CardIncludeEnum => validIncludes.has(v))
   );
 }
 
@@ -26,7 +26,7 @@ export class FlashcardService {
   async findById(
     id: string,
     userId: string,
-    include?: string[],
+    include?: string[]
   ): Promise<IFlashcard | null> {
     return this.cardRepo.findById(id, userId, toIncludeSet(include));
   }
@@ -34,7 +34,7 @@ export class FlashcardService {
   async findByDeckId(
     deckId: string,
     userId: string,
-    include?: string[],
+    include?: string[]
   ): Promise<IFlashcard[]> {
     return this.cardRepo.findByDeckId(deckId, userId, toIncludeSet(include));
   }
@@ -42,7 +42,7 @@ export class FlashcardService {
   async createMany(
     deckId: string,
     authorId: string,
-    cards: CreateFlashcardDto[],
+    cards: CreateFlashcardDto[]
   ): Promise<IFlashcard[]> {
     const newCards: ICreateFlashcard[] = cards.map((card) => ({
       ...card,
@@ -54,7 +54,7 @@ export class FlashcardService {
 
   async replaceManyProgress(
     userId: string,
-    progress: CreateFlashcardProgressDto[],
+    progress: CreateFlashcardProgressDto[]
   ): Promise<IFlashcardProgress[]> {
     const progressWithUser = progress.map((data) => ({
       userId,
@@ -66,7 +66,7 @@ export class FlashcardService {
 
   async update(
     id: string,
-    updates: IUpdateFlashcard,
+    updates: IUpdateFlashcard
   ): Promise<IFlashcard | null> {
     return this.cardRepo.update(id, updates);
   }

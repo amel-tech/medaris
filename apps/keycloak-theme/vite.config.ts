@@ -1,7 +1,7 @@
-import { defineConfig } from 'vite'
-import tailwindcss from '@tailwindcss/vite'
-import react from '@vitejs/plugin-react'
-import { keycloakify } from 'keycloakify/vite-plugin'
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+import { keycloakify } from "keycloakify/vite-plugin";
+import { defineConfig } from "vite";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -9,7 +9,7 @@ export default defineConfig({
     tailwindcss(),
     react(),
     keycloakify({
-      accountThemeImplementation: 'none',
+      accountThemeImplementation: "none",
       kcContextExclusionsFtl: `
                 <@addToXKeycloakifyMessagesIfMessageKey str="loginAccountSubtitle" />
                 <@addToXKeycloakifyMessagesIfMessageKey str="loginAccountTitle" />
@@ -18,4 +18,4 @@ export default defineConfig({
             `,
     }),
   ],
-})
+});

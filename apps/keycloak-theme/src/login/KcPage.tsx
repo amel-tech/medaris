@@ -1,36 +1,37 @@
-import './index.css'
-import '@medaris/ui/globals.css'
+import "./index.css";
+import "@medaris/ui/globals.css";
 
-import { Suspense, lazy } from 'react'
-import type { ClassKey } from 'keycloakify/login'
-import type { KcContext } from './KcContext'
-import { useI18n } from './i18n'
-import DefaultPage from 'keycloakify/login/DefaultPage'
-import Template from './Template'
-import Login from './pages/Login'
-import Register from './pages/Register'
-const UserProfileFormFields = lazy(() => import('./UserProfileFormFields'))
+import type { ClassKey } from "keycloakify/login";
+import DefaultPage from "keycloakify/login/DefaultPage";
+import { lazy, Suspense } from "react";
+import { useI18n } from "./i18n";
+import type { KcContext } from "./KcContext";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Template from "./Template";
 
-const doMakeUserConfirmPassword = true
+const UserProfileFormFields = lazy(() => import("./UserProfileFormFields"));
+
+const doMakeUserConfirmPassword = true;
 
 export default function KcPage(props: { kcContext: KcContext }) {
-  const { kcContext } = props
+  const { kcContext } = props;
 
-  const { i18n } = useI18n({ kcContext })
+  const { i18n } = useI18n({ kcContext });
 
   return (
     <Suspense>
       {(() => {
         switch (kcContext.pageId) {
-          case 'login.ftl':
+          case "login.ftl":
             return (
               <Login
                 {...{ kcContext, i18n, classes }}
                 Template={Template}
                 doUseDefaultCss={true}
               />
-            )
-          case 'register.ftl':
+            );
+          case "register.ftl":
             return (
               <Register
                 {...{ kcContext, i18n, classes }}
@@ -39,7 +40,7 @@ export default function KcPage(props: { kcContext: KcContext }) {
                 UserProfileFormFields={UserProfileFormFields}
                 doMakeUserConfirmPassword={doMakeUserConfirmPassword}
               />
-            )
+            );
           default:
             return (
               <DefaultPage
@@ -51,11 +52,11 @@ export default function KcPage(props: { kcContext: KcContext }) {
                 UserProfileFormFields={UserProfileFormFields}
                 doMakeUserConfirmPassword={doMakeUserConfirmPassword}
               />
-            )
+            );
         }
       })()}
     </Suspense>
-  )
+  );
 }
 
-const classes = {} satisfies { [key in ClassKey]?: string }
+const classes = {} satisfies { [key in ClassKey]?: string };

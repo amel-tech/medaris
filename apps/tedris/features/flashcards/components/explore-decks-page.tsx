@@ -1,102 +1,107 @@
-'use client'
+"use client";
 
-import { useState, useMemo, useEffect, useRef } from 'react'
-import Link from 'next/link'
-import { useRouter, usePathname } from 'next/navigation'
-import { useTranslations } from 'next-intl'
-
-import { Input } from '@medaris/ui/components/input'
+import { MagnifyingGlassIcon } from "@medaris/icons";
+import type { FlashcardDeckResponse } from "@medaris/services/tedrisat";
+import { Input } from "@medaris/ui/components/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@medaris/ui/components/select'
-import { MagnifyingGlassIcon } from '@medaris/icons'
+} from "@medaris/ui/components/select";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useEffect, useMemo, useRef, useState } from "react";
+import DeckCard from "~/features/flashcards/components/deck/deck-card";
 
-import DeckCard from '~/features/flashcards/components/deck/deck-card'
-import type { FlashcardDeckResponse } from '@medaris/services/tedrisat'
+type SortOption = "title-asc" | "title-desc";
+type FilterOption = "all" | "public" | "private";
 
-type SortOption = 'title-asc' | 'title-desc'
-type FilterOption = 'all' | 'public' | 'private'
-
-const DECKS_PER_PAGE = 16
+const DECKS_PER_PAGE = 16;
 
 export function ExploreDecksPage({
   initialDecks,
   userDeckIds,
   filter,
 }: {
-  initialDecks: FlashcardDeckResponse[]
-  userDeckIds: string[]
-  filter: FilterOption
+  initialDecks: FlashcardDeckResponse[];
+  userDeckIds: string[];
+  filter: FilterOption;
 }) {
-  const t = useTranslations('tedris')
-  const router = useRouter()
-  const pathname = usePathname()
-  const [searchQuery, setSearchQuery] = useState('')
-  const [sortBy, setSortBy] = useState<SortOption>('title-asc')
-  const [displayedCount, setDisplayedCount] = useState(DECKS_PER_PAGE)
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery)
-  const observerTarget = useRef<HTMLDivElement>(null)
-  const userDeckIdsSet = useMemo(() => new Set(userDeckIds), [userDeckIds])
+  const t = useTranslations("tedris");
+  const router = useRouter();
+  const pathname = usePathname();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("title-asc");
+  const [displayedCount, setDisplayedCount] = useState(DECKS_PER_PAGE);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  const observerTarget = useRef<HTMLDivElement>(null);
+  const userDeckIdsSet = useMemo(() => new Set(userDeckIds), [userDeckIds]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery)
-    }, 300)
-    return () => clearTimeout(handler)
-  }, [searchQuery])
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   const filteredAndSortedDecks = useMemo(() => {
-    let filtered = [...initialDecks]
+    let filtered = [...initialDecks];
     if (debouncedSearchQuery.trim()) {
-      const query = debouncedSearchQuery.toLowerCase()
+      const query = debouncedSearchQuery.toLowerCase();
       filtered = filtered.filter((deck) => {
-        const titleMatch = deck.title?.toLowerCase().includes(query)
-        const descriptionMatch = deck.description?.toLowerCase().includes(query)
-        return titleMatch || descriptionMatch
-      })
+        const titleMatch = deck.title?.toLowerCase().includes(query);
+        const descriptionMatch = deck.description
+          ?.toLowerCase()
+          .includes(query);
+        return titleMatch || descriptionMatch;
+      });
     }
     filtered.sort((a, b) => {
-      const titleA = a.title?.toLowerCase() || ''
-      const titleB = b.title?.toLowerCase() || ''
-      if (sortBy === 'title-asc') {
-        return titleA.localeCompare(titleB)
+      const titleA = a.title?.toLowerCase() || "";
+      const titleB = b.title?.toLowerCase() || "";
+      if (sortBy === "title-asc") {
+        return titleA.localeCompare(titleB);
       }
-      return titleB.localeCompare(titleA)
-    })
-    return filtered
-  }, [initialDecks, debouncedSearchQuery, sortBy])
+      return titleB.localeCompare(titleA);
+    });
+    return filtered;
+  }, [initialDecks, debouncedSearchQuery, sortBy]);
 
   const displayedDecks = useMemo(() => {
-    return filteredAndSortedDecks.slice(0, displayedCount)
-  }, [filteredAndSortedDecks, displayedCount])
+    return filteredAndSortedDecks.slice(0, displayedCount);
+  }, [filteredAndSortedDecks, displayedCount]);
 
   useEffect(() => {
-    setDisplayedCount(DECKS_PER_PAGE)
-  }, [debouncedSearchQuery, sortBy, filter])
+    setDisplayedCount(DECKS_PER_PAGE);
+  }, [debouncedSearchQuery, sortBy, filter]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && displayedCount < filteredAndSortedDecks.length) {
-          setDisplayedCount(prev => Math.min(prev + DECKS_PER_PAGE, filteredAndSortedDecks.length))
+        if (
+          entries[0].isIntersecting &&
+          displayedCount < filteredAndSortedDecks.length
+        ) {
+          setDisplayedCount((prev) =>
+            Math.min(prev + DECKS_PER_PAGE, filteredAndSortedDecks.length)
+          );
         }
       },
-      { threshold: 0.1 },
-    )
-    const currentTarget = observerTarget.current
+      { threshold: 0.1 }
+    );
+    const currentTarget = observerTarget.current;
     if (currentTarget) {
-      observer.observe(currentTarget)
+      observer.observe(currentTarget);
     }
     return () => {
       if (currentTarget) {
-        observer.unobserve(currentTarget)
+        observer.unobserve(currentTarget);
       }
-    }
-  }, [displayedCount, filteredAndSortedDecks.length])
+    };
+  }, [displayedCount, filteredAndSortedDecks.length]);
 
   return (
     <div className="w-full">
@@ -108,80 +113,94 @@ export function ExploreDecksPage({
           />
           <Input
             type="text"
-            placeholder={t('ExploreDecksClient.searchPlaceholder')}
+            placeholder={t("ExploreDecksClient.searchPlaceholder")}
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
         <div className="flex gap-2">
-          <Select value={sortBy} onValueChange={value => setSortBy(value as SortOption)}>
+          <Select
+            value={sortBy}
+            onValueChange={(value) => setSortBy(value as SortOption)}
+          >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder={t('ExploreDecksClient.sortBy')} />
+              <SelectValue placeholder={t("ExploreDecksClient.sortBy")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="title-asc">{t('ExploreDecksClient.titleAsc')}</SelectItem>
-              <SelectItem value="title-desc">{t('ExploreDecksClient.titleDesc')}</SelectItem>
+              <SelectItem value="title-asc">
+                {t("ExploreDecksClient.titleAsc")}
+              </SelectItem>
+              <SelectItem value="title-desc">
+                {t("ExploreDecksClient.titleDesc")}
+              </SelectItem>
             </SelectContent>
           </Select>
           <Select
             value={filter}
             onValueChange={(value) => {
-              const next = value as FilterOption
-              const params = new URLSearchParams()
-              if (next !== 'all') params.set('filter', next)
-              const qs = params.toString()
-              router.push(qs ? `${pathname}?${qs}` : pathname)
+              const next = value as FilterOption;
+              const params = new URLSearchParams();
+              if (next !== "all") params.set("filter", next);
+              const qs = params.toString();
+              router.push(qs ? `${pathname}?${qs}` : pathname);
             }}
           >
             <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder={t('ExploreDecksClient.filter')} />
+              <SelectValue placeholder={t("ExploreDecksClient.filter")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{t('ExploreDecksClient.all')}</SelectItem>
-              <SelectItem value="public">{t('ExploreDecksClient.public')}</SelectItem>
-              <SelectItem value="private">{t('ExploreDecksClient.private')}</SelectItem>
+              <SelectItem value="all">{t("ExploreDecksClient.all")}</SelectItem>
+              <SelectItem value="public">
+                {t("ExploreDecksClient.public")}
+              </SelectItem>
+              <SelectItem value="private">
+                {t("ExploreDecksClient.private")}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
       <div className="mb-4 text-sm text-muted-foreground">
-        {filteredAndSortedDecks.length}
-        {' '}
-        {filteredAndSortedDecks.length === 1 ? t('ExploreDecksClient.deck') : t('ExploreDecksClient.decks')}
-        {' '}
-        {t('ExploreDecksClient.found')}
+        {filteredAndSortedDecks.length}{" "}
+        {filteredAndSortedDecks.length === 1
+          ? t("ExploreDecksClient.deck")
+          : t("ExploreDecksClient.decks")}{" "}
+        {t("ExploreDecksClient.found")}
       </div>
 
-      {displayedDecks.length > 0
-        ? (
-            <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6">
-              {displayedDecks.map(deck => (
-                <Link href={`/decks/${deck.id}`} key={deck.id}>
-                  <DeckCard
-                    deckId={deck.id}
-                    title={deck.title}
-                    description={deck.description}
-                    cardCount={0}
-                    isInCollection={userDeckIdsSet.has(deck.id)}
-                    isPublic={deck.isPublic}
-                  />
-                </Link>
-              ))}
-            </div>
-          )
-        : (
-            <div className="flex items-center justify-center py-12 text-muted-foreground">
-              <p>{t('ExploreDecksClient.noDecksFound')}</p>
-            </div>
-          )}
+      {displayedDecks.length > 0 ? (
+        <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6">
+          {displayedDecks.map((deck) => (
+            <Link href={`/decks/${deck.id}`} key={deck.id}>
+              <DeckCard
+                deckId={deck.id}
+                title={deck.title}
+                description={deck.description}
+                cardCount={0}
+                isInCollection={userDeckIdsSet.has(deck.id)}
+                isPublic={deck.isPublic}
+              />
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="flex items-center justify-center py-12 text-muted-foreground">
+          <p>{t("ExploreDecksClient.noDecksFound")}</p>
+        </div>
+      )}
 
       {displayedCount < filteredAndSortedDecks.length && (
-        <div ref={observerTarget} className="h-20 flex items-center justify-center">
-          <p className="text-sm text-muted-foreground">{t('ExploreDecksClient.loadingMore')}</p>
+        <div
+          ref={observerTarget}
+          className="h-20 flex items-center justify-center"
+        >
+          <p className="text-sm text-muted-foreground">
+            {t("ExploreDecksClient.loadingMore")}
+          </p>
         </div>
       )}
     </div>
-  )
+  );
 }

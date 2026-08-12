@@ -1,3 +1,4 @@
+import { AuthGuard } from "@medaris/common";
 import {
   Body,
   Controller,
@@ -12,7 +13,7 @@ import {
   Query,
   Req,
   UseGuards,
-} from '@nestjs/common';
+} from "@nestjs/common";
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
@@ -21,36 +22,35 @@ import {
   ApiOperation,
   ApiQuery,
   ApiTags,
-} from '@nestjs/swagger';
-import { AuthGuard } from '@medaris/common';
-import { KoskService } from './kosk.service';
-import { CreateKoskDto } from './dto/create-kosk.dto';
-import { UpdateKoskDto } from './dto/update-kosk.dto';
-import { KoskResponse } from './dto/kosk-response.dto';
-import { PaginatedKoskResponse } from './dto/paginated-kosk-response.dto';
-import { AuthorizedRequest } from './interfaces/authorized-request.interface';
+} from "@nestjs/swagger";
+import { CreateKoskDto } from "./dto/create-kosk.dto";
+import { KoskResponse } from "./dto/kosk-response.dto";
+import { PaginatedKoskResponse } from "./dto/paginated-kosk-response.dto";
+import { UpdateKoskDto } from "./dto/update-kosk.dto";
+import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
+import { KoskService } from "./kosk.service";
 
 const MAX_PAGE_SIZE = 50;
 
-@ApiTags('kosks')
+@ApiTags("kosks")
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
-@Controller('kosks')
+@Controller("kosks")
 export class KoskController {
   constructor(private readonly koskService: KoskService) {}
 
   @ApiOperation({
-    summary: 'Get a paginated list of köşks',
-    operationId: 'getAllKosks',
+    summary: "Get a paginated list of köşks",
+    operationId: "getAllKosks",
   })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: "page", required: false, type: Number })
+  @ApiQuery({ name: "limit", required: false, type: Number })
   @ApiOkResponse({ type: PaginatedKoskResponse })
   @Get()
   async findAll(
     @Req() request: AuthorizedRequest,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(12), ParseIntPipe) limit: number,
+    @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query("limit", new DefaultValuePipe(12), ParseIntPipe) limit: number
   ): Promise<PaginatedKoskResponse> {
     const safePage = page < 1 ? 1 : page;
     const safeLimit = Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
@@ -58,28 +58,28 @@ export class KoskController {
   }
 
   @ApiOperation({
-    summary: 'Get a köşk by ID',
-    operationId: 'getKoskById',
+    summary: "Get a köşk by ID",
+    operationId: "getKoskById",
   })
   @ApiOkResponse({ type: KoskResponse })
   @ApiNotFoundResponse()
-  @Get(':id')
+  @Get(":id")
   async findById(
     @Req() request: AuthorizedRequest,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskResponse> {
     return this.koskService.findById(id, request.user.sub);
   }
 
   @ApiOperation({
-    summary: 'Create a new köşk',
-    operationId: 'createKosk',
+    summary: "Create a new köşk",
+    operationId: "createKosk",
   })
   @ApiCreatedResponse({ type: KoskResponse })
   @Post()
   async create(
     @Req() request: AuthorizedRequest,
-    @Body() koskDto: CreateKoskDto,
+    @Body() koskDto: CreateKoskDto
   ): Promise<KoskResponse> {
     const ownerId = request.user.sub;
     const created = await this.koskService.create({ ownerId, ...koskDto });
@@ -87,58 +87,58 @@ export class KoskController {
   }
 
   @ApiOperation({
-    summary: 'Update a köşk',
-    operationId: 'updateKosk',
+    summary: "Update a köşk",
+    operationId: "updateKosk",
   })
   @ApiOkResponse({ type: KoskResponse })
   @ApiNotFoundResponse()
-  @Patch(':id')
+  @Patch(":id")
   async update(
     @Req() request: AuthorizedRequest,
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() koskDto: UpdateKoskDto,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() koskDto: UpdateKoskDto
   ): Promise<KoskResponse> {
     await this.koskService.update(id, request.user.sub, koskDto);
     return this.koskService.findById(id, request.user.sub);
   }
 
   @ApiOperation({
-    summary: 'Delete a köşk',
-    operationId: 'deleteKosk',
+    summary: "Delete a köşk",
+    operationId: "deleteKosk",
   })
   @ApiOkResponse({ type: Boolean })
   @ApiNotFoundResponse()
-  @Delete(':id')
+  @Delete(":id")
   async delete(
     @Req() request: AuthorizedRequest,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param("id", ParseUUIDPipe) id: string
   ): Promise<boolean> {
     return this.koskService.delete(id, request.user.sub);
   }
 
   @ApiOperation({
-    summary: 'Follow a köşk as the current talebe',
-    operationId: 'followKosk',
+    summary: "Follow a köşk as the current talebe",
+    operationId: "followKosk",
   })
   @ApiCreatedResponse({ type: Boolean })
   @ApiNotFoundResponse()
-  @Post(':id/follow')
+  @Post(":id/follow")
   async follow(
     @Req() request: AuthorizedRequest,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param("id", ParseUUIDPipe) id: string
   ): Promise<boolean> {
     return this.koskService.follow(request.user.sub, id);
   }
 
   @ApiOperation({
-    summary: 'Unfollow a köşk',
-    operationId: 'unfollowKosk',
+    summary: "Unfollow a köşk",
+    operationId: "unfollowKosk",
   })
   @ApiOkResponse({ type: Boolean })
-  @Delete(':id/follow')
+  @Delete(":id/follow")
   async unfollow(
     @Req() request: AuthorizedRequest,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param("id", ParseUUIDPipe) id: string
   ): Promise<boolean> {
     return this.koskService.unfollow(request.user.sub, id);
   }

@@ -1,15 +1,15 @@
-'use client'
+"use client";
 
-import { AppSidebar } from '~/components/layout/app-sidebar'
-import { Separator } from '@medaris/ui/components/separator'
+import { Separator } from "@medaris/ui/components/separator";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from '@medaris/ui/components/sidebar'
-import { Breadcrumbs } from './breadcrumbs'
+} from "@medaris/ui/components/sidebar";
+import { AppSidebar } from "~/components/layout/app-sidebar";
+import { Breadcrumbs } from "./breadcrumbs";
 
-import { routes } from './nav-routes'
+import { routes } from "./nav-routes";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -29,5 +29,5 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <main className="relative block mt-4">{children}</main>
       </SidebarInset>
     </SidebarProvider>
-  )
+  );
 }

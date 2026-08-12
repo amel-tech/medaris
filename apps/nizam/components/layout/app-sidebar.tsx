@@ -1,7 +1,4 @@
-import { useMemo } from 'react'
-
-import { NavMain } from '~/components/layout/nav-main'
-import { NavUser } from '~/components/layout/nav-user'
+import { MadrasahLogoIcon } from "@medaris/icons";
 import {
   Sidebar,
   SidebarContent,
@@ -10,37 +7,39 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@medaris/ui/components/sidebar'
-import { MadrasahLogoIcon } from '@medaris/icons'
-import { usePathname } from 'next/navigation'
-import Link from 'next/link'
-import { routes } from './nav-routes'
-import { useSession } from 'next-auth/react'
-import KeycloakLogin from '~/components/keycloak/login'
-import LocaleSwitcher from '../i18n/locale-switcher'
+} from "@medaris/ui/components/sidebar";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { useMemo } from "react";
+import KeycloakLogin from "~/components/keycloak/login";
+import { NavMain } from "~/components/layout/nav-main";
+import { NavUser } from "~/components/layout/nav-user";
+import LocaleSwitcher from "../i18n/locale-switcher";
+import { routes } from "./nav-routes";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const pathname = usePathname()
-  const { data } = useSession()
+  const pathname = usePathname();
+  const { data } = useSession();
 
   const navMain = useMemo(() => {
-    return routes.navMain.map(route => ({
+    return routes.navMain.map((route) => ({
       ...route,
       isActive: pathname.startsWith(route.url),
-      items: route.items?.map(subRoute => ({
+      items: route.items?.map((subRoute) => ({
         ...subRoute,
         isActive: pathname === subRoute.url,
       })),
-    }))
-  }, [pathname])
+    }));
+  }, [pathname]);
 
   const user = useMemo(() => {
-    return ({
-      name: data?.user?.name || '',
-      email: data?.user?.email || '',
-      avatar: data?.user?.picture || '',
-    })
-  }, [data])
+    return {
+      name: data?.user?.name || "",
+      email: data?.user?.email || "",
+      avatar: data?.user?.picture || "",
+    };
+  }, [data]);
 
   return (
     <Sidebar variant="inset" {...props}>
@@ -70,5 +69,5 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <LocaleSwitcher />
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }

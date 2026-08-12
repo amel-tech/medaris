@@ -1,10 +1,10 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { IsNumber, IsString } from "@nestjs/class-validator";
+import { ApiProperty } from "@nestjs/swagger";
+import { Scope } from "../domain/flashcard-label.enum";
 import {
   CreateFlashcardDeckLabelDto,
   CreateFlashcardDeckLabelingDto,
-} from './create-flashcard-deck-label.dto';
-import { IsNumber, IsString } from '@nestjs/class-validator';
-import { Scope } from '../domain/flashcard-label.enum';
+} from "./create-flashcard-deck-label.dto";
 export class FlashcardDeckCreateLabelResponse extends CreateFlashcardDeckLabelDto {
   @ApiProperty()
   @IsString()
