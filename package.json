@@ -19,13 +19,23 @@
     "format:check": "biome format .",
     "module-boundaries": "nx run-many -t module-boundaries",
     "affected": "nx affected -t typecheck test build lint module-boundaries",
-    "graph": "nx graph"
+    "graph": "nx graph",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,json,jsonc,css}": [
+      "biome check --write --no-errors-on-unmatched"
+    ]
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
+    "@commitlint/cli": "catalog:",
+    "@commitlint/config-conventional": "catalog:",
     "@nx/eslint": "catalog:",
     "@nx/eslint-plugin": "catalog:",
     "eslint": "catalog:",
+    "husky": "catalog:",
+    "lint-staged": "catalog:",
     "nx": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:"

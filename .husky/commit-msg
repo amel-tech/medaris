@@ -1,0 +1,7 @@
+# Enforce conventional commits, incl. the release-please scope-enum (MDRS-14).
+#
+# `pnpm exec`, not the pre-merge `npx --no --`: this workspace is pnpm-only and
+# npx resolves against a node_modules layout pnpm does not produce.
+# "$1" is quoted — the pre-merge hooks left it bare, which breaks on any
+# .git/COMMIT_EDITMSG path containing a space.
+pnpm exec commitlint --edit "$1"
