@@ -22,7 +22,8 @@
       "{workspaceRoot}/tsconfig.base.json",
       "{workspaceRoot}/tsconfig.json",
       "{workspaceRoot}/.nvmrc",
-      "{workspaceRoot}/.github/workflows/ci.yml",
+      "{workspaceRoot}/package.json",
+      "{workspaceRoot}/.github/workflows/ci.yaml",
       "{workspaceRoot}/vitest.config.ts",
       {
         "runtime": "cat .env*.local apps/*/.env*.local 2>/dev/null | shasum"
@@ -66,6 +67,10 @@
       "inputs": ["default", "^production"],
       "outputs": ["{projectRoot}/coverage", "{projectRoot}/test-results"],
       "cache": true
+    },
+    "depcheck": {
+      "cache": true,
+      "inputs": ["default", "{workspaceRoot}/.depcheckrc.json"]
     },
     "test:coverage": {
       "dependsOn": ["^build"],

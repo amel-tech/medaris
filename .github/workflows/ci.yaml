@@ -1,0 +1,195 @@
+name: CI
+
+# The single shared-CI surface for the monorepo (MDRS-15). Replaces four
+# inherited workflows: .migration/{backend,frontend}/.github/workflows/
+# pull-request.yaml and ci-dev.yaml.
+#
+# The two inherited pull-request.yaml files each ran lint + test + build over
+# their whole repo with `npm ci`. The two inherited ci-dev.yaml files contained
+# no CI at all — they were push-to-main Docker build/push + Coolify deploy jobs,
+# and that deploy surface is already covered by the seven per-app workflows in
+# this directory (same Dockerfiles, same registry, same webhook secrets), whose
+# trigger policy belongs to MDRS-16. So nothing from ci-dev.yaml is reproduced
+# here; this workflow owns the quality gates only.
+#
+# Deploys are NOT triggered from here.
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One in-flight run per PR; pushes to main are never cancelled because
+# nx-set-shas uses the last successful main run as the affected base.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Commit hygiene ─────────────────────────────────────────────────────────
+  # MDRS-14 wired commitlint into a local commit-msg hook, but no commit that
+  # reaches main is ever checked by it: main is updated by squash merge, and
+  # GitHub composes the squash commit message from the PR title server-side,
+  # where no local hook runs. Validating the PR title here is what actually
+  # gates main's history against commitlint.config.mjs.
+  commit-hygiene:
+    name: Commit hygiene
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # This is the message that will land on main.
+      - name: Lint PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s' "$PR_TITLE" | pnpm exec commitlint --verbose
+
+      - name: Lint commits in PR range
+        run: >-
+          pnpm exec commitlint --verbose
+          --from ${{ github.event.pull_request.base.sha }}
+          --to ${{ github.event.pull_request.head.sha }}
+
+  # ── Quality gates ──────────────────────────────────────────────────────────
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    # Cold Nx cache every run (see docs/migration/mdrs-15-ci-unification.md §3),
+    # so this is sized for a full 8-project build, not a cache hit.
+    timeout-minutes: 45
+    #
+    # Deliberately NO postgres service. The backend's inherited pull-request.yaml
+    # ran one, but nothing can use it: the 10 Jest suites in the `test` target
+    # need no database, and apps/tedrisat/test/helpers/test-app.helper.ts
+    # (`test:e2e`, not in this pipeline) starts its *own* Testcontainers
+    # postgres:17-alpine and overwrites DB_HOST/DB_PORT/DB_USERNAME/DB_PASSWORD/
+    # DB_NAME before AppModule loads — with different credentials
+    # (testuser/testpass/tedrisat_test) than the inherited service provided.
+    # Carrying it forward would have paid a container pull and health-check on
+    # every run for nothing. When MDRS-20 wires e2e in, what it needs is a Docker
+    # socket, which ubuntu-latest already has — not a service container.
+    steps:
+      # fetch-depth: 0 — nx affected needs real history to find a merge base.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Sets NX_BASE / NX_HEAD. On a PR that is the merge base with the target
+      # branch; on a push to main it is the last successful CI run on main.
+      # Pinned to a commit, not a tag: CodeQL's `actions` analysis flagged the
+      # floating `@v4` refs on this PR, and a mutable third-party ref is exactly
+      # the exposure that got the coverage-comment action dropped (§1). The
+      # first-party actions/* and github/codeql-action refs are left on tags, as
+      # the 7 deploy workflows have them — changing those is MDRS-16's surface.
+      - name: Derive nx affected SHAs
+        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Not optional: apps/nizam and apps/tedris validate env through
+      # @t3-oss/env-nextjs at build time, so `nx run-many -t build` fails on a
+      # clean checkout with "Invalid environment variables" without this. The
+      # inherited frontend workflow did the same copy for three apps by hand;
+      # this loop covers every app that ships an example file.
+      - name: Seed app env files from examples
+        run: |
+          for example in apps/*/.env.example; do
+            target="${example%.example}"
+            if [ ! -f "$target" ]; then
+              cp "$example" "$target"
+              echo "seeded $target"
+            fi
+          done
+
+      # Workspace-root lint + warning ratchet. Covers the 13 root config files
+      # that no per-project `lint` target can see, and fails when Biome's
+      # warning/info counts grow. See tools/ci/biome-ratchet.mjs for the why.
+      - name: Lint workspace root (Biome ratchet)
+        run: node tools/ci/biome-ratchet.mjs
+
+      # Proves AC #2 on every PR: a leaf change in one stack must affect exactly
+      # its own project. This PR itself cannot demonstrate that (it edits
+      # sharedGlobals, so it correctly affects all 16 projects), so the property
+      # is asserted here instead of observed once.
+      - name: Assert nx affected isolates each stack
+        run: node tools/ci/assert-affected-isolation.mjs
+
+      # The five targets are kept identical to the root `affected` script so the
+      # local and CI gates cannot drift.
+      - name: Verify affected projects
+        run: >-
+          pnpm exec nx affected
+          -t lint typecheck test build module-boundaries
+
+      - name: Report affected projects
+        if: always()
+        run: |
+          echo "NX_BASE=$NX_BASE"
+          echo "NX_HEAD=$NX_HEAD"
+          echo '--- projects affected by this change ---'
+          pnpm exec nx show projects --affected || true
+
+  # ── Security gates ─────────────────────────────────────────────────────────
+  # Ported from the backend, where `security-check` existed but was commented
+  # out of its pull-request.yaml ("# disabled for now."). Running for real here.
+  security:
+    name: Security gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # One lockfile, so one audit at the root. Fails on any high/critical
+      # advisory that is not in audit-ci.json's dated allowlist.
+      - name: Audit dependencies
+        run: pnpm run audit:ci
+
+      # Unused/missing deps for the three projects that declare the target.
+      - name: Check for unused dependencies
+        run: pnpm run depcheck
