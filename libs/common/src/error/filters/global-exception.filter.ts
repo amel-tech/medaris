@@ -1,14 +1,14 @@
 import {
-  type ArgumentsHost,
+  ArgumentsHost,
   Catch,
-  type ExceptionFilter,
+  ExceptionFilter,
   HttpException,
   HttpStatus,
-  type LoggerService,
+  LoggerService,
 } from "@nestjs/common";
 import { MedarisError } from "../errors/base/medaris.error";
 import { RawBodyError } from "../errors/base/raw-body.error";
-import type { ErrorResponse } from "../types/error-response.type";
+import { ErrorResponse } from "../types/error-response.type";
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {

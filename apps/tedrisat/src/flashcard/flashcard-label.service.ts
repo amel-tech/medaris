@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import type { FlashcardLabelRepository } from "./flashcard-label.reporsitory";
-import type {
+import { FlashcardLabelRepository } from "./flashcard-label.reporsitory";
+import {
   ICreateFlashcardLabel,
   IFlashcardLabel,
   IFlashcardLabeling,

@@ -54,7 +54,6 @@ const weights = new Map<IconWeight, React.ReactElement>([
   ],
 ]);
 
-// @ts-expect-error
 export const MadrasahLogoIcon: Icon = React.forwardRef((props, ref) => (
   <SSRBase ref={ref} viewBox="0 0 48 48" {...props} weights={weights as any} />
 ));

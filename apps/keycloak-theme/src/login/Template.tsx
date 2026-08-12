@@ -111,12 +111,14 @@ export default function Template(
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <label
+                        {/* Not a <label>: it labels no control, it just prints
+                            the username Keycloak already attempted. */}
+                        <span
                           id="kc-attempted-username"
                           className="text-sm font-medium text-gray-700"
                         >
                           {auth.attemptedUsername}
-                        </label>
+                        </span>
                         <Badge variant="secondary" className="text-xs">
                           User
                         </Badge>

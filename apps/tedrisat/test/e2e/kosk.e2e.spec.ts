@@ -1,4 +1,4 @@
-import type { INestApplication } from "@nestjs/common";
+import { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
 import { kosks } from "../../src/database/schema/kosk.schema";

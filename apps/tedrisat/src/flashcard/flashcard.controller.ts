@@ -1,4 +1,4 @@
-import { AuthGuard, type ExcelService } from "@medaris/common";
+import { AuthGuard, ExcelService } from "@medaris/common";
 import {
   Body,
   Controller,
@@ -42,7 +42,7 @@ import {
 import { CardIncludeEnum } from "./domain/card-include.enum";
 import {
   FLASHCARD_EXCEL_CONFIG,
-  type FlashcardColumnDto,
+  FlashcardColumnDto,
 } from "./dto/config-excel.dto";
 import { CreateFlashcardDto } from "./dto/create-flashcard.dto";
 import { CreateFlashcardProgressDto } from "./dto/create-flashcard-progress.dto";
@@ -55,10 +55,10 @@ import { FlashcardResponse } from "./dto/flashcard-response.dto";
 import { UpdateFlashcardDto } from "./dto/update-flashcard.dto";
 import { BulkValidationError } from "./errors/bulk-validation.error";
 import { DeckNotFoundError } from "./errors/deck-not-found.error";
-import type { FlashcardService } from "./flashcard.service";
-import type { FlashcardBulkService } from "./flashcard-bulk.service";
-import type { FlashcardDeckService } from "./flashcard-deck.service";
-import type { AuthorizedRequest } from "./interfaces/authorized-request.interface";
+import { FlashcardService } from "./flashcard.service";
+import { FlashcardBulkService } from "./flashcard-bulk.service";
+import { FlashcardDeckService } from "./flashcard-deck.service";
+import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
 
 @ApiTags("flashcard-cards")
 @ApiBearerAuth()
@@ -354,7 +354,7 @@ export class FlashcardController {
       format
     );
 
-    if (cards == null || cards.length == 0)
+    if (cards == null || cards.length === 0)
       throw new HttpException(
         "The uploaded file contains no data rows. Please ensure the file has a header row and at least one data row.",
         HttpStatus.BAD_REQUEST

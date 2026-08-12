@@ -1,6 +1,6 @@
 // packages/shared/src/bootstrap/setup-middleware.ts
 
-import type { INestApplication, LoggerService } from "@nestjs/common";
+import { INestApplication, LoggerService } from "@nestjs/common";
 import compression from "compression";
 import helmet from "helmet";
 import { corsConfig } from "../config";

@@ -1,0 +1,10 @@
+# Commits that only reformat. `git blame` skips these when configured with:
+#
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# GitHub honours this file automatically. Add a SHA here only if the commit
+# changes no behaviour at all — a bulk formatter run, nothing else.
+
+# style(repo): biome format sweep — Biome 2.4.4 adoption, 493 files (MDRS-12).
+# See docs/migration/mdrs-12-biome.md §7.
+4c92fc4ef7ec42188ef44fd37167513ef06e7674

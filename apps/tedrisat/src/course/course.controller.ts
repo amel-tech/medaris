@@ -21,7 +21,7 @@ import {
   ApiOperation,
   ApiTags,
 } from "@nestjs/swagger";
-import type { CourseService } from "./course.service";
+import { CourseService } from "./course.service";
 import {
   CourseDetailResponse,
   CourseSummaryResponse,
@@ -29,10 +29,10 @@ import {
   EnrollmentResponse,
   PendingEnrollmentResponse,
 } from "./dto/course-response.dto";
-import type { CreateCourseDto } from "./dto/create-course.dto";
-import type { UpdateCourseDto } from "./dto/update-course.dto";
-import type { UpdateProgressDto } from "./dto/update-progress.dto";
-import type { AuthorizedRequest } from "./interfaces/authorized-request.interface";
+import { CreateCourseDto } from "./dto/create-course.dto";
+import { UpdateCourseDto } from "./dto/update-course.dto";
+import { UpdateProgressDto } from "./dto/update-progress.dto";
+import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
 
 @ApiTags("courses")
 @ApiBearerAuth()

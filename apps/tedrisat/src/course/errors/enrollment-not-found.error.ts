@@ -1,4 +1,4 @@
-import { type ErrorContext, NotFoundError } from "@medaris/common";
+import { ErrorContext, NotFoundError } from "@medaris/common";
 
 export class EnrollmentNotFoundError extends NotFoundError {
   static readonly code = "ENROLLMENT_NOT_FOUND";

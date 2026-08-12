@@ -1,4 +1,4 @@
-import type { ErrorContext } from "../../types";
+import { ErrorContext } from "../../types";
 
 export abstract class MedarisError extends Error {
   public readonly code: string;

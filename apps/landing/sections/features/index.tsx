@@ -47,10 +47,16 @@ export async function FeaturesSection() {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3 mt-auto">
-                    <button className="bg-white/5 border border-white/10 hover:bg-white/10 text-[10px] py-3 rounded-xl uppercase tracking-widest font-bold transition-colors">
+                    <button
+                      type="button"
+                      className="bg-white/5 border border-white/10 hover:bg-white/10 text-[10px] py-3 rounded-xl uppercase tracking-widest font-bold transition-colors"
+                    >
                       {t("mainCard.hard")}
                     </button>
-                    <button className="bg-secondary/20 border border-secondary/30 hover:bg-secondary/30 text-[10px] py-3 rounded-xl uppercase tracking-widest font-bold transition-colors text-secondary">
+                    <button
+                      type="button"
+                      className="bg-secondary/20 border border-secondary/30 hover:bg-secondary/30 text-[10px] py-3 rounded-xl uppercase tracking-widest font-bold transition-colors text-secondary"
+                    >
                       {t("mainCard.easy")}
                     </button>
                   </div>

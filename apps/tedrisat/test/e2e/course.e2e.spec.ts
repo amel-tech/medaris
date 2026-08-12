@@ -1,4 +1,4 @@
-import type { INestApplication } from "@nestjs/common";
+import { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { DatabaseService } from "../../src/database/database.service";

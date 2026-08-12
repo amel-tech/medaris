@@ -63,7 +63,10 @@ export async function PartnershipSection() {
                   );
                 })}
               </div>
-              <button className="bg-primary hover:bg-primary/95 text-white px-10 py-4 rounded-xl font-semibold shadow-lg shadow-primary/10 transition-all">
+              <button
+                type="button"
+                className="bg-primary hover:bg-primary/95 text-white px-10 py-4 rounded-xl font-semibold shadow-lg shadow-primary/10 transition-all"
+              >
                 {t("cta")}
               </button>
             </div>

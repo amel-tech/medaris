@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { and, eq, inArray, ne } from "drizzle-orm";
-import type { DatabaseService } from "../database/database.service";
+import { DatabaseService } from "../database/database.service";
 import {
   courseMuderris,
   courseResources,
@@ -9,7 +9,7 @@ import {
   enrollments,
   lessons,
 } from "../database/schema/course.schema";
-import type {
+import {
   ICourse,
   ICourseDetail,
   ICourseRepository,

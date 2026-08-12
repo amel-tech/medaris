@@ -1,15 +1,15 @@
-import type { ExcelService } from "@medaris/common";
+import { ExcelService } from "@medaris/common";
 import { plainToClass } from "@nestjs/class-transformer";
 import { validate } from "@nestjs/class-validator";
 import { Injectable } from "@nestjs/common";
 import { FLASHCARD_EXCEL_CONFIG } from "./dto/config-excel.dto";
 import { CreateFlashcardDto } from "./dto/create-flashcard.dto";
 import {
-  type BulkFlashcardResponse,
+  BulkFlashcardResponse,
   flattenValidationErrors,
-  type RowError,
+  RowError,
 } from "./dto/flashcard-bulk-response.dto";
-import type { FlashcardService } from "./flashcard.service";
+import { FlashcardService } from "./flashcard.service";
 
 export type BulkAddResult =
   | { success: true; data: BulkFlashcardResponse }

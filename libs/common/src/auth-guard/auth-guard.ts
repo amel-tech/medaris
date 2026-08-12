@@ -1,13 +1,13 @@
 // auth/auth.guard.ts
 import {
-  type CanActivate,
-  type ExecutionContext,
+  CanActivate,
+  ExecutionContext,
   Inject,
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
 import { JWT_VERIFIER } from "./auth-guard.tokens";
-import type { IJwtVerifier } from "./interfaces/jwt-verifier.interface";
+import { IJwtVerifier } from "./interfaces/jwt-verifier.interface";
 
 @Injectable()
 export class AuthGuard implements CanActivate {

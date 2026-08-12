@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsNumber, IsString } from "class-validator";
-import type { Scope } from "../domain/flashcard-label.enum";
+import { Scope } from "../domain/flashcard-label.enum";
 import {
   CreateFlashcardLabelDto,
   CreateFlashcardLabelingDto,

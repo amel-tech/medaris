@@ -1,9 +1,9 @@
 // excel.service.ts
 
 import { Injectable, StreamableFile } from "@nestjs/common";
-import { Workbook, type Worksheet } from "exceljs";
+import { Workbook, Worksheet } from "exceljs";
 import { Readable, Writable } from "stream";
-import type {
+import {
   ExcelColumnConfig,
   ExcelSheetConfig,
 } from "./interfaces/excel-column.interface";

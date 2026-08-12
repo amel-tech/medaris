@@ -90,7 +90,10 @@ export async function FooterSection() {
                 placeholder={t("development.placeholder")}
                 type="email"
               />
-              <button className="px-5 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/90 transition-colors">
+              <button
+                type="button"
+                className="px-5 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/90 transition-colors"
+              >
                 {t("development.buttonLabel")}
               </button>
             </div>

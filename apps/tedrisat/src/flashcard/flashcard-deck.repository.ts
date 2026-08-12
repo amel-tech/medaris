@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { and, eq, exists, or, type SQL } from "drizzle-orm";
-import type { DatabaseService } from "../database/database.service";
+import { and, eq, exists, or, SQL } from "drizzle-orm";
+import { DatabaseService } from "../database/database.service";
 import { decks, decksUsers } from "../database/schema/flashcard-deck.schema";
-import type {
+import {
   ICreateFlashcardDeck,
   IFlashcardDeck,
   IFlashcardDeckFilters,

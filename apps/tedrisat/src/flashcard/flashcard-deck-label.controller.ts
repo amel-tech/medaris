@@ -10,7 +10,7 @@ import {
   FlashcardDeckLabelingResponse,
   FlashcardDeckLabelResponse,
 } from "./dto/flashcard-deck-label-response.dto";
-import type { FlashcardDeckLabelService } from "./flashcard-deck-label.service";
+import { FlashcardDeckLabelService } from "./flashcard-deck-label.service";
 
 @Controller("flashcard-deck-label")
 export class FlashcardDeckLabelController {

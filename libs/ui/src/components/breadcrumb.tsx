@@ -51,6 +51,8 @@ function BreadcrumbLink({
 
 function BreadcrumbPage({ className, ...props }: React.ComponentProps<"span">) {
   return (
+    // biome-ignore lint/a11y/useFocusableInteractive: shadcn/ui's breadcrumb-page is deliberately not focusable — it marks the current page, which is not a navigation target
+    // biome-ignore lint/a11y/useSemanticElements: an <a> here would be a link to the page you are already on; changing it diverges from upstream shadcn/ui for no user benefit
     <span
       data-slot="breadcrumb-page"
       role="link"

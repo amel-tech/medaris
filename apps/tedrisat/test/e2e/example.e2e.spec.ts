@@ -1,7 +1,7 @@
-import type { INestApplication } from "@nestjs/common";
+import { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
-import type { CreateExampleDto } from "../../src/example/dto/create-example.dto";
+import { CreateExampleDto } from "../../src/example/dto/create-example.dto";
 import { createTestApp } from "../helpers/test-app.helper";
 
 describe("ExampleController (e2e)", () => {

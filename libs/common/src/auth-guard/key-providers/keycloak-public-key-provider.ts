@@ -1,9 +1,9 @@
-import { Inject, Injectable, type OnModuleInit } from "@nestjs/common";
-import type { ConfigService } from "@nestjs/config";
+import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { ICACHE } from "../auth-guard.tokens";
 import { KeyNotFoundError } from "../exceptions/exceptions";
-import type { ICache } from "../interfaces/cache.interface";
-import type { IPublicKeyProvider } from "../interfaces/public-key-provider.interface";
+import { ICache } from "../interfaces/cache.interface";
+import { IPublicKeyProvider } from "../interfaces/public-key-provider.interface";
 
 interface Jwk {
   kid: string;

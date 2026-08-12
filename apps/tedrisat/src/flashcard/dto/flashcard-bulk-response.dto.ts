@@ -1,6 +1,6 @@
 import { ErrorResponse } from "@medaris/common";
 import { ApiProperty, OmitType } from "@nestjs/swagger";
-import type { ValidationError } from "class-validator";
+import { ValidationError } from "class-validator";
 
 export class FieldError {
   @ApiProperty({ example: "front" })

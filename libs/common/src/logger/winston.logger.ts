@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import * as winston from "winston";
-import { type ILogger, type LoggerConfig, LogLevel } from "./logger.interface";
+import { ILogger, LoggerConfig, LogLevel } from "./logger.interface";
 
 @Injectable()
 export class WinstonLogger implements ILogger {

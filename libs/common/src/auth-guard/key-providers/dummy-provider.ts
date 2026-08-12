@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type { IPublicKeyProvider } from "../interfaces/public-key-provider.interface";
+import { IPublicKeyProvider } from "../interfaces/public-key-provider.interface";
 
 @Injectable()
 export class DummyPublicKeyProvider implements IPublicKeyProvider {

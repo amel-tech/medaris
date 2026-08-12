@@ -10,7 +10,7 @@ import {
   FlashcardLabelResponse,
   labelStatsResponse,
 } from "./dto/flashcard-label-response.dto";
-import type { FlashcardLabelService } from "./flashcard-label.service";
+import { FlashcardLabelService } from "./flashcard-label.service";
 @Controller("flashcard-label")
 export class FlashcardlabelController {
   constructor(private readonly labelService: FlashcardLabelService) {}

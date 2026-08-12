@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import type { FlashcardDeckLabelRepository } from "./flashcard-deck-label.repository";
-import type {
+import { FlashcardDeckLabelRepository } from "./flashcard-deck-label.repository";
+import {
   ICreateFlashcardDeckLabel,
   IFlashcardDeckLabel,
   IFlashcardDeckLabeling,

@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { eq, sql } from "drizzle-orm";
-import type { DatabaseService } from "../database/database.service";
+import { DatabaseService } from "../database/database.service";
 import { flashcardProgress, flashcards } from "../database/schema";
 import { CardIncludeEnum } from "./domain/card-include.enum";
-import type {
+import {
   ICreateFlashcard,
   ICreateFlashcardProgress,
   IFlashcard,

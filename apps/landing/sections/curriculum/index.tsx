@@ -15,6 +15,7 @@ export async function CurriculumSection() {
           <div className="flex flex-wrap justify-center gap-3 mt-8">
             {curriculumFilters.map((filter, index) => (
               <button
+                type="button"
                 key={filter}
                 className={
                   index === 0

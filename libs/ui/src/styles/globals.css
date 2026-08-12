@@ -1,12 +1,14 @@
 @import url("https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
 
+/* All @import rules must precede every other at-rule, @source included —
+   otherwise the later imports are invalid CSS and get dropped. */
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "@medaris/tokens/css";
+
 @source "../../../apps/**/*.{ts,tsx}";
 @source "../../../components/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
-
-@import "tw-animate-css";
-@import "@medaris/tokens/css";
 
 @custom-variant dark (&:is(.dark *));
 

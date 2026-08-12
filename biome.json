@@ -28,6 +28,7 @@
       "!apps/keycloak-theme/public/keycloakify-dev-resources",
       "!libs/services/src/**/generated",
       "!libs/services/swagger-docs",
+      "!libs/tokens/theme/main.css",
       "!**/pnpm-lock.yaml",
       "!**/*.min.js",
       "!**/*.min.css"
@@ -77,5 +78,35 @@
     "parser": {
       "tailwindDirectives": true
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "apps/tedrisat/**/*.ts",
+        "apps/teskilat/**/*.ts",
+        "libs/common/**/*.ts"
+      ],
+      "formatter": {
+        "enabled": true,
+        "indentStyle": "space",
+        "indentWidth": 2,
+        "lineWidth": 80
+      },
+      "javascript": {
+        "formatter": {
+          "quoteStyle": "double",
+          "trailingCommas": "es5",
+          "arrowParentheses": "always",
+          "semicolons": "always"
+        }
+      },
+      "linter": {
+        "rules": {
+          "style": {
+            "useImportType": "off"
+          }
+        }
+      }
+    }
+  ]
 }

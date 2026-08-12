@@ -1,12 +1,12 @@
 import { Injectable } from "@nestjs/common";
 import { eq, sql } from "drizzle-orm";
-import type { DatabaseService } from "../database/database.service";
+import { DatabaseService } from "../database/database.service";
 import {
   flashcardLabelings,
   flashcardLabelStats,
   flashcardLabels,
 } from "../database/schema/flashcard-label.schema";
-import type {
+import {
   ICreateFlashcardLabel,
   IFlashcardLabel,
   IFlashcardLabeling,

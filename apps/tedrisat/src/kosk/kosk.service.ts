@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { KoskForbiddenError } from "./errors/kosk-forbidden.error";
 import { KoskNotFoundError } from "./errors/kosk-not-found.error";
-import type { KoskRepository } from "./kosk.repository";
-import type {
+import { KoskRepository } from "./kosk.repository";
+import {
   ICreateKosk,
   IKosk,
   IKoskWithStats,

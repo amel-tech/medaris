@@ -1,6 +1,6 @@
-import type { CardIncludeEnum } from "./domain/card-include.enum";
-import type { FlashcardProgressStatus } from "./domain/flashcard-progress-status.enum";
-import type { FlashcardType } from "./domain/flashcard-type.enum";
+import { CardIncludeEnum } from "./domain/card-include.enum";
+import { FlashcardProgressStatus } from "./domain/flashcard-progress-status.enum";
+import { FlashcardType } from "./domain/flashcard-type.enum";
 
 export interface IFlashcard {
   id: string;

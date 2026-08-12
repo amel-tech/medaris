@@ -35,8 +35,8 @@ import { CreateFlashcardDeckDto } from "./dto/create-flashcard-deck.dto";
 import { FlashcardDeckResponse } from "./dto/flashcard-deck-response.dto";
 import { FlashcardDeckUserResponse } from "./dto/flashcard-deck-user-response.dto";
 import { UpdateFlashcardDeckDto } from "./dto/update-flashcard-deck.dto";
-import type { FlashcardDeckService } from "./flashcard-deck.service";
-import type { AuthorizedRequest } from "./interfaces/authorized-request.interface";
+import { FlashcardDeckService } from "./flashcard-deck.service";
+import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
 
 export enum DeckIncludeEnum {}
 // Tags = 'tags',

@@ -4,11 +4,11 @@ import {
   LoggerFactory,
   MedarisValidationPipe,
 } from "@medaris/common";
-import type { ExecutionContext, INestApplication } from "@nestjs/common";
-import { Test, type TestingModule } from "@nestjs/testing";
+import { ExecutionContext, INestApplication } from "@nestjs/common";
+import { Test, TestingModule } from "@nestjs/testing";
 import {
   PostgreSqlContainer,
-  type StartedPostgreSqlContainer,
+  StartedPostgreSqlContainer,
 } from "@testcontainers/postgresql";
 import { join } from "path";
 

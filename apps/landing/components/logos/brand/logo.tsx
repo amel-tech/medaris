@@ -11,12 +11,19 @@ export interface BrandLogoProps
   extends Omit<ComponentPropsWithoutRef<"svg">, "width" | "height"> {
   readonly width?: number | string;
   readonly height?: number | string;
+  /**
+   * Accessible name, rendered as the <title> child. Pass aria-hidden="true"
+   * instead when the mark sits next to the brand name in text, so screen
+   * readers do not announce it twice.
+   */
+  readonly title?: string;
 }
 
 export function BrandLogo({
   width = 45,
   height = 45,
   className,
+  title = "Medaris",
   ...props
 }: BrandLogoProps) {
   return (
@@ -29,6 +36,7 @@ export function BrandLogo({
       className={className}
       {...props}
     >
+      <title>{title}</title>
       <g filter="url(#filter0_dd_1209_2592)">
         <rect
           x="2.34204"

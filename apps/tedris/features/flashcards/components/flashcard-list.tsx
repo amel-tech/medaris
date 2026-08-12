@@ -67,6 +67,7 @@ export default function FlashCardList({ cards }: FlashCardListProps) {
 
       <div className="mt-4 flex items-center justify-between">
         <button
+          type="button"
           onClick={handlePrevious}
           className="rounded-full p-2 transition-colors hover:bg-gray-100"
         >
@@ -78,6 +79,7 @@ export default function FlashCardList({ cards }: FlashCardListProps) {
           {cards.length}
         </span>
         <button
+          type="button"
           onClick={handleNext}
           className="rounded-full p-2 transition-colors hover:bg-gray-100"
         >

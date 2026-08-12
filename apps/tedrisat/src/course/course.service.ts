@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import type { KoskService } from "../kosk/kosk.service";
-import type { CourseRepository } from "./course.repository";
-import type {
+import { KoskService } from "../kosk/kosk.service";
+import { CourseRepository } from "./course.repository";
+import {
   ICourse,
   ICourseDetail,
   ICourseSummary,

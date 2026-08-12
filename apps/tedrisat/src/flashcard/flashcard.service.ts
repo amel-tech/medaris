@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { CardIncludeEnum } from "./domain/card-include.enum";
-import type { CreateFlashcardDto } from "./dto/create-flashcard.dto";
-import type { CreateFlashcardProgressDto } from "./dto/create-flashcard-progress.dto";
-import type { FlashcardRepository } from "./flashcard.repository";
-import type {
+import { CreateFlashcardDto } from "./dto/create-flashcard.dto";
+import { CreateFlashcardProgressDto } from "./dto/create-flashcard-progress.dto";
+import { FlashcardRepository } from "./flashcard.repository";
+import {
   ICreateFlashcard,
   IFlashcard,
   IFlashcardProgress,

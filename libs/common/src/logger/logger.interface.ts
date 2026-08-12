@@ -1,4 +1,4 @@
-import type { LoggerService } from "@nestjs/common";
+import { LoggerService } from "@nestjs/common";
 
 export interface ILogger extends LoggerService {
   log(message: string, data?: any): void;

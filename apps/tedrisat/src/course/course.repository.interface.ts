@@ -1,7 +1,7 @@
-import type { CourseLevel } from "./domain/course-level.enum";
-import type { CourseStatus } from "./domain/course-status.enum";
-import type { EnrollmentStatus } from "./domain/enrollment-status.enum";
-import type { LessonType } from "./domain/lesson-type.enum";
+import { CourseLevel } from "./domain/course-level.enum";
+import { CourseStatus } from "./domain/course-status.enum";
+import { EnrollmentStatus } from "./domain/enrollment-status.enum";
+import { LessonType } from "./domain/lesson-type.enum";
 
 /** One step of a live lesson's müzakere akışı (agenda). */
 export interface IAgendaStep {

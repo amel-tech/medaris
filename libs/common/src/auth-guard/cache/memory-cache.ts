@@ -1,7 +1,7 @@
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import type { Cache } from "cache-manager";
-import type { ICache } from "../interfaces/cache.interface";
+import { Cache } from "cache-manager";
+import { ICache } from "../interfaces/cache.interface";
 
 @Injectable()
 export class MemoryCache implements ICache<string> {

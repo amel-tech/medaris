@@ -23,12 +23,12 @@ import {
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
-import type { CreateKoskDto } from "./dto/create-kosk.dto";
+import { CreateKoskDto } from "./dto/create-kosk.dto";
 import { KoskResponse } from "./dto/kosk-response.dto";
 import { PaginatedKoskResponse } from "./dto/paginated-kosk-response.dto";
-import type { UpdateKoskDto } from "./dto/update-kosk.dto";
-import type { AuthorizedRequest } from "./interfaces/authorized-request.interface";
-import type { KoskService } from "./kosk.service";
+import { UpdateKoskDto } from "./dto/update-kosk.dto";
+import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
+import { KoskService } from "./kosk.service";
 
 const MAX_PAGE_SIZE = 50;
 

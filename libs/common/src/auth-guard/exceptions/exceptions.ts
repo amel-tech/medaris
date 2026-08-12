@@ -1,5 +1,5 @@
 import { UnauthorizedError } from "../../error";
-import type { ErrorContext } from "../../error/types";
+import { ErrorContext } from "../../error/types";
 
 abstract class JwtAuthError extends UnauthorizedError {
   protected constructor(code: string, message: string, context?: ErrorContext) {

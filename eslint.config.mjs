@@ -23,6 +23,7 @@ export default [
       "apps/keycloak-theme/.keycloakify/**",
       "libs/services/src/**/generated/**",
       "libs/services/swagger-docs/**",
+      "libs/tokens/theme/**",
     ],
   },
   {

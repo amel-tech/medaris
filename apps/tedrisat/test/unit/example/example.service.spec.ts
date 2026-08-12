@@ -1,7 +1,7 @@
-import { Test, type TestingModule } from "@nestjs/testing";
-import type { CreateExampleDto } from "../../../src/example/dto/create-example.dto";
+import { Test, TestingModule } from "@nestjs/testing";
+import { CreateExampleDto } from "../../../src/example/dto/create-example.dto";
 import { ExampleNotFoundError } from "../../../src/example/errors/example-not-found.error";
-import type { IExample } from "../../../src/example/example.interface";
+import { IExample } from "../../../src/example/example.interface";
 import { ExampleRepository } from "../../../src/example/example.repository";
 import { ExampleService } from "../../../src/example/example.service";
 

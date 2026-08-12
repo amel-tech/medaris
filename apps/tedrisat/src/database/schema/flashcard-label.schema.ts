@@ -1,6 +1,6 @@
 import { relations } from "drizzle-orm";
 import { integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import type { Scope } from "../../flashcard/domain/flashcard-label.enum";
+import { Scope } from "../../flashcard/domain/flashcard-label.enum";
 import { flashcards } from "./flashcard.schema";
 export const flashcardLabels = pgTable("flashcard_labels", {
   id: uuid("id").primaryKey().defaultRandom(),

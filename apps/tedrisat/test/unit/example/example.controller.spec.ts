@@ -1,7 +1,7 @@
 import { MedarisResponse } from "@medaris/common";
-import { Test, type TestingModule } from "@nestjs/testing";
-import type { CreateExampleDto } from "../../../src/example/dto/create-example.dto";
-import type { ExampleResponseDto } from "../../../src/example/dto/example-response.dto";
+import { Test, TestingModule } from "@nestjs/testing";
+import { CreateExampleDto } from "../../../src/example/dto/create-example.dto";
+import { ExampleResponseDto } from "../../../src/example/dto/example-response.dto";
 import { ExampleController } from "../../../src/example/example.controller";
 import { ExampleService } from "../../../src/example/example.service";
 

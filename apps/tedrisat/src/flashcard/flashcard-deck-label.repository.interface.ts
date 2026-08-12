@@ -1,4 +1,4 @@
-import type { Scope } from "./domain/flashcard-label.enum";
+import { Scope } from "./domain/flashcard-label.enum";
 
 export interface IFlashcardDeckLabel {
   id: string;

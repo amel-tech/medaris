@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { eq } from "drizzle-orm";
-import type { DatabaseService } from "../database/database.service";
-import { examples, type NewExample } from "../database/schema/example.schema";
-import type {
+import { DatabaseService } from "../database/database.service";
+import { examples, NewExample } from "../database/schema/example.schema";
+import {
   ICreateExample,
   IExample,
   IExampleRepository,

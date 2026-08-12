@@ -1,6 +1,6 @@
-import { Test, type TestingModule } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
 import { DatabaseService } from "../../../src/database/database.service";
-import type {
+import {
   ICreateExample,
   IExample,
 } from "../../../src/example/example.interface";

@@ -60,10 +60,8 @@ try {
 
   // Parse all CSS variables
   const variableRegex = /--([^:]+):\s*([^;]+);/g;
-  let match;
 
-  while ((match = variableRegex.exec(themeContent)) !== null) {
-    const [, name, value] = match;
+  for (const [, name, value] of themeContent.matchAll(variableRegex)) {
     tokens.set(name.trim(), value.trim());
   }
 

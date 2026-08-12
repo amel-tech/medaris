@@ -1,4 +1,4 @@
-import type { DatabaseService } from "../../src/database/database.service";
+import { DatabaseService } from "../../src/database/database.service";
 
 /**
  * Utility class for managing test database operations

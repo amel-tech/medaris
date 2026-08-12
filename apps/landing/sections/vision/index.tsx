@@ -77,7 +77,10 @@ export async function VisionSection() {
                   {t("bottomRight.description")}
                 </p>
               </div>
-              <button className="relative z-10 bg-white text-[#c4a747] px-8 py-3 rounded-xl font-bold text-sm whitespace-nowrap shadow-lg hover:shadow-xl transition-all">
+              <button
+                type="button"
+                className="relative z-10 bg-white text-[#c4a747] px-8 py-3 rounded-xl font-bold text-sm whitespace-nowrap shadow-lg hover:shadow-xl transition-all"
+              >
                 {t("bottomRight.cta")}
               </button>
             </div>

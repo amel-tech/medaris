@@ -101,6 +101,7 @@ export default function FlashCardContent({
 
   return (
     <div className="relative" style={{ perspective: "1000px" }}>
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: the touch/mouse handlers are a gesture surface; keyboard flipping is already served by the window-level keydown listener above, so an interactive role here would only add a duplicate tab stop */}
       <div
         className={`w-full transition-transform duration-500 ease-in-out ${flipped ? "rotate-y-180" : ""}`}
         style={{

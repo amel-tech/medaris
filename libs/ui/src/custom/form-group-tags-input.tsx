@@ -1,4 +1,3 @@
-import React from "react";
 import type { Control, FieldValues, Path } from "react-hook-form";
 import { Label } from "../components/label";
 import { cn } from "../lib/utils";

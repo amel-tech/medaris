@@ -1,12 +1,12 @@
-import { type ILogger, LOGGER } from "@medaris/common";
+import { ILogger, LOGGER } from "@medaris/common";
 import {
   Inject,
   Injectable,
-  type OnModuleDestroy,
-  type OnModuleInit,
+  OnModuleDestroy,
+  OnModuleInit,
 } from "@nestjs/common";
-import type { ConfigService } from "@nestjs/config";
-import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import { ConfigService } from "@nestjs/config";
+import { drizzle, NodePgDatabase } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { join } from "path";
 import { Pool } from "pg";

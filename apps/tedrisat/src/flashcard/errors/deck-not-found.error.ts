@@ -1,4 +1,4 @@
-import { type ErrorContext, NotFoundError } from "@medaris/common";
+import { ErrorContext, NotFoundError } from "@medaris/common";
 
 export class DeckNotFoundError extends NotFoundError {
   static readonly code = "DECK_NOT_FOUND";

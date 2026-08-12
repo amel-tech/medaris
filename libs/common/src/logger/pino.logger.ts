@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import pino from "pino";
-import { type ILogger, type LoggerConfig, LogLevel } from "./logger.interface";
+import { ILogger, LoggerConfig, LogLevel } from "./logger.interface";
 
 @Injectable()
 export class PinoLogger implements ILogger {

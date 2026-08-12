@@ -1,4 +1,4 @@
-import type { ErrorContext } from "../../types";
+import { ErrorContext } from "../../types";
 import { MedarisError } from "./medaris.error";
 
 export class BadRequestError extends MedarisError {

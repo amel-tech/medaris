@@ -315,6 +315,7 @@ const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
 
     return (
       <div className="relative">
+        {/* biome-ignore lint/a11y/useSemanticElements: cannot be a <button> — it wraps the tag badges and the text <input> it focuses, and a button may not contain form controls */}
         <div
           ref={ref}
           data-slot="tags-input"

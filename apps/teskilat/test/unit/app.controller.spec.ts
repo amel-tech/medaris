@@ -1,5 +1,5 @@
 import { LoggerModule } from "@medaris/common";
-import { Test, type TestingModule } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
 import { AppController } from "../../src/app.controller";
 import { AppService } from "../../src/app.service";
 

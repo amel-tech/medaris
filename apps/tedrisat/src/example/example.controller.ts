@@ -17,9 +17,9 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
-import type { CreateExampleDto } from "./dto/create-example.dto";
-import type { ExampleResponseDto } from "./dto/example-response.dto";
-import type { ExampleService } from "./example.service";
+import { CreateExampleDto } from "./dto/create-example.dto";
+import { ExampleResponseDto } from "./dto/example-response.dto";
+import { ExampleService } from "./example.service";
 
 @ApiTags("Examples")
 @Controller("examples")

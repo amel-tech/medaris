@@ -6,8 +6,8 @@ import {
   JwtMissingKidError,
   JwtVerificationError,
 } from "../exceptions/exceptions";
-import type { IJwtVerifier } from "../interfaces/jwt-verifier.interface";
-import type { IPublicKeyProvider } from "../interfaces/public-key-provider.interface";
+import { IJwtVerifier } from "../interfaces/jwt-verifier.interface";
+import { IPublicKeyProvider } from "../interfaces/public-key-provider.interface";
 
 @Injectable()
 export class JwtVerifierService implements IJwtVerifier {

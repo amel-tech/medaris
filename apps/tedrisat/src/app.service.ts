@@ -1,4 +1,4 @@
-import { HealthCheckDto, type ILogger, LOGGER } from "@medaris/common";
+import { HealthCheckDto, ILogger, LOGGER } from "@medaris/common";
 import { Inject, Injectable } from "@nestjs/common";
 import { configuration } from "./config";
 

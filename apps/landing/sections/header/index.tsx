@@ -76,11 +76,17 @@ function LanguageSelector() {
   return (
     <div className="relative">
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-primary hover:text-primary transition-colors"
       >
         {localeLabels[locale] ?? locale.toUpperCase()}
-        <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+        <svg
+          className="w-3 h-3"
+          viewBox="0 0 12 12"
+          fill="none"
+          aria-hidden="true"
+        >
           <path
             d="M3 5l3 3 3-3"
             stroke="currentColor"
@@ -92,6 +98,8 @@ function LanguageSelector() {
       </button>
       {isOpen && (
         <>
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: click-outside scrim; making it a <button> paints the browser's default button background over the page */}
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: dismissal wants an Escape handler on the menu, not a key handler on the scrim — a UX change, not a lint fix (MDRS-12 §10) */}
           <div
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
@@ -99,6 +107,7 @@ function LanguageSelector() {
           <div className="absolute right-0 top-full mt-2 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50 min-w-[80px]">
             {locales.map((l) => (
               <button
+                type="button"
                 key={l}
                 onClick={() => handleLocaleChange(l)}
                 className={cn(
@@ -204,6 +213,7 @@ export function HeaderSection() {
               {t("cta")}
             </Link>
             <button
+              type="button"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="md:hidden p-2 -me-2 focus:outline-none"
               aria-label="Toggle menu"

@@ -1,4 +1,4 @@
-import type { ErrorContext } from "../types";
+import { ErrorContext } from "../types";
 import { BadRequestError } from "./base/bad-request.error";
 
 export class ValidationError extends BadRequestError {

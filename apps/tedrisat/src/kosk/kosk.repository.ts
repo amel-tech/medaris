@@ -1,13 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { and, desc, eq, sql } from "drizzle-orm";
-import type { DatabaseService } from "../database/database.service";
+import { DatabaseService } from "../database/database.service";
 import {
   courseMuderris,
   courses,
   enrollments,
 } from "../database/schema/course.schema";
 import { koskFollowers, kosks } from "../database/schema/kosk.schema";
-import type {
+import {
   ICreateKosk,
   IKosk,
   IKoskRepository,

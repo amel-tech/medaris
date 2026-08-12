@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import type { MedarisMetaResponse } from "./medaris-meta.response";
+import { MedarisMetaResponse } from "./medaris-meta.response";
 
 export class MedarisResponse<T = unknown> {
   @ApiProperty({

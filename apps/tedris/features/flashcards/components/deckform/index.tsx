@@ -70,13 +70,16 @@ function DeckForm({ id }: IDeckFormProps) {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className="flex justify-between items-center mb-4">
-            <div
+            {/* type="button" matters: this sits inside the deck <form>, so the
+                default type="submit" would have saved instead of going back. */}
+            <button
+              type="button"
               onClick={() => router.back()}
               className="cursor-pointer flex items-center gap-2"
             >
               <CaretLeftIcon />
               {t("DeckForm.back")}
-            </div>
+            </button>
             <Button type="submit">{t("DeckForm.save")}</Button>
           </div>
 

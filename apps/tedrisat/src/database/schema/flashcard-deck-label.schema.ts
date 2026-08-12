@@ -6,7 +6,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import type { Scope } from "../../flashcard/domain/flashcard-label.enum";
+import { Scope } from "../../flashcard/domain/flashcard-label.enum";
 import { decks } from "./flashcard-deck.schema";
 
 // Tables
