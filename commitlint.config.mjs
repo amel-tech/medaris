@@ -7,11 +7,14 @@
  * `export default`, qauth `.mjs`). An explicit `.mjs` extension is ESM
  * regardless of the enclosing package type, so the ambiguity cannot come back.
  *
- * `scope-enum` is load-bearing, not cosmetic: release-please derives per
- * component releases from the commit scope, and one repo now produces releases
- * for 7 components. A typo'd scope silently drops a change out of its
- * component's changelog, so the enum is enforced at error level and a scope is
- * mandatory. The list below is ADR-001 §D6 verbatim and is an MDRS-17
+ * `scope-enum` is enforced at error level, and a scope is mandatory, because
+ * this repo now releases 7 components. To be precise about the mechanism:
+ * release-please assigns a commit to a component by the **paths** it touches
+ * (each package in release-please-config.json carries a `path`), not by the
+ * scope. So a wrong scope does not misroute a release — it mislabels a real
+ * changelog entry and makes `git log` unanswerable on "which component was this
+ * for?". A closed list identical to the component names keeps those two views
+ * from drifting. The list below is ADR-001 §D6 verbatim and is an MDRS-17
  * acceptance criterion — extend it only together with the matching
  * release-please component and pnpm-workspace entry (ADR-001 §D10).
  *
@@ -19,8 +22,9 @@
  * (`tedris-web`, `nizam-web`, `nazir-web`, `landing-web`), not by directory
  * name (`apps/tedris`, ...). ADR-001 §D6 sets app package names to
  * `@medaris/<release-component>` while MDRS-10 kept the directories bare; the
- * scope has to follow the component, because that is what release-please cuts
- * releases against.
+ * scope follows the component so that the enum and the release-please
+ * `component` fields stay one list. A useful consequence: release-please's own
+ * release PR titles (`chore(<component>): release <version>`) pass these rules.
  */
 
 /** Every app and lib, plus the cross-cutting infrastructure scopes. */

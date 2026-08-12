@@ -42,11 +42,31 @@ Verified against all 7 app `package.json` files and the two
 `.migration/*/release-please-config.json` component lists.
 
 **A scope is mandatory** (`scope-empty: [2, "never"]`). This is stricter than
-the ADR, which only fixed the enum. Rationale: release-please derives per
-component releases from the scope, so a scopeless commit is attributable to
-nothing. Cross-cutting plumbing uses `repo`. Note that commitlint's
-`defaultIgnores` still exempts merge, revert, fixup and squash commits, so this
-does not block `git revert`.
+the ADR, which only fixed the enum. Rationale: a scopeless commit is
+attributable to no component in `git log`. Cross-cutting plumbing uses `repo`.
+Note that commitlint's `defaultIgnores` still exempts merge, revert, fixup and
+squash commits, so this does not block `git revert`.
+
+**Correction to the task premise — release-please routes by path, not scope.**
+MDRS-14's Linear description says "release-please derives releases from
+conventional-commit scopes". Reading the two configs that MDRS-17 will land
+(`.migration/*/release-please-config.json`) shows that is not the mechanism:
+every package entry carries a `path` (`"path": "apps/tedrisat"`, …), and
+release-please assigns a commit to a component by the files it touched. The
+scope is used for the changelog entry text, not for routing. So a wrong scope
+mislabels a real entry rather than misrouting a release. That makes `scope-enum`
+slightly less load-bearing than the task implies — but not less worth having,
+given the pre-merge history carried 90+ ad-hoc scopes (`flashcard`,
+`deck-cards`, `pcgk-lock`, `package-lock.json`). The enum's real job is keeping
+the scope vocabulary identical to the component names so `git log` and the
+changelogs cannot drift apart. Recorded here so nobody re-derives the wrong
+mechanism from the ticket.
+
+A consequence worth knowing, and verified: both configs set
+`pull-request-title-pattern: "chore(<component>): release ${version}"`, so
+release-please's own release PR titles are `chore(tedrisat): release 1.2.3`
+etc. — all 7 components are enum members, so **the bot's own titles satisfy this
+config**. See §3.3, which corrects an earlier assumption of the opposite.
 
 **`pre-commit` is staged-files-only, and cheap.** The pre-merge hooks ran
 repo-wide `npm run lint` (backend) and `npm run check-types && npm run lint`
@@ -55,8 +75,11 @@ repo-wide `npm run lint` (backend) and `npm run check-types && npm run lint`
 verification is the gate's job. This satisfies the AC "lint-staged runs Biome
 only on staged files, not the whole repo".
 
-**The two `pre-push` hooks were dropped, not ported.** Beyond the cost, their
-branch-name validation was already dead: the pattern
+**The two `pre-push` hooks were dropped, not ported — sanctioned by the ADR.**
+ADR-001 §D8 line 253 states this setup "replaces the backend's heavy pre-push
+(full build+test) and both repos' branch-name-regex hooks (not a reference
+convention)", so removing them is the instruction, not an omission. Beyond the
+cost, their branch-name validation was already dead: the pattern
 `^((feature|bugfix|hotfix|chore|release|experiment)/[a-z0-9-]+)|main|...$`
 rejects this repo's actual convention (`argedikas/mdrs-14-...`), and the 65/70
 character caps reject Linear's generated branch names outright. Reinstating
@@ -100,10 +123,27 @@ $ git config --show-origin core.hooksPath
 file:"/…/medaris/.git/config"	.husky/_
 ```
 
-`core.hooksPath` is written to the **shared** `.git/config`, so it is set once
-per clone and inherited by every `git worktree`. Husky's generated `.husky/_/`
-is self-ignored (`.husky/_/.gitignore` = `*`); only `pre-commit` and
-`commit-msg` are tracked.
+`core.hooksPath` is written to the **shared** `.git/config`. Husky's generated
+`.husky/_/` is self-ignored (`.husky/_/.gitignore` = `*`, confirmed by
+`git check-ignore -v .husky/_/pre-commit` → `.husky/_/.gitignore:1:*`); only
+`pre-commit` and `commit-msg` are tracked.
+
+**Those two facts combine into a trap, and an earlier draft of this document got
+it wrong** by saying the setting is "inherited by every `git worktree`" and
+leaving it there. The *value* is inherited, but the value is the **relative**
+path `.husky/_`, which git resolves against whichever working tree it runs in —
+and `.husky/_/` is git-ignored, so it does not come along with a new worktree or
+a fresh clone. The result: the tracked `.husky/pre-commit` and
+`.husky/commit-msg` are present, `core.hooksPath` looks correctly set, and git
+**silently runs no hooks at all** (missing hooksPath directory is not an error).
+
+This is not hypothetical for this repo — the MDRS task flow commits from
+`.claude/worktrees/*`. `git worktree add` followed by `git commit` before
+`pnpm install` lands an unvalidated message with no warning, and per §3.2
+nothing lints commit messages in CI either, so it is caught by nothing.
+`CONTRIBUTING.md` now says "run `pnpm install` in every new clone and every new
+`git worktree`" and gives `ls .husky/_/pre-commit` as the second half of the
+check. Credit to the code review for catching this.
 
 ### 2.2 Both hooks fire on a real commit, non-TTY
 
@@ -173,11 +213,11 @@ Every rule claim made in `CONTRIBUTING.md` was executed, not assumed:
 | `Merge branch 'main' into feature` | 0 | exempt via `defaultIgnores` |
 | `chore(main): release 1.2.3` | **1** | `scope-enum` — see §3.3 |
 
-The last row is a genuine quirk worth knowing: with the trailing period the
-subject no longer classifies as start-case, so only `subject-full-stop` is
-reported. Both rules work; they just do not both fire on that input. The
-`CONTRIBUTING.md` examples were corrected to name one rule per line rather than
-claim both.
+The `fix(ui): Broken Tooltip.` row is a genuine quirk worth knowing: with the
+trailing period the subject no longer classifies as start-case, so only
+`subject-full-stop` is reported. Both rules work; they just do not both fire on
+that input. The `CONTRIBUTING.md` examples were corrected to name one rule per
+line rather than claim both.
 
 `@commitlint/cli` resolved to **21.2.1** against `config-conventional` 21.2.0.
 MDRS-8 flagged the 19→21 jump as needing a config re-check (its §"`@commitlint/cli`"
@@ -306,14 +346,21 @@ But `git stash list` is **empty** — the cleanup step drops the stash ref, leav
 a dangling commit findable only via `git fsck --lost-found`. A developer hitting
 this has no obvious way back.
 
-**Not fixed here, deliberately.** The only complete fix is to stop autofixing —
-`biome check` without `--write`, failing the commit instead of repairing it.
-That would eliminate the class outright, but `biome check --write` is MDRS-12's
-explicit handoff and dropping `--write` is a real UX change (every formatting
-nit becomes a rejected commit). Changing it unilaterally is outside this task's
-scope lock. Documented in `CONTRIBUTING.md` under "Do not partially stage a file
-the formatter will reflow", with the `git fsck` recovery, and left as a decision
-for the team. If it bites people in practice, dropping `--write` is the fix.
+**Not fixed here, deliberately — and the reason is normative, not preference.**
+The only complete fix is to stop autofixing: `biome check` without `--write`,
+failing the commit instead of repairing it. But `--write` is not MDRS-12's taste,
+it is **ADR-001 §D8 line 253 verbatim**: "lint-staged runs R1's `biome check
+--write --no-errors-on-unmatched` on staged files". Dropping it is an ADR
+deviation and a real UX change (every formatting nit becomes a rejected commit
+instead of a silent fix), which is a decision for whoever owns the ADR — not
+something to slip into a commit-hygiene task. So it is documented rather than
+changed: `CONTRIBUTING.md` gains "Do not partially stage a file the formatter
+will reflow" with the `git fsck` recovery path, and the tradeoff is escalated in
+the PR. **If this bites people in practice, dropping `--write` is the fix and it
+is a one-line change to `package.json`.**
+
+The independent code review reached the same conclusion unprompted, calling it
+"the one real functional defect the PR ships".
 
 ## 3. What was NOT verified
 
@@ -325,14 +372,25 @@ for the team. If it bites people in practice, dropping `--write` is the fix.
    MDRS-15's (see §4).
 2. **commitlint has never run in CI.** No workflow invokes it. Untested over a
    commit range.
-3. **release-please's own commits fail this config — measured, not predicted.**
-   `chore(main): release 1.2.3` exits 1 on `scope-enum`, because `main` is not
-   an enum member (history shows 7 such commits from the pre-merge repos).
-   Harmless *today*: the bot commits through the GitHub API, so no local hook
-   runs. But the moment commitlint runs in CI over a commit range it will flag
-   them. MDRS-15/MDRS-17 must add an `ignores` predicate or narrow the range —
-   do **not** "fix" this by adding `main` to `scope-enum`, which would make a
-   meaningless scope permanently valid for humans too.
+3. **release-please bot commits: mostly fine, one shape is not.** An earlier
+   draft of this document claimed flatly that the bot's commits fail this
+   config. That was wrong, and the correction came from reading the configs
+   rather than guessing. Both
+   `.migration/*/release-please-config.json` set
+   `pull-request-title-pattern: "chore(<component>): release ${version}"`, so
+   the real titles are `chore(tedrisat): release 1.2.3`,
+   `chore(landing-web): release 1.2.3`, … — every component is an enum member,
+   and all 7 **pass** (spot-checked `tedrisat`, `keycloak-theme`,
+   `landing-web`; exit 0).
+   What *does* fail is the **scopeless/`main`** shape: `chore(main): release
+   1.2.3` exits 1 on `scope-enum`, and the pre-merge history contains 7 such
+   commits, so it is release-please's behaviour when no title pattern is
+   configured. Harmless today (the bot commits through the API, so no local
+   hook runs), and it should stay harmless as long as MDRS-17 keeps the
+   per-package title patterns. Flagged so MDRS-17 knows those patterns are
+   load-bearing for commitlint, and so MDRS-15 handles it if it ever lints a
+   commit range. Do **not** "fix" it by adding `main` to `scope-enum` — that
+   would make a meaningless scope permanently valid for humans too.
 4. **One platform, one shell.** Linux, `sh`-executed hooks. Not tested on
    Windows, macOS, Git Bash, or from a GUI git client (which is a different
    non-TTY environment again — `PATH` there often lacks `pnpm`).
@@ -377,6 +435,20 @@ MDRS-17 deletes the `.migration/` directory itself. Its `scope-enum` acceptance
 criterion is satisfied by `commitlint.config.mjs`; the component names there
 must stay in sync with that enum, including the `-web` suffixes.
 
+Three things noticed while reading those configs for the scope list (read-only —
+nothing was changed):
+
+- **The per-package `pull-request-title-pattern`s are load-bearing for
+  commitlint.** `chore(<component>): release ${version}` passes `scope-enum`;
+  release-please's unconfigured default (`chore(main): …`) does not. Keep them.
+- **`extra-files` is stale in both configs.** Frontend declares
+  `"extra-files": ["shared/**"]`, but MDRS-10 moved `shared/*` to `libs/*`, so
+  that glob now matches nothing. Backend declares `"extra-files": ["libs/**"]`
+  for both services, which now means every lib bumps both backend components.
+- **`release-type: node` + `package-name`** were written against the pre-rename
+  names (`package-name: "tedris-web"` for `apps/tedris`). That happens to agree
+  with ADR §D6's `@medaris/tedris-web`, but worth confirming rather than assuming.
+
 **MDRS-13 (boundary tags)** — `CONTRIBUTING.md` now exists, so §D5's
 "one-screen mirror" of the `CLAUDE.md` tag table has a home. Insert it at the
 `<!-- MDRS-13 ANCHOR -->` comment.
@@ -388,3 +460,33 @@ comment. Do not restate the commit conventions.
 **Whoever creates `apps/docs`** — ADR-001 §D1 reserves that name, and `docs` is
 already taken as a cross-cutting scope. That collision needs resolving at the
 time (§D10 requires a `scope-enum` edit in the same PR anyway).
+
+## 5. Code review
+
+Four findings, all resolved. `gh pr checks` was empty and no bot review appeared
+(none is configured on this repo), so this review plus the local gate is the
+whole verification story.
+
+| # | Severity | Finding | Resolution |
+| --- | --- | --- | --- |
+| 1 | medium | `biome check --write` from `pre-commit` corrupts partially staged files | **Not fixed — escalated.** `--write` is ADR-001 §D8 verbatim; see §2.8. Documented in `CONTRIBUTING.md` with recovery, tradeoff raised in the PR. |
+| 2 | medium | "`core.hooksPath` … inherited by every `git worktree`" is true of the value but false in effect — `.husky/_` is relative *and* git-ignored, so a fresh worktree silently runs no hooks | **Fixed.** Verified independently (`git check-ignore`), then rewrote both this doc (§2.1) and the `CONTRIBUTING.md` troubleshooting entry to say "run `pnpm install` in every new clone and worktree", with `ls .husky/_/pre-commit` as the second check. |
+| 3 | low | "The last row is a genuine quirk" pointed at the wrong row after §2.3's table grew | **Fixed** — names the row explicitly now. |
+| 4 | low | "`pre-commit` … does not lint" understates it; `biome check` lints staged files at error severity and can block a commit | **Fixed** — `CONTRIBUTING.md` now says it lints staged files and that an unsafe-to-fix error-level diagnostic fails the commit. |
+
+Finding 2 is the one that mattered: it is a silent-failure path that this repo's
+own worktree-based task flow walks into, and no amount of local testing in an
+*already-installed* worktree would have surfaced it.
+
+The review also independently confirmed several things this document asserts:
+catalog/lockfile sync for the four new devDeps, `scope-enum` matching ADR §D6
+and the 7 app `package.json` names exactly, `prepare: husky` exiting 0 without
+`.git`, the `useImportType: off` override for the two NestJS apps and
+`libs/common` being present and intact, `"$1"` correctly quoted, the missing exec
+bit on the tracked hooks being fine for husky 9, and the deleted `.migration/**`
+hooks having been inert reference copies so no active enforcement was lost.
+
+Separately, reading the release-please configs for the scope list turned up a
+**correction to the ticket's own premise** (routing is by path, not scope) and
+the fact that the bot's release PR titles *pass* this config — both recorded in
+§1 and §3.3, replacing an earlier wrong claim of mine.
