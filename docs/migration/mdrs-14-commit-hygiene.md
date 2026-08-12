@@ -165,6 +165,13 @@ Every rule claim made in `CONTRIBUTING.md` was executed, not assumed:
 | `fix(ui): Broken Tooltip` | 1 | `subject-case` |
 | `fix(ui): BROKEN TOOLTIP` | 1 | `subject-case` |
 | `fix(ui): Broken Tooltip.` | 1 | `subject-full-stop` only |
+| header padded to 120 chars | 1 | `header-max-length` (limit is 100) |
+| body line padded to 145 chars | 1 | `body-max-line-length` (limit is 100) |
+| body with no leading blank line | **0** | `body-leading-blank` — **warning only** |
+| `Revert "feat(ui): add a thing"` | 0 | exempt via `defaultIgnores` |
+| `fixup! feat(ui): add a thing` | 0 | exempt via `defaultIgnores` |
+| `Merge branch 'main' into feature` | 0 | exempt via `defaultIgnores` |
+| `chore(main): release 1.2.3` | **1** | `scope-enum` — see §3.3 |
 
 The last row is a genuine quirk worth knowing: with the trailing period the
 subject no longer classifies as start-case, so only `subject-full-stop` is
@@ -263,11 +270,14 @@ file.
    MDRS-15's (see §4).
 2. **commitlint has never run in CI.** No workflow invokes it. Untested over a
    commit range.
-3. **release-please's own commits would fail this config.** The bot commits
-   `chore(main): release …`; `main` is not in `scope-enum`. Harmless today
-   (bot commits are made through the API, no hooks run), but a CI commitlint
-   job over a range would flag them. MDRS-15/MDRS-17 must either add an
-   `ignores` predicate or restrict the linted range.
+3. **release-please's own commits fail this config — measured, not predicted.**
+   `chore(main): release 1.2.3` exits 1 on `scope-enum`, because `main` is not
+   an enum member (history shows 7 such commits from the pre-merge repos).
+   Harmless *today*: the bot commits through the GitHub API, so no local hook
+   runs. But the moment commitlint runs in CI over a commit range it will flag
+   them. MDRS-15/MDRS-17 must add an `ignores` predicate or narrow the range —
+   do **not** "fix" this by adding `main` to `scope-enum`, which would make a
+   meaningless scope permanently valid for humans too.
 4. **One platform, one shell.** Linux, `sh`-executed hooks. Not tested on
    Windows, macOS, Git Bash, or from a GUI git client (which is a different
    non-TTY environment again — `PATH` there often lacks `pnpm`).

@@ -50,7 +50,9 @@ const SCOPES = [
   "docs", // ADRs, migration records, README, this file's sibling docs
 ];
 
-/** @type {import("@commitlint/types").UserConfig} */
+// No `@type {import("@commitlint/types").UserConfig}` annotation: that package
+// is not a top-level dependency and pnpm's strict layout makes it unresolvable
+// from here, so the annotation would dangle. Not worth a catalog entry.
 export default {
   extends: ["@commitlint/config-conventional"],
   rules: {

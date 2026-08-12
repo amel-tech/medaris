@@ -32,7 +32,12 @@ checked against a closed list.
 | `scope` | **required**, from the scope list below |
 | `subject` | required, no trailing `.`, not Start-Case / PascalCase / ALL-CAPS |
 | header length | ≤ 100 characters |
-| body / footer lines | ≤ 100 characters each, blank line before each |
+| body / footer lines | ≤ 100 characters each |
+| blank line before body / footer | warning only — does not block the commit |
+
+Everything above except the last row fails the commit. Merge, revert, fixup and
+squash commits are exempt via commitlint's `defaultIgnores`, so `git revert` and
+`git commit --fixup` keep working.
 
 ### Types
 
