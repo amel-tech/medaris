@@ -19,7 +19,7 @@ given so they can be re-run.
 | `.migration/frontend/.github/workflows/{ci-dev,codeql,pull-request}.yaml` | **deleted** (3 files) |
 | `nx.json` | `sharedGlobals` CI path fixed + `package.json` added; `depcheck` targetDefault |
 | `package.json` | 5 scripts (`lint:root`, `assert:affected-isolation`, `audit:ci`, `depcheck`, `security-check`), 2 devDeps |
-| `audit-ci.json` | `package-manager: npm` → `pnpm`; 24-advisory dated allowlist |
+| `audit-ci.json` | `package-manager: npm` → `pnpm`; `skip-dev` → `false`; 31-advisory dated allowlist |
 | `tools/ci/biome-ratchet.mjs` | new — workspace-root Biome gate + warning ratchet |
 | `tools/ci/biome-baseline.json` | new — the ratchet's committed ceiling |
 | `tools/ci/assert-affected-isolation.mjs` | new — asserts AC #2 on every PR |
@@ -255,23 +255,33 @@ workspace package's PATH, so they resolve now.
 `pnpm-lock.yaml` and no `package-lock.json`, so the npm reader had nothing to
 read. Changed to `pnpm`.
 
-**The audit allowlist is a ratchet.** `audit-ci --package-manager pnpm` on
-`c59d467` reports, across 678 total dependencies:
+**`skip-dev` was `true` and is now `false`.** Inherited that way, it made
+`pnpm audit` report `devDependencies: 0` — all 1155 unaudited — so a new critical
+in `jest`, `nx`, `biome`, `drizzle-kit` or `testcontainers` would have sailed
+through a gate this document claims catches anything new. Raised in review; see
+§5 #5. Auditing dev dependencies costs a longer allowlist and buys back the
+property.
+
+**The audit allowlist is a ratchet.** `audit-ci` on `c59d467` reports, across
+**1833** total dependencies (678 prod + 1155 dev):
 
 ```
-{ info: 0, low: 2, moderate: 13, high: 28, critical: 0 }
+{ info: 0, low: 2, moderate: 27, high: 38, critical: 0 }
 ```
 
-The 28 high findings resolve to **24 distinct advisories** — transitive
-`next`/`postcss`/`nanoid`/`sharp`, `@opentelemetry/*`,
-`@nestjs/swagger > js-yaml`, `exceljs > brace-expansion`, `@hookform/resolvers >
-ajv > fast-uri`, and `xlsx` (MDRS-8 FU-5: unfloorable, must be replaced). All of
-it is pre-existing debt MDRS-8 already routed to MDRS-21. Gating on it today
-would block every PR, so the 24 GHSA IDs are listed in `allowlist` with the
-measurement that produced them. The gate still fails on any **new** high or
-critical advisory, which is the property that was missing. `low`/`moderate` stay
-ungated, as inherited. Verified: `pnpm run audit:ci` now prints
-`Passed pnpm security audit` while still listing the 24 as allowlisted.
+The 38 high findings resolve to **31 distinct advisories**. Entries 1–24 are
+runtime debt — transitive `next`/`postcss`/`nanoid`/`sharp`,
+`@opentelemetry/*`, `@nestjs/swagger > js-yaml`,
+`exceljs > brace-expansion`, `@hookform/resolvers > ajv > fast-uri`, and `xlsx`
+(MDRS-8 FU-5: unfloorable, must be replaced). Entries 25–31 are the dev-only ones
+`skip-dev` had been hiding: `nx > brace-expansion`, and `@commitlint`/`jest`
+reaching `js-yaml` via `cosmiconfig`/`istanbul`. All of it is pre-existing debt
+MDRS-8 already routed to MDRS-21. Gating on it today would block every PR, so the
+31 GHSA IDs are listed in `allowlist` with the measurement that produced them.
+The gate still fails on any **new** high or critical advisory in either
+dependency type, which is the property that was missing. `low`/`moderate` stay
+ungated, as inherited. Verified: `pnpm run audit:ci` prints
+`Passed pnpm security audit` while still listing the 31 as allowlisted.
 
 **`depcheck` needed no allowlist** — `nx run-many -t depcheck` reports
 `No depcheck issue` for all 3 projects, so it is a genuine blocking gate from day
@@ -336,6 +346,31 @@ findings repo-wide — including the 7 deploy workflows, which is why adding
 actionlint as a CI step would be safe (see follow-ups; not added here, since
 pulling a binary into CI is a supply-chain decision beyond this task).
 
+### The pipeline running for real (PR #15)
+
+Not inferred from the local gate — copied from the run of this PR's own workflow
+(`gh run view 31563667832`):
+
+| Check | Result |
+| --- | --- |
+| `Commit hygiene` | ✅ 35s — PR title **and** commit range |
+| `Verify` | ✅ `Successfully ran targets lint, typecheck, test, build, module-boundaries for 16 projects` |
+| `Security gates` | ✅ 36s — `audit-ci` passed, `depcheck` for 3 projects |
+| `Analyze (javascript-typescript)` | ✅ 1m6s |
+| `Analyze (actions)` | ✅ 46s |
+
+`nx-set-shas` resolved `NX_BASE` to `c59d467` — the correct merge base — and the
+root ratchet reported the same `524 files / 94 warnings` in CI as locally. The
+affected set was all 16 projects, exactly as predicted: this PR edits
+`sharedGlobals` inputs, so a full run is the correct outcome, not a failure of
+`affected`.
+
+One incidental confirmation: the `Report affected projects` step printed the 16
+names **newline-separated, not as a JSON array**. That is the same shape that
+broke the isolation gate's first run and could not be reproduced locally — so the
+format difference is real and environment-dependent, and tolerating both shapes
+was the right fix rather than a workaround.
+
 ### AC #2 — stack isolation
 
 AC #2 asks that a backend-only change not trigger frontend builds, and vice
@@ -360,9 +395,91 @@ leave the AC on a one-off observation, the property is encoded as
 asserts that a leaf file in one app affects exactly that one project, and fails
 otherwise. So the mechanism is proven locally and re-proven continuously, but
 the specific observation "an app-only PR ran only that app's build" will first be
-visible on the next app-only PR. See §6.
+visible on the next app-only PR. See §7.
 
-## 5. Not verified
+## 5. What review found
+
+### CodeQL, on this PR
+
+The new `Analyze (actions)` matrix entry justified itself immediately by finding
+a real problem in the workflow that introduced it. On PR #15, CodeQL raised 4
+findings of *Unpinned tag for a non-immutable Action*:
+`pnpm/action-setup@v4` (×3) and `nrwl/nx-set-shas@v4` (×1). A floating tag on a
+third-party action is the same exposure that got the coverage-comment action
+dropped in §1, so leaving these would have been incoherent. Both are now pinned
+to commit SHAs with the version in a trailing comment
+(`pnpm/action-setup@b906aff… # v4.3.0`,
+`nrwl/nx-set-shas@3e9ad73… # v4.4.0`).
+
+The first-party `actions/checkout`, `actions/setup-node` and
+`github/codeql-action` refs are deliberately left on tags: CodeQL does not flag
+them, and all 7 deploy workflows use `@v4` the same way — pinning them here only
+would create an inconsistency for MDRS-16 to reconcile. Recorded as a
+repo-wide follow-up instead.
+
+### Self-inflicted defect, caught by the gate itself
+
+The affected-isolation gate failed on its own first CI run. Recording it rather
+than quietly fixing it: it parsed only a JSON array, but `nx show projects`
+printed bare newline-separated names in CI. The shape was not reproducible
+locally — piped output, `CI=true`, and `NX_BASE`/`NX_HEAD` all produced JSON — so
+the parser now passes `--json` *and* accepts either shape, unit-checked against
+JSON, plain, empty-JSON, empty-plain and banner-only inputs.
+
+### Code review
+
+`/code-review` at high effort returned 7 findings. Dispositions:
+
+| # | Finding | Disposition |
+| --- | --- | --- |
+| 1 | The `postgres` service is dead config, and its justifying comment was wrong | **Fixed** — removed |
+| 2 | The Biome ratchet fails *open* if Biome's summary keys or file count collapse | **Fixed** — fail-closed guards |
+| 3 | The exact-match isolation assertion misdirects on legitimate graph growth | **Fixed** — rewrote the failure message |
+| 4 | The plain-shape parser reds the build on a legitimately empty affected set | **Fixed** — returns `[]`, stricter name pattern |
+| 5 | `skip-dev: true` meant devDependencies were never audited | **Fixed** — now audited |
+| 6 | Dependabot is still `package-ecosystem: npm` on per-app dirs | **Deferred** — see below |
+| 7 | Coverage reporting was dropped | **Already documented** (§1); reviewer added that no `coverageThreshold` exists anywhere, so nothing else catches it |
+
+**#1 was the strongest finding and my comment was factually wrong.** I had
+justified keeping the inherited `postgres` service as being "for whoever wires
+e2e in". It cannot be: `apps/tedrisat/test/helpers/test-app.helper.ts` starts its
+*own* `PostgreSqlContainer("postgres:17-alpine")` and overwrites
+`DB_HOST`/`DB_PORT`/`DB_USERNAME`/`DB_PASSWORD`/`DB_NAME` before `AppModule`
+loads — with credentials (`testuser`/`testpass`/`tedrisat_test`) that do not even
+match what the service provided (`postgres`/`postgres`/`tedrisat-test`). Verified
+by reading the helper. The service was pure cost on every run; removed, and the
+comment now says what e2e will actually need (a Docker socket).
+
+**#2, fail-open, was the subtlest.** `summary.errors ?? 0` meant that if Biome
+renamed a summary key on upgrade, or `biome.json` grew an ignore that narrowed
+the file set, every count would read as 0 — and the gate would report "below
+baseline" and *recommend permanently lowering the baseline to zero*, silently
+disabling the only lint covering the 13 root config files. Now the severity keys
+must exist and be numeric, and `minFilesChecked: 500` fails the gate if coverage
+collapses. Both guards were tested by tripping them deliberately.
+
+**#5 changed a real security property.** With the inherited `skip-dev: true`,
+`pnpm audit` reported `devDependencies: 0` — 1155 of them unaudited — so a new
+critical in `jest`, `nx`, `biome`, `drizzle-kit` or `testcontainers` would have
+passed silently, contradicting this task's own claim that the gate catches
+anything new. The cheap fix was to weaken the claim; instead dev dependencies are
+now audited. Cost: 38 high instead of 28, over 31 allowlisted advisories instead
+of 24 — the 7 additions being `nx > brace-expansion` and `@commitlint`/`jest`
+reaching `js-yaml` through `cosmiconfig`/`istanbul`.
+
+**#6 is deferred, with a warning.** `.github/dependabot.yaml` still declares
+`package-ecosystem: "npm"` against `/apps/tedrisat` and `/apps/teskilat`, whose
+`package.json` files now use `catalog:` specifiers and have no per-app lockfile.
+Nothing Dependabot opens can update the root `pnpm-lock.yaml`, so its monthly PRs
+will fail this pipeline at `pnpm install --frozen-lockfile`. To be precise about
+blame: this is a pre-existing MDRS-10 misconfiguration that this task makes
+*visible* rather than causes — before now, no CI ran on PRs at all, so those PRs
+were merely unverified. It is not fixed here because migrating it means re-deciding
+ecosystem, directory, grouping and schedule together, which is a dependency-policy
+change rather than CI plumbing, and a careless conversion spams the queue.
+Assigned to **MDRS-21** with the dependency work.
+
+## 6. Not verified
 
 Everything here is unverifiable from this branch, and none of it is claimed as
 working:
@@ -383,11 +500,9 @@ working:
    `Analyze (javascript-typescript)` in 1m21s, so both query suites exist for
    both languages. `fail-fast: false` is retained anyway, so a future failure in
    one cannot mask the other's findings.
-4. **The Postgres service.** Retained from the backend's inherited workflow. The
-   10 Jest suites in the `test` target pass without any database; only
-   `apps/tedrisat/test/helpers/test-app.helper.ts` (testcontainers, `test:e2e`)
-   needs one, and `test:e2e` is not in this pipeline. So the service is currently
-   unused — kept for parity and for MDRS-20 rather than proven necessary.
+4. ~~The Postgres service.~~ **Removed** after review showed it could never be
+   used — see §5 #1. Nothing in this pipeline needs a database, and `test:e2e`
+   brings its own via Testcontainers.
 5. **`commitlint --from/--to` over the PR range.** Both the title check and the
    range check passed on PR #15 (`Commit hygiene`, 38s), but the range check has
    not been exercised against unusual histories — force-pushed or rebased
@@ -395,17 +510,17 @@ working:
 6. **Node 22 prod floor.** CI builds on `.nvmrc` (24) only; `node:22-alpine` is
    what production runs. Not exercised.
 
-## 6. Follow-ups
+## 7. Follow-ups
 
 | Owner | Item |
 | --- | --- |
 | **MDRS-16** | Decide the deploy trigger policy. The 7 per-app workflows are release-tag/`dispatch`/`call` only; the deleted `ci-dev.yaml` files auto-deployed on push to main. That capability is currently gone — intentionally, but someone must decide whether a dev environment should get it back. |
 | **MDRS-17** | Delete `.migration/` entirely (6 release-please files remain). Per MDRS-14's note: the per-package `pull-request-title-pattern`s let bot release commits pass `scope-enum` and must be preserved; `extra-files` is stale in both configs. |
 | **MDRS-18** | README/`CONTRIBUTING.md` need the Nx target vocabulary and CI behaviour — see the handoff below. |
-| **MDRS-19** | Create branch protection on `main` with the 5 check names in §5.1. Confirm on the first app-only PR that only that stack's builds ran. |
+| **MDRS-19** | Create branch protection on `main` with the 5 check names in §6.1. Confirm on the first app-only PR that only that stack's builds ran. |
 | **MDRS-20** | Frontend test coverage is zero; `tedris-web`'s `test` target is an `echo`. Also owns `test:e2e`, which is what the Postgres service is there for, and restoring PR coverage reporting (dropped here — see §1). |
-| **MDRS-21** | Drive `tools/ci/biome-baseline.json` to `{0,0,0}` and empty `audit-ci.json`'s 24-entry allowlist. Both are ratchets designed to be lowered. |
-| unassigned | Add `actionlint` to CI (all 9 workflows pass it today). Extend `depcheck` beyond its 3 projects. Consider a `[22, 24]` Node matrix. The 3 per-package `audit:ci` scripts are redundant under a single lockfile and could be dropped. |
+| **MDRS-21** | Drive `tools/ci/biome-baseline.json` to `{0,0,0}` and empty `audit-ci.json`'s 31-entry allowlist. Both are ratchets designed to be lowered. Also migrate `.github/dependabot.yaml` off `package-ecosystem: npm` — see §5 #6, its PRs cannot pass this pipeline. |
+| unassigned | Add `actionlint` to CI (all 9 workflows pass it today). Pin the first-party `actions/*` refs repo-wide (7 deploy workflows + these 2). Extend `depcheck` beyond its 3 projects. Consider a `[22, 24]` Node matrix. The 3 per-package `audit:ci` scripts are redundant under a single lockfile and could be dropped. |
 
 ## Handoff to MDRS-18 (docs)
 

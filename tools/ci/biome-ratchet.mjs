@@ -73,17 +73,51 @@ try {
   );
 }
 
-const summary = report.summary ?? {};
+const summary = report.summary;
+
+// Without these guards the ratchet fails OPEN, which is worse than not having
+// it. If Biome renames a summary key on upgrade, or biome.json grows an ignore
+// that narrows `files.includes`, every count reads as 0, the gate reports
+// "below baseline", and it cheerfully recommends lowering the baseline to zero —
+// silently disabling the only lint covering the 13 root config files. So: the
+// severity keys must be present and numeric, and the number of files actually
+// checked must not fall meaningfully below what the baseline was measured on.
+if (!summary || typeof summary !== "object") {
+  fail(
+    "Biome's JSON report had no `summary` object — cannot evaluate the gate."
+  );
+}
+for (const severity of SEVERITIES) {
+  if (typeof summary[severity] !== "number") {
+    fail(
+      `Biome's report is missing a numeric \`summary.${severity}\`. Biome's JSON ` +
+        "shape probably changed on upgrade; fix this gate rather than bypassing it."
+    );
+  }
+}
+
+const filesChecked = (summary.unchanged ?? 0) + (summary.changed ?? 0);
+const minFiles = baseline.minFilesChecked ?? 0;
+if (filesChecked < minFiles) {
+  fail(
+    `Biome checked ${filesChecked} files but the baseline was measured on at ` +
+      `least ${minFiles}. Something is excluding files from the root gate — ` +
+      "check biome.json `files.includes` and .gitignore. Lower " +
+      "`minFilesChecked` in tools/ci/biome-baseline.json only if the drop is " +
+      "intended (e.g. code was genuinely deleted)."
+  );
+}
+
 const actual = {
-  errors: summary.errors ?? 0,
-  warnings: summary.warnings ?? 0,
-  infos: summary.infos ?? 0,
+  errors: summary.errors,
+  warnings: summary.warnings,
+  infos: summary.infos,
 };
 
 console.log(
-  `biome-ratchet: checked ${summary.unchanged ?? 0} unchanged / ${
-    summary.changed ?? 0
-  } changed files at the workspace root`
+  `biome-ratchet: checked ${filesChecked} files at the workspace root ` +
+    `(${summary.unchanged ?? 0} unchanged / ${summary.changed ?? 0} changed, ` +
+    `floor ${minFiles})`
 );
 for (const severity of SEVERITIES) {
   console.log(

@@ -6,9 +6,16 @@
     "while still exiting 0 — so the per-project `lint` target could never fail on a",
     "warn-severity rule. These counts are the ceiling: CI fails when any count grows.",
     "Driving them to zero is MDRS-21's job. When you fix diagnostics, lower the",
-    "numbers here in the same PR (the gate prints the new values for you)."
+    "numbers here in the same PR (the gate prints the new values for you).",
+    "",
+    "minFilesChecked exists because a count-only ratchet fails open: if biome.json",
+    "grows an ignore that hides most of the tree, every count drops to 0 and the",
+    "gate would call that an improvement. 500 is a deliberate floor a little below",
+    "the 524 files this branch checks, so ordinary file churn does not trip it but",
+    "a collapse in coverage does."
   ],
   "errors": 0,
   "warnings": 94,
-  "infos": 27
+  "infos": 27,
+  "minFilesChecked": 500
 }

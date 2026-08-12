@@ -83,11 +83,19 @@ export function parseProjectList(stdout, file) {
   const jsonLine = lines.findLast((l) => l.startsWith("[") && l.endsWith("]"));
   if (jsonLine) return JSON.parse(jsonLine);
 
-  // Plain shape: one project name per line. Nx banner lines (" NX  ...") and
-  // pnpm's own "> nx show ..." echo are filtered out by shape, not by guesswork:
-  // a project name has no whitespace and no leading punctuation.
-  const names = lines.filter((l) => /^[@a-z0-9][\w./-]*$/i.test(l));
+  // Plain shape: one project name per line. Nx banner lines (" NX  ..."), pnpm's
+  // "> nx show ..." echo and update notices are filtered out by shape rather than
+  // by guesswork — a project name carries no whitespace and no leading
+  // punctuation. The pattern is deliberately lowercase-only (no `i` flag): that
+  // drops a bare "NX" while still matching every project name this workspace uses.
+  const names = lines.filter((l) => /^[@a-z0-9][a-z0-9._/-]*$/.test(l));
   if (names.length > 0) return names;
+
+  // An empty affected set is a legitimate answer, not a parse failure — but only
+  // when Nx genuinely printed nothing. Any other unrecognised output means the
+  // shape changed again, and must be surfaced instead of being read as "nothing
+  // affected", which would make this gate pass vacuously.
+  if (lines.length === 0) return [];
 
   console.error(stdout);
   throw new Error(`could not parse the affected project list for ${file}`);
@@ -121,10 +129,21 @@ for (const { label, file, expected } of CASES) {
 
 if (failed) {
   console.error(
-    "\n✖ affected-isolation: `nx affected` no longer isolates a single stack.\n" +
-      "  A change to one app is scheduling work for projects that do not depend\n" +
-      "  on it. Check nx.json namedInputs/sharedGlobals for an over-broad entry\n" +
-      "  and `pnpm exec nx graph` for an unintended edge."
+    "\n✖ affected-isolation: the affected set for a single app's leaf file is not\n" +
+      "  what this gate expects. Two very different causes, so check which one:\n" +
+      "\n" +
+      "  1. A REGRESSION — a change to one app is scheduling work for projects\n" +
+      "     that do not depend on it. Look for an over-broad entry in nx.json\n" +
+      "     `namedInputs`/`sharedGlobals`, and for an unintended edge in\n" +
+      "     `pnpm exec nx graph`. This is the failure the gate exists to catch.\n" +
+      "\n" +
+      "  2. LEGITIMATE GRAPH GROWTH — a newly added project genuinely depends on\n" +
+      "     the probe's project, so it correctly appears alongside it. The\n" +
+      "     reserved `apps/e2e` in pnpm-workspace.yaml is the obvious candidate.\n" +
+      "     Nothing is wrong: add the new project to that case's `expected` list\n" +
+      "     in tools/ci/assert-affected-isolation.mjs, in the same PR.\n" +
+      "\n" +
+      "  The check is exact on purpose — a subset test would stop catching (1)."
   );
   process.exit(1);
 }
