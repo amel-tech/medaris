@@ -45,8 +45,15 @@ turned out to be **insufficient on ESLint 10** — see §5.
 Modelled on R1's, with madrasah's generated artifacts added to `files.includes`:
 
 - `apps/keycloak-theme/src/kc.gen.tsx` — Keycloakify codegen
-- `apps/keycloak-theme/.keycloakify` — Keycloakify's realm fixture; the sweep
-  reflowed all 2 420 lines of it before it was excluded
+- `apps/keycloak-theme/.keycloakify` — Keycloakify's 2 481-line realm fixture. Excluded
+  in the commit *before* the sweep, so the sweep never touched it
+- `apps/tedrisat/src/database/migrations/meta` — `drizzle-kit generate` owns these
+  snapshots and `_journal.json`; the sweep reflowed them (846 deleted lines) and the next
+  `generate` would have undone that, flipping `lint` red. Same failure mode as
+  `main.css` below
+- `libs/i18n/src/locales/**/*.json` — `tolgee pull` owns the 15 translation files.
+  Scoped to `*.json` on purpose: the four `index.ts` barrels in the same directory are
+  hand-written (`locales/index.ts` is the package's public entry) and **stay** linted
 - `libs/services/src/**/generated` — the OpenAPI generator's 60-file output
 - `libs/services/swagger-docs` — the OpenAPI spec that *feeds* that generator; it is
   exported from the running tedrisat API, so reformatting it is churn the next export
@@ -57,8 +64,15 @@ Modelled on R1's, with madrasah's generated artifacts added to `files.includes`:
   formatter deletes. This one was caught by the gate, not by inspection.
 - `**/routeTree.gen.ts` — TanStack Router codegen (none today; kept so the first one
   added is excluded by default)
+- `apps/keycloak-theme/dist_keycloak` and `.../public/keycloakify-dev-resources` —
+  Keycloakify build output
 - `dist`, `build`, `out`, `out-tsc`, `.next`, `.output`, `.tsbuild`, `coverage`,
-  `.nx`, `storybook-static`, `.migration`
+  `.nx`, `storybook-static`, `.migration`, `pnpm-lock.yaml`, `*.min.{js,css}`
+
+**The pattern worth remembering:** every exclusion above except the build-output
+directories is a file some tool rewrites. If Biome formats one of them, `lint` turns red
+the next time that tool runs — and it turns red in someone else's PR, far from the cause.
+Three of these were found by the gate rather than by inspection.
 
 `vcs.useIgnoreFile: true`, 2-space indent, 80 line width,
 `assist.actions.source.organizeImports: on`. Formatter: double quotes, `es5` trailing
@@ -86,8 +100,12 @@ import type { AppService } from "./app.service"; // metadata erased; DI throws
 
 …and the app still typechecks, still builds, and then fails at runtime with
 *"Nest can't resolve dependencies of the AppController (?)"*. The sweep did exactly that
-to 159 import specifiers across 83 files, and **78 of 89 backend tests went red**. Biome
-never reads `tsconfig.json`, so it cannot know which packages are affected.
+to **116 whole `import type` statements plus 43 inline `type` specifiers — 159 modifiers
+across 83 files** — and **78 of 89 backend tests went red**. Biome never reads
+`tsconfig.json`, so it cannot know which packages are affected.
+
+Only these three packages set `emitDecoratorMetadata`; every tsconfig in the repo was
+checked, so no package is missing from the override.
 
 The fix is a `biome.json` `overrides` entry turning `useImportType` off for
 `apps/{tedrisat,teskilat}/**/*.ts` and `libs/common/**/*.ts`. Two traps in writing it:
@@ -101,8 +119,9 @@ The fix is a `biome.json` `overrides` entry turning `useImportType` off for
    tab-reformatted every JSON file it touched. `biome.json` is kept comment-free for
    this reason; this file is where the explanations live instead.
 
-The override is scoped to `**/*.ts` rather than the whole package directory so those
-packages' JSON files stay under the root formatter config.
+The override is scoped to `**/*.{ts,mts,cts}` rather than the whole package directory so
+those packages' JSON files stay under the root formatter config. Only `.ts` exists in them
+today; `.mts`/`.cts` are listed so a future file cannot silently escape the protection.
 
 ## 4. Nx wiring
 
@@ -134,9 +153,20 @@ Fix: the 21 stale directive lines were deleted from the 8 source files that carr
 them (`apps/tedrisat/{drizzle.config.ts,src/main.ts}`,
 `apps/{nizam,tedris}/types/react-table.d.ts`, `apps/{nizam,tedris}/middleware.ts`,
 `apps/keycloak-theme/src/login/KcContext.ts`, `libs/ui/src/components/badge.tsx`).
-Nothing is lost: each one suppressed a `typescript-eslint` rule that no longer runs,
-and the Biome rule that replaces it is either off (`noEmptyInterface`) or warning-level
-(`noExplicitAny`). `reportUnusedDisableDirectives: "off"` is still set, per ADR.
+The 21 named four rule families: `no-explicit-any` (the bulk), `prettier/prettier`,
+`no-unsafe-call` / `no-unsafe-member-access`, `no-unused-vars`, and
+`no-empty-object-type`. Nothing is lost:
+
+- `prettier/prettier` — prettier is gone; Biome formats these lines now.
+- `no-explicit-any`, `no-unused-vars`, `no-empty-object-type` — Biome's counterparts are
+  either off (`noEmptyInterface`) or warning-level (`noExplicitAny`, `noUnusedVariables`),
+  so `biome check` stays at 0 errors.
+- `no-unsafe-call` / `no-unsafe-member-access` — **Biome has no counterpart at all**;
+  these are type-aware rules and Biome does not do type-aware linting. That coverage is
+  genuinely gone, and it left with the general ESLint config by ADR §D5's decision, not
+  by anything chosen here.
+
+`reportUnusedDisableDirectives: "off"` is still set, per ADR.
 
 The `/* eslint-disable */` headers inside `libs/services/src/**/generated` and
 `kc.gen.tsx` were **left alone** — those files are regenerated, so editing them is
@@ -224,12 +254,8 @@ committed and no real secret was needed.
   - the back affordance in `apps/tedris/.../deckform` changing from `<div onClick>` to
     `<button type="button">` — visually identical only because Tailwind's preflight
     resets `button` background and border, which was reasoned about, not observed;
-  - `libs/ui/src/styles/globals.css` `@import` reordering. The two imports that sat
-    after `@source` violate the CSS spec's ordering rule, which is what Biome flagged.
-    **Whether Tailwind's own parser was already tolerating them was not tested** — if it
-    was not, the reorder *starts* applying `tw-animate-css` and `@medaris/tokens/css`
-    where they previously did nothing. This is the one change in the PR that could alter
-    rendering, and the cheapest way to settle it is to open `landing` before and after.
+  - the `libs/ui/src/styles/globals.css` `@import` reorder — **this one was settled in
+    review and is not a risk**, see §12.
 - **Biome's remaining warnings/infos were not fixed** — 94 warnings and 27 infos
   survive (mostly `noExplicitAny` ×55, `noNonNullAssertion` ×11, `useIsArray` ×7,
   `useNodejsImportProtocol` ×12). They do not fail `biome check`. Left deliberately:
@@ -265,7 +291,47 @@ One a11y error was fixed properly rather than suppressed: the `apps/tedris` deck
 back affordance is now a real `<button type="button">` instead of a `<div onClick>`, so
 it is keyboard-reachable.
 
-## 12. Follow-ups
+## 12. What review settled
+
+A high-rigour review of this diff returned **no blockers**. Two of its results are worth
+recording because they close questions this document had left open, and one is a decision
+that outlives the PR.
+
+**The `globals.css` `@import` reorder changes nothing.** The open question was whether
+Tailwind was already tolerating the misplaced `@import` rules — if it was not, the reorder
+would *start* applying `tw-animate-css` and `@medaris/tokens/css`. Both versions of the
+file were compiled through the real `@tailwindcss/postcss` 4.3.3 and the output is
+**byte-identical** apart from the font `@import url(...)` quote style and a trailing
+newline (127 684 vs 127 685 bytes, 4 `@keyframes` in each, `tw-animate-css` present in
+both). Tailwind was tolerating it. The reorder is a pure spec-compliance fix and cannot
+alter rendering.
+
+**Two merge hazards in the `useImportType` override were checked and are safe.** An
+override's `javascript` block does *not* clobber the root's
+`parser.unsafeParameterDecoratorsEnabled` (constructor parameter decorators still parse),
+and its `linter.rules` block does *not* clobber `recommended: true` — `biome check
+apps/tedrisat` still reports its 10 warnings and `libs/common` its 39. So the override
+narrows exactly one rule and nothing else.
+
+### ⚠️ The squash merge orphans the `.git-blame-ignore-revs` entry
+
+This is the one thing a reader of `main` needs to know. `.git-blame-ignore-revs` pins
+`4c92fc4…`, the sweep commit **on this branch**. The `/mdrs` workflow squash-merges, which
+rewrites all six commits into one new commit on `main` — so after the merge:
+
+- the pinned SHA is no longer an ancestor of `main`, and the entry is inert. It does not
+  error; `git blame` simply stays polluted by the reformat;
+- there is no isolated reformat commit on `main` at all, which is the outcome MDRS-12's
+  acceptance criteria asked for.
+
+The branch history is still reachable via `refs/pull/<N>/head`, so nothing is lost — but
+neither the file nor the AC delivers what it promises on `main`. **Whoever merges should
+decide** between a merge commit (preserves both the isolation and the SHA, as PRs #2 and
+#3 did) and squash (matches the `/mdrs` default; then the entry should be re-pointed at
+the squashed SHA in a follow-up, or dropped). This was escalated rather than decided here,
+because the merge strategy is not this issue's call to make.
+
+## 13. Follow-ups
 
 - **MDRS-13 owns the boundary rules.** `depConstraints` in `eslint.config.mjs` is
   deliberately permissive — a single `{ sourceTag: "*", onlyDependOnLibsWithTags: ["*"] }`
@@ -337,3 +403,10 @@ it is keyboard-reachable.
 - **The 6 `biome-ignore` suppressions in §11 are real a11y debt**, not false positives.
   They want an a11y pass over `apps/landing` and `libs/ui` with design input; no MDRS
   issue owns that today.
+- **`no-unsafe-call` / `no-unsafe-member-access` coverage is gone for good** (§5). Biome
+  does no type-aware linting, so nothing in the new toolchain replaces it. If the team
+  wants it back it needs `typescript-eslint`'s type-checked preset in
+  `eslint.config.mjs`, which contradicts ADR §D5's "boundaries only" — a decision, not an
+  oversight.
+- **Re-point or drop the `.git-blame-ignore-revs` entry after merge** if this PR is
+  squashed (§12).

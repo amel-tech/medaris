@@ -18,7 +18,7 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "module-boundaries": "nx run-many -t module-boundaries",
-    "affected": "nx affected -t typecheck test build lint",
+    "affected": "nx affected -t typecheck test build lint module-boundaries",
     "graph": "nx graph"
   },
   "devDependencies": {

@@ -29,6 +29,8 @@
       "!libs/services/src/**/generated",
       "!libs/services/swagger-docs",
       "!libs/tokens/theme/main.css",
+      "!apps/tedrisat/src/database/migrations/meta",
+      "!libs/i18n/src/locales/**/*.json",
       "!**/pnpm-lock.yaml",
       "!**/*.min.js",
       "!**/*.min.css"
@@ -82,9 +84,9 @@
   "overrides": [
     {
       "includes": [
-        "apps/tedrisat/**/*.ts",
-        "apps/teskilat/**/*.ts",
-        "libs/common/**/*.ts"
+        "apps/tedrisat/**/*.{ts,mts,cts}",
+        "apps/teskilat/**/*.{ts,mts,cts}",
+        "libs/common/**/*.{ts,mts,cts}"
       ],
       "formatter": {
         "enabled": true,

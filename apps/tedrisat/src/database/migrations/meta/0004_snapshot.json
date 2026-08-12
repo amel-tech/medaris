@@ -141,7 +141,10 @@
       "compositePrimaryKeys": {
         "flashcard_progress_user_id_flashcard_id_pk": {
           "name": "flashcard_progress_user_id_flashcard_id_pk",
-          "columns": ["user_id", "flashcard_id"]
+          "columns": [
+            "user_id",
+            "flashcard_id"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -227,8 +230,12 @@
           "name": "flashcards_deck_id_decks_id_fk",
           "tableFrom": "flashcards",
           "tableTo": "decks",
-          "columnsFrom": ["deck_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "deck_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -244,12 +251,19 @@
     "public.flashcard_user_status": {
       "name": "flashcard_user_status",
       "schema": "public",
-      "values": ["NEW", "LEARNING", "MASTERED"]
+      "values": [
+        "NEW",
+        "LEARNING",
+        "MASTERED"
+      ]
     },
     "public.flashcard_type": {
       "name": "flashcard_type",
       "schema": "public",
-      "values": ["VOCABULARY", "HADEETH"]
+      "values": [
+        "VOCABULARY",
+        "HADEETH"
+      ]
     }
   },
   "schemas": {},
