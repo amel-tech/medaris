@@ -47,7 +47,15 @@ const CASES = [
 function affectedFor(file) {
   const result = spawnSync(
     "pnpm",
-    ["exec", "nx", "show", "projects", "--affected", `--files=${file}`],
+    [
+      "exec",
+      "nx",
+      "show",
+      "projects",
+      "--affected",
+      `--files=${file}`,
+      "--json",
+    ],
     { cwd: repoRoot, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 }
   );
   if (result.status !== 0) {
@@ -55,16 +63,34 @@ function affectedFor(file) {
     console.error(result.stderr ?? "");
     throw new Error(`\`nx show projects --affected\` failed for ${file}`);
   }
-  // Nx prints the project list as JSON on stdout, possibly after banner lines.
-  const line = result.stdout
+  return parseProjectList(result.stdout, file);
+}
+
+/**
+ * `nx show projects` does not commit to one output shape: it emits a JSON array
+ * in some environments and bare newline-separated project names in others (this
+ * gate's first CI run printed `tedrisat`, while every local run — piped, and with
+ * CI=true and NX_BASE/NX_HEAD set — printed `["tedrisat"]`). `--json` is passed
+ * above, but since the difference was never reproducible locally it is not
+ * trusted on its own; both shapes are accepted.
+ */
+export function parseProjectList(stdout, file) {
+  const lines = (stdout ?? "")
     .split("\n")
     .map((l) => l.trim())
-    .findLast((l) => l.startsWith("[") && l.endsWith("]"));
-  if (!line) {
-    console.error(result.stdout);
-    throw new Error(`could not parse the affected project list for ${file}`);
-  }
-  return JSON.parse(line);
+    .filter(Boolean);
+
+  const jsonLine = lines.findLast((l) => l.startsWith("[") && l.endsWith("]"));
+  if (jsonLine) return JSON.parse(jsonLine);
+
+  // Plain shape: one project name per line. Nx banner lines (" NX  ...") and
+  // pnpm's own "> nx show ..." echo are filtered out by shape, not by guesswork:
+  // a project name has no whitespace and no leading punctuation.
+  const names = lines.filter((l) => /^[@a-z0-9][\w./-]*$/i.test(l));
+  if (names.length > 0) return names;
+
+  console.error(stdout);
+  throw new Error(`could not parse the affected project list for ${file}`);
 }
 
 let failed = false;

@@ -131,6 +131,27 @@ instead, so a new app is covered automatically. With the loop, all 8 builds pass
 — that is the difference between a red and a green build gate, and it is the
 single most load-bearing line in the new workflow.
 
+### Three deviations from ADR-001, stated plainly
+
+ADR-001 §D5 "Wiring" specifies the CI line, and this task departs from it in
+three ways. None is accidental:
+
+1. **`ci.yaml`, not `ci.yml`.** The ADR (and therefore the `sharedGlobals` entry
+   it produced) says `.github/workflows/ci.yml`. Every one of the 9 workflow
+   files in this repo uses `.yaml`, including all 7 inherited deploy workflows.
+   Following the ADR's spelling would have made the odd one out; instead the
+   convention won and `sharedGlobals` was corrected to match. Either choice is
+   fine as long as the two agree — the bug was that they did not.
+2. **Five targets, not four.** The ADR says
+   `nx affected -t test build typecheck module-boundaries`. `lint` is added,
+   because the same ADR section defines the Biome `lint` target and MDRS-12
+   shipped it; its absence from the CI line predates Biome landing. The root
+   `affected` script already lists five, and CI now matches it exactly.
+3. **`ci-dev.yaml`'s deploy content is not reproduced.** ADR-001's own
+   correction table assigns "`ci-dev.yaml` matrix" to **MDRS-16**, alongside the
+   Docker build contexts and the pnpm install rewrite. Re-authoring a deploy path
+   here would have pre-empted that decision.
+
 ## 3. Decisions
 
 ### Cache strategy: local-only, cold in CI — and that was already decided
@@ -357,18 +378,20 @@ working:
 2. **`nrwl/nx-set-shas` on push-to-main.** On the very first run there is no
    prior successful `ci.yaml` run to use as a base, so it falls back. Expected to
    self-correct from the second run; not observed.
-3. **CodeQL `actions` language with `+security-extended,security-and-quality`.**
-   The query suites exist for `javascript-typescript`; for `actions` this is
-   believed correct but was not verifiable locally. `fail-fast: false` means a
-   failure there cannot mask the JS/TS results.
+3. ~~CodeQL `actions` language with `+security-extended,security-and-quality`.~~
+   **Resolved on PR #15:** `Analyze (actions)` passed in 50s and
+   `Analyze (javascript-typescript)` in 1m21s, so both query suites exist for
+   both languages. `fail-fast: false` is retained anyway, so a future failure in
+   one cannot mask the other's findings.
 4. **The Postgres service.** Retained from the backend's inherited workflow. The
    10 Jest suites in the `test` target pass without any database; only
    `apps/tedrisat/test/helpers/test-app.helper.ts` (testcontainers, `test:e2e`)
    needs one, and `test:e2e` is not in this pipeline. So the service is currently
    unused — kept for parity and for MDRS-20 rather than proven necessary.
-5. **`commitlint --from/--to` over the PR range.** The PR-title check is the one
-   that guards main's history; the range check is a bonus and has not been
-   exercised against unusual histories (force-pushed or rebased branches).
+5. **`commitlint --from/--to` over the PR range.** Both the title check and the
+   range check passed on PR #15 (`Commit hygiene`, 38s), but the range check has
+   not been exercised against unusual histories — force-pushed or rebased
+   branches, or a PR whose base branch moved underneath it.
 6. **Node 22 prod floor.** CI builds on `.nvmrc` (24) only; `node:22-alpine` is
    what production runs. Not exercised.
 
