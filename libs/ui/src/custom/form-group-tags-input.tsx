@@ -1,6 +1,6 @@
 import React from "react"
-import { Label } from "@medaris/ui/components/label"
-import { cn } from "@medaris/ui/lib/utils"
+import { Label } from "../components/label"
+import { cn } from "../lib/utils"
 import { FormField, FormItem } from "./form"
 import { Control, FieldValues, Path } from "react-hook-form"
 import { TagsInput, type TagsInputProps } from "./tags-input"

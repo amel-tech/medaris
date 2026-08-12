@@ -2,6 +2,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "name": "nizam-web",
   "targets": {
+    "lint": {},
     "build": {
       "inputs": [
         "production",

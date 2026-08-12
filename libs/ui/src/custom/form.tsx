@@ -13,8 +13,8 @@ import {
   type FieldValues,
 } from "react-hook-form"
 
-import { cn } from "@medaris/ui/lib/utils"
-import { Label } from "@medaris/ui/components/label"
+import { cn } from "../lib/utils"
+import { Label } from "../components/label"
 
 const Form = FormProvider
 

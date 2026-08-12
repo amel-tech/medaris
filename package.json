@@ -13,11 +13,21 @@
     "typecheck": "nx run-many -t typecheck",
     "test": "nx run-many -t test",
     "dev": "nx run-many -t dev",
-    "affected": "nx affected -t typecheck test build",
+    "lint": "nx run-many -t lint",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "module-boundaries": "nx run-many -t module-boundaries",
+    "affected": "nx affected -t typecheck test build lint",
     "graph": "nx graph"
   },
   "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@nx/eslint": "catalog:",
+    "@nx/eslint-plugin": "catalog:",
+    "eslint": "catalog:",
     "nx": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:"
   }
 }

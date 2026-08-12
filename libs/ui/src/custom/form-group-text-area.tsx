@@ -1,7 +1,7 @@
 import React from "react"
-import { Label } from "@medaris/ui/components/label"
-import { Textarea } from "@medaris/ui/components/textarea"
-import { cn } from "@medaris/ui/lib/utils"
+import { Label } from "../components/label"
+import { Textarea } from "../components/textarea"
+import { cn } from "../lib/utils"
 import { FormField, FormItem } from "./form"
 import { Control, FieldValues, Path } from "react-hook-form"
 

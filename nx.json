@@ -29,7 +29,23 @@
       }
     ]
   },
+  "plugins": [
+    {
+      "plugin": "@nx/eslint/plugin",
+      "options": {
+        "targetName": "module-boundaries"
+      }
+    }
+  ],
   "targetDefaults": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "biome check {projectRoot}"
+      },
+      "cache": true,
+      "inputs": ["default", "{workspaceRoot}/biome.json"]
+    },
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["production", "^production"],

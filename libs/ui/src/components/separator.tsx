@@ -3,7 +3,7 @@
 import * as React from "react"
 import * as SeparatorPrimitive from "@radix-ui/react-separator"
 
-import { cn } from "@medaris/ui/lib/utils"
+import { cn } from "../lib/utils"
 
 interface SeparatorProps
   extends Omit<

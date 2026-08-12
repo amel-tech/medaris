@@ -5,25 +5,25 @@ import { Slot } from "@radix-ui/react-slot"
 import { cva, VariantProps } from "class-variance-authority"
 import { SidebarSimpleIcon } from "@medaris/icons"
 
-import { useIsMobile } from "@medaris/ui/hooks/use-mobile"
-import { cn } from "@medaris/ui/lib/utils"
-import { Button } from "@medaris/ui/components/button"
-import { Input } from "@medaris/ui/components/input"
-import { Separator } from "@medaris/ui/components/separator"
+import { useIsMobile } from "../hooks/use-mobile"
+import { cn } from "../lib/utils"
+import { Button } from "./button"
+import { Input } from "./input"
+import { Separator } from "./separator"
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@medaris/ui/components/sheet"
-import { Skeleton } from "@medaris/ui/components/skeleton"
+} from "./sheet"
+import { Skeleton } from "./skeleton"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@medaris/ui/components/tooltip"
+} from "./tooltip"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7

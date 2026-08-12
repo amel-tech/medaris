@@ -2,7 +2,7 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { XIcon, CaretDownIcon } from "@medaris/icons"
 
-import { cn } from "@medaris/ui/lib/utils"
+import { cn } from "../lib/utils"
 import { Badge } from "../components/badge"
 
 const tagsInputVariants = cva(

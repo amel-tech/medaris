@@ -34,11 +34,9 @@ export default function middleware(req: NextRequest) {
   const isPublicPage = publicPathnameRegex.test(req.nextUrl.pathname)
 
   if (isPublicPage) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return intlMiddleware(req as any)
   }
   else {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (authMiddleware as any)(req)
   }
 }

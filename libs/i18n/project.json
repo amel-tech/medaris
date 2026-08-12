@@ -1,4 +1,7 @@
 {
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "name": "i18n"
+  "name": "i18n",
+  "targets": {
+    "lint": {}
+  }
 }

@@ -2,6 +2,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "name": "tokens",
   "targets": {
+    "lint": {},
     "build": {
       "outputs": [
         "{projectRoot}/theme/main.css"

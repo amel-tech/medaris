@@ -3,8 +3,8 @@
 import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
-import { cn } from "@medaris/ui/lib/utils"
-import { buttonVariants } from "@medaris/ui/components/button"
+import { cn } from "../lib/utils"
+import { buttonVariants } from "./button"
 
 function AlertDialog({
   ...props
