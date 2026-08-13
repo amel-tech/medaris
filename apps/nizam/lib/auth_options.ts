@@ -63,6 +63,15 @@ const refreshAccessToken = async (token: JWT) => {
   }
 };
 
+const useSecureCookies = env.NEXTAUTH_URL.startsWith("https://");
+const cookiePrefix = useSecureCookies ? "__Secure-" : "";
+
+/**
+ * Nizam and Tedris share `localhost` as a cookie domain in local dev, so
+ * NextAuth's default cookie names (`next-auth.*`) collide between the two
+ * apps and logging into one drops the other's session. App-specific names
+ * keep the cookies isolated. See MDRS-24.
+ */
 const authOptions: AuthOptions = {
   providers: [
     KeycloakProvider({
@@ -72,6 +81,62 @@ const authOptions: AuthOptions = {
       idToken: true,
     }),
   ],
+  cookies: {
+    sessionToken: {
+      name: `${cookiePrefix}nizam.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: useSecureCookies,
+      },
+    },
+    callbackUrl: {
+      name: `${cookiePrefix}nizam.callback-url`,
+      options: {
+        sameSite: "lax",
+        path: "/",
+        secure: useSecureCookies,
+      },
+    },
+    csrfToken: {
+      name: `${useSecureCookies ? "__Host-" : ""}nizam.csrf-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: useSecureCookies,
+      },
+    },
+    pkceCodeVerifier: {
+      name: `${cookiePrefix}nizam.pkce.code_verifier`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: useSecureCookies,
+        maxAge: 60 * 15,
+      },
+    },
+    state: {
+      name: `${cookiePrefix}nizam.state`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: useSecureCookies,
+        maxAge: 60 * 15,
+      },
+    },
+    nonce: {
+      name: `${cookiePrefix}nizam.nonce`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+      },
+    },
+  },
   callbacks: {
     async jwt({ token, user, account }) {
       if (account) {

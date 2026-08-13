@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { withAuth } from "next-auth/middleware";
 import createIntlMiddleware from "next-intl/middleware";
+import authOptions from "~/lib/auth_options";
 import { routing } from "~/lib/i18n/routing";
 
 const intlMiddleware = createIntlMiddleware(routing);
@@ -13,6 +14,11 @@ const authMiddleware = withAuth(
     return intlMiddleware(req);
   },
   {
+    // `withAuth` reads the session cookie name from its own options, not
+    // from `authOptions` — reuse the app-specific cookie config here too,
+    // otherwise the middleware falls back to the shared `next-auth.*`
+    // default and the MDRS-24 fix only half-applies. See auth_options.ts.
+    cookies: authOptions.cookies,
     callbacks: {
       authorized: ({ token }) => {
         // console.log('Auth middleware - authorized callback:', data)
