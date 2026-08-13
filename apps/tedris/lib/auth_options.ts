@@ -6,6 +6,7 @@ import type {
 import { type AuthOptions, getServerSession } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import KeycloakProvider from "next-auth/providers/keycloak";
+import { authCookies } from "~/lib/auth_cookies";
 import { env } from "~/env";
 
 /**
@@ -57,14 +58,10 @@ const refreshAccessToken = async (token: JWT) => {
   }
 };
 
-const useSecureCookies = env.NEXTAUTH_URL.startsWith("https://");
-const cookiePrefix = useSecureCookies ? "__Secure-" : "";
-
 /**
- * Nizam and Tedris share `localhost` as a cookie domain in local dev, so
- * NextAuth's default cookie names (`next-auth.*`) collide between the two
- * apps and logging into one drops the other's session. App-specific names
- * keep the cookies isolated. See MDRS-24.
+ * Cookie names live in `auth_cookies.ts` so Edge middleware can reuse them
+ * without importing this file (KeycloakProvider breaks the Edge bundle).
+ * See MDRS-24.
  */
 const authOptions: AuthOptions = {
   providers: [
@@ -75,62 +72,7 @@ const authOptions: AuthOptions = {
       idToken: true,
     }),
   ],
-  cookies: {
-    sessionToken: {
-      name: `${cookiePrefix}tedris.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: useSecureCookies,
-      },
-    },
-    callbackUrl: {
-      name: `${cookiePrefix}tedris.callback-url`,
-      options: {
-        sameSite: "lax",
-        path: "/",
-        secure: useSecureCookies,
-      },
-    },
-    csrfToken: {
-      name: `${useSecureCookies ? "__Host-" : ""}tedris.csrf-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: useSecureCookies,
-      },
-    },
-    pkceCodeVerifier: {
-      name: `${cookiePrefix}tedris.pkce.code_verifier`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: useSecureCookies,
-        maxAge: 60 * 15,
-      },
-    },
-    state: {
-      name: `${cookiePrefix}tedris.state`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: useSecureCookies,
-        maxAge: 60 * 15,
-      },
-    },
-    nonce: {
-      name: `${cookiePrefix}tedris.nonce`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-      },
-    },
-  },
+  cookies: authCookies,
   callbacks: {
     async jwt({ token, user, account }) {
       if (account) {

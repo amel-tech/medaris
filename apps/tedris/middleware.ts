@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { withAuth } from "next-auth/middleware";
 import createIntlMiddleware from "next-intl/middleware";
-import authOptions from "~/lib/auth_options";
+import { authCookies } from "~/lib/auth_cookies";
 import { routing } from "~/lib/i18n/routing";
 
 const intlMiddleware = createIntlMiddleware(routing);
@@ -15,10 +15,9 @@ const authMiddleware = withAuth(
   },
   {
     // `withAuth` reads the session cookie name from its own options, not
-    // from `authOptions` — reuse the app-specific cookie config here too,
-    // otherwise the middleware falls back to the shared `next-auth.*`
-    // default and the MDRS-24 fix only half-applies. See auth_options.ts.
-    cookies: authOptions.cookies,
+    // from `authOptions` — import cookies from a Keycloak-free module so
+    // Edge middleware never loads openid-client. See auth_cookies.ts.
+    cookies: authCookies,
     callbacks: {
       authorized: ({ token }) => {
         // console.log('Auth middleware - authorized callback:', data)
