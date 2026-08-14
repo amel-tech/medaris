@@ -6,8 +6,8 @@ import type {
 import { type AuthOptions, getServerSession } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import KeycloakProvider from "next-auth/providers/keycloak";
-import { authCookies } from "~/lib/auth_cookies";
 import { env } from "~/env";
+import { authCookies } from "~/lib/auth_cookies";
 
 /**
  * Takes a token, and returns a new token with updated
