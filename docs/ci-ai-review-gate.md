@@ -243,9 +243,32 @@ manufactures on every superseded run. All five are enumerated here:
 | `skipped` | the lens job's `if` was false although the preflight selected work | **red** | This is a contradiction between two parts of one workflow. Branch protection reports a skipped job as passing, so shrugging here is exactly the fail-open shape this gate exists to remove. The legitimate skips — fork, bot, draft, bypass, no key, no matching glob — are decided by the *preflight*, not by this value. |
 | `""` (empty) | the matrix job never instantiated — a workflow-level error | **red** | An empty result means the gate itself is broken. It must never be read as "nothing to do". |
 
-The preflight's own two outputs get the same treatment, and for the same reason: a
-`mode` that is neither `run` nor `skip`, and a `lens_count` that is not a
-non-negative integer, are **red**. Both used to fall through into the green "no lens
+### `unverifiable` — the mode that stops a run the action would reject anyway
+
+`claude-code-action` refuses to run when the workflow file it executes under differs
+from the copy on the default branch. That guard is right: it is what stops a pull
+request from weakening its own review. But it fires in **two** situations, and until
+MDRS-53 both arrived looking like an outage — every lens dying before it could write
+an execution record, and the gate reporting "N of N lenses could not be shown to have
+run" with `is_error=null`.
+
+| Cause | What it means | What to do |
+| --- | --- | --- |
+| **self-edit** | the PR changes `.github/workflows/ai-review.yml`. The gate cannot vouch for changes to itself. | Human review plus the `ai-review-bypass` label. |
+| **stale merge ref** | the PR does *not* touch that file, but `refs/pull/N/merge` still merges into a pre-change base. GitHub recomputes merge refs in the background after the base branch moves, **not** instantly — measured at over 25 minutes on 2026-08-15. | Nothing. Wait for the merge ref to catch up, or push to the branch to force it, then re-run. |
+
+The preflight now detects both before dispatching anything, reports `mode=unverifiable`
+with the cause in the reason string, and the gate goes **red** — nothing was reviewed.
+This costs one API call and saves a full matrix of jobs that could only have produced
+record-less corpses.
+
+**This bites hardest right after a change to the gate itself lands**, which is exactly
+when someone is most likely to re-trigger a PR to test it. On 2026-08-15 PR #25 was
+re-labelled 97 seconds after such a merge and all four of its lenses died this way.
+
+The preflight's own two outputs get the same treatment as the job results above, and
+for the same reason: a `mode` outside the four defined values, and a `lens_count` that
+is not a non-negative integer, are **red**. Both used to fall through into the green "no lens
 matched this diff" branch — a gate reporting a clean review from a value it did not
 understand. On top of that the aggregator asserts, before any green headline, that the
 number of verdict artifacts equals the number of lenses the preflight selected and

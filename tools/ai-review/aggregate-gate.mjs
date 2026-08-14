@@ -339,7 +339,8 @@ async function main() {
   } else if (
     preflightMode !== "skip" &&
     preflightMode !== "run" &&
-    preflightMode !== "queued"
+    preflightMode !== "queued" &&
+    preflightMode !== "unverifiable"
   ) {
     // `mode` gets the same exhaustive treatment as every `needs.*.result`
     // above, and for the same reason. It used to be tested only against
@@ -351,7 +352,26 @@ async function main() {
     red = true;
     headline =
       `❌ **The gate did not run.** The preflight reported an unrecognised mode \`${preflightMode || "(empty)"}\`; ` +
-      "only `run`, `queued` and `skip` are defined, so the gate cannot say what was or was not reviewed.";
+      "only `run`, `queued`, `skip` and `unverifiable` are defined, so the gate cannot say what was or was not reviewed.";
+  } else if (preflightMode === "unverifiable") {
+    // RED. `claude-code-action` would reject every lens because the workflow
+    // file under this run differs from the default branch's copy, so the
+    // preflight declined to dispatch a matrix that could only produce
+    // record-less corpses.
+    //
+    // This mode exists because the two causes were previously indistinguishable
+    // from each other AND from a real outage: both arrived as "N of N lenses
+    // could not be shown to have run" with `is_error=null`, which is the
+    // signature of the action dying, not of it refusing to start. One cause is
+    // the pull request editing the gate (working as designed); the other is a
+    // merge ref GitHub has not recomputed yet (nobody's fault, fixes itself).
+    // The reason text says which.
+    red = true;
+    headline =
+      `❌ **No lens could run — ${preflightSkipReason}**\n\n` +
+      "This check is red because nothing was reviewed, not because a finding was " +
+      "raised. The preflight refused to dispatch the lenses rather than spend jobs " +
+      "on a matrix the action would reject before its first turn.";
   } else if (preflightMode === "queued") {
     // RED, deliberately, and this is the one mode where that deserves stating.
     //

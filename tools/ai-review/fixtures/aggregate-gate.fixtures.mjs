@@ -114,6 +114,63 @@ const cases = [
     verdicts: [],
     expect: { exit: 1, contains: "Nothing has been reviewed yet" },
   },
+  // `unverifiable` is the mode with the strongest pull toward being read as a
+  // skip: in both of its causes the pull request is usually fine and the author
+  // did nothing wrong. It is RED anyway, because no lens ran. These four pin
+  // that, and pin that the reason survives into the comment — the reason is the
+  // entire value of the mode, since it is what separates "this PR edits the
+  // gate" from "GitHub has not recomputed the merge ref yet".
+  {
+    name: "unverifiable / stale merge ref — RED, not a skip",
+    env: {
+      PREFLIGHT_RESULT: "success",
+      PREFLIGHT_MODE: "unverifiable",
+      PREFLIGHT_SKIP_REASON:
+        "its merge ref (`refs/pull/PR/merge`) is STALE — GitHub recomputes it in the background",
+      LENS_RESULT: "skipped",
+      PREFLIGHT_LENS_COUNT: "",
+    },
+    verdicts: [],
+    expect: { exit: 1, contains: "No lens could run" },
+  },
+  {
+    name: "unverifiable carries the cause through to the comment",
+    env: {
+      PREFLIGHT_RESULT: "success",
+      PREFLIGHT_MODE: "unverifiable",
+      PREFLIGHT_SKIP_REASON:
+        "this pull request changes `.github/workflows/ai-review.yml`, so `claude-code-action` refuses to run",
+      LENS_RESULT: "skipped",
+      PREFLIGHT_LENS_COUNT: "",
+    },
+    verdicts: [],
+    expect: { exit: 1, contains: "claude-code-action` refuses to run" },
+  },
+  {
+    name: "unverifiable stays RED with AI_REVIEW_ENFORCE_BLOCK=false",
+    env: {
+      PREFLIGHT_RESULT: "success",
+      PREFLIGHT_MODE: "unverifiable",
+      PREFLIGHT_SKIP_REASON: "stale merge ref",
+      LENS_RESULT: "skipped",
+      PREFLIGHT_LENS_COUNT: "",
+      AI_REVIEW_ENFORCE_BLOCK: "false",
+    },
+    verdicts: [],
+    expect: { exit: 1, contains: "No lens could run" },
+  },
+  {
+    name: "unverifiable says plainly that nothing was reviewed",
+    env: {
+      PREFLIGHT_RESULT: "success",
+      PREFLIGHT_MODE: "unverifiable",
+      PREFLIGHT_SKIP_REASON: "stale merge ref",
+      LENS_RESULT: "skipped",
+      PREFLIGHT_LENS_COUNT: "",
+    },
+    verdicts: [],
+    expect: { exit: 1, contains: "nothing was reviewed" },
+  },
   {
     name: "fork PR — documented skip",
     env: {

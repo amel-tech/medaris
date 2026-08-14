@@ -139,11 +139,65 @@ jobs:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 1
 
+      # claude-code-action refuses to run when the workflow file it is executing
+      # under differs from the copy on the default branch. That guard is correct
+      # — it is what stops a pull request from weakening its own review — but it
+      # fires identically in a second case that is nobody's fault, and produces
+      # the same evidence-free wreckage either way: every lens dies before it can
+      # write an execution record, and the gate reports "N of N lenses could not
+      # be shown to have run" with `is_error=null`, which reads as an outage.
+      #
+      # The second case is a STALE MERGE REF. `refs/pull/N/merge` is recomputed
+      # by GitHub in the background when the base branch moves, not instantly.
+      # Land any change to this file and every open pull request keeps running
+      # the OLD copy until its merge ref catches up — measured at over 25 minutes
+      # on 2026-08-15, when PR #25 was re-triggered 97 seconds after a change to
+      # this workflow merged and all four of its lenses died this way.
+      #
+      # So: detect it here, before dispatching lenses that cannot possibly
+      # validate, and say which of the two it is. Costs one API call and saves
+      # four jobs.
+      - name: Refuse to dispatch lenses that cannot validate
+        id: tamper
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          WORKFLOW_PATH: .github/workflows/ai-review.yml
+        run: |
+          set -euo pipefail
+
+          # The copy this run is executing (merge ref, checked out above) vs the
+          # copy on the default branch, which is what the action compares to.
+          gh api "repos/${REPO}/contents/${WORKFLOW_PATH}?ref=${DEFAULT_BRANCH}" \
+            --jq '.content' | tr -d '\n' | base64 -d > /tmp/default-branch-workflow.yml
+
+          if cmp -s "${WORKFLOW_PATH}" /tmp/default-branch-workflow.yml; then
+            echo "validates=true" >> "$GITHUB_OUTPUT"
+            echo "workflow matches ${DEFAULT_BRANCH} — lenses can validate"
+            exit 0
+          fi
+
+          echo "validates=false" >> "$GITHUB_OUTPUT"
+
+          # Which of the two causes is it? Ask what the PR actually changes
+          # rather than inferring it from the diff of a ref that may itself be
+          # the stale thing.
+          if gh api "repos/${REPO}/pulls/${PR_NUMBER}/files" --paginate \
+               --jq '.[].filename' | grep -qxF "${WORKFLOW_PATH}"; then
+            echo "cause=self-edit" >> "$GITHUB_OUTPUT"
+          else
+            echo "cause=stale-base" >> "$GITHUB_OUTPUT"
+          fi
+
       # Ordered most-structural first. Every branch is a documented skip that the
       # aggregator reports as "no review happened" — never as an approval.
       - name: Classify this pull request
         id: classify
         env:
+          WORKFLOW_VALIDATES: ${{ steps.tamper.outputs.validates }}
+          WORKFLOW_MISMATCH_CAUSE: ${{ steps.tamper.outputs.cause }}
           BASE_REPO: ${{ github.repository }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           ACTOR: ${{ github.event.pull_request.user.login }}
@@ -205,6 +259,18 @@ jobs:
           elif printf '%s' "${LABELS}" | jq -e --arg l "${AI_REVIEW_BYPASS_LABEL}" 'any(.[]; . == $l)' >/dev/null; then
             mode=skip
             reason="the \`${AI_REVIEW_BYPASS_LABEL}\` label is applied, so the AI review was deliberately skipped. Nothing was reviewed — remove the label to re-run."
+
+          # The action's anti-tamper guard will reject every lens. Fail here,
+          # loudly and cheaply, instead of dispatching a matrix that can only
+          # produce record-less corpses. RED, not skip: nothing was reviewed, and
+          # the two causes need different actions from whoever reads it.
+          elif [ "${WORKFLOW_VALIDATES}" = "false" ]; then
+            mode=unverifiable
+            if [ "${WORKFLOW_MISMATCH_CAUSE}" = "self-edit" ]; then
+              reason="this pull request changes \`.github/workflows/ai-review.yml\`, so \`claude-code-action\` refuses to run: a pull request may not review itself under its own copy of the gate. **No lens ran, and the gate cannot vouch for this change.** Land it with human review and the \`${AI_REVIEW_BYPASS_LABEL}\` label."
+            else
+              reason="the checked-out copy of \`.github/workflows/ai-review.yml\` differs from the one on the default branch, but this pull request does not touch that file. Its merge ref (\`refs/pull/PR/merge\`) is STALE — GitHub recomputes it in the background after the base branch moves, and it has not caught up yet. Nothing is wrong with this pull request. Wait for the merge ref to catch up, or push to the branch to force it, then re-run."
+            fi
 
           # Zero repository secrets exist in medaris today. "Not configured" is a
           # configuration state: not a pass, not a crash, and clearly distinct
