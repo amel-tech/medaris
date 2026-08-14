@@ -1,0 +1,93 @@
+name: Linear reconcile
+
+# Weekly rear-view report: Linear issues in Done with no pull request and no
+# commit in this repo behind them (MDRS-49). See tools/ci/reconcile-linear.mjs
+# for what it checks and why the answer needs a human.
+#
+# NON-BLOCKING BY DESIGN, in three separate ways, because this reads a queue
+# that people move by hand and a red mark on it must never become something to
+# route around:
+#
+#   * it is its own workflow on a schedule, never a required check;
+#   * the scheduled run passes --dry-run, so a backlog of unlinked tickets
+#     reports (exit 0) without failing the run.
+#
+# But it is NOT continue-on-error, and that is deliberate. The script separates
+# "I looked and found orphans" (exit 1, muted by --dry-run above) from "I could
+# not look at all" (exit 2 — expired token, Linear outage, bad response shape).
+# Swallowing the second is how a reconciliation job quietly stops reconciling
+# and nobody notices for months; it is the same failure this whole issue exists
+# to prevent, one level up. A missing LINEAR_API_KEY is different again and the
+# script exits 0 for it, because an unconfigured secret is a known state rather
+# than a broken tool.
+#
+# Run it with `enforce: true` from the Actions tab when you want the exit code
+# to mean something — e.g. after working the list down to zero.
+#
+# It is also NOT a job in ci.yaml: nx.json lists that file in `sharedGlobals`,
+# so every edit there marks all 16 projects affected.
+
+on:
+  schedule:
+    # 06:00 UTC every Monday — before the week's planning, after nothing.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "Only issues completed on/after this date (YYYY-MM-DD)"
+        required: false
+        type: string
+      enforce:
+        description: "Exit non-zero when a Done issue has no trace here"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linear-reconcile
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    name: Reconcile Linear Done against this repo
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # fetch-depth: 0 — the script's second test is "does any commit on main
+      # name this key?", which a shallow clone answers wrongly (and silently).
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # No secret configured is reported as skipped, by the script itself: it
+      # prints why and exits 0. "I could not look" is not "I found a violation".
+      - name: Reconcile
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          SINCE: ${{ inputs.since }}
+          ENFORCE: ${{ inputs.enforce }}
+        run: |
+          set -uo pipefail
+          args=()
+          [ -n "${SINCE}" ] && args+=(--since "${SINCE}")
+          [ "${ENFORCE}" = "true" ] || args+=(--dry-run)
+
+          {
+            echo '## Linear reconcile'
+            echo
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          node tools/ci/reconcile-linear.mjs "${args[@]}" 2>&1 \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+          status=${PIPESTATUS[0]}
+
+          {
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit "$status"
