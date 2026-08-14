@@ -66,7 +66,9 @@ Nx runs with `neverConnectToCloud: true` — no remote cache, no analytics. CI t
 
 ### Test coverage, stated honestly
 
-`pnpm test` reports three projects, but only two of them run real tests: **91 tests across 10 suites, all in `tedrisat` and `teskilat`**. The third, `tedris-web`, executes `echo 'Tests not implemented'`, which Nx counts as a pass. **Frontend test coverage is zero.** Migrating to Vitest and closing that gap is MDRS-20.
+`pnpm test` reports three projects, but only two of them run real tests: **91 tests across 10 suites, all in `tedrisat` and `teskilat`**. The third, `tedris-web`, executes `echo 'Tests not implemented'`, which Nx counts as a pass. **Frontend test coverage is zero.**
+
+Those 91 tests run on **Vitest**; MDRS-20 moved them off Jest at the same count, and no Jest dependency or config file remains. It did **not** close the frontend gap — there was no frontend spec to migrate, and scaffolding a runner with nothing to run would only have produced a target that passes vacuously. Writing the first frontend specs, with the `@nx/vite` + `jsdom` setup they need, is tracked separately. Four of tedrisat's eight suites are e2e and start a Testcontainers `postgres:17-alpine`, so **`-t test` needs a running Docker daemon**. See [`docs/migration/mdrs-20-jest-to-vitest.md`](docs/migration/mdrs-20-jest-to-vitest.md).
 
 ## Toolchain
 

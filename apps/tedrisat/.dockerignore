@@ -30,8 +30,8 @@ coverage/
 test/
 *.spec.ts
 *.test.ts
-jest.config.js
-jest-e2e.json
+vitest.config.ts
+vitest.integration.config.ts
 
 # Documentation
 README.md

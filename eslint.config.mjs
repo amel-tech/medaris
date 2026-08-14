@@ -53,7 +53,14 @@ export default [
         "error",
         {
           enforceBuildableLibDependency: true,
-          allow: [],
+          // MDRS-20: the two workspace-root Vitest base configs, which each
+          // project's own vitest config `mergeConfig`s. They are test-runner
+          // configuration, not importable source, so they are reachable only by
+          // relative path — the rule otherwise rejects them as "External
+          // resources cannot be imported using a relative or absolute path".
+          // Scoped to these two specifiers on purpose: this whitelists two
+          // import paths, it does not exempt any file from the rule.
+          allow: ["../../vitest.config", "../../vitest.integration.config"],
           // Permissive on purpose: MDRS-12 only lands the shell so the rule is
           // wired and green. The real `scope:*` / `platform:*` tags and their
           // depConstraints are MDRS-13's deliverable (ADR-001 §D5 sequencing).

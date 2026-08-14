@@ -32,7 +32,8 @@ updates:
           - "typescript"
           - "eslint"
           - "husky"
-          - "jest"
+          - "vitest"
+          - "@vitest/*"
           - "lint-staged"
           - "prettier"
         update-types:
@@ -76,7 +77,8 @@ updates:
           - "typescript"
           - "eslint"
           - "husky"
-          - "jest"
+          - "vitest"
+          - "@vitest/*"
           - "lint-staged"
           - "prettier"
         update-types:

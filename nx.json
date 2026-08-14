@@ -9,8 +9,8 @@
       "default",
       "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)",
       "!{projectRoot}/test/**/*",
-      "!{projectRoot}/jest.config.*",
-      "!{projectRoot}/jest-e2e.json",
+      "!{projectRoot}/vitest.config.ts",
+      "!{projectRoot}/vitest.integration.config.ts",
       "!{projectRoot}/**/*.stories.@(js|jsx|ts|tsx|mdx)",
       "!{projectRoot}/.storybook/**/*",
       "!{projectRoot}/CHANGELOG.md",
@@ -25,6 +25,7 @@
       "{workspaceRoot}/package.json",
       "{workspaceRoot}/.github/workflows/ci.yaml",
       "{workspaceRoot}/vitest.config.ts",
+      "{workspaceRoot}/vitest.integration.config.ts",
       {
         "runtime": "cat .env*.local apps/*/.env*.local 2>/dev/null | shasum"
       }

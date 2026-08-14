@@ -81,4 +81,4 @@ libs/*/node_modules
 # Development tools
 .prettierrc*
 .eslintrc*
-jest.config.*
+vitest.config.*

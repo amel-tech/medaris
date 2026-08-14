@@ -10,10 +10,10 @@ describe("ExampleRepository", () => {
   let repository: ExampleRepository;
 
   const mockRepository = {
-    findAll: jest.fn(),
-    findById: jest.fn(),
-    create: jest.fn(),
-    delete: jest.fn(),
+    findAll: vi.fn(),
+    findById: vi.fn(),
+    create: vi.fn(),
+    delete: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -30,7 +30,7 @@ describe("ExampleRepository", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("findAll", () => {

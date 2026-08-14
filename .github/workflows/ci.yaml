@@ -81,15 +81,18 @@ jobs:
     timeout-minutes: 45
     #
     # Deliberately NO postgres service. The backend's inherited pull-request.yaml
-    # ran one, but nothing can use it: the 10 Jest suites in the `test` target
-    # need no database, and apps/tedrisat/test/helpers/test-app.helper.ts
-    # (`test:e2e`, not in this pipeline) starts its *own* Testcontainers
-    # postgres:17-alpine and overwrites DB_HOST/DB_PORT/DB_USERNAME/DB_PASSWORD/
-    # DB_NAME before AppModule loads — with different credentials
-    # (testuser/testpass/tedrisat_test) than the inherited service provided.
-    # Carrying it forward would have paid a container pull and health-check on
-    # every run for nothing. When MDRS-20 wires e2e in, what it needs is a Docker
-    # socket, which ubuntu-latest already has — not a service container.
+    # ran one, but nothing can use it. Four of tedrisat's eight suites are e2e and
+    # they DO need a database — but apps/tedrisat/test/helpers/test-app.helper.ts
+    # starts its *own* Testcontainers postgres:17-alpine and overwrites DB_HOST/
+    # DB_PORT/DB_USERNAME/DB_PASSWORD/DB_NAME before AppModule loads, with
+    # different credentials (testuser/testpass/tedrisat_test) than the inherited
+    # service provided. Carrying it forward would have paid a container pull and
+    # health-check on every run for nothing.
+    #
+    # Note those four e2e suites run inside the `test` target, not only under
+    # `test:e2e` — that was already true under Jest and MDRS-20 kept the glob, so
+    # this job has always needed a Docker socket rather than a service container.
+    # ubuntu-latest provides one.
     steps:
       # fetch-depth: 0 — nx affected needs real history to find a merge base.
       - name: Checkout
