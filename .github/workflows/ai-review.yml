@@ -442,7 +442,10 @@ jobs:
         # the execution record, NOT `steps.review.outcome`, because that outcome
         # is 0 in both of the failure modes this gate was built for.
         continue-on-error: true
-        uses: anthropics/claude-code-action@v1
+        # SHA-pinned, not @v1. CodeQL flags a floating third-party ref, and this
+        # action runs with the review credential in its environment — a moved tag
+        # would silently change what holds that token. Update deliberately.
+        uses: anthropics/claude-code-action@e63208cb983318a44e3f945e959ef894b707dcfa # v1
         with:
           # Subscription OAuth token, not a metered API key. medaris has no budget,
           # and a metered key at the measured $4-15.6 per review would bill real money
@@ -454,10 +457,20 @@ jobs:
           # place the actual API error appears. Sidre's outage ran ~40 undiagnosed
           # runs for exactly this reason.
           show_full_output: true
+          # NO `cat` and NO `sed` in the allowlist, deliberately. Both take an
+          # arbitrary path, and this job holds the review credential in its
+          # environment while checking out untrusted pull-request code. That is a
+          # complete exfiltration chain on a public repository: a planted comment
+          # in a reviewed file persuades the model to `cat /proc/self/environ`, the
+          # token lands in its findings JSON, and the aggregator posts that JSON to
+          # a public pull-request comment. `Read`, `Grep` and `Glob` cover every
+          # legitimate need and are scoped to the workspace; the three `git`
+          # subcommands are read-only and bounded. CodeQL raised the two halves of
+          # this chain separately (alerts 30/31 and 33) — they only matter together.
           claude_args: >-
             --model ${{ env.AI_REVIEW_MODEL }}
             --max-turns ${{ matrix.lens.max_turns || env.AI_REVIEW_MAX_TURNS }}
-            --allowedTools "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(sed:*),Bash(cat:*),Bash(ls:*),Bash(grep:*),Bash(rg:*)"
+            --allowedTools "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(ls:*),Bash(rg:*)"
           prompt: |
             REPOSITORY: ${{ github.repository }}
             PULL REQUEST: #${{ github.event.pull_request.number }}

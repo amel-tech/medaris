@@ -75,17 +75,65 @@ const enforceBlock = env.AI_REVIEW_ENFORCE_BLOCK === "true";
 const MARKER = "<!-- ai-review-gate -->";
 
 /** Collected verdict artifacts, one per lens leg that reached its evaluator. */
+/**
+ * Last line of defence before anything model-authored reaches a PUBLIC comment.
+ *
+ * The lens jobs hold the review credential in their environment while reviewing
+ * untrusted pull-request code, so a successful prompt injection could in
+ * principle route a secret into a findings string. The allowlist in
+ * ai-review.yml is the real control — `cat` and `sed` are deliberately absent,
+ * so there is no arbitrary-path read to exfiltrate WITH. This is the belt to
+ * that pair of braces, and it exists because the consequence is asymmetric: a
+ * redacted true positive costs a reviewer one click, a leaked subscription
+ * token on a public repository costs a credential rotation and is permanent in
+ * the fork network.
+ *
+ * Patterns are shape-based rather than a list of known secret names, because
+ * the thing worth catching is the one nobody thought to name.
+ */
+const SECRET_SHAPES = [
+  /sk-ant-[A-Za-z0-9_-]{16,}/g, // Anthropic API keys
+  /gh[pousr]_[A-Za-z0-9]{16,}/g, // GitHub tokens
+  /github_pat_[A-Za-z0-9_]{20,}/g, // fine-grained PATs
+  /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g, // JWTs
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----/g,
+];
+
+function redactSecrets(text) {
+  if (typeof text !== "string") return text;
+  let out = text;
+  for (const shape of SECRET_SHAPES)
+    out = out.replace(shape, "«redacted by the AI review gate»");
+  return out;
+}
+
 function loadVerdicts(root) {
   if (!root || !existsSync(root)) return [];
   const found = [];
   const walk = (dir) => {
     for (const entry of readdirSync(dir)) {
       const full = join(dir, entry);
-      if (statSync(full).isDirectory()) {
+      // Read first, ask questions after. This used to `statSync` and then
+      // `readFileSync`, which CodeQL flags as a time-of-check/time-of-use race:
+      // the path can change between the two calls. The directory case still
+      // needs the stat, but it is now the thing that FAILS rather than the
+      // thing that gates — a path that is a directory throws EISDIR on read and
+      // lands in the same catch as any other unreadable entry.
+      let contents = null;
+      let isDirectory = false;
+      try {
+        contents = readFileSync(full, "utf8");
+      } catch (error) {
+        isDirectory = error.code === "EISDIR";
+        if (!isDirectory && error.code !== "ENOENT")
+          console.log(`::warning::could not read ${full}: ${error.message}`);
+      }
+
+      if (isDirectory) {
         walk(full);
-      } else if (entry.endsWith(".json")) {
+      } else if (contents !== null && entry.endsWith(".json")) {
         try {
-          const parsed = JSON.parse(readFileSync(full, "utf8"));
+          const parsed = JSON.parse(contents);
           if (
             parsed &&
             typeof parsed === "object" &&
@@ -156,7 +204,7 @@ async function upsertComment(body) {
     const response = await fetch(target, {
       method: existingId ? "PATCH" : "POST",
       headers,
-      body: JSON.stringify({ body }),
+      body: JSON.stringify({ body: redactSecrets(body) }),
     });
     if (!response.ok) throw new Error(`write comment: HTTP ${response.status}`);
   } catch (error) {
