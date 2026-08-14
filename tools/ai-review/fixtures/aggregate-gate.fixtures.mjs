@@ -171,6 +171,22 @@ const cases = [
     verdicts: [],
     expect: { exit: 1, contains: "nothing was reviewed" },
   },
+  // The transitional case: a PR that teaches the preflight a new mode is judged
+  // by the BASE branch's aggregator, which cannot name it. Red is not enough —
+  // the reason has to survive, or that window produces a red gate that explains
+  // nothing. This is exactly what PR #30 hit on 2026-08-15.
+  {
+    name: "unknown mode still carries the preflight's reason through",
+    env: {
+      PREFLIGHT_RESULT: "success",
+      PREFLIGHT_MODE: "some-future-mode",
+      PREFLIGHT_SKIP_REASON: "its merge ref is STALE, wait for it to catch up",
+      LENS_RESULT: "skipped",
+      PREFLIGHT_LENS_COUNT: "",
+    },
+    verdicts: [],
+    expect: { exit: 1, contains: "its merge ref is STALE" },
+  },
   {
     name: "fork PR — documented skip",
     env: {
