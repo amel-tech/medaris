@@ -264,13 +264,25 @@ jobs:
           # loudly and cheaply, instead of dispatching a matrix that can only
           # produce record-less corpses. RED, not skip: nothing was reviewed, and
           # the two causes need different actions from whoever reads it.
-          elif [ "${WORKFLOW_VALIDATES}" = "false" ]; then
+          elif [ "${WORKFLOW_VALIDATES}" = "false" ] \
+            && [ "${WORKFLOW_MISMATCH_CAUSE}" = "self-edit" ]; then
+            # The one case here that genuinely needs a human, and it is not an
+            # oversight: a pull request may not review itself under its own copy
+            # of the gate. Automating past this would let a change to the gate
+            # merge unreviewed, which is the thing the guard exists to stop.
             mode=unverifiable
-            if [ "${WORKFLOW_MISMATCH_CAUSE}" = "self-edit" ]; then
-              reason="this pull request changes \`.github/workflows/ai-review.yml\`, so \`claude-code-action\` refuses to run: a pull request may not review itself under its own copy of the gate. **No lens ran, and the gate cannot vouch for this change.** Land it with human review and the \`${AI_REVIEW_BYPASS_LABEL}\` label."
-            else
-              reason="the checked-out copy of \`.github/workflows/ai-review.yml\` differs from the one on the default branch, but this pull request does not touch that file. Its merge ref (\`refs/pull/PR/merge\`) is STALE — GitHub recomputes it in the background after the base branch moves, and it has not caught up yet. Nothing is wrong with this pull request. Wait for the merge ref to catch up, or push to the branch to force it, then re-run."
-            fi
+            reason="this pull request changes \`.github/workflows/ai-review.yml\`, so \`claude-code-action\` refuses to run: a pull request may not review itself under its own copy of the gate. **No lens ran, and the gate cannot vouch for this change.** Land it with human review and the \`${AI_REVIEW_BYPASS_LABEL}\` label."
+
+          # A stale merge ref is NOT a dead end and must never need a human.
+          # GitHub recomputes refs/pull/N/merge in the background after the base
+          # branch moves and can take well over 25 minutes; nothing is wrong with
+          # the pull request and nothing about it needs to change. So hand it to
+          # the queue the repository already has: the drain re-labels it, this
+          # workflow re-enters on its own head SHA, and by then the merge ref has
+          # caught up. Self-healing, no instruction to follow, no one to ask.
+          elif [ "${WORKFLOW_VALIDATES}" = "false" ]; then
+            mode=queued
+            reason="its merge ref is still based on an older \`main\`, so the copy of \`.github/workflows/ai-review.yml\` under this run does not match the default branch and \`claude-code-action\` would reject every lens. GitHub recomputes merge refs in the background after the base branch moves; this pull request needs no change and no action from you. It has been re-queued and the nightly drain will retry it automatically."
 
           # Zero repository secrets exist in medaris today. "Not configured" is a
           # configuration state: not a pass, not a crash, and clearly distinct
@@ -317,6 +329,21 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
+
+          # `ai-review` MUST come off, or the queue is a black hole for any pull
+          # request that already carries it. The drain releases by running
+          # `--remove-label ai-review-queued --add-label ai-review`; if the PR
+          # already has `ai-review`, that add is a no-op, GitHub fires no
+          # `labeled` event, and nothing re-enters this workflow — the PR sits
+          # queued for ever while the drain reports it released. Reachable
+          # whenever a labelled PR is queued for a reason other than the window,
+          # which is exactly what the stale-merge-ref branch above does.
+          #
+          # DELETE first, ADD second, and tolerate a 404 on the delete: the
+          # window path queues pull requests that never had `ai-review` at all.
+          gh api -X DELETE \
+            "repos/${REPO}/issues/${PR}/labels/ai-review" --silent 2>/dev/null \
+            || true
           gh pr edit "${PR}" --repo "${REPO}" --add-label ai-review-queued \
             || echo "::warning::could not apply the ai-review-queued label; the drain will not find this PR"
 

@@ -121,17 +121,19 @@ const cases = [
   // entire value of the mode, since it is what separates "this PR edits the
   // gate" from "GitHub has not recomputed the merge ref yet".
   {
-    name: "unverifiable / stale merge ref — RED, not a skip",
+    // A stale merge ref queues rather than dead-ends, so it lands in the
+    // `queued` branch and is retried by the drain without anyone intervening.
+    name: "stale merge ref is queued for automatic retry, and still RED",
     env: {
       PREFLIGHT_RESULT: "success",
-      PREFLIGHT_MODE: "unverifiable",
+      PREFLIGHT_MODE: "queued",
       PREFLIGHT_SKIP_REASON:
-        "its merge ref (`refs/pull/PR/merge`) is STALE — GitHub recomputes it in the background",
+        "its merge ref is still based on an older `main`. It has been re-queued and the nightly drain will retry it automatically.",
       LENS_RESULT: "skipped",
       PREFLIGHT_LENS_COUNT: "",
     },
     verdicts: [],
-    expect: { exit: 1, contains: "No lens could run" },
+    expect: { exit: 1, contains: "drain will retry it automatically" },
   },
   {
     name: "unverifiable carries the cause through to the comment",

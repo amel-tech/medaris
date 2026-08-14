@@ -252,19 +252,31 @@ MDRS-53 both arrived looking like an outage — every lens dying before it could
 an execution record, and the gate reporting "N of N lenses could not be shown to have
 run" with `is_error=null`.
 
-| Cause | What it means | What to do |
+| Cause | What it means | What happens |
 | --- | --- | --- |
-| **self-edit** | the PR changes `.github/workflows/ai-review.yml`. The gate cannot vouch for changes to itself. | Human review plus the `ai-review-bypass` label. |
-| **stale merge ref** | the PR does *not* touch that file, but `refs/pull/N/merge` still merges into a pre-change base. GitHub recomputes merge refs in the background after the base branch moves, **not** instantly — measured at over 25 minutes on 2026-08-15. | Nothing. Wait for the merge ref to catch up, or push to the branch to force it, then re-run. |
+| **self-edit** | the PR changes `.github/workflows/ai-review.yml`. The gate cannot vouch for changes to itself. | `mode=unverifiable`, **red**. The one case here that needs a human: review plus the `ai-review-bypass` label. Automating past it would let a change to the gate merge unreviewed, which is what the guard exists to stop. |
+| **stale merge ref** | the PR does *not* touch that file, but `refs/pull/N/merge` still merges into a pre-change base. GitHub recomputes merge refs in the background after the base branch moves, **not** instantly — measured at over 25 minutes on 2026-08-15. | `mode=queued`, **red**, and **it fixes itself**. Nothing is wrong with the PR, so it goes back on the queue the repository already has and the nightly drain retries it. No instruction to follow and nobody to ask. |
 
-The preflight now detects both before dispatching anything, reports `mode=unverifiable`
-with the cause in the reason string, and the gate goes **red** — nothing was reviewed.
-This costs one API call and saves a full matrix of jobs that could only have produced
-record-less corpses.
+The preflight detects both before dispatching anything, so neither spends a matrix of
+jobs on a run the action would reject before its first turn.
 
 **This bites hardest right after a change to the gate itself lands**, which is exactly
 when someone is most likely to re-trigger a PR to test it. On 2026-08-15 PR #25 was
 re-labelled 97 seconds after such a merge and all four of its lenses died this way.
+
+### Everything that can resolve itself, does
+
+The two properties that keep the queue from needing a caretaker:
+
+- **A queued PR always has `ai-review` removed.** The drain releases by running
+  `--remove-label ai-review-queued --add-label ai-review`. If the PR already carried
+  `ai-review`, that add is a no-op, GitHub fires no `labeled` event, nothing re-enters
+  the workflow — and the drain reports it released while it sits queued for ever. The
+  queue step deletes the label first for exactly this reason.
+- **The drain lists `--state open`.** A PR merged or closed while queued — an admin
+  merging through a red gate is the ordinary case — keeps its `ai-review-queued` label
+  for ever. Filtering on open state is what drops it automatically, so no run is ever
+  spent reviewing a merged diff and nobody has to clean up after a merge.
 
 The preflight's own two outputs get the same treatment as the job results above, and
 for the same reason: a `mode` outside the four defined values, and a `lens_count` that
