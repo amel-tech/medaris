@@ -183,9 +183,39 @@ function syncOne(sourceName, { check }) {
   const sourcePath = join(REPO_ROOT, sourceName);
   if (!existsSync(sourcePath)) return { skipped: true, stale: [], written: [] };
 
-  const byApp = distribute(parseEnv(readFileSync(sourcePath, "utf8")));
+  const entries = parseEnv(readFileSync(sourcePath, "utf8"));
+  const byApp = distribute(entries);
   const stale = [];
   const written = [];
+
+  // Refuse to run against a root file that predates this scheme. `pnpm build`
+  // and `pnpm dev` both call the sync, so without this check the first build
+  // after pulling MDRS-25 would silently replace six hand-written .env files
+  // with whatever the old docker-compose-only root .env happened to hold. The
+  // .bak copies make that recoverable, not harmless.
+  //
+  // The signal is a root file with no prefixed key at all sitting next to app
+  // files this script did not write: nobody who has adopted the scheme has a
+  // root file without a single WEB__/API__/APP__ key.
+  if (!check) {
+    const handWritten = APPS.filter((app) => {
+      const path = join(REPO_ROOT, "apps", app, sourceName);
+      return existsSync(path) && !isGenerated(path);
+    });
+
+    if (
+      handWritten.length > 0 &&
+      !entries.some(({ key }) => key.includes("__"))
+    ) {
+      throw new Error(
+        `${sourceName} taşınmamış görünüyor: içinde tek bir önekli anahtar yok, ` +
+          `ama şu app'lerde elle yazılmış dosyalar duruyor: ${handWritten.join(", ")}.\n` +
+          `Üzerlerine yazmadan önce root dosyayı onlardan kurun:\n\n` +
+          `  pnpm env:collect > ${sourceName}\n\n` +
+          `Gözden geçirip tekrar çalıştırın.`
+      );
+    }
+  }
 
   for (const app of APPS) {
     const targetPath = join(REPO_ROOT, "apps", app, sourceName);
@@ -299,7 +329,15 @@ const check = args.has("--check");
 const sources = args.has("--examples")
   ? [".env.example"]
   : [".env.example", ".env"];
-const results = sources.map((name) => [name, syncOne(name, { check })]);
+let results;
+try {
+  results = sources.map((name) => [name, syncOne(name, { check })]);
+} catch (error) {
+  // A stack trace here is noise: every throw in this script is a message
+  // written for whoever ran it, and this runs inside `pnpm build`.
+  console.error(`env: ${error.message}`);
+  process.exit(1);
+}
 
 if (check) {
   const stale = results.flatMap(([, r]) => r.stale);
