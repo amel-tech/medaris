@@ -421,13 +421,32 @@ liveness.durationMs = record.duration_ms;
 
 const resultText = typeof record.result === "string" ? record.result : "";
 
-// All four assertions must hold. Sidre's death record satisfies none of the
-// last three: is_error=true, num_turns=1, total_cost_usd=0. `num_turns > 1`
-// and `total_cost_usd > 0` are what separate "the model answered" from "the
-// wrapper started and was rejected"; note this makes cost a load-bearing
-// signal, which is only sound because we authenticate with an API key. If this
-// gate is ever moved to a subscription/OAuth token that reports zero cost,
-// this assertion must be rewritten, not deleted.
+// Liveness, split into what is auth-independent and what is not.
+//
+// Both observed death modes are caught by the first two assertions alone:
+//
+//   never invoked        is_error=true  num_turns=1  total_cost_usd=0
+//   one turn, error text is_error=true  num_turns=2  total_cost_usd=0.1285
+//
+// so `is_error === false && num_turns > 1` is the load-bearing pair, and it
+// holds under any authentication mode.
+//
+// Cost is deliberately NOT load-bearing. This gate runs on a subscription
+// OAuth token rather than a metered API key, because medaris has no budget.
+// The reference implementation's healthy runs did report real per-lens costs
+// under the same auth, so `> 0` would probably hold — but "probably" is the
+// wrong footing for the assertion that decides whether every review is
+// believed. If a subscription ever reports zero, a `> 0` check would mark
+// every healthy run DEAD and the gate would be worse than useless.
+//
+// What IS asserted for every mode is that the field is present and numeric.
+// A well-formed result record always carries it; its absence means we are
+// looking at something other than a completed run, which is exactly the
+// condition this function exists to catch. The `> 0` refinement applies only
+// when AI_REVIEW_AUTH_MODE says a metered key is in play, where a zero really
+// does mean nothing was spent and therefore nothing ran.
+const authMode = process.env.AI_REVIEW_AUTH_MODE ?? "oauth";
+
 const livenessFailures = [];
 if (record.is_error !== false)
   livenessFailures.push(
@@ -437,9 +456,16 @@ if (!(typeof record.num_turns === "number" && record.num_turns > 1))
   livenessFailures.push(
     `num_turns is \`${record.num_turns}\`, expected a number > 1`
   );
-if (!(typeof record.total_cost_usd === "number" && record.total_cost_usd > 0))
+if (typeof record.total_cost_usd !== "number")
   livenessFailures.push(
-    `total_cost_usd is \`${record.total_cost_usd}\`, expected a number > 0`
+    `total_cost_usd is \`${record.total_cost_usd}\`, expected a number ` +
+      "(its absence means this is not a completed result record)"
+  );
+else if (authMode === "api-key" && !(record.total_cost_usd > 0))
+  livenessFailures.push(
+    `total_cost_usd is \`${record.total_cost_usd}\` under metered auth ` +
+      "(AI_REVIEW_AUTH_MODE=api-key), expected a number > 0 — a billed run " +
+      "that cost nothing did not happen"
   );
 
 if (livenessFailures.length > 0) {

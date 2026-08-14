@@ -67,7 +67,12 @@ on:
     # inert. The cost of carrying them: a label change on a PR whose lenses
     # match re-runs the review. Concurrency below collapses label flapping into
     # one run, and that is the price of an escape hatch that actually works.
-    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+    # NO `synchronize`. That trigger is the dominant cost multiplier: in the
+    # reference implementation one PR fired ~35 review runs in four days, one per
+    # push. Under a subscription that is quota, not dollars, but it is the same
+    # exhaustion. Reviews therefore run when a PR is opened or marked ready, and
+    # on demand by adding the `ai-review` label (remove and re-add to re-run).
+    types: [opened, reopened, ready_for_review, labeled, unlabeled]
 
 concurrency:
   group: ai-review-${{ github.event.pull_request.number }}
@@ -134,7 +139,7 @@ jobs:
           LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
           # Presence only — the value is never echoed, compared or exported past
           # this step.
-          KEY_PRESENT: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          KEY_PRESENT: ${{ (secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '') }}
         run: |
           set -euo pipefail
           mode=run
@@ -333,7 +338,12 @@ jobs:
       # The direct cause of Sidre's outage was six concurrent sessions on one
       # credential being rejected wholesale. Three at a time trades a few minutes
       # of wall clock for not manufacturing the failure this gate exists to catch.
-      max-parallel: 3
+      # ONE at a time, deliberately. Six lenses fired concurrently at a single
+      # subscription is the reproducible cause of the reference implementation's
+      # outage: every leg came back is_error=true at one turn and zero cost, which
+      # is what a rate-limit rejection looks like from inside the action. Serialising
+      # trades wall clock (~4 lenses x ~2min = ~8min) for a gate that actually runs.
+      max-parallel: 1
       # `|| '[]'` guards the case where the preflight failed or skipped its
       # selection step and the output is empty: fromJSON('') is an expression
       # error that can fail the run before the job-level `if` is consulted.
@@ -359,6 +369,11 @@ jobs:
         continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:
+          # Subscription OAuth token, not a metered API key. medaris has no budget,
+          # and a metered key at the measured $4-15.6 per review would bill real money
+          # to an unfunded project. ANTHROPIC_API_KEY stays as an override for the day
+          # there is a budget; whichever is set wins, OAuth first.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # Without this the action hides the final `result` string — the one
           # place the actual API error appears. Sidre's outage ran ~40 undiagnosed
@@ -456,7 +471,10 @@ jobs:
           AI_REVIEW_LENS_TITLE: ${{ matrix.lens.title }}
           AI_REVIEW_EXECUTION_FILE: ${{ runner.temp }}/claude-execution-output.json
           AI_REVIEW_VERDICT_FILE: ${{ runner.temp }}/ai-review-verdict.json
-          AI_REVIEW_KEY_PRESENT: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          AI_REVIEW_KEY_PRESENT: ${{ (secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '') }}
+          # Which auth is in play decides whether total_cost_usd > 0 is a sound
+          # liveness signal — see evaluate-verdict.mjs. API key wins when both are set.
+          AI_REVIEW_AUTH_MODE: ${{ secrets.ANTHROPIC_API_KEY != '' && 'api-key' || 'oauth' }}
         run: |
           set -uo pipefail
           # No base copy means the base branch does not yet carry the gate (the

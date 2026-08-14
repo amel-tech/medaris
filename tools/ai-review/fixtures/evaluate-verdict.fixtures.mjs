@@ -247,9 +247,46 @@ const cases = [
     record: { ...healthy(findingsJson([])), num_turns: 1 },
     expect: { exit: 2, verdict: "DEAD" },
   },
+  // Cost is auth-mode dependent, and these three pin exactly how. Under a
+  // metered key a zero-cost run cannot have happened, so it is DEAD. Under the
+  // subscription token this gate actually uses, zero is not evidence of
+  // anything and must NOT redden a healthy review — that would take every run
+  // down. What stays load-bearing in both modes is that the field EXISTS: its
+  // absence means this is not a completed result record.
   {
-    name: "liveness: total_cost_usd == 0 on an otherwise clean record",
+    name: "liveness: total_cost_usd == 0 under metered auth (api-key)",
     record: { ...healthy(findingsJson([])), total_cost_usd: 0 },
+    env: { AI_REVIEW_AUTH_MODE: "api-key" },
+    expect: { exit: 2, verdict: "DEAD" },
+  },
+  {
+    name: "liveness: total_cost_usd == 0 under subscription auth (oauth) is NOT dead",
+    record: { ...healthy(findingsJson([])), total_cost_usd: 0 },
+    env: { AI_REVIEW_AUTH_MODE: "oauth" },
+    expect: { exit: 0, verdict: "PASS" },
+  },
+  {
+    name: "liveness: total_cost_usd absent entirely is DEAD in every auth mode",
+    record: (() => {
+      const { total_cost_usd, ...rest } = healthy(findingsJson([]));
+      void total_cost_usd;
+      return rest;
+    })(),
+    env: { AI_REVIEW_AUTH_MODE: "oauth" },
+    expect: { exit: 2, verdict: "DEAD" },
+  },
+  {
+    name: "liveness: the Sidre death record stays DEAD under subscription auth",
+    record: {
+      type: "result",
+      subtype: "success",
+      is_error: true,
+      num_turns: 1,
+      total_cost_usd: 0,
+      duration_ms: 309,
+      result: "",
+    },
+    env: { AI_REVIEW_AUTH_MODE: "oauth" },
     expect: { exit: 2, verdict: "DEAD" },
   },
   {

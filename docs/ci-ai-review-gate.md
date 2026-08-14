@@ -20,6 +20,48 @@ runner live under `.github/workflows/` and `tools/ai-review/`.
 
 ---
 
+## Authentication and cost — why this runs on a subscription
+
+**This gate authenticates with `CLAUDE_CODE_OAUTH_TOKEN`, a subscription token, not a metered
+API key.** medaris has no budget and is not revenue-generating; at the measured $4–15.60 per
+review a metered key would bill real money to an unfunded project on every pull request.
+`ANTHROPIC_API_KEY` remains supported and wins when both are set, for the day there is a budget.
+
+Two consequences follow, and both are load-bearing:
+
+**1. The lens matrix runs `max-parallel: 1`.** Six lenses fired concurrently at a single
+subscription is the reproducible cause of the reference implementation's outage — every leg
+returned `is_error: true` at one turn and zero cost, which is what a rate-limit rejection looks
+like from inside the action, and is indistinguishable from the model never being invoked.
+Serialising trades wall clock (roughly 4 lenses × ~2 min ≈ 8 min) for a gate that actually runs.
+Do not raise this without re-measuring.
+
+**2. `total_cost_usd > 0` is NOT part of the liveness assertion under subscription auth.**
+Both observed death modes are caught without it —
+
+| Death mode | `is_error` | `num_turns` | `total_cost_usd` |
+|---|---|---|---|
+| never invoked | `true` | 1 | 0 |
+| one turn, error text | `true` | 2 | 0.1285 |
+
+— so `is_error === false && num_turns > 1` is the load-bearing pair, and it holds under any
+auth. What is still asserted in every mode is that `total_cost_usd` is **present and numeric**:
+its absence means the record is not a completed run. The `> 0` refinement applies only when
+`AI_REVIEW_AUTH_MODE=api-key`, where a billed run that cost nothing genuinely did not happen.
+
+The reference implementation's healthy runs did report real per-lens costs under this same
+subscription auth, so `> 0` would probably hold — but "probably" is the wrong footing for the
+assertion that decides whether every review is believed. If a subscription ever reported zero,
+a `> 0` check would mark every healthy run DEAD and the gate would be worse than useless.
+
+**3. There is no `synchronize` trigger.** That is the dominant cost multiplier: one pull request
+in the reference implementation fired ~35 review runs in four days, one per push. Under a
+subscription that is quota rather than dollars, but it is the same exhaustion. Reviews run when a
+PR is opened or marked ready for review, and on demand by adding the `ai-review` label — remove
+and re-add it to re-run. **The trade is explicit: a PR reviewed at open and then changed is not
+re-reviewed unless someone asks.** That is acceptable while the gate is advisory; it must be
+revisited before the context is ever made a required check.
+
 ## 1. What the six lenses look for
 
 One lens per column. The full prompt for each — including the repo-specific
