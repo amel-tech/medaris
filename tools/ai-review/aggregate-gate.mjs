@@ -70,17 +70,27 @@ const MARKER = "<!-- ai-review-gate -->";
 
 /** Collected verdict artifacts, one per lens leg that reached its evaluator. */
 /**
- * Last line of defence before anything model-authored reaches a PUBLIC comment.
+ * Last line of defence before anything model-authored reaches a PUBLIC comment
+ * THROUGH THIS FILE.
  *
  * The lens jobs hold the review credential in their environment while reviewing
  * untrusted pull-request code, so a successful prompt injection could in
- * principle route a secret into a findings string. The allowlist in
- * ai-review.yml is the real control — `cat` and `sed` are deliberately absent,
- * so there is no arbitrary-path read to exfiltrate WITH. This is the belt to
- * that pair of braces, and it exists because the consequence is asymmetric: a
- * redacted true positive costs a reviewer one click, a leaked subscription
- * token on a public repository costs a credential rotation and is permanent in
- * the fork network.
+ * principle route a secret into a findings string. This redaction exists because
+ * the consequence is asymmetric: a redacted true positive costs a reviewer one
+ * click, a leaked subscription token on a public repository costs a credential
+ * rotation and is permanent in the fork network.
+ *
+ * WHAT THIS NO LONGER COVERS (MDRS-53). It used to be the belt to a pair of
+ * braces: the allowlist in ai-review.yml excluded `cat` and `sed`, so there was
+ * no arbitrary-path read to exfiltrate WITH, and every model-authored byte
+ * reached the public through the summary comment this file posts. Both halves
+ * changed. The allowlist now permits arbitrary-path readers, and each lens posts
+ * its own inline comments with its own `pull-requests: write` — a path that does
+ * not pass through this function and cannot, since the lens writes it directly.
+ *
+ * So: this still redacts the summary comment, and the summary comment still
+ * carries every finding's text. It is no longer a complete boundary. Anyone
+ * adding a second public-writing path should assume the same and say so here.
  *
  * Patterns are shape-based rather than a list of known secret names, because
  * the thing worth catching is the one nobody thought to name.

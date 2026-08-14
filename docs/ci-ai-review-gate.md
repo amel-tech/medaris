@@ -192,9 +192,11 @@ that ran a **full, paid, successful review still failed to write its verdict fil
 15–30% of the time.** Naive fail-closed on a model-written file would therefore
 redden roughly 74% of pull requests at six lenses — a gate everyone would learn to
 ignore within a week. Making the final message the verdict removes the failure mode
-instead of trading it for a worse one. It also means no lens needs a `Write` tool,
-which resolves the reference implementation's contradiction of a "read-only"
-allowlist that nonetheless had to permit `mkdir`, `printf` and `tee`.
+instead of trading it for a worse one. It also means no lens needs a `Write` tool or
+any file-writing shell verb, which resolves the reference implementation's
+contradiction of a "read-only" allowlist that nonetheless had to permit `mkdir`,
+`printf` and `tee`. That still holds after MDRS-53: the one write a lens now performs
+is posting inline comments, and no lens writes to disk.
 
 **Rule 3 — liveness is asserted from that same record, never from
 `steps.<id>.outcome`.** A lens counts as having run only if **all** of these hold:
@@ -309,6 +311,30 @@ If you edit `lenses.yaml`, that block is load-bearing. Removing it from a prompt
 not make the lens noisier; it makes the lens controllable by anyone who can open a
 pull request.
 
+### 4.1 What the lens job holds, and the risk accepted in MDRS-53
+
+The lens job reads attacker-controlled code while holding the review credential. Since
+MDRS-53 it also holds `pull-requests: write`, because each lens posts its own inline
+comments. That is a deliberate widening of the chain described above, taken by Taha on
+2026-08-15 with the tradeoff stated, and the alternative it was chosen over was having
+the aggregator — which already has `pull-requests: write` and never checks out the pull
+request's code — post the same comments from the verdict JSON.
+
+Two things bound what that grant is worth to an attacker, and neither should be
+weakened without replacing it:
+
+- **`--allowedTools` has no code-execution or network verb.** No `node`, no `python`,
+  no `bash -c`, no `curl`/`wget`. The widened list is read verbs (`cat`, `sed`, `awk`,
+  `grep`, `jq`, …) plus the inline-comment tool. The line is drawn at the difference
+  between reading a path the model should not read and running arbitrary code.
+- **`GITHUB_TOKEN` scope is per-job, not per-workflow.** The workflow-level default is
+  still `permissions: {}`; only the lens and gate jobs are granted anything.
+
+The mitigation this section is waiting on is CODEOWNERS over `.github/workflows/` and
+`tools/ai-review/`, which is MDRS-50's follow-up and does not exist yet. Until it
+lands, the prompt and human review are what stand between a planted instruction and a
+comment posted under the repository's own identity.
+
 ---
 
 ## 5. The output contract
@@ -352,6 +378,15 @@ Rules, and the reasoning behind them:
   comment. This is why the prompts encourage `medium`/`low` confidence freely: an
   uncertain finding still reaches the author instead of being suppressed, without
   wedging the PR.
+
+  **This was aspirational until MDRS-53 and is now literal.** The summary comment
+  expands blocking findings only, so before inline comments an advisory finding
+  reached the author as a bare integer in a table and nowhere else — 7 of them were
+  produced and paid for across PRs #23, #24 and #25 on the first overnight run, one
+  of which (`@medaris/tokens` imported but undeclared in three of four apps) was
+  real. The content survived only in the `ai-review-verdict-*` artifacts, which
+  expire after 7 days. Each lens now posts every finding it reports, advisory ones
+  included, as an inline comment on the line it concerns.
 - **An omitted `confidence` is read as `high`** (`evaluate-verdict.mjs`), which is the
   fail-closed reading — over-blocking is cheap, silently dropping a real finding is
   not. The prompts therefore require `confidence` to be stated explicitly rather than
@@ -454,9 +489,13 @@ Four controls keep spend bounded:
 - **The model is pinned** to `claude-opus-5` in the workflow's `env:`. An unpinned
   model silently changes the cost, the turn count and the finding distribution of all
   six lenses at once, and the first symptom is an unexplained bill.
-- **Per-lens `max_turns`** in `lenses.yaml` — 30 to 60, with `correctness` highest
+- **Per-lens `max_turns`** in `lenses.yaml` — 40 to 70, with `correctness` highest
   because it is the measured long pole. The preflight puts this into the matrix and
-  the lens job passes it as `--max-turns`.
+  the lens job passes it as `--max-turns`. MDRS-53 raised every lens by 10 to pay for
+  inline commenting, and `boundaries-duplication` by 25 after it died on
+  `error_max_turns` on PR #25. Beware when tuning these: the `num_turns` printed in
+  the gate table is a different, larger counter — `config-secrets` reports
+  `num_turns=35` under `--max-turns 30` and exits clean.
 - **Per-lens `timeout_minutes`** in `lenses.yaml` — 15 to 25, applied as the lens
   job's `timeout-minutes`. A lens that hits its ceiling produces no execution record,
   so its liveness assertion fails and it is reported as a lens failure — never
