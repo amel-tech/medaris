@@ -49,13 +49,13 @@ Never use `--amend`, `--no-verify`, force push, `git reset --hard`, or `gh pr me
 
 - `docs/PRD.md` and `docs/ecosystem-boundaries.md` — authoritative product and governance documents.
 
-`.migration/` is **gone** as of MDRS-17 — the staging area from the history merge is fully consolidated. Any instruction telling you to leave it alone is stale.
-
 ## Releases
 
 `release-please-config.json` and `.release-please-manifest.json` at the root are the only release configuration; there are exactly 7 components, and their names are the same list as `commitlint.config.mjs`'s app scopes, the Nx project names, and the `<component>-v<version>` tag prefixes the deploy workflows guard on (ADR-001 §D3/§D10). `node tools/ci/assert-release-config.mjs` enforces that chain — when it fails, fix the file it names rather than the assertion. **The manifest is the version of record**: release-please bumps from it, so an edit there re-releases or skips a version. Do not hand-edit versions in an app's `package.json`.
 
-The repo carries **0 git tags** — the 43 that MDRS-9 preserved were never pushed to `amel-tech/medaris`. Until they are, release-please has no release anchor to diff against; see `docs/migration/mdrs-17-release-please-consolidation.md` §3 before running a release.
+The repo carries **0 git tags** — the 43 that MDRS-9 preserved were never pushed to `amel-tech/medaris`. Until they are, release-please has no release anchor and its first run would rewrite every changelog from the beginning of history; see `docs/migration/mdrs-17-release-please-consolidation.md` §3–§4 before running a release.
+
+`.migration/` no longer exists (MDRS-17 consolidated the last 6 files). Any instruction telling you to leave that directory alone is stale.
 
 ## Writing documentation
 
