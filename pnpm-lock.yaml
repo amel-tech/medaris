@@ -806,6 +806,9 @@ importers:
       pg:
         specifier: 'catalog:'
         version: 8.22.0
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@nestjs/cli':
         specifier: 'catalog:'

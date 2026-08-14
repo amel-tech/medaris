@@ -3,10 +3,13 @@
   "rootDir": "..",
   "testEnvironment": "node",
   "testRegex": ".*\\.e2e.*\\.spec\\.ts$",
+  "testTimeout": 60000,
+  "maxWorkers": 1,
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
   "moduleNameMapper": {
     "^@/(.*)$": "<rootDir>/src/$1"
-  }
+  },
+  "globalTeardown": "<rootDir>/test/helpers/global-teardown.ts"
 }
