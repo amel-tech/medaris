@@ -258,9 +258,28 @@ jobs:
           set -euo pipefail
 
           # The REST endpoint paginates properly; `gh pr view --json files` caps out.
-          gh api "repos/${REPO}/pulls/${PR}/files" --paginate --jq '.[].path' \
+          # `.filename`, NOT `.path`. The pull-request files endpoint has no
+          # `path` key — the field is `filename` — and `--jq '.[].path'` does not
+          # error on that, it emits one empty line per file. The first live run
+          # of this gate did exactly that: nine changed files became nine blank
+          # lines, every lens matched nothing, and the aggregate context went
+          # GREEN with "no lens matched this diff" over a completely unreviewed
+          # pull request. Precisely the silent green this whole workflow exists
+          # to make impossible, sitting in its own input.
+          gh api "repos/${REPO}/pulls/${PR}/files" --paginate --jq '.[].filename' \
             > "${RUNNER_TEMP}/changed-files.txt"
-          echo "changed files: $(wc -l < "${RUNNER_TEMP}/changed-files.txt")"
+
+          # Fail closed on an empty extraction. A pull request always changes at
+          # least one file, so zero usable paths means the fetch or the jq
+          # expression is broken — never that there is nothing to review. Without
+          # this the failure is invisible, because "no files" and "no lens
+          # matched" produce the same green.
+          usable="$(grep -c '[^[:space:]]' "${RUNNER_TEMP}/changed-files.txt" || true)"
+          echo "changed files: ${usable}"
+          if [ "${usable}" -eq 0 ]; then
+            echo "::error::Extracted zero changed-file paths for PR #${PR}. A pull request always changes at least one file, so this is a broken fetch, not an empty diff. Refusing to report 'no lens matched'."
+            exit 1
+          fi
 
           # Node's stdlib has no YAML parser and this preflight must not depend on
           # `pnpm install`; PyYAML ships with the runner image (and is installed
