@@ -1,6 +1,7 @@
 {
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "name": "i18n",
+  "tags": ["scope:shared", "type:i18n"],
   "targets": {
     "lint": {}
   }

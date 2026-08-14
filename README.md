@@ -71,7 +71,7 @@ Nx runs with `neverConnectToCloud: true` — no remote cache, no analytics. CI t
 ## Toolchain
 
 - **Biome** owns formatting and linting. **ESLint exists only** to run `@nx/enforce-module-boundaries`; it carries no style rules.
-- **Boundary tags are not configured yet.** `depConstraints` is deliberately permissive and no project is tagged — the real `scope:*` / `platform:*` taxonomy is MDRS-13. The rule is wired and green so that landing the tags is the only remaining step.
+- **Boundary tags are enforced.** All 16 projects carry `scope:*` / `platform:*` / `type:*` tags and `eslint.config.mjs` holds the real `depConstraints` with `allow: []`. The taxonomy, the allowed directions, and the three cases the linter cannot see are in [`CONTRIBUTING.md`](CONTRIBUTING.md#project-layers-and-tags); ADR-001 §D5 is normative.
 - **Commit hygiene** is enforced by husky: `pre-commit` runs lint-staged (Biome on staged files only), `commit-msg` runs commitlint against a 20-scope enum. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - **CI** is one `nx affected` pipeline plus CodeQL over both stacks, a dependency audit, depcheck, and a job that lints the pull-request title — the squash commit that reaches `main` is composed server-side and never passes the local hook.
 

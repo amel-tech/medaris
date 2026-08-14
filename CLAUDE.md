@@ -37,7 +37,43 @@ Expected: typecheck 16 projects · **91 tests / 10 suites** · build 8 · lint 1
 
 ESLint exists **only** to run `@nx/enforce-module-boundaries`. All formatting and linting belongs to Biome — do not add style rules to `eslint.config.mjs`.
 
-Project tags are **not configured yet**: `depConstraints` is a single permissive entry and no project carries `tags`. Landing the real `scope:*` / `platform:*` taxonomy is MDRS-13's deliverable. Until then the rule is wired and green but enforces nothing — do not describe the repo as having enforced boundaries.
+Boundaries **are enforced**. All 16 projects carry `tags` in their `project.json`, and `eslint.config.mjs` holds the real `depConstraints` from ADR-001 §D5 with `allow: []` — no escape hatches. Two axes are enforced (`scope`, `platform`); `type:*` is documentary and carries no constraint.
+
+| Project | Tags |
+| -- | -- |
+| `tedrisat`, `teskilat` | `scope:app` `platform:node` `type:app` |
+| `tedris-web`, `nizam-web`, `nazir-web`, `landing-web`, `keycloak-theme` | `scope:app` `platform:web` `type:app` |
+| `common` | `scope:server` `platform:node` `type:infra` |
+| `ui`, `icons`, `tokens` | `scope:ui` `platform:web` `type:ui` |
+| `hooks` | `scope:ui` `platform:web` `type:util` |
+| `services` | `scope:web` `platform:web` `type:data-access` |
+| `i18n` | `scope:shared` `type:i18n` |
+| `types` | `scope:shared` `type:types` |
+| `utils` | `scope:shared` `type:util` |
+
+| sourceTag | may depend on |
+| -- | -- |
+| `scope:shared` | `scope:shared` |
+| `scope:ui` | `scope:ui`, `scope:shared` |
+| `scope:web` | `scope:web`, `scope:ui`, `scope:shared` |
+| `scope:server` | `scope:server`, `scope:shared` |
+| `scope:app` (fallback) | `scope:ui`, `scope:web`, `scope:server`, `scope:shared` |
+| `scope:app` + `platform:web` | `scope:ui`, `scope:web`, `scope:shared` |
+| `scope:app` + `platform:node` | `scope:server`, `scope:shared` |
+| `platform:web` | **not** `platform:node` |
+| `platform:node` | **not** `platform:web` |
+
+Rules that are easy to get wrong when editing this:
+
+- **`scope:shared` libs must stay platform-neutral** — they carry no `platform:*` tag on purpose, so both web and node code may import them. Adding one silently locks half the repo out.
+- **Platform isolation uses `notDependOnLibsWithTags`, never a positive list.** `onlyDependOnLibsWithTags` fails on any dependency on an *untagged* project, which would break every `scope:shared` edge.
+- **Every new app and lib needs tags in the same PR that creates it.** `depConstraints` cannot express "a tag is mandatory": an untagged project matches no constraint and is therefore unconstrained. An app that only gets `scope:app` falls back to the permissive generic rule and loses its platform narrowing.
+- **`type:*` is documentary.** Do not write a constraint against it without amending ADR-001.
+
+What the linter does **not** catch (measured, MDRS-13):
+
+- `@medaris/<app>` package-specifier imports between apps. Apps declare no `main`/`exports`, so Nx's target-project locator resolves the specifier to nothing and the rule never runs. Such an import cannot compile either, so it is a documentation gap rather than a live hole. The *relative* form (`../../tedris/lib/...`) **is** caught.
+- CSS `@import` edges (`ui → tokens`). ESLint never sees them; the declared dependency plus pnpm's strict `node_modules` is the enforcement there.
 
 ## Commits and pull requests
 

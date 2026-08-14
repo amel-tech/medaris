@@ -1,10 +1,10 @@
 # Contributing to Medaris
 
-> **Scope of this document.** Right now it covers **commit conventions** only
-> (MDRS-14). Two later tasks extend it in place, at the marked anchors near the
-> bottom: **MDRS-13** adds the layer/tag table mirror (ADR-001 §D5), and
-> **MDRS-18** adds the module-boundary rules and the "how to add a lib"
-> procedure. Do not duplicate those sections here — fill in the anchors.
+> **Scope of this document.** It covers **commit conventions** (MDRS-14) and the
+> **project layers and tags** mirror of ADR-001 §D5 (MDRS-13). One later task
+> extends it in place, at the marked anchor near the bottom: **MDRS-18** adds the
+> remaining module-boundary review rules and the "how to add a lib" procedure.
+> Do not duplicate those sections here — fill in the anchor.
 
 ## Commit messages
 
@@ -235,8 +235,62 @@ git show <sha>                                     # your pre-hook state
 Staging whole files avoids the situation entirely: with nothing unstaged to
 hide, there is no patch to re-apply.
 
-<!-- MDRS-13 ANCHOR — insert "## Project layers and tags" here.
-     One-screen mirror of the CLAUDE.md tag table (ADR-001 §D5). -->
+## Project layers and tags
+
+Every Nx project carries `tags` in its `project.json`. Two axes are **enforced**
+by `@nx/enforce-module-boundaries`; the third is documentary. This table is the
+one-screen mirror of ADR-001 §D5 — the ADR is normative, `eslint.config.mjs` is
+the implementation.
+
+| Project | `scope` | `platform` | `type` |
+| -- | -- | -- | -- |
+| `tedrisat` | `app` | `node` | `app` |
+| `teskilat` | `app` | `node` | `app` |
+| `tedris-web` | `app` | `web` | `app` |
+| `nizam-web` | `app` | `web` | `app` |
+| `nazir-web` | `app` | `web` | `app` |
+| `landing-web` | `app` | `web` | `app` |
+| `keycloak-theme` | `app` | `web` | `app` |
+| `common` | `server` | `node` | `infra` |
+| `ui` | `ui` | `web` | `ui` |
+| `icons` | `ui` | `web` | `ui` |
+| `tokens` | `ui` | `web` | `ui` |
+| `hooks` | `ui` | `web` | `util` |
+| `services` | `web` | `web` | `data-access` |
+| `i18n` | `shared` | *(none)* | `i18n` |
+| `types` | `shared` | *(none)* | `types` |
+| `utils` | `shared` | *(none)* | `util` |
+
+`scope:shared` libraries are deliberately **platform-neutral** — they carry no
+`platform:*` tag, which is what lets both the Nest apps and the browser bundles
+import them. Do not add one.
+
+Allowed dependency directions:
+
+| sourceTag | may depend on |
+| -- | -- |
+| `scope:shared` | `scope:shared` |
+| `scope:ui` | `scope:ui`, `scope:shared` |
+| `scope:web` | `scope:web`, `scope:ui`, `scope:shared` |
+| `scope:server` | `scope:server`, `scope:shared` |
+| `scope:app` (fallback) | `scope:ui`, `scope:web`, `scope:server`, `scope:shared` |
+| `scope:app` + `platform:web` | `scope:ui`, `scope:web`, `scope:shared` |
+| `scope:app` + `platform:node` | `scope:server`, `scope:shared` |
+| `platform:web` | **not** `platform:node` |
+| `platform:node` | **not** `platform:web` |
+
+All matching constraints apply cumulatively: `tedris-web` is checked against the
+generic `scope:app` rule, the `scope:app` + `platform:web` narrowing, *and* the
+`platform:web` exclusion. `scope:app` appears in no allowed list, so no project
+may depend on an app — with one measured caveat, see
+[What is enforced today](#what-is-enforced-today). `type:*` carries no constraint today; a
+`type:testing → everything-below-app` rule is pre-approved for when a real
+testing library or `apps/e2e` appears.
+
+**A new project must get its tags in the same pull request that creates it.**
+`depConstraints` cannot express "this tag is mandatory" — an untagged project
+matches no constraint and is silently unconstrained, and an app tagged only
+`scope:app` loses its platform narrowing. Reviewers check this by hand.
 
 ## Module boundaries
 
@@ -255,23 +309,31 @@ It also runs in CI as part of `nx affected`.
 
 ### What is enforced today
 
-Honestly: very little. `depConstraints` holds a single permissive entry
-(`sourceTag: "*"` may depend on `"*"`) and **no project carries `tags`**. The
-rule is wired up and green so that adding the taxonomy is the only remaining
-step — that taxonomy (`scope:*` and `platform:*`, per ADR-001 §D5) is MDRS-13's
-deliverable, and its anchor sits directly above this section.
+The full `scope:*` / `platform:*` taxonomy from the section above, with
+`allow: []` — there are no exceptions. `enforceBuildableLibDependency: true` also
+stops a buildable library (`common`, `tokens`) from importing a source-only one;
+both currently have zero internal dependencies, so it is inert but correct.
 
-Until those tags land, the boundary you must respect is a convention rather than
-a gate:
+A violating import fails the check with a message naming the tags, for example:
 
-- An **app** may depend on any `@medaris/*` library.
-- A **library must never import from an app.** There is no technical barrier
-  stopping you today; the tags are what will make it fail.
-- Backend libraries and frontend libraries are not yet separated by the linter.
-  `libs/common` is backend-only in practice (it is the NestJS shared layer);
-  `libs/ui`, `libs/hooks`, `libs/icons`, and `libs/tokens` are frontend-only.
-  Crossing that line compiles, but it is the exact mistake MDRS-13 exists to
-  stop — do not introduce one in the meantime.
+```
+apps/tedris/lib/boundary-probe.ts
+  2:1  error  A project tagged with "scope:app" and "platform:web" can only
+              depend on libs tagged with "scope:ui", "scope:web", "scope:shared"
+              @nx/enforce-module-boundaries
+```
+
+Three things the linter cannot see. Treat them as review rules:
+
+- **CSS `@import` edges.** `ui → tokens` is a CSS import; ESLint never parses it.
+  The declared `workspace:*` dependency plus pnpm's strict `node_modules` is the
+  only thing keeping it honest.
+- **`@medaris/<app>` package specifiers.** Apps declare no `main`/`exports`, so
+  Nx resolves such a specifier to no project and the rule stays silent. The
+  import cannot compile either — but do not rely on the linter to say so. The
+  relative form (`../../tedris/lib/...`) *is* caught, with a dedicated
+  "Projects cannot be imported by a relative or absolute path" error.
+- **Missing tags.** See the mandatory-tags note in the section above.
 
 ## Adding a library
 
@@ -320,12 +382,24 @@ makes the import work.
    `commitlint.config.mjs`, or every commit touching it will be rejected. See
    the scope list earlier in this document.
 
-6. **Verify before opening a pull request.**
+6. **Add `project.json` with `tags`.** Pick one `scope:*`, one `platform:*`
+   unless the library is platform-neutral (`scope:shared`), and one descriptive
+   `type:*` — see [Project layers and tags](#project-layers-and-tags). This is
+   not optional: an untagged project matches no `depConstraints` entry and is
+   silently exempt from every boundary rule.
+
+   ```jsonc
+   {
+     "$schema": "../../node_modules/nx/schemas/project-schema.json",
+     "name": "<name>",
+     "tags": ["scope:shared", "type:util"],
+     "targets": { "lint": {} }
+   }
+   ```
+
+7. **Verify before opening a pull request.**
 
    ```bash
    pnpm nx run-many -t typecheck test build lint module-boundaries --skip-nx-cache
    pnpm graph        # confirm the new edge is the one you intended
    ```
-
-When MDRS-13 lands, step 1 will also require choosing `scope:*` and `platform:*`
-tags; the anchor above marks where that instruction goes.
