@@ -22,7 +22,9 @@ pnpm nx run-many -t lint --skip-nx-cache
 pnpm nx run-many -t module-boundaries --skip-nx-cache
 ```
 
-Expected: typecheck 16 projects · **91 tests / 10 suites** · build 8 · lint 16 · module-boundaries 16.
+Expected: typecheck 16 projects · **101 tests / 11 suites** · build 8 · lint 16 · module-boundaries 16.
+
+`-t build` needs `apps/<app>/.env` for the four Next.js apps — they validate the environment at build time, so a fresh worktree fails with `Invalid environment variables` until you copy each `apps/<app>/.env.example`. That is a missing file, not a regression.
 
 **`-t test` is the only gate that catches a broken NestJS container.** `typecheck` and `build` stay green while dependency injection is already broken at runtime — this has happened, see below. Never skip it.
 

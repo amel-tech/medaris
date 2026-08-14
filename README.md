@@ -66,7 +66,7 @@ Nx runs with `neverConnectToCloud: true` — no remote cache, no analytics. CI t
 
 ### Test coverage, stated honestly
 
-`pnpm test` reports three projects, but only two of them run real tests: **91 tests across 10 suites, all in `tedrisat` and `teskilat`**. The third, `tedris-web`, executes `echo 'Tests not implemented'`, which Nx counts as a pass. **Frontend test coverage is zero.** Migrating to Vitest and closing that gap is MDRS-20.
+`pnpm test` reports three projects, but only two of them run real tests: **101 tests across 11 suites, all in `tedrisat` and `teskilat`** (99 / 9 and 2 / 2). The third, `tedris-web`, executes `echo 'Tests not implemented'`, which Nx counts as a pass. **Frontend test coverage is zero.** Migrating to Vitest and closing that gap is MDRS-20.
 
 ## Toolchain
 
