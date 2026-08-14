@@ -5,15 +5,23 @@
   "bump-patch-for-minor-pre-major": true,
   "separate-pull-requests": true,
   "packages": {
-    "apps/keycloak-theme": {
+    "apps/tedrisat": {
       "release-type": "node",
-      "package-name": "madrasah-keycloak-theme",
+      "package-name": "tedrisat",
       "include-component-in-tag": true,
-      "pull-request-title-pattern": "chore(keycloak-theme): release ${version}",
-      "pull-request-header": "Release for Keycloak Theme",
-      "component": "keycloak-theme",
-      "path": "apps/keycloak-theme",
-      "extra-files": ["shared/**"]
+      "pull-request-title-pattern": "chore(tedrisat): release ${version}",
+      "pull-request-header": "Release for Tedrisat Service",
+      "component": "tedrisat",
+      "path": "apps/tedrisat"
+    },
+    "apps/teskilat": {
+      "release-type": "node",
+      "package-name": "teskilat",
+      "include-component-in-tag": true,
+      "pull-request-title-pattern": "chore(teskilat): release ${version}",
+      "pull-request-header": "Release for Teskilat Service",
+      "component": "teskilat",
+      "path": "apps/teskilat"
     },
     "apps/tedris": {
       "release-type": "node",
@@ -22,8 +30,7 @@
       "pull-request-title-pattern": "chore(tedris-web): release ${version}",
       "pull-request-header": "Release for Tedris Web",
       "component": "tedris-web",
-      "path": "apps/tedris",
-      "extra-files": ["shared/**"]
+      "path": "apps/tedris"
     },
     "apps/nizam": {
       "release-type": "node",
@@ -32,8 +39,7 @@
       "pull-request-title-pattern": "chore(nizam-web): release ${version}",
       "pull-request-header": "Release for Nizam Web",
       "component": "nizam-web",
-      "path": "apps/nizam",
-      "extra-files": ["shared/**"]
+      "path": "apps/nizam"
     },
     "apps/nazir": {
       "release-type": "node",
@@ -42,8 +48,7 @@
       "pull-request-title-pattern": "chore(nazir-web): release ${version}",
       "pull-request-header": "Release for Nazir Web",
       "component": "nazir-web",
-      "path": "apps/nazir",
-      "extra-files": ["shared/**"]
+      "path": "apps/nazir"
     },
     "apps/landing": {
       "release-type": "node",
@@ -52,8 +57,16 @@
       "pull-request-title-pattern": "chore(landing-web): release ${version}",
       "pull-request-header": "Release for Landing Web",
       "component": "landing-web",
-      "path": "apps/landing",
-      "extra-files": ["shared/**"]
+      "path": "apps/landing"
+    },
+    "apps/keycloak-theme": {
+      "release-type": "node",
+      "package-name": "keycloak-theme",
+      "include-component-in-tag": true,
+      "pull-request-title-pattern": "chore(keycloak-theme): release ${version}",
+      "pull-request-header": "Release for Keycloak Theme",
+      "component": "keycloak-theme",
+      "path": "apps/keycloak-theme"
     }
   }
 }

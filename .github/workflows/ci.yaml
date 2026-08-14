@@ -147,6 +147,12 @@ jobs:
       - name: Assert nx affected isolates each stack
         run: node tools/ci/assert-affected-isolation.mjs
 
+      # Release identity chain (MDRS-17): one config, one manifest, and the
+      # component -> scope -> tag-prefix -> deploy-workflow links that
+      # release-please breaks silently when they drift.
+      - name: Assert release config consistency
+        run: node tools/ci/assert-release-config.mjs
+
       # The five targets are kept identical to the root `affected` script so the
       # local and CI gates cannot drift.
       - name: Verify affected projects
