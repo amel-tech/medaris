@@ -21,5 +21,14 @@ export function resolveDatabaseSsl(
 
   const ca = env.DB_CA_CERT;
 
-  return ca ? { rejectUnauthorized: true, ca } : { rejectUnauthorized: true };
+  if (!ca) {
+    return { rejectUnauthorized: true };
+  }
+
+  // A PEM is multi-line, and the usual delivery paths for one — an unquoted
+  // dotenv value, docker-compose `environment:`, several CI secret UIs — hand
+  // it over with literal backslash-n instead of newlines. Left as-is, `tls`
+  // rejects it with `PEM routines: NO_START_LINE`, which reads like a broken
+  // certificate rather than a broken variable.
+  return { rejectUnauthorized: true, ca: ca.replace(/\\n/g, "\n") };
 }

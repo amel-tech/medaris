@@ -1,5 +1,6 @@
 import configuration from "../../src/config/config";
 import { resolveDatabaseSsl } from "../../src/config/database-ssl";
+import { requireDbPassword } from "../../src/config/security-env";
 
 const VALID_JWKS_URL =
   "https://auth.medaris.app/realms/amel-tech-dev/protocol/openid-connect/certs";
@@ -59,12 +60,44 @@ describe("tedrisat configuration", () => {
       expect(config.database.password).toBe("a-real-password");
     });
 
-    it("still falls back under NODE_ENV=test so the suites need no Keycloak", () => {
+    it("still falls back inside a Jest worker so the suites need no Keycloak", () => {
       process.env.NODE_ENV = "test";
+      process.env.JEST_WORKER_ID = "1";
       delete process.env.KEYCLOAK_JWKS_URL;
       delete process.env.DB_PASSWORD;
 
       expect(() => configuration()).not.toThrow();
+    });
+
+    it("does not exempt NODE_ENV=test outside a Jest worker", () => {
+      // A staging container or a CI job reusing a compose file can carry
+      // NODE_ENV=test; it must not be handed jwksUrl = "test-url".
+      process.env.NODE_ENV = "test";
+      delete process.env.JEST_WORKER_ID;
+      delete process.env.KEYCLOAK_JWKS_URL;
+      delete process.env.DB_PASSWORD;
+
+      expect(() => configuration()).toThrow(/KEYCLOAK_JWKS_URL/);
+    });
+  });
+
+  describe("requireDbPassword — the drizzle migration client", () => {
+    it("throws, naming the variable, when DB_PASSWORD is absent", () => {
+      expect(() => requireDbPassword({ NODE_ENV: "production" })).toThrow(
+        /DB_PASSWORD/
+      );
+    });
+
+    it("rejects an empty DB_PASSWORD rather than connecting with one", () => {
+      expect(() =>
+        requireDbPassword({ NODE_ENV: "production", DB_PASSWORD: "" })
+      ).toThrow(/DB_PASSWORD/);
+    });
+
+    it("returns the password when it is set", () => {
+      expect(
+        requireDbPassword({ NODE_ENV: "production", DB_PASSWORD: "s3cret" })
+      ).toBe("s3cret");
     });
   });
 
@@ -86,6 +119,20 @@ describe("tedrisat configuration", () => {
       expect(resolveDatabaseSsl({ DB_SSL: "true", DB_CA_CERT: ca })).toEqual({
         rejectUnauthorized: true,
         ca,
+      });
+    });
+
+    it("turns literal backslash-n in DB_CA_CERT into real newlines", () => {
+      // How docker-compose `environment:` and several CI secret UIs deliver a
+      // PEM. Left as-is, tls fails with NO_START_LINE.
+      const escaped =
+        "-----BEGIN CERTIFICATE-----\\nMIIB\\n-----END CERTIFICATE-----";
+
+      expect(
+        resolveDatabaseSsl({ DB_SSL: "true", DB_CA_CERT: escaped })
+      ).toEqual({
+        rejectUnauthorized: true,
+        ca: "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----",
       });
     });
 
