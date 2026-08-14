@@ -22,7 +22,12 @@ pnpm nx run-many -t lint --skip-nx-cache
 pnpm nx run-many -t module-boundaries --skip-nx-cache
 ```
 
-Expected: typecheck 16 projects · **91 tests / 10 suites** · build 8 · lint 16 · module-boundaries 16.
+Expected: typecheck 16 projects · **106 tests / 11 suites** · build 8 · lint 16 · module-boundaries 16.
+
+Two prerequisites that look optional and are not:
+
+- **`-t test` needs a running Docker daemon.** `apps/tedrisat/vitest.config.ts` matches `test/**/*.spec.ts`, which includes the four `test/e2e/*.e2e.spec.ts` suites, and those start a Testcontainers `postgres:17-alpine`. Of tedrisat's 9 suites, 4 are e2e. `test:e2e` re-runs the same four under a separate config — it is not extra coverage.
+- **`-t build` needs `apps/<app>/.env` for the four Next.js apps.** They validate the environment at build time, so a fresh worktree fails with `Invalid environment variables` until you copy each `apps/<app>/.env.example`. That is a missing file, not a regression.
 
 **`-t test` is the only gate that catches a broken NestJS container.** `typecheck` and `build` stay green while dependency injection is already broken at runtime — this has happened, see below. Never skip it.
 

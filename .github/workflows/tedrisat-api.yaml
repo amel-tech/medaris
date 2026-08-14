@@ -1,5 +1,14 @@
 name: Tedrisat API
 
+# Builds apps/tedrisat/Dockerfile and pushes to GHCR, then fires the Coolify
+# webhook that makes the running service pull the new image.
+#
+# `context: .` + `file: ./apps/tedrisat/Dockerfile` is correct and deliberately
+# unchanged (MDRS-16): the image needs the whole workspace — pnpm-workspace.yaml,
+# pnpm-lock.yaml and all 16 member manifests — not just the app directory.
+#
+# Rollback: docs/runbooks/deploy-tedrisat-api.md
+
 on:
   workflow_dispatch:
   workflow_call:
@@ -12,6 +21,15 @@ permissions:
   contents: read
   packages: write
 
+# Serialize deploys of this app. Deliberately NOT ref-scoped — the race this
+# prevents is two runs pushing `:latest` and hitting the same Coolify webhook,
+# which happens across refs, not within one. `cancel-in-progress: false`:
+# cancelling between the push and the webhook leaves a new image in GHCR that
+# nothing was ever told to deploy.
+concurrency:
+  group: deploy-tedrisat-api
+  cancel-in-progress: false
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}-tedrisat-api
@@ -19,7 +37,19 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || startsWith(github.event.release.tag_name, 'tedrisat-') }}
+    timeout-minutes: 45
+    # Gate inverted (MDRS-16). The old form was
+    #   github.event_name == 'workflow_dispatch' || == 'workflow_call' || startsWith(...)
+    # which is a trap for `workflow_call`: inside a reusable workflow the
+    # `github` context belongs to the CALLER, so `github.event_name` is never
+    # 'workflow_call' — it is whatever triggered the caller. It happens to work
+    # today only because deploy-affected.yaml is workflow_dispatch-only. The
+    # moment that dispatcher gains a `push:` trigger, event_name becomes 'push',
+    # no clause matches, and every deploy is silently skipped with a green
+    # checkmark. Stating the one real restriction instead — "on a release, the
+    # tag must be ours" — is behaviour-identical for the three current triggers
+    # and safe for any future one.
+    if: ${{ github.event_name != 'release' || startsWith(github.event.release.tag_name, 'tedrisat-') }}
     permissions:
       contents: read
       packages: write
@@ -28,8 +58,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Third-party actions pinned to a commit SHA; first-party actions/* left on
+      # tags. That is ci.yaml's stated policy (ci.yaml:100-106), written there
+      # after CodeQL's `actions` analysis flagged the floating refs in exactly
+      # these seven deploy workflows. Every SHA below was resolved with
+      # `gh api repos/<owner>/<repo>/git/ref/tags/<tag>`.
       - name: Log in to the Container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -37,22 +72,81 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # `type=sha` is the fix for a real hole: `type=match` only fires on a
+          # release tag and `enable={{is_default_branch}}` only on main, so a
+          # workflow_dispatch (or a workflow_call from deploy-affected.yaml) on
+          # any other branch produced ZERO tags — metadata-action emitted an
+          # empty `tags` output and build-push-action failed on the push with
+          # nothing useful to say. `type=sha` is enabled for every event, so
+          # there is always at least one immutable, traceable tag.
+          #
+          # `latest` is NOT left on `{{is_default_branch}}` (MDRS-16 review).
+          # That helper (metadata-action src/meta.ts:444-465 at the pinned SHA)
+          # does `context.ref.replace(/^refs\/heads\//)` and compares the result
+          # to the default branch. On a `release` the ref is `refs/tags/<tag>`,
+          # so the replace is a no-op, the compare can never match, and the
+          # eventName fallback covers only create/discussion/issues/schedule —
+          # never `release`. A release therefore pushed `<semver>` + `sha-…` and
+          # left `:latest` on the OLD image: a Coolify service pulling `:latest`
+          # re-pulls the previous build and the run goes green having deployed
+          # nothing. The explicit expression below fires `latest` for every
+          # release as well as for the default branch.
           tags: |
             type=match,pattern=tedrisat-v(.+),group=1
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.event_name == 'release' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+            type=sha
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: ./apps/tedrisat/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=tedrisat-api
+          cache-to: type=gha,mode=max,scope=tedrisat-api
 
+      # What the rollback runbook needs, recorded on the run itself: the exact
+      # tags that were pushed and the immutable digest they all point at.
+      - name: Record pushed image
+        run: |
+          set -euo pipefail
+          {
+            echo "### Tedrisat API image pushed"
+            echo
+            echo "**Digest:** \`${{ steps.build.outputs.digest }}\`"
+            echo
+            echo "**Tags:**"
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+            echo
+            echo "Rollback: docs/runbooks/deploy-tedrisat-api.md"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The old form was `curl --request GET '<url>' --header '…'` with no
+      # failure handling, so a 401 / 404 / Coolify 5xx left the job green while
+      # nothing redeployed — a silent no-op deploy is precisely the failure this
+      # issue exists to close. Secrets are passed through `env` rather than
+      # spliced into the script body.
       - name: Deploy to Coolify
-        run: | 
-         curl --request GET '${{ secrets.TEDRISAT_SERVICE_COOLIFY_WEBHOOK }}' --header 'Authorization: Bearer ${{ secrets.COOLIFY_DEPLOY_TOKEN }}'
+        env:
+          COOLIFY_WEBHOOK: ${{ secrets.TEDRISAT_SERVICE_COOLIFY_WEBHOOK }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${COOLIFY_WEBHOOK}" ]; then
+            echo "::error::TEDRISAT_SERVICE_COOLIFY_WEBHOOK is not set — the image was pushed to GHCR but nothing was redeployed."
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error \
+               --retry 3 --retry-connrefused --max-time 60 \
+               --request GET "${COOLIFY_WEBHOOK}" \
+               --header "Authorization: Bearer ${COOLIFY_TOKEN}"
+          echo
+          echo "Coolify deploy webhook accepted."

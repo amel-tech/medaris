@@ -45,7 +45,8 @@
     "class-transformer": "catalog:",
     "class-validator": "catalog:",
     "drizzle-orm": "catalog:",
-    "pg": "catalog:"
+    "pg": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@nestjs/cli": "catalog:",
