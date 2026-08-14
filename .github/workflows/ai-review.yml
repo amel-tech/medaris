@@ -25,8 +25,9 @@ name: AI Multi-Lens Review
 #  2. THE VERDICT IS NOT A FILE THE MODEL WRITES. Measured on Sidre, a lens that runs a full,
 #     paid, successful review still skips writing its verdict file 15-30% of the time — naive
 #     fail-closed on that file reddens ~74% of PRs at six lenses. Here the model's final
-#     message IS the findings object, read out of the execution record. No Write tool is
-#     needed anywhere, which is the only way the read-only allowlist below is honest.
+#     message IS the findings object, read out of the execution record. No Write tool and no
+#     file-writing shell verb is needed anywhere, which is why neither appears below even
+#     after MDRS-53 widened the allowlist.
 #
 #  3. THE ENFORCE FLAG CANNOT REACH LIVENESS. Findings start ADVISORY: with
 #     AI_REVIEW_ENFORCE_BLOCK != "true" a blocking finding is reported and does not fail the
@@ -416,6 +417,11 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      # `pull-requests: write` is what lets the lens post its own findings as
+      # inline comments on the lines they belong to (MDRS-53). It is a real
+      # widening of this job's blast radius and is granted deliberately — see the
+      # allowlist rationale on the review step below, which records what it costs.
+      pull-requests: write
     strategy:
       # One dead lens must not cancel the others: every lens's findings, and every
       # lens's liveness result, are wanted on every run.
@@ -467,20 +473,45 @@ jobs:
           # place the actual API error appears. Sidre's outage ran ~40 undiagnosed
           # runs for exactly this reason.
           show_full_output: true
-          # NO `cat` and NO `sed` in the allowlist, deliberately. Both take an
-          # arbitrary path, and this job holds the review credential in its
-          # environment while checking out untrusted pull-request code. That is a
-          # complete exfiltration chain on a public repository: a planted comment
-          # in a reviewed file persuades the model to `cat /proc/self/environ`, the
-          # token lands in its findings JSON, and the aggregator posts that JSON to
-          # a public pull-request comment. `Read`, `Grep` and `Glob` cover every
-          # legitimate need and are scoped to the workspace; the three `git`
-          # subcommands are read-only and bounded. CodeQL raised the two halves of
-          # this chain separately (alerts 30/31 and 33) — they only matter together.
+          # WHAT THIS ALLOWLIST COSTS, AND WHY IT IS STILL THIS SHAPE (MDRS-53).
+          #
+          # An earlier revision excluded `cat` and `sed` and gave this job no write
+          # credential, on the grounds that medaris is public and the job reads
+          # untrusted pull-request code while holding the review credential: a
+          # planted instruction in a reviewed file persuades the model to read the
+          # environment, the token lands in its output, and something public posts
+          # it. CodeQL raised the two halves separately (alerts 30/31 and 33) —
+          # they only ever mattered together.
+          #
+          # That chain is now WIDER, not narrower, and the decision was taken with
+          # that on the table (Taha, 2026-08-15). Two things changed:
+          #   1. The lens posts its own inline comments, so it holds
+          #      `pull-requests: write` — the "something public posts it" half is
+          #      now inside this job rather than one job downstream.
+          #   2. Arbitrary-path readers are allowed, because the narrow list cost
+          #      more than it bought: on PR #25 the boundaries-duplication lens
+          #      spent ~6 of its 35 turns having `awk`, `node -e`, `cat` and
+          #      chained `echo` rejected, then died on `error_max_turns` having
+          #      reviewed nothing. A lens that cannot finish reviews nothing, and a
+          #      review that did not happen is the exact failure this gate exists
+          #      to catch.
+          #
+          # What is still held back, and why it is not arbitrary: NO `node`, NO
+          # `python`, NO `bash -c`, NO `curl`/`wget`. Those turn a file-read
+          # primitive into arbitrary code execution and outbound network in one
+          # step, which is the difference between "the model can read a path it
+          # should not" and "the model can do anything". `jq` covers the structured
+          # queries the model reached `node -e` for. NO `mkdir`/`printf`/`tee`
+          # either — unlike the reference implementation this gate has no verdict
+          # file to write, so the lens needs no write verb at all.
+          #
+          # The residual risk is accepted and recorded, not overlooked. The real
+          # mitigation is CODEOWNERS on .github/workflows/ and tools/ai-review/,
+          # which is still MDRS-50's unlanded follow-up.
           claude_args: >-
             --model ${{ env.AI_REVIEW_MODEL }}
             --max-turns ${{ matrix.lens.max_turns || env.AI_REVIEW_MAX_TURNS }}
-            --allowedTools "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(ls:*),Bash(rg:*)"
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(ls:*),Bash(rg:*),Bash(grep:*),Bash(cat:*),Bash(sed:*),Bash(awk:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(sort:*),Bash(uniq:*),Bash(diff:*),Bash(find:*),Bash(jq:*),Bash(echo:*)"
           prompt: |
             REPOSITORY: ${{ github.repository }}
             PULL REQUEST: #${{ github.event.pull_request.number }}
@@ -509,8 +540,31 @@ jobs:
             - Be adversarial: assume there IS a problem in your lens and look hard for it. Report
               only concrete issues you have CONFIRMED in the current head files. No speculation,
               no generic praise, no style nitpicks outside your lens.
-            - Do NOT approve, do NOT merge, do NOT push commits, do NOT modify any file. You have
-              read-only tools and you only review.
+            - Do NOT approve, do NOT merge, do NOT push commits, do NOT modify any file. Posting
+              inline comments is the ONLY write you are permitted; everything else you do is a read.
+
+            SPEND YOUR TURNS ON REVIEWING, NOT ON REJECTED COMMANDS. Your turn budget is finite and
+            a lens that runs out of turns reviews nothing and reddens this gate:
+            - Your Bash allowlist matches the LITERAL START of the command. Run ONE command per
+              call. Chaining with `;`, `&&` or `|` puts a second verb in the command and the whole
+              call is rejected, and so is any `$(...)`, `$?` or other shell expansion.
+            - Prefer the Read, Grep and Glob tools over shelling out. They are not subject to any
+              of that and they cost you the same one turn.
+            - There is no `node`, `python` or `curl`. Use `jq` for structured queries.
+            - `rg` here is ripgrep: no look-ahead or look-behind in the pattern. Write the plain
+              pattern and filter what comes back.
+
+            POST EACH FINDING AS AN INLINE COMMENT, then report it again in your final JSON:
+            - Use `mcp__github_inline_comment__create_inline_comment` on the `path:line` in the
+              CURRENT file where the problem lives. One comment per finding.
+            - Comment on EVERY finding you are going to put in the JSON, advisory ones included.
+              Advisory findings used to reach the author as a bare count in a summary table and
+              nothing more — the inline comment is now the only place their content is visible.
+            - Each comment says what is wrong, why it matters, and the concrete fix. Open it with
+              the severity and confidence in brackets, e.g. `[medium/high]`, so the author can
+              tell at a glance what blocks and what does not.
+            - The inline comment does NOT replace the final JSON, and the JSON is still what this
+              gate reads. If you can only do one, do the JSON.
 
             YOUR FINAL MESSAGE — this is the entire machine interface, and there is no file to
             write. Your last message MUST be a single JSON object and nothing else: no prose
