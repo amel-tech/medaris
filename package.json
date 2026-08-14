@@ -20,6 +20,8 @@
     "module-boundaries": "nx run-many -t module-boundaries",
     "lint:root": "node tools/ci/biome-ratchet.mjs",
     "assert:affected-isolation": "node tools/ci/assert-affected-isolation.mjs",
+    "assert:traceability": "node tools/ci/assert-traceability.mjs",
+    "reconcile:linear": "node tools/ci/reconcile-linear.mjs",
     "audit:ci": "audit-ci --config ./audit-ci.json",
     "depcheck": "nx run-many -t depcheck",
     "security-check": "pnpm run audit:ci && pnpm run depcheck",
