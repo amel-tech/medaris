@@ -284,7 +284,11 @@ async function main() {
   if (!preflight.ok) {
     red = true;
     headline = `❌ **The gate did not run.** ${preflight.message}.`;
-  } else if (preflightMode !== "skip" && preflightMode !== "run") {
+  } else if (
+    preflightMode !== "skip" &&
+    preflightMode !== "run" &&
+    preflightMode !== "queued"
+  ) {
     // `mode` gets the same exhaustive treatment as every `needs.*.result`
     // above, and for the same reason. It used to be tested only against
     // "skip", so an empty string, a typo or a future third mode fell through
@@ -295,7 +299,28 @@ async function main() {
     red = true;
     headline =
       `❌ **The gate did not run.** The preflight reported an unrecognised mode \`${preflightMode || "(empty)"}\`; ` +
-      "only `run` and `skip` are defined, so the gate cannot say what was or was not reviewed.";
+      "only `run`, `queued` and `skip` are defined, so the gate cannot say what was or was not reviewed.";
+  } else if (preflightMode === "queued") {
+    // RED, deliberately, and this is the one mode where that deserves stating.
+    //
+    // The review is deferred to a quiet window so it does not compete with the
+    // team's own interactive Claude usage on the same subscription. Deferred is
+    // not reviewed, so the gate must not be green: a queued PR that reported
+    // green would be indistinguishable from a reviewed one, which is the exact
+    // confusion the rest of this file exists to prevent.
+    //
+    // Red here blocks nobody today — this context is not a required check. When
+    // it becomes one, an admin can still merge through it (`bypass_actors` on
+    // ruleset 20827887), and that is the intended path for "this cannot wait
+    // until tonight": a named human decides, on the record.
+    red = true;
+    headline =
+      `🕑 **Queued for the nightly review window** — ${preflightSkipReason}\n\n` +
+      "Nothing has been reviewed yet. This check is red because deferred is not " +
+      "reviewed, not because a finding was raised. It turns green or red on its " +
+      "own once the window opens and the lenses actually run.\n\n" +
+      "To review now instead, remove and re-add the `ai-review` label. To merge " +
+      "without waiting, that is an admin decision through the ruleset bypass.";
   } else if (preflightMode === "skip") {
     // Documented skips. Each of these is green — you cannot block every PR on a
     // capability the repository has not been given — but the comment says

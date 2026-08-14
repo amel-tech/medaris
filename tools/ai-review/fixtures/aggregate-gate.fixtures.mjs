@@ -71,6 +71,49 @@ const verdict = (lens, over = {}) => ({
 });
 
 const cases = [
+  // ── The review window ──────────────────────────────────────────────────────
+  // `queued` is the one mode that is deferred rather than decided, and it is
+  // the mode most likely to be "simplified" into a skip by someone who reads
+  // skip as harmless. These three pin it: queued is RED, it is red for a stated
+  // reason that does not read as a finding, and no flag can turn it green.
+  {
+    name: "queued for the review window — RED, not a skip",
+    env: {
+      PREFLIGHT_RESULT: "success",
+      PREFLIGHT_MODE: "queued",
+      PREFLIGHT_SKIP_REASON:
+        "opened outside the review window (`19:00-00:00 UTC`)",
+      LENS_RESULT: "skipped",
+      PREFLIGHT_LENS_COUNT: "",
+    },
+    verdicts: [],
+    expect: { exit: 1, contains: "Queued for the nightly review window" },
+  },
+  {
+    name: "queued stays RED with AI_REVIEW_ENFORCE_BLOCK=false",
+    env: {
+      PREFLIGHT_RESULT: "success",
+      PREFLIGHT_MODE: "queued",
+      PREFLIGHT_SKIP_REASON: "opened outside the review window",
+      LENS_RESULT: "skipped",
+      PREFLIGHT_LENS_COUNT: "",
+      AI_REVIEW_ENFORCE_BLOCK: "false",
+    },
+    verdicts: [],
+    expect: { exit: 1, contains: "Queued for the nightly review window" },
+  },
+  {
+    name: "queued says plainly that nothing was reviewed",
+    env: {
+      PREFLIGHT_RESULT: "success",
+      PREFLIGHT_MODE: "queued",
+      PREFLIGHT_SKIP_REASON: "opened outside the review window",
+      LENS_RESULT: "skipped",
+      PREFLIGHT_LENS_COUNT: "",
+    },
+    verdicts: [],
+    expect: { exit: 1, contains: "Nothing has been reviewed yet" },
+  },
   {
     name: "fork PR — documented skip",
     env: {

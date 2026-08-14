@@ -54,6 +54,38 @@ subscription auth, so `> 0` would probably hold — but "probably" is the wrong 
 assertion that decides whether every review is believed. If a subscription ever reported zero,
 a `> 0` check would mark every healthy run DEAD and the gate would be worse than useless.
 
+### The review window
+
+Reviews are deferred to a quiet window so they do not spend the same subscription quota the team
+is using interactively. Outside the window a pull request is marked **`queued`**, gets the
+`ai-review-queued` label, and the gate reports **RED**.
+
+**Queued is red on purpose.** Deferred is not reviewed, and a queued PR reporting green would be
+indistinguishable from a reviewed one — the exact confusion this gate exists to prevent. Red
+blocks nobody today, because the context is not a required check; when it becomes one, an admin
+can merge through it via the ruleset bypass, which is the intended path for "this cannot wait
+until tonight": a named person decides, on the record.
+
+| Setting | Where | Default |
+|---|---|---|
+| Window (UTC) | repository variable `AI_REVIEW_WINDOW_UTC` | `19-00` |
+| Drain schedule | cron in `ai-review-drain.yml` | `5 19 * * *` |
+| Review now | add the `ai-review` label | — |
+| Disable the window | set `AI_REVIEW_WINDOW_UTC=off` | — |
+
+`19-00` is quiet on **both** clocks this team runs on: 22:00–03:00 in Istanbul, 04:00–09:00 in
+Tokyo. Hour `00` is excluded, so the window is 19:00–23:59.
+
+**The two clocks are not derived from one another.** `AI_REVIEW_WINDOW_UTC` and the drain cron are
+set independently, both in UTC. Move one without the other and pull requests queue for a window
+that never opens.
+
+**The drain needs `AI_REVIEW_DRAIN_TOKEN`**, and this is not optional. GitHub does not start
+workflow runs from events created with `GITHUB_TOKEN` — the rule that prevents label loops also
+prevents the drain's label swap from triggering anything. Without that secret the drain **fails
+loudly** rather than exiting 0 over a queue it did not drain, because a silent no-op would leave
+every queued PR red for ever while the run history showed green.
+
 **3. There is no `synchronize` trigger.** That is the dominant cost multiplier: one pull request
 in the reference implementation fired ~35 review runs in four days, one per push. Under a
 subscription that is quota rather than dollars, but it is the same exhaustion. Reviews run when a

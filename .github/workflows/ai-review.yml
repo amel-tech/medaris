@@ -112,7 +112,9 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      pull-requests: read
+      # write, not read: a queued pull request gets the `ai-review-queued`
+      # label so the nightly drain can find it again.
+      pull-requests: write
     outputs:
       mode: ${{ steps.classify.outputs.mode }}
       skip_reason: ${{ steps.classify.outputs.skip_reason }}
@@ -140,9 +142,29 @@ jobs:
           # Presence only — the value is never echoed, compared or exported past
           # this step.
           KEY_PRESENT: ${{ (secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '') }}
+          # Set AI_REVIEW_WINDOW_UTC to `off` to review immediately at any hour.
+          WINDOW_SPEC: ${{ vars.AI_REVIEW_WINDOW_UTC || '19-00' }}
+          # A drain run has already waited for the window; never re-queue it.
+          IS_DRAIN: ${{ contains(github.event.pull_request.labels.*.name, 'ai-review') }}
         run: |
           set -euo pipefail
           mode=run
+
+          # Window arithmetic, UTC, wrap-around aware (19-00 spans midnight).
+          WINDOW_START="${WINDOW_SPEC%%-*}"; WINDOW_END="${WINDOW_SPEC##*-}"
+          NOW_HOUR="$(date -u +%-H)"
+          WINDOW_ENFORCED=true
+          if [ "${WINDOW_SPEC}" = "off" ] || [ "${IS_DRAIN}" = "true" ]; then
+            WINDOW_ENFORCED=false
+          fi
+          if [ "${WINDOW_START}" -le "${WINDOW_END}" ]; then
+            [ "${NOW_HOUR}" -ge "${WINDOW_START}" ] && [ "${NOW_HOUR}" -lt "${WINDOW_END}" ] \
+              && IN_WINDOW=true || IN_WINDOW=false
+          else
+            [ "${NOW_HOUR}" -ge "${WINDOW_START}" ] || [ "${NOW_HOUR}" -lt "${WINDOW_END}" ] \
+              && IN_WINDOW=true || IN_WINDOW=false
+          fi
+          export WINDOW_START WINDOW_END NOW_HOUR WINDOW_ENFORCED IN_WINDOW
           reason=""
 
           # medaris is PUBLIC with one fork (Argedik/medaris), and 10 of the 11
@@ -178,7 +200,26 @@ jobs:
           # from "configured but failed", which is red.
           elif [ "${KEY_PRESENT}" != "true" ]; then
             mode=skip
-            reason="\`ANTHROPIC_API_KEY\` is not configured for this repository, so no lens can run. This is a documented skip, not a passing review."
+            reason="no review credential is configured for this repository (neither \`CLAUDE_CODE_OAUTH_TOKEN\` nor \`ANTHROPIC_API_KEY\`), so no lens can run. This is a documented skip, not a passing review."
+
+          # ── The review window ────────────────────────────────────────────────
+          # Reviews run on a Claude subscription shared with the people writing
+          # the code. Firing a six-lens review at 14:00 spends the same quota the
+          # team is using interactively, so reviews are deferred to a quiet
+          # window unless someone asks for one now.
+          #
+          # `queued` is NOT a skip and NOT green — see aggregate-gate.mjs. The
+          # drain workflow re-labels queued PRs when the window opens.
+          #
+          # Cron and this check are both UTC. AI_REVIEW_WINDOW_UTC defaults to
+          # 19-00, which is quiet on BOTH clocks this team runs on: 22:00-03:00
+          # in Istanbul, 04:00-09:00 in Tokyo. Change it in one place —
+          # repository variable AI_REVIEW_WINDOW_UTC — and change the drain
+          # cron to match, or PRs queue for a window that never opens.
+          elif [ "${WINDOW_ENFORCED}" = "true" ] \
+            && ! printf '%s' "${IN_WINDOW}" | grep -q '^true$'; then
+            mode=queued
+            reason="opened outside the review window (\`${WINDOW_START}:00-${WINDOW_END}:00 UTC\`; it is now \`${NOW_HOUR}:xx UTC\`). The nightly drain will run the lenses when the window opens."
           fi
 
           {
@@ -186,6 +227,21 @@ jobs:
             echo "skip_reason=${reason}"
           } >> "$GITHUB_OUTPUT"
           echo "mode=${mode} reason=${reason:-n/a}"
+
+      # Queued PRs are labelled so the drain can find them. Note this label is
+      # applied with GITHUB_TOKEN, which deliberately does NOT re-trigger this
+      # workflow — GitHub suppresses workflow runs from events its own token
+      # creates, which is what stops a label/re-run loop here.
+      - name: Mark this pull request as queued for the review window
+        if: steps.classify.outputs.mode == 'queued'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh pr edit "${PR}" --repo "${REPO}" --add-label ai-review-queued \
+            || echo "::warning::could not apply the ai-review-queued label; the drain will not find this PR"
 
       # Gate lens selection on per-lens changed-file globs, NOT on `nx affected`.
       # nx.json's sharedGlobals include pnpm-lock.yaml, the root package.json and
