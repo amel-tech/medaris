@@ -32,14 +32,29 @@ permissions:
 
 jobs:
   # ── Commit hygiene ─────────────────────────────────────────────────────────
-  # MDRS-14 wired commitlint into a local commit-msg hook, but no commit that
-  # reaches main is ever checked by it: main is updated by squash merge, and
-  # GitHub composes the squash commit message from the PR title server-side,
-  # where no local hook runs. Validating the PR title here is what actually
-  # gates main's history against commitlint.config.mjs.
+  # MDRS-14 wired commitlint into a local commit-msg hook, but a local hook only
+  # sees commits authored locally, and only by people who ran `pnpm install`.
+  # Nothing it checks is what actually lands: with squash merge GitHub composes
+  # the message from the PR title server-side, and with a merge commit the
+  # branch's own commits land verbatim. So both the PR title and the commits in
+  # the range are linted here, and this job is the only thing that gates main's
+  # history against commitlint.config.mjs.
+  #
+  # This job used to carry `if: github.event_name == 'pull_request'`, which made
+  # it SKIP on every push. That is how 4305356 reached main unchecked (run
+  # 31701734355: Commit hygiene skipped, Verify failed, main stayed red for a
+  # day) — a direct push bypasses the PR surface entirely, so a PR-only gate is
+  # not a gate. The job now runs on push too and lints the pushed range; the
+  # PR-shaped checks stay as pull_request-only STEPS below.
+  #
+  # Merge commits are not a problem for the range lint: commitlint's
+  # defaultIgnores drops any `Merge ...`/`Revert ...` subject before the rules
+  # run (verified against @commitlint/cli 21.2.2 on this repo's own history —
+  # `commitlint --from 4305356 --to 68faa44`, a range whose tip IS the merge
+  # commit 68faa44, reports "found 0 problems"). This matters because the repo
+  # allows both merge and rebase merges today; nothing here assumes squash-only.
   commit-hygiene:
     name: Commit hygiene
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -60,17 +75,98 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # This is the message that will land on main.
+      # This is the message that will land on main when the PR is squashed
+      # (squash_merge_commit_title is COMMIT_OR_PR_TITLE).
       - name: Lint PR title
+        if: github.event_name == 'pull_request'
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: printf '%s' "$PR_TITLE" | pnpm exec commitlint --verbose
 
+      # These are the messages that land on main when the PR is merged with a
+      # merge or rebase merge, both of which the repo still allows.
       - name: Lint commits in PR range
+        if: github.event_name == 'pull_request'
         run: >-
           pnpm exec commitlint --verbose
           --from ${{ github.event.pull_request.base.sha }}
           --to ${{ github.event.pull_request.head.sha }}
+
+      # The push path. `before..after` is the exact set of commits this push
+      # added to main, which for a merged PR is the same set the PR range lint
+      # already saw, and for a direct push (the 4305356 case) is the only place
+      # anything sees it at all.
+      #
+      # Three shapes have to be handled or the step fails for reasons that have
+      # nothing to do with commit messages:
+      #
+      #   * before is all-zeroes — the branch was just created, so there is no
+      #     previous tip. Fall back to the single new commit (HEAD~1..HEAD).
+      #   * after is all-zeroes — the branch was deleted. Nothing to lint.
+      #   * before is unreachable — a force-push (or a re-run after the ref
+      #     moved) leaves a SHA that is no longer in this clone, and commitlint
+      #     21 runs `git merge-base` before walking the range, so an unreachable
+      #     ref is a hard error rather than an empty range. `git cat-file -e`
+      #     is the cheap pre-check; same HEAD~1..HEAD fallback.
+      #
+      # Checkout above already uses fetch-depth: 0, which this needs — a shallow
+      # clone would give commitlint no merge-base and it would (correctly) refuse
+      # rather than silently linting a truncated range.
+      #
+      # before/after come in as env rather than being interpolated into the
+      # script body: they are GitHub-supplied SHAs, but keeping every
+      # `github.event.*` value out of the shell text is the rule that does not
+      # need a case-by-case audit.
+      - name: Lint pushed commit range
+        if: github.event_name == 'push'
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.event.after }}
+        run: |
+          set -euo pipefail
+          zero='0000000000000000000000000000000000000000'
+
+          if [ "$AFTER_SHA" = "$zero" ]; then
+            echo "Branch deleted (after = ${zero}); no commits to lint." \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          from="$BEFORE_SHA"
+          reason=''
+
+          if [ "$BEFORE_SHA" = "$zero" ]; then
+            from=''
+            reason='branch was created by this push, so there is no previous tip'
+          elif ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+            from=''
+            reason="before-SHA ${BEFORE_SHA} is not reachable (force-push or rewritten history)"
+          elif [ "$BEFORE_SHA" = "$AFTER_SHA" ]; then
+            echo "Push added no new commits (before = after); nothing to lint." \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if [ -z "$from" ]; then
+            if git rev-parse -q --verify "${AFTER_SHA}^1" >/dev/null; then
+              from="${AFTER_SHA}^1"
+              echo "Falling back to the tip commit only: ${reason}." \
+                | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              echo "Skipping: ${reason}, and ${AFTER_SHA} has no parent (root commit)." \
+                | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          fi
+
+          echo "Linting ${from}..${AFTER_SHA}" | tee -a "$GITHUB_STEP_SUMMARY"
+          pnpm exec commitlint --verbose --from "$from" --to "$AFTER_SHA"
+
+      # Manual dispatch has neither a PR nor a push range; lint the checked-out
+      # tip so the job still means something when someone runs it by hand.
+      - name: Lint HEAD (manual dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: pnpm exec commitlint --verbose --last
 
   # ── Quality gates ──────────────────────────────────────────────────────────
   verify:
