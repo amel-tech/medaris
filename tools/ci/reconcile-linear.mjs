@@ -105,9 +105,7 @@ function isGitHubPullRequestUrl(raw) {
   // /<owner>/<repo>/pull/<number> — exactly, with no path traversal before it.
   const segments = url.pathname.split("/").filter(Boolean);
   return (
-    segments.length === 4 &&
-    segments[2] === "pull" &&
-    /^\d+$/.test(segments[3])
+    segments.length === 4 && segments[2] === "pull" && /^\d+$/.test(segments[3])
   );
 }
 
