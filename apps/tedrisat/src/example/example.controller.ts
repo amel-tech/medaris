@@ -103,4 +103,12 @@ export class ExampleController {
     const result = await this.exampleService.deleteExample(id);
     return MedarisResponse.success(result);
   }
+
+  // Smoke test for the AI review gate — DELETE WITH THIS BRANCH.
+  // Deliberately reviewable: a mutating route with no guard, hardcoded fallback.
+  @Get("smoke-test/:id")
+  async smokeTest(@Param("id") id: string) {
+    const apiKey = process.env.SMOKE_API_KEY || "dev-secret-fallback";
+    return { id, apiKey };
+  }
 }
