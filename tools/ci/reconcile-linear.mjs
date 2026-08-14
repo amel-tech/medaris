@@ -76,8 +76,40 @@ const DEFAULT_SINCE = "2026-07-24";
 
 const DEFAULT_TEAM = "MDRS";
 
-/** A GitHub pull-request URL, in any of the forms Linear stores. */
-const PR_URL = /github\.com\/[^/\s]+\/[^/\s]+\/pull\/\d+/i;
+/**
+ * Is this attachment URL a real GitHub pull request?
+ *
+ * Parsed, not pattern-matched. The obvious regex — /github\.com\/…\/pull\/\d+/ —
+ * is unanchored, so `https://evil.example/github.com/amel-tech/medaris/pull/1`
+ * satisfies it. CodeQL flags that as js/regex/missing-regexp-anchor, and here it
+ * is not academic: this predicate is the whole "does this Done issue have work
+ * behind it?" test, and Linear attachment URLs are attacker-supplied in the sense
+ * that anyone who can edit an issue can add one. A tool that can be told an issue
+ * shipped by pasting a link is worse than no tool, because it reports green.
+ *
+ * `new URL` also normalises away the tricks a hand-written anchor still misses:
+ * userinfo (`https://github.com@evil.example/…`), case, and default ports.
+ */
+const GITHUB_HOSTS = new Set(["github.com", "www.github.com"]);
+
+function isGitHubPullRequestUrl(raw) {
+  let url;
+  try {
+    url = new URL(raw ?? "");
+  } catch {
+    return false; // not a URL at all
+  }
+  if (url.protocol !== "https:") return false;
+  if (!GITHUB_HOSTS.has(url.hostname.toLowerCase())) return false;
+
+  // /<owner>/<repo>/pull/<number> — exactly, with no path traversal before it.
+  const segments = url.pathname.split("/").filter(Boolean);
+  return (
+    segments.length === 4 &&
+    segments[2] === "pull" &&
+    /^\d+$/.test(segments[3])
+  );
+}
 
 /**
  * A trailer line: a body line that OPENS with a reference keyword and then
@@ -322,7 +354,7 @@ for (const issue of issues) {
   );
 
   const pullRequest = issue.attachments.nodes.find((attachment) =>
-    PR_URL.test(attachment.url ?? "")
+    isGitHubPullRequestUrl(attachment.url)
   );
   const commit = commits.find((c) => keyPattern.test(c.claims));
 
