@@ -1,0 +1,214 @@
+name: Deploy Affected
+
+# Dispatcher for the seven per-app deploy workflows (MDRS-16).
+#
+# WHY THIS EXISTS
+# Every deployable thing in this repo depends on libs/. A change to libs/ui
+# touches five frontends; a change to libs/common touches both Nest APIs. With
+# only per-app workflows, redeploying after a lib change means remembering which
+# apps consume that lib and dispatching each by hand — and forgetting one ships
+# a half-updated fleet. `nx affected` already knows the answer, so this workflow
+# asks it and fans out.
+#
+# Measured on this repo at 68faa44 (`nx show projects --affected --files <f>`):
+#   libs/common/src/index.ts   -> tedrisat, teskilat
+#   libs/ui/src/lib/utils.ts   -> keycloak-theme, landing-web, nazir-web,
+#                                 nizam-web, tedris-web
+#   libs/tokens/package.json   -> keycloak-theme, landing-web, nazir-web,
+#                                 nizam-web, tedris-web
+#
+# DELIBERATELY workflow_dispatch ONLY.
+# There is no `push:` trigger here, and adding one is NOT part of MDRS-16. A
+# dispatcher that can deploy up to seven production services must be watched
+# through at least one real run before it is allowed to fire unattended. Run it
+# once with `dry_run: true` (the default) to see the project list without
+# deploying, once with `dry_run: false` to watch a real fan-out, and only then
+# open a follow-up to wire it to `push: branches: [main]`.
+#
+# Whoever does that follow-up: the seven called workflows' job-level `if:` gates
+# were rewritten by MDRS-16 to `github.event_name != 'release' || startsWith(…)`
+# precisely so a `push:` trigger here keeps working. Inside a reusable workflow
+# the `github` context is the CALLER's, so `github.event_name` would become
+# 'push' — under the old `== 'workflow_dispatch' || == 'workflow_call'` gates
+# every deploy would have been skipped, silently and green. Also replace the
+# `github.event.inputs.dry_run != 'true'` guards below, which are always true on
+# a push (no inputs), with whatever gate that trigger should have.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Only report which apps would deploy; call no deploy workflow.'
+        type: boolean
+        default: true
+      base:
+        description: 'Optional git ref to diff against, overriding nx-set-shas (e.g. a tag or SHA).'
+        type: string
+        required: false
+
+permissions:
+  contents: read
+  packages: write
+
+# One dispatcher run at a time. The per-app workflows carry their own
+# `deploy-<app>` concurrency groups, so a queued dispatcher run cannot overtake
+# an in-flight deploy of the same app either.
+concurrency:
+  group: deploy-affected
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    name: Detect affected deployables
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      projects: ${{ steps.affected.outputs.projects }}
+      count: ${{ steps.affected.outputs.count }}
+    steps:
+      # fetch-depth: 0 — nx affected needs real history to find a merge base.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Sets NX_BASE / NX_HEAD. On a workflow_dispatch this resolves to the last
+      # successful run of THIS workflow on the same branch, which is the right
+      # base for "what changed since the last deploy". On the very first run
+      # there is no such run and it falls back to HEAD~1.
+      # SHA-pinned; identical ref to ci.yaml:108.
+      - name: Derive nx affected SHAs
+        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
+
+      - name: Override base ref
+        if: ${{ inputs.base != '' }}
+        env:
+          BASE_INPUT: ${{ inputs.base }}
+        run: |
+          set -euo pipefail
+          resolved=$(git rev-parse --verify "${BASE_INPUT}^{commit}")
+          echo "NX_BASE=${resolved}" >> "$GITHUB_ENV"
+          echo "Base overridden to ${BASE_INPUT} (${resolved})"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The seven deployable Nx PROJECT names — not directory names. The web
+      # apps are landing-web / nazir-web / nizam-web / tedris-web while their
+      # directories are apps/landing, apps/nazir, apps/nizam, apps/tedris; the
+      # APIs and the theme match their directories. Verified against each
+      # apps/*/project.json and `nx show projects`.
+      - name: Compute affected deployable projects
+        id: affected
+        run: |
+          set -euo pipefail
+          echo "NX_BASE=${NX_BASE:-<unset>}"
+          echo "NX_HEAD=${NX_HEAD:-<unset>}"
+
+          pnpm exec nx show projects --affected --json > affected.json
+          echo "all affected projects: $(cat affected.json)"
+
+          deployable='["landing-web","nazir-web","nizam-web","tedris-web","tedrisat","teskilat","keycloak-theme"]'
+          projects=$(jq -c --argjson d "$deployable" \
+            '[ .[] | select(. as $p | $d | index($p)) ] | sort' affected.json)
+          count=$(echo "$projects" | jq 'length')
+
+          echo "projects=$projects" >> "$GITHUB_OUTPUT"
+          echo "count=$count"       >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### Affected deployables"
+            echo
+            echo "- base: \`${NX_BASE:-unset}\`"
+            echo "- head: \`${NX_HEAD:-unset}\`"
+            echo "- dry run: \`${{ inputs.dry_run }}\`"
+            echo
+            if [ "$count" -eq 0 ]; then
+              echo "Nothing to deploy."
+            else
+              echo "$projects" | jq -r '.[] | "- `" + . + "`"'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Fan-out ────────────────────────────────────────────────────────────────
+  # One explicit caller job per app rather than a `strategy.matrix`. GitHub does
+  # not resolve expressions in a LOCAL reusable-workflow reference — `uses:
+  # ./.github/workflows/${{ matrix.app }}.yaml` is not a thing — so a matrix
+  # cannot pick which workflow to call. Seven guarded jobs is the form that
+  # actually runs, and it has the side benefit that each app's deploy shows up
+  # under its own name in the run graph.
+  #
+  # `github.event.inputs.dry_run` is compared as a string on purpose: a
+  # workflow_dispatch boolean input arrives in the event payload as "true" /
+  # "false", and a non-empty string is truthy in an `if:`.
+  landing-web:
+    needs: detect
+    if: ${{ github.event.inputs.dry_run != 'true' && contains(fromJSON(needs.detect.outputs.projects), 'landing-web') }}
+    uses: ./.github/workflows/landing-web.yaml
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
+
+  nazir-web:
+    needs: detect
+    if: ${{ github.event.inputs.dry_run != 'true' && contains(fromJSON(needs.detect.outputs.projects), 'nazir-web') }}
+    uses: ./.github/workflows/nazir-web.yaml
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
+
+  nizam-web:
+    needs: detect
+    if: ${{ github.event.inputs.dry_run != 'true' && contains(fromJSON(needs.detect.outputs.projects), 'nizam-web') }}
+    uses: ./.github/workflows/nizam-web.yaml
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
+
+  tedris-web:
+    needs: detect
+    if: ${{ github.event.inputs.dry_run != 'true' && contains(fromJSON(needs.detect.outputs.projects), 'tedris-web') }}
+    uses: ./.github/workflows/tedris-web.yaml
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
+
+  tedrisat-api:
+    needs: detect
+    if: ${{ github.event.inputs.dry_run != 'true' && contains(fromJSON(needs.detect.outputs.projects), 'tedrisat') }}
+    uses: ./.github/workflows/tedrisat-api.yaml
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
+
+  teskilat-api:
+    needs: detect
+    if: ${{ github.event.inputs.dry_run != 'true' && contains(fromJSON(needs.detect.outputs.projects), 'teskilat') }}
+    uses: ./.github/workflows/teskilat-api.yaml
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
+
+  # No packages: write — this one ships a JAR over SSH, not an image.
+  keycloak-theme:
+    needs: detect
+    if: ${{ github.event.inputs.dry_run != 'true' && contains(fromJSON(needs.detect.outputs.projects), 'keycloak-theme') }}
+    uses: ./.github/workflows/keycloak-theme-app.yaml
+    permissions:
+      contents: read
+    secrets: inherit
