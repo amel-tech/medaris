@@ -68,13 +68,13 @@ until tonight": a named person decides, on the record.
 
 | Setting | Where | Default |
 |---|---|---|
-| Window (UTC) | repository variable `AI_REVIEW_WINDOW_UTC` | `19-00` |
-| Drain schedule | cron in `ai-review-drain.yml` | `5 19 * * *` |
+| Window (UTC) | repository variable `AI_REVIEW_WINDOW_UTC` | `16-21` |
+| Drain schedule | cron in `ai-review-drain.yml` | `5 16 * * *` |
 | Review now | add the `ai-review` label | — |
 | Disable the window | set `AI_REVIEW_WINDOW_UTC=off` | — |
 
-`19-00` is quiet on **both** clocks this team runs on: 22:00–03:00 in Istanbul, 04:00–09:00 in
-Tokyo. Hour `00` is excluded, so the window is 19:00–23:59.
+`16-21` UTC is **01:00–06:00 in Tokyo**, where the owner is, and 19:00–00:00 in Istanbul, where
+the rest of the team is. The end hour is exclusive, so the window is 16:00–20:59 UTC.
 
 **The two clocks are not derived from one another.** `AI_REVIEW_WINDOW_UTC` and the drain cron are
 set independently, both in UTC. Move one without the other and pull requests queue for a window

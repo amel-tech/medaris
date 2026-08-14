@@ -32,15 +32,16 @@ name: AI review drain
 # THE TWO CLOCKS MUST AGREE
 # The cron below and AI_REVIEW_WINDOW_UTC in ai-review.yml are both UTC and are
 # NOT derived from one another. If you move one, move the other, or pull
-# requests queue for a window that never opens. Default window is 19-00 UTC:
-# 22:00-03:00 in Istanbul, 04:00-09:00 in Tokyo — quiet on both clocks this team
-# runs on.
+# requests queue for a window that never opens. Default window is 16-21 UTC =
+# 01:00-06:00 in Tokyo, where the owner is, and 19:00-00:00 in Istanbul, where
+# the rest of the team is.
 
 on:
   schedule:
-    # 19:05 UTC — five past the window opening, so a PR opened at 18:59 and
+    # 16:05 UTC — five past the window opening, so a PR opened at 15:59 and
     # queued has settled before the drain reads the list.
-    - cron: "5 19 * * *"
+    # 16:00 UTC is 01:00 in Tokyo and 19:00 in Istanbul.
+    - cron: "5 16 * * *"
   workflow_dispatch:
     inputs:
       limit:

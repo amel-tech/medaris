@@ -143,7 +143,7 @@ jobs:
           # this step.
           KEY_PRESENT: ${{ (secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '') }}
           # Set AI_REVIEW_WINDOW_UTC to `off` to review immediately at any hour.
-          WINDOW_SPEC: ${{ vars.AI_REVIEW_WINDOW_UTC || '19-00' }}
+          WINDOW_SPEC: ${{ vars.AI_REVIEW_WINDOW_UTC || '16-21' }}
           # A drain run has already waited for the window; never re-queue it.
           IS_DRAIN: ${{ contains(github.event.pull_request.labels.*.name, 'ai-review') }}
         run: |
@@ -212,8 +212,8 @@ jobs:
           # drain workflow re-labels queued PRs when the window opens.
           #
           # Cron and this check are both UTC. AI_REVIEW_WINDOW_UTC defaults to
-          # 19-00, which is quiet on BOTH clocks this team runs on: 22:00-03:00
-          # in Istanbul, 04:00-09:00 in Tokyo. Change it in one place —
+          # 16-21 UTC = 01:00-06:00 in Tokyo, where the owner is, and
+          # 19:00-00:00 in Istanbul, where the rest of the team is. Change it —
           # repository variable AI_REVIEW_WINDOW_UTC — and change the drain
           # cron to match, or PRs queue for a window that never opens.
           elif [ "${WINDOW_ENFORCED}" = "true" ] \
