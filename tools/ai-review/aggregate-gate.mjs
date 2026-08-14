@@ -36,13 +36,7 @@
  *   node tools/ai-review/aggregate-gate.mjs
  */
 
-import {
-  appendFileSync,
-  existsSync,
-  readdirSync,
-  readFileSync,
-  statSync,
-} from "node:fs";
+import { appendFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const env = process.env;

@@ -67,12 +67,22 @@ on:
     # inert. The cost of carrying them: a label change on a PR whose lenses
     # match re-runs the review. Concurrency below collapses label flapping into
     # one run, and that is the price of an escape hatch that actually works.
-    # NO `synchronize`. That trigger is the dominant cost multiplier: in the
-    # reference implementation one PR fired ~35 review runs in four days, one per
-    # push. Under a subscription that is quota, not dollars, but it is the same
-    # exhaustion. Reviews therefore run when a PR is opened or marked ready, and
-    # on demand by adding the `ai-review` label (remove and re-add to re-run).
-    types: [opened, reopened, ready_for_review, labeled, unlabeled]
+    # `synchronize` IS here, and the reasoning changed once the review window
+    # existed. It was removed first as the dominant cost multiplier — in the
+    # reference implementation one PR fired ~35 runs in four days, one per push,
+    # with no window and no queue to absorb them. Two things make it affordable
+    # now. Outside the window a push only queues: the preflight runs, the label
+    # is already applied, and no lens and therefore no quota is touched, so
+    # repeat pushes are free. Inside the window the per-PR `concurrency` group
+    # below cancels the previous run, so a burst of pushes collapses into one
+    # review rather than one per push.
+    #
+    # Without it, updating a pull request with `main` produced NOTHING — not a
+    # review, not a queue entry, not even a red check. Silence is the wrong
+    # answer to "I changed the code", and it is the wrong answer in the
+    # dangerous direction: the last review a reviewer saw was of a diff that no
+    # longer exists.
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
 
 concurrency:
   group: ai-review-${{ github.event.pull_request.number }}

@@ -86,13 +86,9 @@ prevents the drain's label swap from triggering anything. Without that secret th
 loudly** rather than exiting 0 over a queue it did not drain, because a silent no-op would leave
 every queued PR red for ever while the run history showed green.
 
-**3. There is no `synchronize` trigger.** That is the dominant cost multiplier: one pull request
-in the reference implementation fired ~35 review runs in four days, one per push. Under a
-subscription that is quota rather than dollars, but it is the same exhaustion. Reviews run when a
-PR is opened or marked ready for review, and on demand by adding the `ai-review` label — remove
-and re-add it to re-run. **The trade is explicit: a PR reviewed at open and then changed is not
-re-reviewed unless someone asks.** That is acceptable while the gate is advisory; it must be
-revisited before the context is ever made a required check.
+**3. `synchronize` runs, but usually only queues.** It was removed at first as the dominant cost multiplier — one PR in the reference implementation fired ~35 review runs in four days, one per push. The window changed that arithmetic. Outside the window a push only queues: the preflight runs, the label is already applied, and no lens is invoked, so repeat pushes cost nothing. Inside the window, the per-PR `concurrency` group cancels the previous run, so a burst collapses into one review.
+
+Without it, updating a PR with `main` produced **nothing** — no review, no queue entry, not even a red check. That is the wrong answer to "I changed the code", and wrong in the dangerous direction: the last review anyone saw was of a diff that no longer exists.
 
 ## 1. What the six lenses look for
 
