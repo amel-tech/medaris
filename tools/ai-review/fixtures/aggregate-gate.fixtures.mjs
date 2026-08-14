@@ -487,7 +487,11 @@ for (const testCase of cases) {
       problems.push(`summary missing "${needle}"`);
   }
   // Nothing may report green with a ✅ headline unless a lens actually reported.
-  if (exitCode === 0 && summary.includes("✅") && testCase.verdicts.length === 0)
+  if (
+    exitCode === 0 &&
+    summary.includes("✅") &&
+    testCase.verdicts.length === 0
+  )
     problems.push("green ✅ headline with zero verdict artifacts");
   if (problems.length > 0) failures += 1;
 
@@ -503,5 +507,7 @@ for (const testCase of cases) {
   );
   rmSync(dir, { recursive: true, force: true });
 }
-console.log(`\n${cases.length - failures}/${cases.length} gate fixtures passed`);
+console.log(
+  `\n${cases.length - failures}/${cases.length} gate fixtures passed`
+);
 process.exit(failures === 0 ? 0 : 1);

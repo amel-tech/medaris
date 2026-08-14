@@ -183,6 +183,10 @@ const cases = [
     expect: { exit: 1, verdict: "BLOCK", blocking: 1, findings: 1 },
   },
   {
+    // The literal `${VAR}` IS the fixture: a model narrating about shell or
+    // template interpolation before its findings object used to make the
+    // extractor pick the wrong candidate and report a silent PASS.
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: the literal is the test input
     name: "REGRESSION: prose containing ${VAR} before the object",
     record: healthy(
       `The config uses \${VAR} interpolation.\nVerdict:\n${findingsJson(BLOCKING)}`
@@ -219,6 +223,9 @@ const cases = [
         {
           severity: "high",
           confidence: "high",
+          // Asserts a finding whose own text contains braces does not shift the
+          // brace-depth scanner and truncate the object.
+          // biome-ignore lint/suspicious/noTemplateCurlyInString: the literal is the test input
           title: "uses ${DB_PASSWORD} in ```code```",
           detail: "a } and a { inside a string must not shift depth",
         },
