@@ -1,0 +1,132 @@
+name: AI review drain
+
+# Releases the pull requests that ai-review.yml queued, once the review window
+# opens (MDRS-50).
+#
+# WHY A QUEUE AT ALL
+# The lenses run on a Claude subscription shared with the people writing the
+# code. A six-lens review fired at 14:00 spends the same quota the team is using
+# interactively. So ai-review.yml defers: outside the window it marks the pull
+# request `queued`, applies `ai-review-queued`, and reports the gate RED —
+# deferred is not reviewed, and a queued PR must never look like a reviewed one.
+# This workflow is the other half: when the window opens, it releases them.
+#
+# WHY IT RE-LABELS INSTEAD OF REVIEWING
+# Reviewing here would mean re-implementing the whole matrix for the scheduled
+# event shape, and reporting a check onto someone else's head SHA through the
+# Checks API. Swapping a label instead makes the pull request re-enter
+# ai-review.yml through its own `labeled` trigger, on its own head SHA, with the
+# existing code path and no second implementation to keep in step.
+#
+# WHY IT NEEDS A PAT, AND WHY THAT IS NOT OPTIONAL
+# GitHub does not start workflow runs from events created with GITHUB_TOKEN.
+# That rule is what stops label loops, and it is also what stops this: a label
+# applied with the default token would sit there and trigger nothing. So the
+# swap needs a token that is not GITHUB_TOKEN.
+#
+# If AI_REVIEW_DRAIN_TOKEN is absent this workflow FAILS LOUDLY rather than
+# exiting 0 over a queue it did not drain. A silent no-op here would leave every
+# queued pull request red for ever while the run history showed green — the
+# precise shape of failure the gate it serves was built to eliminate.
+#
+# THE TWO CLOCKS MUST AGREE
+# The cron below and AI_REVIEW_WINDOW_UTC in ai-review.yml are both UTC and are
+# NOT derived from one another. If you move one, move the other, or pull
+# requests queue for a window that never opens. Default window is 16-21 UTC =
+# 01:00-06:00 in Tokyo, where the owner is, and 19:00-00:00 in Istanbul, where
+# the rest of the team is.
+
+on:
+  schedule:
+    # 16:05 UTC — five past the window opening, so a PR opened at 15:59 and
+    # queued has settled before the drain reads the list.
+    # 16:00 UTC is 01:00 in Tokyo and 19:00 in Istanbul.
+    - cron: "5 16 * * *"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Maximum pull requests to release in this run"
+        required: false
+        default: "10"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-review-drain
+  cancel-in-progress: false
+
+jobs:
+  drain:
+    name: Release queued pull requests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Release each queued pull request
+        env:
+          # Deliberately NOT github.token — see the header. A classic PAT or a
+          # fine-grained token with pull-requests:write on this repository.
+          GH_TOKEN: ${{ secrets.AI_REVIEW_DRAIN_TOKEN }}
+          REPO: ${{ github.repository }}
+          LIMIT: ${{ inputs.limit || '10' }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${GH_TOKEN}" ]; then
+            {
+              echo "## AI review drain"
+              echo
+              echo '`AI_REVIEW_DRAIN_TOKEN` is not configured, so the queue was not drained.'
+              echo
+              echo 'Every queued pull request stays red until this secret exists. Failing'
+              echo 'rather than exiting 0, because a drain that silently drains nothing is'
+              echo 'indistinguishable from one that had nothing to do.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::AI_REVIEW_DRAIN_TOKEN is not configured — the review queue cannot be drained."
+            exit 1
+          fi
+
+          queued="$(gh pr list --repo "${REPO}" --state open \
+            --label ai-review-queued --limit "${LIMIT}" \
+            --json number --jq '.[].number')"
+
+          if [ -z "${queued}" ]; then
+            {
+              echo "## AI review drain"
+              echo
+              echo 'Nothing queued. No pull request carried `ai-review-queued`.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "nothing queued"
+            exit 0
+          fi
+
+          {
+            echo "## AI review drain"
+            echo
+            echo "| PR | released |"
+            echo "| -- | -------- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          failed=0
+          for pr in ${queued}; do
+            # Remove first, add second. If the add fails the PR is left WITHOUT
+            # the queue label and without a review, which is visible as a red
+            # gate that never resolves — better than a PR that silently sits in
+            # a queue nobody drains. The failure is also counted below.
+            if gh pr edit "${pr}" --repo "${REPO}" \
+                 --remove-label ai-review-queued \
+                 --add-label ai-review; then
+              echo "| #${pr} | ✅ |" >> "$GITHUB_STEP_SUMMARY"
+              echo "released #${pr}"
+            else
+              echo "| #${pr} | ❌ failed |" >> "$GITHUB_STEP_SUMMARY"
+              echo "::error::failed to release #${pr}"
+              failed=$((failed + 1))
+            fi
+          done
+
+          if [ "${failed}" -gt 0 ]; then
+            echo "::error::${failed} pull request(s) could not be released."
+            exit 1
+          fi

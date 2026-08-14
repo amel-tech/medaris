@@ -1,0 +1,681 @@
+name: AI Multi-Lens Review
+
+# Adversarial, multi-lens AI review (MDRS-50). Each lens in tools/ai-review/lenses.yaml
+# examines the pull request through one narrow question, as its own visible check; the
+# `AI Multi-Lens Review Gate` job collapses them into ONE status context whose name never
+# changes when a lens is added, renamed or removed.
+#
+# The topology is copied from Sidre's .github/workflows/claude-code-review.yml. Its verdict
+# plumbing is deliberately NOT copied: that gate passed pull requests it had never reviewed.
+# Root cause, from Sidre run 31668933212 — all six lenses returned
+#   {"type":"result","subtype":"success","is_error":true,"duration_ms":309,
+#    "num_turns":1,"total_cost_usd":0}
+# (the API rejecting six concurrent sessions), the wrapper step still reported
+# outcome=success, no verdict file existed, and the gate exited 0 and printed
+# "✅ All lenses passed."
+#
+# The three inversions, all load-bearing:
+#
+#  1. GREEN IS AN ASSERTION, NEVER AN ABSENCE. tools/ai-review/evaluate-verdict.mjs reads the
+#     harness-owned execution record ($RUNNER_TEMP/claude-execution-output.json) and requires
+#     is_error === false, num_turns > 1 and total_cost_usd > 0 before it will look at any
+#     finding. Sidre inferred health from `steps.<id>.outcome`, which is exactly the wrong
+#     signal: both of its death modes exit 0.
+#
+#  2. THE VERDICT IS NOT A FILE THE MODEL WRITES. Measured on Sidre, a lens that runs a full,
+#     paid, successful review still skips writing its verdict file 15-30% of the time — naive
+#     fail-closed on that file reddens ~74% of PRs at six lenses. Here the model's final
+#     message IS the findings object, read out of the execution record. No Write tool is
+#     needed anywhere, which is the only way the read-only allowlist below is honest.
+#
+#  3. THE ENFORCE FLAG CANNOT REACH LIVENESS. Findings start ADVISORY: with
+#     AI_REVIEW_ENFORCE_BLOCK != "true" a blocking finding is reported and does not fail the
+#     check. Liveness is blocking from day one and no flag can disable it. Sidre put both
+#     axes in one `&&` (its :269), so ANY non-success outcome fell through to PASS — that
+#     single conjunction is the whole bug.
+#
+# SELF-REVIEW, and exactly how far it goes. Unlike Sidre (its :249-258), a pull request that
+# edits this gate gets NO unconditional exit 0. Two different mechanisms, covering two
+# different files, and it is worth knowing which covers what:
+#
+#  * tools/ai-review/*.mjs — the code that decides red/green — is run from the BASE branch,
+#    checked out separately into .gate-base. A PR that edits only those files leaves this
+#    workflow byte-identical to the default branch, so claude-code-action's anti-tamper
+#    (which compares the WORKFLOW) never fires; base-pinning is what stops the PR's own
+#    evaluator from judging the PR. On the PR that first introduces the gate there is no
+#    base copy, the jobs fail, and the gate reports RED — the correct report for "the gate
+#    cannot yet vouch for itself". Land it with human review plus `ai-review-bypass`.
+#
+#  * THIS FILE is not covered and cannot be. On `pull_request` GitHub runs the pull
+#    request's copy of the workflow, so an edit to the preflight below could report zero
+#    selected lenses and produce a green gate over an unreviewed diff. claude-code-action
+#    refuses to run when a PR's workflow copy differs from the default branch, which turns
+#    an HONEST workflow edit red (no execution record → liveness fails → red), but that is
+#    a property of the action running at all, not a control against someone arranging for
+#    it not to run. The control here is human: .github/workflows/ and tools/ai-review/ are
+#    a security-sensitive surface and CODEOWNERS over both is MDRS-50's follow-up.
+#
+# NOT IN THE RULESET YET. Ruleset 20827887 requires `Verify` + `Commit hygiene` on main.
+# `AI Multi-Lens Review Gate` is intentionally left out until it has burned in; its name is
+# fixed now so adding it later is a one-line change and never a rename.
+
+on:
+  pull_request:
+    # `labeled` / `unlabeled` are not optional. Without them, adding the
+    # `ai-review-bypass` label produces no new run, so the red context already
+    # published against the head SHA never changes and the escape hatch is
+    # inert. The cost of carrying them: a label change on a PR whose lenses
+    # match re-runs the review. Concurrency below collapses label flapping into
+    # one run, and that is the price of an escape hatch that actually works.
+    # NO `synchronize`. That trigger is the dominant cost multiplier: in the
+    # reference implementation one PR fired ~35 review runs in four days, one per
+    # push. Under a subscription that is quota, not dollars, but it is the same
+    # exhaustion. Reviews therefore run when a PR is opened or marked ready, and
+    # on demand by adding the `ai-review` label (remove and re-add to re-run).
+    types: [opened, reopened, ready_for_review, labeled, unlabeled]
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+# No workflow-wide grants. Every job below asks for exactly what it needs; a
+# cancelled or superseded job therefore holds no write scope at all.
+permissions: {}
+
+env:
+  # ── The advisory axis ────────────────────────────────────────────────────
+  # "true" makes blocking findings fail their lens (and therefore the gate).
+  # Anything else demotes a BLOCK to a comment. This flag has NO effect on the
+  # liveness assertion — see evaluate-verdict.mjs, where it is read by one
+  # function called from one branch that liveness has already exited before.
+  AI_REVIEW_ENFORCE_BLOCK: "false"
+  AI_REVIEW_BYPASS_LABEL: ai-review-bypass
+  AI_REVIEW_LENSES_FILE: tools/ai-review/lenses.yaml
+  # Pinned: Sidre measured $6.26 per healthy six-lens run and up to $15.62 on
+  # large PRs, with correctness the long pole at 71 turns / 610s. An unpinned
+  # model would silently move both numbers.
+  AI_REVIEW_MODEL: claude-opus-5
+  # Fallback only. Each lens declares its own `max_turns` (30-60) and
+  # `timeout_minutes` (15-25) in lenses.yaml and those are what actually apply;
+  # this ceiling is used only by a lens that declares neither.
+  AI_REVIEW_MAX_TURNS: "100"
+
+jobs:
+  # ── Preflight ──────────────────────────────────────────────────────────────
+  # Decides (a) whether a review can honestly run at all and (b) which lenses have
+  # work. The matrix is computed here rather than written into this file so that
+  # adding a lens is a lenses.yaml change, and so that a PR touching only, say,
+  # apps/nizam does not pay for a lens scoped to apps/tedrisat.
+  preflight:
+    name: AI review preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # write, not read: a queued pull request gets the `ai-review-queued`
+      # label so the nightly drain can find it again.
+      pull-requests: write
+    outputs:
+      mode: ${{ steps.classify.outputs.mode }}
+      skip_reason: ${{ steps.classify.outputs.skip_reason }}
+      lenses: ${{ steps.select.outputs.lenses }}
+      lens_count: ${{ steps.select.outputs.lens_count }}
+      lens_keys: ${{ steps.select.outputs.lens_keys }}
+    steps:
+      - name: Checkout the merge ref
+        uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          fetch-depth: 1
+
+      # Ordered most-structural first. Every branch is a documented skip that the
+      # aggregator reports as "no review happened" — never as an approval.
+      - name: Classify this pull request
+        id: classify
+        env:
+          BASE_REPO: ${{ github.repository }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          ACTOR: ${{ github.event.pull_request.user.login }}
+          ACTOR_TYPE: ${{ github.event.pull_request.user.type }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          # Presence only — the value is never echoed, compared or exported past
+          # this step.
+          KEY_PRESENT: ${{ (secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '') }}
+          # Set AI_REVIEW_WINDOW_UTC to `off` to review immediately at any hour.
+          WINDOW_SPEC: ${{ vars.AI_REVIEW_WINDOW_UTC || '16-21' }}
+          # A drain run has already waited for the window; never re-queue it.
+          IS_DRAIN: ${{ contains(github.event.pull_request.labels.*.name, 'ai-review') }}
+        run: |
+          set -euo pipefail
+          mode=run
+
+          # Window arithmetic, UTC, wrap-around aware (19-00 spans midnight).
+          WINDOW_START="${WINDOW_SPEC%%-*}"; WINDOW_END="${WINDOW_SPEC##*-}"
+          NOW_HOUR="$(date -u +%-H)"
+          WINDOW_ENFORCED=true
+          if [ "${WINDOW_SPEC}" = "off" ] || [ "${IS_DRAIN}" = "true" ]; then
+            WINDOW_ENFORCED=false
+          fi
+          if [ "${WINDOW_START}" -le "${WINDOW_END}" ]; then
+            [ "${NOW_HOUR}" -ge "${WINDOW_START}" ] && [ "${NOW_HOUR}" -lt "${WINDOW_END}" ] \
+              && IN_WINDOW=true || IN_WINDOW=false
+          else
+            [ "${NOW_HOUR}" -ge "${WINDOW_START}" ] || [ "${NOW_HOUR}" -lt "${WINDOW_END}" ] \
+              && IN_WINDOW=true || IN_WINDOW=false
+          fi
+          export WINDOW_START WINDOW_END NOW_HOUR WINDOW_ENFORCED IN_WINDOW
+          reason=""
+
+          # medaris is PUBLIC with one fork (Argedik/medaris), and 10 of the 11
+          # human PRs to date came from it — PRs #2, #3 and #9 were
+          # cross-repository. On `pull_request`, a fork PR gets NO secrets and a
+          # read-only token, so no lens can run. The fix is NOT
+          # pull_request_target with a fork checkout: that would run this
+          # repository's secrets against a contributor's code. Fork PRs are
+          # reviewed by humans; the gate says so out loud.
+          if [ "${HEAD_REPO}" != "${BASE_REPO}" ]; then
+            mode=skip
+            reason="this is a fork pull request (\`${HEAD_REPO}\`). Fork PRs receive no repository secrets on \`pull_request\`, and this gate deliberately does not use \`pull_request_target\` with a fork checkout. A human reviewer is required."
+
+          # Dependabot and other bots get no secrets either. Skipping by actor
+          # keeps the aggregate context green with a stated reason instead of
+          # producing a permanently red required check on every bump.
+          elif [ "${ACTOR_TYPE}" = "Bot" ] || printf '%s' "${ACTOR}" | grep -qE '\[bot\]$'; then
+            mode=skip
+            reason="the author (\`${ACTOR}\`) is a bot. Bot pull requests receive no repository secrets, so no lens can run."
+
+          elif [ "${IS_DRAFT}" = "true" ]; then
+            mode=skip
+            reason="the pull request is a draft. Marking it ready for review re-runs the whole matrix."
+
+          # The escape hatch. It exists so a wedged gate can never block a
+          # release, and it is deliberately loud: bypassed is not passed.
+          elif printf '%s' "${LABELS}" | jq -e --arg l "${AI_REVIEW_BYPASS_LABEL}" 'any(.[]; . == $l)' >/dev/null; then
+            mode=skip
+            reason="the \`${AI_REVIEW_BYPASS_LABEL}\` label is applied, so the AI review was deliberately skipped. Nothing was reviewed — remove the label to re-run."
+
+          # Zero repository secrets exist in medaris today. "Not configured" is a
+          # configuration state: not a pass, not a crash, and clearly distinct
+          # from "configured but failed", which is red.
+          elif [ "${KEY_PRESENT}" != "true" ]; then
+            mode=skip
+            reason="no review credential is configured for this repository (neither \`CLAUDE_CODE_OAUTH_TOKEN\` nor \`ANTHROPIC_API_KEY\`), so no lens can run. This is a documented skip, not a passing review."
+
+          # ── The review window ────────────────────────────────────────────────
+          # Reviews run on a Claude subscription shared with the people writing
+          # the code. Firing a six-lens review at 14:00 spends the same quota the
+          # team is using interactively, so reviews are deferred to a quiet
+          # window unless someone asks for one now.
+          #
+          # `queued` is NOT a skip and NOT green — see aggregate-gate.mjs. The
+          # drain workflow re-labels queued PRs when the window opens.
+          #
+          # Cron and this check are both UTC. AI_REVIEW_WINDOW_UTC defaults to
+          # 16-21 UTC = 01:00-06:00 in Tokyo, where the owner is, and
+          # 19:00-00:00 in Istanbul, where the rest of the team is. Change it —
+          # repository variable AI_REVIEW_WINDOW_UTC — and change the drain
+          # cron to match, or PRs queue for a window that never opens.
+          elif [ "${WINDOW_ENFORCED}" = "true" ] \
+            && ! printf '%s' "${IN_WINDOW}" | grep -q '^true$'; then
+            mode=queued
+            reason="opened outside the review window (\`${WINDOW_START}:00-${WINDOW_END}:00 UTC\`; it is now \`${NOW_HOUR}:xx UTC\`). The nightly drain will run the lenses when the window opens."
+          fi
+
+          {
+            echo "mode=${mode}"
+            echo "skip_reason=${reason}"
+          } >> "$GITHUB_OUTPUT"
+          echo "mode=${mode} reason=${reason:-n/a}"
+
+      # Queued PRs are labelled so the drain can find them. Note this label is
+      # applied with GITHUB_TOKEN, which deliberately does NOT re-trigger this
+      # workflow — GitHub suppresses workflow runs from events its own token
+      # creates, which is what stops a label/re-run loop here.
+      - name: Mark this pull request as queued for the review window
+        if: steps.classify.outputs.mode == 'queued'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh pr edit "${PR}" --repo "${REPO}" --add-label ai-review-queued \
+            || echo "::warning::could not apply the ai-review-queued label; the drain will not find this PR"
+
+      # Gate lens selection on per-lens changed-file globs, NOT on `nx affected`.
+      # nx.json's sharedGlobals include pnpm-lock.yaml, the root package.json and
+      # .github/workflows/ci.yaml, so every dependabot bump marks all 16 projects
+      # affected and would trigger the maximum-cost review.
+      - name: Select the lenses whose globs intersect the diff
+        id: select
+        if: steps.classify.outputs.mode == 'run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # The REST endpoint paginates properly; `gh pr view --json files` caps out.
+          # `.filename`, NOT `.path`. The pull-request files endpoint has no
+          # `path` key — the field is `filename` — and `--jq '.[].path'` does not
+          # error on that, it emits one empty line per file. The first live run
+          # of this gate did exactly that: nine changed files became nine blank
+          # lines, every lens matched nothing, and the aggregate context went
+          # GREEN with "no lens matched this diff" over a completely unreviewed
+          # pull request. Precisely the silent green this whole workflow exists
+          # to make impossible, sitting in its own input.
+          gh api "repos/${REPO}/pulls/${PR}/files" --paginate --jq '.[].filename' \
+            > "${RUNNER_TEMP}/changed-files.txt"
+
+          # Fail closed on an empty extraction. A pull request always changes at
+          # least one file, so zero usable paths means the fetch or the jq
+          # expression is broken — never that there is nothing to review. Without
+          # this the failure is invisible, because "no files" and "no lens
+          # matched" produce the same green.
+          usable="$(grep -c '[^[:space:]]' "${RUNNER_TEMP}/changed-files.txt" || true)"
+          echo "changed files: ${usable}"
+          if [ "${usable}" -eq 0 ]; then
+            echo "::error::Extracted zero changed-file paths for PR #${PR}. A pull request always changes at least one file, so this is a broken fetch, not an empty diff. Refusing to report 'no lens matched'."
+            exit 1
+          fi
+
+          # Node's stdlib has no YAML parser and this preflight must not depend on
+          # `pnpm install`; PyYAML ships with the runner image (and is installed
+          # here if it ever stops doing so). This is the only non-Node step in the
+          # workflow, and it exists solely to read lenses.yaml as data.
+          python3 -c 'import yaml' 2>/dev/null \
+            || pip install --quiet --disable-pip-version-check pyyaml
+
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import sys
+
+          import yaml
+
+          lenses_path = os.environ["AI_REVIEW_LENSES_FILE"]
+          changed_path = os.path.join(os.environ["RUNNER_TEMP"], "changed-files.txt")
+
+          # Fail closed, loudly. A missing or malformed lenses.yaml means we do not
+          # know what to review; the preflight job fails, and the aggregator reports
+          # the gate red. It must never degrade into "zero lenses matched", which is
+          # green.
+          if not os.path.exists(lenses_path):
+              sys.exit(f"{lenses_path} does not exist — cannot determine what to review.")
+
+          with open(lenses_path, encoding="utf-8") as handle:
+              document = yaml.safe_load(handle)
+
+          if not isinstance(document, dict) or not isinstance(document.get("lenses"), list):
+              sys.exit(f"{lenses_path} must be a mapping with a `lenses:` list.")
+
+          with open(changed_path, encoding="utf-8") as handle:
+              changed = [line.strip() for line in handle if line.strip()]
+
+
+          def glob_to_regex(pattern):
+              """Minimal, explicit glob→regex: `**/` spans directories, `**` spans
+              anything, `*` and `?` stop at a path separator. Deliberately small —
+              lenses.yaml globs are path prefixes, not a shell."""
+              out = []
+              index = 0
+              while index < len(pattern):
+                  if pattern.startswith("**/", index):
+                      out.append("(?:.*/)?")
+                      index += 3
+                  elif pattern.startswith("**", index):
+                      out.append(".*")
+                      index += 2
+                  elif pattern[index] == "*":
+                      out.append("[^/]*")
+                      index += 1
+                  elif pattern[index] == "?":
+                      out.append("[^/]")
+                      index += 1
+                  else:
+                      out.append(re.escape(pattern[index]))
+                      index += 1
+              return re.compile("^" + "".join(out) + "$")
+
+
+          selected = []
+          for lens in document["lenses"]:
+              if not isinstance(lens, dict):
+                  sys.exit(f"{lenses_path}: every lens must be a mapping.")
+              for field in ("key", "title", "prompt"):
+                  if not lens.get(field):
+                      sys.exit(f"{lenses_path}: lens {lens.get('key', '?')} is missing `{field}`.")
+
+              globs = lens.get("globs") or []
+              # `exclude_globs` subtracts from the match. Without it the keys in
+              # lenses.yaml are decoration: a PR regenerating the committed OpenAPI
+              # client under libs/services/src/**/generated/** selects four lenses
+              # instead of one and pays for three reviews of machine-written code.
+              # Exclusion is applied to the MATCHED set only, so it can never pull
+              # in a file no glob selected.
+              excludes = [glob_to_regex(str(glob)) for glob in (lens.get("exclude_globs") or [])]
+              if globs:
+                  matchers = [glob_to_regex(str(glob)) for glob in globs]
+                  matched = [path for path in changed if any(m.match(path) for m in matchers)]
+                  matched = [path for path in matched if not any(e.match(path) for e in excludes)]
+                  if not matched:
+                      print(f"skip {lens['key']}: no changed file matches {globs}")
+                      continue
+                  print(f"take {lens['key']}: {len(matched)} matching file(s)")
+              else:
+                  print(f"take {lens['key']}: no globs declared, treated as repository-wide")
+
+              entry = {
+                  "key": str(lens["key"]),
+                  "title": str(lens["title"]),
+                  "prompt": str(lens["prompt"]),
+              }
+              # Per-lens cost caps travel WITH the lens into the matrix. They used
+              # to be dropped here while the docs advertised them as the controls
+              # that bound spend, so every lens silently ran at the workflow-wide
+              # ceiling (100 turns / 30 minutes) — the runbook told operators to
+              # tune numbers that had no effect. A malformed value is omitted
+              # rather than trusted, and the job's `||` falls back to the ceiling.
+              for field in ("max_turns", "timeout_minutes"):
+                  value = lens.get(field)
+                  if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+                      entry[field] = value
+                  elif value is not None:
+                      print(f"warn {lens['key']}: ignoring non-positive-int `{field}`: {value!r}")
+              selected.append(entry)
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write("lenses=" + json.dumps(selected, separators=(",", ":")) + "\n")
+              handle.write(f"lens_count={len(selected)}\n")
+              handle.write("lens_keys=" + ",".join(lens["key"] for lens in selected) + "\n")
+          PY
+
+  # ── One job per lens ───────────────────────────────────────────────────────
+  lens:
+    name: AI review — ${{ matrix.lens.key }}
+    needs: preflight
+    if: needs.preflight.outputs.mode == 'run' && needs.preflight.outputs.lens_count != '0'
+    runs-on: ubuntu-latest
+    # Per-lens ceiling from lenses.yaml (15-25 minutes), falling back to the
+    # workflow-wide 30 only if a lens declares none. Sized for the measured long
+    # pole (71 turns / 610s on Sidre) plus headroom.
+    timeout-minutes: ${{ matrix.lens.timeout_minutes || 30 }}
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      # One dead lens must not cancel the others: every lens's findings, and every
+      # lens's liveness result, are wanted on every run.
+      fail-fast: false
+      # The direct cause of Sidre's outage was six concurrent sessions on one
+      # credential being rejected wholesale. Three at a time trades a few minutes
+      # of wall clock for not manufacturing the failure this gate exists to catch.
+      # ONE at a time, deliberately. Six lenses fired concurrently at a single
+      # subscription is the reproducible cause of the reference implementation's
+      # outage: every leg came back is_error=true at one turn and zero cost, which
+      # is what a rate-limit rejection looks like from inside the action. Serialising
+      # trades wall clock (~4 lenses x ~2min = ~8min) for a gate that actually runs.
+      max-parallel: 1
+      # `|| '[]'` guards the case where the preflight failed or skipped its
+      # selection step and the output is empty: fromJSON('') is an expression
+      # error that can fail the run before the job-level `if` is consulted.
+      matrix:
+        lens: ${{ fromJSON(needs.preflight.outputs.lenses || '[]') }}
+    steps:
+      # The merge ref (head merged into base) is the tree a human would land, so
+      # every line this PR changed is already in its final state here. depth 2
+      # keeps both parents of the merge commit, which is what makes
+      # `git diff HEAD^1 HEAD` the PR's own diff.
+      - name: Checkout the merge ref
+        uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          fetch-depth: 2
+
+      - name: Run the ${{ matrix.lens.key }} lens
+        id: review
+        # The action never decides red/green. It is allowed to fail here so that
+        # the evaluator below always runs and always reports; the evaluator reads
+        # the execution record, NOT `steps.review.outcome`, because that outcome
+        # is 0 in both of the failure modes this gate was built for.
+        continue-on-error: true
+        # SHA-pinned, not @v1. CodeQL flags a floating third-party ref, and this
+        # action runs with the review credential in its environment — a moved tag
+        # would silently change what holds that token. Update deliberately.
+        uses: anthropics/claude-code-action@e63208cb983318a44e3f945e959ef894b707dcfa # v1
+        with:
+          # Subscription OAuth token, not a metered API key. medaris has no budget,
+          # and a metered key at the measured $4-15.6 per review would bill real money
+          # to an unfunded project. ANTHROPIC_API_KEY stays as an override for the day
+          # there is a budget; whichever is set wins, OAuth first.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Without this the action hides the final `result` string — the one
+          # place the actual API error appears. Sidre's outage ran ~40 undiagnosed
+          # runs for exactly this reason.
+          show_full_output: true
+          # NO `cat` and NO `sed` in the allowlist, deliberately. Both take an
+          # arbitrary path, and this job holds the review credential in its
+          # environment while checking out untrusted pull-request code. That is a
+          # complete exfiltration chain on a public repository: a planted comment
+          # in a reviewed file persuades the model to `cat /proc/self/environ`, the
+          # token lands in its findings JSON, and the aggregator posts that JSON to
+          # a public pull-request comment. `Read`, `Grep` and `Glob` cover every
+          # legitimate need and are scoped to the workspace; the three `git`
+          # subcommands are read-only and bounded. CodeQL raised the two halves of
+          # this chain separately (alerts 30/31 and 33) — they only matter together.
+          claude_args: >-
+            --model ${{ env.AI_REVIEW_MODEL }}
+            --max-turns ${{ matrix.lens.max_turns || env.AI_REVIEW_MAX_TURNS }}
+            --allowedTools "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(ls:*),Bash(rg:*)"
+          prompt: |
+            REPOSITORY: ${{ github.repository }}
+            PULL REQUEST: #${{ github.event.pull_request.number }}
+            HEAD COMMIT UNDER REVIEW: ${{ github.event.pull_request.head.sha }}
+
+            You are ONE of several independent, adversarial reviewers of this pull request in the
+            medaris monorepo (pnpm + Nx 23 + Biome; apps/ and libs/ are Nx projects). Review it
+            EXCLUSIVELY through your own lens. The other lenses are covered by other reviewers —
+            do not report issues outside yours, to avoid duplicate noise.
+
+            YOUR LENS: ${{ matrix.lens.title }}
+
+            ${{ matrix.lens.prompt }}
+
+            REVIEW THE FINAL HEAD STATE, NOT STALE DIFF HUNKS:
+            - The merge ref is checked out in your working directory. For every line this PR
+              changed, the file on disk already shows its FINAL state — what a human would merge.
+            - `git diff HEAD^1 HEAD` is this PR's cumulative diff (HEAD^1 is the base). Use it ONLY
+              to find which files and lines the PR touched.
+            - A PR frequently introduces something in one commit and fixes it in a later one, so a
+              diff hunk can show a problem that no longer exists. Before treating anything as a
+              finding, open the CURRENT file and confirm the problem is still there. Cite
+              `path:line` from the current file. If a later commit already fixed it, say nothing.
+
+            HOW TO REVIEW:
+            - Be adversarial: assume there IS a problem in your lens and look hard for it. Report
+              only concrete issues you have CONFIRMED in the current head files. No speculation,
+              no generic praise, no style nitpicks outside your lens.
+            - Do NOT approve, do NOT merge, do NOT push commits, do NOT modify any file. You have
+              read-only tools and you only review.
+
+            YOUR FINAL MESSAGE — this is the entire machine interface, and there is no file to
+            write. Your last message MUST be a single JSON object and nothing else: no prose
+            before it, no prose after it, no markdown fence. Shape:
+
+            {
+              "lens": "${{ matrix.lens.key }}",
+              "summary": "one or two sentences on what you examined and concluded",
+              "findings": [
+                {
+                  "severity": "critical|high|medium|low",
+                  "confidence": "high|medium|low",
+                  "file": "apps/example/src/thing.ts",
+                  "line": 42,
+                  "title": "short imperative statement of the defect",
+                  "detail": "why it is wrong and what it breaks",
+                  "fix": "the concrete change that fixes it"
+                }
+              ]
+            }
+
+            Rules for that object:
+            - `findings` is REQUIRED and must be an array. Use `[]` when you found nothing. An
+              empty array is a clean review; a missing or unparseable object is treated as a
+              FAILED review and turns this check red.
+            - Use `severity: "high"` or `"critical"` with `confidence: "high"` ONLY for a real bug,
+              a real vulnerability or a real contract break that you have confirmed in the current
+              file. Those combinations are what block. If you are uncertain, lower the confidence
+              and report it as advisory instead — it will still be shown to the author.
+            - Emit this object exactly once, as the last thing you do, no matter how the review
+              went: findings, no findings, or ran short on turns.
+
+      # The verdict is computed by the BASE branch's copy of the evaluator, never
+      # the pull request's. Without this, a PR that edits only
+      # tools/ai-review/*.mjs leaves this workflow byte-identical to the default
+      # branch — claude-code-action's anti-tamper compares the WORKFLOW and so
+      # never fires — and the pull request's own code then decides whether the
+      # pull request passes. Checked out AFTER the review step so the model never
+      # sees a second copy of the tree, and from base.sha, which is by
+      # construction a commit that already landed on the target branch.
+      - name: Check out the base branch's copy of the verdict logic
+        if: always()
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .gate-base
+          fetch-depth: 1
+
+      # Reads $RUNNER_TEMP/claude-execution-output.json, asserts liveness, parses the
+      # findings object out of the final message, decides. Runs even when the action
+      # step failed — that is precisely when its report matters.
+      - name: Evaluate the ${{ matrix.lens.key }} verdict
+        if: always()
+        env:
+          AI_REVIEW_LENS: ${{ matrix.lens.key }}
+          AI_REVIEW_LENS_TITLE: ${{ matrix.lens.title }}
+          AI_REVIEW_EXECUTION_FILE: ${{ runner.temp }}/claude-execution-output.json
+          AI_REVIEW_VERDICT_FILE: ${{ runner.temp }}/ai-review-verdict.json
+          AI_REVIEW_KEY_PRESENT: ${{ (secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '') }}
+          # Which auth is in play decides whether total_cost_usd > 0 is a sound
+          # liveness signal — see evaluate-verdict.mjs. API key wins when both are set.
+          AI_REVIEW_AUTH_MODE: ${{ secrets.ANTHROPIC_API_KEY != '' && 'api-key' || 'oauth' }}
+        run: |
+          set -uo pipefail
+          # No base copy means the base branch does not yet carry the gate (the
+          # pull request that introduces it) or it was deleted. Either way there
+          # is no trusted evaluator, so this lens cannot report a verdict and the
+          # leg fails — which the aggregator turns into a red gate. That is the
+          # correct report for "the gate cannot yet vouch for itself"; land such a
+          # pull request with the `ai-review-bypass` label and human review.
+          if [ ! -f .gate-base/tools/ai-review/evaluate-verdict.mjs ]; then
+            echo "::error::No base-branch copy of evaluate-verdict.mjs at .gate-base — refusing to compute a verdict with the pull request's own code."
+            exit 1
+          fi
+          node .gate-base/tools/ai-review/evaluate-verdict.mjs
+          code=$?
+          # Exit 3 (NOT_CONFIGURED) is the ONE code translated into a non-failing
+          # step: "no API key" is a configuration state, not a review failure, and
+          # the verdict artifact carries it to the aggregator, which reports the
+          # skip. Everything else — 1 BLOCK, 2 DEAD, and any unexpected code —
+          # fails the job. This mapping lives here, in one place, and it never
+          # touches the liveness decision, which has already been made inside the
+          # script.
+          if [ "$code" = "3" ]; then
+            echo "::notice::${AI_REVIEW_LENS}: ANTHROPIC_API_KEY is not configured — documented skip, nothing was reviewed."
+            exit 0
+          fi
+          exit "$code"
+
+      - name: Upload the ${{ matrix.lens.key }} verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-review-verdict-${{ matrix.lens.key }}
+          path: ${{ runner.temp }}/ai-review-verdict.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  # ── The single status context ──────────────────────────────────────────────
+  gate:
+    # This name is the contract with the branch ruleset. Do not change it.
+    name: AI Multi-Lens Review Gate
+    needs: [preflight, lens]
+    # Must run when a lens failed (that is exactly when red must be reported) and
+    # when lenses were skipped (fork / bot / draft / bypass / no key / no match).
+    # It is never guarded by anything else: a skipped job reports to branch
+    # protection as passing, so a gate that could be skipped could be green over
+    # an unreviewed diff.
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # The ONLY tree this job runs code from is the base branch's. The merge ref
+      # is not checked out here at all: nothing in this job needs the pull
+      # request's files, and checking them out would mean the pull request
+      # supplies the code that judges it. A PR editing only
+      # tools/ai-review/*.mjs leaves this workflow byte-identical to the default
+      # branch, so claude-code-action's anti-tamper — which compares the WORKFLOW
+      # — never fires; base-pinning is what actually closes that.
+      #
+      # What this does NOT close, and cannot: on `pull_request` GitHub itself
+      # runs the pull request's copy of THIS FILE, so an edit to the preflight
+      # above (say, one that reports zero selected lenses) is outside the reach
+      # of anything written here. That surface is human-controlled only —
+      # CODEOWNERS on .github/workflows/ and tools/ai-review/ is MDRS-50's
+      # follow-up and does not exist yet.
+      - name: Check out the base branch's copy of the gate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .gate-base
+          fetch-depth: 1
+
+      - name: Download the per-lens verdicts
+        # No artifacts at all is a legitimate state (every skip mode), so a failed
+        # download must not fail the job. The aggregator cross-checks the artifact
+        # count against what the preflight selected and goes red on a shortfall.
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ai-review-verdict-*
+          path: ${{ runner.temp }}/ai-review-verdicts
+
+      - name: Aggregate the lenses into one gate
+        env:
+          PREFLIGHT_RESULT: ${{ needs.preflight.result }}
+          PREFLIGHT_MODE: ${{ needs.preflight.outputs.mode }}
+          PREFLIGHT_SKIP_REASON: ${{ needs.preflight.outputs.skip_reason }}
+          PREFLIGHT_LENS_COUNT: ${{ needs.preflight.outputs.lens_count }}
+          PREFLIGHT_LENS_KEYS: ${{ needs.preflight.outputs.lens_keys }}
+          LENS_RESULT: ${{ needs.lens.result }}
+          AI_REVIEW_VERDICT_DIR: ${{ runner.temp }}/ai-review-verdicts
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          # A base branch without the aggregator cannot vouch for anything. Say
+          # so in the summary and go red — never fall back to the pull request's
+          # copy, which is the whole point of the base checkout above.
+          if [ ! -f .gate-base/tools/ai-review/aggregate-gate.mjs ]; then
+            {
+              echo "## AI Multi-Lens Review Gate"
+              echo
+              echo "❌ **The gate cannot vouch for itself.** There is no copy of"
+              echo "\`tools/ai-review/aggregate-gate.mjs\` on the base branch"
+              echo "(\`${{ github.event.pull_request.base.sha }}\`), and this job refuses to compute a"
+              echo "verdict from the pull request's own copy. If this is the pull request that"
+              echo "introduces the gate, land it with human review and the"
+              echo "\`${AI_REVIEW_BYPASS_LABEL}\` label."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::No base-branch copy of aggregate-gate.mjs at .gate-base — reporting red."
+            exit 1
+          fi
+          node .gate-base/tools/ai-review/aggregate-gate.mjs
