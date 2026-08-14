@@ -43,11 +43,36 @@ Every figure below came from command output in this worktree.
 
 | Claim | How it was checked |
 | --- | --- |
-| Baseline was green before the change | `typecheck` 16 projects, `test` 3 projects — run on `68faa44` before editing |
-| AC #3 — no `rejectUnauthorized: false` remains | `grep -rn 'rejectUnauthorized' apps libs` → 2 hits, both `true`, both in the new helper's output path |
+| **AC #1 — a production boot without either variable exits non-zero, naming it** | Built, then run twice against `dist/src/main.js`. Without `KEYCLOAK_JWKS_URL`: exit **1**, `@medaris/tedrisat cannot start, the environment is incomplete: KEYCLOAK_JWKS_URL — Required. See apps/tedrisat/.env.example.` Without `DB_PASSWORD`: exit **1**, the same message naming `DB_PASSWORD`. Not a unit-test stand-in — the real binary. |
+| **AC #3 — no `rejectUnauthorized: false` remains** | `grep -rn 'rejectUnauthorized' apps libs` → every hit is `true` |
 | The shared helper loads under drizzle-kit | `DB_PASSWORD=x pnpm exec drizzle-kit check` → "Everything's fine", exit 0 — the `./src/config/database-ssl` import resolves in drizzle-kit's own loader, not just under `tsc` |
-| Missing `KEYCLOAK_JWKS_URL` / `DB_PASSWORD` throw, naming the variable | `test/unit/config.spec.ts`, 10 tests |
+| The full gate | typecheck **16 projects** · test **101 tests / 11 suites** (tedrisat 99/9, teskilat 2/2) · build **8** · lint **16** · module-boundaries **16** |
+| Baseline for that gate | Measured on `68faa44` before editing: **91 tests / 10 suites** (tedrisat 89/8, teskilat 2/2). The +10 is `config.spec.ts`. |
+| The Biome ratchet did not move | `node tools/ci/biome-ratchet.mjs` → 528 files, 0 errors / 94 warnings / 27 infos, all equal to baseline |
 | zod is a catalog reference, not a new version | `pnpm-workspace.yaml:200` — `zod: ~3.25.76`, already used by the web apps |
+
+## AC #2 — the e2e suite. It does not pass, and it did not pass before
+
+The criterion reads "`pnpm --filter @medaris/tedrisat test:e2e` still passes
+unchanged." It does not pass. **It also does not pass on `origin/main`**, and it
+fails identically:
+
+| Ref | Result |
+| --- | --- |
+| `68faa44` (`origin/main`, untouched) | **4 suites failed**, 57 failed / 1 passed of 58 |
+| This branch | **4 suites failed**, 57 failed / 1 passed of 58 |
+
+Same counts, same four suites, same first error — the Drizzle migration step
+(`Failed query: CREATE SCHEMA IF NOT EXISTS "drizzle"`) fails against the
+Testcontainers postgres, after which `createTestApp` returns undefined and every
+assertion collapses. Docker was available for both runs (`docker info` exit 0),
+so this is not a missing daemon.
+
+So the honest reading of AC #2 is "unchanged: yes; passing: no, and not because
+of this change." The suite is not in CI either — `.github/workflows/ci.yaml`
+runs `test`, not `test:e2e`, and MDRS-15's record says wiring e2e in is MDRS-20.
+**Repairing the e2e harness is not in this task's scope, but someone should own
+it**; see "Follow-ups".
 
 ## Not verified
 
@@ -65,8 +90,20 @@ Every figure below came from command output in this worktree.
   will stop booting on the next deploy, which is the intended behaviour, but
   the deployment secrets were not inspected from here.
 
+## A note on the gate
+
+`-t build` fails in a fresh worktree with `Invalid environment variables` until
+each `apps/<app>/.env.example` is copied to `apps/<app>/.env` — the four Next.js
+apps validate their environment at build time. README §Quick start already said
+so; `CLAUDE.md` did not, and now does. The 8-project build above was measured
+after copying those four files.
+
 ## Follow-ups
 
+- **The tedrisat e2e suite is red on `main`** (4 suites, 57 tests; Drizzle
+  migration fails against the Testcontainers postgres). Measured on `68faa44`,
+  independent of this change. Needs its own issue, and MDRS-20 — which wires
+  e2e into CI — will hit it.
 - `apps/teskilat/src/config/config.ts:14` carries the same class of defect —
   `process.env.DB_PASSWORD || "password"`. Out of scope for MDRS-35, which names
   tedrisat only; worth its own issue.
