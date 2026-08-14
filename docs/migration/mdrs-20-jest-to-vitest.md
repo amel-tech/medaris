@@ -309,7 +309,9 @@ Measured (v8 provider, Node 22.20.0), and the floors set from it:
 Two deliberate choices:
 
 - Floors sit ~3 points below measured, to absorb v8 line-attribution differences
-  between Node majors — this was measured on 22 and CI runs 24.
+  between Node majors — this was measured on 22 and CI runs 24. CI has since
+  reported identical figures on Node 24 (see §7), so the margin is unused
+  headroom rather than a fudge.
 - teskilat's `branches` floor is **not** 100. That figure is `0/0`; the file has
   no branches yet, so a literal floor would fail on the first branch anyone adds.
 
@@ -355,12 +357,33 @@ Stale `node_modules/.pnpm/jest*` directories do survive an in-place install, but
 they are orphaned store entries: nothing in the lockfile references them and no
 package can resolve them. A fresh clone never materialises them.
 
+### Confirmed by CI on Node 24
+
+The local runs above are Node 22.20.0. CI run
+[31795679761](https://github.com/amel-tech/medaris/actions/runs/31795679761)
+(`node: v24.18.0`) then reproduced them exactly:
+
+```
+Test Files  2 passed (2)   Tests   2 passed (2)     # teskilat
+Test Files  8 passed (8)   Tests  89 passed (89)    # tedrisat
+PostgreSQL container started at ***localhost:32769/tedrisat_test
+PostgreSQL container started at ***localhost:32770/tedrisat_test
+PostgreSQL container started at ***localhost:32771/tedrisat_test
+PostgreSQL container started at ***localhost:32772/tedrisat_test
+NX  Successfully ran targets lint, typecheck, test, build, module-boundaries for 16 projects
+```
+
+Four container boots in CI — the e2e suites are genuinely running there, on the
+Docker socket `ubuntu-latest` provides, with no postgres service container.
+
+Coverage came out **byte-identical to Node 22** on both apps — teskilat
+`70 / 100 / 66.66 / 70`, tedrisat `63.1 / 53.95 / 62.22 / 63.01` — so the
+cross-major v8 variance the floors budget for did not materialise. The margin is
+left in place anyway; it costs nothing and the floors are meant to be raised
+deliberately, not to track measurement noise.
+
 ### Not verified
 
-- **Coverage under Node 24.** Everything here was measured on Node 22.20.0;
-  Node 24 was not installed locally. The floors carry a ~3-point margin for
-  exactly this, but the Node 24 figures themselves are unmeasured — CI is the
-  first run that produces them.
 - **`test:watch` and `test:debug`.** Rewritten to `vitest` and
   `vitest run --inspect-brk --no-file-parallelism`, but neither was executed;
   they are interactive and no gate covers them. `test`, `test:coverage` and
