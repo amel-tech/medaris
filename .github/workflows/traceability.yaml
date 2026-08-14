@@ -1,0 +1,66 @@
+name: Traceability
+
+# Every PR must name the Linear issue it implements (MDRS-49).
+#
+# Why this is its own workflow file and not a job in ci.yaml — two reasons, both
+# concrete:
+#
+#  1. nx.json's `sharedGlobals` lists .github/workflows/ci.yaml, so ANY edit to
+#     that file marks all 16 projects affected and turns the next Verify run into
+#     a full cold build. A gate that reads two strings out of a JSON file should
+#     not cost that.
+#  2. Verify is sized for a 45-minute cold build. This check answers in seconds,
+#     and an author who forgot the key should be told immediately rather than
+#     after the build queue.
+#
+# `edited` is in the trigger list and is the whole reason the check can be
+# required: ci.yaml's `pull_request` trigger has no `types:`, so it defaults to
+# opened/synchronize/reopened and never re-runs when someone fixes a PR title.
+# A title-based gate without `edited` would be unfixable without an empty push.
+# `labeled`/`unlabeled` are here for the same reason — they are the other events
+# that fire when a PR is being triaged rather than pushed to.
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+      - ready_for_review
+      - labeled
+      - unlabeled
+    branches: [main, dev]
+
+# One in-flight run per PR. Retitling a PR three times should leave one answer,
+# not three racing ones.
+concurrency:
+  group: traceability-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+# Read-only, and only what checkout needs. The gate reads $GITHUB_EVENT_PATH,
+# never the API, so it needs no `pull-requests:` scope at all.
+permissions:
+  contents: read
+
+jobs:
+  # The job NAME is the check-run context that the "main protection" ruleset
+  # references. It must stay exactly "Traceability" — renaming it silently
+  # detaches the required check and the rule stops being enforced.
+  traceability:
+    name: Traceability
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # One file, one commit, no submodules, no LFS. Deliberately no
+      # actions/setup-node: the runner image already ships Node 22+, and a
+      # setup-node step costs more than everything else here put together.
+      - name: Check out the gate only
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          sparse-checkout: tools/ci/assert-traceability.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Assert the PR names its Linear issue
+        run: node tools/ci/assert-traceability.mjs

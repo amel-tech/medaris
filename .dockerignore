@@ -1,0 +1,56 @@
+# Root build-context excludes (MDRS-16).
+#
+# All six app images build with `context: .` and `file: ./apps/<app>/Dockerfile`,
+# so BuildKit reads THIS file (or `<dockerfile>.dockerignore`) and nothing else.
+# The old per-app .dockerignore files were never consulted and have been deleted.
+#
+# Rule of thumb: exclude only things the image rebuilds for itself. Every
+# workspace manifest, every lib source tree and every `.env.example` must stay
+# in the context — the Nx build inside the image depends on them.
+
+# Version control. `.git` is a file, not a directory, in a git worktree, so it
+# is useless inside the image either way.
+.git
+.gitignore
+.git-blame-ignore-revs
+.github
+.husky
+
+# Anything the image installs or compiles itself.
+**/node_modules
+**/.next
+**/dist
+**/.turbo
+**/.nx
+**/.tsbuild
+**/*.tsbuildinfo
+**/coverage
+**/test-results
+**/storybook-static
+**/.keycloakify
+
+# Local environment files. The build stage seeds `.env` from `.env.example`,
+# which must therefore survive the exclusion below.
+**/.env
+**/.env.*
+!**/.env.example
+
+# Editor / OS / tooling noise.
+.vscode
+.idea
+.mcp.json
+**/.DS_Store
+**/*.log
+**/*.swp
+
+# Docker inputs themselves — BuildKit reads the Dockerfile out of band.
+**/Dockerfile
+**/.dockerignore
+docker-compose.yml
+docker/
+
+# Docs and migration scratch. Nothing in the build graph reads these.
+**/*.md
+docs/
+.migration/
+local_docs/
