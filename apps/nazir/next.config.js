@@ -1,3 +1,26 @@
+// MDRS-25: the workspace has one .env, at the repository root. Next only reads
+// .env files from the project directory, so the root file is applied to
+// process.env here — early enough for NEXT_PUBLIC_* inlining and for env.ts's
+// build-time validation, both of which happen after this module is evaluated.
+//
+// The loader path is computed rather than written as "../../tools/...":
+// @nx/enforce-module-boundaries rejects a relative path leaving the project, and
+// it is right to — the durable fix is a real workspace package for this, which
+// needs a commitlint scope and a release-please component that MDRS-17 owns.
+import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
+
+const require = createRequire(import.meta.url);
+
+let repoRoot = import.meta.dirname;
+while (!existsSync(join(repoRoot, "pnpm-workspace.yaml"))) {
+  const parent = dirname(repoRoot);
+  if (parent === repoRoot) throw new Error("pnpm-workspace.yaml not found");
+  repoRoot = parent;
+}
+require(join(repoRoot, "tools", "env", "root-env.cjs")).loadRootEnv("nazir");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // MDRS-16: the deploy image ships `.next/standalone`. pnpm's node_modules is

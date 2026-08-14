@@ -1,3 +1,4 @@
+import "./load-env";
 import "./otel";
 import { applyGlobalMiddleware, LoggerFactory } from "@medaris/common";
 import { ConfigService } from "@nestjs/config";
