@@ -56,6 +56,9 @@ apps/*/public/mocks/
 *.lcov
 
 # Environment files
+# `pnpm env:sync` copies a hand-written file aside before replacing it (MDRS-25).
+.env.bak
+.env.example.bak
 .env.local
 .env.development.local
 .env.test.local

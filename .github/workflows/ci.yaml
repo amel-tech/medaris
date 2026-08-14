@@ -215,20 +215,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The six apps/<app>/.env.example files are generated from the root one
+      # (MDRS-25). Editing a generated file by hand is the failure mode that
+      # scheme is built to prevent, and .env files are git-ignored, so this is
+      # the only place the mistake can be caught. Runs before the seeding step
+      # below so a stale example never reaches a build.
+      - name: Check generated env examples are in sync
+        run: pnpm env:check
+
       # Not optional: apps/nizam and apps/tedris validate env through
       # @t3-oss/env-nextjs at build time, so `nx run-many -t build` fails on a
-      # clean checkout with "Invalid environment variables" without this. The
-      # inherited frontend workflow did the same copy for three apps by hand;
-      # this loop covers every app that ships an example file.
-      - name: Seed app env files from examples
+      # clean checkout with "Invalid environment variables" without this.
+      # `env:sync` writes every apps/<app>/.env from the root file, replacing
+      # the per-app copy loop the inherited frontend workflow did by hand.
+      - name: Seed app env files from the root example
         run: |
-          for example in apps/*/.env.example; do
-            target="${example%.example}"
-            if [ ! -f "$target" ]; then
-              cp "$example" "$target"
-              echo "seeded $target"
-            fi
-          done
+          cp .env.example .env
+          pnpm env:sync
 
       # Workspace-root lint + warning ratchet. Covers the 13 root config files
       # that no per-project `lint` target can see, and fails when Biome's

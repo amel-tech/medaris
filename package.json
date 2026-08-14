@@ -9,10 +9,13 @@
     "pnpm": ">=11.0.0"
   },
   "scripts": {
-    "build": "nx run-many -t build",
+    "build": "pnpm env:sync && nx run-many -t build",
     "typecheck": "nx run-many -t typecheck",
     "test": "nx run-many -t test",
-    "dev": "nx run-many -t dev",
+    "dev": "pnpm env:sync && nx run-many -t dev",
+    "env:sync": "node tools/env/sync-env.mjs",
+    "env:check": "node tools/env/sync-env.mjs --check --examples",
+    "env:collect": "node tools/env/sync-env.mjs --collect",
     "lint": "nx run-many -t lint",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
