@@ -100,7 +100,8 @@ describe("tedrisat configuration", () => {
     });
 
     it("leaves the azp allow-list empty when it is not configured", () => {
-      // Optional by design: `aud` already binds the token to this API.
+      // readSecurityEnv never demands it — whether it is required depends on
+      // the audience, and that is JwtVerifierService's call, not this file's.
       process.env.NODE_ENV = "production";
       setCompleteSecurityEnv();
       delete process.env.KEYCLOAK_ALLOWED_CLIENTS;

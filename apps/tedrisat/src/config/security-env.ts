@@ -51,10 +51,13 @@ function reject(issues: z.ZodIssue[]): never {
 }
 
 /**
- * `KEYCLOAK_ALLOWED_CLIENTS` is a comma-separated `azp` allow-list and is
- * deliberately optional: `aud` already binds a token to this API, and the
- * allow-list only narrows further to the front-ends that may obtain such a
- * token. Empty therefore means "no `azp` restriction", not "checks disabled".
+ * `KEYCLOAK_ALLOWED_CLIENTS` is a comma-separated `azp` allow-list. It is not
+ * validated here because whether it is required depends on the audience, which
+ * only the verifier knows: with an audience that names this API specifically
+ * it is an optional narrowing, but with a realm-wide audience such as
+ * `account` it is the only thing carrying the client binding, and
+ * `loadJwtClaimPolicy` refuses to construct without it. Empty therefore means
+ * "no `azp` restriction", never "checks disabled".
  */
 function readAllowedClients(env: NodeJS.ProcessEnv): string {
   return env.KEYCLOAK_ALLOWED_CLIENTS || "";

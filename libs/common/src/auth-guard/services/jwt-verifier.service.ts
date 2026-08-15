@@ -31,8 +31,9 @@ export interface JwtClaimPolicy {
   audience: [string, ...string[]];
   /**
    * Accepted `azp` values, i.e. the clients allowed to request a token for
-   * this API. Empty means the claim is not restricted; `aud` still binds the
-   * token to this API.
+   * this API. Empty means the claim is not restricted, which is safe only when
+   * `aud` names this API specifically — with a realm-wide audience it is not,
+   * and `loadJwtClaimPolicy` refuses that combination.
    */
   allowedClients: string[];
 }
