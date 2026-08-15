@@ -40,7 +40,8 @@ too.
 | `apps/tedrisat/.env.example` | `SWAGGER_ENABLED=false`, plus the commented `SWAGGER_ALLOW_IN_PRODUCTION` and why it exists. |
 | `apps/teskilat/.env.example` | `SWAGGER_ENABLED=false`. |
 | `.env.example` (workspace root) | `SWAGGER_ENABLED=false` and the same note. Found in review. Nothing delivers this file to a service automatically — `docker-compose.yml` feeds both APIs from `apps/<app>/.env` via `env_file:` and reads the root file only for `${…}` interpolation, which never touches `SWAGGER_ENABLED`, and CI seeds only `apps/*/.env.example`. It is a hand-copied developer template, so the gap is what an operator carries across by hand rather than a delivery path. |
-| `CLAUDE.md`, `README.md` | The stated test baseline moves 106/11 → 133/12. |
+| `CLAUDE.md`, `README.md` | The stated test baseline moves 106/11 → 133/12. `README.md` also gains a note in its local-environment list, because the guard bites developers too — see below. |
+| `docs/runbooks/deploy-tedrisat-api.md` | New §5, "Before the next release — the Swagger guard". |
 | `apps/tedrisat/test/unit/swagger-csp.spec.ts` | New. 17 tests — 13 over the predicate, 4 over the endpoint normaliser. |
 | `apps/tedrisat/test/unit/config.spec.ts` | +10 tests — 5 over the production guard, 5 over the redirect origin. |
 | `tools/ci/biome-baseline.json` | Warning floor lowered 94 → 91; see below. |
@@ -127,7 +128,15 @@ Merging does not deploy: the seven deploy workflows are `release` /
 **before the next tedrisat release**, either confirm no deployed environment
 sets `SWAGGER_ENABLED=true`, or add `SWAGGER_ALLOW_IN_PRODUCTION=true` to the
 non-production ones that want the docs endpoint. That check could not be run
-from here — see **Not verified**.
+from here — see **Not verified**. `docs/runbooks/deploy-tedrisat-api.md` now
+carries it as a numbered pre-release step so it is not only in this note.
+
+**It reaches developers as well.** `docker-compose.yml` feeds tedrisat from
+`apps/tedrisat/.env`, that file is git-ignored, and anyone who copied it from
+the old template is still carrying `SWAGGER_ENABLED=true` — so
+`docker compose up tedrisat` now crash-loops for them. Changing `.env.example`
+does not reach an already-copied `.env`, so `README.md`'s local-environment
+notes name the variable, the message and the fix.
 
 ## Verified
 

@@ -191,7 +191,35 @@ docker buildx imagetools inspect ghcr.io/amel-tech/medaris-tedrisat-api:latest \
 
 ---
 
-## 5. Known blockers
+## 5. Before the next release — the Swagger guard
+
+MDRS-33 made `SWAGGER_ENABLED=true` under `NODE_ENV=production` a **hard boot
+failure** unless `SWAGGER_ALLOW_IN_PRODUCTION=true` is also set: publishing the
+API schema also relaxes CSP and COOP on the Swagger pages, so the service refuses
+rather than doing it by accident.
+
+`apps/tedrisat/Dockerfile` hardcodes `ENV NODE_ENV=production`, so this applies
+to **every** environment running that image — dev and staging included, not just
+production. The throw fires in the config factory, before `listen()`, so an
+environment still carrying `SWAGGER_ENABLED=true` crash-loops instead of starting
+with Swagger off.
+
+Before rolling out a tedrisat release that includes MDRS-33, for each deployed
+environment either:
+
+- set `SWAGGER_ENABLED=false` (the new default in every `.env.example`), or
+- set `SWAGGER_ALLOW_IN_PRODUCTION=true` if that environment wants the docs
+  endpoint. `SWAGGER_ENABLED=true` additionally requires `KEYCLOAK_REDIRECT_URL`
+  to be set to the service's public origin — Swagger's `oauth2RedirectUrl` is
+  built on it, and an unset value is refused the same way.
+
+Symptom if this is missed: the container exits immediately with
+`@medaris/tedrisat refuses to start: SWAGGER_ENABLED=true with NODE_ENV=production …`,
+naming the variable to change.
+
+---
+
+## 6. Known blockers
 
 1. **`TEDRISAT_SERVICE_COOLIFY_WEBHOOK` is not set.** The repository has zero repo secrets; only the org
    secret `COOLIFY_DEPLOY_TOKEN` exists. Until the webhook secret is added, the
