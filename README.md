@@ -101,13 +101,9 @@ Both go through `tools/env/root-env.cjs`, the single implementation of these rul
 
 **In production there is no file at all.** Every value arrives through the real environment, and anything already in `process.env` wins over the file — a deployed secret is never overridden by a file that happens to be in the image.
 
-Coming from the old six-file layout:
+Coming from the old six-file layout, or setting up a new machine: get the `.env` from someone who has it, through a channel that does not archive it — it carries real Keycloak client secrets — and put it at the repository root. Then `rm apps/*/.env`; those files are dead weight now and can only shadow keys.
 
-```bash
-pnpm env:collect > .env   # assembles a root file from your existing apps/*/.env
-# review it — everything under "per app" disagreed between apps
-rm apps/*/.env            # they are dead weight now, and can only shadow keys
-```
+Deriving your own root file from your old `apps/*/.env` is deliberately not offered. Six people doing that produce six different root files, because the inputs had already drifted apart — which is the problem this replaced. One reviewed file, copied.
 
 Notes that save time:
 
