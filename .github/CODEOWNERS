@@ -1,4 +1,4 @@
-# Code owners for the paths that can disable the other gates (MDRS-49, MDRS-54).
+# Code owners (MDRS-49, MDRS-54, MDRS-59).
 #
 # ADVISORY: ruleset 20827887 does not set `require_code_owner_review`, so any
 # single approval satisfies it. This file only auto-requests reviewers.
@@ -10,12 +10,11 @@
 #
 # GitHub applies the LAST matching rule, so order is specific-after-general.
 
-# Everything else has no owner: reviewer choice stays open for ordinary app and
-# library work, which is where most PRs land.
+# Everything.
+* @amel-tech/medaris
 
-# CI workflows, PR template, dependabot config, and this file itself.
+# Already covered by the rule above, and kept anyway: these are the paths that
+# can disable the other gates, so narrowing `*` later must not silently unown
+# them.
 /.github/ @amel-tech/medaris
-
-# The gate scripts CI executes. Weakening one of these is indistinguishable
-# from deleting the check it backs.
 /tools/ci/ @amel-tech/medaris
