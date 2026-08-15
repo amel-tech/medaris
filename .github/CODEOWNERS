@@ -5,7 +5,7 @@
 #
 # The owner is a team so GitHub's code review assignment can rotate a subset.
 # That setting lives on the team, not here — round-robin, 2 reviewers, notify
-# entire team off. Disable it and GitHub requests all 9 members instead:
+# entire team off. Disable it and GitHub requests the whole team instead:
 # https://github.com/orgs/amel-tech/teams/medaris/settings
 #
 # GitHub applies the LAST matching rule, so order is specific-after-general.
