@@ -44,6 +44,20 @@ export interface JwtClaimPolicy {
  */
 const REQUIRED_TOKEN_TYPE = "Bearer";
 
+/**
+ * Audiences Keycloak puts in *every* access token of a realm.
+ *
+ * `account` comes from the built-in `account` client scope, which is assigned
+ * to every client by default. Configuring it as the expected audience is
+ * therefore not a cross-client check at all — it accepts precisely the tokens
+ * the audience option exists to reject, including a service-account token for
+ * an unrelated application. It is still a legitimate interim value while an
+ * audience mapper for the API's own client id is missing, but only together
+ * with an `azp` allow-list, which is what carries the client binding in that
+ * configuration. `loadJwtClaimPolicy` enforces the pairing.
+ */
+const REALM_WIDE_AUDIENCES = ["account"];
+
 function toList(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value.map((entry) => String(entry).trim()).filter(Boolean);
@@ -84,11 +98,28 @@ export function loadJwtClaimPolicy(config: ConfigService): JwtClaimPolicy {
     );
   }
 
+  const allowedClients = toList(config.get("keycloak.allowedClients"));
+  const realmWide = audience.filter((entry) =>
+    REALM_WIDE_AUDIENCES.includes(entry)
+  );
+
+  if (realmWide.length > 0 && allowedClients.length === 0) {
+    throw new Error(
+      `JwtVerifierService was configured with the realm-wide audience "${realmWide.join(
+        '", "'
+      )}", which Keycloak mints into every token of the realm, and no ` +
+        "keycloak.allowedClients (KEYCLOAK_ALLOWED_CLIENTS) to bind the token " +
+        "to a client. That pair verifies less than it appears to — set the " +
+        "allow-list, or configure an audience mapper for this API's own " +
+        "client id and use that instead."
+    );
+  }
+
   return {
     issuer,
     // Non-empty by the guard above.
     audience: audience as [string, ...string[]],
-    allowedClients: toList(config.get("keycloak.allowedClients")),
+    allowedClients,
   };
 }
 
@@ -147,6 +178,13 @@ export class JwtVerifierService implements IJwtVerifier {
     // that omits it, which would never expire. Keycloak always sets it.
     if (typeof decoded.exp !== "number") {
       throw new JwtClaimError("JWT carries no exp claim, so it never expires");
+    }
+
+    // Every ownership decision downstream reads `request.user.sub`. A token
+    // without one yields `userId === undefined` in the services rather than a
+    // denial, so it is rejected here instead.
+    if (typeof decoded.sub !== "string" || decoded.sub.length === 0) {
+      throw new JwtClaimError("JWT carries no sub claim, so it names no user");
     }
 
     const tokenType = decoded.typ;

@@ -141,6 +141,20 @@ describe("JwtVerifierService claim validation", () => {
         /KEYCLOAK_AUDIENCE/
       );
     });
+
+    it("refuses the realm-wide audience without an azp allow-list", async () => {
+      // Keycloak mints `account` into every token of the realm, so on its own
+      // it accepts exactly what the audience option exists to reject.
+      await expect(
+        createVerifier({ audience: "account", allowedClients: "" })
+      ).rejects.toThrow(/KEYCLOAK_ALLOWED_CLIENTS/);
+    });
+
+    it("allows the realm-wide audience once the allow-list is set", async () => {
+      await expect(
+        createVerifier({ audience: "account", allowedClients: "tedris-web" })
+      ).resolves.toBeInstanceOf(JwtVerifierService);
+    });
   });
 
   describe("signature and claims", () => {
@@ -181,6 +195,15 @@ describe("JwtVerifierService claim validation", () => {
       const token = signRs256(validClaims({ iat, exp: iat + 300 }));
 
       await expect(verifier.verifyToken(token)).rejects.toThrow(/expired/i);
+    });
+
+    it("rejects a token that names no user", async () => {
+      // Every ownership check downstream reads `request.user.sub`.
+      const token = signRs256(validClaims({ sub: undefined }));
+
+      await expect(verifier.verifyToken(token)).rejects.toThrow(
+        /names no user/i
+      );
     });
 
     it("rejects a token that carries no exp claim", async () => {
@@ -234,7 +257,11 @@ describe("JwtVerifierService claim validation", () => {
     });
 
     it("accepts a list of audiences and matches any one of them", async () => {
-      const multi = await createVerifier({ audience: "account,tedrisat-api" });
+      // `account` in the list makes the allow-list mandatory, see above.
+      const multi = await createVerifier({
+        audience: "account,tedrisat-api",
+        allowedClients: "tedris-web",
+      });
 
       await expect(
         multi.verifyToken(signRs256(validClaims({ aud: "account" })))
