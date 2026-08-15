@@ -18,6 +18,26 @@ The image name is not hardcoded: the workflow sets
 
 ---
 
+## 0. Environment the container refuses to start without
+
+`apps/tedrisat/Dockerfile` sets `ENV NODE_ENV=production` in the runner stage,
+so the deployed container is always in the strict branch of every environment
+check. These variables have **no fallback** — the process throws during
+bootstrap and the container restart-loops if any of them is missing. The deploy
+workflow only pushes the image and fires the webhook, so it stays green while
+the service is down; the container log is the only place the failure appears.
+
+| Variable | Required because | Symptom when missing |
+|---|---|---|
+| `ALLOWED_ORIGINS` | MDRS-34. Comma-separated bare origins (`https://tedris.medaris.app`), no trailing slash, no path, no wildcard host. `*` is refused outside a developer machine. | `ALLOWED_ORIGINS is not usable: …` at `applyGlobalMiddleware` |
+| `DB_PASSWORD` | MDRS-35 removed the `docker/init-db.sql` fallback | `@medaris/tedrisat cannot start, the environment is incomplete: DB_PASSWORD …` |
+| `KEYCLOAK_JWKS_URL` | MDRS-35 removed the `"test-url"` fallback | same message, naming `KEYCLOAK_JWKS_URL` |
+
+**Set all three in the Coolify service before deploying a build that contains
+MDRS-34.** `apps/tedrisat/.env.example` lists the full set with comments.
+
+---
+
 ## 1. How a release tag becomes an image tag
 
 `docker/metadata-action` is configured with three tag rules:

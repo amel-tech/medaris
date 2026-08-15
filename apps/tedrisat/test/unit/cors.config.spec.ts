@@ -15,6 +15,10 @@ import {
 describe("CORS configuration", () => {
   const PROD = { NODE_ENV: "production" } as NodeJS.ProcessEnv;
   const DEV = { NODE_ENV: "development" } as NodeJS.ProcessEnv;
+  // The two environments that motivated not testing `NODE_ENV !== "production"`:
+  // a staging container and a process that never set the variable at all.
+  const STAGING = { NODE_ENV: "staging" } as NodeJS.ProcessEnv;
+  const UNSET_ENV = {} as NodeJS.ProcessEnv;
 
   describe("parseCsv", () => {
     it("returns an empty list for undefined and for an empty string", () => {
@@ -41,7 +45,7 @@ describe("CORS configuration", () => {
     });
   });
 
-  describe("resolveAllowedOrigins outside production", () => {
+  describe("resolveAllowedOrigins in development", () => {
     it("falls back to the bare wildcard string when the variable is unset", () => {
       expect(resolveAllowedOrigins(DEV)).toBe("*");
     });
@@ -86,14 +90,38 @@ describe("CORS configuration", () => {
       ).toEqual(["http://localhost:4000", "http://localhost:4001"]);
     });
 
-    it("treats an unset NODE_ENV as non-production", () => {
-      expect(resolveAllowedOrigins({})).toBe("*");
+    it("exempts a Jest worker, which is how the suites reach this branch", () => {
+      expect(
+        resolveAllowedOrigins({ NODE_ENV: "test", JEST_WORKER_ID: "1" })
+      ).toBe("*");
     });
   });
 
-  describe("resolveAllowedOrigins in production", () => {
+  describe("resolveAllowedOrigins where the wildcard is not allowed", () => {
     it("refuses an unset list with a message naming the variable", () => {
       expect(() => resolveAllowedOrigins(PROD)).toThrow(/ALLOWED_ORIGINS/);
+    });
+
+    it("refuses an unset NODE_ENV rather than treating it as development", () => {
+      expect(() => resolveAllowedOrigins(UNSET_ENV)).toThrow(/ALLOWED_ORIGINS/);
+    });
+
+    it("refuses a staging deployment, which NODE_ENV !== production would let through", () => {
+      expect(() => resolveAllowedOrigins(STAGING)).toThrow(/ALLOWED_ORIGINS/);
+      expect(() =>
+        resolveAllowedOrigins({ ...STAGING, ALLOWED_ORIGINS: "*" })
+      ).toThrow(/ALLOWED_ORIGINS/);
+    });
+
+    it("refuses NODE_ENV=test outside a Jest worker", () => {
+      expect(() => resolveAllowedOrigins({ NODE_ENV: "test" })).toThrow(
+        /ALLOWED_ORIGINS/
+      );
+    });
+
+    it("names the offending NODE_ENV in the message", () => {
+      expect(() => resolveAllowedOrigins(STAGING)).toThrow(/"staging"/);
+      expect(() => resolveAllowedOrigins(UNSET_ENV)).toThrow(/unset/);
     });
 
     it("refuses a list that is only separators", () => {
@@ -125,6 +153,50 @@ describe("CORS configuration", () => {
             "https://tedris.medaris.app,https://nizam.medaris.app",
         })
       ).toEqual(["https://tedris.medaris.app", "https://nizam.medaris.app"]);
+    });
+  });
+
+  describe("origin format validation", () => {
+    // Malformed entries are refused everywhere, not only in production: the
+    // cors package would match none of them and the response would carry no
+    // Access-Control-Allow-Origin, which is silent in any environment.
+    const reject = (value: string) => () =>
+      resolveAllowedOrigins({ ...DEV, ALLOWED_ORIGINS: value });
+
+    it("refuses a trailing slash and suggests the bare origin", () => {
+      expect(reject("https://tedris.medaris.app/")).toThrow(
+        /write "https:\/\/tedris\.medaris\.app" instead/
+      );
+    });
+
+    it("refuses a value carrying a path", () => {
+      expect(reject("https://tedris.medaris.app/api")).toThrow(/bare origin/);
+    });
+
+    it("refuses a scheme-less host", () => {
+      expect(reject("tedris.medaris.app")).toThrow(/not an absolute URL/);
+    });
+
+    it("refuses a wildcard subdomain, which cors cannot match", () => {
+      expect(reject("https://*.medaris.app")).toThrow(/ALLOWED_ORIGINS/);
+    });
+
+    it("accepts a host with an explicit port", () => {
+      expect(
+        resolveAllowedOrigins({
+          ...DEV,
+          ALLOWED_ORIGINS: "http://localhost:4000",
+        })
+      ).toEqual(["http://localhost:4000"]);
+    });
+
+    it("validates in production too", () => {
+      expect(() =>
+        resolveAllowedOrigins({
+          ...PROD,
+          ALLOWED_ORIGINS: "https://tedris.medaris.app/",
+        })
+      ).toThrow(/bare origin/);
     });
   });
 
@@ -179,6 +251,9 @@ describe("CORS configuration", () => {
         origin: ["http://localhost:4000"],
         methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
         allowedHeaders: ["Authorization", "Content-Type"],
+        // ExcelService returns attachment; filename=… and Content-Disposition
+        // is not CORS-safelisted, so a browser fetch could not read the name.
+        exposedHeaders: ["Content-Disposition"],
         credentials: false,
       });
     });
