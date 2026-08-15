@@ -60,7 +60,7 @@ replaces the guard wholesale.
 
 ### Tests
 
-`apps/tedrisat/test/unit/jwt-claim-validation.spec.ts` — 22 cases. `libs/common` still has no
+`apps/tedrisat/test/unit/jwt-claim-validation.spec.ts` — 23 cases. `libs/common` still has no
 test target (`project.json` declares only `lint`, and there is no jest dependency), so the
 specs live in tedrisat, next to `app.controller.spec.ts`.
 
@@ -82,16 +82,16 @@ counter conflicted):
 | Command | Result |
 | --- | --- |
 | `pnpm nx run-many -t typecheck --skip-nx-cache` | 16 projects |
-| `pnpm nx run-many -t test --skip-nx-cache` | **153 tests / 13 suites**, all passing |
+| `pnpm nx run-many -t test --skip-nx-cache` | **154 tests / 13 suites**, all passing |
 | `pnpm nx run-many -t build --skip-nx-cache` | 8 projects |
 | `pnpm nx run-many -t lint --skip-nx-cache` | 16 projects |
 | `pnpm nx run-many -t module-boundaries --skip-nx-cache` | 16 projects |
 | `node tools/ci/biome-ratchet.mjs` | errors 0 · warnings 94 · infos 27 — all at baseline |
 
-The 153/13 figure is the measured total on the merged tree: tedrisat 151 in 11 suites,
+The 154/13 figure is the measured total on the merged tree: tedrisat 152 in 11 suites,
 teskilat 2 in 2 suites, `tedris-web:test` is `echo 'Tests not implemented'`. `CLAUDE.md` was
 106/11 when this branch opened and 127/12 on `main` by the time the merge landed; it now
-carries the measured 153/13, and its "of tedrisat's 9 suites" line reads 11.
+carries the measured 154/13, and its "of tedrisat's 9 suites" line reads 11.
 
 The acceptance criteria's mutation check was actually run, not assumed:
 
@@ -104,7 +104,7 @@ The acceptance criteria's mutation check was actually run, not assumed:
 
 The five cases the acceptance criteria names are covered, plus the wrong signing key, a
 missing `kid`, a missing `exp`, a missing `sub`, a multi-valued audience, the three `azp`
-cases, the two realm-wide-audience cases and the policy-is-mandatory pair. `AuthGuard` is exercised through a real Nest app and supertest, so the wrong-audience
+cases, the three realm-wide-audience cases and the policy-is-mandatory pair. `AuthGuard` is exercised through a real Nest app and supertest, so the wrong-audience
 rejection is asserted as an HTTP 401 rather than only as a thrown error from the verifier.
 
 ## What was not verified

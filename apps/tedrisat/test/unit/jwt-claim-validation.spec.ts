@@ -150,6 +150,19 @@ describe("JwtVerifierService claim validation", () => {
       ).rejects.toThrow(/KEYCLOAK_ALLOWED_CLIENTS/);
     });
 
+    it("refuses a list that merely contains the realm-wide audience", async () => {
+      // The likelier misconfiguration than `account` alone: someone adds the
+      // API's own client id but leaves `account` in, and a token carrying only
+      // `account` still matches. One realm-wide entry is enough to need the
+      // allow-list.
+      await expect(
+        createVerifier({
+          audience: "account,tedrisat-api",
+          allowedClients: "",
+        })
+      ).rejects.toThrow(/KEYCLOAK_ALLOWED_CLIENTS/);
+    });
+
     it("allows the realm-wide audience once the allow-list is set", async () => {
       await expect(
         createVerifier({ audience: "account", allowedClients: "tedris-web" })
