@@ -26,8 +26,8 @@ The headers come from the single `app.use(helmet())` in
 The blast radius was gated by `swagger.enabled`, but the `.env.example` files
 shipped `SWAGGER_ENABLED=true`, so the schema *and* the middleware were on
 wherever a template was copied. The issue named the two API templates; review of
-this branch turned up a third — the workspace-root one docker-compose reads — and
-it is flipped here too.
+this branch turned up a third — the workspace-root one — and it is flipped here
+too.
 
 ## What changed
 
@@ -39,7 +39,7 @@ it is flipped here too.
 | `apps/tedrisat/src/main.ts` | The middleware calls the predicate; its three `any` parameters are gone. The endpoint is normalised once through `endpointPrefixOf` and reused for the mount path, the predicate and `oauth2RedirectUrl` — see below. |
 | `apps/tedrisat/.env.example` | `SWAGGER_ENABLED=false`, plus the commented `SWAGGER_ALLOW_IN_PRODUCTION` and why it exists. |
 | `apps/teskilat/.env.example` | `SWAGGER_ENABLED=false`. |
-| `.env.example` (workspace root) | `SWAGGER_ENABLED=false` and the same note. Found in review; docker-compose reads this one, and `.github/workflows/ci.yaml` seeds only `apps/*/.env.example`, so it is a template gap rather than a CI break. |
+| `.env.example` (workspace root) | `SWAGGER_ENABLED=false` and the same note. Found in review. Nothing delivers this file to a service automatically — `docker-compose.yml` feeds both APIs from `apps/<app>/.env` via `env_file:` and reads the root file only for `${…}` interpolation, which never touches `SWAGGER_ENABLED`, and CI seeds only `apps/*/.env.example`. It is a hand-copied developer template, so the gap is what an operator carries across by hand rather than a delivery path. |
 | `CLAUDE.md`, `README.md` | The stated test baseline moves 106/11 → 128/12. |
 | `apps/tedrisat/test/unit/swagger-csp.spec.ts` | New. 17 tests — 13 over the predicate, 4 over the endpoint normaliser. |
 | `apps/tedrisat/test/unit/config.spec.ts` | +5 tests over the production guard. |
