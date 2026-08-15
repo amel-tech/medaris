@@ -407,8 +407,10 @@ async function main() {
       "Nothing has been reviewed yet. This check is red because deferred is not " +
       "reviewed, not because a finding was raised. It turns green or red on its " +
       "own once the window opens and the lenses actually run.\n\n" +
-      "To review now instead, remove and re-add the `ai-review` label. To merge " +
-      "without waiting, that is an admin decision through the ruleset bypass.";
+      "To review now instead, a repository **admin** can remove and re-add the " +
+      "`ai-review` label — a review costs $4-15 on a shared subscription, so " +
+      "spending one off-hours is deliberately their call. To merge without " +
+      "waiting, that is an admin decision through the ruleset bypass.";
   } else if (preflightMode === "skip") {
     // Documented skips. Each of these is green — you cannot block every PR on a
     // capability the repository has not been given — but the comment says

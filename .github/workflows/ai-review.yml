@@ -193,6 +193,75 @@ jobs:
             echo "cause=stale-base" >> "$GITHUB_OUTPUT"
           fi
 
+      # WHO MAY SPEND REVIEW QUOTA ON DEMAND.
+      #
+      # The lenses run on a subscription the team also uses interactively, and a
+      # review costs $4-15 per run. The window defers that spend to a quiet hour;
+      # what BYPASSES the window therefore decides who can spend at will.
+      #
+      # That used to be "the pull request carries the `ai-review` label", which
+      # is not a permission at all: GitHub has no per-label ACL, so all 11
+      # collaborators with write or triage could apply it, and once applied it
+      # stayed applied — every later push by anyone re-ran the review at once.
+      # The gate is the expensive thing here, so the bypass is now keyed to the
+      # ACTOR instead: only a repository admin can make a review happen off-hours.
+      #
+      # Nobody is blocked from being reviewed. A non-admin's request is QUEUED,
+      # not refused, and the nightly drain runs it — the label is swapped to
+      # `ai-review-queued` by the step below, which is also what strips the
+      # `ai-review` label a non-admin just applied. Inside the window everything
+      # runs for everyone, which is the whole point of having a window.
+      #
+      # FAIL CLOSED. Any error resolving the actor's permission is treated as
+      # "not an admin", because the failure mode of guessing wrong in the other
+      # direction is unbounded spend. The cost of guessing wrong this way is a
+      # review that waits for the window.
+      #
+      # AI_REVIEW_QUOTA_ACTORS is the escape valve, and it exists for one real
+      # case: the drain applies `ai-review` with AI_REVIEW_DRAIN_TOKEN, so that
+      # PAT's owner must clear this check or the queue never drains. Today that
+      # PAT belongs to an admin and nothing is needed. Move it to a non-admin and
+      # add them here, or the drain silently stops working.
+      - name: Resolve whether the actor may spend review quota
+        id: actor
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ACTOR: ${{ github.event.sender.login }}
+          EXTRA_ACTORS: ${{ vars.AI_REVIEW_QUOTA_ACTORS }}
+        run: |
+          set -uo pipefail
+
+          may_spend=false
+
+          # Explicit allowlist first: it must work even if the API call cannot.
+          if [ -n "${EXTRA_ACTORS:-}" ]; then
+            for allowed in ${EXTRA_ACTORS//,/ }; do
+              if [ "${allowed}" = "${ACTOR}" ]; then
+                may_spend=true
+                echo "actor ${ACTOR} is listed in AI_REVIEW_QUOTA_ACTORS"
+              fi
+            done
+          fi
+
+          if [ "${may_spend}" != "true" ]; then
+            # Requires push access on the repository to read. If GITHUB_TOKEN
+            # cannot, this returns empty and we fail closed — see above.
+            permission="$(gh api \
+              "repos/${REPO}/collaborators/${ACTOR}/permission" \
+              --jq '.permission' 2>/dev/null || true)"
+
+            if [ -z "${permission}" ]; then
+              echo "::warning::Could not resolve the permission level of \`${ACTOR}\`. Treating them as a non-admin, so this review is deferred to the nightly window rather than run now. If this recurs for a real admin, add them to the AI_REVIEW_QUOTA_ACTORS repository variable."
+            elif [ "${permission}" = "admin" ]; then
+              may_spend=true
+            fi
+            echo "actor ${ACTOR} permission=${permission:-unresolved}"
+          fi
+
+          echo "may_spend=${may_spend}" >> "$GITHUB_OUTPUT"
+          echo "may_spend=${may_spend}"
+
       # Ordered most-structural first. Every branch is a documented skip that the
       # aggregator reports as "no review happened" — never as an approval.
       - name: Classify this pull request
@@ -202,8 +271,13 @@ jobs:
           WORKFLOW_MISMATCH_CAUSE: ${{ steps.tamper.outputs.cause }}
           BASE_REPO: ${{ github.repository }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          # ACTOR is the pull request's AUTHOR (the bot check below reads it).
+          # TRIGGER_ACTOR is whoever caused THIS run — the labeller on a
+          # `labeled` event, the pusher on `synchronize`. They are usually
+          # different people and must not be conflated.
           ACTOR: ${{ github.event.pull_request.user.login }}
           ACTOR_TYPE: ${{ github.event.pull_request.user.type }}
+          TRIGGER_ACTOR: ${{ github.event.sender.login }}
           IS_DRAFT: ${{ github.event.pull_request.draft }}
           LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
           # Presence only — the value is never echoed, compared or exported past
@@ -211,8 +285,10 @@ jobs:
           KEY_PRESENT: ${{ (secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '') }}
           # Set AI_REVIEW_WINDOW_UTC to `off` to review immediately at any hour.
           WINDOW_SPEC: ${{ vars.AI_REVIEW_WINDOW_UTC || '16-21' }}
-          # A drain run has already waited for the window; never re-queue it.
-          IS_DRAIN: ${{ contains(github.event.pull_request.labels.*.name, 'ai-review') }}
+          # Who may bypass the window — see "WHO MAY SPEND REVIEW QUOTA" above.
+          # This replaced `contains(labels, 'ai-review')`, which was not a
+          # permission: any of the 11 collaborators with write could apply it.
+          ACTOR_MAY_SPEND: ${{ steps.actor.outputs.may_spend }}
         run: |
           set -euo pipefail
           mode=run
@@ -221,7 +297,7 @@ jobs:
           WINDOW_START="${WINDOW_SPEC%%-*}"; WINDOW_END="${WINDOW_SPEC##*-}"
           NOW_HOUR="$(date -u +%-H)"
           WINDOW_ENFORCED=true
-          if [ "${WINDOW_SPEC}" = "off" ] || [ "${IS_DRAIN}" = "true" ]; then
+          if [ "${WINDOW_SPEC}" = "off" ] || [ "${ACTOR_MAY_SPEND}" = "true" ]; then
             WINDOW_ENFORCED=false
           fi
           if [ "${WINDOW_START}" -le "${WINDOW_END}" ]; then
@@ -314,7 +390,7 @@ jobs:
           elif [ "${WINDOW_ENFORCED}" = "true" ] \
             && ! printf '%s' "${IN_WINDOW}" | grep -q '^true$'; then
             mode=queued
-            reason="opened outside the review window (\`${WINDOW_START}:00-${WINDOW_END}:00 UTC\`; it is now \`${NOW_HOUR}:xx UTC\`). The nightly drain will run the lenses when the window opens."
+            reason="it is outside the review window (\`${WINDOW_START}:00-${WINDOW_END}:00 UTC\`; it is now \`${NOW_HOUR}:xx UTC\`) and \`${TRIGGER_ACTOR}\` is not a repository admin, so the lenses were not run now. The nightly drain will run them when the window opens. Reviews cost \$4-15 each on a subscription the team shares, so running one off-hours is an admin decision; nothing here refuses to review this pull request."
           fi
 
           {
