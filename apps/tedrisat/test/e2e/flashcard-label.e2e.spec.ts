@@ -111,6 +111,124 @@ describe("FlashcardLabelController (e2e)", () => {
 
     expect(response.status).toBe(400);
   });
+
+  it("deletes a label the caller owns", async () => {
+    const created = await createLabel();
+
+    const response = await request(app.getHttpServer()).delete(
+      `/flashcard-label/delete/${created.body.id}`
+    );
+
+    expect(response.status).toBe(200);
+
+    // Not `expect(response.body).toBe(true)`: the handler returns a bare
+    // boolean, which supertest parses into `{}`. Assert the row is gone —
+    // which is what the caller actually cares about.
+    const after = await request(app.getHttpServer()).get(
+      `/flashcard-label/${created.body.id}`
+    );
+    expect(after.body?.id).toBeUndefined();
+  });
+
+  it("returns 404 when the label does not exist", async () => {
+    const response = await request(app.getHttpServer()).delete(
+      `/flashcard-label/delete/${SOME_UUID}`
+    );
+
+    expect(response.status).toBe(404);
+  });
+});
+
+/**
+ * The ownership half of MDRS-27, and the reason it needs its own app.
+ *
+ * `createTestApp({ authUserId })` stubs the guard to impersonate ONE user, so a
+ * single app cannot both own a row and attack it. The row is therefore seeded
+ * as TEST_USER_ID through the API, then a SECOND app authenticated as
+ * OTHER_USER_ID attacks it — which is exactly the shape of the real attack: a
+ * perfectly valid token belonging to somebody else.
+ *
+ * Before the fix both routes reached `delete ... where id = ?` with no owner
+ * check, so these cases returned 200 and the row was gone.
+ */
+describe("Label deletion — ownership (e2e)", () => {
+  let ownerApp: INestApplication;
+  let attackerApp: INestApplication;
+  let dbUtils: TestDatabaseUtils;
+
+  beforeAll(async () => {
+    ownerApp = await createTestApp({ authUserId: TEST_USER_ID });
+    attackerApp = await createTestApp({ authUserId: OTHER_USER_ID });
+    dbUtils = new TestDatabaseUtils(
+      ownerApp.get<DatabaseService>(DatabaseService)
+    );
+  });
+
+  beforeEach(async () => {
+    await dbUtils.cleanTables("flashcard_labels", "deck_label");
+  });
+
+  afterAll(async () => {
+    await dbUtils.cleanTables("flashcard_labels", "deck_label");
+    await ownerApp.close();
+    await attackerApp.close();
+  });
+
+  it("refuses to delete a flashcard label owned by another user, and the row survives", async () => {
+    const created = await request(ownerApp.getHttpServer())
+      .post("/flashcard-label/create")
+      .send({ title: "Kelime Hazinesi", scope: Scope.PERSONAL });
+    expect(created.status).toBe(201);
+
+    const attack = await request(attackerApp.getHttpServer()).delete(
+      `/flashcard-label/delete/${created.body.id}`
+    );
+
+    expect(attack.status).toBe(403);
+
+    // The finding that mattered was destructive, so assert survival rather
+    // than trusting the status code alone.
+    const stillThere = await request(ownerApp.getHttpServer()).get(
+      `/flashcard-label/${created.body.id}`
+    );
+    expect(stillThere.status).toBe(200);
+    expect(stillThere.body.id).toBe(created.body.id);
+  });
+
+  it("refuses to delete a deck label owned by another user, and the row survives", async () => {
+    const created = await request(ownerApp.getHttpServer())
+      .post("/flashcard-deck-label/create")
+      .send({ title: "Seviye A1", scope: Scope.PUBLIC });
+    expect(created.status).toBe(201);
+
+    const attack = await request(attackerApp.getHttpServer()).delete(
+      `/flashcard-deck-label/delete/${created.body.id}`
+    );
+
+    expect(attack.status).toBe(403);
+
+    const stillThere = await request(ownerApp.getHttpServer()).get(
+      `/flashcard-deck-label/${created.body.id}`
+    );
+    expect(stillThere.status).toBe(200);
+    expect(stillThere.body.id).toBe(created.body.id);
+  });
+
+  // PUBLIC scope is visibility, not shared ownership — there is no role model
+  // here, so nobody but the owner may delete. Pinned so a later "public labels
+  // are community-owned" change has to argue with a test.
+  it("refuses even when the label is PUBLIC", async () => {
+    const created = await request(ownerApp.getHttpServer())
+      .post("/flashcard-label/create")
+      .send({ title: "Ortak Etiket", scope: Scope.PUBLIC });
+    expect(created.status).toBe(201);
+
+    const attack = await request(attackerApp.getHttpServer()).delete(
+      `/flashcard-label/delete/${created.body.id}`
+    );
+
+    expect(attack.status).toBe(403);
+  });
 });
 
 describe("FlashcardDeckLabelController (e2e)", () => {

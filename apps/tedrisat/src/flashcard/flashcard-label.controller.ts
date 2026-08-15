@@ -36,9 +36,18 @@ import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
  * label to somebody else. They are gone from the DTOs, so the global pipe
  * (`forbidNonWhitelisted: true`) now rejects a request that tries to send them.
  *
- * Scope note: this closes the AUTHENTICATION hole only. Whether the caller may
- * label a card or deck they do not own is ownership, and belongs with the
- * flashcard ownership work — see MDRS-26. Nothing here checks that yet.
+ * DELETE additionally asserts ownership. Authentication alone left a real hole:
+ * the route took an id straight to `delete ... where id = ?`, so any logged-in
+ * caller who guessed a UUID could destroy another user's label — and because
+ * `flashcard_labelings` and `flashcard_label_stats` both reference it
+ * `onDelete: "cascade"` (flashcard-label.schema.ts:19 and :32), every labeling
+ * that user had attached went with it. `deleteLabel` now takes the caller and
+ * goes through `FlashcardLabelService.assertOwner`: 404 for a missing label,
+ * 403 for somebody else's.
+ *
+ * Scope note: the REST of this controller closes the AUTHENTICATION hole only.
+ * Whether the caller may label a card or deck they do not own is still
+ * unchecked and belongs with the flashcard ownership work — see MDRS-26.
  */
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
@@ -62,11 +71,17 @@ export class FlashcardlabelController {
   }
 
   @ApiResponse({ status: 200, schema: { type: "boolean" } })
+  @ApiResponse({
+    status: 403,
+    description: "The label belongs to another user",
+  })
+  @ApiResponse({ status: 404, description: "No label with that id" })
   @Delete("/delete/:id")
   async deleteFlashcardLabel(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) labelId: string
   ): Promise<boolean> {
-    return await this.labelService.deleteLabel(labelId);
+    return await this.labelService.deleteLabel(labelId, request.user.sub);
   }
 
   @ApiBody({ type: CreateFlashcardLabelingDto })

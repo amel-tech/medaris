@@ -24,7 +24,11 @@ import {
 import { FlashcardDeckLabelService } from "./flashcard-deck-label.service";
 import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
 
-/** See flashcard-label.controller.ts for the reasoning — same fix, same MDRS-27. */
+/**
+ * See flashcard-label.controller.ts for the reasoning — same fix, same MDRS-27,
+ * including the ownership assertion on DELETE. One difference worth knowing:
+ * `deckLabels` has no `userId` column, so ownership here is `createdBy`.
+ */
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
 @Controller("flashcard-deck-label")
@@ -45,11 +49,17 @@ export class FlashcardDeckLabelController {
   }
 
   @ApiResponse({ status: 200, schema: { type: "boolean" } })
+  @ApiResponse({
+    status: 403,
+    description: "The label belongs to another user",
+  })
+  @ApiResponse({ status: 404, description: "No label with that id" })
   @Delete("/delete/:id")
   async deleteFlashcardDeckLabel(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) labelId: string
   ): Promise<boolean> {
-    return await this.labelService.deleteLabel(labelId);
+    return await this.labelService.deleteLabel(labelId, request.user.sub);
   }
 
   @ApiBody({ type: CreateFlashcardDeckLabelingDto })
