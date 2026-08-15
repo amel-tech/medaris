@@ -33,15 +33,15 @@ it is flipped here too.
 
 | File | Change |
 | --- | --- |
-| `apps/tedrisat/src/config/swagger-csp.ts` | New. `shouldRelaxSwaggerHeaders(req, swaggerEndpoint)` — matches full pathnames against exactly `<endpoint>` and `<endpoint>/oauth2-redirect.html`. Reads `req.path`, falling back to the part of `req.url` before `?`. |
+| `apps/tedrisat/src/config/swagger-csp.ts` | New. `shouldRelaxSwaggerHeaders(req, swaggerEndpoint)` — matches full pathnames against exactly the three HTML routes `SwaggerModule.setup` binds (`<endpoint>`, `<endpoint>/`, `<endpoint>/index.html`) plus `<endpoint>/oauth2-redirect.html`. Reads `req.path`, falling back to the part of `req.url` before `?`. Also exports `endpointPrefixOf`. |
 | `apps/tedrisat/src/config/swagger-env.ts` | New. `resolveSwaggerEnabled(env)` — throws when `SWAGGER_ENABLED=true` meets `NODE_ENV=production` without `SWAGGER_ALLOW_IN_PRODUCTION=true`. |
 | `apps/tedrisat/src/config/config.ts` | `swagger.enabled` comes from `resolveSwaggerEnabled(process.env)` instead of a bare `=== "true"`. |
-| `apps/tedrisat/src/main.ts` | The middleware calls the predicate; its three `any` parameters are gone. |
+| `apps/tedrisat/src/main.ts` | The middleware calls the predicate; its three `any` parameters are gone. The endpoint is normalised once through `endpointPrefixOf` and reused for the mount path, the predicate and `oauth2RedirectUrl` — see below. |
 | `apps/tedrisat/.env.example` | `SWAGGER_ENABLED=false`, plus the commented `SWAGGER_ALLOW_IN_PRODUCTION` and why it exists. |
 | `apps/teskilat/.env.example` | `SWAGGER_ENABLED=false`. |
 | `.env.example` (workspace root) | `SWAGGER_ENABLED=false` and the same note. Found in review; docker-compose reads this one, and `.github/workflows/ci.yaml` seeds only `apps/*/.env.example`, so it is a template gap rather than a CI break. |
-| `CLAUDE.md`, `README.md` | The stated test baseline moves 106/11 → 121/12. |
-| `apps/tedrisat/test/unit/swagger-csp.spec.ts` | New. 10 tests over the predicate. |
+| `CLAUDE.md`, `README.md` | The stated test baseline moves 106/11 → 128/12. |
+| `apps/tedrisat/test/unit/swagger-csp.spec.ts` | New. 17 tests — 13 over the predicate, 4 over the endpoint normaliser. |
 | `apps/tedrisat/test/unit/config.spec.ts` | +5 tests over the production guard. |
 | `tools/ci/biome-baseline.json` | Warning floor lowered 94 → 91; see below. |
 
@@ -60,6 +60,42 @@ Swagger UI's static assets (`/docs/swagger-ui-bundle.js`, the stylesheet) are
 deliberately *not* exempted. CSP constrains documents, not the subresources they
 load, so those responses keep their headers and the UI still renders — confirmed
 in a real browser below.
+
+### One endpoint form, three consumers
+
+Review of this branch caught a second-order problem. The predicate deliberately
+accepts an unslashed `SWAGGER_PATH=docs`, because Nest's `validatePath` adds the
+slash when it mounts — and the workspace-root `.env.example` ships exactly that
+form. But bootstrap also concatenated the raw value onto an origin:
+
+```ts
+config.get("KEYCLOAK_REDIRECT_URL") + swaggerEndpoint + "/oauth2-redirect.html"
+```
+
+With `KEYCLOAK_REDIRECT_URL=https://api-tedrisat-dev.medaris.net` and
+`SWAGGER_PATH=docs` that builds `https://api-tedrisat-dev.medaris.netdocs/…` — a
+different host, so Keycloak would never match the redirect URI and the popup
+handshake would not return. The exemption would then be protecting a page the
+flow never reaches.
+
+`endpointPrefixOf` is now exported and applied once in `main.ts`, so the mount
+path, the predicate and the redirect URL all read the same normalised value. The
+concatenation predates this task; making the unslashed form a tested, documented
+configuration is what turned it into a live edge.
+
+Measured on a boot with `SWAGGER_PATH=docs` and
+`KEYCLOAK_REDIRECT_URL=https://api-tedrisat-dev.medaris.net`:
+
+```
+/docs                            status=200 CSP=ABSENT
+/docs/oauth2-redirect.html       status=200 CSP=ABSENT
+/health?x=oauth2-redirect.html   status=200 CSP=present
+
+GET /docs/swagger-ui-init.js:
+  "oauth2RedirectUrl": "https://api-tedrisat-dev.medaris.net/docs/oauth2-redirect.html"
+```
+
+— the host is intact and the path is the mounted one.
 
 ### Why the production guard throws
 
@@ -125,10 +161,11 @@ still-present headers on those asset responses.
 
 ### The specs
 
-`swagger-csp.spec.ts` is 10 tests covering the four paths the AC names. Reverting
-the predicate body to the `req.url.startsWith(…) || req.url.includes(…)` form and
-re-running it gives **6 failed / 4 passed**, with both query-string cases among
-the failures; restoring it returns **10 passed**. So the spec is a real
+`swagger-csp.spec.ts` is 17 tests: the four paths the AC names, Swagger's other
+two HTML routes, the near-miss paths, and the endpoint normaliser. Reverting the
+predicate body to the `req.url.startsWith(…) || req.url.includes(…)` form and
+re-running it gives **7 failed / 10 passed**, with both query-string cases among
+the failures; restoring it returns **17 passed**. So the spec is a real
 regression test (AC #3).
 
 `config.spec.ts` gained 5 tests over the `configuration()` factory (AC #4): the
@@ -140,14 +177,16 @@ false flag, and the non-production path.
 | Target | Result |
 | --- | --- |
 | `typecheck` | 16 projects |
-| `test` | 12 suites / 121 tests — tedrisat 10/119, teskilat 2/2 |
+| `test` | 12 suites / 128 tests — tedrisat 10/126, teskilat 2/2 |
 | `build` | 8 projects |
 | `lint` | 16 projects |
 | `module-boundaries` | 16 projects |
 
-`CLAUDE.md`'s baseline is 106 tests / 11 suites (tedrisat 104/9, measured again
-here before the change). The +15 is the 10 predicate tests and the 5 config
-tests. `-t test` ran against a live Docker daemon; tedrisat's four e2e suites
+`CLAUDE.md`'s baseline was 106 tests / 11 suites (tedrisat 104/9, measured again
+here before the change). The +22 is the 17 in `swagger-csp.spec.ts` and the 5
+added to `config.spec.ts`; both files were counted on their own to confirm the
+arithmetic (17 and 20, against 15 in `config.spec.ts` before). `CLAUDE.md` and
+`README.md` are updated to 128/12 in this branch. `-t test` ran against a live Docker daemon; tedrisat's four e2e suites
 started their Testcontainers `postgres:17-alpine` as usual.
 
 `node tools/ci/biome-ratchet.mjs` reports 538 files, 0 errors, **91 warnings**
@@ -164,7 +203,10 @@ lowered to 91 here so the win is locked in.
 - **The OAuth2 login flow end to end.** `/docs/oauth2-redirect.html` is matched by
   the predicate and served as HTML, but completing an implicit-flow login needs
   the live Keycloak realm named in `KEYCLOAK_JWKS_URL`; no token was obtained.
-  The browser check above loaded the page but did not click Authorize.
+  The browser check above loaded the page but did not click Authorize. The
+  `oauth2RedirectUrl` the server now emits was read off `swagger-ui-init.js` and
+  is well-formed, but it was never exchanged with Keycloak, and no client in the
+  realm was checked for a matching redirect URI.
 - **The guard was never seen firing inside a deployed container** — only in the
   unit suite and in the local `node dist/src/main.js` boot above.
 - **Teskilat's runtime.** Only its `.env.example` changed; nothing was booted for

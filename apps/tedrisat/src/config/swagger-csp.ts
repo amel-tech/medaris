@@ -58,8 +58,13 @@ function pathnameOf(req: SwaggerCspRequest): string {
  * to add it too or nothing would ever match that configuration. Trailing
  * slashes are dropped, which turns a `SWAGGER_PATH=/` endpoint into `""` —
  * exactly the prefix that makes `/oauth2-redirect.html` the right child path.
+ *
+ * Exported because bootstrap needs the same value: the mount path handed to
+ * `SwaggerModule.setup`, this predicate and the `oauth2RedirectUrl` built in
+ * `main.ts` have to agree, and that last one concatenates the endpoint onto an
+ * origin — `SWAGGER_PATH=docs` would otherwise produce `https://hostdocs/…`.
  */
-function endpointPrefixOf(swaggerEndpoint: string): string {
+export function endpointPrefixOf(swaggerEndpoint: string): string {
   const withLeadingSlash = swaggerEndpoint.startsWith("/")
     ? swaggerEndpoint
     : `/${swaggerEndpoint}`;

@@ -1,4 +1,7 @@
-import { shouldRelaxSwaggerHeaders } from "../../src/config/swagger-csp";
+import {
+  endpointPrefixOf,
+  shouldRelaxSwaggerHeaders,
+} from "../../src/config/swagger-csp";
 
 const ENDPOINT = "/docs";
 
@@ -129,5 +132,29 @@ describe("shouldRelaxSwaggerHeaders", () => {
         )
       ).toBe(false);
     });
+  });
+});
+
+describe("endpointPrefixOf", () => {
+  // bootstrap concatenates this onto KEYCLOAK_REDIRECT_URL to build
+  // oauth2RedirectUrl, so the leading slash is not cosmetic: with the raw
+  // `SWAGGER_PATH=docs` the workspace-root .env.example ships, the redirect
+  // URL would come out as `https://hostdocs/oauth2-redirect.html`.
+  it("adds the leading slash Nest's validatePath would add", () => {
+    expect(endpointPrefixOf("docs")).toBe("/docs");
+  });
+
+  it("leaves an already-slashed endpoint alone", () => {
+    expect(endpointPrefixOf("/docs")).toBe("/docs");
+  });
+
+  it("drops trailing slashes", () => {
+    expect(endpointPrefixOf("/docs/")).toBe("/docs");
+    expect(endpointPrefixOf("docs//")).toBe("/docs");
+  });
+
+  it("reduces a root endpoint to the empty prefix", () => {
+    // Which makes `${prefix}/oauth2-redirect.html` the right child path.
+    expect(endpointPrefixOf("/")).toBe("");
   });
 });

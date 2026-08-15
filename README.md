@@ -66,7 +66,7 @@ Nx runs with `neverConnectToCloud: true` — no remote cache, no analytics. CI t
 
 ### Test coverage, stated honestly
 
-`pnpm test` reports three projects, but only two of them run real tests: **121 tests across 12 suites, all in `tedrisat` and `teskilat`** (119 / 10 and 2 / 2). The third, `tedris-web`, executes `echo 'Tests not implemented'`, which Nx counts as a pass. **Frontend test coverage is zero.** Migrating to Vitest and closing that gap is MDRS-20.
+`pnpm test` reports three projects, but only two of them run real tests: **128 tests across 12 suites, all in `tedrisat` and `teskilat`** (126 / 10 and 2 / 2). The third, `tedris-web`, executes `echo 'Tests not implemented'`, which Nx counts as a pass. **Frontend test coverage is zero.** Migrating to Vitest and closing that gap is MDRS-20.
 
 Four of tedrisat's ten suites are the `test/e2e/*.e2e.spec.ts` files: `jest.config.json` matches them too, so **`pnpm test` needs a running Docker daemon** — those suites start a Testcontainers postgres. `pnpm --filter @medaris/tedrisat test:e2e` runs the same four under a separate config rather than adding coverage.
 
