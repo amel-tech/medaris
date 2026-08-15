@@ -246,6 +246,18 @@ lowered to 91 here so the win is locked in.
   either — `DB_PASSWORD` still falls back to `"password"`. Hardening that file is
   one coherent piece of work and belongs with the teskilat item already listed
   under MDRS-35's follow-ups. Only its `.env.example` was flipped here.
+
+  **When that task lands, move `resolveSwaggerEnabled` and
+  `SWAGGER_PRODUCTION_OPT_IN` into `libs/common/src/config/` rather than copying
+  them.** That is where shared backend env config lives (`cors.config.ts`, which
+  both services reach through `applyGlobalMiddleware`), and the two services'
+  swagger blocks were identical one-liners until this branch — so the second
+  copy is the thing to avoid. Extracting takes the service name as an argument
+  instead of the hard-coded `@medaris/tedrisat` in the error message. It is
+  deliberately not done here: the issue puts the specs in
+  `apps/tedrisat/test/unit/` because `libs/common` has no `test` target, so
+  moving the helper now would leave the guard asserted from another package
+  while teskilat still cannot assert its own.
 - **`apps/teskilat` reads the wrong variable name.** Its `config.ts` reads
   `SWAGGER_ENDPOINT` while `apps/teskilat/.env.example` ships `SWAGGER_PATH`
   (tedrisat uses `SWAGGER_PATH` in both places), so the template's value is
