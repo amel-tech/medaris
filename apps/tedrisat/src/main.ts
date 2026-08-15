@@ -4,6 +4,10 @@ import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
+import {
+  type SwaggerCspRequest,
+  shouldRelaxSwaggerHeaders,
+} from "./config/swagger-csp";
 
 async function bootstrap() {
   const logger = LoggerFactory.create();
@@ -46,16 +50,22 @@ async function bootstrap() {
     const swaggerEndpoint =
       config.get<string>("swagger.endpoint") || "/swagger";
     const document = SwaggerModule.createDocument(app, swaggerConfig);
-    app.use((req: any, res: any, next: any) => {
-      if (
-        req.url.startsWith(swaggerEndpoint) ||
-        req.url.includes("oauth2-redirect.html")
-      ) {
-        res.removeHeader("Content-Security-Policy");
-        res.removeHeader("cross-origin-opener-policy");
+    // helmet() already ran for every route in applyGlobalMiddleware above, so
+    // the two headers can only be taken back off here. The predicate matches
+    // on the pathname — see config/swagger-csp.ts.
+    app.use(
+      (
+        req: SwaggerCspRequest,
+        res: { removeHeader: (name: string) => void },
+        next: () => void
+      ) => {
+        if (shouldRelaxSwaggerHeaders(req, swaggerEndpoint)) {
+          res.removeHeader("Content-Security-Policy");
+          res.removeHeader("cross-origin-opener-policy");
+        }
+        next();
       }
-      next();
-    });
+    );
     SwaggerModule.setup(swaggerEndpoint, app, document, {
       swaggerOptions: {
         persistAuthorization: true,

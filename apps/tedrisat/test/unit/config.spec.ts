@@ -81,6 +81,52 @@ describe("tedrisat configuration", () => {
     });
   });
 
+  describe("Swagger in production", () => {
+    beforeEach(() => {
+      // The security variables are read before the Swagger flag, so they have
+      // to be present for these cases to reach it.
+      process.env.KEYCLOAK_JWKS_URL = VALID_JWKS_URL;
+      process.env.DB_PASSWORD = "a-real-password";
+      delete process.env.SWAGGER_ALLOW_IN_PRODUCTION;
+    });
+
+    it("refuses SWAGGER_ENABLED=true in production without an opt-in", () => {
+      process.env.NODE_ENV = "production";
+      process.env.SWAGGER_ENABLED = "true";
+
+      expect(() => configuration()).toThrow(/SWAGGER_ALLOW_IN_PRODUCTION/);
+    });
+
+    it("allows it in production with the explicit opt-in", () => {
+      process.env.NODE_ENV = "production";
+      process.env.SWAGGER_ENABLED = "true";
+      process.env.SWAGGER_ALLOW_IN_PRODUCTION = "true";
+
+      expect(configuration().swagger.enabled).toBe(true);
+    });
+
+    it("leaves production alone when the flag is off", () => {
+      process.env.NODE_ENV = "production";
+      process.env.SWAGGER_ENABLED = "false";
+
+      expect(configuration().swagger.enabled).toBe(false);
+    });
+
+    it("still enables Swagger outside production", () => {
+      process.env.NODE_ENV = "development";
+      process.env.SWAGGER_ENABLED = "true";
+
+      expect(configuration().swagger.enabled).toBe(true);
+    });
+
+    it("treats an unset SWAGGER_ENABLED as off", () => {
+      process.env.NODE_ENV = "production";
+      delete process.env.SWAGGER_ENABLED;
+
+      expect(configuration().swagger.enabled).toBe(false);
+    });
+  });
+
   describe("requireDbPassword — the drizzle migration client", () => {
     it("throws, naming the variable, when DB_PASSWORD is absent", () => {
       expect(() => requireDbPassword({ NODE_ENV: "production" })).toThrow(
