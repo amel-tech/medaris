@@ -112,7 +112,12 @@ Notes that save time:
 - **Keycloak** points at the real server. Auth flows will not complete locally, but pages still render.
 - `NEXT_PUBLIC_*` variables are inlined at **build time**, not read at runtime — changing one needs a rebuild, not a restart.
 
-`docker compose up` does **not** bring up the full stack today: only the two Nest apps and Postgres are described, and they take their environment from the root `.env` through the explicit mapping in `docker-compose.yml` rather than from an `env_file:` — compose would hand the container the prefixed key names unchanged. The six `apps/*/Dockerfile` files were rebuilt for pnpm and Nx in MDRS-16 and do build. For the four web apps, run them with `pnpm nx run <project>:dev` and use compose only for the database.
+Two compose commands, depending on how much stack you need:
+
+- `docker compose up` starts Postgres and the two Nest APIs — the default set, unchanged, and what backend work needs. No web image is built.
+- `docker compose --profile web up` additionally builds and starts the four web apps on ports 4000–4003, wired to the APIs over the compose network (`TEDRISAT_API_BASE_URL=http://tedrisat:3001` inside the containers). Use it to exercise the whole stack at once.
+
+Every service takes its environment from the root `.env` through the explicit key-by-key mapping in `docker-compose.yml`, never an `env_file:` — compose would hand the container the prefixed key names unchanged, and the images carry no `tools/env/root-env.cjs` to strip them. The web images are production builds (`next build` already run, `NEXT_PUBLIC_*` baked in), so they are for running the stack, not for frontend work: develop the web apps with `pnpm nx run <project>:dev`.
 
 ## Documents
 
