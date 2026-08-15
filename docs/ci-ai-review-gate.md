@@ -255,18 +255,35 @@ run" with `is_error=null`.
 | Cause | What it means | What happens |
 | --- | --- | --- |
 | **self-edit** | the PR changes `.github/workflows/ai-review.yml`. The gate cannot vouch for changes to itself. | `mode=unverifiable`, **red**. The one case here that needs a human: review plus the `ai-review-bypass` label. Automating past it would let a change to the gate merge unreviewed, which is what the guard exists to stop. |
-| **stale merge ref** | the PR does *not* touch that file, but `refs/pull/N/merge` still merges into a pre-change base. | `mode=queued`, **red**, and **it fixes itself**. Nothing is wrong with the PR, so it goes back on the queue the repository already has and the nightly drain retries it. No instruction to follow and nobody to ask. |
+| **stale merge ref** | the PR does *not* touch that file, but `refs/pull/N/merge` still merges into a pre-change base. | `mode=queued`, **red**. Nothing is wrong with the PR's contents, so it goes back on the queue and the drain retries it. If it keeps re-queueing, see below — the retry alone may not be enough. |
 
-**How long a stale merge ref actually lasts, measured.** GitHub's recompute is **lazy and
-request-triggered**, not a timed sweep. On 2026-08-15 all four open PRs sat at `into a4cdda8`
-across *two* subsequent `main` commits and roughly seven hours. The moment `GET /pulls/25` was
-called, the API returned `mergeable: null` / `mergeable_state: unknown` and the ref refreshed to
-current `main` within ten seconds.
+### How long a stale merge ref lasts, and what actually clears it
 
-So "wait and it heals" is true, but the waiting is not what heals it — **asking** is. The drain
-gets this for free, because listing and re-labelling a PR touches it through the API. Anyone
-debugging a PR that seems stuck should call `gh api repos/OWNER/REPO/pulls/N` once and re-check
-rather than waiting.
+**Only one thing reliably regenerates `refs/pull/N/merge`: a push to the head branch.** The
+*Update branch* button (`gh pr update-branch`, `PUT /pulls/N/update-branch`) is the cheapest form
+of that. Measured on 2026-08-15: **15 seconds** from the API call to a merge ref containing the
+new `main`.
+
+Everything else is unpredictable, and this section previously claimed otherwise. What was
+actually observed, in order:
+
+| Observation | Result |
+| --- | --- |
+| Four PRs after `main` moved twice, ~7 hours | still on the old base |
+| One `GET /pulls/25`, then a wait | refreshed within ~10 s — **once** |
+| Later: 40 × `GET /pulls/25` over 800 s | never refreshed |
+| `PUT /pulls/25/update-branch` | refreshed in 15 s |
+
+An earlier revision of this document read that second row as a mechanism and told people that
+"asking is what heals it, not waiting." **That was wrong** — inferred from a single coincidence
+and written up as if measured. Rows three and four are what the evidence supports: reading the
+PR does not dependably trigger anything, and pushing does.
+
+**Consequence for the queue.** The drain releasing a still-stale PR causes the preflight to
+re-queue it, once per night, indefinitely. That loop is cheap and safe — it spends no lens jobs —
+but it does not converge on its own, so the drain counts consecutive re-queues and says so out
+loud rather than looping in silence. A PR that has been re-queued repeatedly needs its branch
+pushed, and nothing else will do.
 
 The preflight detects both before dispatching anything, so neither spends a matrix of
 jobs on a run the action would reject before its first turn.
