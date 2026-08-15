@@ -78,6 +78,17 @@ defaults:
   #     (authz and correctness, both on PR #28), so +10 covers the observed worst
   #     case with room to spare.
   #
+  # Raised again on 2026-08-15 after the first run that actually posted inline
+  # comments, which showed +10 was not enough for the busiest lenses:
+  #   - config-secrets died with error_max_turns at 40 on PR #25, the same diff
+  #     it had reviewed cleanly at 30 BEFORE inline commenting existed. 40 -> 65,
+  #     and its timeout 15 -> 25 to match. Commenting costs more than the three
+  #     findings-per-lens worst case suggested, because the model interleaves
+  #     comments with reading rather than batching them at the end.
+  #   - authz 50 -> 60 and schema-drift 45 -> 55 for the same reason, before they
+  #     hit it too. boundaries-duplication and correctness are left alone: both
+  #     finished comfortably (22 and 39 turns) on that run.
+  #
   # Read the gate table carefully before tuning these further: the `num_turns` it
   # prints is NOT this budget. config-secrets reports num_turns=35 while running
   # under --max-turns 30 and exiting clean. Only an explicit `error_max_turns`
@@ -147,7 +158,7 @@ lenses:
       - "apps/*/app/api/**/*.ts"
     exclude_globs:
       - "libs/services/src/**/generated/**"
-    max_turns: 50
+    max_turns: 60
     timeout_minutes: 20
     known_false_positives:
       - "AuthGuard on the class covers every handler in that controller — a handler with no decorator of its own inside a @UseGuards(AuthGuard) class is guarded."
@@ -344,7 +355,7 @@ lenses:
     exclude_globs:
       - "libs/services/src/**/generated/**"
       - "apps/tedrisat/src/database/migrations/meta/**"
-    max_turns: 45
+    max_turns: 55
     timeout_minutes: 20
     known_false_positives:
       - "libs/services/src/tedrisat/generated/** is machine output from openapi-generator-cli. Never review its style; only ever ask whether it was regenerated."
@@ -563,8 +574,8 @@ lenses:
       # CODEOWNERS changes what every other control in the repository covers.
       - "**/vitest.config.ts"
       - ".github/CODEOWNERS"
-    max_turns: 40
-    timeout_minutes: 15
+    max_turns: 65
+    timeout_minutes: 25
     known_false_positives:
       - "NEXT_PUBLIC_KEYCLOAK_CLIENT_ID and NEXT_PUBLIC_KEYCLOAK_ISSUER are public OIDC values by design. Not secrets."
       - "Non-credential fallbacks like NODE_ENV || 'development' or LOG_LEVEL || 'info' are fine. Only credentials and security-relevant endpoints matter."

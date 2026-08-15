@@ -162,6 +162,42 @@ const cases = [
     expect: { exit: 1, verdict: "BLOCK", blocking: 1 },
   },
 
+  // ── Salvage: an unparseable enclosing object must not discard a real review ──
+  // Verbatim from the `authz` lens on PR #25, 2026-08-15. It completed a clean,
+  // paid review (is_error:false, 9 turns, $0.50), concluded no findings, and was
+  // reported DEAD because the summary quoted a Vitest glob with raw double
+  // quotes, which closed the JSON string early. Nothing branches on `summary`,
+  // so the findings array alone answers the only question the gate asks.
+  {
+    name: "REGRESSION: raw quotes break the summary, findings array is salvaged",
+    record: healthy(
+      '{\n  "lens": "authz",\n  "summary": "No guard is added, weakened or removed; the config still selects every spec (`include: ["test/**/*.spec.ts", "src/**/*.spec.ts"]` unchanged)' +
+        '.",\n  "findings": []\n}'
+    ),
+    env: { AI_REVIEW_ENFORCE_BLOCK: "true" },
+    expect: { exit: 0, verdict: "PASS", findings: 0 },
+  },
+  {
+    name: "salvage keeps a blocking finding when the summary is malformed",
+    record: healthy(
+      '{\n  "lens": "authz",\n  "summary": "Broken by ["a", "b"] quotes.",\n  "findings": [' +
+        '{"severity": "critical", "confidence": "high", "file": "a.ts", "line": 1,' +
+        ' "title": "Unguarded route", "detail": "d", "fix": "f"}]\n}'
+    ),
+    env: { AI_REVIEW_ENFORCE_BLOCK: "true" },
+    expect: { exit: 1, verdict: "BLOCK", blocking: 1, findings: 1 },
+  },
+  {
+    // The salvage must not invent a verdict. No findings array anywhere means
+    // the review is still lost, and lost is still DEAD.
+    name: "salvage cannot manufacture a pass from a message with no findings array",
+    record: healthy(
+      '{\n  "lens": "authz",\n  "summary": "Broken ["a"] quotes and no findings key at all."\n}'
+    ),
+    env: { AI_REVIEW_ENFORCE_BLOCK: "true" },
+    expect: { exit: 2, verdict: "DEAD" },
+  },
+
   // ── Extractor regressions: the two reproduced fail-open / cry-wolf paths ──
   {
     name: "REGRESSION: model restates the schema fence, THEN emits the real object",
