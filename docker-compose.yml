@@ -42,8 +42,12 @@ services:
       DB_PASSWORD: ${TEDRISAT__DB_PASSWORD:?set TEDRISAT__DB_PASSWORD in .env}
       AUTO_MIGRATIONS_ENABLED: ${TEDRISAT__AUTO_MIGRATIONS_ENABLED:-${API__AUTO_MIGRATIONS_ENABLED:-true}}
       # Not interpolated: the root .env names ./src/... for `nest start`, and the
-      # container runs compiled output.
-      AUTO_MIGRATIONS_FOLDER: ./dist/database/migrations
+      # container runs compiled output. tsc mirrors the source tree, so the
+      # compiled migrations are under dist/src/, not dist/ — measured against the
+      # image, where ./dist/database/migrations does not exist and the service
+      # logs "Migrations failed: Can't find meta/_journal.json file" three times
+      # and then serves traffic against an unmigrated database.
+      AUTO_MIGRATIONS_FOLDER: ./dist/src/database/migrations
       OTEL_ENABLED: ${TEDRISAT__OTEL_ENABLED:-${API__OTEL_ENABLED:-false}}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${TEDRISAT__OTEL_EXPORTER_OTLP_ENDPOINT:-${API__OTEL_EXPORTER_OTLP_ENDPOINT:-localhost:4317}}
       KEYCLOAK_JWKS_URL: ${TEDRISAT__KEYCLOAK_JWKS_URL:-${API__KEYCLOAK_JWKS_URL:?set API__KEYCLOAK_JWKS_URL in .env}}
@@ -76,8 +80,12 @@ services:
       DB_PASSWORD: ${TESKILAT__DB_PASSWORD:?set TESKILAT__DB_PASSWORD in .env}
       AUTO_MIGRATIONS_ENABLED: ${TESKILAT__AUTO_MIGRATIONS_ENABLED:-${API__AUTO_MIGRATIONS_ENABLED:-true}}
       # Not interpolated: the root .env names ./src/... for `nest start`, and the
-      # container runs compiled output.
-      AUTO_MIGRATIONS_FOLDER: ./dist/database/migrations
+      # container runs compiled output. tsc mirrors the source tree, so the
+      # compiled migrations are under dist/src/, not dist/ — measured against the
+      # image, where ./dist/database/migrations does not exist and the service
+      # logs "Migrations failed: Can't find meta/_journal.json file" three times
+      # and then serves traffic against an unmigrated database.
+      AUTO_MIGRATIONS_FOLDER: ./dist/src/database/migrations
       OTEL_ENABLED: ${TESKILAT__OTEL_ENABLED:-${API__OTEL_ENABLED:-false}}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${TESKILAT__OTEL_EXPORTER_OTLP_ENDPOINT:-${API__OTEL_EXPORTER_OTLP_ENDPOINT:-localhost:4317}}
       KEYCLOAK_JWKS_URL: ${TESKILAT__KEYCLOAK_JWKS_URL:-${API__KEYCLOAK_JWKS_URL:?set API__KEYCLOAK_JWKS_URL in .env}}
