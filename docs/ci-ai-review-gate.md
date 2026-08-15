@@ -243,9 +243,44 @@ manufactures on every superseded run. All five are enumerated here:
 | `skipped` | the lens job's `if` was false although the preflight selected work | **red** | This is a contradiction between two parts of one workflow. Branch protection reports a skipped job as passing, so shrugging here is exactly the fail-open shape this gate exists to remove. The legitimate skips — fork, bot, draft, bypass, no key, no matching glob — are decided by the *preflight*, not by this value. |
 | `""` (empty) | the matrix job never instantiated — a workflow-level error | **red** | An empty result means the gate itself is broken. It must never be read as "nothing to do". |
 
-The preflight's own two outputs get the same treatment, and for the same reason: a
-`mode` that is neither `run` nor `skip`, and a `lens_count` that is not a
-non-negative integer, are **red**. Both used to fall through into the green "no lens
+### `unverifiable` — the mode that stops a run the action would reject anyway
+
+`claude-code-action` refuses to run when the workflow file it executes under differs
+from the copy on the default branch. That guard is right: it is what stops a pull
+request from weakening its own review. But it fires in **two** situations, and until
+MDRS-53 both arrived looking like an outage — every lens dying before it could write
+an execution record, and the gate reporting "N of N lenses could not be shown to have
+run" with `is_error=null`.
+
+| Cause | What it means | What happens |
+| --- | --- | --- |
+| **self-edit** | the PR changes `.github/workflows/ai-review.yml`. The gate cannot vouch for changes to itself. | `mode=unverifiable`, **red**. The one case here that needs a human: review plus the `ai-review-bypass` label. Automating past it would let a change to the gate merge unreviewed, which is what the guard exists to stop. |
+| **stale merge ref** | the PR does *not* touch that file, but `refs/pull/N/merge` still merges into a pre-change base. GitHub recomputes merge refs in the background after the base branch moves, **not** instantly — measured at over 25 minutes on 2026-08-15. | `mode=queued`, **red**, and **it fixes itself**. Nothing is wrong with the PR, so it goes back on the queue the repository already has and the nightly drain retries it. No instruction to follow and nobody to ask. |
+
+The preflight detects both before dispatching anything, so neither spends a matrix of
+jobs on a run the action would reject before its first turn.
+
+**This bites hardest right after a change to the gate itself lands**, which is exactly
+when someone is most likely to re-trigger a PR to test it. On 2026-08-15 PR #25 was
+re-labelled 97 seconds after such a merge and all four of its lenses died this way.
+
+### Everything that can resolve itself, does
+
+The two properties that keep the queue from needing a caretaker:
+
+- **A queued PR always has `ai-review` removed.** The drain releases by running
+  `--remove-label ai-review-queued --add-label ai-review`. If the PR already carried
+  `ai-review`, that add is a no-op, GitHub fires no `labeled` event, nothing re-enters
+  the workflow — and the drain reports it released while it sits queued for ever. The
+  queue step deletes the label first for exactly this reason.
+- **The drain lists `--state open`.** A PR merged or closed while queued — an admin
+  merging through a red gate is the ordinary case — keeps its `ai-review-queued` label
+  for ever. Filtering on open state is what drops it automatically, so no run is ever
+  spent reviewing a merged diff and nobody has to clean up after a merge.
+
+The preflight's own two outputs get the same treatment as the job results above, and
+for the same reason: a `mode` outside the four defined values, and a `lens_count` that
+is not a non-negative integer, are **red**. Both used to fall through into the green "no lens
 matched this diff" branch — a gate reporting a clean review from a value it did not
 understand. On top of that the aggregator asserts, before any green headline, that the
 number of verdict artifacts equals the number of lenses the preflight selected and

@@ -114,6 +114,81 @@ const cases = [
     verdicts: [],
     expect: { exit: 1, contains: "Nothing has been reviewed yet" },
   },
+  // `unverifiable` is the mode with the strongest pull toward being read as a
+  // skip: in both of its causes the pull request is usually fine and the author
+  // did nothing wrong. It is RED anyway, because no lens ran. These four pin
+  // that, and pin that the reason survives into the comment — the reason is the
+  // entire value of the mode, since it is what separates "this PR edits the
+  // gate" from "GitHub has not recomputed the merge ref yet".
+  {
+    // A stale merge ref queues rather than dead-ends, so it lands in the
+    // `queued` branch and is retried by the drain without anyone intervening.
+    name: "stale merge ref is queued for automatic retry, and still RED",
+    env: {
+      PREFLIGHT_RESULT: "success",
+      PREFLIGHT_MODE: "queued",
+      PREFLIGHT_SKIP_REASON:
+        "its merge ref is still based on an older `main`. It has been re-queued and the nightly drain will retry it automatically.",
+      LENS_RESULT: "skipped",
+      PREFLIGHT_LENS_COUNT: "",
+    },
+    verdicts: [],
+    expect: { exit: 1, contains: "drain will retry it automatically" },
+  },
+  {
+    name: "unverifiable carries the cause through to the comment",
+    env: {
+      PREFLIGHT_RESULT: "success",
+      PREFLIGHT_MODE: "unverifiable",
+      PREFLIGHT_SKIP_REASON:
+        "this pull request changes `.github/workflows/ai-review.yml`, so `claude-code-action` refuses to run",
+      LENS_RESULT: "skipped",
+      PREFLIGHT_LENS_COUNT: "",
+    },
+    verdicts: [],
+    expect: { exit: 1, contains: "claude-code-action` refuses to run" },
+  },
+  {
+    name: "unverifiable stays RED with AI_REVIEW_ENFORCE_BLOCK=false",
+    env: {
+      PREFLIGHT_RESULT: "success",
+      PREFLIGHT_MODE: "unverifiable",
+      PREFLIGHT_SKIP_REASON: "stale merge ref",
+      LENS_RESULT: "skipped",
+      PREFLIGHT_LENS_COUNT: "",
+      AI_REVIEW_ENFORCE_BLOCK: "false",
+    },
+    verdicts: [],
+    expect: { exit: 1, contains: "No lens could run" },
+  },
+  {
+    name: "unverifiable says plainly that nothing was reviewed",
+    env: {
+      PREFLIGHT_RESULT: "success",
+      PREFLIGHT_MODE: "unverifiable",
+      PREFLIGHT_SKIP_REASON: "stale merge ref",
+      LENS_RESULT: "skipped",
+      PREFLIGHT_LENS_COUNT: "",
+    },
+    verdicts: [],
+    expect: { exit: 1, contains: "nothing was reviewed" },
+  },
+  // The transitional case: a PR that teaches the preflight a new mode is judged
+  // by the BASE branch's aggregator, which cannot name it. Red is not enough —
+  // the reason has to survive, or that window produces a red gate that explains
+  // nothing. This is exactly what PR #30 hit on 2026-08-15.
+  {
+    name: "unknown mode still carries the preflight's reason through",
+    env: {
+      PREFLIGHT_RESULT: "success",
+      PREFLIGHT_MODE: "some-future-mode",
+      PREFLIGHT_SKIP_REASON: "its merge ref is STALE, wait for it to catch up",
+      LENS_RESULT: "skipped",
+      PREFLIGHT_LENS_COUNT: "",
+    },
+    verdicts: [],
+    expect: { exit: 1, contains: "its merge ref is STALE" },
+  },
   {
     name: "fork PR — documented skip",
     env: {
