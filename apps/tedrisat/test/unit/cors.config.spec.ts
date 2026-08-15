@@ -1,13 +1,18 @@
 import {
   buildCorsConfig,
-  parseCsv,
   resolveAllowedMethods,
   resolveAllowedOrigins,
 } from "@medaris/common";
 
 /**
- * The parser lives in libs/common, which has no test target of its own; the
- * repository convention is to cover it from the app that boots it.
+ * The parser lives in libs/common, which has no `test` target — see
+ * `libs/common/project.json`. MDRS-34 asked for the coverage here rather than
+ * adding one, so this is the only spec in either app that exercises library
+ * code; it is not a precedent. It also asserts against the built `dist/`,
+ * because `@medaris/common` resolves through the package `main` and there is
+ * no source path alias. Giving libs/common its own target belongs with MDRS-20,
+ * which owns the test-runner story — see
+ * docs/migration/mdrs-34-cors-origin-validation.md.
  *
  * Every case passes an explicit env object rather than mutating process.env,
  * so a case cannot leak into the next one.
@@ -20,28 +25,39 @@ describe("CORS configuration", () => {
   const STAGING = { NODE_ENV: "staging" } as NodeJS.ProcessEnv;
   const UNSET_ENV = {} as NodeJS.ProcessEnv;
 
-  describe("parseCsv", () => {
-    it("returns an empty list for undefined and for an empty string", () => {
-      expect(parseCsv(undefined)).toEqual([]);
-      expect(parseCsv("")).toEqual([]);
+  // The comma splitting is exercised through the two resolvers rather than
+  // directly: the splitter is private to the module, because everything
+  // libs/common exports is public API of the package both services depend on.
+  describe("comma-separated parsing", () => {
+    const origins = (value: string) =>
+      resolveAllowedOrigins({ ...DEV, ALLOWED_ORIGINS: value });
+
+    it("treats an empty string as an unset list", () => {
+      expect(origins("")).toBe("*");
     });
 
     it("returns a single entry unchanged", () => {
-      expect(parseCsv("http://localhost:4000")).toEqual([
+      expect(origins("http://localhost:4000")).toEqual([
         "http://localhost:4000",
       ]);
     });
 
     it("trims the spaces around multi-value entries", () => {
       expect(
-        parseCsv(" http://localhost:4000 , http://localhost:4001 ")
+        origins(" http://localhost:4000 , http://localhost:4001 ")
       ).toEqual(["http://localhost:4000", "http://localhost:4001"]);
     });
 
     it("drops entries that are empty or whitespace only", () => {
+      expect(origins("http://localhost:4000,, ,http://localhost:4001")).toEqual(
+        ["http://localhost:4000", "http://localhost:4001"]
+      );
+    });
+
+    it("applies the same splitting to the method list", () => {
       expect(
-        parseCsv("http://localhost:4000,, ,http://localhost:4001")
-      ).toEqual(["http://localhost:4000", "http://localhost:4001"]);
+        resolveAllowedMethods({ ALLOWED_METHODS: " get ,, post " })
+      ).toEqual(["GET", "POST", "OPTIONS"]);
     });
   });
 

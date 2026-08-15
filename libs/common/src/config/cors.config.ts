@@ -40,8 +40,16 @@ const ALLOWED_HEADERS = ["Authorization", "Content-Type"];
  */
 const EXPOSED_HEADERS = ["Content-Disposition"];
 
-/** Split a comma-separated variable, trimming entries and dropping empties. */
-export function parseCsv(raw: string | undefined): string[] {
+/**
+ * Split a comma-separated variable, trimming entries and dropping empties.
+ *
+ * Deliberately not exported: `libs/common` has a single entry point and no
+ * `exports` map, so anything this module exports becomes public API of the
+ * package both services depend on. A private string helper does not belong
+ * there — it is covered through `resolveAllowedOrigins` and
+ * `resolveAllowedMethods`, which are the functions callers actually use.
+ */
+function parseCsv(raw: string | undefined): string[] {
   if (!raw) {
     return [];
   }

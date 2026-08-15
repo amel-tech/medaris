@@ -49,8 +49,8 @@ the process could ever have configured CORS.
 ## What changed
 
 - `libs/common/src/config/cors.config.ts` is now a set of pure functions —
-  exported: `parseCsv`, `resolveAllowedOrigins`, `resolveAllowedMethods`,
-  `buildCorsConfig`; internal: `allowsWildcard`, `assertBareOrigin`,
+  exported: `resolveAllowedOrigins`, `resolveAllowedMethods`,
+  `buildCorsConfig`; internal: `parseCsv`, `allowsWildcard`, `assertBareOrigin`,
   `parseOrigin`, `fail` — each environment-reading one taking an explicit
   `NodeJS.ProcessEnv` that defaults to `process.env`. The exported constant
   `corsConfig` is gone; nothing outside `setupMiddleware.ts` referenced it.
@@ -91,6 +91,10 @@ the process could ever have configured CORS.
   container exists and dotenv has run.
 - `libs/common/src/index.ts` now re-exports `./config`. It did not before, so
   the parser was unreachable from `@medaris/common` and could not be tested.
+  `libs/common` has one entry point and no `exports` map, so this makes the
+  three resolvers public API of the package both services depend on. The
+  comma splitter is deliberately **not** exported — it is a private string
+  helper, covered through the two resolvers instead.
 - `apps/tedrisat/.env.example` and `apps/teskilat/.env.example` list the four
   web-app origins (`4000` tedris, `4001` nizam, `4002` nazir, `4003` landing)
   instead of `*`, and add `OPTIONS` to `ALLOWED_METHODS`. The root
@@ -102,8 +106,11 @@ the process could ever have configured CORS.
   change makes `ALLOWED_ORIGINS` a hard requirement for every deployed
   container — and the deploy workflow only pushes the image and fires the
   webhook, so it stays green while the service restart-loops.
-- `apps/tedrisat/test/unit/cors.config.spec.ts` — 33 cases over the parser.
-  `libs/common` has no test target, so the app that boots the code covers it.
+- `apps/tedrisat/test/unit/cors.config.spec.ts` — 34 cases over the parser.
+  `libs/common` has no `test` target (only `lint`, in `libs/common/project.json`),
+  and MDRS-34 asked for the coverage here rather than adding one. This is the
+  only spec in either app that exercises library code — not a precedent. See
+  the follow-up below.
 
 ## What was verified
 
@@ -127,8 +134,8 @@ Every acceptance criterion was exercised against a booted tedrisat on
 | `NODE_ENV=development`, `ALLOWED_ORIGINS` unset | 204 · `Access-Control-Allow-Origin: *` — the real wildcard, not `["*"]` |
 
 Repository gate, all `--skip-nx-cache`: `typecheck` 16 projects, `test`
-**139 tests / 12 suites** (tedrisat 137/10, teskilat 2/2 — up from 106/11 by
-this task's 33 cases), `build` 8, `lint` 16, `module-boundaries` 16, plus
+**140 tests / 12 suites** (tedrisat 138/10, teskilat 2/2 — up from 106/11 by
+this task's 34 cases), `build` 8, `lint` 16, `module-boundaries` 16, plus
 `tools/ci/biome-ratchet.mjs` at baseline. `CLAUDE.md` and `README.md` carry the
 new totals.
 
@@ -165,3 +172,16 @@ review and is the one item that cannot be closed from inside the repository.
 - Once a browser-side call to either API lands, re-run the preflight from a real
   page rather than curl. `NEXT_PUBLIC_TEDRISAT_API_BASE_URL` is declared in
   `apps/tedris/env.ts:25` but still unused.
+- **Move this spec into `libs/common` — belongs with MDRS-20.** Review raised
+  three consequences of testing library code from `apps/tedrisat/test/unit/`,
+  all of them fair: the spec asserts against the built `dist/` rather than
+  source (`@medaris/common` resolves through the package `main`; there is no
+  source path alias), `apps/tedrisat/jest.config.json` sets
+  `collectCoverageFrom` to `src/**` so these cases count toward no coverage
+  figure, and teskilat boots the same parser with no coverage of its own.
+  Fixing it properly means giving `libs/common` a real `test` target — it has
+  only `lint` in `libs/common/project.json`. That is deferred rather than done
+  here for two reasons: MDRS-34 explicitly specified this placement, and MDRS-20
+  is migrating the repository from Jest to Vitest, so adding a fourth Jest
+  project now would enlarge that task's surface. The narrower harm — a private
+  helper becoming public API — was fixed instead by un-exporting the splitter.
