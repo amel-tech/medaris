@@ -70,11 +70,43 @@ until tonight": a named person decides, on the record.
 |---|---|---|
 | Window (UTC) | repository variable `AI_REVIEW_WINDOW_UTC` | `16-21` |
 | Drain schedule | cron in `ai-review-drain.yml` | `5 16 * * *` |
-| Review now | add the `ai-review` label | — |
+| Review now | add the `ai-review` label — **repository admins only** | — |
+| Extra actors allowed to review now | repository variable `AI_REVIEW_QUOTA_ACTORS` | empty |
 | Disable the window | set `AI_REVIEW_WINDOW_UTC=off` | — |
 
 `16-21` UTC is **01:00–06:00 in Tokyo**, where the owner is, and 19:00–00:00 in Istanbul, where
 the rest of the team is. The end hour is exclusive, so the window is 16:00–20:59 UTC.
+
+#### Only admins can spend review quota off-hours
+
+A review costs $4–15 and runs on the subscription the team also uses interactively, so **what
+bypasses the window is what decides who can spend at will.**
+
+That used to be the `ai-review` label, which is not a permission. GitHub has **no per-label
+ACL** — labels cannot be restricted by ruleset or any other setting, and every collaborator with
+write or triage can apply any of them. Worse, the label persisted: once applied, every later push
+by anyone re-ran the review immediately, for as long as the PR stayed open.
+
+The bypass is now keyed to the **actor** — `github.event.sender`, meaning whoever applied the
+label or pushed the commit — resolved through
+`GET /repos/{owner}/{repo}/collaborators/{user}/permission`. Only `admin` clears it.
+
+Three properties worth stating plainly:
+
+- **Nobody is refused a review.** A non-admin's request is *queued*, not rejected, and the
+  nightly drain runs it. Inside the window everything runs for everyone — that is what the window
+  is for. This restricts *when*, never *whether*.
+- **It fails closed.** Any error resolving the actor's permission is treated as "not an admin",
+  because guessing wrong the other way is unbounded spend and guessing wrong this way costs a
+  wait. The step emits a `::warning::` naming the actor when it cannot resolve them.
+- **It is enforcement, not prevention.** A non-admin can still *apply* the label; the workflow
+  simply declines to spend on it and the queue step swaps it for `ai-review-queued`. GitHub
+  offers no way to prevent the write itself.
+
+`AI_REVIEW_QUOTA_ACTORS` (comma-separated logins) is the escape valve and exists for one real
+case: the drain applies `ai-review` using `AI_REVIEW_DRAIN_TOKEN`, so **that PAT's owner must
+clear this check or the queue silently stops draining.** Today it belongs to an admin and the
+variable can stay empty. Move the token to a non-admin and add them here.
 
 **The two clocks are not derived from one another.** `AI_REVIEW_WINDOW_UTC` and the drain cron are
 set independently, both in UTC. Move one without the other and pull requests queue for a window
