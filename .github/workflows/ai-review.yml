@@ -193,35 +193,17 @@ jobs:
             echo "cause=stale-base" >> "$GITHUB_OUTPUT"
           fi
 
-      # WHO MAY SPEND REVIEW QUOTA ON DEMAND.
+      # Only a repository admin may bypass the review window. The label used to
+      # be the bypass, which is not a permission — GitHub has no per-label ACL.
       #
-      # The lenses run on a subscription the team also uses interactively, and a
-      # review costs $4-15 per run. The window defers that spend to a quiet hour;
-      # what BYPASSES the window therefore decides who can spend at will.
+      # Fails closed: an unresolvable actor is treated as a non-admin, so the
+      # review waits for the window rather than running unbudgeted. A non-admin
+      # is queued, never refused, and inside the window everything runs for
+      # everyone.
       #
-      # That used to be "the pull request carries the `ai-review` label", which
-      # is not a permission at all: GitHub has no per-label ACL, so all 11
-      # collaborators with write or triage could apply it, and once applied it
-      # stayed applied — every later push by anyone re-ran the review at once.
-      # The gate is the expensive thing here, so the bypass is now keyed to the
-      # ACTOR instead: only a repository admin can make a review happen off-hours.
-      #
-      # Nobody is blocked from being reviewed. A non-admin's request is QUEUED,
-      # not refused, and the nightly drain runs it — the label is swapped to
-      # `ai-review-queued` by the step below, which is also what strips the
-      # `ai-review` label a non-admin just applied. Inside the window everything
-      # runs for everyone, which is the whole point of having a window.
-      #
-      # FAIL CLOSED. Any error resolving the actor's permission is treated as
-      # "not an admin", because the failure mode of guessing wrong in the other
-      # direction is unbounded spend. The cost of guessing wrong this way is a
-      # review that waits for the window.
-      #
-      # AI_REVIEW_QUOTA_ACTORS is the escape valve, and it exists for one real
-      # case: the drain applies `ai-review` with AI_REVIEW_DRAIN_TOKEN, so that
-      # PAT's owner must clear this check or the queue never drains. Today that
-      # PAT belongs to an admin and nothing is needed. Move it to a non-admin and
-      # add them here, or the drain silently stops working.
+      # AI_REVIEW_QUOTA_ACTORS exists for one case: the drain applies
+      # `ai-review` with AI_REVIEW_DRAIN_TOKEN, so that PAT's owner must clear
+      # this check or the queue silently stops draining.
       - name: Resolve whether the actor may spend review quota
         id: actor
         env:
@@ -271,10 +253,8 @@ jobs:
           WORKFLOW_MISMATCH_CAUSE: ${{ steps.tamper.outputs.cause }}
           BASE_REPO: ${{ github.repository }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
-          # ACTOR is the pull request's AUTHOR (the bot check below reads it).
-          # TRIGGER_ACTOR is whoever caused THIS run — the labeller on a
-          # `labeled` event, the pusher on `synchronize`. They are usually
-          # different people and must not be conflated.
+          # ACTOR is the PR's author; TRIGGER_ACTOR is whoever caused this run.
+          # Different people — do not conflate them.
           ACTOR: ${{ github.event.pull_request.user.login }}
           ACTOR_TYPE: ${{ github.event.pull_request.user.type }}
           TRIGGER_ACTOR: ${{ github.event.sender.login }}
@@ -285,9 +265,6 @@ jobs:
           KEY_PRESENT: ${{ (secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '') }}
           # Set AI_REVIEW_WINDOW_UTC to `off` to review immediately at any hour.
           WINDOW_SPEC: ${{ vars.AI_REVIEW_WINDOW_UTC || '16-21' }}
-          # Who may bypass the window — see "WHO MAY SPEND REVIEW QUOTA" above.
-          # This replaced `contains(labels, 'ai-review')`, which was not a
-          # permission: any of the 11 collaborators with write could apply it.
           ACTOR_MAY_SPEND: ${{ steps.actor.outputs.may_spend }}
         run: |
           set -euo pipefail
