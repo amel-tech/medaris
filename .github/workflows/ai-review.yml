@@ -147,12 +147,14 @@ jobs:
       # write an execution record, and the gate reports "N of N lenses could not
       # be shown to have run" with `is_error=null`, which reads as an outage.
       #
-      # The second case is a STALE MERGE REF. `refs/pull/N/merge` is recomputed
-      # by GitHub in the background when the base branch moves, not instantly.
-      # Land any change to this file and every open pull request keeps running
-      # the OLD copy until its merge ref catches up — measured at over 25 minutes
-      # on 2026-08-15, when PR #25 was re-triggered 97 seconds after a change to
-      # this workflow merged and all four of its lenses died this way.
+      # The second case is a STALE MERGE REF. `refs/pull/N/merge` does NOT track
+      # the base branch. Land any change to this file and every open pull request
+      # keeps running the OLD copy until something regenerates its merge ref.
+      # Measured on 2026-08-15: PR #25 was re-triggered 97 seconds after such a
+      # merge and all four of its lenses died this way; the ref then stayed stale
+      # across two further `main` commits, ~7 hours, and 40 API reads. A push to
+      # the head branch (`gh pr update-branch`) regenerated it in 15 seconds and
+      # is the only lever that reliably does.
       #
       # So: detect it here, before dispatching lenses that cannot possibly
       # validate, and say which of the two it is. Costs one API call and saves
@@ -273,16 +275,20 @@ jobs:
             mode=unverifiable
             reason="this pull request changes \`.github/workflows/ai-review.yml\`, so \`claude-code-action\` refuses to run: a pull request may not review itself under its own copy of the gate. **No lens ran, and the gate cannot vouch for this change.** Land it with human review and the \`${AI_REVIEW_BYPASS_LABEL}\` label."
 
-          # A stale merge ref is NOT a dead end and must never need a human.
-          # GitHub recomputes refs/pull/N/merge in the background after the base
-          # branch moves and can take well over 25 minutes; nothing is wrong with
-          # the pull request and nothing about it needs to change. So hand it to
-          # the queue the repository already has: the drain re-labels it, this
-          # workflow re-enters on its own head SHA, and by then the merge ref has
-          # caught up. Self-healing, no instruction to follow, no one to ask.
+          # A stale merge ref says nothing about the pull request's own contents,
+          # so it is queued rather than failed: the drain re-labels it, this
+          # workflow re-enters on its own head SHA, and if the ref has refreshed
+          # by then the review just runs.
+          #
+          # It is NOT guaranteed to have refreshed. Nothing here can force it —
+          # only a push to the head branch regenerates a merge ref, and this job
+          # must not push to a contributor's branch. So the retry is a cheap bet
+          # (it spends no lens jobs), not a proof of convergence, and the drain
+          # counts consecutive re-queues so a PR that never converges is
+          # reported instead of looping in silence for ever.
           elif [ "${WORKFLOW_VALIDATES}" = "false" ]; then
             mode=queued
-            reason="its merge ref is still based on an older \`main\`, so the copy of \`.github/workflows/ai-review.yml\` under this run does not match the default branch and \`claude-code-action\` would reject every lens. GitHub recomputes merge refs in the background after the base branch moves; this pull request needs no change and no action from you. It has been re-queued and the nightly drain will retry it automatically."
+            reason="its merge ref is still based on an older \`main\`, so the copy of \`.github/workflows/ai-review.yml\` under this run does not match the default branch and \`claude-code-action\` would reject every lens. Nothing is wrong with this pull request's own contents. It has been re-queued and the nightly drain will retry it. **If it keeps re-queueing, the merge ref is not refreshing on its own — push to the branch, or press *Update branch*, which regenerates it deterministically.** GitHub's own refresh of \`refs/pull/N/merge\` is unpredictable: measured on 2026-08-15 it moved once about seven hours after the base branch did, then did not move again across 800 seconds and 40 API reads."
 
           # Zero repository secrets exist in medaris today. "Not configured" is a
           # configuration state: not a pass, not a crash, and clearly distinct
