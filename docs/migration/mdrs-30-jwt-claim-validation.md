@@ -118,10 +118,30 @@ rejection is asserted as an HTTP 401 rather than only as a thrown error from the
   Both `.env.example` files therefore ship `KEYCLOAK_AUDIENCE=account` — the value Keycloak
   includes by default — together with the mandatory `KEYCLOAK_ALLOWED_CLIENTS`. Shipping
   `tedrisat-api` before the mapper exists would mean a 401 on every valid token.
-- **The deployment's own environment was not touched.** Any environment that runs tedrisat
-  outside `NODE_ENV=test` now needs `KEYCLOAK_ISSUER` and `KEYCLOAK_AUDIENCE` or the service
-  refuses to boot — the same trade-off MDRS-35 accepted for `KEYCLOAK_JWKS_URL`.
 - `apps/teskilat` does not import `AuthGuardModule`, so its `.env.example` was left alone.
+
+## Required before merge — the deployed environment
+
+**This will crash-loop the deployed container if the step below is skipped.** No file in the
+repository sets tedrisat's runtime environment: it lives in Coolify, and
+`.github/workflows/tedrisat-api.yaml` only fires the deploy webhook on merge to `main`. The
+three variables must exist there *before* this lands:
+
+| Variable | Value for the `amel-tech-dev` realm |
+| --- | --- |
+| `KEYCLOAK_ISSUER` | `https://auth.medaris.app/realms/amel-tech-dev` |
+| `KEYCLOAK_AUDIENCE` | `account` — until MDRS-42 adds the mapper, then `tedrisat-api` |
+| `KEYCLOAK_ALLOWED_CLIENTS` | `tedris-dev,nizam-dev,nazir-dev` |
+
+`KEYCLOAK_ALLOWED_CLIENTS` holds Keycloak **client ids**, not Nx project names — they are
+what Keycloak puts in `azp`, and they must equal the three front-ends' own
+`KEYCLOAK_CLIENT_ID` (`apps/tedris/.env.example:1` and siblings). Client ids are
+realm-specific, so a production realm will use different names and a mismatch is a 401 on
+every request from that front-end. The pairing is mandatory only while the audience is
+realm-wide; the verifier refuses to boot with `account` and an empty allow-list.
+
+The same trade-off MDRS-35 accepted for `KEYCLOAK_JWKS_URL` and `DB_PASSWORD`: a missing
+security-relevant variable is a loud boot failure rather than a silently weakened check.
 
 ## Follow-ups
 
