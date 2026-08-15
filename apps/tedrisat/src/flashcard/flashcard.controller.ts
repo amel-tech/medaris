@@ -229,11 +229,22 @@ export class FlashcardController {
   })
   @ApiBody({ type: [CreateFlashcardDto] })
   @ApiCreatedResponse({ type: BulkFlashcardResponse })
+  @ApiUnprocessableEntityResponse({ type: BulkFlashcardErrorResponse })
   @Post("decks/:deckId/cards/bulk")
   async bulk(
     @Req() request: AuthorizedRequest,
     @Param("deckId", ParseUUIDPipe) deckId: string,
-    @Body()
+    // The global pipe skips array metatypes, so a bare `@Body()` here checked
+    // nothing at all — not even that the body was a list.
+    //
+    // Deliberately WITHOUT `items:`, unlike the sibling endpoint above. The
+    // array check is unconditional in ParseArrayPipe; `items` only adds
+    // per-element DTO validation, which this endpoint already does better
+    // downstream — `FlashcardBulkService.validateCards` runs with
+    // `whitelist`/`forbidNonWhitelisted` and aggregates EVERY bad row into the
+    // 422 `RowError[]` body. The pipe's own validation would pre-empt that
+    // with a 400 carrying only the first bad row.
+    @Body(new ParseArrayPipe())
     cardsDto: CreateFlashcardDto[]
   ): Promise<BulkFlashcardResponse> {
     const deck = await this.deckService.findById(deckId);
