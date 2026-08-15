@@ -87,6 +87,17 @@ jobs:
             exit 1
           fi
 
+          # `--state open` is load-bearing, not a default worth trimming. A pull
+          # request merged or closed while queued — an admin merging through a
+          # red gate is the ordinary case — keeps its `ai-review-queued` label
+          # for ever. Filtering on open state is what drops it from the queue
+          # automatically, so nobody has to remember to clean up after a merge
+          # and no run is ever spent reviewing a merged diff.
+          #
+          # A pull request released while its merge ref is still stale re-queues
+          # itself through ai-review.yml's stale branch and is retried on the
+          # next drain. That loop is deliberate and self-limiting: one run per
+          # night until GitHub catches up, which it does within the hour.
           queued="$(gh pr list --repo "${REPO}" --state open \
             --label ai-review-queued --limit "${LIMIT}" \
             --json number --jq '.[].number')"

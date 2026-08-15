@@ -192,9 +192,11 @@ that ran a **full, paid, successful review still failed to write its verdict fil
 15–30% of the time.** Naive fail-closed on a model-written file would therefore
 redden roughly 74% of pull requests at six lenses — a gate everyone would learn to
 ignore within a week. Making the final message the verdict removes the failure mode
-instead of trading it for a worse one. It also means no lens needs a `Write` tool,
-which resolves the reference implementation's contradiction of a "read-only"
-allowlist that nonetheless had to permit `mkdir`, `printf` and `tee`.
+instead of trading it for a worse one. It also means no lens needs a `Write` tool or
+any file-writing shell verb, which resolves the reference implementation's
+contradiction of a "read-only" allowlist that nonetheless had to permit `mkdir`,
+`printf` and `tee`. That still holds after MDRS-53: the one write a lens now performs
+is posting inline comments, and no lens writes to disk.
 
 **Rule 3 — liveness is asserted from that same record, never from
 `steps.<id>.outcome`.** A lens counts as having run only if **all** of these hold:
@@ -241,9 +243,55 @@ manufactures on every superseded run. All five are enumerated here:
 | `skipped` | the lens job's `if` was false although the preflight selected work | **red** | This is a contradiction between two parts of one workflow. Branch protection reports a skipped job as passing, so shrugging here is exactly the fail-open shape this gate exists to remove. The legitimate skips — fork, bot, draft, bypass, no key, no matching glob — are decided by the *preflight*, not by this value. |
 | `""` (empty) | the matrix job never instantiated — a workflow-level error | **red** | An empty result means the gate itself is broken. It must never be read as "nothing to do". |
 
-The preflight's own two outputs get the same treatment, and for the same reason: a
-`mode` that is neither `run` nor `skip`, and a `lens_count` that is not a
-non-negative integer, are **red**. Both used to fall through into the green "no lens
+### `unverifiable` — the mode that stops a run the action would reject anyway
+
+`claude-code-action` refuses to run when the workflow file it executes under differs
+from the copy on the default branch. That guard is right: it is what stops a pull
+request from weakening its own review. But it fires in **two** situations, and until
+MDRS-53 both arrived looking like an outage — every lens dying before it could write
+an execution record, and the gate reporting "N of N lenses could not be shown to have
+run" with `is_error=null`.
+
+| Cause | What it means | What happens |
+| --- | --- | --- |
+| **self-edit** | the PR changes `.github/workflows/ai-review.yml`. The gate cannot vouch for changes to itself. | `mode=unverifiable`, **red**. The one case here that needs a human: review plus the `ai-review-bypass` label. Automating past it would let a change to the gate merge unreviewed, which is what the guard exists to stop. |
+| **stale merge ref** | the PR does *not* touch that file, but `refs/pull/N/merge` still merges into a pre-change base. | `mode=queued`, **red**, and **it fixes itself**. Nothing is wrong with the PR, so it goes back on the queue the repository already has and the nightly drain retries it. No instruction to follow and nobody to ask. |
+
+**How long a stale merge ref actually lasts, measured.** GitHub's recompute is **lazy and
+request-triggered**, not a timed sweep. On 2026-08-15 all four open PRs sat at `into a4cdda8`
+across *two* subsequent `main` commits and roughly seven hours. The moment `GET /pulls/25` was
+called, the API returned `mergeable: null` / `mergeable_state: unknown` and the ref refreshed to
+current `main` within ten seconds.
+
+So "wait and it heals" is true, but the waiting is not what heals it — **asking** is. The drain
+gets this for free, because listing and re-labelling a PR touches it through the API. Anyone
+debugging a PR that seems stuck should call `gh api repos/OWNER/REPO/pulls/N` once and re-check
+rather than waiting.
+
+The preflight detects both before dispatching anything, so neither spends a matrix of
+jobs on a run the action would reject before its first turn.
+
+**This bites hardest right after a change to the gate itself lands**, which is exactly
+when someone is most likely to re-trigger a PR to test it. On 2026-08-15 PR #25 was
+re-labelled 97 seconds after such a merge and all four of its lenses died this way.
+
+### Everything that can resolve itself, does
+
+The two properties that keep the queue from needing a caretaker:
+
+- **A queued PR always has `ai-review` removed.** The drain releases by running
+  `--remove-label ai-review-queued --add-label ai-review`. If the PR already carried
+  `ai-review`, that add is a no-op, GitHub fires no `labeled` event, nothing re-enters
+  the workflow — and the drain reports it released while it sits queued for ever. The
+  queue step deletes the label first for exactly this reason.
+- **The drain lists `--state open`.** A PR merged or closed while queued — an admin
+  merging through a red gate is the ordinary case — keeps its `ai-review-queued` label
+  for ever. Filtering on open state is what drops it automatically, so no run is ever
+  spent reviewing a merged diff and nobody has to clean up after a merge.
+
+The preflight's own two outputs get the same treatment as the job results above, and
+for the same reason: a `mode` outside the four defined values, and a `lens_count` that
+is not a non-negative integer, are **red**. Both used to fall through into the green "no lens
 matched this diff" branch — a gate reporting a clean review from a value it did not
 understand. On top of that the aggregator asserts, before any green headline, that the
 number of verdict artifacts equals the number of lenses the preflight selected and
@@ -309,6 +357,30 @@ If you edit `lenses.yaml`, that block is load-bearing. Removing it from a prompt
 not make the lens noisier; it makes the lens controllable by anyone who can open a
 pull request.
 
+### 4.1 What the lens job holds, and the risk accepted in MDRS-53
+
+The lens job reads attacker-controlled code while holding the review credential. Since
+MDRS-53 it also holds `pull-requests: write`, because each lens posts its own inline
+comments. That is a deliberate widening of the chain described above, taken by Taha on
+2026-08-15 with the tradeoff stated, and the alternative it was chosen over was having
+the aggregator — which already has `pull-requests: write` and never checks out the pull
+request's code — post the same comments from the verdict JSON.
+
+Two things bound what that grant is worth to an attacker, and neither should be
+weakened without replacing it:
+
+- **`--allowedTools` has no code-execution or network verb.** No `node`, no `python`,
+  no `bash -c`, no `curl`/`wget`. The widened list is read verbs (`cat`, `sed`, `awk`,
+  `grep`, `jq`, …) plus the inline-comment tool. The line is drawn at the difference
+  between reading a path the model should not read and running arbitrary code.
+- **`GITHUB_TOKEN` scope is per-job, not per-workflow.** The workflow-level default is
+  still `permissions: {}`; only the lens and gate jobs are granted anything.
+
+The mitigation this section is waiting on is CODEOWNERS over `.github/workflows/` and
+`tools/ai-review/`, which is MDRS-50's follow-up and does not exist yet. Until it
+lands, the prompt and human review are what stand between a planted instruction and a
+comment posted under the repository's own identity.
+
 ---
 
 ## 5. The output contract
@@ -352,6 +424,24 @@ Rules, and the reasoning behind them:
   comment. This is why the prompts encourage `medium`/`low` confidence freely: an
   uncertain finding still reaches the author instead of being suppressed, without
   wedging the PR.
+
+  **This was aspirational until MDRS-53 and is now literal.** The summary comment
+  expands blocking findings only, so before inline comments an advisory finding
+  reached the author as a bare integer in a table and nowhere else — 7 of them were
+  produced and paid for across PRs #23, #24 and #25 on the first overnight run, one
+  of which (`@medaris/tokens` imported but undeclared in three of four apps) was
+  real. The content survived only in the `ai-review-verdict-*` artifacts, which
+  expire after 7 days. Each lens now posts every finding it reports, advisory ones
+  included, as an inline comment on the line it concerns.
+- **A malformed `summary` no longer discards the review.** The model hand-writes this JSON and
+  the thing that breaks it is quoting code. On 2026-08-15 the `authz` lens finished a clean, paid
+  review of PR #25 (`is_error:false`, 9 turns, $0.50), concluded no findings, and was reported
+  **DEAD** because its summary contained ``(`include: ["test/**/*.spec.ts"]`` — the raw quotes
+  closed the JSON string early and nothing parsed. The prompt now forbids raw `"` inside string
+  values, and because a prompt rule is an instruction rather than a guarantee,
+  `evaluate-verdict.mjs` also salvages the `findings` array on its own when the enclosing object
+  will not parse. Nothing branches on `summary`; the findings array answers the only question the
+  gate asks. The salvage cannot manufacture a pass — no findings array anywhere is still DEAD.
 - **An omitted `confidence` is read as `high`** (`evaluate-verdict.mjs`), which is the
   fail-closed reading — over-blocking is cheap, silently dropping a real finding is
   not. The prompts therefore require `confidence` to be stated explicitly rather than
@@ -454,9 +544,13 @@ Four controls keep spend bounded:
 - **The model is pinned** to `claude-opus-5` in the workflow's `env:`. An unpinned
   model silently changes the cost, the turn count and the finding distribution of all
   six lenses at once, and the first symptom is an unexplained bill.
-- **Per-lens `max_turns`** in `lenses.yaml` — 30 to 60, with `correctness` highest
+- **Per-lens `max_turns`** in `lenses.yaml` — 40 to 70, with `correctness` highest
   because it is the measured long pole. The preflight puts this into the matrix and
-  the lens job passes it as `--max-turns`.
+  the lens job passes it as `--max-turns`. MDRS-53 raised every lens by 10 to pay for
+  inline commenting, and `boundaries-duplication` by 25 after it died on
+  `error_max_turns` on PR #25. Beware when tuning these: the `num_turns` printed in
+  the gate table is a different, larger counter — `config-secrets` reports
+  `num_turns=35` under `--max-turns 30` and exits clean.
 - **Per-lens `timeout_minutes`** in `lenses.yaml` — 15 to 25, applied as the lens
   job's `timeout-minutes`. A lens that hits its ceiling produces no execution record,
   so its liveness assertion fails and it is reported as a lens failure — never

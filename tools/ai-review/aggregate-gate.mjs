@@ -70,17 +70,27 @@ const MARKER = "<!-- ai-review-gate -->";
 
 /** Collected verdict artifacts, one per lens leg that reached its evaluator. */
 /**
- * Last line of defence before anything model-authored reaches a PUBLIC comment.
+ * Last line of defence before anything model-authored reaches a PUBLIC comment
+ * THROUGH THIS FILE.
  *
  * The lens jobs hold the review credential in their environment while reviewing
  * untrusted pull-request code, so a successful prompt injection could in
- * principle route a secret into a findings string. The allowlist in
- * ai-review.yml is the real control — `cat` and `sed` are deliberately absent,
- * so there is no arbitrary-path read to exfiltrate WITH. This is the belt to
- * that pair of braces, and it exists because the consequence is asymmetric: a
- * redacted true positive costs a reviewer one click, a leaked subscription
- * token on a public repository costs a credential rotation and is permanent in
- * the fork network.
+ * principle route a secret into a findings string. This redaction exists because
+ * the consequence is asymmetric: a redacted true positive costs a reviewer one
+ * click, a leaked subscription token on a public repository costs a credential
+ * rotation and is permanent in the fork network.
+ *
+ * WHAT THIS NO LONGER COVERS (MDRS-53). It used to be the belt to a pair of
+ * braces: the allowlist in ai-review.yml excluded `cat` and `sed`, so there was
+ * no arbitrary-path read to exfiltrate WITH, and every model-authored byte
+ * reached the public through the summary comment this file posts. Both halves
+ * changed. The allowlist now permits arbitrary-path readers, and each lens posts
+ * its own inline comments with its own `pull-requests: write` — a path that does
+ * not pass through this function and cannot, since the lens writes it directly.
+ *
+ * So: this still redacts the summary comment, and the summary comment still
+ * carries every finding's text. It is no longer a complete boundary. Anyone
+ * adding a second public-writing path should assume the same and say so here.
  *
  * Patterns are shape-based rather than a list of known secret names, because
  * the thing worth catching is the one nobody thought to name.
@@ -329,7 +339,8 @@ async function main() {
   } else if (
     preflightMode !== "skip" &&
     preflightMode !== "run" &&
-    preflightMode !== "queued"
+    preflightMode !== "queued" &&
+    preflightMode !== "unverifiable"
   ) {
     // `mode` gets the same exhaustive treatment as every `needs.*.result`
     // above, and for the same reason. It used to be tested only against
@@ -338,10 +349,45 @@ async function main() {
     // this diff" — a green gate produced by a value the gate did not
     // understand. That is the "default that means fine" shape this whole file
     // exists to remove.
+    //
+    // This branch also absorbs a DEPLOYMENT ORDERING that is structural and
+    // cannot be designed away: the gate job deliberately runs the BASE branch's
+    // copy of this file, so a pull request that teaches the preflight a new mode
+    // is judged by an aggregator that has never heard of it. Measured on
+    // 2026-08-15: PR #30 introduced `unverifiable`, the preflight emitted it
+    // correctly, and the base branch's aggregator reported it as unrecognised.
+    // Red either way — the safety property holds — but the reader learns
+    // nothing. So carry the reason through: a mode this file cannot name still
+    // arrives with the preflight's own explanation attached, which is the only
+    // part that was ever going to be useful in that window.
     red = true;
     headline =
       `❌ **The gate did not run.** The preflight reported an unrecognised mode \`${preflightMode || "(empty)"}\`; ` +
-      "only `run`, `queued` and `skip` are defined, so the gate cannot say what was or was not reviewed.";
+      "only `run`, `queued`, `skip` and `unverifiable` are defined here, so the gate cannot say what was or was not reviewed. " +
+      "If this mode was added on the pull request under review, this message is expected until it lands on the default branch — " +
+      "the gate runs the BASE branch's copy of itself on purpose.";
+    if (preflightSkipReason) {
+      headline += `\n\nThe preflight's own reason, carried through unread: ${preflightSkipReason}`;
+    }
+  } else if (preflightMode === "unverifiable") {
+    // RED. `claude-code-action` would reject every lens because the workflow
+    // file under this run differs from the default branch's copy, so the
+    // preflight declined to dispatch a matrix that could only produce
+    // record-less corpses.
+    //
+    // This mode exists because the two causes were previously indistinguishable
+    // from each other AND from a real outage: both arrived as "N of N lenses
+    // could not be shown to have run" with `is_error=null`, which is the
+    // signature of the action dying, not of it refusing to start. One cause is
+    // the pull request editing the gate (working as designed); the other is a
+    // merge ref GitHub has not recomputed yet (nobody's fault, fixes itself).
+    // The reason text says which.
+    red = true;
+    headline =
+      `❌ **No lens could run — ${preflightSkipReason}**\n\n` +
+      "This check is red because nothing was reviewed, not because a finding was " +
+      "raised. The preflight refused to dispatch the lenses rather than spend jobs " +
+      "on a matrix the action would reject before its first turn.";
   } else if (preflightMode === "queued") {
     // RED, deliberately, and this is the one mode where that deserves stating.
     //
