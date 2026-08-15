@@ -1,6 +1,7 @@
 import configuration from "../../src/config/config";
 import { resolveDatabaseSsl } from "../../src/config/database-ssl";
 import { requireDbPassword } from "../../src/config/security-env";
+import { resolveSwaggerOauthRedirectOrigin } from "../../src/config/swagger-env";
 
 const VALID_JWKS_URL =
   "https://auth.medaris.app/realms/amel-tech-dev/protocol/openid-connect/certs";
@@ -190,5 +191,46 @@ describe("tedrisat configuration", () => {
         (enabled as { rejectUnauthorized: boolean }).rejectUnauthorized
       ).toBe(true);
     });
+  });
+});
+
+describe("resolveSwaggerOauthRedirectOrigin", () => {
+  // Only consulted when Swagger is actually mounted. Left unguarded it
+  // stringified an absent variable into `undefined/docs/oauth2-redirect.html`,
+  // which boots and only fails at the Authorize click.
+  it("throws, naming the variable, when KEYCLOAK_REDIRECT_URL is unset", () => {
+    expect(() => resolveSwaggerOauthRedirectOrigin({})).toThrow(
+      /KEYCLOAK_REDIRECT_URL/
+    );
+  });
+
+  it("rejects an empty value rather than building undefined-looking URLs", () => {
+    expect(() =>
+      resolveSwaggerOauthRedirectOrigin({ KEYCLOAK_REDIRECT_URL: "" })
+    ).toThrow(/KEYCLOAK_REDIRECT_URL/);
+  });
+
+  it("rejects a value that is not an absolute URL", () => {
+    expect(() =>
+      resolveSwaggerOauthRedirectOrigin({
+        KEYCLOAK_REDIRECT_URL: "api-tedrisat-dev.medaris.net",
+      })
+    ).toThrow(/KEYCLOAK_REDIRECT_URL/);
+  });
+
+  it("returns an absolute origin unchanged", () => {
+    expect(
+      resolveSwaggerOauthRedirectOrigin({
+        KEYCLOAK_REDIRECT_URL: "https://api-tedrisat-dev.medaris.net",
+      })
+    ).toBe("https://api-tedrisat-dev.medaris.net");
+  });
+
+  it("drops a trailing slash, since the endpoint carries its own", () => {
+    expect(
+      resolveSwaggerOauthRedirectOrigin({
+        KEYCLOAK_REDIRECT_URL: "https://api-tedrisat-dev.medaris.net/",
+      })
+    ).toBe("https://api-tedrisat-dev.medaris.net");
   });
 });

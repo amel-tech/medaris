@@ -10,6 +10,7 @@ import {
   type SwaggerCspRequest,
   shouldRelaxSwaggerHeaders,
 } from "./config/swagger-csp";
+import { resolveSwaggerOauthRedirectOrigin } from "./config/swagger-env";
 
 async function bootstrap() {
   const logger = LoggerFactory.create();
@@ -57,6 +58,10 @@ async function bootstrap() {
     const swaggerEndpoint = endpointPrefixOf(
       config.get<string>("swagger.endpoint") || "/swagger"
     );
+    // The other half of that concatenation. KEYCLOAK_REDIRECT_URL is in no
+    // schema, so an absent value used to stringify into
+    // `undefined/docs/oauth2-redirect.html` — see config/swagger-env.ts.
+    const oauthRedirectOrigin = resolveSwaggerOauthRedirectOrigin();
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     // helmet() already ran for every route in applyGlobalMiddleware above, so
     // the two headers can only be taken back off here. The predicate matches
@@ -77,7 +82,7 @@ async function bootstrap() {
     SwaggerModule.setup(swaggerEndpoint || "/", app, document, {
       swaggerOptions: {
         persistAuthorization: true,
-        oauth2RedirectUrl: `${config.get<string>("KEYCLOAK_REDIRECT_URL")}${swaggerEndpoint}/${SWAGGER_OAUTH2_REDIRECT_SEGMENT}`,
+        oauth2RedirectUrl: `${oauthRedirectOrigin}${swaggerEndpoint}/${SWAGGER_OAUTH2_REDIRECT_SEGMENT}`,
         initOAuth: {
           clientId: config.get<string>("KEYCLOAK_CLIENT_ID"),
           appName: "Ameltech Keycloak Login",
