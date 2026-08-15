@@ -84,9 +84,8 @@ bypasses the window is what decides who can spend at will.**
 
 That used to be the `ai-review` label, which is not a permission. GitHub has **no per-label
 ACL** — labels cannot be restricted by ruleset or any other setting, and every collaborator with
-write or triage can apply any of them. That was **11 of the 17 collaborators**. Worse, the label
-persisted: once applied, every later push by anyone re-ran the review immediately, for as long as
-the PR stayed open.
+write or triage can apply any of them. Worse, the label persisted: once applied, every later push
+by anyone re-ran the review immediately, for as long as the PR stayed open.
 
 The bypass is now keyed to the **actor** — `github.event.sender`, meaning whoever applied the
 label or pushed the commit — resolved through
