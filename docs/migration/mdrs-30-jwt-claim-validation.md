@@ -64,20 +64,23 @@ allow-list.
 
 ## What was verified
 
-Gate, from this worktree, `origin/main` at `7210c91`:
+Gate, from this worktree, after merging `origin/main` at `22a4c6f` (the branch started from
+`7210c91`; the merge brought in MDRS-31's flashcard-label e2e suite and only CLAUDE.md's test
+counter conflicted):
 
 | Command | Result |
 | --- | --- |
 | `pnpm nx run-many -t typecheck --skip-nx-cache` | 16 projects |
-| `pnpm nx run-many -t test --skip-nx-cache` | **129 tests / 12 suites**, all passing |
+| `pnpm nx run-many -t test --skip-nx-cache` | **150 tests / 13 suites**, all passing |
 | `pnpm nx run-many -t build --skip-nx-cache` | 8 projects |
 | `pnpm nx run-many -t lint --skip-nx-cache` | 16 projects |
 | `pnpm nx run-many -t module-boundaries --skip-nx-cache` | 16 projects |
 | `node tools/ci/biome-ratchet.mjs` | errors 0 · warnings 94 · infos 27 — all at baseline |
 
-The 129/12 figure is the measured total: tedrisat 127 in 10 suites, teskilat 2 in 2 suites,
-`tedris-web:test` is `echo 'Tests not implemented'`. `CLAUDE.md` was updated from 106/11, and
-its "of tedrisat's 9 suites" line from 9 to 10.
+The 150/13 figure is the measured total on the merged tree: tedrisat 148 in 11 suites,
+teskilat 2 in 2 suites, `tedris-web:test` is `echo 'Tests not implemented'`. `CLAUDE.md` was
+106/11 when this branch opened and 127/12 on `main` by the time the merge landed; it now
+carries the measured 150/13, and its "of tedrisat's 9 suites" line reads 11.
 
 The acceptance criteria's mutation check was actually run, not assumed:
 

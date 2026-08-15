@@ -1,4 +1,6 @@
 import { Injectable } from "@nestjs/common";
+import { FlashcardDeckLabelForbiddenError } from "./errors/flashcard-deck-label-forbidden.error";
+import { FlashcardDeckLabelNotFoundError } from "./errors/flashcard-deck-label-not-found.error";
 import { FlashcardDeckLabelRepository } from "./flashcard-deck-label.repository";
 import {
   ICreateFlashcardDeckLabel,
@@ -15,7 +17,32 @@ export class FlashcardDeckLabelService {
   ): Promise<IFlashcardDeckLabel> {
     return await this.labelRepository.create(createTagDto);
   }
-  async deleteLabel(labelId: string): Promise<boolean> {
+  /**
+   * Ensures the deck label exists and is owned by `userId`, else throws.
+   *
+   * `deckLabels` has no `userId` column — only `createdBy` — so that is the
+   * ownership field here, unlike `FlashcardLabelService.assertOwner`. The two
+   * are deliberately not unified: they read different columns because the two
+   * tables genuinely differ.
+   *
+   * The `!label` guard is load-bearing despite `getById` being typed
+   * `Promise<IFlashcardDeckLabel>`. It destructures `[result]` out of a
+   * drizzle select, so a miss yields `undefined` at runtime while the type
+   * says otherwise; without the guard a missing row would read `undefined`
+   * off it and throw a TypeError as a 500 instead of an honest 404.
+   */
+  async assertOwner(labelId: string, userId: string): Promise<void> {
+    const label = await this.labelRepository.getById(labelId);
+    if (!label) {
+      throw new FlashcardDeckLabelNotFoundError(labelId);
+    }
+    if (label.createdBy !== userId) {
+      throw new FlashcardDeckLabelForbiddenError();
+    }
+  }
+
+  async deleteLabel(labelId: string, userId: string): Promise<boolean> {
+    await this.assertOwner(labelId, userId);
     return await this.labelRepository.delete(labelId);
   }
   async deckLabeling(
