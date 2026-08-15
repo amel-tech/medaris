@@ -689,6 +689,15 @@ jobs:
               and report it as advisory instead — it will still be shown to the author.
             - Emit this object exactly once, as the last thing you do, no matter how the review
               went: findings, no findings, or ran short on turns.
+            - NEVER write a raw `"` inside a JSON string value. You are hand-writing this JSON,
+              and quoting code is what breaks it: on 2026-08-15 the `authz` lens ended a clean
+              review with
+                  "summary": "... a suite (`include: ["test/**/*.spec.ts"]` still selects ..."
+              The inner quotes closed the string early, the object would not parse, and a paid,
+              correct, finding-free review was reported as DEAD and turned the gate red. When you
+              quote code inside a string value, use single quotes or backticks — write
+              `include: ['test/**/*.spec.ts']`. If you truly cannot avoid a double quote, escape
+              it as `\"`. This applies to every string field: summary, title, detail and fix.
 
       # The verdict is computed by the BASE branch's copy of the evaluator, never
       # the pull request's. Without this, a PR that edits only

@@ -255,7 +255,18 @@ run" with `is_error=null`.
 | Cause | What it means | What happens |
 | --- | --- | --- |
 | **self-edit** | the PR changes `.github/workflows/ai-review.yml`. The gate cannot vouch for changes to itself. | `mode=unverifiable`, **red**. The one case here that needs a human: review plus the `ai-review-bypass` label. Automating past it would let a change to the gate merge unreviewed, which is what the guard exists to stop. |
-| **stale merge ref** | the PR does *not* touch that file, but `refs/pull/N/merge` still merges into a pre-change base. GitHub recomputes merge refs in the background after the base branch moves, **not** instantly — measured at over 25 minutes on 2026-08-15. | `mode=queued`, **red**, and **it fixes itself**. Nothing is wrong with the PR, so it goes back on the queue the repository already has and the nightly drain retries it. No instruction to follow and nobody to ask. |
+| **stale merge ref** | the PR does *not* touch that file, but `refs/pull/N/merge` still merges into a pre-change base. | `mode=queued`, **red**, and **it fixes itself**. Nothing is wrong with the PR, so it goes back on the queue the repository already has and the nightly drain retries it. No instruction to follow and nobody to ask. |
+
+**How long a stale merge ref actually lasts, measured.** GitHub's recompute is **lazy and
+request-triggered**, not a timed sweep. On 2026-08-15 all four open PRs sat at `into a4cdda8`
+across *two* subsequent `main` commits and roughly seven hours. The moment `GET /pulls/25` was
+called, the API returned `mergeable: null` / `mergeable_state: unknown` and the ref refreshed to
+current `main` within ten seconds.
+
+So "wait and it heals" is true, but the waiting is not what heals it — **asking** is. The drain
+gets this for free, because listing and re-labelling a PR touches it through the API. Anyone
+debugging a PR that seems stuck should call `gh api repos/OWNER/REPO/pulls/N` once and re-check
+rather than waiting.
 
 The preflight detects both before dispatching anything, so neither spends a matrix of
 jobs on a run the action would reject before its first turn.
@@ -422,6 +433,15 @@ Rules, and the reasoning behind them:
   real. The content survived only in the `ai-review-verdict-*` artifacts, which
   expire after 7 days. Each lens now posts every finding it reports, advisory ones
   included, as an inline comment on the line it concerns.
+- **A malformed `summary` no longer discards the review.** The model hand-writes this JSON and
+  the thing that breaks it is quoting code. On 2026-08-15 the `authz` lens finished a clean, paid
+  review of PR #25 (`is_error:false`, 9 turns, $0.50), concluded no findings, and was reported
+  **DEAD** because its summary contained ``(`include: ["test/**/*.spec.ts"]`` — the raw quotes
+  closed the JSON string early and nothing parsed. The prompt now forbids raw `"` inside string
+  values, and because a prompt rule is an instruction rather than a guarantee,
+  `evaluate-verdict.mjs` also salvages the `findings` array on its own when the enclosing object
+  will not parse. Nothing branches on `summary`; the findings array answers the only question the
+  gate asks. The salvage cannot manufacture a pass — no findings array anywhere is still DEAD.
 - **An omitted `confidence` is read as `high`** (`evaluate-verdict.mjs`), which is the
   fail-closed reading — over-blocking is cheap, silently dropping a real finding is
   not. The prompts therefore require `confidence` to be stated explicitly rather than
