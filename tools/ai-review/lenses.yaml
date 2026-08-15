@@ -66,14 +66,45 @@ defaults:
 
   # Ceilings, not targets. A lens that hits these is reported as a lens failure
   # by the workflow rather than being quietly truncated into a PASS.
-  max_turns: 40
+  #
+  # Every max_turns here was raised by 10 on 2026-08-15 (MDRS-53), and
+  # boundaries-duplication by 25, against these measurements from the first
+  # overnight run:
+  #   - boundaries-duplication died on PR #25 with subtype=error_max_turns at its
+  #     old cap of 35, on a 26-file / +1264-1707 diff, having spent ~6 turns on
+  #     tool calls the old narrow allowlist rejected. It got 35 -> 60.
+  #   - Posting inline comments is a NEW per-finding turn cost that none of these
+  #     numbers were sized for. The most any single lens found in one run was 3
+  #     (authz and correctness, both on PR #28), so +10 covers the observed worst
+  #     case with room to spare.
+  #
+  # Raised again on 2026-08-15 after the first run that actually posted inline
+  # comments, which showed +10 was not enough for the busiest lenses:
+  #   - config-secrets died with error_max_turns at 40 on PR #25, the same diff
+  #     it had reviewed cleanly at 30 BEFORE inline commenting existed. 40 -> 65,
+  #     and its timeout 15 -> 25 to match. Commenting costs more than the three
+  #     findings-per-lens worst case suggested, because the model interleaves
+  #     comments with reading rather than batching them at the end.
+  #   - authz 50 -> 60 and schema-drift 45 -> 55 for the same reason, before they
+  #     hit it too. boundaries-duplication and correctness are left alone: both
+  #     finished comfortably (22 and 39 turns) on that run.
+  #
+  # Read the gate table carefully before tuning these further: the `num_turns` it
+  # prints is NOT this budget. config-secrets reports num_turns=35 while running
+  # under --max-turns 30 and exiting clean. Only an explicit `error_max_turns`
+  # subtype in the execution record means a lens actually hit its cap.
+  max_turns: 50
   timeout_minutes: 20
 
-  # Read-only by construction. No lens needs to write anything: the verdict is
-  # the model's final message, not a file on disk. The reference implementation
-  # had a "read-only" allowlist that nonetheless had to permit mkdir/printf/tee
-  # so the model could write its verdict — that contradiction is removed here.
-  # The workflow is authoritative if it sets its own allowlist; this records intent.
+  # No lens writes a FILE. The verdict is the model's final message, not
+  # something on disk, so no lens needs mkdir/printf/tee — the reference
+  # implementation's "read-only" allowlist had to permit all three so the model
+  # could write its verdict, and that contradiction is not reproduced here.
+  #
+  # Since MDRS-53 a lens does perform exactly one write: it posts its findings as
+  # inline pull-request comments. The workflow's `--allowedTools` is the
+  # authoritative list (it grants the inline-comment tool and a wider set of
+  # read verbs, and explains what that costs); this block records intent only.
   allowed_tools:
     - Read
     - Grep
@@ -127,7 +158,7 @@ lenses:
       - "apps/*/app/api/**/*.ts"
     exclude_globs:
       - "libs/services/src/**/generated/**"
-    max_turns: 40
+    max_turns: 60
     timeout_minutes: 20
     known_false_positives:
       - "AuthGuard on the class covers every handler in that controller — a handler with no decorator of its own inside a @UseGuards(AuthGuard) class is guarded."
@@ -324,7 +355,7 @@ lenses:
     exclude_globs:
       - "libs/services/src/**/generated/**"
       - "apps/tedrisat/src/database/migrations/meta/**"
-    max_turns: 35
+    max_turns: 55
     timeout_minutes: 20
     known_false_positives:
       - "libs/services/src/tedrisat/generated/** is machine output from openapi-generator-cli. Never review its style; only ever ask whether it was regenerated."
@@ -543,8 +574,8 @@ lenses:
       # CODEOWNERS changes what every other control in the repository covers.
       - "**/vitest.config.ts"
       - ".github/CODEOWNERS"
-    max_turns: 30
-    timeout_minutes: 15
+    max_turns: 65
+    timeout_minutes: 25
     known_false_positives:
       - "NEXT_PUBLIC_KEYCLOAK_CLIENT_ID and NEXT_PUBLIC_KEYCLOAK_ISSUER are public OIDC values by design. Not secrets."
       - "Non-credential fallbacks like NODE_ENV || 'development' or LOG_LEVEL || 'info' are fine. Only credentials and security-relevant endpoints matter."
@@ -757,7 +788,7 @@ lenses:
       - "apps/keycloak-theme/src/kc.gen.tsx"
       - "**/routeTree.gen.ts"
       - "apps/tedrisat/src/database/migrations/meta/**"
-    max_turns: 60
+    max_turns: 70
     timeout_minutes: 25
     known_false_positives:
       - "A plain (non-type) import of a class used only as a type is REQUIRED in apps/tedrisat, apps/teskilat and libs/common. Never suggest `import type` there."
@@ -969,7 +1000,7 @@ lenses:
     exclude_globs:
       - "libs/services/src/**/generated/**"
       - "apps/tedrisat/src/database/migrations/meta/**"
-    max_turns: 40
+    max_turns: 50
     timeout_minutes: 20
     known_false_positives:
       - "A Drizzle relational query with `with:` is ONE SQL statement, not N+1. flashcard-deck.repository.ts:78-92 nests a subquery inside exists() with an explanatory comment — also one statement."
@@ -1169,8 +1200,8 @@ lenses:
       - "libs/services/src/**/generated/**"
       - "apps/keycloak-theme/src/kc.gen.tsx"
       - "**/routeTree.gen.ts"
-    max_turns: 35
-    timeout_minutes: 20
+    max_turns: 60
+    timeout_minutes: 25
     known_false_positives:
       - "@medaris/ui/components/*, /lib/*, /custom/*, /hooks/* are DECLARED subpath exports (libs/ui/package.json exports map). They are entry points, not deep imports — 100+ call sites."
       - "~/lib/*, ~/features/*, ~/components/* are app-internal tsconfig paths in the Next apps. Not cross-package aliases."

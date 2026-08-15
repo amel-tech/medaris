@@ -87,6 +87,23 @@ jobs:
             exit 1
           fi
 
+          # `--state open` is load-bearing, not a default worth trimming. A pull
+          # request merged or closed while queued — an admin merging through a
+          # red gate is the ordinary case — keeps its `ai-review-queued` label
+          # for ever. Filtering on open state is what drops it from the queue
+          # automatically, so nobody has to remember to clean up after a merge
+          # and no run is ever spent reviewing a merged diff.
+          #
+          # A pull request released while its merge ref is still stale re-queues
+          # itself through ai-review.yml's stale branch and is retried here the
+          # next night. That retry costs no lens jobs, but it is NOT guaranteed
+          # to converge: only a push to the head branch regenerates a merge ref,
+          # and neither this workflow nor the gate may push to a contributor's
+          # branch. Measured 2026-08-15 — a ref stayed stale across two `main`
+          # commits, ~7 hours and 40 API reads, then refreshed 15 seconds after
+          # an `update-branch`. So count the retries and say so: a silent loop
+          # that never converges is the shape of failure this gate exists to
+          # remove, and it would otherwise look identical to a healthy queue.
           queued="$(gh pr list --repo "${REPO}" --state open \
             --label ai-review-queued --limit "${LIMIT}" \
             --json number --jq '.[].number')"
@@ -114,10 +131,25 @@ jobs:
             # the queue label and without a review, which is visible as a red
             # gate that never resolves — better than a PR that silently sits in
             # a queue nobody drains. The failure is also counted below.
+            # How many times has this drain already released this PR? Each
+            # release posts an `ai-review` label event, so the timeline is the
+            # counter — no state to store anywhere. Two or more means the PR
+            # came straight back to the queue, which for a stale merge ref means
+            # the ref is not refreshing and never will without a push.
+            releases="$(gh api "repos/${REPO}/issues/${pr}/timeline" --paginate \
+              --jq '[.[] | select(.event == "labeled" and .label.name == "ai-review")] | length' \
+              2>/dev/null || echo 0)"
+
             if gh pr edit "${pr}" --repo "${REPO}" \
                  --remove-label ai-review-queued \
                  --add-label ai-review; then
-              echo "| #${pr} | ✅ |" >> "$GITHUB_STEP_SUMMARY"
+              if [ "${releases}" -ge 2 ]; then
+                echo "| #${pr} | ✅ (released ${releases}× before — see warning) |" \
+                  >> "$GITHUB_STEP_SUMMARY"
+                echo "::warning::#${pr} has been released ${releases} times and keeps returning to the queue. A stale merge ref does not clear on its own — push to the branch (or press Update branch) to regenerate it."
+              else
+                echo "| #${pr} | ✅ |" >> "$GITHUB_STEP_SUMMARY"
+              fi
               echo "released #${pr}"
             else
               echo "| #${pr} | ❌ failed |" >> "$GITHUB_STEP_SUMMARY"

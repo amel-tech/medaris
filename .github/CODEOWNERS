@@ -1,18 +1,12 @@
-# Code owners for the paths that gate everything else (MDRS-49).
+# Code owners for the paths that can disable the other gates (MDRS-49, MDRS-54).
 #
-# STATUS: ADVISORY, NOT ENFORCED. The "main protection" ruleset on this repo
-# (id 20827887) requires a pull request with 1 approval and the "Verify" and
-# "Commit hygiene" status checks, but it does NOT set
-# `require_code_owner_review`. So today this file only auto-requests these
-# reviewers; any single approval still satisfies the rule. Turning it into a
-# requirement is a repo-settings change, made deliberately and separately.
+# ADVISORY: ruleset 20827887 does not set `require_code_owner_review`, so any
+# single approval satisfies it. This file only auto-requests reviewers.
 #
-# Every rule below names TWO owners on purpose. These paths are the ones that
-# can disable the other gates — a change to .github/ can drop a required check,
-# a change to tools/ci/ can make a gate pass vacuously — so review of them must
-# never be single-threaded on one person's availability. Two names also means
-# the author of a change can be excluded from reviewing it and someone is still
-# left.
+# The owner is a team so GitHub's code review assignment can rotate a subset.
+# That setting lives on the team, not here — round-robin, 2 reviewers, notify
+# entire team off. Disable it and GitHub requests the whole team instead:
+# https://github.com/orgs/amel-tech/teams/medaris/settings
 #
 # GitHub applies the LAST matching rule, so order is specific-after-general.
 
@@ -20,8 +14,8 @@
 # library work, which is where most PRs land.
 
 # CI workflows, PR template, dependabot config, and this file itself.
-/.github/ @tahaayan @Argedik
+/.github/ @amel-tech/medaris
 
 # The gate scripts CI executes. Weakening one of these is indistinguishable
 # from deleting the check it backs.
-/tools/ci/ @tahaayan @Argedik
+/tools/ci/ @amel-tech/medaris
