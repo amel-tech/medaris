@@ -1,3 +1,5 @@
+// `createdBy` is deliberately absent (MDRS-27) — see create-flashcard-label.dto.ts.
+// The controller takes the actor from the verified token instead.
 import {
   IsEnum,
   IsString,
@@ -17,11 +19,6 @@ export class CreateFlashcardDeckLabelDto {
   @ApiProperty()
   @IsEnum(Scope)
   scope!: Scope;
-
-  @ApiProperty()
-  @IsUUID()
-  @IsString()
-  createdBy!: string;
 }
 export class CreateFlashcardDeckLabelingDto {
   @ApiProperty()
@@ -38,9 +35,4 @@ export class CreateFlashcardDeckLabelingDto {
   @IsUUID()
   @IsString()
   deckId!: string;
-
-  @ApiProperty()
-  @IsUUID()
-  @IsString()
-  createdBy!: string;
 }
