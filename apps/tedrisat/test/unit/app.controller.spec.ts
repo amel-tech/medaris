@@ -15,6 +15,8 @@ describe("AppController", () => {
             () => ({
               keycloak: {
                 jwksUrl: "test-url",
+                issuer: "https://keycloak.invalid/realms/test",
+                audience: "tedrisat-api",
               },
             }),
           ],

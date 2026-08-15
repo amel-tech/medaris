@@ -47,6 +47,9 @@ export default () => {
     },
     keycloak: {
       jwksUrl: security.jwksUrl,
+      issuer: security.issuer,
+      audience: security.audience,
+      allowedClients: security.allowedClients,
       cacheTtl: process.env.KEYCLOAK_CACHE_TTL || "86400",
       notFoundCacheTtl: process.env.KEYCLOAK_NOT_FOUND_CACHE_TTL || "120",
     },

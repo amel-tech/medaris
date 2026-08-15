@@ -9,9 +9,16 @@ import { z } from "zod";
  * 401 to every request. `DB_PASSWORD` previously defaulted to `"tedrisat"` —
  * the credential created in docker/init-db.sql — so a deployment that forgot
  * the variable silently tried a well-known password.
+ *
+ * `KEYCLOAK_ISSUER` and `KEYCLOAK_AUDIENCE` join them for the same reason
+ * (MDRS-30): JwtVerifierService checks `iss` and `aud` on every token, and a
+ * fallback would silently restore the behaviour where any token signed by the
+ * realm key — an ID token, a token minted for another client — is accepted.
  */
 const securityEnvSchema = z.object({
   KEYCLOAK_JWKS_URL: z.string().url(),
+  KEYCLOAK_ISSUER: z.string().url(),
+  KEYCLOAK_AUDIENCE: z.string().min(1),
   DB_PASSWORD: z.string().min(1),
 });
 
@@ -43,11 +50,24 @@ function reject(issues: z.ZodIssue[]): never {
   );
 }
 
-/** Both required variables, for the runtime config. */
+/**
+ * `KEYCLOAK_ALLOWED_CLIENTS` is a comma-separated `azp` allow-list and is
+ * deliberately optional: `aud` already binds a token to this API, and the
+ * allow-list only narrows further to the front-ends that may obtain such a
+ * token. Empty therefore means "no `azp` restriction", not "checks disabled".
+ */
+function readAllowedClients(env: NodeJS.ProcessEnv): string {
+  return env.KEYCLOAK_ALLOWED_CLIENTS || "";
+}
+
+/** All required variables, for the runtime config. */
 export function readSecurityEnv(env: NodeJS.ProcessEnv = process.env) {
   if (isTestRunner(env)) {
     return {
       jwksUrl: env.KEYCLOAK_JWKS_URL || "test-url",
+      issuer: env.KEYCLOAK_ISSUER || "https://keycloak.invalid/realms/test",
+      audience: env.KEYCLOAK_AUDIENCE || "test-audience",
+      allowedClients: readAllowedClients(env),
       dbPassword: env.DB_PASSWORD || "tedrisat",
     };
   }
@@ -60,6 +80,9 @@ export function readSecurityEnv(env: NodeJS.ProcessEnv = process.env) {
 
   return {
     jwksUrl: parsed.data.KEYCLOAK_JWKS_URL,
+    issuer: parsed.data.KEYCLOAK_ISSUER,
+    audience: parsed.data.KEYCLOAK_AUDIENCE,
+    allowedClients: readAllowedClients(env),
     dbPassword: parsed.data.DB_PASSWORD,
   };
 }
