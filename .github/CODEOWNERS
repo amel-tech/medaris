@@ -7,12 +7,31 @@
 # reviewers; any single approval still satisfies the rule. Turning it into a
 # requirement is a repo-settings change, made deliberately and separately.
 #
-# Every rule below names TWO owners on purpose. These paths are the ones that
-# can disable the other gates — a change to .github/ can drop a required check,
-# a change to tools/ci/ can make a gate pass vacuously — so review of them must
-# never be single-threaded on one person's availability. Two names also means
-# the author of a change can be excluded from reviewing it and someone is still
-# left.
+# These paths are the ones that can disable the other gates — a change to
+# .github/ can drop a required check, a change to tools/ci/ can make a gate pass
+# vacuously — so review of them must never be single-threaded on one person's
+# availability.
+#
+# WHO IS LISTED, AND WHY THESE FOUR (MDRS-54). The owners are the current
+# write-or-above collaborators with real history on these paths, measured rather
+# than assumed. Commits touching .github/workflows/ across the full history:
+# Taha 26, safakadir 25, Samet 12, Onurkan 9, Enes 7, zahidcakici 4 — and on the
+# per-app deploy workflows specifically, safakadir 5, Onurkan 4, Samet 3, Taha 2,
+# Enes 1. The previous two-name list did not include the second and third most
+# active people on these files. Two of the authors above are not eligible:
+# onurkanbakirci has read access only and zahidcakici is not a collaborator.
+#
+# THE HANDLE MATTERS. This file used to name @tahaayan; Taha authors pull
+# requests as @EsTharian. Both are his real accounts, which is why the mistake
+# was silent — GitHub never recognised the author as an owner, so it never
+# skipped him, it just requested the other name every time.
+#
+# COST OF ADDING A NAME. Individual owners are ALL requested on every matching
+# pull request; the author is skipped, so four names means three notifications.
+# If that becomes noisy the fix is not a shorter list — it is naming the
+# @amel-tech/medaris team (9 members, exactly the write+ collaborators) and
+# enabling GitHub's code review assignment to round-robin to N reviewers. That
+# is an org/team setting, not a change to this file.
 #
 # GitHub applies the LAST matching rule, so order is specific-after-general.
 
@@ -20,8 +39,8 @@
 # library work, which is where most PRs land.
 
 # CI workflows, PR template, dependabot config, and this file itself.
-/.github/ @tahaayan @Argedik
+/.github/ @EsTharian @safakadir @sametcodes @Argedik
 
 # The gate scripts CI executes. Weakening one of these is indistinguishable
 # from deleting the check it backs.
-/tools/ci/ @tahaayan @Argedik
+/tools/ci/ @EsTharian @safakadir @sametcodes @Argedik
