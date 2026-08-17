@@ -65,6 +65,8 @@ export async function startTestDatabase(): Promise<StartedPostgreSqlContainer> {
   process.env.SWAGGER_ENABLED = "false";
   process.env.KEYCLOAK_JWKS_URL =
     "https://auth.medaris.app/realms/amel-tech-dev/protocol/openid-connect/certs";
+  process.env.KEYCLOAK_ISSUER = "https://auth.medaris.app/realms/amel-tech-dev";
+  process.env.KEYCLOAK_AUDIENCE = "tedrisat-api";
 
   console.log(
     `PostgreSQL container started at ${globalPostgresContainer.getConnectionUri()}`
