@@ -53,14 +53,73 @@ export default [
         "error",
         {
           enforceBuildableLibDependency: true,
+          // No escape hatches. Any addition here needs an inline removal
+          // condition (ADR-001 §D5, MDRS-13 AC).
           allow: [],
-          // Permissive on purpose: MDRS-12 only lands the shell so the rule is
-          // wired and green. The real `scope:*` / `platform:*` tags and their
-          // depConstraints are MDRS-13's deliverable (ADR-001 §D5 sequencing).
+          // Normative taxonomy: ADR-001 §D5. Two enforced axes (`scope`,
+          // `platform`) plus a documentary `type` axis that carries no
+          // constraints. Every matching constraint applies cumulatively, so a
+          // `scope:app` + `platform:web` project is checked against the generic
+          // `scope:app` rule, the `allSourceTags` narrowing, AND the platform
+          // exclusion. `scope:app` appears in no allowed list, so no project may
+          // depend on an app — but note that a `@medaris/<app>` specifier never
+          // resolves to a project (apps declare no `main`/`exports`), so only the
+          // relative form is actually caught. Measured, see
+          // docs/migration/mdrs-13-module-boundaries.md.
+          //
+          // Platform isolation uses `notDependOnLibsWithTags`, never a positive
+          // list: `onlyDependOnLibsWithTags` rejects any dependency on an
+          // untagged project, and `scope:shared` libs deliberately carry no
+          // platform tag so both sides can import them.
           depConstraints: [
             {
-              sourceTag: "*",
-              onlyDependOnLibsWithTags: ["*"],
+              sourceTag: "scope:shared",
+              onlyDependOnLibsWithTags: ["scope:shared"],
+            },
+            {
+              sourceTag: "scope:ui",
+              onlyDependOnLibsWithTags: ["scope:ui", "scope:shared"],
+            },
+            {
+              sourceTag: "scope:web",
+              onlyDependOnLibsWithTags: [
+                "scope:web",
+                "scope:ui",
+                "scope:shared",
+              ],
+            },
+            {
+              sourceTag: "scope:server",
+              onlyDependOnLibsWithTags: ["scope:server", "scope:shared"],
+            },
+            {
+              sourceTag: "scope:app",
+              onlyDependOnLibsWithTags: [
+                "scope:ui",
+                "scope:web",
+                "scope:server",
+                "scope:shared",
+              ],
+            },
+            {
+              allSourceTags: ["scope:app", "platform:web"],
+              onlyDependOnLibsWithTags: [
+                "scope:ui",
+                "scope:web",
+                "scope:shared",
+              ],
+            },
+            {
+              allSourceTags: ["scope:app", "platform:node"],
+              onlyDependOnLibsWithTags: ["scope:server", "scope:shared"],
+            },
+            {
+              sourceTag: "platform:web",
+              notDependOnLibsWithTags: ["platform:node"],
+            },
+            {
+              sourceTag: "platform:node",
+              notDependOnLibsWithTags: ["platform:web"],
             },
           ],
         },

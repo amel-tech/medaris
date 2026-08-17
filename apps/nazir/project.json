@@ -1,6 +1,7 @@
 {
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "name": "nazir-web",
+  "tags": ["scope:app", "platform:web", "type:app"],
   "targets": {
     "lint": {},
     "build": {
