@@ -70,13 +70,14 @@ FROM deps AS build
 RUN apk add --no-cache perl-utils
 COPY . .
 # apps/nazir/env.ts validates the environment at build time via
-# @t3-oss/env-nextjs, so `next build` needs values present. .env.example holds
-# placeholders only. KNOWN LIMITATION, carried over from the Dockerfile this
-# replaces: every NEXT_PUBLIC_* value is inlined into the client bundle at build
-# time, so the placeholder is what ships. Fixing that means passing real values
-# as build args from the deploy workflow, which is outside MDRS-16's file scope.
-# The placeholder .env itself is deleted from the runtime stage below.
-RUN cp apps/nazir/.env.example apps/nazir/.env
+# @t3-oss/env-nextjs, so `next build` needs values present. Since MDRS-25 there
+# is one .env, at the root; next.config.js applies it and strips the app prefix.
+# .env.example holds placeholders only. KNOWN LIMITATION, unchanged by MDRS-25:
+# every NEXT_PUBLIC_* value is inlined into the client bundle at build time, so
+# the placeholder is what ships. Fixing that means passing real values as build
+# args from the deploy workflow — MDRS-16 left it open and it is still open.
+# The placeholder .env is never copied into the runtime stage.
+RUN cp .env.example .env
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm exec nx build nazir-web
 
@@ -99,10 +100,11 @@ COPY --from=build --chown=nextjs:nodejs /app/apps/nazir/.next/standalone ./
 # and have to be laid back on top.
 COPY --from=build --chown=nextjs:nodejs /app/apps/nazir/.next/static ./apps/nazir/.next/static
 COPY --from=build --chown=nextjs:nodejs /app/apps/nazir/public ./apps/nazir/public
-# Next copies the build-time .env into the standalone tree. It holds nothing but
-# .env.example placeholders, and a placeholder that silently satisfies runtime
-# env validation is worse than a loud failure, so it does not ship.
-RUN rm -f ./apps/nazir/.env
+# Belt and braces: the build-time .env lives at the workspace root and Next
+# only traces the project directory, so nothing should have carried it in. A
+# placeholder that silently satisfies runtime env validation is worse than a
+# loud failure, so make sure of it.
+RUN rm -f ./.env ./apps/nazir/.env
 
 USER nextjs
 EXPOSE 4002

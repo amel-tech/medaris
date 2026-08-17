@@ -1,6 +1,7 @@
 {
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "name": "utils",
+  "tags": ["scope:shared", "type:util"],
   "targets": {
     "lint": {}
   }

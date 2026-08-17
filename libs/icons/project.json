@@ -1,6 +1,7 @@
 {
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "name": "icons",
+  "tags": ["scope:ui", "platform:web", "type:ui"],
   "targets": {
     "lint": {}
   }

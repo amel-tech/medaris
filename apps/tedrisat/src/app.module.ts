@@ -16,7 +16,10 @@ import { KoskModule } from "./kosk/kosk.module";
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
-      envFilePath: ".env",
+      // No envFilePath: ./load-env.ts has already applied the single root
+      // .env, with the app prefixes stripped. Pointing ConfigModule at a
+      // file as well would re-add the prefixed keys and, worse, would read a
+      // stale apps/<app>/.env if one were ever left behind.
     }),
     LoggerModule.forRoot(),
     AuthGuardModule,

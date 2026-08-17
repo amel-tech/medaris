@@ -94,20 +94,20 @@ catalog:
   '@vitest/coverage-v8': ^4.1.9
   '@vitest/ui': ^4.1.9
   '@swc/core': ~1.15.43 # floors backend 1.15.33; emitDecoratorMetadata under Vitest
+  unplugin-swc: ^1.5.11 # MDRS-20: routes Vitest's transform through @swc/core so
+  #                       `design:paramtypes` survives — esbuild drops it and
+  #                       NestJS DI then fails at runtime while tsc stays green.
   husky: ^9.1.7
   lint-staged: ^17.0.8
   '@commitlint/cli': ^21.0.2
   '@commitlint/config-conventional': ^21.0.2
 
-  # ── Jest: NOT part of the target toolchain (ADR §D9 locks Vitest) ──────────
-  # Deliberately retained through MDRS-10 only. The pnpm strict node_modules
-  # layout is exactly what breaks NestJS resolution, and these 10 backend suites
-  # are the only signal that it did not. MDRS-20 deletes these four entries with
-  # the Vitest conversion. See docs/migration/mdrs-10-pnpm-workspace.md §4.
-  jest: ^29.7.0
-  '@types/jest': ^29.5.14
-  ts-jest: ^29.2.5
-  jest-junit: ^16.0.0
+  # ── Jest: removed by MDRS-20 ───────────────────────────────────────────────
+  # `jest`, `@types/jest`, `ts-jest` and `jest-junit` lived here through MDRS-10
+  # only, as the signal that pnpm's strict node_modules layout had not broken
+  # NestJS resolution. Both backend apps now run the same 10 suites under Vitest
+  # (junit output comes from Vitest's built-in reporter, so jest-junit has no
+  # successor entry). See docs/migration/mdrs-20-jest-to-vitest.md.
 
   # ═══ Backend runtime & framework ═══
   '@nestjs/common': ~11.1.19
@@ -224,3 +224,17 @@ catalog:
   '@storybook/react': ^8.1.10
   '@storybook/react-vite': ^8.1.10
   storybook: ^8.1.10
+
+# ── Named catalogs ───────────────────────────────────────────────────────────
+# `vite` is the one package this workspace genuinely needs at two majors, so it
+# cannot live in the default catalog twice.
+#
+# MDRS-20 measured why: vitest@4 peers on `vite: ^6 || ^7 || ^8`, and with no
+# `vite` declared by the backend apps pnpm satisfied that peer from the frozen
+# keycloak-theme pin above (5.4.21). Vitest then died at startup with
+# ERR_PACKAGE_PATH_NOT_EXPORTED on `vite/module-runner` — a subpath vite 5 does
+# not export. Declaring the peer explicitly here is what pins it correctly;
+# keycloak-theme keeps `catalog:` (vite 5) and stays frozen.
+catalogs:
+  vitest:
+    vite: ^7.3.6

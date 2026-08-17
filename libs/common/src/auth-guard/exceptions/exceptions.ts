@@ -33,6 +33,16 @@ export class JwtVerificationError extends JwtAuthError {
   }
 }
 
+/**
+ * The signature checked out but a claim did not — a token for another client,
+ * an ID token presented as an access token, and so on.
+ */
+export class JwtClaimError extends JwtAuthError {
+  constructor(message?: string, context?: ErrorContext) {
+    super("JWT_CLAIM_REJECTED", message ?? "JWT claim check failed", context);
+  }
+}
+
 export class KeyNotFoundError extends JwtAuthError {
   constructor(message?: string, context?: ErrorContext) {
     super("KEY_NOT_FOUND", message ?? "Signing key not found in JWKS", context);

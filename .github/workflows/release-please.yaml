@@ -1,0 +1,60 @@
+name: Release Please
+
+# The single release surface for all 7 components (MDRS-17, ADR-001 §D10).
+# Replaces two inherited workflows that were byte-identical apart from their
+# token secret: .migration/{backend,frontend}/.github/workflows/release-please.yaml.
+#
+# It does not deploy. release-please cuts a per-component tag and GitHub release
+# (`<component>-v<version>`); the seven per-app workflows in this directory pick
+# that up via `release: created` and guard on the tag prefix. That handoff is the
+# reason this workflow needs a PAT rather than GITHUB_TOKEN — see below.
+
+on:
+  push:
+    branches:
+      - main
+  # Deliberate manual entry point: the first run after this lands regenerates
+  # every component's changelog from whatever history it can see (see the
+  # missing-tags note in docs/migration/mdrs-17-release-please-consolidation.md),
+  # so the release owner may want to trigger it on purpose rather than have the
+  # next merge to main do it.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# One release run at a time. Two concurrent runs would race on the same seven
+# release branches, and the loser can leave a half-written release PR behind.
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      # A release created with the default GITHUB_TOKEN does not emit the
+      # `release` event, so the 7 deploy workflows would silently never run and
+      # the failure would look like "release-please worked, deploys are broken".
+      # Fail here instead, with the fix in the message.
+      - name: Require a release token
+        env:
+          RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          if [ -z "$RELEASE_PLEASE_TOKEN" ]; then
+            echo "::error::secrets.RELEASE_PLEASE_TOKEN is not set on this repository."
+            echo "release-please would still open release PRs with the default GITHUB_TOKEN,"
+            echo "but the releases it creates could not trigger the 7 per-app deploy"
+            echo "workflows (github.token never emits the \`release\` event). Add a PAT with"
+            echo "\`contents: write\` + \`pull_requests: write\` as RELEASE_PLEASE_TOKEN."
+            exit 1
+          fi
+
+      - name: release-please
+        id: release
+        uses: googleapis/release-please-action@c2a5a2bd6a758a0937f1ddb1e8950609867ed15c # v4.3.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}

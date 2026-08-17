@@ -177,15 +177,18 @@ jobs:
     timeout-minutes: 45
     #
     # Deliberately NO postgres service. The backend's inherited pull-request.yaml
-    # ran one, but nothing can use it: the 10 Jest suites in the `test` target
-    # need no database, and apps/tedrisat/test/helpers/test-app.helper.ts
-    # (`test:e2e`, not in this pipeline) starts its *own* Testcontainers
-    # postgres:17-alpine and overwrites DB_HOST/DB_PORT/DB_USERNAME/DB_PASSWORD/
-    # DB_NAME before AppModule loads — with different credentials
-    # (testuser/testpass/tedrisat_test) than the inherited service provided.
-    # Carrying it forward would have paid a container pull and health-check on
-    # every run for nothing. When MDRS-20 wires e2e in, what it needs is a Docker
-    # socket, which ubuntu-latest already has — not a service container.
+    # ran one, but nothing can use it. Four of tedrisat's eight suites are e2e and
+    # they DO need a database — but apps/tedrisat/test/helpers/test-app.helper.ts
+    # starts its *own* Testcontainers postgres:17-alpine and overwrites DB_HOST/
+    # DB_PORT/DB_USERNAME/DB_PASSWORD/DB_NAME before AppModule loads, with
+    # different credentials (testuser/testpass/tedrisat_test) than the inherited
+    # service provided. Carrying it forward would have paid a container pull and
+    # health-check on every run for nothing.
+    #
+    # Note those four e2e suites run inside the `test` target, not only under
+    # `test:e2e` — that was already true under Jest and MDRS-20 kept the glob, so
+    # this job has always needed a Docker socket rather than a service container.
+    # ubuntu-latest provides one.
     steps:
       # fetch-depth: 0 — nx affected needs real history to find a merge base.
       - name: Checkout
@@ -217,18 +220,14 @@ jobs:
 
       # Not optional: apps/nizam and apps/tedris validate env through
       # @t3-oss/env-nextjs at build time, so `nx run-many -t build` fails on a
-      # clean checkout with "Invalid environment variables" without this. The
-      # inherited frontend workflow did the same copy for three apps by hand;
-      # this loop covers every app that ships an example file.
-      - name: Seed app env files from examples
-        run: |
-          for example in apps/*/.env.example; do
-            target="${example%.example}"
-            if [ ! -f "$target" ]; then
-              cp "$example" "$target"
-              echo "seeded $target"
-            fi
-          done
+      # clean checkout with "Invalid environment variables" without this.
+      #
+      # One file is all it takes since MDRS-25: each app's next.config.js (and
+      # each Nest app's src/load-env.ts) applies this root file itself and strips
+      # the app prefix. The inherited frontend workflow copied three files by
+      # hand; the loop that replaced it is gone too.
+      - name: Seed the root env file from the example
+        run: cp .env.example .env
 
       # Workspace-root lint + warning ratchet. Covers the 13 root config files
       # that no per-project `lint` target can see, and fails when Biome's
@@ -242,6 +241,12 @@ jobs:
       # is asserted here instead of observed once.
       - name: Assert nx affected isolates each stack
         run: node tools/ci/assert-affected-isolation.mjs
+
+      # Release identity chain (MDRS-17): one config, one manifest, and the
+      # component -> scope -> tag-prefix -> deploy-workflow links that
+      # release-please breaks silently when they drift.
+      - name: Assert release config consistency
+        run: node tools/ci/assert-release-config.mjs
 
       # The five targets are kept identical to the root `affected` script so the
       # local and CI gates cannot drift.
