@@ -67,7 +67,18 @@ export default [
           // per-project configs stop extending a shared base, or because the
           // base is published as a real workspace package with an `exports`
           // entry that the target-project locator can resolve.
-          allow: ["../../vitest.config", "../../vitest.integration.config"],
+          //
+          // MDRS-71: the workspace env loader, reached by the spec that covers it.
+          // `tools/` is not an Nx project, so the loader is an external resource
+          // with no package specifier and only a relative path can name it — the
+          // same shape as the two Vitest configs above. Removal condition: drop
+          // this when MDRS-66 extracts the loader into a workspace package, at
+          // which point the spec imports `@medaris/env` and this entry is dead.
+          allow: [
+            "../../vitest.config",
+            "../../vitest.integration.config",
+            "../../../../tools/env/root-env.cjs",
+          ],
           // Normative taxonomy: ADR-001 §D5. Two enforced axes (`scope`,
           // `platform`) plus a documentary `type` axis that carries no
           // constraints. Every matching constraint applies cumulatively, so a
