@@ -23,20 +23,29 @@ const securityEnvSchema = z.object({
 });
 
 /**
- * True only inside a Jest worker.
+ * True only inside a test-runner worker.
  *
- * The exemption is keyed on `JEST_WORKER_ID` rather than `NODE_ENV` alone
+ * The exemption is keyed on a worker variable rather than `NODE_ENV` alone
  * because `NODE_ENV=test` is not exclusive to the test runner — a staging
  * container or a CI job reusing a compose file can carry it, and such an
  * environment would otherwise be handed `jwksUrl = "test-url"` and 401 every
  * request, which is the exact failure this task removes.
+ *
+ * Both runners are named because MDRS-20 replaced Jest with Vitest, which never
+ * sets `JEST_WORKER_ID`. Keying on Jest alone silently voided this exemption
+ * the moment the two landed together, and tedrisat then refused to boot in its
+ * own unit suites. `JEST_WORKER_ID` is kept so the guard does not depend on
+ * which runner a given app has been migrated to.
  *
  * apps/tedrisat/test/helpers/test-app.helper.ts sets both variables before
  * AppModule is imported, so the suites do not depend on the fallbacks — the
  * fallbacks only cover unit suites that never boot the Nest container.
  */
 export function isTestRunner(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.NODE_ENV === "test" && env.JEST_WORKER_ID !== undefined;
+  return (
+    env.NODE_ENV === "test" &&
+    (env.JEST_WORKER_ID !== undefined || env.VITEST_WORKER_ID !== undefined)
+  );
 }
 
 function reject(issues: z.ZodIssue[]): never {

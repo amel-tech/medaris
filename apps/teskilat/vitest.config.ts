@@ -43,6 +43,12 @@ export default mergeConfig(
         exclude: [
           "src/main.ts",
           "src/otel.ts",
+          // MDRS-25's root-.env loader. Same category as main.ts: it runs once
+          // as the first import of the process and has no unit surface. It is
+          // named here because it arrived after these floors were measured, and
+          // 16 uncovered lines against this app's 23 statements put every one
+          // of the four thresholds under water at once.
+          "src/load-env.ts",
           "src/config/config.ts",
           "src/**/index.ts",
           "src/**/constants.ts",

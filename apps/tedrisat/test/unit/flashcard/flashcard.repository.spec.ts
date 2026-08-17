@@ -14,9 +14,9 @@ import { FlashcardRepository } from "../../../src/flashcard/flashcard.repository
 describe("FlashcardRepository.createMany", () => {
   let repository: FlashcardRepository;
 
-  const returning = jest.fn();
-  const values = jest.fn(() => ({ returning }));
-  const insert = jest.fn(() => ({ values }));
+  const returning = vi.fn();
+  const values = vi.fn(() => ({ returning }));
+  const insert = vi.fn(() => ({ values }));
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -30,7 +30,7 @@ describe("FlashcardRepository.createMany", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("resolves to an empty array without touching the database", async () => {

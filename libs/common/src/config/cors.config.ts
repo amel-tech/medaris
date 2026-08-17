@@ -78,17 +78,23 @@ function fail(message: string): never {
  * a compose file, carries whatever value the deployment happened to set. Under
  * a `!== "production"` test such a deployment would silently be handed
  * `origin: "*"` — the open door this task exists to close — and would boot
- * green. Anything that is not a developer's machine or a Jest worker has to
- * name its origins.
+ * green. Anything that is not a developer's machine or a test-runner worker has
+ * to name its origins.
  */
 function allowsWildcard(env: NodeJS.ProcessEnv): boolean {
   if (env.NODE_ENV === "development") {
     return true;
   }
 
-  // `JEST_WORKER_ID` is set in every worker and by nothing else, which is what
-  // makes this narrower than `NODE_ENV === "test"` on its own.
-  return env.NODE_ENV === "test" && env.JEST_WORKER_ID !== undefined;
+  // Each runner sets its own worker id in every worker and nothing else does,
+  // which is what makes this narrower than `NODE_ENV === "test"` on its own.
+  // Both are named because MDRS-20 replaced Jest with Vitest: keying on Jest
+  // alone would void this branch entirely once the suites moved, which is what
+  // the sibling check in apps/tedrisat/src/config/security-env.ts hit.
+  return (
+    env.NODE_ENV === "test" &&
+    (env.JEST_WORKER_ID !== undefined || env.VITEST_WORKER_ID !== undefined)
+  );
 }
 
 function parseOrigin(candidate: string): URL {

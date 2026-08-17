@@ -110,9 +110,10 @@ describe("tedrisat configuration", () => {
       expect(configuration().keycloak.allowedClients).toBe("");
     });
 
-    it("still falls back inside a Jest worker so the suites need no Keycloak", () => {
+    it("still falls back inside a test-runner worker so the suites need no Keycloak", () => {
       process.env.NODE_ENV = "test";
       process.env.JEST_WORKER_ID = "1";
+      delete process.env.VITEST_WORKER_ID;
       delete process.env.KEYCLOAK_JWKS_URL;
       delete process.env.KEYCLOAK_ISSUER;
       delete process.env.KEYCLOAK_AUDIENCE;
@@ -121,11 +122,15 @@ describe("tedrisat configuration", () => {
       expect(() => configuration()).not.toThrow();
     });
 
-    it("does not exempt NODE_ENV=test outside a Jest worker", () => {
+    it("does not exempt NODE_ENV=test outside a test-runner worker", () => {
       // A staging container or a CI job reusing a compose file can carry
       // NODE_ENV=test; it must not be handed jwksUrl = "test-url".
+      // Both worker variables have to go: this suite itself runs under Vitest,
+      // so VITEST_WORKER_ID is set in the ambient environment and deleting only
+      // the Jest one would leave the case asserting the opposite of its name.
       process.env.NODE_ENV = "test";
       delete process.env.JEST_WORKER_ID;
+      delete process.env.VITEST_WORKER_ID;
       delete process.env.KEYCLOAK_JWKS_URL;
       delete process.env.DB_PASSWORD;
 
@@ -136,8 +141,11 @@ describe("tedrisat configuration", () => {
   describe("Swagger in production", () => {
     beforeEach(() => {
       // The security variables are read before the Swagger flag, so they have
-      // to be present for these cases to reach it.
+      // to be present for these cases to reach it. ISSUER and AUDIENCE joined
+      // that set in MDRS-30, after these cases were written.
       process.env.KEYCLOAK_JWKS_URL = VALID_JWKS_URL;
+      process.env.KEYCLOAK_ISSUER = VALID_ISSUER;
+      process.env.KEYCLOAK_AUDIENCE = VALID_AUDIENCE;
       process.env.DB_PASSWORD = "a-real-password";
       delete process.env.SWAGGER_ALLOW_IN_PRODUCTION;
     });

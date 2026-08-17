@@ -73,6 +73,8 @@ export default mergeConfig(
         exclude: [
           "src/main.ts",
           "src/otel.ts",
+          // MDRS-25's root-.env loader — see the note in apps/teskilat's config.
+          "src/load-env.ts",
           "src/config/config.ts",
           "src/**/index.ts",
           "src/**/constants.ts",
