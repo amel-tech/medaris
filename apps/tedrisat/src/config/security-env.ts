@@ -55,7 +55,9 @@ function reject(issues: z.ZodIssue[]): never {
 
   throw new Error(
     `@medaris/tedrisat cannot start, the environment is incomplete: ${details}. ` +
-      "See apps/tedrisat/.env.example."
+      "See the repository-root .env.example, where these keys carry the API__ " +
+      "prefix (API__KEYCLOAK_ISSUER and so on) — MDRS-25 strips it on the way in, " +
+      "so the name above is what the app reads, not what you set."
   );
 }
 

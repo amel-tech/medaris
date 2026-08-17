@@ -65,7 +65,8 @@ function fail(message: string): never {
     `ALLOWED_ORIGINS is not usable: ${message}. ` +
       "Set it to a comma-separated list of absolute origins, " +
       "for example ALLOWED_ORIGINS=https://tedris.medaris.app,https://nizam.medaris.app. " +
-      "See apps/tedrisat/.env.example."
+      "See the repository-root .env.example, where this key is API__ALLOWED_ORIGINS " +
+      "— the prefix is stripped on the way in, and it applies to both APIs."
   );
 }
 

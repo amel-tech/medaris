@@ -58,6 +58,11 @@ services:
       DB_HOST: medaris-db
       DB_PORT: ${TEDRISAT__DB_PORT:-${API__DB_PORT:-5432}}
       DB_SSL: ${TEDRISAT__DB_SSL:-${API__DB_SSL:-false}}
+      # Without this, DB_SSL=true is only usable against a database whose
+      # certificate chains to the platform trust store: database-ssl.ts keeps
+      # rejectUnauthorized on and has no other way to receive a private-CA
+      # bundle, so the connection fails with what reads as a broken certificate.
+      DB_CA_CERT: ${TEDRISAT__DB_CA_CERT:-${API__DB_CA_CERT:-}}
       DB_NAME: ${TEDRISAT__DB_NAME:-tedrisat_db}
       DB_USERNAME: ${TEDRISAT__DB_USERNAME:-tedrisat}
       DB_PASSWORD: ${TEDRISAT__DB_PASSWORD:?set TEDRISAT__DB_PASSWORD in .env}
@@ -71,6 +76,12 @@ services:
       AUTO_MIGRATIONS_FOLDER: ./dist/src/database/migrations
       OTEL_ENABLED: ${TEDRISAT__OTEL_ENABLED:-${API__OTEL_ENABLED:-false}}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${TEDRISAT__OTEL_EXPORTER_OTLP_ENDPOINT:-${API__OTEL_EXPORTER_OTLP_ENDPOINT:-localhost:4317}}
+      # The endpoint above carries no scheme, so the gRPC exporter needs the
+      # INSECURE flag to reach a plaintext collector. .env.example ships all
+      # three; unmapped they could not reach a container at all.
+      OTEL_EXPORTER_OTLP_INSECURE: ${TEDRISAT__OTEL_EXPORTER_OTLP_INSECURE:-${API__OTEL_EXPORTER_OTLP_INSECURE:-true}}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${TEDRISAT__OTEL_EXPORTER_OTLP_PROTOCOL:-${API__OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}}
+      OTEL_EXPORTER_OTLP_COMPRESSION: ${TEDRISAT__OTEL_EXPORTER_OTLP_COMPRESSION:-${API__OTEL_EXPORTER_OTLP_COMPRESSION:-gzip}}
       KEYCLOAK_JWKS_URL: ${TEDRISAT__KEYCLOAK_JWKS_URL:-${API__KEYCLOAK_JWKS_URL:?set API__KEYCLOAK_JWKS_URL in .env}}
       # Required by apps/tedrisat/src/config/security-env.ts alongside the JWKS
       # URL (MDRS-30): the config factory parses all three through one zod schema,
@@ -140,6 +151,12 @@ services:
       AUTO_MIGRATIONS_FOLDER: ./dist/src/database/migrations
       OTEL_ENABLED: ${TESKILAT__OTEL_ENABLED:-${API__OTEL_ENABLED:-false}}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${TESKILAT__OTEL_EXPORTER_OTLP_ENDPOINT:-${API__OTEL_EXPORTER_OTLP_ENDPOINT:-localhost:4317}}
+      # Same three as tedrisat above. No DB_CA_CERT here: teskilat opens no
+      # database connection (MDRS-69 decides whether the rest of its DB block
+      # should go the way KEYCLOAK_JWKS_URL did).
+      OTEL_EXPORTER_OTLP_INSECURE: ${TESKILAT__OTEL_EXPORTER_OTLP_INSECURE:-${API__OTEL_EXPORTER_OTLP_INSECURE:-true}}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${TESKILAT__OTEL_EXPORTER_OTLP_PROTOCOL:-${API__OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}}
+      OTEL_EXPORTER_OTLP_COMPRESSION: ${TESKILAT__OTEL_EXPORTER_OTLP_COMPRESSION:-${API__OTEL_EXPORTER_OTLP_COMPRESSION:-gzip}}
       # No KEYCLOAK_* here. teskilat has no auth guard: nothing under
       # apps/teskilat/src reads a Keycloak variable, and its AppModule imports
       # only ConfigModule and LoggerModule. The KEYCLOAK_JWKS_URL that used to

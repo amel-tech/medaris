@@ -26,6 +26,7 @@
       "{workspaceRoot}/.github/workflows/ci.yaml",
       "{workspaceRoot}/vitest.config.ts",
       "{workspaceRoot}/vitest.integration.config.ts",
+      "{workspaceRoot}/tools/env/**",
       {
         "runtime": "cat .env*.local apps/*/.env*.local 2>/dev/null | shasum"
       }

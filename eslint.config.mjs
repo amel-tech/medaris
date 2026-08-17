@@ -17,7 +17,6 @@ export default [
       "**/.nx/**",
       "**/coverage/**",
       "**/storybook-static/**",
-      ".migration/**",
       "**/routeTree.gen.ts",
       "apps/keycloak-theme/src/kc.gen.tsx",
       "apps/keycloak-theme/.keycloakify/**",

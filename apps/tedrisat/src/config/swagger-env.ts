@@ -35,7 +35,8 @@ export function resolveSwaggerEnabled(
     "@medaris/tedrisat refuses to start: SWAGGER_ENABLED=true with " +
       "NODE_ENV=production publishes the API schema and relaxes the security " +
       `headers on the Swagger pages. Set SWAGGER_ENABLED=false, or set ${SWAGGER_PRODUCTION_OPT_IN}=true ` +
-      "to accept that deliberately. See apps/tedrisat/.env.example."
+      "to accept that deliberately. Both live in the repository-root .env.example " +
+      `as API__SWAGGER_ENABLED and API__${SWAGGER_PRODUCTION_OPT_IN}.`
   );
 }
 
@@ -65,7 +66,7 @@ export function resolveSwaggerOauthRedirectOrigin(
       "@medaris/tedrisat cannot mount Swagger UI: KEYCLOAK_REDIRECT_URL is " +
         "unset, and Swagger's oauth2RedirectUrl is built on it. Set it to the " +
         "service's public origin, or set SWAGGER_ENABLED=false. " +
-        "See apps/tedrisat/.env.example."
+        "See the repository-root .env.example, as API__KEYCLOAK_REDIRECT_URL."
     );
   }
 
@@ -75,7 +76,8 @@ export function resolveSwaggerOauthRedirectOrigin(
     throw new Error(
       `@medaris/tedrisat cannot mount Swagger UI: KEYCLOAK_REDIRECT_URL ("${raw}") ` +
         "is not an absolute URL, so Swagger's oauth2RedirectUrl would not " +
-        "resolve. See apps/tedrisat/.env.example."
+        "resolve. See the repository-root .env.example, as " +
+        "API__KEYCLOAK_REDIRECT_URL."
     );
   }
 
