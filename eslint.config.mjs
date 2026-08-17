@@ -53,9 +53,22 @@ export default [
         "error",
         {
           enforceBuildableLibDependency: true,
-          // No escape hatches. Any addition here needs an inline removal
-          // condition (ADR-001 §D5, MDRS-13 AC).
-          allow: [],
+          // No escape hatches beyond the two below. MDRS-13's AC allows an
+          // exception only when it is documented inline with its removal
+          // condition (ADR-001 §D5), so both carry one.
+          //
+          // MDRS-20: the two workspace-root Vitest base configs, which each
+          // project's own vitest config `mergeConfig`s. They are test-runner
+          // configuration, not importable source, so they are reachable only by
+          // relative path — the rule otherwise rejects them as "External
+          // resources cannot be imported using a relative or absolute path".
+          // This whitelists two import specifiers; it exempts no file from the
+          // rule. Removal condition: drop each entry when the matching root
+          // config stops being imported by relative path — either because the
+          // per-project configs stop extending a shared base, or because the
+          // base is published as a real workspace package with an `exports`
+          // entry that the target-project locator can resolve.
+          allow: ["../../vitest.config", "../../vitest.integration.config"],
           // Normative taxonomy: ADR-001 §D5. Two enforced axes (`scope`,
           // `platform`) plus a documentary `type` axis that carries no
           // constraints. Every matching constraint applies cumulatively, so a

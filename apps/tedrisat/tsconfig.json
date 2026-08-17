@@ -19,7 +19,7 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
-    "types": ["node", "multer", "jest"],
+    "types": ["node", "multer", "vitest/globals"],
     "moduleDetection": "auto",
     "noUncheckedIndexedAccess": false,
     "noUnusedLocals": false,

@@ -10,10 +10,10 @@ describe("ExampleController", () => {
   let service: ExampleService;
 
   const mockExampleService = {
-    getAllExamples: jest.fn(),
-    getExampleById: jest.fn(),
-    createExample: jest.fn(),
-    deleteExample: jest.fn(),
+    getAllExamples: vi.fn(),
+    getExampleById: vi.fn(),
+    createExample: vi.fn(),
+    deleteExample: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -32,7 +32,7 @@ describe("ExampleController", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("getAllExamples", () => {
