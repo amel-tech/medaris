@@ -32,9 +32,30 @@ the service is down; the container log is the only place the failure appears.
 | `ALLOWED_ORIGINS` | MDRS-34. Comma-separated bare origins (`https://tedris.medaris.app`), no trailing slash, no path, no wildcard host. `*` is refused outside a developer machine. | `ALLOWED_ORIGINS is not usable: …` at `applyGlobalMiddleware` |
 | `DB_PASSWORD` | MDRS-35 removed the `docker/init-db.sql` fallback | `@medaris/tedrisat cannot start, the environment is incomplete: DB_PASSWORD …` |
 | `KEYCLOAK_JWKS_URL` | MDRS-35 removed the `"test-url"` fallback | same message, naming `KEYCLOAK_JWKS_URL` |
+| `KEYCLOAK_ISSUER` | MDRS-30. The expected `iss`, checked on every token. Validated as `z.string().url()`, so a value that is not an absolute URL fails exactly as an absent one does. | same message, naming `KEYCLOAK_ISSUER` |
+| `KEYCLOAK_AUDIENCE` | MDRS-30. The expected `aud`. Without it the API verifies the signature only, and accepts any token the realm signed — an ID token, or one minted for a different client. | same message, naming `KEYCLOAK_AUDIENCE` |
 
-**Set all three in the Coolify service before deploying a build that contains
-MDRS-34.** `apps/tedrisat/.env.example` lists the full set with comments.
+The last four rows are a single `zod` object in
+`apps/tedrisat/src/config/security-env.ts`, parsed once by the config factory, so
+a deployment missing several of them is told about all of them in one message.
+`ALLOWED_ORIGINS` is separate — it is enforced in `libs/common`, and applies to
+teskilat as well.
+
+Three more variables can stop the boot, on a condition rather than always. All
+three apply to every deployed environment, because `apps/tedrisat/Dockerfile`
+pins `NODE_ENV=production`:
+
+| Variable | Required when | Symptom |
+|---|---|---|
+| `KEYCLOAK_REDIRECT_URL` | `SWAGGER_ENABLED=true`. Swagger UI's `oauth2RedirectUrl` is built on it, and the service refuses to mount the UI rather than serve `undefined/docs/oauth2-redirect.html`. | `@medaris/tedrisat cannot mount Swagger UI: KEYCLOAK_REDIRECT_URL is unset`, at bootstrap |
+| `SWAGGER_ALLOW_IN_PRODUCTION` | `SWAGGER_ENABLED=true` under `NODE_ENV=production`. MDRS-33 made publishing the schema in production an explicit decision, because it also relaxes CSP and COOP on those pages. | `… refuses to start on SWAGGER_ENABLED=true …`, in the config factory |
+| `KEYCLOAK_ALLOWED_CLIENTS` | `KEYCLOAK_AUDIENCE` is realm-wide — i.e. `account`, which `.env.example` ships until MDRS-42 configures an audience mapper for this API's own client id. Then the `azp` allow-list is the only thing binding a token to a client, and `loadJwtClaimPolicy` refuses the pair. With a per-API audience it is an optional narrowing, and empty means "no `azp` restriction", never "checks disabled". | `JwtVerifierService was configured with the realm-wide audience "account" …`, thrown when the DI container builds `JwtVerifierService` — later than the four above, which fail in the config factory |
+
+**Set all of them in the Coolify service before deploying a build that contains
+MDRS-30 or MDRS-34.** The repository-root `.env.example` lists the full set with
+comments, under the `API__` prefix. Note that the error messages still say *"See
+apps/tedrisat/.env.example"* — MDRS-25 consolidated the workspace onto the single
+root file and that path no longer exists.
 
 ---
 

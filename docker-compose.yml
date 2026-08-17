@@ -24,14 +24,35 @@ services:
     ports:
       - "${TEDRISAT_PORT:-3001}:3001"
     environment:
-      NODE_ENV: ${TEDRISAT__NODE_ENV:-${API__NODE_ENV:-development}}
+      # Falls back to production, matching `ENV NODE_ENV=production` in
+      # apps/tedrisat/Dockerfile. A compose `environment:` entry overrides image
+      # ENV, so the old `development` fallback silently moved every container
+      # that did not set the key into the relaxed branch of every environment
+      # check — and this is the master switch for two of them: cors.config.ts
+      # accepts a `*` origin list only under development, and swagger-env.ts
+      # demands SWAGGER_ALLOW_IN_PRODUCTION only under production. Hardening
+      # either of those while this said development would have been decorative.
+      NODE_ENV: ${TEDRISAT__NODE_ENV:-${API__NODE_ENV:-production}}
       PORT: ${TEDRISAT__PORT:-3001}
       SERVICE_NAME: ${TEDRISAT__SERVICE_NAME:-tedrisat-service}
       LOG_LEVEL: ${TEDRISAT__LOG_LEVEL:-${API__LOG_LEVEL:-info}}
-      ALLOWED_ORIGINS: ${TEDRISAT__ALLOWED_ORIGINS:-${API__ALLOWED_ORIGINS:-*}}
+      # No `*` fallback. libs/common/src/config/cors.config.ts refuses to boot on
+      # a wildcard outside NODE_ENV=development, so the old default survived only
+      # because NODE_ENV falls back to development one line above — change that
+      # and the container dies on a value nobody chose. Required instead, the way
+      # the other per-deployment values here are.
+      ALLOWED_ORIGINS: ${TEDRISAT__ALLOWED_ORIGINS:-${API__ALLOWED_ORIGINS:?set API__ALLOWED_ORIGINS in .env}}
       ALLOWED_METHODS: ${TEDRISAT__ALLOWED_METHODS:-${API__ALLOWED_METHODS:-GET,HEAD,PUT,PATCH,POST,DELETE}}
-      SWAGGER_ENABLED: ${TEDRISAT__SWAGGER_ENABLED:-${API__SWAGGER_ENABLED:-true}}
+      # Off by default since MDRS-33 — publishing the schema also relaxes CSP and
+      # COOP on the Swagger pages — matching API__SWAGGER_ENABLED=false in .env.example.
+      SWAGGER_ENABLED: ${TEDRISAT__SWAGGER_ENABLED:-${API__SWAGGER_ENABLED:-false}}
       SWAGGER_PATH: ${TEDRISAT__SWAGGER_PATH:-${API__SWAGGER_PATH:-/docs}}
+      # MDRS-33's opt-in. Without this key the refusal it guards has no remedy
+      # reachable from the root .env: with NODE_ENV=production above, turning
+      # SWAGGER_ENABLED on makes swagger-env.ts throw in the config factory and
+      # the container restart-loops. Shipping the gate without its own escape
+      # hatch would make the documented production-Swagger path impossible.
+      SWAGGER_ALLOW_IN_PRODUCTION: ${TEDRISAT__SWAGGER_ALLOW_IN_PRODUCTION:-${API__SWAGGER_ALLOW_IN_PRODUCTION:-false}}
       # The root .env carries the host-side DB_HOST=localhost; inside the
       # compose network the database answers on the service name.
       DB_HOST: medaris-db
@@ -51,8 +72,32 @@ services:
       OTEL_ENABLED: ${TEDRISAT__OTEL_ENABLED:-${API__OTEL_ENABLED:-false}}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${TEDRISAT__OTEL_EXPORTER_OTLP_ENDPOINT:-${API__OTEL_EXPORTER_OTLP_ENDPOINT:-localhost:4317}}
       KEYCLOAK_JWKS_URL: ${TEDRISAT__KEYCLOAK_JWKS_URL:-${API__KEYCLOAK_JWKS_URL:?set API__KEYCLOAK_JWKS_URL in .env}}
-      KEYCLOAK_CLIENT_ID: ${TEDRISAT__KEYCLOAK_CLIENT_ID:-}
-      KEYCLOAK_REDIRECT_URL: ${TEDRISAT__KEYCLOAK_REDIRECT_URL:-}
+      # Required by apps/tedrisat/src/config/security-env.ts alongside the JWKS
+      # URL (MDRS-30): the config factory parses all three through one zod schema,
+      # so an unset issuer or audience is a boot failure, not a relaxed check.
+      KEYCLOAK_ISSUER: ${TEDRISAT__KEYCLOAK_ISSUER:-${API__KEYCLOAK_ISSUER:?set API__KEYCLOAK_ISSUER in .env}}
+      KEYCLOAK_AUDIENCE: ${TEDRISAT__KEYCLOAK_AUDIENCE:-${API__KEYCLOAK_AUDIENCE:?set API__KEYCLOAK_AUDIENCE in .env}}
+      # Empty is a legitimate value — it means "no `azp` restriction" — so this is
+      # not `:?`. It is mandatory only in the pairing .env.example actually ships:
+      # with the realm-wide audience `account`, loadJwtClaimPolicy
+      # (libs/common/src/auth-guard/services/jwt-verifier.service.ts:107) refuses
+      # to construct without it, and that error names the variable better than a
+      # compose interpolation failure would.
+      KEYCLOAK_ALLOWED_CLIENTS: ${TEDRISAT__KEYCLOAK_ALLOWED_CLIENTS:-${API__KEYCLOAK_ALLOWED_CLIENTS:-}}
+      # Both carry the API__ tier the file header promises ("the app-specific
+      # spelling first, then the group one"). Without it the
+      # API__KEYCLOAK_REDIRECT_URL that .env.example ships reached the container
+      # as an empty string while working fine under `nx run tedrisat:dev`, so the
+      # two paths disagreed about a documented variable.
+      KEYCLOAK_CLIENT_ID: ${TEDRISAT__KEYCLOAK_CLIENT_ID:-${API__KEYCLOAK_CLIENT_ID:-}}
+      KEYCLOAK_REDIRECT_URL: ${TEDRISAT__KEYCLOAK_REDIRECT_URL:-${API__KEYCLOAK_REDIRECT_URL:-}}
+      # .env.example ships 3600/60; the code defaults are 86400/120
+      # (libs/common/src/auth-guard/key-providers/keycloak-public-key-provider.ts).
+      # Left out of the allowlist, the template's values could not reach a
+      # container by any route, so a rotated or revoked realm key stayed trusted
+      # for 24 hours instead of one.
+      KEYCLOAK_CACHE_TTL: ${TEDRISAT__KEYCLOAK_CACHE_TTL:-${API__KEYCLOAK_CACHE_TTL:-3600}}
+      KEYCLOAK_NOT_FOUND_CACHE_TTL: ${TEDRISAT__KEYCLOAK_NOT_FOUND_CACHE_TTL:-${API__KEYCLOAK_NOT_FOUND_CACHE_TTL:-60}}
     depends_on:
       medaris-db:
         condition: service_healthy
@@ -64,14 +109,21 @@ services:
     ports:
       - "${TESKILAT_PORT:-3002}:3002"
     environment:
-      NODE_ENV: ${TESKILAT__NODE_ENV:-${API__NODE_ENV:-development}}
+      # production, for the same reason as tedrisat above.
+      NODE_ENV: ${TESKILAT__NODE_ENV:-${API__NODE_ENV:-production}}
       PORT: ${TESKILAT__PORT:-3002}
       SERVICE_NAME: ${TESKILAT__SERVICE_NAME:-teskilat-service}
       LOG_LEVEL: ${TESKILAT__LOG_LEVEL:-${API__LOG_LEVEL:-info}}
-      ALLOWED_ORIGINS: ${TESKILAT__ALLOWED_ORIGINS:-${API__ALLOWED_ORIGINS:-*}}
+      # Same rule as tedrisat: both APIs reach cors.config.ts through
+      # applyGlobalMiddleware, so the wildcard is refused here too.
+      ALLOWED_ORIGINS: ${TESKILAT__ALLOWED_ORIGINS:-${API__ALLOWED_ORIGINS:?set API__ALLOWED_ORIGINS in .env}}
       ALLOWED_METHODS: ${TESKILAT__ALLOWED_METHODS:-${API__ALLOWED_METHODS:-GET,HEAD,PUT,PATCH,POST,DELETE}}
-      SWAGGER_ENABLED: ${TESKILAT__SWAGGER_ENABLED:-${API__SWAGGER_ENABLED:-true}}
-      SWAGGER_PATH: ${TESKILAT__SWAGGER_PATH:-${API__SWAGGER_PATH:-/docs}}
+      SWAGGER_ENABLED: ${TESKILAT__SWAGGER_ENABLED:-${API__SWAGGER_ENABLED:-false}}
+      # SWAGGER_ENDPOINT, not the SWAGGER_PATH tedrisat reads: teskilat's own
+      # config names it that (apps/teskilat/src/config/config.ts:35), so the
+      # SWAGGER_PATH handed in here reached nothing. The .env key is unchanged —
+      # this file is where the prefixed key is mapped to the canonical name.
+      SWAGGER_ENDPOINT: ${TESKILAT__SWAGGER_PATH:-${API__SWAGGER_PATH:-/docs}}
       DB_HOST: medaris-db
       DB_PORT: ${TESKILAT__DB_PORT:-${API__DB_PORT:-5432}}
       DB_SSL: ${TESKILAT__DB_SSL:-${API__DB_SSL:-false}}
@@ -88,7 +140,18 @@ services:
       AUTO_MIGRATIONS_FOLDER: ./dist/src/database/migrations
       OTEL_ENABLED: ${TESKILAT__OTEL_ENABLED:-${API__OTEL_ENABLED:-false}}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${TESKILAT__OTEL_EXPORTER_OTLP_ENDPOINT:-${API__OTEL_EXPORTER_OTLP_ENDPOINT:-localhost:4317}}
-      KEYCLOAK_JWKS_URL: ${TESKILAT__KEYCLOAK_JWKS_URL:-${API__KEYCLOAK_JWKS_URL:?set API__KEYCLOAK_JWKS_URL in .env}}
+      # No KEYCLOAK_* here. teskilat has no auth guard: nothing under
+      # apps/teskilat/src reads a Keycloak variable, and its AppModule imports
+      # only ConfigModule and LoggerModule. The KEYCLOAK_JWKS_URL that used to
+      # sit on this line was copied from tedrisat, `:?` and all, handing the
+      # container a value no teskilat code path reads.
+      #
+      # Removing it does NOT make `docker compose up teskilat` work without
+      # tedrisat's variables — measured: compose interpolates the whole file
+      # before it selects a service, so tedrisat's four `:?` keys are still
+      # required to render this one. This is least-privilege hygiene about what
+      # reaches the container, not a fix for the single-service case.
+      # Add them back when the guard lands, not before.
     depends_on:
       medaris-db:
         condition: service_healthy
