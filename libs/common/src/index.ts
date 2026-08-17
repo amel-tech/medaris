@@ -1,5 +1,6 @@
 export * from "./auth-guard";
 export * from "./bootstrap/setupMiddleware";
+export * from "./config";
 export * from "./dto/health-check.dto";
 export * from "./error";
 export * from "./excel";
