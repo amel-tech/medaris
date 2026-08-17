@@ -1,6 +1,7 @@
 import * as pkg from "../../package.json";
 import { resolveDatabaseSsl } from "./database-ssl";
 import { readSecurityEnv } from "./security-env";
+import { resolveSwaggerEnabled } from "./swagger-env";
 
 const version = pkg.version || "0.0.1";
 
@@ -37,7 +38,7 @@ export default () => {
       serviceVersion: version,
     },
     swagger: {
-      enabled: process.env.SWAGGER_ENABLED === "true",
+      enabled: resolveSwaggerEnabled(process.env),
       endpoint: process.env.SWAGGER_PATH || "/docs",
     },
     autoMigrations: {

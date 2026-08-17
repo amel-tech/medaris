@@ -1,6 +1,7 @@
 import configuration from "../../src/config/config";
 import { resolveDatabaseSsl } from "../../src/config/database-ssl";
 import { requireDbPassword } from "../../src/config/security-env";
+import { resolveSwaggerOauthRedirectOrigin } from "../../src/config/swagger-env";
 
 const VALID_JWKS_URL =
   "https://auth.medaris.app/realms/amel-tech-dev/protocol/openid-connect/certs";
@@ -81,6 +82,52 @@ describe("tedrisat configuration", () => {
     });
   });
 
+  describe("Swagger in production", () => {
+    beforeEach(() => {
+      // The security variables are read before the Swagger flag, so they have
+      // to be present for these cases to reach it.
+      process.env.KEYCLOAK_JWKS_URL = VALID_JWKS_URL;
+      process.env.DB_PASSWORD = "a-real-password";
+      delete process.env.SWAGGER_ALLOW_IN_PRODUCTION;
+    });
+
+    it("refuses SWAGGER_ENABLED=true in production without an opt-in", () => {
+      process.env.NODE_ENV = "production";
+      process.env.SWAGGER_ENABLED = "true";
+
+      expect(() => configuration()).toThrow(/SWAGGER_ALLOW_IN_PRODUCTION/);
+    });
+
+    it("allows it in production with the explicit opt-in", () => {
+      process.env.NODE_ENV = "production";
+      process.env.SWAGGER_ENABLED = "true";
+      process.env.SWAGGER_ALLOW_IN_PRODUCTION = "true";
+
+      expect(configuration().swagger.enabled).toBe(true);
+    });
+
+    it("leaves production alone when the flag is off", () => {
+      process.env.NODE_ENV = "production";
+      process.env.SWAGGER_ENABLED = "false";
+
+      expect(configuration().swagger.enabled).toBe(false);
+    });
+
+    it("still enables Swagger outside production", () => {
+      process.env.NODE_ENV = "development";
+      process.env.SWAGGER_ENABLED = "true";
+
+      expect(configuration().swagger.enabled).toBe(true);
+    });
+
+    it("treats an unset SWAGGER_ENABLED as off", () => {
+      process.env.NODE_ENV = "production";
+      delete process.env.SWAGGER_ENABLED;
+
+      expect(configuration().swagger.enabled).toBe(false);
+    });
+  });
+
   describe("requireDbPassword — the drizzle migration client", () => {
     it("throws, naming the variable, when DB_PASSWORD is absent", () => {
       expect(() => requireDbPassword({ NODE_ENV: "production" })).toThrow(
@@ -144,5 +191,46 @@ describe("tedrisat configuration", () => {
         (enabled as { rejectUnauthorized: boolean }).rejectUnauthorized
       ).toBe(true);
     });
+  });
+});
+
+describe("resolveSwaggerOauthRedirectOrigin", () => {
+  // Only consulted when Swagger is actually mounted. Left unguarded it
+  // stringified an absent variable into `undefined/docs/oauth2-redirect.html`,
+  // which boots and only fails at the Authorize click.
+  it("throws, naming the variable, when KEYCLOAK_REDIRECT_URL is unset", () => {
+    expect(() => resolveSwaggerOauthRedirectOrigin({})).toThrow(
+      /KEYCLOAK_REDIRECT_URL/
+    );
+  });
+
+  it("rejects an empty value rather than building undefined-looking URLs", () => {
+    expect(() =>
+      resolveSwaggerOauthRedirectOrigin({ KEYCLOAK_REDIRECT_URL: "" })
+    ).toThrow(/KEYCLOAK_REDIRECT_URL/);
+  });
+
+  it("rejects a value that is not an absolute URL", () => {
+    expect(() =>
+      resolveSwaggerOauthRedirectOrigin({
+        KEYCLOAK_REDIRECT_URL: "api-tedrisat-dev.medaris.net",
+      })
+    ).toThrow(/KEYCLOAK_REDIRECT_URL/);
+  });
+
+  it("returns an absolute origin unchanged", () => {
+    expect(
+      resolveSwaggerOauthRedirectOrigin({
+        KEYCLOAK_REDIRECT_URL: "https://api-tedrisat-dev.medaris.net",
+      })
+    ).toBe("https://api-tedrisat-dev.medaris.net");
+  });
+
+  it("drops a trailing slash, since the endpoint carries its own", () => {
+    expect(
+      resolveSwaggerOauthRedirectOrigin({
+        KEYCLOAK_REDIRECT_URL: "https://api-tedrisat-dev.medaris.net/",
+      })
+    ).toBe("https://api-tedrisat-dev.medaris.net");
   });
 });
