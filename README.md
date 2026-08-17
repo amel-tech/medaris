@@ -14,7 +14,7 @@ This repository is the monorepo: two NestJS APIs, five web apps, and nine shared
 
 ```bash
 pnpm install                                      # also installs the git hook dispatcher
-cp apps/tedris/.env.example apps/tedris/.env      # every app needs its own .env
+cp .env.example .env                              # one env file, for the whole workspace
 pnpm build                                        # libs/common must be built first
 docker compose up -d medaris-db
 pnpm nx run tedris-web:dev
@@ -23,7 +23,7 @@ pnpm nx run tedris-web:dev
 Two steps that look skippable and are not:
 
 - **`pnpm install` in a fresh clone *or a new git worktree*.** The hook dispatcher lives in `.husky/_`, which is git-ignored. Without it `commitlint` and `lint-staged` silently never run — the commit succeeds and nothing is checked.
-- **Each app needs its own `.env`.** Every `apps/*/` directory ships a `.env.example`; copy the ones you intend to run. The Next.js apps validate their environment at **build** time, so a missing file fails the build with `Invalid environment variables` rather than at startup. The root `.env.example` is for `docker-compose`, not for the apps.
+- **The root `.env` has to exist before a build.** The Next.js apps validate their environment at **build** time, so without it the build fails with `Invalid environment variables` rather than at startup. There is nothing to run and nothing to keep in sync — each app reads the root file itself.
 
 ## Layout
 
@@ -81,19 +81,40 @@ Four of tedrisat's nine suites are the `test/e2e/*.e2e.spec.ts` files: `apps/ted
 
 ## Local environment
 
-There are two layers of environment file, and mixing them up is the most common way to lose an hour:
+**There is exactly one environment file: `.env` at the repository root.** Nothing is generated and nothing is per app.
 
-- **`apps/<app>/.env`** — what the apps actually read. Each app ships its own `.env.example` with its own variable set (`apps/nizam/.env.example` carries Keycloak client credentials and `NEXTAUTH_*`, the Nest apps carry `DB_*`). Copy per app; these files are git-ignored.
-- **`.env.example` at the root** — the `docker-compose` template: container ports and the Postgres credentials. It does not feed the apps.
+A prefix says which app a key belongs to, and is stripped before the app sees it, so `NIZAM__NEXTAUTH_URL` arrives as the plain `NEXTAUTH_URL` that NextAuth reads:
+
+| In `.env` | Goes to |
+| -- | -- |
+| `KEY=` | all six apps |
+| `WEB__KEY=` | landing, nazir, nizam, tedris |
+| `API__KEY=` | tedrisat, teskilat |
+| `TEDRIS__KEY=` | that one app |
+
+Narrower wins: app over group over shared. A handful of keys — the container ports and `MEDARIS_POSTGRES_*` — carry no prefix and belong to no app; `docker-compose` reads them from the root file directly.
+
+The translation happens where each framework starts up, because neither Next nor Nest can be told to read an env file outside its own project directory:
+
+- `apps/<app>/next.config.js` calls `loadRootEnv("<app>")` before the config object is built — early enough for `NEXT_PUBLIC_*` inlining and for `env.ts`'s build-time validation.
+- `apps/<api>/src/load-env.ts` does the same, imported first in `main.ts` so it runs before `./otel` and `ConfigModule`.
+
+Both go through `tools/env/root-env.cjs`, the single implementation of these rules.
+
+**In production there is no file at all.** Every value arrives through the real environment, and anything already in `process.env` wins over the file — a deployed secret is never overridden by a file that happens to be in the image.
+
+Coming from the old six-file layout, or setting up a new machine: get the `.env` from someone who has it, through a channel that does not archive it — it carries real Keycloak client secrets — and put it at the repository root. Then `rm apps/*/.env`; those files are dead weight now and can only shadow keys.
+
+Deriving your own root file from your old `apps/*/.env` is deliberately not offered. Six people doing that produce six different root files, because the inputs had already drifted apart — which is the problem this replaced. One reviewed file, copied.
 
 Notes that save time:
 
 - **Postgres**: `docker compose up -d medaris-db` is enough. `docker/init-db.sql` creates the `tedrisat_db` / `teskilat_db` databases and their users, and the apps run their own migrations at boot (`AUTO_MIGRATIONS_ENABLED=true`).
-- **OpenTelemetry** defaults to enabled, pointing at `localhost:4317`. With no collector running that is just log noise — set `OTEL_ENABLED=false` locally.
+- **OpenTelemetry** defaults to enabled for the two APIs, pointing at `localhost:4317`. With no collector running that is just log noise — set `API__OTEL_ENABLED=false` in the root `.env`.
 - **Keycloak** points at the real server. Auth flows will not complete locally, but pages still render.
 - `NEXT_PUBLIC_*` variables are inlined at **build time**, not read at runtime — changing one needs a rebuild, not a restart.
 
-`docker compose up` does **not** bring up the full stack today: only the two Nest apps and Postgres are described, those services expect a per-app `.env` that is git-ignored, and the six `apps/*/Dockerfile` files still run `npm install` against `catalog:` specifiers. Repairing them is MDRS-16. Until then, run the apps with `pnpm nx run <project>:dev` and use compose only for the database.
+`docker compose up` does **not** bring up the full stack today: only the two Nest apps and Postgres are described, and they take their environment from the root `.env` through the explicit mapping in `docker-compose.yml` rather than from an `env_file:` — compose would hand the container the prefixed key names unchanged. The six `apps/*/Dockerfile` files were rebuilt for pnpm and Nx in MDRS-16 and do build. For the four web apps, run them with `pnpm nx run <project>:dev` and use compose only for the database.
 
 ## Documents
 

@@ -27,7 +27,7 @@ Expected: typecheck 16 projects · **127 tests / 12 suites** · build 8 · lint 
 Two prerequisites that look optional and are not:
 
 - **`-t test` needs a running Docker daemon.** `apps/tedrisat/vitest.config.ts` matches `test/**/*.spec.ts`, which includes the four `test/e2e/*.e2e.spec.ts` suites, and those start a Testcontainers `postgres:17-alpine`. Of tedrisat's 9 suites, 4 are e2e. `test:e2e` re-runs the same four under a separate config — it is not extra coverage.
-- **`-t build` needs `apps/<app>/.env` for the four Next.js apps.** They validate the environment at build time, so a fresh worktree fails with `Invalid environment variables` until you copy each `apps/<app>/.env.example`. That is a missing file, not a regression.
+- **`-t build` needs the root `.env` for the four Next.js apps.** They validate the environment at build time, so a fresh worktree fails with `Invalid environment variables` until `cp .env.example .env` has been run. That is a missing file, not a regression.
 
 **`-t test` is the only gate that catches a broken NestJS container.** `typecheck` and `build` stay green while dependency injection is already broken at runtime — this has happened, see below. Never skip it.
 
@@ -36,6 +36,9 @@ Two prerequisites that look optional and are not:
 - **`useImportType` breaks NestJS DI.** Rewriting a constructor parameter type to `import type` erases it from `design:paramtypes`, and Nest can no longer resolve the dependency. 78 of 89 tests went red this way while typecheck and build were green. `biome.json` disables the rule for the three packages that use `emitDecoratorMetadata` (`apps/tedrisat`, `apps/teskilat`, `libs/common`). Do not re-enable it there.
 - **`biome.json` must stay comment-free.** A comment anywhere in that file — including *above* the `overrides` array — makes Biome silently drop the override's `includes`, which re-enables `useImportType` on the Nest packages. Measured, not theorised. Put explanatory notes in `docs/migration/` instead.
 - **Do not partially stage a file the formatter will reflow.** `git add -p` plus `biome check --write` re-applies the hidden hunks at a stale offset and can produce a syntax error while lint-staged still exits 0. Stage whole files.
+- **`NODE_ENV=development` in a web app's `.env` breaks `next build`.** React resolves its development bundle against a production SSR runtime and the build dies prerendering `/_global-error` with `Cannot read properties of null (reading 'useContext')`. Measured on all four web apps. The root `.env.example` therefore scopes `NODE_ENV` to `API__`; never broadcast it.
+- **There is one `.env`, at the root (MDRS-25).** `apps/<app>/.env` no longer exists and must not be recreated — Next reads a project-directory `.env` on its own, so a stray file silently shadows keys for that one app. The prefix translation lives in `tools/env/root-env.cjs`, applied by each `next.config.js` and by `apps/<api>/src/load-env.ts`.
+- **`load-env` must stay the first import in a Nest `main.ts`.** `./otel` and `ConfigModule` both read the environment as they are evaluated, and ES import order is evaluation order.
 - **Biome exits 0 on warnings.** `biome check` returns success with warn-severity findings present, so `-t lint` alone cannot catch a growing warning count. `tools/ci/` holds a ratchet that fails closed; do not weaken it.
 
 ## Boundaries

@@ -1,3 +1,21 @@
+# Since MDRS-25 there is one .env, at the root, and compose reads it for
+# ${...} interpolation automatically.
+#
+# `env_file:` is deliberately not used: it would hand the container the file's
+# raw keys, so the app would see TEDRISAT__PORT and no PORT. The image has no
+# copy of tools/env/root-env.cjs to strip prefixes with — production does not
+# need one, because Coolify sets the canonical names directly. So the mapping
+# from prefixed key to canonical name is written out here instead.
+#
+# Two properties this buys, beyond being readable:
+#
+#   * Least privilege. `env_file: .env` would hand the tedrisat container every
+#     other app's secrets too — nazir's and nizam's NEXTAUTH_SECRET, tedris's
+#     Keycloak client secret. Naming the keys means a container receives only
+#     what it needs.
+#   * The same precedence the loader applies. Each value tries the app-specific
+#     spelling first and falls back to the group one, so TEDRISAT__DB_PORT and
+#     API__DB_PORT both work — exactly as they do for a `pnpm dev` run.
 services:
   tedrisat:
     build:
@@ -5,8 +23,36 @@ services:
       dockerfile: apps/tedrisat/Dockerfile
     ports:
       - "${TEDRISAT_PORT:-3001}:3001"
-    env_file:
-      - ./apps/tedrisat/.env
+    environment:
+      NODE_ENV: ${TEDRISAT__NODE_ENV:-${API__NODE_ENV:-development}}
+      PORT: ${TEDRISAT__PORT:-3001}
+      SERVICE_NAME: ${TEDRISAT__SERVICE_NAME:-tedrisat-service}
+      LOG_LEVEL: ${TEDRISAT__LOG_LEVEL:-${API__LOG_LEVEL:-info}}
+      ALLOWED_ORIGINS: ${TEDRISAT__ALLOWED_ORIGINS:-${API__ALLOWED_ORIGINS:-*}}
+      ALLOWED_METHODS: ${TEDRISAT__ALLOWED_METHODS:-${API__ALLOWED_METHODS:-GET,HEAD,PUT,PATCH,POST,DELETE}}
+      SWAGGER_ENABLED: ${TEDRISAT__SWAGGER_ENABLED:-${API__SWAGGER_ENABLED:-true}}
+      SWAGGER_PATH: ${TEDRISAT__SWAGGER_PATH:-${API__SWAGGER_PATH:-/docs}}
+      # The root .env carries the host-side DB_HOST=localhost; inside the
+      # compose network the database answers on the service name.
+      DB_HOST: medaris-db
+      DB_PORT: ${TEDRISAT__DB_PORT:-${API__DB_PORT:-5432}}
+      DB_SSL: ${TEDRISAT__DB_SSL:-${API__DB_SSL:-false}}
+      DB_NAME: ${TEDRISAT__DB_NAME:-tedrisat_db}
+      DB_USERNAME: ${TEDRISAT__DB_USERNAME:-tedrisat}
+      DB_PASSWORD: ${TEDRISAT__DB_PASSWORD:?set TEDRISAT__DB_PASSWORD in .env}
+      AUTO_MIGRATIONS_ENABLED: ${TEDRISAT__AUTO_MIGRATIONS_ENABLED:-${API__AUTO_MIGRATIONS_ENABLED:-true}}
+      # Not interpolated: the root .env names ./src/... for `nest start`, and the
+      # container runs compiled output. tsc mirrors the source tree, so the
+      # compiled migrations are under dist/src/, not dist/ — measured against the
+      # image, where ./dist/database/migrations does not exist and the service
+      # logs "Migrations failed: Can't find meta/_journal.json file" three times
+      # and then serves traffic against an unmigrated database.
+      AUTO_MIGRATIONS_FOLDER: ./dist/src/database/migrations
+      OTEL_ENABLED: ${TEDRISAT__OTEL_ENABLED:-${API__OTEL_ENABLED:-false}}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${TEDRISAT__OTEL_EXPORTER_OTLP_ENDPOINT:-${API__OTEL_EXPORTER_OTLP_ENDPOINT:-localhost:4317}}
+      KEYCLOAK_JWKS_URL: ${TEDRISAT__KEYCLOAK_JWKS_URL:-${API__KEYCLOAK_JWKS_URL:?set API__KEYCLOAK_JWKS_URL in .env}}
+      KEYCLOAK_CLIENT_ID: ${TEDRISAT__KEYCLOAK_CLIENT_ID:-}
+      KEYCLOAK_REDIRECT_URL: ${TEDRISAT__KEYCLOAK_REDIRECT_URL:-}
     depends_on:
       medaris-db:
         condition: service_healthy
@@ -17,8 +63,32 @@ services:
       dockerfile: apps/teskilat/Dockerfile
     ports:
       - "${TESKILAT_PORT:-3002}:3002"
-    env_file:
-      - ./apps/teskilat/.env
+    environment:
+      NODE_ENV: ${TESKILAT__NODE_ENV:-${API__NODE_ENV:-development}}
+      PORT: ${TESKILAT__PORT:-3002}
+      SERVICE_NAME: ${TESKILAT__SERVICE_NAME:-teskilat-service}
+      LOG_LEVEL: ${TESKILAT__LOG_LEVEL:-${API__LOG_LEVEL:-info}}
+      ALLOWED_ORIGINS: ${TESKILAT__ALLOWED_ORIGINS:-${API__ALLOWED_ORIGINS:-*}}
+      ALLOWED_METHODS: ${TESKILAT__ALLOWED_METHODS:-${API__ALLOWED_METHODS:-GET,HEAD,PUT,PATCH,POST,DELETE}}
+      SWAGGER_ENABLED: ${TESKILAT__SWAGGER_ENABLED:-${API__SWAGGER_ENABLED:-true}}
+      SWAGGER_PATH: ${TESKILAT__SWAGGER_PATH:-${API__SWAGGER_PATH:-/docs}}
+      DB_HOST: medaris-db
+      DB_PORT: ${TESKILAT__DB_PORT:-${API__DB_PORT:-5432}}
+      DB_SSL: ${TESKILAT__DB_SSL:-${API__DB_SSL:-false}}
+      DB_NAME: ${TESKILAT__DB_NAME:-teskilat_db}
+      DB_USERNAME: ${TESKILAT__DB_USERNAME:-teskilat}
+      DB_PASSWORD: ${TESKILAT__DB_PASSWORD:?set TESKILAT__DB_PASSWORD in .env}
+      AUTO_MIGRATIONS_ENABLED: ${TESKILAT__AUTO_MIGRATIONS_ENABLED:-${API__AUTO_MIGRATIONS_ENABLED:-true}}
+      # Not interpolated: the root .env names ./src/... for `nest start`, and the
+      # container runs compiled output. tsc mirrors the source tree, so the
+      # compiled migrations are under dist/src/, not dist/ — measured against the
+      # image, where ./dist/database/migrations does not exist and the service
+      # logs "Migrations failed: Can't find meta/_journal.json file" three times
+      # and then serves traffic against an unmigrated database.
+      AUTO_MIGRATIONS_FOLDER: ./dist/src/database/migrations
+      OTEL_ENABLED: ${TESKILAT__OTEL_ENABLED:-${API__OTEL_ENABLED:-false}}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${TESKILAT__OTEL_EXPORTER_OTLP_ENDPOINT:-${API__OTEL_EXPORTER_OTLP_ENDPOINT:-localhost:4317}}
+      KEYCLOAK_JWKS_URL: ${TESKILAT__KEYCLOAK_JWKS_URL:-${API__KEYCLOAK_JWKS_URL:?set API__KEYCLOAK_JWKS_URL in .env}}
     depends_on:
       medaris-db:
         condition: service_healthy
