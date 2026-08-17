@@ -60,6 +60,10 @@ export class FlashcardRepository implements IFlashcardRepository {
   }
 
   async createMany(cards: ICreateFlashcard[]): Promise<IFlashcard[]> {
+    // `values([])` compiles to invalid SQL. Guarded here as well as in the
+    // service so the repository is safe regardless of who calls it.
+    if (cards.length === 0) return [];
+
     return this.databaseService.db.insert(flashcards).values(cards).returning();
   }
 
