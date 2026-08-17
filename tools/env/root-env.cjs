@@ -63,7 +63,29 @@ function findRepoRoot(from = __dirname) {
   }
 }
 
-/** Parse KEY=VALUE lines, dropping comments and blank lines. */
+/**
+ * Parse KEY=VALUE lines, dropping comments and blank lines.
+ *
+ * The rules below are Docker Compose's, measured against `docker compose config`
+ * rather than taken from documentation, because compose reads this same file for
+ * the `${...}` interpolation in docker-compose.yml. It is the one reader whose
+ * behaviour cannot be changed here, so any disagreement means one file meaning
+ * two different things — which is what MDRS-25 exists to prevent.
+ *
+ *   KEY="quoted"        -> quoted      a matched quote pair is removed
+ *   KEY='single'        -> single      single quotes too
+ *   KEY="q" # note      -> q           anything after the closing quote is dropped
+ *   KEY=unq # note      -> unq         a comment needs whitespace before the #
+ *   KEY=a#b             -> a#b         so this is a value, not a comment
+ *   KEY="esc\"inside"   -> esc"inside  \" does not close the value
+ *   KEY="line1\nline2"  -> line1\nline2  literal, NOT a newline
+ *
+ * That last row is the one to leave alone. dotenv expands `\n` inside double
+ * quotes and compose does not; expanding it here would rebuild the divergence
+ * for anyone passing a PEM through API__DB_CA_CERT. dotenv also truncates
+ * unquoted values at the first `#` whatever precedes it, which is why this is
+ * documented as compose parity and not dotenv parity.
+ */
 function parseEnv(text) {
   const entries = [];
   for (const raw of text.split("\n")) {
@@ -72,12 +94,33 @@ function parseEnv(text) {
     const eq = line.indexOf("=");
     if (eq === -1) continue;
 
-    let value = line.slice(eq + 1);
-    // dotenv drops an unquoted trailing comment; match that, or the same line
-    // would mean one thing here and another to every other reader of the file.
-    if (!/^\s*["']/.test(value)) value = value.replace(/\s+#.*$/, "");
+    const rest = line.slice(eq + 1).trim();
+    const quote = rest[0];
+    let value;
 
-    entries.push({ key: line.slice(0, eq).trim(), value: value.trim() });
+    if (quote === '"' || quote === "'") {
+      // Walk to the closing quote so a `\"` inside the value does not end it,
+      // and so a trailing comment after it is discarded rather than kept.
+      let i = 1;
+      let body = "";
+      for (; i < rest.length; i++) {
+        if (rest[i] === "\\" && rest[i + 1] === quote) {
+          body += quote;
+          i++;
+        } else if (rest[i] === quote) {
+          break;
+        } else {
+          body += rest[i];
+        }
+      }
+      // Unterminated: treat the whole remainder as the value rather than
+      // silently truncating at end-of-line.
+      value = i === rest.length ? rest : body;
+    } else {
+      value = rest.replace(/\s+#.*$/, "").trim();
+    }
+
+    entries.push({ key: line.slice(0, eq).trim(), value });
   }
   return entries;
 }
