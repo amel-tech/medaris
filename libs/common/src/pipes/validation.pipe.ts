@@ -15,9 +15,12 @@ export class MedarisValidationPipe
       whitelist: true,
       forbidNonWhitelisted: true,
       exceptionFactory: (errors: ValidationError[]) => {
+        // `value` is deliberately not mapped: it is the raw submitted input,
+        // and the filter serialises this context straight into the response
+        // body, so a password or a token pasted into the wrong field would be
+        // echoed back to the browser (MDRS-29).
         const validationErrors = errors.map((e) => ({
           property: e.property,
-          value: e.value,
           constraints: e.constraints,
         }));
 

@@ -87,6 +87,22 @@ describe("KoskController (e2e)", () => {
         });
     });
 
+    // MDRS-29: the validation pipe used to copy the rejected value into the
+    // error context, which the filter serialises verbatim — a secret pasted
+    // into the wrong field came straight back to the browser.
+    it("does not echo the rejected value back to the client", () => {
+      const sentinel = `s3nt1nel-${"x".repeat(70)}`;
+      return createKosk({ handle: sentinel })
+        .expect(400)
+        .expect((res) => {
+          expect(JSON.stringify(res.body)).not.toContain("s3nt1nel");
+          expect(res.body.context.errors[0]).toHaveProperty(
+            "property",
+            "handle"
+          );
+        });
+    });
+
     it("rejects an out-of-range coverHue", () => {
       return createKosk({ coverHue: 999 })
         .expect(400)
