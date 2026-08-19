@@ -1,6 +1,7 @@
 {
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "name": "tedrisat",
+  "tags": ["scope:app", "platform:node", "type:app"],
   "targets": {
     "lint": {}
   }

@@ -18,6 +18,47 @@ The image name is not hardcoded: the workflow sets
 
 ---
 
+## 0. Environment the container refuses to start without
+
+`apps/tedrisat/Dockerfile` sets `ENV NODE_ENV=production` in the runner stage,
+so the deployed container is always in the strict branch of every environment
+check. These variables have **no fallback** — the process throws during
+bootstrap and the container restart-loops if any of them is missing. The deploy
+workflow only pushes the image and fires the webhook, so it stays green while
+the service is down; the container log is the only place the failure appears.
+
+| Variable | Required because | Symptom when missing |
+|---|---|---|
+| `ALLOWED_ORIGINS` | MDRS-34. Comma-separated bare origins (`https://tedris.medaris.app`), no trailing slash, no path, no wildcard host. `*` is refused outside a developer machine. | `ALLOWED_ORIGINS is not usable: …` at `applyGlobalMiddleware` |
+| `DB_PASSWORD` | MDRS-35 removed the `docker/init-db.sql` fallback | `@medaris/tedrisat cannot start, the environment is incomplete: DB_PASSWORD …` |
+| `KEYCLOAK_JWKS_URL` | MDRS-35 removed the `"test-url"` fallback | same message, naming `KEYCLOAK_JWKS_URL` |
+| `KEYCLOAK_ISSUER` | MDRS-30. The expected `iss`, checked on every token. Validated as `z.string().url()`, so a value that is not an absolute URL fails exactly as an absent one does. | same message, naming `KEYCLOAK_ISSUER` |
+| `KEYCLOAK_AUDIENCE` | MDRS-30. The expected `aud`. Without it the API verifies the signature only, and accepts any token the realm signed — an ID token, or one minted for a different client. | same message, naming `KEYCLOAK_AUDIENCE` |
+
+The last four rows are a single `zod` object in
+`apps/tedrisat/src/config/security-env.ts`, parsed once by the config factory, so
+a deployment missing several of them is told about all of them in one message.
+`ALLOWED_ORIGINS` is separate — it is enforced in `libs/common`, and applies to
+teskilat as well.
+
+Three more variables can stop the boot, on a condition rather than always. All
+three apply to every deployed environment, because `apps/tedrisat/Dockerfile`
+pins `NODE_ENV=production`:
+
+| Variable | Required when | Symptom |
+|---|---|---|
+| `KEYCLOAK_REDIRECT_URL` | `SWAGGER_ENABLED=true`. Swagger UI's `oauth2RedirectUrl` is built on it, and the service refuses to mount the UI rather than serve `undefined/docs/oauth2-redirect.html`. | `@medaris/tedrisat cannot mount Swagger UI: KEYCLOAK_REDIRECT_URL is unset`, at bootstrap |
+| `SWAGGER_ALLOW_IN_PRODUCTION` | `SWAGGER_ENABLED=true` under `NODE_ENV=production`. MDRS-33 made publishing the schema in production an explicit decision, because it also relaxes CSP and COOP on those pages. | `… refuses to start on SWAGGER_ENABLED=true …`, in the config factory |
+| `KEYCLOAK_ALLOWED_CLIENTS` | `KEYCLOAK_AUDIENCE` is realm-wide — i.e. `account`, which `.env.example` ships until MDRS-42 configures an audience mapper for this API's own client id. Then the `azp` allow-list is the only thing binding a token to a client, and `loadJwtClaimPolicy` refuses the pair. With a per-API audience it is an optional narrowing, and empty means "no `azp` restriction", never "checks disabled". | `JwtVerifierService was configured with the realm-wide audience "account" …`, thrown when the DI container builds `JwtVerifierService` — later than the four above, which fail in the config factory |
+
+**Set all of them in the Coolify service before deploying a build that contains
+MDRS-30 or MDRS-34.** The repository-root `.env.example` lists the full set with
+comments, under the `API__` prefix. Note that the error messages still say *"See
+apps/tedrisat/.env.example"* — MDRS-25 consolidated the workspace onto the single
+root file and that path no longer exists.
+
+---
+
 ## 1. How a release tag becomes an image tag
 
 `docker/metadata-action` is configured with three tag rules:
@@ -191,7 +232,35 @@ docker buildx imagetools inspect ghcr.io/amel-tech/medaris-tedrisat-api:latest \
 
 ---
 
-## 5. Known blockers
+## 5. Before the next release — the Swagger guard
+
+MDRS-33 made `SWAGGER_ENABLED=true` under `NODE_ENV=production` a **hard boot
+failure** unless `SWAGGER_ALLOW_IN_PRODUCTION=true` is also set: publishing the
+API schema also relaxes CSP and COOP on the Swagger pages, so the service refuses
+rather than doing it by accident.
+
+`apps/tedrisat/Dockerfile` hardcodes `ENV NODE_ENV=production`, so this applies
+to **every** environment running that image — dev and staging included, not just
+production. The throw fires in the config factory, before `listen()`, so an
+environment still carrying `SWAGGER_ENABLED=true` crash-loops instead of starting
+with Swagger off.
+
+Before rolling out a tedrisat release that includes MDRS-33, for each deployed
+environment either:
+
+- set `SWAGGER_ENABLED=false` (the new default in every `.env.example`), or
+- set `SWAGGER_ALLOW_IN_PRODUCTION=true` if that environment wants the docs
+  endpoint. `SWAGGER_ENABLED=true` additionally requires `KEYCLOAK_REDIRECT_URL`
+  to be set to the service's public origin — Swagger's `oauth2RedirectUrl` is
+  built on it, and an unset value is refused the same way.
+
+Symptom if this is missed: the container exits immediately with
+`@medaris/tedrisat refuses to start: SWAGGER_ENABLED=true with NODE_ENV=production …`,
+naming the variable to change.
+
+---
+
+## 6. Known blockers
 
 1. **`TEDRISAT_SERVICE_COOLIFY_WEBHOOK` is not set.** The repository has zero repo secrets; only the org
    secret `COOLIFY_DEPLOY_TOKEN` exists. Until the webhook secret is added, the

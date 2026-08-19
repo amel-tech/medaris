@@ -275,6 +275,33 @@ function balancedSpans(text) {
 }
 
 /**
+ * End offset (exclusive) of the bracket span opening at `start`, or -1 if it
+ * never closes. String tracking begins here rather than at the top of the
+ * message, which is what lets it survive a malformed string earlier on.
+ */
+function balancedEnd(text, start) {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i += 1) {
+    const char = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') inString = true;
+    else if (char === "[") depth += 1;
+    else if (char === "]") {
+      depth -= 1;
+      if (depth === 0) return i + 1;
+    }
+  }
+  return -1;
+}
+
+/**
  * Pull the findings object out of the model's final message.
  *
  * The model is told to emit a bare JSON object and nothing else; in practice it
@@ -330,10 +357,51 @@ function extractFindingsJson(resultText) {
       fallback = { start, parsed };
     }
   }
+  if (best) return best.parsed;
+
+  // ── Last resort: salvage the findings array out of an unparseable object ──
+  //
+  // The model hand-writes this JSON, and the thing that breaks it is quoting
+  // code. Measured on 2026-08-15: the `authz` lens finished a clean, paid,
+  // correct review and ended with
+  //     "summary": "... a suite (`include: ["test/**/*.spec.ts"]` still ..."
+  // The inner quotes closed the string early, nothing above parsed, and a review
+  // that had genuinely concluded "no findings" was reported DEAD and reddened the
+  // gate. The prompt now forbids raw quotes inside string values, but a prompt
+  // rule is an instruction to a model, not a guarantee, and this file exists
+  // precisely because instructions to models are not guarantees.
+  //
+  // What actually decides the verdict is the findings array — `summary` is
+  // human-facing prose and nothing branches on it. So when the enclosing object
+  // is broken, try the array on its own: take the LAST `"findings"` key (same
+  // position rule as above, so an echoed schema template never outranks the real
+  // answer) and parse the balanced `[...]` that follows. If THAT parses, we can
+  // still tell a clean review from a lost one, which is the only question here.
+  //
+  // This cannot manufacture a pass out of nothing: the array must be present,
+  // balanced and valid JSON on its own. A message with no findings array at all
+  // still returns null and is still DEAD.
+  // Deliberately NOT balancedSpans(): that scans the whole message, so it
+  // inherits the quote-parity damage this salvage exists to survive. Counting
+  // from the array's own `[` starts the string tracking clean, so a broken
+  // `summary` earlier in the message cannot throw the scan off.
+  const keyMatches = [...trimmed.matchAll(/"findings"\s*:\s*\[/g)];
+  for (const match of keyMatches.reverse()) {
+    const arrayStart = trimmed.indexOf("[", match.index);
+    const end = balancedEnd(trimmed, arrayStart);
+    if (end === -1) continue;
+    try {
+      const findings = JSON.parse(trimmed.slice(arrayStart, end));
+      if (Array.isArray(findings)) return { findings, summaryRecovered: true };
+    } catch {
+      // fall through to an earlier `"findings"` key, if any
+    }
+  }
+
   // The fallback (an object with no `findings` array) is returned so the caller
   // reports "ran but did not answer in the contract shape" rather than "no JSON
   // at all". Both are DEAD; only the reason text differs.
-  return best ? best.parsed : (fallback?.parsed ?? null);
+  return fallback?.parsed ?? null;
 }
 
 function isBlocking(finding) {

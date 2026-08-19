@@ -1,27 +1,20 @@
-# Code owners for the paths that gate everything else (MDRS-49).
+# Code owners (MDRS-49, MDRS-54, MDRS-59).
 #
-# STATUS: ADVISORY, NOT ENFORCED. The "main protection" ruleset on this repo
-# (id 20827887) requires a pull request with 1 approval and the "Verify" and
-# "Commit hygiene" status checks, but it does NOT set
-# `require_code_owner_review`. So today this file only auto-requests these
-# reviewers; any single approval still satisfies the rule. Turning it into a
-# requirement is a repo-settings change, made deliberately and separately.
+# ADVISORY: ruleset 20827887 does not set `require_code_owner_review`, so any
+# single approval satisfies it. This file only auto-requests reviewers.
 #
-# Every rule below names TWO owners on purpose. These paths are the ones that
-# can disable the other gates — a change to .github/ can drop a required check,
-# a change to tools/ci/ can make a gate pass vacuously — so review of them must
-# never be single-threaded on one person's availability. Two names also means
-# the author of a change can be excluded from reviewing it and someone is still
-# left.
+# The team's code review assignment rotates a subset — round-robin, 2 reviewers,
+# notify entire team off — and applies to the catch-all only. Rotation is a team
+# feature: named individuals are BOTH requested, every time.
+# https://github.com/orgs/amel-tech/teams/medaris/settings
 #
 # GitHub applies the LAST matching rule, so order is specific-after-general.
 
-# Everything else has no owner: reviewer choice stays open for ordinary app and
-# library work, which is where most PRs land.
+# Everything.
+* @amel-tech/medaris
 
-# CI workflows, PR template, dependabot config, and this file itself.
-/.github/ @tahaayan @Argedik
-
-# The gate scripts CI executes. Weakening one of these is indistinguishable
-# from deleting the check it backs.
-/tools/ci/ @tahaayan @Argedik
+# The paths that can disable the other gates — a change to .github/ can drop a
+# required check, a change to tools/ci/ can make a gate pass vacuously. Named
+# rather than rotated, so the same two people see every change to them.
+/.github/ @EsTharian @safakadir
+/tools/ci/ @EsTharian @safakadir

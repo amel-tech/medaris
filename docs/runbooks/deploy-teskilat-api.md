@@ -18,6 +18,27 @@ The image name is not hardcoded: the workflow sets
 
 ---
 
+## 0. Environment the container refuses to start without
+
+`apps/teskilat/Dockerfile` sets `ENV NODE_ENV=production` in the runner stage,
+so the deployed container is always in the strict branch of every environment
+check.
+
+| Variable | Required because | Symptom when missing |
+|---|---|---|
+| `ALLOWED_ORIGINS` | MDRS-34. Comma-separated bare origins (`https://nizam.medaris.app`), no trailing slash, no path, no wildcard host. `*` is refused outside a developer machine. | `ALLOWED_ORIGINS is not usable: …` at `applyGlobalMiddleware`, then a restart loop |
+
+This is the only variable with **no fallback** in teskilat today —
+`apps/teskilat/src/config/config.ts` still defaults `DB_PASSWORD` and the
+Keycloak settings, which MDRS-35 removed in tedrisat but not here. The deploy
+workflow only pushes the image and fires the webhook, so it stays green while
+the service is down; the container log is the only place the failure appears.
+
+**Set `ALLOWED_ORIGINS` in the Coolify service before deploying a build that
+contains MDRS-34.** `apps/teskilat/.env.example` shows the format.
+
+---
+
 ## 1. How a release tag becomes an image tag
 
 `docker/metadata-action` is configured with three tag rules:

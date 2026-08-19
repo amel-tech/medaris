@@ -66,14 +66,16 @@ Nx runs with `neverConnectToCloud: true` — no remote cache, no analytics. CI t
 
 ### Test coverage, stated honestly
 
-`pnpm test` reports three projects, but only two of them run real tests: **106 tests across 11 suites, all in `tedrisat` and `teskilat`** (104 / 9 and 2 / 2). The third, `tedris-web`, executes `echo 'Tests not implemented'`, which Nx counts as a pass. **Frontend test coverage is zero.** Migrating to Vitest and closing that gap is MDRS-20.
+`pnpm test` reports three projects, but only two of them run real tests: **226 tests across 17 suites, all in `tedrisat` and `teskilat`** (224 / 15 and 2 / 2). The third, `tedris-web`, executes `echo 'Tests not implemented'`, which Nx counts as a pass. **Frontend test coverage is zero.**
 
-Four of tedrisat's nine suites are the `test/e2e/*.e2e.spec.ts` files: `jest.config.json` matches them too, so **`pnpm test` needs a running Docker daemon** — those suites start a Testcontainers postgres. `pnpm --filter @medaris/tedrisat test:e2e` runs the same four under a separate config rather than adding coverage.
+Those tests run on **Vitest**; MDRS-20 moved them off Jest at an unchanged count — 91 across 10 suites as measured then, before MDRS-35 added tedrisat's 15-test `test/unit/config.spec.ts` — and no Jest dependency or config file remains. It did **not** close the frontend gap — there was no frontend spec to migrate, and scaffolding a runner with nothing to run would only have produced a target that passes vacuously. Writing the first frontend specs, with the `@nx/vite` + `jsdom` setup they need, is tracked separately. See [`docs/migration/mdrs-20-jest-to-vitest.md`](docs/migration/mdrs-20-jest-to-vitest.md).
+
+Six of tedrisat's fifteen suites are the `test/e2e/*.e2e.spec.ts` files: `apps/tedrisat/vitest.config.ts` matches them too, so **`pnpm test` needs a running Docker daemon** — those suites start a Testcontainers `postgres:17-alpine`. `pnpm --filter @medaris/tedrisat test:e2e` runs the same six under `apps/tedrisat/vitest.integration.config.ts` rather than adding coverage.
 
 ## Toolchain
 
 - **Biome** owns formatting and linting. **ESLint exists only** to run `@nx/enforce-module-boundaries`; it carries no style rules.
-- **Boundary tags are not configured yet.** `depConstraints` is deliberately permissive and no project is tagged — the real `scope:*` / `platform:*` taxonomy is MDRS-13. The rule is wired and green so that landing the tags is the only remaining step.
+- **Boundary tags are enforced.** All 16 projects carry `scope:*` / `platform:*` / `type:*` tags and `eslint.config.mjs` holds the real `depConstraints` with `allow: []`. The taxonomy, the allowed directions, and the three cases the linter cannot see are in [`CONTRIBUTING.md`](CONTRIBUTING.md#project-layers-and-tags); ADR-001 §D5 is normative.
 - **Commit hygiene** is enforced by husky: `pre-commit` runs lint-staged (Biome on staged files only), `commit-msg` runs commitlint against a 20-scope enum. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - **CI** is one `nx affected` pipeline plus CodeQL over both stacks, a dependency audit, depcheck, and a job that lints the pull-request title — the squash commit that reaches `main` is composed server-side and never passes the local hook.
 
