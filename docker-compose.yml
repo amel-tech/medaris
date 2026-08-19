@@ -173,6 +173,108 @@ services:
       medaris-db:
         condition: service_healthy
 
+  # ---------------------------------------------------------------------------
+  # Web apps — opt-in via `docker compose --profile web up`; a plain
+  # `docker compose up` neither starts nor builds them. Deliberately not in the
+  # default set: the images are production builds (`output: "standalone"`,
+  # `next build` already run — no HMR, no fast refresh), so a compose service
+  # only ever means "run the built app". Frontend development is
+  # `pnpm nx run <app>-web:dev`, not a container.
+  #
+  # NEXT_PUBLIC_* is baked into the image at BUILD time from .env.example's
+  # placeholder values (apps/<app>/Dockerfile does `cp .env.example .env`
+  # before `next build`). Locally the placeholders happen to be right
+  # (http://localhost:...), but changing a NEXT_PUBLIC_ value needs an image
+  # rebuild, not a restart. Passing real values as build args is MDRS-16's
+  # remaining item, out of scope here.
+  #
+  # Environment is spelled out key by key, exactly like the API services and
+  # for the same two reasons (see the header comment): the runtime image has no
+  # tools/env/root-env.cjs, so `env_file: .env` would hand the app
+  # TEDRIS__KEYCLOAK_CLIENT_SECRET and no KEYCLOAK_CLIENT_SECRET; and naming
+  # the keys keeps least privilege — no app sees another's secrets. The list is
+  # short anyway: the client-side keys are baked at build time, so only the
+  # server-side handful appears here.
+
+  tedris:
+    build:
+      context: .
+      dockerfile: apps/tedris/Dockerfile
+    profiles: [web]
+    ports:
+      - "${TEDRIS_WEB_PORT:-4000}:4000"
+    environment:
+      OTEL_SERVICE_NAME: ${TEDRIS__OTEL_SERVICE_NAME:-tedris-web}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${TEDRIS__OTEL_EXPORTER_OTLP_ENDPOINT:-${WEB__OTEL_EXPORTER_OTLP_ENDPOINT:?set WEB__OTEL_EXPORTER_OTLP_ENDPOINT in .env}}
+      KEYCLOAK_ISSUER: ${TEDRIS__KEYCLOAK_ISSUER:-${WEB__KEYCLOAK_ISSUER:?set WEB__KEYCLOAK_ISSUER in .env}}
+      KEYCLOAK_CLIENT_ID: ${TEDRIS__KEYCLOAK_CLIENT_ID:?set TEDRIS__KEYCLOAK_CLIENT_ID in .env}
+      KEYCLOAK_CLIENT_SECRET: ${TEDRIS__KEYCLOAK_CLIENT_SECRET:?set TEDRIS__KEYCLOAK_CLIENT_SECRET in .env}
+      NEXTAUTH_URL: ${TEDRIS__NEXTAUTH_URL:-http://localhost:4000}
+      NEXTAUTH_SECRET: ${TEDRIS__NEXTAUTH_SECRET:?set TEDRIS__NEXTAUTH_SECRET in .env}
+      API_MOCKING: ${TEDRIS__API_MOCKING:-${WEB__API_MOCKING:-disabled}}
+      # Not interpolated: the root .env says http://localhost:3001, and inside
+      # this container localhost is the container itself. On the compose
+      # network the API answers on its service name — a host-side run (nx dev,
+      # bare `docker run`) needs the localhost value instead.
+      TEDRISAT_API_BASE_URL: http://tedrisat:3001
+    depends_on:
+      - tedrisat
+
+  nizam:
+    build:
+      context: .
+      dockerfile: apps/nizam/Dockerfile
+    profiles: [web]
+    ports:
+      - "${NIZAM_WEB_PORT:-4001}:4001"
+    environment:
+      OTEL_SERVICE_NAME: ${NIZAM__OTEL_SERVICE_NAME:-nizam-web}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${NIZAM__OTEL_EXPORTER_OTLP_ENDPOINT:-${WEB__OTEL_EXPORTER_OTLP_ENDPOINT:?set WEB__OTEL_EXPORTER_OTLP_ENDPOINT in .env}}
+      KEYCLOAK_ISSUER: ${NIZAM__KEYCLOAK_ISSUER:-${WEB__KEYCLOAK_ISSUER:?set WEB__KEYCLOAK_ISSUER in .env}}
+      KEYCLOAK_CLIENT_ID: ${NIZAM__KEYCLOAK_CLIENT_ID:?set NIZAM__KEYCLOAK_CLIENT_ID in .env}
+      KEYCLOAK_CLIENT_SECRET: ${NIZAM__KEYCLOAK_CLIENT_SECRET:?set NIZAM__KEYCLOAK_CLIENT_SECRET in .env}
+      NEXTAUTH_URL: ${NIZAM__NEXTAUTH_URL:-http://localhost:4001}
+      NEXTAUTH_SECRET: ${NIZAM__NEXTAUTH_SECRET:?set NIZAM__NEXTAUTH_SECRET in .env}
+      API_MOCKING: ${NIZAM__API_MOCKING:-${WEB__API_MOCKING:-disabled}}
+      TEDRISAT_API_BASE_URL: http://tedrisat:3001
+    depends_on:
+      - tedrisat
+
+  nazir:
+    build:
+      context: .
+      dockerfile: apps/nazir/Dockerfile
+    profiles: [web]
+    ports:
+      - "${NAZIR_WEB_PORT:-4002}:4002"
+    environment:
+      OTEL_SERVICE_NAME: ${NAZIR__OTEL_SERVICE_NAME:-nazir-web}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${NAZIR__OTEL_EXPORTER_OTLP_ENDPOINT:-${WEB__OTEL_EXPORTER_OTLP_ENDPOINT:?set WEB__OTEL_EXPORTER_OTLP_ENDPOINT in .env}}
+      KEYCLOAK_ISSUER: ${NAZIR__KEYCLOAK_ISSUER:-${WEB__KEYCLOAK_ISSUER:?set WEB__KEYCLOAK_ISSUER in .env}}
+      KEYCLOAK_CLIENT_ID: ${NAZIR__KEYCLOAK_CLIENT_ID:?set NAZIR__KEYCLOAK_CLIENT_ID in .env}
+      KEYCLOAK_CLIENT_SECRET: ${NAZIR__KEYCLOAK_CLIENT_SECRET:?set NAZIR__KEYCLOAK_CLIENT_SECRET in .env}
+      NEXTAUTH_URL: ${NAZIR__NEXTAUTH_URL:-http://localhost:4002}
+      NEXTAUTH_SECRET: ${NAZIR__NEXTAUTH_SECRET:?set NAZIR__NEXTAUTH_SECRET in .env}
+      API_MOCKING: ${NAZIR__API_MOCKING:-${WEB__API_MOCKING:-disabled}}
+      TEDRISAT_API_BASE_URL: http://tedrisat:3001
+    depends_on:
+      - tedrisat
+
+  # No auth: landing carries neither Keycloak credentials nor NEXTAUTH_*, and
+  # it calls no API server-side — its NEXT_PUBLIC_TEDRIS_APP_URL link target is
+  # baked at build time like every other NEXT_PUBLIC_ value.
+  landing:
+    build:
+      context: .
+      dockerfile: apps/landing/Dockerfile
+    profiles: [web]
+    ports:
+      - "${LANDING_WEB_PORT:-4003}:4003"
+    environment:
+      OTEL_SERVICE_NAME: ${LANDING__OTEL_SERVICE_NAME:-landing-web}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${LANDING__OTEL_EXPORTER_OTLP_ENDPOINT:-${WEB__OTEL_EXPORTER_OTLP_ENDPOINT:?set WEB__OTEL_EXPORTER_OTLP_ENDPOINT in .env}}
+
+
   medaris-db:
     image: postgres:17-alpine
     environment:
