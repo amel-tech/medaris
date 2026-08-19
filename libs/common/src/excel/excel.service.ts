@@ -8,6 +8,36 @@ import {
   ExcelSheetConfig,
 } from "./interfaces/excel-column.interface";
 
+/**
+ * The characters a spreadsheet reads as "this cell is a formula" when it opens
+ * a generated file. `=` and `+` start a formula outright, `-` starts a negated
+ * one, `@` is Excel's legacy function-call sigil, and a leading tab or CR is
+ * stripped by the parser before any of the above is looked at — so `\t=cmd|...`
+ * lands as a formula too.
+ */
+const FORMULA_TRIGGERS = /^[=+\-@\t\r]/;
+
+/**
+ * MDRS-36. Neutralize spreadsheet formula injection in an exported cell.
+ *
+ * Export rows carry text other users authored (a deck export streams every
+ * card in the deck), and the csv branch writes that text out verbatim. A card
+ * whose front begins with one of {@link FORMULA_TRIGGERS} is then evaluated as
+ * a formula by Excel or LibreOffice on the downloader's machine — the standard
+ * route to `=HYPERLINK(...)` exfiltration or DDE execution.
+ *
+ * Prefixing a single quote is the escape both applications understand: the
+ * cell is forced to text, and the quote is not part of the displayed value, so
+ * the card stays readable. Only strings are touched — numbers and dates pass
+ * through untouched so spreadsheet arithmetic still works on them.
+ *
+ * Pure by design, and exported, so it can be asserted on directly.
+ */
+export function neutralizeFormula<T>(value: T): T | string {
+  if (typeof value !== "string") return value;
+  return FORMULA_TRIGGERS.test(value) ? `'${value}` : value;
+}
+
 @Injectable()
 export class ExcelService {
   async generateSample<T extends Record<string, any>>(
@@ -28,7 +58,9 @@ export class ExcelService {
         const row: Record<string, any> = {};
         config.columns.forEach((col) => {
           const value = example[col.key];
-          row[col.key as string] = col.format ? col.format(value) : value;
+          row[col.key as string] = neutralizeFormula(
+            col.format ? col.format(value) : value
+          );
         });
         return row;
       });
@@ -91,7 +123,9 @@ export class ExcelService {
       const row: Record<string, any> = {};
       config.columns.forEach((col) => {
         const value = item[col.key];
-        row[col.key as string] = col.format ? col.format(value) : value;
+        row[col.key as string] = neutralizeFormula(
+          col.format ? col.format(value) : value
+        );
       });
       return row;
     });
