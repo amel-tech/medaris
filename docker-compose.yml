@@ -177,15 +177,49 @@ services:
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: ${MEDARIS_POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${MEDARIS_POSTGRES_PASSWORD:-postgres}
+      # No fallback, unlike the user and database beside it. This is the
+      # superuser that owns both app databases, and `:-postgres` handed it a
+      # password published in this repository on a port bound below — while the
+      # two far less privileged app credentials on the same service are `:?`.
+      # MDRS-35 removed the app-side well-known-password fallback for exactly
+      # this reason; leaving it here for the superuser reinstated it one level up.
+      POSTGRES_PASSWORD: ${MEDARIS_POSTGRES_PASSWORD:?set MEDARIS_POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${MEDARIS_POSTGRES_DB:-postgres}
+      # docker/init-db.sh reads these. Deliberately the same interpolation
+      # expressions the tedrisat and teskilat services above use, rather than new
+      # .env keys: it is not possible for the role this creates and the credential
+      # the app connects with to drift apart if both render from one source.
+      # That drift was MDRS-68 — the role was created with a literal `tedrisat`
+      # while the app was told to use .env.example's `change-me`.
+      TEDRISAT_DB_NAME: ${TEDRISAT__DB_NAME:-tedrisat_db}
+      TEDRISAT_DB_USERNAME: ${TEDRISAT__DB_USERNAME:-tedrisat}
+      TEDRISAT_DB_PASSWORD: ${TEDRISAT__DB_PASSWORD:?set TEDRISAT__DB_PASSWORD in .env}
+      TESKILAT_DB_NAME: ${TESKILAT__DB_NAME:-teskilat_db}
+      TESKILAT_DB_USERNAME: ${TESKILAT__DB_USERNAME:-teskilat}
+      TESKILAT_DB_PASSWORD: ${TESKILAT__DB_PASSWORD:?set TESKILAT__DB_PASSWORD in .env}
     ports:
-      - "${MEDARIS_POSTGRES_PORT:-5432}:5432"
+      # Loopback, not the 0.0.0.0 an unqualified `5432:5432` binds. This is a
+      # development database reached over the compose network by service name;
+      # the published port exists for psql and drizzle-kit on the host, both of
+      # which are local. The previous bind offered the superuser above to
+      # anything that could route to this machine.
+      - "127.0.0.1:${MEDARIS_POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:Z
+      # .sh, not the .sql this replaced: the entrypoint substitutes nothing in a
+      # .sql file, so a .sql file cannot read a password. The header of
+      # docker/init-db.sh records what was measured.
+      - ./docker/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:Z
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      # Interpolated, not the literal `-U postgres` this replaced: with
+      # POSTGRES_USER set to anything else the probe failed, the service never
+      # turned healthy, and both `depends_on: service_healthy` gates hung — a
+      # failure that looked nothing like the renamed superuser that caused it.
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${MEDARIS_POSTGRES_USER:-postgres} -d ${MEDARIS_POSTGRES_DB:-postgres}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 7

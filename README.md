@@ -109,7 +109,7 @@ Deriving your own root file from your old `apps/*/.env` is deliberately not offe
 
 Notes that save time:
 
-- **Postgres**: `docker compose up -d medaris-db` is enough. `docker/init-db.sql` creates the `tedrisat_db` / `teskilat_db` databases and their users, and the apps run their own migrations at boot (`AUTO_MIGRATIONS_ENABLED=true`).
+- **Postgres**: `docker compose up -d medaris-db` is enough. `docker/init-db.sh` creates the `tedrisat_db` / `teskilat_db` databases and their roles, using the `TEDRISAT__DB_PASSWORD` / `TESKILAT__DB_PASSWORD` from the root `.env`, so there is no second copy of the password to keep in step (MDRS-68). It runs on an empty data directory only — after changing one of those values, `docker compose down -v` first, and the apps run their own migrations at boot (`AUTO_MIGRATIONS_ENABLED=true`).
 - **OpenTelemetry** defaults to enabled for the two APIs, pointing at `localhost:4317`. With no collector running that is just log noise — set `API__OTEL_ENABLED=false` in the root `.env`.
 - **Keycloak** points at the real server. Auth flows will not complete locally, but pages still render.
 - `NEXT_PUBLIC_*` variables are inlined at **build time**, not read at runtime — changing one needs a rebuild, not a restart.
