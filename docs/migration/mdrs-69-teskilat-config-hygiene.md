@@ -281,3 +281,39 @@ vitest summaries.
 Neither of the two known flakes (`tedrisat:test` Testcontainers,
 `tedrisat:typecheck` racing `common:build`'s `rimraf dist`) fired; every gate
 above passed on its first run.
+
+`pnpm run security-check` also passes (`audit-ci`: no advisory outside the
+existing allowlist; `depcheck`: no unused dependency in any of the three
+projects that have the target). `pnpm run assert:traceability` cannot be run
+locally — it reads a `pull_request` event payload and aborts without one; it runs
+as the PR's **Traceability** check instead.
+
+## CI on pull request #54
+
+Measured at `4d374b64`:
+
+```
+Verify                              pass
+Security gates                      pass
+Commit hygiene                      pass
+Traceability                        pass
+CodeQL                              pass
+Analyze (javascript-typescript)     pass
+Analyze (actions)                   pass
+AI Multi-Lens Review Gate           fail  ← not a finding, see below
+AI review preflight                 pass
+```
+
+The AI gate is red because `PREFLIGHT_MODE=queued`: the run landed at 11:xx UTC,
+outside the `16:00-21:00 UTC` review window, and the author is not a repository
+admin, so no lens ran. Its own summary says so — "This check is red because
+deferred is not reviewed, not because a finding was raised." The nightly drain
+runs the lenses when the window opens and the check resolves itself then. No
+label was toggled to force a review: that costs $4-15 on a shared subscription
+and is an admin decision.
+
+`/security-review` was run locally over this diff and found nothing at or above
+its reporting threshold. It independently confirmed there is no second Swagger
+mount point anywhere in `apps/` or `libs/`, that teskilat never imports
+`swagger-csp.ts` so no CSP/COOP relaxation survives the unmounted UI, and that
+`SWAGGER_PRODUCTION_SUPPRESSION_NOTICE` carries variable names and no values.
