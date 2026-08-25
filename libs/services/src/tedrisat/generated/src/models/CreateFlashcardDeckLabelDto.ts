@@ -30,8 +30,19 @@ export interface CreateFlashcardDeckLabelDto {
      * @type {string}
      * @memberof CreateFlashcardDeckLabelDto
      */
-    scope: string;
+    scope: CreateFlashcardDeckLabelDtoScopeEnum;
 }
+
+
+/**
+ * @export
+ */
+export const CreateFlashcardDeckLabelDtoScopeEnum = {
+    Public: 'PUBLIC',
+    Personal: 'PERSONAL'
+} as const;
+export type CreateFlashcardDeckLabelDtoScopeEnum = typeof CreateFlashcardDeckLabelDtoScopeEnum[keyof typeof CreateFlashcardDeckLabelDtoScopeEnum];
+
 
 /**
  * Check if a given object implements the CreateFlashcardDeckLabelDto interface.

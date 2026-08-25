@@ -27,10 +27,10 @@ export interface FlashcardLabelingResponse {
     labelId: string;
     /**
      * 
-     * @type {object}
+     * @type {string}
      * @memberof FlashcardLabelingResponse
      */
-    privateToUserId: object;
+    privateToUserId?: string | null;
     /**
      * 
      * @type {string}
@@ -44,7 +44,6 @@ export interface FlashcardLabelingResponse {
  */
 export function instanceOfFlashcardLabelingResponse(value: object): value is FlashcardLabelingResponse {
     if (!('labelId' in value) || value['labelId'] === undefined) return false;
-    if (!('privateToUserId' in value) || value['privateToUserId'] === undefined) return false;
     if (!('flashcardId' in value) || value['flashcardId'] === undefined) return false;
     return true;
 }
@@ -60,7 +59,7 @@ export function FlashcardLabelingResponseFromJSONTyped(json: any, ignoreDiscrimi
     return {
         
         'labelId': json['labelId'],
-        'privateToUserId': json['privateToUserId'],
+        'privateToUserId': json['privateToUserId'] == null ? undefined : json['privateToUserId'],
         'flashcardId': json['flashcardId'],
     };
 }

@@ -30,7 +30,7 @@ export interface FlashcardDeckCreateLabelResponse {
      * @type {string}
      * @memberof FlashcardDeckCreateLabelResponse
      */
-    scope: string;
+    scope: FlashcardDeckCreateLabelResponseScopeEnum;
     /**
      * 
      * @type {string}
@@ -44,6 +44,17 @@ export interface FlashcardDeckCreateLabelResponse {
      */
     createdAt: Date;
 }
+
+
+/**
+ * @export
+ */
+export const FlashcardDeckCreateLabelResponseScopeEnum = {
+    Public: 'PUBLIC',
+    Personal: 'PERSONAL'
+} as const;
+export type FlashcardDeckCreateLabelResponseScopeEnum = typeof FlashcardDeckCreateLabelResponseScopeEnum[keyof typeof FlashcardDeckCreateLabelResponseScopeEnum];
+
 
 /**
  * Check if a given object implements the FlashcardDeckCreateLabelResponse interface.

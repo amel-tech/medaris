@@ -36,13 +36,13 @@ export interface PendingEnrollmentResponse {
      * @type {string}
      * @memberof PendingEnrollmentResponse
      */
-    studentName?: string;
+    studentName?: string | null;
     /**
      * 
      * @type {string}
      * @memberof PendingEnrollmentResponse
      */
-    studentEmail?: string;
+    studentEmail?: string | null;
     /**
      * Percent complete, 0-100
      * @type {number}

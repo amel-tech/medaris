@@ -27,10 +27,10 @@ export interface CreateFlashcardDeckLabelingDto {
     labelId: string;
     /**
      * 
-     * @type {object}
+     * @type {string}
      * @memberof CreateFlashcardDeckLabelingDto
      */
-    privateToUserId: object;
+    privateToUserId?: string | null;
     /**
      * 
      * @type {string}
@@ -44,7 +44,6 @@ export interface CreateFlashcardDeckLabelingDto {
  */
 export function instanceOfCreateFlashcardDeckLabelingDto(value: object): value is CreateFlashcardDeckLabelingDto {
     if (!('labelId' in value) || value['labelId'] === undefined) return false;
-    if (!('privateToUserId' in value) || value['privateToUserId'] === undefined) return false;
     if (!('deckId' in value) || value['deckId'] === undefined) return false;
     return true;
 }
@@ -60,7 +59,7 @@ export function CreateFlashcardDeckLabelingDtoFromJSONTyped(json: any, ignoreDis
     return {
         
         'labelId': json['labelId'],
-        'privateToUserId': json['privateToUserId'],
+        'privateToUserId': json['privateToUserId'] == null ? undefined : json['privateToUserId'],
         'deckId': json['deckId'],
     };
 }

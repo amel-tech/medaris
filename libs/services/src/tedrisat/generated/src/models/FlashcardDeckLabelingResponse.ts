@@ -27,10 +27,10 @@ export interface FlashcardDeckLabelingResponse {
     labelId: string;
     /**
      * 
-     * @type {object}
+     * @type {string}
      * @memberof FlashcardDeckLabelingResponse
      */
-    privateToUserId: object;
+    privateToUserId?: string | null;
     /**
      * 
      * @type {string}
@@ -44,7 +44,6 @@ export interface FlashcardDeckLabelingResponse {
  */
 export function instanceOfFlashcardDeckLabelingResponse(value: object): value is FlashcardDeckLabelingResponse {
     if (!('labelId' in value) || value['labelId'] === undefined) return false;
-    if (!('privateToUserId' in value) || value['privateToUserId'] === undefined) return false;
     if (!('deckId' in value) || value['deckId'] === undefined) return false;
     return true;
 }
@@ -60,7 +59,7 @@ export function FlashcardDeckLabelingResponseFromJSONTyped(json: any, ignoreDisc
     return {
         
         'labelId': json['labelId'],
-        'privateToUserId': json['privateToUserId'],
+        'privateToUserId': json['privateToUserId'] == null ? undefined : json['privateToUserId'],
         'deckId': json['deckId'],
     };
 }

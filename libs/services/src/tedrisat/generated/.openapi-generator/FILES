@@ -1,7 +1,6 @@
 .gitignore
 .npmignore
 README.md
-package.json
 src/apis/CoursesApi.ts
 src/apis/ExamplesApi.ts
 src/apis/FlashcardCardsApi.ts

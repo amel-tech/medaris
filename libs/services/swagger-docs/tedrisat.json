@@ -1252,6 +1252,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "No label with that id"
           }
         },
         "security": [
@@ -1287,6 +1290,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "No label with that id"
           }
         },
         "security": [
@@ -1435,6 +1441,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "No label with that id"
           }
         },
         "security": [
@@ -1470,6 +1479,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "No label with that id"
           }
         },
         "security": [
@@ -2149,7 +2161,7 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
@@ -2747,10 +2759,16 @@
         "type": "object",
         "properties": {
           "title": {
-            "type": "string"
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 100
           },
           "scope": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "PERSONAL"
+            ]
           }
         },
         "required": [
@@ -2762,10 +2780,16 @@
         "type": "object",
         "properties": {
           "title": {
-            "type": "string"
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 100
           },
           "scope": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "PERSONAL"
+            ]
           },
           "createdBy": {
             "type": "string"
@@ -2784,7 +2808,9 @@
             "type": "string"
           },
           "privateToUserId": {
-            "type": "object"
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
           },
           "flashcardId": {
             "type": "string"
@@ -2792,7 +2818,6 @@
         },
         "required": [
           "labelId",
-          "privateToUserId",
           "flashcardId"
         ]
       },
@@ -2803,7 +2828,9 @@
             "type": "string"
           },
           "privateToUserId": {
-            "type": "object"
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
           },
           "flashcardId": {
             "type": "string"
@@ -2811,7 +2838,6 @@
         },
         "required": [
           "labelId",
-          "privateToUserId",
           "flashcardId"
         ]
       },
@@ -2858,10 +2884,16 @@
         "type": "object",
         "properties": {
           "title": {
-            "type": "string"
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 100
           },
           "scope": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "PERSONAL"
+            ]
           }
         },
         "required": [
@@ -2873,10 +2905,16 @@
         "type": "object",
         "properties": {
           "title": {
-            "type": "string"
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 100
           },
           "scope": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "PERSONAL"
+            ]
           },
           "createdBy": {
             "type": "string"
@@ -2900,7 +2938,9 @@
             "type": "string"
           },
           "privateToUserId": {
-            "type": "object"
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
           },
           "deckId": {
             "type": "string"
@@ -2908,7 +2948,6 @@
         },
         "required": [
           "labelId",
-          "privateToUserId",
           "deckId"
         ]
       },
@@ -2919,7 +2958,9 @@
             "type": "string"
           },
           "privateToUserId": {
-            "type": "object"
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
           },
           "deckId": {
             "type": "string"
@@ -2927,7 +2968,6 @@
         },
         "required": [
           "labelId",
-          "privateToUserId",
           "deckId"
         ]
       },
@@ -3259,10 +3299,12 @@
             "type": "string"
           },
           "studentName": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "studentEmail": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "progress": {
             "type": "number",
@@ -4056,10 +4098,12 @@
             "type": "string"
           },
           "studentName": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "studentEmail": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "progress": {
             "type": "number",

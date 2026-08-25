@@ -36,13 +36,13 @@ export interface EnrollmentResponse {
      * @type {string}
      * @memberof EnrollmentResponse
      */
-    studentName?: string;
+    studentName?: string | null;
     /**
      * 
      * @type {string}
      * @memberof EnrollmentResponse
      */
-    studentEmail?: string;
+    studentEmail?: string | null;
     /**
      * Percent complete, 0-100
      * @type {number}
