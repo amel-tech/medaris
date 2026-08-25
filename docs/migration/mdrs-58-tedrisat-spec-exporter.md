@@ -71,6 +71,23 @@ MDRS-27's guard.
 - **`libs/services/swagger-docs/README.md`** — documents the two-command
   refresh, in order.
 
+Added in the review round (see Review below):
+
+- **`apps/tedrisat/src/course/course.controller.ts`** — `@ApiCreatedResponse` on
+  `approve`, so the document stops claiming a 200 the route never returns.
+- **`apps/tedrisat/src/course/dto/course-response.dto.ts`** — `nullable: true`
+  restored on `studentName` / `studentEmail`.
+- **`apps/tedrisat/src/flashcard/dto/create-flashcard-label.dto.ts`** and its
+  deck twin — `enum`, length bounds, and an optional nullable
+  `privateToUserId` instead of a required `object`.
+- **`apps/tedrisat/src/flashcard/flashcard-label.service.ts`**,
+  **`flashcard-deck-label.service.ts`** and both label controllers — 404 for an
+  unknown id instead of an unparseable empty 200.
+- **`apps/tedrisat/test/unit/flashcard/flashcard-label-readers.spec.ts`** (new,
+  6 tests) — pins that 404.
+- **`libs/services/src/tedrisat/generated/.openapi-generator-ignore`** — keeps
+  the generator from deleting `"private": true` again.
+
 Neither generated artifact was touched by hand.
 
 ## Which bootstrap, and why
@@ -125,11 +142,19 @@ transform difference. `create-flashcard-label.dto.ts:22` declares
 the SWC transform `vitest.config.ts` installs (`decoratorMetadata: true`) emits
 the `Scope` enum object, which `@nestjs/swagger` then expands.
 
-`nest-cli.json` declares no SWC builder, so `nest build` uses `tsc` and the
-**deployed** service serves `"type": "string"` with no enum — which is what the
-committed spec now says. The spec is therefore faithful to production, and the
-gap is that the DTO does not declare the enum it validates with `@IsEnum(Scope)`.
-See the follow-up below.
+`nest-cli.json` declares no SWC builder, so `nest build` uses `tsc`, and the
+**deployed** service therefore served `"type": "string"` with no enum. The
+regenerated spec agreed with production and disagreed with the test runner —
+faithful, but only by accident, and dependent on which transform ran.
+
+**This is now moot, and deliberately so.** The review round turned
+`@ApiProperty()` into `@ApiProperty({ enum: Scope })` on both `scope`
+properties (finding 5), so the enum is stated rather than inferred. `tsc` and
+SWC have nothing left to disagree about, and the published contract names
+`PUBLIC` and `PERSONAL` under either. The lesson is worth keeping even though
+the symptom is gone: **an annotation that leans on `design:type` produces a
+different contract under a different transform**, which is not a property any
+committed artifact should have.
 
 ## Reproducibility
 
@@ -207,7 +232,7 @@ Each was checked against the code before being accepted:
 
 | change | source |
 |---|---|
-| `POST /courses/{id}/enrollments/{userId}/approve`: `201` → `200` | `course.controller.ts:187` `@ApiOkResponse({ type: EnrollmentResponse })` — the old `201` was Nest's unstated POST default |
+| ~~`POST /courses/{id}/enrollments/{userId}/approve`: `201` → `200`~~ — **withdrawn, this was wrong; see Review below** | — |
 | `POST /flashcard/decks/{deckId}/cards/bulk`: gained `422` | `flashcard.controller.ts:232` `@ApiUnprocessableEntityResponse({ type: BulkFlashcardErrorResponse })` |
 | `UpdateProgressDto.status` enum gained `PENDING` | `course/domain/enrollment-status.enum.ts:2` |
 | `EnrollmentResponse` / `PendingEnrollmentResponse`: `studentName`, `studentEmail` lost `nullable: true` | `course-response.dto.ts:61-62` — `@ApiPropertyOptional({ type: String })`, which emits no `nullable` |
@@ -256,19 +281,18 @@ The ten new routes carry the token in the client:
 | target | result |
 |---|---|
 | `typecheck` | 16 projects ✅ |
-| `test` | 3 projects · 18 files · **229 tests** ✅ (was 17 / 226; +1 file, +3 tests) |
+| `test` | 3 projects · 19 files · **237 tests** ✅ (was 17 / 226; +2 files, +11 tests) |
 | `build` | 8 projects ✅ |
 | `lint` | 16 projects ✅ |
 | `module-boundaries` | 16 projects ✅ |
 | `pnpm run lint:root` (biome ratchet) | 0 errors / 91 warnings / 27 infos — all three at baseline ✅ |
 
-Coverage on tedrisat rose with the new spec and the exclusion: statements
-73.22 → 77.42, branches 68.02 → 69.44, functions 73.76 → 75.44, lines
-72.96 → 77.15. All well above the configured floors (60/50/58/60).
+Coverage on tedrisat rose: statements 73.22 → 78.18, branches 68.02 → 70.33,
+functions 73.76 → 76.33, lines 72.96 → 77.92, against floors of 60/50/58/60.
 
 Note for anyone reading `CLAUDE.md`: its "91 tests / 10 suites" line is stale.
 The real count at `cb7e9636` was 226 tests across 17 files, and this change
-takes it to 229 across 18.
+takes it to 237 across 19 (tedrisat contributes 235 of them across 17).
 
 `build` needed a root `.env` (`cp .env.example .env`) — `nizam-web:build` and
 `tedris-web:build` fail collecting page data without one, on `cb7e9636` as much
@@ -313,9 +337,154 @@ deliberately left alone.
 That `Verify` passed on Node 24 also settles the one thing the local run could
 not: the coverage floors hold under the other Node major.
 
+### `/code-review` — 8 findings, all closed
+
+Every one had the same shape: the defect was visible in generated output but its
+cause was a missing or wrong Swagger annotation in the source. All eight were
+fixed at the source and both artifacts regenerated; neither was hand-edited.
+
+**1 — blocking. The regeneration replaced a correct status code with a wrong
+one.** `POST /courses/{id}/enrollments/{userId}/approve` went from `201,404` to
+`200,404`, and the route still answers **201**: `course.controller.ts` declares
+a plain `@Post` with no `@HttpCode`, and `test/e2e/course.e2e.spec.ts` asserts
+`201` twice, at `:516` and `:608`. `@ApiOkResponse` had changed only the
+document. **The hand-saved spec was right and the regenerated one was wrong** —
+and the drift table in this record justified the change with the reasoning
+exactly inverted, claiming the old `201` was "Nest's unstated POST default"
+when that default was the truth. That row is now struck out.
+
+Fixed with `@ApiCreatedResponse`, not by adding `@HttpCode(HttpStatus.OK)`.
+Both close the lie; only one of them changes what the server sends. Every other
+`@Post` in that controller already documents itself with `@ApiCreatedResponse`
+and the file contains no `@HttpCode` at all, so this restores the file's own
+convention and leaves the wire alone. Moving the route to 200 is a breaking
+change for every caller and belongs to its own issue — see follow-up 7.
+
+**2 — the published labeling contract was uncallable.**
+`@ApiProperty() privateToUserId: string | null = null` gives `design:type`
+nothing better than `Object`, so the spec declared a **required**
+`{"type":"object"}` while the server marks the field `@IsOptional()`. The
+generated `privateToUserId: object` accepts neither a UUID string nor `null`
+under strict TypeScript, so `POST /flashcard-label/labeling` could not be called
+from the client this task published. Now
+`@ApiPropertyOptional({ type: String, nullable: true, format: "uuid" })`;
+measured after: `{"type":"string","nullable":true,"format":"uuid"}` and no longer
+in `required`.
+
+**3 — the regeneration narrowed a nullable response.** `studentName` and
+`studentEmail` lost `nullable: true`, and those two properties on
+`EnrollmentResponse` and `PendingEnrollmentResponse` were the **only four**
+`nullable: true` flags in the entire document (measured: 4 before, 0 after, none
+gained). The wire really does carry `null` — `course.service.ts:118` sends
+`student.name ?? null` — so the contract had been narrowed to "absent or
+string" for a response that is neither. Restored on the base class, which covers
+all four.
+
+Scope line drawn deliberately: 17 properties across 7 files share this gap
+(`@ApiPropertyOptional({ type: X })` on a `| null` field). Only these two are
+fixed, because only these two *regressed* against a previously committed
+contract. The other 15 never claimed nullability in any published spec, so
+leaving them is a pre-existing gap rather than damage done here — follow-up 8.
+
+**4 — a 200 that could not be parsed.** The four label read routes declared a
+mandatory 200 body while their services returned `null` for an unknown id, which
+Nest serialises as an *empty* 200. The client generated from that contract calls
+`response.json()` on it and throws `SyntaxError: Unexpected end of JSON input`
+from a method whose signature promises a label. Both services now throw
+`Flashcard{,Deck}LabelNotFoundError`, which is what `assertOwner` in the same
+files already does for the same missing row and what `KoskService` and
+`CourseService` do throughout; the controllers declare the 404.
+
+**This changes runtime behaviour on four routes** — unknown id goes from
+`200` with an empty body to `404` — which is why it is called out here and in
+the pull request rather than buried. Six new unit tests in
+`test/unit/flashcard/flashcard-label-readers.spec.ts` pin it.
+
+**5 — validators the contract did not mention.** `scope` published as an
+unconstrained `string` despite `@IsEnum(Scope)`, and `title` published without
+the `@MinLength(5)`/`@MaxLength(100)` it is validated against. A consumer
+sending `scope: "public"` typechecked clean and took a 400. Both are now
+declared; measured after: `scope` carries `enum: ["PUBLIC","PERSONAL"]` and
+`title` carries `minLength: 5, maxLength: 100`. This also settles what this
+record previously filed as follow-up 2, and it is why the SWC-versus-`tsc`
+enum discrepancy described above no longer has anything to disagree about — the
+enum is now explicit rather than inferred from decorator metadata.
+
+**6 — the regeneration silently deleted a hand-edit.** `"private": true` in the
+generated `package.json`, added deliberately in `4eb2784e` (MDRS-10), was
+overwritten away — and would have been again on every future export. Restored,
+and protected by adding `package.json` to `.openapi-generator-ignore` (which the
+generator skips, so the entry survives).
+
+The cost of freezing that file is stated rather than glossed: its `version` field
+stops tracking `apps/tedrisat/package.json`. Acceptable because nothing reads
+it — the directory is not one of the 16 explicitly enumerated workspace packages
+(`pnpm-workspace.yaml` uses no globs, verified), nothing publishes it, and
+`libs/services/package.json` exports `./tedrisat` from source. Whether the
+generator should emit that manifest at all is follow-up 9.
+
+**7 — a silent URL rewrite.** `jwksUrl.replace("/certs", "/auth")` used a string
+pattern, so it rewrote only the *first* occurrence and returned the input
+unchanged when there was none. A realm path containing `/certs` produced
+`https://host/auth/realms/x/protocol/openid-connect/certs`; any non-Keycloak
+JWKS URL produced `authorizationUrl === tokenUrl ===` the JWKS endpoint. Both
+are plausible URLs that boot fine and fail only when somebody clicks Authorize —
+and since this task they also decide bytes in a committed artifact. Now anchored
+to `/\/certs$/` and throws when it does not match, with two new tests for the
+two cases the original three did not cover.
+
+**8 — the exporter could not lose paths silently, and now cannot.** Preview mode
+works because nothing here registers routes outside the decorators the scanner
+reads. Nothing enforced that. The day a module registers a controller in
+`onModuleInit`, the export would drop those paths, `generate:tedrisat` would
+delete the matching client files, `.openapi-generator/FILES` would shrink — the
+exact drift class this task exists to end, reintroduced through its own tool.
+`assertNoPathsLost` now treats the committed artifact as a baseline: paths may
+be added, never vanish.
+
+It fails loud rather than closed forever, because a real deletion is legitimate
+(PR #50 removes the example module), and names its own override. Proven in both
+directions rather than assumed — a phantom path was injected into the committed
+spec and the exporter run:
+
+```
+Error: export-openapi: 1 path(s) present in the committed spec are absent from
+the document just generated:
+  /a-route-that-no-longer-exists
+Writing this would delete the matching files from the generated client. ...
+EXIT=1
+# the phantom path is still in the file: the write was refused, not attempted
+$ OPENAPI_EXPORT_ALLOW_PATH_REMOVALS=1 … openapi:export
+export-openapi: wrote 39 paths … (version 0.1.5).   EXIT=0
+```
+
+### Three smaller points from the same review
+
+- The exporter now guards both of its runtime reads. `tools/env/root-env.cjs`
+  and `.env.example` missing used to surface as a bare `MODULE_NOT_FOUND` and a
+  bare `ENOENT`; `load-env.ts` checks the first and is right to skip silently,
+  because production has no `tools/`. A build-time tool must do the opposite and
+  say which file is missing.
+- Only the four pinned keys are handed to `resolveFor` now. It calls
+  `classify()` on every entry and `classify` **throws** on an unrecognised
+  prefix, so a future unrelated line in the template — a `POSTGRES__…`, say —
+  would have broken `openapi:export` for no reason.
+- Why `loadRootEnv()` cannot replace this is now written down in the file:
+  `root-env.cjs:170` skips any key already present in `process.env`, so it would
+  preserve precisely the ambient values determinism requires discarding. Without
+  that note the next reader "simplifies" it and reintroduces the bug.
+
+### Reproducibility, re-proven after the fixes
+
+The md5 changed because the contract changed; what matters is that it is still
+stable. New value `be6dea979b20c3554cd913c6b5c5c68a`, and a second consecutive
+run produced no diff at all. The four-environment table above was re-checked
+against the new value.
+
 ## Follow-ups
 
-Recorded here rather than opened as issues.
+Recorded here rather than opened as issues. Items 2 and 5 in the first draft of
+this list were **done** in the review round above and are gone from it.
 
 1. **The spec was generated from `cb7e9636`, and PR #50 (MDRS-32) is still
    open.** That PR removes tedrisat's `example` module and the `MedarisResponse`
@@ -324,40 +493,86 @@ Recorded here rather than opened as issues.
    necessarily keeps them, because `main` still has the module — so the two
    diffs overlap heavily on both artifacts. **After #50 merges, re-run the two
    commands** (`openapi:export`, then `generate:tedrisat`); do not resolve it by
-   editing either artifact.
-2. **`Scope` should be declared on the DTO, not inferred.**
-   `create-flashcard-label.dto.ts:22` and its deck counterpart validate with
-   `@IsEnum(Scope)` but publish `@ApiProperty()`, so the contract says
-   `"type": "string"` and never names `PUBLIC` or `PERSONAL`. Adding
-   `@ApiProperty({ enum: Scope })` would state the two legal values and would
-   also make the `tsc` and SWC transforms agree (see above). Left out here
-   because it changes the contract's content rather than regenerating it, which
-   is outside this issue's acceptance criteria.
-3. **Nothing enforces that the spec stays current.** The exporter makes the
-   refresh a command; it does not make a stale artifact fail a build. A CI step
-   that re-runs the exporter and fails on a non-empty `git diff` would close
-   this class of drift permanently. Not added here: it touches the workflow
-   files that several open PRs are already editing.
-4. **`GET /secure` has MDRS-58's own bug.** `app.controller.ts:72` carries
+   editing either artifact. `assertNoPathsLost` will refuse that run, correctly —
+   `/examples` really is being removed — so it needs
+   `OPENAPI_EXPORT_ALLOW_PATH_REMOVALS=1` once, deliberately.
+2. **Nothing enforces that the spec stays current.** The exporter makes the
+   refresh a command and now refuses to lose paths, but nothing makes a *stale*
+   artifact fail a build: an added route still goes unpublished until somebody
+   remembers to run it. A CI step that re-runs the exporter and fails on a
+   non-empty `git diff` would close the class permanently. Not added here — it
+   touches the workflow files that several open PRs are editing.
+3. **`GET /secure` has MDRS-58's own bug.** `app.controller.ts:72` carries
    `@UseGuards(AuthGuard)` but no `@ApiBearerAuth()`, so the spec publishes it
    with no `security` requirement and `TedrisatServiceApi.getSecureHello` sends
    no token — a client generated from the contract cannot call it successfully.
    Pre-existing and byte-identical in the old spec, so the regeneration only
-   re-publishes the gap rather than introducing it. It is the same
-   guard-without-`@ApiBearerAuth()` shape MDRS-27 fixed on the label
-   controllers, and worth sweeping for across all controllers.
-5. **`privateToUserId` is published as required but is optional in code.** Both
-   labeling DTOs declare it `@IsOptional()` with a `null` default and annotate
-   it with a bare `@ApiProperty()`, so the spec lists it in `required`. A client
-   following the contract will always send it. Same class as follow-up 2 — the
-   annotation does not state what the validator enforces.
-6. **`libs/services` has a `generate` script that calls `pnpm run lint:fix`,
+   re-publishes the gap. Same guard-without-`@ApiBearerAuth()` shape MDRS-27
+   fixed on the label controllers; worth sweeping for across every controller,
+   which is a bigger question than this issue.
+4. **Should `approve` return 200 instead of 201?** Someone wrote
+   `@ApiOkResponse` on it deliberately, and 200 is the better answer for a route
+   that mutates an existing enrollment rather than creating a resource. This
+   task moved the *document* to match the server (201) because moving the server
+   is a breaking change for every caller and needs its own issue, a frontend
+   sweep, and the two e2e assertions updated. The decision is a human's.
+5. **15 more properties have the nullability gap.** `@ApiPropertyOptional({ type: X })`
+   on a `| null` field publishes no `nullable: true`. Measured: 17 such
+   properties across 7 files (`course-response.dto.ts`, `create-course.dto.ts`,
+   `kosk-response.dto.ts`, `create-kosk.dto.ts`, `flashcard-response.dto.ts`,
+   `create-flashcard.dto.ts`, `flashcard-deck-response.dto.ts`), of which this
+   change fixed the 2 that had regressed against a published contract. The other
+   15 are a pre-existing gap; fixing them is a contract-wide change worth doing
+   on purpose rather than as a side effect.
+6. **Should the generator emit `generated/package.json` at all?** It is now
+   frozen by `.openapi-generator-ignore` to preserve `"private": true`, which
+   means its `version` field no longer tracks the service. Nothing reads the
+   file, but a frozen manifest is a small lie of its own.
+   `--global-property=supportingFiles=…` could stop emitting it, together with
+   the sibling `tsconfig.json`/`README.md`, since this client is consumed from
+   source and never built as a package.
+7. **`libs/services` has a `generate` script that calls `pnpm run lint:fix`,
    which that package does not define.** Pre-existing; `generate:tedrisat` was
    used directly and is unaffected.
 
 ## Review
 
-`/security-review` on the diff: **no findings**. It independently reproduced the
+### The counts, and what they do and do not mean
+
+The review asked why a line-level count of the spec diff gives 18 added
+`"security"` lines when only ten operations were added. Measured both ways:
+
+```
+$ git diff origin/main -- libs/services/swagger-docs/tedrisat.json | grep '^+' | grep -cF '"security"'
+18
+$ git diff origin/main -- libs/services/swagger-docs/tedrisat.json | grep '^-' | grep -cF '"security"'
+8
+```
+
+| pattern | added lines | removed lines | net | whole-file count |
+|---|---|---|---|---|
+| `"security"` | 18 | 8 | **10** | 39 → 49 |
+| `"403"` | 3 | 1 | **2** | — |
+| `"404"` | 15 | 13 | **2** | — |
+
+The added-line figures reproduce, but they are not a count of anything
+semantic: the same lines appear on both sides. `requiresApproval` moved
+position in six course schemas, which shifts the diff's alignment, so unchanged
+blocks get re-emitted as a `-`/`+` pair. Subtracting the removals gives 10 / 2 /
+2, which is exactly the operation-level measurement: ten operations added, all
+ten carrying a security requirement, and the two delete routes gaining 403 and
+404. The whole-file occurrence count is the independent check — 39 `"security"`
+occurrences before, 49 after, a difference of ten.
+
+So the expectation of "ten routes" was right. What was understated is
+elsewhere, and it is the finding this task turned on: the committed spec did not
+contain the two `flashcard-label` controllers **at all** — 29 paths to 39, 42
+schemas to 54, twelve new label schemas, two new client API classes. That is the
+measured cost of having no script that produced the artifact.
+
+### `/security-review`
+
+**No findings**. It independently reproduced the
 spec measurements above and added one useful number — of the 47 operations
 present in both specs, `0` differ in `security`, and the 8 operations carrying
 no security requirement in the new spec are the same 8 as before (`GET /`,
