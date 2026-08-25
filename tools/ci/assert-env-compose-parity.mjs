@@ -295,7 +295,35 @@ check(
     "    searching the file is not necessarily the one that applies."
 );
 
-// ── 2. Every built service is classified ──────────────────────────────────────
+// ── 2. The tables above are well formed ───────────────────────────────────────
+//
+// Both of these would otherwise be silent. A prefix listed in BOTH tables loses
+// every one of its keys — the out-of-scope branch is tested first, so `API` in
+// UNCONTAINERISED_PREFIXES would skip all 21 API__ keys while every other check
+// still reported green. An empty target list is the same hole by another route.
+
+const doubleClassified = Object.keys(PREFIX_TARGETS).filter(
+  (p) => p in UNCONTAINERISED_PREFIXES
+);
+check(
+  doubleClassified.length === 0,
+  "no prefix is classified both ways",
+  `in PREFIX_TARGETS and UNCONTAINERISED_PREFIXES: ${JSON.stringify(sorted(doubleClassified))}\n` +
+    "    The out-of-scope branch wins, so every key under that prefix would be skipped silently."
+);
+
+const emptyTargets = Object.keys(PREFIX_TARGETS).filter(
+  (p) => PREFIX_TARGETS[p].length === 0
+);
+check(
+  emptyTargets.length === 0,
+  "every prefix target list names at least one service",
+  `empty in PREFIX_TARGETS: ${JSON.stringify(sorted(emptyTargets))}\n` +
+    "    A prefix with no targets cannot reach anything, so its keys would fail with a message naming no service.\n" +
+    "    Move it to UNCONTAINERISED_PREFIXES if the app has no compose service."
+);
+
+// ── 3. Every built service is classified ──────────────────────────────────────
 
 const targetedServices = new Set(Object.values(PREFIX_TARGETS).flat());
 
@@ -318,7 +346,7 @@ for (const service of targetedServices) {
   );
 }
 
-// ── 3. Every prefix in the template is accounted for ──────────────────────────
+// ── 4. Every prefix in the template is accounted for ──────────────────────────
 
 const prefixOf = (key) => {
   const m = key.match(/^([A-Z][A-Z0-9]*)__/);
@@ -339,7 +367,7 @@ check(
     "    Until it is in one of them, nothing checks its keys."
 );
 
-// ── 4. The assertion: every in-scope key reaches a container ──────────────────
+// ── 5. The assertion: every in-scope key reaches a container ──────────────────
 
 /** `key -> the services its prefix targets`, for the keys actually checked. */
 const inScope = new Map();
@@ -396,7 +424,7 @@ for (const [key, targets] of inScope) {
   }
 }
 
-// ── 5. No exemption may go stale ──────────────────────────────────────────────
+// ── 6. No exemption may go stale ──────────────────────────────────────────────
 //
 // An ignore list is only as good as the pressure to shrink it. Both lists are
 // pinned to the two files, so an entry that has been mapped since, or whose key

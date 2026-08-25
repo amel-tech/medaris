@@ -85,6 +85,15 @@ escape route that would otherwise make the whole gate optional.
 4. A key assigned twice in `.env.example` fails. The loader keeps the last
    assignment, so a duplicate makes the file lie to whoever searches it — and it
    would also break the count reconciliation this record relies on.
+5. A prefix listed in **both** `PREFIX_TARGETS` and `UNCONTAINERISED_PREFIXES`
+   fails. This was a real hole found while reviewing the script: the
+   out-of-scope branch is tested first, so putting `API` in
+   `UNCONTAINERISED_PREFIXES` would have skipped all 21 `API__` keys while every
+   other check still reported green — the one edit that could have disabled the
+   gate without anything going red.
+6. A `PREFIX_TARGETS` entry with an empty target list fails — the same hole by
+   another route, and it would otherwise produce a failure message naming no
+   service.
 
 ### Fail-closed parsing
 
@@ -203,6 +212,24 @@ Keys are deduplicated before anything counts them, so the
 the duplicate is reported rather than absorbed. `.env.example` has no duplicates
 today (`grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' .env.example | sort | uniq -d`
 returns nothing).
+
+**(h) A prefix classified both ways.** Added `API` to
+`UNCONTAINERISED_PREFIXES` while leaving it in `PREFIX_TARGETS`:
+
+```
+✖ no prefix is classified both ways
+    in PREFIX_TARGETS and UNCONTAINERISED_PREFIXES: ["API"]
+    The out-of-scope branch wins, so every key under that prefix would be skipped silently.
+```
+
+**(i) An empty target list.** Set `API: []` in `PREFIX_TARGETS`:
+
+```
+✖ every prefix target list names at least one service
+    empty in PREFIX_TARGETS: ["API"]
+    A prefix with no targets cannot reach anything, so its keys would fail with a message naming no service.
+    Move it to UNCONTAINERISED_PREFIXES if the app has no compose service.
+```
 
 ### Repo gate
 
