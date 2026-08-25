@@ -5,44 +5,8 @@
  * globs that file matched, which is why the four `test/e2e/*.e2e.spec.ts` suites
  * still run under `nx run tedrisat:test`: they were never e2e-only.
  */
-import swc from "unplugin-swc";
 import { defineConfig, mergeConfig } from "vitest/config";
-import baseConfig from "../../vitest.config";
-
-/**
- * The one non-negotiable piece of this migration.
- *
- * NestJS resolves constructor dependencies from the `design:paramtypes`
- * metadata that `emitDecoratorMetadata` writes. Vitest transforms with esbuild
- * by default, and esbuild emits no decorator metadata at all — so DI silently
- * stops resolving in tests while `tsc --noEmit` and `nest build` stay green.
- * Routing the transform through SWC with these three flags is what keeps the
- * metadata alive:
- *
- *   - `parser.decorators`      — parse decorators at all
- *   - `transform.legacyDecorator`  — TS experimental (Stage 1) semantics, which
- *                                    is what `experimentalDecorators` in
- *                                    `tsconfig.json` selects and what Nest needs
- *   - `transform.decoratorMetadata` — the actual `design:*` emit
- *
- * Exported so `vitest.integration.config.ts` reuses the identical transform
- * rather than a drifting copy.
- */
-export const nestSwcPlugin = () =>
-  swc.vite({
-    // Read nothing from tsconfig.json: `module: "commonjs"` there is correct for
-    // `nest build` and wrong for Vitest, which needs ESM out of the transform.
-    tsconfigFile: false,
-    jsc: {
-      target: "es2022",
-      parser: { syntax: "typescript", decorators: true },
-      transform: { legacyDecorator: true, decoratorMetadata: true },
-      // Nest logs and some error paths read `constructor.name`.
-      keepClassNames: true,
-    },
-    module: { type: "es6" },
-    sourceMaps: true,
-  });
+import baseConfig, { nestSwcPlugin } from "../../vitest.config";
 
 export default mergeConfig(
   baseConfig,

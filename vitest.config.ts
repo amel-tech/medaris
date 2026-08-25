@@ -10,7 +10,57 @@
  * so a base glob would leak into every project's spec selection and could not
  * be narrowed. Each project owns its own `include`.
  */
+import swc from "unplugin-swc";
 import { defineConfig } from "vitest/config";
+
+/**
+ * The one non-negotiable piece of the Vitest migration, for the NestJS apps
+ * only (MDRS-65 hoisted it here; it lived twice, byte-identically, in
+ * `apps/tedrisat/vitest.config.ts` and `apps/teskilat/vitest.config.ts`).
+ *
+ * NestJS resolves constructor dependencies from the `design:paramtypes`
+ * metadata that `emitDecoratorMetadata` writes. Vitest transforms with esbuild
+ * by default, and esbuild emits no decorator metadata at all — so DI silently
+ * stops resolving in tests while `tsc --noEmit` and `nest build` stay green.
+ * Routing the transform through SWC with these three flags is what keeps the
+ * metadata alive:
+ *
+ *   - `parser.decorators`      — parse decorators at all
+ *   - `transform.legacyDecorator`  — TS experimental (Stage 1) semantics, which
+ *                                    is what `experimentalDecorators` in
+ *                                    `tsconfig.json` selects and what Nest needs
+ *   - `transform.decoratorMetadata` — the actual `design:*` emit
+ *
+ * Two copies of this were one dropped flag away from one app losing DI while
+ * the other kept it, with typecheck and build green either way.
+ *
+ * Exported, never added to this file's own `plugins` array below: only the two
+ * Nest apps need the SWC transform, so a web project that later `mergeConfig`s
+ * this base does not pay for it. The four consumers — each Nest app's
+ * `vitest.config.ts` and `vitest.integration.config.ts` — call it and get the
+ * same options object.
+ *
+ * `unplugin-swc` is declared in the workspace-root `package.json` because this
+ * is the only file that imports it. Neither app declares it any more; the
+ * specifier resolves by `node_modules` walk-up from whichever app config Vitest
+ * was pointed at. Moving the import without moving the declaration left both
+ * apps failing `depcheck` with `Unused devDependencies * unplugin-swc`.
+ */
+export const nestSwcPlugin = () =>
+  swc.vite({
+    // Read nothing from tsconfig.json: `module: "commonjs"` there is correct for
+    // `nest build` and wrong for Vitest, which needs ESM out of the transform.
+    tsconfigFile: false,
+    jsc: {
+      target: "es2022",
+      parser: { syntax: "typescript", decorators: true },
+      transform: { legacyDecorator: true, decoratorMetadata: true },
+      // Nest logs and some error paths read `constructor.name`.
+      keepClassNames: true,
+    },
+    module: { type: "es6" },
+    sourceMaps: true,
+  });
 
 export default defineConfig({
   test: {

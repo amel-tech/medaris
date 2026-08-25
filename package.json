@@ -48,6 +48,7 @@
     "lint-staged": "catalog:",
     "nx": "catalog:",
     "typescript": "catalog:",
-    "typescript-eslint": "catalog:"
+    "typescript-eslint": "catalog:",
+    "unplugin-swc": "catalog:"
   }
 }

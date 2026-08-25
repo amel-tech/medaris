@@ -411,6 +411,9 @@ importers:
       typescript-eslint:
         specifier: 'catalog:'
         version: 8.65.0(eslint@10.8.0(jiti@2.7.0))(typescript@5.9.3)
+      unplugin-swc:
+        specifier: 'catalog:'
+        version: 1.5.11(@swc/core@1.15.46)(esbuild@0.28.1)(rollup@4.62.2)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))(webpack@5.106.2(@swc/core@1.15.46)(esbuild@0.28.1)(lightningcss@1.33.0))
 
   apps/keycloak-theme:
     dependencies:
@@ -871,9 +874,6 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
-      unplugin-swc:
-        specifier: 'catalog:'
-        version: 1.5.11(@swc/core@1.15.46)(esbuild@0.28.1)(rollup@4.62.2)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))(webpack@5.106.2(@swc/core@1.15.46)(esbuild@0.28.1)(lightningcss@1.33.0))
       vite:
         specifier: catalog:vitest
         version: 7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0)
@@ -959,9 +959,6 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
-      unplugin-swc:
-        specifier: 'catalog:'
-        version: 1.5.11(@swc/core@1.15.46)(esbuild@0.28.1)(rollup@4.62.2)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))(webpack@5.106.2(@swc/core@1.15.46)(esbuild@0.28.1)(lightningcss@1.33.0))
       vite:
         specifier: catalog:vitest
         version: 7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0)
