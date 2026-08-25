@@ -58,9 +58,13 @@ tedrisat:
 | `SWAGGER_ALLOW_IN_PRODUCTION` | tedrisat's opt-in. teskilat has none — see §5. |
 
 The root `.env.example` still ships `TESKILAT__DB_NAME`, `TESKILAT__DB_USERNAME`
-and `TESKILAT__DB_PASSWORD`. Those are the credentials the **database** uses to
-provision `teskilat_db` (`docker/init-db.*`), not app configuration, and they
-reach no teskilat container.
+and `TESKILAT__DB_PASSWORD`. **Nothing reads them today** — `docker/init-db.sql`
+hardcodes `CREATE USER teskilat WITH PASSWORD 'teskilat'`, and no `TESKILAT__*`
+key is interpolated by the `medaris-db` service — so setting
+`TESKILAT__DB_PASSWORD` to a real secret does not change the role's password.
+They are kept for PR #53 (MDRS-68), which replaces that script with an
+`init-db.sh` driven by these three keys. Either way they are provisioning
+credentials, not app configuration, and they reach no teskilat container.
 
 ---
 
@@ -264,9 +268,18 @@ restart loop — a documentation switch on one service becoming an outage on
 another. Not mounting is the whole security requirement; not booting adds
 nothing to it.
 
-**Operationally:** nothing to set before a release. There is no variable that
-can publish teskilat's schema from a production image, which is the point. If
-someone reports "the docs are 404 on teskilat", the container log carries
+**Operationally:** nothing to set before a release. `SWAGGER_ENABLED` alone
+cannot publish teskilat's schema, which is the point — but be precise about the
+boundary: `NODE_ENV` is the guard's own key and `docker-compose.yml` interpolates
+it as `${TESKILAT__NODE_ENV:-${API__NODE_ENV:-production}}`, so
+`TESKILAT__NODE_ENV=development` on the production image *does* publish `/docs`.
+That is not a hole in the guard — it is the guard's condition. A deployment that
+sets it is no longer running production, and it also moves `ALLOWED_ORIGINS` into
+the branch that accepts a `*` origin list. So: the only way to read the schema is
+to run the service outside production, and doing that is a visible,
+CORS-affecting decision rather than a documentation toggle.
+
+If someone reports "the docs are 404 on teskilat", the container log carries
 
 ```
 @medaris/teskilat is ignoring SWAGGER_ENABLED=true: under NODE_ENV=production …
@@ -275,11 +288,16 @@ someone reports "the docs are 404 on teskilat", the container log carries
 and the answer is to read the schema from a non-production run, not to change a
 flag.
 
-Enforced by `apps/teskilat/src/config/swagger-env.ts` and covered by
+Enforced in two independent places — `apps/teskilat/src/config/swagger-env.ts`
+via the config factory, and again in `mountSwagger`
+(`apps/teskilat/src/swagger.ts`) against the environment as it is at mount time,
+so a stale config value cannot mount the UI on its own. Covered by
 `apps/teskilat/test/unit/swagger-env.spec.ts` (the resolver) and
 `apps/teskilat/test/e2e/swagger.e2e.spec.ts`, which boots the application and
-asserts `GET /docs` → 404 with the flag on, and → 200 outside production so the
-negative case is not vacuous.
+asserts `GET /docs` and `GET /docs-json` → 404 with the flag on — including the
+case where the compiled config says `enabled: true` and only the live
+environment says production — and → 200 outside production, so the negative
+cases are not vacuous.
 
 ---
 

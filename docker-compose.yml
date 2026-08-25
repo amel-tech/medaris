@@ -157,10 +157,14 @@ services:
       # failure mode for nothing.
       #
       # The root .env.example still ships TESKILAT__DB_NAME / DB_USERNAME /
-      # DB_PASSWORD. Those are the credentials the database PROVISIONING uses to
-      # create teskilat_db (docker/init-db.*), not app configuration, and they
-      # keep their meaning when teskilat later gains a database. Re-add these
-      # lines then, alongside the DatabaseModule — not before.
+      # DB_PASSWORD, and after this change nothing on this tree reads them: no
+      # `TESKILAT__*` key is interpolated by medaris-db below, and
+      # docker/init-db.sql hardcodes `CREATE USER teskilat WITH PASSWORD
+      # 'teskilat'`. They are kept for PR #53 (MDRS-68), which replaces that
+      # script with an init-db.sh driven by exactly these three keys — deleting
+      # them would make #53 unrenderable. They are provisioning credentials
+      # either way, not app configuration: re-add these `environment:` lines
+      # only when teskilat gains a DatabaseModule.
       OTEL_ENABLED: ${TESKILAT__OTEL_ENABLED:-${API__OTEL_ENABLED:-false}}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${TESKILAT__OTEL_EXPORTER_OTLP_ENDPOINT:-${API__OTEL_EXPORTER_OTLP_ENDPOINT:-localhost:4317}}
       # Same three as tedrisat above.

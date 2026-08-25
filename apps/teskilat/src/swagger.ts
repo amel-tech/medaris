@@ -13,25 +13,42 @@ import { INestApplication } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import {
+  resolveSwaggerEnabled,
   SWAGGER_PRODUCTION_SUPPRESSION_NOTICE,
   swaggerSuppressedByProduction,
 } from "./config/swagger-env";
 
 /**
- * Mounts Swagger UI if — and only if — the configuration says it may be.
+ * Mounts Swagger UI if — and only if — **both** the live environment and the
+ * configuration allow it.
  *
- * The flag comes from `config/config.ts`, which resolves it through
- * `resolveSwaggerEnabled`; under `NODE_ENV=production` that is `false`
- * unconditionally, so no argument to this function can mount the UI there.
+ * Two independent layers, because one of them is not enough:
  *
+ *   1. `resolveSwaggerEnabled(env)` reads the environment as it is **now**.
+ *   2. `config.get("swagger.enabled")` is the value the config factory resolved
+ *      when the module was compiled.
+ *
+ * Layer 2 alone was the bug this signature used to have. A `ConfigService`
+ * whose factory ran before `NODE_ENV=production` was set carries
+ * `swagger.enabled: true`, so the old body logged
+ * `SWAGGER_PRODUCTION_SUPPRESSION_NOTICE` — "this service never mounts Swagger
+ * UI" — and then mounted it on the next line. In a real container the factory
+ * runs after the image's `ENV NODE_ENV=production`, so the guard held in
+ * practice; the docstring's claim that no argument could mount the UI in
+ * production was nevertheless false of this function. It is true now: layer 1
+ * refuses regardless of what the caller hands in.
+ *
+ * @param env the environment to judge; defaults to `process.env`. Passed
+ *   explicitly so both halves of the decision read the same snapshot.
  * @returns whether the UI was mounted, so a caller can log or assert on it.
  */
 export function mountSwagger(
   app: INestApplication,
   config: ConfigService,
-  logger?: Pick<ILogger, "warn">
+  logger?: Pick<ILogger, "warn">,
+  env: NodeJS.ProcessEnv = process.env
 ): boolean {
-  if (swaggerSuppressedByProduction()) {
+  if (swaggerSuppressedByProduction(env)) {
     // Not silent: an operator who set the flag and expected docs learns it
     // from the service log rather than from a 404 on /docs.
     if (logger) {
@@ -41,7 +58,7 @@ export function mountSwagger(
     }
   }
 
-  if (!config.get<boolean>("swagger.enabled")) {
+  if (!resolveSwaggerEnabled(env) || !config.get<boolean>("swagger.enabled")) {
     return false;
   }
 
@@ -53,7 +70,10 @@ export function mountSwagger(
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  const swaggerEndpoint = config.get<string>("swagger.endpoint") || "/swagger";
+  // `getOrThrow`, not `get(...) || "/swagger"`: config/config.ts always
+  // supplies this key and already defaults it to `/docs`, so the old fallback
+  // was unreachable *and* named a different path than the documented default.
+  const swaggerEndpoint = config.getOrThrow<string>("swagger.endpoint");
   SwaggerModule.setup(swaggerEndpoint, app, document);
 
   return true;

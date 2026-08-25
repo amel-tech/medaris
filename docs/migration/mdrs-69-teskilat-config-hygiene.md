@@ -35,9 +35,10 @@ MDRS-25's `.env` loader. Additionally:
 * There is no `DatabaseModule`, no `drizzle.config.ts`, no migrations directory
   under `apps/teskilat`.
 * `AppModule` imports exactly `ConfigModule.forRoot` and `LoggerModule.forRoot`.
-* `grep -rn 'config.get' apps/teskilat/src` returns three reads, all in
-  `main.ts`: `swagger.enabled`, `swagger.endpoint`, `port`. Nothing has ever
-  read `database.*`.
+* `grep -rn 'config.get' apps/teskilat/src` returned three reads, all in
+  `main.ts` at the time of the audit: `swagger.enabled`, `swagger.endpoint`,
+  `port`. Nothing has ever read `database.*`. (On this branch the first two moved
+  into `swagger.ts`; the set of keys read is unchanged.)
 * `grep -rniE 'keycloak|authguard|jwt' apps/teskilat/src` returns nothing,
   confirming the runbook's claim about "the Keycloak settings" was also false.
 
@@ -100,9 +101,22 @@ environment running the image.
 
 MDRS-69's issue offered two options — extend tedrisat's `resolveSwaggerEnabled`
 to teskilat, or give teskilat a `TESKILAT__SWAGGER_ENABLED` that does not inherit
-the group key. Neither was taken. Both leave a route by which a production
-teskilat publishes its schema; the requirement is that no value of any variable
-does that.
+the group key. Neither was taken: both leave a `SWAGGER_ENABLED` value that
+publishes a production teskilat's schema, and the requirement is that no value of
+that flag does.
+
+**Where the boundary actually is.** `NODE_ENV` is the guard's own condition, and
+`docker-compose.yml:124` interpolates it as
+`${TESKILAT__NODE_ENV:-${API__NODE_ENV:-production}}` — so
+`TESKILAT__NODE_ENV=development` plus `TESKILAT__SWAGGER_ENABLED=true` on the
+production image *does* serve `/docs`. That is not a hole; it is what "under
+production" means, and it is the route the suppression notice itself recommends.
+An earlier draft of this record said "no value of any variable" publishes the
+schema, which was wrong and is corrected here. The true statement is narrower and
+still worth having: no value of `SWAGGER_ENABLED` publishes it, the only way in
+is to stop running production, and doing that also moves `ALLOWED_ORIGINS` into
+the branch that accepts a `*` origin list — so it is a visible decision rather
+than a documentation toggle.
 
 ### Why it resolves to `false` instead of throwing
 
@@ -140,13 +154,40 @@ Nest application:
 | `NODE_ENV=production`, flag on | `GET /health` → **200** — the guard does not take the service down |
 | `NODE_ENV=development`, `SWAGGER_ENABLED=true` | `GET /docs` → **200**, no warning |
 | `NODE_ENV=development`, flag off | `GET /docs` → **404**, no warning |
+| config compiled under development (`enabled: true`), live env production | `GET /docs` → **404**, `GET /docs-json` → **404**, one warning |
+| config compiled with the flag off, live env permits it | `GET /docs` → **404** |
 
 The `development` → 200 case is there on purpose: without it a broken mount
 would read as a passing guard, and every 404 above would be vacuous.
 
-One thing was measured while writing that suite and is worth keeping: calling
-`mountSwagger` **after** `app.init()` leaves `/docs` a 404 even with the flag on.
-The suite therefore mounts before `init()`, which is also main.ts's order —
+### The guard is authoritative in `mountSwagger`, not only in the factory
+
+The last two rows are a review finding, fixed here. The first version of
+`mountSwagger` warned from the live `process.env` and then mounted from the
+`swagger.enabled` value the config factory had cached at module-compile time. Its
+docstring claimed "no argument to this function can mount the UI there", and that
+was false of the function: hand it a `ConfigService` whose factory ran before
+`NODE_ENV=production` was set, and it logged
+`SWAGGER_PRODUCTION_SUPPRESSION_NOTICE` — "this service never mounts Swagger UI"
+— and mounted it on the next line.
+
+In a real container this was never reachable: the image pins
+`ENV NODE_ENV=production`, so the factory always resolves `false` there. It was a
+false docstring and a guard that did not enforce its own claim, not a live
+exposure. It is enforced now — `mountSwagger` takes an `env` parameter, both
+halves of the decision read the same snapshot, and the mount requires
+`resolveSwaggerEnabled(env)` **and** `config.get("swagger.enabled")`.
+
+**The new test is not vacuous — measured both ways.** With the two-layer guard in
+place, `nx run teskilat:test` is 24/24. With the `resolveSwaggerEnabled(env)`
+term temporarily removed, leaving the original single-layer body, the same run is
+**1 failed | 23 passed**, and the failure is exactly "refuses even when the cached
+config says Swagger is enabled". The mirror-image row (live env permits, compiled
+config refuses) is there so neither layer is load-bearing alone.
+
+One further thing measured while writing the suite: calling `mountSwagger`
+**after** `app.init()` leaves `/docs` a 404 even with the flag on. The suite
+therefore mounts before `init()`, which is also main.ts's order —
 `NestFactory.create` does not initialise the application, `app.listen()` does.
 
 ### Also fixed while in `main.ts`
@@ -186,11 +227,32 @@ script provisions `teskilat_db` for a `teskilat` role. This branch does not touc
 `medaris-db`, `docker/init-db.*`, or the `MEDARIS_POSTGRES_*` keys, and it
 deliberately **keeps** `TESKILAT__DB_NAME`, `TESKILAT__DB_USERNAME` and
 `TESKILAT__DB_PASSWORD` in `.env.example` — removing them would leave #53's
-`${TESKILAT__DB_PASSWORD:?}` on `medaris-db` unrenderable. What changed is what
-those keys *mean*: they are provisioning credentials for the database, read by
-`docker/init-db.*`, and they now reach no teskilat container. The comment above
-them says so. The two changes compose without conflict; `teskilat_db` keeps being
-provisioned, and stops being handed to a service that never opens it.
+`${TESKILAT__DB_PASSWORD:?}` on `medaris-db` unrenderable. The two changes
+compose without conflict; `teskilat_db` keeps being provisioned, and stops being
+handed to a service that never opens it.
+
+**Corrected after review — the tense matters.** The first version of this branch
+wrote, in `.env.example`, `docker-compose.yml` and the runbook, that those three
+keys are the credentials `docker/init-db.*` uses to provision `teskilat_db`. That
+is true only **after** #53 lands. On this tree it is false, and measurably so:
+
+```
+$ sed -n '17,19p' docker/init-db.sql
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'teskilat') THEN
+    CREATE USER teskilat WITH PASSWORD 'teskilat';
+  END IF;
+
+$ grep -n 'TESKILAT__' docker-compose.yml   # none inside services.medaris-db
+```
+
+The role's password is hardcoded, and no `TESKILAT__*` key is interpolated by
+`medaris-db`. So after this branch **nothing on this tree reads the three keys**:
+an operator who followed the old comment and set `TESKILAT__DB_PASSWORD` to a
+real secret would still get a `teskilat` role whose password is the literal
+`teskilat`. Worse, `.env.example` contradicted itself six lines apart — the
+tedrisat block says its password is required "rather than falling back to
+docker/init-db.sql's credential". All three files now say what is true today
+(read by nothing, kept for #53) and name #53 as the change that makes them live.
 
 **#51 (MDRS-70) — `tools/ci/assert-env-compose-parity.mjs`.** That gate's rule is
 "a key whose prefix names a compose service must be interpolated inside that
@@ -248,6 +310,47 @@ request body rather than filed:
    the **tedrisat** spec and client: no tedrisat file is touched here, and no
    teskilat spec or generated client exists to drift.
 
+## Review findings and what they changed
+
+`/code-review` at effort `high` raised four; all four are closed above or below.
+
+| # | Where | Outcome |
+|---|---|---|
+| 1 | `.env.example`, `docker-compose.yml`, the runbook | **Fixed.** The present-tense provisioning claim was false on this tree. See "Corrected after review" above. |
+| 2 | the runbook's §5, this record | **Fixed.** "No variable can publish the schema" was overstated — `TESKILAT__NODE_ENV` can. See "Where the boundary actually is". |
+| 3 | `apps/teskilat/src/swagger.ts` | **Fixed.** The guard now enforces itself; `env` is threaded through both halves. Proved non-vacuous by running the suite against the old body. |
+| 4 | `apps/teskilat/src/swagger.ts` | **Fixed.** The unreachable `\|\| "/swagger"` fallback — which also named a different path than the documented `/docs` — is replaced by `config.getOrThrow<string>("swagger.endpoint")`, so there is no second default to disagree with the first. |
+
+Three things the reviewer chased and cleared, recorded so nobody repeats the
+work:
+
+* **Swagger UI renders fine under helmet.** `main.ts` runs
+  `applyGlobalMiddleware` (helmet) before `mountSwagger`, and teskilat has no
+  equivalent of tedrisat's `swagger-csp.ts` relaxation — so a blank page was the
+  obvious worry. Measured through main.ts's real pipeline: `/docs` 200, helmet
+  sends `script-src 'self'`, and all three of Swagger's script tags are
+  same-origin files, so CSP allows them; `swagger-ui-init.js`, `-bundle.js`,
+  `.css` and `-json` are all 200. tedrisat needs its relaxation for the OAuth2
+  popup (COOP), which teskilat's `DocumentBuilder` does not configure. No action.
+* **The `"Teskilat Service API"` title change breaks no generated client** —
+  `libs/services` generates only from `tedrisat.json`.
+* **CI has no `docker compose config` step**, so dropping the interpolations
+  could not have failed a check; the local render is the only evidence, which is
+  why it is written out above.
+
+`/security-review` was run a second time over the fixed diff and again found
+nothing at or above its threshold. It traced both orderings of the two-layer
+guard and confirmed the refusal precedes `SwaggerModule.createDocument`, so no
+route is registered; that `mountSwagger` is the only mount site in the app (the
+`@ApiTags`/`@ApiOperation` decorators on `app.controller.ts` are reflection
+metadata and serve nothing on their own); and that `getOrThrow` cannot change the
+outcome, being reachable only after both guards pass and always supplied by the
+factory. It noted one deliberate limitation worth writing down: the guard
+compares `NODE_ENV` to the exact string `"production"`, so a nonstandard spelling
+like `Production` would not trigger it. That is the same convention
+`libs/common/src/config/cors.config.ts` and tedrisat already follow, and it is
+left consistent with them rather than diverging here.
+
 ## Not verified
 
 * **No container was built or run.** The compose evidence above is
@@ -269,7 +372,7 @@ request body rather than filed:
 
 ```
 pnpm nx run-many -t typecheck --skip-nx-cache        16 projects  ✅
-pnpm nx run-many -t test --skip-nx-cache              3 projects  ✅  246 tests / 19 files
+pnpm nx run-many -t test --skip-nx-cache              3 projects  ✅  248 tests / 19 files
 pnpm nx run-many -t build --skip-nx-cache             8 projects  ✅
 pnpm nx run-many -t lint --skip-nx-cache             16 projects  ✅
 pnpm nx run-many -t module-boundaries --skip-nx-cache 16 projects  ✅
@@ -280,8 +383,9 @@ pnpm nx run teskilat:depcheck                                    ✅  no issue
 
 `CLAUDE.md` still says "91 tests / 10 suites"; that is stale. The base
 `cb7e9636` measures **226 tests / 17 files** (tedrisat 224/15, teskilat 2/2).
-This branch adds 20 tests in 2 files — teskilat goes 2/2 → 22/4 — for **246
-tests / 19 files**. `tedris-web:test` is a token-processing target and
+This branch adds 22 tests in 2 files — teskilat goes 2/2 → 24/4 — for **248
+tests / 19 files**. (It was 246/19 before the review fixes; the two-layer guard
+added two e2e cases.) `tedris-web:test` is a token-processing target and
 contributes no vitest suites, which is why `run-many` reports 3 projects and two
 vitest summaries.
 

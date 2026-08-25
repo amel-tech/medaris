@@ -21,18 +21,41 @@ import { mountSwagger } from "../../src/swagger";
 
 const DOCS_PATH = "/docs";
 
-async function bootWith(env: Record<string, string>): Promise<{
+/**
+ * Boots the application with `env` applied, then mounts.
+ *
+ * `compileEnv` exists to drive the two layers of the guard apart. The config
+ * factory reads `process.env` when the module compiles; `mountSwagger` reads it
+ * again when it runs. Passing a different `compileEnv` compiles a
+ * `ConfigService` that carries `swagger.enabled: true` and then asks
+ * `mountSwagger` to judge a production environment — the exact shape that used
+ * to log "never mounts Swagger UI" and mount it anyway.
+ */
+async function bootWith(
+  env: Record<string, string>,
+  compileEnv?: Record<string, string>
+): Promise<{
   app: INestApplication<App>;
   mounted: boolean;
   warnings: string[];
 }> {
-  for (const [key, value] of Object.entries(env)) {
-    process.env[key] = value;
-  }
+  const applyEnv = (values: Record<string, string>) => {
+    for (const [key, value] of Object.entries(values)) {
+      process.env[key] = value;
+    }
+  };
+
+  applyEnv(compileEnv ?? env);
 
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [AppModule],
   }).compile();
+
+  // Only now does the mount-time environment take effect, so the ConfigService
+  // above is already carrying whatever `compileEnv` resolved.
+  if (compileEnv) {
+    applyEnv(env);
+  }
 
   const app = moduleFixture.createNestApplication<INestApplication<App>>();
 
@@ -126,6 +149,38 @@ describe("teskilat Swagger mounting (e2e)", () => {
 
     expect(booted.mounted).toBe(false);
     expect(booted.warnings).toHaveLength(0);
+    await request(app.getHttpServer()).get(DOCS_PATH).expect(404);
+  });
+
+  it("refuses even when the cached config says Swagger is enabled", async () => {
+    // The bug this closes: the config factory ran under development, so
+    // `swagger.enabled` is `true` in the ConfigService, and only the live
+    // environment says production. `mountSwagger` used to warn "never mounts
+    // Swagger UI" and mount it on the next line.
+    const booted = await bootWith(
+      { NODE_ENV: "production", SWAGGER_ENABLED: "true" },
+      { NODE_ENV: "development", SWAGGER_ENABLED: "true" }
+    );
+    app = booted.app;
+
+    expect(booted.mounted).toBe(false);
+    await request(app.getHttpServer()).get(DOCS_PATH).expect(404);
+    await request(app.getHttpServer()).get(`${DOCS_PATH}-json`).expect(404);
+    // And it said so, rather than refusing quietly.
+    expect(booted.warnings).toHaveLength(1);
+  });
+
+  it("refuses when the live environment allows it but the config does not", async () => {
+    // The mirror image, so neither layer is load-bearing on its own: the
+    // environment `mountSwagger` judges permits Swagger, and the compiled
+    // config says off.
+    const booted = await bootWith(
+      { NODE_ENV: "development", SWAGGER_ENABLED: "true" },
+      { NODE_ENV: "development", SWAGGER_ENABLED: "false" }
+    );
+    app = booted.app;
+
+    expect(booted.mounted).toBe(false);
     await request(app.getHttpServer()).get(DOCS_PATH).expect(404);
   });
 
