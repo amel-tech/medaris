@@ -136,15 +136,40 @@ by type; that resolution is exactly what `design:paramtypes` feeds.
 
 ## Not verified
 
-- **CI.** All seven workflows are release-tag / `workflow_dispatch` /
-  `workflow_call` triggered, so no check runs against the pull request. The
-  local gate above is the only evidence.
 - **The web-project claim.** "A web project that later merges this base is
   unaffected" is reasoned from the code, not measured — no web project has a
   Vitest config today, so there was nothing to run.
-- **Coverage thresholds** were exercised only on this machine's Node version,
-  not on CI's Node 24. Unchanged by this task; noted because the thresholds in
-  both app configs are commented as measured on Node 22.
+- **The AI Multi-Lens Review Gate.** Red on PR #49, and not because a lens
+  raised a finding: the preflight resolved `actor Argedik permission=write`,
+  which is not admin, and 05:08 UTC is outside the `16:00-21:00 UTC` review
+  window, so the lenses were deferred to the nightly drain rather than run. The
+  gate's own message says "This check is red because deferred is not reviewed,
+  not because a finding was raised." Nothing in this change has been through
+  those lenses yet. Re-running one off-hours is deliberately an admin decision,
+  so the label was left alone.
+
+### Correcting one claim in an earlier draft of this record
+
+This document first said CI runs nothing against a pull request, because all
+seven workflows were release-tag / `workflow_dispatch` / `workflow_call`
+triggered. That was true before MDRS-15 and is now false — PR #49 ran ten
+checks. Nine pass:
+
+| Check | Result |
+| --- | --- |
+| `Verify` (the five-target gate on Node 24) | pass, 3m5s |
+| `Security gates` | pass, 35s |
+| `Commit hygiene` | pass, 36s |
+| `Traceability` | pass, 6s |
+| `Analyze (javascript-typescript)` | pass, 1m20s |
+| `Analyze (actions)` | pass, 45s |
+| `CodeQL` | pass |
+| `AI review preflight` | pass |
+| `AI Multi-Lens Review Gate` | **fail** — deferred, see above |
+
+`Verify` passing removes what this record had listed as unverified: the gate
+now has run on CI's Node 24, not only on this machine's Node, so the coverage
+thresholds in both app configs held there too.
 
 ## Follow-ups
 
