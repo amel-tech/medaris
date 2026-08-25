@@ -323,6 +323,10 @@ Every check that actually executes on a pull request passed:
 | `Traceability` | pass, 6s |
 | `CodeQL` · `Analyze (javascript-typescript)` · `Analyze (actions)` | pass |
 
+That table is from the run at `699de334`. The run after the review round found
+one more thing — see "CodeQL caught one of my own fixes" above; it is fixed and
+the check is green again.
+
 `AI Multi-Lens Review Gate` is red, and **not because of a finding.** The run
 reports `PREFLIGHT_MODE: queued` with:
 
@@ -457,6 +461,29 @@ EXIT=1
 $ OPENAPI_EXPORT_ALLOW_PATH_REMOVALS=1 … openapi:export
 export-openapi: wrote 39 paths … (version 0.1.5).   EXIT=0
 ```
+
+### CodeQL caught one of my own fixes
+
+The guard added for finding 8, and the two read guards added alongside it, all
+used `existsSync(path)` followed by an operation on the same `path`. CodeQL's
+`js/file-system-race` flagged it **high severity** (CWE-367, time-of-check to
+time-of-use) at `export-openapi.ts:236`, and it was right: checking a path and
+then acting on it is a race, build-time tool or not.
+
+Rewritten to open once and handle the errno. A new `readIfPresent` returns
+`undefined` on `ENOENT` and rethrows anything else — a permission problem or a
+directory where a file was expected is a real failure, not an absent file — and
+the loader is `require`d inside a `try` that only converts `MODULE_NOT_FOUND`
+into the helpful message. Shorter than the version it replaced, and race-free.
+
+The one remaining `existsSync` is `findRepoRoot`'s marker probe. It never opens
+`pnpm-workspace.yaml`, so there is no use following the check and nothing to
+race.
+
+Worth noting for the record: this is the only finding in the whole task that no
+human or AI reviewer raised and no local gate caught. `typecheck`, `test`,
+`build`, `lint`, `module-boundaries` and the biome ratchet were all green over
+it, and both `/security-review` and `/code-review` had read the file.
 
 ### Three smaller points from the same review
 

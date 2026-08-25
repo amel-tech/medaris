@@ -91,25 +91,57 @@ function findRepoRoot(from: string): string {
   }
 }
 
+/** True for the one errno that means "no such file", not "cannot read it". */
+function isNotFound(error: unknown): boolean {
+  return (error as { code?: string } | null)?.code === "ENOENT";
+}
+
+/**
+ * Read a file, or return undefined when it does not exist.
+ *
+ * Deliberately not `existsSync` followed by `readFileSync`: checking a path and
+ * then acting on it is a time-of-check/time-of-use race (CWE-367), which CodeQL
+ * flags — correctly, even for a build-time tool. Opening it once and handling
+ * ENOENT is both race-free and shorter. Any other errno (a permission problem,
+ * a directory where a file was expected) still propagates, because those are
+ * real failures rather than an absent file.
+ */
+function readIfPresent(path: string): string | undefined {
+  try {
+    return readFileSync(path, "utf8");
+  } catch (error) {
+    if (isNotFound(error)) return undefined;
+    throw error;
+  }
+}
+
 /**
  * Pin the document-shaping environment to the committed template, so two runs
  * on two machines produce the same bytes.
  */
 function applyDeterministicEnv(root: string): Map<string, string> {
   const loaderPath = join(root, "tools", "env", "root-env.cjs");
-  if (!existsSync(loaderPath)) {
+  // Required at runtime for the same reason src/load-env.ts requires it:
+  // tools/ sits outside every app's tsconfig rootDir. Attempted rather than
+  // probed first, for the reason on readIfPresent above.
+  let loader: RootEnvLoader;
+  try {
+    loader = require(loaderPath) as RootEnvLoader;
+  } catch (error) {
+    if ((error as { code?: string } | null)?.code !== "MODULE_NOT_FOUND") {
+      throw error;
+    }
     throw new Error(
-      `export-openapi: ${loaderPath} is missing. The prefix rules for the ` +
-        "root .env live there and are deliberately not duplicated here, so " +
+      `export-openapi: ${loaderPath} could not be loaded. The prefix rules for ` +
+        "the root .env live there and are deliberately not duplicated here, so " +
         "there is no fallback to take."
     );
   }
-  // Required at runtime for the same reason src/load-env.ts requires it:
-  // tools/ sits outside every app's tsconfig rootDir.
-  const { parseEnv, resolveFor } = require(loaderPath) as RootEnvLoader;
+  const { parseEnv, resolveFor } = loader;
 
   const templatePath = join(root, TEMPLATE_FILE);
-  if (!existsSync(templatePath)) {
+  const template = readIfPresent(templatePath);
+  if (template === undefined) {
     throw new Error(
       `export-openapi: ${templatePath} is missing, and it is where the four ` +
         "keys that shape the document are read from. Unlike a real .env, this " +
@@ -122,7 +154,7 @@ function applyDeterministicEnv(root: string): Map<string, string> {
   // on every entry, and classify THROWS on a prefix it does not recognise — so
   // passing the whole template would let a future unrelated line (a
   // `POSTGRES__…`, say) break `openapi:export` for no reason.
-  const entries = parseEnv(readFileSync(templatePath, "utf8")).filter((entry) =>
+  const entries = parseEnv(template).filter((entry) =>
     PINNED_KEYS.some(
       (key) => entry.key === key || entry.key.endsWith(`__${key}`)
     )
@@ -229,8 +261,11 @@ async function main(): Promise<void> {
 
     const target = join(root, ...SPEC_PATH);
 
-    if (existsSync(target) && process.env[ALLOW_REMOVALS_FLAG] !== "1") {
-      assertNoPathsLost(readFileSync(target, "utf8"), document);
+    // Read first, decide after. A missing artifact is a legitimate state — the
+    // very first export — and is simply not a baseline to compare against.
+    const previous = readIfPresent(target);
+    if (previous !== undefined && process.env[ALLOW_REMOVALS_FLAG] !== "1") {
+      assertNoPathsLost(previous, document);
     }
 
     writeFileSync(target, `${JSON.stringify(document, null, 2)}\n`);
