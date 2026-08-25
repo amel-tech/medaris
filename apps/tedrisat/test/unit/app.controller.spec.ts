@@ -1,29 +1,20 @@
-import { AuthGuardModule, LoggerModule } from "@medaris/common";
+import { LoggerModule } from "@medaris/common";
 import { ConfigModule } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
 import { AppController } from "../../src/app.controller";
 import { AppService } from "../../src/app.service";
 
+// MDRS-32: this module used to import AuthGuardModule and load a stub keycloak
+// config. Both existed only for `GET /secure`, the guarded no-op removed with
+// the example scaffolding — AppController now has no guarded route.
 describe("AppController", () => {
   let appController: AppController;
 
   beforeEach(async () => {
     const app: TestingModule = await Test.createTestingModule({
       imports: [
-        ConfigModule.forRoot({
-          load: [
-            () => ({
-              keycloak: {
-                jwksUrl: "test-url",
-                issuer: "https://keycloak.invalid/realms/test",
-                audience: "tedrisat-api",
-              },
-            }),
-          ],
-          isGlobal: true,
-        }),
+        ConfigModule.forRoot({ isGlobal: true }),
         LoggerModule.forRoot(),
-        AuthGuardModule,
       ],
       controllers: [AppController],
       providers: [AppService],
@@ -37,6 +28,16 @@ describe("AppController", () => {
       expect(appController.getHello()).toBe(
         "Tedrisat Hizmetinden Selamun Aleyküm!"
       );
+    });
+  });
+
+  describe("health", () => {
+    it("should report the service as ok", () => {
+      const health = appController.getHealth();
+
+      expect(health.service).toBe("tedrisat");
+      expect(health.status).toBe("ok");
+      expect(health.version).toBeTruthy();
     });
   });
 });
