@@ -58,12 +58,44 @@ the root, `apps/tedrisat/node_modules/unplugin-swc` no longer exists
 `<root>/node_modules/unplugin-swc`. `teskilat`'s two suites pass against that
 layout, and so does the full gate below.
 
-The plugin is exported rather than added to the root `plugins` array for the
-same reason: only the two Nest apps need the SWC transform, so a web project
-that later `mergeConfig`s this base pays neither the transform nor the
-dependency. Today those apps' four config files are the only importers of the
-root base at all — `grep` for `../../vitest.config` across `apps/` and `libs/`
-returns nothing else, and no web project has a Vitest config yet.
+### What exporting the plugin does and does not buy
+
+It is exported rather than added to the root `plugins` array so that only the
+two Nest apps run their files through SWC; a web project that later
+`mergeConfig`s this base does not pay the transform.
+
+It does **not** make the dependency opt-in, and an earlier draft of this record
+claimed it did. `import swc from "unplugin-swc"` is a static top-level import,
+so it is evaluated whenever the base module loads — whether or not
+`nestSwcPlugin()` is called. Any project merging this base therefore resolves
+`unplugin-swc` (and its `@swc/core` peer) at config-load time. That works
+precisely *because* the declaration is at the root, which is the opposite of
+what "the web projects do not have to resolve the package" asserted. Making the
+plugin genuinely optional would mean moving the import behind a dynamic
+`await import()`; that is not done here and is not needed today, since the two
+Nest apps' four config files are the only importers of the root base at all
+(`grep` for `../../vitest.config` across `apps/` and `libs/` returns nothing
+else, and no web project has a Vitest config yet).
+
+### `@swc/core`, the peer that had no home
+
+`unplugin-swc@1.5.11` declares a required — not optional — peer on
+`@swc/core` (`^1.2.108`). After the hoist, root declared `unplugin-swc` but not
+that peer: `ls node_modules/@swc/core` came back **absent** at the root, and
+the only `@swc/core` declarations in the workspace were the two apps' own, even
+though nothing in either app imports it and neither `nest-cli.json` configures
+an SWC builder. `.depcheckrc.json` ignores `@swc/*`, so no gate would ever have
+said so.
+
+Nothing was broken — pnpm satisfies the peer inside `unplugin-swc`'s own
+`.pnpm` peer-scoped directory, which is why every suite passed. But the
+catalog's own comment on that entry is
+`~1.15.43 # floors backend 1.15.33; emitDecoratorMetadata under Vitest` — the
+floor exists *for this transform*, and the transform now lives at the root. So
+`"@swc/core": "catalog:"` was added to the root `devDependencies`, putting the
+version floor where the thing it constrains is defined. Same resolved version,
+`1.15.46`; one new `importers` line in the lockfile. The two apps' declarations
+were left alone — see the follow-ups.
 
 ### Module boundaries
 
@@ -152,8 +184,12 @@ by type; that resolution is exactly what `design:paramtypes` feeds.
 
 This document first said CI runs nothing against a pull request, because all
 seven workflows were release-tag / `workflow_dispatch` / `workflow_call`
-triggered. That was true before MDRS-15 and is now false — PR #49 ran ten
-checks. Nine pass:
+triggered. That was wrong, and the count was the tell: the seven are the
+per-app *deploy* workflows. `.github/workflows/ci.yaml:17-21` is an eighth, and
+it is triggered by `pull_request: branches: [main, dev]` — its own header calls
+it "The single shared-CI surface for the monorepo (MDRS-15)". This record even
+contradicted itself, calling `depcheck` "the **Security gates** check on CI"
+four sections earlier. PR #49 ran ten checks; nine pass:
 
 | Check | Result |
 | --- | --- |
@@ -169,11 +205,12 @@ checks. Nine pass:
 
 `Verify` passing removes what this record had listed as unverified: the gate
 now has run on CI's Node 24, not only on this machine's Node, so the coverage
-thresholds in both app configs held there too.
+thresholds in both app configs held there too. It has since passed a second
+time, on the follow-up commit.
 
 ## Follow-ups
 
-None opened. Three observations, none in this task's scope:
+None opened. Five observations, none in this task's scope:
 
 1. `apps/tedrisat/vitest.config.ts` and `apps/teskilat/vitest.config.ts` still
    duplicate their `test.include` / `exclude` globs and the entire `coverage.exclude`
@@ -190,3 +227,15 @@ None opened. Three observations, none in this task's scope:
    tedrisat:test` on its own. Not investigated — it did not affect any gate
    result here, and no CI job currently consumes these reports. If one is ever
    wired up, confirm the file is written before the target exits.
+4. Both apps still declare `@swc/core` even though neither imports it and
+   neither `nest-cli.json` uses an SWC builder. `.depcheckrc.json` ignores
+   `@swc/*`, so no gate will ever flag it. Left in place here: removing a
+   declaration that currently satisfies a peer is a change worth making on its
+   own, with its own verification, not as a rider on this one.
+5. `tedrisat:test` was reported failing in one of three consecutive
+   `nx run-many -t test` invocations during review, with Nx marking it a flaky
+   task. Not reproduced in the runs recorded above and not introduced by this
+   change — that target runs six Testcontainers e2e suites under
+   `fileParallelism: false`, and container boot is the plausible culprit. Worth
+   noting that "test green" here rests on runs that passed rather than on a
+   target proven deterministic.

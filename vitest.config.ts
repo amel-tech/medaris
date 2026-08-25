@@ -36,15 +36,22 @@ import { defineConfig } from "vitest/config";
  *
  * Exported, never added to this file's own `plugins` array below: only the two
  * Nest apps need the SWC transform, so a web project that later `mergeConfig`s
- * this base does not pay for it. The four consumers — each Nest app's
- * `vitest.config.ts` and `vitest.integration.config.ts` — call it and get the
- * same options object.
+ * this base does not run its files through SWC. The four consumers — each Nest
+ * app's `vitest.config.ts` and `vitest.integration.config.ts` — call it and get
+ * the same options object.
  *
- * `unplugin-swc` is declared in the workspace-root `package.json` because this
- * is the only file that imports it. Neither app declares it any more; the
- * specifier resolves by `node_modules` walk-up from whichever app config Vitest
- * was pointed at. Moving the import without moving the declaration left both
- * apps failing `depcheck` with `Unused devDependencies * unplugin-swc`.
+ * Note what that does NOT buy: the `unplugin-swc` import above is a static
+ * top-level import, so it is evaluated whenever this module loads, whether or
+ * not `nestSwcPlugin()` is ever called. Any project merging this base therefore
+ * resolves `unplugin-swc` at config-load time. That is fine — but it is why the
+ * package is declared in the workspace-root `package.json` rather than per app,
+ * along with `@swc/core`, its required peer and the thing the catalog pins for
+ * `emitDecoratorMetadata` under Vitest. If the plugin ever has to become truly
+ * opt-in, the import has to move behind a dynamic `await import()` first.
+ *
+ * Neither Nest app declares `unplugin-swc` any more, because neither imports
+ * it: moving the import without moving the declaration left both of them
+ * failing `depcheck` with `Unused devDependencies * unplugin-swc`.
  */
 export const nestSwcPlugin = () =>
   swc.vite({
