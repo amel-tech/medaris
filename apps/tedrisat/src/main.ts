@@ -3,8 +3,9 @@ import "./otel";
 import { applyGlobalMiddleware, LoggerFactory } from "@medaris/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
-import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
+import { buildTedrisatOpenApiConfig } from "./config/openapi-document";
 import {
   endpointPrefixOf,
   SWAGGER_OAUTH2_REDIRECT_SEGMENT,
@@ -27,30 +28,13 @@ async function bootstrap() {
   // Swagger configuration
   const swaggerEnabled = config.get<boolean>("swagger.enabled");
   if (swaggerEnabled) {
-    const swaggerConfig = new DocumentBuilder()
-      .addBearerAuth()
-      .addOAuth2(
-        {
-          type: "oauth2",
-          flows: {
-            implicit: {
-              authorizationUrl: config
-                .get<string>("KEYCLOAK_JWKS_URL")
-                ?.replace("/certs", "/auth"),
-              tokenUrl: config
-                .get<string>("KEYCLOAK_JWKS_URL")
-                ?.replace("/certs", "/token"),
-              scopes: {},
-            },
-          },
-        },
-        "bearer"
-      )
-      .setTitle("Tedrisat Service API")
-      .setDescription("Education management service for Madrasah platform")
-      .setVersion(config.get<string>("version") || "1.0.0")
-      .addTag("tedrisat", "Education management endpoints")
-      .build();
+    // Shared with openapi/export-openapi.ts, which writes the committed
+    // libs/services/swagger-docs/tedrisat.json. Keeping the metadata in one
+    // factory is what stops the two from describing different APIs (MDRS-58).
+    const swaggerConfig = buildTedrisatOpenApiConfig({
+      version: config.get<string>("version") || "1.0.0",
+      jwksUrl: config.get<string>("KEYCLOAK_JWKS_URL"),
+    });
     // Normalised once, then used for all three consumers below — the mount
     // path, the predicate and the OAuth2 redirect URL. That last one
     // concatenates the endpoint onto an origin, so an unslashed

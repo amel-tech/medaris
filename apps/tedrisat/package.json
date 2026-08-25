@@ -13,6 +13,7 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "typecheck": "tsc --noEmit",
+    "openapi:export": "ts-node --project tsconfig.json src/openapi/export-openapi.ts",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
