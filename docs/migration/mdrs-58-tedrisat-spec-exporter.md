@@ -378,11 +378,19 @@ in `required`.
 **3 — the regeneration narrowed a nullable response.** `studentName` and
 `studentEmail` lost `nullable: true`, and those two properties on
 `EnrollmentResponse` and `PendingEnrollmentResponse` were the **only four**
-`nullable: true` flags in the entire document (measured: 4 before, 0 after, none
-gained). The wire really does carry `null` — `course.service.ts:118` sends
+`nullable: true` flags in the entire document (measured: 4 before, 0 after the
+first regeneration, none gained; 8 after the fix — see below). The wire really does carry `null` — `course.service.ts:118` sends
 `student.name ?? null` — so the contract had been narrowed to "absent or
 string" for a response that is neither. Restored on the base class, which covers
 all four.
+
+The document now carries **8** `nullable: true` flags, not 4 — worth stating,
+since 4 is what "restored" alone would predict. The other four are
+`privateToUserId` on the two labeling request schemas and the two labeling
+response schemas, from finding 2. Each pair comes from a single edit:
+`PendingEnrollmentResponse extends EnrollmentResponse` and
+`FlashcardLabelingResponse extends CreateFlashcardLabelingDto`, so the
+annotation propagates through the subclass.
 
 Scope line drawn deliberately: 17 properties across 7 files share this gap
 (`@ApiPropertyOptional({ type: X })` on a `| null` field). Only these two are
@@ -480,6 +488,25 @@ The one remaining `existsSync` is `findRepoRoot`'s marker probe. It never opens
 `pnpm-workspace.yaml`, so there is no use following the check and nothing to
 race.
 
+### `nest start` was checked too, by the reviewer
+
+Excluding the exporter from the emit was verified here against `nest build` and
+the full gate, but not against `nest start`, and that gap was stated. The
+reviewer closed it: `nest start` reads the same `tsconfig.build.json`, so the
+exporter is absent there as well — harmless, because **nothing imports it**
+(every reference in `apps/`, `libs/`, `tools/` and `.github/` is a comment, a
+config entry or a script; `exclude` only drops a file from the root set, and an
+imported file would still be compiled). `@nestjs/cli`'s start action resolves
+the entry as `join(outDir, sourceRoot, entryFile)` = `dist/src/main`, which
+exists.
+
+One edge case worth keeping: `tsconfig.json` and `tsconfig.build.json` share the
+same `tsBuildInfoFile` (`./dist/.tsbuildinfo`), so `typecheck` — whose file set
+*includes* the exporter — writes the same buildinfo as `build`, whose set does
+not. `deleteOutDir: true` in `nest-cli.json` removes `dist/` and the buildinfo
+with it on every build, so a stale buildinfo cannot cause a skipped emit.
+`drizzle-kit` is unaffected; it loads `drizzle.config.ts` through its own loader.
+
 Worth noting for the record: this is the only finding in the whole task that no
 human or AI reviewer raised and no local gate caught. `typecheck`, `test`,
 `build`, `lint`, `module-boundaries` and the biome ratchet were all green over
@@ -561,6 +588,19 @@ this list were **done** in the review round above and are gone from it.
 7. **`libs/services` has a `generate` script that calls `pnpm run lint:fix`,
    which that package does not define.** Pre-existing; `generate:tedrisat` was
    used directly and is unaffected.
+8. **`apps/tedrisat/package.json`'s `start:prod` is broken.** It says
+   `node dist/main`; the emitted entry is `dist/src/main.js`. `Dockerfile:124`
+   already documents this and calls it out of scope for MDRS-16, and the
+   Dockerfile's own `CMD` uses the right path, so nothing ships broken — the
+   script is simply dead. Raised by the reviewer while confirming this change did
+   not affect it, in either direction. (`nest start` survives the same mistake
+   only because `@nestjs/cli` falls back when the first candidate does not exist.)
+9. **The production image carries 109 `.d.ts` and 109 `.js.map` files.**
+   `Dockerfile:115` copies `dist` wholesale — 2.5 MB. The declarations are dead
+   weight in a runtime image by exactly the argument used above for the exporter;
+   the source maps are defensible for stack traces. `.tsbuildinfo` does not
+   travel, thanks to `deleteOutDir` and `typecheck` not running in the image.
+   Also the reviewer's observation, and also not this issue.
 
 ## Review
 
