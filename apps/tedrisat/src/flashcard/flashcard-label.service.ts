@@ -62,10 +62,35 @@ export class FlashcardLabelService {
     }
     return await this.flashcardLabelRepo.flashcardLabeling(newLabeling);
   }
-  async getById(id: string): Promise<IFlashcardLabel | null> {
-    return await this.flashcardLabelRepo.getById(id);
+  /**
+   * Both readers throw rather than resolving null (MDRS-58).
+   *
+   * They used to hand `null` straight back, and the controller declared a 200
+   * carrying a `FlashcardLabelResponse`. Nest serialises `null` as an EMPTY
+   * body, so an unknown id answered `200` with nothing in it while the
+   * published contract promised an object. Once MDRS-58 generated a client from
+   * that contract the mismatch stopped being cosmetic: `JSONApiResponse.value()`
+   * calls `response.json()` on the empty body and the caller gets
+   * `SyntaxError: Unexpected end of JSON input` from a method whose signature
+   * says it returns a label.
+   *
+   * Throwing `FlashcardLabelNotFoundError` is what `assertOwner` above already
+   * does for the same missing row, and what KoskService and CourseService do
+   * throughout; `GlobalExceptionFilter` turns it into the 404 the controllers
+   * now document.
+   */
+  async getById(id: string): Promise<IFlashcardLabel> {
+    const label = await this.flashcardLabelRepo.getById(id);
+    if (!label) {
+      throw new FlashcardLabelNotFoundError(id);
+    }
+    return label;
   }
-  async getLabelStats(id: string): Promise<IFlashcardLabelStats | null> {
-    return await this.flashcardLabelRepo.getLabelStats(id);
+  async getLabelStats(id: string): Promise<IFlashcardLabelStats> {
+    const stats = await this.flashcardLabelRepo.getLabelStats(id);
+    if (!stats) {
+      throw new FlashcardLabelNotFoundError(id);
+    }
+    return stats;
   }
 }

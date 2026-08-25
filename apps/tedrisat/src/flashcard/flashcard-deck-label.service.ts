@@ -62,12 +62,24 @@ export class FlashcardDeckLabelService {
     }
     return await this.labelRepository.deckLabeling(newLabeling);
   }
-  async getById(id: string): Promise<IFlashcardDeckLabel | null> {
-    return await this.labelRepository.getById(id);
+  /**
+   * Throws rather than resolving null, for the reason spelled out on
+   * FlashcardLabelService.getById: a `null` return serialises as an empty 200
+   * body, which the client generated from the published contract cannot parse
+   * (MDRS-58).
+   */
+  async getById(id: string): Promise<IFlashcardDeckLabel> {
+    const label = await this.labelRepository.getById(id);
+    if (!label) {
+      throw new FlashcardDeckLabelNotFoundError(id);
+    }
+    return label;
   }
-  async getDeckLabelStats(
-    id: string
-  ): Promise<IFlashcardDeckLabelStats | null> {
-    return await this.labelRepository.getLabelStats(id);
+  async getDeckLabelStats(id: string): Promise<IFlashcardDeckLabelStats> {
+    const stats = await this.labelRepository.getLabelStats(id);
+    if (!stats) {
+      throw new FlashcardDeckLabelNotFoundError(id);
+    }
+    return stats;
   }
 }

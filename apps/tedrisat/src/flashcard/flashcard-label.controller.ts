@@ -97,19 +97,24 @@ export class FlashcardlabelController {
     });
   }
 
+  // 404 rather than an empty 200 (MDRS-58): both readers used to return `null`
+  // for an unknown id, which Nest serialises as a body-less 200 while this
+  // decorator promised a FlashcardLabelResponse. See FlashcardLabelService.getById.
   @ApiResponse({ status: 200, type: FlashcardLabelResponse })
+  @ApiResponse({ status: 404, description: "No label with that id" })
   @Get("/:id")
   async getById(
     @Param("id", ParseUUIDPipe) id: string
-  ): Promise<FlashcardLabelResponse | null> {
+  ): Promise<FlashcardLabelResponse> {
     return await this.labelService.getById(id);
   }
 
   @ApiResponse({ status: 200, type: labelStatsResponse })
+  @ApiResponse({ status: 404, description: "No label with that id" })
   @Get("/getStats/:id")
   async getLabelStats(
     @Param("id", ParseUUIDPipe) id: string
-  ): Promise<labelStatsResponse | null> {
+  ): Promise<labelStatsResponse> {
     return await this.labelService.getLabelStats(id);
   }
 }

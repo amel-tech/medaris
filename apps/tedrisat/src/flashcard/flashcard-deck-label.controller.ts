@@ -75,19 +75,23 @@ export class FlashcardDeckLabelController {
     });
   }
 
+  // 404 rather than an empty 200 (MDRS-58) — see the note on the flashcard-label
+  // controller's equivalent pair.
   @ApiResponse({ status: 200, type: FlashcardDeckLabelResponse })
+  @ApiResponse({ status: 404, description: "No label with that id" })
   @Get("/:id")
   async getById(
     @Param("id", ParseUUIDPipe) id: string
-  ): Promise<FlashcardDeckLabelResponse | null> {
+  ): Promise<FlashcardDeckLabelResponse> {
     return await this.labelService.getById(id);
   }
 
   @ApiResponse({ status: 200, type: DeckLabelStatsResponse })
+  @ApiResponse({ status: 404, description: "No label with that id" })
   @Get("/getStats/:id")
   async getLabelStats(
     @Param("id", ParseUUIDPipe) id: string
-  ): Promise<DeckLabelStatsResponse | null> {
+  ): Promise<DeckLabelStatsResponse> {
     return await this.labelService.getDeckLabelStats(id);
   }
 }
