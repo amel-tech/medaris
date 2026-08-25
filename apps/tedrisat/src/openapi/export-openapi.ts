@@ -67,9 +67,10 @@ const PINNED_KEYS = [
 ];
 
 /**
- * Same marker and same reasoning as tools/env/root-env.cjs: this file is
- * compiled to dist/ as well as run from src/, so the root is walked to rather
- * than counted in `..` segments.
+ * Same marker and same walk as tools/env/root-env.cjs. `pnpm-workspace.yaml`
+ * rather than `.git`, which is a *file* rather than a directory inside a git
+ * worktree — and this is run from worktrees. Walking also keeps the depth of
+ * this file from being encoded as a count of `..` segments.
  */
 function findRepoRoot(from: string): string {
   let dir = resolve(from);
