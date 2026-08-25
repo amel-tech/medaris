@@ -54,6 +54,34 @@ describe("buildTedrisatOpenApiConfig", () => {
     expect(scheme.flows.implicit.tokenUrl).toBeUndefined();
   });
 
+  it("refuses a JWKS URL that does not end in /certs", () => {
+    // The string-pattern `replace` this replaced was silent here: it returned
+    // the input unchanged, so both OAuth2 URLs became the JWKS endpoint itself.
+    expect(() =>
+      buildTedrisatOpenApiConfig({
+        version: "1.2.3",
+        jwksUrl: "https://auth.example.test/realms/x/protocol/openid-connect",
+      })
+    ).toThrow(/does not end in \/certs/);
+  });
+
+  it("rewrites only the trailing /certs, not an earlier one in the path", () => {
+    // A string pattern rewrites the FIRST match, which for this URL produced
+    // `https://host/auth/realms/x/protocol/openid-connect/certs`.
+    const { components } = buildTedrisatOpenApiConfig({
+      version: "1.2.3",
+      jwksUrl:
+        "https://auth.example.test/certs/realms/x/protocol/openid-connect/certs",
+    });
+    const scheme = components?.securitySchemes?.bearer as {
+      flows: { implicit: { authorizationUrl?: string } };
+    };
+
+    expect(scheme.flows.implicit.authorizationUrl).toBe(
+      "https://auth.example.test/certs/realms/x/protocol/openid-connect/auth"
+    );
+  });
+
   it("carries the title, description, version and tag the spec is keyed on", () => {
     const config = buildTedrisatOpenApiConfig({
       version: "0.1.5",

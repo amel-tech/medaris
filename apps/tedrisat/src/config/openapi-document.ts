@@ -34,12 +34,38 @@ export interface TedrisatOpenApiOptions {
   jwksUrl?: string;
 }
 
-/** `/certs` is the JWKS endpoint; its two siblings carry the same prefix. */
+/**
+ * Swap Keycloak's `/certs` endpoint for one of its two siblings.
+ *
+ * Anchored to the end of the path, and loud when it does not match. The
+ * previous form — `jwksUrl.replace("/certs", ...)` with a string pattern —
+ * rewrote only the FIRST occurrence and silently returned the input unchanged
+ * when there was none, so a realm path that itself contains `/certs` produced
+ * `https://host/auth/realms/x/protocol/openid-connect/certs`, and any
+ * non-Keycloak JWKS URL produced `authorizationUrl === tokenUrl ===` the JWKS
+ * endpoint itself. Both are plausible-looking URLs that boot fine and only fail
+ * when somebody clicks Authorize — and since MDRS-58 they also decide bytes in
+ * a committed artifact, so a wrong one is published rather than merely served.
+ */
+const JWKS_CERTS_SUFFIX = /\/certs$/;
+
 function keycloakEndpoint(
   jwksUrl: string | undefined,
   segment: "auth" | "token"
 ): string | undefined {
-  return jwksUrl?.replace("/certs", `/${segment}`);
+  if (jwksUrl === undefined) return undefined;
+
+  if (!JWKS_CERTS_SUFFIX.test(jwksUrl)) {
+    throw new Error(
+      `@medaris/tedrisat cannot build the OpenAPI document: KEYCLOAK_JWKS_URL ("${jwksUrl}") ` +
+        "does not end in /certs, so Swagger's OAuth2 authorization and token " +
+        "URLs cannot be derived from it. Point it at the realm's JWKS endpoint " +
+        "(.../protocol/openid-connect/certs), or give this factory the two URLs " +
+        "directly."
+    );
+  }
+
+  return jwksUrl.replace(JWKS_CERTS_SUFFIX, `/${segment}`);
 }
 
 export function buildTedrisatOpenApiConfig({

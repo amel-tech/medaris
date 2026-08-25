@@ -34,7 +34,7 @@
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { SwaggerModule } from "@nestjs/swagger";
+import { type OpenAPIObject, SwaggerModule } from "@nestjs/swagger";
 import * as pkg from "../../package.json";
 import { buildTedrisatOpenApiConfig } from "../config/openapi-document";
 
@@ -53,6 +53,9 @@ const SPEC_PATH = ["libs", "services", "swagger-docs", "tedrisat.json"];
 
 /** The template the deterministic values are read from. */
 const TEMPLATE_FILE = ".env.example";
+
+/** Set to accept a document that drops paths the committed spec had. */
+const ALLOW_REMOVALS_FLAG = "OPENAPI_EXPORT_ALLOW_PATH_REMOVALS";
 
 /**
  * The keys whose values can reach the document, directly or by way of the
@@ -92,18 +95,42 @@ function findRepoRoot(from: string): string {
  * Pin the document-shaping environment to the committed template, so two runs
  * on two machines produce the same bytes.
  */
-function applyDeterministicEnv(root: string): void {
+function applyDeterministicEnv(root: string): Map<string, string> {
   const loaderPath = join(root, "tools", "env", "root-env.cjs");
+  if (!existsSync(loaderPath)) {
+    throw new Error(
+      `export-openapi: ${loaderPath} is missing. The prefix rules for the ` +
+        "root .env live there and are deliberately not duplicated here, so " +
+        "there is no fallback to take."
+    );
+  }
   // Required at runtime for the same reason src/load-env.ts requires it:
   // tools/ sits outside every app's tsconfig rootDir.
   const { parseEnv, resolveFor } = require(loaderPath) as RootEnvLoader;
 
   const templatePath = join(root, TEMPLATE_FILE);
-  const resolved = resolveFor(
-    "tedrisat",
-    parseEnv(readFileSync(templatePath, "utf8"))
-  );
+  if (!existsSync(templatePath)) {
+    throw new Error(
+      `export-openapi: ${templatePath} is missing, and it is where the four ` +
+        "keys that shape the document are read from. Unlike a real .env, this " +
+        "file is committed, so its absence is a broken checkout rather than a " +
+        "normal state."
+    );
+  }
 
+  // Only the pinned keys are handed to the loader. resolveFor calls classify()
+  // on every entry, and classify THROWS on a prefix it does not recognise — so
+  // passing the whole template would let a future unrelated line (a
+  // `POSTGRES__…`, say) break `openapi:export` for no reason.
+  const entries = parseEnv(readFileSync(templatePath, "utf8")).filter((entry) =>
+    PINNED_KEYS.some(
+      (key) => entry.key === key || entry.key.endsWith(`__${key}`)
+    )
+  );
+  const resolved = resolveFor("tedrisat", entries);
+
+  // A key present but empty is as unusable as an absent one — security-env.ts
+  // rejects both — so `!value` is the right test rather than `!has(key)`.
   const missing = PINNED_KEYS.filter((key) => !resolved.get(key));
   if (missing.length > 0) {
     throw new Error(
@@ -116,14 +143,63 @@ function applyDeterministicEnv(root: string): void {
     );
   }
 
+  // Written OVER whatever the shell holds, which is the whole point. The
+  // loader's own loadRootEnv() cannot be used for this: root-env.cjs:170 skips
+  // any key already in process.env, so it would preserve exactly the ambient
+  // values this has to discard.
   for (const key of PINNED_KEYS) {
-    process.env[key] = resolved.get(key);
+    const value = resolved.get(key);
+    if (value !== undefined) process.env[key] = value;
   }
 
   // The template is a development one and this is a development-time tool;
   // pinning this keeps the production guards in config/ from firing on a
   // machine whose shell happens to say production.
   process.env.NODE_ENV = "development";
+
+  return resolved;
+}
+
+/**
+ * Refuse to publish a document that has LOST a path (MDRS-58).
+ *
+ * Preview mode is what makes this exporter cheap, and it works because nothing
+ * here registers routes outside the decorators the scanner reads. That is true
+ * today and nothing enforces it: the day a module registers a controller in
+ * `onModuleInit`, preview mode skips the hook, the export quietly drops those
+ * paths, `generate:tedrisat` deletes the matching client files and
+ * `.openapi-generator/FILES` shrinks — silent contract drift, which is the exact
+ * failure this whole task exists to end. So the previous artifact is the
+ * baseline: paths may be added, and may not vanish.
+ *
+ * Deliberately not a fixed minimum count. A real deletion is legitimate — PR
+ * #50 removes the example module — so this fails LOUD rather than closed
+ * forever, and names the override.
+ */
+function assertNoPathsLost(previous: string, next: OpenAPIObject): void {
+  let before: OpenAPIObject;
+  try {
+    before = JSON.parse(previous) as OpenAPIObject;
+  } catch {
+    // An unparseable artifact is not a baseline; the fresh write is the fix.
+    return;
+  }
+
+  const lost = Object.keys(before.paths ?? {}).filter(
+    (path) => !(path in next.paths)
+  );
+  if (lost.length === 0) return;
+
+  throw new Error(
+    `export-openapi: ${lost.length} path(s) present in the committed spec are ` +
+      `absent from the document just generated:\n  ${lost.join("\n  ")}\n` +
+      "Writing this would delete the matching files from the generated client. " +
+      "If a route really was removed, re-run with " +
+      `${ALLOW_REMOVALS_FLAG}=1 to accept the deletion deliberately; otherwise ` +
+      "something stopped the Swagger scanner from seeing those controllers — " +
+      "preview mode fires no lifecycle hooks, so a route registered in " +
+      "onModuleInit is invisible to this exporter."
+  );
 }
 
 async function main(): Promise<void> {
@@ -151,10 +227,13 @@ async function main(): Promise<void> {
       })
     );
 
-    writeFileSync(
-      join(root, ...SPEC_PATH),
-      `${JSON.stringify(document, null, 2)}\n`
-    );
+    const target = join(root, ...SPEC_PATH);
+
+    if (existsSync(target) && process.env[ALLOW_REMOVALS_FLAG] !== "1") {
+      assertNoPathsLost(readFileSync(target, "utf8"), document);
+    }
+
+    writeFileSync(target, `${JSON.stringify(document, null, 2)}\n`);
 
     console.log(
       `export-openapi: wrote ${Object.keys(document.paths).length} paths to ` +
