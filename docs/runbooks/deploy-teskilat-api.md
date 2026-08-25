@@ -29,12 +29,12 @@ check.
 | `ALLOWED_ORIGINS` | MDRS-34. Comma-separated bare origins (`https://nizam.medaris.app`), no trailing slash, no path, no wildcard host. `*` is refused outside a developer machine. | `ALLOWED_ORIGINS is not usable: …` at `applyGlobalMiddleware`, then a restart loop |
 
 `ALLOWED_ORIGINS` is the **only** variable teskilat refuses to start without.
-Every other key in `apps/teskilat/src/config/config.ts` has a fallback, and
-none of them is a credential: MDRS-69 removed the `database` block, whose
-`DB_PASSWORD` defaulted to the literal `"password"` — MDRS-35's other half,
-done for tedrisat and not here. There are no Keycloak settings to harden
-either; teskilat has no auth guard, and nothing under `apps/teskilat/src`
-reads a Keycloak variable.
+Every other key in `apps/teskilat/src/config/config.ts` has a fallback, and no
+fallback is a credential value: MDRS-69 removed the `database` block, whose
+`DB_PASSWORD` defaulted to the literal `"password"` — MDRS-35's other half, done
+for tedrisat and not here. There are no Keycloak settings to harden either;
+teskilat has no auth guard, and nothing under `apps/teskilat/src` reads a
+Keycloak variable.
 
 The deploy workflow only pushes the image and fires the webhook, so it stays
 green while the service is down; the container log is the only place the failure
@@ -54,7 +54,7 @@ tedrisat:
 |---|---|
 | `DB_HOST`, `DB_PORT`, `DB_SSL`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` | teskilat opens no database connection. No database client in its `package.json`, no `DatabaseModule`, no `drizzle.config.ts`, no migrations directory; `AppModule` imports exactly `ConfigModule` and `LoggerModule`. MDRS-69 removed all six from the config factory and from `docker-compose.yml`, along with `depends_on: medaris-db`. |
 | `AUTO_MIGRATIONS_ENABLED`, `AUTO_MIGRATIONS_FOLDER` | Same reason: nothing to migrate. |
-| `KEYCLOAK_*` | No auth guard. MDRS-48 removed the copied `KEYCLOAK_JWKS_URL`; the rest were never there. |
+| `KEYCLOAK_*` | No auth guard. #44 removed the copied `KEYCLOAK_JWKS_URL`; the rest were never there. |
 | `SWAGGER_ALLOW_IN_PRODUCTION` | tedrisat's opt-in. teskilat has none — see §5. |
 
 The root `.env.example` still ships `TESKILAT__DB_NAME`, `TESKILAT__DB_USERNAME`
