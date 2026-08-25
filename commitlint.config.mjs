@@ -37,8 +37,14 @@ const SCOPES = [
   "nazir-web",
   "landing-web",
   "keycloak-theme",
-  // ── Libs (9) — @medaris/<dirname> ────────────────────────────────────────
+  // ── Libs (10) — @medaris/<dirname> ───────────────────────────────────────
+  // None of these is a release-please component: the 7 components are the 7
+  // deployable apps, and `tools/ci/assert-release-config.mjs` pins that list.
+  // A lib gets a scope so its changes are attributable in `git log`; it gets no
+  // component because it publishes nothing and has no deploy workflow to guard
+  // a tag prefix. `env` was added by MDRS-66 on exactly those terms.
   "common",
+  "env",
   "ui",
   "icons",
   "tokens",

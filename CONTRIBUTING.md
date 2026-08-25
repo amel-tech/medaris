@@ -88,6 +88,7 @@ component, not the folder** — release-please cuts releases against the compone
 | `i18n` | `libs/i18n` |
 | `types` | `libs/types` |
 | `utils` | `libs/utils` |
+| `env` | `libs/env` |
 
 **Cross-cutting** — these release nothing on their own:
 
@@ -260,10 +261,19 @@ the implementation.
 | `i18n` | `shared` | *(none)* | `i18n` |
 | `types` | `shared` | *(none)* | `types` |
 | `utils` | `shared` | *(none)* | `util` |
+| `env` | `shared` | *(none)* | `util` |
 
 `scope:shared` libraries are deliberately **platform-neutral** — they carry no
 `platform:*` tag, which is what lets both the Nest apps and the browser bundles
 import them. Do not add one.
+
+One caveat measured in MDRS-66: the rule reads **import statements**, not
+`package.json`, so a wrong `platform:*` tag is caught only against consumers
+that import the library statically. `apps/*/next.config.js` reaches
+`@medaris/env` through `createRequire`, and mis-tagging `env` `platform:node`
+left `nizam-web:module-boundaries` green while mis-tagging it `platform:web`
+failed `tedrisat:module-boundaries` at `load-env.ts:14:1`. Add this to the list
+of cases the linter cannot see.
 
 Allowed dependency directions:
 
@@ -323,7 +333,7 @@ apps/tedris/lib/boundary-probe.ts
               @nx/enforce-module-boundaries
 ```
 
-Three things the linter cannot see. Treat them as review rules:
+Four things the linter cannot see. Treat them as review rules:
 
 - **CSS `@import` edges.** `ui → tokens` is a CSS import; ESLint never parses it.
   The declared `workspace:*` dependency plus pnpm's strict `node_modules` is the
@@ -333,6 +343,13 @@ Three things the linter cannot see. Treat them as review rules:
   import cannot compile either — but do not rely on the linter to say so. The
   relative form (`../../tedris/lib/...`) *is* caught, with a dedicated
   "Projects cannot be imported by a relative or absolute path" error.
+- **Runtime `require` of a workspace package.** The rule reads import
+  statements, so `createRequire(import.meta.url)("@medaris/env")` in
+  `apps/*/next.config.js` is invisible to it. Measured in MDRS-66: tagging `env`
+  `platform:node` left `nizam-web:module-boundaries` green, while tagging it
+  `platform:web` correctly failed `tedrisat:module-boundaries`, which imports it
+  statically. The Nx project graph *does* carry all six edges — only the lint
+  rule is blind.
 - **Missing tags.** See the mandatory-tags note in the section above.
 
 ## Adding a library

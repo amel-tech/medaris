@@ -3,6 +3,7 @@
   "defaultBase": "main",
   "analytics": false,
   "neverConnectToCloud": true,
+  "//": "MDRS-66 removed `{workspaceRoot}/tools/env/**` from sharedGlobals. The root-.env bootstrap is now the `env` project, so the six apps that load it reach it through the project graph (`@medaris/env` in their dependencies) and only those six are invalidated when it changes; as a workspace-global input it invalidated all 17. Note that every value under namedInputs must be an array — Nx rejects the whole file with `Given napi value is not an array on NxJson.namedInputs` if a `//` note is placed inside it, which is why this one sits here.",
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"],
     "production": [
@@ -26,7 +27,6 @@
       "{workspaceRoot}/.github/workflows/ci.yaml",
       "{workspaceRoot}/vitest.config.ts",
       "{workspaceRoot}/vitest.integration.config.ts",
-      "{workspaceRoot}/tools/env/**",
       {
         "runtime": "cat .env*.local apps/*/.env*.local 2>/dev/null | shasum"
       }

@@ -12,7 +12,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 packages:
-  # Explicit enumeration, no globs (ADR-001 §D11) — 16 real packages.
+  # Explicit enumeration, no globs (ADR-001 §D11) — 17 real packages.
   # An unregistered package fails loudly instead of being silently ignored.
   - 'apps/tedrisat'
   - 'apps/teskilat'
@@ -22,6 +22,7 @@ packages:
   - 'apps/landing'
   - 'apps/keycloak-theme'
   - 'libs/common'
+  - 'libs/env'
   - 'libs/ui'
   - 'libs/icons'
   - 'libs/tokens'

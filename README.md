@@ -75,7 +75,7 @@ Six of tedrisat's fifteen suites are the `test/e2e/*.e2e.spec.ts` files: `apps/t
 ## Toolchain
 
 - **Biome** owns formatting and linting. **ESLint exists only** to run `@nx/enforce-module-boundaries`; it carries no style rules.
-- **Boundary tags are enforced.** All 16 projects carry `scope:*` / `platform:*` / `type:*` tags and `eslint.config.mjs` holds the real `depConstraints` with `allow: []`. The taxonomy, the allowed directions, and the three cases the linter cannot see are in [`CONTRIBUTING.md`](CONTRIBUTING.md#project-layers-and-tags); ADR-001 §D5 is normative.
+- **Boundary tags are enforced.** All 17 projects carry `scope:*` / `platform:*` / `type:*` tags and `eslint.config.mjs` holds the real `depConstraints`, with `allow` holding exactly the two workspace-root Vitest base configs. The taxonomy, the allowed directions, and the four cases the linter cannot see are in [`CONTRIBUTING.md`](CONTRIBUTING.md#project-layers-and-tags); ADR-001 §D5 is normative.
 - **Commit hygiene** is enforced by husky: `pre-commit` runs lint-staged (Biome on staged files only), `commit-msg` runs commitlint against a 20-scope enum. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - **CI** is one `nx affected` pipeline plus CodeQL over both stacks, a dependency audit, depcheck, and a job that lints the pull-request title — the squash commit that reaches `main` is composed server-side and never passes the local hook.
 
@@ -99,7 +99,7 @@ The translation happens where each framework starts up, because neither Next nor
 - `apps/<app>/next.config.js` calls `loadRootEnv("<app>")` before the config object is built — early enough for `NEXT_PUBLIC_*` inlining and for `env.ts`'s build-time validation.
 - `apps/<api>/src/load-env.ts` does the same, imported first in `main.ts` so it runs before `./otel` and `ConfigModule`.
 
-Both go through `tools/env/root-env.cjs`, the single implementation of these rules.
+All six go through `@medaris/env` (`libs/env`), the single implementation of these rules since MDRS-66. Not finding the workspace root throws, identically for both frameworks — the four Next copies and the two Nest copies used to disagree about that, which is the bug MDRS-66 closed.
 
 **In production there is no file at all.** Every value arrives through the real environment, and anything already in `process.env` wins over the file — a deployed secret is never overridden by a file that happens to be in the image.
 

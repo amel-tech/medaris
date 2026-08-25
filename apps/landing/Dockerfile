@@ -34,9 +34,9 @@ WORKDIR /app
 
 # ---------------------------------------------------------------------------
 # deps — the workspace manifest surface only, so the install layer survives
-# every source edit. pnpm-workspace.yaml enumerates its 16 members explicitly
+# every source edit. pnpm-workspace.yaml enumerates its 17 members explicitly
 # (no globs), and --frozen-lockfile needs every one of their package.json
-# files present, so all 16 are copied here even though this image builds one.
+# files present, so all 17 are copied here even though this image builds one.
 # ---------------------------------------------------------------------------
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -48,6 +48,7 @@ COPY apps/nazir/package.json          apps/nazir/
 COPY apps/landing/package.json        apps/landing/
 COPY apps/keycloak-theme/package.json apps/keycloak-theme/
 COPY libs/common/package.json         libs/common/
+COPY libs/env/package.json            libs/env/
 COPY libs/ui/package.json             libs/ui/
 COPY libs/icons/package.json          libs/icons/
 COPY libs/tokens/package.json         libs/tokens/

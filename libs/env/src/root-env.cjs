@@ -1,4 +1,10 @@
-// The workspace's environment, in one file and one implementation (MDRS-25).
+// The workspace's environment, in one file and one implementation.
+//
+// MDRS-25 introduced these rules and MDRS-66 made this the only place they
+// exist. Before MDRS-66 the walk-up below was copied into all four
+// `next.config.js` files and both `apps/<api>/src/load-env.ts` files, and the
+// two shapes had already drifted: the Next copies threw when no marker was
+// found, the Nest copies returned null and skipped in silence.
 //
 // There is exactly one `.env`, at the repository root. A prefix says which app a
 // key belongs to, and is stripped when that app is handed the key, so
@@ -7,7 +13,7 @@
 //
 //   KEY=value          every app
 //   WEB__KEY=value     landing, nazir, nizam, tedris   (overrides shared)
-//   API__KEY=value     tedrisat, teskilat              (overrides shared)
+//   API__KEY=value     tedrisat, teskilat              (overrides both)
 //   NIZAM__KEY=value   that one app                    (overrides both)
 //
 // `loadRootEnv(app)` applies that to process.env before anything reads it, so
@@ -19,14 +25,31 @@
 //
 // WHY .cjs
 // next.config.js is ESM and the Nest apps compile to CommonJS. A .cjs module is
-// the one shape both can consume without a second copy of these rules, and a
-// second copy is precisely the failure this issue exists to end.
+// the one shape both can consume without a second copy of these rules, and it
+// needs no build step — `next.config.js` is evaluated before any TypeScript in
+// this repo has been compiled, so a package that only existed as `dist/` could
+// not be the single implementation. `src/root-env.d.ts` types it for the two
+// TypeScript call sites.
 //
-// PRODUCTION HAS NO FILE
-// In a container every value arrives through the real environment and there is
-// no .env to read. A missing file is therefore a normal state, not an error, and
-// values already present in process.env always win: a deployed secret must never
-// be overridden by a file that happens to be sitting in the image.
+// THE TWO NOT-FOUND CASES ARE NOT THE SAME CASE (MDRS-66)
+//
+//   1. No `pnpm-workspace.yaml` anywhere up the tree -> THROW.
+//      This says the code is not running inside a checkout of this workspace,
+//      which no supported deployment produces. The four Next apps and the two
+//      Nest apps now share this single behaviour: the loud one. Silence here was
+//      the bug MDRS-66 exists to close — it let an app boot fully configured by
+//      whatever happened to be in the ambient environment, with no signal that
+//      the file it was supposed to read had never been looked for.
+//
+//   2. The marker was found but there is no `.env` beside it -> return empty.
+//      This is production. In a container every value arrives through the real
+//      environment and there is no file to read, so an absent file is a normal
+//      state and not an error. The two Nest runtime images therefore carry
+//      `pnpm-workspace.yaml` and `libs/env` (see apps/<api>/Dockerfile) — that
+//      is what keeps them in case 2 rather than case 1.
+//
+// Values already present in process.env always win in either case: a deployed
+// secret must never be overridden by a file that happens to be in the image.
 
 const { existsSync, readFileSync } = require("node:fs");
 const { dirname, join, resolve } = require("node:path");
@@ -48,17 +71,33 @@ const ROOT_ONLY = new Set([
   "MEDARIS_POSTGRES_PORT",
 ]);
 
+/** The one marker. Chosen in MDRS-25, asserted in one place since MDRS-66. */
+const MARKER = "pnpm-workspace.yaml";
+
 /**
  * Walk up for the workspace root. `pnpm-workspace.yaml` is the marker rather
  * than package.json, which every app also has, or .git, which is a file rather
  * than a directory inside a worktree.
+ *
+ * Reaching the filesystem root without finding it throws — case 1 in the header.
+ * This is the only expression of that decision in the repository; every call
+ * site inherits it by importing this function rather than re-deriving it.
  */
 function findRepoRoot(from = __dirname) {
   let dir = resolve(from);
   for (;;) {
-    if (existsSync(join(dir, "pnpm-workspace.yaml"))) return dir;
+    if (existsSync(join(dir, MARKER))) return dir;
     const parent = dirname(dir);
-    if (parent === dir) return null;
+    if (parent === dir) {
+      throw new Error(
+        `[@medaris/env] no ${MARKER} found walking up from ${resolve(from)}. ` +
+          "The single root .env cannot be located, so this process would " +
+          "start with whatever happens to be in the ambient environment. " +
+          "Refusing that silently is the MDRS-66 decision: if this is a " +
+          "container image, it must carry pnpm-workspace.yaml and libs/env " +
+          "the way apps/tedrisat/Dockerfile does."
+      );
+    }
     dir = parent;
   }
 }
@@ -136,8 +175,9 @@ function resolveFor(app, entries) {
 
 /**
  * Apply the root file to process.env for one app. Returns the keys it set, so a
- * caller can log or assert on them; an empty result means the file was absent,
- * which is the normal production shape.
+ * caller can log or assert on them; an empty result means the file was absent
+ * (or set nothing new), which is the normal production shape — case 2 in the
+ * header. A missing *workspace* is case 1 and throws out of findRepoRoot.
  */
 function loadRootEnv(app, options = {}) {
   if (!APPS.includes(app)) {
@@ -146,8 +186,9 @@ function loadRootEnv(app, options = {}) {
     );
   }
 
+  // No `if (!root)` guard: findRepoRoot throws rather than returning null, so
+  // the not-found case is decided there and identically for all six call sites.
   const root = options.root ?? findRepoRoot();
-  if (!root) return new Map();
 
   const path = join(root, options.file ?? ".env");
   if (!existsSync(path)) return new Map();
@@ -175,6 +216,7 @@ function loadRootEnv(app, options = {}) {
 }
 
 module.exports = {
+  MARKER,
   APPS,
   API_APPS,
   WEB_APPS,

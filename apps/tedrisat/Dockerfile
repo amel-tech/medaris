@@ -28,9 +28,9 @@ WORKDIR /app
 
 # ---------------------------------------------------------------------------
 # deps — the workspace manifest surface only, so the install layer survives
-# every source edit. pnpm-workspace.yaml enumerates its 16 members explicitly
+# every source edit. pnpm-workspace.yaml enumerates its 17 members explicitly
 # (no globs), and --frozen-lockfile needs every one of their package.json
-# files present, so all 16 are copied here even though this image builds one.
+# files present, so all 17 are copied here even though this image builds one.
 # ---------------------------------------------------------------------------
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -42,6 +42,7 @@ COPY apps/nazir/package.json          apps/nazir/
 COPY apps/landing/package.json        apps/landing/
 COPY apps/keycloak-theme/package.json apps/keycloak-theme/
 COPY libs/common/package.json         libs/common/
+COPY libs/env/package.json            libs/env/
 COPY libs/ui/package.json             libs/ui/
 COPY libs/icons/package.json          libs/icons/
 COPY libs/tokens/package.json         libs/tokens/
@@ -81,6 +82,7 @@ COPY apps/nazir/package.json          apps/nazir/
 COPY apps/landing/package.json        apps/landing/
 COPY apps/keycloak-theme/package.json apps/keycloak-theme/
 COPY libs/common/package.json         libs/common/
+COPY libs/env/package.json            libs/env/
 COPY libs/ui/package.json             libs/ui/
 COPY libs/icons/package.json          libs/icons/
 COPY libs/tokens/package.json         libs/tokens/
@@ -114,6 +116,24 @@ COPY --from=build --chown=nestjs:nodejs /app/libs/common/dist        ./libs/comm
 
 COPY --from=build --chown=nestjs:nodejs /app/apps/tedrisat/package.json ./apps/tedrisat/package.json
 COPY --from=build --chown=nestjs:nodejs /app/apps/tedrisat/dist        ./apps/tedrisat/dist
+
+# MDRS-66: the root-.env bootstrap moved from tools/env/root-env.cjs to the
+# @medaris/env workspace package, and src/load-env.ts requires it BY NAME as the
+# first import of the process. Two consequences for this stage:
+#
+#  1. libs/env must be here or `require("@medaris/env")` throws MODULE_NOT_FOUND
+#     at boot. The symlink already exists (prod-deps installed the workspace
+#     dependency into apps/tedrisat/node_modules); only its target was missing.
+#  2. pnpm-workspace.yaml must be here too. findRepoRoot walks up for that
+#     marker and, since MDRS-66, THROWS on reaching the filesystem root without
+#     finding it — the loud behaviour the four next.config.js copies always had
+#     and this side did not. With the marker present the image is a well-formed
+#     workspace with no .env beside it, which is the documented normal
+#     production state (empty result, no throw); without it every boot dies.
+#     The file is a list of package paths and carries nothing secret.
+COPY --from=build --chown=nestjs:nodejs /app/pnpm-workspace.yaml      ./pnpm-workspace.yaml
+COPY --from=build --chown=nestjs:nodejs /app/libs/env/package.json    ./libs/env/package.json
+COPY --from=build --chown=nestjs:nodejs /app/libs/env/src             ./libs/env/src
 
 USER nestjs
 WORKDIR /app/apps/tedrisat
