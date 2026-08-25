@@ -102,7 +102,26 @@ function findRepoRoot(from = __dirname) {
   }
 }
 
-/** Parse KEY=VALUE lines, dropping comments and blank lines. */
+/**
+ * Parse KEY=VALUE lines, dropping comments and blank lines.
+ *
+ * KNOWN DIVERGENCE FROM DOTENV: surrounding quotes are NOT stripped. `A="x"`
+ * yields the four-character value `"x"`, and because the trailing-comment rule
+ * below deliberately skips quoted values, `A="x" # note` yields `"x" # note`.
+ * dotenv and Compose's own env-file parser both strip matched quotes, so a
+ * quoted line means something different here than to every other reader of the
+ * file — which is the opposite of what the comment on that branch intends.
+ *
+ * Left as-is rather than fixed in MDRS-66, deliberately: stripping quotes
+ * changes the value every app receives, and doing that in a refactor whose
+ * point is that the loader should stop behaving in two different ways would be
+ * its own kind of surprise. Measured while deciding: no line in `.env.example`
+ * or in the local root `.env` is quoted, so nothing is misreading a value
+ * today. Recorded as a follow-up in
+ * docs/migration/mdrs-66-env-package.md §7; the test suite pins the current
+ * behaviour explicitly as divergent rather than as correct, so a later fix
+ * changes an assertion that already says what it is.
+ */
 function parseEnv(text) {
   const entries = [];
   for (const raw of text.split("\n")) {
@@ -112,8 +131,10 @@ function parseEnv(text) {
     if (eq === -1) continue;
 
     let value = line.slice(eq + 1);
-    // dotenv drops an unquoted trailing comment; match that, or the same line
-    // would mean one thing here and another to every other reader of the file.
+    // An unquoted trailing comment is dropped, as dotenv does. Quoted values
+    // are skipped because a `#` inside quotes is data — but note that the
+    // quotes themselves then survive into the value; see the divergence note
+    // above.
     if (!/^\s*["']/.test(value)) value = value.replace(/\s+#.*$/, "");
 
     entries.push({ key: line.slice(0, eq).trim(), value: value.trim() });

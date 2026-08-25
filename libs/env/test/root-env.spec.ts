@@ -16,7 +16,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 const requireCjs = createRequire(import.meta.url);
 const rootEnv = requireCjs(
@@ -32,6 +32,13 @@ const {
   parseEnv,
   resolveFor,
 } = rootEnv;
+
+/**
+ * This repository's own root — `libs/env/test` -> `libs/env` -> here. Derived
+ * from the spec's own location rather than from `findRepoRoot`, so the assertion
+ * that uses it is not checking the walk-up against itself.
+ */
+const repoRoot = resolve(__dirname, "..", "..", "..");
 
 /** A directory tree with no `pnpm-workspace.yaml` anywhere above it. */
 function makeOrphanDir(): string {
@@ -99,11 +106,23 @@ describe("loadRootEnv — not-found propagates identically to every call site", 
     expect(code).not.toMatch(/if\s*\(\s*!\s*root\s*\)/);
   });
 
-  it("resolves the real workspace root when given no override", () => {
+  it("resolves this repository as its workspace root with no override", () => {
     // No `options.root`, so the walk-up decides — exactly as it does for the
-    // four next.config.js copies and the two load-env.ts copies. This repo IS
-    // a workspace, so it must resolve rather than throw.
-    expect(() => loadRootEnv("nizam")).not.toThrow();
+    // four next.config.js copies and the two load-env.ts copies.
+    //
+    // Deliberately does NOT call loadRootEnv() bare. That would read the
+    // developer's real, gitignored root .env and apply it to process.env, so a
+    // contributor whose file happens to carry an unrecognised `__` prefix (say
+    // `KEYCLOAK__ADMIN=x`) would see this suite fail with "not an app or a
+    // group" for reasons unrelated to their change. CI never hits that because
+    // ci.yaml copies .env.example, which is exactly what makes it a trap: it
+    // fails only on the machine of whoever is least expecting it. The walk-up
+    // is asserted directly, and `file` names something that cannot exist so
+    // the read is a no-op whatever is sitting at the root.
+    expect(findRepoRoot(__dirname)).toBe(repoRoot);
+    expect(loadRootEnv("nizam", { file: ".env.mdrs66-absent" })).toEqual(
+      new Map()
+    );
   });
 
   it("returns an empty map when the root exists but has no .env", () => {
@@ -216,9 +235,25 @@ describe("parseEnv", () => {
     expect(parseEnv("A=1 # why")).toEqual([{ key: "A", value: "1" }]);
   });
 
-  it("keeps a # inside a quoted value", () => {
+  it("does NOT strip surrounding quotes — a known divergence from dotenv", () => {
+    // Pinned as divergent, not as correct. dotenv and Compose's env-file parser
+    // both strip matched quotes; this parser keeps them, so `A="x"` reaches the
+    // app as a four-character value including the quote marks. See the
+    // divergence note above parseEnv in src/root-env.cjs and follow-up 5 in
+    // docs/migration/mdrs-66-env-package.md. If that follow-up is taken, this
+    // assertion is the one to change — and its name already says so.
+    expect(parseEnv('A="x"')).toEqual([{ key: "A", value: '"x"' }]);
+    expect(parseEnv("A='y'")).toEqual([{ key: "A", value: "'y'" }]);
+  });
+
+  it("keeps a # inside a quoted value, quotes and all", () => {
+    // The `#` is correctly treated as data rather than a comment. The quotes
+    // surviving alongside it is the divergence above, not the intent here.
     expect(parseEnv('A="1 # not a comment"')).toEqual([
       { key: "A", value: '"1 # not a comment"' },
+    ]);
+    expect(parseEnv('A="x" # note')).toEqual([
+      { key: "A", value: '"x" # note' },
     ]);
   });
 

@@ -22,7 +22,7 @@ pnpm nx run-many -t lint --skip-nx-cache
 pnpm nx run-many -t module-boundaries --skip-nx-cache
 ```
 
-Expected: typecheck 17 projects · **253 tests / 18 suites** · build 8 · lint 17 · module-boundaries 17.
+Expected: typecheck 17 projects · **254 tests / 18 suites** · build 8 · lint 17 · module-boundaries 17.
 
 Two prerequisites that look optional and are not:
 
@@ -88,7 +88,7 @@ What the linter does **not** catch (measured, MDRS-13):
 
 ## Commits and pull requests
 
-Conventional commits, English, against the 20-scope enum in `commitlint.config.mjs`. No emoji, no "Generated with" trailers, no `Co-Authored-By` for AI. Details and the full scope list are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Conventional commits, English, against the 21-scope enum in `commitlint.config.mjs`. No emoji, no "Generated with" trailers, no `Co-Authored-By` for AI. Details and the full scope list are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 Never use `--amend`, `--no-verify`, force push, `git reset --hard`, or `gh pr merge --admin`. Never commit directly to `main`.
 

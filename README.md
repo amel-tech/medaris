@@ -76,7 +76,7 @@ Six of tedrisat's fifteen suites are the `test/e2e/*.e2e.spec.ts` files: `apps/t
 
 - **Biome** owns formatting and linting. **ESLint exists only** to run `@nx/enforce-module-boundaries`; it carries no style rules.
 - **Boundary tags are enforced.** All 17 projects carry `scope:*` / `platform:*` / `type:*` tags and `eslint.config.mjs` holds the real `depConstraints`, with `allow` holding exactly the two workspace-root Vitest base configs. The taxonomy, the allowed directions, and the four cases the linter cannot see are in [`CONTRIBUTING.md`](CONTRIBUTING.md#project-layers-and-tags); ADR-001 §D5 is normative.
-- **Commit hygiene** is enforced by husky: `pre-commit` runs lint-staged (Biome on staged files only), `commit-msg` runs commitlint against a 20-scope enum. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- **Commit hygiene** is enforced by husky: `pre-commit` runs lint-staged (Biome on staged files only), `commit-msg` runs commitlint against a 21-scope enum. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - **CI** is one `nx affected` pipeline plus CodeQL over both stacks, a dependency audit, depcheck, and a job that lints the pull-request title — the squash commit that reaches `main` is composed server-side and never passes the local hook.
 
 ## Local environment

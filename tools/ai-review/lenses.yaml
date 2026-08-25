@@ -171,7 +171,7 @@ lenses:
       packages. apps/tedrisat and apps/teskilat are NestJS 11 + Drizzle/PostgreSQL
       services authenticated by Keycloak JWT; apps/tedris, apps/nizam, apps/nazir and
       apps/landing are Next.js App Router apps; apps/keycloak-theme is Keycloakify;
-      libs/* are nine @medaris/* workspace packages.
+      libs/* are ten @medaris/* workspace packages.
 
       Stay strictly inside your own lens — the other five are covered by other
       reviewers, and duplicate noise is the failure mode this six-way split exists
@@ -367,7 +367,7 @@ lenses:
       packages. apps/tedrisat and apps/teskilat are NestJS 11 + Drizzle/PostgreSQL
       services authenticated by Keycloak JWT; apps/tedris, apps/nizam, apps/nazir and
       apps/landing are Next.js App Router apps; apps/keycloak-theme is Keycloakify;
-      libs/* are nine @medaris/* workspace packages.
+      libs/* are ten @medaris/* workspace packages.
 
       Stay strictly inside your own lens — the other five are covered by other
       reviewers, and duplicate noise is the failure mode this six-way split exists
@@ -586,7 +586,7 @@ lenses:
       packages. apps/tedrisat and apps/teskilat are NestJS 11 + Drizzle/PostgreSQL
       services authenticated by Keycloak JWT; apps/tedris, apps/nizam, apps/nazir and
       apps/landing are Next.js App Router apps; apps/keycloak-theme is Keycloakify;
-      libs/* are nine @medaris/* workspace packages.
+      libs/* are ten @medaris/* workspace packages.
 
       Stay strictly inside your own lens — the other five are covered by other
       reviewers, and duplicate noise is the failure mode this six-way split exists
@@ -693,11 +693,11 @@ lenses:
          `sharedGlobals`, which currently lists pnpm-workspace.yaml, pnpm-lock.yaml,
          tsconfig.base.json, tsconfig.json, .nvmrc, package.json,
          .github/workflows/ci.yaml and vitest.config.ts — every entry there marks all
-         16 projects affected on any touch, so adding one multiplies CI cost.
+         17 projects affected on any touch, so adding one multiplies CI cost.
 
       6. DEPENDENCY SPECIFIERS. Every workspace package.json in this repo currently
          uses `catalog:` or `workspace:` for every single dependency — verified, zero
-         exceptions across all 16 packages. pnpm-workspace.yaml states the rule in its
+         exceptions across all 17 packages. pnpm-workspace.yaml states the rule in its
          header: "Adding a dependency: add it here first, then reference it as
          `catalog:` from the package. A bare version string in a workspace
          package.json is a bug." A bare version added by this PR is a medium-severity
@@ -800,7 +800,7 @@ lenses:
       packages. apps/tedrisat and apps/teskilat are NestJS 11 + Drizzle/PostgreSQL
       services authenticated by Keycloak JWT; apps/tedris, apps/nizam, apps/nazir and
       apps/landing are Next.js App Router apps; apps/keycloak-theme is Keycloakify;
-      libs/* are nine @medaris/* workspace packages.
+      libs/* are ten @medaris/* workspace packages.
 
       Stay strictly inside your own lens — the other five are covered by other
       reviewers, and duplicate noise is the failure mode this six-way split exists
@@ -1013,7 +1013,7 @@ lenses:
       packages. apps/tedrisat and apps/teskilat are NestJS 11 + Drizzle/PostgreSQL
       services authenticated by Keycloak JWT; apps/tedris, apps/nizam, apps/nazir and
       apps/landing are Next.js App Router apps; apps/keycloak-theme is Keycloakify;
-      libs/* are nine @medaris/* workspace packages.
+      libs/* are ten @medaris/* workspace packages.
 
       Stay strictly inside your own lens — the other five are covered by other
       reviewers, and duplicate noise is the failure mode this six-way split exists
@@ -1174,7 +1174,7 @@ lenses:
   #     -> ./lib/*, ./components/*, ./custom/*, ./hooks/*, ./globals.css.
   #        So @medaris/ui/components/button IS a declared entry point (24 call sites).
   #   $ grep -n -A11 '"exports"' libs/services/package.json -> only ./tedrisat, ./utils
-  #   $ every workspace package.json dep is catalog: or workspace: (checked all 16).
+  #   $ every workspace package.json dep is catalog: or workspace: (checked all 17).
   #   $ comm -12 <(tedris file list) <(nizam file list) | wc -l -> 30 shared paths,
   #        11 of them byte-identical (app/api/cards/[id]/route.ts, app/layout.tsx,
   #        env.ts, lib/i18n/routing.ts, components/i18n/locale-switcher.tsx, ...).
@@ -1212,7 +1212,7 @@ lenses:
       packages. apps/tedrisat and apps/teskilat are NestJS 11 + Drizzle/PostgreSQL
       services authenticated by Keycloak JWT; apps/tedris, apps/nizam, apps/nazir and
       apps/landing are Next.js App Router apps; apps/keycloak-theme is Keycloakify;
-      libs/* are nine @medaris/* workspace packages.
+      libs/* are ten @medaris/* workspace packages.
 
       Stay strictly inside your own lens — the other five are covered by other
       reviewers, and duplicate noise is the failure mode this six-way split exists
@@ -1289,7 +1289,7 @@ lenses:
          A relative import that climbs out of a package into another package's src —
          `../../../libs/ui/src/...` — is always a finding regardless of the exports map.
 
-      3. NON-`catalog:` DEPENDENCY SPECIFIERS. Every dependency in all 16 workspace
+      3. NON-`catalog:` DEPENDENCY SPECIFIERS. Every dependency in all 17 workspace
          package.json files currently uses `catalog:` or `workspace:` — verified, zero
          exceptions. pnpm-workspace.yaml's header states the rule: add the version to
          the catalog first, then reference it as `catalog:` from the package; "a bare

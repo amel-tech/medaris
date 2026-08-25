@@ -30,7 +30,7 @@ The new package:
   this same change per MDRS-13 (§4 below measures what that actually enforces).
 - `libs/env/src/root-env.cjs` — the one implementation.
 - `libs/env/src/root-env.d.ts` — declarations for the two TypeScript call sites.
-- `libs/env/test/root-env.spec.ts` + `libs/env/vitest.config.ts` — 27 tests, the
+- `libs/env/test/root-env.spec.ts` + `libs/env/vitest.config.ts` — 28 tests, the
   first this code has ever had.
 - `pnpm-workspace.yaml` — registered; the enumeration is now 17 packages.
 - `commitlint.config.mjs` — `env` added to `scope-enum` (libs 9 → 10).
@@ -110,9 +110,9 @@ manifest-only `deps` stage (and `prod-deps` where present), because
 
 ### 3.1 The not-found case is now identical on both sides
 
-A harness outside any workspace (`/home/gedikas/.claude/jobs/.../proof`, with no
-`pnpm-workspace.yaml` at any ancestor — checked by walking to `/`) was given a
-copy of the shipped `libs/env` and the two call-site shapes verbatim.
+A scratch directory outside any workspace — no `pnpm-workspace.yaml` at any
+ancestor, checked by walking up to `/` — was given a copy of the shipped
+`libs/env` and the two call-site shapes verbatim.
 
 Next side (`apps/nizam/next.config.js` shape, ESM + `createRequire`):
 
@@ -217,20 +217,21 @@ Run with `--skip-nx-cache`, `pnpm install` done, root `.env` present
 | Gate | `origin/main` (`cb7e9636`, per `CLAUDE.md`) | This branch, measured |
 | -- | -- | -- |
 | `typecheck` | 16 projects | **17 projects** ✅ |
-| `test` | 226 tests / 17 suites | **253 tests / 18 suites** ✅ |
+| `test` | 226 tests / 17 suites | **254 tests / 18 suites** ✅ |
 | `build` | 8 | **8** ✅ |
 | `lint` | 16 | **17** ✅ |
 | `module-boundaries` | 16 | **17** ✅ |
 
-The `test` delta is exactly this change: 226 + 27 = 253, 17 + 1 = 18. Per
-project: `tedrisat` 224 tests / 15 suites, `env` 27 / 1, `teskilat` 2 / 2;
+The `test` delta is exactly this change: 226 + 28 = 254, 17 + 1 = 18. Per
+project: `tedrisat` 224 tests / 15 suites, `env` 28 / 1, `teskilat` 2 / 2;
 `tedris-web`'s `test` script is still `echo 'Tests not implemented'`.
 
 Note on the commit history: the first commit on this branch (`bd9b5f69`) records
-"26 tests" and "252/18" in its message. A 27th test was added during review
-(`loadRootEnv` keeps no null-guard), making the correct figures 27 and 253/18.
-The message of a pushed commit is not rewritten here — `--amend` is forbidden in
-this repo — so this record is the accurate one.
+"26 tests" and "252/18" in its message. Two more tests were added while
+resolving review findings (`loadRootEnv` keeps no null-guard; quotes are not
+stripped), making the correct figures **28 tests and 254/18**. Pushed commit
+messages are not rewritten — `--amend` is forbidden in this repo — so this
+record is the accurate one and the gate table below is the measured truth.
 
 `libs/env` coverage, measured on Node 22.20.0 with the v8 provider: **74/74
 statements, 42/42 branches, 6/6 functions, 66/66 lines — 100% on all four.**
@@ -332,7 +333,27 @@ moved to the top level of `nx.json`, where it is accepted.
   investigated further — out of scope. `tedrisat:test` (Testcontainers) did not
   flake on any run here, which is an observation and not a guarantee.
 
+## 6b. Review findings and what was done about each
+
+A delegated `/code-review` pass returned five findings after PR #52 was opened;
+it independently re-ran the gates and hand-built the Nest runner layout, and
+confirmed the runner COPYs are correct. None was a correctness blocker. What was
+done:
+
+| Finding | Response |
+| -- | -- |
+| `CLAUDE.md` and `README.md` still said "20-scope enum"; it is now 21 | **Fixed.** Verified by reading the enum: `scope-enum[2].length` -> 21. |
+| `parseEnv` does not strip surrounding quotes, and the new test pinned that as intended | **Documented, not changed** — see follow-up 3. The divergence note now sits above `parseEnv` and the test is renamed to say it is divergent. Changing the parse behaviour is a behaviour change to every app, not this task. |
+| The "no override" test read the developer's real gitignored root `.env` | **Fixed.** It asserted `loadRootEnv("nizam")` bare; a root `.env` carrying an unrecognised `__` prefix made the suite fail for unrelated reasons. Reproduced: appending `KEYCLOAK__ADMIN=x` to the local root `.env` failed the old spec with `"KEYCLOAK" ... is not an app or a group` and passes on the new one, which asserts the walk-up directly and points `file` at a name that cannot exist. |
+| Stale "16"/"nine libs" counts left in live files | **Fixed** in `tools/ai-review/lenses.yaml` (10 occurrences), `.github/workflows/{ci,traceability,linear-reconcile}.yaml`, the six app deploy workflows, `tools/ci/{biome-ratchet,assert-affected-isolation}.mjs`, and `docs/ci-ai-review-gate.md`. `lenses.yaml` mattered most: it is prompt text fed to the AI review gate, so a wrong fact there is restated to every reviewer. Records under `docs/migration/` and `docs/adr/` were left alone — they describe the repo as it was. |
+| §7 listed two follow-ups already done in this PR, and §3.1 embedded a local absolute path | **Fixed.** Both removed. |
+
 ## 7. Follow-ups (no Linear issue opened — see §Linear policy)
+
+Two items that were on this list in an earlier draft — auditing
+`CONTRIBUTING.md` for the new package, and writing down the `createRequire`
+blind spot — were done in this same change and are no longer follow-ups.
+
 
 1. **ADR-001 §D11 is now stale.** It enumerates "all 16 packages: the 7 apps +
    `libs/{common, ui, icons, tokens, hooks, services, i18n, types, utils}`".
@@ -340,12 +361,18 @@ moved to the top level of `nx.json`, where it is accepted.
    an ADR is a decision-record edit and was deliberately **not** made
    unilaterally here; whoever owns ADR-001 should add `env` to §D11 and to the
    tag table.
-2. **`CONTRIBUTING.md#project-layers-and-tags`** documents the tag taxonomy and
-   may list the libs; it was not audited for the new package.
-3. **The `createRequire` blind spot in §4** is worth stating in
-   `CONTRIBUTING.md` alongside the three cases the linter already cannot see —
-   a `platform:*` tag on a `scope:shared` lib is enforced only against
-   consumers that import it statically.
-4. **`apps/tedrisat/package.json#start:prod`** still says `node dist/main`,
+2. **`apps/tedrisat/package.json#start:prod`** still says `node dist/main`,
    which is wrong (`dist/src/main`). Noted in MDRS-16 as out of scope and still
    true; untouched here.
+3. **`parseEnv` does not strip surrounding quotes**, diverging from dotenv and
+   from Compose's own env-file parser: `A="x"` yields the four-character value
+   `"x"`, and `A="x" # note` yields `"x" # note` because the trailing-comment
+   rule skips quoted values. Pre-existing from MDRS-25. Not fixed here on
+   purpose — stripping quotes changes the value every app receives, which is a
+   behaviour change rather than the deduplication this task is. Measured while
+   deciding: no line in `.env.example` or in the local root `.env` is quoted, so
+   nothing misreads a value today. The divergence is now written above
+   `parseEnv` and the test that covers it is named
+   "does NOT strip surrounding quotes — a known divergence from dotenv", so
+   taking this follow-up means changing an assertion that already says what it
+   is rather than discovering the behaviour was pinned as correct.
