@@ -13,7 +13,7 @@
  * to resolve through. This is the same shape the four next.config.js call sites
  * use, which makes the test exercise the real consumption path.
  */
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -83,12 +83,27 @@ describe("findRepoRoot — the one not-found behaviour (MDRS-66)", () => {
 });
 
 describe("loadRootEnv — not-found propagates identically to every call site", () => {
-  it("throws when the workspace root cannot be found", () => {
+  it("keeps no null-guard around the walk-up", () => {
+    // `loadRootEnv` calls the module-local `findRepoRoot` binding, which no spy
+    // can intercept, so the propagation itself is proved at the process level
+    // instead — see §3.1 of docs/migration/mdrs-66-env-package.md, which runs
+    // both call-site shapes outside any workspace. What IS worth pinning here
+    // is that the guard cannot quietly come back: `if (!root)` re-silences the
+    // Nest side the moment someone re-adds it.
+    // Comments are stripped first: root-env.cjs explains in prose that it keeps
+    // no `if (!root)` guard, and that sentence would match the pattern itself.
+    const code = readFileSync(
+      new URL("../src/root-env.cjs", import.meta.url),
+      "utf8"
+    ).replace(/\/\/.*$/gm, "");
+    expect(code).not.toMatch(/if\s*\(\s*!\s*root\s*\)/);
+  });
+
+  it("resolves the real workspace root when given no override", () => {
     // No `options.root`, so the walk-up decides — exactly as it does for the
-    // four next.config.js copies and the two load-env.ts copies.
-    expect(() =>
-      loadRootEnv("nizam", { root: undefined, file: ".env" })
-    ).not.toThrow(); // sanity: this repo IS a workspace, so it resolves
+    // four next.config.js copies and the two load-env.ts copies. This repo IS
+    // a workspace, so it must resolve rather than throw.
+    expect(() => loadRootEnv("nizam")).not.toThrow();
   });
 
   it("returns an empty map when the root exists but has no .env", () => {

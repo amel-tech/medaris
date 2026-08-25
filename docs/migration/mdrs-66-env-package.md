@@ -30,7 +30,7 @@ The new package:
   this same change per MDRS-13 (§4 below measures what that actually enforces).
 - `libs/env/src/root-env.cjs` — the one implementation.
 - `libs/env/src/root-env.d.ts` — declarations for the two TypeScript call sites.
-- `libs/env/test/root-env.spec.ts` + `libs/env/vitest.config.ts` — 26 tests, the
+- `libs/env/test/root-env.spec.ts` + `libs/env/vitest.config.ts` — 27 tests, the
   first this code has ever had.
 - `pnpm-workspace.yaml` — registered; the enumeration is now 17 packages.
 - `commitlint.config.mjs` — `env` added to `scope-enum` (libs 9 → 10).
@@ -93,11 +93,12 @@ than case 1. `pnpm-workspace.yaml` is a list of package paths and carries
 nothing secret; the same file is already copied into the `deps` and `prod-deps`
 stages of every one of these Dockerfiles.
 
-The four Next apps need no Dockerfile change on this axis: `next.config.js` is
-evaluated during `next build`, inside the checkout, and `output: "standalone"`
-serialises the resulting config — `server.js` does not re-evaluate the config
-file at runtime. **This was reasoned from the Next standalone contract and from
-the fact that `-t build` passes, not measured by running a built image; see §6.**
+The four Next apps need no Dockerfile change on this axis, and this was
+measured rather than assumed (§3.3): `next.config.js` is evaluated during
+`next build`, inside the checkout, and `output: "standalone"` inlines the
+resulting config into `server.js` as a literal object. `next.config.js` is not
+present in the standalone tree at all, so it is never re-evaluated at runtime
+and `@medaris/env` is never needed there.
 
 All six Dockerfiles also gained `COPY libs/env/package.json libs/env/` in their
 manifest-only `deps` stage (and `prod-deps` where present), because
@@ -166,7 +167,26 @@ exit=0
 This exercises the file layout the Dockerfile now produces; it is **not** a run
 of an actually built image (§6).
 
-### 3.3 The five gates
+### 3.3 The Next apps never re-evaluate `next.config.js` at runtime
+
+Inspected in the `apps/nizam/.next/standalone` tree produced by this branch's
+`-t build`:
+
+- `next.config.js` is **absent** from the standalone tree
+  (`find … -name "next.config*"` returns nothing).
+- `apps/nizam/server.js` carries the entire resolved config as an inlined
+  object literal — `const nextConfig = {…,"configOrigin":"next.config.js",…}` —
+  then sets `process.env.__NEXT_PRIVATE_STANDALONE_CONFIG` from it and passes
+  it straight to `startServer({ config: nextConfig, … })`.
+- `@medaris/env` is not in the traced `node_modules`, consistent with the
+  bootstrap being build-time only for these four apps.
+
+So the throw in `findRepoRoot` can only fire for a Next app during `next build`,
+where the checkout is present by construction. This is what makes the two Nest
+runner stages the only images that needed the `pnpm-workspace.yaml` + `libs/env`
+copies.
+
+### 3.4 The five gates
 
 Run with `--skip-nx-cache`, `pnpm install` done, root `.env` present
 (`cp .env.example .env`), `pnpm nx build common` done, Docker reachable via
@@ -175,14 +195,20 @@ Run with `--skip-nx-cache`, `pnpm install` done, root `.env` present
 | Gate | `origin/main` (`cb7e9636`, per `CLAUDE.md`) | This branch, measured |
 | -- | -- | -- |
 | `typecheck` | 16 projects | **17 projects** ✅ |
-| `test` | 226 tests / 17 suites | **252 tests / 18 suites** ✅ |
+| `test` | 226 tests / 17 suites | **253 tests / 18 suites** ✅ |
 | `build` | 8 | **8** ✅ |
 | `lint` | 16 | **17** ✅ |
 | `module-boundaries` | 16 | **17** ✅ |
 
-The `test` delta is exactly this change: 226 + 26 = 252, 17 + 1 = 18. Per
-project: `tedrisat` 224 tests / 15 suites, `env` 26 / 1, `teskilat` 2 / 2;
+The `test` delta is exactly this change: 226 + 27 = 253, 17 + 1 = 18. Per
+project: `tedrisat` 224 tests / 15 suites, `env` 27 / 1, `teskilat` 2 / 2;
 `tedris-web`'s `test` script is still `echo 'Tests not implemented'`.
+
+Note on the commit history: the first commit on this branch (`bd9b5f69`) records
+"26 tests" and "252/18" in its message. A 27th test was added during review
+(`loadRootEnv` keeps no null-guard), making the correct figures 27 and 253/18.
+The message of a pushed commit is not rewritten here — `--amend` is forbidden in
+this repo — so this record is the accurate one.
 
 `libs/env` coverage, measured on Node 22.20.0 with the v8 provider: **74/74
 statements, 42/42 branches, 6/6 functions, 66/66 lines — 100% on all four.**
@@ -270,18 +296,19 @@ moved to the top level of `nx.json`, where it is accepted.
   it is the one step that would turn §2's container reasoning into a
   measurement, and it is the first thing to do if a Nest container fails to
   boot after this lands.
-- **The Next standalone claim.** That `server.js` does not re-evaluate
-  `next.config.js` at runtime is taken from Next's standalone contract. It was
-  not confirmed by inspecting a `.next/standalone` tree or starting a
-  standalone server. If it were wrong, the four web containers would need the
-  same two COPY lines the Nest ones got.
+- **No standalone server was started.** §3.3 inspected the standalone tree and
+  `server.js` source, which settles where the config comes from, but no
+  `node apps/nizam/server.js` was run to confirm the server boots from it.
 - **No live service was exercised.** No Keycloak flow, no running Nest app, no
   `next start`. The `.env` used for `-t build` is `.env.example` copied
   verbatim, so no real secret was involved.
-- **`test` flakiness was not triggered here**, but the two known flaky targets
-  (`tedrisat:test` via Testcontainers, `tedrisat:typecheck` racing
-  `common:build`'s `rimraf dist`) both passed on the runs recorded above. This
-  is one clean observation, not a claim that they cannot flake.
+- **`tedrisat:typecheck` did flake once**, on a re-run of the gate after the
+  review edits: Nx failed the target, labelled it flaky itself
+  ("Flaky tasks can disrupt your CI pipeline"), and the immediate re-run passed
+  with exit 0. This is the known race between `common:build`'s `rimraf dist`
+  and its consumers, not a regression from this change, and it was not
+  investigated further — out of scope. `tedrisat:test` (Testcontainers) did not
+  flake on any run here, which is an observation and not a guarantee.
 
 ## 7. Follow-ups (no Linear issue opened — see §Linear policy)
 
