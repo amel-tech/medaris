@@ -13,7 +13,7 @@
 //
 //   KEY=value          every app
 //   WEB__KEY=value     landing, nazir, nizam, tedris   (overrides shared)
-//   API__KEY=value     tedrisat, teskilat              (overrides both)
+//   API__KEY=value     tedrisat, teskilat              (overrides shared)
 //   NIZAM__KEY=value   that one app                    (overrides both)
 //
 // `loadRootEnv(app)` applies that to process.env before anything reads it, so

@@ -186,7 +186,29 @@ where the checkout is present by construction. This is what makes the two Nest
 runner stages the only images that needed the `pnpm-workspace.yaml` + `libs/env`
 copies.
 
-### 3.4 The five gates
+### 3.4 `load-env` still runs first, and the import is not elided
+
+This repo has already lost 78 tests to an import being erased from the emitted
+JavaScript, so the emitted output was read rather than assumed. From
+`apps/tedrisat/dist/` after this branch's `-t build`:
+
+```
+// dist/src/load-env.js
+const env_1 = require("@medaris/env");
+(0, env_1.loadRootEnv)("tedrisat");
+
+// dist/src/main.js
+require("./load-env");
+require("./otel");
+const common_1 = require("@medaris/common");
+```
+
+The static `import { loadRootEnv }` survives as a value require (it is called,
+so nothing elides it), and `./load-env` is still evaluated before `./otel` and
+before anything that reads `process.env`. That ordering constraint is unchanged
+from MDRS-25.
+
+### 3.5 The five gates
 
 Run with `--skip-nx-cache`, `pnpm install` done, root `.env` present
 (`cp .env.example .env`), `pnpm nx build common` done, Docker reachable via
