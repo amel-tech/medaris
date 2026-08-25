@@ -274,8 +274,35 @@ root one is the whole story.
 - **That the ten routes actually reject an anonymous caller.** MDRS-27 shipped
   that behaviour and its own tests cover it; this change only makes the spec say
   so. Nothing here re-tested the guard.
-- **CI.** The numbers above are local, on Node 22. CI runs Node 24, and the v8
-  coverage provider varies slightly across majors.
+
+CI was pending when this section was first written. It has since run, and the
+section below replaces what used to be a third bullet here.
+
+## CI, on PR #55 at `699de334`
+
+Every check that actually executes on a pull request passed:
+
+| check | result |
+|---|---|
+| `Verify` (the five targets on Node 24) | pass, 2m12s |
+| `Security gates` | pass, 34s |
+| `Commit hygiene` | pass, 24s |
+| `Traceability` | pass, 6s |
+| `CodeQL` · `Analyze (javascript-typescript)` · `Analyze (actions)` | pass |
+
+`AI Multi-Lens Review Gate` is red, and **not because of a finding.** The run
+reports `PREFLIGHT_MODE: queued` with:
+
+> it is outside the review window (`16:00-21:00 UTC`; it is now `11:xx UTC`) and
+> `Argedik` is not a repository admin, so the lenses were not run now. The
+> nightly drain will run them when the window opens.
+
+No lens has looked at this diff yet; the gate turns green or red on its own once
+the window opens. Triggering it early needs a repository admin, so the label was
+deliberately left alone.
+
+That `Verify` passed on Node 24 also settles the one thing the local run could
+not: the coverage floors hold under the other Node major.
 
 ## Follow-ups
 
