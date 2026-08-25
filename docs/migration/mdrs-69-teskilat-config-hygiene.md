@@ -240,6 +240,13 @@ request body rather than filed:
    (`apps/teskilat/src/app.service.ts:20`), so a production container reports
    `development` on `/health`. Noticed here, not fixed: it is not configuration
    hygiene and belongs with whatever owns the health payload.
+5. **Harvesting a `teskilat.json` spec now needs a non-production run.**
+   `libs/services/swagger-docs/` holds only `tedrisat.json` today, and its README
+   invites a `teskilat.json` to be added by hand. Whoever adds it must take the
+   document from a `NODE_ENV`-not-production run, because a production image
+   serves no `/docs-json` at all. This does not affect MDRS-58, which regenerates
+   the **tedrisat** spec and client: no tedrisat file is touched here, and no
+   teskilat spec or generated client exists to drift.
 
 ## Not verified
 
