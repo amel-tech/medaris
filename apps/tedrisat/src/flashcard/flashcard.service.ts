@@ -56,9 +56,15 @@ export class FlashcardService {
     userId: string,
     progress: CreateFlashcardProgressDto[]
   ): Promise<IFlashcardProgress[]> {
+    // `userId` last, not first: it is the authenticated caller's id and must
+    // win over anything the request body carries. Nothing can reach this with a
+    // `userId` today — CreateFlashcardProgressDto has no such field and
+    // MedarisValidationPipe runs forbidNonWhitelisted — but with the spread
+    // first, adding one to the DTO would silently let a caller write another
+    // user's progress.
     const progressWithUser = progress.map((data) => ({
-      userId,
       ...data,
+      userId,
     }));
 
     return this.cardRepo.replaceManyProgress(progressWithUser);

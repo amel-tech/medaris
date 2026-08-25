@@ -34,7 +34,7 @@ exist, so keeping it would mean keeping the module it tests.
 
 ## What was added
 
-`apps/tedrisat/test/unit/flashcard/flashcard.service.spec.ts` — **16 tests**, ported from
+`apps/tedrisat/test/unit/flashcard/flashcard.service.spec.ts` — **17 tests**, ported from
 the deleted `example.service.spec.ts`: real service, mocked repository, one assertion group
 per method covering the arguments handed down and the repository rejection path. It also
 covers what the example spec had nothing to test — the `include` allow-list in
@@ -55,6 +55,38 @@ the app in `afterAll`, so every test but the last left an unclosed Nest instance
 pool behind. That was latent at 2 tests; the six 404 assertions would have made it
 eight-fold. None of the tests in the suite mutate state, so one instance is enough. Caught
 in review, not by a red gate — the suite was green both ways.
+
+## Review findings, and what was done about each
+
+Three findings, all rated low, none blocking. Recorded here because two of them changed code
+outside the removal itself.
+
+**1. A docblock pointed at a file this PR deletes.**
+`test/unit/flashcard/flashcard.repository.spec.ts` opened with "Unlike the example
+repository specs next door, this mounts the REAL repository…". Those specs are gone, so the
+contrast dangled. Reworded to state the property directly and note where the contrast went.
+Fixed here rather than deferred: no other task owns that file.
+
+**2. Schema/migration drift, already disclosed.** Left as follow-up #1 below, with the
+reviewer's extra detail folded in: it is not only `0000_chunky_viper.sql` that still knows
+about the table — every `meta/*_snapshot.json` through `0011` contains it too. The reviewer
+asked for an explicit sign-off rather than a doc line, which is what follow-up #1 now spells
+out.
+
+**3. The new spec pinned an unsafe spread order.**
+`FlashcardService.replaceManyProgress` built its rows as `{ userId, ...data }`, so a
+`userId` arriving in the request body would have overridden the authenticated caller's. Not
+reachable today — `CreateFlashcardProgressDto` declares no `userId` and
+`MedarisValidationPipe` runs `forbidNonWhitelisted`, and `flashcard.controller.ts` is the
+only caller — so this was not a live vulnerability. But the spec added by this PR asserted
+that exact order, which would have encoded the weaker precedence as intended behaviour.
+
+Rather than assert it, the order was flipped to `{ ...data, userId }` (one line in
+`src/flashcard/flashcard.service.ts`, with a comment saying why) and a second test now
+passes a spoofed `userId` and asserts the caller's wins. **This is hardening outside
+MDRS-32's acceptance criteria**, taken because the alternative was to cement the weaker
+order in a new test. It cannot change behaviour today, for the reasons above. Strip it if
+the removal should stay strictly minimal.
 
 ## The generated client
 
@@ -97,7 +129,7 @@ Every number below is from command output on this branch, not an estimate.
 | Gate | Result |
 | -- | -- |
 | `pnpm nx run-many -t typecheck --skip-nx-cache` | 16 projects, green |
-| `pnpm nx run-many -t test --skip-nx-cache` | **206 tests / 14 suites**, green |
+| `pnpm nx run-many -t test --skip-nx-cache` | **207 tests / 14 suites**, green |
 | `pnpm nx run-many -t build --skip-nx-cache` | 8 projects, green |
 | `pnpm nx run-many -t lint --skip-nx-cache` | 16 projects, green |
 | `pnpm nx run-many -t module-boundaries --skip-nx-cache` | 16 projects, green |
@@ -109,16 +141,16 @@ Test arithmetic, per `apps/*/coverage/junit.xml`:
 
 | | before (`cb7e9636`) | after |
 | -- | -- | -- |
-| tedrisat | 224 tests / 15 suites | **204 / 12** |
+| tedrisat | 224 tests / 15 suites | **205 / 12** |
 | teskilat | 2 / 2 | 2 / 2 |
-| **total** | **226 / 17** | **206 / 14** |
+| **total** | **226 / 17** | **207 / 14** |
 | of which tedrisat e2e | 6 suites | 5 suites |
 
-`204 = 224 − 43 deleted + 16 (flashcard.service) + 6 (app e2e 404s) + 1 (getHealth)`.
+`205 = 224 − 43 deleted + 17 (flashcard.service) + 6 (app e2e 404s) + 1 (getHealth)`.
 
-Flashcard tests, for the issue's "≥6 in the flashcard module" criterion: **18 unit**
-(`flashcard.service.spec.ts` 16, `flashcard.repository.spec.ts` 2) and 30 e2e
-(`flashcard-bulk` 9, `flashcard-label` 21) — **48** in total, up from 32.
+Flashcard tests, for the issue's "≥6 in the flashcard module" criterion: **19 unit**
+(`flashcard.service.spec.ts` 17, `flashcard.repository.spec.ts` 2) and 30 e2e
+(`flashcard-bulk` 9, `flashcard-label` 21) — **49** in total, up from 32.
 
 tedrisat coverage moved as follows (v8 provider, Node 22.20.0; the thresholds in
 `apps/tedrisat/vitest.config.ts` are 60 / 50 / 58 / 60 and were never at risk):
@@ -158,17 +190,19 @@ infos are unchanged.
 
 ## Follow-ups (no Linear issues opened)
 
-1. **The `examples` table is not dropped.** `example.schema.ts` is gone, but migration
-   `0000_chunky_viper.sql` still creates `examples` and no migration drops it, so the
-   Drizzle schema and the migration history have drifted by one table. The consequence is
-   concrete: the next `pnpm --filter @medaris/tedrisat db:generate` will emit
-   `DROP TABLE "examples"` as part of whatever unrelated change triggered it, and
-   `drizzle-kit generate` asks interactively whether the table was deleted or renamed, so
-   that prompt has to be answered by a human. Dropping a table was left out of this PR
-   deliberately: it is destructive, it is not in MDRS-32's acceptance criteria, and it wants
-   its own reviewed migration. Whoever picks it up should land a standalone
-   `DROP TABLE IF EXISTS "examples";` migration before touching the schema for anything
-   else.
+1. **The `examples` table is not dropped — this one needs an explicit sign-off, not just a
+   read.** `example.schema.ts` is gone, but `0000_chunky_viper.sql` still creates `examples`
+   and every `meta/*_snapshot.json` through `0011` still contains it, while no migration
+   drops it. The Drizzle schema and the migration history have therefore drifted by one
+   table. The consequence is concrete and lands on someone else: the next
+   `pnpm --filter @medaris/tedrisat db:generate`, run for an entirely unrelated change, will
+   emit `DROP TABLE "examples"` inside that unrelated migration — and `drizzle-kit generate`
+   asks interactively whether the table was deleted or renamed, which cannot be answered
+   non-interactively, so it will also stall any scripted run. Dropping a table was left out
+   of this PR deliberately: it is destructive, it is not in MDRS-32's acceptance criteria,
+   and it wants its own reviewed migration. Whoever picks it up should land a standalone
+   `DROP TABLE IF EXISTS "examples";` migration, with its snapshot, **before** anyone
+   touches the schema for anything else.
 2. **MDRS-44's unguarded-route count is now stale.**
    [`mdrs-40-pr-80-authz-assessment.md`](mdrs-40-pr-80-authz-assessment.md) records "17
    routes are currently unguarded — `app.controller.ts` (3 of 4), all 4 of

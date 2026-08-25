@@ -183,15 +183,33 @@ describe("FlashcardService", () => {
 
     it("attaches the caller's userId to every row", async () => {
       mockFlashcardRepository.replaceManyProgress.mockResolvedValue([
-        { userId: USER_ID, ...progress[0] },
+        { ...progress[0], userId: USER_ID },
       ]);
 
       const result = await service.replaceManyProgress(USER_ID, progress);
 
       expect(mockFlashcardRepository.replaceManyProgress).toHaveBeenCalledWith([
-        { userId: USER_ID, ...progress[0] },
+        { ...progress[0], userId: USER_ID },
       ]);
-      expect(result).toEqual([{ userId: USER_ID, ...progress[0] }]);
+      expect(result).toEqual([{ ...progress[0], userId: USER_ID }]);
+    });
+
+    // Pins the precedence, not just the presence. The validation pipe means no
+    // request can carry a `userId` today, so this asserts the service's own
+    // spread order rather than a reachable exploit — but that order is the only
+    // thing standing between a future DTO field and one user writing another
+    // user's progress.
+    it("overrides a userId supplied in the payload", async () => {
+      const spoofed = [
+        { ...progress[0], userId: "00000000-0000-4000-8000-000000000000" },
+      ] as CreateFlashcardProgressDto[];
+      mockFlashcardRepository.replaceManyProgress.mockResolvedValue([]);
+
+      await service.replaceManyProgress(USER_ID, spoofed);
+
+      expect(mockFlashcardRepository.replaceManyProgress).toHaveBeenCalledWith([
+        { ...progress[0], userId: USER_ID },
+      ]);
     });
 
     it("propagates repository errors", async () => {
