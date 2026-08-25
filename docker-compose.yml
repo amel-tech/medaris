@@ -135,25 +135,34 @@ services:
       # SWAGGER_PATH handed in here reached nothing. The .env key is unchanged —
       # this file is where the prefixed key is mapped to the canonical name.
       SWAGGER_ENDPOINT: ${TESKILAT__SWAGGER_PATH:-${API__SWAGGER_PATH:-/docs}}
-      DB_HOST: medaris-db
-      DB_PORT: ${TESKILAT__DB_PORT:-${API__DB_PORT:-5432}}
-      DB_SSL: ${TESKILAT__DB_SSL:-${API__DB_SSL:-false}}
-      DB_NAME: ${TESKILAT__DB_NAME:-teskilat_db}
-      DB_USERNAME: ${TESKILAT__DB_USERNAME:-teskilat}
-      DB_PASSWORD: ${TESKILAT__DB_PASSWORD:?set TESKILAT__DB_PASSWORD in .env}
-      AUTO_MIGRATIONS_ENABLED: ${TESKILAT__AUTO_MIGRATIONS_ENABLED:-${API__AUTO_MIGRATIONS_ENABLED:-true}}
-      # Not interpolated: the root .env names ./src/... for `nest start`, and the
-      # container runs compiled output. tsc mirrors the source tree, so the
-      # compiled migrations are under dist/src/, not dist/ — measured against the
-      # image, where ./dist/database/migrations does not exist and the service
-      # logs "Migrations failed: Can't find meta/_journal.json file" three times
-      # and then serves traffic against an unmigrated database.
-      AUTO_MIGRATIONS_FOLDER: ./dist/src/database/migrations
+      #
+      # No DB_* and no AUTO_MIGRATIONS_* here. MDRS-69 answered the question the
+      # previous version of this comment left open, the same way MDRS-48
+      # answered it for KEYCLOAK_JWKS_URL: teskilat has no database code, so it
+      # gets no database configuration.
+      #
+      # Measured on apps/teskilat, not inferred: its package.json declares no
+      # database client at all (no `pg`, no `drizzle-orm`, no ORM), there is no
+      # DatabaseModule, no drizzle.config.ts and no migrations directory under
+      # apps/teskilat/src, `AppModule` imports exactly ConfigModule and
+      # LoggerModule, and the only reader of the config factory is main.ts,
+      # which asks for `swagger.enabled`, `swagger.endpoint` and `port`. The six
+      # DB keys and two AUTO_MIGRATIONS keys removed from this block reached a
+      # container that opened no connection and ran no migration — and
+      # DB_PASSWORD was `:?`, so a value nothing read was mandatory to start.
+      #
+      # `depends_on: medaris-db` went with them: teskilat waited on a database
+      # health check it had no use for, which is startup latency and a coupled
+      # failure mode for nothing.
+      #
+      # The root .env.example still ships TESKILAT__DB_NAME / DB_USERNAME /
+      # DB_PASSWORD. Those are the credentials the database PROVISIONING uses to
+      # create teskilat_db (docker/init-db.*), not app configuration, and they
+      # keep their meaning when teskilat later gains a database. Re-add these
+      # lines then, alongside the DatabaseModule — not before.
       OTEL_ENABLED: ${TESKILAT__OTEL_ENABLED:-${API__OTEL_ENABLED:-false}}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${TESKILAT__OTEL_EXPORTER_OTLP_ENDPOINT:-${API__OTEL_EXPORTER_OTLP_ENDPOINT:-localhost:4317}}
-      # Same three as tedrisat above. No DB_CA_CERT here: teskilat opens no
-      # database connection (MDRS-69 decides whether the rest of its DB block
-      # should go the way KEYCLOAK_JWKS_URL did).
+      # Same three as tedrisat above.
       OTEL_EXPORTER_OTLP_INSECURE: ${TESKILAT__OTEL_EXPORTER_OTLP_INSECURE:-${API__OTEL_EXPORTER_OTLP_INSECURE:-true}}
       OTEL_EXPORTER_OTLP_PROTOCOL: ${TESKILAT__OTEL_EXPORTER_OTLP_PROTOCOL:-${API__OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}}
       OTEL_EXPORTER_OTLP_COMPRESSION: ${TESKILAT__OTEL_EXPORTER_OTLP_COMPRESSION:-${API__OTEL_EXPORTER_OTLP_COMPRESSION:-gzip}}
@@ -169,9 +178,10 @@ services:
       # required to render this one. This is least-privilege hygiene about what
       # reaches the container, not a fix for the single-service case.
       # Add them back when the guard lands, not before.
-    depends_on:
-      medaris-db:
-        condition: service_healthy
+    #
+    # No `depends_on:` — see the DB_* note above. teskilat opens no database
+    # connection, so waiting on medaris-db's health check bought nothing and
+    # made this service unstartable whenever the database was unhealthy.
 
   medaris-db:
     image: postgres:17-alpine

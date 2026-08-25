@@ -1,19 +1,39 @@
 import * as pkg from "../../package.json";
+import { resolveSwaggerEnabled } from "./swagger-env";
 
 const version = pkg.version || "0.0.1";
 
+/**
+ * MDRS-69 removed the `database` block this factory used to carry.
+ *
+ * teskilat opens no database connection. Measured on this tree: `apps/teskilat`
+ * declares no database client (no `pg`, no `drizzle-orm`, no ORM of any kind in
+ * its package.json), `apps/teskilat/src` holds no DatabaseModule, no
+ * drizzle.config.ts and no migrations directory, and `AppModule` imports
+ * exactly `ConfigModule` and `LoggerModule`. The only reader of this factory is
+ * `main.ts`, which asks for `swagger.enabled`, `swagger.endpoint` and `port` —
+ * nothing ever read `database.*`.
+ *
+ * The `password: process.env.DB_PASSWORD || "password"` line it removed is the
+ * half of MDRS-35 that was done for tedrisat and not here: a literal credential
+ * default that let the service resolve a connection string against the wrong
+ * password instead of failing. Unreachable under docker-compose, which requires
+ * the key with `:?`, but reachable under `pnpm dev`. Removing the block removes
+ * the fallback with it; there is no `requireDbPassword` equivalent to add,
+ * because there is no connection to guard.
+ *
+ * The `redis` block below is the same shape of dead configuration, but it is
+ * NOT teskilat's alone — `apps/tedrisat/src/config/config.ts:24` carries an
+ * identical one and neither app depends on a Redis client. Removing it from one
+ * side would create exactly the asymmetry this task exists to close, so it is
+ * recorded as a follow-up in docs/migration/mdrs-69-teskilat-config-hygiene.md
+ * instead of being half-fixed here.
+ */
 export default () => ({
   serviceName: process.env.SERVICE_NAME || pkg.name,
   version,
   environment: process.env.NODE_ENV || "development",
   port: process.env.PORT || 3002,
-  database: {
-    host: process.env.DB_HOST || "localhost",
-    port: process.env.DB_PORT || 5432,
-    username: process.env.DB_USERNAME || "user",
-    password: process.env.DB_PASSWORD || "password",
-    database: process.env.DB_NAME || "teskilat_db",
-  },
   redis: {
     host: process.env.REDIS_HOST || "localhost",
     port: process.env.REDIS_PORT || 6379,
@@ -31,7 +51,9 @@ export default () => ({
     serviceVersion: version,
   },
   swagger: {
-    enabled: process.env.SWAGGER_ENABLED === "true",
+    // Never true under NODE_ENV=production, whatever SWAGGER_ENABLED says —
+    // see ./swagger-env.ts for why this refuses rather than throwing.
+    enabled: resolveSwaggerEnabled(),
     endpoint: process.env.SWAGGER_ENDPOINT || "/docs",
   },
 });
