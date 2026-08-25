@@ -20,6 +20,7 @@ credential and undone what MDRS-35 did on the application side.
 | `docker/init-db.sql` | Deleted. |
 | `docker-compose.yml` | `medaris-db` is handed the same `TEDRISAT__*` / `TESKILAT__*` interpolations the app services use; `POSTGRES_PASSWORD` lost its `:-postgres` fallback; the published port binds loopback; the healthcheck no longer hardcodes `-U postgres`. |
 | `.env.example` | `MEDARIS_POSTGRES_PASSWORD=change-me` instead of `postgres`; the comments describing where the app passwords are consumed were rewritten. |
+| `tools/ai-review/lenses.yaml` | The known-false-positive list named `MEDARIS_POSTGRES_PASSWORD=postgres` as a deliberate placeholder. This change is what made that stale, so it is corrected here. |
 | `README.md`, `docs/runbooks/deploy-tedrisat-api.md`, `apps/tedrisat/drizzle.config.ts`, `apps/tedrisat/src/config/security-env.ts` | Comment/prose references to the deleted `init-db.sql` corrected. Code unchanged in the two TypeScript files — comments only. |
 
 `docs/migration/mdrs-34-cors-origin-validation.md` also names `init-db.sql`. It
@@ -57,8 +58,30 @@ NO envsubst
 ```
 
 Adding gettext to the database image, or rendering the template on the host,
-would also mean the plaintext password lands in a file. psql's own `--set` does
-not: the value is passed as a psql variable and never written anywhere.
+would also mean the plaintext password lands in a file.
+
+**`\getenv` rather than psql's `--set`.** An earlier draft of this change used
+`--set=password=…` and claimed in both the script header and this record that the
+value "never lands anywhere". That was wrong on two counts, and review caught it:
+`:'var'` is client-side textual interpolation, not a wire-level bind parameter, and
+`--set` puts the value in psql's `argv`. Measured side by side inside the image,
+one process using each mechanism:
+
+```
+with --set:   psql -U postgres -d postgres --no-psqlrc --set=pw=ARGV_CANARY -c select pg_sleep(3)
+with getenv:  psql -U postgres -d postgres --no-psqlrc -c \getenv pw SECRET_PW -c select pg_sleep(3)
+```
+
+`\getenv` (psql 14+; the image ships psql 17.7) reads the variable from the
+environment psql already has, so only the *name* reaches `argv`. The script now
+uses it, re-exporting each password under one fixed `INIT_DB_PASSWORD` name so a
+single literal heredoc serves both apps.
+
+What `\getenv` does **not** buy, stated plainly because the earlier draft
+overclaimed: `ALTER ROLE … PASSWORD` must carry the password in its statement
+text, so it is visible in `pg_stat_activity` while it runs and would reach the
+server log under `log_statement=ddl` or higher. `postgres:17-alpine` ships
+`log_statement=none`. There is no way to set a password without sending it.
 
 **`\gexec` rather than the `DO $$ … $$` blocks `init-db.sql` used.** psql does
 not interpolate `:'var'` inside a dollar-quoted string, so a variable named
@@ -66,7 +89,67 @@ inside a `DO` body reaches the server as the literal text `:'role'`. Generating
 each statement with `format()` and running it through `\gexec` keeps the
 `IF NOT EXISTS` idempotency the old file had, and gets `%I` / `%L` quoting from
 the server — which is what makes a password containing a quote safe rather than a
-syntax error.
+syntax error. Exercised against a live cluster with a password holding a single
+quote, a double quote, a backslash and a newline, plus a trailing
+`; ALTER ROLE postgres SUPERUSER; --`: the role was created, the injected
+statement rode along as inert text (`postgres` kept `rolsuper = t` and no new
+superuser appeared), and logging in with that exact password succeeded — so the
+value round-tripped intact rather than merely failing to crash.
+
+## Four guards the old file did not need
+
+The `ALTER ROLE … PASSWORD`, `ALTER DATABASE … OWNER TO` and
+`ALTER SCHEMA public OWNER TO` statements all run unconditionally, and every name
+they take now comes from the environment instead of being hardcoded. A collision
+therefore does not error — it silently reassigns a password or an owner. Four are
+reachable, so the script refuses each by name before touching the cluster.
+Measured on fresh volumes, port 5439 to avoid colliding with anything:
+
+```
+$ TEDRISAT__DB_USERNAME=postgres
+init-db: app role 'postgres' is the superuser (MEDARIS_POSTGRES_USER); refusing to reset its password
+  -> medaris-db exited exit=1
+
+$ TESKILAT__DB_USERNAME=tedrisat
+init-db: TEDRISAT__DB_USERNAME and TESKILAT__DB_USERNAME are both 'tedrisat'; the second would overwrite the first role's password
+  -> medaris-db exited exit=1
+
+$ TEDRISAT__DB_NAME=postgres
+init-db: app database 'postgres' is the maintenance database (MEDARIS_POSTGRES_DB); refusing to reassign its ownership
+  -> medaris-db exited exit=1
+
+$ TESKILAT__DB_NAME=tedrisat_db
+init-db: TEDRISAT__DB_NAME and TESKILAT__DB_NAME are both 'tedrisat_db'; the second would take ownership of the first app's database
+  -> medaris-db exited exit=1
+
+$ # control, unmodified .env on the same port
+init-db: provisioning database tedrisat_db for role tedrisat
+init-db: provisioning database teskilat_db for role teskilat
+init-db: done
+  -> medaris-db running exit=0
+```
+
+None of the four is a vulnerability — each needs an operator to write an unusual
+value into their own `.env` — but each fails invisibly, which is the part worth
+refusing. The database-axis pair was missed in the first attempt and added after
+review pointed out that guarding only the role axis made the guard set look
+complete when it was not.
+
+The comparison is byte-exact on purpose. `format('%I')` never folds case — it
+double-quotes anything not already lowercase — so `POSTGRES` and `postgres` are
+genuinely two different roles here, and a case-insensitive check would refuse a
+pair that works.
+
+**What tripping a guard leaves behind.** Every failure above prints a second line
+naming the recovery step, because the state is not as clean as "nothing
+happened": `initdb` has already run by the time this script does, so the volume
+is *initialised but unprovisioned*. The entrypoint skips
+`/docker-entrypoint-initdb.d` on a non-empty `$PGDATA`, so fixing `.env` and
+starting again brings up a healthy cluster with no app roles at all — the same
+`password authentication failed` this issue set out to remove. `docker compose
+down -v` first. An earlier draft of this record annotated these runs "cluster
+never finished initialising", which was wrong in exactly the way that matters:
+the cluster finished, the provisioning step did not.
 
 ## Why no new `.env` keys
 
@@ -181,7 +264,73 @@ existing placeholder convention (`change-me`), which is what the two app
 passwords already shipped; the template is the one place an operator is told to
 edit.
 
-**6. Teardown leaves no volume.** The init script runs on an empty data
+**6. The healthcheck change fixes nothing observable, and the comment that said
+otherwise was wrong.** The first draft of `docker-compose.yml` claimed, as
+measured fact, that a renamed `POSTGRES_USER` made the probe fail, the service
+never turn healthy, and both `depends_on: service_healthy` gates hang. That
+cannot happen: `pg_isready` performs no authentication.
+
+```
+$ docker run --rm --network …_default postgres:17-alpine \
+    pg_isready -h medaris-db -U definitely-not-a-real-user
+medaris-db:5432 - accepting connections
+exit=0
+```
+
+A second draft then claimed the literal made the server log a rejected startup
+packet every five seconds. That is also false — the server log carries nothing
+for the probe above:
+
+```
+$ docker compose logs medaris-db --since 3m | grep -iE 'definitely-not-a-real-user|does not exist|FATAL|startup'
+(no output)
+```
+
+So the honest rationale, and what the comment now says: interpolating the
+healthcheck is consistency only. It removes a hardcoded value that silently
+contradicted the two configurable ones directly above it. Behaviour before and
+after is identical. Recording this because the migration record had listed the
+renamed-superuser case under **Not verified** while the compose comment asserted
+it as observed — the two disagreed, and the comment was the wrong one.
+
+**7. The superuser creates the app databases; it does not own them.**
+`docker-compose.yml` and `.env.example` both described `MEDARIS_POSTGRES_USER` as
+the superuser that *owns* both app databases. `init-db.sh` hands ownership
+straight to the app roles, so it owns none of them:
+
+```
+$ docker compose exec -T medaris-db psql -U postgres -Atc \
+    "SELECT datname, pg_get_userbyid(datdba) FROM pg_database WHERE datname LIKE '%_db' ORDER BY 1"
+tedrisat_db|tedrisat
+teskilat_db|teskilat
+$ … "SELECT nspname, pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname='public'"   # in tedrisat_db
+public|tedrisat
+$ … "SELECT count(*) FROM pg_database WHERE datname LIKE '%_db' AND pg_get_userbyid(datdba)='postgres'"
+0
+```
+
+Both descriptions now say "creates".
+
+**8. `:?` blocks the recovery command too — an upgrade note.** Compose
+interpolates the entire file before it selects a subcommand, so dropping the
+`:-postgres` fallback means a developer whose `.env` predates this change cannot
+run even `docker compose down -v` — which is precisely the command `README.md`
+and `.env.example` name as the way to recover:
+
+```
+$ grep -v '^MEDARIS_POSTGRES_PASSWORD=' .env > /tmp/env
+$ docker compose --env-file /tmp/env down -v
+error while interpolating services.medaris-db.environment.POSTGRES_PASSWORD: required variable MEDARIS_POSTGRES_PASSWORD is missing a value: set MEDARIS_POSTGRES_PASSWORD in .env
+```
+
+**Upgrading, therefore: `docker compose down -v` FIRST, then pull this change and
+edit `.env`.** Anyone who does it the other way round adds
+`MEDARIS_POSTGRES_PASSWORD` to `.env` to unblock compose, then drops the volume.
+This ordering is now stated in both `README.md` and `.env.example`; the fail-closed
+behaviour is a feature, but it is not free, and the earlier draft of this record
+presented only the upside.
+
+**9. Teardown leaves no volume.** The init script runs on an empty data
 directory only, so a volume created under the old hardcoded password would keep
 that role and make the next run falsely green:
 
@@ -196,7 +345,7 @@ This is now stated in `.env.example` next to all three passwords and in
 `README.md`: changing a password after the first `up` requires
 `docker compose down -v`.
 
-**7. Gate**, measured on this branch, `--skip-nx-cache` throughout:
+**10. Gate**, measured on this branch, `--skip-nx-cache` throughout:
 
 | Target | Result |
 |---|---|
@@ -225,13 +374,18 @@ these counts and passed every time.
 - **Coolify / any non-compose deployment.** Those databases are provisioned
   outside this repository and never ran `init-db.sql`, so nothing here reaches
   them; the runbook row was corrected but not re-tested against the platform.
-- **A password containing a quote or a backslash.** The `%L` quoting is what
-  makes that safe and is server-side, but only the `.env.example` placeholder was
-  actually run through the script.
-- **`POSTGRES_USER` set to something other than `postgres`.** The healthcheck was
-  changed so this case can work at all; the interpolation was verified in
-  `docker compose config` output (`pg_isready -U postgres -d postgres`), not by
-  booting with a renamed superuser.
+- **`POSTGRES_USER` set to something other than `postgres`, end to end.** The
+  probe's indifference to the user was measured (§6), and the interpolation was
+  checked in `docker compose config` output, but no stack was booted with a
+  renamed superuser, so nothing confirms the rest of the file copes with one. The
+  new guard means such a run also requires the two app role names to differ from
+  it.
+- **A hostile password through the real compose path.** The quoting was exercised
+  against a live cluster with quotes, a backslash and a newline (§"Why a `.sh`
+  file"), but that test drove `psql` directly; the value that travelled through
+  `.env` → compose interpolation → container environment → `\getenv` was the
+  `change-me` placeholder. Compose's own `.env` parsing has its own quoting rules,
+  and PR #45 is changing them.
 - **teskilat against its database.** teskilat opens no database connection
   (`docker-compose.yml` says so, and it has no `DB_CA_CERT`), so its role and
   database were verified to exist and to authenticate, but no application traffic
@@ -251,3 +405,9 @@ these counts and passed every time.
 - PR #51's parity-gate ignore list justifies `MEDARIS_POSTGRES_*` with the words
   "docker/init-db.sql creates the per-app users". The rationale still holds — the
   keys are root-only and reach no app — but the filename in it is now stale.
+  Whoever rebases #51 should correct it there; editing an unmerged branch from
+  here would only conflict.
+- `CLAUDE.md` still states the gate as "**91 tests / 10 suites**". The measured
+  figure on `cb7e9636` is 226 tests / 17 files across three projects (§10). Not
+  corrected here: it is not this change's file to edit, and a credentials fix is
+  the wrong place to hide a documentation correction.

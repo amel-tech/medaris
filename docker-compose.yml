@@ -178,11 +178,12 @@ services:
     environment:
       POSTGRES_USER: ${MEDARIS_POSTGRES_USER:-postgres}
       # No fallback, unlike the user and database beside it. This is the
-      # superuser that owns both app databases, and `:-postgres` handed it a
-      # password published in this repository on a port bound below — while the
-      # two far less privileged app credentials on the same service are `:?`.
-      # MDRS-35 removed the app-side well-known-password fallback for exactly
-      # this reason; leaving it here for the superuser reinstated it one level up.
+      # superuser that creates both app databases — docker/init-db.sh hands
+      # ownership straight to the app roles — and `:-postgres` gave it a password
+      # published in this repository, on a port bound below, while the two far
+      # less privileged app credentials on the same service are `:?`. MDRS-35
+      # removed the app-side well-known-password fallback for exactly this
+      # reason; leaving it here for the superuser reinstated it one level up.
       POSTGRES_PASSWORD: ${MEDARIS_POSTGRES_PASSWORD:?set MEDARIS_POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${MEDARIS_POSTGRES_DB:-postgres}
       # docker/init-db.sh reads these. Deliberately the same interpolation
@@ -211,10 +212,15 @@ services:
       # docker/init-db.sh records what was measured.
       - ./docker/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:Z
     healthcheck:
-      # Interpolated, not the literal `-U postgres` this replaced: with
-      # POSTGRES_USER set to anything else the probe failed, the service never
-      # turned healthy, and both `depends_on: service_healthy` gates hung — a
-      # failure that looked nothing like the renamed superuser that caused it.
+      # Interpolated, not the literal `-U postgres` this replaced. Consistency
+      # only — this fixes no observed behaviour, and the comment that first
+      # claimed otherwise was wrong. Measured against this stack: pg_isready
+      # performs no authentication, so `-U definitely-not-a-real-user` still
+      # answers `accepting connections` with exit 0, and the server logs nothing
+      # for the attempt. A renamed superuser therefore reported healthy before
+      # this change and reports healthy after it. The literal is replaced because
+      # it silently contradicted the two configurable values directly above it,
+      # not because it broke anything.
       test:
         [
           "CMD-SHELL",
