@@ -10,9 +10,9 @@
  * the keys someone forgot to map. That has happened three times in one
  * integration: the MDRS-30 Keycloak keys (a boot failure), the two Keycloak
  * cache TTLs (a 24-hour stale-key window where the template asks for one hour),
- * and the five keys fixed on release/260817 (`DB_CA_CERT` plus three OTLP
- * exporter settings). Every one was found by reading the two files side by
- * side; none by a gate. This is that gate.
+ * and `DB_CA_CERT` plus the three OTLP exporter settings — four keys, seven
+ * mappings, since `DB_CA_CERT` is tedrisat-only. Every one was found by reading
+ * the two files side by side; none by a gate. This is that gate.
  *
  * The rule, in one line: a key whose prefix names a compose service must be
  * interpolated inside that service's `environment:` block, or be listed below
@@ -21,13 +21,13 @@
  * GROUP vs APP prefixes. `API__` is a group prefix — it targets both Nest
  * services — and the bar for it is "reaches at least one of them", not "reaches
  * all of them". That is deliberate, and it is the exact class this gate is for:
- * a key that reaches NOTHING. tedrisat's six `KEYCLOAK_*` keys legitimately do
- * not reach teskilat, which has no auth guard — nothing under apps/teskilat/src
- * reads a Keycloak variable — and MDRS-69 owns whether the rest of that
- * divergence is right. Requiring full group coverage here would turn that
- * documented decision into six ignore-list entries, and teach the next reader
- * that the ignore list is where disagreements go. Partial coverage is printed
- * as a note instead, so it stays visible without being a failure.
+ * a key that reaches NOTHING. tedrisat's seven `API__KEYCLOAK_*` keys
+ * legitimately do not reach teskilat, which has no auth guard — nothing under
+ * apps/teskilat/src reads a Keycloak variable — and MDRS-69 owns whether the
+ * rest of that divergence is right. Requiring full group coverage here would
+ * turn that documented decision into seven ignore-list entries, and teach the
+ * next reader that the ignore list is where disagreements go. Partial coverage
+ * is printed as a note instead, so it stays visible without being a failure.
  *
  * What this deliberately does NOT check:
  *
@@ -41,8 +41,8 @@
  *     see that: both sides are spelled correctly, they just mean different
  *     things. Catching it needs the app's config schema, not these two files.
  *   * Commented-out keys. `# API__DB_CA_CERT=` is documentation, not something
- *     the template ships, so it is out of scope — which is also why the
- *     release/260817 fix had to be found by reading.
+ *     the template ships, so it is out of scope — which is also why that
+ *     particular divergence had to be found by reading.
  *
  * FAIL-CLOSED PARSING. docker-compose.yml is read as text, the way
  * assert-release-config.mjs reads pnpm-workspace.yaml, rather than pulling in a
@@ -195,6 +195,15 @@ function parseEnvKeys(text) {
 function parseComposeServices(text) {
   /** @type {Record<string, {hasBuild: boolean, envVars: Set<string>|null}>} */
   const services = {};
+  /**
+   * Every `${VAR}` on any non-comment line of the file, `environment:` or not.
+   * The ROOT_ONLY_KEYS check needs this: those keys are read by compose's own
+   * `ports:` entries rather than handed to a container, so `envVars` cannot
+   * answer for them — but testing the RAW file text instead would let a comment
+   * that merely names a key satisfy the check, which is the one thing the
+   * header promises comments never do.
+   */
+  const interpolated = new Set();
   let inServices = false;
   let current = null;
   let inEnv = false;
@@ -202,6 +211,10 @@ function parseComposeServices(text) {
   for (const raw of text.split("\n")) {
     const line = raw.replace(/\s+$/, "");
     if (line === "" || /^\s*#/.test(line)) continue;
+
+    for (const m of line.matchAll(/\$\{([A-Za-z_][A-Za-z0-9_]*)/g)) {
+      interpolated.add(m[1]);
+    }
 
     // Any key at column 0 opens or closes the `services:` mapping.
     if (/^\S/.test(line)) {
@@ -213,6 +226,22 @@ function parseComposeServices(text) {
     if (!inServices) continue;
 
     const indent = line.match(/^ */)[0].length;
+
+    // A list item continues the block it sits in rather than opening a new key,
+    // so it must be tested before the indent-4 sibling-key branch. `environment:`
+    // written as a YAML sequence puts its items at the SAME indent as the key:
+    //
+    //     environment:
+    //     - PORT=${TEDRISAT__PORT:-3001}
+    //
+    // which the indent-4 branch below would otherwise swallow, leaving the block
+    // parsed but empty and every one of its keys reported as reaching nothing.
+    if (inEnv && /^ *- /.test(line) && indent >= 4) {
+      for (const m of line.matchAll(/\$\{([A-Za-z_][A-Za-z0-9_]*)/g)) {
+        services[current].envVars.add(m[1]);
+      }
+      continue;
+    }
 
     if (indent === 2) {
       const name = line.match(/^ {2}([A-Za-z0-9_.-]+):$/);
@@ -236,7 +265,7 @@ function parseComposeServices(text) {
       }
     }
   }
-  return services;
+  return { services, interpolated };
 }
 
 const parsedEnvKeys = parseEnvKeys(envText);
@@ -251,10 +280,14 @@ const duplicateKeys = [
   ...new Set(parsedEnvKeys.filter((k, i) => parsedEnvKeys.indexOf(k) !== i)),
 ];
 
-const services = parseComposeServices(composeText);
+const { services, interpolated } = parseComposeServices(composeText);
 const serviceNames = Object.keys(services);
 const withEnvBlock = serviceNames.filter((s) => services[s].envVars !== null);
 const builtServices = serviceNames.filter((s) => services[s].hasBuild);
+const mappedVarCount = serviceNames.reduce(
+  (n, s) => n + (services[s].envVars?.size ?? 0),
+  0
+);
 
 // ── 0. The parse itself, before it is trusted ─────────────────────────────────
 //
@@ -277,6 +310,13 @@ if (withEnvBlock.length === 0)
 if (builtServices.length === 0)
   abort(
     `parsed 0 services with a \`build:\` section out of ${COMPOSE_PATH}. This gate compares the template against images built from this repo; with none found there is nothing to compare.`
+  );
+// Counting `environment:` blocks is not the same as reading them. A block whose
+// items the parser walked straight past still counts as a block, so this is the
+// guard that actually means "the parser matched nothing".
+if (mappedVarCount === 0)
+  abort(
+    `parsed ${withEnvBlock.length} \`environment:\` block(s) out of ${COMPOSE_PATH} but 0 interpolated variables inside them. The blocks were found and their contents were not read, so every key would be reported as reaching nothing.`
   );
 
 console.log(
@@ -386,7 +426,12 @@ for (const key of envKeys) {
     exempted.set(key, `root-only — ${ROOT_ONLY_KEYS[key]}`);
     continue;
   }
-  if (key in UNMAPPED_ON_PURPOSE) {
+  // Only prefixed keys, and only prefixes this gate targets. UNMAPPED_ON_PURPOSE
+  // is for a key that COULD have reached a container and deliberately does not;
+  // an unprefixed key belongs in ROOT_ONLY_KEYS instead. Honouring an unprefixed
+  // entry here would exempt it silently while the staleness check below rejected
+  // the very same entry — a branch no green run could ever reach.
+  if (prefix && prefix in PREFIX_TARGETS && key in UNMAPPED_ON_PURPOSE) {
     exempted.set(key, `unmapped on purpose — ${UNMAPPED_ON_PURPOSE[key]}`);
     continue;
   }
@@ -402,6 +447,17 @@ const partial = [];
 for (const [key, targets] of inScope) {
   const reached = targets.filter((s) => services[s]?.envVars?.has(key));
 
+  // The remedy differs by key shape, and naming the wrong list sends the reader
+  // into a second failure: an unprefixed key added to UNMAPPED_ON_PURPOSE is
+  // rejected by the staleness check ("names a prefix this gate checks"), because
+  // an unprefixed key is root-only by definition if it is exempt at all.
+  const declareAdvice = prefixOf(key)
+    ? "      * declare it — if the key is deliberately dev-only, add it to\n" +
+      "        UNMAPPED_ON_PURPOSE in this file with the reason, in the same PR."
+    : "      * declare it — an unprefixed key that compose reads and hands to no app\n" +
+      "        belongs in ROOT_ONLY_KEYS in this file, with the reason, in the same PR.\n" +
+      "        (Not UNMAPPED_ON_PURPOSE: that list is for prefixed keys only.)";
+
   check(
     reached.length > 0,
     `${key} → ${reached.join(", ") || "(nothing)"}`,
@@ -411,8 +467,7 @@ for (const [key, targets] of inScope) {
       `${key.replace(/^[A-Z0-9]+__/, "")}; in a container it sees nothing. Fix one side:\n` +
       "      * map it — add the canonical name to that service's environment: block in\n" +
       `        ${COMPOSE_PATH}, e.g. \`NAME: \${${key}:-<default>}\`; or\n` +
-      "      * declare it — if the key is deliberately dev-only or root-only, add it to\n" +
-      "        UNMAPPED_ON_PURPOSE in this file with the reason, in the same PR."
+      declareAdvice
   );
 
   if (reached.length > 0 && reached.length < targets.length) {
@@ -463,10 +518,16 @@ for (const key of Object.keys(ROOT_ONLY_KEYS)) {
     `ROOT_ONLY_KEYS[${key}] still applies to a shipped key`,
     `${key} is not in ${ENV_EXAMPLE_PATH} any more. Drop the entry.`
   );
+  // `interpolated`, not the raw file text. Matching the text would let a comment
+  // that merely names the key satisfy this — measured: replacing
+  // `- "${MEDARIS_POSTGRES_PORT:-5432}:5432"` with a literal port plus a
+  // `# was: ${MEDARIS_POSTGRES_PORT...}` comment left the key dead on BOTH sides
+  // and still printed a tick. This check is the whole reason the parser collects
+  // interpolations from non-comment lines separately from `envVars`.
   check(
-    new RegExp(`\\$\\{${key}[:}]`).test(composeText),
+    interpolated.has(key),
     `ROOT_ONLY_KEYS[${key}] is read by compose`,
-    `${COMPOSE_PATH} never interpolates \${${key}}. "Root-only" means compose reads it and hands it to no app; a key neither side reads is dead and belongs deleted from ${ENV_EXAMPLE_PATH}, not exempted.`
+    `${COMPOSE_PATH} never interpolates \${${key}} outside a comment. "Root-only" means compose reads it and hands it to no app; a key neither side reads is dead and belongs deleted from ${ENV_EXAMPLE_PATH}, not exempted.`
   );
 }
 

@@ -13,7 +13,20 @@ reading the two files side by side, none by a gate:
 | --- | --- |
 | MDRS-30's Keycloak keys | boot failure |
 | `KEYCLOAK_CACHE_TTL` / `KEYCLOAK_NOT_FOUND_CACHE_TTL` | template asks for 1 h; code default of 24 h applied instead, so a rotated realm key stayed trusted for a day |
-| `DB_CA_CERT` + three OTLP exporter settings (fixed on `release/260817`, commit `710b4c4`) | private-CA TLS unusable; three exporter settings inert |
+| `DB_CA_CERT` + three OTLP exporter settings — four keys, seven mappings (`DB_CA_CERT` is tedrisat-only) | private-CA TLS unusable; three exporter settings inert |
+
+A note on that third row, because the numbers matter here. MDRS-70's description
+attributes the fix to commit `710b4c4` on `release/260817` and calls it "five
+keys". **Neither is verifiable in this repository:** `git cat-file -t 710b4c4`
+returns *"Not a valid object name"*, and `release/260817` appears in neither
+`git branch -a` nor `git ls-remote origin`. The commit that actually put
+`DB_CA_CERT` into `docker-compose.yml` here is `cb7e9636`
+(`git log --all -S'DB_CA_CERT' -- docker-compose.yml`), the MDRS-48 squash of
+twelve pull requests — which, being a squash, cannot isolate that fix either.
+What *is* verifiable in the working tree is the count: one `DB_CA_CERT` mapping
+plus six OTLP mappings (three settings × two services) = four distinct keys,
+seven mappings. The figures written here and in the script header are those
+measured ones, not the issue's narrative.
 
 ## 1 — What was added
 
@@ -38,12 +51,14 @@ service's `environment:` block, or be declared with a reason.
 
 `API__` is a *group* prefix, and the bar for it is **reaches at least one
 target**, not all of them. That is deliberate: the class this issue describes is
-a key that reaches *nothing*. tedrisat's six `KEYCLOAK_*` keys legitimately do
-not reach teskilat — it has no auth guard, and nothing under `apps/teskilat/src`
-reads a Keycloak variable — and MDRS-69 owns whether the rest of that divergence
-is right. Requiring full group coverage would have turned that documented
-decision into six ignore-list entries and taught the next reader that the ignore
-list is where disagreements go. Partial coverage is printed as a labelled
+a key that reaches *nothing*. tedrisat's seven `API__KEYCLOAK_*` keys
+legitimately do not reach teskilat — it has no auth guard, and nothing under
+`apps/teskilat/src` reads a Keycloak variable — and MDRS-69 owns whether the rest
+of that divergence is right. Requiring full group coverage would have turned that
+documented decision into seven ignore-list entries and taught the next reader
+that the ignore list is where disagreements go. (Seven, counted with
+`grep -cE '^API__KEYCLOAK_' .env.example` and matching the run's own NOTE
+section — an earlier draft of this record and of the script header said six.) Partial coverage is printed as a labelled
 **NOTE** instead, so it stays visible without being a failure.
 
 ### The declared lists (AC #2)
@@ -74,12 +89,13 @@ They are still *listed* rather than pattern-skipped, so a prefix nobody has
 classified fails instead of vanishing into a default branch — this is the
 escape route that would otherwise make the whole gate optional.
 
-### Three ways the lists are stopped from rotting
+### Six ways the lists are stopped from rotting
 
 1. An `UNMAPPED_ON_PURPOSE` entry whose key has left `.env.example` fails.
 2. An `UNMAPPED_ON_PURPOSE` entry whose key *has since been mapped* fails, so
    an exemption cannot outlive its reason.
-3. A `ROOT_ONLY_KEYS` entry that `docker-compose.yml` never interpolates fails —
+3. A `ROOT_ONLY_KEYS` entry that `docker-compose.yml` never interpolates
+   **outside a comment** fails —
    "root-only" means compose reads it; a key neither side reads is dead and
    belongs deleted from the template, not exempted.
 4. A key assigned twice in `.env.example` fails. The loader keeps the last
@@ -95,6 +111,14 @@ escape route that would otherwise make the whole gate optional.
    another route, and it would otherwise produce a failure message naming no
    service.
 
+`UNMAPPED_ON_PURPOSE` is honoured **only** for keys whose prefix is in
+`PREFIX_TARGETS`. An earlier version accepted unprefixed keys there too, which
+made a branch no green run could reach: the key was exempted at classification
+time while the staleness check rejected the very same entry for having no
+checkable prefix. An unprefixed key that is exempt at all is root-only by
+definition, so `ROOT_ONLY_KEYS` is the only correct home for it, and the failure
+message now says so.
+
 ### Fail-closed parsing
 
 `docker-compose.yml` is read as text — the way `assert-release-config.mjs` reads
@@ -103,12 +127,40 @@ blocks. Every assertion below the parse is *negative* ("no service names this
 key"), so a text parser that silently matched nothing would report a clean bill
 of health on a broken repo. The parse therefore asserts its own results first
 and aborts on any of: zero `.env.example` assignments, zero services, zero
-`environment:` blocks, zero services with a `build:` section.
+`environment:` blocks, zero services with a `build:` section, **or zero
+interpolated variables inside the blocks it did find**. That last one is the
+guard that actually means "the parser matched nothing" — counting blocks is not
+the same as reading them, and a review of this script found a case where a block
+was found and walked straight past (below).
 
 Only `environment:` counts, so a variable used in `ports:` or `volumes:` is not
 mistaken for something the container receives. Comment lines are dropped before
 matching, so a variable merely *named* in a comment — `docker-compose.yml` has
-several — is not counted as mapped.
+several — is not counted as mapped. Both `environment:` spellings are handled:
+the mapping form this repo uses, and the YAML sequence form
+(`- PORT=${TEDRISAT__PORT}`), whose items sit at the *same* indent as the key.
+
+### Two holes found by review, after the first version passed its own tests
+
+Both were measured on this branch, and both had a green run hiding them — which
+is the point worth recording: the nine injections in §2 all passed against the
+version that carried these bugs.
+
+1. **A comment satisfied the `ROOT_ONLY_KEYS` anti-rot check.** It tested the raw
+   file text, so a key that had been *removed* from `ports:` and left behind only
+   in a `# was: ${...}` comment still counted as "read by compose" — the exact
+   thing guarantee 3 promises to catch, and the one case where the parser's
+   deliberate comment-stripping was not applied. Fixed by matching against the
+   parsed interpolations (a new file-wide set collected from non-comment lines)
+   rather than the file text. `envVars` alone could not serve here: these keys are
+   read by compose's own `ports:` entries, not handed to a container.
+2. **The YAML sequence form of `environment:` was silently swallowed.** Its items
+   sit at indent 4, the same as a sibling key, so the branch that detects
+   `ports:`/`build:` consumed them and left the block parsed-but-empty. Measured
+   against the committed version: converting teskilat's block to sequence form —
+   valid YAML, confirmed with `yaml.safe_load` — made five `TESKILAT__` keys
+   report `→ (nothing)` and pointed the reader at `docker-compose.yml` instead of
+   at the parser. Fixed by testing list items before the sibling-key branch.
 
 ## 2 — What was verified
 
@@ -129,10 +181,11 @@ The 33 in-scope keys break down as 21 `API__` + 7 `TEDRISAT__` + 5
 `TESKILAT__`, counted from the run's own `✔` lines. The `NOTE` section reports
 the 7 `API__KEYCLOAK_*` keys reaching tedrisat but not teskilat.
 
-### Fail-closed — five injections, each measured
+### Fail-closed — thirteen injections, each measured
 
-Every case below was injected on this branch, run, and reverted with
-`git checkout --`.
+Every case below was injected on this branch, run, and reverted. Cases (a)–(i)
+were run against the first version of the script; (j)–(m) close the four findings
+a review of that version raised.
 
 **(a) AC #1 — a new `API__` key with no compose mapping.** Appended
 `API__NEW_FEATURE_FLAG=true` to `.env.example`:
@@ -231,6 +284,67 @@ returns nothing).
     Move it to UNCONTAINERISED_PREFIXES if the app has no compose service.
 ```
 
+### The four review findings, re-proven after the fix
+
+**(j) A comment must no longer satisfy the anti-rot check.** Replaced
+`- "${MEDARIS_POSTGRES_PORT:-5432}:5432"` with a literal `- "5432:5432"` plus a
+`# was: ${MEDARIS_POSTGRES_PORT:-5432}` comment, leaving the key dead on both
+sides. **Before the fix this printed `✔ … is read by compose` and exited 0.**
+After:
+
+```
+✖ ROOT_ONLY_KEYS[MEDARIS_POSTGRES_PORT] is read by compose
+    docker-compose.yml never interpolates ${MEDARIS_POSTGRES_PORT} outside a comment. "Root-only" means compose reads it and hands it to no app; a key neither side reads is dead and belongs deleted from .env.example, not exempted.
+```
+
+Exit code `1`.
+
+**(k) The YAML sequence form is now read, not swallowed.** Converted teskilat's
+whole `environment:` block to sequence form (21 items; validated as a list with
+`yaml.safe_load`). Against the committed version, five keys were lost:
+
+```
+✖ TESKILAT__PORT → (nothing)
+✖ TESKILAT__SERVICE_NAME → (nothing)
+✖ TESKILAT__DB_NAME → (nothing)
+✖ TESKILAT__DB_USERNAME → (nothing)
+✖ TESKILAT__DB_PASSWORD → (nothing)
+```
+
+After the fix the same file parses correctly — `✔ TESKILAT__PORT → teskilat` and
+the other four — and the run stays green, which is the right answer: the mappings
+are genuinely present, only written in the other form.
+
+**(l) The blocks-found-but-not-read guard.** Replaced every `${...}` in
+`docker-compose.yml` with a literal, so the three `environment:` blocks are still
+found and carry nothing traceable:
+
+```
+✖ env/compose parity: parsed 3 `environment:` block(s) out of docker-compose.yml but 0 interpolated variables inside them. The blocks were found and their contents were not read, so every key would be reported as reaching nothing.
+```
+
+Exit code `1`, and it aborts before printing 33 misleading failures.
+
+**(m) The remedy named for an unprefixed key is now the one that works.**
+Appended `MEDARIS_POSTGRES_INITDB_ARGS=--data-checksums`:
+
+```
+✖ MEDARIS_POSTGRES_INITDB_ARGS → (nothing)
+    ...
+      * declare it — an unprefixed key that compose reads and hands to no app
+        belongs in ROOT_ONLY_KEYS in this file, with the reason, in the same PR.
+        (Not UNMAPPED_ON_PURPOSE: that list is for prefixed keys only.)
+```
+
+Previously the message said "add it to `UNMAPPED_ON_PURPOSE`", and following that
+advice produced a *second* failure
+(`✖ UNMAPPED_ON_PURPOSE[…] names a prefix this gate checks`) — `ROOT_ONLY_KEYS`
+was named in no error message at all. Following the corrected advice was then
+verified to reach green: mapping the key in `medaris-db` and adding a
+`ROOT_ONLY_KEYS` entry gave `✔ … is read by compose` and
+`✔ env/compose parity: 33 in-scope keys … 9 exempt by declaration`, with no
+second failure.
+
 ### Repo gate
 
 `.github/workflows/ci.yaml` parses after the edit (`yaml.safe_load`, jobs:
@@ -251,6 +365,18 @@ Full gate results are in the pull request body.
   reached teskilat for months under a name its config does not use (it reads
   `SWAGGER_ENDPOINT`). Both sides were spelled correctly; they meant different
   things. Catching that needs the app's config schema, not these two files.
+- **The script has no unit tests**, in keeping with the other five files in
+  `tools/ci/`, none of which has any either. Its behaviour is instead pinned by
+  the thirteen injections in §2, each run by hand and reverted. That is weaker
+  than a test suite in one specific way, and it is worth being blunt about it:
+  the first version of this script passed all nine of its own original
+  injections while carrying the two bugs in §1, so this evidence establishes
+  that the listed cases behave correctly, not that the script is correct.
+- **The parser's indentation assumptions are not exhaustively covered.** It
+  expects services at two spaces and their keys at four, and now handles both
+  `environment:` spellings, but a compose file reindented wholesale would abort
+  on the parse guards rather than be understood. Aborting is the safe outcome;
+  it is not the same as supporting the format.
 
 ## 4 — Follow-ups (not opened as issues)
 
