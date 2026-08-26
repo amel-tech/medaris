@@ -84,13 +84,28 @@ export class FlashcardLabelService {
    */
   async getById(id: string, userId: string): Promise<IFlashcardLabel | null> {
     await this.assertOwner(id, userId);
-    return await this.flashcardLabelRepo.getById(id);
+
+    // Re-checked rather than returned blind. The two reads are not atomic, so
+    // a concurrent delete between them makes this one miss — and returning the
+    // miss unguarded would answer 200 with an empty body, which is precisely
+    // the shape this change removes. Losing the race is still a 404.
+    const label = await this.flashcardLabelRepo.getById(id);
+    if (!label) {
+      throw new FlashcardLabelNotFoundError(id);
+    }
+    return label;
   }
   /**
    * Ownership is asserted against the LABEL, not the stats row. `labelStats`
    * carries no owner column of its own, and a label with no stats row yet is a
-   * legitimate 200-with-null — distinguishing "never used" from "not yours"
-   * is precisely what the assertion is for.
+   * legitimate empty read rather than a denial — distinguishing "never used"
+   * from "not yours" is precisely what the assertion is for.
+   *
+   * That empty read is what the repository does; it is NOT what the route does
+   * today. `flashcard_label_stats` is unqueryable — the migration created
+   * `usageCount`, the schema declares `usage_count` — so every caller,
+   * including the owner, currently gets a 500 before the null path is
+   * reached. Follow-up 1 in docs/migration/mdrs-56-flashcard-label-authz.md.
    */
   async getLabelStats(
     id: string,

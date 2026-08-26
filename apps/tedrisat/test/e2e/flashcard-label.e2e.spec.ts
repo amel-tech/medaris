@@ -247,10 +247,11 @@ describe("Label deletion — ownership (e2e)", () => {
  *
  * Measured against unmodified handlers rather than asserted from reading them:
  * the four `:id` attacks below returned 200 carrying the owner's row, PUBLIC
- * and PERSONAL alike, and so did the four not-found cases. The two `getStats`
- * attacks returned 500 — those routes disclosed nothing only because they are
- * independently broken, see `does not deny the owner their own label stats`
- * below for the column-name drift behind it.
+ * and PERSONAL alike, and so did the two `getById` not-found cases. Both
+ * `getStats` routes answered 500 whether the id existed or not — they
+ * disclosed nothing only because they are independently broken, see
+ * `does not deny the owner their own label stats` below for the column-name
+ * drift behind that.
  *
  * Two apps for the same reason the delete block needs two — `createTestApp`
  * stubs the guard to impersonate exactly one user, so one app cannot both own

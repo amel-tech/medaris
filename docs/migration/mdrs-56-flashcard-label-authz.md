@@ -47,6 +47,15 @@ Each read route also gained the `403` and `404` `@ApiResponse` entries that
 `DELETE` already declared, so the generated OpenAPI description matches what the
 handler does.
 
+Both `getById` methods also guard their second read. `assertOwner` and the read
+that follows it are two separate queries, so a delete landing between them makes
+the second one miss — and returning that miss unguarded would answer 200 with an
+empty body, exactly the shape this change sets out to remove. Losing the race is
+a 404 instead. On the deck side the guard is load-bearing for a second reason,
+the same one already noted on `assertOwner`: that repository's `getById`
+destructures `[result]` and is typed non-null, so a miss arrives as `undefined`
+while the type claims otherwise.
+
 ### The PUBLIC-scope decision
 
 The issue called this out as the one real design question, and asked for the
@@ -60,10 +69,16 @@ PUBLIC label is readable today only by its author. Reasons, in order of weight:
 1. There is nowhere to express "PUBLIC means world-readable" that is not a
    second hand-rolled rule inside a service — see above.
 2. No caller is affected. Neither controller has a list route, and
-   `grep -rn "flashcard-label\|flashcard-deck-label" apps/tedris apps/nizam
-   apps/nazir apps/landing libs` returns only i18n keys named `flashcardLabel`
-   in the landing page — no web app in this workspace calls either path. Nothing
-   today reaches a PUBLIC label by id.
+
+   ```
+   git grep -n "flashcard-label\|flashcard-deck-label\|flashcardLabel" \
+     -- apps/tedris apps/nizam apps/nazir apps/landing libs
+   ```
+
+   returns four lines, all of them the landing page's i18n key
+   `mainCard.flashcardLabel` (`apps/landing/sections/features/index.tsx:40` and
+   `libs/i18n/src/locales/{ar,en,tr}/landing.json:39`). Neither route path
+   appears anywhere in a web app, so nothing today reaches a PUBLIC label by id.
 3. Closed is the reversible direction. Opening PUBLIC reads later is an additive
    change to one predicate; discovering PUBLIC disclosed something it should not
    have is not reversible.
@@ -115,8 +130,9 @@ the guard to impersonate exactly one user.
 
 Not asserted from reading the code. The four modified source files were stashed
 and the new spec run against unmodified handlers, which is the only way to say
-what the routes actually did. Eleven of the twelve new or tightened cases failed,
-and their failures are the evidence:
+what the routes actually did. Eleven of the thirteen new or tightened cases
+failed — ten of the twelve new ones, plus the tightened delete assertion — and
+their failures are the evidence:
 
 | Case | Before | After |
 | --- | --- | --- |
@@ -145,6 +161,25 @@ reason. `deletes a label the caller owns` re-read the label after deleting it an
 asserted `after.body?.id` was undefined — true both when the route answered 200
 with an empty body and now that it answers 404. It asserts the 404 explicitly.
 
+### Review
+
+`/security-review` on the diff: **0 findings**. It confirmed all four routes are
+now unconditionally authorized, the ownership column is right for each table, no
+route outside these two repositories queries those tables, `/getStats/:id` cannot
+be shadowed by `/:id`, and the 403/404 ordering is not a usable enumeration
+channel behind unguessable v4 UUIDs.
+
+A separate correctness review returned six findings, all addressed here:
+
+| Finding | Outcome |
+| --- | --- |
+| Delete racing the second read answers 200-with-empty-body | Fixed — both `getById` methods guard the second read |
+| Deck `getLabelStats` has no empty guard; the comment claimed otherwise | Comment corrected, defect folded into follow-up 1 — not patched, see there for why |
+| The spec's block comment overstated the measured not-found result by two cases | Fixed — the two `getStats` routes answered 500, not 200 |
+| "Eleven of the twelve" — wrong denominator | Fixed, the population is thirteen |
+| The `grep` quoted in this file could not produce the output attributed to it | Fixed — the command actually run is quoted, with its four hits |
+| "a legitimate 200-with-null" stated in the present tense of a route that 500s | Fixed — qualified against follow-up 1 |
+
 ## Not verified
 
 - **CI.** Nothing in this record comes from a CI run; every figure is local.
@@ -155,6 +190,11 @@ with an empty body and now that it answers 404. It asserts the 404 explicitly.
   this branch. The owner-side test therefore asserts `not 403` and `not 404`
   rather than `200`, so it goes green on its own the day the underlying defect
   is fixed.
+- **The delete-between-the-two-reads race was not reproduced.** The guard added
+  to both `getById` methods is reasoned, not measured: racing a delete against a
+  read is impractical to stage in this suite. What *is* measured is that the
+  guard changes nothing else — the full suite is green with it in place, and the
+  only way to reach it is a miss that `assertOwner` has already ruled out.
 - **No live Keycloak.** All e2e coverage runs against the stubbed guard
   (`createTestApp({ authUserId })`) or the real guard with no token at all. That
   `request.user.sub` carries the Keycloak subject in production is inherited from
@@ -186,6 +226,19 @@ Recorded here rather than filed — opening Linear issues is the user's call.
    this change — the only coverage was MDRS-27's 401 sweep, which never reaches
    the database. Out of scope here: MDRS-56 is authorization, and a schema
    migration has a blast radius of its own.
+
+   **A second defect hides behind the first**, and the two must be fixed
+   together. `FlashcardDeckLabelRepository.getLabelStats` reads
+   `stats[0].labelId` with no empty guard and is typed
+   `Promise<IFlashcardDeckLabelStats>`, so once the column drift is repaired, a
+   deck label that has never been applied will throw a `TypeError` — a 500
+   where the flashcard-side sibling (`flashcard-label.reporsitory.ts:86`,
+   `stats.length > 0 ? stats[0] : null`) correctly returns null. It is the same
+   `[result]`-shaped defect that the `assertOwner` comment already calls
+   load-bearing. Deliberately not patched here: while the drift stands, a guard
+   added today could not be exercised by any test, and shipping an unverifiable
+   fix is worse than recording it. Both service comments point at this
+   paragraph.
 
 2. **That 500 leaks the SQL statement and its parameters to the caller.** The
    message above is verbatim what the client receives. MDRS-29 ("Stop
