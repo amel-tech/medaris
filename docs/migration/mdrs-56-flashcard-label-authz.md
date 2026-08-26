@@ -88,10 +88,27 @@ This is deliberately the stricter reading of the issue, which suggested PUBLIC
 belongs with the scope/visibility model, not with a UUID lookup — see
 **Follow-ups**.
 
-`404` is returned for an id that does not exist and `403` only once the row
-provably exists, matching `assertOwner`'s existing order. A caller cannot use the
-status code to distinguish "no such label" from "somebody else's label" unless
-they already own nothing, which is the same property the delete path has.
+### 403 vs 404 is an existence oracle, and that is accepted
+
+`404` is returned for an id that does not exist, `403` once the row exists but
+belongs to somebody else — `assertOwner`'s existing order, unchanged.
+
+**So the status code does tell a caller whether an id names a real label.** An
+earlier draft of this file and of the spec comment claimed the opposite; that was
+wrong, and it is corrected here rather than quietly dropped, because the next
+reviewer would have relied on it. The distinction is deliberate:
+
+- MDRS-56's acceptance criteria ask for these two codes by name.
+- `DELETE` has behaved this way since MDRS-27. Hiding existence on reads alone
+  would leave the two paths disagreeing about the same rows for no stated reason.
+- The discriminator is a v4 UUID behind authentication. `/security-review`
+  assessed this specific channel and did not raise it, on the grounds that
+  unguessable ids make the oracle impractical to walk.
+
+Uniform `404` remains available if the repository ever decides existence must be
+hidden: it is one ordering change inside `assertOwner`, and doing it there covers
+reads and delete in the same move. That is the reason not to fork the behaviour
+in the read handlers now.
 
 ## Verified
 
@@ -169,7 +186,25 @@ route outside these two repositories queries those tables, `/getStats/:id` canno
 be shadowed by `/:id`, and the 403/404 ordering is not a usable enumeration
 channel behind unguessable v4 UUIDs.
 
-A separate correctness review returned six findings, all addressed here:
+`/code-review high` raised five findings. Four of them — the double-read race on
+both services, the deck stats comment describing a null the repository cannot
+produce, and the wrong failure denominator — had already been found and fixed by
+a second correctness review run in parallel; they are in the table below. The
+fifth was new and is the one that mattered:
+
+| `/code-review` finding | Outcome |
+| --- | --- |
+| The spec comment and this file claimed a caller cannot distinguish "not yours" from "no such row". The code does exactly the opposite. | **Fixed** — both texts rewritten. The oracle is real, is required by the acceptance criteria, matches `DELETE`, and is now argued rather than denied. See the section above. |
+
+It also confirmed, independently: `assertOwner` throws `NotFoundError` before
+`ForbiddenError`; the error classes map to 404/403 through `@medaris/common`; no
+caller anywhere in `apps/` or `libs/` still uses the old single-argument
+signatures; `flashcardLabels.userId` is `notNull`, so no legacy row can be locked
+away from its owner by the new gate; the declaration order of `@Get("/:id")` and
+`@Get("/getStats/:id")` is safe; and migrations 0008–0011 do not repair the
+column drift in follow-up 1.
+
+The parallel correctness review returned six findings, all addressed here:
 
 | Finding | Outcome |
 | --- | --- |

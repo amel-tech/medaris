@@ -369,9 +369,18 @@ describe("Label reads — ownership (e2e)", () => {
     expect(attack.status).toBe(403);
   });
 
-  // 404, not 403: a caller must not be able to tell "somebody else owns this"
-  // from "no such row" — that difference is itself an enumeration oracle. The
-  // two statuses only diverge once the row provably exists.
+  // 404 for a missing id, 403 for somebody else's — and yes, that difference
+  // IS an existence oracle: a caller who scans ids learns which ones name a
+  // real label. Pinned deliberately, not overlooked.
+  //
+  // MDRS-56's acceptance criteria ask for exactly these two codes, and DELETE
+  // has behaved this way since MDRS-27, so hiding existence on reads alone
+  // would leave the two paths disagreeing about the same rows. The
+  // discriminator is a v4 UUID behind authentication, which is what makes the
+  // oracle uninteresting rather than merely tolerated. If this repository ever
+  // decides existence must be hidden, the fix is one ordering change inside
+  // `assertOwner` that covers reads and delete together — which is the reason
+  // not to fork the behaviour here.
   const missingIdRoutes = [
     `/flashcard-label/${SOME_UUID}`,
     `/flashcard-label/getStats/${SOME_UUID}`,
