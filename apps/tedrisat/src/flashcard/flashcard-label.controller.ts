@@ -45,6 +45,33 @@ import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
  * goes through `FlashcardLabelService.assertOwner`: 404 for a missing label,
  * 403 for somebody else's.
  *
+ * MDRS-56 extends the same assertion to the two READ routes. `GET /:id` and
+ * `GET /getStats/:id` carried the class guard but no ownership check, so any
+ * authenticated caller who guessed a UUID could read another user's label —
+ * its title, its scope and its usage count. Not destructive like the delete
+ * hole, but the same defect: authenticated is not authorized.
+ *
+ * PUBLIC-scope decision, which MDRS-56 required to be recorded here: reads are
+ * OWNER-ONLY, scope is not consulted, identical to delete. A PUBLIC label is
+ * readable only by its author today. Three reasons, in order of weight:
+ *
+ *  1. There is no policy layer to express "PUBLIC means world-readable" in.
+ *     Reading `scope` here would be a second, hand-rolled authorization rule
+ *     living in a service, which is exactly the mechanism MDRS-41 exists to
+ *     port and MDRS-43 to apply. Guessing its semantics ahead of it is how you
+ *     end up with two contradictory models.
+ *  2. No caller is affected. Neither controller has a list route, and no web
+ *     app in this workspace calls either path (grepped, 2026-08-26), so
+ *     nothing today reaches a PUBLIC label by id. Owner-only costs no
+ *     behaviour that anyone currently uses.
+ *  3. Closed is the reversible direction. Opening PUBLIC reads later is an
+ *     additive change to one predicate; discovering that PUBLIC leaked
+ *     something it should not have is a disclosure.
+ *
+ * Deliberately the stricter reading of the issue, which suggested PUBLIC
+ * "probably should" be readable by anyone. If that is the product intent, it
+ * belongs with the scope/visibility model, not with a UUID lookup.
+ *
  * Scope note: the REST of this controller closes the AUTHENTICATION hole only.
  * Whether the caller may label a card or deck they do not own is still
  * unchecked and belongs with the flashcard ownership work — see MDRS-26.
@@ -98,18 +125,30 @@ export class FlashcardlabelController {
   }
 
   @ApiResponse({ status: 200, type: FlashcardLabelResponse })
+  @ApiResponse({
+    status: 403,
+    description: "The label belongs to another user",
+  })
+  @ApiResponse({ status: 404, description: "No label with that id" })
   @Get("/:id")
   async getById(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<FlashcardLabelResponse | null> {
-    return await this.labelService.getById(id);
+    return await this.labelService.getById(id, request.user.sub);
   }
 
   @ApiResponse({ status: 200, type: labelStatsResponse })
+  @ApiResponse({
+    status: 403,
+    description: "The label belongs to another user",
+  })
+  @ApiResponse({ status: 404, description: "No label with that id" })
   @Get("/getStats/:id")
   async getLabelStats(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<labelStatsResponse | null> {
-    return await this.labelService.getLabelStats(id);
+    return await this.labelService.getLabelStats(id, request.user.sub);
   }
 }

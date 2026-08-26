@@ -62,12 +62,28 @@ export class FlashcardDeckLabelService {
     }
     return await this.labelRepository.deckLabeling(newLabeling);
   }
-  async getById(id: string): Promise<IFlashcardDeckLabel | null> {
+  /**
+   * MDRS-56, same shape as `FlashcardLabelService.getById` — `assertOwner`
+   * first, so an id belonging to somebody else is a 403 and a missing one a
+   * 404 instead of a 200 carrying another user's row.
+   */
+  async getById(
+    id: string,
+    userId: string
+  ): Promise<IFlashcardDeckLabel | null> {
+    await this.assertOwner(id, userId);
     return await this.labelRepository.getById(id);
   }
+  /**
+   * Ownership is asserted against the deck LABEL: `deckLabelsStats` has no
+   * owner column, and a label that has never been applied legitimately has no
+   * stats row at all.
+   */
   async getDeckLabelStats(
-    id: string
+    id: string,
+    userId: string
   ): Promise<IFlashcardDeckLabelStats | null> {
+    await this.assertOwner(id, userId);
     return await this.labelRepository.getLabelStats(id);
   }
 }

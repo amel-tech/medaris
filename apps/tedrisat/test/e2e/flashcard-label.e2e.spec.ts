@@ -124,9 +124,16 @@ describe("FlashcardLabelController (e2e)", () => {
     // Not `expect(response.body).toBe(true)`: the handler returns a bare
     // boolean, which supertest parses into `{}`. Assert the row is gone —
     // which is what the caller actually cares about.
+    //
+    // MDRS-56 changed what "gone" looks like on the wire. The read route used
+    // to answer 200 with an empty body for an id that does not exist; it now
+    // goes through `assertOwner`, so a deleted label is an honest 404. The old
+    // `body?.id` assertion still passed either way, which is exactly why it is
+    // pinned to the status code now.
     const after = await request(app.getHttpServer()).get(
       `/flashcard-label/${created.body.id}`
     );
+    expect(after.status).toBe(404);
     expect(after.body?.id).toBeUndefined();
   });
 
@@ -228,6 +235,204 @@ describe("Label deletion — ownership (e2e)", () => {
     );
 
     expect(attack.status).toBe(403);
+  });
+});
+
+/**
+ * MDRS-56 — the read half of the same defect.
+ *
+ * `GET /:id` and `GET /getStats/:id` on both controllers carried the class
+ * guard but no ownership assertion, so an authenticated caller who knew or
+ * brute-forced a UUID read another user's label.
+ *
+ * Measured against unmodified handlers rather than asserted from reading them:
+ * the four `:id` attacks below returned 200 carrying the owner's row, PUBLIC
+ * and PERSONAL alike, and so did the four not-found cases. The two `getStats`
+ * attacks returned 500 — those routes disclosed nothing only because they are
+ * independently broken, see `does not deny the owner their own label stats`
+ * below for the column-name drift behind it.
+ *
+ * Two apps for the same reason the delete block needs two — `createTestApp`
+ * stubs the guard to impersonate exactly one user, so one app cannot both own
+ * a row and attack it.
+ */
+describe("Label reads — ownership (e2e)", () => {
+  let ownerApp: INestApplication;
+  let attackerApp: INestApplication;
+  let dbUtils: TestDatabaseUtils;
+
+  beforeAll(async () => {
+    ownerApp = await createTestApp({ authUserId: TEST_USER_ID });
+    attackerApp = await createTestApp({ authUserId: OTHER_USER_ID });
+    dbUtils = new TestDatabaseUtils(
+      ownerApp.get<DatabaseService>(DatabaseService)
+    );
+  });
+
+  beforeEach(async () => {
+    await dbUtils.cleanTables("flashcard_labels", "deck_label");
+  });
+
+  afterAll(async () => {
+    await dbUtils.cleanTables("flashcard_labels", "deck_label");
+    await ownerApp.close();
+    await attackerApp.close();
+  });
+
+  const seedFlashcardLabel = async (scope: Scope = Scope.PERSONAL) => {
+    const created = await request(ownerApp.getHttpServer())
+      .post("/flashcard-label/create")
+      .send({ title: "Kelime Hazinesi", scope });
+    expect(created.status).toBe(201);
+    return created.body.id as string;
+  };
+
+  const seedDeckLabel = async (scope: Scope = Scope.PERSONAL) => {
+    const created = await request(ownerApp.getHttpServer())
+      .post("/flashcard-deck-label/create")
+      .send({ title: "Seviye A1", scope });
+    expect(created.status).toBe(201);
+    return created.body.id as string;
+  };
+
+  it("refuses to read a flashcard label owned by another user", async () => {
+    const id = await seedFlashcardLabel();
+
+    const attack = await request(attackerApp.getHttpServer()).get(
+      `/flashcard-label/${id}`
+    );
+
+    expect(attack.status).toBe(403);
+    // The defect was disclosure, so assert the payload is absent rather than
+    // trusting the status code alone.
+    expect(attack.body?.title).toBeUndefined();
+    expect(attack.body?.id).toBeUndefined();
+  });
+
+  it("refuses to read flashcard label stats owned by another user", async () => {
+    const id = await seedFlashcardLabel();
+
+    const attack = await request(attackerApp.getHttpServer()).get(
+      `/flashcard-label/getStats/${id}`
+    );
+
+    expect(attack.status).toBe(403);
+    expect(attack.body?.usageCount).toBeUndefined();
+  });
+
+  it("refuses to read a deck label owned by another user", async () => {
+    const id = await seedDeckLabel();
+
+    const attack = await request(attackerApp.getHttpServer()).get(
+      `/flashcard-deck-label/${id}`
+    );
+
+    expect(attack.status).toBe(403);
+    expect(attack.body?.title).toBeUndefined();
+    expect(attack.body?.id).toBeUndefined();
+  });
+
+  it("refuses to read deck label stats owned by another user", async () => {
+    const id = await seedDeckLabel();
+
+    const attack = await request(attackerApp.getHttpServer()).get(
+      `/flashcard-deck-label/getStats/${id}`
+    );
+
+    expect(attack.status).toBe(403);
+    expect(attack.body?.usageCount).toBeUndefined();
+  });
+
+  // The PUBLIC-scope decision, pinned. Reads are owner-only and `scope` is not
+  // consulted, exactly as delete does it — see the comment on
+  // FlashcardlabelController for the argument. A later "PUBLIC labels are
+  // world-readable" change has to argue with this test rather than slip past
+  // it, whichever way that argument goes.
+  it("refuses to read a PUBLIC flashcard label owned by another user", async () => {
+    const id = await seedFlashcardLabel(Scope.PUBLIC);
+
+    const attack = await request(attackerApp.getHttpServer()).get(
+      `/flashcard-label/${id}`
+    );
+
+    expect(attack.status).toBe(403);
+  });
+
+  it("refuses to read a PUBLIC deck label owned by another user", async () => {
+    const id = await seedDeckLabel(Scope.PUBLIC);
+
+    const attack = await request(attackerApp.getHttpServer()).get(
+      `/flashcard-deck-label/${id}`
+    );
+
+    expect(attack.status).toBe(403);
+  });
+
+  // 404, not 403: a caller must not be able to tell "somebody else owns this"
+  // from "no such row" — that difference is itself an enumeration oracle. The
+  // two statuses only diverge once the row provably exists.
+  const missingIdRoutes = [
+    `/flashcard-label/${SOME_UUID}`,
+    `/flashcard-label/getStats/${SOME_UUID}`,
+    `/flashcard-deck-label/${SOME_UUID}`,
+    `/flashcard-deck-label/getStats/${SOME_UUID}`,
+  ];
+
+  it.each(
+    missingIdRoutes
+  )("GET %s returns 404 when the label does not exist", async (path) => {
+    const response = await request(ownerApp.getHttpServer()).get(path);
+
+    expect(response.status).toBe(404);
+  });
+
+  // The owner is not locked out by any of this.
+  it("lets the owner read their own label", async () => {
+    const id = await seedFlashcardLabel();
+
+    const label = await request(ownerApp.getHttpServer()).get(
+      `/flashcard-label/${id}`
+    );
+
+    expect(label.status).toBe(200);
+    expect(label.body.id).toBe(id);
+  });
+
+  /**
+   * The owner's stats read, asserted negatively on purpose.
+   *
+   * Both `getStats` routes are broken on main for EVERY caller, owner
+   * included, and it has nothing to do with authorization. The migrations and
+   * the drizzle schemas disagree about two column names, so the select throws
+   * a 500 before any row is found:
+   *
+   *   flashcard_label_stats — migration 0007 creates "usageCount",
+   *     flashcard-label.schema.ts:21 declares `integer("usage_count")`
+   *   deck_label_stats      — migration 0007 creates "lable_id" (sic),
+   *     flashcard-deck-label.schema.ts:39 declares `uuid("label_id")`
+   *
+   * Measured, not inferred: the response body is
+   * `Failed query: select "id", "label_id", "usage_count", "last_used_at"
+   * from "flashcard_label_stats" ...`. Nothing exercised these routes before
+   * MDRS-56 — the only existing coverage was the 401 sweep, which never
+   * reaches the database.
+   *
+   * Fixing that drift is a schema/migration change and belongs in its own
+   * issue (see docs/migration/mdrs-56-flashcard-label-authz.md). What MDRS-56
+   * owes is that AUTHORIZATION is not what stops the owner, so this pins the
+   * two statuses this change is responsible for and deliberately does not pin
+   * the third — the day the drift is fixed, this test should go green as a
+   * 200 without anybody having to come back and edit it.
+   */
+  it("does not deny the owner their own label stats", async () => {
+    const id = await seedFlashcardLabel();
+
+    const stats = await request(ownerApp.getHttpServer()).get(
+      `/flashcard-label/getStats/${id}`
+    );
+
+    expect(stats.status).not.toBe(403);
+    expect(stats.status).not.toBe(404);
   });
 });
 
