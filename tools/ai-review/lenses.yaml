@@ -760,13 +760,16 @@ lenses:
   #   $ sed -n '31,32p' CLAUDE.md
   #     -> "78 of 89 tests went red this way while typecheck and build were green."
   #   $ sed -n '86,110p' docs/migration/mdrs-12-biome.md -> the full write-up.
-  #   $ grep -n 'class-validator' pnpm-workspace.yaml
-  #     -> :123 '@nestjs/class-validator' ^0.13.4 (NestJS fork, tedrisat)
-  #        :125 class-validator ^0.14.2 (standalone) — "coexists intentionally"
-  #   $ grep -rln '@nestjs/class-validator' apps libs  -> 7 files
-  #   $ grep -rln 'from "class-validator"' apps libs   -> 9 files
-  #     Both lists contain create-flashcard-label.dto.ts and
-  #     create-flashcard-deck-label.dto.ts — those two mix the packages in one file.
+  #   $ grep -n '^  class-validator' pnpm-workspace.yaml   # re-run for MDRS-57
+  #     -> :127 class-validator ^0.14.2 — the only validator in the workspace
+  #        (:126 class-transformer ^0.5.1, likewise the only transformer).
+  #        The '@nestjs/class-validator' and '@nestjs/class-transformer' catalog
+  #        entries were REMOVED by MDRS-57; there is no fork to import any more.
+  #   $ grep -rln '@nestjs/class-validator' apps libs --include='*.ts'  -> 1 file,
+  #        and it is a PROSE MENTION, not an import: the header comment of
+  #        apps/tedrisat/test/e2e/dto-validation.e2e.spec.ts describing the history.
+  #        Zero files import either fork.
+  #   $ grep -rln 'from "class-validator"' apps libs --include='*.ts'   -> 15 files
   #   $ cat libs/common/src/pipes/validation.pipe.ts
   #     -> MedarisValidationPipe extends @nestjs/common ValidationPipe with
   #        whitelist:true (:15) and forbidNonWhitelisted:true (:16).
@@ -792,7 +795,7 @@ lenses:
     timeout_minutes: 25
     known_false_positives:
       - "A plain (non-type) import of a class used only as a type is REQUIRED in apps/tedrisat, apps/teskilat and libs/common. Never suggest `import type` there."
-      - "Importing decorators from @nestjs/class-validator is intentional and catalogued (pnpm-workspace.yaml:123). Only MIXING both packages inside one DTO class is a finding."
+      - "@nestjs/class-validator and @nestjs/class-transformer were REMOVED by MDRS-57. Any import of either in apps/** or libs/** is a HIGH-severity finding, not a false positive."
       - "Drizzle relational `with:` clauses compile to a single SQL statement. They are not N+1, and N+1 belongs to the perf-scale lens anyway."
       - "Strictness is not uniform: tsconfig.base.json sets noUncheckedIndexedAccess true, apps/tedrisat/tsconfig.json sets it false and apps/tedris/tsconfig.json sets strict false. Check the package's own tsconfig before claiming a null-safety gap."
     prompt: |
@@ -857,35 +860,29 @@ lenses:
       Outside those three packages, `useImportType` is enforced by Biome, so it is
       already covered and you should not comment on it at all.
 
-      === THE SECOND MEDARIS-SPECIFIC TRAP — TWO VALIDATOR PACKAGES ===
-      This workspace intentionally carries both `class-validator` and the NestJS fork
-      `@nestjs/class-validator`. pnpm-workspace.yaml catalogues all four packages
-      side by side: :122 `@nestjs/class-transformer` ^0.4.0 and :123
-      `@nestjs/class-validator` ^0.13.4, both tagged "# NestJS fork (tedrisat)", then
-      :124 `class-transformer` ^0.5.1 tagged "# standalone (libs/common) — coexists
-      intentionally" and :125 `class-validator` ^0.14.2 tagged "# standalone
-      (libs/common, tedrisat)". Seven files import from the fork, nine from the
-      standalone package.
+      === THE SECOND MEDARIS-SPECIFIC TRAP — ONE VALIDATOR PACKAGE ONLY ===
+      This workspace carries exactly ONE validator, `class-validator`, and exactly one
+      transformer, `class-transformer`. The NestJS forks `@nestjs/class-validator` and
+      `@nestjs/class-transformer` were removed from apps/tedrisat/package.json and from
+      the pnpm catalog by MDRS-57 — see
+      docs/migration/mdrs-57-validation-consolidation.md for the measurement.
 
-      Two DTO files currently import decorators from BOTH inside one file:
-      apps/tedrisat/src/flashcard/dto/create-flashcard-label.dto.ts (IsEnum, IsString,
-      MaxLength, MinLength from `@nestjs/class-validator` at :1-6; IsOptional and
-      IsUUID from `class-validator` at :8) and
-      apps/tedrisat/src/flashcard/dto/create-flashcard-deck-label.dto.ts.
+      Report as a HIGH-severity finding any import of `@nestjs/class-validator` or
+      `@nestjs/class-transformer` that this PR adds. There is no catalog entry for
+      either, so such an import also means a bare version string was added to a
+      package.json, which is a second finding on its own.
 
-      Why that is dangerous here: the global pipe is `MedarisValidationPipe`
-      (libs/common/src/pipes/validation.pipe.ts:9), installed at
-      libs/common/src/bootstrap/setupMiddleware.ts:27, and it extends `ValidationPipe`
+      Why it matters, since the failure is silent: the global pipe is
+      `MedarisValidationPipe` (libs/common/src/pipes/validation.pipe.ts:9), installed
+      at libs/common/src/bootstrap/setupMiddleware.ts:27, extending `ValidationPipe`
       from `@nestjs/common` with `whitelist: true` (:15) and
-      `forbidNonWhitelisted: true` (:16). Under those two options a property that the
-      pipe's validator does not see decorated is stripped or rejected outright — so
-      decorator metadata landing in the wrong package's storage does not fail loudly,
-      it changes what the endpoint accepts.
-
-      Report as a MEDIUM-severity finding any DTO class this PR adds or edits that
-      draws validation decorators from both packages. State which import should move,
-      and to which package the rest of the file already commits. Do NOT report a file
-      that consistently uses one package — using the fork alone is deliberate.
+      `forbidNonWhitelisted: true` (:16). Under those two options a property the
+      pipe's validator does not see decorated is stripped or rejected outright, so a
+      decorator that registers into a different package's metadata storage does not
+      fail loudly — it changes what the endpoint accepts. `class-validator` shares one
+      `globalThis.classValidatorMetadataStorage` across copies, but `class-transformer`
+      does NOT: its storage is module-level, so two transformer copies really do give
+      two separate stores.
 
       === WHAT ELSE TO HUNT FOR IN THIS LENS ===
       - Logic bugs: inverted booleans, wrong comparison operator, off-by-one, operator
@@ -916,8 +913,10 @@ lenses:
         apps/teskilat or libs/common is REQUIRED. Suggesting `import type` there is
         the single most damaging false positive this lens can emit — it is a
         recommendation to break dependency injection at runtime. Never make it.
-      - A DTO that imports its decorators consistently from `@nestjs/class-validator`
-        is fine and intentional. Only the MIXTURE within one file is a finding.
+      - (Removed by MDRS-57.) There is no longer any legitimate import of
+        `@nestjs/class-validator` or `@nestjs/class-transformer`; both packages are
+        gone from the workspace, so treat either import as a finding rather than as
+        an intentional pattern.
       - Drizzle relational queries with a `with:` clause compile to a single SQL
         statement — they are not N+1. Query performance in general belongs to the
         perf-scale lens; do not duplicate it here.

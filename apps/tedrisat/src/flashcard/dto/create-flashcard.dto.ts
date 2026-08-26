@@ -1,3 +1,4 @@
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsEnum,
   IsObject,
@@ -5,8 +6,7 @@ import {
   IsString,
   MaxLength,
   MinLength,
-} from "@nestjs/class-validator";
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+} from "class-validator";
 import { FlashcardType } from "../domain/flashcard-type.enum";
 
 export class CreateFlashcardDto {

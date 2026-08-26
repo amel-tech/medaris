@@ -119,10 +119,16 @@ catalog:
   '@nestjs/swagger': ^11.2.0
   '@nestjs/cli': ^11.0.10
   '@nestjs/schematics': ^11.0.7
-  '@nestjs/class-transformer': ^0.4.0 # NestJS fork (tedrisat)
-  '@nestjs/class-validator': ^0.13.4 # NestJS fork (tedrisat)
-  class-transformer: ^0.5.1 # standalone (libs/common) — coexists intentionally
-  class-validator: ^0.14.2 # standalone (libs/common, tedrisat)
+  # The `@nestjs/class-validator` and `@nestjs/class-transformer` forks were
+  # removed here by MDRS-57, so one entry each is now the whole story.
+  # Measured, not assumed: the two VALIDATOR copies shared a single
+  # `globalThis.classValidatorMetadataStorage`, so no decorator was inert — but
+  # the two TRANSFORMER copies each keep a module-level storage, which really
+  # does split `@Type()` metadata. One package each is the only configuration
+  # that is not accidental.
+  # See docs/migration/mdrs-57-validation-consolidation.md for the experiment.
+  class-transformer: ^0.5.1 # the only transformer in the workspace
+  class-validator: ^0.14.2 # the only validator in the workspace
   drizzle-orm: ^0.45.2
   drizzle-kit: ^0.31.4
   pg: ^8.16.3

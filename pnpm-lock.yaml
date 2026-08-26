@@ -24,12 +24,6 @@ catalogs:
     '@nestjs/cache-manager':
       specifier: ^3.0.1
       version: 3.1.3
-    '@nestjs/class-transformer':
-      specifier: ^0.4.0
-      version: 0.4.0
-    '@nestjs/class-validator':
-      specifier: ^0.13.4
-      version: 0.13.4
     '@nestjs/cli':
       specifier: ^11.0.10
       version: 11.0.24
@@ -759,12 +753,6 @@ importers:
       '@medaris/common':
         specifier: workspace:*
         version: link:../../libs/common
-      '@nestjs/class-transformer':
-        specifier: 'catalog:'
-        version: 0.4.0
-      '@nestjs/class-validator':
-        specifier: 'catalog:'
-        version: 0.13.4
       '@nestjs/common':
         specifier: 'catalog:'
         version: 11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -3274,12 +3262,6 @@ packages:
       cache-manager: '>=6'
       keyv: '>=5'
       rxjs: ^7.8.1
-
-  '@nestjs/class-transformer@0.4.0':
-    resolution: {integrity: sha512-aHKhqPVixFCo8m7n2iP1uGgfyF0eYlAgGJKfW27l0BvRCTPBjmoL4956Cf9xVu6WNJzVsp//SOcpIavdnNHYZg==}
-
-  '@nestjs/class-validator@0.13.4':
-    resolution: {integrity: sha512-/mqZL36LJ5uV5WDhi87Cd52IssuO+SStaOr2+6sBsvCCGUWkoJes4Wwzmm3m/gdHH+tsNxX60sVSzYcU6hAy9Q==}
 
   '@nestjs/cli@11.0.24':
     resolution: {integrity: sha512-aIHxQLSYtXShifA3zwWIeznEsZnNa3Iz2QRykFj+sl9IcbERBHr5nH87FRgywM+He3NxoF5WazHfR8FsmVeWxw==}
@@ -11652,13 +11634,6 @@ snapshots:
       cache-manager: 7.2.9
       keyv: 5.6.0
       rxjs: 7.8.2
-
-  '@nestjs/class-transformer@0.4.0': {}
-
-  '@nestjs/class-validator@0.13.4':
-    dependencies:
-      libphonenumber-js: 1.13.9
-      validator: 13.15.35
 
   '@nestjs/cli@11.0.24(@swc/cli@0.7.10(@swc/core@1.15.46)(chokidar@4.0.3))(@swc/core@1.15.46)(@types/node@22.20.1)(esbuild@0.28.1)(lightningcss@1.33.0)':
     dependencies:

@@ -1,13 +1,14 @@
 // `createdBy` is deliberately absent (MDRS-27) — see create-flashcard-label.dto.ts.
 // The controller takes the actor from the verified token instead.
+import { ApiProperty } from "@nestjs/swagger";
 import {
   IsEnum,
+  IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   MinLength,
-} from "@nestjs/class-validator";
-import { ApiProperty } from "@nestjs/swagger";
-import { IsOptional, IsUUID } from "class-validator";
+} from "class-validator";
 import { Scope } from "../domain/flashcard-label.enum";
 export class CreateFlashcardDeckLabelDto {
   @ApiProperty()
