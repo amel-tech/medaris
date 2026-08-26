@@ -28,6 +28,7 @@ import {
   ApiBody,
   ApiConsumes,
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -54,7 +55,6 @@ import { FlashcardProgressResponse } from "./dto/flashcard-progress-response.dto
 import { FlashcardResponse } from "./dto/flashcard-response.dto";
 import { UpdateFlashcardDto } from "./dto/update-flashcard.dto";
 import { BulkValidationError } from "./errors/bulk-validation.error";
-import { DeckNotFoundError } from "./errors/deck-not-found.error";
 import { FlashcardService } from "./flashcard.service";
 import { FlashcardBulkService } from "./flashcard-bulk.service";
 import { FlashcardDeckService } from "./flashcard-deck.service";
@@ -127,6 +127,8 @@ export class FlashcardController {
   })
   @ApiBody({ type: [CreateFlashcardDto] })
   @ApiCreatedResponse({ type: FlashcardResponse, isArray: true })
+  @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @Post("decks/:deckId/cards")
   async createMany(
     @Req() request: AuthorizedRequest,
@@ -135,6 +137,7 @@ export class FlashcardController {
     cardsDto: CreateFlashcardDto[]
   ): Promise<FlashcardResponse[]> {
     const authorId = request.user.sub;
+    await this.deckService.assertOwner(deckId, authorId);
     return this.cardService.createMany(deckId, authorId, cardsDto);
   }
 
@@ -230,6 +233,8 @@ export class FlashcardController {
   @ApiBody({ type: [CreateFlashcardDto] })
   @ApiCreatedResponse({ type: BulkFlashcardResponse })
   @ApiUnprocessableEntityResponse({ type: BulkFlashcardErrorResponse })
+  @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @Post("decks/:deckId/cards/bulk")
   async bulk(
     @Req() request: AuthorizedRequest,
@@ -247,8 +252,9 @@ export class FlashcardController {
     @Body(new ParseArrayPipe())
     cardsDto: CreateFlashcardDto[]
   ): Promise<BulkFlashcardResponse> {
-    const deck = await this.deckService.findById(deckId);
-    if (!deck) throw new DeckNotFoundError(deckId);
+    // `findById` proved the deck exists and nothing more, so any valid token
+    // could write MAX_BULK_ROWS cards into a deck it merely knew the id of.
+    await this.deckService.assertOwner(deckId, request.user.sub);
 
     const result = await this.cardBulkService.addFlashcards(
       deckId,
@@ -288,6 +294,7 @@ export class FlashcardController {
   })
   @ApiOkResponse({ type: StreamableFile })
   @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @ApiQuery({
     name: "format",
     required: false,
@@ -300,8 +307,13 @@ export class FlashcardController {
     @Req() request: AuthorizedRequest,
     @Query("format") format: "xlsx" | "csv" = "xlsx"
   ) {
-    const deck = await this.deckService.findById(deckId);
-    if (!deck) throw new DeckNotFoundError(deckId);
+    // `exportFlashcards` threads a `userId` down to `findByDeckId`, which
+    // looks like a scoping argument and is not one: it passes no `include`,
+    // so `buildWith` returns `{}` and the id is never read at all. Even with
+    // an `include` it would only scope the progress relation — the rows come
+    // back filtered on `deckId` alone either way. The access decision has to
+    // happen here.
+    const deck = await this.deckService.assertOwner(deckId, request.user.sub);
 
     return this.cardBulkService.exportFlashcards(
       deckId,
@@ -320,6 +332,7 @@ export class FlashcardController {
   })
   @ApiCreatedResponse({ type: BulkFlashcardResponse })
   @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @ApiUnprocessableEntityResponse({ type: BulkFlashcardErrorResponse })
   @ApiConsumes("multipart/form-data")
   @ApiBody({
@@ -351,8 +364,12 @@ export class FlashcardController {
     @Param("deckId", ParseUUIDPipe) deckId: string,
     @Req() request: AuthorizedRequest
   ) {
-    const deck = await this.deckService.findById(deckId);
-    if (!deck) throw new DeckNotFoundError(deckId);
+    // Same hole as `bulk`, reached through a file instead of a JSON body.
+    // FileInterceptor and ParseFilePipe have already buffered and checked the
+    // upload by the time this runs — Nest resolves parameters before the body
+    // — so this refuses before the spreadsheet is *parsed*, not before it is
+    // received.
+    await this.deckService.assertOwner(deckId, request.user.sub);
 
     const format = this.excelService.detectFormat(
       file.mimetype,
