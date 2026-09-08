@@ -7,12 +7,11 @@ import { denormalizeFormula, neutralizeFormula } from "@medaris/common";
  * formula when the downloaded deck was opened in Excel or LibreOffice.
  *
  * The helper lives in libs/common, which has no `test` target of its own (see
- * `libs/common/project.json`); this is the second spec to land its coverage
- * here rather than there, the way `cors.config.spec.ts` next door already
- * had to for MDRS-34 — see that file's own comment. Giving libs/common a
- * `test` target of its own belongs with MDRS-20. This also means this spec
- * asserts against the built `dist/`: `@medaris/common` resolves through the
- * package `main`, so `pnpm nx build common` must have run.
+ * `libs/common/project.json`), so this coverage lands here instead — a second,
+ * independent exception alongside `cors.config.spec.ts`, not a precedent set
+ * by it. Giving libs/common a `test` target of its own belongs with MDRS-20.
+ * This also means this spec asserts against the built `dist/`: `@medaris/common`
+ * resolves through the package `main`, so `pnpm nx build common` must have run.
  */
 describe("neutralizeFormula", () => {
   it.each([
@@ -74,8 +73,18 @@ describe("denormalizeFormula", () => {
     expect(denormalizeFormula(input)).toBe(expected);
   });
 
-  it("strips only one leading apostrophe, keeping the rest of a typed one", () => {
-    expect(denormalizeFormula("''ninety")).toBe("'ninety");
+  it.each([
+    // Transliterated hamza/ayn — a leading apostrophe this app's own decks
+    // use for real, which neutralizeFormula never touches because "'" is
+    // not in FORMULA_TRIGGERS. An unconditional strip would eat it anyway.
+    "'ayn",
+    "'Umar",
+    "'alif",
+    // Two apostrophes a user actually typed: what follows the first is
+    // itself a leading apostrophe, not a trigger, so nothing unwraps.
+    "''ninety",
+  ])("leaves a leading apostrophe %j alone when it was never an escape", (input) => {
+    expect(denormalizeFormula(input)).toBe(input);
   });
 
   it.each([
@@ -98,7 +107,17 @@ describe("denormalizeFormula", () => {
   });
 
   it("composes with neutralizeFormula back to the original value", () => {
-    const originals = ["=1+1", "+1", "-1", "@SUM(A1)", "hello", "", "a=b"];
+    const originals = [
+      "=1+1",
+      "+1",
+      "-1",
+      "@SUM(A1)",
+      "hello",
+      "",
+      "a=b",
+      "'ayn",
+      "'Umar",
+    ];
     for (const original of originals) {
       expect(denormalizeFormula(neutralizeFormula(original))).toBe(original);
     }

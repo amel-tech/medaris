@@ -145,4 +145,20 @@ describe("Flashcard deck export (e2e)", () => {
 
     expect(row.contentFront).toBe("-ler");
   });
+
+  it("round-trips a card whose apostrophe was never an escape", async () => {
+    // Transliterated hamza/ayn is common in exactly this app's decks, and
+    // "'" is not a formula trigger, so neutralizeFormula never touches it —
+    // but an unconditional strip on import would still eat it, which is the
+    // failure denormalizeFormula's own unit spec covers directly. This is
+    // the same guarantee through the real export/import HTTP round trip.
+    await addCard("'ayn", "throat letter");
+
+    const xlsx = await exportDeck("xlsx");
+    const [row] = await app
+      .get(ExcelService)
+      .parseFile(xlsx, FLASHCARD_EXCEL_CONFIG, "xlsx");
+
+    expect(row.contentFront).toBe("'ayn");
+  });
 });
