@@ -116,8 +116,10 @@ Notes that save time:
 
 Two compose commands, depending on how much stack you need:
 
-- `docker compose up` starts Postgres and the two Nest APIs — the default set, unchanged, and what backend work needs. No web image is built.
+- `docker compose up` starts Postgres and the two Nest APIs — the default set of *services*, unchanged, and what backend work needs. No web image is built.
 - `docker compose --profile web up` additionally builds and starts the four web apps on ports 4000–4003, wired to the APIs over the compose network (`TEDRISAT_API_BASE_URL=http://tedrisat:3001` inside the containers). Use it to exercise the whole stack at once.
+
+Compose interpolates the whole file before it selects services by profile, so the set of `.env` keys either command *requires* is not unchanged: `docker compose up` now also demands the four web apps' `:?` keys (Keycloak client credentials, NextAuth secrets) even though it starts none of their containers. A `.env` copied fresh from `.env.example` has all of them; a hand-trimmed backend-only `.env` no longer works with either command.
 
 Every service takes its environment from the root `.env` through the explicit key-by-key mapping in `docker-compose.yml`, never an `env_file:` — compose would hand the container the prefixed key names unchanged, and the images carry no `tools/env/root-env.cjs` to strip them. The web images are production builds (`next build` already run, `NEXT_PUBLIC_*` baked in), so they are for running the stack, not for frontend work: develop the web apps with `pnpm nx run <project>:dev`.
 
