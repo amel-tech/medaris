@@ -217,24 +217,36 @@ catalog:
   '@openapitools/openapi-generator-cli': ^2.24.0
   '@tolgee/cli': ^2.10.2
 
-  # ═══ keycloak-theme island — frozen through the merge (ADR §D8 exception #1) ═══
-  vite: ~5.4.21
-  '@vitejs/plugin-react': ^4.2.1
-  keycloakify: ~11.9.6
-  '@storybook/react': ^8.1.10
-  '@storybook/react-vite': ^8.1.10
-  storybook: ^8.1.10
+  # ═══ keycloak-theme island — unfrozen at MDRS-21 (ADR §D8 exception #1) ═══
+  # ADR-001 §D8 named "keycloakify 11.15 / vite 7" as the proven MDRS-21
+  # destination; keycloakify 11.16.0 and vite 7.3.6 satisfy that (both are
+  # already load-bearing elsewhere: vite 7.3.6 is the `vitest` named catalog
+  # below). Deliberately not vite 8 / storybook's newest peer range — staying
+  # on the version this workspace already runs under Vitest keeps this the
+  # smallest change that lifts the freeze, not a second bleeding-edge bump.
+  vite: ^7.3.6
+  '@vitejs/plugin-react': ^5.2.0 # 6.x requires vite ^8; 5.x's ^4||^5||^6||^7||^8 keeps vite 7
+  keycloakify: ^11.16.0
+  '@storybook/react': ^10.6.0
+  '@storybook/react-vite': ^10.6.0
+  storybook: ^10.6.0
 
 # ── Named catalogs ───────────────────────────────────────────────────────────
-# `vite` is the one package this workspace genuinely needs at two majors, so it
-# cannot live in the default catalog twice.
+# MDRS-20 measured why this exists: vitest@4 peers on `vite: ^6 || ^7 || ^8`,
+# and with no `vite` declared by the backend apps pnpm satisfied that peer
+# from whatever the default catalog's `vite` pin was — back when that was the
+# frozen keycloak-theme pin (5.4.21), vitest died at startup with
+# ERR_PACKAGE_PATH_NOT_EXPORTED on `vite/module-runner`, a subpath vite 5
+# does not export. Declaring the peer explicitly here is what pinned it
+# correctly independent of keycloak-theme's freeze.
 #
-# MDRS-20 measured why: vitest@4 peers on `vite: ^6 || ^7 || ^8`, and with no
-# `vite` declared by the backend apps pnpm satisfied that peer from the frozen
-# keycloak-theme pin above (5.4.21). Vitest then died at startup with
-# ERR_PACKAGE_PATH_NOT_EXPORTED on `vite/module-runner` — a subpath vite 5 does
-# not export. Declaring the peer explicitly here is what pins it correctly;
-# keycloak-theme keeps `catalog:` (vite 5) and stays frozen.
+# MDRS-21 unfroze keycloak-theme onto vite ^7.3.6 (see above) — the same
+# value as this catalog's `vite` entry, so the two-catalog split is no longer
+# load-bearing. Left in place rather than collapsed in this same change:
+# tedrisat/teskilat still reference `catalog:vitest` explicitly, and
+# repointing them plus deleting this block is a separate, purely-mechanical
+# follow-up (tracked in docs/migration/mdrs-21-dependency-upgrade.md), not a
+# dependency-version decision this ticket needs to also make.
 catalogs:
   vitest:
     vite: ^7.3.6
