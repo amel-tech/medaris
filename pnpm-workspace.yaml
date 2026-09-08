@@ -197,8 +197,8 @@ catalog:
   tailwind-merge: ^3.3.1 # unified to ui's major; tedris v1→v3 port = FU-2
   tailwindcss-animate: ^1.0.7
   tw-animate-css: ^1.3.7
-  zod: ~3.25.76 # FU-3 resolved: libs/ui never imported zod, so no v4 port and
-  #                 no per-package exception — the v3 line is now uncontested.
+  zod: ^4.5.4 # MDRS-21: v3->v4. FU-3 (libs/ui never imported zod) meant no
+  #             per-package exception was needed for this migration either.
   '@opentelemetry/api': ^1.9.0
   '@vercel/otel': ^2.1.3 # MDRS-21: +1 major
   xlsx: ^0.18.5 # ⚠ security FU-5 (unfloorable; replace SheetJS)
