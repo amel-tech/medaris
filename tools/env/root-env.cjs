@@ -81,8 +81,10 @@ function findRepoRoot(from = __dirname) {
  *   KEY="ends\\"        -> ends\       \\ is one backslash inside double quotes
  *   KEY='a\\b'          -> a\\b        but stays two inside single quotes
  *   KEY='ends\\'        -> ends\\      and still never escapes the closing quote
- *   KEY='a\'            -> (unterminated: \' is an escape) — compose refuses
- *                                       the whole file on this line
+ *   KEY="oops           -> throws      compose refuses the whole file on an
+ *                                       unterminated quote, so this does too
+ *   KEY='a\'            -> throws      \' is an escape, so the quote never
+ *                                       closes; compose refuses this line too
  *   KEY="line1\nline2"  -> line1\nline2  literal, NOT a newline
  *   KEY= # note         -> # note      an empty value keeps its "comment"
  *
@@ -110,12 +112,23 @@ function findRepoRoot(from = __dirname) {
  * the quotes are stripped here. Full substitution parity is a separate change.
  *
  * Multi-line quoted values are NOT supported. The file is split on newlines
- * before any quote is read, so a PEM spread over several lines yields an
- * unterminated first line (kept verbatim, opening quote included) and its body
- * lines are parsed as their own keys. Compose reads the same lines as one
- * value, so a multi-line PEM is one file meaning two things. Pass a PEM as a
- * single line instead, with `\n` between the rows, and let the consumer expand
- * it — API__DB_CA_CERT already documents that shape.
+ * before any quote is read, so a PEM spread over several lines is an
+ * unterminated first line, and the parser throws naming the key. Compose
+ * reads the same lines as one value, so a multi-line PEM would otherwise be
+ * one file meaning two things. Pass a PEM as a single line instead, with `\n`
+ * between the rows, and let the consumer expand it — API__DB_CA_CERT already
+ * documents that shape.
+ *
+ * An unterminated quote THROWS rather than warns (MDRS-75). Compose refuses
+ * the whole file on that line, measured: `docker compose config` answers
+ * `unterminated quoted value "s3cr3t` and exits 1. Keeping the value and
+ * warning was a third behaviour — `docker compose up` hard-failed while
+ * `pnpm dev` and `next build` booted with `KEYCLOAK_CLIENT_SECRET` set to
+ * `"s3cr3t`, opening quote attached, and failed later as an opaque
+ * `invalid_client` with the warning buried in build output. Throwing stops
+ * all six call sites (four next.config.js, both load-env.ts) at build or
+ * boot, which is what compose does, and what `classify` already does for a
+ * malformed key.
  */
 function parseEnv(text) {
   const entries = [];
@@ -153,18 +166,19 @@ function parseEnv(text) {
           body += rest[i];
         }
       }
-      // Unterminated: treat the whole remainder as the value rather than
-      // silently truncating at end-of-line — but not silently. Either wrong
-      // value is a plausible-looking credential that only surfaces later as
-      // an opaque `invalid_client`, so leave a breadcrumb that names the key.
+      // Unterminated: compose refuses the whole file on this line, and any
+      // value handed back here — truncated or kept with its opening quote —
+      // is a plausible-looking credential that only surfaces later as an
+      // opaque `invalid_client`. Fail here, naming the key (MDRS-75).
       if (i === rest.length) {
-        console.warn(
+        throw new Error(
           `[env] ${line.slice(0, eq).trim()} opens with ${quote} and never ` +
-            `closes it; the opening quote is part of the value. Close the ` +
-            `quote or drop both.`
+            `closes it. docker compose refuses the whole .env on this line; ` +
+            `close the quote or drop both. A value spanning several lines is ` +
+            `not supported either: write it on one line with \\n between rows.`
         );
       }
-      value = i === rest.length ? rest : body;
+      value = body;
     } else {
       value = rest.replace(/\s+#.*$/, "").trim();
       // `KEY= # note` is `# note` to compose (nothing precedes the `#`, so

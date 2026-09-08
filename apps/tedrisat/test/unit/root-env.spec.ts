@@ -61,7 +61,7 @@ const COMPOSE_PARITY: ReadonlyArray<readonly [string, string, string]> = [
   ["Q", "Q='sq\\\"dq'", 'sq\\"dq'],
   // A `\\` pair before the closing single quote still closes the value and
   // keeps both characters. (A lone `\'` at the end is unterminated, and compose
-  // refuses the whole file on it, so there is nothing to agree on there.)
+  // refuses the whole file on it — so does this parser, see UNTERMINATED.)
   ["V", "V='ends\\\\'", "ends\\\\"],
   // An empty value followed by a comment is not empty to compose: with nothing
   // before the `#` there is no whitespace-preceded comment to strip, so the
@@ -85,6 +85,16 @@ const NO_SUBSTITUTION: ReadonlyArray<readonly [string, string, string]> = [
   ["R", "R=p$ss", "p$ss"],
   // biome-ignore lint/suspicious/noTemplateCurlyInString: this is a literal .env line, and `${X}` staying literal is the point
   ["S", 'S="p${X}q"', "p${X}q"],
+];
+
+/**
+ * Lines compose refuses the whole file on (measured: `docker compose config`
+ * exits 1 with `unterminated quoted value ...`). The parser throws on the same
+ * lines, naming the key, so neither reader boots on them (MDRS-75).
+ */
+const UNTERMINATED: ReadonlyArray<readonly [string, string]> = [
+  ["K", 'K="oops'],
+  ["U", "U='a\\'"],
 ];
 
 describe("root-env parseEnv", () => {
@@ -142,39 +152,27 @@ describe("root-env parseEnv", () => {
     expect(rootEnv.parseEnv(line)).toEqual([{ key, value: expected }]);
   });
 
-  it("keeps an unterminated quote rather than truncating at end of line", () => {
-    // Silently dropping the rest would turn a typo into a plausible-looking
-    // credential, which is the failure mode this whole spec exists for. The
-    // kept value is wrong too, so the parser has to say so and name the key.
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    try {
-      expect(rootEnv.parseEnv('K="oops')).toEqual([
-        { key: "K", value: '"oops' },
-      ]);
-      expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn.mock.calls[0][0]).toMatch(/^\[env\] K opens with "/);
-    } finally {
-      warn.mockRestore();
-    }
+  it.each(
+    UNTERMINATED
+  )("%s: %s throws naming the key, as compose refuses the file", (key, line) => {
+    // Compose refuses the whole .env on an unterminated quote (measured:
+    // `unterminated quoted value "s3cr3t`, exit 1). Keeping the value with its
+    // opening quote and warning was a third behaviour: `docker compose up`
+    // failed while `next build` booted with `"s3cr3t` as a credential and
+    // failed later as an opaque `invalid_client` (MDRS-75).
+    expect(() => rootEnv.parseEnv(line)).toThrow(
+      new RegExp(`^\\[env\\] ${key} opens with `)
+    );
   });
 
-  it("does not join a quoted value that spans several lines", () => {
+  it("throws on a quoted value that spans several lines", () => {
     // Documented limitation, not a feature: the file is split on newlines
-    // before any quote is read, so the first line stays unterminated (kept
-    // verbatim) and the body lines become their own keys. A PEM must be one
-    // `\n`-escaped line. Pinned so a change here is a deliberate one.
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    try {
-      const entries = rootEnv.parseEnv(
-        'PEM="-----BEGIN-----\nabc=\n-----END-----"'
-      );
-      expect(entries[0]).toEqual({ key: "PEM", value: '"-----BEGIN-----' });
-      expect(entries).toHaveLength(2);
-      // The unterminated first line is the one that warns.
-      expect(warn).toHaveBeenCalledTimes(1);
-    } finally {
-      warn.mockRestore();
-    }
+    // before any quote is read, so the first line is unterminated. It used to
+    // be kept verbatim with its body lines parsed as junk keys; compose reads
+    // the same lines as one value. A PEM must be one `\n`-escaped line.
+    expect(() =>
+      rootEnv.parseEnv('PEM="-----BEGIN-----\nabc=\n-----END-----"')
+    ).toThrow(/^\[env\] PEM opens with "/);
   });
 
   it("ignores comments and blank lines", () => {
