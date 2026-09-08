@@ -21,22 +21,29 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
-function findRepoRoot(from: string): string {
+// Bootstrap copy of `findRepoRoot` from tools/env/root-env.cjs:56-64, kept
+// verbatim — same marker, same `null` on not-found — because the loader cannot
+// be required before it has been located. Change both together. Remove with
+// MDRS-66, when `@medaris/env` lets this spec import the loader by specifier.
+function findRepoRoot(from = __dirname) {
   let dir = resolve(from);
   for (;;) {
     if (existsSync(join(dir, "pnpm-workspace.yaml"))) return dir;
     const parent = dirname(dir);
-    if (parent === dir) throw new Error(`no pnpm-workspace.yaml above ${from}`);
+    if (parent === dir) return null;
     dir = parent;
   }
+}
+
+const repoRoot = findRepoRoot();
+if (repoRoot === null) {
+  throw new Error(`no pnpm-workspace.yaml above ${__dirname}`);
 }
 
 // `require`, not `import`: the loader is .cjs on purpose — next.config.js is ESM
 // and the Nest apps compile to CommonJS, and one .cjs module is the only shape
 // both consume without a second copy of the rules.
-const rootEnv = require(
-  join(findRepoRoot(__dirname), "tools", "env", "root-env.cjs")
-);
+const rootEnv = require(join(repoRoot, "tools", "env", "root-env.cjs"));
 
 /** line in the file -> the value docker compose resolves it to */
 const COMPOSE_PARITY: ReadonlyArray<readonly [string, string, string]> = [
@@ -67,6 +74,22 @@ const COMPOSE_PARITY: ReadonlyArray<readonly [string, string, string]> = [
   // text is the value. Pinned so nobody "fixes" it into a divergence.
   ["J", "J= # note", "# note"],
   ["K", "K=#novalue", "#novalue"],
+  // Single quotes suppress compose's `$` substitution, so this is the one
+  // `$`-bearing shape both readers agree on — and the documented remedy for a
+  // generated secret that contains a `$`.
+  ["T", "T='p$ss'", "p$ss"],
+];
+
+/**
+ * Where the parser knowingly diverges from compose. Compose substitutes
+ * `${NAME}` and bare `$NAME` inside unquoted and double-quoted values (measured:
+ * `R=p$ss` -> `p`, `S="p${X}q"` -> `pabcq` with X=abc); this parser does not.
+ * Pinned so the divergence is a stated decision, not an accident, and so the
+ * docblock in root-env.cjs and this list cannot drift apart.
+ */
+const NO_SUBSTITUTION: ReadonlyArray<readonly [string, string, string]> = [
+  ["R", "R=p$ss", "p$ss"],
+  ["S", 'S="p${X}q"', "p${X}q"],
 ];
 
 describe("root-env parseEnv", () => {
@@ -89,6 +112,12 @@ describe("root-env parseEnv", () => {
     for (const [key, , expected] of COMPOSE_PARITY) {
       expect(byKey.get(key)).toBe(expected);
     }
+  });
+
+  it.each(
+    NO_SUBSTITUTION
+  )("%s: %s is NOT substituted here, unlike compose", (key, line, expected) => {
+    expect(rootEnv.parseEnv(line)).toEqual([{ key, value: expected }]);
   });
 
   it("keeps an unterminated quote rather than truncating at end of line", () => {

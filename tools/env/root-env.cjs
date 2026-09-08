@@ -93,6 +93,19 @@ function findRepoRoot(from = __dirname) {
  * single quotes; every other backslash is literal. This matches compose, and
  * it is why a value ending in a backslash must be written `"ends\\"`.
  *
+ * `$` is the one place this parser knowingly does NOT match compose:
+ *
+ *   KEY=p$ss            -> p$ss        here; compose substitutes `$ss` -> `p`
+ *   KEY="p${X}q"        -> p${X}q      here; compose substitutes -> `pabcq`
+ *   KEY='p$ss'          -> p$ss        both readers, single quotes suppress it
+ *
+ * Compose expands `${NAME}` and bare `$NAME` inside .env values, from earlier
+ * lines and the ambient environment, and treats `$$` as a literal `$`. This
+ * parser performs no substitution, so a generated password containing a `$`
+ * is literal to `pnpm dev` and shortened by `docker compose`. The remedy is
+ * to single-quote any value that contains a `$`: compose leaves it alone and
+ * the quotes are stripped here. Full substitution parity is a separate change.
+ *
  * Multi-line quoted values are NOT supported. The file is split on newlines
  * before any quote is read, so a PEM spread over several lines yields an
  * unterminated first line (kept verbatim, opening quote included) and its body
