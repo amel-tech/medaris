@@ -52,9 +52,9 @@ export default [
         "error",
         {
           enforceBuildableLibDependency: true,
-          // No escape hatches beyond the two below. MDRS-13's AC allows an
+          // No escape hatches beyond the three below. MDRS-13's AC allows an
           // exception only when it is documented inline with its removal
-          // condition (ADR-001 §D5), so both carry one.
+          // condition (ADR-001 §D5), so each carries one.
           //
           // MDRS-20: the two workspace-root Vitest base configs, which each
           // project's own vitest config `mergeConfig`s. They are test-runner

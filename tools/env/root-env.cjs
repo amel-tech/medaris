@@ -78,13 +78,28 @@ function findRepoRoot(from = __dirname) {
  *   KEY=unq # note      -> unq         a comment needs whitespace before the #
  *   KEY=a#b             -> a#b         so this is a value, not a comment
  *   KEY="esc\"inside"   -> esc"inside  \" does not close the value
+ *   KEY="ends\\"        -> ends\       \\ is one backslash inside double quotes
+ *   KEY='a\\b'          -> a\\b        but stays two inside single quotes
  *   KEY="line1\nline2"  -> line1\nline2  literal, NOT a newline
+ *   KEY= # note         -> # note      an empty value keeps its "comment"
  *
- * That last row is the one to leave alone. dotenv expands `\n` inside double
+ * The `\n` row is the one to leave alone. dotenv expands `\n` inside double
  * quotes and compose does not; expanding it here would rebuild the divergence
  * for anyone passing a PEM through API__DB_CA_CERT. dotenv also truncates
  * unquoted values at the first `#` whatever precedes it, which is why this is
  * documented as compose parity and not dotenv parity.
+ *
+ * Only `\"` and `\\` are escapes inside double quotes, and only `\'` inside
+ * single quotes; every other backslash is literal. This matches compose, and
+ * it is why a value ending in a backslash must be written `"ends\\"`.
+ *
+ * Multi-line quoted values are NOT supported. The file is split on newlines
+ * before any quote is read, so a PEM spread over several lines yields an
+ * unterminated first line (kept verbatim, opening quote included) and its body
+ * lines are parsed as their own keys. Compose reads the same lines as one
+ * value, so a multi-line PEM is one file meaning two things. Pass a PEM as a
+ * single line instead, with `\n` between the rows, and let the consumer expand
+ * it — API__DB_CA_CERT already documents that shape.
  */
 function parseEnv(text) {
   const entries = [];
@@ -101,11 +116,18 @@ function parseEnv(text) {
     if (quote === '"' || quote === "'") {
       // Walk to the closing quote so a `\"` inside the value does not end it,
       // and so a trailing comment after it is discarded rather than kept.
+      // `\\` must be consumed as a pair (double quotes only — compose keeps
+      // both characters inside single quotes), otherwise `"ends\\"` reads the
+      // second backslash as escaping the closing quote, runs off the end of the
+      // line, and hands the value back with its quotes still on.
       let i = 1;
       let body = "";
       for (; i < rest.length; i++) {
         if (rest[i] === "\\" && rest[i + 1] === quote) {
           body += quote;
+          i++;
+        } else if (quote === '"' && rest[i] === "\\" && rest[i + 1] === "\\") {
+          body += "\\";
           i++;
         } else if (rest[i] === quote) {
           break;

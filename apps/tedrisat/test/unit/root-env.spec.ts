@@ -34,6 +34,22 @@ const COMPOSE_PARITY: ReadonlyArray<readonly [string, string, string]> = [
   // reader and not the other.
   ["G", 'G="line1\\nline2"', "line1\\nline2"],
   ["H", 'H="esc\\"inside"', 'esc"inside'],
+  // Backslashes. Inside double quotes `\\` is one backslash, so a value that
+  // ends in one must be written `"ends\\"` — and must not be read as escaping
+  // the closing quote, which would hand the value back with its quotes on.
+  ["I", 'I="ends\\\\"', "ends\\"],
+  ["L", 'L="a\\\\\\"b"', 'a\\"b'],
+  ["O", 'O="a\\\\nb"', "a\\nb"],
+  ["P", 'P="tail\\\\" # note', "tail\\"],
+  // Inside single quotes only `\'` is an escape; `\\` and `\"` stay literal.
+  ["M", "M='a\\\\b'", "a\\\\b"],
+  ["N", "N='it\\'s'", "it's"],
+  ["Q", "Q='sq\\\"dq'", 'sq\\"dq'],
+  // An empty value followed by a comment is not empty to compose: with nothing
+  // before the `#` there is no whitespace-preceded comment to strip, so the
+  // text is the value. Pinned so nobody "fixes" it into a divergence.
+  ["J", "J= # note", "# note"],
+  ["K", "K=#novalue", "#novalue"],
 ];
 
 describe("root-env parseEnv", () => {
@@ -62,6 +78,18 @@ describe("root-env parseEnv", () => {
     // Silently dropping the rest would turn a typo into a plausible-looking
     // credential, which is the failure mode this whole spec exists for.
     expect(rootEnv.parseEnv('K="oops')).toEqual([{ key: "K", value: '"oops' }]);
+  });
+
+  it("does not join a quoted value that spans several lines", () => {
+    // Documented limitation, not a feature: the file is split on newlines
+    // before any quote is read, so the first line stays unterminated (kept
+    // verbatim) and the body lines become their own keys. A PEM must be one
+    // `\n`-escaped line. Pinned so a change here is a deliberate one.
+    const entries = rootEnv.parseEnv(
+      'PEM="-----BEGIN-----\nabc=\n-----END-----"'
+    );
+    expect(entries[0]).toEqual({ key: "PEM", value: '"-----BEGIN-----' });
+    expect(entries).toHaveLength(2);
   });
 
   it("ignores comments and blank lines", () => {
