@@ -1,17 +1,25 @@
 import "@tanstack/react-table";
+import type { CellData, RowData, TableFeatures } from "@tanstack/react-table";
 
 declare module "@tanstack/react-table" {
-  interface TableMeta<TData extends Record<string, any>> {
+  interface TableMeta<
+    in out TFeatures extends TableFeatures,
+    in out TData extends RowData,
+  > {
     updateData: (rowIndex: number, columnId: string, value: unknown) => void;
     onRowClick?: (row: TData) => void;
     onRowDelete?: (id: string) => Promise<boolean> | void;
     loadingCells?: Set<string>;
   }
-  interface ColumnMeta<TData, TValue> {
+  interface ColumnMeta<
+    in out TFeatures extends TableFeatures,
+    in out TData extends RowData,
+    TValue extends CellData = CellData,
+  > {
     inputType?: "input" | "select" | "textarea";
     options?: Array<{ value: string; label: string }>;
     optionsProvider?: (
-      data: TData[],
+      data: readonly TData[],
       rowIndex: number
     ) => Array<{ value: string; label: string }>;
     placeholder?: string;

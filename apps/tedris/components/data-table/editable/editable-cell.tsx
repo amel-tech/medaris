@@ -1,11 +1,17 @@
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type { CellContext } from "@tanstack/react-table";
+import type {
+  LegacyColumnDef as ColumnDef,
+  LegacyFeatures,
+} from "@tanstack/react-table/legacy";
 import React from "react";
 
 import { EditableInput } from "./editable-input";
 import { EditableSelect } from "./editable-select";
 import { EditableTextarea } from "./editable-textarea";
 
-export function EditableCell<TData>(props: CellContext<TData, unknown>) {
+export function EditableCell<TData extends Record<string, any>>(
+  props: CellContext<LegacyFeatures, TData, unknown>
+) {
   const {
     getValue,
     row: { index },
@@ -95,7 +101,9 @@ export function EditableCell<TData>(props: CellContext<TData, unknown>) {
   }
 }
 
-export function createDefaultColumn<TData>(): Partial<ColumnDef<TData>> {
+export function createDefaultColumn<
+  TData extends Record<string, any>,
+>(): Partial<ColumnDef<TData>> {
   return {
     cell: (props) => <EditableCell {...props} />,
   };
