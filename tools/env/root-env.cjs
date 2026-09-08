@@ -136,7 +136,16 @@ function parseEnv(text) {
         }
       }
       // Unterminated: treat the whole remainder as the value rather than
-      // silently truncating at end-of-line.
+      // silently truncating at end-of-line — but not silently. Either wrong
+      // value is a plausible-looking credential that only surfaces later as
+      // an opaque `invalid_client`, so leave a breadcrumb that names the key.
+      if (i === rest.length) {
+        console.warn(
+          `[env] ${line.slice(0, eq).trim()} opens with ${quote} and never ` +
+            `closes it; the opening quote is part of the value. Close the ` +
+            `quote or drop both.`
+        );
+      }
       value = i === rest.length ? rest : body;
     } else {
       value = rest.replace(/\s+#.*$/, "").trim();

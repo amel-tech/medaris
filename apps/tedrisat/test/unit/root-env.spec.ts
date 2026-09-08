@@ -1,11 +1,13 @@
 /**
  * tools/env/root-env.cjs — the workspace env loader (MDRS-71).
  *
- * The spec lives here, not next to the loader, for the reason cors.config.spec.ts
- * does: `tools/` is not an Nx project and has no test target, and this app's suite
- * is the one that already runs specs for shared code. The loader has six call
- * sites — the four next.config.js files and both load-env.ts — and had no coverage
- * at all before this.
+ * The spec lives here, not next to the loader: `tools/` is not an Nx project and
+ * has no test target, and the loader has six call sites — the four next.config.js
+ * files and both load-env.ts — with no coverage at all before this, so it runs in
+ * the suite closest to it. Unlike cors.config.spec.ts, which reaches libs/common
+ * by the package specifier `@medaris/common`, there is no specifier for `tools/`,
+ * so this import needs the `allow` entry in eslint.config.mjs — see its inline
+ * removal condition (MDRS-66).
  *
  * COMPOSE_PARITY is the contract. Every expectation in it was measured against
  * `docker compose config` reading the same lines out of a real .env, because
@@ -76,8 +78,18 @@ describe("root-env parseEnv", () => {
 
   it("keeps an unterminated quote rather than truncating at end of line", () => {
     // Silently dropping the rest would turn a typo into a plausible-looking
-    // credential, which is the failure mode this whole spec exists for.
-    expect(rootEnv.parseEnv('K="oops')).toEqual([{ key: "K", value: '"oops' }]);
+    // credential, which is the failure mode this whole spec exists for. The
+    // kept value is wrong too, so the parser has to say so and name the key.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      expect(rootEnv.parseEnv('K="oops')).toEqual([
+        { key: "K", value: '"oops' },
+      ]);
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0][0]).toMatch(/^\[env\] K opens with "/);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("does not join a quoted value that spans several lines", () => {
@@ -85,11 +97,18 @@ describe("root-env parseEnv", () => {
     // before any quote is read, so the first line stays unterminated (kept
     // verbatim) and the body lines become their own keys. A PEM must be one
     // `\n`-escaped line. Pinned so a change here is a deliberate one.
-    const entries = rootEnv.parseEnv(
-      'PEM="-----BEGIN-----\nabc=\n-----END-----"'
-    );
-    expect(entries[0]).toEqual({ key: "PEM", value: '"-----BEGIN-----' });
-    expect(entries).toHaveLength(2);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const entries = rootEnv.parseEnv(
+        'PEM="-----BEGIN-----\nabc=\n-----END-----"'
+      );
+      expect(entries[0]).toEqual({ key: "PEM", value: '"-----BEGIN-----' });
+      expect(entries).toHaveLength(2);
+      // The unterminated first line is the one that warns.
+      expect(warn).toHaveBeenCalledTimes(1);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("ignores comments and blank lines", () => {
