@@ -63,7 +63,60 @@ function findRepoRoot(from = __dirname) {
   }
 }
 
-/** Parse KEY=VALUE lines, dropping comments and blank lines. */
+/**
+ * Parse KEY=VALUE lines, dropping comments and blank lines.
+ *
+ * The rules below are Docker Compose's, measured against `docker compose config`
+ * rather than taken from documentation, because compose reads this same file for
+ * the `${...}` interpolation in docker-compose.yml. It is the one reader whose
+ * behaviour cannot be changed here, so any disagreement means one file meaning
+ * two different things — which is what MDRS-25 exists to prevent.
+ *
+ *   KEY="quoted"        -> quoted      a matched quote pair is removed
+ *   KEY='single'        -> single      single quotes too
+ *   KEY="q" # note      -> q           anything after the closing quote is dropped
+ *   KEY=unq # note      -> unq         a comment needs whitespace before the #
+ *   KEY=a#b             -> a#b         so this is a value, not a comment
+ *   KEY="esc\"inside"   -> esc"inside  \" does not close the value
+ *   KEY="ends\\"        -> ends\       \\ is one backslash inside double quotes
+ *   KEY='a\\b'          -> a\\b        but stays two inside single quotes
+ *   KEY='ends\\'        -> ends\\      and still never escapes the closing quote
+ *   KEY='a\'            -> (unterminated: \' is an escape) — compose refuses
+ *                                       the whole file on this line
+ *   KEY="line1\nline2"  -> line1\nline2  literal, NOT a newline
+ *   KEY= # note         -> # note      an empty value keeps its "comment"
+ *
+ * The `\n` row is the one to leave alone. dotenv expands `\n` inside double
+ * quotes and compose does not; expanding it here would rebuild the divergence
+ * for anyone passing a PEM through API__DB_CA_CERT. dotenv also truncates
+ * unquoted values at the first `#` whatever precedes it, which is why this is
+ * documented as compose parity and not dotenv parity.
+ *
+ * Only `\"` and `\\` are escapes inside double quotes, and only `\'` inside
+ * single quotes; every other backslash is literal. This matches compose, and
+ * it is why a value ending in a backslash must be written `"ends\\"`.
+ *
+ * `$` is the one place this parser knowingly does NOT match compose:
+ *
+ *   KEY=p$ss            -> p$ss        here; compose substitutes `$ss` -> `p`
+ *   KEY="p${X}q"        -> p${X}q      here; compose substitutes -> `pabcq`
+ *   KEY='p$ss'          -> p$ss        both readers, single quotes suppress it
+ *
+ * Compose expands `${NAME}` and bare `$NAME` inside .env values, from earlier
+ * lines and the ambient environment, and treats `$$` as a literal `$`. This
+ * parser performs no substitution, so a generated password containing a `$`
+ * is literal to `pnpm dev` and shortened by `docker compose`. The remedy is
+ * to single-quote any value that contains a `$`: compose leaves it alone and
+ * the quotes are stripped here. Full substitution parity is a separate change.
+ *
+ * Multi-line quoted values are NOT supported. The file is split on newlines
+ * before any quote is read, so a PEM spread over several lines yields an
+ * unterminated first line (kept verbatim, opening quote included) and its body
+ * lines are parsed as their own keys. Compose reads the same lines as one
+ * value, so a multi-line PEM is one file meaning two things. Pass a PEM as a
+ * single line instead, with `\n` between the rows, and let the consumer expand
+ * it — API__DB_CA_CERT already documents that shape.
+ */
 function parseEnv(text) {
   const entries = [];
   for (const raw of text.split("\n")) {
@@ -72,12 +125,62 @@ function parseEnv(text) {
     const eq = line.indexOf("=");
     if (eq === -1) continue;
 
-    let value = line.slice(eq + 1);
-    // dotenv drops an unquoted trailing comment; match that, or the same line
-    // would mean one thing here and another to every other reader of the file.
-    if (!/^\s*["']/.test(value)) value = value.replace(/\s+#.*$/, "");
+    const rest = line.slice(eq + 1).trim();
+    const quote = rest[0];
+    let value;
 
-    entries.push({ key: line.slice(0, eq).trim(), value: value.trim() });
+    if (quote === '"' || quote === "'") {
+      // Walk to the closing quote so a `\"` inside the value does not end it,
+      // and so a trailing comment after it is discarded rather than kept.
+      // A `\\` pair is consumed as a pair under both quote characters, so it
+      // can never escape the closing quote — otherwise `"ends\\"` reads the
+      // second backslash as escaping the quote, runs off the end of the line,
+      // and hands the value back with its quotes still on. What the pair is
+      // worth differs: one backslash inside double quotes, both inside single
+      // quotes (measured, rows I and V of the spec).
+      let i = 1;
+      let body = "";
+      for (; i < rest.length; i++) {
+        if (rest[i] === "\\" && rest[i + 1] === "\\") {
+          body += quote === '"' ? "\\" : "\\\\";
+          i++;
+        } else if (rest[i] === "\\" && rest[i + 1] === quote) {
+          body += quote;
+          i++;
+        } else if (rest[i] === quote) {
+          break;
+        } else {
+          body += rest[i];
+        }
+      }
+      // Unterminated: treat the whole remainder as the value rather than
+      // silently truncating at end-of-line — but not silently. Either wrong
+      // value is a plausible-looking credential that only surfaces later as
+      // an opaque `invalid_client`, so leave a breadcrumb that names the key.
+      if (i === rest.length) {
+        console.warn(
+          `[env] ${line.slice(0, eq).trim()} opens with ${quote} and never ` +
+            `closes it; the opening quote is part of the value. Close the ` +
+            `quote or drop both.`
+        );
+      }
+      value = i === rest.length ? rest : body;
+    } else {
+      value = rest.replace(/\s+#.*$/, "").trim();
+      // `KEY= # note` is `# note` to compose (nothing precedes the `#`, so
+      // there is no whitespace-preceded comment to strip). Parity is kept, but
+      // a value that is really a comment is another plausible-looking wrong
+      // credential, so say so rather than let `||`-style defaults stay silent.
+      if (/^\s+#/.test(line.slice(eq + 1))) {
+        console.warn(
+          `[env] ${line.slice(0, eq).trim()} has a comment where its value ` +
+            `should be, and the comment IS the value. Put the note on its ` +
+            `own line above, and leave the value empty or set it.`
+        );
+      }
+    }
+
+    entries.push({ key: line.slice(0, eq).trim(), value });
   }
   return entries;
 }
