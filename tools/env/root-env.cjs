@@ -80,6 +80,9 @@ function findRepoRoot(from = __dirname) {
  *   KEY="esc\"inside"   -> esc"inside  \" does not close the value
  *   KEY="ends\\"        -> ends\       \\ is one backslash inside double quotes
  *   KEY='a\\b'          -> a\\b        but stays two inside single quotes
+ *   KEY='ends\\'        -> ends\\      and still never escapes the closing quote
+ *   KEY='a\'            -> (unterminated: \' is an escape) — compose refuses
+ *                                       the whole file on this line
  *   KEY="line1\nline2"  -> line1\nline2  literal, NOT a newline
  *   KEY= # note         -> # note      an empty value keeps its "comment"
  *
@@ -129,18 +132,20 @@ function parseEnv(text) {
     if (quote === '"' || quote === "'") {
       // Walk to the closing quote so a `\"` inside the value does not end it,
       // and so a trailing comment after it is discarded rather than kept.
-      // `\\` must be consumed as a pair (double quotes only — compose keeps
-      // both characters inside single quotes), otherwise `"ends\\"` reads the
-      // second backslash as escaping the closing quote, runs off the end of the
-      // line, and hands the value back with its quotes still on.
+      // A `\\` pair is consumed as a pair under both quote characters, so it
+      // can never escape the closing quote — otherwise `"ends\\"` reads the
+      // second backslash as escaping the quote, runs off the end of the line,
+      // and hands the value back with its quotes still on. What the pair is
+      // worth differs: one backslash inside double quotes, both inside single
+      // quotes (measured, rows I and V of the spec).
       let i = 1;
       let body = "";
       for (; i < rest.length; i++) {
-        if (rest[i] === "\\" && rest[i + 1] === quote) {
-          body += quote;
+        if (rest[i] === "\\" && rest[i + 1] === "\\") {
+          body += quote === '"' ? "\\" : "\\\\";
           i++;
-        } else if (quote === '"' && rest[i] === "\\" && rest[i + 1] === "\\") {
-          body += "\\";
+        } else if (rest[i] === "\\" && rest[i + 1] === quote) {
+          body += quote;
           i++;
         } else if (rest[i] === quote) {
           break;
@@ -162,6 +167,17 @@ function parseEnv(text) {
       value = i === rest.length ? rest : body;
     } else {
       value = rest.replace(/\s+#.*$/, "").trim();
+      // `KEY= # note` is `# note` to compose (nothing precedes the `#`, so
+      // there is no whitespace-preceded comment to strip). Parity is kept, but
+      // a value that is really a comment is another plausible-looking wrong
+      // credential, so say so rather than let `||`-style defaults stay silent.
+      if (/^\s+#/.test(line.slice(eq + 1))) {
+        console.warn(
+          `[env] ${line.slice(0, eq).trim()} has a comment where its value ` +
+            `should be, and the comment IS the value. Put the note on its ` +
+            `own line above, and leave the value empty or set it.`
+        );
+      }
     }
 
     entries.push({ key: line.slice(0, eq).trim(), value });

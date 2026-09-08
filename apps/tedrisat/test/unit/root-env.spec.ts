@@ -6,44 +6,34 @@
  * files and both load-env.ts — with no coverage at all before this, so it runs in
  * the suite closest to it.
  *
- * The loader is reached the way all six call sites reach it: walk up to
- * pnpm-workspace.yaml and require the computed path. A relative specifier that
- * leaves the project would need an `allow` entry in eslint.config.mjs, and the
- * next.config.js files state why that is the wrong shape — the boundary rule
- * rejects it, "and it is right to". MDRS-66 replaces this with `@medaris/env`.
+ * The loader is reached by a computed path, never a relative specifier: one
+ * that leaves the project would need an `allow` entry in eslint.config.mjs,
+ * and the next.config.js files state why that is the wrong shape — the
+ * boundary rule rejects it, "and it is right to". MDRS-66 replaces this with
+ * `@medaris/env`.
  *
  * COMPOSE_PARITY is the contract. Every expectation in it was measured against
  * `docker compose config` reading the same lines out of a real .env, because
  * compose interpolates this file for docker-compose.yml and is therefore the
  * reader that decides what a line means. Re-measure before changing a row.
  */
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-
-// Bootstrap copy of `findRepoRoot` from tools/env/root-env.cjs:56-64, kept
-// verbatim — same marker, same `null` on not-found — because the loader cannot
-// be required before it has been located. Change both together. Remove with
-// MDRS-66, when `@medaris/env` lets this spec import the loader by specifier.
-function findRepoRoot(from = __dirname) {
-  let dir = resolve(from);
-  for (;;) {
-    if (existsSync(join(dir, "pnpm-workspace.yaml"))) return dir;
-    const parent = dirname(dir);
-    if (parent === dir) return null;
-    dir = parent;
-  }
-}
-
-const repoRoot = findRepoRoot();
-if (repoRoot === null) {
-  throw new Error(`no pnpm-workspace.yaml above ${__dirname}`);
-}
+import { join, resolve } from "node:path";
 
 // `require`, not `import`: the loader is .cjs on purpose — next.config.js is ESM
 // and the Nest apps compile to CommonJS, and one .cjs module is the only shape
 // both consume without a second copy of the rules.
-const rootEnv = require(join(repoRoot, "tools", "env", "root-env.cjs"));
+//
+// The path is computed rather than written as a relative specifier, so the
+// boundary rule never sees an import leaving the project — the next.config.js
+// files state why an `allow` entry would be the wrong shape. Computing it from
+// this file's own position also avoids a second copy of the loader's
+// `findRepoRoot`, which is already duplicated across both load-env.ts files and
+// all four next.config.js. MDRS-66 replaces this with `@medaris/env`.
+const rootEnv = require(
+  resolve(__dirname, "../../../../tools/env/root-env.cjs")
+);
 
 /** line in the file -> the value docker compose resolves it to */
 const COMPOSE_PARITY: ReadonlyArray<readonly [string, string, string]> = [
@@ -69,6 +59,10 @@ const COMPOSE_PARITY: ReadonlyArray<readonly [string, string, string]> = [
   ["M", "M='a\\\\b'", "a\\\\b"],
   ["N", "N='it\\'s'", "it's"],
   ["Q", "Q='sq\\\"dq'", 'sq\\"dq'],
+  // A `\\` pair before the closing single quote still closes the value and
+  // keeps both characters. (A lone `\'` at the end is unterminated, and compose
+  // refuses the whole file on it, so there is nothing to agree on there.)
+  ["V", "V='ends\\\\'", "ends\\\\"],
   // An empty value followed by a comment is not empty to compose: with nothing
   // before the `#` there is no whitespace-preceded comment to strip, so the
   // text is the value. Pinned so nobody "fixes" it into a divergence.
@@ -97,9 +91,36 @@ describe("root-env parseEnv", () => {
   it.each(
     COMPOSE_PARITY
   )("%s: %s agrees with docker compose", (key, line, expected) => {
-    const entries = rootEnv.parseEnv(line);
-    expect(entries).toHaveLength(1);
-    expect(entries[0]).toEqual({ key, value: expected });
+    // Row J warns by design (see below); keep that out of the test output.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const entries = rootEnv.parseEnv(line);
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toEqual({ key, value: expected });
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("warns when an empty value's comment becomes the value", () => {
+    // `J= # note` is `# note` to compose, and parity is kept — but that is a
+    // plausible-looking credential handed to `process.env.X || default`, so
+    // the parser names the key instead of staying silent.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      expect(rootEnv.parseEnv("J= # note")).toEqual([
+        { key: "J", value: "# note" },
+      ]);
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0][0]).toMatch(/^\[env\] J has a comment where/);
+      // A value that starts with or contains `#` with no whitespace after the
+      // `=` is a value to compose and to this parser alike, and does not warn.
+      warn.mockClear();
+      rootEnv.parseEnv("K=#novalue\nF=a#b");
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("parses the whole file the same way it parses each line alone", () => {
