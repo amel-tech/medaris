@@ -27,8 +27,12 @@ const FORMULA_TRIGGERS = /^[=+\-@\t\r]/;
  * route to `=HYPERLINK(...)` exfiltration or DDE execution.
  *
  * Prefixing a single quote is the escape both applications understand: the
- * cell is forced to text, and the quote is not part of the displayed value, so
- * the card stays readable. Only strings are touched — numbers and dates pass
+ * cell is forced to text. When a person types that quote directly into the
+ * grid it becomes Excel's `quotePrefix` cell attribute — hidden, not part of
+ * the displayed value — but exceljs writes a plain string here, so the quote
+ * is literal text in the file and visible when it's opened. {@link
+ * denormalizeFormula} strips it back out on import, so the round trip through
+ * `parseSheet` is exact. Only strings are touched — numbers and dates pass
  * through untouched so spreadsheet arithmetic still works on them.
  *
  * Pure by design, and exported, so it can be asserted on directly.
@@ -36,6 +40,21 @@ const FORMULA_TRIGGERS = /^[=+\-@\t\r]/;
 export function neutralizeFormula<T>(value: T): T | string {
   if (typeof value !== "string") return value;
   return FORMULA_TRIGGERS.test(value) ? `'${value}` : value;
+}
+
+/**
+ * MDRS-36. The inverse of {@link neutralizeFormula}, applied in `parseSheet`.
+ *
+ * Without this, the escape doesn't round-trip: a legitimate card that starts
+ * with `-` or `+` (a suffix drill, say) comes back from import with a
+ * permanent leading `'` baked into its stored content, and a card already at
+ * a field's length bound gets pushed over it by the extra character. Strips
+ * at most one leading apostrophe, so a card whose author actually typed one
+ * keeps every apostrophe past the first.
+ */
+export function denormalizeFormula<T>(value: T): T | string {
+  if (typeof value !== "string" || !value.startsWith("'")) return value;
+  return value.slice(1);
 }
 
 @Injectable()
@@ -219,6 +238,7 @@ export class ExcelService {
         if (value !== null && value !== undefined && value !== "") {
           hasData = true;
 
+          value = denormalizeFormula(value);
           if (columnConfig.transform) {
             value = columnConfig.transform(value);
           }

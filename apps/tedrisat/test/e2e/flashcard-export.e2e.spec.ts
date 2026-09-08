@@ -16,7 +16,8 @@ import { TestDatabaseUtils } from "../helpers/test-database.helper";
  * These assertions are on the response body — the bytes a browser saves — not
  * on the escaping helper, which `test/unit/neutralize-formula.spec.ts` covers
  * separately. Drop the `neutralizeFormula` call in `ExcelService.exportData`
- * and this suite goes red.
+ * and the escape tests below go red; drop the matching `denormalizeFormula`
+ * call in `parseSheet` and the round-trip tests go red instead.
  */
 
 const HYPERLINK = '=HYPERLINK("http://evil","click")';
@@ -55,11 +56,13 @@ describe("Flashcard deck export (e2e)", () => {
 
   /**
    * supertest parses an unknown content type into `res.body` as a Buffer only
-   * when told to buffer, so the csv body is collected by hand here.
+   * when told to buffer, so the response is collected by hand here — for
+   * both formats, so a fix to this collection (an error path, a size guard,
+   * an encoding) can't miss one of them.
    */
-  const exportCsv = async () => {
+  const exportDeck = async (format: "csv" | "xlsx") => {
     const response = await request(app.getHttpServer())
-      .get(`/flashcard/decks/${deckId}/cards/bulk/export?format=csv`)
+      .get(`/flashcard/decks/${deckId}/cards/bulk/export?format=${format}`)
       .buffer(true)
       .parse((res, callback) => {
         const chunks: Buffer[] = [];
@@ -68,8 +71,10 @@ describe("Flashcard deck export (e2e)", () => {
       });
 
     expect(response.status).toBe(200);
-    return (response.body as Buffer).toString("utf8");
+    return response.body as Buffer;
   };
+
+  const exportCsv = async () => (await exportDeck("csv")).toString("utf8");
 
   it("escapes a formula card in the downloaded csv bytes", async () => {
     await addCard(HYPERLINK, "back");
@@ -106,29 +111,38 @@ describe("Flashcard deck export (e2e)", () => {
     expect(csv).not.toContain("'hello");
   });
 
-  it("stores the escaped value as a string cell in the xlsx branch", async () => {
+  it("stores the escaped value as a string cell in the xlsx branch, and round-trips it intact", async () => {
     await addCard(HYPERLINK, "back");
 
-    const response = await request(app.getHttpServer())
-      .get(`/flashcard/decks/${deckId}/cards/bulk/export?format=xlsx`)
-      .buffer(true)
-      .parse((res, callback) => {
-        const chunks: Buffer[] = [];
-        res.on("data", (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
-        res.on("end", () => callback(null, Buffer.concat(chunks)));
-      });
-
-    expect(response.status).toBe(200);
-
+    const xlsx = await exportDeck("xlsx");
     const [row] = await app
       .get(ExcelService)
-      .parseFile(response.body as Buffer, FLASHCARD_EXCEL_CONFIG, "xlsx");
+      .parseFile(xlsx, FLASHCARD_EXCEL_CONFIG, "xlsx");
 
-    // The finding recorded for the PR: exceljs stores a JS string as a shared
-    // string, never as a formula, so the xlsx branch was never the live vector
-    // and escaping it is defence in depth. A formula cell would read back as a
-    // `{ formula, result }` object rather than the plain string asserted here.
-    expect(row.contentFront).toBe(`'${HYPERLINK}`);
+    // Two things at once. First, the finding recorded for the PR: exceljs
+    // stores a JS string as a shared string, never as a formula, so the xlsx
+    // branch was never the live vector and escaping it is defence in depth —
+    // a formula cell would read back as a `{ formula, result }` object, which
+    // would already fail this typeof check before the value check runs.
+    // Second, `denormalizeFormula` strips the escape back out in `parseSheet`,
+    // so the card's own content — not the escaped form — is what a re-import
+    // sees.
     expect(typeof row.contentFront).toBe("string");
+    expect(row.contentFront).toBe(HYPERLINK);
+  });
+
+  it("round-trips a legitimate card that starts with a trigger character", async () => {
+    // Before parseSheet had an inverse for the export-side escape, this came
+    // back permanently prefixed — "'-ler" — on every export/import cycle, a
+    // real risk for vocabulary/morphology decks where a card legitimately
+    // starts with "-" or "+" (a suffix drill, here).
+    await addCard("-ler", "plural suffix");
+
+    const xlsx = await exportDeck("xlsx");
+    const [row] = await app
+      .get(ExcelService)
+      .parseFile(xlsx, FLASHCARD_EXCEL_CONFIG, "xlsx");
+
+    expect(row.contentFront).toBe("-ler");
   });
 });
