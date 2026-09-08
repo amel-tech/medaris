@@ -7,7 +7,7 @@ import {
 } from "@medaris/ui/components/select";
 import { Skeleton } from "@medaris/ui/components/skeleton";
 import { cn } from "@medaris/ui/lib/utils";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 import type React from "react";
 
 export const EditableSelect: React.FC<{
@@ -59,14 +59,14 @@ export const EditableSelect: React.FC<{
   );
 };
 
-export function createSelectColumn<TData>(
+export function createSelectColumn<TData extends Record<string, any>>(
   accessorKey: keyof TData,
   columnDef: ColumnDef<TData>,
   options: {
     value: keyof TData;
     options?: Array<{ value: string; label: string }>;
     optionsProvider?: (
-      data: TData[],
+      data: readonly TData[],
       rowIndex: number
     ) => Array<{ value: string; label: string }>;
     placeholder?: string;

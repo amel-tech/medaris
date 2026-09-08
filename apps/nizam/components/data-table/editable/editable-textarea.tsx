@@ -1,7 +1,7 @@
 import { Skeleton } from "@medaris/ui/components/skeleton";
 import { Textarea } from "@medaris/ui/components/textarea";
 import { cn } from "@medaris/ui/lib/utils";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 import type React from "react";
 
 export const EditableTextarea: React.FC<{
@@ -40,7 +40,7 @@ export const EditableTextarea: React.FC<{
   );
 };
 
-export function createTextareaColumn<TData>(
+export function createTextareaColumn<TData extends Record<string, any>>(
   accessorKey: keyof TData,
   columnDef: ColumnDef<TData>,
   options?: {

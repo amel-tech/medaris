@@ -8,17 +8,17 @@ import {
   TableHeader,
   TableRow,
 } from "@medaris/ui/components/table";
+import { flexRender } from "@tanstack/react-table";
 import {
-  type ColumnDef,
-  flexRender,
+  type LegacyColumnDef as ColumnDef,
   getCoreRowModel,
-  type TableOptions,
-  useReactTable,
-} from "@tanstack/react-table";
+  type LegacyTableOptions as TableOptions,
+  useLegacyTable as useReactTable,
+} from "@tanstack/react-table/legacy";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
-export interface DataTableProps<TData, TValue> {
+export interface DataTableProps<TData extends Record<string, any>, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   defaultColumn?: Partial<ColumnDef<TData, TValue>>;
@@ -28,7 +28,7 @@ export interface DataTableProps<TData, TValue> {
   options?: TableOptions<TData>;
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends Record<string, any>, TValue>({
   columns,
   data,
   defaultColumn,
@@ -89,7 +89,9 @@ export function DataTable<TData, TValue>({
 
   const table = useReactTable({
     data: tableData,
-    columns,
+    // v9's per-column TValue is checked contravariantly; a heterogeneous
+    // ColumnDef<TData, TValue>[] must be widened before it reaches the table.
+    columns: columns as unknown as ColumnDef<TData, unknown>[],
     getCoreRowModel: getCoreRowModel(),
     defaultColumn: (defaultColumn as Partial<ColumnDef<TData, unknown>>) || {
       size: 200,
