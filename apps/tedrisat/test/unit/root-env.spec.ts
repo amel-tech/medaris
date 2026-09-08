@@ -89,6 +89,7 @@ const COMPOSE_PARITY: ReadonlyArray<readonly [string, string, string]> = [
  */
 const NO_SUBSTITUTION: ReadonlyArray<readonly [string, string, string]> = [
   ["R", "R=p$ss", "p$ss"],
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: this is a literal .env line, and `${X}` staying literal is the point
   ["S", 'S="p${X}q"', "p${X}q"],
 ];
 
