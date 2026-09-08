@@ -146,11 +146,13 @@ catalog:
   '@opentelemetry/semantic-conventions': ^1.36.0
 
   # ═══ Backend build / test tooling ═══
+  # ts-node, ts-loader, tsconfig-paths and source-map-support were removed at
+  # MDRS-21: none is imported or `-r`-registered anywhere in either backend
+  # app, `nest build`/`nest start --watch` use tsc directly (no webpack
+  # builder), and ADR-001 D7 already rules out tsconfig `paths` aliases
+  # entirely. All four were dead weight carried over from the pre-merge repos
+  # and masked by .depcheckrc's ignore list.
   '@swc/cli': ^0.7.8
-  ts-node: ^10.9.2
-  ts-loader: ^9.5.2
-  tsconfig-paths: ^4.2.0
-  source-map-support: ^0.5.21
   rimraf: ^6.0.1
   supertest: ^7.0.0
   '@types/supertest': ^7.2.1 # MDRS-21: +1 major
