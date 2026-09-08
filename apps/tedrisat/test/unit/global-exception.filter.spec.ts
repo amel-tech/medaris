@@ -9,7 +9,8 @@ import {
   LoggerService,
   NotFoundException,
 } from "@nestjs/common";
-import { IsString, MaxLength } from "class-validator";
+import { Type } from "class-transformer";
+import { IsString, MaxLength, ValidateNested } from "class-validator";
 
 /**
  * MDRS-29 — the filter is the single place where a thrown value becomes an HTTP
@@ -238,4 +239,38 @@ describe("MedarisValidationPipe + GlobalExceptionFilter", () => {
     expect(res.body.context.errors[0]).toHaveProperty("constraints");
     expect(res.body.context.errors[0]).not.toHaveProperty("value");
   });
+
+  // MDRS-29 follow-up — a @ValidateNested failure carries no `constraints`
+  // of its own, only `children`; without flattening, the entry serialised to
+  // a bare `{ property: "child" }` and the client lost the constraint detail.
+  it("reports a dotted property path and constraints for a nested failure", async () => {
+    const pipe = new MedarisValidationPipe();
+    const logger = stubLogger();
+    const res = captureResponse();
+
+    let thrown: unknown;
+    try {
+      await pipe.transform(
+        { child: { password: SENTINEL } },
+        { type: "body", metatype: NestedSentinelDto }
+      );
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeDefined();
+    new GlobalExceptionFilter(logger).catch(thrown, res.host);
+
+    expect(JSON.stringify(res.body)).not.toContain(SENTINEL);
+    expect(res.body.context.errors[0]).toEqual({
+      property: "child.password",
+      constraints: expect.any(Object),
+    });
+  });
 });
+
+class NestedSentinelDto {
+  @ValidateNested()
+  @Type(() => SentinelDto)
+  child!: SentinelDto;
+}
