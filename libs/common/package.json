@@ -30,6 +30,7 @@
     "@nestjs/cache-manager": "catalog:",
     "@nestjs/common": "catalog:",
     "@nestjs/config": "catalog:",
+    "@nestjs/core": "catalog:",
     "@nestjs/swagger": "catalog:",
     "cache-manager": "catalog:",
     "class-transformer": "catalog:",
@@ -44,6 +45,7 @@
   },
   "devDependencies": {
     "@types/compression": "catalog:",
+    "@types/express": "catalog:",
     "@types/jsonwebtoken": "catalog:",
     "@types/multer": "catalog:",
     "@types/node": "catalog:",

@@ -980,6 +980,9 @@ importers:
       '@nestjs/config':
         specifier: 'catalog:'
         version: 4.0.4(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(rxjs@7.8.2)
+      '@nestjs/core':
+        specifier: 'catalog:'
+        version: 11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/swagger':
         specifier: 'catalog:'
         version: 11.4.6(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28)(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)
@@ -1017,6 +1020,9 @@ importers:
       '@types/compression':
         specifier: 'catalog:'
         version: 1.8.1
+      '@types/express':
+        specifier: 'catalog:'
+        version: 5.0.6
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.10

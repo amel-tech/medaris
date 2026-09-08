@@ -1,4 +1,5 @@
 export * from "./auth-guard";
+export * from "./authz";
 export * from "./bootstrap/setupMiddleware";
 export * from "./config";
 export * from "./dto/health-check.dto";

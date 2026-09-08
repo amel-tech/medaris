@@ -1,8 +1,9 @@
-import { AuthGuardModule, LoggerModule } from "@medaris/common";
+import { AuthGuardModule, AuthzModule, LoggerModule } from "@medaris/common";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
+import { AuthzBindingsModule } from "./authz/authz-bindings.module";
 import { configuration } from "./config";
 import { CourseModule } from "./course/course.module";
 import { DatabaseModule } from "./database/database.module";
@@ -23,6 +24,8 @@ import { KoskModule } from "./kosk/kosk.module";
     }),
     LoggerModule.forRoot(),
     AuthGuardModule,
+    AuthzModule,
+    AuthzBindingsModule,
     DatabaseModule,
     ExampleModule,
     FlashcardModule,
