@@ -45,7 +45,7 @@ Two prerequisites that look optional and are not:
 
 ESLint exists **only** to run `@nx/enforce-module-boundaries`. All formatting and linting belongs to Biome — do not add style rules to `eslint.config.mjs`.
 
-Boundaries **are enforced**. All 16 projects carry `tags` in their `project.json`, and `eslint.config.mjs` holds the real `depConstraints` from ADR-001 §D5. Two axes are enforced (`scope`, `platform`); `type:*` is documentary and carries no constraint. `allow` holds exactly three entries — the two workspace-root Vitest base configs, which the per-project configs can only reach by relative path, and the workspace env loader `tools/env/root-env.cjs`, which its spec can only reach the same way — and each carries its removal condition inline, which is the only form MDRS-13's AC permits. Adding a fourth without one is a regression.
+Boundaries **are enforced**. All 16 projects carry `tags` in their `project.json`, and `eslint.config.mjs` holds the real `depConstraints` from ADR-001 §D5. Two axes are enforced (`scope`, `platform`); `type:*` is documentary and carries no constraint. `allow` holds exactly two entries — the workspace-root Vitest base configs, which the per-project configs can only reach by relative path — and each carries its removal condition inline, which is the only form MDRS-13's AC permits. Adding a third without one is a regression.
 
 | Project | Tags |
 | -- | -- |

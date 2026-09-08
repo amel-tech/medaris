@@ -4,24 +4,39 @@
  * The spec lives here, not next to the loader: `tools/` is not an Nx project and
  * has no test target, and the loader has six call sites — the four next.config.js
  * files and both load-env.ts — with no coverage at all before this, so it runs in
- * the suite closest to it. Unlike cors.config.spec.ts, which reaches libs/common
- * by the package specifier `@medaris/common`, there is no specifier for `tools/`,
- * so this import needs the `allow` entry in eslint.config.mjs — see its inline
- * removal condition (MDRS-66).
+ * the suite closest to it.
+ *
+ * The loader is reached the way all six call sites reach it: walk up to
+ * pnpm-workspace.yaml and require the computed path. A relative specifier that
+ * leaves the project would need an `allow` entry in eslint.config.mjs, and the
+ * next.config.js files state why that is the wrong shape — the boundary rule
+ * rejects it, "and it is right to". MDRS-66 replaces this with `@medaris/env`.
  *
  * COMPOSE_PARITY is the contract. Every expectation in it was measured against
  * `docker compose config` reading the same lines out of a real .env, because
  * compose interpolates this file for docker-compose.yml and is therefore the
  * reader that decides what a line means. Re-measure before changing a row.
  */
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+
+function findRepoRoot(from: string): string {
+  let dir = resolve(from);
+  for (;;) {
+    if (existsSync(join(dir, "pnpm-workspace.yaml"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) throw new Error(`no pnpm-workspace.yaml above ${from}`);
+    dir = parent;
+  }
+}
 
 // `require`, not `import`: the loader is .cjs on purpose — next.config.js is ESM
 // and the Nest apps compile to CommonJS, and one .cjs module is the only shape
 // both consume without a second copy of the rules.
-const rootEnv = require("../../../../tools/env/root-env.cjs");
+const rootEnv = require(
+  join(findRepoRoot(__dirname), "tools", "env", "root-env.cjs")
+);
 
 /** line in the file -> the value docker compose resolves it to */
 const COMPOSE_PARITY: ReadonlyArray<readonly [string, string, string]> = [

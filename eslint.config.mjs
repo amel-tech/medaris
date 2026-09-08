@@ -52,9 +52,9 @@ export default [
         "error",
         {
           enforceBuildableLibDependency: true,
-          // No escape hatches beyond the three below. MDRS-13's AC allows an
+          // No escape hatches beyond the two below. MDRS-13's AC allows an
           // exception only when it is documented inline with its removal
-          // condition (ADR-001 §D5), so each carries one.
+          // condition (ADR-001 §D5), so both carry one.
           //
           // MDRS-20: the two workspace-root Vitest base configs, which each
           // project's own vitest config `mergeConfig`s. They are test-runner
@@ -67,18 +67,7 @@ export default [
           // per-project configs stop extending a shared base, or because the
           // base is published as a real workspace package with an `exports`
           // entry that the target-project locator can resolve.
-          //
-          // MDRS-71: the workspace env loader, reached by the spec that covers it.
-          // `tools/` is not an Nx project, so the loader is an external resource
-          // with no package specifier and only a relative path can name it — the
-          // same shape as the two Vitest configs above. Removal condition: drop
-          // this when MDRS-66 extracts the loader into a workspace package, at
-          // which point the spec imports `@medaris/env` and this entry is dead.
-          allow: [
-            "../../vitest.config",
-            "../../vitest.integration.config",
-            "../../../../tools/env/root-env.cjs",
-          ],
+          allow: ["../../vitest.config", "../../vitest.integration.config"],
           // Normative taxonomy: ADR-001 §D5. Two enforced axes (`scope`,
           // `platform`) plus a documentary `type` axis that carries no
           // constraints. Every matching constraint applies cumulatively, so a
