@@ -1,4 +1,4 @@
-import { AuthGuard, BULK_THROTTLE, ExcelService } from "@medaris/common";
+import { AuthGuard, ExcelService } from "@medaris/common";
 import {
   Body,
   Controller,
@@ -33,9 +33,11 @@ import {
   ApiOperation,
   ApiQuery,
   ApiTags,
+  ApiTooManyRequestsResponse,
   ApiUnprocessableEntityResponse,
 } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
+import { BULK_THROTTLE } from "../config/throttle-env";
 import {
   IncludeApiQuery,
   IncludeQuery,
@@ -226,7 +228,7 @@ export class FlashcardController {
   // every other endpoint: one workbook can be 5MB and is parsed row by row, and
   // an export streams a whole deck. `default` names the single throttler
   // registered in RateLimitModule — this overrides its limit for this handler
-  // only, it does not add a second one. See libs/common/src/throttler.
+  // only, it does not add a second one. See ../config/throttle-env.ts.
   // Post Bulk
   @ApiOperation({
     summary: "Bulk",
@@ -236,6 +238,9 @@ export class FlashcardController {
   @ApiBody({ type: [CreateFlashcardDto] })
   @ApiCreatedResponse({ type: BulkFlashcardResponse })
   @ApiUnprocessableEntityResponse({ type: BulkFlashcardErrorResponse })
+  @ApiTooManyRequestsResponse({
+    description: "Bulk rate limit exceeded — see the Retry-After header",
+  })
   @Throttle({ default: BULK_THROTTLE })
   @Post("decks/:deckId/cards/bulk")
   async bulk(
@@ -296,6 +301,9 @@ export class FlashcardController {
   })
   @ApiOkResponse({ type: StreamableFile })
   @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiTooManyRequestsResponse({
+    description: "Bulk rate limit exceeded — see the Retry-After header",
+  })
   @ApiQuery({
     name: "format",
     required: false,
@@ -330,6 +338,9 @@ export class FlashcardController {
   @ApiCreatedResponse({ type: BulkFlashcardResponse })
   @ApiNotFoundResponse({ description: "Deck not found" })
   @ApiUnprocessableEntityResponse({ type: BulkFlashcardErrorResponse })
+  @ApiTooManyRequestsResponse({
+    description: "Bulk rate limit exceeded — see the Retry-After header",
+  })
   @ApiConsumes("multipart/form-data")
   @ApiBody({
     schema: {

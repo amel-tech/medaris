@@ -109,6 +109,21 @@ services:
       # for 24 hours instead of one.
       KEYCLOAK_CACHE_TTL: ${TEDRISAT__KEYCLOAK_CACHE_TTL:-${API__KEYCLOAK_CACHE_TTL:-3600}}
       KEYCLOAK_NOT_FOUND_CACHE_TTL: ${TEDRISAT__KEYCLOAK_NOT_FOUND_CACHE_TTL:-${API__KEYCLOAK_NOT_FOUND_CACHE_TTL:-60}}
+      # MDRS-31. Left out of this block, an operator changing API__THROTTLE_*
+      # in response to abuse sees no effect: buildThrottlerOptions falls back
+      # to its compiled defaults (100/window, bulk 10) whenever the container
+      # does not receive these names, the same gap this file already documents
+      # for KEYCLOAK_CACHE_TTL above. THROTTLE_BULK_TTL is tedrisat-only —
+      # unset falls through to THROTTLE_TTL (apps/tedrisat/src/config/throttle-env.ts).
+      THROTTLE_TTL: ${TEDRISAT__THROTTLE_TTL:-${API__THROTTLE_TTL:-60000}}
+      THROTTLE_LIMIT: ${TEDRISAT__THROTTLE_LIMIT:-${API__THROTTLE_LIMIT:-100}}
+      THROTTLE_BULK_TTL: ${TEDRISAT__THROTTLE_BULK_TTL:-${API__THROTTLE_BULK_TTL:-}}
+      THROTTLE_BULK_LIMIT: ${TEDRISAT__THROTTLE_BULK_LIMIT:-${API__THROTTLE_BULK_LIMIT:-10}}
+      # 0 here matches this compose network having no reverse proxy in front —
+      # see .env.example and libs/common/src/config/trust-proxy.config.ts. Set
+      # TEDRISAT__TRUST_PROXY_HOPS / API__TRUST_PROXY_HOPS to 1 only for a
+      # topology that actually puts one proxy in front of this container.
+      TRUST_PROXY_HOPS: ${TEDRISAT__TRUST_PROXY_HOPS:-${API__TRUST_PROXY_HOPS:-0}}
     depends_on:
       medaris-db:
         condition: service_healthy
@@ -157,6 +172,13 @@ services:
       OTEL_EXPORTER_OTLP_INSECURE: ${TESKILAT__OTEL_EXPORTER_OTLP_INSECURE:-${API__OTEL_EXPORTER_OTLP_INSECURE:-true}}
       OTEL_EXPORTER_OTLP_PROTOCOL: ${TESKILAT__OTEL_EXPORTER_OTLP_PROTOCOL:-${API__OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}}
       OTEL_EXPORTER_OTLP_COMPRESSION: ${TESKILAT__OTEL_EXPORTER_OTLP_COMPRESSION:-${API__OTEL_EXPORTER_OTLP_COMPRESSION:-gzip}}
+      # MDRS-31, same rule as tedrisat above. No bulk pair here: teskilat's
+      # AppModule imports only RateLimitModule's default throttler, never the
+      # tedrisat-only BULK_THROTTLE override.
+      THROTTLE_TTL: ${TESKILAT__THROTTLE_TTL:-${API__THROTTLE_TTL:-60000}}
+      THROTTLE_LIMIT: ${TESKILAT__THROTTLE_LIMIT:-${API__THROTTLE_LIMIT:-100}}
+      # Same as tedrisat's TRUST_PROXY_HOPS — 0 for this compose network.
+      TRUST_PROXY_HOPS: ${TESKILAT__TRUST_PROXY_HOPS:-${API__TRUST_PROXY_HOPS:-0}}
       # No KEYCLOAK_* here. teskilat has no auth guard: nothing under
       # apps/teskilat/src reads a Keycloak variable, and its AppModule imports
       # only ConfigModule and LoggerModule. The KEYCLOAK_JWKS_URL that used to

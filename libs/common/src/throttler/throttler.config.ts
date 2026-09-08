@@ -1,7 +1,4 @@
-import type {
-  ThrottlerModuleOptions,
-  ThrottlerOptions,
-} from "@nestjs/throttler";
+import type { ThrottlerModuleOptions } from "@nestjs/throttler";
 
 /**
  * Requests one client may make to a single route inside one window.
@@ -19,18 +16,6 @@ import type {
  */
 const DEFAULT_TTL_MS = 60_000;
 const DEFAULT_LIMIT = 100;
-
-/**
- * The bulk routes get their own, much lower budget.
- *
- * `POST /flashcard/decks/:deckId/cards/bulk/import` accepts a 5MB workbook
- * (apps/tedrisat/src/flashcard/flashcard.controller.ts) and
- * `ExcelService.parseSheet` walks every row of it in-process, so ten of those a
- * minute is already an order of magnitude more work than a hundred ordinary
- * reads. Ten is also enough for the real interaction: a person importing decks
- * one file at a time never approaches it.
- */
-const DEFAULT_BULK_LIMIT = 10;
 
 function fail(key: string, raw: string, reason: string): never {
   throw new Error(
@@ -90,47 +75,9 @@ export function resolveThrottlerTtl(
 }
 
 /** Requests allowed per route inside that window (`THROTTLE_LIMIT`). */
-export function resolveThrottlerLimit(
-  env: NodeJS.ProcessEnv = process.env
-): number {
+function resolveThrottlerLimit(env: NodeJS.ProcessEnv = process.env): number {
   return readPositiveInt(env, "THROTTLE_LIMIT", DEFAULT_LIMIT);
 }
-
-/**
- * Window for the bulk routes (`THROTTLE_BULK_TTL`).
- *
- * Falls back to the default window rather than to a constant of its own, so an
- * operator who widens `THROTTLE_TTL` does not silently leave the expensive
- * routes measuring against the old one.
- */
-export function resolveBulkThrottlerTtl(
-  env: NodeJS.ProcessEnv = process.env
-): number {
-  return readPositiveInt(env, "THROTTLE_BULK_TTL", resolveThrottlerTtl(env));
-}
-
-/** Requests allowed on a bulk route inside that window (`THROTTLE_BULK_LIMIT`). */
-export function resolveBulkThrottlerLimit(
-  env: NodeJS.ProcessEnv = process.env
-): number {
-  return readPositiveInt(env, "THROTTLE_BULK_LIMIT", DEFAULT_BULK_LIMIT);
-}
-
-/**
- * The override handed to `@Throttle({ default: BULK_THROTTLE })`.
- *
- * Both fields are resolver functions rather than numbers because a decorator
- * argument is evaluated when the controller class is defined — which happens
- * while `AppModule` is being imported, and would freeze whatever the
- * environment held at that moment into the compiled module. `ThrottlerGuard`
- * calls `resolveValue` on every request, so this reads the environment as it
- * is, and a deployment can retune the expensive routes without a rebuild.
- * The `context` argument is unused: the budget is per route already.
- */
-export const BULK_THROTTLE: Pick<ThrottlerOptions, "limit" | "ttl"> = {
-  limit: () => resolveBulkThrottlerLimit(),
-  ttl: () => resolveBulkThrottlerTtl(),
-};
 
 /**
  * Build the options `ThrottlerModule` is registered with.
@@ -138,9 +85,12 @@ export const BULK_THROTTLE: Pick<ThrottlerOptions, "limit" | "ttl"> = {
  * A single unnamed throttler, on purpose. With more than one named throttler
  * every one of them is enforced on every route, and a route-level `@Throttle`
  * can only override the ones it names — so a "bulk" throttler declared here
- * would also apply to the health check, and the bulk routes would be measured
- * against both budgets at once. The stricter bulk budget is therefore an
- * override of `default` (see BULK_THROTTLE), not a second throttler.
+ * would also apply to the health check, and a route overriding it would be
+ * measured against both budgets at once. tedrisat's bulk routes take a
+ * stricter budget this way already, as an override of `default`
+ * (`apps/tedrisat/src/config/throttle-env.ts`), not a second throttler here —
+ * this module has no bulk-specific concept, since teskilat has no bulk route
+ * to share one with.
  *
  * The store is `ThrottlerStorageService`, the in-memory default. It counts per
  * process, so with more than one replica the effective limit is the configured
@@ -152,13 +102,6 @@ export const BULK_THROTTLE: Pick<ThrottlerOptions, "limit" | "ttl"> = {
 export function buildThrottlerOptions(
   env: NodeJS.ProcessEnv = process.env
 ): ThrottlerModuleOptions {
-  // Read at boot purely so a malformed value stops it. The bulk budget itself
-  // is resolved per request through BULK_THROTTLE, and without these two calls
-  // a typo in THROTTLE_BULK_LIMIT would first surface as a 500 on an import,
-  // long after the deployment looked healthy.
-  resolveBulkThrottlerTtl(env);
-  resolveBulkThrottlerLimit(env);
-
   return {
     throttlers: [
       {
