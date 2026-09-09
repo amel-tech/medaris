@@ -4,29 +4,8 @@
  * Replaces `jest.config.json`. Same shape as tedrisat's, minus the
  * Testcontainers concerns: teskilat's single e2e suite talks to no database.
  */
-import swc from "unplugin-swc";
 import { defineConfig, mergeConfig } from "vitest/config";
-import baseConfig from "../../vitest.config";
-
-/**
- * See the long comment in `apps/tedrisat/vitest.config.ts`: NestJS DI reads
- * `design:paramtypes`, esbuild (Vitest's default transform) emits no decorator
- * metadata at all, and these three SWC flags are what keep it alive. Without
- * them DI breaks at runtime in tests while `tsc --noEmit` and `nest build`
- * both stay green.
- */
-export const nestSwcPlugin = () =>
-  swc.vite({
-    tsconfigFile: false,
-    jsc: {
-      target: "es2022",
-      parser: { syntax: "typescript", decorators: true },
-      transform: { legacyDecorator: true, decoratorMetadata: true },
-      keepClassNames: true,
-    },
-    module: { type: "es6" },
-    sourceMaps: true,
-  });
+import baseConfig, { nestSwcPlugin } from "../../vitest.config";
 
 export default mergeConfig(
   baseConfig,
