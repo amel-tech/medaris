@@ -88,6 +88,15 @@ MDRS-32's acceptance criteria**, taken because the alternative was to cement the
 order in a new test. It cannot change behaviour today, for the reasons above. Strip it if
 the removal should stay strictly minimal.
 
+A later AI re-review re-flagged `replaceManyProgress` as an advisory, noting the spread
+order is now the *only* thing keeping a body-supplied `userId` out because the route binds
+`ParseArrayPipe`, which does not inherit the global pipe's `whitelist` /
+`forbidNonWhitelisted`. The order in the tree is already the safe one, so nothing more is
+done here; making the guarantee structural — `ParseArrayPipe({ items:
+CreateFlashcardProgressDto, whitelist: true, forbidNonWhitelisted: true })` in
+`flashcard.controller.ts` — is left as a follow-up, out of scope for the example-module
+removal.
+
 ## The generated client
 
 `libs/services/swagger-docs/tedrisat.json` was edited by hand — the four paths (`/examples`,
