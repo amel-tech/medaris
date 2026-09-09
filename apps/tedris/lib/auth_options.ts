@@ -3,8 +3,10 @@ import type {
   NextApiRequest,
   NextApiResponse,
 } from "next";
+import { cookies, headers } from "next/headers";
+import type { NextRequest } from "next/server";
 import { type AuthOptions, getServerSession } from "next-auth";
-import type { JWT } from "next-auth/jwt";
+import { getToken, type JWT } from "next-auth/jwt";
 import KeycloakProvider from "next-auth/providers/keycloak";
 import { env } from "~/env";
 import { authCookies } from "~/lib/auth_cookies";
@@ -94,7 +96,10 @@ const authOptions: AuthOptions = {
       return refreshAccessToken(token);
     },
     async session({ session, token }) {
-      session.accessToken = token.accessToken;
+      // accessToken is intentionally kept off the client-visible session —
+      // any script on the page could read it via GET /api/auth/session
+      // otherwise. Server code reads it through getAccessToken() below.
+      // See MDRS-28.
       session.idToken = token.idToken as string;
       return session;
     },
@@ -109,4 +114,22 @@ export function auth(
     | []
 ) {
   return getServerSession(...args, authOptions);
+}
+
+/**
+ * Reads the Keycloak access token straight out of the encrypted session
+ * JWT. Server-only — the token never enters the client-visible `Session`
+ * object `auth()` returns. See MDRS-28.
+ */
+export async function getAccessToken(): Promise<string | undefined> {
+  const token = await getToken({
+    req: {
+      cookies: await cookies(),
+      headers: await headers(),
+    } as unknown as NextRequest,
+    secret: env.NEXTAUTH_SECRET,
+    cookieName: authCookies?.sessionToken?.name,
+  });
+
+  return token?.accessToken;
 }

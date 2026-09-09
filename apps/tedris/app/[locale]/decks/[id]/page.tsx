@@ -6,12 +6,11 @@ import {
 import { notFound } from "next/navigation";
 import { env } from "~/env";
 import { DeckDetailPage } from "~/features/flashcards/components/deck-detail-page";
-import { auth } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth_options";
 
 async function getDeck(deckId: string): Promise<FlashcardDeckResponse | null> {
   try {
-    const session = await auth();
-    const token = session?.accessToken;
+    const token = await getAccessToken();
     const { decks } = await createServerTedrisatAPIs(
       token,
       env.TEDRISAT_API_BASE_URL
@@ -26,8 +25,7 @@ async function getDeck(deckId: string): Promise<FlashcardDeckResponse | null> {
 
 async function getDeckCards(deckId: string): Promise<FlashcardResponse[]> {
   try {
-    const session = await auth();
-    const token = session?.accessToken;
+    const token = await getAccessToken();
     const API = await createServerTedrisatAPIs(
       token,
       env.TEDRISAT_API_BASE_URL
@@ -46,8 +44,7 @@ async function getDeckCards(deckId: string): Promise<FlashcardResponse[]> {
 
 async function isDeckInCollection(deckId: string): Promise<boolean> {
   try {
-    const session = await auth();
-    const token = session?.accessToken;
+    const token = await getAccessToken();
     if (!token) return false;
     const API = await createServerTedrisatAPIs(
       token,
