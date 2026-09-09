@@ -1,4 +1,8 @@
-import { AuthGuardModule, LoggerModule } from "@medaris/common";
+import {
+  AuthGuardModule,
+  LoggerModule,
+  RateLimitModule,
+} from "@medaris/common";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller";
@@ -21,6 +25,7 @@ import { KoskModule } from "./kosk/kosk.module";
       // stale apps/<app>/.env if one were ever left behind.
     }),
     LoggerModule.forRoot(),
+    RateLimitModule,
     AuthGuardModule,
     DatabaseModule,
     FlashcardModule,

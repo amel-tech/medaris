@@ -6,3 +6,4 @@ export * from "./error";
 export * from "./excel";
 export * from "./logger";
 export * from "./pipes";
+export * from "./throttler";

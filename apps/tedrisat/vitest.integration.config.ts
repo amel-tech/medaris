@@ -11,8 +11,8 @@
  * they did under Jest: `test:e2e` is a narrower re-run, not extra coverage.
  */
 import { defineConfig, mergeConfig } from "vitest/config";
+import { nestSwcPlugin } from "../../vitest.config";
 import integrationBaseConfig from "../../vitest.integration.config";
-import { nestSwcPlugin } from "./vitest.config";
 
 export default mergeConfig(
   integrationBaseConfig,
