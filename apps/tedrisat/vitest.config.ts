@@ -2,7 +2,7 @@
  * tedrisat — Vitest config for the `test` target (MDRS-20).
  *
  * Replaces `jest.config.json`. The spec selection below is the exact pair of
- * globs that file matched, which is why the four `test/e2e/*.e2e.spec.ts` suites
+ * globs that file matched, which is why the `test/e2e/*.e2e.spec.ts` suites
  * still run under `nx run tedrisat:test`: they were never e2e-only.
  */
 import { defineConfig, mergeConfig } from "vitest/config";
@@ -23,7 +23,7 @@ export default mergeConfig(
       testTimeout: 60_000,
       hookTimeout: 180_000,
       teardownTimeout: 60_000,
-      // jest.config.json's `maxWorkers: 1` — the four e2e suites each boot their
+      // jest.config.json's `maxWorkers: 1` — the e2e suites each boot their
       // own postgres container and must not race for the Docker daemon. Vitest 4
       // removed `poolOptions`, so `singleFork` would be silently ignored;
       // `fileParallelism: false` is the option that actually serialises, and it

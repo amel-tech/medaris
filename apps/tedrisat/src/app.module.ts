@@ -10,7 +10,6 @@ import { AppService } from "./app.service";
 import { configuration } from "./config";
 import { CourseModule } from "./course/course.module";
 import { DatabaseModule } from "./database/database.module";
-import { ExampleModule } from "./example/example.module";
 import { FlashcardModule } from "./flashcard/flashcard.module";
 import { FlashcardLabelModule } from "./flashcard/flashcard-label.module";
 import { KoskModule } from "./kosk/kosk.module";
@@ -29,7 +28,6 @@ import { KoskModule } from "./kosk/kosk.module";
     RateLimitModule,
     AuthGuardModule,
     DatabaseModule,
-    ExampleModule,
     FlashcardModule,
     FlashcardLabelModule,
     KoskModule,

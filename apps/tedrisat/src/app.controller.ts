@@ -1,5 +1,5 @@
-import { AuthGuard, HealthCheckDto, ValidationError } from "@medaris/common";
-import { Controller, Get, UseGuards } from "@nestjs/common";
+import { HealthCheckDto } from "@medaris/common";
+import { Controller, Get } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { AppService } from "./app.service";
 
@@ -36,35 +36,5 @@ export class AppController {
   })
   getHealth(): HealthCheckDto {
     return this.appService.getHealth();
-  }
-
-  @Get("throw-error")
-  @ApiOperation({
-    summary: "Throw a dummy error",
-    description:
-      "Test endpoint that throws a validation error for demonstration purposes",
-    operationId: "throwTestError",
-  })
-  throwError(): Promise<void> {
-    throw new ValidationError(
-      "This is a test error to demonstrate error handling",
-      { testCtx: "testCtx" }
-    );
-  }
-
-  @Get("secure")
-  @ApiOperation({
-    summary: "Get secure hello message",
-    description: "Returns a secure hello message from the Tedrisat service",
-    operationId: "getSecureHello",
-  })
-  @ApiResponse({
-    status: 200,
-    description: "Secure hello message",
-    type: String,
-  })
-  @UseGuards(AuthGuard) // Ensure this endpoint is protected by the AuthGuard
-  getSecureHello(): string {
-    return `Hello this endpoint is secure!`;
   }
 }
