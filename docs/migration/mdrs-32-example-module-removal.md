@@ -142,7 +142,7 @@ Every number below is from command output on this branch, not an estimate.
 | `pnpm nx run-many -t build --skip-nx-cache` | 8 projects, green |
 | `pnpm nx run-many -t lint --skip-nx-cache` | 16 projects, green |
 | `pnpm nx run-many -t module-boundaries --skip-nx-cache` | 16 projects, green |
-| `node tools/ci/biome-ratchet.mjs` | 537 files, 0 errors / 90 warnings / 27 infos |
+| `node tools/ci/biome-ratchet.mjs` | 537 files, 0 errors / 90 warnings / 27 infos (pre-merge snapshot; `c7ce652` re-based the ratchet at **89** after `main` merged — it now reads 550 files / 89 / 27) |
 | `pnpm run depcheck` | 3 projects, no issue |
 | `node tools/ci/assert-release-config.mjs` | 7 components, chain intact |
 
@@ -178,8 +178,9 @@ Acceptance-criteria greps, run on this branch:
 - `grep -rn 'MedarisResponse' apps/*/src libs/*/src` → no matches (exit 1).
 - `grep -rn 'getSecureHello\|throw-error' libs/services/src` → no matches (exit 1).
 
-`tools/ci/biome-baseline.json` was lowered from 91 warnings to 90, as its own comment
-instructs, because the deleted files carried one warn-severity diagnostic. Errors and
+`tools/ci/biome-baseline.json` was lowered from 91 warnings to 90 on this branch, as its
+own comment instructs, because the deleted files carried one warn-severity diagnostic —
+then to **89** by `c7ce652` once `main` merged and the count was re-measured. Errors and
 infos are unchanged.
 
 ## Not verified

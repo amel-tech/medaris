@@ -194,10 +194,12 @@ describe("FlashcardService", () => {
       expect(result).toEqual([{ ...progress[0], userId: USER_ID }]);
     });
 
-    // Pins the precedence, not just the presence. The validation pipe means no
-    // request can carry a `userId` today, so this asserts the service's own
-    // spread order rather than a reachable exploit — but that order is the only
-    // thing standing between a future DTO field and one user writing another
+    // Pins the precedence, not just the presence. Nothing upstream strips a
+    // body-supplied `userId`: `CreateFlashcardProgressDto` declares no such
+    // field so TypeScript never sees one, but the route's `ParseArrayPipe`
+    // inherits neither `whitelist` nor `forbidNonWhitelisted` (see the note in
+    // flashcard.service.ts). The service's spread order is the only thing
+    // standing between a body-supplied `userId` and one user writing another
     // user's progress.
     it("overrides a userId supplied in the payload", async () => {
       const spoofed = [
