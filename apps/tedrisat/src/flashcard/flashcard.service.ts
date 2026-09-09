@@ -57,11 +57,16 @@ export class FlashcardService {
     progress: CreateFlashcardProgressDto[]
   ): Promise<IFlashcardProgress[]> {
     // `userId` last, not first: it is the authenticated caller's id and must
-    // win over anything the request body carries. Nothing can reach this with a
-    // `userId` today — CreateFlashcardProgressDto has no such field and
-    // MedarisValidationPipe runs forbidNonWhitelisted — but with the spread
-    // first, adding one to the DTO would silently let a caller write another
-    // user's progress.
+    // win over anything the request body carries. This order is the only thing
+    // enforcing that. `CreateFlashcardProgressDto` declaring no `userId` means
+    // TypeScript never sees one, not that the property is removed: the route
+    // binds `@Body(new ParseArrayPipe({ items: CreateFlashcardProgressDto }))`
+    // (flashcard.controller.ts:152), which builds its own ValidationPipe from
+    // those options alone and so inherits neither `whitelist` nor
+    // `forbidNonWhitelisted`, while the global MedarisValidationPipe skips the
+    // parameter outright — its metatype is the native `Array`. Measured: an
+    // extra `userId` in a body element is neither stripped nor rejected and
+    // arrives in `data`.
     const progressWithUser = progress.map((data) => ({
       ...data,
       userId,

@@ -190,26 +190,52 @@ infos are unchanged.
 
 ## Follow-ups (no Linear issues opened)
 
-1. **The `examples` table is not dropped — this one needs an explicit sign-off, not just a
-   read.** `example.schema.ts` is gone, but `0000_chunky_viper.sql` still creates `examples`
-   and every `meta/*_snapshot.json` through `0011` still contains it, while no migration
-   drops it. The Drizzle schema and the migration history have therefore drifted by one
-   table. The consequence is concrete and lands on someone else: the next
-   `pnpm --filter @medaris/tedrisat db:generate`, run for an entirely unrelated change, will
-   emit `DROP TABLE "examples"` inside that unrelated migration — and `drizzle-kit generate`
-   asks interactively whether the table was deleted or renamed, which cannot be answered
-   non-interactively, so it will also stall any scripted run. Dropping a table was left out
-   of this PR deliberately: it is destructive, it is not in MDRS-32's acceptance criteria,
-   and it wants its own reviewed migration. Whoever picks it up should land a standalone
-   `DROP TABLE IF EXISTS "examples";` migration, with its snapshot, **before** anyone
-   touches the schema for anything else.
+1. **The `examples` table is not dropped, and `example.schema.ts` therefore stays.** An
+   earlier revision of this branch deleted the schema file too. That took `examples` out of
+   the schema of record while `0000_chunky_viper.sql` still creates it and every
+   `meta/*_snapshot.json` through `0011` still lists it, so the next
+   `pnpm --filter @medaris/tedrisat db:generate` — run for an entirely unrelated change —
+   would have folded `DROP TABLE "examples"` into that unrelated migration, where nobody is
+   looking for it. Review caught it; the declaration was restored with a comment saying why.
+   Nothing under `src/` imports it any more.
+
+   Generating the drop migration inside this PR was measured and is **not** available:
+   `drizzle-kit generate` stalls on an interactive rename prompt, because the schema and the
+   migration history have already drifted on `main` in three further ways that predate this
+   branch. Measured against `origin/main` and the local database:
+
+   | table | in migrations | in `0011_snapshot.json` | in `src/database/schema` | in a migrated DB |
+   | -- | -- | -- | -- | -- |
+   | `examples` | created by `0000` | yes | yes (kept) | present |
+   | `Flashcard_labeling` | created by `0007` | yes | **no** | present |
+   | `deck_labels_decks` | created by `0007` | yes | **no** | present |
+   | `flashcard_labelings` | **never created** | **no** | yes | **absent** |
+
+   The generator sees one created table and three deleted ones and asks which is a rename of
+   which — a question only someone who knows that history can answer, and the answer would
+   land three unrelated tables in an MDRS-32 migration.
+
+   The last row is a live bug, not just drift: `flashcard-label.reporsitory.ts:56` inserts
+   into `flashcardLabelings`, and no migration ever creates that table, so
+   `POST /flashcard-label/labeling` cannot succeed against a migrated database. The e2e suite
+   does not catch it — `flashcard-label.e2e.spec.ts:38` asserts only the 401. This predates
+   MDRS-32 and is reported separately.
+
+   Whoever picks this up should resolve all four rows in one reviewed migration, with its
+   snapshot and journal entry, and delete `example.schema.ts` in that same change.
 2. **MDRS-44's unguarded-route count is now stale.**
    [`mdrs-40-pr-80-authz-assessment.md`](mdrs-40-pr-80-authz-assessment.md) records "17
    routes are currently unguarded — `app.controller.ts` (3 of 4), all 4 of
    `example.controller.ts`, all 5 of `flashcard-label.controller.ts`, all 5 of
-   `flashcard-deck-label.controller.ts`". After this PR it is **12**: `app.controller.ts`
-   has 2 routes (`/`, `/health`), both unguarded, and the example controller is gone. That
-   document is a dated assessment and was left as written.
+   `flashcard-deck-label.controller.ts`". After this PR it is **2**, not 12:
+   `app.controller.ts` has 2 routes (`/`, `/health`), both unguarded and both intentionally
+   public, and the example controller is gone. The other 10 were already guarded on this
+   branch's base, by MDRS-27 — `flashcard-label.controller.ts:53` and
+   `flashcard-deck-label.controller.ts:33` each carry a class-level `@UseGuards(AuthGuard)`
+   with no per-method override, and neither file is in this diff. The remaining gap in that
+   area is ownership on the non-DELETE label routes (MDRS-26), which is a different property
+   from being guarded and is not counted here. That assessment document is dated and was
+   left as written.
 3. **Two stale suite counts in vitest config comments.**
    `apps/tedrisat/vitest.config.ts` says "the four `test/e2e/*.e2e.spec.ts` suites" and
    `apps/tedrisat/vitest.integration.config.ts` says "There are six today"; the real number
