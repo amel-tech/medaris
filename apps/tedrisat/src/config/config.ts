@@ -2,11 +2,17 @@ import * as pkg from "../../package.json";
 import { resolveDatabaseSsl } from "./database-ssl";
 import { readSecurityEnv } from "./security-env";
 import { resolveSwaggerEnabled } from "./swagger-env";
+import { assertBulkThrottleEnv } from "./throttle-env";
 
 const version = pkg.version || "0.0.1";
 
 export default () => {
   const security = readSecurityEnv(process.env);
+  // Read once, purely so a malformed THROTTLE_BULK_* stops the boot rather
+  // than surfacing as a 500 on the first import (MDRS-31). The shared
+  // THROTTLE_TTL/THROTTLE_LIMIT get the same eager-read treatment inside
+  // RateLimitModule's own factory.
+  assertBulkThrottleEnv(process.env);
 
   return {
     serviceName: process.env.SERVICE_NAME || pkg.name,

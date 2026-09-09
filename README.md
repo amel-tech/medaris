@@ -66,7 +66,7 @@ Nx runs with `neverConnectToCloud: true` — no remote cache, no analytics. CI t
 
 ### Test coverage, stated honestly
 
-`pnpm test` reports three projects, but only two of them run real tests: **255 tests across 18 suites, all in `tedrisat` and `teskilat`** (253 / 16 and 2 / 2). The third, `tedris-web`, executes `echo 'Tests not implemented'`, which Nx counts as a pass. **Frontend test coverage is zero.**
+`pnpm test` reports three projects, but only two of them run real tests: **314 tests across 24 suites, all in `tedrisat` and `teskilat`** (312 / 22 and 2 / 2). The third, `tedris-web`, executes `echo 'Tests not implemented'`, which Nx counts as a pass. **Frontend test coverage is zero.**
 
 Those tests run on **Vitest**; MDRS-20 moved them off Jest at an unchanged count — 91 across 10 suites as measured then, before MDRS-35 added tedrisat's 15-test `test/unit/config.spec.ts` — and no Jest dependency or config file remains. It did **not** close the frontend gap — there was no frontend spec to migrate, and scaffolding a runner with nothing to run would only have produced a target that passes vacuously. Writing the first frontend specs, with the `@nx/vite` + `jsdom` setup they need, is tracked separately. See [`docs/migration/mdrs-20-jest-to-vitest.md`](docs/migration/mdrs-20-jest-to-vitest.md).
 
@@ -114,7 +114,14 @@ Notes that save time:
 - **Keycloak** points at the real server. Auth flows will not complete locally, but pages still render.
 - `NEXT_PUBLIC_*` variables are inlined at **build time**, not read at runtime — changing one needs a rebuild, not a restart.
 
-`docker compose up` does **not** bring up the full stack today: only the two Nest apps and Postgres are described, and they take their environment from the root `.env` through the explicit mapping in `docker-compose.yml` rather than from an `env_file:` — compose would hand the container the prefixed key names unchanged. The six `apps/*/Dockerfile` files were rebuilt for pnpm and Nx in MDRS-16 and do build. For the four web apps, run them with `pnpm nx run <project>:dev` and use compose only for the database.
+Two compose commands, depending on how much stack you need:
+
+- `docker compose up` starts Postgres and the two Nest APIs — the default set of *services*, unchanged, and what backend work needs. No web image is built.
+- `docker compose --profile web up` additionally builds and starts the four web apps on ports 4000–4003, wired to the APIs over the compose network (`TEDRISAT_API_BASE_URL=http://tedrisat:3001` inside the containers). Use it to exercise the whole stack at once.
+
+Compose interpolates the whole file before it selects services by profile, so the set of `.env` keys either command *requires* is not unchanged: `docker compose up` now also demands the four web apps' `:?` keys (Keycloak client credentials, NextAuth secrets) even though it starts none of their containers. A `.env` copied fresh from `.env.example` has all of them; a hand-trimmed backend-only `.env` no longer works with either command.
+
+Every service takes its environment from the root `.env` through the explicit key-by-key mapping in `docker-compose.yml`, never an `env_file:` — compose would hand the container the prefixed key names unchanged, and the images carry no `tools/env/root-env.cjs` to strip them. The web images are production builds (`next build` already run, `NEXT_PUBLIC_*` baked in), so they are for running the stack, not for frontend work: develop the web apps with `pnpm nx run <project>:dev`.
 
 ## Documents
 
