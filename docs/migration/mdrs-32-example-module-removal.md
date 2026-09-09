@@ -236,13 +236,14 @@ infos are unchanged.
    area is ownership on the non-DELETE label routes (MDRS-26), which is a different property
    from being guarded and is not counted here. That assessment document is dated and was
    left as written.
-3. **Two stale suite counts in vitest config comments.**
-   `apps/tedrisat/vitest.config.ts` says "the four `test/e2e/*.e2e.spec.ts` suites" and
-   `apps/tedrisat/vitest.integration.config.ts` says "There are six today"; the real number
-   is five. Both were already wrong before this PR (the first said four when there were
-   six). They were left untouched on purpose — MDRS-65's open PR #49 edits both files, and a
-   comment-only change here would conflict with it for no benefit. Fix them in whichever of
-   the two lands second.
+3. **Two stale suite counts in vitest config comments — fixed in this PR.**
+   `apps/tedrisat/vitest.config.ts` said "the four `test/e2e/*.e2e.spec.ts` suites" and
+   `apps/tedrisat/vitest.integration.config.ts` said "There are six today"; after this
+   branch merged `main` the real number is seven. The deferral reason is gone — MDRS-65's
+   PR #49 (which also edited both files) landed on `main` and is now in this branch's
+   history — so rather than substitute a number that will rot again, both comments drop the
+   count and lean on the "the glob is deliberately not a fixed list" rationale already
+   stated in each file.
 4. **`docs/PRD.md:161` still reads "zero flashcard tests, no domain unit tests".** That was
    already inaccurate before this PR — `flashcard.repository.spec.ts` predates it — and is
    more so now with `flashcard.service.spec.ts` added. `docs/PRD.md` is on the never-modify
