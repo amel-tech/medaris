@@ -46,12 +46,30 @@ moderate / 2 low / 0 critical.
    the 5.x line is separately fixed by the swagger bump), `file-type`,
    `esbuild`. Each entry in `pnpm-workspace.yaml` names its parent and why
    forcing the version is safe.
+
+   Two more entries share that block without belonging to this pass. `multer`
+   (MDRS-76) and `smol-toml` (MDRS-79) were carved out and landed on `main`
+   first, so an urgent floor was not held behind this branch's review; they
+   arrived here through the merge of `main`, bringing the block to **10**.
+   They differ in kind from the eight above: those force a version a parent
+   *could* have re-resolved to, while these two exist because the parent
+   declares an exact string — `@nestjs/platform-express` pins `multer` to
+   `"2.2.0"` and `nx` pins `smol-toml` to `"1.6.1"`, in every published
+   release including the newest — so no bump reaches them at all.
 8. **`audit-ci.json`**: 31-entry allowlist trimmed to the 2 GHSA IDs that
    remain (`xlsx`'s two advisories — see Held back).
 
 **Result**: `pnpm audit --prod` and the full-tree `pnpm audit` both now
 report only `xlsx`'s 2 high advisories. Full gate after every commit:
 typecheck 16, build 8, test 226/17, lint 16, module-boundaries 16.
+
+Re-measured after merging `main` (the counts above are this branch's own
+pre-merge run and are left as the record of it): `pnpm run audit:ci` prints
+`Passed pnpm security audit`, with the only findings the two allowlisted
+`xlsx` advisories — the first clean run of that gate in this repo. Full gate
+on the merged tree: typecheck 16, **test 295 / 21 suites** (tedrisat 293/19,
+teskilat 2/2), build 8, lint 16, module-boundaries 16, matching the count
+`CLAUDE.md` states.
 
 ## Boot verification (Phase 9)
 

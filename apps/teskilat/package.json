@@ -46,7 +46,6 @@
     "@vitest/coverage-v8": "catalog:",
     "supertest": "catalog:",
     "typescript": "catalog:",
-    "unplugin-swc": "catalog:",
     "vite": "catalog:vitest",
     "vitest": "catalog:"
   }

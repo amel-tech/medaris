@@ -74,7 +74,13 @@ allowBuilds:
 # that way instead (see the MDRS-21-tagged entries below and the `@nestjs/
 # swagger` patch bump, which pulled a fixed transitive `js-yaml` on its own).
 # What's left is nested two or more levels below a dependency this workspace
-# doesn't declare directly, where only an override reaches it:
+# doesn't declare directly, where only an override reaches it.
+#
+# The `multer` and `smol-toml` entries reached `main` ahead of this pass, as
+# MDRS-76 and MDRS-79 — carved out of MDRS-21 so an urgent floor was not held
+# behind this branch's review. Same kind of entry, longer comments: each had to
+# establish that no bump exists at all rather than merely that none had landed
+# yet, which is a claim about the registry and not about this lockfile.
 overrides:
   uuid: ^11.1.1 # GHSA missing-buffer-bounds-check; exceljs pins 8.3.2. uuid's
   #               named v1/v3/v4/v5 API has been stable since v3, so forcing
@@ -91,6 +97,29 @@ overrides:
   #                                    coexisting major lines (minimatch
   #                                    3.x pulls 1.x, 5.x/7.x/9.x pull 2.x);
   #                                    both need the floor, neither the other.
+
+  # MDRS-76. multer 2.2.0 carries three high DoS advisories — GHSA-535w-7cp7-47q4
+  # (oversized array), GHSA-qfvm-cv95-jqjf (fd leak), GHSA-wc9g-mqfw-jrwm
+  # (crafted multipart) — all first patched in 2.3.0, and all against a path this
+  # repo actually mounts: apps/tedrisat/src/flashcard/flashcard.controller.ts:333
+  # puts FileInterceptor("file") on the bulk import route, which takes a 5MB
+  # workbook per request.
+  #
+  # This is a floor rather than a bump because no bump exists. `pnpm up -r multer`
+  # changes nothing: @nestjs/platform-express declares multer as the exact string
+  # "2.2.0", not a range, so there is no room to re-resolve into — and 12.0.1,
+  # the newest release, still declares "2.2.0". Measured, not assumed.
+  #
+  # A caret, not an exact pin. The override replaces the parent's declaration
+  # outright, so pinning 2.3.0 here would freeze a future 2.3.x security patch
+  # behind another hand edit of this file — the floor is what matters, not the
+  # exact version. `^` stays inside 2.x, which is the major the parent expects.
+  #
+  # Removal condition: drop this the moment @nestjs/platform-express ships a
+  # version whose multer dependency admits >= 2.3.0, and let the ordinary
+  # re-resolve carry it.
+  multer: ^2.3.0
+
   # ── dev-only exposure (no advisory here reaches a shipped runtime) ────────
   js-yaml: ^3.15.1 || ^4.3.1 || ^5.2.2 # quadratic-CPU !!omap DoS on 3.x/4.x
   #                                      (depcheck, cosmiconfig's 3.x/4.x)
@@ -103,6 +132,28 @@ overrides:
   #                      vulnerable instance is drizzle-kit's deprecated
   #                      @esbuild-kit/* migration helper, dev-only, and no
   #                      app here runs esbuild's own dev server regardless.
+
+  # MDRS-79. smol-toml <= 1.7.0 carries GHSA-7w5x-hrqm-74c2, a high DoS via
+  # malformed TOML documents, first patched in 1.7.1.
+  #
+  # The same shape as multer above, and it earns its place for the same reason:
+  # nx declares smol-toml as the exact string "1.6.1", so nothing re-resolves
+  # into the fix. Checked against the registry rather than the installed tree —
+  # the 23.2.0 this catalog now pins, 23.2.1 (`latest`) and 23.3.0-beta.0
+  # (`next`) all still declare "1.6.1", so there is no bump to wait for.
+  #
+  # Reachability is weaker than multer's and is not dressed up: smol-toml
+  # arrives only through nx, so it is build tooling that reaches no deployed
+  # artifact, and the TOML nx parses is repo-controlled rather than
+  # attacker-supplied. It is floored anyway because audit-ci.json sets
+  # skip-dev:false on purpose (MDRS-8 §6) and is a ratchet, not an amnesty — a
+  # new high with a published fix and a one-line floor is not allowlist material.
+  #
+  # A caret for the reason given on the multer entry above.
+  #
+  # Removal condition: drop this the moment nx ships a release whose smol-toml
+  # dependency admits >= 1.7.1.
+  smol-toml: ^1.7.1
 # xlsx@0.18.5 stays un-overridden and unfloored: no patched npm version
 # exists (FU-5, tracked as a replace-SheetJS follow-up, not an override).
 
@@ -149,6 +200,7 @@ catalog:
   '@nestjs/testing': ~11.1.19
   '@nestjs/config': ^4.0.2
   '@nestjs/cache-manager': ^3.0.1
+  '@nestjs/throttler': ^6.5.0 # MDRS-31; 6.4.0 is the first release whose peer range admits Nest 11
   '@nestjs/swagger': ^11.4.7 # MDRS-21: patch pulls js-yaml 5.3.0, closing the 5.x DoS advisory
   '@nestjs/cli': ^11.0.10
   '@nestjs/schematics': ^11.0.7
