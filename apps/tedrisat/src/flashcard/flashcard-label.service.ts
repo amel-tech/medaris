@@ -81,8 +81,14 @@ export class FlashcardLabelService {
    * the method that also guards DELETE, and this issue is not the place to
    * widen the blast radius of an authorization change. Revisit it when
    * MDRS-41's policy layer replaces this method wholesale.
+   *
+   * The return type is non-nullable, and that is a consequence of the above
+   * rather than a tidy-up: with `assertOwner` in front and the guard below, no
+   * path returns `null` any more. Leaving `| null` on would have published a
+   * nullable 200 body to the generated client — the exact shape this change
+   * removes. `getLabelStats` keeps its `| null`, which is still reachable.
    */
-  async getById(id: string, userId: string): Promise<IFlashcardLabel | null> {
+  async getById(id: string, userId: string): Promise<IFlashcardLabel> {
     await this.assertOwner(id, userId);
 
     // Re-checked rather than returned blind. The two reads are not atomic, so

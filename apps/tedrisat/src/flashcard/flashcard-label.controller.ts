@@ -134,7 +134,7 @@ export class FlashcardlabelController {
   async getById(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
-  ): Promise<FlashcardLabelResponse | null> {
+  ): Promise<FlashcardLabelResponse> {
     return await this.labelService.getById(id, request.user.sub);
   }
 

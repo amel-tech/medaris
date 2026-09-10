@@ -66,11 +66,12 @@ export class FlashcardDeckLabelService {
    * MDRS-56, same shape as `FlashcardLabelService.getById` — `assertOwner`
    * first, so an id belonging to somebody else is a 403 and a missing one a
    * 404 instead of a 200 carrying another user's row.
+   *
+   * Non-nullable for the same reason as its twin: `assertOwner` plus the guard
+   * below leave no path that returns `null`. `getDeckLabelStats` keeps its
+   * `| null` — see the note on that method for why it stays.
    */
-  async getById(
-    id: string,
-    userId: string
-  ): Promise<IFlashcardDeckLabel | null> {
+  async getById(id: string, userId: string): Promise<IFlashcardDeckLabel> {
     await this.assertOwner(id, userId);
 
     // Same guard as `FlashcardLabelService.getById`, and load-bearing for the

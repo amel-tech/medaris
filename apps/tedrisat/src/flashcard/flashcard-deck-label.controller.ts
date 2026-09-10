@@ -90,7 +90,7 @@ export class FlashcardDeckLabelController {
   async getById(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
-  ): Promise<FlashcardDeckLabelResponse | null> {
+  ): Promise<FlashcardDeckLabelResponse> {
     return await this.labelService.getById(id, request.user.sub);
   }
 

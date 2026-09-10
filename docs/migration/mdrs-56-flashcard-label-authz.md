@@ -240,7 +240,8 @@ The parallel correctness review returned six findings, all addressed here:
 
 ## Follow-ups
 
-Recorded here rather than filed — opening Linear issues is the user's call.
+Recorded here when this document was written; **filed during the review of this
+PR on 2026-09-11**, with the issue numbers noted against each item below.
 
 1. **`flashcard_label_stats` and `deck_label_stats` are unreachable: the
    migrations and the drizzle schemas disagree about two column names.** This is
@@ -251,6 +252,34 @@ Recorded here rather than filed — opening Linear issues is the user's call.
    | --- | --- | --- |
    | `flashcard_label_stats` | `"usageCount"` (line 33) | `integer("usage_count")` — `flashcard-label.schema.ts:21` |
    | `deck_label_stats` | `"lable_id"` (line 25, sic) | `uuid("label_id")` — `flashcard-deck-label.schema.ts:39` |
+
+   **These two are not the whole set**, and the table above should not be read
+   as if they were — whoever picks the repair up would fix two of five. The
+   review of this PR found three more instances of the same class in the same
+   two files; all three verified against `0007` and the current schema:
+
+   | Object | Migration `0007_equal_amazoness.sql` creates | Schema declares |
+   | --- | --- | --- |
+   | flashcard labelings table | `"Flashcard_labeling"` (line 37) | `pgTable("flashcard_labelings", ...)` — `flashcard-label.schema.ts:27` |
+   | `deck_labelings.private_to_user_id` | `uuid NOT NULL` (line 4) | `uuid("private_to_user_id")`, nullable — `flashcard-deck-label.schema.ts:26` |
+   | `deck_labelings.create_at` | `timestamp NOT NULL`, no default (line 7) | `.notNull().defaultNow()` — `flashcard-deck-label.schema.ts:33` |
+
+   The first is the more serious: drizzle quotes identifiers, so every query
+   against `flashcardLabelings` targets `"flashcard_labelings"` while the table
+   is literally `"Flashcard_labeling"`, and `POST /flashcard-label/labeling`
+   fails with *relation does not exist*. The other two bite on insert only —
+   drizzle omits a `defaultNow()` column and lets the database fill it, but
+   there is no database-side default here, and a `deckLabeling` body without
+   `privateToUserId` typechecks and then violates `NOT NULL`.
+
+   **Tracking, as of 2026-09-11.** The table-level row is
+   [MDRS-77](https://linear.app/amel-tech/issue/MDRS-77) (the live bug) and
+   [MDRS-78](https://linear.app/amel-tech/issue/MDRS-78) (the four-table drift
+   cleanup), both filed from PR #50 and both still in Backlog. Neither covered
+   the *column*-level rows — the two name drifts above and the two
+   `deck_labelings` constraint mismatches — so MDRS-78 has been extended with
+   them rather than a third issue being opened. The point of one forward
+   migration is that it repairs the whole set at once.
 
    The observed response body is
    `{"type":"UNKNOWN_ERROR","status":500,"message":"Failed query: select \"id\",
@@ -291,6 +320,22 @@ Recorded here rather than filed — opening Linear issues is the user's call.
    card or deck they do not own is still unchecked on `POST /labeling` for both
    controllers. That was already flagged in the MDRS-27 controller comment and is
    not narrowed by this change.
+
+5. **`POST /labeling` also trusts the `labelId` itself** —
+   [MDRS-81](https://linear.app/amel-tech/issue/MDRS-81), filed from this PR's
+   review. This is the other half of item 4 and neither this document nor the
+   MDRS-27 controller comment had recorded it: `flashcardLabeling` and
+   `deckLabeling` take `newLabeling.labelId` from the request body and never
+   check it against the caller, so an authenticated caller can increment the
+   `usage_count` of a label this change just made unreadable to them. The two
+   routes disagree about who owns a label.
+
+   It is unreachable today only because of item 1 — the stats query 500s before
+   any write — which is exactly why MDRS-81 is filed as **blocking** MDRS-77 and
+   MDRS-78. Repairing the drift arms this path, inside a migration PR that will
+   not be reviewed for authorization. The fix is one `assertOwner` call in each
+   method, but it decides the PUBLIC-scope question item 3 leaves open, so it
+   belongs with the scope model rather than with this change.
 
 ## Conflict note — PR #55 (MDRS-58)
 
