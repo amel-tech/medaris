@@ -98,6 +98,28 @@ overrides:
   # re-resolve carry it.
   multer: ^2.3.0
 
+  # MDRS-79. smol-toml <= 1.7.0 carries GHSA-7w5x-hrqm-74c2, a high DoS via
+  # malformed TOML documents, first patched in 1.7.1.
+  #
+  # The same shape as multer above, and it earns its place for the same reason:
+  # nx declares smol-toml as the exact string "1.6.1", so nothing re-resolves
+  # into the fix. Checked against the registry rather than the installed tree —
+  # 23.2.1 (`latest`) and 23.3.0-beta.0 (`next`) both still declare "1.6.1", so
+  # there is no bump to wait for, released or pre-release.
+  #
+  # Reachability is weaker than multer's and is not dressed up: smol-toml
+  # arrives only through nx, so it is build tooling that reaches no deployed
+  # artifact, and the TOML nx parses is repo-controlled rather than
+  # attacker-supplied. It is floored anyway because audit-ci.json sets
+  # skip-dev:false on purpose (MDRS-8 §6) and is a ratchet, not an amnesty — a
+  # new high with a published fix and a one-line floor is not allowlist material.
+  #
+  # A caret for the reason given on the multer entry above.
+  #
+  # Removal condition: drop this the moment nx ships a release whose smol-toml
+  # dependency admits >= 1.7.1.
+  smol-toml: ^1.7.1
+
 catalog:
   # ═══ Toolchain — ADR-001 §D8 normative (do not re-decide here) ═══
   nx: 23.0.0 # exact; every @nx/* pinned to the same version
