@@ -45,20 +45,27 @@ moderate / 2 low / 0 critical.
    `brace-expansion`, `js-yaml`, `file-type`, `esbuild`. Each entry in
    `pnpm-workspace.yaml` names its parent and why forcing the version is safe.
 
-   One correction to how the two `||`-union entries were first described. A
+   One correction to how the two `||`-union entries were first written. A
    `pnpm.overrides` entry *replaces* each consumer's specifier rather than
-   intersecting with it, so a union like `^3.15.1 || ^4.3.1 || ^5.2.2` does
-   not keep each major line on its own patched release — pnpm resolves it to
-   the single highest match and every consumer gets that. The lockfile shows
-   the effect: `js-yaml@5.3.0` is the only `js-yaml` in the tree (depcheck and
-   cosmiconfig 8/9 declared `^4.x`), and `brace-expansion@2.1.4` is the only
-   `brace-expansion` (minimatch 3.x declared `^1.x`). The advisories are
-   closed either way; the earlier claim that the 3.x/4.x and 1.x lines were
-   floored *separately* was wrong and the comments on both entries now say
-   what actually happens. The `esbuild` entry, first written as an unbounded
-   `>=0.24.3`, is now `>=0.24.3 <1`: the tree legitimately carries two 0.x
-   minors (0.25.x via drizzle-kit, 0.28.x via vite), which a caret cannot
-   span, and the ceiling refuses a silent 1.x jump.
+   intersecting with it, so a union like `^1.1.18 || ^2.1.4` does not keep
+   each major line on its own patched release — pnpm resolves it to the
+   single highest match and every consumer gets that. It was not harmless
+   here: `brace-expansion@2.1.4` became the only copy in the tree, which
+   pulled `nx` (exact pin `5.0.9`, imports the named `expand` that 2.x does
+   not export) down with it, and `nx affected` failed with
+   `brace_expansion_1.expand is not a function`. Local `nx run-many` never
+   touches that path, so the branch stayed green until CI's
+   affected-isolation gate ran for the first time after the ratchet fix.
+   The same union had moved every `^4.x` `js-yaml` consumer (depcheck,
+   cosmiconfig 8/9) onto 5.3.0. Both entries are now range-scoped keys —
+   `brace-expansion@1` / `@2` and `js-yaml@3` / `@4` — which pnpm applies
+   only to consumers whose declared range falls on that line. The lockfile
+   now carries `brace-expansion` 1.1.18 / 2.1.4 / 5.0.9 and `js-yaml`
+   3.15.2 / 4.3.2 / 5.3.0, each line at or above its patched floor, and
+   `nx affected` resolves again. The `esbuild` entry, first written as an
+   unbounded `>=0.24.3`, is now `>=0.24.3 <1`: the tree legitimately carries
+   two 0.x minors (0.25.x via drizzle-kit, 0.28.x via vite), which a caret
+   cannot span, and the ceiling refuses a silent 1.x jump.
 
    Two more entries share that block without belonging to this pass. `multer`
    (MDRS-76) and `smol-toml` (MDRS-79) were carved out and landed on `main`
