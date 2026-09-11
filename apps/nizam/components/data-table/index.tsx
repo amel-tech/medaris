@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@medaris/ui/components/table";
-import { flexRender } from "@tanstack/react-table";
+import { flexRender, type RowData } from "@tanstack/react-table";
 import {
   type LegacyColumnDef as ColumnDef,
   getCoreRowModel,
@@ -18,17 +18,17 @@ import {
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
-export interface DataTableProps<TData extends Record<string, any>, TValue> {
+export interface DataTableProps<TData extends RowData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   defaultColumn?: Partial<ColumnDef<TData, TValue>>;
-  onRowUpdate?: (updatedRow: TData) => Promise<boolean> | void;
+  onRowUpdate?: (updatedRow: TData) => Promise<boolean> | boolean;
   onRowClick?: (row: TData) => void;
-  onRowDelete?: (id: string) => Promise<boolean> | void;
+  onRowDelete?: (id: string) => Promise<boolean> | boolean;
   options?: TableOptions<TData>;
 }
 
-export function DataTable<TData extends Record<string, any>, TValue>({
+export function DataTable<TData extends RowData, TValue>({
   columns,
   data,
   defaultColumn,
@@ -68,10 +68,7 @@ export function DataTable<TData extends Record<string, any>, TValue>({
           [columnId]: value,
         };
 
-        const result = onRowUpdate(updatedRow as TData);
-        if (result instanceof Promise) {
-          await result;
-        }
+        await onRowUpdate(updatedRow as TData);
       }
     } catch (error) {
       // Revert optimistic update on error

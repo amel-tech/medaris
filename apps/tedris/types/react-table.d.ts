@@ -8,7 +8,7 @@ declare module "@tanstack/react-table" {
   > {
     updateData: (rowIndex: number, columnId: string, value: unknown) => void;
     onRowClick?: (row: TData) => void;
-    onRowDelete?: (id: string) => Promise<boolean> | void;
+    onRowDelete?: (id: string) => Promise<boolean> | boolean;
     loadingCells?: Set<string>;
   }
   interface ColumnMeta<
