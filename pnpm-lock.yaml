@@ -368,7 +368,7 @@ overrides:
   multer: ^2.3.0
   js-yaml: ^3.15.1 || ^4.3.1 || ^5.2.2
   file-type: ^21.3.2
-  esbuild: '>=0.24.3'
+  esbuild: '>=0.24.3 <1'
   smol-toml: ^1.7.1
 
 importers:
@@ -9431,7 +9431,7 @@ packages:
       '@farmfe/core': '*'
       '@rspack/core': '*'
       bun-types-no-globals: '*'
-      esbuild: '>=0.24.3'
+      esbuild: '>=0.24.3 <1'
       rolldown: '*'
       rollup: '*'
       unloader: '*'

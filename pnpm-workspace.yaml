@@ -93,10 +93,16 @@ overrides:
   qs: ^6.16.0 # array-limit bypass + isBuffer DoS. express and body-parser
   #             both already declare qs with a caret wide enough for 6.16.0
   #             (^6.14.0 / ^6.15.2) — pnpm just hadn't re-resolved to it.
-  brace-expansion: ^1.1.18 || ^2.1.4 # DoS via unbounded expansion, two
-  #                                    coexisting major lines (minimatch
-  #                                    3.x pulls 1.x, 5.x/7.x/9.x pull 2.x);
-  #                                    both need the floor, neither the other.
+  brace-expansion: ^1.1.18 || ^2.1.4 # DoS via unbounded expansion. minimatch
+  #                                    3.x declared 1.x and 5.x/7.x/9.x/10.x
+  #                                    declared 2.x, but an override replaces
+  #                                    those specifiers rather than narrowing
+  #                                    them, so every consumer collapses onto
+  #                                    the highest match: brace-expansion@2.1.4
+  #                                    is the only copy in the lockfile and
+  #                                    nothing is left on the 1.x line. Safe
+  #                                    because the expand() call minimatch
+  #                                    makes is unchanged across 1.x -> 2.x.
 
   # MDRS-76. multer 2.2.0 carries three high DoS advisories — GHSA-535w-7cp7-47q4
   # (oversized array), GHSA-qfvm-cv95-jqjf (fd leak), GHSA-wc9g-mqfw-jrwm
@@ -121,17 +127,35 @@ overrides:
   multer: ^2.3.0
 
   # ── dev-only exposure (no advisory here reaches a shipped runtime) ────────
-  js-yaml: ^3.15.1 || ^4.3.1 || ^5.2.2 # quadratic-CPU !!omap DoS on 3.x/4.x
-  #                                      (depcheck, cosmiconfig's 3.x/4.x)
-  #                                      plus the 5.x floor the @nestjs/
-  #                                      swagger bump above already reaches
-  #                                      independently — belt and suspenders.
+  js-yaml: ^3.15.1 || ^4.3.1 || ^5.2.2 # quadratic-CPU !!omap DoS. Note what
+  #                                      this union does NOT do: an override
+  #                                      replaces each consumer's specifier
+  #                                      rather than intersecting with it, so
+  #                                      pnpm resolves the whole union to its
+  #                                      single highest match. In this lockfile
+  #                                      that is js-yaml@5.3.0 for every
+  #                                      consumer — depcheck and cosmiconfig
+  #                                      8/9 declared ^4.x and now get 5.x.
+  #                                      The advisory is closed either way;
+  #                                      the union stays so the entry reads as
+  #                                      the floor on each line, should a
+  #                                      consumer ever pin one that 5.x
+  #                                      cannot satisfy.
   file-type: ^21.3.2 # infinite-loop + zip-bomb DoS; pulled by @swc/cli's
   #                     bin-wrapper (platform-binary downloader), dev-only.
-  esbuild: ">=0.24.3" # dev-server request/response disclosure; the one
-  #                      vulnerable instance is drizzle-kit's deprecated
-  #                      @esbuild-kit/* migration helper, dev-only, and no
-  #                      app here runs esbuild's own dev server regardless.
+  esbuild: ">=0.24.3 <1" # dev-server request/response disclosure; the one
+  #                         vulnerable instance is drizzle-kit's deprecated
+  #                         @esbuild-kit/* migration helper, dev-only, and no
+  #                         app here runs esbuild's own dev server regardless.
+  #                         A plain caret cannot express this floor: esbuild
+  #                         treats every 0.x minor as breaking, so ^0.25 would
+  #                         lock one minor while the tree legitimately carries
+  #                         two (0.25.x via drizzle-kit, 0.28.x via vite). The
+  #                         `<1` ceiling keeps the floor while refusing a
+  #                         silent jump onto a 1.x line nobody has tested.
+  #                         While this entry exists it also governs the
+  #                         `esbuild` catalog entry below, which nothing in the
+  #                         workspace references today.
 
   # MDRS-79. smol-toml <= 1.7.0 carries GHSA-7w5x-hrqm-74c2, a high DoS via
   # malformed TOML documents, first patched in 1.7.1.
@@ -297,7 +321,7 @@ catalog:
   lightningcss: ^1.30.1
   postcss: ^8
   autoprefixer: ^10.4.21
-  esbuild: ^0.21.5
+  esbuild: ^0.21.5 # unreferenced; the `esbuild` override above governs while it exists
   jiti: ^2.5.1
   onchange: ^7.1.0 # libs/services watch; MDRS-11 may replace with an Nx target
   '@next/bundle-analyzer': ^16.3.4 # MDRS-21: caught up to Next 16, +1 major
