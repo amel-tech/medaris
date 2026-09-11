@@ -93,16 +93,19 @@ overrides:
   qs: ^6.16.0 # array-limit bypass + isBuffer DoS. express and body-parser
   #             both already declare qs with a caret wide enough for 6.16.0
   #             (^6.14.0 / ^6.15.2) — pnpm just hadn't re-resolved to it.
-  brace-expansion: ^1.1.18 || ^2.1.4 # DoS via unbounded expansion. minimatch
-  #                                    3.x declared 1.x and 5.x/7.x/9.x/10.x
-  #                                    declared 2.x, but an override replaces
-  #                                    those specifiers rather than narrowing
-  #                                    them, so every consumer collapses onto
-  #                                    the highest match: brace-expansion@2.1.4
-  #                                    is the only copy in the lockfile and
-  #                                    nothing is left on the 1.x line. Safe
-  #                                    because the expand() call minimatch
-  #                                    makes is unchanged across 1.x -> 2.x.
+  # brace-expansion: DoS via unbounded expansion, on two major lines that both
+  # need their own floor — minimatch 3.x declares ^1.x, minimatch 5/7/9/10
+  # declare ^2.x. The keys are range-scoped on purpose. A plain
+  # `brace-expansion: ^1.1.18 || ^2.1.4` REPLACES every consumer's specifier
+  # with the union, which pnpm resolves to its single highest match: measured,
+  # that collapsed the whole tree onto 2.1.4 — including nx, which pins the
+  # exact string "5.0.9" and imports the named `expand` that 2.x does not
+  # export. `nx affected` then died with "brace_expansion_1.expand is not a
+  # function" and took the Verify job's affected-isolation gate with it. The
+  # `@1` / `@2` selectors apply each floor only to consumers whose declared
+  # range falls on that line, so nx's 5.x is never touched.
+  brace-expansion@1: ^1.1.18
+  brace-expansion@2: ^2.1.4
 
   # MDRS-76. multer 2.2.0 carries three high DoS advisories — GHSA-535w-7cp7-47q4
   # (oversized array), GHSA-qfvm-cv95-jqjf (fd leak), GHSA-wc9g-mqfw-jrwm
@@ -127,20 +130,14 @@ overrides:
   multer: ^2.3.0
 
   # ── dev-only exposure (no advisory here reaches a shipped runtime) ────────
-  js-yaml: ^3.15.1 || ^4.3.1 || ^5.2.2 # quadratic-CPU !!omap DoS. Note what
-  #                                      this union does NOT do: an override
-  #                                      replaces each consumer's specifier
-  #                                      rather than intersecting with it, so
-  #                                      pnpm resolves the whole union to its
-  #                                      single highest match. In this lockfile
-  #                                      that is js-yaml@5.3.0 for every
-  #                                      consumer — depcheck and cosmiconfig
-  #                                      8/9 declared ^4.x and now get 5.x.
-  #                                      The advisory is closed either way;
-  #                                      the union stays so the entry reads as
-  #                                      the floor on each line, should a
-  #                                      consumer ever pin one that 5.x
-  #                                      cannot satisfy.
+  # js-yaml: quadratic-CPU !!omap DoS on the 3.x and 4.x lines (depcheck and
+  # cosmiconfig 8/9 declare ^4.x). Range-scoped for the same reason as
+  # brace-expansion above: the earlier `^3.15.1 || ^4.3.1 || ^5.2.2` union
+  # silently moved every ^4.x consumer onto 5.3.0, a major they never asked
+  # for. The 5.x line needs no entry — the @nestjs/swagger bump in the catalog
+  # already carries a fixed js-yaml 5.x on its own.
+  js-yaml@3: ^3.15.1
+  js-yaml@4: ^4.3.1
   file-type: ^21.3.2 # infinite-loop + zip-bomb DoS; pulled by @swc/cli's
   #                     bin-wrapper (platform-binary downloader), dev-only.
   esbuild: ">=0.24.3 <1" # dev-server request/response disclosure; the one
