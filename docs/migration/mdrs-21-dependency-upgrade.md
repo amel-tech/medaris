@@ -42,10 +42,23 @@ moderate / 2 low / 0 critical.
    `typescript-eslint`.
 7. **`pnpm.overrides`** for advisories nested below a dependency this
    workspace doesn't declare directly: `uuid`, `nanoid`, `fast-uri`, `qs`,
-   `brace-expansion` (two coexisting major lines), `js-yaml` (3.x/4.x lines;
-   the 5.x line is separately fixed by the swagger bump), `file-type`,
-   `esbuild`. Each entry in `pnpm-workspace.yaml` names its parent and why
-   forcing the version is safe.
+   `brace-expansion`, `js-yaml`, `file-type`, `esbuild`. Each entry in
+   `pnpm-workspace.yaml` names its parent and why forcing the version is safe.
+
+   One correction to how the two `||`-union entries were first described. A
+   `pnpm.overrides` entry *replaces* each consumer's specifier rather than
+   intersecting with it, so a union like `^3.15.1 || ^4.3.1 || ^5.2.2` does
+   not keep each major line on its own patched release — pnpm resolves it to
+   the single highest match and every consumer gets that. The lockfile shows
+   the effect: `js-yaml@5.3.0` is the only `js-yaml` in the tree (depcheck and
+   cosmiconfig 8/9 declared `^4.x`), and `brace-expansion@2.1.4` is the only
+   `brace-expansion` (minimatch 3.x declared `^1.x`). The advisories are
+   closed either way; the earlier claim that the 3.x/4.x and 1.x lines were
+   floored *separately* was wrong and the comments on both entries now say
+   what actually happens. The `esbuild` entry, first written as an unbounded
+   `>=0.24.3`, is now `>=0.24.3 <1`: the tree legitimately carries two 0.x
+   minors (0.25.x via drizzle-kit, 0.28.x via vite), which a caret cannot
+   span, and the ceiling refuses a silent 1.x jump.
 
    Two more entries share that block without belonging to this pass. `multer`
    (MDRS-76) and `smol-toml` (MDRS-79) were carved out and landed on `main`
@@ -124,7 +137,21 @@ teskilat 2/2), build 8, lint 16, module-boundaries 16, matching the count
   codebase-wide lint-diagnostics cleanup, an unrelated and much larger unit
   of work from a dependency-version pass, and bundling it into this PR
   would make the diff much harder to review for what it actually changed.
-  Left as its own follow-up.
+  Left as its own follow-up — with one exception made after review. The
+  react-table v9 port had itself added 13 warnings under
+  `components/data-table/**` in both web apps (`noExplicitAny` where
+  `Record<string, any>` stood in for v9's own `RowData`, `noConfusingVoidType`
+  on the `Promise<boolean> | void` handler unions, and a `case "input":`
+  that only fell through to `default`), which CI first surfaced once the
+  branch was aligned with `main`. Those are typed properly now rather than
+  the baseline being raised, and the pass took the pre-existing warnings in
+  the same files with it: measured with the same Biome 2.4.4 over 550
+  files, the merged tree went from 102 warnings / 27 infos to **79 / 25**,
+  which is 10 warnings and 2 infos below `main`'s 89 / 27 baseline, and
+  `tools/ci/biome-baseline.json` is lowered to those counts so the ratchet
+  locks them in. Driving the remaining 79 to zero stays follow-up work;
+  MDRS-80 (the `useLegacyTable` → `features` rewrite) is the natural place
+  for the rest of the `data-table` share of it.
 - **`biome migrate` (Biome 2.4.4 → 2.5.x)**: named in the same doc as
   MDRS-21's job. Held back rather than attempted in the same PR as the
   dependency-version work above: the exact pin exists specifically so the
