@@ -55,8 +55,10 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createChecker, sameSet, sorted } from "./lib/checks.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -64,17 +66,50 @@ const ENV_EXAMPLE_PATH = ".env.example";
 const COMPOSE_PATH = "docker-compose.yml";
 
 /**
+ * The loader that actually hands the root `.env` to the apps (MDRS-25), and
+ * therefore the one place that decides what a prefix means and which
+ * unprefixed keys belong to no app. Every table below is derived from it or
+ * pinned to it. The first version of this gate restated those tables by hand,
+ * and the two copies agreed only by luck: a key added to the copy here and
+ * forgotten there would have printed `root-only — handed to no app` while the
+ * loader was handing it to all six apps under `nx run <app>:dev` — the exact
+ * dev/deploy disagreement this file exists to catch, blessed by this file.
+ *
+ * `root-env.cjs` is not the file under test here (that is docker-compose.yml),
+ * so deriving from it does not make any check vacuous; check 3 below still
+ * compares the derived targets against what compose actually builds.
+ */
+const require = createRequire(import.meta.url);
+const ROOT_ENV_PATH = "tools/env/root-env.cjs";
+const { APPS, API_APPS, WEB_APPS, ROOT_ONLY, parseEnv } = require(
+  join(repoRoot, ROOT_ENV_PATH)
+);
+
+/**
+ * The two group prefixes the `.env.example` header defines, as `root-env.cjs`'s
+ * `GROUPS` spells them. Named here because the loader exports the app lists but
+ * not the group names, and the tables below have to be pinned to both.
+ */
+const GROUP_PREFIXES = { API: API_APPS, WEB: WEB_APPS };
+
+/**
  * `prefix -> compose services it can reach`, as the `.env.example` header
- * defines the convention. Spelled out rather than derived from the compose file
- * so that a service being added, removed or renamed is caught here: deriving
- * the expectation from the thing under test would make the check vacuous.
- * Adding `apps/muhasebe` to docker-compose.yml is a deliberate edit here, in
- * the same PR.
+ * defines the convention: a group prefix (`API__`, `WEB__`) reaches every app in
+ * its group, and an app's own prefix reaches that app. The compose service is
+ * named after the app directory, which is what makes every entry derivable from
+ * the loader. A service being added, removed or renamed in docker-compose.yml
+ * alone is still caught: check 3 compares this table against the services the
+ * compose file actually builds. Adding `apps/muhasebe` is therefore an edit to
+ * `root-env.cjs`'s app lists, in the same PR as the compose service.
+ *
+ * Since MDRS-55 (#48) compose builds all six apps — the four Next apps behind
+ * the `web` profile — so every prefix the loader knows is a target here.
  */
 const PREFIX_TARGETS = {
-  API: ["tedrisat", "teskilat"],
-  TEDRISAT: ["tedrisat"],
-  TESKILAT: ["teskilat"],
+  ...Object.fromEntries(
+    Object.entries(GROUP_PREFIXES).map(([group, apps]) => [group, [...apps]])
+  ),
+  ...Object.fromEntries(APPS.map((app) => [app.toUpperCase(), [app]])),
 };
 
 /**
@@ -82,14 +117,15 @@ const PREFIX_TARGETS = {
  * exemptions — there is no container on the other side to compare against — but
  * they are listed rather than pattern-skipped, so that a NEW prefix nobody has
  * classified fails instead of vanishing into a default branch.
+ *
+ * Empty since MDRS-55 put the four web apps into compose. The table stays,
+ * with its checks, because it is the one legitimate way for a prefix to be out
+ * of scope: an app added to the loader before it has a compose service goes
+ * here, with a reason, rather than into a default branch. Check 2 pins the two
+ * prefix tables together to the loader's apps and groups, so an app in the
+ * loader that is in neither table fails.
  */
-const UNCONTAINERISED_PREFIXES = {
-  WEB: "group prefix for the four Next apps; docker-compose.yml builds only the two Nest APIs and the database, so no WEB__ key has a container to reach.",
-  TEDRIS: "apps/tedris (tedris-web) has no compose service.",
-  NIZAM: "apps/nizam (nizam-web) has no compose service.",
-  NAZIR: "apps/nazir (nazir-web) has no compose service.",
-  LANDING: "apps/landing (landing-web) has no compose service.",
-};
+const UNCONTAINERISED_PREFIXES = {};
 
 /**
  * Unprefixed keys that are read by compose itself and handed to no app. The
@@ -98,6 +134,12 @@ const UNCONTAINERISED_PREFIXES = {
  * for a reason nobody could act on. Each entry is verified below to be present
  * in `.env.example` AND interpolated somewhere in docker-compose.yml — a
  * "root-only" key that compose never reads is dead, not root-only.
+ *
+ * The KEYS are `root-env.cjs`'s `ROOT_ONLY` set — check 2 fails if the two
+ * disagree in either direction — and only the reasons live here. That set is
+ * what `classify()` consults at runtime: a key in it is handed to no app, a key
+ * outside it is handed to every app. A key listed here and not there would be
+ * exempted by this gate while the loader injected it everywhere.
  */
 const ROOT_ONLY_KEYS = {
   TEDRISAT_PORT:
@@ -112,6 +154,14 @@ const ROOT_ONLY_KEYS = {
     "same: the bootstrap database of the medaris-db container. The APIs name their own with DB_NAME.",
   MEDARIS_POSTGRES_PORT:
     "compose's own `ports:` mapping for medaris-db on the host; inside the network the APIs use DB_PORT.",
+  TEDRIS_WEB_PORT:
+    "compose's own `ports:` mapping for the tedris service (MDRS-55, `web` profile); the container listens on 4000 regardless. Also the default host port in that service's NEXTAUTH_URL, which is why it shows up inside an environment: block.",
+  NIZAM_WEB_PORT:
+    "compose's own `ports:` mapping for the nizam service (MDRS-55); the container listens on 4001 regardless. Also the default host port in that service's NEXTAUTH_URL.",
+  NAZIR_WEB_PORT:
+    "compose's own `ports:` mapping for the nazir service (MDRS-55); the container listens on 4002 regardless. Also the default host port in that service's NEXTAUTH_URL.",
+  LANDING_WEB_PORT:
+    "compose's own `ports:` mapping for the landing service (MDRS-55); the container listens on 4003 regardless.",
 };
 
 /**
@@ -121,33 +171,42 @@ const ROOT_ONLY_KEYS = {
  * staleness checks below — the list cannot grow silently and cannot rot, which
  * is the only thing that would make it worse than no gate at all.
  */
+const NEXT_PUBLIC_BAKED_AT_BUILD =
+  "NEXT_PUBLIC_* is inlined into the client bundle at `next build`, not read at runtime. apps/<app>/Dockerfile copies .env.example to .env before the build, so the image carries the template's placeholder and no `environment:` entry can change it — a `.env` edit plus `docker compose up` does not reach it. Passing real values as build args is MDRS-16's remaining item (see the web-profile comment in docker-compose.yml); when that lands, the key becomes mapped and this entry must go.";
+
+/**
+ * Every `NEXT_PUBLIC_*` key the template ships, named one by one rather than
+ * matched by pattern, so the staleness checks below apply to each: the day
+ * MDRS-16 passes one of them as a build arg, its entry fails as obsolete and
+ * has to be removed, and a NEW `NEXT_PUBLIC_*` key fails check 5 until someone
+ * adds it here deliberately.
+ */
+const NEXT_PUBLIC_KEYS = [
+  "WEB__NEXT_PUBLIC_KEYCLOAK_ISSUER",
+  "WEB__NEXT_PUBLIC_TEDRISAT_API_BASE_URL",
+  "WEB__NEXT_PUBLIC_API_MOCKING",
+  "TEDRIS__NEXT_PUBLIC_NEXTAUTH_URL",
+  "TEDRIS__NEXT_PUBLIC_KEYCLOAK_CLIENT_ID",
+  "NIZAM__NEXT_PUBLIC_NEXTAUTH_URL",
+  "NIZAM__NEXT_PUBLIC_KEYCLOAK_CLIENT_ID",
+  "NAZIR__NEXT_PUBLIC_NEXTAUTH_URL",
+  "NAZIR__NEXT_PUBLIC_KEYCLOAK_CLIENT_ID",
+  "LANDING__NEXT_PUBLIC_TEDRIS_APP_URL",
+];
+
 const UNMAPPED_ON_PURPOSE = {
   API__DB_HOST:
     "compose pins `DB_HOST: medaris-db`, the service name the database answers on inside the compose network. The template's `localhost` is only ever correct for `nx run <api>:dev`, so interpolating it would let a host-side value break every container.",
   API__AUTO_MIGRATIONS_FOLDER:
     'compose pins `./dist/src/database/migrations`. The template names `./src/...` for `nest start`; the image runs compiled output, and tsc mirrors the source tree so the compiled migrations sit under dist/src/. Interpolating the template value made the service log "Can\'t find meta/_journal.json" and then serve traffic against an unmigrated database.',
+  WEB__TEDRISAT_API_BASE_URL:
+    "compose pins `TEDRISAT_API_BASE_URL: http://tedrisat:3001` on the three apps that call the API — the service name it answers on inside the compose network, the same shape as API__DB_HOST. The template's `localhost:3001` is only ever correct for `nx run <app>-web:dev`.",
+  ...Object.fromEntries(
+    NEXT_PUBLIC_KEYS.map((key) => [key, NEXT_PUBLIC_BAKED_AT_BUILD])
+  ),
 };
 
-const failures = [];
-
-function check(ok, label, detail) {
-  if (ok) {
-    console.log(`✔ ${label}`);
-  } else {
-    console.log(`✖ ${label}\n    ${detail}`);
-    failures.push(label);
-  }
-}
-
-function sorted(list) {
-  return [...list].sort();
-}
-
-function sameSet(a, b) {
-  const x = sorted(a);
-  const y = sorted(b);
-  return x.length === y.length && x.every((v, i) => v === y[i]);
-}
+const { check, failures } = createChecker();
 
 /** Bails out rather than reporting a green run on a file it could not read. */
 function abort(message) {
@@ -169,16 +228,18 @@ const composeText = readFileSync(join(repoRoot, COMPOSE_PATH), "utf8");
 // ── Parsing ───────────────────────────────────────────────────────────────────
 
 /**
- * Assignment lines only. A leading `#` cannot match, so a commented-out key is
- * not read as shipped — see the header.
+ * The keys `.env.example` ships, read by the SAME parser that feeds
+ * `process.env` under `nx run <app>:dev` — `root-env.cjs`'s `parseEnv`. A
+ * second parser here is how an indented `  API__KEY=x` came to be live for the
+ * loader and invisible to this gate: the first version anchored `KEY=` at
+ * column 0, while `parseEnv` trims the line first. Reusing it means the two
+ * files cannot disagree about what the template ships. It also drops comment
+ * lines, so a commented-out key is not read as shipped — see the header — and
+ * it throws on an unterminated quote, which is the right outcome for a gate:
+ * compose refuses the same file.
  */
 function parseEnvKeys(text) {
-  const keys = [];
-  for (const line of text.split("\n")) {
-    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=/);
-    if (m) keys.push(m[1]);
-  }
-  return keys;
+  return parseEnv(text).map((entry) => entry.key);
 }
 
 /**
@@ -188,9 +249,9 @@ function parseEnvKeys(text) {
  *
  * Indentation-driven, and narrow on purpose: only `environment:` counts, so a
  * variable used in `ports:` or `volumes:` is not mistaken for something the
- * container receives. Comment lines are dropped before anything else, so a
- * variable merely *named* in a comment — docker-compose.yml has several — is
- * not counted as mapped.
+ * container receives. Comments are dropped before anything else — whole lines
+ * AND the ` # ...` tail of a line — so a variable merely *named* in a comment,
+ * whether on its own line or after a value, is not counted as mapped.
  */
 function parseComposeServices(text) {
   /** @type {Record<string, {hasBuild: boolean, envVars: Set<string>|null}>} */
@@ -209,7 +270,12 @@ function parseComposeServices(text) {
   let inEnv = false;
 
   for (const raw of text.split("\n")) {
-    const line = raw.replace(/\s+$/, "");
+    // YAML opens an inline comment only after whitespace, so stripping from the
+    // first ` #` is exact for this file (no value here contains a quoted `#`).
+    // Without it, `- "5432:5432"  # was ${MEDARIS_POSTGRES_PORT}` would count
+    // as compose reading the key, and a commented-out mapping on the same line
+    // as a live one would keep an in-scope key looking mapped.
+    const line = raw.replace(/\s+#.*$/, "").replace(/\s+$/, "");
     if (line === "" || /^\s*#/.test(line)) continue;
 
     for (const m of line.matchAll(/\$\{([A-Za-z_][A-Za-z0-9_]*)/g)) {
@@ -297,7 +363,7 @@ const mappedVarCount = serviceNames.reduce(
 
 if (envKeys.length === 0)
   abort(
-    `parsed 0 assignments out of ${ENV_EXAMPLE_PATH}. The parser expects \`KEY=value\` at column 0; every check below would pass vacuously.`
+    `parsed 0 assignments out of ${ENV_EXAMPLE_PATH} with ${ROOT_ENV_PATH}'s parseEnv; every check below would pass vacuously.`
   );
 if (serviceNames.length === 0)
   abort(
@@ -361,6 +427,37 @@ check(
   `empty in PREFIX_TARGETS: ${JSON.stringify(sorted(emptyTargets))}\n` +
     "    A prefix with no targets cannot reach anything, so its keys would fail with a message naming no service.\n" +
     "    Move it to UNCONTAINERISED_PREFIXES if the app has no compose service."
+);
+
+// The two hand-written tables are pinned to the loader they describe. Their
+// keys must be exactly the loader's sets; only the reason strings are this
+// file's own. A drift in either direction names the other file to fix.
+check(
+  sameSet(Object.keys(ROOT_ONLY_KEYS), [...ROOT_ONLY]),
+  `ROOT_ONLY_KEYS matches ${ROOT_ENV_PATH}'s ROOT_ONLY`,
+  `here:            ${JSON.stringify(sorted(Object.keys(ROOT_ONLY_KEYS)))}\n` +
+    `    ${ROOT_ENV_PATH}: ${JSON.stringify(sorted([...ROOT_ONLY]))}\n` +
+    "    The loader's set decides at runtime which unprefixed keys reach no app; a key\n" +
+    "    exempted here but absent there is injected into every app under `nx run <app>:dev`.\n" +
+    `    Add or remove the key on both sides in the same PR — the reason belongs here, the membership there.`
+);
+
+const loaderPrefixes = [
+  ...Object.keys(GROUP_PREFIXES),
+  ...APPS.map((app) => app.toUpperCase()),
+];
+const classifiedPrefixes = [
+  ...Object.keys(PREFIX_TARGETS),
+  ...Object.keys(UNCONTAINERISED_PREFIXES),
+];
+check(
+  sameSet(classifiedPrefixes, loaderPrefixes),
+  `the two prefix tables together cover exactly ${ROOT_ENV_PATH}'s apps and groups`,
+  `classified here:  ${JSON.stringify(sorted(classifiedPrefixes))}\n` +
+    `    ${ROOT_ENV_PATH}: ${JSON.stringify(sorted(loaderPrefixes))}\n` +
+    "    An app the loader knows and neither table names is skipped by nothing and checked by\n" +
+    "    nothing; a prefix in a table that the loader does not know is stale. Add the app to\n" +
+    "    root-env.cjs and to one of the two tables in the same PR."
 );
 
 // ── 3. Every built service is classified ──────────────────────────────────────
@@ -435,6 +532,12 @@ for (const key of envKeys) {
     exempted.set(key, `unmapped on purpose — ${UNMAPPED_ON_PURPOSE[key]}`);
     continue;
   }
+
+  // Check 4 has already gone red for a prefix in neither table; there is no
+  // target list to compare such a key against, so it is not queued. Queuing it
+  // put `undefined` into the map and the loop below died on `.filter` before the
+  // remaining keys, the staleness checks and the closing summary ran.
+  if (prefix && !(prefix in PREFIX_TARGETS)) continue;
 
   // An unprefixed key means "every app" per the template's own header, so it
   // has to reach the built services just as a group key does.

@@ -38,10 +38,17 @@ const APPS = [...WEB_APPS, ...API_APPS];
 const GROUPS = { WEB: WEB_APPS, API: API_APPS };
 
 // Read from the root file by docker-compose under these exact names, so they
-// carry no prefix and belong to no app.
+// carry no prefix and belong to no app. tools/ci/assert-env-compose-parity.mjs
+// pins its own root-only list to this set, so a key added on one side and not
+// the other fails CI rather than being handed to every app as a "shared" key —
+// which is what happened to the four *_WEB_PORT keys between MDRS-55 and MDRS-70.
 const ROOT_ONLY = new Set([
   "TEDRISAT_PORT",
   "TESKILAT_PORT",
+  "TEDRIS_WEB_PORT",
+  "NIZAM_WEB_PORT",
+  "NAZIR_WEB_PORT",
+  "LANDING_WEB_PORT",
   "MEDARIS_POSTGRES_USER",
   "MEDARIS_POSTGRES_PASSWORD",
   "MEDARIS_POSTGRES_DB",

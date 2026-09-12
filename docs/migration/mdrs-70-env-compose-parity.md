@@ -67,8 +67,9 @@ Nothing is skipped by pattern; every exemption is a named entry with a stated
 reason, and the script **prints all of them with their reasons and a count on
 every run** so the list cannot grow unnoticed.
 
-`UNMAPPED_ON_PURPOSE` — in-scope keys that deliberately reach no container. Two
-entries:
+`UNMAPPED_ON_PURPOSE` — in-scope keys that deliberately reach no container.
+Thirteen entries after the rebase onto MDRS-55 (see the dated section below;
+the first version had the first two):
 
 - `API__DB_HOST` — compose pins `DB_HOST: medaris-db`, the service name the
   database answers on inside the compose network. The template's `localhost` is
@@ -76,20 +77,39 @@ entries:
 - `API__AUTO_MIGRATIONS_FOLDER` — compose pins
   `./dist/src/database/migrations`. The template names `./src/...` for
   `nest start`; the image runs compiled output.
+- `WEB__TEDRISAT_API_BASE_URL` — compose pins
+  `TEDRISAT_API_BASE_URL: http://tedrisat:3001` on the three web apps that call
+  the API; the same shape as `API__DB_HOST`.
+- the ten `*__NEXT_PUBLIC_*` keys — inlined into the client bundle at
+  `next build` from the template's placeholders (`apps/<app>/Dockerfile` copies
+  `.env.example` to `.env` before the build), so no `environment:` entry can
+  reach them. Named one by one, not matched by pattern, so the staleness checks
+  apply to each: the day MDRS-16 passes one as a build arg its entry fails as
+  obsolete, and a new `NEXT_PUBLIC_*` key fails until it is declared.
 
-`ROOT_ONLY_KEYS` — six unprefixed keys read by compose itself and handed to no
-app: `TEDRISAT_PORT`, `TESKILAT_PORT`, `MEDARIS_POSTGRES_{USER,PASSWORD,DB,PORT}`.
-Needed because the template's own header reads a bare `KEY=` as "every app",
-which would otherwise make these fail for a reason nobody could act on.
+`ROOT_ONLY_KEYS` — the unprefixed keys read by compose itself and handed to no
+app. Needed because the template's own header reads a bare `KEY=` as "every
+app", which would otherwise make these fail for a reason nobody could act on.
+The **keys** are `tools/env/root-env.cjs`'s `ROOT_ONLY` set and the gate fails
+if the two disagree in either direction; only the reason strings live in the
+script. Ten today: `TEDRISAT_PORT`, `TESKILAT_PORT`, the four `*_WEB_PORT`
+keys MDRS-55 added, and `MEDARIS_POSTGRES_{USER,PASSWORD,DB,PORT}`.
 
-`UNCONTAINERISED_PREFIXES` — `WEB__`, `TEDRIS__`, `NIZAM__`, `NAZIR__`,
-`LANDING__`. Not exemptions: `docker-compose.yml` builds only the two Nest APIs
-and the database, so there is no container on the other side to compare against.
-They are still *listed* rather than pattern-skipped, so a prefix nobody has
-classified fails instead of vanishing into a default branch — this is the
-escape route that would otherwise make the whole gate optional.
+`PREFIX_TARGETS` — derived from the loader's app lists, not restated: the two
+group prefixes reach their group, each app prefix reaches its own compose
+service (named after the app directory). Check 3 still compares the result
+against the services compose actually builds, so a service added, removed or
+renamed in `docker-compose.yml` alone fails here.
 
-### Six ways the lists are stopped from rotting
+`UNCONTAINERISED_PREFIXES` — prefixes naming an app compose does not build.
+**Empty since MDRS-55 (#48) put the four Next apps into compose behind the
+`web` profile.** The table and its checks stay: it is the one legitimate way for
+a prefix to be out of scope (an app added to the loader before it has a compose
+service goes here, with a reason), and check 2 pins the two prefix tables
+together to the loader's apps and groups, so an app in neither fails rather
+than vanishing into a default branch.
+
+### Eight ways the lists are stopped from rotting
 
 1. An `UNMAPPED_ON_PURPOSE` entry whose key has left `.env.example` fails.
 2. An `UNMAPPED_ON_PURPOSE` entry whose key *has since been mapped* fails, so
@@ -110,6 +130,15 @@ escape route that would otherwise make the whole gate optional.
 6. A `PREFIX_TARGETS` entry with an empty target list fails — the same hole by
    another route, and it would otherwise produce a failure message naming no
    service.
+7. `ROOT_ONLY_KEYS`'s keys must equal `root-env.cjs`'s `ROOT_ONLY` exactly. The
+   loader's set is what `classify()` consults at runtime: a key in it reaches no
+   app, a key outside it reaches every app. A key exempted here and absent
+   there would be blessed as "handed to no app" while `loadRootEnv` injected it
+   into all six apps — which is what had already happened to the four
+   `*_WEB_PORT` keys (below).
+8. The two prefix tables together must name exactly the loader's apps and
+   groups — an app the loader knows and neither table classifies is checked by
+   nothing, and a table entry the loader does not know is stale.
 
 `UNMAPPED_ON_PURPOSE` is honoured **only** for keys whose prefix is in
 `PREFIX_TARGETS`. An earlier version accepted unprefixed keys there too, which
@@ -134,9 +163,12 @@ the same as reading them, and a review of this script found a case where a block
 was found and walked straight past (below).
 
 Only `environment:` counts, so a variable used in `ports:` or `volumes:` is not
-mistaken for something the container receives. Comment lines are dropped before
-matching, so a variable merely *named* in a comment — `docker-compose.yml` has
-several — is not counted as mapped. Both `environment:` spellings are handled:
+mistaken for something the container receives. Comments are dropped before
+matching — whole lines and the ` # ...` tail of a line — so a variable merely
+*named* in a comment, on its own line or after a value, is not counted as
+mapped. `.env.example` is read by `root-env.cjs`'s own `parseEnv`, the parser
+that feeds `process.env` under `nx run <app>:dev`, so the gate and the loader
+cannot disagree about what the template ships. Both `environment:` spellings are handled:
 the mapping form this repo uses, and the YAML sequence form
 (`- PORT=${TEDRISAT__PORT}`), whose items sit at the *same* indent as the key.
 
@@ -162,7 +194,68 @@ version that carried these bugs.
    report `→ (nothing)` and pointed the reader at `docker-compose.yml` instead of
    at the parser. Fixed by testing list items before the sibling-key branch.
 
+### Rebased onto MDRS-55, and the pull-request review (2026-09-12)
+
+Two things changed between the first version and this one.
+
+**`main` moved.** MDRS-55 (#48) added the four Next apps to `docker-compose.yml`
+behind a `web` profile, each with a `build:` section, and MDRS-75 (#63) changed
+`root-env.cjs`. Rerun on the merged tree, the first version failed five
+assertions: check 3 (compose builds six services, the script targeted two) and
+the four `*_WEB_PORT` keys. Both were the gate doing its job on a stale table,
+and both surfaced a live divergence: `root-env.cjs` did not list the four port
+keys in `ROOT_ONLY`, so under `nx run <app>:dev` the loader was handing
+`TEDRIS_WEB_PORT` and its siblings to all six apps as "shared" keys. Fixed on
+the loader's side (`ROOT_ONLY` now has ten keys; `apps/tedrisat/test/unit/root-env.spec.ts`
+29/29) and pinned from this side (check 7). With the six services in scope,
+eleven more keys reached no container — the ten `NEXT_PUBLIC_*` build-time
+keys and `WEB__TEDRISAT_API_BASE_URL` — each declared with its reason in
+`UNMAPPED_ON_PURPOSE` rather than skipped.
+
+**The review of #51 (AI multi-lens gate, six distinct findings).**
+
+| # | Finding | Outcome |
+|---|---|---|
+| 1 | `ROOT_ONLY_KEYS`, `PREFIX_TARGETS` and `UNCONTAINERISED_PREFIXES` restated `root-env.cjs`'s tables with nothing pinning the copies together. | **Fixed.** The script `require`s `tools/env/root-env.cjs`, derives `PREFIX_TARGETS` from `API_APPS`/`WEB_APPS`/`APPS`, and asserts `ROOT_ONLY_KEYS`'s keys equal `ROOT_ONLY` and that the two prefix tables cover exactly the loader's apps and groups (checks 7–8). Reasons stay local. |
+| 2 | `parseEnvKeys` anchored `KEY=` at column 0 while the loader trims first, so an indented assignment was live for dev and invisible here. | **Fixed.** Replaced by `root-env.cjs`'s `parseEnv`. Injection (n) below. |
+| 3 | An unclassified prefix put `undefined` into `inScope` and the loop died on `.filter` before the rest of the report. | **Fixed.** Such a key is skipped after check 4 has already failed for it. Injection (o). |
+| 4 | Only whole-line comments were dropped; a trailing ` # ${VAR}` still counted as read. | **Fixed.** The ` # ...` tail is stripped before every scan. Injection (p). |
+| 5 | `check`/`sorted`/`sameSet` were a byte-for-byte copy of `assert-release-config.mjs`. | **Fixed.** Extracted to `tools/ci/lib/checks.mjs` (`createChecker`, `sorted`, `sameSet`); both scripts import it. `assert-release-config.mjs` output unchanged (`✔ release config: 7 components …`). |
+| 6 | (Same as 1, anchored on `PREFIX_TARGETS`.) | Covered by 1. |
+
+**Four more injections, each run on the merged tree and reverted:**
+
+```
+(n) `  API__PORT=…` indented two spaces      → still 78 keys shipped, green
+(o) MUHASEBE__PORT=3003 appended             → ✖ every prefix in the template is classified
+                                              …and the run finishes with its summary, no TypeError
+(p) - "5432:5432" # was ${MEDARIS_POSTGRES_PORT:-5432}
+                                             → ✖ ROOT_ONLY_KEYS[MEDARIS_POSTGRES_PORT] is read by compose
+(q) TEDRISAT_PORT removed from root-env.cjs   → ✖ ROOT_ONLY_KEYS matches tools/env/root-env.cjs's ROOT_ONLY
+```
+
+**Clean tree after the rebase:**
+
+```
+  docker-compose.yml: 7 services (6 built here), 7 with an environment block
+  .env.example: 78 keys shipped
+✔ env/compose parity: 55 in-scope keys all reach a container; 23 exempt by declaration, 0 out of scope.
+```
+
+55 + 23 + 0 = 78. The 23 exempt are 10 root-only + 13 unmapped on purpose.
+
+**Ordering note for MDRS-66 (#52).** That pull request moves
+`tools/env/root-env.cjs` to `libs/env/src/root-env.cjs` as `@medaris/env`. The
+script's `ROOT_ENV_PATH` constant names the current location; whichever of the
+two lands second must repoint it (a one-line change, and the gate fails loudly
+with `Cannot find module` rather than passing vacuously if it is forgotten).
+
 ## 2 — What was verified
+
+The measurements in this section are from the **first** version of the script,
+on the tree it was written against (three compose services, 71 keys). They are
+kept as the record of what was proven then; the current counts are in the
+dated section above.
 
 All output below is from this branch. Command: `node tools/ci/assert-env-compose-parity.mjs`.
 
@@ -388,12 +481,10 @@ Full gate results are in the pull request body.
    exhaustive index of what a container reads.
 2. **Canonical-name verification** — the `SWAGGER_PATH`/`SWAGGER_ENDPOINT` class
    above. Needs each app's config schema as a third input.
-3. **The four Next apps have no compose service at all**, so `WEB__` and the
-   four app prefixes (30 of the 71 keys) are structurally out of scope. If the
-   web apps are ever containerised, move those prefixes from
-   `UNCONTAINERISED_PREFIXES` into `PREFIX_TARGETS` in the same PR — the gate
-   fails on an unclassified prefix but cannot tell that a classified one has
-   become wrong.
+3. **The ten `NEXT_PUBLIC_*` keys are declared, not mapped.** They are baked
+   into the web images from the template's placeholders. When MDRS-16 passes
+   them as build args, each entry in `UNMAPPED_ON_PURPOSE` fails as obsolete
+   and must be removed in that PR — the gate will say so.
 4. **The 7 `API__KEYCLOAK_*` keys reach tedrisat only.** Reported as a NOTE, not
    a failure; MDRS-69 owns whether teskilat's remaining DB/auth assumptions
    should follow `KEYCLOAK_JWKS_URL` out of its `environment:` block.
