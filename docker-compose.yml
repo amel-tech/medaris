@@ -2,10 +2,11 @@
 # ${...} interpolation automatically.
 #
 # `env_file:` is deliberately not used: it would hand the container the file's
-# raw keys, so the app would see TEDRISAT__PORT and no PORT. The image has no
-# copy of tools/env/root-env.cjs to strip prefixes with — production does not
-# need one, because Coolify sets the canonical names directly. So the mapping
-# from prefixed key to canonical name is written out here instead.
+# raw keys, so the app would see TEDRISAT__PORT and no PORT. The two Nest images
+# do carry @medaris/env since MDRS-66, but they carry no .env for it to read —
+# production does not need one, because Coolify sets the canonical names
+# directly. So the mapping from prefixed key to canonical name is written out
+# here instead.
 #
 # Two properties this buys, beyond being readable:
 #
@@ -212,7 +213,7 @@ services:
   #
   # Environment is spelled out key by key, exactly like the API services and
   # for the same two reasons (see the header comment): the runtime image has no
-  # tools/env/root-env.cjs, so `env_file: .env` would hand the app
+  # libs/env/src/root-env.cjs, so `env_file: .env` would hand the app
   # TEDRIS__KEYCLOAK_CLIENT_SECRET and no KEYCLOAK_CLIENT_SECRET; and naming
   # the keys keeps least privilege — no app sees another's secrets. The list is
   # short anyway: the client-side keys are baked at build time, so only the

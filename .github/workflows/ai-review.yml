@@ -408,7 +408,7 @@ jobs:
 
       # Gate lens selection on per-lens changed-file globs, NOT on `nx affected`.
       # nx.json's sharedGlobals include pnpm-lock.yaml, the root package.json and
-      # .github/workflows/ci.yaml, so every dependabot bump marks all 16 projects
+      # .github/workflows/ci.yaml, so every dependabot bump marks all 17 projects
       # affected and would trigger the maximum-cost review.
       - name: Select the lenses whose globs intersect the diff
         id: select

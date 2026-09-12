@@ -483,6 +483,9 @@ importers:
 
   apps/landing:
     dependencies:
+      '@medaris/env':
+        specifier: workspace:*
+        version: link:../../libs/env
       '@medaris/i18n':
         specifier: workspace:*
         version: link:../../libs/i18n
@@ -541,6 +544,9 @@ importers:
 
   apps/nazir:
     dependencies:
+      '@medaris/env':
+        specifier: workspace:*
+        version: link:../../libs/env
       '@medaris/ui':
         specifier: workspace:*
         version: link:../../libs/ui
@@ -590,6 +596,9 @@ importers:
 
   apps/nizam:
     dependencies:
+      '@medaris/env':
+        specifier: workspace:*
+        version: link:../../libs/env
       '@medaris/i18n':
         specifier: workspace:*
         version: link:../../libs/i18n
@@ -669,6 +678,9 @@ importers:
       '@hookform/resolvers':
         specifier: 'catalog:'
         version: 5.5.3(@standard-schema/spec@1.1.0)(ajv-formats@2.1.1(ajv@8.20.0))(ajv@8.20.0)(class-transformer@0.5.1)(class-validator@0.14.4)(react-hook-form@7.83.0(react@19.1.9))(zod@3.25.76)
+      '@medaris/env':
+        specifier: workspace:*
+        version: link:../../libs/env
       '@medaris/i18n':
         specifier: workspace:*
         version: link:../../libs/i18n
@@ -772,6 +784,9 @@ importers:
       '@medaris/common':
         specifier: workspace:*
         version: link:../../libs/common
+      '@medaris/env':
+        specifier: workspace:*
+        version: link:../../libs/env
       '@nestjs/class-transformer':
         specifier: 'catalog:'
         version: 0.4.0
@@ -899,6 +914,9 @@ importers:
       '@medaris/common':
         specifier: workspace:*
         version: link:../../libs/common
+      '@medaris/env':
+        specifier: workspace:*
+        version: link:../../libs/env
       '@nestjs/common':
         specifier: 'catalog:'
         version: 11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -1048,6 +1066,18 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+
+  libs/env:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.1
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
 
   libs/hooks:
     dependencies:

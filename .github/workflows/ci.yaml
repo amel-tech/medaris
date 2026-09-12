@@ -237,7 +237,7 @@ jobs:
 
       # Proves AC #2 on every PR: a leaf change in one stack must affect exactly
       # its own project. This PR itself cannot demonstrate that (it edits
-      # sharedGlobals, so it correctly affects all 16 projects), so the property
+      # sharedGlobals, so it correctly affects all 17 projects), so the property
       # is asserted here instead of observed once.
       - name: Assert nx affected isolates each stack
         run: node tools/ci/assert-affected-isolation.mjs

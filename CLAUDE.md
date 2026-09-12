@@ -4,7 +4,7 @@ Instructions for AI agents working in this repository. Read [`README.md`](README
 
 ## What this repo is
 
-A single pnpm workspace orchestrated by Nx: two NestJS APIs (`tedrisat`, `teskilat`), five web apps, nine `@medaris/*` libraries. It was formed by merging `madrasah-backend` and `madrasah-frontend` with history preserved. Any instruction that describes two separate repositories is stale.
+A single pnpm workspace orchestrated by Nx: two NestJS APIs (`tedrisat`, `teskilat`), five web apps, ten `@medaris/*` libraries. It was formed by merging `madrasah-backend` and `madrasah-frontend` with history preserved. Any instruction that describes two separate repositories is stale.
 
 ## Before you touch anything
 
@@ -22,7 +22,7 @@ pnpm nx run-many -t lint --skip-nx-cache
 pnpm nx run-many -t module-boundaries --skip-nx-cache
 ```
 
-Expected: typecheck 16 projects · **295 tests / 21 suites** · build 8 · lint 16 · module-boundaries 16.
+Expected: typecheck 17 projects · **335 tests / 22 suites** · build 8 · lint 17 · module-boundaries 17.
 
 Two prerequisites that look optional and are not:
 
@@ -37,7 +37,10 @@ Two prerequisites that look optional and are not:
 - **`biome.json` must stay comment-free.** A comment anywhere in that file — including *above* the `overrides` array — makes Biome silently drop the override's `includes`, which re-enables `useImportType` on the Nest packages. Measured, not theorised. Put explanatory notes in `docs/migration/` instead.
 - **Do not partially stage a file the formatter will reflow.** `git add -p` plus `biome check --write` re-applies the hidden hunks at a stale offset and can produce a syntax error while lint-staged still exits 0. Stage whole files.
 - **`NODE_ENV=development` in a web app's `.env` breaks `next build`.** React resolves its development bundle against a production SSR runtime and the build dies prerendering `/_global-error` with `Cannot read properties of null (reading 'useContext')`. Measured on all four web apps. The root `.env.example` therefore scopes `NODE_ENV` to `API__`; never broadcast it.
-- **There is one `.env`, at the root (MDRS-25).** `apps/<app>/.env` no longer exists and must not be recreated — Next reads a project-directory `.env` on its own, so a stray file silently shadows keys for that one app. The prefix translation lives in `tools/env/root-env.cjs`, applied by each `next.config.js` and by `apps/<api>/src/load-env.ts`.
+- **There is one `.env`, at the root (MDRS-25).** `apps/<app>/.env` no longer exists and must not be recreated — Next reads a project-directory `.env` on its own, so a stray file silently shadows keys for that one app. The prefix translation lives in `libs/env` (`@medaris/env`) since MDRS-66, imported by each `next.config.js` and by `apps/<api>/src/load-env.ts`.
+- **`@medaris/env` must stay buildless and platform-neutral.** `next.config.js` is evaluated before any TypeScript in the repo has been compiled, so the implementation is `src/root-env.cjs` with no `build` target and the four Next apps reach it through `createRequire`. Giving it a `dist/`-only entry point, or any `platform:*` tag, locks out half of its six consumers. **Not finding `pnpm-workspace.yaml` throws** — that is stated once, in `findRepoRoot`, and no call site may re-add a silent skip. The two Nest runner images therefore copy `pnpm-workspace.yaml` and `libs/env`; see `docs/migration/mdrs-66-env-package.md`.
+- **A new workspace package means editing all six `apps/*/Dockerfile`.** Their `deps` (and `prod-deps`) stages enumerate every registered package's `package.json` because `pnpm install --frozen-lockfile` needs all of them present. Adding a package without adding the `COPY` line breaks all six image builds while every local gate stays green.
+- **`nx.json` `namedInputs` values must all be arrays.** A `"//"` comment inside that object makes Nx reject the whole file with `Given napi value is not an array on NxJson.namedInputs`. Notes go at the top level.
 - **`load-env` must stay the first import in a Nest `main.ts`.** `./otel` and `ConfigModule` both read the environment as they are evaluated, and ES import order is evaluation order.
 - **Biome exits 0 on warnings.** `biome check` returns success with warn-severity findings present, so `-t lint` alone cannot catch a growing warning count. `tools/ci/` holds a ratchet that fails closed; do not weaken it.
 
@@ -45,7 +48,7 @@ Two prerequisites that look optional and are not:
 
 ESLint exists **only** to run `@nx/enforce-module-boundaries`. All formatting and linting belongs to Biome — do not add style rules to `eslint.config.mjs`.
 
-Boundaries **are enforced**. All 16 projects carry `tags` in their `project.json`, and `eslint.config.mjs` holds the real `depConstraints` from ADR-001 §D5. Two axes are enforced (`scope`, `platform`); `type:*` is documentary and carries no constraint. `allow` holds exactly two entries — the workspace-root Vitest base configs, which the per-project configs can only reach by relative path — and each carries its removal condition inline, which is the only form MDRS-13's AC permits. Adding a third without one is a regression.
+Boundaries **are enforced**. All 17 projects carry `tags` in their `project.json`, and `eslint.config.mjs` holds the real `depConstraints` from ADR-001 §D5. Two axes are enforced (`scope`, `platform`); `type:*` is documentary and carries no constraint. `allow` holds exactly two entries — the workspace-root Vitest base configs, which the per-project configs can only reach by relative path — and each carries its removal condition inline, which is the only form MDRS-13's AC permits. Adding a third without one is a regression.
 
 | Project | Tags |
 | -- | -- |
@@ -57,7 +60,7 @@ Boundaries **are enforced**. All 16 projects carry `tags` in their `project.json
 | `services` | `scope:web` `platform:web` `type:data-access` |
 | `i18n` | `scope:shared` `type:i18n` |
 | `types` | `scope:shared` `type:types` |
-| `utils` | `scope:shared` `type:util` |
+| `utils`, `env` | `scope:shared` `type:util` |
 
 | sourceTag | may depend on |
 | -- | -- |
@@ -85,7 +88,7 @@ What the linter does **not** catch (measured, MDRS-13):
 
 ## Commits and pull requests
 
-Conventional commits, English, against the 20-scope enum in `commitlint.config.mjs`. No emoji, no "Generated with" trailers, no `Co-Authored-By` for AI. Details and the full scope list are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Conventional commits, English, against the 21-scope enum in `commitlint.config.mjs`. No emoji, no "Generated with" trailers, no `Co-Authored-By` for AI. Details and the full scope list are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 Never use `--amend`, `--no-verify`, force push, `git reset --hard`, or `gh pr merge --admin`. Never commit directly to `main`.
 

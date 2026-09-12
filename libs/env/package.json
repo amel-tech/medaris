@@ -1,0 +1,24 @@
+{
+  "name": "@medaris/env",
+  "version": "0.0.0",
+  "description": "The root-.env bootstrap: one walk-up, one prefix scheme, one not-found behaviour",
+  "main": "./src/root-env.cjs",
+  "types": "./src/root-env.d.ts",
+  "type": "module",
+  "license": "MIT",
+  "files": [
+    "src/**"
+  ],
+  "scripts": {
+    "clean": "rm -rf .turbo node_modules coverage",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "private": true
+}
