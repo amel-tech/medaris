@@ -63,12 +63,8 @@
     "@types/supertest": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "drizzle-kit": "catalog:",
-    "source-map-support": "catalog:",
     "supertest": "catalog:",
     "testcontainers": "catalog:",
-    "ts-loader": "catalog:",
-    "ts-node": "catalog:",
-    "tsconfig-paths": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:vitest",
     "vitest": "catalog:"

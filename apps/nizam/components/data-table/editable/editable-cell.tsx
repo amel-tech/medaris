@@ -1,4 +1,8 @@
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type { CellContext, RowData } from "@tanstack/react-table";
+import type {
+  LegacyColumnDef as ColumnDef,
+  LegacyFeatures,
+} from "@tanstack/react-table/legacy";
 import React from "react";
 
 import { EditableInput } from "./editable-input";
@@ -6,7 +10,9 @@ import { EditableSelect } from "./editable-select";
 import { EditableSwitch } from "./editable-switch";
 import { EditableTextarea } from "./editable-textarea";
 
-export function EditableCell<TData>(props: CellContext<TData, unknown>) {
+export function EditableCell<TData extends RowData>(
+  props: CellContext<LegacyFeatures, TData, unknown>
+) {
   const {
     getValue,
     row: { index },
@@ -35,6 +41,22 @@ export function EditableCell<TData>(props: CellContext<TData, unknown>) {
     ? optionsProvider(table.options.data || [], index)
     : options;
 
+  // `ColumnMeta.options` admits `string | boolean` values (the switch column
+  // needs the boolean), while the Radix `Select` compares item values as
+  // strings. Coerced once per options array rather than on every render —
+  // this cell re-renders on each keystroke and whenever `loadingCells`
+  // changes. `dynamicOptions` is a stable reference when it comes from
+  // `meta.options`; a provider rebuilds it each render, in which case the
+  // memo is a no-op rather than a cost.
+  const selectOptions = React.useMemo(
+    () =>
+      dynamicOptions.map(({ value, label }) => ({
+        value: String(value),
+        label,
+      })),
+    [dynamicOptions]
+  );
+
   // When the input is blurred, we'll call our table meta's updateData function
   const handleSave = () => {
     // Only trigger update if the value has actually changed
@@ -58,10 +80,13 @@ export function EditableCell<TData>(props: CellContext<TData, unknown>) {
     case "select":
       return (
         <EditableSelect
-          value={value as string}
+          // Both sides of the Select must agree on the string form: an item
+          // rendered as "true" never matches a raw boolean `true` and the
+          // control shows its placeholder for a cell that has a value.
+          value={typeof value === "boolean" ? String(value) : (value as string)}
           onChange={handleChange}
           onBlur={handleSave}
-          options={dynamicOptions}
+          options={selectOptions}
           placeholder={placeholder}
           disabled={disabled || isLoading}
           className={className}
@@ -91,7 +116,6 @@ export function EditableCell<TData>(props: CellContext<TData, unknown>) {
           isLoading={isLoading}
         />
       );
-    case "input":
     default:
       return (
         <EditableInput
@@ -107,7 +131,9 @@ export function EditableCell<TData>(props: CellContext<TData, unknown>) {
   }
 }
 
-export function createDefaultColumn<TData>(): Partial<ColumnDef<TData>> {
+export function createDefaultColumn<TData extends RowData>(): Partial<
+  ColumnDef<TData>
+> {
   return {
     cell: (props) => <EditableCell {...props} />,
   };
