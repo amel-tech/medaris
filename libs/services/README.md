@@ -50,33 +50,39 @@ const deck = await decks.getFlashcardDeckById({
 
 ```typescript
 import { createServerTedrisatAPIs } from '@medaris/services/tedrisat'
-import { auth } from '~/lib/auth_options'
+import { getAccessToken } from '~/lib/auth_options'
 
-// In server components or API routes
-const session = await auth()
-const { decks } = await createServerTedrisatAPIs(session?.accessToken, env.TEDRISAT_API_BASE_URL)
+// In server components, route handlers and server actions
+const token = await getAccessToken()
+const { decks } = await createServerTedrisatAPIs(token, env.TEDRISAT_API_BASE_URL)
 
 const decks = await decks.getAllFlashcardDecks()
 ```
 
+`getAccessToken()` reads the Keycloak access token out of the encrypted session
+cookie, refreshes it when it has expired, and is memoized per request. Each app
+builds it from `createAccessTokenReader` in `@medaris/services/auth`, supplying
+its `NEXTAUTH_SECRET`, its session cookie name and its own `refreshAccessToken`.
+
 ### Client-Side Usage (React)
+
+Since MDRS-28 the `Session` object no longer carries the access token — NextAuth
+serves the session from `GET /api/auth/session` to any script on the page, so
+the token must not be on it. Client components therefore cannot call tedrisat
+directly with the user's token. Go through a server action (see
+`~/lib/authenticated-action.ts` in each app) or a route handler under
+`app/api/**`, both of which read the token server-side with `getAccessToken()`.
+
+`createTedrisatAPIs` remains available for callers that hold a token some other
+way (for example a service-to-service call with its own credential):
 
 ```typescript
 import { createTedrisatAPIs } from '@medaris/services/tedrisat'
-import { useSession } from 'next-auth/react'
 
-function MyComponent() {
-  const { data: session } = useSession()
-  
-  const fetchData = async () => {
-    const { decks } = createTedrisatAPIs({
-      baseUrl: process.env.NEXT_PUBLIC_TEDRISAT_API_BASE_URL!,
-      token: session?.accessToken
-    })
-    
-    return await decks.getAllFlashcardDecks()
-  }
-}
+const { decks } = createTedrisatAPIs({
+  baseUrl: process.env.NEXT_PUBLIC_TEDRISAT_API_BASE_URL!,
+  token,
+})
 ```
 
 ## Development

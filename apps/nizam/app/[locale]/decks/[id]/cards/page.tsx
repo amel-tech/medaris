@@ -1,7 +1,7 @@
 import { createServerTedrisatAPIs } from "@medaris/services/tedrisat";
 import { env } from "~/env";
 import DeckCards from "~/features/decks/components/cards";
-import { auth } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth_options";
 
 export default async function DeckCardsPage({
   params,
@@ -12,8 +12,7 @@ export default async function DeckCardsPage({
 }) {
   const { id } = await params;
 
-  const session = await auth();
-  const token = session?.accessToken;
+  const token = await getAccessToken();
 
   const API = await createServerTedrisatAPIs(token, env.TEDRISAT_API_BASE_URL);
 

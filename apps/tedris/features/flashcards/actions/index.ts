@@ -9,7 +9,7 @@ import {
 } from "@medaris/services/tedrisat";
 import { revalidatePath } from "next/cache";
 import { env } from "~/env";
-import { auth } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth_options";
 import { authenticatedAction } from "~/lib/authenticated-action";
 
 export type DeckFilter = "all" | "public" | "private";
@@ -32,8 +32,7 @@ export const getDecks = async (
 ): Promise<FlashcardDeckResponse[]> => {
   const isPublic = deckFilterToIsPublic(filter);
   try {
-    const session = await auth();
-    const token = session?.accessToken;
+    const token = await getAccessToken();
     const { decks } = await createServerTedrisatAPIs(
       token,
       env.TEDRISAT_API_BASE_URL
@@ -52,8 +51,7 @@ export const getMyDecks = async (
 ): Promise<FlashcardDeckResponse[] | undefined> => {
   const isPublic = deckFilterToIsPublic(filter);
   try {
-    const session = await auth();
-    const token = session?.accessToken;
+    const token = await getAccessToken();
     if (!token) return undefined;
     const API = await createServerTedrisatAPIs(
       token,

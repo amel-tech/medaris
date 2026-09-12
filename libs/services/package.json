@@ -15,6 +15,11 @@
       "types": "./src/utils/index.ts",
       "import": "./src/utils/index.ts",
       "require": "./src/utils/index.ts"
+    },
+    "./auth": {
+      "types": "./src/auth/index.ts",
+      "import": "./src/auth/index.ts",
+      "require": "./src/auth/index.ts"
     }
   },
   "scripts": {
@@ -25,11 +30,17 @@
     "clean": "rm -rf .turbo node_modules dist .tsbuild src/*/generated",
     "typecheck": "tsc -b tsconfig.json"
   },
+  "dependencies": {
+    "next": "catalog:",
+    "next-auth": "catalog:",
+    "react": "catalog:"
+  },
   "devDependencies": {
     "@openapitools/openapi-generator-cli": "catalog:",
     "@types/node": "catalog:",
     "onchange": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "@types/react": "catalog:"
   },
   "private": true
 }

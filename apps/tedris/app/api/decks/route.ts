@@ -1,15 +1,15 @@
 import { createServerTedrisatAPIs } from "@medaris/services/tedrisat";
 import { NextResponse } from "next/server";
 import { env } from "~/env";
-import { auth } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth_options";
 
 export async function GET() {
   try {
     // Check if mocking is enabled
     // Direct API usage - no wrapper layers
-    const session = await auth();
+    const accessToken = await getAccessToken();
     const API = await createServerTedrisatAPIs(
-      session?.accessToken,
+      accessToken,
       env.TEDRISAT_API_BASE_URL
     );
 

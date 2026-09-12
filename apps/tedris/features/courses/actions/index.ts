@@ -11,7 +11,7 @@ import {
 } from "@medaris/services/tedrisat";
 import { revalidatePath } from "next/cache";
 import { env } from "~/env";
-import { auth } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth_options";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
@@ -22,9 +22,9 @@ export const getKosks = async (
   limit = 12
 ): Promise<PaginatedKoskResponse> => {
   try {
-    const session = await auth();
+    const accessToken = await getAccessToken();
     const { kosks } = await createServerTedrisatAPIs(
-      session?.accessToken,
+      accessToken,
       env.TEDRISAT_API_BASE_URL
     );
     return await kosks.getAllKosks({ page, limit });
@@ -36,9 +36,9 @@ export const getKosks = async (
 
 export const getKosk = async (koskId: string): Promise<KoskResponse | null> => {
   try {
-    const session = await auth();
+    const accessToken = await getAccessToken();
     const { kosks } = await createServerTedrisatAPIs(
-      session?.accessToken,
+      accessToken,
       env.TEDRISAT_API_BASE_URL
     );
     return await kosks.getKoskById({ id: koskId });
@@ -52,9 +52,9 @@ export const getKoskCourses = async (
   koskId: string
 ): Promise<CourseSummaryResponse[]> => {
   try {
-    const session = await auth();
+    const accessToken = await getAccessToken();
     const { courses } = await createServerTedrisatAPIs(
-      session?.accessToken,
+      accessToken,
       env.TEDRISAT_API_BASE_URL
     );
     return await courses.getCoursesByKosk({ koskId });
@@ -68,9 +68,9 @@ export const getCourse = async (
   courseId: string
 ): Promise<CourseDetailResponse | null> => {
   try {
-    const session = await auth();
+    const accessToken = await getAccessToken();
     const { courses } = await createServerTedrisatAPIs(
-      session?.accessToken,
+      accessToken,
       env.TEDRISAT_API_BASE_URL
     );
     return await courses.getCourseById({ id: courseId });
@@ -82,9 +82,9 @@ export const getCourse = async (
 
 export const getMyCourses = async (): Promise<EnrolledCourseResponse[]> => {
   try {
-    const session = await auth();
+    const accessToken = await getAccessToken();
     const { courses } = await createServerTedrisatAPIs(
-      session?.accessToken,
+      accessToken,
       env.TEDRISAT_API_BASE_URL
     );
     return await courses.getEnrolledCourses();
