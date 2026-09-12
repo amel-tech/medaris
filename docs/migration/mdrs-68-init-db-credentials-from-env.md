@@ -96,14 +96,16 @@ statement rode along as inert text (`postgres` kept `rolsuper = t` and no new
 superuser appeared), and logging in with that exact password succeeded — so the
 value round-tripped intact rather than merely failing to crash.
 
-## Four guards the old file did not need
+## Five guards the old file did not need
 
 The `ALTER ROLE … PASSWORD`, `ALTER DATABASE … OWNER TO` and
 `ALTER SCHEMA public OWNER TO` statements all run unconditionally, and every name
 they take now comes from the environment instead of being hardcoded. A collision
-therefore does not error — it silently reassigns a password or an owner. Four are
+therefore does not error — it silently reassigns a password or an owner. Five are
 reachable, so the script refuses each by name before touching the cluster.
-Measured on fresh volumes, port 5439 to avoid colliding with anything:
+Measured on fresh volumes, port 5439 to avoid colliding with anything (the first
+four; the fifth was added on review and is covered by the `sh -n` syntax check
+and by reading, not by a fresh container run):
 
 ```
 $ TEDRISAT__DB_USERNAME=postgres
@@ -122,6 +124,10 @@ $ TESKILAT__DB_NAME=tedrisat_db
 init-db: TEDRISAT__DB_NAME and TESKILAT__DB_NAME are both 'tedrisat_db'; the second would take ownership of the first app's database
   -> medaris-db exited exit=1
 
+$ TEDRISAT__DB_NAME=template1
+init-db: app database 'template1' is a reserved database (postgres, template0, template1); refusing to reassign its ownership
+  -> (not run; see above)
+
 $ # control, unmodified .env on the same port
 init-db: provisioning database tedrisat_db for role tedrisat
 init-db: provisioning database teskilat_db for role teskilat
@@ -129,11 +135,18 @@ init-db: done
   -> medaris-db running exit=0
 ```
 
-None of the four is a vulnerability — each needs an operator to write an unusual
+None of the five is a vulnerability — each needs an operator to write an unusual
 value into their own `.env` — but each fails invisibly, which is the part worth
 refusing. The database-axis pair was missed in the first attempt and added after
 review pointed out that guarding only the role axis made the guard set look
-complete when it was not.
+complete when it was not. The fifth — the reserved names `postgres`,
+`template0` and `template1` — was added after a second review pass: the
+`$POSTGRES_DB` comparison only covers the maintenance database under the name
+the operator gave it, while `CREATE DATABASE … WHERE NOT EXISTS` is skipped for
+any pre-existing name and the `ALTER DATABASE` / `ALTER SCHEMA` statements are
+not. `TEDRISAT__DB_NAME=template1` would therefore have handed the cluster's
+template, and the `public` schema of every database created from it afterwards,
+to the app role — and exited 0.
 
 The comparison is byte-exact on purpose. `format('%I')` never folds case — it
 double-quotes anything not already lowercase — so `POSTGRES` and `postgres` are

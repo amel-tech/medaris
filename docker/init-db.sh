@@ -86,10 +86,24 @@ fi
 # The same collisions on the database axis, which are exactly as silent: a shared
 # name makes the second CREATE DATABASE a no-op and then hands the first app's
 # database and its public schema to the second app's role.
+#
+# The reserved names are refused by name as well as by comparison with
+# $POSTGRES_DB. `CREATE DATABASE ... WHERE NOT EXISTS` is skipped for any name
+# that already exists, but the ALTER DATABASE / ALTER SCHEMA statements below run
+# unconditionally, so `TEDRISAT__DB_NAME=template1` would hand the cluster's
+# template — and the `public` schema of every database created from it
+# afterwards — to an app role, and exit 0. `postgres` is listed literally too:
+# the byte-exact check against $POSTGRES_DB stops matching it the moment an
+# operator moves MEDARIS_POSTGRES_DB off the default.
 for app_db in "$TEDRISAT_DB_NAME" "$TESKILAT_DB_NAME"; do
 	if [ "$app_db" = "$POSTGRES_DB" ]; then
 		die "app database '$app_db' is the maintenance database (MEDARIS_POSTGRES_DB); refusing to reassign its ownership"
 	fi
+	case "$app_db" in
+	postgres | template0 | template1)
+		die "app database '$app_db' is a reserved database (postgres, template0, template1); refusing to reassign its ownership"
+		;;
+	esac
 done
 
 if [ "$TEDRISAT_DB_NAME" = "$TESKILAT_DB_NAME" ]; then
