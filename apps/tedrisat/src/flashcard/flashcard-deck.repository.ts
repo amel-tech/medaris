@@ -49,6 +49,16 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
     );
   }
 
+  async findAuthorId(id: string): Promise<string | null> {
+    // The same shape as KoskRepository.findOwnerId: one column, LIMIT 1.
+    const rows = await this.databaseService.db
+      .select({ authorId: decks.authorId })
+      .from(decks)
+      .where(eq(decks.id, id))
+      .limit(1);
+    return rows[0]?.authorId ?? null;
+  }
+
   async findAll(include?: Set<string>): Promise<IFlashcardDeck[]> {
     // TODO: handle pagination
     return this.findByFilter(eq(decks.isPublic, true), include);

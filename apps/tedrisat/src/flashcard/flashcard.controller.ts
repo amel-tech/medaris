@@ -329,7 +329,7 @@ export class FlashcardController {
     // an `include` it would only scope the progress relation — the rows come
     // back filtered on `deckId` alone either way. The access decision has to
     // happen here.
-    const deck = await this.deckService.assertOwner(deckId, request.user.sub);
+    const deck = await this.deckService.findOwned(deckId, request.user.sub);
 
     return this.cardBulkService.exportFlashcards(
       deckId,

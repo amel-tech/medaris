@@ -34,18 +34,18 @@ code `DECK_FORBIDDEN`, extending `ForbiddenError` from `@medaris/common`. A copy
 `KoskForbiddenError` down to the shape of the default message.
 
 **`apps/tedrisat/src/flashcard/flashcard-deck.service.ts`** — `assertOwner(deckId, userId)`.
-Loads the deck, throws `DeckNotFoundError` when absent and `DeckForbiddenError` when
-`authorId !== userId`.
+Reads the deck's `authorId` through the new one-column `findAuthorId` repository method
+(`select({ authorId }) … limit(1)`, the sibling of `KoskRepository.findOwnerId`), throws
+`DeckNotFoundError` when there is no row and `DeckForbiddenError` when `authorId !== userId`,
+and returns `void` like `KoskService.assertOwner`. **`findOwned(deckId, userId)`** makes the
+same decision on the full row and returns the deck; `exportCards` uses it because it needs
+`deck.title` for the filename, so it still pays one round trip, not two.
 
-Two deliberate departures from `KoskService.assertOwner`, both to avoid new surface:
-
-1. It loads the row through the existing `deckRepo.findById` rather than a new
-   `findAuthorId` repository method — the same choice `FlashcardLabelService.assertOwner`
-   already made in this module with `getById`. No new repository method, no new interface
-   member.
-2. It **returns the deck** instead of `void`, so `exportCards` — which needs `deck.title` for
-   the filename — does not pay for a second round trip. Callers that only want the guard
-   ignore the return.
+The first version of this branch made `assertOwner` load the whole row through `findById` and
+return it, to avoid a new repository member. Review pointed out the cost: `findById` selects
+every column of `decks` — `description` is unbounded `text` — with no `LIMIT 1`, and three of
+the four callers threw all of it away to compare one column. The narrow projection is the
+repository's own established shape for this question, so it was adopted.
 
 **`apps/tedrisat/src/flashcard/flashcard.controller.ts`** — `assertOwner` called in
 `createMany`, `bulk`, `exportCards` and `importCards`, replacing the bare `findById` + null
@@ -53,6 +53,16 @@ check where one existed (`bulk`, `exportCards`, `importCards`) and adding the mi
 outright in `createMany`, which had none. `DeckNotFoundError` is no longer imported here — the
 service throws it now. `@ApiForbiddenResponse` and, where missing, `@ApiNotFoundResponse` were
 added to the four routes.
+
+The four checks sit in the **controller**, which is the first controller-level `assertOwner` in
+the app — `KoskService`, `CourseService` and both label services call it from the service
+method, so the guard travels with the operation. That divergence is deliberate: this is the
+stopgap MDRS-43 strips back out of exactly these four handlers when `@Authz` lands on them (see
+follow-up 5), and keeping it at the HTTP edge makes that a clean removal. The cost is real and
+worth naming — `FlashcardService.createMany`, `FlashcardBulkService.addFlashcards` and
+`exportFlashcards` stay callable without an ownership check from any other caller — so do
+**not** copy this placement into a module MDRS-43 will not revisit; put the assertion in the
+service there.
 
 In `importCards` the assertion runs before `excelService.parseFile`, so a foreign deck id costs
 an attacker the 403 and no spreadsheet parsing. It does **not** run before the upload is
@@ -195,10 +205,25 @@ the PR body for a human to file.
    item 2 of the section above; this is a HIGH finding, not a housekeeping note.
 3. **`GET flashcard/cards?deckId=` and `GET cards/:id`.** See item 1 of the section above. Also
    HIGH, and the reason the export guard should not be described as closing the read hole.
-4. **TOCTOU.** `assertOwner` and the insert are two statements. A deck whose `authorId` changed
+4. **nizam offers Export and Import on decks the caller does not own.**
+   `apps/nizam/app/[locale]/decks/page.tsx` lists every deck visible to the user —
+   `findAllVisibleToUser` is `isPublic OR authorId = me` — and `DeckCards` wires the export and
+   import affordances unconditionally, so on another author's public deck both now end in a
+   403 `DECK_FORBIDDEN` toast (`cards.tsx` handles the error; nothing crashes). The UI cannot
+   gate on ownership today because `FlashcardDeckResponse` carries no `authorId`
+   (`dto/flashcard-deck-response.dto.ts`), so the fix is a contract change first — add
+   `authorId` to the response, regenerate the client (MDRS-58's exporter, #55) — and then hide
+   the two actions when `deck.authorId !== session.user.sub`. Left for that PR rather than done
+   here, because regenerating `libs/services/swagger-docs/tedrisat.json` in this branch would
+   collide with #55's 87-file regeneration.
+5. **The committed spec and generated client do not carry the new `403`/`404` responses.** Same
+   root cause and same owner: #55 regenerates the spec from the live router metadata, so once
+   it is rebased onto this change the four routes' new status codes (and the `422` on `bulk`
+   that was already missing) land there without a hand edit here.
+6. **TOCTOU.** `assertOwner` and the insert are two statements. A deck whose `authorId` changed
    between them — there is no code path that does this today — would let a stale decision
    through. Worth folding into a transaction if deck transfer ever exists.
-5. **Relationship to MDRS-43.** MDRS-43 applies the `@Authz` matrix to these same endpoints and
+7. **Relationship to MDRS-43.** MDRS-43 applies the `@Authz` matrix to these same endpoints and
    would supersede this change. This is therefore the **stopgap**: it closes a live hole on
    `main` now, in the idiom the repository already uses, without waiting for the matrix. If
    MDRS-43 lands afterwards, `assertOwner` should be removed from these four handlers in the
