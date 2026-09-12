@@ -1,4 +1,4 @@
-import { LoggerModule } from "@medaris/common";
+import { LoggerModule, RateLimitModule } from "@medaris/common";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller";
@@ -16,6 +16,7 @@ import { configuration } from "./config";
       // stale apps/<app>/.env if one were ever left behind.
     }),
     LoggerModule.forRoot(),
+    RateLimitModule,
   ],
   controllers: [AppController],
   providers: [AppService],

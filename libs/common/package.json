@@ -32,6 +32,7 @@
     "@nestjs/config": "catalog:",
     "@nestjs/core": "catalog:",
     "@nestjs/swagger": "catalog:",
+    "@nestjs/throttler": "catalog:",
     "cache-manager": "catalog:",
     "class-transformer": "catalog:",
     "class-validator": "catalog:",
