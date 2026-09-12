@@ -44,6 +44,12 @@ describe("Flashcard bulk create (e2e)", () => {
   let deckId: string;
 
   beforeAll(async () => {
+    // MDRS-31 gave the bulk routes a 10-per-window budget, and this suite fires
+    // eight requests at the same handler from one address by design. The budget
+    // is resolved per request, so raising it here keeps these tests about the
+    // row cap; the budget itself is asserted in throttler.e2e.spec.ts.
+    process.env.THROTTLE_BULK_LIMIT = "1000";
+
     app = await createTestApp({ authUserId: TEST_USER_ID });
     dbUtils = new TestDatabaseUtils(app.get<DatabaseService>(DatabaseService));
   });

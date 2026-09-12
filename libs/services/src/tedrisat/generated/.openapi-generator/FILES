@@ -3,7 +3,6 @@
 README.md
 package.json
 src/apis/CoursesApi.ts
-src/apis/ExamplesApi.ts
 src/apis/FlashcardCardsApi.ts
 src/apis/FlashcardDecksApi.ts
 src/apis/KosksApi.ts
@@ -18,7 +17,6 @@ src/models/BulkFlashcardResponse.ts
 src/models/CourseDetailResponse.ts
 src/models/CourseSummaryResponse.ts
 src/models/CreateCourseDto.ts
-src/models/CreateExampleDto.ts
 src/models/CreateFlashcardDeckDto.ts
 src/models/CreateFlashcardDto.ts
 src/models/CreateFlashcardProgressDto.ts
@@ -37,9 +35,6 @@ src/models/FlashcardResponse.ts
 src/models/HealthCheckDto.ts
 src/models/KoskResponse.ts
 src/models/LessonResponse.ts
-src/models/MedarisMetaPaginationResponse.ts
-src/models/MedarisMetaResponse.ts
-src/models/MedarisResponse.ts
 src/models/MuderrisResponse.ts
 src/models/PaginatedKoskResponse.ts
 src/models/PendingEnrollmentResponse.ts

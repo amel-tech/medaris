@@ -34,8 +34,11 @@ import {
   ApiOperation,
   ApiQuery,
   ApiTags,
+  ApiTooManyRequestsResponse,
   ApiUnprocessableEntityResponse,
 } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
+import { BULK_THROTTLE } from "../config/throttle-env";
 import {
   IncludeApiQuery,
   IncludeQuery,
@@ -224,6 +227,11 @@ export class FlashcardController {
     return this.cardService.delete(cardId);
   }
 
+  // The three bulk routes below carry a budget an order of magnitude lower than
+  // every other endpoint: one workbook can be 5MB and is parsed row by row, and
+  // an export streams a whole deck. `default` names the single throttler
+  // registered in RateLimitModule — this overrides its limit for this handler
+  // only, it does not add a second one. See ../config/throttle-env.ts.
   // Post Bulk
   @ApiOperation({
     summary: "Bulk",
@@ -235,6 +243,10 @@ export class FlashcardController {
   @ApiUnprocessableEntityResponse({ type: BulkFlashcardErrorResponse })
   @ApiNotFoundResponse({ description: "Deck not found" })
   @ApiForbiddenResponse({ description: "Deck belongs to another user" })
+  @ApiTooManyRequestsResponse({
+    description: "Bulk rate limit exceeded — see the Retry-After header",
+  })
+  @Throttle({ default: BULK_THROTTLE })
   @Post("decks/:deckId/cards/bulk")
   async bulk(
     @Req() request: AuthorizedRequest,
@@ -287,6 +299,7 @@ export class FlashcardController {
   }
 
   // Get Export File
+  @Throttle({ default: BULK_THROTTLE })
   @Get("decks/:deckId/cards/bulk/export")
   @ApiOperation({
     summary: "Export flashcards from a deck",
@@ -295,6 +308,9 @@ export class FlashcardController {
   @ApiOkResponse({ type: StreamableFile })
   @ApiNotFoundResponse({ description: "Deck not found" })
   @ApiForbiddenResponse({ description: "Deck belongs to another user" })
+  @ApiTooManyRequestsResponse({
+    description: "Bulk rate limit exceeded — see the Retry-After header",
+  })
   @ApiQuery({
     name: "format",
     required: false,
@@ -324,6 +340,7 @@ export class FlashcardController {
   }
 
   // Post Import File
+  @Throttle({ default: BULK_THROTTLE })
   @Post("decks/:deckId/cards/bulk/import")
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({
@@ -334,6 +351,9 @@ export class FlashcardController {
   @ApiNotFoundResponse({ description: "Deck not found" })
   @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @ApiUnprocessableEntityResponse({ type: BulkFlashcardErrorResponse })
+  @ApiTooManyRequestsResponse({
+    description: "Bulk rate limit exceeded — see the Retry-After header",
+  })
   @ApiConsumes("multipart/form-data")
   @ApiBody({
     schema: {
