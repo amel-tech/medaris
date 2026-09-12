@@ -7,6 +7,7 @@ import {
   IFlashcardDeckLabel,
   IFlashcardDeckLabeling,
   IFlashcardDeckLabelStats,
+  IFlashcardDeckLabelStatsRead,
 } from "./flashcard-deck-label.repository.interface";
 
 @Injectable()
@@ -63,23 +64,49 @@ export class FlashcardDeckLabelService {
     return await this.labelRepository.deckLabeling(newLabeling);
   }
   /**
+   * MDRS-56, same shape as `FlashcardLabelService.getById` — `assertOwner`
+   * first, so an id belonging to somebody else is a 403 and a missing one a
+   * 404 instead of a 200 carrying another user's row.
+   *
    * Throws rather than resolving null, for the reason spelled out on
    * FlashcardLabelService.getById: a `null` return serialises as an empty 200
    * body, which the client generated from the published contract cannot parse
    * (MDRS-58).
    */
-  async getById(id: string): Promise<IFlashcardDeckLabel> {
+  async getById(id: string, userId: string): Promise<IFlashcardDeckLabel> {
+    await this.assertOwner(id, userId);
+
+    // Same guard as `FlashcardLabelService.getById`, and load-bearing for the
+    // same second reason as the one in `assertOwner` above: this repository's
+    // `getById` destructures `[result]` and is typed non-null, so a row
+    // deleted between the two reads arrives here as `undefined` while the type
+    // claims otherwise. Unguarded that is a 200 with an empty body.
     const label = await this.labelRepository.getById(id);
     if (!label) {
       throw new FlashcardDeckLabelNotFoundError(id);
     }
     return label;
   }
-  async getDeckLabelStats(id: string): Promise<IFlashcardDeckLabelStats> {
+  /**
+   * Ownership is asserted against the deck LABEL, because `deckLabelsStats`
+   * has no owner column of its own (MDRS-56).
+   *
+   * A label that exists and has never been applied has no stats row — the
+   * row is created on the first labeling — and is answered with a zero-valued
+   * stats object rather than a 404, which is reserved for a label that does
+   * not exist (MDRS-58 review). The repository now returns `null` for the
+   * empty read instead of dereferencing `stats[0]`.
+   *
+   * Whether the row is queryable at all is a separate defect (the migration
+   * created `lable_id`, the schema declares `label_id`), recorded in
+   * docs/migration/mdrs-56-flashcard-label-authz.md.
+   */
+  async getDeckLabelStats(
+    id: string,
+    userId: string
+  ): Promise<IFlashcardDeckLabelStatsRead> {
+    await this.assertOwner(id, userId);
     const stats = await this.labelRepository.getLabelStats(id);
-    if (!stats) {
-      throw new FlashcardDeckLabelNotFoundError(id);
-    }
-    return stats;
+    return stats ?? { labelId: id, usageCount: 0, lastUsedAt: null };
   }
 }

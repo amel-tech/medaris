@@ -1,7 +1,6 @@
 /* tslint:disable */
 /* eslint-disable */
 export * from './CoursesApi';
-export * from './ExamplesApi';
 export * from './FlashcardCardsApi';
 export * from './FlashcardDeckLabelApi';
 export * from './FlashcardDecksApi';

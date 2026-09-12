@@ -47,159 +47,6 @@
         ]
       }
     },
-    "/throw-error": {
-      "get": {
-        "description": "Test endpoint that throws a validation error for demonstration purposes",
-        "operationId": "throwTestError",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "summary": "Throw a dummy error",
-        "tags": [
-          "Tedrisat Service"
-        ]
-      }
-    },
-    "/secure": {
-      "get": {
-        "description": "Returns a secure hello message from the Tedrisat service",
-        "operationId": "getSecureHello",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Secure hello message",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Get secure hello message",
-        "tags": [
-          "Tedrisat Service"
-        ]
-      }
-    },
-    "/examples": {
-      "get": {
-        "description": "Retrieves a complete list of all available examples in the system",
-        "operationId": "getAllExamples",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "List of examples\n\nList of examples"
-          }
-        },
-        "summary": "Get all examples",
-        "tags": [
-          "Examples"
-        ]
-      },
-      "post": {
-        "description": "Creates a new example with the provided data and returns the created example",
-        "operationId": "createExample",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateExampleDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Example created successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MedarisResponse"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Create a new example",
-        "tags": [
-          "Examples"
-        ]
-      }
-    },
-    "/examples/{id}": {
-      "get": {
-        "description": "Retrieves a specific example by its unique identifier",
-        "operationId": "getExampleById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "Example ID",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Example found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MedarisResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Example not found"
-          }
-        },
-        "summary": "Get example by ID",
-        "tags": [
-          "Examples"
-        ]
-      },
-      "delete": {
-        "description": "Permanently deletes an example by its ID. This action cannot be undone.",
-        "operationId": "deleteExample",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "Example ID",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Example deleted successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MedarisResponse"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Delete example by ID",
-        "tags": [
-          "Examples"
-        ]
-      }
-    },
     "/flashcard/cards/{id}": {
       "get": {
         "description": "Retrieves a specific flashcard by its unique identifier",
@@ -575,6 +422,9 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Bulk rate limit exceeded — see the Retry-After header"
           }
         },
         "security": [
@@ -669,6 +519,9 @@
           },
           "404": {
             "description": "Deck not found"
+          },
+          "429": {
+            "description": "Bulk rate limit exceeded — see the Retry-After header"
           }
         },
         "security": [
@@ -737,6 +590,9 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Bulk rate limit exceeded — see the Retry-After header"
           }
         },
         "security": [
@@ -1131,7 +987,7 @@
           }
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
@@ -1208,7 +1064,7 @@
           }
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
@@ -1253,6 +1109,9 @@
               }
             }
           },
+          "403": {
+            "description": "The label belongs to another user"
+          },
           "404": {
             "description": "No label with that id"
           }
@@ -1291,6 +1150,9 @@
               }
             }
           },
+          "403": {
+            "description": "The label belongs to another user"
+          },
           "404": {
             "description": "No label with that id"
           }
@@ -1320,7 +1182,7 @@
           }
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
@@ -1397,7 +1259,7 @@
           }
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
@@ -1442,6 +1304,9 @@
               }
             }
           },
+          "403": {
+            "description": "The label belongs to another user"
+          },
           "404": {
             "description": "No label with that id"
           }
@@ -1479,6 +1344,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "The label belongs to another user"
           },
           "404": {
             "description": "No label with that id"
@@ -2347,101 +2215,6 @@
           "service"
         ]
       },
-      "MedarisMetaPaginationResponse": {
-        "type": "object",
-        "properties": {
-          "itemCount": {
-            "type": "number",
-            "minimum": 0,
-            "description": "Number of items on the current page"
-          },
-          "currentPage": {
-            "type": "number",
-            "minimum": 1,
-            "description": "Current page number (starting from 1)"
-          },
-          "totalItems": {
-            "type": "number",
-            "minimum": 0,
-            "description": "Total number of available items"
-          },
-          "itemsPerPage": {
-            "type": "number",
-            "minimum": 0,
-            "description": "Maximum number of items per page"
-          },
-          "totalPages": {
-            "type": "number",
-            "minimum": 0,
-            "description": "Total number of pages available"
-          }
-        },
-        "description": "Pagination metadata returned under the meta.pagination field in paginated API responses.",
-        "required": [
-          "itemCount",
-          "currentPage",
-          "totalItems",
-          "itemsPerPage",
-          "totalPages"
-        ]
-      },
-      "MedarisMetaResponse": {
-        "type": "object",
-        "properties": {
-          "pagination": {
-            "$ref": "#/components/schemas/MedarisMetaPaginationResponse"
-          }
-        }
-      },
-      "MedarisResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "description": "Indicates if the request was successful",
-            "example": true
-          },
-          "message": {
-            "type": "string",
-            "description": "Human-readable message describing the result",
-            "example": "Operation completed successfully"
-          },
-          "data": {
-            "type": "object",
-            "description": "The actual data payload"
-          },
-          "meta": {
-            "description": "Additional metadata about the response",
-            "example": {
-              "timestamp": "2024-01-15T10:30:00.000Z",
-              "version": "1.0.0"
-            },
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/MedarisMetaResponse"
-              }
-            ]
-          }
-        },
-        "required": [
-          "success",
-          "message"
-        ]
-      },
-      "CreateExampleDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Example name",
-            "example": "Sample Example",
-            "maxLength": 255
-          }
-        },
-        "required": [
-          "name"
-        ]
-      },
       "FlashcardProgressResponse": {
         "type": "object",
         "properties": {
@@ -2658,6 +2431,10 @@
             "type": "string",
             "example": "Validation Error"
           },
+          "correlationId": {
+            "type": "string",
+            "example": "0f1d2c3b-4a59-4c6d-8e7f-90a1b2c3d4e5"
+          },
           "timestamp": {
             "type": "string",
             "example": "2025-01-01T00:00:00.000Z"
@@ -2668,6 +2445,7 @@
         },
         "required": [
           "type",
+          "code",
           "status",
           "message",
           "timestamp",
@@ -2791,6 +2569,12 @@
               "PERSONAL"
             ]
           },
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
           "createdBy": {
             "type": "string"
           }
@@ -2798,6 +2582,8 @@
         "required": [
           "title",
           "scope",
+          "id",
+          "userId",
           "createdBy"
         ]
       },
@@ -2834,16 +2620,26 @@
           },
           "flashcardId": {
             "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
           }
         },
         "required": [
           "labelId",
-          "flashcardId"
+          "flashcardId",
+          "createdBy"
         ]
       },
       "FlashcardLabelResponse": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
           "title": {
             "type": "string"
           },
@@ -2855,6 +2651,8 @@
           }
         },
         "required": [
+          "id",
+          "userId",
           "title",
           "createdBy",
           "scope"
@@ -2870,14 +2668,14 @@
             "type": "number"
           },
           "lastUsedAt": {
+            "type": "string",
             "format": "date-time",
-            "type": "string"
+            "nullable": true
           }
         },
         "required": [
           "labelId",
-          "usageCount",
-          "lastUsedAt"
+          "usageCount"
         ]
       },
       "CreateFlashcardDeckLabelDto": {
@@ -2916,6 +2714,9 @@
               "PERSONAL"
             ]
           },
+          "id": {
+            "type": "string"
+          },
           "createdBy": {
             "type": "string"
           },
@@ -2927,6 +2728,7 @@
         "required": [
           "title",
           "scope",
+          "id",
           "createdBy",
           "createdAt"
         ]
@@ -2964,17 +2766,28 @@
           },
           "deckId": {
             "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
           }
         },
         "required": [
           "labelId",
-          "deckId"
+          "deckId",
+          "createdBy"
         ]
       },
       "FlashcardDeckLabelResponse": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string"
+          },
           "title": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
             "type": "string"
           },
           "createdBy": {
@@ -2985,7 +2798,9 @@
           }
         },
         "required": [
+          "id",
           "title",
+          "createdAt",
           "createdBy",
           "scope"
         ]
@@ -3000,14 +2815,14 @@
             "type": "number"
           },
           "lastUsedAt": {
+            "type": "string",
             "format": "date-time",
-            "type": "string"
+            "nullable": true
           }
         },
         "required": [
           "labelId",
-          "usageCount",
-          "lastUsedAt"
+          "usageCount"
         ]
       },
       "KoskResponse": {

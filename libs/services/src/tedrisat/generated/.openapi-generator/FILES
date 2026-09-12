@@ -2,7 +2,6 @@
 .npmignore
 README.md
 src/apis/CoursesApi.ts
-src/apis/ExamplesApi.ts
 src/apis/FlashcardCardsApi.ts
 src/apis/FlashcardDeckLabelApi.ts
 src/apis/FlashcardDecksApi.ts
@@ -19,7 +18,6 @@ src/models/BulkFlashcardResponse.ts
 src/models/CourseDetailResponse.ts
 src/models/CourseSummaryResponse.ts
 src/models/CreateCourseDto.ts
-src/models/CreateExampleDto.ts
 src/models/CreateFlashcardDeckDto.ts
 src/models/CreateFlashcardDeckLabelDto.ts
 src/models/CreateFlashcardDeckLabelingDto.ts
@@ -50,9 +48,6 @@ src/models/HealthCheckDto.ts
 src/models/KoskResponse.ts
 src/models/LabelStatsResponse.ts
 src/models/LessonResponse.ts
-src/models/MedarisMetaPaginationResponse.ts
-src/models/MedarisMetaResponse.ts
-src/models/MedarisResponse.ts
 src/models/MuderrisResponse.ts
 src/models/PaginatedKoskResponse.ts
 src/models/PendingEnrollmentResponse.ts

@@ -10,7 +10,12 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiBody, ApiResponse } from "@nestjs/swagger";
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiResponse,
+} from "@nestjs/swagger";
 import {
   CreateFlashcardDeckLabelDto,
   CreateFlashcardDeckLabelingDto,
@@ -28,6 +33,11 @@ import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
  * See flashcard-label.controller.ts for the reasoning — same fix, same MDRS-27,
  * including the ownership assertion on DELETE. One difference worth knowing:
  * `deckLabels` has no `userId` column, so ownership here is `createdBy`.
+ *
+ * MDRS-56 covers the two read routes here as well, on the same terms and with
+ * the same PUBLIC-scope decision: reads are OWNER-ONLY and `scope` is not
+ * consulted. The full argument is in flashcard-label.controller.ts; it is not
+ * repeated here because the two must not be allowed to drift apart.
  */
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
@@ -36,7 +46,7 @@ export class FlashcardDeckLabelController {
   constructor(private readonly labelService: FlashcardDeckLabelService) {}
 
   @ApiBody({ type: CreateFlashcardDeckLabelDto })
-  @ApiResponse({ status: 200, type: FlashcardDeckCreateLabelResponse })
+  @ApiCreatedResponse({ type: FlashcardDeckCreateLabelResponse })
   @Post("/create")
   async createFlashcardDeckLabel(
     @Req() request: AuthorizedRequest,
@@ -63,7 +73,7 @@ export class FlashcardDeckLabelController {
   }
 
   @ApiBody({ type: CreateFlashcardDeckLabelingDto })
-  @ApiResponse({ status: 200, type: FlashcardDeckLabelingResponse })
+  @ApiCreatedResponse({ type: FlashcardDeckLabelingResponse })
   @Post("/labeling")
   async deckLabeling(
     @Req() request: AuthorizedRequest,
@@ -78,20 +88,30 @@ export class FlashcardDeckLabelController {
   // 404 rather than an empty 200 (MDRS-58) — see the note on the flashcard-label
   // controller's equivalent pair.
   @ApiResponse({ status: 200, type: FlashcardDeckLabelResponse })
+  @ApiResponse({
+    status: 403,
+    description: "The label belongs to another user",
+  })
   @ApiResponse({ status: 404, description: "No label with that id" })
   @Get("/:id")
   async getById(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<FlashcardDeckLabelResponse> {
-    return await this.labelService.getById(id);
+    return await this.labelService.getById(id, request.user.sub);
   }
 
   @ApiResponse({ status: 200, type: DeckLabelStatsResponse })
+  @ApiResponse({
+    status: 403,
+    description: "The label belongs to another user",
+  })
   @ApiResponse({ status: 404, description: "No label with that id" })
   @Get("/getStats/:id")
   async getLabelStats(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<DeckLabelStatsResponse> {
-    return await this.labelService.getDeckLabelStats(id);
+    return await this.labelService.getDeckLabelStats(id, request.user.sub);
   }
 }
