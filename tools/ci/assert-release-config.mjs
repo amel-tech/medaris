@@ -33,6 +33,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createChecker, sameSet, sorted } from "./lib/checks.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -62,30 +63,11 @@ const LOCKED_COMPONENTS = {
   "apps/keycloak-theme": "keycloak-theme",
 };
 
-const failures = [];
+const { check, failures } = createChecker();
 const notes = [];
-
-function check(ok, label, detail) {
-  if (ok) {
-    console.log(`✔ ${label}`);
-  } else {
-    console.log(`✖ ${label}\n    ${detail}`);
-    failures.push(label);
-  }
-}
 
 function readJson(relPath) {
   return JSON.parse(readFileSync(join(repoRoot, relPath), "utf8"));
-}
-
-function sorted(list) {
-  return [...list].sort();
-}
-
-function sameSet(a, b) {
-  const x = sorted(a);
-  const y = sorted(b);
-  return x.length === y.length && x.every((v, i) => v === y[i]);
 }
 
 // ── The two files under test ───────────────────────────────────────────────────
