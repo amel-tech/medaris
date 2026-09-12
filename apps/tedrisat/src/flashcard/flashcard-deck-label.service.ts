@@ -6,7 +6,6 @@ import {
   ICreateFlashcardDeckLabel,
   IFlashcardDeckLabel,
   IFlashcardDeckLabeling,
-  IFlashcardDeckLabelStats,
   IFlashcardDeckLabelStatsRead,
 } from "./flashcard-deck-label.repository.interface";
 

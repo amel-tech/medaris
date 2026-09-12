@@ -6,7 +6,6 @@ import {
   ICreateFlashcardLabel,
   IFlashcardLabel,
   IFlashcardLabeling,
-  IFlashcardLabelStats,
   IFlashcardLabelStatsRead,
 } from "./flashcard-label.reporsitory.interface";
 
