@@ -7,9 +7,9 @@ import { FlashcardRepository } from "../../../src/flashcard/flashcard.repository
  * `insert(...).values(cards)`; an empty array compiles to invalid SQL, so the
  * repository was only ever safe because of what its callers happened to do.
  *
- * Unlike the example repository specs next door, this mounts the REAL
- * repository and mocks only `DatabaseService` — mocking the class under test
- * would assert nothing about the guard.
+ * This mounts the REAL repository and mocks only `DatabaseService`; mocking the
+ * class under test would assert nothing about the guard. (MDRS-32 deleted the
+ * example repository spec this note used to contrast itself with.)
  */
 describe("FlashcardRepository.createMany", () => {
   let repository: FlashcardRepository;
