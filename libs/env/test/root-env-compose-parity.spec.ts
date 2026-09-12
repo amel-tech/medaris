@@ -121,7 +121,7 @@ describe("root-env parseEnv", () => {
         { key: "J", value: "# note" },
       ]);
       expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn.mock.calls[0][0]).toMatch(/^\[env\] J has a comment where/);
+      expect(warn.mock.calls[0]?.[0]).toMatch(/^\[env\] J has a comment where/);
       // A value that starts with or contains `#` with no whitespace after the
       // `=` is a value to compose and to this parser alike, and does not warn.
       warn.mockClear();
