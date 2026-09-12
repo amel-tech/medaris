@@ -194,3 +194,23 @@ teskilat 2/2), build 8, lint 16, module-boundaries 16, matching the count
   what this branch actually runs (226 tests / 17 suites, matching
   CLAUDE.md's documented expectation) — the plan text was stale relative to
   the repo at the time this ticket was picked up.
+
+## Review of pull request #62
+
+The AI multi-lens gate raised eight threads. Three about the `pnpm.overrides`
+block (unbounded `esbuild`, and the `||` unions on `js-yaml` /
+`brace-expansion` collapsing every consumer onto one major) and one about the
+tedris `data-table` twin missing the v9 widening cast were closed in the
+commits that preceded this section — `esbuild` is `>=0.24.3 <1`, the two
+unions became range-scoped `name@major` keys, and both `index.tsx` copies carry
+the cast. The remaining four:
+
+| Where | Finding | Outcome |
+|---|---|---|
+| `apps/nizam/components/data-table/index.tsx` | `useLegacyTable` opts the client bundle out of v9's tree-shaking; only core row modelling and column sizing are used. | **Recorded, not changed.** Keeping the port an API-compatible version bump was the decision at the top of this record; the `features`-API rewrite (`useTable` + `columnSizingFeature`) is the bounded follow-up under "held back", now with the reviewer's measurement of what is actually used. |
+| `apps/nizam/components/data-table/editable/editable-cell.tsx` | Option values were coerced to strings but the cell's own value was not, so a boolean-valued select could never show its selection. | **Fixed.** The selected value is coerced the same way (`typeof value === "boolean" ? String(value) : value`). Latent — nothing sets `inputType: "select"` with boolean options today — but the widened `ColumnMeta.options` type made it expressible. |
+| same file | The coercion `.map()` ran inside the render body on every keystroke and every `loadingCells` change. | **Fixed.** `useMemo` on `dynamicOptions`. |
+| `libs/ui/package.json` | `@tanstack/react-table` was declared and never imported; the major bump dragged a dead dependency to v9, and `libs/ui` has no `depcheck` target to notice. | **Fixed.** Dependency removed, lockfile regenerated. `libs/ui/src` imports nothing from it (`grep -rn react-table libs/ui/src` is empty). |
+
+Also merged `origin/main` (MDRS-56, MDRS-76, MDRS-79 landed after this branch
+was cut; no conflicts).
