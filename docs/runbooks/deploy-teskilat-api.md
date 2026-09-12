@@ -28,14 +28,43 @@ check.
 |---|---|---|
 | `ALLOWED_ORIGINS` | MDRS-34. Comma-separated bare origins (`https://nizam.medaris.app`), no trailing slash, no path, no wildcard host. `*` is refused outside a developer machine. | `ALLOWED_ORIGINS is not usable: …` at `applyGlobalMiddleware`, then a restart loop |
 
-This is the only variable with **no fallback** in teskilat today —
-`apps/teskilat/src/config/config.ts` still defaults `DB_PASSWORD` and the
-Keycloak settings, which MDRS-35 removed in tedrisat but not here. The deploy
-workflow only pushes the image and fires the webhook, so it stays green while
-the service is down; the container log is the only place the failure appears.
+`ALLOWED_ORIGINS` is the **only** variable teskilat refuses to start without.
+Every other key in `apps/teskilat/src/config/config.ts` has a fallback, and no
+fallback is a credential value: MDRS-69 removed the `database` block, whose
+`DB_PASSWORD` defaulted to the literal `"password"` — MDRS-35's other half, done
+for tedrisat and not here. There are no Keycloak settings to harden either;
+teskilat has no auth guard, and nothing under `apps/teskilat/src` reads a
+Keycloak variable.
+
+The deploy workflow only pushes the image and fires the webhook, so it stays
+green while the service is down; the container log is the only place the failure
+appears.
 
 **Set `ALLOWED_ORIGINS` in the Coolify service before deploying a build that
-contains MDRS-34.** `apps/teskilat/.env.example` shows the format.
+contains MDRS-34.** The repository-root `.env.example` shows the format, as
+`API__ALLOWED_ORIGINS` — there is no `apps/teskilat/.env.example`; since MDRS-25
+the workspace has one environment template, at the root.
+
+### What teskilat does *not* need
+
+Deliberate absences, so a deployment is not configured for them by analogy with
+tedrisat:
+
+| Not set | Why |
+|---|---|
+| `DB_HOST`, `DB_PORT`, `DB_SSL`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` | teskilat opens no database connection. No database client in its `package.json`, no `DatabaseModule`, no `drizzle.config.ts`, no migrations directory; `AppModule` imports exactly `ConfigModule` and `LoggerModule`. MDRS-69 removed all six from the config factory and from `docker-compose.yml`, along with `depends_on: medaris-db`. |
+| `AUTO_MIGRATIONS_ENABLED`, `AUTO_MIGRATIONS_FOLDER` | Same reason: nothing to migrate. |
+| `KEYCLOAK_*` | No auth guard. #44 removed the copied `KEYCLOAK_JWKS_URL`; the rest were never there. |
+| `SWAGGER_ALLOW_IN_PRODUCTION` | tedrisat's opt-in. teskilat has none — see §5. |
+
+The root `.env.example` still ships `TESKILAT__DB_NAME`, `TESKILAT__DB_USERNAME`
+and `TESKILAT__DB_PASSWORD`. **Nothing reads them today** — `docker/init-db.sql`
+hardcodes `CREATE USER teskilat WITH PASSWORD 'teskilat'`, and no `TESKILAT__*`
+key is interpolated by the `medaris-db` service — so setting
+`TESKILAT__DB_PASSWORD` to a real secret does not change the role's password.
+They are kept for PR #53 (MDRS-68), which replaces that script with an
+`init-db.sh` driven by these three keys. Either way they are provisioning
+credentials, not app configuration, and they reach no teskilat container.
 
 ---
 
@@ -212,7 +241,67 @@ docker buildx imagetools inspect ghcr.io/amel-tech/medaris-teskilat-api:latest \
 
 ---
 
-## 5. Known blockers
+## 5. Swagger — off in production, unconditionally
+
+**teskilat never serves Swagger UI under `NODE_ENV=production`, whatever
+`SWAGGER_ENABLED` is set to, and there is no opt-in.** `apps/teskilat/Dockerfile`
+pins `ENV NODE_ENV=production`, so this covers every environment running the
+image, dev and staging included.
+
+This is stricter than tedrisat, whose §5 documents an
+`SWAGGER_ALLOW_IN_PRODUCTION` escape hatch (MDRS-33). MDRS-69 decided the
+asymmetry rather than leaving it implied by a shared default:
+
+|  | tedrisat | teskilat |
+|---|---|---|
+| `SWAGGER_ENABLED=true`, production | **Refuses to boot** unless `SWAGGER_ALLOW_IN_PRODUCTION=true` | **Serves normally, Swagger unmounted.** Logs a warning naming the variable |
+| Opt-in to publish anyway | `SWAGGER_ALLOW_IN_PRODUCTION=true` | none |
+| Reads docs where | Any environment with the opt-in | Non-production `NODE_ENV` only |
+
+Why teskilat refuses to mount instead of refusing to boot: both services read
+the **same** flag. `.env.example` ships it once as `API__SWAGGER_ENABLED`, and
+`docker-compose.yml` hands each service
+`SWAGGER_ENABLED: ${<APP>__SWAGGER_ENABLED:-${API__SWAGGER_ENABLED:-false}}`. A
+throw in teskilat's config factory fires before `listen()`, so turning on
+tedrisat's documentation through that shared key would put teskilat into a
+restart loop — a documentation switch on one service becoming an outage on
+another. Not mounting is the whole security requirement; not booting adds
+nothing to it.
+
+**Operationally:** nothing to set before a release. `SWAGGER_ENABLED` alone
+cannot publish teskilat's schema, which is the point — but be precise about the
+boundary: `NODE_ENV` is the guard's own key and `docker-compose.yml` interpolates
+it as `${TESKILAT__NODE_ENV:-${API__NODE_ENV:-production}}`, so
+`TESKILAT__NODE_ENV=development` on the production image *does* publish `/docs`.
+That is not a hole in the guard — it is the guard's condition. A deployment that
+sets it is no longer running production, and it also moves `ALLOWED_ORIGINS` into
+the branch that accepts a `*` origin list. So: the only way to read the schema is
+to run the service outside production, and doing that is a visible,
+CORS-affecting decision rather than a documentation toggle.
+
+If someone reports "the docs are 404 on teskilat", the container log carries
+
+```
+@medaris/teskilat is ignoring SWAGGER_ENABLED=true: under NODE_ENV=production …
+```
+
+and the answer is to read the schema from a non-production run, not to change a
+flag.
+
+Enforced in two independent places — `apps/teskilat/src/config/swagger-env.ts`
+via the config factory, and again in `mountSwagger`
+(`apps/teskilat/src/swagger.ts`) against the environment as it is at mount time,
+so a stale config value cannot mount the UI on its own. Covered by
+`apps/teskilat/test/unit/swagger-env.spec.ts` (the resolver) and
+`apps/teskilat/test/e2e/swagger.e2e.spec.ts`, which boots the application and
+asserts `GET /docs` and `GET /docs-json` → 404 with the flag on — including the
+case where the compiled config says `enabled: true` and only the live
+environment says production — and → 200 outside production, so the negative
+cases are not vacuous.
+
+---
+
+## 6. Known blockers
 
 1. **`TESKILAT_SERVICE_COOLIFY_WEBHOOK` is not set.** The repository has zero repo secrets; only the org
    secret `COOLIFY_DEPLOY_TOKEN` exists. Until the webhook secret is added, the
