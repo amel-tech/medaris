@@ -14,7 +14,7 @@ import {
   AlertDialogTrigger,
 } from "@medaris/ui/components/alert-dialog";
 import { Button } from "@medaris/ui/components/button";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 import { useTranslations } from "next-intl";
 import React from "react";
 import { createTextareaColumn } from "~/components/data-table/editable";
