@@ -37,6 +37,12 @@ export interface FlashcardLabelingResponse {
      * @memberof FlashcardLabelingResponse
      */
     flashcardId: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof FlashcardLabelingResponse
+     */
+    createdBy: string;
 }
 
 /**
@@ -45,6 +51,7 @@ export interface FlashcardLabelingResponse {
 export function instanceOfFlashcardLabelingResponse(value: object): value is FlashcardLabelingResponse {
     if (!('labelId' in value) || value['labelId'] === undefined) return false;
     if (!('flashcardId' in value) || value['flashcardId'] === undefined) return false;
+    if (!('createdBy' in value) || value['createdBy'] === undefined) return false;
     return true;
 }
 
@@ -61,6 +68,7 @@ export function FlashcardLabelingResponseFromJSONTyped(json: any, ignoreDiscrimi
         'labelId': json['labelId'],
         'privateToUserId': json['privateToUserId'] == null ? undefined : json['privateToUserId'],
         'flashcardId': json['flashcardId'],
+        'createdBy': json['createdBy'],
     };
 }
 
@@ -78,6 +86,7 @@ export function FlashcardLabelingResponseToJSONTyped(value?: FlashcardLabelingRe
         'labelId': value['labelId'],
         'privateToUserId': value['privateToUserId'],
         'flashcardId': value['flashcardId'],
+        'createdBy': value['createdBy'],
     };
 }
 

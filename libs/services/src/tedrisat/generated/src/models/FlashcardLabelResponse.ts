@@ -24,6 +24,18 @@ export interface FlashcardLabelResponse {
      * @type {string}
      * @memberof FlashcardLabelResponse
      */
+    id: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof FlashcardLabelResponse
+     */
+    userId: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof FlashcardLabelResponse
+     */
     title: string;
     /**
      * 
@@ -43,6 +55,8 @@ export interface FlashcardLabelResponse {
  * Check if a given object implements the FlashcardLabelResponse interface.
  */
 export function instanceOfFlashcardLabelResponse(value: object): value is FlashcardLabelResponse {
+    if (!('id' in value) || value['id'] === undefined) return false;
+    if (!('userId' in value) || value['userId'] === undefined) return false;
     if (!('title' in value) || value['title'] === undefined) return false;
     if (!('createdBy' in value) || value['createdBy'] === undefined) return false;
     if (!('scope' in value) || value['scope'] === undefined) return false;
@@ -59,6 +73,8 @@ export function FlashcardLabelResponseFromJSONTyped(json: any, ignoreDiscriminat
     }
     return {
         
+        'id': json['id'],
+        'userId': json['userId'],
         'title': json['title'],
         'createdBy': json['createdBy'],
         'scope': json['scope'],
@@ -76,6 +92,8 @@ export function FlashcardLabelResponseToJSONTyped(value?: FlashcardLabelResponse
 
     return {
         
+        'id': value['id'],
+        'userId': value['userId'],
         'title': value['title'],
         'createdBy': value['createdBy'],
         'scope': value['scope'],

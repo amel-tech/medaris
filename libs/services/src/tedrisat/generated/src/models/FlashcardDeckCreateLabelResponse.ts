@@ -36,6 +36,12 @@ export interface FlashcardDeckCreateLabelResponse {
      * @type {string}
      * @memberof FlashcardDeckCreateLabelResponse
      */
+    id: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof FlashcardDeckCreateLabelResponse
+     */
     createdBy: string;
     /**
      * 
@@ -62,6 +68,7 @@ export type FlashcardDeckCreateLabelResponseScopeEnum = typeof FlashcardDeckCrea
 export function instanceOfFlashcardDeckCreateLabelResponse(value: object): value is FlashcardDeckCreateLabelResponse {
     if (!('title' in value) || value['title'] === undefined) return false;
     if (!('scope' in value) || value['scope'] === undefined) return false;
+    if (!('id' in value) || value['id'] === undefined) return false;
     if (!('createdBy' in value) || value['createdBy'] === undefined) return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     return true;
@@ -79,6 +86,7 @@ export function FlashcardDeckCreateLabelResponseFromJSONTyped(json: any, ignoreD
         
         'title': json['title'],
         'scope': json['scope'],
+        'id': json['id'],
         'createdBy': json['createdBy'],
         'createdAt': (new Date(json['createdAt'])),
     };
@@ -97,6 +105,7 @@ export function FlashcardDeckCreateLabelResponseToJSONTyped(value?: FlashcardDec
         
         'title': value['title'],
         'scope': value['scope'],
+        'id': value['id'],
         'createdBy': value['createdBy'],
         'createdAt': ((value['createdAt']).toISOString()),
     };

@@ -36,7 +36,7 @@ export interface LabelStatsResponse {
      * @type {Date}
      * @memberof LabelStatsResponse
      */
-    lastUsedAt: Date;
+    lastUsedAt?: Date | null;
 }
 
 /**
@@ -45,7 +45,6 @@ export interface LabelStatsResponse {
 export function instanceOfLabelStatsResponse(value: object): value is LabelStatsResponse {
     if (!('labelId' in value) || value['labelId'] === undefined) return false;
     if (!('usageCount' in value) || value['usageCount'] === undefined) return false;
-    if (!('lastUsedAt' in value) || value['lastUsedAt'] === undefined) return false;
     return true;
 }
 
@@ -61,7 +60,7 @@ export function LabelStatsResponseFromJSONTyped(json: any, ignoreDiscriminator: 
         
         'labelId': json['labelId'],
         'usageCount': json['usageCount'],
-        'lastUsedAt': (new Date(json['lastUsedAt'])),
+        'lastUsedAt': json['lastUsedAt'] == null ? undefined : (new Date(json['lastUsedAt'])),
     };
 }
 
@@ -78,7 +77,7 @@ export function LabelStatsResponseToJSONTyped(value?: LabelStatsResponse | null,
         
         'labelId': value['labelId'],
         'usageCount': value['usageCount'],
-        'lastUsedAt': ((value['lastUsedAt']).toISOString()),
+        'lastUsedAt': value['lastUsedAt'] === null ? null : ((value['lastUsedAt'] as any)?.toISOString()),
     };
 }
 

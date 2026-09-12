@@ -24,7 +24,19 @@ export interface FlashcardDeckLabelResponse {
      * @type {string}
      * @memberof FlashcardDeckLabelResponse
      */
+    id: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof FlashcardDeckLabelResponse
+     */
     title: string;
+    /**
+     * 
+     * @type {Date}
+     * @memberof FlashcardDeckLabelResponse
+     */
+    createdAt: Date;
     /**
      * 
      * @type {string}
@@ -43,7 +55,9 @@ export interface FlashcardDeckLabelResponse {
  * Check if a given object implements the FlashcardDeckLabelResponse interface.
  */
 export function instanceOfFlashcardDeckLabelResponse(value: object): value is FlashcardDeckLabelResponse {
+    if (!('id' in value) || value['id'] === undefined) return false;
     if (!('title' in value) || value['title'] === undefined) return false;
+    if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('createdBy' in value) || value['createdBy'] === undefined) return false;
     if (!('scope' in value) || value['scope'] === undefined) return false;
     return true;
@@ -59,7 +73,9 @@ export function FlashcardDeckLabelResponseFromJSONTyped(json: any, ignoreDiscrim
     }
     return {
         
+        'id': json['id'],
         'title': json['title'],
+        'createdAt': (new Date(json['createdAt'])),
         'createdBy': json['createdBy'],
         'scope': json['scope'],
     };
@@ -76,7 +92,9 @@ export function FlashcardDeckLabelResponseToJSONTyped(value?: FlashcardDeckLabel
 
     return {
         
+        'id': value['id'],
         'title': value['title'],
+        'createdAt': ((value['createdAt']).toISOString()),
         'createdBy': value['createdBy'],
         'scope': value['scope'],
     };

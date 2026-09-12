@@ -37,6 +37,12 @@ export interface FlashcardDeckLabelingResponse {
      * @memberof FlashcardDeckLabelingResponse
      */
     deckId: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof FlashcardDeckLabelingResponse
+     */
+    createdBy: string;
 }
 
 /**
@@ -45,6 +51,7 @@ export interface FlashcardDeckLabelingResponse {
 export function instanceOfFlashcardDeckLabelingResponse(value: object): value is FlashcardDeckLabelingResponse {
     if (!('labelId' in value) || value['labelId'] === undefined) return false;
     if (!('deckId' in value) || value['deckId'] === undefined) return false;
+    if (!('createdBy' in value) || value['createdBy'] === undefined) return false;
     return true;
 }
 
@@ -61,6 +68,7 @@ export function FlashcardDeckLabelingResponseFromJSONTyped(json: any, ignoreDisc
         'labelId': json['labelId'],
         'privateToUserId': json['privateToUserId'] == null ? undefined : json['privateToUserId'],
         'deckId': json['deckId'],
+        'createdBy': json['createdBy'],
     };
 }
 
@@ -78,6 +86,7 @@ export function FlashcardDeckLabelingResponseToJSONTyped(value?: FlashcardDeckLa
         'labelId': value['labelId'],
         'privateToUserId': value['privateToUserId'],
         'deckId': value['deckId'],
+        'createdBy': value['createdBy'],
     };
 }
 
