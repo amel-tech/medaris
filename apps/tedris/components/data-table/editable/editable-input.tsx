@@ -1,7 +1,8 @@
 import { Input } from "@medaris/ui/components/input";
 import { Skeleton } from "@medaris/ui/components/skeleton";
 import { cn } from "@medaris/ui/lib/utils";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { RowData } from "@tanstack/react-table";
+import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 import type React from "react";
 
 export const EditableInput: React.FC<{
@@ -40,7 +41,7 @@ export const EditableInput: React.FC<{
   );
 };
 
-export function createInputColumn<TData>(
+export function createInputColumn<TData extends RowData>(
   accessorKey: keyof TData,
   columnDef: ColumnDef<TData>,
   options?: {
