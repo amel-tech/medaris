@@ -9,6 +9,27 @@ This directory contains OpenAPI/Swagger specifications for different backend ser
 
 ## Usage
 
+### Refresh a specification
+
+`tedrisat.json` is **generated, not written**. It is the output of
+`SwaggerModule.createDocument` inside `@medaris/tedrisat`, so the only correct
+way to update it is to re-run the exporter from the repository root:
+
+```bash
+pnpm --filter @medaris/tedrisat run openapi:export
+pnpm --filter @medaris/services run generate:tedrisat
+```
+
+In that order — the second command reads what the first writes. The exporter
+boots the Nest container in preview mode, so it needs neither a database nor
+Docker, and it pins the environment it depends on to the committed
+`.env.example`, so the same checkout produces the same bytes on any machine.
+See `apps/tedrisat/src/openapi/export-openapi.ts` for why.
+
+Editing the JSON by hand looks like it works and then silently loses the edit
+on the next export, which is how the spec came to describe version 0.1.4 of a
+service that had moved on (MDRS-58).
+
 ### Generate API Clients
 
 Generate all API clients:

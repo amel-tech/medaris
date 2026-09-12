@@ -10,7 +10,12 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiBody, ApiResponse } from "@nestjs/swagger";
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiResponse,
+} from "@nestjs/swagger";
 import {
   CreateFlashcardLabelDto,
   CreateFlashcardLabelingDto,
@@ -83,7 +88,7 @@ export class FlashcardlabelController {
   constructor(private readonly labelService: FlashcardLabelService) {}
 
   @ApiBody({ type: CreateFlashcardLabelDto })
-  @ApiResponse({ status: 200, type: FlashcardCreateLabelResponse })
+  @ApiCreatedResponse({ type: FlashcardCreateLabelResponse })
   @Post("/create")
   async createFlashcardLabel(
     @Req() request: AuthorizedRequest,
@@ -112,7 +117,7 @@ export class FlashcardlabelController {
   }
 
   @ApiBody({ type: CreateFlashcardLabelingDto })
-  @ApiResponse({ status: 200, type: FlashcardLabelingResponse })
+  @ApiCreatedResponse({ type: FlashcardLabelingResponse })
   @Post("/labeling")
   async flahscardLabeling(
     @Req() request: AuthorizedRequest,
@@ -124,6 +129,9 @@ export class FlashcardlabelController {
     });
   }
 
+  // 404 rather than an empty 200 (MDRS-58): both readers used to return `null`
+  // for an unknown id, which Nest serialises as a body-less 200 while this
+  // decorator promised a FlashcardLabelResponse. See FlashcardLabelService.getById.
   @ApiResponse({ status: 200, type: FlashcardLabelResponse })
   @ApiResponse({
     status: 403,
@@ -148,7 +156,7 @@ export class FlashcardlabelController {
   async getLabelStats(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
-  ): Promise<labelStatsResponse | null> {
+  ): Promise<labelStatsResponse> {
     return await this.labelService.getLabelStats(id, request.user.sub);
   }
 }

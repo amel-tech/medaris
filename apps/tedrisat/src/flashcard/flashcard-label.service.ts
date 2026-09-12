@@ -6,7 +6,7 @@ import {
   ICreateFlashcardLabel,
   IFlashcardLabel,
   IFlashcardLabeling,
-  IFlashcardLabelStats,
+  IFlashcardLabelStatsRead,
 } from "./flashcard-label.reporsitory.interface";
 
 @Injectable()
@@ -82,11 +82,16 @@ export class FlashcardLabelService {
    * widen the blast radius of an authorization change. Revisit it when
    * MDRS-41's policy layer replaces this method wholesale.
    *
-   * The return type is non-nullable, and that is a consequence of the above
-   * rather than a tidy-up: with `assertOwner` in front and the guard below, no
-   * path returns `null` any more. Leaving `| null` on would have published a
-   * nullable 200 body to the generated client — the exact shape this change
-   * removes. `getLabelStats` keeps its `| null`, which is still reachable.
+   * Both readers throw rather than resolving null (MDRS-58). They used to hand
+   * `null` straight back, and the controller declared a 200 carrying a
+   * `FlashcardLabelResponse`. Nest serialises `null` as an EMPTY body, so an
+   * unknown id answered `200` with nothing in it while the published contract
+   * promised an object. Once MDRS-58 generated a client from that contract the
+   * mismatch stopped being cosmetic: `JSONApiResponse.value()` calls
+   * `response.json()` on the empty body and the caller gets
+   * `SyntaxError: Unexpected end of JSON input` from a method whose signature
+   * says it returns a label. `GlobalExceptionFilter` turns the
+   * `FlashcardLabelNotFoundError` into the 404 the controllers document.
    */
   async getById(id: string, userId: string): Promise<IFlashcardLabel> {
     await this.assertOwner(id, userId);
@@ -105,19 +110,27 @@ export class FlashcardLabelService {
    * Ownership is asserted against the LABEL, not the stats row. `labelStats`
    * carries no owner column of its own, and a label with no stats row yet is a
    * legitimate empty read rather than a denial — distinguishing "never used"
-   * from "not yours" is precisely what the assertion is for.
+   * from "not yours" is precisely what the assertion is for (MDRS-56).
    *
-   * That empty read is what the repository does; it is NOT what the route does
-   * today. `flashcard_label_stats` is unqueryable — the migration created
-   * `usageCount`, the schema declares `usage_count` — so every caller,
-   * including the owner, currently gets a 500 before the null path is
-   * reached. Follow-up 1 in docs/migration/mdrs-56-flashcard-label-authz.md.
+   * The stats row is created lazily — `createLabel` inserts only the label and
+   * `flashcardLabeling` adds the stats row on the first use — so a label that
+   * exists and has never been applied has no row. That is answered with a
+   * zero-valued stats object, not a 404: the 404 is reserved for a label that
+   * does not exist (or is not the caller's, which `assertOwner` reports as
+   * 403), so the generated client can tell an unused label from a deleted one
+   * (MDRS-58 review). Returning `null` was not an option either — Nest
+   * serialises it as an empty 200 body the generated client cannot parse.
+   *
+   * Whether the row is queryable at all is a separate defect: the migration
+   * created `usageCount` where the schema declares `usage_count`. Follow-up 1
+   * in docs/migration/mdrs-56-flashcard-label-authz.md.
    */
   async getLabelStats(
     id: string,
     userId: string
-  ): Promise<IFlashcardLabelStats | null> {
+  ): Promise<IFlashcardLabelStatsRead> {
     await this.assertOwner(id, userId);
-    return await this.flashcardLabelRepo.getLabelStats(id);
+    const stats = await this.flashcardLabelRepo.getLabelStats(id);
+    return stats ?? { labelId: id, usageCount: 0, lastUsedAt: null };
   }
 }

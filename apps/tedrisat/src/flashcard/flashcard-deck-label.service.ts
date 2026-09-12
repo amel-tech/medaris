@@ -6,7 +6,7 @@ import {
   ICreateFlashcardDeckLabel,
   IFlashcardDeckLabel,
   IFlashcardDeckLabeling,
-  IFlashcardDeckLabelStats,
+  IFlashcardDeckLabelStatsRead,
 } from "./flashcard-deck-label.repository.interface";
 
 @Injectable()
@@ -67,9 +67,10 @@ export class FlashcardDeckLabelService {
    * first, so an id belonging to somebody else is a 403 and a missing one a
    * 404 instead of a 200 carrying another user's row.
    *
-   * Non-nullable for the same reason as its twin: `assertOwner` plus the guard
-   * below leave no path that returns `null`. `getDeckLabelStats` keeps its
-   * `| null` — see the note on that method for why it stays.
+   * Throws rather than resolving null, for the reason spelled out on
+   * FlashcardLabelService.getById: a `null` return serialises as an empty 200
+   * body, which the client generated from the published contract cannot parse
+   * (MDRS-58).
    */
   async getById(id: string, userId: string): Promise<IFlashcardDeckLabel> {
     await this.assertOwner(id, userId);
@@ -87,24 +88,24 @@ export class FlashcardDeckLabelService {
   }
   /**
    * Ownership is asserted against the deck LABEL, because `deckLabelsStats`
-   * has no owner column of its own.
+   * has no owner column of its own (MDRS-56).
    *
-   * The `| null` below is currently unreachable, and deliberately left alone.
-   * `FlashcardDeckLabelRepository.getLabelStats` reads `stats[0].labelId` with
-   * no empty guard, so a label that has never been applied would throw rather
-   * than return null — except that it never gets that far, because
-   * `deck_label_stats` is unqueryable in the first place (the migration
-   * created `lable_id`, the schema declares `label_id`). Both defects are one
-   * follow-up, recorded in docs/migration/mdrs-56-flashcard-label-authz.md;
-   * neither is fixable here, since the drift means a guard added today could
-   * not be exercised by any test. What MDRS-56 owes this route is that
-   * authorization is not what stops the caller, and that is asserted.
+   * A label that exists and has never been applied has no stats row — the
+   * row is created on the first labeling — and is answered with a zero-valued
+   * stats object rather than a 404, which is reserved for a label that does
+   * not exist (MDRS-58 review). The repository now returns `null` for the
+   * empty read instead of dereferencing `stats[0]`.
+   *
+   * Whether the row is queryable at all is a separate defect (the migration
+   * created `lable_id`, the schema declares `label_id`), recorded in
+   * docs/migration/mdrs-56-flashcard-label-authz.md.
    */
   async getDeckLabelStats(
     id: string,
     userId: string
-  ): Promise<IFlashcardDeckLabelStats | null> {
+  ): Promise<IFlashcardDeckLabelStatsRead> {
     await this.assertOwner(id, userId);
-    return await this.labelRepository.getLabelStats(id);
+    const stats = await this.labelRepository.getLabelStats(id);
+    return stats ?? { labelId: id, usageCount: 0, lastUsedAt: null };
   }
 }
