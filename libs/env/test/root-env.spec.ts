@@ -225,36 +225,31 @@ describe("classify", () => {
 });
 
 describe("parseEnv", () => {
+  // The quoting, escaping and trailing-comment rules are Docker Compose's,
+  // measured against `docker compose config` (MDRS-71, MDRS-75) and pinned
+  // row by row in ./root-env-compose-parity.spec.ts, which moved here from
+  // apps/tedrisat/test/unit together with the loader. Only the shape of the
+  // result is asserted here.
   it("drops blanks, comments and lines without an =", () => {
     expect(parseEnv("\n# a comment\nJUNK\nA=1\n")).toEqual([
       { key: "A", value: "1" },
     ]);
   });
 
-  it("strips an unquoted trailing comment the way dotenv does", () => {
+  it("strips an unquoted trailing comment, as compose does", () => {
     expect(parseEnv("A=1 # why")).toEqual([{ key: "A", value: "1" }]);
   });
 
-  it("does NOT strip surrounding quotes — a known divergence from dotenv", () => {
-    // Pinned as divergent, not as correct. dotenv and Compose's env-file parser
-    // both strip matched quotes; this parser keeps them, so `A="x"` reaches the
-    // app as a four-character value including the quote marks. See the
-    // divergence note above parseEnv in src/root-env.cjs and follow-up 5 in
-    // docs/migration/mdrs-66-env-package.md. If that follow-up is taken, this
-    // assertion is the one to change — and its name already says so.
-    expect(parseEnv('A="x"')).toEqual([{ key: "A", value: '"x"' }]);
-    expect(parseEnv("A='y'")).toEqual([{ key: "A", value: "'y'" }]);
+  it("strips matched quotes, as compose does (MDRS-71 closed the MDRS-66 divergence)", () => {
+    expect(parseEnv('A="x"')).toEqual([{ key: "A", value: "x" }]);
+    expect(parseEnv("A='y'")).toEqual([{ key: "A", value: "y" }]);
   });
 
-  it("keeps a # inside a quoted value, quotes and all", () => {
-    // The `#` is correctly treated as data rather than a comment. The quotes
-    // surviving alongside it is the divergence above, not the intent here.
+  it("keeps a # inside a quoted value and drops a comment after the closing quote", () => {
     expect(parseEnv('A="1 # not a comment"')).toEqual([
-      { key: "A", value: '"1 # not a comment"' },
+      { key: "A", value: "1 # not a comment" },
     ]);
-    expect(parseEnv('A="x" # note')).toEqual([
-      { key: "A", value: '"x" # note' },
-    ]);
+    expect(parseEnv('A="x" # note')).toEqual([{ key: "A", value: "x" }]);
   });
 
   it("keeps = characters inside the value", () => {

@@ -28,7 +28,7 @@
       "{workspaceRoot}/vitest.config.ts",
       "{workspaceRoot}/vitest.integration.config.ts",
       {
-        "runtime": "cat .env*.local apps/*/.env*.local 2>/dev/null | shasum"
+        "runtime": "cat .env .env*.local apps/*/.env*.local 2>/dev/null | shasum"
       }
     ]
   },

@@ -38,6 +38,7 @@
     "@nestjs/core": "catalog:",
     "@nestjs/platform-express": "catalog:",
     "@nestjs/swagger": "catalog:",
+    "@nestjs/throttler": "catalog:",
     "@opentelemetry/auto-instrumentations-node": "catalog:",
     "@opentelemetry/exporter-trace-otlp-grpc": "catalog:",
     "@opentelemetry/resources": "catalog:",
@@ -70,7 +71,6 @@
     "ts-node": "catalog:",
     "tsconfig-paths": "catalog:",
     "typescript": "catalog:",
-    "unplugin-swc": "catalog:",
     "vite": "catalog:vitest",
     "vitest": "catalog:"
   }

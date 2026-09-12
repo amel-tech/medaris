@@ -51,7 +51,6 @@
     "ts-node": "catalog:",
     "tsconfig-paths": "catalog:",
     "typescript": "catalog:",
-    "unplugin-swc": "catalog:",
     "vite": "catalog:vitest",
     "vitest": "catalog:"
   }

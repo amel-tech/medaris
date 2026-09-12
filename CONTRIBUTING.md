@@ -319,8 +319,11 @@ It also runs in CI as part of `nx affected`.
 
 ### What is enforced today
 
-The full `scope:*` / `platform:*` taxonomy from the section above, with
-`allow: []` — there are no exceptions. `enforceBuildableLibDependency: true` also
+The full `scope:*` / `platform:*` taxonomy from the section above. `allow` holds
+two import specifiers, not file exemptions — the workspace-root Vitest base
+configs, which have no package name and so can only be reached by relative
+path — and each carries its removal condition inline in `eslint.config.mjs`.
+`enforceBuildableLibDependency: true` also
 stops a buildable library (`common`, `tokens`) from importing a source-only one;
 both currently have zero internal dependencies, so it is inert but correct.
 
