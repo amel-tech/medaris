@@ -32,6 +32,17 @@ export interface TedrisatOpenApiOptions {
    * document is still valid and still describes the security requirement.
    */
   jwksUrl?: string;
+  /**
+   * How a `jwksUrl` that does not end in `/certs` is handled. The exporter
+   * sets `true`: there a wrong URL becomes bytes in a committed artifact, so
+   * it throws. The running service leaves it `false`: the same value is
+   * otherwise perfectly valid — `security-env.ts` only asks for a URL, and its
+   * real job is JWT verification — and both OAuth2 URLs only feed Swagger UI's
+   * Authorize button, so the document is built with them `undefined` (the
+   * shape an absent JWKS URL already produces) and a warning is logged, rather
+   * than the whole API refusing to boot over two documentation URLs.
+   */
+  strictJwksUrl?: boolean;
 }
 
 /**
@@ -51,18 +62,26 @@ const JWKS_CERTS_SUFFIX = /\/certs$/;
 
 function keycloakEndpoint(
   jwksUrl: string | undefined,
-  segment: "auth" | "token"
+  segment: "auth" | "token",
+  strict: boolean
 ): string | undefined {
   if (jwksUrl === undefined) return undefined;
 
   if (!JWKS_CERTS_SUFFIX.test(jwksUrl)) {
-    throw new Error(
-      `@medaris/tedrisat cannot build the OpenAPI document: KEYCLOAK_JWKS_URL ("${jwksUrl}") ` +
-        "does not end in /certs, so Swagger's OAuth2 authorization and token " +
-        "URLs cannot be derived from it. Point it at the realm's JWKS endpoint " +
-        "(.../protocol/openid-connect/certs), or give this factory the two URLs " +
-        "directly."
+    const problem =
+      `KEYCLOAK_JWKS_URL ("${jwksUrl}") does not end in /certs, so Swagger's ` +
+      "OAuth2 authorization and token URLs cannot be derived from it. Point it " +
+      "at the realm's JWKS endpoint (.../protocol/openid-connect/certs).";
+    if (strict) {
+      throw new Error(
+        `@medaris/tedrisat cannot build the OpenAPI document: ${problem}`
+      );
+    }
+    console.warn(
+      `@medaris/tedrisat: ${problem} Swagger UI's Authorize button will not ` +
+        "start a login; the service is running normally."
     );
+    return undefined;
   }
 
   return jwksUrl.replace(JWKS_CERTS_SUFFIX, `/${segment}`);
@@ -71,6 +90,7 @@ function keycloakEndpoint(
 export function buildTedrisatOpenApiConfig({
   version,
   jwksUrl,
+  strictJwksUrl = false,
 }: TedrisatOpenApiOptions): Omit<OpenAPIObject, "paths"> {
   return (
     new DocumentBuilder()
@@ -84,8 +104,12 @@ export function buildTedrisatOpenApiConfig({
           type: "oauth2",
           flows: {
             implicit: {
-              authorizationUrl: keycloakEndpoint(jwksUrl, "auth"),
-              tokenUrl: keycloakEndpoint(jwksUrl, "token"),
+              authorizationUrl: keycloakEndpoint(
+                jwksUrl,
+                "auth",
+                strictJwksUrl
+              ),
+              tokenUrl: keycloakEndpoint(jwksUrl, "token", strictJwksUrl),
               scopes: {},
             },
           },

@@ -540,16 +540,13 @@ against the new value.
 Recorded here rather than opened as issues. Items 2 and 5 in the first draft of
 this list were **done** in the review round above and are gone from it.
 
-1. **The spec was generated from `cb7e9636`, and PR #50 (MDRS-32) is still
-   open.** That PR removes tedrisat's `example` module and the `MedarisResponse`
-   envelope, and deletes `ExamplesApi.ts`, `CreateExampleDto` and the
-   `MedarisResponse*` models from the generated client. Generating from `main`
-   necessarily keeps them, because `main` still has the module — so the two
-   diffs overlap heavily on both artifacts. **After #50 merges, re-run the two
-   commands** (`openapi:export`, then `generate:tedrisat`); do not resolve it by
-   editing either artifact. `assertNoPathsLost` will refuse that run, correctly —
-   `/examples` really is being removed — so it needs
-   `OPENAPI_EXPORT_ALLOW_PATH_REMOVALS=1` once, deliberately.
+1. ~~The spec was generated from `cb7e9636`, and PR #50 (MDRS-32) is still
+   open.~~ **Done on the rebase (2026-09-12).** #50 merged; this branch merged
+   `origin/main` and re-ran the two commands. The example routes were already
+   gone from the committed spec on `main`, so `assertNoPathsLost` had nothing
+   to refuse and the removal flag was not needed. The five generated files
+   `main` deleted (`ExamplesApi.ts`, `CreateExampleDto`, `MedarisResponse*`)
+   stay deleted.
 2. **Nothing enforces that the spec stays current.** The exporter makes the
    refresh a command and now refuses to lose paths, but nothing makes a *stale*
    artifact fail a build: an added route still goes unpublished until somebody
@@ -601,6 +598,29 @@ this list were **done** in the review round above and are gone from it.
    the source maps are defensible for stack traces. `.tsbuildinfo` does not
    travel, thanks to `deleteOutDir` and `typecheck` not running in the image.
    Also the reviewer's observation, and also not this issue.
+
+## Review of pull request #55 (2026-09-12)
+
+The AI multi-lens gate raised eleven threads on the branch. Two more things
+changed underneath it before they were addressed: MDRS-56 (#56) put ownership
+in front of the label readers on `main`, and MDRS-32 (#50) removed the example
+module — both merged here, the four label service/controller files resolved by
+hand (ownership first, then the MDRS-58 not-found throw), and the spec and
+client regenerated from the merged tree. Generation ran through the pinned
+generator image (`openapitools/openapi-generator-cli:v7.14.0`, the version in
+`openapitools.json`) because this machine has no Java runtime; same generator,
+same arguments as the `generate:tedrisat` script.
+
+| # | Finding | Outcome |
+|---|---|---|
+| 1, 2 | `getById` / `getLabelStats` (and the deck-label twins) authenticate but never authorize. | **Landed on `main` as MDRS-56 (#56)** and merged here: both readers go through `assertOwner` first (403 for another user's label, 404 for a missing one). |
+| 3 | Four newly published `POST` routes documented 200 while Nest answers 201. | **Fixed.** `@ApiCreatedResponse` on `/flashcard-label/create`, `/flashcard-label/labeling`, `/flashcard-deck-label/create`, `/flashcard-deck-label/labeling`; the wire is unchanged, as the `approveEnrollment` decision required. |
+| 4 | The label response schemas omitted `id`, so a client that creates a label cannot address it. | **Fixed.** `id` (and `userId` on the flashcard-label side, `createdAt` on the deck-label read) declared on the four response classes; `createdBy` on both labeling responses. All were on the wire already. |
+| 5 | `FlashcardlabelApi` / `FlashcardDeckLabelApi` were generated but `createTedrisatAPIs` never exposed them. | **Fixed.** `labels` and `deckLabels` on the factory, the twelve label models in its `export type` block. |
+| 6, 10 | `keycloakEndpoint` throws on a JWKS URL without `/certs`, and `main.ts` calls it on the boot path, so a documentation-only derivation could take the whole API down. | **Fixed.** `TedrisatOpenApiOptions.strictJwksUrl`: the exporter passes `true` (a wrong URL becomes committed bytes); the service leaves it `false` and gets both OAuth2 URLs `undefined` plus a `console.warn` — the shape an absent JWKS URL already produced. |
+| 7, 8 | The label DTOs draw decorators from both validator packages. | **Not changed here — MDRS-57 (#58) owns it.** That branch consolidates every DTO on `class-validator` and removes the fork from the catalog; moving these two files onto the fork here would be undone by it. The mixed imports predate this branch. |
+| 9 | `getLabelStats` conflated "no stats row yet" with "no such label". | **Fixed.** Both stats readers check the label first (through `assertOwner`) and answer a never-applied label with `{ labelId, usageCount: 0, lastUsedAt: null }`; the 404 is reserved for a missing label. `lastUsedAt` is published `nullable`; `FlashcardDeckLabelRepository.getLabelStats` returns `null` for the empty read instead of dereferencing `stats[0]`. `apps/tedrisat/test/unit/flashcard/flashcard-label-readers.spec.ts` covers the three branches per service. |
+| 11 | `SPEC_PATH` hardcoded another package's directory layout inside `apps/tedrisat`. | **Fixed.** The exporter takes its destination from `process.argv[2]`; the default lives in `apps/tedrisat/package.json`'s `openapi:export` script. The two-command sequence in `libs/services/swagger-docs/README.md` is unchanged. |
 
 ## Review
 

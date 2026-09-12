@@ -24,6 +24,17 @@ export interface IFlashcardLabelStats {
   usageCount: number;
   lastUsedAt: Date;
 }
+/**
+ * What the stats readers answer. The stats row is created lazily, on the first
+ * labeling, so a label that exists and was never applied has no row: the
+ * services answer that with zero counts and a `null` `lastUsedAt` rather than a
+ * 404, which is reserved for a label that does not exist (MDRS-58 review).
+ */
+export interface IFlashcardLabelStatsRead {
+  labelId: string;
+  usageCount: number;
+  lastUsedAt: Date | null;
+}
 export interface IFlashcardLabelRepository {
   getById(labelId: string): Promise<IFlashcardLabel | null>;
   delete(labelId: string): Promise<boolean>;

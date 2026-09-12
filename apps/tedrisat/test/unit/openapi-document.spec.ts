@@ -54,15 +54,41 @@ describe("buildTedrisatOpenApiConfig", () => {
     expect(scheme.flows.implicit.tokenUrl).toBeUndefined();
   });
 
-  it("refuses a JWKS URL that does not end in /certs", () => {
+  it("refuses a JWKS URL that does not end in /certs when strict (the exporter)", () => {
     // The string-pattern `replace` this replaced was silent here: it returned
     // the input unchanged, so both OAuth2 URLs became the JWKS endpoint itself.
+    // Strict is the exporter's setting: a wrong URL there is committed bytes.
     expect(() =>
       buildTedrisatOpenApiConfig({
         version: "1.2.3",
         jwksUrl: "https://auth.example.test/realms/x/protocol/openid-connect",
+        strictJwksUrl: true,
       })
     ).toThrow(/does not end in \/certs/);
+  });
+
+  it("degrades to no OAuth2 URLs, with a warning, when not strict (the running service)", () => {
+    // main.ts leaves strictness off: the same value passes security-env's URL
+    // check and verifies JWTs fine, and both URLs only feed Swagger UI's
+    // Authorize button — not a reason to refuse to boot the whole API.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const config = buildTedrisatOpenApiConfig({
+        version: "1.2.3",
+        jwksUrl: "https://auth.example.test/realms/x/protocol/openid-connect",
+      });
+      const scheme = config.components?.securitySchemes?.bearer as {
+        flows: { implicit: { authorizationUrl?: string; tokenUrl?: string } };
+      };
+      expect(scheme.flows.implicit.authorizationUrl).toBeUndefined();
+      expect(scheme.flows.implicit.tokenUrl).toBeUndefined();
+      expect(warn).toHaveBeenCalled();
+      expect(String(warn.mock.calls[0]?.[0])).toMatch(
+        /does not end in \/certs/
+      );
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("rewrites only the trailing /certs, not an earlier one in the path", () => {

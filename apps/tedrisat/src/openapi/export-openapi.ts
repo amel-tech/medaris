@@ -48,8 +48,25 @@ interface RootEnvLoader {
   resolveFor: (app: string, entries: EnvEntry[]) => Map<string, string>;
 }
 
-/** Written relative to the workspace root, where the consumer lives. */
-const SPEC_PATH = ["libs", "services", "swagger-docs", "tedrisat.json"];
+/**
+ * Where the document goes: the first CLI argument, resolved against the
+ * current directory. The default lives in this package's `openapi:export`
+ * script, not here — the destination is inside `libs/services`, another
+ * package's directory layout, and this app declares no dependency on it, so
+ * the exporter itself names no path it does not own. `libs/services/
+ * swagger-docs/README.md`'s two-command sequence is unchanged.
+ */
+function targetPathFromArgv(): string {
+  const arg = process.argv[2];
+  if (!arg) {
+    throw new Error(
+      "export-openapi: pass the destination file as the first argument, e.g. " +
+        "`pnpm --filter @medaris/tedrisat run openapi:export` (whose script " +
+        "supplies libs/services/swagger-docs/tedrisat.json)."
+    );
+  }
+  return resolve(process.cwd(), arg);
+}
 
 /** The template the deterministic values are read from. */
 const TEMPLATE_FILE = ".env.example";
@@ -256,10 +273,12 @@ async function main(): Promise<void> {
       buildTedrisatOpenApiConfig({
         version: pkg.version,
         jwksUrl: process.env.KEYCLOAK_JWKS_URL,
+        // A wrong URL here becomes bytes in a committed artifact — refuse.
+        strictJwksUrl: true,
       })
     );
 
-    const target = join(root, ...SPEC_PATH);
+    const target = targetPathFromArgv();
 
     // Read first, decide after. A missing artifact is a legitimate state — the
     // very first export — and is simply not a baseline to compare against.
@@ -272,7 +291,7 @@ async function main(): Promise<void> {
 
     console.log(
       `export-openapi: wrote ${Object.keys(document.paths).length} paths to ` +
-        `${SPEC_PATH.join("/")} (version ${pkg.version}).`
+        `${target} (version ${pkg.version}).`
     );
   } finally {
     await app.close();
