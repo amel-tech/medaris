@@ -36,6 +36,12 @@ export interface IFlashcardDeckUserCollectionItem {
 export interface IFlashcardDeckRepository {
   // SELECT
   findById(id: string, include?: Set<string>): Promise<IFlashcardDeck | null>;
+  /**
+   * The deck's `authorId` alone, or `null` when no such deck exists. The
+   * projection ownership checks read — `findById` selects every column,
+   * `description` included, to answer a one-column question.
+   */
+  findAuthorId(id: string): Promise<string | null>;
   findAll(include?: Set<string>): Promise<IFlashcardDeck[]>;
   findAllVisibleToUser(
     userId: string,
