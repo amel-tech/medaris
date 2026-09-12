@@ -1,7 +1,7 @@
 import { ExcelService } from "@medaris/common";
-import { plainToClass } from "@nestjs/class-transformer";
-import { validate } from "@nestjs/class-validator";
 import { Injectable } from "@nestjs/common";
+import { plainToClass } from "class-transformer";
+import { validate } from "class-validator";
 import { FLASHCARD_EXCEL_CONFIG } from "./dto/config-excel.dto";
 import { CreateFlashcardDto } from "./dto/create-flashcard.dto";
 import {

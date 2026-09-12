@@ -3,14 +3,15 @@
 // another user. The controller now takes the actor from the verified token,
 // and the global pipe's `forbidNonWhitelisted` turns an attempt to send them
 // into a 400 rather than silently ignoring it.
+import { ApiProperty } from "@nestjs/swagger";
 import {
   IsEnum,
+  IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   MinLength,
-} from "@nestjs/class-validator";
-import { ApiProperty } from "@nestjs/swagger";
-import { IsOptional, IsUUID } from "class-validator";
+} from "class-validator";
 import { Scope } from "../domain/flashcard-label.enum";
 export class CreateFlashcardLabelDto {
   @ApiProperty()
