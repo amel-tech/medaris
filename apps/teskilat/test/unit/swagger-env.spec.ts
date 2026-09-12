@@ -11,15 +11,18 @@
  */
 import configuration from "../../src/config/config";
 import {
-  resolveSwaggerEnabled,
   SWAGGER_PRODUCTION_SUPPRESSION_NOTICE,
+  swaggerEnabledUnlessProduction,
   swaggerSuppressedByProduction,
 } from "../../src/config/swagger-env";
 
-describe("resolveSwaggerEnabled", () => {
+describe("swaggerEnabledUnlessProduction", () => {
   it("refuses in production even with SWAGGER_ENABLED=true", () => {
     expect(
-      resolveSwaggerEnabled({ NODE_ENV: "production", SWAGGER_ENABLED: "true" })
+      swaggerEnabledUnlessProduction({
+        NODE_ENV: "production",
+        SWAGGER_ENABLED: "true",
+      })
     ).toBe(false);
   });
 
@@ -27,7 +30,7 @@ describe("resolveSwaggerEnabled", () => {
     // tedrisat's escape hatch (MDRS-33). teskilat deliberately does not honour
     // it, so setting it changes nothing here.
     expect(
-      resolveSwaggerEnabled({
+      swaggerEnabledUnlessProduction({
         NODE_ENV: "production",
         SWAGGER_ENABLED: "true",
         SWAGGER_ALLOW_IN_PRODUCTION: "true",
@@ -37,7 +40,7 @@ describe("resolveSwaggerEnabled", () => {
 
   it("enables outside production when the flag is set", () => {
     expect(
-      resolveSwaggerEnabled({
+      swaggerEnabledUnlessProduction({
         NODE_ENV: "development",
         SWAGGER_ENABLED: "true",
       })
@@ -47,17 +50,24 @@ describe("resolveSwaggerEnabled", () => {
   it("treats an unset NODE_ENV as non-production", () => {
     // The strict branch is keyed on the exact value "production", matching
     // libs/common's cors.config.ts and apps/teskilat/Dockerfile's ENV.
-    expect(resolveSwaggerEnabled({ SWAGGER_ENABLED: "true" })).toBe(true);
+    expect(swaggerEnabledUnlessProduction({ SWAGGER_ENABLED: "true" })).toBe(
+      true
+    );
   });
 
   it("is off when the flag is absent", () => {
-    expect(resolveSwaggerEnabled({ NODE_ENV: "development" })).toBe(false);
+    expect(swaggerEnabledUnlessProduction({ NODE_ENV: "development" })).toBe(
+      false
+    );
   });
 
   it("is off for any value of the flag other than the string 'true'", () => {
     for (const SWAGGER_ENABLED of ["false", "1", "TRUE", "yes", ""]) {
       expect(
-        resolveSwaggerEnabled({ NODE_ENV: "development", SWAGGER_ENABLED })
+        swaggerEnabledUnlessProduction({
+          NODE_ENV: "development",
+          SWAGGER_ENABLED,
+        })
       ).toBe(false);
     }
   });

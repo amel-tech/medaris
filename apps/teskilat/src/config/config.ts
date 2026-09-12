@@ -1,5 +1,5 @@
 import * as pkg from "../../package.json";
-import { resolveSwaggerEnabled } from "./swagger-env";
+import { swaggerEnabledUnlessProduction } from "./swagger-env";
 
 const version = pkg.version || "0.0.1";
 
@@ -53,7 +53,7 @@ export default () => ({
   swagger: {
     // Never true under NODE_ENV=production, whatever SWAGGER_ENABLED says —
     // see ./swagger-env.ts for why this refuses rather than throwing.
-    enabled: resolveSwaggerEnabled(),
+    enabled: swaggerEnabledUnlessProduction(),
     endpoint: process.env.SWAGGER_ENDPOINT || "/docs",
   },
 });

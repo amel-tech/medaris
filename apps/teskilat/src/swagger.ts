@@ -13,8 +13,8 @@ import { INestApplication } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import {
-  resolveSwaggerEnabled,
   SWAGGER_PRODUCTION_SUPPRESSION_NOTICE,
+  swaggerEnabledUnlessProduction,
   swaggerSuppressedByProduction,
 } from "./config/swagger-env";
 
@@ -24,7 +24,7 @@ import {
  *
  * Two independent layers, because one of them is not enough:
  *
- *   1. `resolveSwaggerEnabled(env)` reads the environment as it is **now**.
+ *   1. `swaggerEnabledUnlessProduction(env)` reads the environment as it is **now**.
  *   2. `config.get("swagger.enabled")` is the value the config factory resolved
  *      when the module was compiled.
  *
@@ -58,7 +58,10 @@ export function mountSwagger(
     }
   }
 
-  if (!resolveSwaggerEnabled(env) || !config.get<boolean>("swagger.enabled")) {
+  if (
+    !swaggerEnabledUnlessProduction(env) ||
+    !config.get<boolean>("swagger.enabled")
+  ) {
     return false;
   }
 

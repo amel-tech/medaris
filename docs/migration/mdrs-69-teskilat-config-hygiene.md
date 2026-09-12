@@ -176,10 +176,10 @@ In a real container this was never reachable: the image pins
 false docstring and a guard that did not enforce its own claim, not a live
 exposure. It is enforced now — `mountSwagger` takes an `env` parameter, both
 halves of the decision read the same snapshot, and the mount requires
-`resolveSwaggerEnabled(env)` **and** `config.get("swagger.enabled")`.
+`swaggerEnabledUnlessProduction(env)` **and** `config.get("swagger.enabled")`.
 
 **The new test is not vacuous — measured both ways.** With the two-layer guard in
-place, `nx run teskilat:test` is 24/24. With the `resolveSwaggerEnabled(env)`
+place, `nx run teskilat:test` is 24/24. With the `swaggerEnabledUnlessProduction(env)`
 term temporarily removed, leaving the original single-layer body, the same run is
 **1 failed | 23 passed**, and the failure is exactly "refuses even when the cached
 config says Swagger is enabled". The mirror-image row (live env permits, compiled
@@ -320,6 +320,13 @@ request body rather than filed:
 | 2 | the runbook's §5, this record | **Fixed.** "No variable can publish the schema" was overstated — `TESKILAT__NODE_ENV` can. See "Where the boundary actually is". |
 | 3 | `apps/teskilat/src/swagger.ts` | **Fixed.** The guard now enforces itself; `env` is threaded through both halves. Proved non-vacuous by running the suite against the old body. |
 | 4 | `apps/teskilat/src/swagger.ts` | **Fixed.** The unreachable `\|\| "/swagger"` fallback — which also named a different path than the documented `/docs` — is replaced by `config.getOrThrow<string>("swagger.endpoint")`, so there is no second default to disagree with the first. |
+
+A fifth finding came from the pull request's own review (the AI multi-lens
+gate), after the four above were closed:
+
+| # | Where | Outcome |
+|---|---|---|
+| 5 | `apps/teskilat/src/config/swagger-env.ts` | **Fixed.** Both services exported a `resolveSwaggerEnabled` from the same relative path with opposite production semantics — tedrisat throws unless `SWAGGER_ALLOW_IN_PRODUCTION=true`, teskilat refuses with no opt-in — so the divergence was invisible at the call site and a config factory could be copied between the apps without the name changing. teskilat's is now `swaggerEnabledUnlessProduction`; the name states the policy wherever it is used. The reviewer's other option — one `libs/common` resolver taking the policy as a parameter, next to `cors.config.ts` — is the right shape if a third service ever needs the rule, and is noted in the follow-ups rather than done here, because it would move tedrisat's MDRS-33 code in a teskilat task. |
 
 Three things the reviewer chased and cleared, recorded so nobody repeats the
 work:

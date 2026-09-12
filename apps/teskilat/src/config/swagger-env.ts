@@ -31,6 +31,14 @@
  * The suppression is not silent — `swaggerSuppressedByProduction` below is what
  * `main.ts` logs a warning from, so an operator who set the flag and expected
  * docs finds out from the service log instead of from a 404.
+ *
+ * NAMED DIFFERENTLY FROM tedrisat's ON PURPOSE. Both services used to export a
+ * `resolveSwaggerEnabled` from the same relative path with opposite production
+ * semantics (throw vs refuse), which made the two files look like copies of one
+ * another and let a config factory be moved between the apps without the name
+ * changing. `swaggerEnabledUnlessProduction` says what this one does at every
+ * call site; a future shared home in `libs/common` (the way `cors.config.ts`
+ * already is) would take the policy as a parameter instead.
  */
 
 /**
@@ -53,7 +61,7 @@ export const SWAGGER_PRODUCTION_SUPPRESSION_NOTICE =
   "(API__SWAGGER_ENABLED in the repository-root .env.example). There is no " +
   "opt-in. Run a non-production NODE_ENV to read the schema locally.";
 
-export function resolveSwaggerEnabled(
+export function swaggerEnabledUnlessProduction(
   env: NodeJS.ProcessEnv = process.env
 ): boolean {
   if (env.SWAGGER_ENABLED !== "true") {

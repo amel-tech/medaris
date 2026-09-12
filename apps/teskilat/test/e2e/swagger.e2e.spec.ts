@@ -2,7 +2,7 @@
  * MDRS-69 — proof that teskilat serves no Swagger UI under
  * `NODE_ENV=production`, as behaviour rather than as a resolved flag.
  *
- * `resolveSwaggerEnabled` returning `false` is necessary but not sufficient
+ * `swaggerEnabledUnlessProduction` returning `false` is necessary but not sufficient
  * evidence: the requirement is that the module is not mounted, so these tests
  * boot a real Nest application, run the same `mountSwagger` call `main.ts`
  * makes, and assert the HTTP status of the documentation path.
