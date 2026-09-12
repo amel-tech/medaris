@@ -42,6 +42,7 @@
     "@commitlint/config-conventional": "catalog:",
     "@nx/eslint": "catalog:",
     "@nx/eslint-plugin": "catalog:",
+    "@swc/core": "catalog:",
     "audit-ci": "catalog:",
     "depcheck": "catalog:",
     "eslint": "catalog:",
@@ -49,6 +50,7 @@
     "lint-staged": "catalog:",
     "nx": "catalog:",
     "typescript": "catalog:",
-    "typescript-eslint": "catalog:"
+    "typescript-eslint": "catalog:",
+    "unplugin-swc": "catalog:"
   }
 }

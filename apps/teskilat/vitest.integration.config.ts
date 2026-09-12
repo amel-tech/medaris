@@ -9,8 +9,8 @@
  * that is actually there, so this target gains one suite rather than losing any.
  */
 import { defineConfig, mergeConfig } from "vitest/config";
+import { nestSwcPlugin } from "../../vitest.config";
 import integrationBaseConfig from "../../vitest.integration.config";
-import { nestSwcPlugin } from "./vitest.config";
 
 export default mergeConfig(
   integrationBaseConfig,
