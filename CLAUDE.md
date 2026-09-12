@@ -22,7 +22,7 @@ pnpm nx run-many -t lint --skip-nx-cache
 pnpm nx run-many -t module-boundaries --skip-nx-cache
 ```
 
-Expected: typecheck 17 projects · **254 tests / 18 suites** · build 8 · lint 17 · module-boundaries 17.
+Expected: typecheck 17 projects · **335 tests / 22 suites** · build 8 · lint 17 · module-boundaries 17.
 
 Two prerequisites that look optional and are not:
 
