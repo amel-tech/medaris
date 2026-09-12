@@ -3,6 +3,7 @@ export * from "./authz.decorator";
 export * from "./authz.guard";
 export * from "./authz.module";
 export * from "./authz.service";
+export * from "./authz-wiring.assertion";
 export * from "./exceptions";
 export * from "./interfaces";
 export * from "./resolvers";

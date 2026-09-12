@@ -1,3 +1,5 @@
+import { ExecutionContext, NotFoundException } from "@nestjs/common";
+import { ModuleRef, Reflector } from "@nestjs/core";
 import {
   AUTHZ_KEY,
   AuthzGuard,
@@ -9,9 +11,7 @@ import {
   ROLES,
   RoleResolver,
   SCOPES,
-} from "@medaris/common";
-import { ExecutionContext, NotFoundException } from "@nestjs/common";
-import { ModuleRef, Reflector } from "@nestjs/core";
+} from "../../src";
 
 const buildContext = (
   request: Record<string, unknown>

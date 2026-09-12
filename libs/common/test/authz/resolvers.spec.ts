@@ -1,5 +1,5 @@
-import { byBody, byParam, byQuery, ENTITIES } from "@medaris/common";
 import { Request } from "express";
+import { byBody, byParam, byQuery, ENTITIES } from "../../src";
 
 const req = (overrides: Partial<Record<string, unknown>> = {}): Request =>
   ({

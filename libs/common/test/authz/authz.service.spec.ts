@@ -7,7 +7,7 @@ import {
   Role,
   RoleResolver,
   SCOPES,
-} from "@medaris/common";
+} from "../../src";
 
 const resolverReturning = (role: Role | null): RoleResolver => ({
   resolve: vi.fn().mockResolvedValue(role),

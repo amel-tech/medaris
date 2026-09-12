@@ -6,23 +6,22 @@ import {
   RoleResolver,
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
-import { and, eq } from "drizzle-orm";
+import { CourseRepository } from "../course/course.repository";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
-import { DatabaseService } from "../database/database.service";
-import {
-  courseMuderris,
-  courses,
-  enrollments,
-} from "../database/schema/course.schema";
-import { decks } from "../database/schema/flashcard-deck.schema";
-import { kosks } from "../database/schema/kosk.schema";
+import { FlashcardDeckRepository } from "../flashcard/flashcard-deck.repository";
+import { KoskRepository } from "../kosk/kosk.repository";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Resolves the caller's role on a given resource by consulting the
- * domain's ownership/enrollment tables.
+ * domain's ownership/enrollment tables — through the feature modules'
+ * repositories, never through `DatabaseService` directly. Authorization
+ * and the domain services therefore read ownership from one code path:
+ * when the storage shape changes (the kosk→madrasah FK, a membership
+ * table for köşk ownership), the repository method changes and both
+ * readers follow.
  *
  * Returning `null` means **deny** — the caller has no role on this
  * resource and no public access is intended either. `AuthzService.can`
@@ -31,15 +30,14 @@ const UUID_REGEX =
  * non-existent ID on a create endpoint, the donate scope on a
  * madrasah), the resolver must explicitly return `ROLES.PUBLIC`.
  *
- * Wired entities so far: `flashcard-deck` (owner), `kosk` (manager).
- * `course`, `madrasah`, `ijazah` return `PUBLIC` provisionally so the
- * open scopes documented in plan §4 (view, enroll, donate) work.
- * Restricted scopes (`MANAGE_*`, `EDIT`, `DELETE`) deny because PUBLIC
- * does not list them — they will become role-based once each entity's
- * resolver lands.
+ * Wired entities so far: `flashcard-deck` (owner), `kosk` (manager),
+ * `course` (manager / muderris / enrolled / pending). `madrasah` and
+ * `ijazah` return `PUBLIC` provisionally so the open scopes documented in
+ * plan §4 (view, donate) work. Restricted scopes (`MANAGE_*`, `EDIT`,
+ * `DELETE`) deny because PUBLIC does not list them — they will become
+ * role-based once each entity's resolver lands.
  *
- * Priority rules for multi-role situations (applied as the
- * corresponding tables come online):
+ * Priority rules for multi-role situations:
  *   - KOSK_MANAGER > MUDERRIS > ENROLLED > PENDING
  *   - MADRASAH_NAZIR > KOSK_MANAGER (when the kosk belongs to the nazır's medrese)
  *   - SYSTEM_ADMIN bypass is handled upstream in `AuthzService.isSystemAdmin`,
@@ -47,7 +45,11 @@ const UUID_REGEX =
  */
 @Injectable()
 export class TedrisatRoleResolver implements RoleResolver {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly koskRepo: KoskRepository,
+    private readonly courseRepo: CourseRepository,
+    private readonly deckRepo: FlashcardDeckRepository
+  ) {}
 
   async resolve(userId: string, resource: ResourceRef): Promise<Role | null> {
     switch (resource.entity) {
@@ -75,13 +77,18 @@ export class TedrisatRoleResolver implements RoleResolver {
    * §4.2 will land with their foreign keys.
    *
    * - Non-UUID id ("new" used by the POST endpoint, malformed input):
-   *   return PUBLIC so the create scope on the matrix's PUBLIC row
+   *   return PUBLIC so `CREATE_PRIVATE_DECK` on the matrix's PUBLIC row
    *   applies. Defends against Postgres 22P02.
    * - Deck missing: return PUBLIC. The handler will 404 separately;
    *   the resolver shouldn't leak existence by switching outcomes here.
-   * - Public deck: return PUBLIC (any authenticated caller may view).
-   * - Private deck owned by the caller: DECK_OWNER.
-   * - Private deck NOT owned: null → strict deny.
+   * - Caller authored the deck: DECK_OWNER — checked BEFORE `isPublic`.
+   *   `isPublic` is a user-settable visibility flag on a user-authored
+   *   row, not an admin flag; testing it first turned the author of a
+   *   public deck into PUBLIC and locked them out of every owner scope on
+   *   their own deck, with no way back since flipping the flag is itself
+   *   owner-scoped (review finding on MDRS-41).
+   * - Public deck, not the author: PUBLIC (any authenticated caller may view).
+   * - Private deck, not the author: null → strict deny.
    */
   private async resolveDeckRole(
     userId: string,
@@ -89,20 +96,21 @@ export class TedrisatRoleResolver implements RoleResolver {
   ): Promise<Role | null> {
     if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
 
-    const deck = await this.db.db.query.decks.findFirst({
-      where: eq(decks.id, resource.id),
-      columns: { id: true, isPublic: true, authorId: true },
-    });
+    const deck = await this.deckRepo.findById(resource.id);
     if (!deck) return ROLES.PUBLIC;
-    if (deck.isPublic) return ROLES.PUBLIC;
-    return deck.authorId === userId ? ROLES.DECK_OWNER : null;
+    if (deck.authorId === userId) return ROLES.DECK_OWNER;
+    return deck.isPublic ? ROLES.PUBLIC : null;
   }
 
   /**
    * Köşk role dispatch.
    *
-   * - Non-UUID id ("new" sentinel from the create endpoint): PUBLIC so
-   *   the matrix's CREATE_KOSK on PUBLIC applies.
+   * - Non-UUID id ("new" sentinel, malformed input): PUBLIC, which grants
+   *   VIEW only. `CREATE_KOSK` is deliberately on NO kosk matrix row (see
+   *   auth-matrix.ts, the comment above the kosk PUBLIC row): köşk
+   *   creation is SYSTEM_ADMIN-only through the realm bypass. Do NOT add
+   *   `CREATE_KOSK` to the PUBLIC row to make a create endpoint pass —
+   *   that hands köşk creation to every authenticated user.
    * - Köşk missing: PUBLIC. Mirrors the deck pattern — the controller
    *   surfaces 404 later when its own query returns nothing.
    * - Caller owns the köşk: KOSK_MANAGER.
@@ -117,12 +125,9 @@ export class TedrisatRoleResolver implements RoleResolver {
   ): Promise<Role | null> {
     if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
 
-    const kosk = await this.db.db.query.kosks.findFirst({
-      where: eq(kosks.id, resource.id),
-      columns: { id: true, ownerId: true },
-    });
-    if (!kosk) return ROLES.PUBLIC;
-    return kosk.ownerId === userId ? ROLES.KOSK_MANAGER : ROLES.PUBLIC;
+    const ownerId = await this.koskRepo.findOwnerId(resource.id);
+    if (ownerId === null) return ROLES.PUBLIC;
+    return ownerId === userId ? ROLES.KOSK_MANAGER : ROLES.PUBLIC;
   }
 
   /**
@@ -136,6 +141,17 @@ export class TedrisatRoleResolver implements RoleResolver {
    *   5. PUBLIC       — any authenticated caller (covers ENROLL on a course
    *                     that exists)
    *
+   * Two round trips, not four: only the parent-köşk lookup depends on the
+   * course row (it needs `koskId`); the muderris and enrollment lookups
+   * need nothing but the course id and the caller, so the three run
+   * concurrently once the course is known. The most common caller — an
+   * authenticated visitor with no relationship to the course, who ends at
+   * PUBLIC — used to pay all four in series, inside the guard, before the
+   * handler had done any work. The priority order is applied to the
+   * results, not to the queries, so a KOSK_MANAGER now issues two lookups
+   * it would have skipped; they run in parallel on the pool, which is the
+   * cheaper trade.
+   *
    * The MADRASAH_NAZIR path lands once the kosk→madrasah FK exists.
    */
   private async resolveCourseRole(
@@ -144,41 +160,19 @@ export class TedrisatRoleResolver implements RoleResolver {
   ): Promise<Role | null> {
     if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
 
-    const course = await this.db.db.query.courses.findFirst({
-      where: eq(courses.id, resource.id),
-      columns: { id: true, koskId: true },
-    });
-    if (!course) return ROLES.PUBLIC;
+    const koskId = await this.courseRepo.findKoskId(resource.id);
+    if (koskId === null) return ROLES.PUBLIC;
 
-    // KOSK_MANAGER — the manager of the parent köşk owns every course
-    // under it, regardless of muderris assignment.
-    const parentKosk = await this.db.db.query.kosks.findFirst({
-      where: eq(kosks.id, course.koskId),
-      columns: { ownerId: true },
-    });
-    if (parentKosk?.ownerId === userId) return ROLES.KOSK_MANAGER;
+    const [parentOwnerId, isMuderris, enrollment] = await Promise.all([
+      this.koskRepo.findOwnerId(koskId),
+      this.courseRepo.isMuderris(resource.id, userId),
+      this.courseRepo.findEnrollment(userId, resource.id),
+    ]);
 
-    // MUDERRIS — listed in course_muderris for this course
-    const muderris = await this.db.db.query.courseMuderris.findFirst({
-      where: and(
-        eq(courseMuderris.courseId, course.id),
-        eq(courseMuderris.userId, userId)
-      ),
-      columns: { id: true },
-    });
-    if (muderris) return ROLES.MUDERRIS;
-
-    // ENROLLED / PENDING — primary key is (userId, courseId)
-    const enrollment = await this.db.db.query.enrollments.findFirst({
-      where: and(
-        eq(enrollments.courseId, course.id),
-        eq(enrollments.userId, userId)
-      ),
-      columns: { status: true },
-    });
+    if (parentOwnerId === userId) return ROLES.KOSK_MANAGER;
+    if (isMuderris) return ROLES.MUDERRIS;
     if (enrollment?.status === EnrollmentStatus.PENDING) return ROLES.PENDING;
     if (enrollment) return ROLES.ENROLLED; // ENROLLED or COMPLETED
-
     return ROLES.PUBLIC;
   }
 }

@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -78,18 +79,32 @@ export const lessons = table("lessons", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const courseMuderris = table("course_muderris", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  courseId: uuid("course_id")
-    .references(() => courses.id, { onDelete: "cascade" })
-    .notNull(),
-  userId: uuid("user_id"),
-  name: text("name").notNull(),
-  title: text("title"),
-  bio: text("bio"),
-  avatarHue: integer("avatar_hue").default(220).notNull(),
-  orderIndex: integer("order_index").default(0).notNull(),
-});
+export const courseMuderris = table(
+  "course_muderris",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    courseId: uuid("course_id")
+      .references(() => courses.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: uuid("user_id"),
+    name: text("name").notNull(),
+    title: text("title"),
+    bio: text("bio"),
+    avatarHue: integer("avatar_hue").default(220).notNull(),
+    orderIndex: integer("order_index").default(0).notNull(),
+  },
+  // Covers `CourseRepository.isMuderris` — the (courseId, userId) lookup the
+  // authorization resolver runs on every course request (MDRS-41) — and, by
+  // its leading column, the plain "müderris of this course" listing. Postgres
+  // does not index the referencing side of a foreign key on its own, and the
+  // surrogate primary key serves neither access path.
+  (table) => [
+    index("course_muderris_course_id_user_id_idx").on(
+      table.courseId,
+      table.userId
+    ),
+  ]
+);
 
 export const courseResources = table("course_resources", {
   id: uuid("id").primaryKey().defaultRandom(),

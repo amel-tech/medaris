@@ -498,6 +498,20 @@ export class CourseRepository implements ICourseRepository {
     return deleted.length > 0;
   }
 
+  async isMuderris(courseId: string, userId: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: courseMuderris.id })
+      .from(courseMuderris)
+      .where(
+        and(
+          eq(courseMuderris.courseId, courseId),
+          eq(courseMuderris.userId, userId)
+        )
+      )
+      .limit(1);
+    return rows.length > 0;
+  }
+
   async findEnrollment(
     userId: string,
     courseId: string

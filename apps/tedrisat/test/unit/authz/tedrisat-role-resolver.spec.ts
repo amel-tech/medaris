@@ -1,62 +1,52 @@
 import { ENTITIES, ROLES } from "@medaris/common";
 import { TedrisatRoleResolver } from "../../../src/authz/tedrisat-role-resolver.service";
+import { CourseRepository } from "../../../src/course/course.repository";
 import { EnrollmentStatus } from "../../../src/course/domain/enrollment-status.enum";
-import { DatabaseService } from "../../../src/database/database.service";
+import { FlashcardDeckRepository } from "../../../src/flashcard/flashcard-deck.repository";
+import { KoskRepository } from "../../../src/kosk/kosk.repository";
 
 interface DeckRow {
   id: string;
   isPublic: boolean;
   authorId: string;
 }
-interface KoskRow {
-  id: string;
-  ownerId: string;
-}
-interface CourseRow {
-  id: string;
-  koskId: string;
-}
-interface MuderrisRow {
-  id: string;
-}
 interface EnrollmentRow {
   status: EnrollmentStatus;
 }
 
+/**
+ * The resolver reads through the three repositories (never through
+ * `DatabaseService`), so the stubs are repository methods. One
+ * `findOwnerId` value serves both the direct köşk lookup and the parent
+ * köşk lookup on the course path — each resolution makes exactly one.
+ */
 interface Stubs {
   deck?: DeckRow | null;
-  kosk?: KoskRow | null;
-  course?: CourseRow | null;
-  parentKosk?: KoskRow | null;
-  muderris?: MuderrisRow | null;
+  koskOwnerId?: string | null;
+  courseKoskId?: string | null;
+  muderris?: boolean;
   enrollment?: EnrollmentRow | null;
 }
 
-const dbStub = (s: Stubs = {}): DatabaseService =>
-  ({
-    db: {
-      query: {
-        decks: {
-          findFirst: vi.fn().mockResolvedValue(s.deck ?? null),
-        },
-        // Each resolution path makes a single `kosks.findFirst` call —
-        // direct köşk lookup for kosk dispatch, or parent köşk lookup
-        // for course dispatch — so one mock value handles both cases.
-        kosks: {
-          findFirst: vi.fn().mockResolvedValue(s.kosk ?? s.parentKosk ?? null),
-        },
-        courses: {
-          findFirst: vi.fn().mockResolvedValue(s.course ?? null),
-        },
-        courseMuderris: {
-          findFirst: vi.fn().mockResolvedValue(s.muderris ?? null),
-        },
-        enrollments: {
-          findFirst: vi.fn().mockResolvedValue(s.enrollment ?? null),
-        },
-      },
-    },
-  }) as unknown as DatabaseService;
+const build = (s: Stubs = {}) => {
+  const kosk = {
+    findOwnerId: vi.fn().mockResolvedValue(s.koskOwnerId ?? null),
+  } as unknown as KoskRepository;
+  const course = {
+    findKoskId: vi.fn().mockResolvedValue(s.courseKoskId ?? null),
+    isMuderris: vi.fn().mockResolvedValue(s.muderris ?? false),
+    findEnrollment: vi.fn().mockResolvedValue(s.enrollment ?? null),
+  } as unknown as CourseRepository;
+  const deck = {
+    findById: vi.fn().mockResolvedValue(s.deck ?? null),
+  } as unknown as FlashcardDeckRepository;
+  return {
+    resolver: new TedrisatRoleResolver(kosk, course, deck),
+    kosk,
+    course,
+    deck,
+  };
+};
 
 const REAL_UUID = "11111111-1111-1111-1111-111111111111";
 const OTHER_UUID = "22222222-2222-2222-2222-222222222222";
@@ -65,11 +55,24 @@ const KOSK_UUID = "33333333-3333-3333-3333-333333333333";
 describe("TedrisatRoleResolver", () => {
   describe("flashcard-deck dispatch", () => {
     it("returns DECK_OWNER when caller authored a private deck", async () => {
-      const resolver = new TedrisatRoleResolver(
-        dbStub({
-          deck: { id: REAL_UUID, isPublic: false, authorId: "owner-1" },
+      const { resolver } = build({
+        deck: { id: REAL_UUID, isPublic: false, authorId: "owner-1" },
+      });
+      await expect(
+        resolver.resolve("owner-1", {
+          entity: ENTITIES.FLASHCARD_DECK,
+          id: REAL_UUID,
         })
-      );
+      ).resolves.toBe(ROLES.DECK_OWNER);
+    });
+
+    it("returns DECK_OWNER for the author of a PUBLIC deck — ownership beats visibility", async () => {
+      // `isPublic` is a user-settable flag on a user-authored row. Testing it
+      // first demoted the author to PUBLIC and locked them out of every
+      // owner scope on their own deck.
+      const { resolver } = build({
+        deck: { id: REAL_UUID, isPublic: true, authorId: "owner-1" },
+      });
       await expect(
         resolver.resolve("owner-1", {
           entity: ENTITIES.FLASHCARD_DECK,
@@ -79,11 +82,9 @@ describe("TedrisatRoleResolver", () => {
     });
 
     it("returns null (strict deny) for a stranger on a private deck", async () => {
-      const resolver = new TedrisatRoleResolver(
-        dbStub({
-          deck: { id: REAL_UUID, isPublic: false, authorId: "owner-1" },
-        })
-      );
+      const { resolver } = build({
+        deck: { id: REAL_UUID, isPublic: false, authorId: "owner-1" },
+      });
       await expect(
         resolver.resolve("stranger", {
           entity: ENTITIES.FLASHCARD_DECK,
@@ -92,10 +93,10 @@ describe("TedrisatRoleResolver", () => {
       ).resolves.toBeNull();
     });
 
-    it("returns PUBLIC for a public deck", async () => {
-      const resolver = new TedrisatRoleResolver(
-        dbStub({ deck: { id: REAL_UUID, isPublic: true, authorId: "admin" } })
-      );
+    it("returns PUBLIC for a stranger on a public deck", async () => {
+      const { resolver } = build({
+        deck: { id: REAL_UUID, isPublic: true, authorId: "admin" },
+      });
       await expect(
         resolver.resolve("anyone", {
           entity: ENTITIES.FLASHCARD_DECK,
@@ -105,7 +106,7 @@ describe("TedrisatRoleResolver", () => {
     });
 
     it("returns PUBLIC when the deck does not exist", async () => {
-      const resolver = new TedrisatRoleResolver(dbStub({ deck: null }));
+      const { resolver } = build({ deck: null });
       await expect(
         resolver.resolve("u", {
           entity: ENTITIES.FLASHCARD_DECK,
@@ -114,56 +115,67 @@ describe("TedrisatRoleResolver", () => {
       ).resolves.toBe(ROLES.PUBLIC);
     });
 
-    it("returns PUBLIC for non-UUID deck ids", async () => {
-      const resolver = new TedrisatRoleResolver(dbStub());
+    it("returns PUBLIC for non-UUID deck ids without touching the repository", async () => {
+      const { resolver, deck } = build();
       await expect(
         resolver.resolve("u", { entity: ENTITIES.FLASHCARD_DECK, id: "new" })
       ).resolves.toBe(ROLES.PUBLIC);
+      expect(deck.findById).not.toHaveBeenCalled();
     });
   });
 
   describe("kosk dispatch", () => {
     it("returns KOSK_MANAGER when caller owns the köşk", async () => {
-      const resolver = new TedrisatRoleResolver(
-        dbStub({ kosk: { id: REAL_UUID, ownerId: "manager-1" } })
-      );
+      const { resolver } = build({ koskOwnerId: "manager-1" });
       await expect(
         resolver.resolve("manager-1", { entity: ENTITIES.KOSK, id: REAL_UUID })
       ).resolves.toBe(ROLES.KOSK_MANAGER);
     });
 
     it("returns PUBLIC for any non-owner on an existing köşk", async () => {
-      const resolver = new TedrisatRoleResolver(
-        dbStub({ kosk: { id: REAL_UUID, ownerId: "manager-1" } })
-      );
+      const { resolver } = build({ koskOwnerId: "manager-1" });
       await expect(
         resolver.resolve("stranger", { entity: ENTITIES.KOSK, id: REAL_UUID })
       ).resolves.toBe(ROLES.PUBLIC);
     });
 
     it("returns PUBLIC when the köşk does not exist", async () => {
-      const resolver = new TedrisatRoleResolver(dbStub({ kosk: null }));
+      const { resolver } = build({ koskOwnerId: null });
       await expect(
         resolver.resolve("u", { entity: ENTITIES.KOSK, id: OTHER_UUID })
       ).resolves.toBe(ROLES.PUBLIC);
     });
 
     it("returns PUBLIC for non-UUID köşk ids", async () => {
-      const resolver = new TedrisatRoleResolver(dbStub());
+      const { resolver, kosk } = build();
       await expect(
         resolver.resolve("u", { entity: ENTITIES.KOSK, id: "new" })
       ).resolves.toBe(ROLES.PUBLIC);
+      expect(kosk.findOwnerId).not.toHaveBeenCalled();
     });
   });
 
   describe("course dispatch (priority: kosk_manager > muderris > enrolled > pending > public)", () => {
     it("returns KOSK_MANAGER when caller owns the parent köşk", async () => {
-      const resolver = new TedrisatRoleResolver(
-        dbStub({
-          course: { id: REAL_UUID, koskId: KOSK_UUID },
-          parentKosk: { id: KOSK_UUID, ownerId: "manager-1" },
+      const { resolver } = build({
+        courseKoskId: KOSK_UUID,
+        koskOwnerId: "manager-1",
+      });
+      await expect(
+        resolver.resolve("manager-1", {
+          entity: ENTITIES.COURSE,
+          id: REAL_UUID,
         })
-      );
+      ).resolves.toBe(ROLES.KOSK_MANAGER);
+    });
+
+    it("prefers KOSK_MANAGER over a muderris row and an enrollment for the same caller", async () => {
+      const { resolver } = build({
+        courseKoskId: KOSK_UUID,
+        koskOwnerId: "manager-1",
+        muderris: true,
+        enrollment: { status: EnrollmentStatus.PENDING },
+      });
       await expect(
         resolver.resolve("manager-1", {
           entity: ENTITIES.COURSE,
@@ -173,13 +185,11 @@ describe("TedrisatRoleResolver", () => {
     });
 
     it("returns MUDERRIS when caller is listed in course_muderris", async () => {
-      const resolver = new TedrisatRoleResolver(
-        dbStub({
-          course: { id: REAL_UUID, koskId: KOSK_UUID },
-          parentKosk: { id: KOSK_UUID, ownerId: "someone-else" },
-          muderris: { id: "m-1" },
-        })
-      );
+      const { resolver } = build({
+        courseKoskId: KOSK_UUID,
+        koskOwnerId: "someone-else",
+        muderris: true,
+      });
       await expect(
         resolver.resolve("teacher-1", {
           entity: ENTITIES.COURSE,
@@ -189,13 +199,11 @@ describe("TedrisatRoleResolver", () => {
     });
 
     it("returns ENROLLED when caller has an ENROLLED enrollment", async () => {
-      const resolver = new TedrisatRoleResolver(
-        dbStub({
-          course: { id: REAL_UUID, koskId: KOSK_UUID },
-          parentKosk: { id: KOSK_UUID, ownerId: "someone-else" },
-          enrollment: { status: EnrollmentStatus.ENROLLED },
-        })
-      );
+      const { resolver } = build({
+        courseKoskId: KOSK_UUID,
+        koskOwnerId: "someone-else",
+        enrollment: { status: EnrollmentStatus.ENROLLED },
+      });
       await expect(
         resolver.resolve("talebe-1", {
           entity: ENTITIES.COURSE,
@@ -205,13 +213,11 @@ describe("TedrisatRoleResolver", () => {
     });
 
     it("returns PENDING when caller has a PENDING enrollment", async () => {
-      const resolver = new TedrisatRoleResolver(
-        dbStub({
-          course: { id: REAL_UUID, koskId: KOSK_UUID },
-          parentKosk: { id: KOSK_UUID, ownerId: "someone-else" },
-          enrollment: { status: EnrollmentStatus.PENDING },
-        })
-      );
+      const { resolver } = build({
+        courseKoskId: KOSK_UUID,
+        koskOwnerId: "someone-else",
+        enrollment: { status: EnrollmentStatus.PENDING },
+      });
       await expect(
         resolver.resolve("talebe-pending", {
           entity: ENTITIES.COURSE,
@@ -221,12 +227,10 @@ describe("TedrisatRoleResolver", () => {
     });
 
     it("returns PUBLIC for a stranger with no relationship to the course", async () => {
-      const resolver = new TedrisatRoleResolver(
-        dbStub({
-          course: { id: REAL_UUID, koskId: KOSK_UUID },
-          parentKosk: { id: KOSK_UUID, ownerId: "someone-else" },
-        })
-      );
+      const { resolver } = build({
+        courseKoskId: KOSK_UUID,
+        koskOwnerId: "someone-else",
+      });
       await expect(
         resolver.resolve("stranger", {
           entity: ENTITIES.COURSE,
@@ -235,11 +239,30 @@ describe("TedrisatRoleResolver", () => {
       ).resolves.toBe(ROLES.PUBLIC);
     });
 
-    it("returns PUBLIC when the course does not exist", async () => {
-      const resolver = new TedrisatRoleResolver(dbStub({ course: null }));
+    it("issues the three dependent lookups once each, after the course row", async () => {
+      const { resolver, kosk, course } = build({
+        courseKoskId: KOSK_UUID,
+        koskOwnerId: "someone-else",
+      });
+      await resolver.resolve("stranger", {
+        entity: ENTITIES.COURSE,
+        id: REAL_UUID,
+      });
+      expect(course.findKoskId).toHaveBeenCalledWith(REAL_UUID);
+      expect(kosk.findOwnerId).toHaveBeenCalledTimes(1);
+      expect(kosk.findOwnerId).toHaveBeenCalledWith(KOSK_UUID);
+      expect(course.isMuderris).toHaveBeenCalledWith(REAL_UUID, "stranger");
+      expect(course.findEnrollment).toHaveBeenCalledWith("stranger", REAL_UUID);
+    });
+
+    it("returns PUBLIC when the course does not exist, without the dependent lookups", async () => {
+      const { resolver, kosk, course } = build({ courseKoskId: null });
       await expect(
         resolver.resolve("u", { entity: ENTITIES.COURSE, id: OTHER_UUID })
       ).resolves.toBe(ROLES.PUBLIC);
+      expect(kosk.findOwnerId).not.toHaveBeenCalled();
+      expect(course.isMuderris).not.toHaveBeenCalled();
+      expect(course.findEnrollment).not.toHaveBeenCalled();
     });
   });
 
@@ -248,7 +271,7 @@ describe("TedrisatRoleResolver", () => {
       ENTITIES.MADRASAH,
       ENTITIES.IJAZAH,
     ] as const)("returns PUBLIC for %s (provisional until tables land)", async (entity) => {
-      const resolver = new TedrisatRoleResolver(dbStub());
+      const { resolver } = build();
       await expect(
         resolver.resolve("u", { entity, id: REAL_UUID })
       ).resolves.toBe(ROLES.PUBLIC);

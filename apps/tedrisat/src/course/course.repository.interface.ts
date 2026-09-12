@@ -212,6 +212,8 @@ export interface ICourseRepository {
     options?: IEnrollOptions
   ): Promise<IEnrollment>;
   findEnrollment(userId: string, courseId: string): Promise<IEnrollment | null>;
+  /** Whether `userId` is listed in `course_muderris` for `courseId`. */
+  isMuderris(courseId: string, userId: string): Promise<boolean>;
   findPendingByKosk(koskId: string): Promise<IPendingEnrollment[]>;
   setEnrollmentStatus(
     userId: string,

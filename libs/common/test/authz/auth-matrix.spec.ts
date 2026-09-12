@@ -1,4 +1,4 @@
-import { ENTITIES, MATRIX, ROLES, SCOPES } from "@medaris/common";
+import { ENTITIES, MATRIX, ROLES, SCOPES } from "../../src";
 
 describe("auth-matrix structural invariants", () => {
   it("every entity has at least one entry", () => {
