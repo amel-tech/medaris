@@ -30,6 +30,9 @@ export class FlashcardLabelService {
    * role model (no @Roles, no RolesGuard, nothing in the JWT), so there is no
    * such thing as an administrator who may delete somebody else's row. If that
    * ever changes, this is the method that learns about it.
+   *
+   * MDRS-56 made this the gate for the two READ routes as well, so the same
+   * scope decision now governs reads — see the controller comment for why.
    */
   async assertOwner(labelId: string, userId: string): Promise<void> {
     const label = await this.flashcardLabelRepo.getById(labelId);
@@ -62,10 +65,59 @@ export class FlashcardLabelService {
     }
     return await this.flashcardLabelRepo.flashcardLabeling(newLabeling);
   }
-  async getById(id: string): Promise<IFlashcardLabel | null> {
-    return await this.flashcardLabelRepo.getById(id);
+  /**
+   * MDRS-56. Both reads go through `assertOwner` first, exactly as
+   * `deleteLabel` does: 404 for a label that does not exist, 403 for one that
+   * belongs to somebody else. Before this the id went straight to
+   * `select ... where id = ?`, so any authenticated caller who guessed a UUID
+   * read another user's label — title, scope and usage count included.
+   *
+   * `userId` is not optional on purpose. An overload that skips the check when
+   * the caller is omitted is exactly how the delete hole survived review.
+   *
+   * `getById` therefore reads the row twice — once inside `assertOwner`, once
+   * to return it. Deliberate. Threading the checked row out of `assertOwner`
+   * would save one primary-key lookup at the cost of changing the signature of
+   * the method that also guards DELETE, and this issue is not the place to
+   * widen the blast radius of an authorization change. Revisit it when
+   * MDRS-41's policy layer replaces this method wholesale.
+   *
+   * The return type is non-nullable, and that is a consequence of the above
+   * rather than a tidy-up: with `assertOwner` in front and the guard below, no
+   * path returns `null` any more. Leaving `| null` on would have published a
+   * nullable 200 body to the generated client — the exact shape this change
+   * removes. `getLabelStats` keeps its `| null`, which is still reachable.
+   */
+  async getById(id: string, userId: string): Promise<IFlashcardLabel> {
+    await this.assertOwner(id, userId);
+
+    // Re-checked rather than returned blind. The two reads are not atomic, so
+    // a concurrent delete between them makes this one miss — and returning the
+    // miss unguarded would answer 200 with an empty body, which is precisely
+    // the shape this change removes. Losing the race is still a 404.
+    const label = await this.flashcardLabelRepo.getById(id);
+    if (!label) {
+      throw new FlashcardLabelNotFoundError(id);
+    }
+    return label;
   }
-  async getLabelStats(id: string): Promise<IFlashcardLabelStats | null> {
+  /**
+   * Ownership is asserted against the LABEL, not the stats row. `labelStats`
+   * carries no owner column of its own, and a label with no stats row yet is a
+   * legitimate empty read rather than a denial — distinguishing "never used"
+   * from "not yours" is precisely what the assertion is for.
+   *
+   * That empty read is what the repository does; it is NOT what the route does
+   * today. `flashcard_label_stats` is unqueryable — the migration created
+   * `usageCount`, the schema declares `usage_count` — so every caller,
+   * including the owner, currently gets a 500 before the null path is
+   * reached. Follow-up 1 in docs/migration/mdrs-56-flashcard-label-authz.md.
+   */
+  async getLabelStats(
+    id: string,
+    userId: string
+  ): Promise<IFlashcardLabelStats | null> {
+    await this.assertOwner(id, userId);
     return await this.flashcardLabelRepo.getLabelStats(id);
   }
 }

@@ -66,16 +66,16 @@ Nx runs with `neverConnectToCloud: true` — no remote cache, no analytics. CI t
 
 ### Test coverage, stated honestly
 
-`pnpm test` reports three projects, but only two of them run real tests: **226 tests across 17 suites, all in `tedrisat` and `teskilat`** (224 / 15 and 2 / 2). The third, `tedris-web`, executes `echo 'Tests not implemented'`, which Nx counts as a pass. **Frontend test coverage is zero.**
+`pnpm test` reports three projects, but only two of them run real tests: **295 tests across 21 suites, all in `tedrisat` and `teskilat`** (293 / 19 and 2 / 2). The third, `tedris-web`, executes `echo 'Tests not implemented'`, which Nx counts as a pass. **Frontend test coverage is zero.**
 
 Those tests run on **Vitest**; MDRS-20 moved them off Jest at an unchanged count — 91 across 10 suites as measured then, before MDRS-35 added tedrisat's 15-test `test/unit/config.spec.ts` — and no Jest dependency or config file remains. It did **not** close the frontend gap — there was no frontend spec to migrate, and scaffolding a runner with nothing to run would only have produced a target that passes vacuously. Writing the first frontend specs, with the `@nx/vite` + `jsdom` setup they need, is tracked separately. See [`docs/migration/mdrs-20-jest-to-vitest.md`](docs/migration/mdrs-20-jest-to-vitest.md).
 
-Six of tedrisat's fifteen suites are the `test/e2e/*.e2e.spec.ts` files: `apps/tedrisat/vitest.config.ts` matches them too, so **`pnpm test` needs a running Docker daemon** — those suites start a Testcontainers `postgres:17-alpine`. `pnpm --filter @medaris/tedrisat test:e2e` runs the same six under `apps/tedrisat/vitest.integration.config.ts` rather than adding coverage.
+Seven of tedrisat's nineteen suites are the `test/e2e/*.e2e.spec.ts` files: `apps/tedrisat/vitest.config.ts` matches them too, so **`pnpm test` needs a running Docker daemon** — those suites start a Testcontainers `postgres:17-alpine`. `pnpm --filter @medaris/tedrisat test:e2e` runs the same seven under `apps/tedrisat/vitest.integration.config.ts` rather than adding coverage.
 
 ## Toolchain
 
 - **Biome** owns formatting and linting. **ESLint exists only** to run `@nx/enforce-module-boundaries`; it carries no style rules.
-- **Boundary tags are enforced.** All 16 projects carry `scope:*` / `platform:*` / `type:*` tags and `eslint.config.mjs` holds the real `depConstraints` with `allow: []`. The taxonomy, the allowed directions, and the three cases the linter cannot see are in [`CONTRIBUTING.md`](CONTRIBUTING.md#project-layers-and-tags); ADR-001 §D5 is normative.
+- **Boundary tags are enforced.** All 16 projects carry `scope:*` / `platform:*` / `type:*` tags and `eslint.config.mjs` holds the real `depConstraints`; its `allow` list has two relative-path entries (the root Vitest base configs), each with its removal condition inline. The taxonomy, the allowed directions, and the three cases the linter cannot see are in [`CONTRIBUTING.md`](CONTRIBUTING.md#project-layers-and-tags); ADR-001 §D5 is normative.
 - **Commit hygiene** is enforced by husky: `pre-commit` runs lint-staged (Biome on staged files only), `commit-msg` runs commitlint against a 20-scope enum. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - **CI** is one `nx affected` pipeline plus CodeQL over both stacks, a dependency audit, depcheck, and a job that lints the pull-request title — the squash commit that reaches `main` is composed server-side and never passes the local hook.
 
@@ -114,7 +114,14 @@ Notes that save time:
 - **Keycloak** points at the real server. Auth flows will not complete locally, but pages still render.
 - `NEXT_PUBLIC_*` variables are inlined at **build time**, not read at runtime — changing one needs a rebuild, not a restart.
 
-`docker compose up` does **not** bring up the full stack today: only the two Nest apps and Postgres are described, and they take their environment from the root `.env` through the explicit mapping in `docker-compose.yml` rather than from an `env_file:` — compose would hand the container the prefixed key names unchanged. The six `apps/*/Dockerfile` files were rebuilt for pnpm and Nx in MDRS-16 and do build. For the four web apps, run them with `pnpm nx run <project>:dev` and use compose only for the database.
+Two compose commands, depending on how much stack you need:
+
+- `docker compose up` starts Postgres and the two Nest APIs — the default set of *services*, unchanged, and what backend work needs. No web image is built.
+- `docker compose --profile web up` additionally builds and starts the four web apps on ports 4000–4003, wired to the APIs over the compose network (`TEDRISAT_API_BASE_URL=http://tedrisat:3001` inside the containers). Use it to exercise the whole stack at once.
+
+Compose interpolates the whole file before it selects services by profile, so the set of `.env` keys either command *requires* is not unchanged: `docker compose up` now also demands the four web apps' `:?` keys (Keycloak client credentials, NextAuth secrets) even though it starts none of their containers. A `.env` copied fresh from `.env.example` has all of them; a hand-trimmed backend-only `.env` no longer works with either command.
+
+Every service takes its environment from the root `.env` through the explicit key-by-key mapping in `docker-compose.yml`, never an `env_file:` — compose would hand the container the prefixed key names unchanged, and the images carry no `tools/env/root-env.cjs` to strip them. The web images are production builds (`next build` already run, `NEXT_PUBLIC_*` baked in), so they are for running the stack, not for frontend work: develop the web apps with `pnpm nx run <project>:dev`.
 
 ## Documents
 
