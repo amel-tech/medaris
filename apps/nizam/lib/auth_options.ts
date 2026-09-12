@@ -1,12 +1,11 @@
+import { createAccessTokenReader } from "@medaris/services/auth";
 import type {
   GetServerSidePropsContext,
   NextApiRequest,
   NextApiResponse,
 } from "next";
-import { cookies, headers } from "next/headers";
-import type { NextRequest } from "next/server";
 import { type AuthOptions, getServerSession } from "next-auth";
-import { getToken, type JWT } from "next-auth/jwt";
+import type { JWT } from "next-auth/jwt";
 import KeycloakProvider from "next-auth/providers/keycloak";
 import { env } from "~/env";
 import { authCookies } from "~/lib/auth_cookies";
@@ -126,16 +125,15 @@ export function auth(
  * Reads the Keycloak access token straight out of the encrypted session
  * JWT. Server-only — the token never enters the client-visible `Session`
  * object `auth()` returns. See MDRS-28.
+ *
+ * The implementation is shared with the other web app through
+ * `@medaris/services/auth`; only the three app-local values are supplied here.
+ * It refreshes an expired token through this file's `refreshAccessToken`, the
+ * same function the `jwt` callback uses, returns `undefined` once a refresh has
+ * failed, and is memoized per request.
  */
-export async function getAccessToken(): Promise<string | undefined> {
-  const token = await getToken({
-    req: {
-      cookies: await cookies(),
-      headers: await headers(),
-    } as unknown as NextRequest,
-    secret: env.NEXTAUTH_SECRET,
-    cookieName: authCookies?.sessionToken?.name,
-  });
-
-  return token?.accessToken;
-}
+export const getAccessToken = createAccessTokenReader<JWT>({
+  secret: env.NEXTAUTH_SECRET,
+  cookieName: authCookies?.sessionToken?.name,
+  refresh: refreshAccessToken,
+});

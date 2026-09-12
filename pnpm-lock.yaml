@@ -1095,6 +1095,16 @@ importers:
         version: 19.2.3(@types/react@19.2.17)
 
   libs/services:
+    dependencies:
+      next:
+        specifier: 'catalog:'
+        version: 16.1.7(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@19.1.9(react@19.1.9))(react@19.1.9)
+      next-auth:
+        specifier: 'catalog:'
+        version: 4.24.15(next@16.1.7(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@19.1.9(react@19.1.9))(react@19.1.9))(react-dom@19.1.9(react@19.1.9))(react@19.1.9)
+      react:
+        specifier: 'catalog:'
+        version: 19.1.9
     devDependencies:
       '@openapitools/openapi-generator-cli':
         specifier: 'catalog:'
@@ -1102,6 +1112,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.1
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.17
       onchange:
         specifier: 'catalog:'
         version: 7.1.0
