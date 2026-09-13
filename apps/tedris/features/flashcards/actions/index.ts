@@ -122,8 +122,9 @@ export const createFlashcards = async (
 export const deleteDeck = async (deckId: string) => {
   return authenticatedAction(async ({ decks }) => {
     await decks.deleteFlashcardDeck({ id: deckId });
-    revalidatePath("/decks");
-    revalidatePath("/decks/explore");
+    // The routes are locale-prefixed, so the bare path would match nothing.
+    revalidatePath("/[locale]/decks", "page");
+    revalidatePath("/[locale]/decks/explore", "page");
     return true;
   });
 };
