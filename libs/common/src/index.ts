@@ -2,6 +2,7 @@ export * from "./auth-guard";
 export type {
   AuthenticatedUser,
   AuthzMeta,
+  AuthzRequest,
   AuthzResolve,
   DeckSubType,
   Entity,

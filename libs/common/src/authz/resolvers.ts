@@ -1,5 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
-import type { Request } from "express";
+import type { AuthzRequest } from "./interfaces/authz-request.interface";
 import { Entity, ResourceRef } from "./scopes";
 
 /** Narrow Express's loosely-typed param values to a plain string.
@@ -28,9 +28,9 @@ const clientStringOf = (raw: unknown, field: string): string => {
  */
 export const byParam =
   (entity: Entity, param = "id") =>
-  (req: Request): ResourceRef => ({
+  (req: AuthzRequest): ResourceRef => ({
     entity,
-    id: stringOf((req.params as Record<string, unknown>)[param]),
+    id: stringOf(req.params[param]),
   });
 
 /**
@@ -40,7 +40,7 @@ export const byParam =
  */
 export const byBody =
   (entity: Entity, field: string) =>
-  (req: Request): ResourceRef => ({
+  (req: AuthzRequest): ResourceRef => ({
     entity,
     id: clientStringOf(
       (req.body as Record<string, unknown> | undefined)?.[field],
@@ -55,10 +55,7 @@ export const byBody =
  */
 export const byQuery =
   (entity: Entity, field: string) =>
-  (req: Request): ResourceRef => ({
+  (req: AuthzRequest): ResourceRef => ({
     entity,
-    id: clientStringOf(
-      (req.query as Record<string, unknown> | undefined)?.[field],
-      field
-    ),
+    id: clientStringOf(req.query[field], field),
   });

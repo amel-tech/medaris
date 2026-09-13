@@ -1,6 +1,6 @@
 import { SetMetadata } from "@nestjs/common";
 import type { ModuleRef } from "@nestjs/core";
-import type { Request } from "express";
+import type { AuthzRequest } from "./interfaces/authz-request.interface";
 import { ResourceRef, Scope } from "./scopes";
 
 /**
@@ -15,7 +15,7 @@ import { ResourceRef, Scope } from "./scopes";
  * for surfacing 404 on missing resources before the matrix check runs.
  */
 export type AuthzResolve = (
-  req: Request,
+  req: AuthzRequest,
   moduleRef: ModuleRef
 ) => ResourceRef | Promise<ResourceRef>;
 

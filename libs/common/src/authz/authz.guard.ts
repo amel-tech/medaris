@@ -5,7 +5,6 @@ import {
   Injectable,
 } from "@nestjs/common";
 import { ModuleRef, Reflector } from "@nestjs/core";
-import { Request } from "express";
 import { MedarisError } from "../error/errors/base/medaris.error";
 import { AUTHZ_KEY, AuthzMeta } from "./authz.decorator";
 import { AuthzService } from "./authz.service";
@@ -15,6 +14,7 @@ import {
   AuthzResolverError,
 } from "./exceptions/exceptions";
 import { AuthenticatedUser } from "./interfaces/authenticated-user.interface";
+import { AuthzRequest } from "./interfaces/authz-request.interface";
 import { ResourceRef } from "./scopes";
 
 /**
@@ -49,9 +49,7 @@ export class AuthzGuard implements CanActivate {
     );
     if (!meta) return true;
 
-    const request = ctx
-      .switchToHttp()
-      .getRequest<Request & { user?: AuthenticatedUser }>();
+    const request = ctx.switchToHttp().getRequest<AuthzRequest>();
     const user = request.user;
     if (!user) {
       throw new AuthzMissingUserError();
@@ -80,7 +78,7 @@ export class AuthzGuard implements CanActivate {
    */
   private async resolveResource(
     meta: AuthzMeta,
-    request: Request
+    request: AuthzRequest
   ): Promise<ResourceRef> {
     let resource: ResourceRef;
     try {
