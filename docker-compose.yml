@@ -332,17 +332,25 @@ services:
       # reason; leaving it here for the superuser reinstated it one level up.
       POSTGRES_PASSWORD: ${MEDARIS_POSTGRES_PASSWORD:?set MEDARIS_POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${MEDARIS_POSTGRES_DB:-postgres}
-      # docker/init-db.sh reads these. Deliberately the same interpolation
-      # expressions the tedrisat and teskilat services above use, rather than new
-      # .env keys: it is not possible for the role this creates and the credential
-      # the app connects with to drift apart if both render from one source.
-      # That drift was MDRS-68 — the role was created with a literal `tedrisat`
-      # while the app was told to use .env.example's `change-me`.
-      TEDRISAT_DB_NAME: ${TEDRISAT__DB_NAME:-tedrisat_db}
-      TEDRISAT_DB_USERNAME: ${TEDRISAT__DB_USERNAME:-tedrisat}
+      # docker/init-db.sh reads these. The same .env keys the tedrisat and
+      # teskilat services above read, rather than new ones, so the role this
+      # creates and the credential the app connects with render from one
+      # source. That drift was MDRS-68 — the role was created with a literal
+      # `tedrisat` while the app was told to use .env.example's `change-me`.
+      #
+      # The two passwords cannot drift: they have no default on either side.
+      # The names and usernames are REQUIRED here, without the `:-tedrisat_db`
+      # style fallback the app services carry, on purpose: a default repeated
+      # on this side would be a second literal that could disagree with the
+      # app service's copy (edit one, forget the other — the MDRS-68 shape
+      # again). With no default, an unset key fails this render loudly instead
+      # of provisioning a database under one name while the app connects to
+      # another. .env.example ships all four keys.
+      TEDRISAT_DB_NAME: ${TEDRISAT__DB_NAME:?set TEDRISAT__DB_NAME in .env}
+      TEDRISAT_DB_USERNAME: ${TEDRISAT__DB_USERNAME:?set TEDRISAT__DB_USERNAME in .env}
       TEDRISAT_DB_PASSWORD: ${TEDRISAT__DB_PASSWORD:?set TEDRISAT__DB_PASSWORD in .env}
-      TESKILAT_DB_NAME: ${TESKILAT__DB_NAME:-teskilat_db}
-      TESKILAT_DB_USERNAME: ${TESKILAT__DB_USERNAME:-teskilat}
+      TESKILAT_DB_NAME: ${TESKILAT__DB_NAME:?set TESKILAT__DB_NAME in .env}
+      TESKILAT_DB_USERNAME: ${TESKILAT__DB_USERNAME:?set TESKILAT__DB_USERNAME in .env}
       TESKILAT_DB_PASSWORD: ${TESKILAT__DB_PASSWORD:?set TESKILAT__DB_PASSWORD in .env}
     ports:
       # Loopback, not the 0.0.0.0 an unqualified `5432:5432` binds. This is a

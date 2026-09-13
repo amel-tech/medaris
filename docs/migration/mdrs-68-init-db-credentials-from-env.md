@@ -153,6 +153,19 @@ double-quotes anything not already lowercase — so `POSTGRES` and `postgres` ar
 genuinely two different roles here, and a case-insensitive check would refuse a
 pair that works.
 
+**The names are required on the database side (review, 2026-09-13).** The
+first version gave `medaris-db` the same `:-tedrisat_db` / `:-tedrisat` style
+fallbacks the app services carry, and said the two could not drift because
+they render from one source. That held for the passwords, which have no
+default, and not for the four name/username lines: a default repeated on the
+`medaris-db` side is a second literal, and editing the app service's copy
+while forgetting this one recreates the MDRS-68 shape. `TEDRISAT_DB_NAME`,
+`TEDRISAT_DB_USERNAME` and the teskilat pair are now `:?` on `medaris-db`, so
+an unset key fails the render loudly (`docker compose config` with
+`TEDRISAT__DB_NAME` removed from `.env`: *required variable TEDRISAT__DB_NAME
+is missing a value*) instead of provisioning under one name while the app
+connects with another. `.env.example` ships all four keys.
+
 **What tripping a guard leaves behind.** Every failure above prints a second line
 naming the recovery step, because the state is not as clean as "nothing
 happened": `initdb` has already run by the time this script does, so the volume
