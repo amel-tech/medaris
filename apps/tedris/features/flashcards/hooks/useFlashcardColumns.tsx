@@ -15,25 +15,28 @@ import {
 } from "@medaris/ui/components/alert-dialog";
 import { Button } from "@medaris/ui/components/button";
 import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
+import { useTranslations } from "next-intl";
 import React from "react";
 import { createInputColumn } from "~/components/data-table/editable";
 
 export function useFlashcardColumns() {
+  const t = useTranslations("tedris");
+
   return React.useMemo<ColumnDef<FlashcardResponse>[]>(
     () => [
       createInputColumn(
         "contentFront",
-        { header: "Front Face" },
+        { header: t("DeckCards.frontFace") },
         {
-          placeholder: "Enter front content...",
+          placeholder: t("DeckCards.frontPlaceholder"),
           className: "font-medium",
         }
       ),
       createInputColumn(
         "contentBack",
-        { header: "Back Face" },
+        { header: t("DeckCards.backFace") },
         {
-          placeholder: "Enter back content...",
+          placeholder: t("DeckCards.backPlaceholder"),
           className: "font-medium",
         }
       ),
@@ -49,20 +52,21 @@ export function useFlashcardColumns() {
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Emin misin?</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {t("DeckCards.deleteConfirmTitle")}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  Bu kart ve karta kayıtlı bilgileriniz silinecek. Bu işlem geri
-                  alınamaz.
+                  {t("DeckCards.deleteConfirmDescription")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>İptal</AlertDialogCancel>
+                <AlertDialogCancel>{t("DeckCards.cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() =>
                     table.options.meta?.onRowDelete?.(row.original.id)
                   }
                 >
-                  Sil
+                  {t("DeckCards.delete")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -72,6 +76,6 @@ export function useFlashcardColumns() {
         enableColumnFilter: false,
       },
     ],
-    []
+    [t]
   );
 }
