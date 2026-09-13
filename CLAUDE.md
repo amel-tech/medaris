@@ -22,7 +22,7 @@ pnpm nx run-many -t lint --skip-nx-cache
 pnpm nx run-many -t module-boundaries --skip-nx-cache
 ```
 
-Expected: typecheck 17 projects · **335 tests / 22 suites** · build 8 · lint 17 · module-boundaries 17.
+Expected: every project green on typecheck, lint and module-boundaries; every build target green; every suite green. (Counts are deliberately not written here — they change with every project or spec added and go stale immediately; read them off the command output.)
 
 Two prerequisites that look optional and are not:
 
@@ -48,7 +48,7 @@ Two prerequisites that look optional and are not:
 
 ESLint exists **only** to run `@nx/enforce-module-boundaries`. All formatting and linting belongs to Biome — do not add style rules to `eslint.config.mjs`.
 
-Boundaries **are enforced**. All 17 projects carry `tags` in their `project.json`, and `eslint.config.mjs` holds the real `depConstraints` from ADR-001 §D5. Two axes are enforced (`scope`, `platform`); `type:*` is documentary and carries no constraint. `allow` holds exactly two entries — the workspace-root Vitest base configs, which the per-project configs can only reach by relative path — and each carries its removal condition inline, which is the only form MDRS-13's AC permits. Adding a third without one is a regression.
+Boundaries **are enforced**. Every project carries `tags` in their `project.json`, and `eslint.config.mjs` holds the real `depConstraints` from ADR-001 §D5. Two axes are enforced (`scope`, `platform`); `type:*` is documentary and carries no constraint. `allow` holds exactly two entries — the workspace-root Vitest base configs, which the per-project configs can only reach by relative path — and each carries its removal condition inline, which is the only form MDRS-13's AC permits. Adding a third without one is a regression.
 
 | Project | Tags |
 | -- | -- |
@@ -88,7 +88,7 @@ What the linter does **not** catch (measured, MDRS-13):
 
 ## Commits and pull requests
 
-Conventional commits, English, against the 21-scope enum in `commitlint.config.mjs`. No emoji, no "Generated with" trailers, no `Co-Authored-By` for AI. Details and the full scope list are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Conventional commits, English, against the scope enum in `commitlint.config.mjs`. No emoji, no "Generated with" trailers, no `Co-Authored-By` for AI. Details and the full scope list are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 Never use `--amend`, `--no-verify`, force push, `git reset --hard`, or `gh pr merge --admin`. Never commit directly to `main`.
 
