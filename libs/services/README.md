@@ -18,7 +18,8 @@ libs/services/
 │   │   ├── generated/     # Auto-generated API client (do not edit)
 │   │   ├── api-factory.ts # Factory for creating authenticated clients
 │   │   └── index.ts       # Public exports
-│   └── core/              # Core utilities and shared types
+│   ├── utils/             # Error helpers            -> @medaris/services/utils
+│   └── auth/              # Server-side token reader -> @medaris/services/auth
 └── openapitools.json      # OpenAPI generator configuration
 ```
 

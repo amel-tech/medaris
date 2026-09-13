@@ -1,4 +1,4 @@
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { cache } from "react";
@@ -67,10 +67,15 @@ export function createAccessTokenReader<T extends AccessTokenJwt>(
   return cache(async (): Promise<string | undefined> => {
     // `getToken` is typed against next-auth's un-augmented `JWT`; the app's
     // declaration merging is what makes the cast to `T` sound.
+    // Cookies only. `getToken()` falls back to the request's
+    // `Authorization: Bearer` header when no session cookie is present, and
+    // `headers()` is the attacker-controllable incoming request — passing it
+    // would let a session JWE be presented as a bearer header on the `app/api`
+    // routes the middleware does not cover. `getServerSession()` never had
+    // that channel; neither does this.
     const token = (await getToken({
       req: {
         cookies: await cookies(),
-        headers: await headers(),
       } as unknown as NextRequest,
       secret: options.secret,
       cookieName: options.cookieName,

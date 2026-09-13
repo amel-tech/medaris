@@ -65,6 +65,16 @@ two users can never share an entry.
 | 4 | A byte-for-byte identical block added to both apps, in the most security-sensitive function either has. | **Fixed** — one implementation in `@medaris/services/auth`; each app keeps a three-value wrapper. |
 | 5 | `libs/services/README.md` still taught `session?.accessToken` for both server and client use. | **Fixed** — the server snippet uses `getAccessToken()`; the client section says the session no longer carries the token and points at server actions / route handlers. |
 
+## Second review round (2026-09-12, after the MDRS-21 merge)
+
+| # | Finding | Outcome |
+|---|---|---|
+| 6 | `token.error` is sticky: a single transient refresh failure was re-spread by every later successful refresh, and the reader's fail-closed check then returned `undefined` for the rest of the session. | **Fixed.** Both apps' `refreshAccessToken` set `error: undefined` on the success path, so the flag describes only the most recent attempt. nizam's `RefreshTokenExpired` early return stays sticky — that one is terminal. |
+| 7 | Passing `headers()` into `getToken()` opened the `Authorization: Bearer` fallback next-auth has, a session-presentation channel `getServerSession()` never had, on the `app/api` routes the middleware skips. | **Fixed.** The reader passes cookies only. |
+| 8 | The refreshed token is discarded at the end of the request, so between expiry and the client's next `/api/auth/session` call every server request pays a `refresh_token` POST. | **Recorded** as follow-up 4 below. Server components cannot write cookies; route handlers and server actions can, so a persist hook is the right shape, and it is a separate change. |
+| 9 | The README's structure block still listed a `src/core/` that does not exist and not the two real subpaths. | **Fixed.** |
+| 10 | `pnpm-lock.yaml`'s `libs/services` importer still resolved the pre-MDRS-21 `next@16.1.7` / `react@19.1.9`, so `--frozen-lockfile` failed in CI. | **Fixed.** Regenerated with `pnpm install` on the merged tree; the importer now resolves `next@16.3.4` / `react@19.2.8` like the four web apps. |
+
 ## What was verified
 
 - `typecheck`, `lint`, `module-boundaries` for `services`, `tedris-web`,
@@ -95,3 +105,10 @@ two users can never share an entry.
 3. **`header.tsx` in tedris still calls `auth()`** for the user's display name.
    It decodes the same cookie a fourth time in the request; harmless, and
    `auth()` is the right call for the user object, so it was left alone.
+4. **Persist the refreshed token where the runtime allows it.** Route handlers
+   and server actions can set cookies; give `createAccessTokenReader` an
+   optional persist hook that re-encodes the refreshed JWT with
+   `next-auth/jwt`'s `encode` and writes it back under the session cookie's
+   options, so later requests hit the not-expired fast path instead of each
+   paying a Keycloak round trip until the client `SessionProvider` refetches.
+   Server components stay as they are (they cannot write cookies).

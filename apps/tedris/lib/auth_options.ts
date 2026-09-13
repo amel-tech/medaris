@@ -43,6 +43,12 @@ const refreshAccessToken = async (token: JWT) => {
 
     return {
       ...token,
+      // A previous failed refresh left `error` on the token, and the spread
+      // would carry it forward for the rest of the session even though this
+      // refresh succeeded — `getAccessToken()` fails closed on `error`, so a
+      // stale flag would lock the user out of every server call until sign-out.
+      // `error` describes the most recent attempt only.
+      error: undefined,
       accessToken: refreshedTokens.access_token,
       accessTokenExpired: Date.now() + (refreshedTokens.expires_in - 15) * 1000,
       refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,

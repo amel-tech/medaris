@@ -85,7 +85,8 @@ declare module "next-auth/jwt" {
     accessTokenExpired: number;
     refreshTokenExpireIn: number;
     user: User;
-    error: string;
+    /** Set by `refreshAccessToken` when the most recent refresh failed; cleared on the next successful one. */
+    error?: string;
     accessToken?: string;
     idToken?: string;
   }
