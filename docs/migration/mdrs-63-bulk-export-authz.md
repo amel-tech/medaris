@@ -96,6 +96,20 @@ defended rather than denied: deck ids are v4 UUIDs and are not enumerable in pra
 blanket 404 would make a genuine permission problem indistinguishable from a mistyped id. A
 test pins it so a later change has to argue with it.
 
+## Second lens pass (2026-09-13)
+
+Twelve threads, seven distinct findings:
+
+| # | Finding | Outcome |
+|---|---|---|
+| a | `findOwned` read the whole `decks` row (unbounded `description`, no `LIMIT 1`) for two columns. | **Fixed.** `FlashcardDeckRepository.findOwnership` projects `{ authorId, title }` with `limit(1)`; `findOwned` returns that pair, which is all `exportCards` uses. |
+| b | The 404/403 decision was written twice (`assertOwner`, `findOwned`). | **Fixed.** One private `assertAuthoredBy(deckId, authorId, userId)`; both public methods keep their own projection and call it. MDRS-45's shared-deck rule changes one method. |
+| c | `OTHER_USER_ID` was a fourth copy of the same literal across the e2e specs. | **Fixed** for this spec: exported from `test/helpers/test-app.helper.ts` next to `TEST_USER_ID` and imported here. The three older copies are left for whoever touches those files. |
+| d | The controller-level placement is not visible at the call sites. | **Fixed.** Each of the four call sites carries a comment: MDRS-63 stopgap, replaced by `@Authz` in MDRS-43, service methods not guarded, do not copy. |
+| e | `FlashcardDeckResponse` carries no `authorId`, so a client cannot predict the new 403 or hide the affordances. | **Fixed on the contract side.** `authorId` is declared on the response DTO (the value was always on the wire). The generated client picks it up when the spec is next regenerated (#55); the nizam gating is follow-up 4. |
+| f | The committed spec is stale for the four routes' new status codes. | **Unchanged, deferred to #55** — follow-up 5. Regenerating the 87-file client here would collide with that branch; #55 has been rebased onto `main` and re-exports from the live router metadata, so once it is rebased onto this change the codes land there. |
+| g | The read hole (`GET /flashcard/cards?deckId=`) and the destructive card routes are still open. | **Unchanged, as documented** — "What this does NOT close" items 1–2 and follow-ups 2–3, both HIGH. The PR body carries the same caveat. |
+
 ## What was verified
 
 All five gates run locally on this branch with `--skip-nx-cache`, all green:

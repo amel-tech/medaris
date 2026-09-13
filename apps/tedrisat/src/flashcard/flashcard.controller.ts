@@ -139,6 +139,10 @@ export class FlashcardController {
     @Body(new ParseArrayPipe({ items: CreateFlashcardDto }))
     cardsDto: CreateFlashcardDto[]
   ): Promise<FlashcardResponse[]> {
+    // Ownership is asserted at the HTTP edge on purpose: this is the MDRS-63
+    // stopgap that MDRS-43 replaces with @Authz on exactly these handlers.
+    // The service methods below are NOT guarded — do not copy this
+    // placement into a module MDRS-43 will not revisit.
     const authorId = request.user.sub;
     await this.deckService.assertOwner(deckId, authorId);
     return this.cardService.createMany(deckId, authorId, cardsDto);
@@ -266,6 +270,10 @@ export class FlashcardController {
   ): Promise<BulkFlashcardResponse> {
     // `findById` proved the deck exists and nothing more, so any valid token
     // could write MAX_BULK_ROWS cards into a deck it merely knew the id of.
+    // Ownership is asserted at the HTTP edge on purpose: this is the MDRS-63
+    // stopgap that MDRS-43 replaces with @Authz on exactly these handlers.
+    // The service methods below are NOT guarded — do not copy this
+    // placement into a module MDRS-43 will not revisit.
     await this.deckService.assertOwner(deckId, request.user.sub);
 
     const result = await this.cardBulkService.addFlashcards(

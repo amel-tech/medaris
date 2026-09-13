@@ -6,6 +6,7 @@ import {
   ICreateFlashcardDeck,
   IFlashcardDeck,
   IFlashcardDeckFilters,
+  IFlashcardDeckOwnership,
   IFlashcardDeckUserCollectionItem,
   IUpdateFlashcardDeck,
 } from "./flashcard-deck.repository.interface";
@@ -43,35 +44,49 @@ export class FlashcardDeckService {
    * decks are MDRS-45's problem; if they arrive, this is the method that
    * learns about them.
    *
-   * A caller that also needs the deck itself — `exportCards` wants `title`
-   * for the filename — uses `findOwned` below, which makes the same decision
-   * on the full row so it does not pay for a second round trip.
+   * A caller that also needs a column off the deck — `exportCards` wants
+   * `title` for the filename — uses `findOwned` below, which reads the
+   * two-column `findOwnership` projection and makes the same decision
+   * through the same private method, so the rule lives in one place and
+   * neither caller pays for the other's query shape.
    */
   async assertOwner(deckId: string, userId: string): Promise<void> {
-    const authorId = await this.deckRepo.findAuthorId(deckId);
+    this.assertAuthoredBy(
+      deckId,
+      await this.deckRepo.findAuthorId(deckId),
+      userId
+    );
+  }
+
+  /**
+   * `assertOwner` for a caller that needs the deck's title as well: one
+   * two-column query, the same 404/403 decision, `{ authorId, title }` back.
+   */
+  async findOwned(
+    deckId: string,
+    userId: string
+  ): Promise<IFlashcardDeckOwnership> {
+    const deck = await this.deckRepo.findOwnership(deckId);
+    this.assertAuthoredBy(deckId, deck?.authorId ?? null, userId);
+    // `assertAuthoredBy` has thrown if `deck` is null.
+    return deck as IFlashcardDeckOwnership;
+  }
+
+  /**
+   * The ownership rule, written once. A shared/collaborative-deck decision
+   * (MDRS-45) changes this method and nothing else.
+   */
+  private assertAuthoredBy(
+    deckId: string,
+    authorId: string | null,
+    userId: string
+  ): void {
     if (authorId === null) {
       throw new DeckNotFoundError(deckId);
     }
     if (authorId !== userId) {
       throw new DeckForbiddenError();
     }
-  }
-
-  /**
-   * `assertOwner` for a caller that needs the deck row as well: one query,
-   * the same 404/403 decision, the deck returned. Keep the two in step — the
-   * ownership rule lives in both bodies on purpose, so that neither pays for
-   * the other's query shape.
-   */
-  async findOwned(deckId: string, userId: string): Promise<IFlashcardDeck> {
-    const deck = await this.deckRepo.findById(deckId);
-    if (!deck) {
-      throw new DeckNotFoundError(deckId);
-    }
-    if (deck.authorId !== userId) {
-      throw new DeckForbiddenError();
-    }
-    return deck;
   }
 
   async findAll(include?: string[]): Promise<IFlashcardDeck[]> {

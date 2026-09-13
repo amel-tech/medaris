@@ -3,7 +3,11 @@ import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
 import { FlashcardType } from "../../src/flashcard/domain/flashcard-type.enum";
 import { MAX_BULK_ROWS } from "../../src/flashcard/flashcard-bulk.service";
-import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
+import {
+  createTestApp,
+  OTHER_USER_ID,
+  TEST_USER_ID,
+} from "../helpers/test-app.helper";
 import { TestDatabaseUtils } from "../helpers/test-database.helper";
 
 /**
@@ -36,7 +40,6 @@ const csv = (rowCount: number) =>
   );
 
 /** A second realm identity: a perfectly valid token belonging to somebody else. */
-const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";
 
 describe("Flashcard bulk create (e2e)", () => {
   let app: INestApplication;
