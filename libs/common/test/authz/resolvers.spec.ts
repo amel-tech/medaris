@@ -1,14 +1,20 @@
 import { BadRequestException } from "@nestjs/common";
-import type { Request } from "express";
 import { byBody, byParam, byQuery, ENTITIES } from "../../src";
 
-const req = (overrides: Partial<Record<string, unknown>> = {}): Request =>
+/** The request type the resolvers take, without importing express here —
+ *  the library declares only @types/express, and depcheck reads an import of
+ *  the package itself as a missing runtime dependency. */
+type ResolverRequest = Parameters<ReturnType<typeof byParam>>[0];
+
+const req = (
+  overrides: Partial<Record<string, unknown>> = {}
+): ResolverRequest =>
   ({
     params: {},
     query: {},
     body: {},
     ...overrides,
-  }) as unknown as Request;
+  }) as unknown as ResolverRequest;
 
 describe("authz resolvers", () => {
   describe("byParam", () => {
