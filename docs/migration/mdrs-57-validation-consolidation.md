@@ -1,7 +1,10 @@
 # MDRS-57 — one validator and one transformer for `tedrisat`
 
 `apps/tedrisat` declared two validator packages (`@nestjs/class-validator@0.13.4`
-and `class-validator@0.14.4`) and two transformer packages
+and `class-validator@0.14.4` — the version on the tree the probes below
+were run against; MDRS-21 has since lifted the catalog to `^0.15.1`, which
+changes none of the conclusions, only the version string in the paths quoted
+here) and two transformer packages
 (`@nestjs/class-transformer@0.4.0` and `class-transformer@0.5.1`). Two DTOs
 imported decorators from **both** validators inside a single class, and in
 `CreateFlashcardDeckLabelingDto` a single field carried `@IsUUID()` from one and

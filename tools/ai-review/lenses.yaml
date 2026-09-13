@@ -760,9 +760,9 @@ lenses:
   #   $ sed -n '31,32p' CLAUDE.md
   #     -> "78 of 89 tests went red this way while typecheck and build were green."
   #   $ sed -n '86,110p' docs/migration/mdrs-12-biome.md -> the full write-up.
-  #   $ grep -n '^  class-validator' pnpm-workspace.yaml   # re-run for MDRS-57
-  #     -> :127 class-validator ^0.14.2 — the only validator in the workspace
-  #        (:126 class-transformer ^0.5.1, likewise the only transformer).
+  #   $ grep -n '^  class-\(validator\|transformer\)' pnpm-workspace.yaml   # re-run for MDRS-57, after MDRS-21
+  #     -> :238 class-validator ^0.15.1 — the only validator in the workspace
+  #        (:237 class-transformer ^0.5.1, likewise the only transformer).
   #        The '@nestjs/class-validator' and '@nestjs/class-transformer' catalog
   #        entries were REMOVED by MDRS-57; there is no fork to import any more.
   #   $ grep -rln '@nestjs/class-validator' apps libs --include='*.ts'  -> 1 file,
