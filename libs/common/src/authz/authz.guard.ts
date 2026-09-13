@@ -13,7 +13,6 @@ import {
   AuthzMissingUserError,
   AuthzResolverError,
 } from "./exceptions/exceptions";
-import { AuthenticatedUser } from "./interfaces/authenticated-user.interface";
 import { AuthzRequest } from "./interfaces/authz-request.interface";
 import { ResourceRef } from "./scopes";
 
