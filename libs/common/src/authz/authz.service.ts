@@ -49,19 +49,6 @@ export class AuthzService {
     return this.matrixGrants(resource.entity, role, scope);
   }
 
-  /** Convenience overload that takes only the user ID — for call sites
-   *  that have already snapshotted realm membership elsewhere. Prefer
-   *  {@link can} when you have the full user object. */
-  async canByUserId(
-    userId: string,
-    resource: ResourceRef,
-    scope: Scope
-  ): Promise<boolean> {
-    const role = await this.roles.resolve(userId, resource);
-    if (!role) return false;
-    return this.matrixGrants(resource.entity, role, scope);
-  }
-
   /**
    * Matrix lookup with PUBLIC inheritance.
    *

@@ -26,6 +26,22 @@ export interface AuthzMeta {
 }
 
 export const AUTHZ_KEY = "authz";
+export const AUTHZ_EXEMPT_KEY = "authz:exempt";
+
+/**
+ * Declare that a handler on an `AuthzGuard`-protected controller
+ * deliberately carries no `@Authz` scope — a health probe, a listing that
+ * is open to every authenticated caller.
+ *
+ * Needed because `@Authz` is per method while `@UseGuards(AuthGuard,
+ * AuthzGuard)` is written once per class: a handler the author forgot to
+ * annotate would otherwise be authenticated-only while the class reads as
+ * authorized. `AuthzWiringAssertion` refuses to boot such a handler unless
+ * it carries this marker, so opting out is a visible decision on the line.
+ * The guard itself treats an exempt handler exactly like an unannotated one.
+ */
+export const AuthzExempt = (): MethodDecorator =>
+  SetMetadata<string, true>(AUTHZ_EXEMPT_KEY, true);
 
 /**
  * Declare that a route requires the given `scope` on a resource

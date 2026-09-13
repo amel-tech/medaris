@@ -15,10 +15,11 @@ import { TedrisatRoleResolver } from "./tedrisat-role-resolver.service";
  * a globally-registered provider's constructor at boot.
  *
  * The resolver reads ownership, membership and enrollment through the
- * feature modules' repositories rather than through `DatabaseService`
- * directly, so the authorization decision and the domain services share
- * one code path over each table (review finding on MDRS-41). The three
- * modules export exactly the repositories this needs.
+ * feature modules — `KoskService.isOwner`, `FlashcardDeckService.findById`,
+ * and `CourseRepository` for the course lookups no service exposes — rather
+ * than through `DatabaseService` directly, so the authorization decision and
+ * the domain code share one code path over each table (review findings on
+ * MDRS-41). The three modules export exactly what this needs.
  */
 @Global()
 @Module({

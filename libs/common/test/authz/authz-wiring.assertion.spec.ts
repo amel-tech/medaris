@@ -2,6 +2,7 @@ import { Controller, Get, UseGuards } from "@nestjs/common";
 import { MetadataScanner, Reflector } from "@nestjs/core";
 import {
   Authz,
+  AuthzExempt,
   AuthzGuard,
   AuthzWiringAssertion,
   byParam,
@@ -35,8 +36,37 @@ class GuardedOnHandlerController {
   @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK))
   read(): void {}
 
+  // Not behind AuthzGuard — the guard is on `read` only — so no annotation
+  // is expected here.
   @Get()
   list(): void {}
+}
+
+@Controller("guarded-on-class-with-a-forgotten-handler")
+@UseGuards(SomeOtherGuard, AuthzGuard)
+class PartiallyAnnotatedController {
+  @Get(":id")
+  @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK))
+  read(): void {}
+
+  // The forgotten line: behind the class-level guard, no scope, no opt-out.
+  @Get()
+  list(): void {}
+
+  // Not a route — a helper on the controller — so it is not counted.
+  helper(): void {}
+}
+
+@Controller("guarded-on-class-with-an-exempt-handler")
+@UseGuards(SomeOtherGuard, AuthzGuard)
+class ExemptController {
+  @Get(":id")
+  @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK))
+  read(): void {}
+
+  @Get("health")
+  @AuthzExempt()
+  health(): void {}
 }
 
 @Controller("annotated-but-unguarded")
@@ -56,10 +86,12 @@ class PlainController {
   list(): void {}
 }
 
+// No `instance`: a request- or transient-scoped controller has none at boot,
+// and the assertion must inspect it all the same.
 const discoveryFor = (...controllers: (new () => unknown)[]) =>
   ({
     getControllers: () =>
-      controllers.map((metatype) => ({ metatype, instance: new metatype() })),
+      controllers.map((metatype) => ({ metatype, instance: null })),
   }) as unknown as ConstructorParameters<typeof AuthzWiringAssertion>[0];
 
 const assertionFor = (...controllers: (new () => unknown)[]) =>
@@ -102,10 +134,36 @@ describe("AuthzWiringAssertion", () => {
     );
   });
 
+  it("names a route behind a class-level AuthzGuard that carries neither @Authz nor @AuthzExempt", () => {
+    const assertion = assertionFor(PartiallyAnnotatedController);
+    expect(assertion.findUnannotatedHandlers()).toEqual([
+      "PartiallyAnnotatedController.list",
+    ]);
+    expect(() => assertion.onModuleInit()).toThrow(
+      /PartiallyAnnotatedController\.list.*@AuthzExempt\(\)/
+    );
+  });
+
+  it("accepts an unannotated route behind the guard when it is marked @AuthzExempt()", () => {
+    const assertion = assertionFor(ExemptController);
+    expect(assertion.findUnannotatedHandlers()).toEqual([]);
+    expect(() => assertion.onModuleInit()).not.toThrow();
+  });
+
+  it("does not demand annotations on a controller without AuthzGuard", () => {
+    expect(
+      assertionFor(
+        GuardedOnHandlerController,
+        PlainController
+      ).findUnannotatedHandlers()
+    ).toEqual([]);
+  });
+
   it("boots when every @Authz handler is guarded", () => {
     const assertion = assertionFor(
       GuardedOnClassController,
       GuardedOnHandlerController,
+      ExemptController,
       PlainController
     );
     expect(() => assertion.onModuleInit()).not.toThrow();

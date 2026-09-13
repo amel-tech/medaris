@@ -15,8 +15,9 @@ import { ENTITIES, Entity, ROLES, Role, SCOPES, Scope } from "./scopes";
  *     authorize against the COURSE entity, not their own row.
  *   - Plan §4.6 (ijazah) → {@link MATRIX.ijazah}
  *
- * The `PUBLIC` row is what a caller gets when `RoleResolver.resolve`
- * returns `null` — typically "any authenticated user". SYSTEM_ADMIN is
+ * The `PUBLIC` row applies only when `RoleResolver.resolve` returns
+ * `ROLES.PUBLIC` explicitly — a `null` result is a hard deny with no
+ * `PUBLIC` fallback (see `AuthzService.can`). SYSTEM_ADMIN is
  * not listed in any row: realm-role bypass in `AuthzService.can`
  * short-circuits before the matrix is consulted.
  *

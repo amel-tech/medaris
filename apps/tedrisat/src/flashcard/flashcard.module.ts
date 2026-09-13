@@ -20,7 +20,8 @@ import { FlashcardDeckService } from "./flashcard-deck.service";
     FlashcardBulkService,
     DatabaseService,
   ],
-  // For AuthzBindingsModule's role resolver (MDRS-41).
-  exports: [FlashcardDeckRepository],
+  // For AuthzBindingsModule's role resolver (MDRS-41): the service, not the
+  // repository, so importers cannot write past its ownership checks.
+  exports: [FlashcardDeckService],
 })
 export class FlashcardModule {}

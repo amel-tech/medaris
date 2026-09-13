@@ -2,8 +2,8 @@ import { ENTITIES, ROLES } from "@medaris/common";
 import { TedrisatRoleResolver } from "../../../src/authz/tedrisat-role-resolver.service";
 import { CourseRepository } from "../../../src/course/course.repository";
 import { EnrollmentStatus } from "../../../src/course/domain/enrollment-status.enum";
-import { FlashcardDeckRepository } from "../../../src/flashcard/flashcard-deck.repository";
-import { KoskRepository } from "../../../src/kosk/kosk.repository";
+import { FlashcardDeckService } from "../../../src/flashcard/flashcard-deck.service";
+import { KoskService } from "../../../src/kosk/kosk.service";
 
 interface DeckRow {
   id: string;
@@ -15,10 +15,11 @@ interface EnrollmentRow {
 }
 
 /**
- * The resolver reads through the three repositories (never through
- * `DatabaseService`), so the stubs are repository methods. One
- * `findOwnerId` value serves both the direct köşk lookup and the parent
- * köşk lookup on the course path — each resolution makes exactly one.
+ * The resolver reads through `KoskService.isOwner`, `FlashcardDeckService`
+ * and `CourseRepository` (never through `DatabaseService`), so the stubs are
+ * those methods. `koskOwnerId` drives `isOwner` for both the direct köşk
+ * lookup and the parent köşk lookup on the course path — each resolution
+ * makes exactly one.
  */
 interface Stubs {
   deck?: DeckRow | null;
@@ -30,8 +31,13 @@ interface Stubs {
 
 const build = (s: Stubs = {}) => {
   const kosk = {
-    findOwnerId: vi.fn().mockResolvedValue(s.koskOwnerId ?? null),
-  } as unknown as KoskRepository;
+    isOwner: vi
+      .fn()
+      .mockImplementation(
+        async (_koskId: string, userId: string) =>
+          s.koskOwnerId != null && s.koskOwnerId === userId
+      ),
+  } as unknown as KoskService;
   const course = {
     findKoskId: vi.fn().mockResolvedValue(s.courseKoskId ?? null),
     isMuderris: vi.fn().mockResolvedValue(s.muderris ?? false),
@@ -39,7 +45,7 @@ const build = (s: Stubs = {}) => {
   } as unknown as CourseRepository;
   const deck = {
     findById: vi.fn().mockResolvedValue(s.deck ?? null),
-  } as unknown as FlashcardDeckRepository;
+  } as unknown as FlashcardDeckService;
   return {
     resolver: new TedrisatRoleResolver(kosk, course, deck),
     kosk,
@@ -151,7 +157,7 @@ describe("TedrisatRoleResolver", () => {
       await expect(
         resolver.resolve("u", { entity: ENTITIES.KOSK, id: "new" })
       ).resolves.toBe(ROLES.PUBLIC);
-      expect(kosk.findOwnerId).not.toHaveBeenCalled();
+      expect(kosk.isOwner).not.toHaveBeenCalled();
     });
   });
 
@@ -249,8 +255,8 @@ describe("TedrisatRoleResolver", () => {
         id: REAL_UUID,
       });
       expect(course.findKoskId).toHaveBeenCalledWith(REAL_UUID);
-      expect(kosk.findOwnerId).toHaveBeenCalledTimes(1);
-      expect(kosk.findOwnerId).toHaveBeenCalledWith(KOSK_UUID);
+      expect(kosk.isOwner).toHaveBeenCalledTimes(1);
+      expect(kosk.isOwner).toHaveBeenCalledWith(KOSK_UUID, "stranger");
       expect(course.isMuderris).toHaveBeenCalledWith(REAL_UUID, "stranger");
       expect(course.findEnrollment).toHaveBeenCalledWith("stranger", REAL_UUID);
     });
@@ -260,7 +266,7 @@ describe("TedrisatRoleResolver", () => {
       await expect(
         resolver.resolve("u", { entity: ENTITIES.COURSE, id: OTHER_UUID })
       ).resolves.toBe(ROLES.PUBLIC);
-      expect(kosk.findOwnerId).not.toHaveBeenCalled();
+      expect(kosk.isOwner).not.toHaveBeenCalled();
       expect(course.isMuderris).not.toHaveBeenCalled();
       expect(course.findEnrollment).not.toHaveBeenCalled();
     });

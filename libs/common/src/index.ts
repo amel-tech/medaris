@@ -17,8 +17,10 @@ export type {
 // drops an ambiguous re-export instead of erroring — so the authz vocabulary
 // is spelled out here, where a collision is a visible duplicate name.
 export {
+  AUTHZ_EXEMPT_KEY,
   AUTHZ_KEY,
   Authz,
+  AuthzExempt,
   AuthzForbiddenError,
   AuthzGuard,
   AuthzMissingUserError,

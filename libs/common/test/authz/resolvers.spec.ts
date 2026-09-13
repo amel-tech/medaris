@@ -1,3 +1,4 @@
+import { BadRequestException } from "@nestjs/common";
 import { Request } from "express";
 import { byBody, byParam, byQuery, ENTITIES } from "../../src";
 
@@ -53,9 +54,18 @@ describe("authz resolvers", () => {
       });
     });
 
-    it("returns empty id when body is missing", () => {
+    it("answers 400, not a configuration error, when the field is missing or not a string", () => {
+      // Guards run before pipes, so the DTO has not validated the body yet
+      // and its shape is the client's choice — a malformed request, not a
+      // wiring bug.
       const r = byBody(ENTITIES.KOSK, "koskId");
-      expect(r(req({ body: undefined }))).toEqual({ entity: "kosk", id: "" });
+      expect(() => r(req({ body: undefined }))).toThrow(BadRequestException);
+      expect(() => r(req({ body: { koskId: 42 } }))).toThrow(
+        BadRequestException
+      );
+      expect(() => r(req({ body: { koskId: "" } }))).toThrow(
+        /'koskId' must be a non-empty string/
+      );
     });
   });
 
@@ -66,6 +76,14 @@ describe("authz resolvers", () => {
         entity: "flashcard-deck",
         id: "d-1",
       });
+    });
+
+    it("answers 400 for a repeated query key (?deckId=a&deckId=b) or a missing one", () => {
+      const r = byQuery(ENTITIES.FLASHCARD_DECK, "deckId");
+      expect(() => r(req({ query: { deckId: ["a", "b"] } }))).toThrow(
+        BadRequestException
+      );
+      expect(() => r(req({ query: {} }))).toThrow(BadRequestException);
     });
   });
 });

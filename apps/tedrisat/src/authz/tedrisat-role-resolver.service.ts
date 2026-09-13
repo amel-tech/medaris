@@ -8,8 +8,8 @@ import {
 import { Injectable } from "@nestjs/common";
 import { CourseRepository } from "../course/course.repository";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
-import { FlashcardDeckRepository } from "../flashcard/flashcard-deck.repository";
-import { KoskRepository } from "../kosk/kosk.repository";
+import { FlashcardDeckService } from "../flashcard/flashcard-deck.service";
+import { KoskService } from "../kosk/kosk.service";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -17,11 +17,13 @@ const UUID_REGEX =
 /**
  * Resolves the caller's role on a given resource by consulting the
  * domain's ownership/enrollment tables — through the feature modules'
- * repositories, never through `DatabaseService` directly. Authorization
- * and the domain services therefore read ownership from one code path:
- * when the storage shape changes (the kosk→madrasah FK, a membership
- * table for köşk ownership), the repository method changes and both
- * readers follow.
+ * services where one already answers the question (`KoskService.isOwner`,
+ * `FlashcardDeckService.findById`) and through `CourseRepository` for the
+ * course lookups no service exposes, never through `DatabaseService`
+ * directly. Authorization and the domain code therefore read ownership from
+ * one code path: when the rule or the storage shape changes (the
+ * kosk→madrasah FK, a membership table for köşk ownership), the one owner
+ * changes and both readers follow.
  *
  * Returning `null` means **deny** — the caller has no role on this
  * resource and no public access is intended either. `AuthzService.can`
@@ -46,9 +48,9 @@ const UUID_REGEX =
 @Injectable()
 export class TedrisatRoleResolver implements RoleResolver {
   constructor(
-    private readonly koskRepo: KoskRepository,
+    private readonly koskService: KoskService,
     private readonly courseRepo: CourseRepository,
-    private readonly deckRepo: FlashcardDeckRepository
+    private readonly deckService: FlashcardDeckService
   ) {}
 
   async resolve(userId: string, resource: ResourceRef): Promise<Role | null> {
@@ -96,7 +98,7 @@ export class TedrisatRoleResolver implements RoleResolver {
   ): Promise<Role | null> {
     if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
 
-    const deck = await this.deckRepo.findById(resource.id);
+    const deck = await this.deckService.findById(resource.id);
     if (!deck) return ROLES.PUBLIC;
     if (deck.authorId === userId) return ROLES.DECK_OWNER;
     return deck.isPublic ? ROLES.PUBLIC : null;
@@ -125,9 +127,11 @@ export class TedrisatRoleResolver implements RoleResolver {
   ): Promise<Role | null> {
     if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
 
-    const ownerId = await this.koskRepo.findOwnerId(resource.id);
-    if (ownerId === null) return ROLES.PUBLIC;
-    return ownerId === userId ? ROLES.KOSK_MANAGER : ROLES.PUBLIC;
+    // `KoskService.isOwner` is the module's one ownership predicate; a
+    // missing köşk is simply "not the owner", which is PUBLIC here too.
+    return (await this.koskService.isOwner(resource.id, userId))
+      ? ROLES.KOSK_MANAGER
+      : ROLES.PUBLIC;
   }
 
   /**
@@ -144,7 +148,10 @@ export class TedrisatRoleResolver implements RoleResolver {
    * Two round trips, not four: only the parent-köşk lookup depends on the
    * course row (it needs `koskId`); the muderris and enrollment lookups
    * need nothing but the course id and the caller, so the three run
-   * concurrently once the course is known. The most common caller — an
+   * concurrently once the course is known. It could be one hop with a
+   * courses⋈kosks join, but that would re-implement köşk ownership beside
+   * `KoskService.isOwner` — one owner of that predicate was judged worth
+   * the extra hop; revisit if the guard shows up in a profile. The most common caller — an
    * authenticated visitor with no relationship to the course, who ends at
    * PUBLIC — used to pay all four in series, inside the guard, before the
    * handler had done any work. The priority order is applied to the
@@ -163,13 +170,13 @@ export class TedrisatRoleResolver implements RoleResolver {
     const koskId = await this.courseRepo.findKoskId(resource.id);
     if (koskId === null) return ROLES.PUBLIC;
 
-    const [parentOwnerId, isMuderris, enrollment] = await Promise.all([
-      this.koskRepo.findOwnerId(koskId),
+    const [ownsParentKosk, isMuderris, enrollment] = await Promise.all([
+      this.koskService.isOwner(koskId, userId),
       this.courseRepo.isMuderris(resource.id, userId),
       this.courseRepo.findEnrollment(userId, resource.id),
     ]);
 
-    if (parentOwnerId === userId) return ROLES.KOSK_MANAGER;
+    if (ownsParentKosk) return ROLES.KOSK_MANAGER;
     if (isMuderris) return ROLES.MUDERRIS;
     if (enrollment?.status === EnrollmentStatus.PENDING) return ROLES.PENDING;
     if (enrollment) return ROLES.ENROLLED; // ENROLLED or COMPLETED

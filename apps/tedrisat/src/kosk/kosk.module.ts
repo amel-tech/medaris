@@ -9,8 +9,6 @@ import { KoskService } from "./kosk.service";
   imports: [AuthGuardModule],
   controllers: [KoskController],
   providers: [KoskService, KoskRepository, DatabaseService],
-  // KoskRepository is exported for AuthzBindingsModule's role resolver, so
-  // ownership is read through one code path (MDRS-41).
-  exports: [KoskService, KoskRepository],
+  exports: [KoskService],
 })
 export class KoskModule {}
