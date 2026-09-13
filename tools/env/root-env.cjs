@@ -302,6 +302,7 @@ module.exports = {
   APPS,
   API_APPS,
   WEB_APPS,
+  GROUPS,
   ROOT_ONLY,
   classify,
   findRepoRoot,

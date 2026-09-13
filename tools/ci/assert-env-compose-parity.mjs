@@ -81,16 +81,18 @@ const COMPOSE_PATH = "docker-compose.yml";
  */
 const require = createRequire(import.meta.url);
 const ROOT_ENV_PATH = "tools/env/root-env.cjs";
-const { APPS, API_APPS, WEB_APPS, ROOT_ONLY, parseEnv } = require(
+const { APPS, GROUPS, ROOT_ONLY, parseEnv } = require(
   join(repoRoot, ROOT_ENV_PATH)
 );
 
 /**
- * The two group prefixes the `.env.example` header defines, as `root-env.cjs`'s
- * `GROUPS` spells them. Named here because the loader exports the app lists but
- * not the group names, and the tables below have to be pinned to both.
+ * The group prefixes, straight from the loader: `root-env.cjs` exports its
+ * `GROUPS` table (API → both Nest services, WEB → the four Next apps) so this
+ * gate does not carry a copy of it. Check 8 below compares the prefix tables
+ * against the loader's apps and groups, and with this derived rather than
+ * restated, both halves of that comparison mean something.
  */
-const GROUP_PREFIXES = { API: API_APPS, WEB: WEB_APPS };
+const GROUP_PREFIXES = GROUPS;
 
 /**
  * `prefix -> compose services it can reach`, as the `.env.example` header
@@ -580,6 +582,40 @@ for (const [key, targets] of inScope) {
         .join(", ")})`
     );
   }
+}
+
+// ── 5b. No service receives another app's prefixed key ────────────────────────
+//
+// Check 5 asks whether a key reaches SOMETHING it may reach; it never asks
+// whether a service receives a key it may NOT. docker-compose.yml's own header
+// promises least privilege — naming the keys means no app sees another's
+// secrets — and the three web blocks are near-identical copies, so a
+// `${NIZAM__NEXTAUTH_SECRET}` pasted into the `tedris` block would keep every
+// assertion above green while handing tedris another app's client secret and
+// session key. This walks the services instead of the keys. Root-only keys are
+// unprefixed and therefore not in question here (TEDRIS_WEB_PORT legitimately
+// appears inside tedris's NEXTAUTH_URL default).
+
+for (const service of sorted(serviceNames)) {
+  const foreign = sorted(
+    [...(services[service].envVars ?? [])].filter((v) => {
+      const p = prefixOf(v);
+      return (
+        p !== null &&
+        p in PREFIX_TARGETS &&
+        !PREFIX_TARGETS[p].includes(service)
+      );
+    })
+  );
+  check(
+    foreign.length === 0,
+    `${service}: interpolates no other app's prefixed key`,
+    `${COMPOSE_PATH}'s ${service} service reads ${JSON.stringify(foreign)}, whose prefix targets ` +
+      `${JSON.stringify(sorted([...new Set(foreign.flatMap((v) => PREFIX_TARGETS[prefixOf(v)]))]))}.\n` +
+      "    An environment: block is an allowlist; a key with another app's prefix inside it hands\n" +
+      "    that container the other app's value. Most likely a copy-paste between the near-identical\n" +
+      "    web blocks — fix the prefix, or map the key under this service's own prefix."
+  );
 }
 
 // ── 6. No exemption may go stale ──────────────────────────────────────────────

@@ -244,6 +244,13 @@ keys and `WEB__TEDRISAT_API_BASE_URL` — each declared with its reason in
 
 55 + 23 + 0 = 78. The 23 exempt are 10 root-only + 13 unmapped on purpose.
 
+**Second lens pass (2026-09-13), two findings, both fixed.**
+
+| # | Finding | Outcome |
+|---|---|---|
+| 7 | `GROUP_PREFIXES` was the one loader table still restated by hand, and check 8 compared the tables against that copy, so its "and groups" half could not fail. | **Fixed.** `root-env.cjs` exports `GROUPS`; the gate uses it directly, so the group half of the tables is the loader's, not a copy. |
+| 8 | The gate asked whether a key reaches at least one of its own targets but never whether a service receives another app's prefixed key, so a `${NIZAM__NEXTAUTH_SECRET}` pasted into the `tedris` block stayed green. | **Fixed.** Check 5b walks the services: an `environment:` block that interpolates a key whose prefix targets another service fails, naming both. Measured: the paste above gives `✖ tedris: interpolates no other app's prefixed key … reads ["NIZAM__NEXTAUTH_SECRET"], whose prefix targets ["nizam"]`. Root-only keys are unprefixed and not in question. |
+
 **Ordering note for MDRS-66 (#52).** That pull request moves
 `tools/env/root-env.cjs` to `libs/env/src/root-env.cjs` as `@medaris/env`. The
 script's `ROOT_ENV_PATH` constant names the current location; whichever of the
