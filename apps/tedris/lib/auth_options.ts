@@ -18,9 +18,27 @@ import { authCookies } from "~/lib/auth_cookies";
 /**
  * @param  {JWT} token
  */
+/**
+ * Keycloak reports `refresh_expires_in: 0` for a refresh token that does not
+ * expire on its own, and omits the field entirely under some client configs.
+ * Both must read as "no deadline" — arithmetic on them produces a timestamp in
+ * the past or `NaN`, and treating that as an expiry killed every session the
+ * moment its access token aged out. `undefined` is the only encoding of "no
+ * deadline" the guard below can read.
+ */
+const refreshDeadline = (expiresIn: number | undefined) =>
+  typeof expiresIn === "number" && expiresIn > 0
+    ? Date.now() + (expiresIn - 15) * 1000
+    : undefined;
+
 const refreshAccessToken = async (token: JWT) => {
   try {
-    if (Date.now() > token.refreshTokenExpireIn) throw Error;
+    if (
+      typeof token.refreshTokenExpireIn === "number" &&
+      Date.now() > token.refreshTokenExpireIn
+    ) {
+      throw new Error("refresh token expired");
+    }
 
     const url = `${env.KEYCLOAK_ISSUER}/protocol/openid-connect/token`;
 
@@ -52,8 +70,7 @@ const refreshAccessToken = async (token: JWT) => {
       accessToken: refreshedTokens.access_token,
       accessTokenExpired: Date.now() + (refreshedTokens.expires_in - 15) * 1000,
       refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
-      refreshTokenExpireIn:
-        Date.now() + (refreshedTokens.refresh_expires_in - 15) * 1000,
+      refreshTokenExpireIn: refreshDeadline(refreshedTokens.refresh_expires_in),
     };
   } catch (error) {
     console.log("refreshToken error: ", error);
@@ -88,8 +105,9 @@ const authOptions: AuthOptions = {
         token.refreshToken = account.refresh_token;
         token.idToken = account.id_token;
         // remove 15 seconds to avoid edge cases
-        token.refreshTokenExpireIn =
-          Date.now() + (account.refresh_expires_in - 15) * 1000;
+        token.refreshTokenExpireIn = refreshDeadline(
+          account.refresh_expires_in
+        );
         token.user = user;
         return token;
       }
@@ -106,6 +124,11 @@ const authOptions: AuthOptions = {
       // otherwise. Server code reads it through getAccessToken() below.
       // See MDRS-28.
       session.idToken = token.idToken as string;
+      // The failure flag, not the token. The client cannot recover a dead
+      // session on its own, and without this it learns nothing: the next server
+      // call throws and surfaces as an unexplained runtime error instead of a
+      // trip back to Keycloak. See ClientProviders.
+      session.error = token.error;
       return session;
     },
   },

@@ -21,7 +21,8 @@ declare module "next-auth" {
   interface Session {
     user: BaseUser;
     idToken?: string;
-    error: string;
+    /** Mirrors `JWT.error`: set when the most recent refresh failed. */
+    error?: string;
   }
   /**
    * The shape of the user object returned in the OAuth providers' `profile` callback,
@@ -82,7 +83,8 @@ declare module "next-auth/jwt" {
     sub: string;
     refreshToken: string;
     accessTokenExpired: number;
-    refreshTokenExpireIn: number;
+    /** Absent when the refresh token carries no deadline (Keycloak `refresh_expires_in: 0`). */
+    refreshTokenExpireIn?: number;
     user: User;
     /** Set by `refreshAccessToken` when the most recent refresh failed; cleared on the next successful one. */
     error?: string;
