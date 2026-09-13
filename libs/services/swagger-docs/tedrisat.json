@@ -2569,6 +2569,10 @@
               "PERSONAL"
             ]
           },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
           "id": {
             "type": "string"
           },
@@ -2582,6 +2586,7 @@
         "required": [
           "title",
           "scope",
+          "createdAt",
           "id",
           "userId",
           "createdBy"
@@ -2647,6 +2652,14 @@
             "type": "string"
           },
           "scope": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "PERSONAL"
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
             "type": "string"
           }
         },
@@ -2655,7 +2668,8 @@
           "userId",
           "title",
           "createdBy",
-          "scope"
+          "scope",
+          "createdAt"
         ]
       },
       "labelStatsResponse": {
@@ -2794,7 +2808,11 @@
             "type": "string"
           },
           "scope": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "PERSONAL"
+            ]
           }
         },
         "required": [

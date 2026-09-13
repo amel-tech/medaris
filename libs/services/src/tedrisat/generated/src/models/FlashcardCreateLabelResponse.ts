@@ -33,6 +33,12 @@ export interface FlashcardCreateLabelResponse {
     scope: FlashcardCreateLabelResponseScopeEnum;
     /**
      * 
+     * @type {Date}
+     * @memberof FlashcardCreateLabelResponse
+     */
+    createdAt: Date;
+    /**
+     * 
      * @type {string}
      * @memberof FlashcardCreateLabelResponse
      */
@@ -68,6 +74,7 @@ export type FlashcardCreateLabelResponseScopeEnum = typeof FlashcardCreateLabelR
 export function instanceOfFlashcardCreateLabelResponse(value: object): value is FlashcardCreateLabelResponse {
     if (!('title' in value) || value['title'] === undefined) return false;
     if (!('scope' in value) || value['scope'] === undefined) return false;
+    if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('userId' in value) || value['userId'] === undefined) return false;
     if (!('createdBy' in value) || value['createdBy'] === undefined) return false;
@@ -86,6 +93,7 @@ export function FlashcardCreateLabelResponseFromJSONTyped(json: any, ignoreDiscr
         
         'title': json['title'],
         'scope': json['scope'],
+        'createdAt': (new Date(json['createdAt'])),
         'id': json['id'],
         'userId': json['userId'],
         'createdBy': json['createdBy'],
@@ -105,6 +113,7 @@ export function FlashcardCreateLabelResponseToJSONTyped(value?: FlashcardCreateL
         
         'title': value['title'],
         'scope': value['scope'],
+        'createdAt': ((value['createdAt']).toISOString()),
         'id': value['id'],
         'userId': value['userId'],
         'createdBy': value['createdBy'],

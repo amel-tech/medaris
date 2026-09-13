@@ -48,6 +48,9 @@ export class FlashcardDeckLabelService {
   async deckLabeling(
     newLabeling: IFlashcardDeckLabeling
   ): Promise<IFlashcardDeckLabeling> {
+    // Same rule as `FlashcardLabelService.flashcardLabeling`: the label must be
+    // the caller's before its stats are moved and a labeling row written.
+    await this.assertOwner(newLabeling.labelId, newLabeling.createdBy);
     const labelStats = await this.labelRepository.getLabelStats(
       newLabeling.labelId
     );

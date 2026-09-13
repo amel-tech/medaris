@@ -51,6 +51,11 @@ export class FlashcardLabelService {
   async flashcardLabeling(
     newLabeling: IFlashcardLabeling
   ): Promise<IFlashcardLabeling> {
+    // The label being attached is the caller's, or this is a 403/404 — the
+    // same rule the three siblings apply. Without it any authenticated caller
+    // could hang their card on another user's label and move its stats
+    // (MDRS-58 review). `createdBy` is the verified `request.user.sub`.
+    await this.assertOwner(newLabeling.labelId, newLabeling.createdBy);
     const labelStats = await this.flashcardLabelRepo.getLabelStats(
       newLabeling.labelId
     );

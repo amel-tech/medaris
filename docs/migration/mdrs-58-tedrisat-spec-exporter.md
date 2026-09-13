@@ -592,12 +592,42 @@ this list were **done** in the review round above and are gone from it.
    script is simply dead. Raised by the reviewer while confirming this change did
    not affect it, in either direction. (`nest start` survives the same mistake
    only because `@nestjs/cli` falls back when the first candidate does not exist.)
-9. **The production image carries 109 `.d.ts` and 109 `.js.map` files.**
+10. **Six of the ten newly published label routes cannot succeed against the
+    deployed schema until MDRS-56's corrective migration lands.** Migration
+    `0007` created `deck_label_stats.lable_id` (sic) where the schema declares
+    `label_id`, `flashcard_label_stats."usageCount"` where it declares
+    `usage_count`, `"Flashcard_labeling"` where it declares
+    `flashcard_labelings`, and `deck_labelings.private_to_user_id` as
+    `NOT NULL` where it is nullable. Both `getStats` routes, both `labeling`
+    routes and any deck labeling without `privateToUserId` fail at the
+    database. The contract this PR publishes is what the code does; the
+    forward-only rename migration (plus its snapshot and journal entry) is the
+    close-out, owned by MDRS-56 follow-up 1 — not added here because #61
+    already carries migration `0012`. Consumers should not be generated against
+    those six routes until it lands.
+11. **The production image carries 109 `.d.ts` and 109 `.js.map` files.**
    `Dockerfile:115` copies `dist` wholesale — 2.5 MB. The declarations are dead
    weight in a runtime image by exactly the argument used above for the exporter;
    the source maps are defensible for stack traces. `.tsbuildinfo` does not
    travel, thanks to `deleteOutDir` and `typecheck` not running in the image.
    Also the reviewer's observation, and also not this issue.
+
+## Second lens pass (2026-09-13)
+
+Seventeen threads, eleven distinct findings:
+
+| # | Finding | Outcome |
+|---|---|---|
+| 12 | `scope` on the two read responses published as bare `string` while the create responses published the enum. | **Fixed.** `@ApiProperty({ enum: Scope })` on `FlashcardLabelResponse` and `FlashcardDeckLabelResponse`; spec and client regenerated. |
+| 13 | `createdAt` is on the wire for both flashcard-label read routes but absent from their schemas, while the deck-label twin publishes it. | **Fixed.** Declared on `FlashcardCreateLabelResponse` and `FlashcardLabelResponse`. |
+| 14 | `POST …/labeling` on both controllers mutated a label the caller may not own — the one id-taking operation with no `assertOwner`. | **Fixed.** Both labeling methods assert ownership of the label first (`createdBy` is the verified `sub`); two unit cases pin the 403 and that no row is written. |
+| 15 | `openapi:export` invoked `ts-node`, which MDRS-21 had removed from the workspace, so the exporter could not run on a fresh install (three threads). | **Fixed.** `ts-node: ^10.9.2` is back in the catalog with a note saying why it must be ts-node (Nest's Swagger scanner reads `design:type`, which only tsc emits) and `apps/tedrisat` declares it `catalog:`. |
+| 16 | The app's `package.json` still named `libs/services/swagger-docs` — the exporter's invariant moved one file over. | **Fixed.** Root `openapi:tedrisat` script owns the cross-package sequence; the app script takes no destination; the README documents the one command. |
+| 17 | `IFlashcardLabelStatsRead` / `IFlashcardDeckLabelStatsRead` were a new byte-identical pair. | **Fixed.** One `ILabelStatsRead` in `domain/label-stats.ts`; both interface files alias it. |
+| 18 | The record's path/schema counts were taken before the rebase. | **Fixed.** 25 → 35 paths, 38 → 50 schemas on the merged tree, with the pre-rebase figures kept alongside. The `"security"` count (39 → 49) re-measured and unchanged. |
+| 19 | Four mixed-validator threads on the two create DTOs. | **Unchanged — MDRS-57's (#58).** Same answer as the first round; that branch consolidates on `class-validator` and removes the fork, the opposite direction. |
+| 20 | Both `getStats` routes, `POST /flashcard-label/labeling` and `deck_labelings.private_to_user_id` cannot succeed against the deployed schema (column and table names drifted at migration `0007`), and this PR publishes them. | **Recorded, not fixed here** — follow-up 10. The corrective migration is MDRS-56's follow-up 1, and a `0012` migration in this branch would collide with #61's `0012`. The generated client is correct about the contract; the database is what is behind. |
+| 21 | teskilat's `main.ts` still hardcodes tedrisat's Swagger title, description and tag. | **Fixed elsewhere** — #54 (MDRS-69) replaced them with `Teskilat Service API` in `apps/teskilat/src/swagger.ts`. |
 
 ## Review of pull request #55 (2026-09-12)
 
@@ -653,8 +683,10 @@ occurrences before, 49 after, a difference of ten.
 
 So the expectation of "ten routes" was right. What was understated is
 elsewhere, and it is the finding this task turned on: the committed spec did not
-contain the two `flashcard-label` controllers **at all** — 29 paths to 39, 42
-schemas to 54, twelve new label schemas, two new client API classes. That is the
+contain the two `flashcard-label` controllers **at all** — 25 paths to 35, 38
+schemas to 50 on the tree after the MDRS-32 rebase (29 → 39 and 42 → 54 before
+it, the four `/examples` routes and their four schemas being the difference),
+twelve new label schemas, two new client API classes. That is the
 measured cost of having no script that produced the artifact.
 
 ### `/security-review`

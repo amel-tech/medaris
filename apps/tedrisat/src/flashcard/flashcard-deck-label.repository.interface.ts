@@ -1,4 +1,5 @@
 import { Scope } from "./domain/flashcard-label.enum";
+import { ILabelStatsRead } from "./domain/label-stats";
 
 export interface IFlashcardDeckLabel {
   id: string;
@@ -18,17 +19,8 @@ export interface IFlashcardDeckLabelStats {
   usageCount: number;
   lastUsedAt: Date;
 }
-/**
- * What the stats readers answer. The stats row is created lazily, on the first
- * labeling, so a label that exists and was never applied has no row: the
- * services answer that with zero counts and a `null` `lastUsedAt` rather than a
- * 404, which is reserved for a label that does not exist (MDRS-58 review).
- */
-export interface IFlashcardDeckLabelStatsRead {
-  labelId: string;
-  usageCount: number;
-  lastUsedAt: Date | null;
-}
+/** See `domain/label-stats.ts` — one definition behind both services' readers. */
+export type IFlashcardDeckLabelStatsRead = ILabelStatsRead;
 export interface IFlashcardDeckLabeling {
   labelId: string;
   privateToUserId: string | null;

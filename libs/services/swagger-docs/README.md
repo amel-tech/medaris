@@ -16,11 +16,13 @@ This directory contains OpenAPI/Swagger specifications for different backend ser
 way to update it is to re-run the exporter from the repository root:
 
 ```bash
-pnpm --filter @medaris/tedrisat run openapi:export
-pnpm --filter @medaris/services run generate:tedrisat
+pnpm run openapi:tedrisat
 ```
 
-In that order — the second command reads what the first writes. The exporter
+One root script, because the sequence crosses two packages: it runs
+`@medaris/tedrisat`'s `openapi:export` with this directory's `tedrisat.json` as
+the destination (the app names no path outside itself), then
+`@medaris/services`' `generate:tedrisat`, which reads what the first step wrote. The exporter
 boots the Nest container in preview mode, so it needs neither a database nor
 Docker, and it pins the environment it depends on to the committed
 `.env.example`, so the same checkout produces the same bytes on any machine.

@@ -1,5 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { FlashcardDeckLabelForbiddenError } from "../../../src/flashcard/errors/flashcard-deck-label-forbidden.error";
 import { FlashcardDeckLabelNotFoundError } from "../../../src/flashcard/errors/flashcard-deck-label-not-found.error";
+import { FlashcardLabelForbiddenError } from "../../../src/flashcard/errors/flashcard-label-forbidden.error";
 import { FlashcardLabelNotFoundError } from "../../../src/flashcard/errors/flashcard-label-not-found.error";
 import { FlashcardDeckLabelRepository } from "../../../src/flashcard/flashcard-deck-label.repository";
 import { FlashcardDeckLabelService } from "../../../src/flashcard/flashcard-deck-label.service";
@@ -33,10 +35,16 @@ describe("flashcard label readers", () => {
   const labelRepo = {
     getById: vi.fn(),
     getLabelStats: vi.fn(),
+    flashcardLabeling: vi.fn(),
+    updateLabelStats: vi.fn(),
+    createLabelStats: vi.fn(),
   };
   const deckLabelRepo = {
     getById: vi.fn(),
     getLabelStats: vi.fn(),
+    deckLabeling: vi.fn(),
+    updateLabelStats: vi.fn(),
+    createLabelStats: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -97,6 +105,21 @@ describe("flashcard label readers", () => {
         ownLabel
       );
     });
+
+    it("refuses to attach a card to another user's label", async () => {
+      labelRepo.getById.mockResolvedValue(ownLabel);
+
+      await expect(
+        labelService.flashcardLabeling({
+          labelId: LABEL_ID,
+          flashcardId: "card-1",
+          privateToUserId: null,
+          createdBy: "someone-else",
+        })
+      ).rejects.toBeInstanceOf(FlashcardLabelForbiddenError);
+      expect(labelRepo.flashcardLabeling).not.toHaveBeenCalled();
+      expect(labelRepo.updateLabelStats).not.toHaveBeenCalled();
+    });
   });
 
   describe("FlashcardDeckLabelService", () => {
@@ -144,6 +167,20 @@ describe("flashcard label readers", () => {
       await expect(
         deckLabelService.getDeckLabelStats(LABEL_ID, OWNER)
       ).resolves.toBe(stats);
+    });
+
+    it("refuses to attach a deck to another user's label", async () => {
+      deckLabelRepo.getById.mockResolvedValue(ownLabel);
+
+      await expect(
+        deckLabelService.deckLabeling({
+          labelId: LABEL_ID,
+          deckId: "deck-1",
+          privateToUserId: null,
+          createdBy: "someone-else",
+        })
+      ).rejects.toBeInstanceOf(FlashcardDeckLabelForbiddenError);
+      expect(deckLabelRepo.deckLabeling).not.toHaveBeenCalled();
     });
   });
 });

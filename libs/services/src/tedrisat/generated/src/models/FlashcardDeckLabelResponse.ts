@@ -48,8 +48,19 @@ export interface FlashcardDeckLabelResponse {
      * @type {string}
      * @memberof FlashcardDeckLabelResponse
      */
-    scope: string;
+    scope: FlashcardDeckLabelResponseScopeEnum;
 }
+
+
+/**
+ * @export
+ */
+export const FlashcardDeckLabelResponseScopeEnum = {
+    Public: 'PUBLIC',
+    Personal: 'PERSONAL'
+} as const;
+export type FlashcardDeckLabelResponseScopeEnum = typeof FlashcardDeckLabelResponseScopeEnum[keyof typeof FlashcardDeckLabelResponseScopeEnum];
+
 
 /**
  * Check if a given object implements the FlashcardDeckLabelResponse interface.

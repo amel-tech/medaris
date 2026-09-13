@@ -48,8 +48,25 @@ export interface FlashcardLabelResponse {
      * @type {string}
      * @memberof FlashcardLabelResponse
      */
-    scope: string;
+    scope: FlashcardLabelResponseScopeEnum;
+    /**
+     * 
+     * @type {Date}
+     * @memberof FlashcardLabelResponse
+     */
+    createdAt: Date;
 }
+
+
+/**
+ * @export
+ */
+export const FlashcardLabelResponseScopeEnum = {
+    Public: 'PUBLIC',
+    Personal: 'PERSONAL'
+} as const;
+export type FlashcardLabelResponseScopeEnum = typeof FlashcardLabelResponseScopeEnum[keyof typeof FlashcardLabelResponseScopeEnum];
+
 
 /**
  * Check if a given object implements the FlashcardLabelResponse interface.
@@ -60,6 +77,7 @@ export function instanceOfFlashcardLabelResponse(value: object): value is Flashc
     if (!('title' in value) || value['title'] === undefined) return false;
     if (!('createdBy' in value) || value['createdBy'] === undefined) return false;
     if (!('scope' in value) || value['scope'] === undefined) return false;
+    if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     return true;
 }
 
@@ -78,6 +96,7 @@ export function FlashcardLabelResponseFromJSONTyped(json: any, ignoreDiscriminat
         'title': json['title'],
         'createdBy': json['createdBy'],
         'scope': json['scope'],
+        'createdAt': (new Date(json['createdAt'])),
     };
 }
 
@@ -97,6 +116,7 @@ export function FlashcardLabelResponseToJSONTyped(value?: FlashcardLabelResponse
         'title': value['title'],
         'createdBy': value['createdBy'],
         'scope': value['scope'],
+        'createdAt': ((value['createdAt']).toISOString()),
     };
 }
 

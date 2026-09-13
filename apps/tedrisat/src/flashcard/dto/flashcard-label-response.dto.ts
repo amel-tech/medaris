@@ -6,6 +6,8 @@ import {
   CreateFlashcardLabelingDto,
 } from "./create-flashcard-label.dto";
 export class FlashcardCreateLabelResponse extends CreateFlashcardLabelDto {
+  @ApiProperty()
+  declare createdAt: Date;
   // The row's own id, so a client that creates a label can address it
   // (`GET /:id`, `getStats/:id`, `DELETE /delete/:id`) without a lookup no
   // route offers. Published for the first time by MDRS-58; it was on the wire
@@ -48,8 +50,13 @@ export class FlashcardLabelResponse {
   @ApiProperty()
   @IsString()
   declare createdBy: string;
-  @ApiProperty()
+  // `Scope` is a string enum and reflects as `String` on its own; without
+  // `enum:` the read response published `scope: string` while the create
+  // response published the enum for the same column.
+  @ApiProperty({ enum: Scope })
   declare scope: Scope;
+  @ApiProperty()
+  declare createdAt: Date;
 }
 export class labelStatsResponse {
   @ApiProperty()

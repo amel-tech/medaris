@@ -44,7 +44,7 @@ export class FlashcardDeckLabelResponse {
   @ApiProperty()
   @IsString()
   declare createdBy: string;
-  @ApiProperty()
+  @ApiProperty({ enum: Scope })
   declare scope: Scope;
 }
 export class DeckLabelStatsResponse {
