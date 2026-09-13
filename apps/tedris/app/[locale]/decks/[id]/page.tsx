@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { env } from "~/env";
 import { DeckDetailPage } from "~/features/flashcards/components/deck-detail-page";
 import { auth } from "~/lib/auth_options";
+import { subjectOf } from "~/lib/token-subject";
 
 async function getDeck(deckId: string): Promise<FlashcardDeckResponse | null> {
   try {
@@ -68,17 +69,25 @@ export default async function Page({
 }) {
   const { id } = await params;
 
-  const [deck, cards, isInCollection] = await Promise.all([
+  const [deck, cards, isInCollection, session] = await Promise.all([
     getDeck(id),
     getDeckCards(id),
     isDeckInCollection(id),
+    auth(),
   ]);
 
   if (!deck) {
     notFound();
   }
 
+  const currentUserId = subjectOf(session?.accessToken);
+
   return (
-    <DeckDetailPage deck={deck} cards={cards} isInCollection={isInCollection} />
+    <DeckDetailPage
+      deck={deck}
+      cards={cards}
+      isInCollection={isInCollection}
+      isOwner={!!currentUserId && deck.authorId === currentUserId}
+    />
   );
 }

@@ -7,7 +7,19 @@ import {
   LockIcon,
   StarIcon,
   StudentIcon,
+  TrashIcon,
 } from "@medaris/icons";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@medaris/ui/components/alert-dialog";
 import { Card } from "@medaris/ui/components/card";
 import {
   Tooltip,
@@ -19,6 +31,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import {
   addDeckToCollection,
+  deleteDeck,
   removeDeckFromCollection,
 } from "~/features/flashcards/actions";
 
@@ -32,6 +45,8 @@ type Props = {
   rating?: number;
   isInCollection?: boolean;
   isPublic?: boolean;
+  /** Whether the viewer authored this deck; controls the delete affordance. */
+  isOwner?: boolean;
 };
 
 function DeckCard({
@@ -44,6 +59,7 @@ function DeckCard({
   description,
   isInCollection: initialIsInCollection = false,
   isPublic,
+  isOwner = false,
 }: Props) {
   const t = useTranslations("tedris");
   const [isInCollection, setIsInCollection] = useState(initialIsInCollection);
@@ -92,6 +108,23 @@ function DeckCard({
     }
   };
 
+  const handleDelete = async () => {
+    setIsProcessing(true);
+    const result = await deleteDeck(deckId);
+    if (result.success) {
+      toastHelper.success({
+        title: t("DeckCard.deckDeleted"),
+        description: t("DeckCard.deckDeletedDescription"),
+      });
+    } else {
+      toastHelper.error({
+        title: t("DeckCard.deleteError"),
+        description: t("DeckCard.deleteErrorDescription"),
+      });
+    }
+    setIsProcessing(false);
+  };
+
   const handleBookmarkClick = async (
     e: React.MouseEvent<HTMLButtonElement>
   ) => {
@@ -138,17 +171,60 @@ function DeckCard({
           )}
           <span>{title}</span>
         </div>
-        <button
-          type="button"
-          onClick={handleBookmarkClick}
-          disabled={isProcessing}
-          className="bookmark-icon cursor-pointer hover:bg-neutral-300 h-8 w-8 flex justify-center items-center rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <BookmarkSimpleIcon
-            size={20}
-            weight={isInCollection ? "fill" : "regular"}
-          />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={handleBookmarkClick}
+            disabled={isProcessing}
+            className="bookmark-icon cursor-pointer hover:bg-neutral-300 h-8 w-8 flex justify-center items-center rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <BookmarkSimpleIcon
+              size={20}
+              weight={isInCollection ? "fill" : "regular"}
+            />
+          </button>
+          {isOwner && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                {/* The card is wrapped in a <Link>; without these the click
+                    navigates to the deck instead of opening the dialog. */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  disabled={isProcessing}
+                  aria-label={t("DeckCard.deleteDeck")}
+                  className="bookmark-icon cursor-pointer hover:bg-neutral-300 h-8 w-8 flex justify-center items-center rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <TrashIcon size={20} />
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {t("DeckCard.deleteConfirmTitle")}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t("DeckCard.deleteConfirmDescription", { title })}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>{t("DeckCard.cancel")}</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete}>
+                    {t("DeckCard.delete")}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
       </div>
       <div className="text-sm mb-2">
         {t("DeckCard.by")} {author}

@@ -25,10 +25,12 @@ export function ExploreDecksPage({
   initialDecks,
   userDeckIds,
   filter,
+  currentUserId,
 }: {
   initialDecks: FlashcardDeckResponse[];
   userDeckIds: string[];
   filter: FilterOption;
+  currentUserId?: string;
 }) {
   const t = useTranslations("tedris");
   const router = useRouter();
@@ -181,6 +183,7 @@ export function ExploreDecksPage({
                 cardCount={0}
                 isInCollection={userDeckIdsSet.has(deck.id)}
                 isPublic={deck.isPublic}
+                isOwner={!!currentUserId && deck.authorId === currentUserId}
               />
             </Link>
           ))}

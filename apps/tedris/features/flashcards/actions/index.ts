@@ -119,6 +119,15 @@ export const createFlashcards = async (
   });
 };
 
+export const deleteDeck = async (deckId: string) => {
+  return authenticatedAction(async ({ decks }) => {
+    await decks.deleteFlashcardDeck({ id: deckId });
+    revalidatePath("/decks");
+    revalidatePath("/decks/explore");
+    return true;
+  });
+};
+
 export const deleteFlashcard = async (cardId: string, deckId?: string) => {
   return authenticatedAction(async ({ cards }) => {
     await cards.deleteFlashcardRaw({ id: cardId });
