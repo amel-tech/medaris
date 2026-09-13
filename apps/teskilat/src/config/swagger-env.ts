@@ -55,9 +55,9 @@ export function swaggerSuppressedByProduction(
 /** The warning `main.ts` emits when the flag was set and production won. */
 export const SWAGGER_PRODUCTION_SUPPRESSION_NOTICE =
   "@medaris/teskilat is ignoring SWAGGER_ENABLED=true: under " +
-  "NODE_ENV=production this service never mounts Swagger UI, because " +
-  "publishing the schema also relaxes CSP and COOP on those pages and " +
-  "SWAGGER_ENABLED is a key teskilat shares with tedrisat " +
+  "NODE_ENV=production this service never mounts Swagger UI, because that " +
+  "would publish its full API schema, and SWAGGER_ENABLED is a key teskilat " +
+  "shares with tedrisat " +
   "(API__SWAGGER_ENABLED in the repository-root .env.example). There is no " +
   "opt-in. Run a non-production NODE_ENV to read the schema locally.";
 

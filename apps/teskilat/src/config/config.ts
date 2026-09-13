@@ -10,9 +10,13 @@ const version = pkg.version || "0.0.1";
  * declares no database client (no `pg`, no `drizzle-orm`, no ORM of any kind in
  * its package.json), `apps/teskilat/src` holds no DatabaseModule, no
  * drizzle.config.ts and no migrations directory, and `AppModule` imports
- * exactly `ConfigModule` and `LoggerModule`. The only reader of this factory is
- * `main.ts`, which asks for `swagger.enabled`, `swagger.endpoint` and `port` —
- * nothing ever read `database.*`.
+ * exactly `ConfigModule`, `LoggerModule` and `RateLimitModule` — none of which
+ * opens a connection. The readers of this factory are `main.ts` (`port`) and
+ * `swagger.ts` (`swagger.enabled`, `swagger.endpoint`); `RateLimitModule` reads
+ * `THROTTLE_TTL` / `THROTTLE_LIMIT` straight from `process.env` through
+ * `buildThrottlerOptions`, not through here — so those two compose keys are
+ * live, boot-affecting configuration, not dead ones. Nothing ever read
+ * `database.*`.
  *
  * The `password: process.env.DB_PASSWORD || "password"` line it removed is the
  * half of MDRS-35 that was done for tedrisat and not here: a literal credential
@@ -54,6 +58,10 @@ export default () => ({
     // Never true under NODE_ENV=production, whatever SWAGGER_ENABLED says —
     // see ./swagger-env.ts for why this refuses rather than throwing.
     enabled: swaggerEnabledUnlessProduction(),
-    endpoint: process.env.SWAGGER_ENDPOINT || "/docs",
+    // SWAGGER_PATH, the same name tedrisat reads and the one the root
+    // .env.example ships as API__SWAGGER_PATH. It used to be SWAGGER_ENDPOINT,
+    // which no .env key produced, so under `nx run teskilat:dev` the path was
+    // always the fallback (MDRS-69 review).
+    endpoint: process.env.SWAGGER_PATH || "/docs",
   },
 });

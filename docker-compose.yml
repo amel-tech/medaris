@@ -145,11 +145,7 @@ services:
       ALLOWED_ORIGINS: ${TESKILAT__ALLOWED_ORIGINS:-${API__ALLOWED_ORIGINS:?set API__ALLOWED_ORIGINS in .env}}
       ALLOWED_METHODS: ${TESKILAT__ALLOWED_METHODS:-${API__ALLOWED_METHODS:-GET,HEAD,PUT,PATCH,POST,DELETE}}
       SWAGGER_ENABLED: ${TESKILAT__SWAGGER_ENABLED:-${API__SWAGGER_ENABLED:-false}}
-      # SWAGGER_ENDPOINT, not the SWAGGER_PATH tedrisat reads: teskilat's own
-      # config names it that (apps/teskilat/src/config/config.ts:57), so the
-      # SWAGGER_PATH handed in here reached nothing. The .env key is unchanged —
-      # this file is where the prefixed key is mapped to the canonical name.
-      SWAGGER_ENDPOINT: ${TESKILAT__SWAGGER_PATH:-${API__SWAGGER_PATH:-/docs}}
+      SWAGGER_PATH: ${TESKILAT__SWAGGER_PATH:-${API__SWAGGER_PATH:-/docs}}
       #
       # No DB_* and no AUTO_MIGRATIONS_* here. MDRS-69 answered the question the
       # previous version of this comment left open, the same way #44
@@ -159,8 +155,10 @@ services:
       # Measured on apps/teskilat, not inferred: its package.json declares no
       # database client at all (no `pg`, no `drizzle-orm`, no ORM), there is no
       # DatabaseModule, no drizzle.config.ts and no migrations directory under
-      # apps/teskilat/src, `AppModule` imports exactly ConfigModule and
-      # LoggerModule, and the only readers of the config factory are main.ts and
+      # apps/teskilat/src, `AppModule` imports exactly ConfigModule,
+      # LoggerModule and RateLimitModule (which reads THROTTLE_TTL /
+      # THROTTLE_LIMIT below straight from the environment — those two are
+      # live), and the only readers of the config factory are main.ts and
       # swagger.ts, which ask for `swagger.enabled`, `swagger.endpoint` and
       # `port`. The six
       # DB keys and two AUTO_MIGRATIONS keys removed from this block reached a

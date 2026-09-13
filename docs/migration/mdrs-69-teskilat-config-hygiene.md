@@ -293,11 +293,12 @@ request body rather than filed:
    `apps/tedrisat/src/config/config.ts:24` carries an identical block: removing
    it from one side only would create exactly the asymmetry this task exists to
    close. It should go from both, in one change.
-3. **`SWAGGER_ENDPOINT` vs `SWAGGER_PATH`.** teskilat reads `SWAGGER_ENDPOINT`;
-   tedrisat reads `SWAGGER_PATH`. #44 papered over it in compose by mapping
-   `SWAGGER_ENDPOINT: ${TESKILAT__SWAGGER_PATH:-...}`. Under `pnpm dev` the two
-   services still disagree about the name of the same setting, and #51's header
-   already notes that its gate cannot see this class of divergence.
+3. ~~`SWAGGER_ENDPOINT` vs `SWAGGER_PATH`.~~ **Done on review (2026-09-13).**
+   teskilat now reads `SWAGGER_PATH`, the name tedrisat reads and the one the
+   root `.env.example` ships as `API__SWAGGER_PATH`; the compose mapping is the
+   plain `SWAGGER_PATH: ${TESKILAT__SWAGGER_PATH:-${API__SWAGGER_PATH:-/docs}}`
+   and the translating comment is gone. Under `nx run teskilat:dev` an operator
+   who sets `API__SWAGGER_PATH` now moves both services' docs.
 4. **`AppService.getHealth`** hardcodes `"development"` as its environment string
    (`apps/teskilat/src/app.service.ts:20`), so a production container reports
    `development` on `/health`. Noticed here, not fixed: it is not configuration
@@ -327,6 +328,15 @@ gate), after the four above were closed:
 | # | Where | Outcome |
 |---|---|---|
 | 5 | `apps/teskilat/src/config/swagger-env.ts` | **Fixed.** Both services exported a `resolveSwaggerEnabled` from the same relative path with opposite production semantics — tedrisat throws unless `SWAGGER_ALLOW_IN_PRODUCTION=true`, teskilat refuses with no opt-in — so the divergence was invisible at the call site and a config factory could be copied between the apps without the name changing. teskilat's is now `swaggerEnabledUnlessProduction`; the name states the policy wherever it is used. The reviewer's other option — one `libs/common` resolver taking the policy as a parameter, next to `cors.config.ts` — is the right shape if a third service ever needs the rule, and is noted in the follow-ups rather than done here, because it would move tedrisat's MDRS-33 code in a teskilat task. |
+
+Three more came from the second lens pass (2026-09-13), all on the accuracy of
+what this change wrote down rather than on its behaviour:
+
+| # | Where | Outcome |
+|---|---|---|
+| 6 | `config.ts` docstring, `docker-compose.yml`, the runbook | **Fixed.** "AppModule imports exactly `ConfigModule` and `LoggerModule`" was wrong on the merged tree — `RateLimitModule` is the third, and it reads `THROTTLE_TTL` / `THROTTLE_LIMIT` straight from the environment, so those two compose keys are live. All three copies now say so. |
+| 7 | `SWAGGER_PRODUCTION_SUPPRESSION_NOTICE` | **Fixed.** The notice claimed the suppression avoids a CSP/COOP relaxation; that middleware is tedrisat-only. The reason given now is the true one: publishing the full schema on a flag shared with tedrisat. |
+| 8 | `SWAGGER_ENDPOINT` | **Fixed** — follow-up 3 below, done. |
 
 Three things the reviewer chased and cleared, recorded so nobody repeats the
 work:
