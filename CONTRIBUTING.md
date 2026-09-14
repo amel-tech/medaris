@@ -102,10 +102,14 @@ component, not the folder** — release-please cuts releases against the compone
 Touching several packages at once? Prefer splitting the commit. If the change is
 genuinely indivisible workspace plumbing, use `repo`.
 
-**Adding a scope is never a standalone edit.** Per ADR-001 §D10, a new package
+**Adding a scope is never a standalone edit.** Per ADR-001 §D10, a new **app**
 lands as one PR that touches all four of: the `pnpm-workspace.yaml` `packages:`
 list, the release-please component config, the release-please manifest, and the
-`scope-enum` in `commitlint.config.mjs`. The scope list is also an MDRS-17
+`scope-enum` in `commitlint.config.mjs`. A new **lib** touches only the first and
+the last: it publishes nothing and has no deploy workflow, so it gets a scope but
+no release-please component — the 7 components are the 7 deployable apps, pinned
+by `tools/ci/assert-release-config.mjs` (`env`, added by MDRS-66, is the
+precedent). The scope list is also an MDRS-17
 acceptance criterion.
 
 ### Breaking changes

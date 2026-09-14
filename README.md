@@ -121,7 +121,7 @@ Two compose commands, depending on how much stack you need:
 
 Compose interpolates the whole file before it selects services by profile, so the set of `.env` keys either command *requires* is not unchanged: `docker compose up` now also demands the four web apps' `:?` keys (Keycloak client credentials, NextAuth secrets) even though it starts none of their containers. A `.env` copied fresh from `.env.example` has all of them; a hand-trimmed backend-only `.env` no longer works with either command.
 
-Every service takes its environment from the root `.env` through the explicit key-by-key mapping in `docker-compose.yml`, never an `env_file:` — compose would hand the container the prefixed key names unchanged, and the images carry no `libs/env/src/root-env.cjs` to strip them. The web images are production builds (`next build` already run, `NEXT_PUBLIC_*` baked in), so they are for running the stack, not for frontend work: develop the web apps with `pnpm nx run <project>:dev`.
+Every service takes its environment from the root `.env` through the explicit key-by-key mapping in `docker-compose.yml`, never an `env_file:` — compose would hand the container the prefixed key names unchanged, and nothing in the images would strip them: the web images carry no `libs/env/src/root-env.cjs`, and the two Nest images do carry `@medaris/env` but no `.env` for it to read (see `docs/migration/mdrs-66-env-package.md`). The web images are production builds (`next build` already run, `NEXT_PUBLIC_*` baked in), so they are for running the stack, not for frontend work: develop the web apps with `pnpm nx run <project>:dev`.
 
 ## Documents
 

@@ -34,8 +34,9 @@ packages:
   # Reserved names — docs-only, create nothing now (ADR-001 §D1):
   #   apps/muhasebe, apps/e2e, apps/web, apps/docs,
   #   libs/errors, libs/validation, libs/config
-  # Adding one = a line here + release-please component + manifest entry +
-  # commitlint scope, in a single PR (§D10).
+  # Adding an app = a line here + release-please component + manifest entry +
+  # commitlint scope, in a single PR (§D10). Adding a lib = a line here +
+  # commitlint scope only: libs release nothing (see CONTRIBUTING.md).
 
   # pnpm 11 defaults this to `install`, which can prune devDeps and then abort in
   # non-TTY contexts (husky hooks, CI) with ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY.
