@@ -141,7 +141,7 @@ was verified against the tree and carries a `path:line` citation beside it.
 Lens selection is by **changed-file glob**, never by `nx affected`. That is
 deliberate: `nx.json` lists `pnpm-lock.yaml`, the root `package.json` and
 `.github/workflows/ci.yaml` in `sharedGlobals`, so a single Dependabot bump marks
-all 16 projects affected. Gating on `nx affected` would make every dependency bump
+all 17 projects affected. Gating on `nx affected` would make every dependency bump
 trigger the maximum-cost six-lens review.
 
 ### 1.1 Two invariants worth knowing even if you never read the prompts

@@ -1,5 +1,6 @@
 /**
- * tools/env/root-env.cjs — the workspace env loader (MDRS-71).
+ * libs/env/src/root-env.cjs — the workspace env loader (MDRS-71, moved here by
+ * MDRS-66 from tools/env and from apps/tedrisat/test/unit).
  *
  * The spec lives here, not next to the loader: `tools/` is not an Nx project and
  * has no test target, and the loader has six call sites — the four next.config.js
@@ -31,9 +32,7 @@ import { join, resolve } from "node:path";
 // this file's own position also avoids a second copy of the loader's
 // `findRepoRoot`, which is already duplicated across both load-env.ts files and
 // all four next.config.js. MDRS-66 replaces this with `@medaris/env`.
-const rootEnv = require(
-  resolve(__dirname, "../../../../tools/env/root-env.cjs")
-);
+const rootEnv = require(resolve(__dirname, "../src/root-env.cjs"));
 
 /** line in the file -> the value docker compose resolves it to */
 const COMPOSE_PARITY: ReadonlyArray<readonly [string, string, string]> = [
@@ -122,7 +121,7 @@ describe("root-env parseEnv", () => {
         { key: "J", value: "# note" },
       ]);
       expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn.mock.calls[0][0]).toMatch(/^\[env\] J has a comment where/);
+      expect(warn.mock.calls[0]?.[0]).toMatch(/^\[env\] J has a comment where/);
       // A value that starts with or contains `#` with no whitespace after the
       // `=` is a value to compose and to this parser alike, and does not warn.
       warn.mockClear();

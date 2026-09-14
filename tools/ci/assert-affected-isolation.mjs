@@ -6,7 +6,7 @@
  * Why this exists as a CI assertion rather than a one-off manual check: the PR
  * that introduced the unified pipeline necessarily edits nx.json, package.json
  * and .github/workflows/ci.yaml, all of which are `sharedGlobals` inputs, so it
- * correctly affects all 16 projects and cannot itself demonstrate isolation.
+ * correctly affects all 17 projects and cannot itself demonstrate isolation.
  * Encoding the property here makes every subsequent PR re-prove it, which is
  * strictly better than observing it once.
  *

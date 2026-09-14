@@ -5,7 +5,7 @@
  * Two holes in the MDRS-12 lint setup, both measured on origin/main c59d467:
  *
  *  1. `nx run-many -t lint` never sees the workspace root. The `lint` target is
- *     `biome check {projectRoot}` and all 16 projects live under apps/ or libs/,
+ *     `biome check {projectRoot}` and all 17 projects live under apps/ or libs/,
  *     so `biome check apps libs` covers 508 files while `biome check .` covers
  *     521. The 13-file difference is real config — eslint.config.mjs,
  *     commitlint.config.mjs, nx.json, biome.json, package.json, tsconfig.json,

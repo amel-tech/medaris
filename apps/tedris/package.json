@@ -15,6 +15,7 @@
   "dependencies": {
     "@fontsource/scheherazade-new": "catalog:",
     "@hookform/resolvers": "catalog:",
+    "@medaris/env": "workspace:*",
     "@medaris/i18n": "workspace:*",
     "@medaris/icons": "workspace:*",
     "@medaris/services": "workspace:*",
