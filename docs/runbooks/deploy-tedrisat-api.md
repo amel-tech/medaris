@@ -30,7 +30,7 @@ the service is down; the container log is the only place the failure appears.
 | Variable | Required because | Symptom when missing |
 |---|---|---|
 | `ALLOWED_ORIGINS` | MDRS-34. Comma-separated bare origins (`https://tedris.medaris.app`), no trailing slash, no path, no wildcard host. `*` is refused outside a developer machine. | `ALLOWED_ORIGINS is not usable: …` at `applyGlobalMiddleware` |
-| `DB_PASSWORD` | MDRS-35 removed the `docker/init-db.sql` fallback | `@medaris/tedrisat cannot start, the environment is incomplete: DB_PASSWORD …` |
+| `DB_PASSWORD` | MDRS-35 removed the fallback to the password `docker/init-db.sql` hardcoded. Operator-chosen everywhere, including local compose since MDRS-68: `docker/init-db.sh` now creates the role with whatever this says. | `@medaris/tedrisat cannot start, the environment is incomplete: DB_PASSWORD …` |
 | `KEYCLOAK_JWKS_URL` | MDRS-35 removed the `"test-url"` fallback | same message, naming `KEYCLOAK_JWKS_URL` |
 | `KEYCLOAK_ISSUER` | MDRS-30. The expected `iss`, checked on every token. Validated as `z.string().url()`, so a value that is not an absolute URL fails exactly as an absent one does. | same message, naming `KEYCLOAK_ISSUER` |
 | `KEYCLOAK_AUDIENCE` | MDRS-30. The expected `aud`. Without it the API verifies the signature only, and accepts any token the realm signed — an ID token, or one minted for a different client. | same message, naming `KEYCLOAK_AUDIENCE` |

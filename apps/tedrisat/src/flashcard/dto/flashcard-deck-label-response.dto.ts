@@ -1,5 +1,5 @@
-import { IsNumber, IsString } from "@nestjs/class-validator";
 import { ApiProperty } from "@nestjs/swagger";
+import { IsNumber, IsString } from "class-validator";
 import { Scope } from "../domain/flashcard-label.enum";
 import {
   CreateFlashcardDeckLabelDto,

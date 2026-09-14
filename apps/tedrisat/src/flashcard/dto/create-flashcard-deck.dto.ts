@@ -1,11 +1,11 @@
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsBoolean,
   IsOptional,
   IsString,
   MaxLength,
   MinLength,
-} from "@nestjs/class-validator";
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+} from "class-validator";
 
 export class CreateFlashcardDeckDto {
   @ApiProperty({ example: "Colours - Vocabulary Deck" })
