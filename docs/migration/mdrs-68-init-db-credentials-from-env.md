@@ -166,6 +166,13 @@ an unset key fails the render loudly (`docker compose config` with
 is missing a value*) instead of provisioning under one name while the app
 connects with another. `.env.example` ships all four keys.
 
+That change made the app services' own `:-tedrisat_db` / `:-tedrisat` (and
+teskilat) fallbacks unreachable: compose interpolates the whole file before any
+subcommand, so an unset key aborts on the `medaris-db` line and a set key
+bypasses the default. They were removed (review, 2026-09-14), so both sides now
+read the four keys the same way. Behaviour is unchanged; only literals that
+looked live and were not are gone.
+
 **What tripping a guard leaves behind.** Every failure above prints a second line
 naming the recovery step, because the state is not as clean as "nothing
 happened": `initdb` has already run by the time this script does, so the volume

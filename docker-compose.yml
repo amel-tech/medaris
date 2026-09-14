@@ -63,8 +63,8 @@ services:
       # rejectUnauthorized on and has no other way to receive a private-CA
       # bundle, so the connection fails with what reads as a broken certificate.
       DB_CA_CERT: ${TEDRISAT__DB_CA_CERT:-${API__DB_CA_CERT:-}}
-      DB_NAME: ${TEDRISAT__DB_NAME:-tedrisat_db}
-      DB_USERNAME: ${TEDRISAT__DB_USERNAME:-tedrisat}
+      DB_NAME: ${TEDRISAT__DB_NAME}
+      DB_USERNAME: ${TEDRISAT__DB_USERNAME}
       DB_PASSWORD: ${TEDRISAT__DB_PASSWORD:?set TEDRISAT__DB_PASSWORD in .env}
       AUTO_MIGRATIONS_ENABLED: ${TEDRISAT__AUTO_MIGRATIONS_ENABLED:-${API__AUTO_MIGRATIONS_ENABLED:-true}}
       # Not interpolated: the root .env names ./src/... for `nest start`, and the
@@ -153,8 +153,8 @@ services:
       DB_HOST: medaris-db
       DB_PORT: ${TESKILAT__DB_PORT:-${API__DB_PORT:-5432}}
       DB_SSL: ${TESKILAT__DB_SSL:-${API__DB_SSL:-false}}
-      DB_NAME: ${TESKILAT__DB_NAME:-teskilat_db}
-      DB_USERNAME: ${TESKILAT__DB_USERNAME:-teskilat}
+      DB_NAME: ${TESKILAT__DB_NAME}
+      DB_USERNAME: ${TESKILAT__DB_USERNAME}
       DB_PASSWORD: ${TESKILAT__DB_PASSWORD:?set TESKILAT__DB_PASSWORD in .env}
       AUTO_MIGRATIONS_ENABLED: ${TESKILAT__AUTO_MIGRATIONS_ENABLED:-${API__AUTO_MIGRATIONS_ENABLED:-true}}
       # Not interpolated: the root .env names ./src/... for `nest start`, and the
@@ -338,14 +338,18 @@ services:
       # source. That drift was MDRS-68 — the role was created with a literal
       # `tedrisat` while the app was told to use .env.example's `change-me`.
       #
-      # The two passwords cannot drift: they have no default on either side.
-      # The names and usernames are REQUIRED here, without the `:-tedrisat_db`
-      # style fallback the app services carry, on purpose: a default repeated
-      # on this side would be a second literal that could disagree with the
-      # app service's copy (edit one, forget the other — the MDRS-68 shape
-      # again). With no default, an unset key fails this render loudly instead
-      # of provisioning a database under one name while the app connects to
-      # another. .env.example ships all four keys.
+      # None of the six credentials has a default on either side. The names and
+      # usernames are REQUIRED here, on purpose: a `:-tedrisat_db` style default
+      # would be a second literal that could disagree with the app service's
+      # copy (edit one, forget the other — the MDRS-68 shape again). With no
+      # default, an unset key fails this render loudly instead of provisioning
+      # a database under one name while the app connects to another.
+      #
+      # The app services above read the same four keys with no default either.
+      # Compose interpolates the whole file before it runs any subcommand, so
+      # an unset key already aborts on these lines; a `:-` fallback over there
+      # could never be reached and would only read as a live default.
+      # .env.example ships all four keys.
       TEDRISAT_DB_NAME: ${TEDRISAT__DB_NAME:?set TEDRISAT__DB_NAME in .env}
       TEDRISAT_DB_USERNAME: ${TEDRISAT__DB_USERNAME:?set TEDRISAT__DB_USERNAME in .env}
       TEDRISAT_DB_PASSWORD: ${TEDRISAT__DB_PASSWORD:?set TEDRISAT__DB_PASSWORD in .env}
