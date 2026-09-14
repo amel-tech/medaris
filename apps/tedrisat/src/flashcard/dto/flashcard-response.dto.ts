@@ -1,5 +1,5 @@
-import { Type } from "@nestjs/class-transformer";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import { CreateFlashcardDto } from "./create-flashcard.dto";
 import { FlashcardProgressResponse } from "./flashcard-progress-response.dto";
 
