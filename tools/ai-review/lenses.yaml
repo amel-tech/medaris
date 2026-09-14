@@ -714,9 +714,10 @@ lenses:
         || "http://localhost:4317"`, `SWAGGER_PATH || "/docs"`. Only credentials and
         security-relevant endpoints are worth a finding.
       - The values inside .env.example files are deliberate placeholders —
-        `DB_PASSWORD=change-me`, `MEDARIS_POSTGRES_PASSWORD=postgres`,
+        `DB_PASSWORD=change-me`, `MEDARIS_POSTGRES_PASSWORD=change-me`,
         `https://auth.example.org/...`. Committing them is the entire purpose of the
-        file. They are not leaked secrets.
+        file. They are not leaked secrets. (MDRS-68 moved the postgres one off the
+        literal `postgres`; every password in that file is now `change-me`.)
       - `REDIS_PASSWORD || ""` (config.ts:21) is an intentional empty default for a
         local Redis with no auth. Only flag it if the PR makes Redis externally
         reachable.
