@@ -80,8 +80,8 @@ describe("teskilat Swagger mounting (e2e)", () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv };
-    // apps/teskilat/Dockerfile pins /docs through SWAGGER_ENDPOINT; naming it
-    // here keeps the assertions independent of the host's .env.
+    // config/config.ts reads SWAGGER_PATH and defaults it to /docs; setting it
+    // explicitly keeps the assertions independent of the host's root .env.
     process.env.SWAGGER_PATH = DOCS_PATH;
   });
 

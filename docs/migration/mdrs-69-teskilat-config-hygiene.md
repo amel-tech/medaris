@@ -34,7 +34,11 @@ MDRS-25's `.env` loader. Additionally:
   `drizzle-orm`, no ORM of any kind, in `dependencies` or `devDependencies`.
 * There is no `DatabaseModule`, no `drizzle.config.ts`, no migrations directory
   under `apps/teskilat`.
-* `AppModule` imports exactly `ConfigModule.forRoot` and `LoggerModule.forRoot`.
+* `AppModule` imports exactly `ConfigModule.forRoot`, `LoggerModule.forRoot` and
+  `RateLimitModule` — none of which opens a database connection.
+  `RateLimitModule` reads `THROTTLE_TTL` / `THROTTLE_LIMIT` from `process.env`,
+  not through this factory. (It arrived with MDRS-31 after the audit base; the
+  first version of this line predates it.)
 * `grep -rn 'config.get' apps/teskilat/src` returned three reads, all in
   `main.ts` at the time of the audit: `swagger.enabled`, `swagger.endpoint`,
   `port`. Nothing has ever read `database.*`. (On this branch the first two moved
@@ -63,6 +67,13 @@ block. Counted from `docker compose config` on both trees, with the same `.env`:
 the rendered teskilat environment goes from **21 keys to 13** — the eight above,
 and nothing else.
 
+Re-counted after aligning with `main` (2026-09-14, `--profile '*'`, the same
+`.env.example`): `cb7e9636` 21, `origin/main` **24**, this branch **16**. The
+three extra keys on both sides are `THROTTLE_TTL`, `THROTTLE_LIMIT` and
+`TRUST_PROXY_HOPS`, which reached this block after the audit base. Against `main`
+the rendered diff is the same eight removals plus `SWAGGER_ENDPOINT`, which
+became `SWAGGER_PATH` on review.
+
 ### Measured before and after
 
 `TESKILAT__DB_PASSWORD` was `:?`, so a value nothing read was mandatory to
@@ -79,15 +90,24 @@ $ docker compose --env-file <.env minus the key> config --quiet
 (no output, exit 0)
 ```
 
-The 13 that remain, and what reads each:
+That second run no longer exits 0 once #53 is merged, and it should not:
+`medaris-db` now requires the key itself, so the render fails at
+`services.medaris-db` instead of at `services.teskilat` (*required variable
+TESKILAT__DB_PASSWORD is missing a value*, measured on the aligned tree). What
+this branch removed is the requirement on the teskilat container. The
+requirement on the database that provisions its role is #53's, and it is correct.
+
+The keys that remain (13 on the base, 16 on the aligned tree), and what reads each:
 
 | Key | Read by |
 |---|---|
 | `ALLOWED_ORIGINS`, `ALLOWED_METHODS` | `libs/common/src/config/cors.config.ts`, via `applyGlobalMiddleware` |
 | `NODE_ENV`, `PORT`, `SERVICE_NAME`, `LOG_LEVEL` | `apps/teskilat/src/config/config.ts` |
-| `SWAGGER_ENABLED`, `SWAGGER_ENDPOINT` | same factory, now through `config/swagger-env.ts` |
+| `SWAGGER_ENABLED`, `SWAGGER_PATH` | same factory, now through `config/swagger-env.ts` |
 | `OTEL_ENABLED`, `OTEL_EXPORTER_OTLP_ENDPOINT` | same factory, consumed by `src/otel.ts` |
 | `OTEL_EXPORTER_OTLP_INSECURE`, `_PROTOCOL`, `_COMPRESSION` | the OpenTelemetry SDK's own environment reader, not this factory |
+| `THROTTLE_TTL`, `THROTTLE_LIMIT` | `libs/common/src/throttler/throttler.config.ts`, via `RateLimitModule` |
+| `TRUST_PROXY_HOPS` | `libs/common/src/config/trust-proxy.config.ts` |
 
 Every remaining key therefore has a reader, which is acceptance criterion 1.
 
@@ -254,6 +274,15 @@ tedrisat block says its password is required "rather than falling back to
 docker/init-db.sql's credential". All three files now say what is true today
 (read by nothing, kept for #53) and name #53 as the change that makes them live.
 
+**#53 has since landed (2026-09-14, `bb72f7e`).** Aligning this branch with
+`main` made the paragraph above history rather than the state of the tree:
+`medaris-db` now interpolates the three `TESKILAT__DB_*` keys with `:?` and
+`docker/init-db.sh` provisions `teskilat_db` from them. The compose comment,
+`.env.example` and the runbook were rewritten in the same merge to say that the
+database reads them and teskilat does not. The one conflict, in
+`services.teskilat.environment`, was resolved to this branch's side: #53 had
+only edited the `DB_NAME` / `DB_USERNAME` defaults on lines this branch removes.
+
 **#51 (MDRS-70) — `tools/ci/assert-env-compose-parity.mjs`.** That gate's rule is
 "a key whose prefix names a compose service must be interpolated inside that
 service's `environment:` block, or be listed with a reason", and `PREFIX_TARGETS`
@@ -310,6 +339,12 @@ request body rather than filed:
    serves no `/docs-json` at all. This does not affect MDRS-58, which regenerates
    the **tedrisat** spec and client: no tedrisat file is touched here, and no
    teskilat spec or generated client exists to drift.
+6. **One production-Swagger resolver in `libs/common`.** Review finding 5 below
+   named it as noted here, and it was not. Filed as **MDRS-85** (2026-09-14):
+   tedrisat's `resolveSwaggerEnabled` and teskilat's
+   `swaggerEnabledUnlessProduction` implement opposite policies for the shared
+   `SWAGGER_ENABLED` key in two per-app files. The right shape is one resolver
+   next to `cors.config.ts` that takes the policy as a parameter.
 
 ## Review findings and what they changed
 

@@ -58,12 +58,10 @@ tedrisat:
 | `SWAGGER_ALLOW_IN_PRODUCTION` | tedrisat's opt-in. teskilat has none — see §5. |
 
 The root `.env.example` still ships `TESKILAT__DB_NAME`, `TESKILAT__DB_USERNAME`
-and `TESKILAT__DB_PASSWORD`. **Nothing reads them today** — `docker/init-db.sql`
-hardcodes `CREATE USER teskilat WITH PASSWORD 'teskilat'`, and no `TESKILAT__*`
-key is interpolated by the `medaris-db` service — so setting
-`TESKILAT__DB_PASSWORD` to a real secret does not change the role's password.
-They are kept for PR #53 (MDRS-68), which replaces that script with an
-`init-db.sh` driven by these three keys. Either way they are provisioning
+and `TESKILAT__DB_PASSWORD`. **The database reads them, teskilat does not.**
+Since MDRS-68 the `medaris-db` service interpolates all three with `:?` and
+`docker/init-db.sh` creates `teskilat_db` and the `teskilat` role from them, so
+`TESKILAT__DB_PASSWORD` is that role's real password. They are provisioning
 credentials, not app configuration, and they reach no teskilat container.
 
 ---
