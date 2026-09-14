@@ -3,8 +3,8 @@ import "./otel";
 import { applyGlobalMiddleware, LoggerFactory } from "@medaris/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
-import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
+import { mountSwagger } from "./swagger";
 
 async function bootstrap() {
   const logger = LoggerFactory.create();
@@ -17,21 +17,9 @@ async function bootstrap() {
 
   const config = app.get(ConfigService);
 
-  // Swagger configuration
-  const swaggerEnabled = config.get<boolean>("swagger.enabled");
-  if (swaggerEnabled) {
-    const swaggerConfig = new DocumentBuilder()
-      .setTitle("Tedrisat Service API")
-      .setDescription("Education management service for Madrasah platform")
-      .setVersion("1.0.0")
-      .addTag("tedrisat", "Education management endpoints")
-      .build();
-
-    const document = SwaggerModule.createDocument(app, swaggerConfig);
-    const swaggerEndpoint =
-      config.get<string>("swagger.endpoint") || "/swagger";
-    SwaggerModule.setup(swaggerEndpoint, app, document);
-  }
+  // Never mounts under NODE_ENV=production, which apps/teskilat/Dockerfile
+  // pins — see config/swagger-env.ts.
+  mountSwagger(app, config, logger);
 
   const port = config.get<number>("port") || 3002;
 
