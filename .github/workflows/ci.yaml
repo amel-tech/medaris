@@ -248,6 +248,14 @@ jobs:
       - name: Assert release config consistency
         run: node tools/ci/assert-release-config.mjs
 
+      # Env/compose parity (MDRS-70): since MDRS-25 the compose `environment:`
+      # block is an allowlist, so a key .env.example ships but docker-compose.yml
+      # does not name reaches no container — while still changing
+      # `nx run <api>:dev`. Three such divergences shipped in one integration and
+      # every one was found by reading. See tools/ci/assert-env-compose-parity.mjs.
+      - name: Assert .env.example / docker-compose parity
+        run: node tools/ci/assert-env-compose-parity.mjs
+
       # The five targets are kept identical to the root `affected` script so the
       # local and CI gates cannot drift.
       - name: Verify affected projects
