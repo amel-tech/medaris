@@ -80,7 +80,7 @@ const COMPOSE_PATH = "docker-compose.yml";
  * compares the derived targets against what compose actually builds.
  */
 const require = createRequire(import.meta.url);
-const ROOT_ENV_PATH = "tools/env/root-env.cjs";
+const ROOT_ENV_PATH = "libs/env/src/root-env.cjs";
 const { APPS, GROUPS, ROOT_ONLY, parseEnv } = require(
   join(repoRoot, ROOT_ENV_PATH)
 );
@@ -207,6 +207,49 @@ const UNMAPPED_ON_PURPOSE = {
     NEXT_PUBLIC_KEYS.map((key) => [key, NEXT_PUBLIC_BAKED_AT_BUILD])
   ),
 };
+
+/**
+ * Services that read another app's prefixed keys on purpose, and exactly which.
+ *
+ * Check 5b treats a prefixed key inside a service its prefix does not target as
+ * a leak, which is right for the six app services: their blocks are allowlists
+ * and a pasted `${NIZAM__NEXTAUTH_SECRET}` hands tedris another app's secret.
+ * `medaris-db` is the one service that is not an app. Since MDRS-68 (#53) it
+ * interpolates both apps' DB_NAME / DB_USERNAME / DB_PASSWORD so that
+ * docker/init-db.sh creates each role with the same credential the app
+ * connects with — one source, no drift. That is provisioning, not
+ * configuration, and it is the only route by which the TESKILAT__DB_* keys
+ * reach a container at all: MDRS-69 (#54) removed teskilat's DatabaseModule
+ * and, with it, the `environment:` lines that used to interpolate them.
+ *
+ * Declared per key, not per service, so the exemption cannot widen on its own:
+ * a seventh key added to the medaris-db block still fails 5b until it is
+ * listed here with the reason. Check 6 pins the list the other way — an entry
+ * the service no longer interpolates, or whose key has left the template, is
+ * stale and fails.
+ */
+const PROVISIONING_READERS = {
+  "medaris-db": {
+    keys: [
+      "TEDRISAT__DB_NAME",
+      "TEDRISAT__DB_USERNAME",
+      "TEDRISAT__DB_PASSWORD",
+      "TESKILAT__DB_NAME",
+      "TESKILAT__DB_USERNAME",
+      "TESKILAT__DB_PASSWORD",
+    ],
+    reason:
+      "docker/init-db.sh creates each app's database and role from the same keys the app connects with (MDRS-68); the postgres container is the provisioner, not an app.",
+  },
+};
+
+/** `key -> services declared to read it for provisioning`. */
+const provisionedBy = new Map();
+for (const [service, { keys }] of Object.entries(PROVISIONING_READERS)) {
+  for (const key of keys) {
+    provisionedBy.set(key, [...(provisionedBy.get(key) ?? []), service]);
+  }
+}
 
 const { check, failures } = createChecker();
 
@@ -550,7 +593,15 @@ for (const key of envKeys) {
 const partial = [];
 
 for (const [key, targets] of inScope) {
-  const reached = targets.filter((s) => services[s]?.envVars?.has(key));
+  // A provisioning reader counts as a destination only for the keys it has
+  // declared, and only when it actually interpolates them — the declaration
+  // alone reaches nothing.
+  const reached = [
+    ...targets.filter((s) => services[s]?.envVars?.has(key)),
+    ...(provisionedBy.get(key) ?? []).filter((s) =>
+      services[s]?.envVars?.has(key)
+    ),
+  ];
 
   // The remedy differs by key shape, and naming the wrong list sends the reader
   // into a second failure: an unprefixed key added to UNMAPPED_ON_PURPOSE is
@@ -575,10 +626,11 @@ for (const [key, targets] of inScope) {
       declareAdvice
   );
 
-  if (reached.length > 0 && reached.length < targets.length) {
+  const reachedTargets = reached.filter((s) => targets.includes(s));
+  if (reachedTargets.length > 0 && reachedTargets.length < targets.length) {
     partial.push(
-      `${key} → ${reached.join(", ")} (not ${targets
-        .filter((s) => !reached.includes(s))
+      `${key} → ${reachedTargets.join(", ")} (not ${targets
+        .filter((s) => !reachedTargets.includes(s))
         .join(", ")})`
     );
   }
@@ -603,7 +655,8 @@ for (const service of sorted(serviceNames)) {
       return (
         p !== null &&
         p in PREFIX_TARGETS &&
-        !PREFIX_TARGETS[p].includes(service)
+        !PREFIX_TARGETS[p].includes(service) &&
+        !(PROVISIONING_READERS[service]?.keys ?? []).includes(v)
       );
     })
   );
@@ -626,6 +679,31 @@ for (const service of sorted(serviceNames)) {
 // like a reason.
 
 const shippedKeys = new Set(envKeys);
+
+for (const [service, { keys }] of Object.entries(PROVISIONING_READERS)) {
+  check(
+    service in services,
+    `PROVISIONING_READERS[${service}] names a compose service`,
+    `${COMPOSE_PATH} has no service called ${service}. Drop or rename the entry.`
+  );
+  for (const key of keys) {
+    check(
+      shippedKeys.has(key),
+      `PROVISIONING_READERS[${service}] ${key} is still a shipped key`,
+      `${key} is not in ${ENV_EXAMPLE_PATH} any more. Drop it from the entry — a stale declaration is one nobody will re-examine.`
+    );
+    check(
+      services[service]?.envVars?.has(key) ?? false,
+      `PROVISIONING_READERS[${service}] ${key} is still interpolated there`,
+      `${COMPOSE_PATH}'s ${service} service no longer interpolates \${${key}...}. Drop it from the entry; the declaration must describe the file, not a wish.`
+    );
+    check(
+      !(key in UNMAPPED_ON_PURPOSE),
+      `PROVISIONING_READERS[${service}] ${key} is not also unmapped on purpose`,
+      `${key} is declared both as reaching ${service} and as unmapped. One of the two is wrong.`
+    );
+  }
+}
 
 for (const key of Object.keys(UNMAPPED_ON_PURPOSE)) {
   const prefix = prefixOf(key);
@@ -677,6 +755,19 @@ console.log(
 );
 for (const [key, reason] of [...exempted].sort()) {
   console.log(`    ${key}\n      ${reason}`);
+}
+
+const provisioningCount = Object.values(PROVISIONING_READERS).reduce(
+  (n, { keys }) => n + keys.length,
+  0
+);
+console.log(
+  `\n  read for provisioning (${provisioningCount}) — declared per key, pinned by check 6:`
+);
+for (const [service, { keys, reason }] of Object.entries(
+  PROVISIONING_READERS
+)) {
+  console.log(`    ${service}: ${sorted(keys).join(", ")}\n      ${reason}`);
 }
 
 console.log(

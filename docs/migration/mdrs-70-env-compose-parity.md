@@ -90,7 +90,7 @@ the first version had the first two):
 `ROOT_ONLY_KEYS` — the unprefixed keys read by compose itself and handed to no
 app. Needed because the template's own header reads a bare `KEY=` as "every
 app", which would otherwise make these fail for a reason nobody could act on.
-The **keys** are `tools/env/root-env.cjs`'s `ROOT_ONLY` set and the gate fails
+The **keys** are `libs/env/src/root-env.cjs`'s `ROOT_ONLY` set and the gate fails
 if the two disagree in either direction; only the reason strings live in the
 script. Ten today: `TEDRISAT_PORT`, `TESKILAT_PORT`, the four `*_WEB_PORT`
 keys MDRS-55 added, and `MEDARIS_POSTGRES_{USER,PASSWORD,DB,PORT}`.
@@ -216,7 +216,7 @@ keys and `WEB__TEDRISAT_API_BASE_URL` — each declared with its reason in
 
 | # | Finding | Outcome |
 |---|---|---|
-| 1 | `ROOT_ONLY_KEYS`, `PREFIX_TARGETS` and `UNCONTAINERISED_PREFIXES` restated `root-env.cjs`'s tables with nothing pinning the copies together. | **Fixed.** The script `require`s `tools/env/root-env.cjs`, derives `PREFIX_TARGETS` from `API_APPS`/`WEB_APPS`/`APPS`, and asserts `ROOT_ONLY_KEYS`'s keys equal `ROOT_ONLY` and that the two prefix tables cover exactly the loader's apps and groups (checks 7–8). Reasons stay local. |
+| 1 | `ROOT_ONLY_KEYS`, `PREFIX_TARGETS` and `UNCONTAINERISED_PREFIXES` restated `root-env.cjs`'s tables with nothing pinning the copies together. | **Fixed.** The script `require`s `libs/env/src/root-env.cjs`, derives `PREFIX_TARGETS` from `API_APPS`/`WEB_APPS`/`APPS`, and asserts `ROOT_ONLY_KEYS`'s keys equal `ROOT_ONLY` and that the two prefix tables cover exactly the loader's apps and groups (checks 7–8). Reasons stay local. |
 | 2 | `parseEnvKeys` anchored `KEY=` at column 0 while the loader trims first, so an indented assignment was live for dev and invisible here. | **Fixed.** Replaced by `root-env.cjs`'s `parseEnv`. Injection (n) below. |
 | 3 | An unclassified prefix put `undefined` into `inScope` and the loop died on `.filter` before the rest of the report. | **Fixed.** Such a key is skipped after check 4 has already failed for it. Injection (o). |
 | 4 | Only whole-line comments were dropped; a trailing ` # ${VAR}` still counted as read. | **Fixed.** The ` # ...` tail is stripped before every scan. Injection (p). |
@@ -231,7 +231,7 @@ keys and `WEB__TEDRISAT_API_BASE_URL` — each declared with its reason in
                                               …and the run finishes with its summary, no TypeError
 (p) - "5432:5432" # was ${MEDARIS_POSTGRES_PORT:-5432}
                                              → ✖ ROOT_ONLY_KEYS[MEDARIS_POSTGRES_PORT] is read by compose
-(q) TEDRISAT_PORT removed from root-env.cjs   → ✖ ROOT_ONLY_KEYS matches tools/env/root-env.cjs's ROOT_ONLY
+(q) TEDRISAT_PORT removed from root-env.cjs   → ✖ ROOT_ONLY_KEYS matches libs/env/src/root-env.cjs's ROOT_ONLY
 ```
 
 **Clean tree after the rebase:**
@@ -251,11 +251,54 @@ keys and `WEB__TEDRISAT_API_BASE_URL` — each declared with its reason in
 | 7 | `GROUP_PREFIXES` was the one loader table still restated by hand, and check 8 compared the tables against that copy, so its "and groups" half could not fail. | **Fixed.** `root-env.cjs` exports `GROUPS`; the gate uses it directly, so the group half of the tables is the loader's, not a copy. |
 | 8 | The gate asked whether a key reaches at least one of its own targets but never whether a service receives another app's prefixed key, so a `${NIZAM__NEXTAUTH_SECRET}` pasted into the `tedris` block stayed green. | **Fixed.** Check 5b walks the services: an `environment:` block that interpolates a key whose prefix targets another service fails, naming both. Measured: the paste above gives `✖ tedris: interpolates no other app's prefixed key … reads ["NIZAM__NEXTAUTH_SECRET"], whose prefix targets ["nizam"]`. Root-only keys are unprefixed and not in question. |
 
-**Ordering note for MDRS-66 (#52).** That pull request moves
-`tools/env/root-env.cjs` to `libs/env/src/root-env.cjs` as `@medaris/env`. The
-script's `ROOT_ENV_PATH` constant names the current location; whichever of the
-two lands second must repoint it (a one-line change, and the gate fails loudly
-with `Cannot find module` rather than passing vacuously if it is forgotten).
+**Ordering note for MDRS-66 (#52).** That pull request moved
+`tools/env/root-env.cjs` to `libs/env/src/root-env.cjs` as `@medaris/env` and
+landed first. The script's `ROOT_ENV_PATH` constant now names the new location.
+PR #64 carried the old path after merging `main`, and the gate failed in CI with
+`Cannot find module` rather than passing vacuously, which is the behaviour this
+note predicted; the rebuild repointed it.
+
+### Rebuilt onto main with MDRS-66, MDRS-68 and MDRS-69 (2026-09-15)
+
+PR #64 folded this branch in and merged `main`, and the gate then failed in CI
+before Nx ran — first with `Cannot find module` (the loader move, above), and
+once that was repointed, with four assertions that were all the same finding:
+
+```
+✖ TESKILAT__DB_NAME → (nothing)
+✖ TESKILAT__DB_USERNAME → (nothing)
+✖ TESKILAT__DB_PASSWORD → (nothing)
+✖ medaris-db: interpolates no other app's prefixed key
+    docker-compose.yml's medaris-db service reads ["TEDRISAT__DB_NAME", …,
+    "TESKILAT__DB_PASSWORD"], whose prefix targets ["tedrisat","teskilat"].
+```
+
+Two changes on `main` produced it. MDRS-68 (#53) made `medaris-db` interpolate
+both apps' `DB_NAME` / `DB_USERNAME` / `DB_PASSWORD`, so `docker/init-db.sh`
+creates each role with the credential the app connects with. MDRS-69 (#54)
+removed teskilat's dead `DatabaseModule` and the `environment:` lines that
+interpolated `TESKILAT__DB_*`. So the three teskilat keys now reach exactly one
+container, and it is not the one their prefix names; and check 5b, which was
+written for the six app blocks, read the postgres service as a leak.
+
+The fix is a declared table, not a softer check. `PROVISIONING_READERS` names
+the service and the exact keys it may read across a prefix, with the reason;
+check 5 counts a declared reader as a destination only when the service really
+interpolates the key, check 5b skips only the declared keys for the declared
+service, and check 6 pins the table both ways (the service must exist, each key
+must still be shipped and still interpolated there, and none may also sit in
+`UNMAPPED_ON_PURPOSE`). The report prints the table with its reason on every
+run, beside the exemptions. Four injections were measured against it:
+
+| # | Injection | Result |
+|---|---|---|
+| (r) | `TESKILAT__DB_NAME` dropped from the declaration | `✖ TESKILAT__DB_NAME → (nothing)` and `✖ medaris-db: interpolates no other app's prefixed key` |
+| (s) | `TESKILAT__PORT` declared, which medaris-db does not interpolate | `✖ PROVISIONING_READERS[medaris-db] TESKILAT__PORT is still interpolated there` |
+| (t) | `TESKILAT__DB_GHOST` declared, which `.env.example` does not ship | two failures: not a shipped key, not interpolated there |
+| (u) | `LEAK: ${NIZAM__NEXTAUTH_SECRET}` pasted into the medaris-db block | `✖ medaris-db: interpolates no other app's prefixed key` — a seventh key is not covered by the six declared |
+
+Clean tree after the change: exit 0, the six DB keys report
+`→ tedrisat, medaris-db` and `→ medaris-db` respectively.
 
 ## 2 — What was verified
 
