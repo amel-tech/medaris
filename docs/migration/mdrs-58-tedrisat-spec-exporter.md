@@ -726,14 +726,20 @@ justifies were wrong in a different way: both pointed the operator at
 passes no path argument. The destination comes from the repository-root `openapi:tedrisat`
 script, and both now say so.
 
-**The regenerated spec is a large diff, and most of it is ordering.** Running the exporter
-produced 1,982 insertions and 1,925 deletions, but the path *set* is identical (35 before, 35
-after), `components` is byte-identical, and exactly seven paths changed content — the four
-MDRS-63 handlers whose `403`/`404` declarations the committed file predated, plus the three
-routes PR #69's review closed. Everything else is `paths` key order: the committed artifact was
-not produced by this exporter and did not match its (deterministic — two runs, one md5) output.
-The generated client came back **byte-identical**, as predicted: these are description-only
-responses with no schema, so `openapi-generator` emits no method or model for them.
+**The regenerated spec is a large diff, and most of it is ordering.** Measured over the whole
+of PR #69's review work (`git diff 775ff26e -- libs/services/swagger-docs/tedrisat.json`):
+2,005 insertions and 1,932 deletions, but the path *set* is identical (35 before, 35 after),
+`components` is byte-identical, and 18 paths changed content — eight because a handler gained a
+`403`/`404` declaration (the four MDRS-63 ones the committed file predated, plus the four read
+and collection routes the review closed), and ten because the label operations gained explicit
+`operationId`s, below. Everything else is `paths` key order: the committed artifact was not
+produced by this exporter and did not match its output, which is itself deterministic — two
+runs, one md5.
+
+The generated client came back **byte-identical** for the response-declaration half, as the
+reviewer predicted: those are description-only responses with no schema, so `openapi-generator`
+emits no method or model for them. The `operationId` half does change the client, by design —
+two files, method names only.
 
 ### The ten label operations had no `operationId`
 
