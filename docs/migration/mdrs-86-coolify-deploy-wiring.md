@@ -99,9 +99,27 @@ manual steps; see MDRS-86 for the exact values.
 | `apps/{tedris,nizam,nazir,landing}/Dockerfile` | `ARG` per `NEXT_PUBLIC_*` key `env.ts` declares, no defaults; the "KNOWN LIMITATION" paragraph replaced by the mechanism |
 | `.github/workflows/{tedris,nizam,nazir,landing}-web.yaml` | a *Resolve NEXT_PUBLIC build args* step that reads `vars.<APP>_WEB_NEXT_PUBLIC_*`, fails on a missing required one, forwards only non-empty ones; `build-args:` on the build step |
 | `apps/{tedris,nizam,nazir,landing}/project.json` | `build.dependsOn: ["^build", "^typecheck"]` — see *The web images never built* below |
+| `.github/workflows/{tedrisat-api,teskilat-api,tedris,nizam,nazir,landing-web}.yaml` | a pinned `docker/setup-buildx-action` step — see *The first real run* below |
 | `.dockerignore` | `.claude` excluded — a git-ignored worktree under `.claude/worktrees/` made every local `docker build` fail with Nx's duplicate-project error |
 | `docker-compose.yml` | the comment that pointed at "MDRS-16's build-arg item" now says what closed it and that compose deliberately passes no build args |
 | `docs/runbooks/deploy-*.md` (6) | Coolify application row in the header; §3.2 and §4 TODOs replaced with what was read; a §0 on the web runbooks for the repository variables |
+
+### The first real run of a deploy workflow
+
+Teskilat API was dispatched on `main` on 2026-09-15 (run `35003840022`) —
+the first time any of the six image workflows ran in this repository. It
+failed in *Build and push Docker image* before building anything:
+
+```
+ERROR: failed to build: Cache export is not supported for the docker driver.
+Switch to a different driver, or turn on the containerd image store, and try again.
+```
+
+MDRS-16 added `cache-from`/`cache-to: type=gha` to all six build steps but no
+`docker/setup-buildx-action`, so `build-push-action` used the runner's default
+`docker` driver, which cannot export to the Actions cache. The same step
+(`v4.4.0`, pinned to `594f3bf4285d9ea8dc53c9a0c9c4092420091003`) is now in all
+six workflows, before the registry login.
 
 ### The web images never built
 
