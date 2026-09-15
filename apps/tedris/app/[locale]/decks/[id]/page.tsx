@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { env } from "~/env";
 import { DeckDetailPage } from "~/features/flashcards/components/deck-detail-page";
 import { getAccessToken } from "~/lib/auth_options";
+import { requireAccessToken } from "~/lib/require-access-token";
 import { subjectOf } from "~/lib/token-subject";
 
 async function getDeck(deckId: string): Promise<FlashcardDeckResponse | null> {
@@ -66,11 +67,11 @@ export default async function Page({
 }) {
   const { id } = await params;
 
-  const [deck, cards, isInCollection, accessToken] = await Promise.all([
+  const accessToken = await requireAccessToken();
+  const [deck, cards, isInCollection] = await Promise.all([
     getDeck(id),
     getDeckCards(id),
     isDeckInCollection(id),
-    getAccessToken(),
   ]);
 
   if (!deck) {

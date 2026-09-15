@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { env } from "~/env";
 import { StudyPage } from "~/features/flashcards/components/study-page";
 import { getAccessToken } from "~/lib/auth_options";
+import { requireAccessToken } from "~/lib/require-access-token";
 
 async function getDeck(deckId: string): Promise<FlashcardDeckResponse | null> {
   try {
@@ -48,6 +49,7 @@ export default async function Page({
 }) {
   const { id } = await params;
 
+  await requireAccessToken();
   const [deck, cards] = await Promise.all([getDeck(id), getDeckCards(id)]);
 
   if (!deck) {
