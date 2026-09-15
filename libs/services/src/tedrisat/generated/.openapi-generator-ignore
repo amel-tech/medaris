@@ -21,3 +21,21 @@
 #docs/*.md
 # Then explicitly reverse the ignore rule for a single file:
 #!docs/README.md
+
+# ─────────────────────────────────────────────────────────────────────────────
+# medaris additions (MDRS-58)
+# ─────────────────────────────────────────────────────────────────────────────
+# package.json carries one hand-edit the generator does not know about:
+# `"private": true`, added in 4eb2784e (MDRS-10) so this nested manifest can
+# never be published by accident. Regenerating overwrote it and dropped that
+# line silently -- the same class of invisible loss the MDRS-58 exporter exists
+# to end -- and it would have been dropped again on every future export.
+#
+# Cost of freezing it: the `version` field here stops tracking
+# apps/tedrisat/package.json. That is acceptable because nothing reads it. The
+# directory is not one of the 16 explicitly enumerated workspace packages
+# (pnpm-workspace.yaml uses no globs), nothing publishes it, and
+# libs/services/package.json exports ./tedrisat from source rather than from
+# this manifest. Whether the generator should emit it at all is a follow-up in
+# docs/migration/mdrs-58-tedrisat-spec-exporter.md.
+package.json
