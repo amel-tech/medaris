@@ -47,9 +47,10 @@ export interface AccessTokenReaderOptions<T extends AccessTokenJwt> {
  * used to receive a refreshed token. `getToken()` only decrypts the cookie and
  * runs no callbacks. This reader restores that behaviour — it checks
  * `accessTokenExpired` and calls the app's `refresh` when the token is stale —
- * and it fails closed: a token whose refresh has already failed (`error` set)
- * yields `undefined` rather than a dead bearer token that `authenticatedAction`
- * would otherwise forward.
+ * and it fails closed: a token with no known expiry is refreshed rather than
+ * trusted, and a token whose refresh has already failed (`error` set) is
+ * refreshed once more and yields `undefined` if that fails again, rather than
+ * a dead bearer token that `authenticatedAction` would otherwise forward.
  *
  * A refreshed token cannot be written back to the cookie from a server
  * component; that was equally true of the `auth()` path, so within one request
@@ -81,14 +82,29 @@ export function createAccessTokenReader<T extends AccessTokenJwt>(
       cookieName: options.cookieName,
     })) as unknown as T | null;
 
-    if (!token || token.error) {
+    if (!token) {
       return undefined;
     }
 
-    if (
-      token.accessTokenExpired === undefined ||
-      Date.now() < token.accessTokenExpired
-    ) {
+    // The fast path is the one fully-trusted state: a token with a known,
+    // future expiry and no recorded failure. Everything else goes through the
+    // app's refresh, which is the policy the `jwt` callback already applies
+    // on every request while the token is stale:
+    //
+    // - `accessTokenExpired` absent: the deadline is unknown, so the token is
+    //   treated as stale rather than as never expiring. Both `jwt` callbacks
+    //   set the field today; this branch is for the cookie shape that does not.
+    // - `error` set: the most recent refresh failed. A transient failure (a
+    //   network blip, a Keycloak 5xx) must not be terminal on the server side
+    //   while the client still holds a valid cookie, so one more refresh is
+    //   attempted here. An expired refresh token is still terminal: the app's
+    //   refresh refuses it before any network call and re-sets `error`.
+    const trusted =
+      token.error === undefined &&
+      typeof token.accessTokenExpired === "number" &&
+      Date.now() < token.accessTokenExpired;
+
+    if (trusted) {
       return token.accessToken;
     }
 

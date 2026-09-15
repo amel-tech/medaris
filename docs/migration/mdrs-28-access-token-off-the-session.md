@@ -75,6 +75,26 @@ two users can never share an entry.
 | 9 | The README's structure block still listed a `src/core/` that does not exist and not the two real subpaths. | **Fixed.** |
 | 10 | `pnpm-lock.yaml`'s `libs/services` importer still resolved the pre-MDRS-21 `next@16.1.7` / `react@19.1.9`, so `--frozen-lockfile` failed in CI. | **Fixed.** Regenerated with `pnpm install` on the merged tree; the importer now resolves `next@16.3.4` / `react@19.2.8` like the four web apps. |
 
+## Third round — the rebuild of PR #64 (2026-09-15)
+
+PR #64 was rebuilt on `main` as one commit per Linear task. The review threads
+left open on it were all the same shape: a fix applied to `apps/tedris` and
+not to the byte-for-byte copy in `apps/nizam`, plus two branches of the shared
+reader that trusted more than the rest of it.
+
+| # | Finding | Outcome |
+|---|---|---|
+| 11 | nizam still computed the refresh-token deadline from `refresh_expires_in` unguarded, so Keycloak's `0` (this realm, shared by both apps through `WEB__KEYCLOAK_ISSUER`) became a timestamp in the past and the guard killed the session the moment the access token aged out. | **Fixed.** `refreshDeadline()` and the `typeof` guard, as in tedris; `JWT.refreshTokenExpireIn` is optional in nizam's `next-auth.d.ts` too. |
+| 12 | nizam's `session` callback did not mirror `token.error` and its `ClientProviders` was a bare `SessionProvider`, so after a failed refresh every server path returned `undefined` while the client kept a valid-looking session. | **Fixed.** `session.error = token.error` and the same `RefreshErrorRedirect` as tedris; `Session.error` is optional and documented. |
+| 13 | The reader treated an absent `accessTokenExpired` as "never expires" — the one fail-open branch in an otherwise fail-closed function. | **Fixed.** Only a token with a known future expiry and no recorded error takes the fast path; an unknown deadline goes through the app's refresh. |
+| 14 | A transient refresh failure was terminal on the server side: any `error` in the cookie short-circuited to `undefined` and never called `refresh`, although the `jwt` callback's own policy is to retry on every request while the token is stale. | **Fixed.** A token carrying `error` is refreshed once more per request (memoized by `cache()`); an expired refresh token is still refused before any network call by the app's own guard, so the terminal case stays terminal. |
+
+Two threads were left for separate tasks, on purpose: every tedris page still
+runs both `auth()` (via `Header`) and `getAccessToken()`, two decrypts and up to
+two refreshes per render; and `isDeckInCollection` on the deck page downloads
+the user's whole deck collection, with every `decks_users` row, for one
+boolean.
+
 ## What was verified
 
 - `typecheck`, `lint`, `module-boundaries` for `services`, `tedris-web`,
