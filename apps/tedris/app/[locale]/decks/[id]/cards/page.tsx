@@ -1,7 +1,7 @@
 import { createServerTedrisatAPIs } from "@medaris/services/tedrisat";
 import { env } from "~/env";
 import { DeckCardsPage } from "~/features/flashcards/components/deck-cards-page";
-import { getAccessToken } from "~/lib/auth_options";
+import { requireAccessToken } from "~/lib/require-access-token";
 
 export default async function Page({
   params,
@@ -10,7 +10,7 @@ export default async function Page({
 }) {
   const { id } = await params;
 
-  const token = await getAccessToken();
+  const token = await requireAccessToken();
   const API = await createServerTedrisatAPIs(token, env.TEDRISAT_API_BASE_URL);
 
   const cards = await API.cards.getFlashcardByDeckId({ deckId: id });
