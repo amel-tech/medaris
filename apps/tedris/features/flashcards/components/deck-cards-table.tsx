@@ -11,6 +11,7 @@ import {
   updateFlashcard,
 } from "~/features/flashcards/actions";
 import { useFlashcardColumns } from "~/features/flashcards/hooks/useFlashcardColumns";
+import AddCardButtonDialog from "./deckform/add-card-button-dialog";
 
 export function DeckCardsTable({
   deckId,
@@ -68,6 +69,10 @@ export function DeckCardsTable({
 
   return (
     <div>
+      <div className="mb-4 flex items-center justify-between">
+        <h4>{t("DeckCards.cards")}</h4>
+        <AddCardButtonDialog deckId={deckId} />
+      </div>
       <DataTable
         columns={columns}
         data={flashcards || []}
