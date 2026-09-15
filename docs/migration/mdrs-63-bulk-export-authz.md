@@ -296,3 +296,33 @@ down and hides "Add Card", the inline cell editors and the row delete control fr
 nizam's unconditional Export/Import affordances on the deck list are untouched and remain open.
 
 Follow-ups 6 (TOCTOU) and 7 (MDRS-43 supersession) are unchanged.
+
+### Second review round on #69 — the read half, and one note taken as a note
+
+The collect-time assertion above was answered with a second finding: it decides
+authorization **once**, when the `decks_users` row is written, and
+`GET /flashcard/decks/collections` never re-evaluates it. Two paths were live —
+an author flipping a collected deck private afterwards, and every row written
+before the assertion existed. `FlashcardDeckRepository.findAllByUser` now
+`and()`s its `exists(...decks_users...)` predicate with
+`or(isPublic, authorId = caller)`, which is `findAllVisibleToUser`'s rule, so
+the two list routes answer the same question about the same rows. Pinned by
+`drops a collected deck out of /collections once its author makes it private`,
+which also asserts the author still sees their own deck there.
+
+**Not taken, deliberately, and recorded here so it is not lost:** the two
+labeling writes (`FlashcardDeckLabelService.deckLabeling`,
+`FlashcardLabelService.flashcardLabeling`) assert ownership of the **label**
+and nothing about the **target** — `deckId` / `flashcardId` come off the DTO and
+reach the insert unchecked, so any authenticated caller can attach their own
+label to another user's private deck or card, and a valid id returns 201 while a
+missing one trips the foreign key as a 500 (an existence oracle). The reviewer
+who raised it scored it low and explicitly framed it as a note rather than a
+request to widen this PR: no read route surfaces labelings back to a deck owner
+today (`DeckIncludeEnum` is empty), and `flashcard-label.controller.ts` already
+defers the question to MDRS-26. Closing it means giving the two label modules a
+dependency on `FlashcardModule` (and on `FlashcardService`, which that module
+does not export), which is a wiring change this branch should not make on its
+last pass. The fix when MDRS-26 lands is the call its siblings now make:
+`assertReadable(newLabeling.deckId, newLabeling.createdBy)`, and the card twin
+resolving the parent deck first.

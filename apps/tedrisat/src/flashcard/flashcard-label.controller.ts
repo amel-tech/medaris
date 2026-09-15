@@ -14,6 +14,7 @@ import {
   ApiBearerAuth,
   ApiBody,
   ApiCreatedResponse,
+  ApiOperation,
   ApiResponse,
 } from "@nestjs/swagger";
 import {
@@ -87,6 +88,10 @@ import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
 export class FlashcardlabelController {
   constructor(private readonly labelService: FlashcardLabelService) {}
 
+  @ApiOperation({
+    summary: "Create a flashcard label",
+    operationId: "createFlashcardLabel",
+  })
   @ApiBody({ type: CreateFlashcardLabelDto })
   @ApiCreatedResponse({ type: FlashcardCreateLabelResponse })
   @Post("/create")
@@ -102,6 +107,10 @@ export class FlashcardlabelController {
     });
   }
 
+  @ApiOperation({
+    summary: "Delete a flashcard label",
+    operationId: "deleteFlashcardLabel",
+  })
   @ApiResponse({ status: 200, schema: { type: "boolean" } })
   @ApiResponse({
     status: 403,
@@ -116,6 +125,10 @@ export class FlashcardlabelController {
     return await this.labelService.deleteLabel(labelId, request.user.sub);
   }
 
+  @ApiOperation({
+    summary: "Attach a label to a flashcard",
+    operationId: "createFlashcardLabeling",
+  })
   @ApiBody({ type: CreateFlashcardLabelingDto })
   @ApiCreatedResponse({ type: FlashcardLabelingResponse })
   @Post("/labeling")
@@ -132,6 +145,10 @@ export class FlashcardlabelController {
   // 404 rather than an empty 200 (MDRS-58): both readers used to return `null`
   // for an unknown id, which Nest serialises as a body-less 200 while this
   // decorator promised a FlashcardLabelResponse. See FlashcardLabelService.getById.
+  @ApiOperation({
+    summary: "Get a flashcard label by ID",
+    operationId: "getFlashcardLabelById",
+  })
   @ApiResponse({ status: 200, type: FlashcardLabelResponse })
   @ApiResponse({
     status: 403,
@@ -146,6 +163,10 @@ export class FlashcardlabelController {
     return await this.labelService.getById(id, request.user.sub);
   }
 
+  @ApiOperation({
+    summary: "Get usage statistics for a flashcard label",
+    operationId: "getFlashcardLabelStats",
+  })
   @ApiResponse({ status: 200, type: labelStatsResponse })
   @ApiResponse({
     status: 403,

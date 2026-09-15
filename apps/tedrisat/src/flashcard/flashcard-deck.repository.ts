@@ -109,14 +109,27 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
       with: {
         decksUsers: true,
       },
-      where: exists(
-        // using simple `eq(decksUsers.userId, userId)` instead of `exists(...)` causes bug in drizzle
-        this.databaseService.db
-          .select()
-          .from(decksUsers)
-          .where(
-            and(eq(decksUsers.deckId, decks.id), eq(decksUsers.userId, userId))
-          )
+      // Visibility is re-evaluated on every read, not decided once when the
+      // `decks_users` row was written. `FlashcardDeckController.addToUserCollection`
+      // asserts readability before it collects, but that assertion ages: the
+      // author may flip a collected deck to private afterwards, and rows
+      // written before that assertion existed point wherever they were allowed
+      // to. The predicate is `findAllVisibleToUser`'s, so the two list routes
+      // answer the same question about the same rows.
+      where: and(
+        or(eq(decks.isPublic, true), eq(decks.authorId, userId)),
+        exists(
+          // using simple `eq(decksUsers.userId, userId)` instead of `exists(...)` causes bug in drizzle
+          this.databaseService.db
+            .select()
+            .from(decksUsers)
+            .where(
+              and(
+                eq(decksUsers.deckId, decks.id),
+                eq(decksUsers.userId, userId)
+              )
+            )
+        )
       ),
     });
   }

@@ -564,6 +564,51 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
     expect(collections.body).toHaveLength(1);
   });
 
+  /**
+   * The read half of the collect-then-list pair. `assertReadable` at collect
+   * time ages: the author may flip a collected deck private afterwards, and
+   * rows written before that assertion existed point wherever they were
+   * allowed to. `findAllByUser` therefore re-evaluates visibility on every
+   * read rather than trusting the `decks_users` row.
+   */
+  it("drops a collected deck out of /collections once its author makes it private", async () => {
+    const publicDeck = await request(ownerApp.getHttpServer())
+      .post("/flashcard/decks")
+      .send({ title: "Owner's Public Deck", isPublic: true });
+    expect(publicDeck.status).toBe(201);
+
+    const collected = await request(attackerApp.getHttpServer()).post(
+      `/flashcard/decks/${publicDeck.body.id}/collections`
+    );
+    expect(collected.status).toBe(201);
+
+    const before = await request(attackerApp.getHttpServer()).get(
+      "/flashcard/decks/collections"
+    );
+    expect(before.body).toHaveLength(1);
+
+    const madePrivate = await request(ownerApp.getHttpServer())
+      .patch(`/flashcard/decks/${publicDeck.body.id}`)
+      .send({ isPublic: false });
+    expect(madePrivate.status).toBe(200);
+
+    const after = await request(attackerApp.getHttpServer()).get(
+      "/flashcard/decks/collections"
+    );
+    expect(after.status).toBe(200);
+    expect(after.body).toHaveLength(0);
+
+    // The owner keeps their own deck in their own collection view.
+    const ownerCollected = await request(ownerApp.getHttpServer()).post(
+      `/flashcard/decks/${publicDeck.body.id}/collections`
+    );
+    expect(ownerCollected.status).toBe(201);
+    const ownerList = await request(ownerApp.getHttpServer()).get(
+      "/flashcard/decks/collections"
+    );
+    expect(ownerList.body).toHaveLength(1);
+  });
+
   it("refuses to read another user's private deck itself", async () => {
     const response = await request(attackerApp.getHttpServer()).get(
       `/flashcard/decks/${deckId}`

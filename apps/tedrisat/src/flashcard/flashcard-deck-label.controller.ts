@@ -14,6 +14,7 @@ import {
   ApiBearerAuth,
   ApiBody,
   ApiCreatedResponse,
+  ApiOperation,
   ApiResponse,
 } from "@nestjs/swagger";
 import {
@@ -45,6 +46,10 @@ import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
 export class FlashcardDeckLabelController {
   constructor(private readonly labelService: FlashcardDeckLabelService) {}
 
+  @ApiOperation({
+    summary: "Create a deck label",
+    operationId: "createFlashcardDeckLabel",
+  })
   @ApiBody({ type: CreateFlashcardDeckLabelDto })
   @ApiCreatedResponse({ type: FlashcardDeckCreateLabelResponse })
   @Post("/create")
@@ -58,6 +63,10 @@ export class FlashcardDeckLabelController {
     });
   }
 
+  @ApiOperation({
+    summary: "Delete a deck label",
+    operationId: "deleteFlashcardDeckLabel",
+  })
   @ApiResponse({ status: 200, schema: { type: "boolean" } })
   @ApiResponse({
     status: 403,
@@ -72,6 +81,10 @@ export class FlashcardDeckLabelController {
     return await this.labelService.deleteLabel(labelId, request.user.sub);
   }
 
+  @ApiOperation({
+    summary: "Attach a label to a deck",
+    operationId: "createFlashcardDeckLabeling",
+  })
   @ApiBody({ type: CreateFlashcardDeckLabelingDto })
   @ApiCreatedResponse({ type: FlashcardDeckLabelingResponse })
   @Post("/labeling")
@@ -87,6 +100,10 @@ export class FlashcardDeckLabelController {
 
   // 404 rather than an empty 200 (MDRS-58) — see the note on the flashcard-label
   // controller's equivalent pair.
+  @ApiOperation({
+    summary: "Get a deck label by ID",
+    operationId: "getFlashcardDeckLabelById",
+  })
   @ApiResponse({ status: 200, type: FlashcardDeckLabelResponse })
   @ApiResponse({
     status: 403,
@@ -101,6 +118,10 @@ export class FlashcardDeckLabelController {
     return await this.labelService.getById(id, request.user.sub);
   }
 
+  @ApiOperation({
+    summary: "Get usage statistics for a deck label",
+    operationId: "getFlashcardDeckLabelStats",
+  })
   @ApiResponse({ status: 200, type: DeckLabelStatsResponse })
   @ApiResponse({
     status: 403,

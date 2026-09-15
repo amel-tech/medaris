@@ -100,9 +100,9 @@ export class FlashcardDeckLabelRepository
     // prove there is no second match — `label_id` carries no index (a plain
     // `references()` FK; Postgres indexes only the referenced side), so the
     // common "label exists, never applied" case scanned everything to return
-    // nothing. The durable fix is a unique index on the column, which has to
-    // wait for the column-name defect recorded in
-    // docs/migration/mdrs-56-flashcard-label-authz.md.
+    // nothing. The durable fix is a unique index on the column; its blocker
+    // (the column was `lable_id` in the database) is gone as of migration
+    // 0013, so it is now a clean follow-up rather than an impossible one.
     const stats = await this.databaseService.db
       .select()
       .from(deckLabelsStats)

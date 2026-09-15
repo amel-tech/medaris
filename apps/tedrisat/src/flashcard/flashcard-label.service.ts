@@ -126,9 +126,11 @@ export class FlashcardLabelService {
    * (MDRS-58 review). Returning `null` was not an option either — Nest
    * serialises it as an empty 200 body the generated client cannot parse.
    *
-   * Whether the row is queryable at all is a separate defect: the migration
-   * created `usageCount` where the schema declares `usage_count`. Follow-up 1
-   * in docs/migration/mdrs-56-flashcard-label-authz.md.
+   * Whether the row is queryable at all used to be a separate defect: the
+   * migration created `usageCount` where the schema declares `usage_count`,
+   * so this select threw before any row was found. Migration
+   * `0013_label_schema_drift` renames the column, which is what makes the
+   * fallback above reachable; `flashcard-label.e2e.spec.ts` pins the 200.
    */
   async getLabelStats(
     id: string,

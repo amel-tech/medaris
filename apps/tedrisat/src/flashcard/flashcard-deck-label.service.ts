@@ -99,9 +99,10 @@ export class FlashcardDeckLabelService {
    * not exist (MDRS-58 review). The repository now returns `null` for the
    * empty read instead of dereferencing `stats[0]`.
    *
-   * Whether the row is queryable at all is a separate defect (the migration
-   * created `lable_id`, the schema declares `label_id`), recorded in
-   * docs/migration/mdrs-56-flashcard-label-authz.md.
+   * Whether the row is queryable at all used to be a separate defect — the
+   * migration created `lable_id`, the schema declares `label_id` — which made
+   * this route 500 for every caller. Migration `0013_label_schema_drift`
+   * renames the column and the FK with it.
    */
   async getDeckLabelStats(
     id: string,

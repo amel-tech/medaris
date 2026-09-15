@@ -409,40 +409,49 @@ describe("Label reads — ownership (e2e)", () => {
   });
 
   /**
-   * The owner's stats read, asserted negatively on purpose.
+   * The owner's stats read, now asserted positively.
    *
-   * Both `getStats` routes are broken on main for EVERY caller, owner
-   * included, and it has nothing to do with authorization. The migrations and
-   * the drizzle schemas disagree about two column names, so the select throws
-   * a 500 before any row is found:
+   * Both `getStats` routes used to 500 for EVERY caller, owner included, for
+   * a reason that had nothing to do with authorization: the migrations and
+   * the drizzle schemas disagreed about two column names, so the select threw
+   * before any row was found —
    *
-   *   flashcard_label_stats — migration 0007 creates "usageCount",
+   *   flashcard_label_stats — migration 0007 created "usageCount",
    *     flashcard-label.schema.ts:21 declares `integer("usage_count")`
-   *   deck_label_stats      — migration 0007 creates "lable_id" (sic),
+   *   deck_label_stats      — migration 0007 created "lable_id" (sic),
    *     flashcard-deck-label.schema.ts:39 declares `uuid("label_id")`
    *
-   * Measured, not inferred: the response body is
-   * `Failed query: select "id", "label_id", "usage_count", "last_used_at"
-   * from "flashcard_label_stats" ...`. Nothing exercised these routes before
-   * MDRS-56 — the only existing coverage was the 401 sweep, which never
-   * reaches the database.
-   *
-   * Fixing that drift is a schema/migration change and belongs in its own
-   * issue (see docs/migration/mdrs-56-flashcard-label-authz.md). What MDRS-56
-   * owes is that AUTHORIZATION is not what stops the owner, so this pins the
-   * two statuses this change is responsible for and deliberately does not pin
-   * the third — the day the drift is fixed, this test should go green as a
-   * 200 without anybody having to come back and edit it.
+   * MDRS-56 left that as a follow-up and this test as a negative assertion,
+   * with a note saying it should go green as a 200 the day the drift was
+   * fixed. Migration `0013_label_schema_drift` is that day, so the assertion
+   * is the 200 and the zero-stats body the service documents — a label that
+   * exists and has never been applied has no row, and that is answered with
+   * zeroes rather than a 404. Asserting the body rather than the status alone
+   * is what makes this a witness for the rename: a reverted migration puts
+   * the 500 back.
    */
-  it("does not deny the owner their own label stats", async () => {
+  it("gives the owner zero-valued stats for a label never applied", async () => {
     const id = await seedFlashcardLabel();
 
     const stats = await request(ownerApp.getHttpServer()).get(
       `/flashcard-label/getStats/${id}`
     );
 
-    expect(stats.status).not.toBe(403);
-    expect(stats.status).not.toBe(404);
+    expect(stats.status).toBe(200);
+    expect(stats.body).toMatchObject({ labelId: id, usageCount: 0 });
+    expect(stats.body.lastUsedAt).toBeNull();
+  });
+
+  it("gives the owner zero-valued stats for a deck label never applied", async () => {
+    const id = await seedDeckLabel();
+
+    const stats = await request(ownerApp.getHttpServer()).get(
+      `/flashcard-deck-label/getStats/${id}`
+    );
+
+    expect(stats.status).toBe(200);
+    expect(stats.body).toMatchObject({ labelId: id, usageCount: 0 });
+    expect(stats.body.lastUsedAt).toBeNull();
   });
 });
 

@@ -734,3 +734,20 @@ routes PR #69's review closed. Everything else is `paths` key order: the committ
 not produced by this exporter and did not match its (deterministic — two runs, one md5) output.
 The generated client came back **byte-identical**, as predicted: these are description-only
 responses with no schema, so `openapi-generator` emits no method or model for them.
+
+### The ten label operations had no `operationId`
+
+Every other tedrisat controller sets one explicitly. `FlashcardlabelController`
+and `FlashcardDeckLabelController` set none, so `@nestjs/swagger` fell back to
+`<ClassName>_<methodName>` and the first spec this exporter published carried
+`FlashcardlabelController_flahscardLabeling` and nine siblings — putting the
+`Flashcardlabel` (lower-case l) and `Flahscard` (transposed) typos into the
+generated client's public surface, and tying every generated method name to a
+class or method name that a pure refactor could change while `typecheck`,
+`lint` and `build` all stayed green.
+
+All ten now carry `@ApiOperation({ summary, operationId })`:
+`createFlashcardLabel`, `deleteFlashcardLabel`, `createFlashcardLabeling`,
+`getFlashcardLabelById`, `getFlashcardLabelStats` and the five deck-label
+equivalents. No source outside the generated directory referenced the old
+names, so this renames nothing a consumer holds.

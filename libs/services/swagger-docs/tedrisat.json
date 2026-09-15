@@ -1822,7 +1822,7 @@
     },
     "/flashcard-label/create": {
       "post": {
-        "operationId": "FlashcardlabelController_createFlashcardLabel",
+        "operationId": "createFlashcardLabel",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -1851,6 +1851,7 @@
             "bearer": []
           }
         ],
+        "summary": "Create a flashcard label",
         "tags": [
           "Flashcardlabel"
         ]
@@ -1858,7 +1859,7 @@
     },
     "/flashcard-label/delete/{id}": {
       "delete": {
-        "operationId": "FlashcardlabelController_deleteFlashcardLabel",
+        "operationId": "deleteFlashcardLabel",
         "parameters": [
           {
             "name": "id",
@@ -1892,6 +1893,7 @@
             "bearer": []
           }
         ],
+        "summary": "Delete a flashcard label",
         "tags": [
           "Flashcardlabel"
         ]
@@ -1899,7 +1901,7 @@
     },
     "/flashcard-label/labeling": {
       "post": {
-        "operationId": "FlashcardlabelController_flahscardLabeling",
+        "operationId": "createFlashcardLabeling",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -1928,6 +1930,7 @@
             "bearer": []
           }
         ],
+        "summary": "Attach a label to a flashcard",
         "tags": [
           "Flashcardlabel"
         ]
@@ -1935,7 +1938,7 @@
     },
     "/flashcard-label/{id}": {
       "get": {
-        "operationId": "FlashcardlabelController_getById",
+        "operationId": "getFlashcardLabelById",
         "parameters": [
           {
             "name": "id",
@@ -1969,6 +1972,7 @@
             "bearer": []
           }
         ],
+        "summary": "Get a flashcard label by ID",
         "tags": [
           "Flashcardlabel"
         ]
@@ -1976,7 +1980,7 @@
     },
     "/flashcard-label/getStats/{id}": {
       "get": {
-        "operationId": "FlashcardlabelController_getLabelStats",
+        "operationId": "getFlashcardLabelStats",
         "parameters": [
           {
             "name": "id",
@@ -2010,6 +2014,7 @@
             "bearer": []
           }
         ],
+        "summary": "Get usage statistics for a flashcard label",
         "tags": [
           "Flashcardlabel"
         ]
@@ -2017,7 +2022,7 @@
     },
     "/flashcard-deck-label/create": {
       "post": {
-        "operationId": "FlashcardDeckLabelController_createFlashcardDeckLabel",
+        "operationId": "createFlashcardDeckLabel",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -2046,6 +2051,7 @@
             "bearer": []
           }
         ],
+        "summary": "Create a deck label",
         "tags": [
           "FlashcardDeckLabel"
         ]
@@ -2053,7 +2059,7 @@
     },
     "/flashcard-deck-label/delete/{id}": {
       "delete": {
-        "operationId": "FlashcardDeckLabelController_deleteFlashcardDeckLabel",
+        "operationId": "deleteFlashcardDeckLabel",
         "parameters": [
           {
             "name": "id",
@@ -2087,6 +2093,7 @@
             "bearer": []
           }
         ],
+        "summary": "Delete a deck label",
         "tags": [
           "FlashcardDeckLabel"
         ]
@@ -2094,7 +2101,7 @@
     },
     "/flashcard-deck-label/labeling": {
       "post": {
-        "operationId": "FlashcardDeckLabelController_deckLabeling",
+        "operationId": "createFlashcardDeckLabeling",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -2123,6 +2130,7 @@
             "bearer": []
           }
         ],
+        "summary": "Attach a label to a deck",
         "tags": [
           "FlashcardDeckLabel"
         ]
@@ -2130,7 +2138,7 @@
     },
     "/flashcard-deck-label/{id}": {
       "get": {
-        "operationId": "FlashcardDeckLabelController_getById",
+        "operationId": "getFlashcardDeckLabelById",
         "parameters": [
           {
             "name": "id",
@@ -2164,6 +2172,7 @@
             "bearer": []
           }
         ],
+        "summary": "Get a deck label by ID",
         "tags": [
           "FlashcardDeckLabel"
         ]
@@ -2171,7 +2180,7 @@
     },
     "/flashcard-deck-label/getStats/{id}": {
       "get": {
-        "operationId": "FlashcardDeckLabelController_getLabelStats",
+        "operationId": "getFlashcardDeckLabelStats",
         "parameters": [
           {
             "name": "id",
@@ -2205,6 +2214,7 @@
             "bearer": []
           }
         ],
+        "summary": "Get usage statistics for a deck label",
         "tags": [
           "FlashcardDeckLabel"
         ]
