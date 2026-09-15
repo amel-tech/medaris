@@ -1,3 +1,4 @@
+import { createAccessTokenReader } from "@medaris/services/auth";
 import type {
   GetServerSidePropsContext,
   NextApiRequest,
@@ -47,6 +48,12 @@ const refreshAccessToken = async (token: JWT) => {
 
     return {
       ...token,
+      // A previous failed refresh left `error` on the token, and the spread
+      // would carry it forward for the rest of the session even though this
+      // refresh succeeded — `getAccessToken()` fails closed on `error`, so a
+      // stale flag would lock the user out of every server call until sign-out.
+      // `error` describes the most recent attempt only.
+      error: undefined,
       accessToken: refreshedTokens.access_token,
       accessTokenExpired: Date.now() + (refreshedTokens.expires_in - 15) * 1000,
       refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
@@ -100,7 +107,10 @@ const authOptions: AuthOptions = {
       return refreshAccessToken(token);
     },
     async session({ session, token }) {
-      session.accessToken = token.accessToken;
+      // accessToken is intentionally kept off the client-visible session —
+      // any script on the page could read it via GET /api/auth/session
+      // otherwise. Server code reads it through getAccessToken() below.
+      // See MDRS-28.
       session.idToken = token.idToken as string;
       return session;
     },
@@ -116,3 +126,20 @@ export function auth(
 ) {
   return getServerSession(...args, authOptions);
 }
+
+/**
+ * Reads the Keycloak access token straight out of the encrypted session
+ * JWT. Server-only — the token never enters the client-visible `Session`
+ * object `auth()` returns. See MDRS-28.
+ *
+ * The implementation is shared with the other web app through
+ * `@medaris/services/auth`; only the three app-local values are supplied here.
+ * It refreshes an expired token through this file's `refreshAccessToken`, the
+ * same function the `jwt` callback uses, returns `undefined` once a refresh has
+ * failed, and is memoized per request.
+ */
+export const getAccessToken = createAccessTokenReader<JWT>({
+  secret: env.NEXTAUTH_SECRET,
+  cookieName: authCookies?.sessionToken?.name,
+  refresh: refreshAccessToken,
+});
