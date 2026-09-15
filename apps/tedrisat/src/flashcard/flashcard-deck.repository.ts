@@ -6,6 +6,7 @@ import {
   ICreateFlashcardDeck,
   IFlashcardDeck,
   IFlashcardDeckFilters,
+  IFlashcardDeckOwnership,
   IFlashcardDeckRepository,
   IFlashcardDeckUserCollectionItem,
   IUpdateFlashcardDeck,
@@ -47,6 +48,25 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
     return this.findByFilter(eq(decks.id, id), include).then(
       (result) => result[0] || null
     );
+  }
+
+  async findAuthorId(id: string): Promise<string | null> {
+    // The same shape as KoskRepository.findOwnerId: one column, LIMIT 1.
+    const rows = await this.databaseService.db
+      .select({ authorId: decks.authorId })
+      .from(decks)
+      .where(eq(decks.id, id))
+      .limit(1);
+    return rows[0]?.authorId ?? null;
+  }
+
+  async findOwnership(id: string): Promise<IFlashcardDeckOwnership | null> {
+    const rows = await this.databaseService.db
+      .select({ authorId: decks.authorId, title: decks.title })
+      .from(decks)
+      .where(eq(decks.id, id))
+      .limit(1);
+    return rows[0] ?? null;
   }
 
   async findAll(include?: Set<string>): Promise<IFlashcardDeck[]> {

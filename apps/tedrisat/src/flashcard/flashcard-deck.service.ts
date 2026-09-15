@@ -1,9 +1,12 @@
 import { Injectable } from "@nestjs/common";
+import { DeckForbiddenError } from "./errors/deck-forbidden.error";
+import { DeckNotFoundError } from "./errors/deck-not-found.error";
 import { FlashcardDeckRepository } from "./flashcard-deck.repository";
 import {
   ICreateFlashcardDeck,
   IFlashcardDeck,
   IFlashcardDeckFilters,
+  IFlashcardDeckOwnership,
   IFlashcardDeckUserCollectionItem,
   IUpdateFlashcardDeck,
 } from "./flashcard-deck.repository.interface";
@@ -18,6 +21,72 @@ export class FlashcardDeckService {
   ): Promise<IFlashcardDeck | null> {
     const includeSet = new Set(include);
     return this.deckRepo.findById(id, includeSet);
+  }
+
+  /**
+   * Ensures the deck exists and is authored by `userId`, else throws.
+   *
+   * Modelled on `KoskService.assertOwner`, down to the one-column read
+   * (`findAuthorId`, the sibling of `KoskRepository.findOwnerId`) and the
+   * 404/403 split: a deck that is not there is a `DeckNotFoundError` and a
+   * deck that belongs to somebody else is a `DeckForbiddenError`. That
+   * distinction is an enumeration oracle — the caller learns a UUID exists —
+   * and it is kept deliberately, the way the label routes keep it: deck ids
+   * are v4 UUIDs and are not enumerable in practice, whereas a blanket 404
+   * would make a genuine permission problem indistinguishable from a
+   * mistyped id.
+   *
+   * Ownership is `authorId` and nothing else. `isPublic` is visibility: a
+   * public deck may be read and collected by anyone, but only its author may
+   * write cards into it or export it. There is no role model in this
+   * repository (no @Roles, no RolesGuard, nothing in the JWT), so there is no
+   * administrator who may act on another user's deck. Shared/collaborative
+   * decks are MDRS-45's problem; if they arrive, this is the method that
+   * learns about them.
+   *
+   * A caller that also needs a column off the deck — `exportCards` wants
+   * `title` for the filename — uses `findOwned` below, which reads the
+   * two-column `findOwnership` projection and makes the same decision
+   * through the same private method, so the rule lives in one place and
+   * neither caller pays for the other's query shape.
+   */
+  async assertOwner(deckId: string, userId: string): Promise<void> {
+    this.assertAuthoredBy(
+      deckId,
+      await this.deckRepo.findAuthorId(deckId),
+      userId
+    );
+  }
+
+  /**
+   * `assertOwner` for a caller that needs the deck's title as well: one
+   * two-column query, the same 404/403 decision, `{ authorId, title }` back.
+   */
+  async findOwned(
+    deckId: string,
+    userId: string
+  ): Promise<IFlashcardDeckOwnership> {
+    const deck = await this.deckRepo.findOwnership(deckId);
+    this.assertAuthoredBy(deckId, deck?.authorId ?? null, userId);
+    // `assertAuthoredBy` has thrown if `deck` is null.
+    return deck as IFlashcardDeckOwnership;
+  }
+
+  /**
+   * The ownership rule, written once. A shared/collaborative-deck decision
+   * (MDRS-45) changes this method and nothing else.
+   */
+  private assertAuthoredBy(
+    deckId: string,
+    authorId: string | null,
+    userId: string
+  ): void {
+    if (authorId === null) {
+      throw new DeckNotFoundError(deckId);
+    }
+    if (authorId !== userId) {
+      throw new DeckForbiddenError();
+    }
   }
 
   async findAll(include?: string[]): Promise<IFlashcardDeck[]> {

@@ -33,9 +33,26 @@ export interface IFlashcardDeckUserCollectionItem {
   createdAt: Date;
 }
 
+/** What `findOwnership` projects: enough to decide and to name the export. */
+export interface IFlashcardDeckOwnership {
+  authorId: string;
+  title: string;
+}
+
 export interface IFlashcardDeckRepository {
   // SELECT
   findById(id: string, include?: Set<string>): Promise<IFlashcardDeck | null>;
+  /**
+   * The deck's `authorId` alone, or `null` when no such deck exists. The
+   * projection ownership checks read — `findById` selects every column,
+   * `description` included, to answer a one-column question.
+   */
+  findAuthorId(id: string): Promise<string | null>;
+  /**
+   * The two columns the export route needs — `authorId` for the ownership
+   * decision, `title` for the filename — or `null` when no such deck exists.
+   */
+  findOwnership(id: string): Promise<IFlashcardDeckOwnership | null>;
   findAll(include?: Set<string>): Promise<IFlashcardDeck[]>;
   findAllVisibleToUser(
     userId: string,

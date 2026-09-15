@@ -7,6 +7,13 @@ export class FlashcardDeckResponse extends OmitType(CreateFlashcardDeckDto, [
   @ApiProperty()
   id!: string;
 
+  // Published so a client can predict the 403 the deck-scoped bulk/export
+  // routes now return to a non-author (MDRS-63) and hide those affordances;
+  // the value has always been on the wire. The generated client picks it up
+  // when the spec is next regenerated (MDRS-58's exporter, #55).
+  @ApiProperty()
+  authorId!: string;
+
   @ApiPropertyOptional({ type: String })
   description!: string | null;
 }
