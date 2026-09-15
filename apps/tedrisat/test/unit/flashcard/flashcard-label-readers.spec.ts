@@ -3,6 +3,8 @@ import { FlashcardDeckLabelForbiddenError } from "../../../src/flashcard/errors/
 import { FlashcardDeckLabelNotFoundError } from "../../../src/flashcard/errors/flashcard-deck-label-not-found.error";
 import { FlashcardLabelForbiddenError } from "../../../src/flashcard/errors/flashcard-label-forbidden.error";
 import { FlashcardLabelNotFoundError } from "../../../src/flashcard/errors/flashcard-label-not-found.error";
+import { FlashcardService } from "../../../src/flashcard/flashcard.service";
+import { FlashcardDeckService } from "../../../src/flashcard/flashcard-deck.service";
 import { FlashcardDeckLabelRepository } from "../../../src/flashcard/flashcard-deck-label.repository";
 import { FlashcardDeckLabelService } from "../../../src/flashcard/flashcard-deck-label.service";
 import { FlashcardLabelRepository } from "../../../src/flashcard/flashcard-label.reporsitory";
@@ -27,6 +29,14 @@ const OWNER = "owner-1";
  * lazily and "never used" is not "not found" (MDRS-58 review). Ownership
  * (MDRS-56) runs first on every reader; the repositories are mocked rather than
  * the services, so what is asserted is the services' own branches.
+ *
+ * The two labeling writes also assert the caller may READ the target card or
+ * deck, which is why `FlashcardService` and `FlashcardDeckService` are stubbed
+ * here. They are given permissive stubs on purpose: these cases are about the
+ * LABEL branch, and the target branch has its own coverage in
+ * `test/e2e/flashcard-label.e2e.spec.ts`, where a real deck and a real card
+ * exist to be private or public. A stub that threw would make the label
+ * assertions pass for the wrong reason.
  */
 describe("flashcard label readers", () => {
   let labelService: FlashcardLabelService;
@@ -46,6 +56,10 @@ describe("flashcard label readers", () => {
     updateLabelStats: vi.fn(),
     createLabelStats: vi.fn(),
   };
+  // Permissive: the card resolves to a deck, and every deck is readable. See
+  // the note above.
+  const cardService = { findDeckId: vi.fn().mockResolvedValue("deck-1") };
+  const deckService = { assertReadable: vi.fn().mockResolvedValue(undefined) };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -54,6 +68,8 @@ describe("flashcard label readers", () => {
         FlashcardDeckLabelService,
         { provide: FlashcardLabelRepository, useValue: labelRepo },
         { provide: FlashcardDeckLabelRepository, useValue: deckLabelRepo },
+        { provide: FlashcardService, useValue: cardService },
+        { provide: FlashcardDeckService, useValue: deckService },
       ],
     }).compile();
 
@@ -119,6 +135,9 @@ describe("flashcard label readers", () => {
       ).rejects.toBeInstanceOf(FlashcardLabelForbiddenError);
       expect(labelRepo.flashcardLabeling).not.toHaveBeenCalled();
       expect(labelRepo.updateLabelStats).not.toHaveBeenCalled();
+      // The label is checked first, so a caller who fails there never causes a
+      // lookup of the card they named.
+      expect(cardService.findDeckId).not.toHaveBeenCalled();
     });
   });
 
@@ -181,6 +200,7 @@ describe("flashcard label readers", () => {
         })
       ).rejects.toBeInstanceOf(FlashcardDeckLabelForbiddenError);
       expect(deckLabelRepo.deckLabeling).not.toHaveBeenCalled();
+      expect(deckService.assertReadable).not.toHaveBeenCalled();
     });
   });
 });
