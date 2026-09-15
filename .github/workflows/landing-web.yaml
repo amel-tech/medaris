@@ -99,6 +99,41 @@ jobs:
             type=raw,value=latest,enable=${{ github.event_name == 'release' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
             type=sha
 
+      # MDRS-86: NEXT_PUBLIC_* is inlined at `next build`, so the values the
+      # browser gets are decided in this job, not by a variable on the Coolify
+      # service. They come from repository variables (Settings → Secrets and
+      # variables → Actions → Variables), one set per app under the
+      # `LANDING_WEB_` prefix, and reach apps/landing/Dockerfile as build args.
+      # Only non-empty values are passed on: an empty build arg is a
+      # defined-but-blank key that shadows the placeholder .env and fails
+      # env.ts validation deep inside the build, with a far worse message than
+      # this step's. Required ones missing fail here, before any build minute
+      # is spent and before a placeholder bundle could reach GHCR.
+      - name: Resolve NEXT_PUBLIC build args
+        id: buildargs
+        env:
+          NEXT_PUBLIC_TEDRIS_APP_URL: ${{ vars.LANDING_WEB_NEXT_PUBLIC_TEDRIS_APP_URL }}
+        run: |
+          set -euo pipefail
+          required=""
+          optional="NEXT_PUBLIC_TEDRIS_APP_URL"
+          missing=""
+          for k in $required; do
+            if [ -z "${!k:-}" ]; then missing="$missing LANDING_WEB_$k"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Repository variable(s) not set:$missing — without them the client bundle ships the .env.example placeholders (localhost API URL, dev issuer). See docs/runbooks/deploy-landing-web.md §0."
+            exit 1
+          fi
+          {
+            echo "args<<EOF"
+            for k in $required $optional; do
+              if [ -n "${!k:-}" ]; then echo "$k=${!k}"; fi
+            done
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "Passing build args for: $required $optional (empty optional ones omitted)"
+
       - name: Build and push Docker image
         id: build
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
@@ -106,6 +141,7 @@ jobs:
           context: .
           file: ./apps/landing/Dockerfile
           push: true
+          build-args: ${{ steps.buildargs.outputs.args }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=landing-web

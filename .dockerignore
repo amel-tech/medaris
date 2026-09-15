@@ -35,7 +35,12 @@
 **/.env.*
 !**/.env.example
 
-# Editor / OS / tooling noise.
+# Editor / OS / tooling noise. `.claude/` can hold git-ignored WORKTREES of
+# this very repository (`.claude/worktrees/<name>/`); with it in the context,
+# Nx sees every project twice and `nx build` refuses with "set a unique name
+# for each project" — measured on a local `docker build` during MDRS-86. CI
+# runners never have the directory, which is why only local builds broke.
+.claude
 .vscode
 .idea
 .mcp.json

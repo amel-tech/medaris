@@ -5,6 +5,7 @@
   "targets": {
     "lint": {},
     "build": {
+      "dependsOn": ["^build", "^typecheck"],
       "inputs": [
         "production",
         "^production",
