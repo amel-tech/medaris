@@ -98,6 +98,33 @@ const authOptions: AuthOptions = {
   ],
   cookies: authCookies,
   callbacks: {
+    /**
+     * Lets the sign-out navigation reach Keycloak's end-session endpoint.
+     *
+     * NextAuth's default `redirect` returns `baseUrl` for any off-origin URL,
+     * so `signOut({ callbackUrl: <end-session URL> })` was silently dropped and
+     * signing out never left this origin: Keycloak kept its SSO cookie, and the
+     * next "Sign in" click let the same account back in with no password. The
+     * issuer's origin is the one exception this app needs; everything else off
+     * origin still collapses to `baseUrl`. See lib/keycloak-logout.ts.
+     */
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+
+      let target: URL;
+      try {
+        target = new URL(url);
+      } catch {
+        return baseUrl;
+      }
+
+      if (target.origin === new URL(baseUrl).origin) return url;
+
+      const issuer = env.KEYCLOAK_ISSUER;
+      if (issuer && target.origin === new URL(issuer).origin) return url;
+
+      return baseUrl;
+    },
     async jwt({ token, user, account }) {
       if (account) {
         token.accessToken = account.access_token;
