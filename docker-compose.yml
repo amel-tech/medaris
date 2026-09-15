@@ -248,8 +248,12 @@ services:
   # only later, when the browser half of the OIDC flow and NextAuth's
   # server-side validation disagree on which realm issued the token. Changing
   # an issuer, client id, or API base URL for these containers means an image
-  # rebuild, not just a fresh `docker compose up` — MDRS-16's build-arg item
-  # is what closes that gap for good.
+  # rebuild, not just a fresh `docker compose up`. MDRS-86 closed MDRS-16's
+  # build-arg item for the DEPLOY images: each web Dockerfile now takes the
+  # NEXT_PUBLIC_* keys as build args and the deploy workflow passes the real
+  # values in. This file passes none, deliberately, so `docker compose build`
+  # still produces the placeholder bundle: a local web image is for
+  # smoke-testing the container, not the OIDC round trip.
 
   tedris:
     build:
