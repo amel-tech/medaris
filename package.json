@@ -2,7 +2,7 @@
   "name": "@medaris/source",
   "version": "0.0.0",
   "private": true,
-  "description": "Medaris monorepo — 7 apps, 9 libs, one pnpm workspace",
+  "description": "Medaris monorepo — 7 apps, 10 libs, one pnpm workspace",
   "packageManager": "pnpm@11.4.0",
   "engines": {
     "node": ">=22",

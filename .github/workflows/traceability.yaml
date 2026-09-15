@@ -6,7 +6,7 @@ name: Traceability
 # concrete:
 #
 #  1. nx.json's `sharedGlobals` lists .github/workflows/ci.yaml, so ANY edit to
-#     that file marks all 16 projects affected and turns the next Verify run into
+#     that file marks all 17 projects affected and turns the next Verify run into
 #     a full cold build. A gate that reads two strings out of a JSON file should
 #     not cost that.
 #  2. Verify is sized for a 45-minute cold build. This check answers in seconds,

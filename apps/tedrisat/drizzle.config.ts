@@ -12,8 +12,9 @@ export default defineConfig({
     user: process.env.DB_USERNAME || "tedrisat",
     // Same requirement as the runtime pool rather than a fallback or a bare
     // `undefined`: the migration client authenticates against the same
-    // database, so it must fail the same way instead of reaching for
-    // docker/init-db.sql's password or connecting with no credential at all.
+    // database, so it must fail the same way instead of reaching for the
+    // password the compose database was seeded with, or connecting with no
+    // credential at all.
     password: requireDbPassword(),
     database: process.env.DB_NAME || "tedrisat_db",
     ssl: resolveDatabaseSsl(),

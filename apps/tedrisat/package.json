@@ -30,8 +30,7 @@
   },
   "dependencies": {
     "@medaris/common": "workspace:*",
-    "@nestjs/class-transformer": "catalog:",
-    "@nestjs/class-validator": "catalog:",
+    "@medaris/env": "workspace:*",
     "@nestjs/common": "catalog:",
     "@nestjs/config": "catalog:",
     "@nestjs/core": "catalog:",

@@ -24,12 +24,6 @@ catalogs:
     '@nestjs/cache-manager':
       specifier: ^3.0.1
       version: 3.1.3
-    '@nestjs/class-transformer':
-      specifier: ^0.4.0
-      version: 0.4.0
-    '@nestjs/class-validator':
-      specifier: ^0.13.4
-      version: 0.13.4
     '@nestjs/cli':
       specifier: ^11.0.10
       version: 11.0.24
@@ -481,6 +475,9 @@ importers:
 
   apps/landing:
     dependencies:
+      '@medaris/env':
+        specifier: workspace:*
+        version: link:../../libs/env
       '@medaris/i18n':
         specifier: workspace:*
         version: link:../../libs/i18n
@@ -539,6 +536,9 @@ importers:
 
   apps/nazir:
     dependencies:
+      '@medaris/env':
+        specifier: workspace:*
+        version: link:../../libs/env
       '@medaris/ui':
         specifier: workspace:*
         version: link:../../libs/ui
@@ -588,6 +588,9 @@ importers:
 
   apps/nizam:
     dependencies:
+      '@medaris/env':
+        specifier: workspace:*
+        version: link:../../libs/env
       '@medaris/i18n':
         specifier: workspace:*
         version: link:../../libs/i18n
@@ -667,6 +670,9 @@ importers:
       '@hookform/resolvers':
         specifier: 'catalog:'
         version: 5.5.3(@standard-schema/spec@1.1.0)(ajv-formats@2.1.1(ajv@8.20.0))(ajv@8.20.0)(class-transformer@0.5.1)(class-validator@0.15.1)(react-hook-form@7.83.0(react@19.2.8))(zod@4.5.4)
+      '@medaris/env':
+        specifier: workspace:*
+        version: link:../../libs/env
       '@medaris/i18n':
         specifier: workspace:*
         version: link:../../libs/i18n
@@ -770,12 +776,9 @@ importers:
       '@medaris/common':
         specifier: workspace:*
         version: link:../../libs/common
-      '@nestjs/class-transformer':
-        specifier: 'catalog:'
-        version: 0.4.0
-      '@nestjs/class-validator':
-        specifier: 'catalog:'
-        version: 0.13.4
+      '@medaris/env':
+        specifier: workspace:*
+        version: link:../../libs/env
       '@nestjs/common':
         specifier: 'catalog:'
         version: 11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -885,6 +888,9 @@ importers:
       '@medaris/common':
         specifier: workspace:*
         version: link:../../libs/common
+      '@medaris/env':
+        specifier: workspace:*
+        version: link:../../libs/env
       '@nestjs/common':
         specifier: 'catalog:'
         version: 11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -1022,6 +1028,21 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+
+  libs/env:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.1
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.10(vitest@4.1.10)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
 
   libs/hooks:
     dependencies:
@@ -3043,12 +3064,6 @@ packages:
       cache-manager: '>=6'
       keyv: '>=5'
       rxjs: ^7.8.1
-
-  '@nestjs/class-transformer@0.4.0':
-    resolution: {integrity: sha512-aHKhqPVixFCo8m7n2iP1uGgfyF0eYlAgGJKfW27l0BvRCTPBjmoL4956Cf9xVu6WNJzVsp//SOcpIavdnNHYZg==}
-
-  '@nestjs/class-validator@0.13.4':
-    resolution: {integrity: sha512-/mqZL36LJ5uV5WDhi87Cd52IssuO+SStaOr2+6sBsvCCGUWkoJes4Wwzmm3m/gdHH+tsNxX60sVSzYcU6hAy9Q==}
 
   '@nestjs/cli@11.0.24':
     resolution: {integrity: sha512-aIHxQLSYtXShifA3zwWIeznEsZnNa3Iz2QRykFj+sl9IcbERBHr5nH87FRgywM+He3NxoF5WazHfR8FsmVeWxw==}
@@ -11637,13 +11652,6 @@ snapshots:
       cache-manager: 7.2.9
       keyv: 5.6.0
       rxjs: 7.8.2
-
-  '@nestjs/class-transformer@0.4.0': {}
-
-  '@nestjs/class-validator@0.13.4':
-    dependencies:
-      libphonenumber-js: 1.13.9
-      validator: 13.15.35
 
   '@nestjs/cli@11.0.24(@swc/cli@0.7.10(@swc/core@1.15.46(@swc/helpers@0.5.23))(chokidar@4.0.3))(@swc/core@1.15.46(@swc/helpers@0.5.23))(@types/node@22.20.1)(esbuild@0.28.1)(lightningcss@1.33.0)':
     dependencies:

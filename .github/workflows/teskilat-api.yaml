@@ -5,7 +5,7 @@ name: Teskilat API
 #
 # `context: .` + `file: ./apps/teskilat/Dockerfile` is correct and deliberately
 # unchanged (MDRS-16): the image needs the whole workspace — pnpm-workspace.yaml,
-# pnpm-lock.yaml and all 16 member manifests — not just the app directory.
+# pnpm-lock.yaml and all 17 member manifests — not just the app directory.
 #
 # Rollback: docs/runbooks/deploy-teskilat-api.md
 

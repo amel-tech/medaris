@@ -7,8 +7,10 @@ import { z } from "zod";
  * validation in KeycloakPublicKeyProvider.loadConfig: a deployment without a
  * JWKS URL booted, swallowed the fetch error in onModuleInit and then answered
  * 401 to every request. `DB_PASSWORD` previously defaulted to `"tedrisat"` —
- * the credential created in docker/init-db.sql — so a deployment that forgot
- * the variable silently tried a well-known password.
+ * the credential the removed docker/init-db.sql hardcoded — so a deployment
+ * that forgot the variable silently tried a well-known password. Its
+ * replacement, docker/init-db.sh, reads the password from the environment
+ * instead of publishing one (MDRS-68).
  *
  * `KEYCLOAK_ISSUER` and `KEYCLOAK_AUDIENCE` join them for the same reason
  * (MDRS-30): JwtVerifierService checks `iss` and `aud` on every token, and a

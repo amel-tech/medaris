@@ -25,7 +25,7 @@ name: Linear reconcile
 # to mean something — e.g. after working the list down to zero.
 #
 # It is also NOT a job in ci.yaml: nx.json lists that file in `sharedGlobals`,
-# so every edit there marks all 16 projects affected.
+# so every edit there marks all 17 projects affected.
 
 on:
   schedule:
