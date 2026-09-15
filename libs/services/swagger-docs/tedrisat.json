@@ -2469,6 +2469,9 @@
           "id": {
             "type": "string"
           },
+          "authorId": {
+            "type": "string"
+          },
           "description": {
             "type": "string"
           }
@@ -2476,7 +2479,8 @@
         "required": [
           "title",
           "isPublic",
-          "id"
+          "id",
+          "authorId"
         ]
       },
       "CreateFlashcardDeckDto": {

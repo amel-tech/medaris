@@ -42,6 +42,12 @@ export interface FlashcardDeckResponse {
      * @type {string}
      * @memberof FlashcardDeckResponse
      */
+    authorId: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof FlashcardDeckResponse
+     */
     description?: string;
 }
 
@@ -52,6 +58,7 @@ export function instanceOfFlashcardDeckResponse(value: object): value is Flashca
     if (!('title' in value) || value['title'] === undefined) return false;
     if (!('isPublic' in value) || value['isPublic'] === undefined) return false;
     if (!('id' in value) || value['id'] === undefined) return false;
+    if (!('authorId' in value) || value['authorId'] === undefined) return false;
     return true;
 }
 
@@ -68,6 +75,7 @@ export function FlashcardDeckResponseFromJSONTyped(json: any, ignoreDiscriminato
         'title': json['title'],
         'isPublic': json['isPublic'],
         'id': json['id'],
+        'authorId': json['authorId'],
         'description': json['description'] == null ? undefined : json['description'],
     };
 }
@@ -86,6 +94,7 @@ export function FlashcardDeckResponseToJSONTyped(value?: FlashcardDeckResponse |
         'title': value['title'],
         'isPublic': value['isPublic'],
         'id': value['id'],
+        'authorId': value['authorId'],
         'description': value['description'],
     };
 }

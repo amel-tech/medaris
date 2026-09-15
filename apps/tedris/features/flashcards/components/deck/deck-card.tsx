@@ -7,7 +7,18 @@ import {
   LockIcon,
   StarIcon,
   StudentIcon,
+  TrashIcon,
 } from "@medaris/icons";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@medaris/ui/components/alert-dialog";
 import { Card } from "@medaris/ui/components/card";
 import {
   Tooltip,
@@ -15,10 +26,12 @@ import {
   TooltipTrigger,
 } from "@medaris/ui/components/tooltip";
 import { toastHelper } from "@medaris/ui/lib/toast-helper";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import {
   addDeckToCollection,
+  deleteDeck,
   removeDeckFromCollection,
 } from "~/features/flashcards/actions";
 
@@ -32,6 +45,8 @@ type Props = {
   rating?: number;
   isInCollection?: boolean;
   isPublic?: boolean;
+  /** Whether the viewer authored this deck; controls the delete affordance. */
+  isOwner?: boolean;
 };
 
 function DeckCard({
@@ -44,10 +59,13 @@ function DeckCard({
   description,
   isInCollection: initialIsInCollection = false,
   isPublic,
+  isOwner = false,
 }: Props) {
   const t = useTranslations("tedris");
+  const router = useRouter();
   const [isInCollection, setIsInCollection] = useState(initialIsInCollection);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   // Sync state when prop changes
   useEffect(() => {
@@ -90,6 +108,25 @@ function DeckCard({
         }),
       });
     }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleteOpen(false);
+    setIsProcessing(true);
+    const result = await deleteDeck(deckId);
+    if (result.success) {
+      toastHelper.success({
+        title: t("DeckCard.deckDeleted"),
+        description: t("DeckCard.deckDeletedDescription"),
+      });
+      router.refresh();
+    } else {
+      toastHelper.error({
+        title: t("DeckCard.deleteError"),
+        description: t("DeckCard.deleteErrorDescription"),
+      });
+    }
+    setIsProcessing(false);
   };
 
   const handleBookmarkClick = async (
@@ -138,17 +175,59 @@ function DeckCard({
           )}
           <span>{title}</span>
         </div>
-        <button
-          type="button"
-          onClick={handleBookmarkClick}
-          disabled={isProcessing}
-          className="bookmark-icon cursor-pointer hover:bg-neutral-300 h-8 w-8 flex justify-center items-center rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <BookmarkSimpleIcon
-            size={20}
-            weight={isInCollection ? "fill" : "regular"}
-          />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={handleBookmarkClick}
+            disabled={isProcessing}
+            className="bookmark-icon cursor-pointer hover:bg-neutral-300 h-8 w-8 flex justify-center items-center rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <BookmarkSimpleIcon
+              size={20}
+              weight={isInCollection ? "fill" : "regular"}
+            />
+          </button>
+          {isOwner && (
+            /* Controlled rather than using AlertDialogTrigger: the card is
+               wrapped in a <Link>, so the trigger has to preventDefault to
+               stop the anchor navigating - and Radix composes handlers such
+               that a defaultPrevented event never reaches its own open
+               toggle, which left the dialog shut. */
+            <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDeleteOpen(true);
+                }}
+                disabled={isProcessing}
+                aria-label={t("DeckCard.deleteDeck")}
+                className="bookmark-icon cursor-pointer hover:bg-neutral-300 h-8 w-8 flex justify-center items-center rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <TrashIcon size={20} />
+              </button>
+              {/* Portalled, so no anchor default to cancel - but React still
+                  bubbles through the tree, so the Link must not see it. */}
+              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {t("DeckCard.deleteConfirmTitle")}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t("DeckCard.deleteConfirmDescription", { title })}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>{t("DeckCard.cancel")}</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete}>
+                    {t("DeckCard.delete")}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
       </div>
       <div className="text-sm mb-2">
         {t("DeckCard.by")} {author}

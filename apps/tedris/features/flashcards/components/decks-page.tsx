@@ -11,10 +11,12 @@ export async function DecksPage({
   decks,
   myDecks,
   filter,
+  currentUserId,
 }: {
   decks: FlashcardDeckResponse[];
   myDecks: FlashcardDeckResponse[] | undefined;
   filter: DeckFilter;
+  currentUserId?: string;
 }) {
   const t = await getTranslations("tedris");
 
@@ -60,6 +62,7 @@ export async function DecksPage({
                 cardCount={0}
                 isInCollection={true}
                 isPublic={deck.isPublic}
+                isOwner={!!currentUserId && deck.authorId === currentUserId}
               />
             </Link>
           ))}
@@ -88,6 +91,7 @@ export async function DecksPage({
                 title={deck.title}
                 isInCollection={isInCollection}
                 isPublic={deck.isPublic}
+                isOwner={!!currentUserId && deck.authorId === currentUserId}
               />
             </Link>
           );
