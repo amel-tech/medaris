@@ -37,6 +37,12 @@ export default mergeConfig(
         exclude: [
           "src/main.ts",
           "src/otel.ts",
+          // MDRS-58's spec exporter. A process entry point like main.ts above:
+          // it boots the Nest container in preview mode and writes a file, so
+          // the only way to exercise it is to run it. What it delegates to —
+          // src/config/openapi-document.ts — is unit-tested directly, in
+          // test/unit/openapi-document.spec.ts.
+          "src/openapi/export-openapi.ts",
           // MDRS-25's root-.env loader — see the note in apps/teskilat's config.
           "src/load-env.ts",
           "src/config/config.ts",

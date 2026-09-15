@@ -10,7 +10,12 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiBody, ApiResponse } from "@nestjs/swagger";
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiResponse,
+} from "@nestjs/swagger";
 import {
   CreateFlashcardDeckLabelDto,
   CreateFlashcardDeckLabelingDto,
@@ -41,7 +46,7 @@ export class FlashcardDeckLabelController {
   constructor(private readonly labelService: FlashcardDeckLabelService) {}
 
   @ApiBody({ type: CreateFlashcardDeckLabelDto })
-  @ApiResponse({ status: 200, type: FlashcardDeckCreateLabelResponse })
+  @ApiCreatedResponse({ type: FlashcardDeckCreateLabelResponse })
   @Post("/create")
   async createFlashcardDeckLabel(
     @Req() request: AuthorizedRequest,
@@ -68,7 +73,7 @@ export class FlashcardDeckLabelController {
   }
 
   @ApiBody({ type: CreateFlashcardDeckLabelingDto })
-  @ApiResponse({ status: 200, type: FlashcardDeckLabelingResponse })
+  @ApiCreatedResponse({ type: FlashcardDeckLabelingResponse })
   @Post("/labeling")
   async deckLabeling(
     @Req() request: AuthorizedRequest,
@@ -80,6 +85,8 @@ export class FlashcardDeckLabelController {
     });
   }
 
+  // 404 rather than an empty 200 (MDRS-58) — see the note on the flashcard-label
+  // controller's equivalent pair.
   @ApiResponse({ status: 200, type: FlashcardDeckLabelResponse })
   @ApiResponse({
     status: 403,
@@ -104,7 +111,7 @@ export class FlashcardDeckLabelController {
   async getLabelStats(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
-  ): Promise<DeckLabelStatsResponse | null> {
+  ): Promise<DeckLabelStatsResponse> {
     return await this.labelService.getDeckLabelStats(id, request.user.sub);
   }
 }

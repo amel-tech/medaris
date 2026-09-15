@@ -261,12 +261,17 @@ catalog:
   '@opentelemetry/semantic-conventions': ^1.36.0
 
   # ═══ Backend build / test tooling ═══
-  # ts-node, ts-loader, tsconfig-paths and source-map-support were removed at
-  # MDRS-21: none is imported or `-r`-registered anywhere in either backend
-  # app, `nest build`/`nest start --watch` use tsc directly (no webpack
-  # builder), and ADR-001 D7 already rules out tsconfig `paths` aliases
-  # entirely. All four were dead weight carried over from the pre-merge repos
-  # and masked by .depcheckrc's ignore list.
+  # ts-loader, tsconfig-paths and source-map-support were removed at MDRS-21:
+  # none is imported or `-r`-registered anywhere in either backend app,
+  # `nest build`/`nest start --watch` use tsc directly (no webpack builder),
+  # and ADR-001 D7 already rules out tsconfig `paths` aliases entirely. They
+  # were dead weight carried over from the pre-merge repos and masked by
+  # .depcheckrc's ignore list. ts-node went with them and MDRS-58 brought it
+  # back for ONE consumer: apps/tedrisat's `openapi:export` runs the spec
+  # exporter from TypeScript source, and it has to be ts-node rather than an
+  # esbuild-based runner because Nest's Swagger scanner reads `design:type`
+  # off the DTOs — metadata only tsc emits. Do not remove it as unused again.
+  ts-node: ^10.9.2
   '@swc/cli': ^0.7.8
   rimraf: ^6.0.1
   supertest: ^7.0.0

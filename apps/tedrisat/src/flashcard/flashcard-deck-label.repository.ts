@@ -92,15 +92,22 @@ export class FlashcardDeckLabelRepository
       lastUsedAt: cretedStats[0].lastUsedAt,
     };
   }
-  async getLabelStats(labelId: string): Promise<IFlashcardDeckLabelStats> {
+  async getLabelStats(
+    labelId: string
+  ): Promise<IFlashcardDeckLabelStats | null> {
     const stats = await this.databaseService.db
       .select()
       .from(deckLabelsStats)
       .where(eq(deckLabelsStats.labelId, labelId));
+    // `null` for a label that has never been applied — the row is created on
+    // the first labeling. Dereferencing `stats[0]` here threw a TypeError on
+    // that legitimate empty read; the service answers it with zero counts.
+    const row = stats[0];
+    if (!row) return null;
     return {
-      labelId: stats[0].labelId,
-      usageCount: stats[0].usageCount,
-      lastUsedAt: stats[0].lastUsedAt,
+      labelId: row.labelId,
+      usageCount: row.usageCount,
+      lastUsedAt: row.lastUsedAt,
     };
   }
 }
