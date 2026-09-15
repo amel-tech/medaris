@@ -79,10 +79,13 @@ export class FlashcardLabelRepository implements IFlashcardLabelRepository {
     return stats[0];
   }
   async getLabelStats(labelId: string): Promise<IFlashcardLabelStats | null> {
+    // One row per label, one row ever read — see the same note on
+    // `FlashcardDeckLabelRepository.getLabelStats`.
     const stats = await this.databaseService.db
       .select()
       .from(flashcardLabelStats)
-      .where(eq(flashcardLabelStats.labelId, labelId));
+      .where(eq(flashcardLabelStats.labelId, labelId))
+      .limit(1);
     return stats.length > 0 ? stats[0] : null;
   }
 }

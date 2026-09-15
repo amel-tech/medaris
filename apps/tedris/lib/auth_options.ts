@@ -1,4 +1,7 @@
-import { createAccessTokenReader } from "@medaris/services/auth";
+import {
+  createAccessTokenReader,
+  refreshDeadline,
+} from "@medaris/services/auth";
 import type {
   GetServerSidePropsContext,
   NextApiRequest,
@@ -18,19 +21,6 @@ import { authCookies } from "~/lib/auth_cookies";
 /**
  * @param  {JWT} token
  */
-/**
- * Keycloak reports `refresh_expires_in: 0` for a refresh token that does not
- * expire on its own, and omits the field entirely under some client configs.
- * Both must read as "no deadline" — arithmetic on them produces a timestamp in
- * the past or `NaN`, and treating that as an expiry killed every session the
- * moment its access token aged out. `undefined` is the only encoding of "no
- * deadline" the guard below can read.
- */
-const refreshDeadline = (expiresIn: number | undefined) =>
-  typeof expiresIn === "number" && expiresIn > 0
-    ? Date.now() + (expiresIn - 15) * 1000
-    : undefined;
-
 const refreshAccessToken = async (token: JWT) => {
   try {
     if (

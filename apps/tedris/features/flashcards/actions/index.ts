@@ -112,7 +112,12 @@ export const createFlashcards = async (
         contentBack: card.contentBack,
       })),
     });
-    revalidatePath(`/decks/${deckId}/cards`);
+    // The rendered route is `app/[locale]/decks/[id]/cards`, so a literal
+    // `/decks/<uuid>/cards` matches no cache entry and the table keeps the
+    // rows it was server-rendered with until a hard reload. Next wants the
+    // dynamic form plus the `"page"` type — the same shape `deleteDeck` uses.
+    revalidatePath("/[locale]/decks/[id]/cards", "page");
+    revalidatePath("/[locale]/decks/[id]", "page");
     return response;
   });
 };
@@ -127,10 +132,14 @@ export const deleteDeck = async (deckId: string) => {
   });
 };
 
-export const deleteFlashcard = async (cardId: string, deckId?: string) => {
+export const deleteFlashcard = async (cardId: string) => {
   return authenticatedAction(async ({ cards }) => {
     await cards.deleteFlashcardRaw({ id: cardId });
-    revalidatePath(`/decks/${deckId}/cards`);
+    // Dynamic form, as in `createFlashcards` above. The deck id the caller
+    // used to pass is no longer needed: `revalidatePath` takes the route
+    // pattern, not a concrete URL.
+    revalidatePath("/[locale]/decks/[id]/cards", "page");
+    revalidatePath("/[locale]/decks/[id]", "page");
     return true;
   });
 };
@@ -138,7 +147,8 @@ export const deleteFlashcard = async (cardId: string, deckId?: string) => {
 export const addDeckToCollection = async (deckId: string) => {
   return authenticatedAction(async ({ decks }) => {
     await decks.createFlashcardDeckUser({ id: deckId });
-    revalidatePath(`/decks/${deckId}`);
+    revalidatePath("/[locale]/decks/[id]", "page");
+    revalidatePath("/[locale]/decks", "page");
     return true;
   });
 };
@@ -146,7 +156,8 @@ export const addDeckToCollection = async (deckId: string) => {
 export const removeDeckFromCollection = async (deckId: string) => {
   return authenticatedAction(async ({ decks }) => {
     await decks.deleteFlashcardDeckUser({ id: deckId });
-    revalidatePath(`/decks/${deckId}`);
+    revalidatePath("/[locale]/decks/[id]", "page");
+    revalidatePath("/[locale]/decks", "page");
     return true;
   });
 };

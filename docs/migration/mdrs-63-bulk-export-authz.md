@@ -244,3 +244,47 @@ the PR body for a human to file.
    same commit that adds `@Authz` to them, so authorization is not decided in two places.
    Acceptance criterion 3 asks for this to be stated in a comment on whichever issue lands
    second; a comment saying so is on MDRS-63 with the PR link.
+
+## Closed by the PR #69 review (2026-09-15)
+
+The review on #69 re-raised follow-ups 1–3 and 5 above as findings rather than notes, so they
+were closed in that PR instead of being deferred. What changed:
+
+| Route | Before | Now |
+| -- | -- | -- |
+| `GET /flashcard/cards?deckId=` | `where deckId` only — the export 403 was reachable around it | `assertReadable(deckId)` |
+| `GET /flashcard/cards/:id` | `where flashcards.id` only | parent deck resolved, then `assertReadable` |
+| `PUT` / `PATCH` / `DELETE /flashcard/cards/:id` | no caller argument at all | parent deck resolved, then `assertOwner` |
+| `GET /flashcard/decks/:id` | `where decks.id` only | `assertReadable(deckId)` |
+| `PUT` / `PATCH /flashcard/decks/:id` | no caller argument (`isPublic` writable by anyone) | `assertOwner(deckId)` |
+| `DELETE /flashcard/decks/:id` | `delete(decks).where(eq(decks.id, id))` | `assertOwner(deckId)` |
+
+Two rules, not one. `assertOwner` is unchanged: `authorId` and nothing else may write.
+`assertReadable` is new and deliberately wider — `authorId OR isPublic` — because a public deck
+is meant to be browsable, and using `assertOwner` on the read routes would take the explore and
+study flows out with it. It reads the new two-column `findVisibility` projection
+(`authorId`, `isPublic`, `LIMIT 1`), which `TedrisatRoleResolver.resolveDeckRole` now uses as
+well; that resolver was reading every column of `decks` — the unbounded `description` included —
+inside the guard to answer a two-column question.
+
+Cards are authorized through their deck, never through `flashcards.authorId`: that column is
+provenance, and every card in a deck is written by the deck's author anyway. The lookup is
+`FlashcardRepository.findDeckId` (one column, `LIMIT 1`).
+
+The `PATCH`/`PUT` assertions also settle something the authz resolver's comment asserted and the
+code did not have. `resolveDeckRole` checks `authorId` before `isPublic` on the argument that
+flipping the flag is itself owner-scoped; until this change any authenticated caller could
+`PATCH` somebody else's deck to `isPublic: true`, which turns the resolver's answer for every
+other caller from `null` (deny) into `ROLES.PUBLIC`. That is now an enforced invariant of
+`FlashcardDeckController`, and the resolver's comment says so rather than assuming it.
+
+Seven e2e cases in `test/e2e/flashcard-bulk.e2e.spec.ts` pin the six refusals plus the
+counterweight — a non-owner still reads a PUBLIC deck and its cards — so tightening the read
+side to ownership has to argue with a test.
+
+Follow-up 4 is **half** closed: tedris's `/decks/[id]/cards` now threads the deck's `authorId`
+down and hides "Add Card", the inline cell editors and the row delete control from a visitor
+(`FlashcardDeckResponse` carries `authorId` since MDRS-58, which is what made this possible).
+nizam's unconditional Export/Import affordances on the deck list are untouched and remain open.
+
+Follow-ups 6 (TOCTOU) and 7 (MDRS-43 supersession) are unchanged.

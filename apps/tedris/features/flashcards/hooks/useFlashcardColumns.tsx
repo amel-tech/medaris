@@ -19,7 +19,14 @@ import { useTranslations } from "next-intl";
 import React from "react";
 import { createInputColumn } from "~/components/data-table/editable";
 
-export function useFlashcardColumns() {
+/**
+ * `canEdit` is the deck-ownership flag threaded down from the page. It is a
+ * display decision, not an authorization one — `PATCH`/`DELETE
+ * /flashcard/cards/:id` assert the caller owns the parent deck server-side —
+ * but a cell a visitor can type into and a delete button that only ever
+ * answers 403 are worse than no control at all.
+ */
+export function useFlashcardColumns(canEdit = true) {
   const t = useTranslations("tedris");
 
   return React.useMemo<ColumnDef<FlashcardResponse>[]>(
@@ -30,6 +37,7 @@ export function useFlashcardColumns() {
         {
           placeholder: t("DeckCards.frontPlaceholder"),
           className: "font-medium",
+          disabled: !canEdit,
         }
       ),
       createInputColumn(
@@ -38,44 +46,51 @@ export function useFlashcardColumns() {
         {
           placeholder: t("DeckCards.backPlaceholder"),
           className: "font-medium",
+          disabled: !canEdit,
         }
       ),
-      {
-        id: "actions",
-        size: 10,
-        cell: ({ row, table }) => (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline">
-                <TrashIcon size={16} />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  {t("DeckCards.deleteConfirmTitle")}
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  {t("DeckCards.deleteConfirmDescription")}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>{t("DeckCards.cancel")}</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() =>
-                    table.options.meta?.onRowDelete?.(row.original.id)
-                  }
-                >
-                  {t("DeckCards.delete")}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        ),
-        enableSorting: false,
-        enableColumnFilter: false,
-      },
+      ...(canEdit
+        ? [
+            {
+              id: "actions",
+              size: 10,
+              cell: ({ row, table }) => (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline">
+                      <TrashIcon size={16} />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        {t("DeckCards.deleteConfirmTitle")}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t("DeckCards.deleteConfirmDescription")}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>
+                        {t("DeckCards.cancel")}
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() =>
+                          table.options.meta?.onRowDelete?.(row.original.id)
+                        }
+                      >
+                        {t("DeckCards.delete")}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ),
+              enableSorting: false,
+              enableColumnFilter: false,
+            } as ColumnDef<FlashcardResponse>,
+          ]
+        : []),
     ],
-    [t]
+    [t, canEdit]
   );
 }

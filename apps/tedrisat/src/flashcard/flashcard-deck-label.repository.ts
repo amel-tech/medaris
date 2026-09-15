@@ -95,10 +95,19 @@ export class FlashcardDeckLabelRepository
   async getLabelStats(
     labelId: string
   ): Promise<IFlashcardDeckLabelStats | null> {
+    // `deck_label_stats` holds at most one row per label, and only `stats[0]`
+    // is ever read. Without LIMIT 1 the planner must scan the whole table to
+    // prove there is no second match — `label_id` carries no index (a plain
+    // `references()` FK; Postgres indexes only the referenced side), so the
+    // common "label exists, never applied" case scanned everything to return
+    // nothing. The durable fix is a unique index on the column, which has to
+    // wait for the column-name defect recorded in
+    // docs/migration/mdrs-56-flashcard-label-authz.md.
     const stats = await this.databaseService.db
       .select()
       .from(deckLabelsStats)
-      .where(eq(deckLabelsStats.labelId, labelId));
+      .where(eq(deckLabelsStats.labelId, labelId))
+      .limit(1);
     // `null` for a label that has never been applied — the row is created on
     // the first labeling. Dereferencing `stats[0]` here threw a TypeError on
     // that legitimate empty read; the service answers it with zero counts.

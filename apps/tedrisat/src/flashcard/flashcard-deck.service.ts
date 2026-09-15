@@ -8,6 +8,7 @@ import {
   IFlashcardDeckFilters,
   IFlashcardDeckOwnership,
   IFlashcardDeckUserCollectionItem,
+  IFlashcardDeckVisibility,
   IUpdateFlashcardDeck,
 } from "./flashcard-deck.repository.interface";
 
@@ -70,6 +71,45 @@ export class FlashcardDeckService {
     this.assertAuthoredBy(deckId, deck?.authorId ?? null, userId);
     // `assertAuthoredBy` has thrown if `deck` is null.
     return deck as IFlashcardDeckOwnership;
+  }
+
+  /**
+   * Ensures the deck exists and may be READ by `userId`, else throws.
+   *
+   * The read rule is deliberately wider than the write rule: `isPublic` is
+   * visibility, so a public deck is readable by any authenticated caller
+   * while only its author may write to it. `assertOwner` above is therefore
+   * not a substitute — using it on the read routes would hide every public
+   * deck's cards from everyone but their author, which is the product's
+   * whole browse-and-study flow.
+   *
+   * One two-column query (`findVisibility`), because that is all the
+   * decision reads. A deck that is not there is a `DeckNotFoundError`, as on
+   * the write paths; a private deck belonging to somebody else is a
+   * `DeckForbiddenError`.
+   */
+  async assertReadable(deckId: string, userId: string): Promise<void> {
+    const deck = await this.deckRepo.findVisibility(deckId);
+    if (deck === null) {
+      throw new DeckNotFoundError(deckId);
+    }
+    if (deck.authorId !== userId && !deck.isPublic) {
+      throw new DeckForbiddenError(
+        "This deck is private and belongs to another user"
+      );
+    }
+  }
+
+  /**
+   * The two columns an access decision is made from, or `null` for a deck
+   * that is not there. Exposed for `TedrisatRoleResolver`, which reads
+   * exactly `authorId` and `isPublic` and must not pay for `findById`'s
+   * full row inside the authz guard.
+   */
+  async findVisibility(
+    deckId: string
+  ): Promise<IFlashcardDeckVisibility | null> {
+    return this.deckRepo.findVisibility(deckId);
   }
 
   /**

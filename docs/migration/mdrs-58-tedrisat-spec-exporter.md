@@ -163,7 +163,9 @@ Two things would otherwise make the artifact depend on who ran the script:
 `KEYCLOAK_JWKS_URL`, `KEYCLOAK_ISSUER`, `KEYCLOAK_AUDIENCE` and `DB_PASSWORD`,
 and the first of those decides the two OAuth2 URLs in
 `components.securitySchemes.bearer`. The exporter therefore reads those four
-from the committed `.env.example`, through `tools/env/root-env.cjs` so the
+from the committed `.env.example`, through the `@medaris/env` loader
+(`libs/env/src/root-env.cjs`; it was `tools/env/root-env.cjs` when this task
+landed, until MDRS-66 moved it) so the
 `API__`/`TEDRISAT__` prefix rules stay in one implementation, and writes them
 over whatever the ambient environment holds. It deliberately does not import
 `./load-env` (which would apply the developer's own `.env`) or `./otel`.
@@ -514,11 +516,10 @@ it, and both `/security-review` and `/code-review` had read the file.
 
 ### Three smaller points from the same review
 
-- The exporter now guards both of its runtime reads. `tools/env/root-env.cjs`
-  and `.env.example` missing used to surface as a bare `MODULE_NOT_FOUND` and a
-  bare `ENOENT`; `load-env.ts` checks the first and is right to skip silently,
-  because production has no `tools/`. A build-time tool must do the opposite and
-  say which file is missing.
+- The exporter now guards both of its runtime reads. The root-env loader
+  (`@medaris/env`, `libs/env/src/root-env.cjs` since MDRS-66) and `.env.example`
+  missing used to surface as a bare `MODULE_NOT_FOUND` and a bare `ENOENT`. A
+  build-time tool must say which file is missing.
 - Only the four pinned keys are handed to `resolveFor` now. It calls
   `classify()` on every entry and `classify` **throws** on an unrecognised
   prefix, so a future unrelated line in the template — a `POSTGRES__…`, say —
@@ -697,3 +698,39 @@ present in both specs, `0` differ in `security`, and the 8 operations carrying
 no security requirement in the new spec are the same 8 as before (`GET /`,
 `GET /health`, `GET /throw-error`, `GET /secure`, and the four `/examples`
 routes). Follow-ups 4 and 5 came out of its non-security observations.
+
+## The exporter could not run as merged (PR #69 review, 2026-09-15)
+
+`applyDeterministicEnv` built the loader path by hand —
+`join(root, "tools", "env", "root-env.cjs")` — and MDRS-66 (already on `main` at the point of
+this PR) had moved that file to `libs/env/src/root-env.cjs`. `require()` threw
+`MODULE_NOT_FOUND`, which the guard below it converts into the hard "could not be loaded …
+there is no fallback to take" error, so `pnpm openapi:tedrisat` failed unconditionally, before
+Nest was created. Nothing in the gate caught it: `tsconfig.build.json` excludes the file from
+the build, `vitest.config.ts` excludes it from coverage, and `test/unit/openapi-document.spec.ts`
+covers only the config builder. The whole deliverable — regenerating the committed spec instead
+of hand-carrying it — was therefore un-runnable as shipped.
+
+The loader is now resolved through the package, `require("@medaris/env")`, the way
+`src/load-env.ts` reaches the same module. `libs/env/package.json` declares
+`"main": "./src/root-env.cjs"`, the package is buildless, and `apps/tedrisat/package.json`
+already depends on it. A specifier survives the next move; a literal path did not survive this
+one.
+
+Two neighbouring comments were stale for the same reason and moved with it: `findRepoRoot`'s
+doc block named `tools/env/root-env.cjs`, and the note beside the `require` claimed
+`src/load-env.ts` reaches the loader by path — it does `import { loadRootEnv } from
+"@medaris/env"`. The destination comment on `targetPathFromArgv` and the error string it
+justifies were wrong in a different way: both pointed the operator at
+`pnpm --filter @medaris/tedrisat run openapi:export` and called it the default, but that script
+passes no path argument. The destination comes from the repository-root `openapi:tedrisat`
+script, and both now say so.
+
+**The regenerated spec is a large diff, and most of it is ordering.** Running the exporter
+produced 1,982 insertions and 1,925 deletions, but the path *set* is identical (35 before, 35
+after), `components` is byte-identical, and exactly seven paths changed content — the four
+MDRS-63 handlers whose `403`/`404` declarations the committed file predated, plus the three
+routes PR #69's review closed. Everything else is `paths` key order: the committed artifact was
+not produced by this exporter and did not match its (deterministic — two runs, one md5) output.
+The generated client came back **byte-identical**, as predicted: these are description-only
+responses with no schema, so `openapi-generator` emits no method or model for them.

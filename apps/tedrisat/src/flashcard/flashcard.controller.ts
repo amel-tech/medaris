@@ -84,6 +84,9 @@ export class FlashcardController {
   })
   @ApiOkResponse({ type: FlashcardResponse })
   @ApiNotFoundResponse()
+  @ApiForbiddenResponse({
+    description: "Deck is private and owned by another user",
+  })
   @IncludeApiQuery(CardIncludeEnum)
   @Get("cards/:id")
   async findById(
@@ -92,6 +95,10 @@ export class FlashcardController {
     @IncludeQuery() include?: string[]
   ): Promise<FlashcardResponse> {
     const userId = request.user.sub;
+    // `FlashcardRepository.findById` filters on `flashcards.id` alone, so the
+    // card's own row proves nothing about who may see it. The deck is the
+    // only thing that carries a visibility rule, so resolve it first.
+    await this.deckService.assertReadable(await this.deckOf(cardId), userId);
     const card = await this.cardService.findById(cardId, userId, include);
     if (!card) {
       throw new HttpException(
@@ -108,6 +115,10 @@ export class FlashcardController {
     operationId: "getFlashcardByDeckId",
   })
   @ApiOkResponse({ type: [FlashcardResponse] })
+  @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiForbiddenResponse({
+    description: "Deck is private and owned by another user",
+  })
   @ApiQuery({ name: "deckId", required: true, type: String })
   @IncludeApiQuery(CardIncludeEnum)
   @Get("cards")
@@ -117,7 +128,31 @@ export class FlashcardController {
     @IncludeQuery() include?: string[]
   ): Promise<FlashcardResponse[]> {
     const userId = request.user.sub;
+    // The `userId` threaded into `findByDeckId` is NOT a scoping argument —
+    // it only narrows the optional `progress` relation, and the rows come
+    // back filtered on `deckId` alone either way. Without this line the
+    // export route's 403 was reachable around: the same card content came
+    // back from `GET /flashcard/cards?deckId=<id>`. `assertReadable`, not
+    // `assertOwner`, because a public deck is meant to be browsable.
+    await this.deckService.assertReadable(deckId, userId);
     return this.cardService.findByDeckId(deckId, userId, include);
+  }
+
+  /**
+   * The parent deck of a card, or a 404 in the shape the card routes already
+   * return. Cards carry no access rule of their own — `flashcards.authorId`
+   * is provenance, not permission, and a deck's cards are all written by its
+   * author anyway — so every `cards/:id` handler decides on the deck.
+   */
+  private async deckOf(cardId: string): Promise<string> {
+    const deckId = await this.cardService.findDeckId(cardId);
+    if (deckId === null) {
+      throw new HttpException(
+        `could not find card #${cardId}`,
+        HttpStatus.NOT_FOUND
+      );
+    }
+    return deckId;
   }
 
   // POST Requests
@@ -175,11 +210,20 @@ export class FlashcardController {
   @ApiBody({ type: CreateFlashcardDto })
   @ApiOkResponse({ type: FlashcardResponse })
   @ApiNotFoundResponse()
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @Put("cards/:id")
   async replace(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) cardId: string,
     @Body() cardDto: CreateFlashcardDto
   ): Promise<FlashcardResponse> {
+    // Same edge assertion as the deck-scoped writes above: without it any
+    // authenticated caller who knew a card UUID could rewrite a card inside
+    // a deck this controller otherwise protects.
+    await this.deckService.assertOwner(
+      await this.deckOf(cardId),
+      request.user.sub
+    );
     const updatedCard = await this.cardService.update(cardId, cardDto);
     if (!updatedCard) {
       throw new HttpException(
@@ -200,11 +244,17 @@ export class FlashcardController {
   @ApiBody({ type: UpdateFlashcardDto })
   @ApiOkResponse({ type: FlashcardResponse })
   @ApiNotFoundResponse()
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @Patch("cards/:id")
   async update(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) cardId: string,
     @Body() cardDto: UpdateFlashcardDto
   ): Promise<FlashcardResponse> {
+    await this.deckService.assertOwner(
+      await this.deckOf(cardId),
+      request.user.sub
+    );
     const updatedCard = await this.cardService.update(cardId, cardDto);
     if (!updatedCard) {
       throw new HttpException(
@@ -224,10 +274,17 @@ export class FlashcardController {
     operationId: "deleteFlashcard",
   })
   @ApiOkResponse()
+  @ApiNotFoundResponse()
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @Delete("cards/:id")
-  async deleteDeck(
+  async deleteCard(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) cardId: string
   ): Promise<boolean> {
+    await this.deckService.assertOwner(
+      await this.deckOf(cardId),
+      request.user.sub
+    );
     return this.cardService.delete(cardId);
   }
 
