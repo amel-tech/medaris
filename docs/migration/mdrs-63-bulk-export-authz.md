@@ -258,6 +258,7 @@ were closed in that PR instead of being deferred. What changed:
 | `GET /flashcard/decks/:id` | `where decks.id` only | `assertReadable(deckId)` |
 | `PUT` / `PATCH /flashcard/decks/:id` | no caller argument (`isPublic` writable by anyone) | `assertOwner(deckId)` |
 | `DELETE /flashcard/decks/:id` | `delete(decks).where(eq(decks.id, id))` | `assertOwner(deckId)` |
+| `POST /flashcard/decks/:id/collections` | any id the FK accepted | `assertReadable(deckId)` |
 
 Two rules, not one. `assertOwner` is unchanged: `authorId` and nothing else may write.
 `assertReadable` is new and deliberately wider — `authorId OR isPublic` — because a public deck
@@ -278,9 +279,16 @@ flipping the flag is itself owner-scoped; until this change any authenticated ca
 other caller from `null` (deny) into `ROLES.PUBLIC`. That is now an enforced invariant of
 `FlashcardDeckController`, and the resolver's comment says so rather than assuming it.
 
-Seven e2e cases in `test/e2e/flashcard-bulk.e2e.spec.ts` pin the six refusals plus the
-counterweight — a non-owner still reads a PUBLIC deck and its cards — so tightening the read
-side to ownership has to argue with a test.
+The collection route was the last bypass, and not an obvious one: `POST :id/collections`
+inserted a `decks_users` row for any id the foreign key accepted, and the sibling
+`GET /flashcard/decks/collections` (`findAllByUser`) selects on that row alone with **no**
+`isPublic`/`authorId` predicate of its own. Collect-then-list therefore returned the whole
+private row — title, description, `authorId`, `isPublic` — around the guard now on
+`GET /flashcard/decks/:id`. A deck you may not read is a deck you may not collect.
+
+Nine e2e cases in `test/e2e/flashcard-bulk.e2e.spec.ts` pin the seven refusals plus the two
+counterweights — a non-owner still reads and still collects a PUBLIC deck — so tightening the
+read side to ownership has to argue with a test.
 
 Follow-up 4 is **half** closed: tedris's `/decks/[id]/cards` now threads the deck's `authorId`
 down and hides "Add Card", the inline cell editors and the row delete control from a visitor

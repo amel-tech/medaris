@@ -152,12 +152,22 @@ export class FlashcardDeckController {
     operationId: "createFlashcardDeckUser",
   })
   @ApiCreatedResponse({ type: FlashcardDeckUserResponse })
+  @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiForbiddenResponse({
+    description: "Deck is private and owned by another user",
+  })
   @Post(":id/collections")
   async addToUserCollection(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) deckId: string
   ): Promise<FlashcardDeckUserResponse> {
     const userId = request.user.sub;
+    // A deck you may not read is a deck you may not collect. `findAllByUser`
+    // — the sibling GET /collections route — selects on the `decksUsers` row
+    // alone and applies no `isPublic`/`authorId` predicate of its own, so
+    // without this the whole private row (title, description, authorId) came
+    // back through a collect-then-list pair, around `findById`'s guard above.
+    await this.deckService.assertReadable(deckId, userId);
     return this.deckService.addToUserCollection(userId, deckId);
   }
 

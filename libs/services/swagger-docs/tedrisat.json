@@ -1767,6 +1767,12 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Deck is private and owned by another user"
+          },
+          "404": {
+            "description": "Deck not found"
           }
         },
         "security": [

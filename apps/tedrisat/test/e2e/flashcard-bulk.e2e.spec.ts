@@ -525,6 +525,45 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
     expect(visible.body).toHaveLength(2);
   });
 
+  /**
+   * The collect-then-list pair. `POST :id/collections` inserted a `decksUsers`
+   * row for any id the FK accepted, and `GET /flashcard/decks/collections`
+   * selects on that row alone with no visibility predicate — so the full
+   * private deck came back around the guard on `GET /flashcard/decks/:id`.
+   */
+  it("refuses to collect another user's private deck, and the collection stays empty", async () => {
+    const response = await request(attackerApp.getHttpServer()).post(
+      `/flashcard/decks/${deckId}/collections`
+    );
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("DECK_FORBIDDEN");
+
+    const collections = await request(attackerApp.getHttpServer()).get(
+      "/flashcard/decks/collections"
+    );
+    expect(collections.status).toBe(200);
+    expect(collections.body).toHaveLength(0);
+  });
+
+  it("still lets a non-owner collect a PUBLIC deck", async () => {
+    const publicDeck = await request(ownerApp.getHttpServer())
+      .post("/flashcard/decks")
+      .send({ title: "Owner's Public Deck", isPublic: true });
+    expect(publicDeck.status).toBe(201);
+
+    const response = await request(attackerApp.getHttpServer()).post(
+      `/flashcard/decks/${publicDeck.body.id}/collections`
+    );
+    expect(response.status).toBe(201);
+
+    const collections = await request(attackerApp.getHttpServer()).get(
+      "/flashcard/decks/collections"
+    );
+    expect(collections.status).toBe(200);
+    expect(collections.body).toHaveLength(1);
+  });
+
   it("refuses to read another user's private deck itself", async () => {
     const response = await request(attackerApp.getHttpServer()).get(
       `/flashcard/decks/${deckId}`
