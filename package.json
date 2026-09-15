@@ -21,6 +21,8 @@
     "lint:root": "node tools/ci/biome-ratchet.mjs",
     "assert:affected-isolation": "node tools/ci/assert-affected-isolation.mjs",
     "assert:release-config": "node tools/ci/assert-release-config.mjs",
+    "assert:env-compose-parity": "node tools/ci/assert-env-compose-parity.mjs",
+    "openapi:tedrisat": "pnpm --filter @medaris/tedrisat run openapi:export ../../libs/services/swagger-docs/tedrisat.json && pnpm --filter @medaris/services run generate:tedrisat",
     "assert:traceability": "node tools/ci/assert-traceability.mjs",
     "reconcile:linear": "node tools/ci/reconcile-linear.mjs",
     "audit:ci": "audit-ci --config ./audit-ci.json",
