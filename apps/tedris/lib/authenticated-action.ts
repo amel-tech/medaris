@@ -4,7 +4,7 @@ import {
 } from "@medaris/services/tedrisat";
 import { getErrorMessage } from "@medaris/services/utils";
 import { env } from "~/env";
-import { auth } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth_options";
 
 // Infer the API client type so intellisense recognizes the 'api' parameter.
 type ApiClient = Awaited<ReturnType<typeof createServerTedrisatAPIs>>;
@@ -22,14 +22,14 @@ export type AuthenticatedActionResult<T> =
 export async function authenticatedAction<T>(
   action: (api: ApiClient) => Promise<T>
 ): Promise<AuthenticatedActionResult<T>> {
-  const session = await auth();
+  const accessToken = await getAccessToken();
 
-  if (!session?.accessToken) {
+  if (!accessToken) {
     return { success: false, error: "Unauthorized: No access token found" };
   }
 
   const api = await createServerTedrisatAPIs(
-    session.accessToken,
+    accessToken,
     env.TEDRISAT_API_BASE_URL
   );
 

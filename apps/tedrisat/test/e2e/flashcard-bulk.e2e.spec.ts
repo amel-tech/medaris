@@ -3,7 +3,11 @@ import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
 import { FlashcardType } from "../../src/flashcard/domain/flashcard-type.enum";
 import { MAX_BULK_ROWS } from "../../src/flashcard/flashcard-bulk.service";
-import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
+import {
+  createTestApp,
+  OTHER_USER_ID,
+  TEST_USER_ID,
+} from "../helpers/test-app.helper";
 import { TestDatabaseUtils } from "../helpers/test-database.helper";
 
 /**
@@ -34,6 +38,8 @@ const csv = (rowCount: number) =>
     ].join("\n"),
     "utf8"
   );
+
+/** A second realm identity: a perfectly valid token belonging to somebody else. */
 
 describe("Flashcard bulk create (e2e)", () => {
   let app: INestApplication;
@@ -178,5 +184,437 @@ describe("Flashcard bulk create (e2e)", () => {
     expect(response.body.context.errors).toHaveLength(1);
     expect(response.body.context.errors[0].row).toBe(MAX_BULK_ROWS + 2);
     expect(response.body.context.errors[0].errors[0].field).toBe("cards");
+  });
+});
+
+/**
+ * MDRS-63. `@UseGuards(AuthGuard)` proved only that the caller held a valid
+ * realm token; the deck-scoped handlers then called the bare
+ * `FlashcardDeckService.findById`, which filters on `decks.id` with no
+ * `authorId` predicate. Any authenticated user who knew or guessed a deck UUID
+ * could write up to MAX_BULK_ROWS cards into somebody else's private deck, and
+ * export every card out of it.
+ *
+ * `createTestApp({ authUserId })` stubs the guard to impersonate ONE user, so
+ * as in `flashcard-label.e2e.spec.ts` the deck is created as TEST_USER_ID
+ * through the API and a SECOND app authenticated as OTHER_USER_ID attacks it.
+ *
+ * The rule asserted here is owner-only: `authorId` and nothing else decides.
+ * Public and shared decks are MDRS-45's scope, not this one.
+ */
+describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
+  let ownerApp: INestApplication;
+  let attackerApp: INestApplication;
+  let dbUtils: TestDatabaseUtils;
+  let deckId: string;
+
+  beforeAll(async () => {
+    ownerApp = await createTestApp({ authUserId: TEST_USER_ID });
+    attackerApp = await createTestApp({ authUserId: OTHER_USER_ID });
+    dbUtils = new TestDatabaseUtils(
+      ownerApp.get<DatabaseService>(DatabaseService)
+    );
+  });
+
+  beforeEach(async () => {
+    await dbUtils.cleanTables("flashcards", "decks");
+
+    const deck = await request(ownerApp.getHttpServer())
+      .post("/flashcard/decks")
+      .send({ title: "Owner's Private Deck", isPublic: false });
+    expect(deck.status).toBe(201);
+    expect(deck.body.authorId).toBe(TEST_USER_ID);
+    deckId = deck.body.id;
+  });
+
+  afterAll(async () => {
+    await dbUtils.cleanTables("flashcards", "decks");
+    await ownerApp.close();
+    await attackerApp.close();
+  });
+
+  /**
+   * Counted through the OWNER's app. The attacker's own read of
+   * `GET cards?deckId=` is not a trustworthy witness for "nothing was
+   * written" — this reads the deck as the person who owns it.
+   */
+  const countCards = async () => {
+    const response = await request(ownerApp.getHttpServer()).get(
+      `/flashcard/cards?deckId=${deckId}`
+    );
+    expect(response.status).toBe(200);
+    return response.body.length;
+  };
+
+  it("refuses a bulk create into another user's deck, and writes nothing", async () => {
+    const response = await request(attackerApp.getHttpServer())
+      .post(`/flashcard/decks/${deckId}/cards/bulk`)
+      .send(cards(3));
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("DECK_FORBIDDEN");
+    // The finding is a write, so assert the absence of rows rather than
+    // trusting the status code alone.
+    expect(await countCards()).toBe(0);
+  });
+
+  it("refuses a file import into another user's deck, and writes nothing", async () => {
+    const response = await request(attackerApp.getHttpServer())
+      .post(`/flashcard/decks/${deckId}/cards/bulk/import`)
+      .attach("file", csv(3), {
+        filename: "cards.csv",
+        contentType: "text/csv",
+      });
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("DECK_FORBIDDEN");
+    expect(await countCards()).toBe(0);
+  });
+
+  it("refuses a non-bulk create into another user's deck, and writes nothing", async () => {
+    const response = await request(attackerApp.getHttpServer())
+      .post(`/flashcard/decks/${deckId}/cards`)
+      .send(cards(2));
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("DECK_FORBIDDEN");
+    expect(await countCards()).toBe(0);
+  });
+
+  it("refuses to export another user's deck, and leaks no card content", async () => {
+    // Seed as the owner so a leak would have something to leak.
+    const seeded = await request(ownerApp.getHttpServer())
+      .post(`/flashcard/decks/${deckId}/cards/bulk`)
+      .send(cards(2));
+    expect(seeded.status).toBe(201);
+    expect(await countCards()).toBe(2);
+
+    const response = await request(attackerApp.getHttpServer())
+      .get(`/flashcard/decks/${deckId}/cards/bulk/export?format=csv`)
+      .buffer(true);
+
+    expect(response.status).toBe(403);
+    // Read through both channels: a regression that streamed the file would
+    // land in `body` as a Buffer with `text` undefined, and asserting on
+    // `text ?? ""` alone would pass vacuously.
+    expect(String(response.text ?? response.body ?? "")).not.toContain(
+      "front 0"
+    );
+  });
+
+  it("still lets the owner bulk-create and export their own deck", async () => {
+    const created = await request(ownerApp.getHttpServer())
+      .post(`/flashcard/decks/${deckId}/cards/bulk`)
+      .send(cards(2));
+    expect(created.status).toBe(201);
+    expect(created.body.count).toBe(2);
+
+    const exported = await request(ownerApp.getHttpServer()).get(
+      `/flashcard/decks/${deckId}/cards/bulk/export?format=csv`
+    );
+    expect(exported.status).toBe(200);
+  });
+
+  /**
+   * `isPublic` is visibility, not shared ownership: a public deck is readable
+   * and collectable by anyone, but writing cards into it is still the author's
+   * privilege alone. This repository has no role model, so there is nobody who
+   * may write on the author's behalf. Pinned the way
+   * `flashcard-label.e2e.spec.ts` pins the same rule for PUBLIC labels, so a
+   * later "public decks are community-editable" change has to argue with a
+   * test rather than slip through.
+   */
+  it("refuses a bulk create even when the deck is public", async () => {
+    const publicDeck = await request(ownerApp.getHttpServer())
+      .post("/flashcard/decks")
+      .send({ title: "Owner's Public Deck", isPublic: true });
+    expect(publicDeck.status).toBe(201);
+    expect(publicDeck.body.isPublic).toBe(true);
+
+    const response = await request(attackerApp.getHttpServer())
+      .post(`/flashcard/decks/${publicDeck.body.id}/cards/bulk`)
+      .send(cards(3));
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("DECK_FORBIDDEN");
+
+    const cardsInPublicDeck = await request(ownerApp.getHttpServer()).get(
+      `/flashcard/cards?deckId=${publicDeck.body.id}`
+    );
+    expect(cardsInPublicDeck.status).toBe(200);
+    expect(cardsInPublicDeck.body).toHaveLength(0);
+  });
+
+  /**
+   * The 404/403 split is deliberate and matches `KoskService.assertOwner` and
+   * the label routes: an id that is not there is a 404, an id that is there
+   * but belongs to somebody else is a 403. That does tell a caller which UUIDs
+   * exist, which is defensible only because deck ids are v4 UUIDs and are not
+   * enumerable in practice; a blanket 404 would make a genuine permission
+   * problem indistinguishable from a mistyped id. Pinned so a later change has
+   * to argue with a test.
+   */
+  it("answers 404, not 403, for a deck id that does not exist", async () => {
+    const response = await request(attackerApp.getHttpServer())
+      .post(`/flashcard/decks/00000000-0000-4000-8000-000000000000/cards/bulk`)
+      .send(cards(1));
+
+    expect(response.status).toBe(404);
+    expect(response.body.code).toBe("DECK_NOT_FOUND");
+  });
+
+  /**
+   * The deck routes themselves. MDRS-83 added a delete affordance to tedris
+   * behind a client-side `isOwner` flag, and a Server Action is an HTTP
+   * endpoint like any other — `DELETE /flashcard/decks/:id` went straight to
+   * `delete(decks).where(eq(decks.id, id))` with no `authorId` predicate, and
+   * the cards FK took the deck's cards with it.
+   */
+  it("refuses to delete another user's deck, and the deck survives", async () => {
+    const seeded = await request(ownerApp.getHttpServer())
+      .post(`/flashcard/decks/${deckId}/cards/bulk`)
+      .send(cards(2));
+    expect(seeded.status).toBe(201);
+
+    const response = await request(attackerApp.getHttpServer()).delete(
+      `/flashcard/decks/${deckId}`
+    );
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("DECK_FORBIDDEN");
+
+    // The row, not just the status code: a cascade would have taken the cards.
+    const survivor = await request(ownerApp.getHttpServer()).get(
+      `/flashcard/decks/${deckId}`
+    );
+    expect(survivor.status).toBe(200);
+    expect(await countCards()).toBe(2);
+  });
+
+  /**
+   * `UpdateFlashcardDeckDto` exposes `isPublic`, so an unowned PATCH is not
+   * merely vandalism: `TedrisatRoleResolver.resolveDeckRole` reads the flag,
+   * and flipping a victim's private deck to public turns the resolver's answer
+   * for every other caller from `null` (deny) into `ROLES.PUBLIC`.
+   */
+  it("refuses to change another user's deck, and the visibility holds", async () => {
+    const response = await request(attackerApp.getHttpServer())
+      .patch(`/flashcard/decks/${deckId}`)
+      .send({ isPublic: true, title: "Hijacked" });
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("DECK_FORBIDDEN");
+
+    const unchanged = await request(ownerApp.getHttpServer()).get(
+      `/flashcard/decks/${deckId}`
+    );
+    expect(unchanged.status).toBe(200);
+    expect(unchanged.body.isPublic).toBe(false);
+    expect(unchanged.body.title).toBe("Owner's Private Deck");
+  });
+
+  it("refuses to replace another user's deck", async () => {
+    const response = await request(attackerApp.getHttpServer())
+      .put(`/flashcard/decks/${deckId}`)
+      .send({ title: "Hijacked", isPublic: true });
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("DECK_FORBIDDEN");
+  });
+
+  /**
+   * The read side. `exportCards` answering 403 bought nothing while
+   * `GET /flashcard/cards?deckId=` returned the same `contentFront` /
+   * `contentBack` rows from the same controller with no deck check at all.
+   */
+  it("refuses to list the cards of another user's private deck", async () => {
+    const seeded = await request(ownerApp.getHttpServer())
+      .post(`/flashcard/decks/${deckId}/cards/bulk`)
+      .send(cards(2));
+    expect(seeded.status).toBe(201);
+
+    const response = await request(attackerApp.getHttpServer()).get(
+      `/flashcard/cards?deckId=${deckId}`
+    );
+
+    expect(response.status).toBe(403);
+    expect(JSON.stringify(response.body)).not.toContain("front 0");
+  });
+
+  it("refuses to read a single card out of another user's private deck", async () => {
+    const seeded = await request(ownerApp.getHttpServer())
+      .post(`/flashcard/decks/${deckId}/cards/bulk`)
+      .send(cards(1));
+    expect(seeded.status).toBe(201);
+
+    const owned = await request(ownerApp.getHttpServer()).get(
+      `/flashcard/cards?deckId=${deckId}`
+    );
+    expect(owned.status).toBe(200);
+    const cardId = owned.body[0].id;
+
+    const response = await request(attackerApp.getHttpServer()).get(
+      `/flashcard/cards/${cardId}`
+    );
+
+    expect(response.status).toBe(403);
+    expect(JSON.stringify(response.body)).not.toContain("front 0");
+  });
+
+  /**
+   * The per-card write path onto the very rows the deck-scoped routes protect.
+   * `FlashcardRepository.update`/`delete` filter on `flashcards.id` alone, so
+   * a card UUID was enough to rewrite or destroy somebody else's card.
+   */
+  it("refuses to rewrite or delete a card in another user's deck", async () => {
+    const seeded = await request(ownerApp.getHttpServer())
+      .post(`/flashcard/decks/${deckId}/cards/bulk`)
+      .send(cards(1));
+    expect(seeded.status).toBe(201);
+
+    const owned = await request(ownerApp.getHttpServer()).get(
+      `/flashcard/cards?deckId=${deckId}`
+    );
+    const cardId = owned.body[0].id;
+
+    const patched = await request(attackerApp.getHttpServer())
+      .patch(`/flashcard/cards/${cardId}`)
+      .send({ contentFront: "defaced" });
+    expect(patched.status).toBe(403);
+    expect(patched.body.code).toBe("DECK_FORBIDDEN");
+
+    const deleted = await request(attackerApp.getHttpServer()).delete(
+      `/flashcard/cards/${cardId}`
+    );
+    expect(deleted.status).toBe(403);
+    expect(deleted.body.code).toBe("DECK_FORBIDDEN");
+
+    const after = await request(ownerApp.getHttpServer()).get(
+      `/flashcard/cards/${cardId}`
+    );
+    expect(after.status).toBe(200);
+    expect(after.body.contentFront).toBe("front 0");
+  });
+
+  /**
+   * The counterweight to the five refusals above: the read rule is
+   * `assertReadable`, not `assertOwner`. A public deck stays browsable by
+   * anyone — tightening the read side to ownership would take the explore and
+   * study flows out with it, so that regression has to argue with a test.
+   */
+  it("still lets a non-owner read a PUBLIC deck and its cards", async () => {
+    const publicDeck = await request(ownerApp.getHttpServer())
+      .post("/flashcard/decks")
+      .send({ title: "Owner's Public Deck", isPublic: true });
+    expect(publicDeck.status).toBe(201);
+
+    const seeded = await request(ownerApp.getHttpServer())
+      .post(`/flashcard/decks/${publicDeck.body.id}/cards/bulk`)
+      .send(cards(2));
+    expect(seeded.status).toBe(201);
+
+    const deck = await request(attackerApp.getHttpServer()).get(
+      `/flashcard/decks/${publicDeck.body.id}`
+    );
+    expect(deck.status).toBe(200);
+
+    const visible = await request(attackerApp.getHttpServer()).get(
+      `/flashcard/cards?deckId=${publicDeck.body.id}`
+    );
+    expect(visible.status).toBe(200);
+    expect(visible.body).toHaveLength(2);
+  });
+
+  /**
+   * The collect-then-list pair. `POST :id/collections` inserted a `decksUsers`
+   * row for any id the FK accepted, and `GET /flashcard/decks/collections`
+   * selects on that row alone with no visibility predicate — so the full
+   * private deck came back around the guard on `GET /flashcard/decks/:id`.
+   */
+  it("refuses to collect another user's private deck, and the collection stays empty", async () => {
+    const response = await request(attackerApp.getHttpServer()).post(
+      `/flashcard/decks/${deckId}/collections`
+    );
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("DECK_FORBIDDEN");
+
+    const collections = await request(attackerApp.getHttpServer()).get(
+      "/flashcard/decks/collections"
+    );
+    expect(collections.status).toBe(200);
+    expect(collections.body).toHaveLength(0);
+  });
+
+  it("still lets a non-owner collect a PUBLIC deck", async () => {
+    const publicDeck = await request(ownerApp.getHttpServer())
+      .post("/flashcard/decks")
+      .send({ title: "Owner's Public Deck", isPublic: true });
+    expect(publicDeck.status).toBe(201);
+
+    const response = await request(attackerApp.getHttpServer()).post(
+      `/flashcard/decks/${publicDeck.body.id}/collections`
+    );
+    expect(response.status).toBe(201);
+
+    const collections = await request(attackerApp.getHttpServer()).get(
+      "/flashcard/decks/collections"
+    );
+    expect(collections.status).toBe(200);
+    expect(collections.body).toHaveLength(1);
+  });
+
+  /**
+   * The read half of the collect-then-list pair. `assertReadable` at collect
+   * time ages: the author may flip a collected deck private afterwards, and
+   * rows written before that assertion existed point wherever they were
+   * allowed to. `findAllByUser` therefore re-evaluates visibility on every
+   * read rather than trusting the `decks_users` row.
+   */
+  it("drops a collected deck out of /collections once its author makes it private", async () => {
+    const publicDeck = await request(ownerApp.getHttpServer())
+      .post("/flashcard/decks")
+      .send({ title: "Owner's Public Deck", isPublic: true });
+    expect(publicDeck.status).toBe(201);
+
+    const collected = await request(attackerApp.getHttpServer()).post(
+      `/flashcard/decks/${publicDeck.body.id}/collections`
+    );
+    expect(collected.status).toBe(201);
+
+    const before = await request(attackerApp.getHttpServer()).get(
+      "/flashcard/decks/collections"
+    );
+    expect(before.body).toHaveLength(1);
+
+    const madePrivate = await request(ownerApp.getHttpServer())
+      .patch(`/flashcard/decks/${publicDeck.body.id}`)
+      .send({ isPublic: false });
+    expect(madePrivate.status).toBe(200);
+
+    const after = await request(attackerApp.getHttpServer()).get(
+      "/flashcard/decks/collections"
+    );
+    expect(after.status).toBe(200);
+    expect(after.body).toHaveLength(0);
+
+    // The owner keeps their own deck in their own collection view.
+    const ownerCollected = await request(ownerApp.getHttpServer()).post(
+      `/flashcard/decks/${publicDeck.body.id}/collections`
+    );
+    expect(ownerCollected.status).toBe(201);
+    const ownerList = await request(ownerApp.getHttpServer()).get(
+      "/flashcard/decks/collections"
+    );
+    expect(ownerList.body).toHaveLength(1);
+  });
+
+  it("refuses to read another user's private deck itself", async () => {
+    const response = await request(attackerApp.getHttpServer()).get(
+      `/flashcard/decks/${deckId}`
+    );
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("DECK_FORBIDDEN");
   });
 });

@@ -71,12 +71,22 @@ export class FlashcardDeckController {
   })
   @ApiOkResponse({ type: FlashcardDeckResponse })
   @ApiNotFoundResponse()
+  @ApiForbiddenResponse({
+    description: "Deck is private and owned by another user",
+  })
   @IncludeApiQuery(DeckIncludeEnum)
   @Get(":id")
   async findById(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) deckId: string,
     @IncludeQuery() include?: string[]
   ): Promise<FlashcardDeckResponse> {
+    // `findAllVisibleToUser` scopes the list route to public-or-own decks;
+    // this route filtered on `decks.id` alone, so somebody else's private
+    // deck came back in full to any authenticated caller who knew its id.
+    // `assertReadable` rather than `assertOwner` — a public deck is meant to
+    // be browsable by everyone.
+    await this.deckService.assertReadable(deckId, request.user.sub);
     const deck = await this.deckService.findById(deckId, include);
     if (!deck) {
       throw new HttpException(
@@ -142,12 +152,22 @@ export class FlashcardDeckController {
     operationId: "createFlashcardDeckUser",
   })
   @ApiCreatedResponse({ type: FlashcardDeckUserResponse })
+  @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiForbiddenResponse({
+    description: "Deck is private and owned by another user",
+  })
   @Post(":id/collections")
   async addToUserCollection(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) deckId: string
   ): Promise<FlashcardDeckUserResponse> {
     const userId = request.user.sub;
+    // A deck you may not read is a deck you may not collect. `findAllByUser`
+    // — the sibling GET /collections route — selects on the `decksUsers` row
+    // alone and applies no `isPublic`/`authorId` predicate of its own, so
+    // without this the whole private row (title, description, authorId) came
+    // back through a collect-then-list pair, around `findById`'s guard above.
+    await this.deckService.assertReadable(deckId, userId);
     return this.deckService.addToUserCollection(userId, deckId);
   }
 
@@ -162,11 +182,20 @@ export class FlashcardDeckController {
   @ApiBody({ type: CreateFlashcardDeckDto })
   // @ApiCreatedResponse({ type: FlashcardDeckResponse })
   @ApiOkResponse({ type: FlashcardDeckResponse, isArray: true })
+  @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @Put(":id")
   async replace(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) deckId: string,
     @Body() deckDto: CreateFlashcardDeckDto
   ): Promise<FlashcardDeckResponse> {
+    // `CreateFlashcardDeckDto` carries `isPublic`, so without this any
+    // authenticated caller could flip somebody else's private deck to public
+    // — which `TedrisatRoleResolver.resolveDeckRole` then reads, turning a
+    // deny into ROLES.PUBLIC for every other caller once MDRS-43 wires the
+    // guard. Asserted at the edge, like the deck-scoped card writes.
+    await this.deckService.assertOwner(deckId, request.user.sub);
     const updatedDeck = await this.deckService.update(deckId, deckDto);
     if (!updatedDeck) {
       throw new HttpException(
@@ -187,12 +216,17 @@ export class FlashcardDeckController {
   })
   @ApiBody({ type: UpdateFlashcardDeckDto })
   @ApiOkResponse({ type: FlashcardDeckResponse })
-  @ApiForbiddenResponse()
+  @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @Patch(":id")
   async updateDeck(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) deckId: string,
     @Body() deckDto: UpdateFlashcardDeckDto
   ): Promise<FlashcardDeckResponse> {
+    // Same reason as `replace` above: `UpdateFlashcardDeckDto` exposes
+    // `isPublic`, and visibility must stay the author's decision.
+    await this.deckService.assertOwner(deckId, request.user.sub);
     const updatedDeck = await this.deckService.update(deckId, deckDto);
     if (!updatedDeck) {
       throw new HttpException(
@@ -212,8 +246,19 @@ export class FlashcardDeckController {
     operationId: "deleteFlashcardDeck",
   })
   @ApiOkResponse()
+  @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @Delete(":id")
-  async delete(@Param("id", ParseUUIDPipe) deckId: string): Promise<boolean> {
+  async delete(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) deckId: string
+  ): Promise<boolean> {
+    // MDRS-83 added the delete affordance to tedris behind a client-side
+    // `isOwner` flag, and a Server Action is an HTTP endpoint like any other:
+    // the flag is display-only. `decks.delete` filters on `decks.id` alone
+    // and the cards FK cascades, so this is the assertion that keeps one
+    // user's deck — and its cards — out of another user's reach.
+    await this.deckService.assertOwner(deckId, request.user.sub);
     return this.deckService.delete(deckId);
   }
 

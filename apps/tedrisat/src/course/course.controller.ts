@@ -184,7 +184,14 @@ export class CourseController {
     summary: "Approve a pending enrollment (köşk owner only)",
     operationId: "approveEnrollment",
   })
-  @ApiOkResponse({ type: EnrollmentResponse })
+  // 201, not 200: this is a plain @Post with no @HttpCode, so Nest answers
+  // 201 — asserted twice in test/e2e/course.e2e.spec.ts (:516 and :608) — and
+  // every other @Post in this controller documents itself the same way. The
+  // @ApiOkResponse this replaced changed only the document, so MDRS-58's
+  // regeneration published a 200 the route never returns (MDRS-58). Moving the
+  // route to 200 instead would be a wire change for every caller; see the
+  // follow-up in docs/migration/mdrs-58-tedrisat-spec-exporter.md.
+  @ApiCreatedResponse({ type: EnrollmentResponse })
   @ApiNotFoundResponse()
   @Post("courses/:id/enrollments/:userId/approve")
   async approveEnrollment(

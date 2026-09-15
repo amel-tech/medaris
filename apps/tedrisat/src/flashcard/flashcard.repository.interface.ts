@@ -55,6 +55,13 @@ export interface IFlashcardRepository {
     userId: string,
     include?: Set<CardIncludeEnum>
   ): Promise<IFlashcard[] | null>;
+  /**
+   * The parent deck's id alone, or `null` when no such card exists. Every
+   * access decision on a card is a decision about its deck, and this is the
+   * projection that answers it without carrying `contentFront`/`contentBack`
+   * back just to reach one foreign key.
+   */
+  findDeckId(id: string): Promise<string | null>;
   createMany(cards: ICreateFlashcard[]): Promise<IFlashcard[]>;
   update(id: string, updates: IUpdateFlashcard): Promise<IFlashcard | null>;
   delete(id: string): Promise<boolean>;

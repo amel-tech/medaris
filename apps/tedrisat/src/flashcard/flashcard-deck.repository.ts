@@ -6,8 +6,10 @@ import {
   ICreateFlashcardDeck,
   IFlashcardDeck,
   IFlashcardDeckFilters,
+  IFlashcardDeckOwnership,
   IFlashcardDeckRepository,
   IFlashcardDeckUserCollectionItem,
+  IFlashcardDeckVisibility,
   IUpdateFlashcardDeck,
 } from "./flashcard-deck.repository.interface";
 
@@ -49,6 +51,34 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
     );
   }
 
+  async findAuthorId(id: string): Promise<string | null> {
+    // The same shape as KoskRepository.findOwnerId: one column, LIMIT 1.
+    const rows = await this.databaseService.db
+      .select({ authorId: decks.authorId })
+      .from(decks)
+      .where(eq(decks.id, id))
+      .limit(1);
+    return rows[0]?.authorId ?? null;
+  }
+
+  async findOwnership(id: string): Promise<IFlashcardDeckOwnership | null> {
+    const rows = await this.databaseService.db
+      .select({ authorId: decks.authorId, title: decks.title })
+      .from(decks)
+      .where(eq(decks.id, id))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
+  async findVisibility(id: string): Promise<IFlashcardDeckVisibility | null> {
+    const rows = await this.databaseService.db
+      .select({ authorId: decks.authorId, isPublic: decks.isPublic })
+      .from(decks)
+      .where(eq(decks.id, id))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
   async findAll(include?: Set<string>): Promise<IFlashcardDeck[]> {
     // TODO: handle pagination
     return this.findByFilter(eq(decks.isPublic, true), include);
@@ -79,14 +109,27 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
       with: {
         decksUsers: true,
       },
-      where: exists(
-        // using simple `eq(decksUsers.userId, userId)` instead of `exists(...)` causes bug in drizzle
-        this.databaseService.db
-          .select()
-          .from(decksUsers)
-          .where(
-            and(eq(decksUsers.deckId, decks.id), eq(decksUsers.userId, userId))
-          )
+      // Visibility is re-evaluated on every read, not decided once when the
+      // `decks_users` row was written. `FlashcardDeckController.addToUserCollection`
+      // asserts readability before it collects, but that assertion ages: the
+      // author may flip a collected deck to private afterwards, and rows
+      // written before that assertion existed point wherever they were allowed
+      // to. The predicate is `findAllVisibleToUser`'s, so the two list routes
+      // answer the same question about the same rows.
+      where: and(
+        or(eq(decks.isPublic, true), eq(decks.authorId, userId)),
+        exists(
+          // using simple `eq(decksUsers.userId, userId)` instead of `exists(...)` causes bug in drizzle
+          this.databaseService.db
+            .select()
+            .from(decksUsers)
+            .where(
+              and(
+                eq(decksUsers.deckId, decks.id),
+                eq(decksUsers.userId, userId)
+              )
+            )
+        )
       ),
     });
   }
@@ -114,7 +157,11 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
     id: string,
     updates: IUpdateFlashcardDeck
   ): Promise<IFlashcardDeck | null> {
-    // TODO?: verify deck author
+    // Unfiltered on purpose: the caller's right to write this row is settled
+    // at the HTTP edge by `FlashcardDeckService.assertOwner`, the same place
+    // the deck-scoped card routes settle it (MDRS-63), and MDRS-43 replaces
+    // that with `@Authz`. Adding an `authorId` predicate here would turn a
+    // permission failure into a silent no-op instead of a 403.
     return this.databaseService.db
       .update(decks)
       .set(updates)

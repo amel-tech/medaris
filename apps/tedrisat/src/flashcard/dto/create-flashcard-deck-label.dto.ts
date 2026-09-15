@@ -1,6 +1,14 @@
 // `createdBy` is deliberately absent (MDRS-27) — see create-flashcard-label.dto.ts.
 // The controller takes the actor from the verified token instead.
-import { ApiProperty } from "@nestjs/swagger";
+// The Swagger annotations here carry the validators' constraints deliberately.
+// MDRS-58 regenerated the published contract from this file for the first time,
+// and a bare `@ApiProperty()` publishes only what `design:type` can see: `scope`
+// became an unconstrained `string` despite `@IsEnum(Scope)`, `title` lost its
+// length bounds, and `privateToUserId` — typed `string | null` — reflected as
+// `Object`, i.e. a required `{"type":"object"}` that no caller can satisfy with
+// a UUID. A consumer generated from that contract typechecks clean and then
+// takes a 400 from the global pipe.
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsEnum,
   IsOptional,
@@ -11,13 +19,13 @@ import {
 } from "class-validator";
 import { Scope } from "../domain/flashcard-label.enum";
 export class CreateFlashcardDeckLabelDto {
-  @ApiProperty()
+  @ApiProperty({ minLength: 5, maxLength: 100 })
   @IsString()
   @MinLength(5)
   @MaxLength(100)
   title!: string;
 
-  @ApiProperty()
+  @ApiProperty({ enum: Scope })
   @IsEnum(Scope)
   scope!: Scope;
 }
@@ -27,7 +35,7 @@ export class CreateFlashcardDeckLabelingDto {
   @IsString()
   labelId!: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({ type: String, nullable: true, format: "uuid" })
   @IsOptional()
   @IsUUID()
   privateToUserId: string | null = null;

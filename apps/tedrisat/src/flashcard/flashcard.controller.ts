@@ -28,6 +28,7 @@ import {
   ApiBody,
   ApiConsumes,
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -57,7 +58,6 @@ import { FlashcardProgressResponse } from "./dto/flashcard-progress-response.dto
 import { FlashcardResponse } from "./dto/flashcard-response.dto";
 import { UpdateFlashcardDto } from "./dto/update-flashcard.dto";
 import { BulkValidationError } from "./errors/bulk-validation.error";
-import { DeckNotFoundError } from "./errors/deck-not-found.error";
 import { FlashcardService } from "./flashcard.service";
 import { FlashcardBulkService } from "./flashcard-bulk.service";
 import { FlashcardDeckService } from "./flashcard-deck.service";
@@ -84,6 +84,9 @@ export class FlashcardController {
   })
   @ApiOkResponse({ type: FlashcardResponse })
   @ApiNotFoundResponse()
+  @ApiForbiddenResponse({
+    description: "Deck is private and owned by another user",
+  })
   @IncludeApiQuery(CardIncludeEnum)
   @Get("cards/:id")
   async findById(
@@ -92,6 +95,10 @@ export class FlashcardController {
     @IncludeQuery() include?: string[]
   ): Promise<FlashcardResponse> {
     const userId = request.user.sub;
+    // `FlashcardRepository.findById` filters on `flashcards.id` alone, so the
+    // card's own row proves nothing about who may see it. The deck is the
+    // only thing that carries a visibility rule, so resolve it first.
+    await this.deckService.assertReadable(await this.deckOf(cardId), userId);
     const card = await this.cardService.findById(cardId, userId, include);
     if (!card) {
       throw new HttpException(
@@ -108,6 +115,10 @@ export class FlashcardController {
     operationId: "getFlashcardByDeckId",
   })
   @ApiOkResponse({ type: [FlashcardResponse] })
+  @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiForbiddenResponse({
+    description: "Deck is private and owned by another user",
+  })
   @ApiQuery({ name: "deckId", required: true, type: String })
   @IncludeApiQuery(CardIncludeEnum)
   @Get("cards")
@@ -117,7 +128,31 @@ export class FlashcardController {
     @IncludeQuery() include?: string[]
   ): Promise<FlashcardResponse[]> {
     const userId = request.user.sub;
+    // The `userId` threaded into `findByDeckId` is NOT a scoping argument —
+    // it only narrows the optional `progress` relation, and the rows come
+    // back filtered on `deckId` alone either way. Without this line the
+    // export route's 403 was reachable around: the same card content came
+    // back from `GET /flashcard/cards?deckId=<id>`. `assertReadable`, not
+    // `assertOwner`, because a public deck is meant to be browsable.
+    await this.deckService.assertReadable(deckId, userId);
     return this.cardService.findByDeckId(deckId, userId, include);
+  }
+
+  /**
+   * The parent deck of a card, or a 404 in the shape the card routes already
+   * return. Cards carry no access rule of their own — `flashcards.authorId`
+   * is provenance, not permission, and a deck's cards are all written by its
+   * author anyway — so every `cards/:id` handler decides on the deck.
+   */
+  private async deckOf(cardId: string): Promise<string> {
+    const deckId = await this.cardService.findDeckId(cardId);
+    if (deckId === null) {
+      throw new HttpException(
+        `could not find card #${cardId}`,
+        HttpStatus.NOT_FOUND
+      );
+    }
+    return deckId;
   }
 
   // POST Requests
@@ -130,6 +165,8 @@ export class FlashcardController {
   })
   @ApiBody({ type: [CreateFlashcardDto] })
   @ApiCreatedResponse({ type: FlashcardResponse, isArray: true })
+  @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @Post("decks/:deckId/cards")
   async createMany(
     @Req() request: AuthorizedRequest,
@@ -137,7 +174,12 @@ export class FlashcardController {
     @Body(new ParseArrayPipe({ items: CreateFlashcardDto }))
     cardsDto: CreateFlashcardDto[]
   ): Promise<FlashcardResponse[]> {
+    // Ownership is asserted at the HTTP edge on purpose: this is the MDRS-63
+    // stopgap that MDRS-43 replaces with @Authz on exactly these handlers.
+    // The service methods below are NOT guarded — do not copy this
+    // placement into a module MDRS-43 will not revisit.
     const authorId = request.user.sub;
+    await this.deckService.assertOwner(deckId, authorId);
     return this.cardService.createMany(deckId, authorId, cardsDto);
   }
 
@@ -168,11 +210,20 @@ export class FlashcardController {
   @ApiBody({ type: CreateFlashcardDto })
   @ApiOkResponse({ type: FlashcardResponse })
   @ApiNotFoundResponse()
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @Put("cards/:id")
   async replace(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) cardId: string,
     @Body() cardDto: CreateFlashcardDto
   ): Promise<FlashcardResponse> {
+    // Same edge assertion as the deck-scoped writes above: without it any
+    // authenticated caller who knew a card UUID could rewrite a card inside
+    // a deck this controller otherwise protects.
+    await this.deckService.assertOwner(
+      await this.deckOf(cardId),
+      request.user.sub
+    );
     const updatedCard = await this.cardService.update(cardId, cardDto);
     if (!updatedCard) {
       throw new HttpException(
@@ -193,11 +244,17 @@ export class FlashcardController {
   @ApiBody({ type: UpdateFlashcardDto })
   @ApiOkResponse({ type: FlashcardResponse })
   @ApiNotFoundResponse()
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @Patch("cards/:id")
   async update(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) cardId: string,
     @Body() cardDto: UpdateFlashcardDto
   ): Promise<FlashcardResponse> {
+    await this.deckService.assertOwner(
+      await this.deckOf(cardId),
+      request.user.sub
+    );
     const updatedCard = await this.cardService.update(cardId, cardDto);
     if (!updatedCard) {
       throw new HttpException(
@@ -217,10 +274,17 @@ export class FlashcardController {
     operationId: "deleteFlashcard",
   })
   @ApiOkResponse()
+  @ApiNotFoundResponse()
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @Delete("cards/:id")
-  async deleteDeck(
+  async deleteCard(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) cardId: string
   ): Promise<boolean> {
+    await this.deckService.assertOwner(
+      await this.deckOf(cardId),
+      request.user.sub
+    );
     return this.cardService.delete(cardId);
   }
 
@@ -238,6 +302,8 @@ export class FlashcardController {
   @ApiBody({ type: [CreateFlashcardDto] })
   @ApiCreatedResponse({ type: BulkFlashcardResponse })
   @ApiUnprocessableEntityResponse({ type: BulkFlashcardErrorResponse })
+  @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @ApiTooManyRequestsResponse({
     description: "Bulk rate limit exceeded — see the Retry-After header",
   })
@@ -259,8 +325,13 @@ export class FlashcardController {
     @Body(new ParseArrayPipe())
     cardsDto: CreateFlashcardDto[]
   ): Promise<BulkFlashcardResponse> {
-    const deck = await this.deckService.findById(deckId);
-    if (!deck) throw new DeckNotFoundError(deckId);
+    // `findById` proved the deck exists and nothing more, so any valid token
+    // could write MAX_BULK_ROWS cards into a deck it merely knew the id of.
+    // Ownership is asserted at the HTTP edge on purpose: this is the MDRS-63
+    // stopgap that MDRS-43 replaces with @Authz on exactly these handlers.
+    // The service methods below are NOT guarded — do not copy this
+    // placement into a module MDRS-43 will not revisit.
+    await this.deckService.assertOwner(deckId, request.user.sub);
 
     const result = await this.cardBulkService.addFlashcards(
       deckId,
@@ -301,6 +372,7 @@ export class FlashcardController {
   })
   @ApiOkResponse({ type: StreamableFile })
   @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @ApiTooManyRequestsResponse({
     description: "Bulk rate limit exceeded — see the Retry-After header",
   })
@@ -316,8 +388,13 @@ export class FlashcardController {
     @Req() request: AuthorizedRequest,
     @Query("format") format: "xlsx" | "csv" = "xlsx"
   ) {
-    const deck = await this.deckService.findById(deckId);
-    if (!deck) throw new DeckNotFoundError(deckId);
+    // `exportFlashcards` threads a `userId` down to `findByDeckId`, which
+    // looks like a scoping argument and is not one: it passes no `include`,
+    // so `buildWith` returns `{}` and the id is never read at all. Even with
+    // an `include` it would only scope the progress relation — the rows come
+    // back filtered on `deckId` alone either way. The access decision has to
+    // happen here.
+    const deck = await this.deckService.findOwned(deckId, request.user.sub);
 
     return this.cardBulkService.exportFlashcards(
       deckId,
@@ -337,6 +414,7 @@ export class FlashcardController {
   })
   @ApiCreatedResponse({ type: BulkFlashcardResponse })
   @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @ApiUnprocessableEntityResponse({ type: BulkFlashcardErrorResponse })
   @ApiTooManyRequestsResponse({
     description: "Bulk rate limit exceeded — see the Retry-After header",
@@ -371,8 +449,12 @@ export class FlashcardController {
     @Param("deckId", ParseUUIDPipe) deckId: string,
     @Req() request: AuthorizedRequest
   ) {
-    const deck = await this.deckService.findById(deckId);
-    if (!deck) throw new DeckNotFoundError(deckId);
+    // Same hole as `bulk`, reached through a file instead of a JSON body.
+    // FileInterceptor and ParseFilePipe have already buffered and checked the
+    // upload by the time this runs — Nest resolves parameters before the body
+    // — so this refuses before the spreadsheet is *parsed*, not before it is
+    // received.
+    await this.deckService.assertOwner(deckId, request.user.sub);
 
     const format = this.excelService.detectFormat(
       file.mimetype,
