@@ -85,6 +85,13 @@
       "when": 1781197547000,
       "tag": "0011_live_lessons",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789203337583,
+      "tag": "0012_course_muderris_course_user_idx",
+      "breakpoints": true
     }
   ]
 }
