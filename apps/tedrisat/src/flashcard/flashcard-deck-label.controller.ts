@@ -87,6 +87,11 @@ export class FlashcardDeckLabelController {
   })
   @ApiBody({ type: CreateFlashcardDeckLabelingDto })
   @ApiCreatedResponse({ type: FlashcardDeckLabelingResponse })
+  @ApiResponse({
+    status: 403,
+    description: "The label, or the target deck, belongs to another user",
+  })
+  @ApiResponse({ status: 404, description: "No such label, or no such deck" })
   @Post("/labeling")
   async deckLabeling(
     @Req() request: AuthorizedRequest,

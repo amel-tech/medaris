@@ -20,8 +20,12 @@ import { FlashcardDeckService } from "./flashcard-deck.service";
     FlashcardBulkService,
     DatabaseService,
   ],
-  // For AuthzBindingsModule's role resolver (MDRS-41): the service, not the
-  // repository, so importers cannot write past its ownership checks.
-  exports: [FlashcardDeckService],
+  // Services, never repositories, so importers cannot write past the ownership
+  // checks. `FlashcardDeckService` is AuthzBindingsModule's role resolver
+  // (MDRS-41) and both label services' readability gate; `FlashcardService` is
+  // exported for its `findDeckId` alone — a card is authorized through its
+  // parent deck, and `FlashcardLabelModule` has to resolve that parent before
+  // it can ask `assertReadable` anything.
+  exports: [FlashcardDeckService, FlashcardService],
 })
 export class FlashcardModule {}

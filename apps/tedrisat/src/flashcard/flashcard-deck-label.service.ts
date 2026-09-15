@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { FlashcardDeckLabelForbiddenError } from "./errors/flashcard-deck-label-forbidden.error";
 import { FlashcardDeckLabelNotFoundError } from "./errors/flashcard-deck-label-not-found.error";
+import { FlashcardDeckService } from "./flashcard-deck.service";
 import { FlashcardDeckLabelRepository } from "./flashcard-deck-label.repository";
 import {
   ICreateFlashcardDeckLabel,
@@ -11,7 +12,10 @@ import {
 
 @Injectable()
 export class FlashcardDeckLabelService {
-  constructor(private readonly labelRepository: FlashcardDeckLabelRepository) {}
+  constructor(
+    private readonly labelRepository: FlashcardDeckLabelRepository,
+    private readonly deckService: FlashcardDeckService
+  ) {}
   async createLabel(
     createTagDto: ICreateFlashcardDeckLabel
   ): Promise<IFlashcardDeckLabel> {
@@ -48,9 +52,17 @@ export class FlashcardDeckLabelService {
   async deckLabeling(
     newLabeling: IFlashcardDeckLabeling
   ): Promise<IFlashcardDeckLabeling> {
-    // Same rule as `FlashcardLabelService.flashcardLabeling`: the label must be
-    // the caller's before its stats are moved and a labeling row written.
+    // Same two rules as `FlashcardLabelService.flashcardLabeling`: the label
+    // must be the caller's before its stats are moved and a labeling row
+    // written, and the TARGET deck must be one the caller may read. `deckId`
+    // came off the DTO unchecked, so a row could be written against any deck
+    // UUID — including a private one — and a valid id answered 201 while a
+    // missing one tripped the foreign key as a 500.
     await this.assertOwner(newLabeling.labelId, newLabeling.createdBy);
+    await this.deckService.assertReadable(
+      newLabeling.deckId,
+      newLabeling.createdBy
+    );
     const labelStats = await this.labelRepository.getLabelStats(
       newLabeling.labelId
     );

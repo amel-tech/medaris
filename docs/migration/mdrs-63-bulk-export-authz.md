@@ -310,7 +310,8 @@ the two list routes answer the same question about the same rows. Pinned by
 `drops a collected deck out of /collections once its author makes it private`,
 which also asserts the author still sees their own deck there.
 
-**Not taken, deliberately, and recorded here so it is not lost:** the two
+**Taken on the next round after all** — see the section below. What follows was
+written when it was still deferred, and is kept because it records why: the two
 labeling writes (`FlashcardDeckLabelService.deckLabeling`,
 `FlashcardLabelService.flashcardLabeling`) assert ownership of the **label**
 and nothing about the **target** — `deckId` / `flashcardId` come off the DTO and
@@ -326,3 +327,37 @@ does not export), which is a wiring change this branch should not make on its
 last pass. The fix when MDRS-26 lands is the call its siblings now make:
 `assertReadable(newLabeling.deckId, newLabeling.createdBy)`, and the card twin
 resolving the parent deck first.
+
+### The labeling targets, closed (third review round)
+
+The deferral above did not survive its own reasoning. The lens raised it a
+second time on the card twin, and the objection was the right one: every other
+write path touched by this branch — `createMany`, `bulk`, `importCards`,
+`replace`, `update`, `deleteCard`, and the deck `PUT`/`PATCH`/`DELETE` — got its
+edge assertion here, and these two did not. A deferral that is the only
+exception in the module is load-bearing in the wrong direction.
+
+`FlashcardModule` now exports `FlashcardService` alongside `FlashcardDeckService`
+(services, never repositories, so importers cannot write past the ownership
+checks), and `FlashcardLabelModule` imports it. There is no cycle:
+`FlashcardModule` imports nothing from the label module.
+
+- `FlashcardLabelService.flashcardLabeling` resolves the card's parent deck
+  through `FlashcardService.findDeckId` — the same one-column lookup the card
+  routes use — and asserts `assertReadable` on it. A card that is not there is
+  a new `CardNotFoundError` (404) rather than a foreign-key violation surfacing
+  as a 500, which is what made the route an existence oracle.
+- `FlashcardDeckLabelService.deckLabeling` asserts `assertReadable` on
+  `newLabeling.deckId` directly.
+
+`assertReadable`, not `assertOwner`, and deliberately: labelling a card in
+somebody else's PUBLIC deck is a private annotation on a public thing, which is
+what `privateToUserId` is for. Six e2e cases in `flashcard-label.e2e.spec.ts`
+pin all three answers — refused for a private target, 404 for a missing one,
+allowed for a public one and for your own.
+
+What remains MDRS-26's is the read side: no route surfaces labelings back to a
+deck owner, and `CardIncludeEnum` exposes only `progress`, so whether an author
+sees another user's private annotation on their card is still not a question
+this module answers. The class docblock on `flashcard-label.controller.ts` now
+says that, rather than deferring the whole subject.

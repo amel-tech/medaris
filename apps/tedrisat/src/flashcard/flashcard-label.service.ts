@@ -1,6 +1,9 @@
 import { Injectable } from "@nestjs/common";
+import { CardNotFoundError } from "./errors/card-not-found.error";
 import { FlashcardLabelForbiddenError } from "./errors/flashcard-label-forbidden.error";
 import { FlashcardLabelNotFoundError } from "./errors/flashcard-label-not-found.error";
+import { FlashcardService } from "./flashcard.service";
+import { FlashcardDeckService } from "./flashcard-deck.service";
 import { FlashcardLabelRepository } from "./flashcard-label.reporsitory";
 import {
   ICreateFlashcardLabel,
@@ -11,7 +14,11 @@ import {
 
 @Injectable()
 export class FlashcardLabelService {
-  constructor(private readonly flashcardLabelRepo: FlashcardLabelRepository) {}
+  constructor(
+    private readonly flashcardLabelRepo: FlashcardLabelRepository,
+    private readonly cardService: FlashcardService,
+    private readonly deckService: FlashcardDeckService
+  ) {}
   async createLabel(
     createLabelDto: ICreateFlashcardLabel
   ): Promise<IFlashcardLabel> {
@@ -51,11 +58,27 @@ export class FlashcardLabelService {
   async flashcardLabeling(
     newLabeling: IFlashcardLabeling
   ): Promise<IFlashcardLabeling> {
+    // Two assertions, because a labeling names two resources.
+    //
     // The label being attached is the caller's, or this is a 403/404 — the
     // same rule the three siblings apply. Without it any authenticated caller
     // could hang their card on another user's label and move its stats
     // (MDRS-58 review). `createdBy` is the verified `request.user.sub`.
     await this.assertOwner(newLabeling.labelId, newLabeling.createdBy);
+
+    // And the TARGET card has to be one the caller may see. `flashcardId` came
+    // off the DTO unchecked, so a row could be written against any card UUID
+    // in the system — write-side pollution inside another user's private deck,
+    // and an existence oracle either way, since a real id answered 201 while a
+    // missing one tripped the foreign key as a 500. Cards carry no access rule
+    // of their own, so the decision is the parent deck's, exactly as on the
+    // card routes. `assertReadable` rather than `assertOwner`: labelling a card
+    // in somebody else's PUBLIC deck is a private annotation on a public
+    // thing, which is what `privateToUserId` is for.
+    await this.assertTargetReadable(
+      newLabeling.flashcardId,
+      newLabeling.createdBy
+    );
     const labelStats = await this.flashcardLabelRepo.getLabelStats(
       newLabeling.labelId
     );
@@ -139,5 +162,25 @@ export class FlashcardLabelService {
     await this.assertOwner(id, userId);
     const stats = await this.flashcardLabelRepo.getLabelStats(id);
     return stats ?? { labelId: id, usageCount: 0, lastUsedAt: null };
+  }
+
+  /**
+   * The caller may see the card they are labelling, or this throws.
+   *
+   * `FlashcardRepository.findDeckId` is the one-column lookup the card routes
+   * use for the same question; a card that is not there is a
+   * `CardNotFoundError`, which keeps the FK violation from surfacing as a 500
+   * and makes the 404/403 split the same one every other route in this module
+   * uses.
+   */
+  private async assertTargetReadable(
+    cardId: string,
+    userId: string
+  ): Promise<void> {
+    const deckId = await this.cardService.findDeckId(cardId);
+    if (deckId === null) {
+      throw new CardNotFoundError(cardId);
+    }
+    await this.deckService.assertReadable(deckId, userId);
   }
 }

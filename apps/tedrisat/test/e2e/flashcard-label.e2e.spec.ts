@@ -504,3 +504,166 @@ describe("FlashcardDeckLabelController (e2e)", () => {
     expect(response.status).toBe(400);
   });
 });
+
+/**
+ * The TARGET of a labeling, as opposed to the label itself.
+ *
+ * MDRS-27 asserted that the label being attached belongs to the caller and
+ * left `flashcardId` / `deckId` unchecked, deferred to MDRS-26. A row could
+ * therefore be written against any card or deck UUID in the system — including
+ * one inside another user's private deck — and a real id answered 201 while a
+ * missing one tripped the foreign key as a 500, which is an existence oracle.
+ *
+ * Both routes now resolve the target and assert the caller may READ it, which
+ * is `assertReadable` rather than `assertOwner` on purpose: labelling a card in
+ * somebody else's PUBLIC deck is a private annotation on a public thing, and
+ * `privateToUserId` exists for exactly that. The three cases below pin all
+ * three answers — refused for a private target, allowed for a public one,
+ * allowed for your own.
+ */
+describe("Labeling — target readability (e2e)", () => {
+  // A well-formed v4 UUID that is not in the database. `SOME_UUID` above is
+  // only v4-shaped in its length: its variant nibble is `2`, which
+  // `ParseUUIDPipe` tolerates but the DTOs' `@IsUUID()` does not, so a body
+  // carrying it is a 400 from the pipe before any handler runs.
+  const MISSING_UUID = "00000000-0000-4000-8000-000000000000";
+
+  let ownerApp: INestApplication;
+  let attackerApp: INestApplication;
+  let dbUtils: TestDatabaseUtils;
+
+  beforeAll(async () => {
+    ownerApp = await createTestApp({ authUserId: TEST_USER_ID });
+    attackerApp = await createTestApp({ authUserId: OTHER_USER_ID });
+    dbUtils = new TestDatabaseUtils(
+      ownerApp.get<DatabaseService>(DatabaseService)
+    );
+  });
+
+  beforeEach(async () => {
+    await dbUtils.cleanTables(
+      "flashcard_labelings",
+      "deck_labelings",
+      "flashcard_labels",
+      "deck_label",
+      "flashcards",
+      "decks"
+    );
+  });
+
+  afterAll(async () => {
+    await dbUtils.cleanTables(
+      "flashcard_labelings",
+      "deck_labelings",
+      "flashcard_labels",
+      "deck_label",
+      "flashcards",
+      "decks"
+    );
+    await ownerApp.close();
+    await attackerApp.close();
+  });
+
+  /** A deck of the owner's, with one card in it. Returns both ids. */
+  const seedOwnerDeckWithCard = async (isPublic: boolean) => {
+    const deck = await request(ownerApp.getHttpServer())
+      .post("/flashcard/decks")
+      .send({ title: isPublic ? "Public Deck" : "Private Deck", isPublic });
+    expect(deck.status).toBe(201);
+
+    const cards = await request(ownerApp.getHttpServer())
+      .post(`/flashcard/decks/${deck.body.id}/cards`)
+      .send([
+        { type: "VOCABULARY", contentFront: "front 0", contentBack: "back 0" },
+      ]);
+    expect(cards.status).toBe(201);
+
+    return {
+      deckId: deck.body.id as string,
+      cardId: cards.body[0].id as string,
+    };
+  };
+
+  /** A label belonging to whoever's app is passed. */
+  const seedLabel = async (app: INestApplication, path: string) => {
+    const created = await request(app.getHttpServer())
+      .post(`${path}/create`)
+      .send({ title: "Kelime Hazinesi", scope: Scope.PERSONAL });
+    expect(created.status).toBe(201);
+    return created.body.id as string;
+  };
+
+  it("refuses to label a card inside another user's private deck", async () => {
+    const { cardId } = await seedOwnerDeckWithCard(false);
+    const labelId = await seedLabel(attackerApp, "/flashcard-label");
+
+    const response = await request(attackerApp.getHttpServer())
+      .post("/flashcard-label/labeling")
+      .send({ labelId, flashcardId: cardId });
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("DECK_FORBIDDEN");
+  });
+
+  it("refuses to label another user's private deck", async () => {
+    const { deckId } = await seedOwnerDeckWithCard(false);
+    const labelId = await seedLabel(attackerApp, "/flashcard-deck-label");
+
+    const response = await request(attackerApp.getHttpServer())
+      .post("/flashcard-deck-label/labeling")
+      .send({ labelId, deckId });
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("DECK_FORBIDDEN");
+  });
+
+  // The oracle: a card that does not exist used to reach the insert and come
+  // back as a 500 from the foreign key. It is a 404 now, the same shape the
+  // card routes use.
+  it("answers 404, not 500, for a card that does not exist", async () => {
+    const labelId = await seedLabel(attackerApp, "/flashcard-label");
+
+    const response = await request(attackerApp.getHttpServer())
+      .post("/flashcard-label/labeling")
+      .send({ labelId, flashcardId: MISSING_UUID });
+
+    expect(response.status).toBe(404);
+    expect(response.body.code).toBe("CARD_NOT_FOUND");
+  });
+
+  it("answers 404, not 500, for a deck that does not exist", async () => {
+    const labelId = await seedLabel(attackerApp, "/flashcard-deck-label");
+
+    const response = await request(attackerApp.getHttpServer())
+      .post("/flashcard-deck-label/labeling")
+      .send({ labelId, deckId: MISSING_UUID });
+
+    expect(response.status).toBe(404);
+    expect(response.body.code).toBe("DECK_NOT_FOUND");
+  });
+
+  // The counterweight, twice: readable is not the same as owned, so a PUBLIC
+  // deck stays labelable by anyone, and the author is never locked out of
+  // their own.
+  it("lets a stranger label a card in a PUBLIC deck", async () => {
+    const { cardId } = await seedOwnerDeckWithCard(true);
+    const labelId = await seedLabel(attackerApp, "/flashcard-label");
+
+    const response = await request(attackerApp.getHttpServer())
+      .post("/flashcard-label/labeling")
+      .send({ labelId, flashcardId: cardId });
+
+    expect(response.status).toBe(201);
+  });
+
+  it("lets the author label a card in their own private deck", async () => {
+    const { cardId } = await seedOwnerDeckWithCard(false);
+    const labelId = await seedLabel(ownerApp, "/flashcard-label");
+
+    const response = await request(ownerApp.getHttpServer())
+      .post("/flashcard-label/labeling")
+      .send({ labelId, flashcardId: cardId });
+
+    expect(response.status).toBe(201);
+  });
+});

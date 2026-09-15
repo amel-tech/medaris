@@ -1923,6 +1923,12 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "The label, or the card's deck, belongs to another user"
+          },
+          "404": {
+            "description": "No such label, or no such card"
           }
         },
         "security": [
@@ -2123,6 +2129,12 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "The label, or the target deck, belongs to another user"
+          },
+          "404": {
+            "description": "No such label, or no such deck"
           }
         },
         "security": [

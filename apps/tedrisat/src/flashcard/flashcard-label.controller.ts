@@ -78,9 +78,15 @@ import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
  * "probably should" be readable by anyone. If that is the product intent, it
  * belongs with the scope/visibility model, not with a UUID lookup.
  *
- * Scope note: the REST of this controller closes the AUTHENTICATION hole only.
- * Whether the caller may label a card or deck they do not own is still
- * unchecked and belongs with the flashcard ownership work — see MDRS-26.
+ * Scope note: MDRS-27 closed the AUTHENTICATION hole here and left the target
+ * of a labeling unchecked, deferred to MDRS-26. That deferral is over — both
+ * `/labeling` routes now assert the caller may READ the card or deck they are
+ * labelling, through the same `FlashcardDeckService.assertReadable` the card
+ * and deck routes use; see `FlashcardLabelService.flashcardLabeling`. What is
+ * still MDRS-26's is the read side: no route surfaces labelings back, and
+ * `CardIncludeEnum` exposes only `progress`, so whether a deck owner sees
+ * another user's private annotation on their card is not yet a question this
+ * module answers.
  */
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
@@ -131,6 +137,11 @@ export class FlashcardlabelController {
   })
   @ApiBody({ type: CreateFlashcardLabelingDto })
   @ApiCreatedResponse({ type: FlashcardLabelingResponse })
+  @ApiResponse({
+    status: 403,
+    description: "The label, or the card's deck, belongs to another user",
+  })
+  @ApiResponse({ status: 404, description: "No such label, or no such card" })
   @Post("/labeling")
   async flahscardLabeling(
     @Req() request: AuthorizedRequest,
