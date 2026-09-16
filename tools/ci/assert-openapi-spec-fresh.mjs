@@ -68,6 +68,28 @@ try {
     );
   }
 
+  // `libs/common` first. The exporter imports `AppModule`, which imports
+  // `@medaris/common`, and that package resolves to its `dist/` — so on a
+  // fresh checkout (a CI runner, a new worktree) the export dies with
+  // `TS2307: Cannot find module '@medaris/common'` before Nest is created.
+  // Building it here rather than relying on step order keeps `pnpm run
+  // assert:openapi-fresh` working on its own, and Nx makes the rebuild a
+  // cache hit whenever the library has not changed.
+  try {
+    execFileSync("pnpm", ["exec", "nx", "run", "common:build"], {
+      cwd: ROOT,
+      stdio: "pipe",
+    });
+  } catch (error) {
+    const detail = [error.stdout, error.stderr]
+      .map((buffer) => buffer?.toString().trim())
+      .filter(Boolean)
+      .join("\n");
+    fail(
+      `@medaris/common could not be built, so the exporter cannot run:\n${detail}`
+    );
+  }
+
   try {
     execFileSync(
       "pnpm",
