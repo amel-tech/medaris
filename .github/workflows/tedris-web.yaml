@@ -105,10 +105,17 @@ jobs:
           # re-pulls the previous build and the run goes green having deployed
           # nothing. The explicit expression below fires `latest` for every
           # release as well as for the default branch.
+          #
+          # `stable` (MDRS-87) moves ONLY on a release and is what the Coolify
+          # `production` application pulls; `latest` is what `development`
+          # pulls. Two moving tags, one per channel, and the immutable
+          # `<semver>` / `sha-…` pair for rollback. There is deliberately no
+          # `dev` tag: `latest` already plays that role.
           tags: |
             type=match,pattern=tedris-web-v(.+),group=1
             type=raw,value=latest,enable=${{ github.event_name == 'release' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
             type=sha
+            type=raw,value=stable,enable=${{ github.event_name == 'release' }}
 
       # MDRS-86: NEXT_PUBLIC_* is inlined at `next build`, so the values the
       # browser gets are decided in this job, not by a variable on the Coolify
@@ -185,16 +192,32 @@ jobs:
       # nothing redeployed — a silent no-op deploy is precisely the failure this
       # issue exists to close. Secrets are passed through `env` rather than
       # spliced into the script body.
+      #
+      # MDRS-87: the webhook is chosen by event. A `release` deploys to the
+      # Coolify `production` application through TEDRIS_WEB_PROD_COOLIFY_WEBHOOK;
+      # every other trigger (workflow_dispatch, workflow_call from
+      # deploy-affected.yaml, a future push) deploys to `development` through
+      # TEDRIS_WEB_COOLIFY_WEBHOOK. The secret each branch needs is
+      # checked on its own so a release with no production webhook fails here,
+      # naming the secret — it must never fall back to the development one.
       - name: Deploy to Coolify
         env:
-          COOLIFY_WEBHOOK: ${{ secrets.TEDRIS_WEB_COOLIFY_WEBHOOK }}
+          IS_RELEASE: ${{ github.event_name == 'release' }}
+          DEV_WEBHOOK: ${{ secrets.TEDRIS_WEB_COOLIFY_WEBHOOK }}
+          PROD_WEBHOOK: ${{ secrets.TEDRIS_WEB_PROD_COOLIFY_WEBHOOK }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
         run: |
           set -euo pipefail
+          if [ "${IS_RELEASE}" = "true" ]; then
+            COOLIFY_WEBHOOK="${PROD_WEBHOOK}"; CHANNEL="production"; SECRET_NAME="TEDRIS_WEB_PROD_COOLIFY_WEBHOOK"
+          else
+            COOLIFY_WEBHOOK="${DEV_WEBHOOK}"; CHANNEL="development"; SECRET_NAME="TEDRIS_WEB_COOLIFY_WEBHOOK"
+          fi
           if [ -z "${COOLIFY_WEBHOOK}" ]; then
-            echo "::error::TEDRIS_WEB_COOLIFY_WEBHOOK is not set — the image was pushed to GHCR but nothing was redeployed."
+            echo "::error::${SECRET_NAME} is not set — the image was pushed to GHCR but nothing was redeployed to ${CHANNEL}."
             exit 1
           fi
+          echo "Deploying to the ${CHANNEL} application."
           curl --fail-with-body --silent --show-error \
                --retry 3 --retry-connrefused --max-time 60 \
                --request GET "${COOLIFY_WEBHOOK}" \

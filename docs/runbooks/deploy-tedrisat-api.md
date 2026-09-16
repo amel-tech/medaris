@@ -68,12 +68,13 @@ root file and that path no longer exists.
 type=match,pattern=tedrisat-v(.+),group=1
 type=raw,value=latest,enable=${{ github.event_name == 'release' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
 type=sha
+type=raw,value=stable,enable=${{ github.event_name == 'release' }}
 ```
 
 | Trigger | Tags produced |
 |---|---|
-| Release created, tag `tedrisat-v0.1.5` | `0.1.5`, `latest`, `sha-<short>` |
-| Release created, tag `tedrisat-something-without-v` | `latest`, `sha-<short>` — **no version tag** |
+| Release created, tag `tedrisat-v0.1.5` | `0.1.5`, `latest`, `sha-<short>`, `stable` |
+| Release created, tag `tedrisat-something-without-v` | `latest`, `sha-<short>`, `stable` — **no version tag** |
 | `workflow_dispatch` / `workflow_call` on `main` | `latest`, `sha-<short>` |
 | `workflow_dispatch` / `workflow_call` on any other branch | `sha-<short>` only |
 
@@ -122,12 +123,23 @@ reported success.
 
 ## 2. Normal deploy
 
-Either:
+Two channels (MDRS-87), told apart by the event that started the run:
 
-* **Release path** — create a GitHub release tagged `tedrisat-v<semver>`. The
-  workflow builds, pushes, and calls the Coolify webhook.
-* **Manual path** — Actions → **Tedrisat API** → *Run workflow*.
-* **Fan-out path** — Actions → **Deploy Affected** → *Run workflow* with
+| Channel | Coolify application | Pulls | Started by | Webhook secret |
+|---|---|---|---|---|
+| development | the `development` one in the header | `latest` | *Manual path* or *Fan-out path* below, on `main` | `TEDRISAT_SERVICE_COOLIFY_WEBHOOK` |
+| production | its twin in the `production` environment | `stable` | *Release path* below | `TEDRISAT_SERVICE_PROD_COOLIFY_WEBHOOK` |
+
+Release-please is not part of the development channel: its release PRs stay
+open until someone decides to ship, and merging one is the production trigger.
+
+* **Release path (production)** — merge the release-please PR for `tedrisat` (or
+  create a GitHub release tagged `tedrisat-v<semver>` by hand). The workflow
+  builds, pushes `<semver>` + `latest` + `sha-…` + `stable`, and calls the
+  **production** webhook. `latest` moving here is harmless: the release commit
+  is the head of `main`, so development receives the build it would anyway.
+* **Manual path (development)** — Actions → **Tedrisat API** → *Run workflow* on `main`.
+* **Fan-out path (development)** — Actions → **Deploy Affected** → *Run workflow* with
   `dry_run: false`. It calls this workflow only when `nx affected` reports
   `tedrisat`, which includes every change to a lib this app depends on.
 
@@ -176,7 +188,9 @@ The two fields are **Docker Image** and **Docker Image Tag** on the application'
 *General* tab; through the API they are `docker_registry_image_name` and
 `docker_registry_image_tag` on `PATCH /api/v1/applications/uk08w4w8gkkgwossks8wgock`.
 
-**Path B — the service pulls `:latest`.**
+**Path B — the application pulls a moving tag (`latest` for development, `stable` for production).**
+The commands below say `latest`; for production substitute `stable` and the
+production webhook secret.
 Move `latest` back to the old digest, then fire the same webhook the workflow
 uses. No rebuild, so the bytes are provably the ones that worked:
 
