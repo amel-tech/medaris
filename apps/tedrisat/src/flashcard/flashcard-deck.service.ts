@@ -89,7 +89,42 @@ export class FlashcardDeckService {
    * `DeckForbiddenError`.
    */
   async assertReadable(deckId: string, userId: string): Promise<void> {
-    const deck = await this.deckRepo.findVisibility(deckId);
+    this.assertVisibleTo(
+      deckId,
+      await this.deckRepo.findVisibility(deckId),
+      userId
+    );
+  }
+
+  /**
+   * `assertReadable` for a caller that wants the deck itself: ONE read of the
+   * row, and the decision made from the two columns it already carries.
+   *
+   * `assertReadable(id)` followed by `findById(id)` read `decks` twice on the
+   * busiest deck route. The rule stays here rather than moving into the
+   * controller — both paths go through `assertVisibleTo`, so a change to what
+   * "readable" means lands in one place.
+   */
+  async findReadable(
+    deckId: string,
+    userId: string,
+    include?: string[]
+  ): Promise<IFlashcardDeck> {
+    const deck = await this.findById(deckId, include);
+    this.assertVisibleTo(deckId, deck, userId);
+    // `assertVisibleTo` has thrown if `deck` is null.
+    return deck as IFlashcardDeck;
+  }
+
+  /**
+   * The read rule, written once: the author always, anybody else only when the
+   * deck is public. A deck that is not there is a 404 on both paths.
+   */
+  private assertVisibleTo(
+    deckId: string,
+    deck: { authorId: string; isPublic: boolean } | null,
+    userId: string
+  ): void {
     if (deck === null) {
       throw new DeckNotFoundError(deckId);
     }

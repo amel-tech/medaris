@@ -79,19 +79,10 @@ export class FlashcardLabelService {
       newLabeling.flashcardId,
       newLabeling.createdBy
     );
-    const labelStats = await this.flashcardLabelRepo.getLabelStats(
-      newLabeling.labelId
-    );
-    if (labelStats) {
-      await this.flashcardLabelRepo.updateLabelStats(newLabeling.labelId);
-    } else {
-      await this.flashcardLabelRepo.createLabelStats({
-        labelId: newLabeling.labelId,
-        usageCount: 1,
-        lastUsedAt: new Date(),
-      });
-    }
-    return await this.flashcardLabelRepo.flashcardLabeling(newLabeling);
+    // One call, one transaction — see `labelAndCountUsage`. The stats
+    // read-and-branch that used to sit here ran before the insert that can
+    // fail, and two concurrent first-labelings both took the create branch.
+    return await this.flashcardLabelRepo.labelAndCountUsage(newLabeling);
   }
   /**
    * MDRS-56. Both reads go through `assertOwner` first, exactly as

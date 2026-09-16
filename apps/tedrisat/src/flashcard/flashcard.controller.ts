@@ -58,6 +58,7 @@ import { FlashcardProgressResponse } from "./dto/flashcard-progress-response.dto
 import { FlashcardResponse } from "./dto/flashcard-response.dto";
 import { UpdateFlashcardDto } from "./dto/update-flashcard.dto";
 import { BulkValidationError } from "./errors/bulk-validation.error";
+import { CardNotFoundError } from "./errors/card-not-found.error";
 import { FlashcardService } from "./flashcard.service";
 import { FlashcardBulkService } from "./flashcard-bulk.service";
 import { FlashcardDeckService } from "./flashcard-deck.service";
@@ -96,9 +97,13 @@ export class FlashcardController {
   ): Promise<FlashcardResponse> {
     const userId = request.user.sub;
     // `FlashcardRepository.findById` filters on `flashcards.id` alone, so the
-    // card's own row proves nothing about who may see it. The deck is the
-    // only thing that carries a visibility rule, so resolve it first.
-    await this.deckService.assertReadable(await this.deckOf(cardId), userId);
+    // card's own row proves nothing about who may see it — the deck is the
+    // only thing carrying a visibility rule. But that row already holds
+    // `deckId`, so read it first and decide from what it carries rather than
+    // paying `deckOf` a separate round trip for the same row; three serial
+    // hops become two. Nothing leaks by deciding after the read: this handler
+    // is what puts the card into the response, and a card in somebody else's
+    // private deck still answers 403 before any of it is serialised.
     const card = await this.cardService.findById(cardId, userId, include);
     if (!card) {
       throw new HttpException(
@@ -106,6 +111,7 @@ export class FlashcardController {
         HttpStatus.NOT_FOUND
       );
     }
+    await this.deckService.assertReadable(card.deckId, userId);
     return card;
   }
 
@@ -147,10 +153,12 @@ export class FlashcardController {
   private async deckOf(cardId: string): Promise<string> {
     const deckId = await this.cardService.findDeckId(cardId);
     if (deckId === null) {
-      throw new HttpException(
-        `could not find card #${cardId}`,
-        HttpStatus.NOT_FOUND
-      );
+      // `CardNotFoundError`, not a bare `HttpException`: the same 404 the
+      // labeling routes raise for the same question, so a client can branch on
+      // `CARD_NOT_FOUND` rather than on prose. The inline 404 below on
+      // `findById` is the card's own row being absent, which is a different
+      // read and keeps its own message.
+      throw new CardNotFoundError(cardId);
     }
     return deckId;
   }
@@ -191,6 +199,10 @@ export class FlashcardController {
   })
   @ApiOkResponse({ type: [FlashcardProgressResponse] })
   @ApiBody({ type: [CreateFlashcardProgressDto] })
+  @ApiNotFoundResponse({ description: "No such card" })
+  @ApiForbiddenResponse({
+    description: "A card's deck is private and owned by another user",
+  })
   @Put("cards/progress")
   async replaceManyProgress(
     @Req() request: AuthorizedRequest,
@@ -198,6 +210,22 @@ export class FlashcardController {
     progressDto: CreateFlashcardProgressDto[]
   ): Promise<FlashcardProgressResponse[]> {
     const userId = request.user.sub;
+    // The last route in this controller without a target check. The row
+    // written always belongs to the caller — `replaceManyProgress` spreads
+    // `userId` last — but `flashcardId` came off the body unchecked, so
+    // progress could be recorded against any card UUID, including one inside
+    // another user's private deck, and a real id answered 200 while an unknown
+    // one tripped the FK as a 500. `assertReadable`, because studying somebody
+    // else's public deck is what this route is for.
+    //
+    // De-duplicated first: a study session posts many cards from one deck, and
+    // the checks would otherwise be one pair of queries per row.
+    const cardIds = [...new Set(progressDto.map((p) => p.flashcardId))];
+    await Promise.all(
+      cardIds.map(async (cardId) =>
+        this.deckService.assertReadable(await this.deckOf(cardId), userId)
+      )
+    );
     return this.cardService.replaceManyProgress(userId, progressDto);
   }
 

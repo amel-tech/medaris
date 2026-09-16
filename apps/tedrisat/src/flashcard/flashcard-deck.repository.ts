@@ -106,9 +106,18 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
 
   async findAllByUser(userId: string): Promise<IFlashcardDeck[]> {
     return this.databaseService.db.query.decks.findMany({
-      with: {
-        decksUsers: true,
-      },
+      // No `with: { decksUsers: true }`. The relation was hydrated in full and
+      // serialized straight onto the wire — tedrisat registers no
+      // `ClassSerializerInterceptor` and `FlashcardDeckResponse` has no
+      // `decksUsers` field to strip it — so every collector's Keycloak `sub`
+      // came back to anyone who collected the same public deck. Nothing reads
+      // it: the caller's own membership is what the `exists(...)` below
+      // answers. A later caller that genuinely needs the rows should scope
+      // them to the caller rather than restore this.
+      //
+      // It was also the wrong shape to pay for: the composite primary key is
+      // `(userId, deckId)`, so the deckId-leading probe drizzle emits for the
+      // relation has no usable index.
       // Visibility is re-evaluated on every read, not decided once when the
       // `decks_users` row was written. `FlashcardDeckController.addToUserCollection`
       // asserts readability before it collects, but that assertion ages: the

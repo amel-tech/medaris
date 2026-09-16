@@ -361,3 +361,70 @@ deck owner, and `CardIncludeEnum` exposes only `progress`, so whether an author
 sees another user's private annotation on their card is still not a question
 this module answers. The class docblock on `flashcard-label.controller.ts` now
 says that, rather than deferring the whole subject.
+
+### Fourth review round — what the new guards and the new migration exposed
+
+Closing one class of hole made the next one reachable, which is most of what
+this round found.
+
+**`GET /flashcard/decks/collections` disclosed other collectors.** The
+write-time `assertReadable` and the read-time predicate both scoped which
+*decks* came back; `with: { decksUsers: true }` hydrated the join rows in full
+regardless, and tedrisat registers no `ClassSerializerInterceptor` while
+`FlashcardDeckResponse` has no field to strip them — so collecting a popular
+public deck handed the caller the Keycloak `sub` of everyone else who had
+collected it, and those ids are directly actionable elsewhere in this API
+(`POST /courses/:id/enrollments/:userId/approve` takes one as a path param).
+The relation is gone: nothing read it, and the caller's own membership is what
+the `exists(...)` predicate already answers. Pinned by an assertion on the whole
+response body rather than on the field name.
+
+**`PUT /flashcard/cards/progress` was the last unguarded target in the card
+controller.** The row written always belongs to the caller — the service
+spreads `userId` last — but `flashcardId` came off the body unchecked, so
+progress could be recorded against a card in a deck the caller may not read,
+and a real id answered 200 while an unknown one tripped the FK as a 500. It now
+resolves each distinct card's deck and asserts readability; de-duplicated
+first, because a study session posts many cards from one deck.
+
+**Migration 0013 made two latent defects live.** `flashcard_labelings` could
+not be written to before it, so nothing had ever exercised the table:
+
+- `flashcard_id` is `NOT NULL` and its foreign key said `ON DELETE SET NULL`.
+  Postgres accepts that pairing at DDL time and only fails when a referenced
+  card is deleted, so the first labelled card would have been undeletable — and
+  with it any deck holding it, since `flashcards.deck_id` cascades. Both the
+  schema and the migration now say `cascade`, which is what `label_id` beside
+  it and `deck_labelings.deck_id` opposite already said.
+- The stats write was three statements outside any transaction, with the insert
+  that can fail happening *last*: a bad target left the usage counter moved
+  with no labeling row behind it, permanently and cumulatively. Both
+  repositories now have `labelAndCountUsage`, one transaction, labeling first,
+  and the counter as a single `onConflictDoUpdate` rather than a
+  read-and-branch two concurrent first-labelings both lost.
+
+**The unique indexes landed after all.** `deck_label_stats.label_id` and
+`flashcard_label_stats.label_id` were the only columns either table is filtered
+on — including `updateLabelStats`'s `UPDATE ... WHERE label_id = $1`, which
+takes no `LIMIT` and scanned unconditionally on every labeling. The earlier
+deferral rested on the column-name drift, which 0013 itself removes; `unique`
+rather than plain is safe precisely because both tables were unwritable until
+that migration, so neither can hold duplicates. The `.limit(1)` fixes stay —
+they bound the read path independently — and the upsert above depends on the
+constraint.
+
+**Two round trips became one on the two hottest reads.** `GET
+/flashcard/cards/:id` read the card row, then the deck, then the card again;
+`GET /flashcard/decks/:id` read `decks` twice. Both now read once and decide
+from the columns the row already carries. The rule stays in
+`FlashcardDeckService` — `findReadable` and `assertReadable` share one private
+`assertVisibleTo` — rather than being inlined into a controller. The write
+handlers keep `deckOf`/`assertOwner`: they have no row in hand and must decide
+before mutating.
+
+**`deck_labels_decks` is still there, still deliberate.** A reviewer read the
+0013 snapshot and reached the same conclusion recorded against the migration
+above: the table exists in the database and in no schema file, `drizzle-kit`
+therefore proposes dropping it, and a rename-only migration is not where a
+destructive change belongs. It stays out of this PR in both the SQL and the
+snapshot. Whether it is dropped or re-declared is its own issue.

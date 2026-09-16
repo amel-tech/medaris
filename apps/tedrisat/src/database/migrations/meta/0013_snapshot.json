@@ -1,5 +1,5 @@
 {
-  "id": "e9176f1a-9e63-4f1f-bbd5-acca75d903a9",
+  "id": "176ed32b-3b28-4ca2-959c-7bae1544d98c",
   "prevId": "b09f7f7f-4197-4bd6-8507-08730ee3b316",
   "version": "7",
   "dialect": "postgresql",
@@ -249,7 +249,23 @@
           "notNull": true
         }
       },
-      "indexes": {},
+      "indexes": {
+        "deck_label_stats_label_id_idx": {
+          "name": "deck_label_stats_label_id_idx",
+          "columns": [
+            {
+              "expression": "label_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "deck_label_stats_label_id_deck_label_id_fk": {
           "name": "deck_label_stats_label_id_deck_label_id_fk",
@@ -416,7 +432,23 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "flashcard_label_stats_label_id_idx": {
+          "name": "flashcard_label_stats_label_id_idx",
+          "columns": [
+            {
+              "expression": "label_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "flashcard_label_stats_label_id_flashcard_labels_id_fk": {
           "name": "flashcard_label_stats_label_id_flashcard_labels_id_fk",
@@ -1433,7 +1465,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "set null",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },

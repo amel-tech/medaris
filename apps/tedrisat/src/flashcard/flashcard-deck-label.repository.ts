@@ -64,6 +64,61 @@ export class FlashcardDeckLabelRepository
       createdBy: deckLabeling.createdBy,
     };
   }
+  /**
+   * The labeling and its usage counter, in one transaction.
+   *
+   * The three statements this replaces — read the stats row, then create or
+   * increment it, then insert the labeling — ran outside any transaction, and
+   * the insert is the one that can fail: `deck_labelings.deck_id` is a NOT NULL
+   * foreign key, so a deck id that is not a deck answered 500 *after* the
+   * counter had already moved, and the label was then reported as used once
+   * with no labeling row behind it, permanently and cumulatively.
+   *
+   * Order matters: the labeling goes in FIRST, so a bad reference aborts before
+   * anything touches the counter. The counter is then one upsert rather than a
+   * read-and-branch — two concurrent first-labelings of the same label both
+   * read `null` under the old shape and both inserted, which the unique index
+   * on `label_id` (migration 0013) now refuses; `onConflictDoUpdate` turns that
+   * race into an increment instead of an error.
+   */
+  async labelAndCountUsage(
+    newLabeling: IFlashcardDeckLabeling
+  ): Promise<IFlashcardDeckLabeling> {
+    return this.databaseService.db.transaction(async (tx) => {
+      const [deckLabeling] = await tx
+        .insert(deckLabelings)
+        .values({
+          labelId: newLabeling.labelId,
+          deckId: newLabeling.deckId,
+          createdBy: newLabeling.createdBy,
+          privateToUserId: newLabeling.privateToUserId ?? null,
+        })
+        .returning();
+
+      await tx
+        .insert(deckLabelsStats)
+        .values({
+          labelId: newLabeling.labelId,
+          usageCount: 1,
+          lastUsedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: deckLabelsStats.labelId,
+          set: {
+            usageCount: sql`${deckLabelsStats.usageCount} + 1`,
+            lastUsedAt: new Date(),
+          },
+        });
+
+      return {
+        labelId: deckLabeling.labelId,
+        privateToUserId: deckLabeling.privateToUserId,
+        deckId: deckLabeling.deckId,
+        createdBy: deckLabeling.createdBy,
+      };
+    });
+  }
+
   async createLabelStats(
     useLabel: IFlashcardDeckLabelStats
   ): Promise<IFlashcardDeckLabelStats> {

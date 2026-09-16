@@ -84,17 +84,15 @@ export class FlashcardDeckController {
     // `findAllVisibleToUser` scopes the list route to public-or-own decks;
     // this route filtered on `decks.id` alone, so somebody else's private
     // deck came back in full to any authenticated caller who knew its id.
-    // `assertReadable` rather than `assertOwner` — a public deck is meant to
-    // be browsable by everyone.
-    await this.deckService.assertReadable(deckId, request.user.sub);
-    const deck = await this.deckService.findById(deckId, include);
-    if (!deck) {
-      throw new HttpException(
-        `no deck was found by id #${deckId}`,
-        HttpStatus.NOT_FOUND
-      );
-    }
-    return deck;
+    // Readable, not owned — a public deck is meant to be browsable by
+    // everyone.
+    //
+    // `findReadable` rather than `assertReadable` + `findById`: both columns
+    // the decision needs are on the row this handler was going to fetch
+    // anyway, so the pair was reading `decks` twice on the busiest deck route.
+    // The rule still lives in `FlashcardDeckService`, which is the point of
+    // not inlining the comparison here.
+    return this.deckService.findReadable(deckId, request.user.sub, include);
   }
 
   @ApiOperation({

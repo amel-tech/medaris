@@ -1174,6 +1174,12 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "A card's deck is private and owned by another user"
+          },
+          "404": {
+            "description": "No such card"
           }
         },
         "security": [

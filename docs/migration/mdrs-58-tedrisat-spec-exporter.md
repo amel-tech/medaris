@@ -757,3 +757,32 @@ All ten now carry `@ApiOperation({ summary, operationId })`:
 `getFlashcardLabelById`, `getFlashcardLabelStats` and the five deck-label
 equivalents. No source outside the generated directory referenced the old
 names, so this renames nothing a consumer holds.
+
+## The freshness gate MDRS-58 did not have (PR #69 review)
+
+This task added an exporter so the committed contract would stop going stale,
+and then left the artifact's freshness resting on whoever edited a controller
+remembering to run `pnpm run openapi:tedrisat`. Twice in this branch alone they
+did not: four MDRS-63 handlers' `403`/`404` declarations never reached the
+published spec, and the exporter was broken outright — `openapi:export` could
+not run at all — for as long as MDRS-66 had been on `main`, with every gate
+green over it.
+
+`tools/ci/assert-openapi-spec-fresh.mjs` closes that. It re-runs the **export**
+half into a temporary file and compares it with the committed artifact. Only the
+export half, because that needs `ts-node` and nothing else, while
+`generate:tedrisat` needs openapi-generator's Java toolchain — and the spec is
+the input to the client, so a fresh spec is the check that matters.
+`assertNoPathsLost` inside the exporter is what makes it safe to run unattended.
+
+`info.version` is excluded from the comparison on purpose. It is bound to
+`apps/tedrisat/package.json`, which release-please bumps on every tedrisat
+release without anyone touching a route or a DTO. Comparing it would fail every
+release PR, and — worse — would make a version-only diff indistinguishable from
+a real contract diff, consuming the one signal this chain has. That is also why
+a release bump alone is not a reason to regenerate the client.
+
+The check is wired into CI beside the env/compose parity gate, and is available
+locally as `pnpm run assert:openapi-fresh`. It earned its place immediately: the
+first run against this branch failed, because `replaceManyProgress` had just
+gained the two response declarations and the artifact had not been regenerated.

@@ -63,19 +63,12 @@ export class FlashcardDeckLabelService {
       newLabeling.deckId,
       newLabeling.createdBy
     );
-    const labelStats = await this.labelRepository.getLabelStats(
-      newLabeling.labelId
-    );
-    if (labelStats) {
-      await this.labelRepository.updateLabelStats(newLabeling.labelId);
-    } else {
-      await this.labelRepository.createLabelStats({
-        labelId: newLabeling.labelId,
-        usageCount: 1,
-        lastUsedAt: new Date(),
-      });
-    }
-    return await this.labelRepository.deckLabeling(newLabeling);
+
+    // One call, one transaction. The stats read-and-branch used to sit here,
+    // outside any transaction and BEFORE the insert that can fail, so a
+    // failure left the counter moved with no labeling behind it. See
+    // `labelAndCountUsage`.
+    return await this.labelRepository.labelAndCountUsage(newLabeling);
   }
   /**
    * MDRS-56, same shape as `FlashcardLabelService.getById` — `assertOwner`

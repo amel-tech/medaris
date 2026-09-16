@@ -609,6 +609,99 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
     expect(ownerList.body).toHaveLength(1);
   });
 
+  /**
+   * `GET /flashcard/decks/collections` used to hydrate `with: { decksUsers:
+   * true }` in full and serialize it — tedrisat registers no
+   * `ClassSerializerInterceptor` and `FlashcardDeckResponse` has no field to
+   * strip it — so collecting a popular public deck handed you the Keycloak
+   * `sub` of everyone else who had collected it. Those ids are directly
+   * actionable elsewhere in this API.
+   */
+  it("does not disclose other collectors in /collections", async () => {
+    const publicDeck = await request(ownerApp.getHttpServer())
+      .post("/flashcard/decks")
+      .send({ title: "Owner's Public Deck", isPublic: true });
+    expect(publicDeck.status).toBe(201);
+
+    for (const app of [attackerApp, ownerApp]) {
+      const collected = await request(app.getHttpServer()).post(
+        `/flashcard/decks/${publicDeck.body.id}/collections`
+      );
+      expect(collected.status).toBe(201);
+    }
+
+    const mine = await request(ownerApp.getHttpServer()).get(
+      "/flashcard/decks/collections"
+    );
+    expect(mine.status).toBe(200);
+    expect(mine.body).toHaveLength(1);
+    // The whole body, not just the field: a differently-named relation would
+    // slip past an assertion that only looked at `decksUsers`.
+    expect(JSON.stringify(mine.body)).not.toContain(OTHER_USER_ID);
+  });
+
+  /**
+   * `PUT /flashcard/cards/progress` was the last route in the card controller
+   * without a target check. The row written always belongs to the caller, but
+   * the card it points at was unchecked, so progress could be recorded against
+   * a card in a deck the caller may not read — and a real id answered 200
+   * while an unknown one tripped the FK as a 500.
+   */
+  it("refuses to record progress against a card in another user's private deck", async () => {
+    const seeded = await request(ownerApp.getHttpServer())
+      .post(`/flashcard/decks/${deckId}/cards/bulk`)
+      .send(cards(1));
+    expect(seeded.status).toBe(201);
+
+    const owned = await request(ownerApp.getHttpServer()).get(
+      `/flashcard/cards?deckId=${deckId}`
+    );
+    const cardId = owned.body[0].id;
+
+    const response = await request(attackerApp.getHttpServer())
+      .put("/flashcard/cards/progress")
+      .send([{ flashcardId: cardId, status: "LEARNING" }]);
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("DECK_FORBIDDEN");
+  });
+
+  it("answers 404, not 500, for progress against a card that does not exist", async () => {
+    const response = await request(attackerApp.getHttpServer())
+      .put("/flashcard/cards/progress")
+      .send([
+        {
+          flashcardId: "00000000-0000-4000-8000-000000000000",
+          status: "LEARNING",
+        },
+      ]);
+
+    expect(response.status).toBe(404);
+    expect(response.body.code).toBe("CARD_NOT_FOUND");
+  });
+
+  // Studying somebody else's PUBLIC deck is exactly what this route is for.
+  it("still records progress against a card in a PUBLIC deck", async () => {
+    const publicDeck = await request(ownerApp.getHttpServer())
+      .post("/flashcard/decks")
+      .send({ title: "Owner's Public Deck", isPublic: true });
+    const seeded = await request(ownerApp.getHttpServer())
+      .post(`/flashcard/decks/${publicDeck.body.id}/cards/bulk`)
+      .send(cards(1));
+    expect(seeded.status).toBe(201);
+
+    const visible = await request(attackerApp.getHttpServer()).get(
+      `/flashcard/cards?deckId=${publicDeck.body.id}`
+    );
+    expect(visible.status).toBe(200);
+
+    const response = await request(attackerApp.getHttpServer())
+      .put("/flashcard/cards/progress")
+      .send([{ flashcardId: visible.body[0].id, status: "LEARNING" }]);
+
+    expect(response.status).toBe(200);
+  });
+
   it("refuses to read another user's private deck itself", async () => {
     const response = await request(attackerApp.getHttpServer()).get(
       `/flashcard/decks/${deckId}`
