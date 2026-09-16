@@ -3,7 +3,15 @@ import { NextResponse } from "next/server";
 import { env } from "~/env";
 import { getAccessToken } from "~/lib/auth_options";
 
-export async function GET({ params }: { params: Promise<{ id: string }> }) {
+// Next calls a route handler as `GET(request, context)`; `params` lives on the
+// second argument. Destructuring it off the first one read `params` from the
+// Request, so `const { id } = await undefined` threw before any code below
+// could run — including the 401 guard, whose whole point is to replace that
+// crash's 500 with something the caller can act on.
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { id } = await params;
 
