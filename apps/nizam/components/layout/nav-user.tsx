@@ -20,7 +20,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@medaris/ui/components/sidebar";
-import { signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { keycloakSignOut } from "~/lib/keycloak-logout";
 
 export function NavUser({
   user,
@@ -32,6 +33,7 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
+  const { data: session } = useSession();
   const nameInitials = user.name
     .split(" ")
     .map((name) => name.charAt(0).toUpperCase())
@@ -80,7 +82,7 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => signOut()}>
+            <DropdownMenuItem onClick={() => keycloakSignOut(session?.idToken)}>
               <SignOutIcon />
               Log out
             </DropdownMenuItem>

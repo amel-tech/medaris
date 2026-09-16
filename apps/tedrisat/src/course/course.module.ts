@@ -10,5 +10,9 @@ import { CourseService } from "./course.service";
   imports: [AuthGuardModule, KoskModule],
   controllers: [CourseController],
   providers: [CourseService, CourseRepository, DatabaseService],
+  // For AuthzBindingsModule's role resolver (MDRS-41): findKoskId,
+  // isMuderris and findEnrollment have no CourseService counterpart, so the
+  // repository is what is exported here.
+  exports: [CourseRepository],
 })
 export class CourseModule {}

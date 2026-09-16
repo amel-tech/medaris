@@ -6,20 +6,34 @@ import {
   CardsIcon,
   StarIcon,
   StudentIcon,
+  TrashIcon,
 } from "@medaris/icons";
 import type {
   FlashcardDeckResponse,
   FlashcardResponse,
 } from "@medaris/services/tedrisat";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@medaris/ui/components/alert-dialog";
 import { Badge } from "@medaris/ui/components/badge";
 
 import { Button } from "@medaris/ui/components/button";
 import { toastHelper } from "@medaris/ui/lib/toast-helper";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import {
   addDeckToCollection,
+  deleteDeck,
   removeDeckFromCollection,
 } from "~/features/flashcards/actions";
 import { SampleCards } from "~/features/flashcards/components/sample-cards";
@@ -33,12 +47,15 @@ export function DeckDetailPage({
   deck,
   cards,
   isInCollection: initialIsInCollection,
+  isOwner = false,
 }: {
   deck: FlashcardDeckResponse;
   cards: FlashcardResponse[];
   isInCollection: boolean;
+  isOwner?: boolean;
 }) {
   const t = useTranslations("tedris");
+  const router = useRouter();
   const [isInCollection, setIsInCollection] = useState(initialIsInCollection);
   const [isProcessing, setIsProcessing] = useState(false);
   const cardCount = cards.length;
@@ -85,6 +102,24 @@ export function DeckDetailPage({
       });
     }
     setIsProcessing(false);
+  };
+
+  const handleDelete = async () => {
+    setIsProcessing(true);
+    const result = await deleteDeck(deck.id);
+    if (result.success) {
+      toastHelper.success({
+        title: t("DeckCard.deckDeleted"),
+        description: t("DeckCard.deckDeletedDescription"),
+      });
+      router.push("/decks");
+    } else {
+      toastHelper.error({
+        title: t("DeckCard.deleteError"),
+        description: t("DeckCard.deleteErrorDescription"),
+      });
+      setIsProcessing(false);
+    }
   };
 
   const handleToggleCollection = async () => {
@@ -170,6 +205,41 @@ export function DeckDetailPage({
                   ? t("DeckDetailClient.removeFromCollection")
                   : t("DeckDetailClient.addToMyCollection")}
             </Button>
+            {isOwner && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="gap-2"
+                    disabled={isProcessing}
+                  >
+                    <TrashIcon size={20} />
+                    {t("DeckCard.deleteDeck")}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {t("DeckCard.deleteConfirmTitle")}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t("DeckCard.deleteConfirmDescription", {
+                        title: deck.title,
+                      })}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>
+                      {t("DeckCard.cancel")}
+                    </AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete}>
+                      {t("DeckCard.delete")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
 

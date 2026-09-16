@@ -14,6 +14,12 @@ import { join } from "path";
 
 // Fixed user id injected by the stubbed AuthGuard in tests.
 export const TEST_USER_ID = "623fdf08-fd0e-481b-a927-4a1c15135e62";
+/**
+ * The second identity for two-app owner/attacker specs. Declared once so the
+ * pattern's one precondition — that the two ids differ — cannot be broken by
+ * a mistyped copy.
+ */
+export const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";
 
 // Global container instance to be shared across all tests
 let globalPostgresContainer: StartedPostgreSqlContainer | null = null;

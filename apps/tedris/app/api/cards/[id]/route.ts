@@ -1,15 +1,15 @@
 import { createServerTedrisatAPIs } from "@medaris/services/tedrisat";
 import { NextResponse } from "next/server";
 import { env } from "~/env";
-import { auth } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth_options";
 
 export async function GET({ params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
 
-    const session = await auth();
+    const accessToken = await getAccessToken();
     const { cards } = await createServerTedrisatAPIs(
-      session?.accessToken,
+      accessToken,
       env.TEDRISAT_API_BASE_URL
     );
 

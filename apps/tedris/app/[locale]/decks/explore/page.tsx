@@ -4,6 +4,8 @@ import {
   parseDeckFilter,
 } from "~/features/flashcards/actions";
 import { ExploreDecksPage } from "~/features/flashcards/components/explore-decks-page";
+import { getAccessToken } from "~/lib/auth_options";
+import { subjectOf } from "~/lib/token-subject";
 
 export default async function Page({
   searchParams,
@@ -13,9 +15,10 @@ export default async function Page({
   const { filter: filterParam } = await searchParams;
   const filter = await parseDeckFilter(filterParam);
 
-  const [decks, userDecks] = await Promise.all([
+  const [decks, userDecks, accessToken] = await Promise.all([
     getDecks(filter),
     getMyDecks("all"),
+    getAccessToken(),
   ]);
 
   const userDeckIds = new Set((userDecks ?? []).map((deck) => deck.id));
@@ -25,6 +28,7 @@ export default async function Page({
       initialDecks={decks}
       userDeckIds={Array.from(userDeckIds)}
       filter={filter}
+      currentUserId={subjectOf(accessToken)}
     />
   );
 }

@@ -1,11 +1,15 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { IsNumber, IsString } from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsString } from "class-validator";
 import { Scope } from "../domain/flashcard-label.enum";
 import {
   CreateFlashcardDeckLabelDto,
   CreateFlashcardDeckLabelingDto,
 } from "./create-flashcard-deck-label.dto";
 export class FlashcardDeckCreateLabelResponse extends CreateFlashcardDeckLabelDto {
+  // See FlashcardCreateLabelResponse for why `id` is published.
+  @ApiProperty()
+  @IsString()
+  declare id: string;
   @ApiProperty()
   @IsString()
   declare title: string;
@@ -19,20 +23,28 @@ export class FlashcardDeckCreateLabelResponse extends CreateFlashcardDeckLabelDt
 
 export class FlashcardDeckLabelingResponse extends CreateFlashcardDeckLabelingDto {
   @ApiProperty()
-  @IsNumber()
+  @IsString()
   declare labelId: string;
   @ApiProperty()
-  @IsNumber()
+  @IsString()
   declare deckId: string;
+  @ApiProperty()
+  @IsString()
+  declare createdBy: string;
 }
 export class FlashcardDeckLabelResponse {
   @ApiProperty()
   @IsString()
+  declare id: string;
+  @ApiProperty()
+  @IsString()
   declare title: string;
+  @ApiProperty()
+  declare createdAt: Date;
   @ApiProperty()
   @IsString()
   declare createdBy: string;
-  @ApiProperty()
+  @ApiProperty({ enum: Scope })
   declare scope: Scope;
 }
 export class DeckLabelStatsResponse {
@@ -41,6 +53,6 @@ export class DeckLabelStatsResponse {
   declare labelId: string;
   @ApiProperty()
   declare usageCount: number;
-  @ApiProperty()
-  declare lastUsedAt: Date;
+  @ApiPropertyOptional({ type: String, format: "date-time", nullable: true })
+  declare lastUsedAt: Date | null;
 }

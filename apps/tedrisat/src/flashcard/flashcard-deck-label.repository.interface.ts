@@ -1,4 +1,5 @@
 import { Scope } from "./domain/flashcard-label.enum";
+import { ILabelStatsRead } from "./domain/label-stats";
 
 export interface IFlashcardDeckLabel {
   id: string;
@@ -18,6 +19,8 @@ export interface IFlashcardDeckLabelStats {
   usageCount: number;
   lastUsedAt: Date;
 }
+/** See `domain/label-stats.ts` — one definition behind both services' readers. */
+export type IFlashcardDeckLabelStatsRead = ILabelStatsRead;
 export interface IFlashcardDeckLabeling {
   labelId: string;
   privateToUserId: string | null;
@@ -39,5 +42,5 @@ export interface IFlashcardDeckLabelRepository {
 
   updateLabelStats(labelId: string): Promise<IFlashcardDeckLabelStats>;
 
-  getLabelStats(labelId: string): Promise<IFlashcardDeckLabelStats>;
+  getLabelStats(labelId: string): Promise<IFlashcardDeckLabelStats | null>;
 }
