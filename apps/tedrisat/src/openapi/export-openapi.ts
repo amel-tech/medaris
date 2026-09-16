@@ -50,19 +50,21 @@ interface RootEnvLoader {
 
 /**
  * Where the document goes: the first CLI argument, resolved against the
- * current directory. The default lives in this package's `openapi:export`
- * script, not here — the destination is inside `libs/services`, another
- * package's directory layout, and this app declares no dependency on it, so
- * the exporter itself names no path it does not own. `libs/services/
- * swagger-docs/README.md`'s two-command sequence is unchanged.
+ * current directory. There is no default anywhere — the destination is
+ * supplied by the repository-root `openapi:tedrisat` script, because it is
+ * inside `libs/services`, another package's directory layout, and this app
+ * declares no dependency on it. The exporter therefore names no path it does
+ * not own. `libs/services/swagger-docs/README.md` documents the same entry
+ * point.
  */
 function targetPathFromArgv(): string {
   const arg = process.argv[2];
   if (!arg) {
     throw new Error(
-      "export-openapi: pass the destination file as the first argument, e.g. " +
-        "`pnpm --filter @medaris/tedrisat run openapi:export` (whose script " +
-        "supplies libs/services/swagger-docs/tedrisat.json)."
+      "export-openapi: pass the destination file as the first argument. Run " +
+        "`pnpm run openapi:tedrisat` from the repository root (which supplies " +
+        "libs/services/swagger-docs/tedrisat.json and then regenerates the " +
+        "client), or pass the destination explicitly."
     );
   }
   return resolve(process.cwd(), arg);
@@ -87,7 +89,7 @@ const PINNED_KEYS = [
 ];
 
 /**
- * Same marker and same walk as tools/env/root-env.cjs. `pnpm-workspace.yaml`
+ * Same marker and same walk as libs/env/src/root-env.cjs: `pnpm-workspace.yaml`
  * rather than `.git`, which is a *file* rather than a directory inside a git
  * worktree — and this is run from worktrees. Walking also keeps the depth of
  * this file from being encoded as a count of `..` segments.
@@ -137,21 +139,27 @@ function readIfPresent(path: string): string | undefined {
  * on two machines produce the same bytes.
  */
 function applyDeterministicEnv(root: string): Map<string, string> {
-  const loaderPath = join(root, "tools", "env", "root-env.cjs");
-  // Required at runtime for the same reason src/load-env.ts requires it:
-  // tools/ sits outside every app's tsconfig rootDir. Attempted rather than
-  // probed first, for the reason on readIfPresent above.
+  // Resolved through the package rather than a hand-built path, the way
+  // src/load-env.ts reaches the same module: `@medaris/env` is buildless and
+  // its `main` is src/root-env.cjs, so the specifier survives the package
+  // moving house — MDRS-66 moved it out of tools/env/ and a literal path did
+  // not survive that. `require` rather than `import` because this file needs
+  // the CommonJS module's two named exports before the Nest app is created,
+  // and the package publishes no ESM entry point. Attempted rather than probed
+  // first, for the reason on readIfPresent above.
+  const LOADER_PACKAGE = "@medaris/env";
   let loader: RootEnvLoader;
   try {
-    loader = require(loaderPath) as RootEnvLoader;
+    loader = require(LOADER_PACKAGE) as RootEnvLoader;
   } catch (error) {
     if ((error as { code?: string } | null)?.code !== "MODULE_NOT_FOUND") {
       throw error;
     }
     throw new Error(
-      `export-openapi: ${loaderPath} could not be loaded. The prefix rules for ` +
-        "the root .env live there and are deliberately not duplicated here, so " +
-        "there is no fallback to take."
+      `export-openapi: ${LOADER_PACKAGE} (libs/env/src/root-env.cjs) could not ` +
+        "be loaded. The prefix rules for the root .env live there and are " +
+        "deliberately not duplicated here, so there is no fallback to take. " +
+        "Run `pnpm install` if this is a fresh worktree."
     );
   }
   const { parseEnv, resolveFor } = loader;

@@ -163,7 +163,9 @@ Two things would otherwise make the artifact depend on who ran the script:
 `KEYCLOAK_JWKS_URL`, `KEYCLOAK_ISSUER`, `KEYCLOAK_AUDIENCE` and `DB_PASSWORD`,
 and the first of those decides the two OAuth2 URLs in
 `components.securitySchemes.bearer`. The exporter therefore reads those four
-from the committed `.env.example`, through `tools/env/root-env.cjs` so the
+from the committed `.env.example`, through the `@medaris/env` loader
+(`libs/env/src/root-env.cjs`; it was `tools/env/root-env.cjs` when this task
+landed, until MDRS-66 moved it) so the
 `API__`/`TEDRISAT__` prefix rules stay in one implementation, and writes them
 over whatever the ambient environment holds. It deliberately does not import
 `./load-env` (which would apply the developer's own `.env`) or `./otel`.
@@ -514,11 +516,10 @@ it, and both `/security-review` and `/code-review` had read the file.
 
 ### Three smaller points from the same review
 
-- The exporter now guards both of its runtime reads. `tools/env/root-env.cjs`
-  and `.env.example` missing used to surface as a bare `MODULE_NOT_FOUND` and a
-  bare `ENOENT`; `load-env.ts` checks the first and is right to skip silently,
-  because production has no `tools/`. A build-time tool must do the opposite and
-  say which file is missing.
+- The exporter now guards both of its runtime reads. The root-env loader
+  (`@medaris/env`, `libs/env/src/root-env.cjs` since MDRS-66) and `.env.example`
+  missing used to surface as a bare `MODULE_NOT_FOUND` and a bare `ENOENT`. A
+  build-time tool must say which file is missing.
 - Only the four pinned keys are handed to `resolveFor` now. It calls
   `classify()` on every entry and `classify` **throws** on an unrecognised
   prefix, so a future unrelated line in the template — a `POSTGRES__…`, say —
@@ -697,3 +698,91 @@ present in both specs, `0` differ in `security`, and the 8 operations carrying
 no security requirement in the new spec are the same 8 as before (`GET /`,
 `GET /health`, `GET /throw-error`, `GET /secure`, and the four `/examples`
 routes). Follow-ups 4 and 5 came out of its non-security observations.
+
+## The exporter could not run as merged (PR #69 review, 2026-09-15)
+
+`applyDeterministicEnv` built the loader path by hand —
+`join(root, "tools", "env", "root-env.cjs")` — and MDRS-66 (already on `main` at the point of
+this PR) had moved that file to `libs/env/src/root-env.cjs`. `require()` threw
+`MODULE_NOT_FOUND`, which the guard below it converts into the hard "could not be loaded …
+there is no fallback to take" error, so `pnpm openapi:tedrisat` failed unconditionally, before
+Nest was created. Nothing in the gate caught it: `tsconfig.build.json` excludes the file from
+the build, `vitest.config.ts` excludes it from coverage, and `test/unit/openapi-document.spec.ts`
+covers only the config builder. The whole deliverable — regenerating the committed spec instead
+of hand-carrying it — was therefore un-runnable as shipped.
+
+The loader is now resolved through the package, `require("@medaris/env")`, the way
+`src/load-env.ts` reaches the same module. `libs/env/package.json` declares
+`"main": "./src/root-env.cjs"`, the package is buildless, and `apps/tedrisat/package.json`
+already depends on it. A specifier survives the next move; a literal path did not survive this
+one.
+
+Two neighbouring comments were stale for the same reason and moved with it: `findRepoRoot`'s
+doc block named `tools/env/root-env.cjs`, and the note beside the `require` claimed
+`src/load-env.ts` reaches the loader by path — it does `import { loadRootEnv } from
+"@medaris/env"`. The destination comment on `targetPathFromArgv` and the error string it
+justifies were wrong in a different way: both pointed the operator at
+`pnpm --filter @medaris/tedrisat run openapi:export` and called it the default, but that script
+passes no path argument. The destination comes from the repository-root `openapi:tedrisat`
+script, and both now say so.
+
+**The regenerated spec is a large diff, and most of it is ordering.** Measured over the whole
+of PR #69's review work (`git diff 775ff26e -- libs/services/swagger-docs/tedrisat.json`):
+2,005 insertions and 1,932 deletions, but the path *set* is identical (35 before, 35 after),
+`components` is byte-identical, and 18 paths changed content — eight because a handler gained a
+`403`/`404` declaration (the four MDRS-63 ones the committed file predated, plus the four read
+and collection routes the review closed), and ten because the label operations gained explicit
+`operationId`s, below. Everything else is `paths` key order: the committed artifact was not
+produced by this exporter and did not match its output, which is itself deterministic — two
+runs, one md5.
+
+The generated client came back **byte-identical** for the response-declaration half, as the
+reviewer predicted: those are description-only responses with no schema, so `openapi-generator`
+emits no method or model for them. The `operationId` half does change the client, by design —
+two files, method names only.
+
+### The ten label operations had no `operationId`
+
+Every other tedrisat controller sets one explicitly. `FlashcardlabelController`
+and `FlashcardDeckLabelController` set none, so `@nestjs/swagger` fell back to
+`<ClassName>_<methodName>` and the first spec this exporter published carried
+`FlashcardlabelController_flahscardLabeling` and nine siblings — putting the
+`Flashcardlabel` (lower-case l) and `Flahscard` (transposed) typos into the
+generated client's public surface, and tying every generated method name to a
+class or method name that a pure refactor could change while `typecheck`,
+`lint` and `build` all stayed green.
+
+All ten now carry `@ApiOperation({ summary, operationId })`:
+`createFlashcardLabel`, `deleteFlashcardLabel`, `createFlashcardLabeling`,
+`getFlashcardLabelById`, `getFlashcardLabelStats` and the five deck-label
+equivalents. No source outside the generated directory referenced the old
+names, so this renames nothing a consumer holds.
+
+## The freshness gate MDRS-58 did not have (PR #69 review)
+
+This task added an exporter so the committed contract would stop going stale,
+and then left the artifact's freshness resting on whoever edited a controller
+remembering to run `pnpm run openapi:tedrisat`. Twice in this branch alone they
+did not: four MDRS-63 handlers' `403`/`404` declarations never reached the
+published spec, and the exporter was broken outright — `openapi:export` could
+not run at all — for as long as MDRS-66 had been on `main`, with every gate
+green over it.
+
+`tools/ci/assert-openapi-spec-fresh.mjs` closes that. It re-runs the **export**
+half into a temporary file and compares it with the committed artifact. Only the
+export half, because that needs `ts-node` and nothing else, while
+`generate:tedrisat` needs openapi-generator's Java toolchain — and the spec is
+the input to the client, so a fresh spec is the check that matters.
+`assertNoPathsLost` inside the exporter is what makes it safe to run unattended.
+
+`info.version` is excluded from the comparison on purpose. It is bound to
+`apps/tedrisat/package.json`, which release-please bumps on every tedrisat
+release without anyone touching a route or a DTO. Comparing it would fail every
+release PR, and — worse — would make a version-only diff indistinguishable from
+a real contract diff, consuming the one signal this chain has. That is also why
+a release bump alone is not a reason to regenerate the client.
+
+The check is wired into CI beside the env/compose parity gate, and is available
+locally as `pnpm run assert:openapi-fresh`. It earned its place immediately: the
+first run against this branch failed, because `replaceManyProgress` had just
+gained the two response declarations and the artifact had not been regenerated.

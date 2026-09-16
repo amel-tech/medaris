@@ -1,33 +1,23 @@
 "use client";
 
+import { RefreshErrorRedirect } from "@medaris/services/auth-client";
 import { Toaster } from "@medaris/ui/components/sonner";
-import { SessionProvider, signIn, useSession } from "next-auth/react";
+import { SessionProvider } from "next-auth/react";
 import { useLocale } from "next-intl";
-import { useEffect } from "react";
 
 /**
- * A session whose refresh failed still exists as a cookie, so nothing signs the
- * user out — the next server call simply fails, and the page reports it as an
- * unexpected server response. Send them back to Keycloak instead: it is the
- * only place the session can actually be renewed, and a silent redirect is what
- * an expired session is supposed to look like. Same component as in tedris.
+ * `RefreshErrorRedirect` is shared with the other web app through
+ * `@medaris/services/auth-client` — it is the client half of the same refresh
+ * contract `createAccessTokenReader` implements on the server, and the
+ * `RefreshAccessTokenError` sentinel it compares against is produced by this
+ * app's own `refreshAccessToken`. The locale is the only app-local input.
  */
-const RefreshErrorRedirect = () => {
-  const { data: session } = useSession();
+export function ClientProviders({ children }: { children: React.ReactNode }) {
   const locale = useLocale();
 
-  useEffect(() => {
-    if (session?.error !== "RefreshAccessTokenError") return;
-    signIn("keycloak", { redirect: true }, { ui_locales: locale });
-  }, [session?.error, locale]);
-
-  return null;
-};
-
-export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <RefreshErrorRedirect />
+      <RefreshErrorRedirect locale={locale} />
       {children}
       <Toaster />
     </SessionProvider>

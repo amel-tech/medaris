@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { FlashcardDeckLabelForbiddenError } from "./errors/flashcard-deck-label-forbidden.error";
 import { FlashcardDeckLabelNotFoundError } from "./errors/flashcard-deck-label-not-found.error";
+import { FlashcardDeckService } from "./flashcard-deck.service";
 import { FlashcardDeckLabelRepository } from "./flashcard-deck-label.repository";
 import {
   ICreateFlashcardDeckLabel,
@@ -11,7 +12,10 @@ import {
 
 @Injectable()
 export class FlashcardDeckLabelService {
-  constructor(private readonly labelRepository: FlashcardDeckLabelRepository) {}
+  constructor(
+    private readonly labelRepository: FlashcardDeckLabelRepository,
+    private readonly deckService: FlashcardDeckService
+  ) {}
   async createLabel(
     createTagDto: ICreateFlashcardDeckLabel
   ): Promise<IFlashcardDeckLabel> {
@@ -48,22 +52,23 @@ export class FlashcardDeckLabelService {
   async deckLabeling(
     newLabeling: IFlashcardDeckLabeling
   ): Promise<IFlashcardDeckLabeling> {
-    // Same rule as `FlashcardLabelService.flashcardLabeling`: the label must be
-    // the caller's before its stats are moved and a labeling row written.
+    // Same two rules as `FlashcardLabelService.flashcardLabeling`: the label
+    // must be the caller's before its stats are moved and a labeling row
+    // written, and the TARGET deck must be one the caller may read. `deckId`
+    // came off the DTO unchecked, so a row could be written against any deck
+    // UUID — including a private one — and a valid id answered 201 while a
+    // missing one tripped the foreign key as a 500.
     await this.assertOwner(newLabeling.labelId, newLabeling.createdBy);
-    const labelStats = await this.labelRepository.getLabelStats(
-      newLabeling.labelId
+    await this.deckService.assertReadable(
+      newLabeling.deckId,
+      newLabeling.createdBy
     );
-    if (labelStats) {
-      await this.labelRepository.updateLabelStats(newLabeling.labelId);
-    } else {
-      await this.labelRepository.createLabelStats({
-        labelId: newLabeling.labelId,
-        usageCount: 1,
-        lastUsedAt: new Date(),
-      });
-    }
-    return await this.labelRepository.deckLabeling(newLabeling);
+
+    // One call, one transaction. The stats read-and-branch used to sit here,
+    // outside any transaction and BEFORE the insert that can fail, so a
+    // failure left the counter moved with no labeling behind it. See
+    // `labelAndCountUsage`.
+    return await this.labelRepository.labelAndCountUsage(newLabeling);
   }
   /**
    * MDRS-56, same shape as `FlashcardLabelService.getById` — `assertOwner`
@@ -99,9 +104,10 @@ export class FlashcardDeckLabelService {
    * not exist (MDRS-58 review). The repository now returns `null` for the
    * empty read instead of dereferencing `stats[0]`.
    *
-   * Whether the row is queryable at all is a separate defect (the migration
-   * created `lable_id`, the schema declares `label_id`), recorded in
-   * docs/migration/mdrs-56-flashcard-label-authz.md.
+   * Whether the row is queryable at all used to be a separate defect — the
+   * migration created `lable_id`, the schema declares `label_id` — which made
+   * this route 500 for every caller. Migration `0013_label_schema_drift`
+   * renames the column and the FK with it.
    */
   async getDeckLabelStats(
     id: string,

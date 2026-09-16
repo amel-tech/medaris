@@ -16,12 +16,19 @@ import AddCardButtonDialog from "./deckform/add-card-button-dialog";
 export function DeckCardsTable({
   deckId,
   flashcards,
+  isOwner,
 }: {
   deckId: string;
   flashcards: FlashcardResponse[] | undefined;
+  /**
+   * Display only — the API re-derives the caller from the token it verifies
+   * itself. It exists so a visitor browsing somebody else's public deck is not
+   * offered controls that answer 403 (MDRS-63 closed the card write routes).
+   */
+  isOwner: boolean;
 }) {
   const t = useTranslations("tedris");
-  const columns = useFlashcardColumns();
+  const columns = useFlashcardColumns(isOwner);
 
   const onRowUpdate = async (updatedRow: FlashcardResponse) => {
     const result = await updateFlashcard(updatedRow.id, {
@@ -44,7 +51,7 @@ export function DeckCardsTable({
   };
 
   const onRowDelete = async (id: string) => {
-    const result = await deleteFlashcard(id, deckId);
+    const result = await deleteFlashcard(id);
     if (result.success) {
       toastHelper.success(
         {
@@ -71,14 +78,14 @@ export function DeckCardsTable({
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h4>{t("DeckCards.cards")}</h4>
-        <AddCardButtonDialog deckId={deckId} />
+        {isOwner && <AddCardButtonDialog deckId={deckId} />}
       </div>
       <DataTable
         columns={columns}
         data={flashcards || []}
-        onRowUpdate={onRowUpdate}
+        onRowUpdate={isOwner ? onRowUpdate : undefined}
         defaultColumn={defaultColumn}
-        onRowDelete={onRowDelete}
+        onRowDelete={isOwner ? onRowDelete : undefined}
       />
     </div>
   );

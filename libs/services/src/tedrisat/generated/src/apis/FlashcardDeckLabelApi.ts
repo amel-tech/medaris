@@ -37,23 +37,23 @@ import {
     FlashcardDeckLabelingResponseToJSON,
 } from '../models/index';
 
-export interface FlashcardDeckLabelControllerCreateFlashcardDeckLabelRequest {
+export interface CreateFlashcardDeckLabelRequest {
     createFlashcardDeckLabelDto: CreateFlashcardDeckLabelDto;
 }
 
-export interface FlashcardDeckLabelControllerDeckLabelingRequest {
+export interface CreateFlashcardDeckLabelingRequest {
     createFlashcardDeckLabelingDto: CreateFlashcardDeckLabelingDto;
 }
 
-export interface FlashcardDeckLabelControllerDeleteFlashcardDeckLabelRequest {
+export interface DeleteFlashcardDeckLabelRequest {
     id: string;
 }
 
-export interface FlashcardDeckLabelControllerGetByIdRequest {
+export interface GetFlashcardDeckLabelByIdRequest {
     id: string;
 }
 
-export interface FlashcardDeckLabelControllerGetLabelStatsRequest {
+export interface GetFlashcardDeckLabelStatsRequest {
     id: string;
 }
 
@@ -63,12 +63,13 @@ export interface FlashcardDeckLabelControllerGetLabelStatsRequest {
 export class FlashcardDeckLabelApi extends runtime.BaseAPI {
 
     /**
+     * Create a deck label
      */
-    async flashcardDeckLabelControllerCreateFlashcardDeckLabelRaw(requestParameters: FlashcardDeckLabelControllerCreateFlashcardDeckLabelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FlashcardDeckCreateLabelResponse>> {
+    async createFlashcardDeckLabelRaw(requestParameters: CreateFlashcardDeckLabelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FlashcardDeckCreateLabelResponse>> {
         if (requestParameters['createFlashcardDeckLabelDto'] == null) {
             throw new runtime.RequiredError(
                 'createFlashcardDeckLabelDto',
-                'Required parameter "createFlashcardDeckLabelDto" was null or undefined when calling flashcardDeckLabelControllerCreateFlashcardDeckLabel().'
+                'Required parameter "createFlashcardDeckLabelDto" was null or undefined when calling createFlashcardDeckLabel().'
             );
         }
 
@@ -98,19 +99,21 @@ export class FlashcardDeckLabelApi extends runtime.BaseAPI {
     }
 
     /**
+     * Create a deck label
      */
-    async flashcardDeckLabelControllerCreateFlashcardDeckLabel(requestParameters: FlashcardDeckLabelControllerCreateFlashcardDeckLabelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FlashcardDeckCreateLabelResponse> {
-        const response = await this.flashcardDeckLabelControllerCreateFlashcardDeckLabelRaw(requestParameters, initOverrides);
+    async createFlashcardDeckLabel(requestParameters: CreateFlashcardDeckLabelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FlashcardDeckCreateLabelResponse> {
+        const response = await this.createFlashcardDeckLabelRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
+     * Attach a label to a deck
      */
-    async flashcardDeckLabelControllerDeckLabelingRaw(requestParameters: FlashcardDeckLabelControllerDeckLabelingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FlashcardDeckLabelingResponse>> {
+    async createFlashcardDeckLabelingRaw(requestParameters: CreateFlashcardDeckLabelingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FlashcardDeckLabelingResponse>> {
         if (requestParameters['createFlashcardDeckLabelingDto'] == null) {
             throw new runtime.RequiredError(
                 'createFlashcardDeckLabelingDto',
-                'Required parameter "createFlashcardDeckLabelingDto" was null or undefined when calling flashcardDeckLabelControllerDeckLabeling().'
+                'Required parameter "createFlashcardDeckLabelingDto" was null or undefined when calling createFlashcardDeckLabeling().'
             );
         }
 
@@ -140,19 +143,21 @@ export class FlashcardDeckLabelApi extends runtime.BaseAPI {
     }
 
     /**
+     * Attach a label to a deck
      */
-    async flashcardDeckLabelControllerDeckLabeling(requestParameters: FlashcardDeckLabelControllerDeckLabelingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FlashcardDeckLabelingResponse> {
-        const response = await this.flashcardDeckLabelControllerDeckLabelingRaw(requestParameters, initOverrides);
+    async createFlashcardDeckLabeling(requestParameters: CreateFlashcardDeckLabelingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FlashcardDeckLabelingResponse> {
+        const response = await this.createFlashcardDeckLabelingRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
+     * Delete a deck label
      */
-    async flashcardDeckLabelControllerDeleteFlashcardDeckLabelRaw(requestParameters: FlashcardDeckLabelControllerDeleteFlashcardDeckLabelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<boolean>> {
+    async deleteFlashcardDeckLabelRaw(requestParameters: DeleteFlashcardDeckLabelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<boolean>> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
-                'Required parameter "id" was null or undefined when calling flashcardDeckLabelControllerDeleteFlashcardDeckLabel().'
+                'Required parameter "id" was null or undefined when calling deleteFlashcardDeckLabel().'
             );
         }
 
@@ -184,19 +189,21 @@ export class FlashcardDeckLabelApi extends runtime.BaseAPI {
     }
 
     /**
+     * Delete a deck label
      */
-    async flashcardDeckLabelControllerDeleteFlashcardDeckLabel(requestParameters: FlashcardDeckLabelControllerDeleteFlashcardDeckLabelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
-        const response = await this.flashcardDeckLabelControllerDeleteFlashcardDeckLabelRaw(requestParameters, initOverrides);
+    async deleteFlashcardDeckLabel(requestParameters: DeleteFlashcardDeckLabelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
+        const response = await this.deleteFlashcardDeckLabelRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
+     * Get a deck label by ID
      */
-    async flashcardDeckLabelControllerGetByIdRaw(requestParameters: FlashcardDeckLabelControllerGetByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FlashcardDeckLabelResponse>> {
+    async getFlashcardDeckLabelByIdRaw(requestParameters: GetFlashcardDeckLabelByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FlashcardDeckLabelResponse>> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
-                'Required parameter "id" was null or undefined when calling flashcardDeckLabelControllerGetById().'
+                'Required parameter "id" was null or undefined when calling getFlashcardDeckLabelById().'
             );
         }
 
@@ -224,19 +231,21 @@ export class FlashcardDeckLabelApi extends runtime.BaseAPI {
     }
 
     /**
+     * Get a deck label by ID
      */
-    async flashcardDeckLabelControllerGetById(requestParameters: FlashcardDeckLabelControllerGetByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FlashcardDeckLabelResponse> {
-        const response = await this.flashcardDeckLabelControllerGetByIdRaw(requestParameters, initOverrides);
+    async getFlashcardDeckLabelById(requestParameters: GetFlashcardDeckLabelByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FlashcardDeckLabelResponse> {
+        const response = await this.getFlashcardDeckLabelByIdRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
+     * Get usage statistics for a deck label
      */
-    async flashcardDeckLabelControllerGetLabelStatsRaw(requestParameters: FlashcardDeckLabelControllerGetLabelStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckLabelStatsResponse>> {
+    async getFlashcardDeckLabelStatsRaw(requestParameters: GetFlashcardDeckLabelStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckLabelStatsResponse>> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
-                'Required parameter "id" was null or undefined when calling flashcardDeckLabelControllerGetLabelStats().'
+                'Required parameter "id" was null or undefined when calling getFlashcardDeckLabelStats().'
             );
         }
 
@@ -264,9 +273,10 @@ export class FlashcardDeckLabelApi extends runtime.BaseAPI {
     }
 
     /**
+     * Get usage statistics for a deck label
      */
-    async flashcardDeckLabelControllerGetLabelStats(requestParameters: FlashcardDeckLabelControllerGetLabelStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckLabelStatsResponse> {
-        const response = await this.flashcardDeckLabelControllerGetLabelStatsRaw(requestParameters, initOverrides);
+    async getFlashcardDeckLabelStats(requestParameters: GetFlashcardDeckLabelStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckLabelStatsResponse> {
+        const response = await this.getFlashcardDeckLabelStatsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

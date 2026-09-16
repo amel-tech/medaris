@@ -47,1321 +47,6 @@
         ]
       }
     },
-    "/flashcard/cards/{id}": {
-      "get": {
-        "description": "Retrieves a specific flashcard by its unique identifier",
-        "operationId": "getFlashcardById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "include",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "progress"
-                ]
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlashcardResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get a single flashcard",
-        "tags": [
-          "flashcard-cards"
-        ]
-      },
-      "put": {
-        "description": "Replaces all properties of an existing flashcard with new values. This is a complete replacement operation.",
-        "operationId": "replaceFlashcard",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateFlashcardDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlashcardResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Replace a flashcard completely",
-        "tags": [
-          "flashcard-cards"
-        ]
-      },
-      "patch": {
-        "description": "Updates specific properties of an existing flashcard. Only provided fields will be updated.",
-        "operationId": "updateFlashcard",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateFlashcardDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlashcardResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Update a flashcard partially",
-        "tags": [
-          "flashcard-cards"
-        ]
-      },
-      "delete": {
-        "description": "Permanently deletes a flashcard by its ID. This action cannot be undone.",
-        "operationId": "deleteFlashcard",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Delete a flashcard",
-        "tags": [
-          "flashcard-cards"
-        ]
-      }
-    },
-    "/flashcard/cards": {
-      "get": {
-        "description": "Retrieves all flashcards by matching a deck identifier",
-        "operationId": "getFlashcardByDeckId",
-        "parameters": [
-          {
-            "name": "deckId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "include",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "progress"
-                ]
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/FlashcardResponse"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get all flashcards from a deck",
-        "tags": [
-          "flashcard-cards"
-        ]
-      }
-    },
-    "/flashcard/decks/{deckId}/cards": {
-      "post": {
-        "description": "Creates multiple flashcards within a specified deck. All cards will be assigned to the same deck and author.",
-        "operationId": "createFlashcards",
-        "parameters": [
-          {
-            "name": "deckId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/CreateFlashcardDto"
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/FlashcardResponse"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Create multiple flashcards in a deck",
-        "tags": [
-          "flashcard-cards"
-        ]
-      }
-    },
-    "/flashcard/cards/progress": {
-      "put": {
-        "operationId": "replaceManyFlashcardProgress",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/CreateFlashcardProgressDto"
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/FlashcardProgressResponse"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Create or update flashcard progress",
-        "tags": [
-          "flashcard-cards"
-        ]
-      }
-    },
-    "/flashcard/decks/{deckId}/cards/bulk": {
-      "post": {
-        "description": "Bulk Body Json",
-        "operationId": "createFlashcardsBulk",
-        "parameters": [
-          {
-            "name": "deckId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/CreateFlashcardDto"
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BulkFlashcardResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BulkFlashcardErrorResponse"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Bulk rate limit exceeded — see the Retry-After header"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Bulk",
-        "tags": [
-          "flashcard-cards"
-        ]
-      }
-    },
-    "/flashcard/cards/bulk/sample": {
-      "get": {
-        "description": "Downloads a sample file to use as a template for bulk import. Not deck-specific.",
-        "operationId": "getSampleFile",
-        "parameters": [
-          {
-            "name": "format",
-            "required": true,
-            "in": "query",
-            "description": "The format of the file to download",
-            "schema": {
-              "enum": [
-                "xlsx",
-                "csv"
-              ],
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StreamableFile"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Download flashcard import template",
-        "tags": [
-          "flashcard-cards"
-        ]
-      }
-    },
-    "/flashcard/decks/{deckId}/cards/bulk/export": {
-      "get": {
-        "operationId": "exportCards",
-        "parameters": [
-          {
-            "name": "deckId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "format",
-            "required": false,
-            "in": "query",
-            "description": "The format of the file to download",
-            "schema": {
-              "enum": [
-                "xlsx",
-                "csv"
-              ],
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StreamableFile"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Deck not found"
-          },
-          "429": {
-            "description": "Bulk rate limit exceeded — see the Retry-After header"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Export flashcards from a deck",
-        "tags": [
-          "flashcard-cards"
-        ]
-      }
-    },
-    "/flashcard/decks/{deckId}/cards/bulk/import": {
-      "post": {
-        "operationId": "importsCard",
-        "parameters": [
-          {
-            "name": "deckId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary"
-                  }
-                },
-                "required": [
-                  "file"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BulkFlashcardResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Deck not found"
-          },
-          "422": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BulkFlashcardErrorResponse"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Bulk rate limit exceeded — see the Retry-After header"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Import flashcards from Excel/CSV",
-        "tags": [
-          "flashcard-cards"
-        ]
-      }
-    },
-    "/flashcard/decks/collections": {
-      "get": {
-        "operationId": "getAllFlashcardDecksByUser",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/FlashcardDeckResponse"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get all flashcard decks in the user's collection",
-        "tags": [
-          "flashcard-decks"
-        ]
-      }
-    },
-    "/flashcard/decks/{id}": {
-      "get": {
-        "description": "Retrieves a single flashcard deck by its ID with optional includes for related data such as tags.",
-        "operationId": "getFlashcardDeckById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "include",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "number",
-                "enum": []
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlashcardDeckResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get flashcard deck by ID",
-        "tags": [
-          "flashcard-decks"
-        ]
-      },
-      "put": {
-        "description": "Replaces all properties of an existing flashcard deck with new values. This is a complete replacement operation.",
-        "operationId": "replaceFlashcardDeck",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateFlashcardDeckDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/FlashcardDeckResponse"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Replace a flashcard deck completely",
-        "tags": [
-          "flashcard-decks"
-        ]
-      },
-      "patch": {
-        "description": "Updates specific properties of an existing flashcard deck. Only provided fields will be updated.",
-        "operationId": "updateFlashcardDeck",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateFlashcardDeckDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlashcardDeckResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Update a flashcard deck partially",
-        "tags": [
-          "flashcard-decks"
-        ]
-      },
-      "delete": {
-        "description": "Permanently deletes a flashcard deck by its ID. This action cannot be undone and will also remove all associated flashcards.",
-        "operationId": "deleteFlashcardDeck",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Delete a flashcard deck",
-        "tags": [
-          "flashcard-decks"
-        ]
-      }
-    },
-    "/flashcard/decks": {
-      "get": {
-        "description": "Retrieves all flashcard decks that are either public or owned by the user, with optional includes for related data such as tags.",
-        "operationId": "getAllFlashcardDecks",
-        "parameters": [
-          {
-            "name": "isPublic",
-            "required": false,
-            "in": "query",
-            "description": "When omitted returns public decks and user-owned private decks. When true returns only public decks. When false returns only user-owned private decks.",
-            "schema": {
-              "type": "boolean"
-            }
-          },
-          {
-            "name": "include",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "number",
-                "enum": []
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/FlashcardDeckResponse"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get all flashcard decks visible to the user",
-        "tags": [
-          "flashcard-decks"
-        ]
-      },
-      "post": {
-        "description": "Creates a new flashcard deck with the provided details. Tags can be optionally associated with the deck.",
-        "operationId": "createFlashcardDeck",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateFlashcardDeckDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlashcardDeckResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Create a new flashcard deck",
-        "tags": [
-          "flashcard-decks"
-        ]
-      }
-    },
-    "/flashcard/decks/{id}/collections": {
-      "post": {
-        "description": "Creates a new association between a flashcard deck and the authenticated user.",
-        "operationId": "createFlashcardDeckUser",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlashcardDeckUserResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Add a deck to the user's collection",
-        "tags": [
-          "flashcard-decks"
-        ]
-      },
-      "delete": {
-        "operationId": "deleteFlashcardDeckUser",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlashcardDeckUserResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Delete a flashcard deck from user's collection",
-        "tags": [
-          "flashcard-decks"
-        ]
-      }
-    },
-    "/flashcard-label/create": {
-      "post": {
-        "operationId": "FlashcardlabelController_createFlashcardLabel",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateFlashcardLabelDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlashcardCreateLabelResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Flashcardlabel"
-        ]
-      }
-    },
-    "/flashcard-label/delete/{id}": {
-      "delete": {
-        "operationId": "FlashcardlabelController_deleteFlashcardLabel",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The label belongs to another user"
-          },
-          "404": {
-            "description": "No label with that id"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Flashcardlabel"
-        ]
-      }
-    },
-    "/flashcard-label/labeling": {
-      "post": {
-        "operationId": "FlashcardlabelController_flahscardLabeling",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateFlashcardLabelingDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlashcardLabelingResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Flashcardlabel"
-        ]
-      }
-    },
-    "/flashcard-label/{id}": {
-      "get": {
-        "operationId": "FlashcardlabelController_getById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlashcardLabelResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The label belongs to another user"
-          },
-          "404": {
-            "description": "No label with that id"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Flashcardlabel"
-        ]
-      }
-    },
-    "/flashcard-label/getStats/{id}": {
-      "get": {
-        "operationId": "FlashcardlabelController_getLabelStats",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/labelStatsResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The label belongs to another user"
-          },
-          "404": {
-            "description": "No label with that id"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Flashcardlabel"
-        ]
-      }
-    },
-    "/flashcard-deck-label/create": {
-      "post": {
-        "operationId": "FlashcardDeckLabelController_createFlashcardDeckLabel",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateFlashcardDeckLabelDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlashcardDeckCreateLabelResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "FlashcardDeckLabel"
-        ]
-      }
-    },
-    "/flashcard-deck-label/delete/{id}": {
-      "delete": {
-        "operationId": "FlashcardDeckLabelController_deleteFlashcardDeckLabel",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The label belongs to another user"
-          },
-          "404": {
-            "description": "No label with that id"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "FlashcardDeckLabel"
-        ]
-      }
-    },
-    "/flashcard-deck-label/labeling": {
-      "post": {
-        "operationId": "FlashcardDeckLabelController_deckLabeling",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateFlashcardDeckLabelingDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlashcardDeckLabelingResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "FlashcardDeckLabel"
-        ]
-      }
-    },
-    "/flashcard-deck-label/{id}": {
-      "get": {
-        "operationId": "FlashcardDeckLabelController_getById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlashcardDeckLabelResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The label belongs to another user"
-          },
-          "404": {
-            "description": "No label with that id"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "FlashcardDeckLabel"
-        ]
-      }
-    },
-    "/flashcard-deck-label/getStats/{id}": {
-      "get": {
-        "operationId": "FlashcardDeckLabelController_getLabelStats",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeckLabelStatsResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The label belongs to another user"
-          },
-          "404": {
-            "description": "No label with that id"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "FlashcardDeckLabel"
-        ]
-      }
-    },
     "/kosks": {
       "get": {
         "operationId": "getAllKosks",
@@ -2146,6 +831,1412 @@
           "courses"
         ]
       }
+    },
+    "/flashcard/cards/{id}": {
+      "get": {
+        "description": "Retrieves a specific flashcard by its unique identifier",
+        "operationId": "getFlashcardById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "progress"
+                ]
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Deck is private and owned by another user"
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a single flashcard",
+        "tags": [
+          "flashcard-cards"
+        ]
+      },
+      "put": {
+        "description": "Replaces all properties of an existing flashcard with new values. This is a complete replacement operation.",
+        "operationId": "replaceFlashcard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFlashcardDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Deck belongs to another user"
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace a flashcard completely",
+        "tags": [
+          "flashcard-cards"
+        ]
+      },
+      "patch": {
+        "description": "Updates specific properties of an existing flashcard. Only provided fields will be updated.",
+        "operationId": "updateFlashcard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFlashcardDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Deck belongs to another user"
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a flashcard partially",
+        "tags": [
+          "flashcard-cards"
+        ]
+      },
+      "delete": {
+        "description": "Permanently deletes a flashcard by its ID. This action cannot be undone.",
+        "operationId": "deleteFlashcard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "403": {
+            "description": "Deck belongs to another user"
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a flashcard",
+        "tags": [
+          "flashcard-cards"
+        ]
+      }
+    },
+    "/flashcard/cards": {
+      "get": {
+        "description": "Retrieves all flashcards by matching a deck identifier",
+        "operationId": "getFlashcardByDeckId",
+        "parameters": [
+          {
+            "name": "deckId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "progress"
+                ]
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FlashcardResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Deck is private and owned by another user"
+          },
+          "404": {
+            "description": "Deck not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all flashcards from a deck",
+        "tags": [
+          "flashcard-cards"
+        ]
+      }
+    },
+    "/flashcard/decks/{deckId}/cards": {
+      "post": {
+        "description": "Creates multiple flashcards within a specified deck. All cards will be assigned to the same deck and author.",
+        "operationId": "createFlashcards",
+        "parameters": [
+          {
+            "name": "deckId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CreateFlashcardDto"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FlashcardResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Deck belongs to another user"
+          },
+          "404": {
+            "description": "Deck not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create multiple flashcards in a deck",
+        "tags": [
+          "flashcard-cards"
+        ]
+      }
+    },
+    "/flashcard/cards/progress": {
+      "put": {
+        "operationId": "replaceManyFlashcardProgress",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CreateFlashcardProgressDto"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FlashcardProgressResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A card's deck is private and owned by another user"
+          },
+          "404": {
+            "description": "No such card"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create or update flashcard progress",
+        "tags": [
+          "flashcard-cards"
+        ]
+      }
+    },
+    "/flashcard/decks/{deckId}/cards/bulk": {
+      "post": {
+        "description": "Bulk Body Json",
+        "operationId": "createFlashcardsBulk",
+        "parameters": [
+          {
+            "name": "deckId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CreateFlashcardDto"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkFlashcardResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Deck belongs to another user"
+          },
+          "404": {
+            "description": "Deck not found"
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkFlashcardErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Bulk rate limit exceeded — see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Bulk",
+        "tags": [
+          "flashcard-cards"
+        ]
+      }
+    },
+    "/flashcard/cards/bulk/sample": {
+      "get": {
+        "description": "Downloads a sample file to use as a template for bulk import. Not deck-specific.",
+        "operationId": "getSampleFile",
+        "parameters": [
+          {
+            "name": "format",
+            "required": true,
+            "in": "query",
+            "description": "The format of the file to download",
+            "schema": {
+              "enum": [
+                "xlsx",
+                "csv"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamableFile"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download flashcard import template",
+        "tags": [
+          "flashcard-cards"
+        ]
+      }
+    },
+    "/flashcard/decks/{deckId}/cards/bulk/export": {
+      "get": {
+        "operationId": "exportCards",
+        "parameters": [
+          {
+            "name": "deckId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "format",
+            "required": false,
+            "in": "query",
+            "description": "The format of the file to download",
+            "schema": {
+              "enum": [
+                "xlsx",
+                "csv"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamableFile"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Deck belongs to another user"
+          },
+          "404": {
+            "description": "Deck not found"
+          },
+          "429": {
+            "description": "Bulk rate limit exceeded — see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Export flashcards from a deck",
+        "tags": [
+          "flashcard-cards"
+        ]
+      }
+    },
+    "/flashcard/decks/{deckId}/cards/bulk/import": {
+      "post": {
+        "operationId": "importsCard",
+        "parameters": [
+          {
+            "name": "deckId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkFlashcardResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Deck belongs to another user"
+          },
+          "404": {
+            "description": "Deck not found"
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkFlashcardErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Bulk rate limit exceeded — see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Import flashcards from Excel/CSV",
+        "tags": [
+          "flashcard-cards"
+        ]
+      }
+    },
+    "/flashcard/decks/collections": {
+      "get": {
+        "operationId": "getAllFlashcardDecksByUser",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FlashcardDeckResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all flashcard decks in the user's collection",
+        "tags": [
+          "flashcard-decks"
+        ]
+      }
+    },
+    "/flashcard/decks/{id}": {
+      "get": {
+        "description": "Retrieves a single flashcard deck by its ID with optional includes for related data such as tags.",
+        "operationId": "getFlashcardDeckById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "enum": []
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardDeckResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Deck is private and owned by another user"
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get flashcard deck by ID",
+        "tags": [
+          "flashcard-decks"
+        ]
+      },
+      "put": {
+        "description": "Replaces all properties of an existing flashcard deck with new values. This is a complete replacement operation.",
+        "operationId": "replaceFlashcardDeck",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFlashcardDeckDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FlashcardDeckResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Deck belongs to another user"
+          },
+          "404": {
+            "description": "Deck not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace a flashcard deck completely",
+        "tags": [
+          "flashcard-decks"
+        ]
+      },
+      "patch": {
+        "description": "Updates specific properties of an existing flashcard deck. Only provided fields will be updated.",
+        "operationId": "updateFlashcardDeck",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFlashcardDeckDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardDeckResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Deck belongs to another user"
+          },
+          "404": {
+            "description": "Deck not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a flashcard deck partially",
+        "tags": [
+          "flashcard-decks"
+        ]
+      },
+      "delete": {
+        "description": "Permanently deletes a flashcard deck by its ID. This action cannot be undone and will also remove all associated flashcards.",
+        "operationId": "deleteFlashcardDeck",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "403": {
+            "description": "Deck belongs to another user"
+          },
+          "404": {
+            "description": "Deck not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a flashcard deck",
+        "tags": [
+          "flashcard-decks"
+        ]
+      }
+    },
+    "/flashcard/decks": {
+      "get": {
+        "description": "Retrieves all flashcard decks that are either public or owned by the user, with optional includes for related data such as tags.",
+        "operationId": "getAllFlashcardDecks",
+        "parameters": [
+          {
+            "name": "isPublic",
+            "required": false,
+            "in": "query",
+            "description": "When omitted returns public decks and user-owned private decks. When true returns only public decks. When false returns only user-owned private decks.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "include",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "enum": []
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FlashcardDeckResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all flashcard decks visible to the user",
+        "tags": [
+          "flashcard-decks"
+        ]
+      },
+      "post": {
+        "description": "Creates a new flashcard deck with the provided details. Tags can be optionally associated with the deck.",
+        "operationId": "createFlashcardDeck",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFlashcardDeckDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardDeckResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a new flashcard deck",
+        "tags": [
+          "flashcard-decks"
+        ]
+      }
+    },
+    "/flashcard/decks/{id}/collections": {
+      "post": {
+        "description": "Creates a new association between a flashcard deck and the authenticated user.",
+        "operationId": "createFlashcardDeckUser",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardDeckUserResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Deck is private and owned by another user"
+          },
+          "404": {
+            "description": "Deck not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a deck to the user's collection",
+        "tags": [
+          "flashcard-decks"
+        ]
+      },
+      "delete": {
+        "operationId": "deleteFlashcardDeckUser",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardDeckUserResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a flashcard deck from user's collection",
+        "tags": [
+          "flashcard-decks"
+        ]
+      }
+    },
+    "/flashcard-label/create": {
+      "post": {
+        "operationId": "createFlashcardLabel",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFlashcardLabelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardCreateLabelResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a flashcard label",
+        "tags": [
+          "Flashcardlabel"
+        ]
+      }
+    },
+    "/flashcard-label/delete/{id}": {
+      "delete": {
+        "operationId": "deleteFlashcardLabel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The label belongs to another user"
+          },
+          "404": {
+            "description": "No label with that id"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a flashcard label",
+        "tags": [
+          "Flashcardlabel"
+        ]
+      }
+    },
+    "/flashcard-label/labeling": {
+      "post": {
+        "operationId": "createFlashcardLabeling",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFlashcardLabelingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardLabelingResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The label, or the card's deck, belongs to another user"
+          },
+          "404": {
+            "description": "No such label, or no such card"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Attach a label to a flashcard",
+        "tags": [
+          "Flashcardlabel"
+        ]
+      }
+    },
+    "/flashcard-label/{id}": {
+      "get": {
+        "operationId": "getFlashcardLabelById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardLabelResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The label belongs to another user"
+          },
+          "404": {
+            "description": "No label with that id"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a flashcard label by ID",
+        "tags": [
+          "Flashcardlabel"
+        ]
+      }
+    },
+    "/flashcard-label/getStats/{id}": {
+      "get": {
+        "operationId": "getFlashcardLabelStats",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/labelStatsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The label belongs to another user"
+          },
+          "404": {
+            "description": "No label with that id"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get usage statistics for a flashcard label",
+        "tags": [
+          "Flashcardlabel"
+        ]
+      }
+    },
+    "/flashcard-deck-label/create": {
+      "post": {
+        "operationId": "createFlashcardDeckLabel",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFlashcardDeckLabelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardDeckCreateLabelResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a deck label",
+        "tags": [
+          "FlashcardDeckLabel"
+        ]
+      }
+    },
+    "/flashcard-deck-label/delete/{id}": {
+      "delete": {
+        "operationId": "deleteFlashcardDeckLabel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The label belongs to another user"
+          },
+          "404": {
+            "description": "No label with that id"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a deck label",
+        "tags": [
+          "FlashcardDeckLabel"
+        ]
+      }
+    },
+    "/flashcard-deck-label/labeling": {
+      "post": {
+        "operationId": "createFlashcardDeckLabeling",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFlashcardDeckLabelingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardDeckLabelingResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The label, or the target deck, belongs to another user"
+          },
+          "404": {
+            "description": "No such label, or no such deck"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Attach a label to a deck",
+        "tags": [
+          "FlashcardDeckLabel"
+        ]
+      }
+    },
+    "/flashcard-deck-label/{id}": {
+      "get": {
+        "operationId": "getFlashcardDeckLabelById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardDeckLabelResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The label belongs to another user"
+          },
+          "404": {
+            "description": "No label with that id"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a deck label by ID",
+        "tags": [
+          "FlashcardDeckLabel"
+        ]
+      }
+    },
+    "/flashcard-deck-label/getStats/{id}": {
+      "get": {
+        "operationId": "getFlashcardDeckLabelStats",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeckLabelStatsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The label belongs to another user"
+          },
+          "404": {
+            "description": "No label with that id"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get usage statistics for a deck label",
+        "tags": [
+          "FlashcardDeckLabel"
+        ]
+      }
     }
   },
   "info": {
@@ -2213,638 +2304,6 @@
           "status",
           "timestamp",
           "service"
-        ]
-      },
-      "FlashcardProgressResponse": {
-        "type": "object",
-        "properties": {
-          "flashcardId": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "NEW",
-              "LEARNING",
-              "MASTERED"
-            ]
-          },
-          "userId": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "flashcardId",
-          "status",
-          "userId"
-        ]
-      },
-      "FlashcardResponse": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "VOCABULARY",
-              "HADEETH"
-            ]
-          },
-          "contentFront": {
-            "type": "string"
-          },
-          "contentBack": {
-            "type": "string"
-          },
-          "contentMeta": {
-            "type": "object"
-          },
-          "id": {
-            "type": "string"
-          },
-          "deckId": {
-            "type": "string"
-          },
-          "authorId": {
-            "type": "string"
-          },
-          "progress": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/FlashcardProgressResponse"
-            }
-          }
-        },
-        "required": [
-          "type",
-          "contentFront",
-          "contentBack",
-          "id",
-          "deckId",
-          "authorId"
-        ]
-      },
-      "CreateFlashcardDto": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "VOCABULARY",
-              "HADEETH"
-            ]
-          },
-          "contentFront": {
-            "type": "string"
-          },
-          "contentBack": {
-            "type": "string"
-          },
-          "contentMeta": {
-            "type": "object"
-          }
-        },
-        "required": [
-          "type",
-          "contentFront",
-          "contentBack"
-        ]
-      },
-      "CreateFlashcardProgressDto": {
-        "type": "object",
-        "properties": {
-          "flashcardId": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "NEW",
-              "LEARNING",
-              "MASTERED"
-            ]
-          }
-        },
-        "required": [
-          "flashcardId",
-          "status"
-        ]
-      },
-      "UpdateFlashcardDto": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "VOCABULARY",
-              "HADEETH"
-            ]
-          },
-          "contentFront": {
-            "type": "string"
-          },
-          "contentBack": {
-            "type": "string"
-          },
-          "contentMeta": {
-            "type": "object"
-          }
-        }
-      },
-      "BulkFlashcardResponse": {
-        "type": "object",
-        "properties": {
-          "count": {
-            "type": "number",
-            "description": "Number of successfully imported flashcards"
-          }
-        },
-        "required": [
-          "count"
-        ]
-      },
-      "FieldError": {
-        "type": "object",
-        "properties": {
-          "field": {
-            "type": "string",
-            "example": "front"
-          },
-          "message": {
-            "type": "string",
-            "example": "front should not be empty"
-          }
-        },
-        "required": [
-          "field",
-          "message"
-        ]
-      },
-      "RowError": {
-        "type": "object",
-        "properties": {
-          "row": {
-            "type": "number",
-            "description": "Row number in the uploaded file (1-based)"
-          },
-          "errors": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/FieldError"
-            }
-          }
-        },
-        "required": [
-          "row",
-          "errors"
-        ]
-      },
-      "BulkFlashcardErrorContext": {
-        "type": "object",
-        "properties": {
-          "errors": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RowError"
-            }
-          }
-        },
-        "required": [
-          "errors"
-        ]
-      },
-      "BulkFlashcardErrorResponse": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "example": "APP_ERROR"
-          },
-          "code": {
-            "type": "string",
-            "example": "RESOURCE_NOT_FOUND"
-          },
-          "status": {
-            "type": "number",
-            "example": 422
-          },
-          "message": {
-            "type": "string",
-            "example": "Validation Error"
-          },
-          "correlationId": {
-            "type": "string",
-            "example": "0f1d2c3b-4a59-4c6d-8e7f-90a1b2c3d4e5"
-          },
-          "timestamp": {
-            "type": "string",
-            "example": "2025-01-01T00:00:00.000Z"
-          },
-          "context": {
-            "$ref": "#/components/schemas/BulkFlashcardErrorContext"
-          }
-        },
-        "required": [
-          "type",
-          "code",
-          "status",
-          "message",
-          "timestamp",
-          "context"
-        ]
-      },
-      "StreamableFile": {
-        "type": "object",
-        "properties": {}
-      },
-      "FlashcardDeckResponse": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "example": "Colours - Vocabulary Deck"
-          },
-          "isPublic": {
-            "type": "boolean"
-          },
-          "id": {
-            "type": "string"
-          },
-          "authorId": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "title",
-          "isPublic",
-          "id",
-          "authorId"
-        ]
-      },
-      "CreateFlashcardDeckDto": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "example": "Colours - Vocabulary Deck"
-          },
-          "isPublic": {
-            "type": "boolean"
-          },
-          "description": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "title",
-          "isPublic"
-        ]
-      },
-      "FlashcardDeckUserResponse": {
-        "type": "object",
-        "properties": {
-          "userId": {
-            "type": "string"
-          },
-          "deckId": {
-            "type": "string"
-          },
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "required": [
-          "userId",
-          "deckId",
-          "createdAt"
-        ]
-      },
-      "UpdateFlashcardDeckDto": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "example": "Colours - Vocabulary Deck"
-          },
-          "isPublic": {
-            "type": "boolean"
-          },
-          "description": {
-            "type": "string"
-          }
-        }
-      },
-      "CreateFlashcardLabelDto": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "minLength": 5,
-            "maxLength": 100
-          },
-          "scope": {
-            "type": "string",
-            "enum": [
-              "PUBLIC",
-              "PERSONAL"
-            ]
-          }
-        },
-        "required": [
-          "title",
-          "scope"
-        ]
-      },
-      "FlashcardCreateLabelResponse": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "minLength": 5,
-            "maxLength": 100
-          },
-          "scope": {
-            "type": "string",
-            "enum": [
-              "PUBLIC",
-              "PERSONAL"
-            ]
-          },
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          },
-          "userId": {
-            "type": "string"
-          },
-          "createdBy": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "title",
-          "scope",
-          "createdAt",
-          "id",
-          "userId",
-          "createdBy"
-        ]
-      },
-      "CreateFlashcardLabelingDto": {
-        "type": "object",
-        "properties": {
-          "labelId": {
-            "type": "string"
-          },
-          "privateToUserId": {
-            "type": "string",
-            "nullable": true,
-            "format": "uuid"
-          },
-          "flashcardId": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "labelId",
-          "flashcardId"
-        ]
-      },
-      "FlashcardLabelingResponse": {
-        "type": "object",
-        "properties": {
-          "labelId": {
-            "type": "string"
-          },
-          "privateToUserId": {
-            "type": "string",
-            "nullable": true,
-            "format": "uuid"
-          },
-          "flashcardId": {
-            "type": "string"
-          },
-          "createdBy": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "labelId",
-          "flashcardId",
-          "createdBy"
-        ]
-      },
-      "FlashcardLabelResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "userId": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "createdBy": {
-            "type": "string"
-          },
-          "scope": {
-            "type": "string",
-            "enum": [
-              "PUBLIC",
-              "PERSONAL"
-            ]
-          },
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "userId",
-          "title",
-          "createdBy",
-          "scope",
-          "createdAt"
-        ]
-      },
-      "labelStatsResponse": {
-        "type": "object",
-        "properties": {
-          "labelId": {
-            "type": "string"
-          },
-          "usageCount": {
-            "type": "number"
-          },
-          "lastUsedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          }
-        },
-        "required": [
-          "labelId",
-          "usageCount"
-        ]
-      },
-      "CreateFlashcardDeckLabelDto": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "minLength": 5,
-            "maxLength": 100
-          },
-          "scope": {
-            "type": "string",
-            "enum": [
-              "PUBLIC",
-              "PERSONAL"
-            ]
-          }
-        },
-        "required": [
-          "title",
-          "scope"
-        ]
-      },
-      "FlashcardDeckCreateLabelResponse": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "minLength": 5,
-            "maxLength": 100
-          },
-          "scope": {
-            "type": "string",
-            "enum": [
-              "PUBLIC",
-              "PERSONAL"
-            ]
-          },
-          "id": {
-            "type": "string"
-          },
-          "createdBy": {
-            "type": "string"
-          },
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "required": [
-          "title",
-          "scope",
-          "id",
-          "createdBy",
-          "createdAt"
-        ]
-      },
-      "CreateFlashcardDeckLabelingDto": {
-        "type": "object",
-        "properties": {
-          "labelId": {
-            "type": "string"
-          },
-          "privateToUserId": {
-            "type": "string",
-            "nullable": true,
-            "format": "uuid"
-          },
-          "deckId": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "labelId",
-          "deckId"
-        ]
-      },
-      "FlashcardDeckLabelingResponse": {
-        "type": "object",
-        "properties": {
-          "labelId": {
-            "type": "string"
-          },
-          "privateToUserId": {
-            "type": "string",
-            "nullable": true,
-            "format": "uuid"
-          },
-          "deckId": {
-            "type": "string"
-          },
-          "createdBy": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "labelId",
-          "deckId",
-          "createdBy"
-        ]
-      },
-      "FlashcardDeckLabelResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "createdBy": {
-            "type": "string"
-          },
-          "scope": {
-            "type": "string",
-            "enum": [
-              "PUBLIC",
-              "PERSONAL"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "createdAt",
-          "createdBy",
-          "scope"
-        ]
-      },
-      "DeckLabelStatsResponse": {
-        "type": "object",
-        "properties": {
-          "labelId": {
-            "type": "string"
-          },
-          "usageCount": {
-            "type": "number"
-          },
-          "lastUsedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          }
-        },
-        "required": [
-          "labelId",
-          "usageCount"
         ]
       },
       "KoskResponse": {
@@ -3996,6 +3455,638 @@
         },
         "required": [
           "progress"
+        ]
+      },
+      "FlashcardProgressResponse": {
+        "type": "object",
+        "properties": {
+          "flashcardId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NEW",
+              "LEARNING",
+              "MASTERED"
+            ]
+          },
+          "userId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flashcardId",
+          "status",
+          "userId"
+        ]
+      },
+      "FlashcardResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "VOCABULARY",
+              "HADEETH"
+            ]
+          },
+          "contentFront": {
+            "type": "string"
+          },
+          "contentBack": {
+            "type": "string"
+          },
+          "contentMeta": {
+            "type": "object"
+          },
+          "id": {
+            "type": "string"
+          },
+          "deckId": {
+            "type": "string"
+          },
+          "authorId": {
+            "type": "string"
+          },
+          "progress": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FlashcardProgressResponse"
+            }
+          }
+        },
+        "required": [
+          "type",
+          "contentFront",
+          "contentBack",
+          "id",
+          "deckId",
+          "authorId"
+        ]
+      },
+      "CreateFlashcardDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "VOCABULARY",
+              "HADEETH"
+            ]
+          },
+          "contentFront": {
+            "type": "string"
+          },
+          "contentBack": {
+            "type": "string"
+          },
+          "contentMeta": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "type",
+          "contentFront",
+          "contentBack"
+        ]
+      },
+      "CreateFlashcardProgressDto": {
+        "type": "object",
+        "properties": {
+          "flashcardId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NEW",
+              "LEARNING",
+              "MASTERED"
+            ]
+          }
+        },
+        "required": [
+          "flashcardId",
+          "status"
+        ]
+      },
+      "UpdateFlashcardDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "VOCABULARY",
+              "HADEETH"
+            ]
+          },
+          "contentFront": {
+            "type": "string"
+          },
+          "contentBack": {
+            "type": "string"
+          },
+          "contentMeta": {
+            "type": "object"
+          }
+        }
+      },
+      "BulkFlashcardResponse": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number",
+            "description": "Number of successfully imported flashcards"
+          }
+        },
+        "required": [
+          "count"
+        ]
+      },
+      "FieldError": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "example": "front"
+          },
+          "message": {
+            "type": "string",
+            "example": "front should not be empty"
+          }
+        },
+        "required": [
+          "field",
+          "message"
+        ]
+      },
+      "RowError": {
+        "type": "object",
+        "properties": {
+          "row": {
+            "type": "number",
+            "description": "Row number in the uploaded file (1-based)"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            }
+          }
+        },
+        "required": [
+          "row",
+          "errors"
+        ]
+      },
+      "BulkFlashcardErrorContext": {
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RowError"
+            }
+          }
+        },
+        "required": [
+          "errors"
+        ]
+      },
+      "BulkFlashcardErrorResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "example": "APP_ERROR"
+          },
+          "code": {
+            "type": "string",
+            "example": "RESOURCE_NOT_FOUND"
+          },
+          "status": {
+            "type": "number",
+            "example": 422
+          },
+          "message": {
+            "type": "string",
+            "example": "Validation Error"
+          },
+          "correlationId": {
+            "type": "string",
+            "example": "0f1d2c3b-4a59-4c6d-8e7f-90a1b2c3d4e5"
+          },
+          "timestamp": {
+            "type": "string",
+            "example": "2025-01-01T00:00:00.000Z"
+          },
+          "context": {
+            "$ref": "#/components/schemas/BulkFlashcardErrorContext"
+          }
+        },
+        "required": [
+          "type",
+          "code",
+          "status",
+          "message",
+          "timestamp",
+          "context"
+        ]
+      },
+      "StreamableFile": {
+        "type": "object",
+        "properties": {}
+      },
+      "FlashcardDeckResponse": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Colours - Vocabulary Deck"
+          },
+          "isPublic": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "authorId": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "isPublic",
+          "id",
+          "authorId"
+        ]
+      },
+      "CreateFlashcardDeckDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Colours - Vocabulary Deck"
+          },
+          "isPublic": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "isPublic"
+        ]
+      },
+      "FlashcardDeckUserResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "deckId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "deckId",
+          "createdAt"
+        ]
+      },
+      "UpdateFlashcardDeckDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Colours - Vocabulary Deck"
+          },
+          "isPublic": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateFlashcardLabelDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 100
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "PERSONAL"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "scope"
+        ]
+      },
+      "FlashcardCreateLabelResponse": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 100
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "PERSONAL"
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "scope",
+          "createdAt",
+          "id",
+          "userId",
+          "createdBy"
+        ]
+      },
+      "CreateFlashcardLabelingDto": {
+        "type": "object",
+        "properties": {
+          "labelId": {
+            "type": "string"
+          },
+          "privateToUserId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "flashcardId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "labelId",
+          "flashcardId"
+        ]
+      },
+      "FlashcardLabelingResponse": {
+        "type": "object",
+        "properties": {
+          "labelId": {
+            "type": "string"
+          },
+          "privateToUserId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "flashcardId": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "labelId",
+          "flashcardId",
+          "createdBy"
+        ]
+      },
+      "FlashcardLabelResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "PERSONAL"
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "title",
+          "createdBy",
+          "scope",
+          "createdAt"
+        ]
+      },
+      "labelStatsResponse": {
+        "type": "object",
+        "properties": {
+          "labelId": {
+            "type": "string"
+          },
+          "usageCount": {
+            "type": "number"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "labelId",
+          "usageCount"
+        ]
+      },
+      "CreateFlashcardDeckLabelDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 100
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "PERSONAL"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "scope"
+        ]
+      },
+      "FlashcardDeckCreateLabelResponse": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 100
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "PERSONAL"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "scope",
+          "id",
+          "createdBy",
+          "createdAt"
+        ]
+      },
+      "CreateFlashcardDeckLabelingDto": {
+        "type": "object",
+        "properties": {
+          "labelId": {
+            "type": "string"
+          },
+          "privateToUserId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "deckId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "labelId",
+          "deckId"
+        ]
+      },
+      "FlashcardDeckLabelingResponse": {
+        "type": "object",
+        "properties": {
+          "labelId": {
+            "type": "string"
+          },
+          "privateToUserId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "deckId": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "labelId",
+          "deckId",
+          "createdBy"
+        ]
+      },
+      "FlashcardDeckLabelResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "PERSONAL"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "createdAt",
+          "createdBy",
+          "scope"
+        ]
+      },
+      "DeckLabelStatsResponse": {
+        "type": "object",
+        "properties": {
+          "labelId": {
+            "type": "string"
+          },
+          "usageCount": {
+            "type": "number"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "labelId",
+          "usageCount"
         ]
       }
     }

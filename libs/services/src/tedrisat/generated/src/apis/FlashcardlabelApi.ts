@@ -37,23 +37,23 @@ import {
     LabelStatsResponseToJSON,
 } from '../models/index';
 
-export interface FlashcardlabelControllerCreateFlashcardLabelRequest {
+export interface CreateFlashcardLabelRequest {
     createFlashcardLabelDto: CreateFlashcardLabelDto;
 }
 
-export interface FlashcardlabelControllerDeleteFlashcardLabelRequest {
-    id: string;
-}
-
-export interface FlashcardlabelControllerFlahscardLabelingRequest {
+export interface CreateFlashcardLabelingRequest {
     createFlashcardLabelingDto: CreateFlashcardLabelingDto;
 }
 
-export interface FlashcardlabelControllerGetByIdRequest {
+export interface DeleteFlashcardLabelRequest {
     id: string;
 }
 
-export interface FlashcardlabelControllerGetLabelStatsRequest {
+export interface GetFlashcardLabelByIdRequest {
+    id: string;
+}
+
+export interface GetFlashcardLabelStatsRequest {
     id: string;
 }
 
@@ -63,12 +63,13 @@ export interface FlashcardlabelControllerGetLabelStatsRequest {
 export class FlashcardlabelApi extends runtime.BaseAPI {
 
     /**
+     * Create a flashcard label
      */
-    async flashcardlabelControllerCreateFlashcardLabelRaw(requestParameters: FlashcardlabelControllerCreateFlashcardLabelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FlashcardCreateLabelResponse>> {
+    async createFlashcardLabelRaw(requestParameters: CreateFlashcardLabelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FlashcardCreateLabelResponse>> {
         if (requestParameters['createFlashcardLabelDto'] == null) {
             throw new runtime.RequiredError(
                 'createFlashcardLabelDto',
-                'Required parameter "createFlashcardLabelDto" was null or undefined when calling flashcardlabelControllerCreateFlashcardLabel().'
+                'Required parameter "createFlashcardLabelDto" was null or undefined when calling createFlashcardLabel().'
             );
         }
 
@@ -98,19 +99,65 @@ export class FlashcardlabelApi extends runtime.BaseAPI {
     }
 
     /**
+     * Create a flashcard label
      */
-    async flashcardlabelControllerCreateFlashcardLabel(requestParameters: FlashcardlabelControllerCreateFlashcardLabelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FlashcardCreateLabelResponse> {
-        const response = await this.flashcardlabelControllerCreateFlashcardLabelRaw(requestParameters, initOverrides);
+    async createFlashcardLabel(requestParameters: CreateFlashcardLabelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FlashcardCreateLabelResponse> {
+        const response = await this.createFlashcardLabelRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
+     * Attach a label to a flashcard
      */
-    async flashcardlabelControllerDeleteFlashcardLabelRaw(requestParameters: FlashcardlabelControllerDeleteFlashcardLabelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<boolean>> {
+    async createFlashcardLabelingRaw(requestParameters: CreateFlashcardLabelingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FlashcardLabelingResponse>> {
+        if (requestParameters['createFlashcardLabelingDto'] == null) {
+            throw new runtime.RequiredError(
+                'createFlashcardLabelingDto',
+                'Required parameter "createFlashcardLabelingDto" was null or undefined when calling createFlashcardLabeling().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/flashcard-label/labeling`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateFlashcardLabelingDtoToJSON(requestParameters['createFlashcardLabelingDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FlashcardLabelingResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Attach a label to a flashcard
+     */
+    async createFlashcardLabeling(requestParameters: CreateFlashcardLabelingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FlashcardLabelingResponse> {
+        const response = await this.createFlashcardLabelingRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Delete a flashcard label
+     */
+    async deleteFlashcardLabelRaw(requestParameters: DeleteFlashcardLabelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<boolean>> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
-                'Required parameter "id" was null or undefined when calling flashcardlabelControllerDeleteFlashcardLabel().'
+                'Required parameter "id" was null or undefined when calling deleteFlashcardLabel().'
             );
         }
 
@@ -142,61 +189,21 @@ export class FlashcardlabelApi extends runtime.BaseAPI {
     }
 
     /**
+     * Delete a flashcard label
      */
-    async flashcardlabelControllerDeleteFlashcardLabel(requestParameters: FlashcardlabelControllerDeleteFlashcardLabelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
-        const response = await this.flashcardlabelControllerDeleteFlashcardLabelRaw(requestParameters, initOverrides);
+    async deleteFlashcardLabel(requestParameters: DeleteFlashcardLabelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
+        const response = await this.deleteFlashcardLabelRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
+     * Get a flashcard label by ID
      */
-    async flashcardlabelControllerFlahscardLabelingRaw(requestParameters: FlashcardlabelControllerFlahscardLabelingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FlashcardLabelingResponse>> {
-        if (requestParameters['createFlashcardLabelingDto'] == null) {
-            throw new runtime.RequiredError(
-                'createFlashcardLabelingDto',
-                'Required parameter "createFlashcardLabelingDto" was null or undefined when calling flashcardlabelControllerFlahscardLabeling().'
-            );
-        }
-
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        headerParameters['Content-Type'] = 'application/json';
-
-        if (this.configuration && this.configuration.accessToken) {
-            // oauth required
-            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
-        }
-
-
-        let urlPath = `/flashcard-label/labeling`;
-
-        const response = await this.request({
-            path: urlPath,
-            method: 'POST',
-            headers: headerParameters,
-            query: queryParameters,
-            body: CreateFlashcardLabelingDtoToJSON(requestParameters['createFlashcardLabelingDto']),
-        }, initOverrides);
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => FlashcardLabelingResponseFromJSON(jsonValue));
-    }
-
-    /**
-     */
-    async flashcardlabelControllerFlahscardLabeling(requestParameters: FlashcardlabelControllerFlahscardLabelingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FlashcardLabelingResponse> {
-        const response = await this.flashcardlabelControllerFlahscardLabelingRaw(requestParameters, initOverrides);
-        return await response.value();
-    }
-
-    /**
-     */
-    async flashcardlabelControllerGetByIdRaw(requestParameters: FlashcardlabelControllerGetByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FlashcardLabelResponse>> {
+    async getFlashcardLabelByIdRaw(requestParameters: GetFlashcardLabelByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FlashcardLabelResponse>> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
-                'Required parameter "id" was null or undefined when calling flashcardlabelControllerGetById().'
+                'Required parameter "id" was null or undefined when calling getFlashcardLabelById().'
             );
         }
 
@@ -224,19 +231,21 @@ export class FlashcardlabelApi extends runtime.BaseAPI {
     }
 
     /**
+     * Get a flashcard label by ID
      */
-    async flashcardlabelControllerGetById(requestParameters: FlashcardlabelControllerGetByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FlashcardLabelResponse> {
-        const response = await this.flashcardlabelControllerGetByIdRaw(requestParameters, initOverrides);
+    async getFlashcardLabelById(requestParameters: GetFlashcardLabelByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FlashcardLabelResponse> {
+        const response = await this.getFlashcardLabelByIdRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
+     * Get usage statistics for a flashcard label
      */
-    async flashcardlabelControllerGetLabelStatsRaw(requestParameters: FlashcardlabelControllerGetLabelStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LabelStatsResponse>> {
+    async getFlashcardLabelStatsRaw(requestParameters: GetFlashcardLabelStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LabelStatsResponse>> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
-                'Required parameter "id" was null or undefined when calling flashcardlabelControllerGetLabelStats().'
+                'Required parameter "id" was null or undefined when calling getFlashcardLabelStats().'
             );
         }
 
@@ -264,9 +273,10 @@ export class FlashcardlabelApi extends runtime.BaseAPI {
     }
 
     /**
+     * Get usage statistics for a flashcard label
      */
-    async flashcardlabelControllerGetLabelStats(requestParameters: FlashcardlabelControllerGetLabelStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LabelStatsResponse> {
-        const response = await this.flashcardlabelControllerGetLabelStatsRaw(requestParameters, initOverrides);
+    async getFlashcardLabelStats(requestParameters: GetFlashcardLabelStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LabelStatsResponse> {
+        const response = await this.getFlashcardLabelStatsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

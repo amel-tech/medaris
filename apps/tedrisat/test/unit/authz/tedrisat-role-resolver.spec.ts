@@ -44,7 +44,9 @@ const build = (s: Stubs = {}) => {
     findEnrollment: vi.fn().mockResolvedValue(s.enrollment ?? null),
   } as unknown as CourseRepository;
   const deck = {
-    findById: vi.fn().mockResolvedValue(s.deck ?? null),
+    // `findVisibility`, not `findById`: the resolver reads exactly `authorId`
+    // and `isPublic`, and runs inside the guard on every deck request.
+    findVisibility: vi.fn().mockResolvedValue(s.deck ?? null),
   } as unknown as FlashcardDeckService;
   return {
     resolver: new TedrisatRoleResolver(kosk, course, deck),
@@ -126,7 +128,7 @@ describe("TedrisatRoleResolver", () => {
       await expect(
         resolver.resolve("u", { entity: ENTITIES.FLASHCARD_DECK, id: "new" })
       ).resolves.toBe(ROLES.PUBLIC);
-      expect(deck.findById).not.toHaveBeenCalled();
+      expect(deck.findVisibility).not.toHaveBeenCalled();
     });
   });
 

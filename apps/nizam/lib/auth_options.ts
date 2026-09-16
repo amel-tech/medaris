@@ -1,4 +1,8 @@
-import { createAccessTokenReader } from "@medaris/services/auth";
+import {
+  createAccessTokenReader,
+  REFRESH_ACCESS_TOKEN_ERROR,
+  refreshDeadline,
+} from "@medaris/services/auth";
 import type {
   GetServerSidePropsContext,
   NextApiRequest,
@@ -9,20 +13,6 @@ import type { JWT } from "next-auth/jwt";
 import KeycloakProvider from "next-auth/providers/keycloak";
 import { env } from "~/env";
 import { authCookies } from "~/lib/auth_cookies";
-
-/**
- * Keycloak reports `refresh_expires_in: 0` for a refresh token that does not
- * expire on its own, and omits the field entirely under some client configs.
- * Both must read as "no deadline" — arithmetic on them produces a timestamp in
- * the past or `NaN`, and treating that as an expiry killed every session the
- * moment its access token aged out. `undefined` is the only encoding of "no
- * deadline" the guard below can read. Same function as in tedris; the realm is
- * shared, so the behaviour is too.
- */
-const refreshDeadline = (expiresIn: number | undefined) =>
-  typeof expiresIn === "number" && expiresIn > 0
-    ? Date.now() + (expiresIn - 15) * 1000
-    : undefined;
 
 /**
  * Takes a token, and returns a new token with updated `accessToken`. If an
@@ -74,7 +64,10 @@ const refreshAccessToken = async (token: JWT) => {
 
     return {
       ...token,
-      error: "RefreshAccessTokenError",
+      // The one sentinel, declared in @medaris/services/auth: this produces it,
+      // `createAccessTokenReader` fails closed on it, and the client's
+      // `RefreshErrorRedirect` sends the visitor back to Keycloak on it.
+      error: REFRESH_ACCESS_TOKEN_ERROR,
     };
   }
 };

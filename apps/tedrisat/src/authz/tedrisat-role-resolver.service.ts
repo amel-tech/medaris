@@ -18,8 +18,8 @@ const UUID_REGEX =
  * Resolves the caller's role on a given resource by consulting the
  * domain's ownership/enrollment tables — through the feature modules'
  * services where one already answers the question (`KoskService.isOwner`,
- * `FlashcardDeckService.findById`) and through `CourseRepository` for the
- * course lookups no service exposes, never through `DatabaseService`
+ * `FlashcardDeckService.findVisibility`) and through `CourseRepository` for
+ * the course lookups no service exposes, never through `DatabaseService`
  * directly. Authorization and the domain code therefore read ownership from
  * one code path: when the rule or the storage shape changes (the
  * kosk→madrasah FK, a membership table for köşk ownership), the one owner
@@ -88,9 +88,21 @@ export class TedrisatRoleResolver implements RoleResolver {
    *   row, not an admin flag; testing it first turned the author of a
    *   public deck into PUBLIC and locked them out of every owner scope on
    *   their own deck, with no way back since flipping the flag is itself
-   *   owner-scoped (review finding on MDRS-41).
+   *   owner-scoped (review finding on MDRS-41). That last clause is an
+   *   invariant of `FlashcardDeckController`, not of the schema: `PATCH`
+   *   and `PUT /flashcard/decks/:id` both call `assertOwner` before
+   *   `update`, so nobody but the author can flip the flag — which is also
+   *   what stops an attacker from turning this resolver's answer for every
+   *   other caller from `null` (deny) into `ROLES.PUBLIC`. Remove that
+   *   assertion and this priority order becomes unsound with it.
    * - Public deck, not the author: PUBLIC (any authenticated caller may view).
    * - Private deck, not the author: null → strict deny.
+   *
+   * Two columns, one row, LIMIT 1 — `findVisibility`, not `findById`. This
+   * runs inside the guard on every deck request, before the handler has done
+   * any work, and `findById` returns every column of `decks` (including the
+   * unbounded `description` text) to answer a question that reads exactly
+   * `authorId` and `isPublic`.
    */
   private async resolveDeckRole(
     userId: string,
@@ -98,7 +110,7 @@ export class TedrisatRoleResolver implements RoleResolver {
   ): Promise<Role | null> {
     if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
 
-    const deck = await this.deckService.findById(resource.id);
+    const deck = await this.deckService.findVisibility(resource.id);
     if (!deck) return ROLES.PUBLIC;
     if (deck.authorId === userId) return ROLES.DECK_OWNER;
     return deck.isPublic ? ROLES.PUBLIC : null;

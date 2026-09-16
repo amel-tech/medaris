@@ -356,3 +356,45 @@ rather than running both.
 `libs/services/swagger-docs/tedrisat.json` is *not* touched here. The committed
 spec contains no label paths at all today (verified: no path key matching
 `label`); regenerating it is #55's deliverable.
+
+## Follow-up 1 closed — migration `0013_label_schema_drift` (PR #69, 2026-09-15)
+
+All five items of the schema/migration drift above are repaired by one
+forward-only migration, generated with `drizzle-kit generate` (the three rename
+prompts answered as renames rather than drop-and-create) so the `.sql`,
+`meta/0013_snapshot.json` and the `_journal.json` entry land together. `0007` is
+not edited.
+
+```sql
+ALTER TABLE "Flashcard_labeling"     RENAME TO "flashcard_labelings";
+ALTER TABLE "deck_label_stats"       RENAME COLUMN "lable_id"   TO "label_id";
+ALTER TABLE "flashcard_label_stats"  RENAME COLUMN "usageCount" TO "usage_count";
+ALTER TABLE "deck_labelings" ALTER COLUMN "private_to_user_id" DROP NOT NULL;
+ALTER TABLE "deck_labelings" ALTER COLUMN "create_at" SET DEFAULT now();
+```
+
+plus the three foreign-key constraints that carried the old names, dropped and
+re-added under the new ones. The renames preserve data; nothing is dropped.
+
+**One statement was removed from the generated file by hand.** `drizzle-kit`
+also proposed `DROP TABLE "deck_labels_decks" CASCADE`, because that table was
+created by `0007` and is declared in no schema file. It is unreferenced by any
+code, but dropping a table is destructive and no reviewer asked for it, so the
+statement was deleted and the table was restored into `meta/0013_snapshot.json`
+verbatim from `0012`. The database and the snapshot therefore stay in exactly
+the relationship they were already in; a future `db:generate` will propose the
+same drop, as it would have before. Deciding that table's fate is its own issue.
+
+What this makes reachable, and what pins it: `GET /flashcard-label/getStats/:id`
+and `GET /flashcard-deck-label/getStats/:id` returned a 500 for every caller,
+owner included. `flashcard-label.e2e.spec.ts` carried a deliberately negative
+assertion (`not.toBe(403)`, `not.toBe(404)`) with a note saying it should become
+a 200 the day the drift was fixed. It now asserts the 200 and the zero-valued
+body for both routes, so a reverted migration fails a test rather than a
+request. `POST /flashcard-label/labeling` — which targeted a table that did not
+exist under that name — is reachable for the first time.
+
+The blocker on the `deck_label_stats.label_id` unique index (recorded against
+the `LIMIT 1` fix in `mdrs-63-bulk-export-authz.md`) is gone with it: the index
+can now name a column that exists. It is still not added here, because a unique
+index is a claim about existing rows that wants its own issue.

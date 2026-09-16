@@ -244,3 +244,187 @@ the PR body for a human to file.
    same commit that adds `@Authz` to them, so authorization is not decided in two places.
    Acceptance criterion 3 asks for this to be stated in a comment on whichever issue lands
    second; a comment saying so is on MDRS-63 with the PR link.
+
+## Closed by the PR #69 review (2026-09-15)
+
+The review on #69 re-raised follow-ups 1–3 and 5 above as findings rather than notes, so they
+were closed in that PR instead of being deferred. What changed:
+
+| Route | Before | Now |
+| -- | -- | -- |
+| `GET /flashcard/cards?deckId=` | `where deckId` only — the export 403 was reachable around it | `assertReadable(deckId)` |
+| `GET /flashcard/cards/:id` | `where flashcards.id` only | parent deck resolved, then `assertReadable` |
+| `PUT` / `PATCH` / `DELETE /flashcard/cards/:id` | no caller argument at all | parent deck resolved, then `assertOwner` |
+| `GET /flashcard/decks/:id` | `where decks.id` only | `assertReadable(deckId)` |
+| `PUT` / `PATCH /flashcard/decks/:id` | no caller argument (`isPublic` writable by anyone) | `assertOwner(deckId)` |
+| `DELETE /flashcard/decks/:id` | `delete(decks).where(eq(decks.id, id))` | `assertOwner(deckId)` |
+| `POST /flashcard/decks/:id/collections` | any id the FK accepted | `assertReadable(deckId)` |
+
+Two rules, not one. `assertOwner` is unchanged: `authorId` and nothing else may write.
+`assertReadable` is new and deliberately wider — `authorId OR isPublic` — because a public deck
+is meant to be browsable, and using `assertOwner` on the read routes would take the explore and
+study flows out with it. It reads the new two-column `findVisibility` projection
+(`authorId`, `isPublic`, `LIMIT 1`), which `TedrisatRoleResolver.resolveDeckRole` now uses as
+well; that resolver was reading every column of `decks` — the unbounded `description` included —
+inside the guard to answer a two-column question.
+
+Cards are authorized through their deck, never through `flashcards.authorId`: that column is
+provenance, and every card in a deck is written by the deck's author anyway. The lookup is
+`FlashcardRepository.findDeckId` (one column, `LIMIT 1`).
+
+The `PATCH`/`PUT` assertions also settle something the authz resolver's comment asserted and the
+code did not have. `resolveDeckRole` checks `authorId` before `isPublic` on the argument that
+flipping the flag is itself owner-scoped; until this change any authenticated caller could
+`PATCH` somebody else's deck to `isPublic: true`, which turns the resolver's answer for every
+other caller from `null` (deny) into `ROLES.PUBLIC`. That is now an enforced invariant of
+`FlashcardDeckController`, and the resolver's comment says so rather than assuming it.
+
+The collection route was the last bypass, and not an obvious one: `POST :id/collections`
+inserted a `decks_users` row for any id the foreign key accepted, and the sibling
+`GET /flashcard/decks/collections` (`findAllByUser`) selects on that row alone with **no**
+`isPublic`/`authorId` predicate of its own. Collect-then-list therefore returned the whole
+private row — title, description, `authorId`, `isPublic` — around the guard now on
+`GET /flashcard/decks/:id`. A deck you may not read is a deck you may not collect.
+
+Nine e2e cases in `test/e2e/flashcard-bulk.e2e.spec.ts` pin the seven refusals plus the two
+counterweights — a non-owner still reads and still collects a PUBLIC deck — so tightening the
+read side to ownership has to argue with a test.
+
+Follow-up 4 is **half** closed: tedris's `/decks/[id]/cards` now threads the deck's `authorId`
+down and hides "Add Card", the inline cell editors and the row delete control from a visitor
+(`FlashcardDeckResponse` carries `authorId` since MDRS-58, which is what made this possible).
+nizam's unconditional Export/Import affordances on the deck list are untouched and remain open.
+
+Follow-ups 6 (TOCTOU) and 7 (MDRS-43 supersession) are unchanged.
+
+### Second review round on #69 — the read half, and one note taken as a note
+
+The collect-time assertion above was answered with a second finding: it decides
+authorization **once**, when the `decks_users` row is written, and
+`GET /flashcard/decks/collections` never re-evaluates it. Two paths were live —
+an author flipping a collected deck private afterwards, and every row written
+before the assertion existed. `FlashcardDeckRepository.findAllByUser` now
+`and()`s its `exists(...decks_users...)` predicate with
+`or(isPublic, authorId = caller)`, which is `findAllVisibleToUser`'s rule, so
+the two list routes answer the same question about the same rows. Pinned by
+`drops a collected deck out of /collections once its author makes it private`,
+which also asserts the author still sees their own deck there.
+
+**Taken on the next round after all** — see the section below. What follows was
+written when it was still deferred, and is kept because it records why: the two
+labeling writes (`FlashcardDeckLabelService.deckLabeling`,
+`FlashcardLabelService.flashcardLabeling`) assert ownership of the **label**
+and nothing about the **target** — `deckId` / `flashcardId` come off the DTO and
+reach the insert unchecked, so any authenticated caller can attach their own
+label to another user's private deck or card, and a valid id returns 201 while a
+missing one trips the foreign key as a 500 (an existence oracle). The reviewer
+who raised it scored it low and explicitly framed it as a note rather than a
+request to widen this PR: no read route surfaces labelings back to a deck owner
+today (`DeckIncludeEnum` is empty), and `flashcard-label.controller.ts` already
+defers the question to MDRS-26. Closing it means giving the two label modules a
+dependency on `FlashcardModule` (and on `FlashcardService`, which that module
+does not export), which is a wiring change this branch should not make on its
+last pass. The fix when MDRS-26 lands is the call its siblings now make:
+`assertReadable(newLabeling.deckId, newLabeling.createdBy)`, and the card twin
+resolving the parent deck first.
+
+### The labeling targets, closed (third review round)
+
+The deferral above did not survive its own reasoning. The lens raised it a
+second time on the card twin, and the objection was the right one: every other
+write path touched by this branch — `createMany`, `bulk`, `importCards`,
+`replace`, `update`, `deleteCard`, and the deck `PUT`/`PATCH`/`DELETE` — got its
+edge assertion here, and these two did not. A deferral that is the only
+exception in the module is load-bearing in the wrong direction.
+
+`FlashcardModule` now exports `FlashcardService` alongside `FlashcardDeckService`
+(services, never repositories, so importers cannot write past the ownership
+checks), and `FlashcardLabelModule` imports it. There is no cycle:
+`FlashcardModule` imports nothing from the label module.
+
+- `FlashcardLabelService.flashcardLabeling` resolves the card's parent deck
+  through `FlashcardService.findDeckId` — the same one-column lookup the card
+  routes use — and asserts `assertReadable` on it. A card that is not there is
+  a new `CardNotFoundError` (404) rather than a foreign-key violation surfacing
+  as a 500, which is what made the route an existence oracle.
+- `FlashcardDeckLabelService.deckLabeling` asserts `assertReadable` on
+  `newLabeling.deckId` directly.
+
+`assertReadable`, not `assertOwner`, and deliberately: labelling a card in
+somebody else's PUBLIC deck is a private annotation on a public thing, which is
+what `privateToUserId` is for. Six e2e cases in `flashcard-label.e2e.spec.ts`
+pin all three answers — refused for a private target, 404 for a missing one,
+allowed for a public one and for your own.
+
+What remains MDRS-26's is the read side: no route surfaces labelings back to a
+deck owner, and `CardIncludeEnum` exposes only `progress`, so whether an author
+sees another user's private annotation on their card is still not a question
+this module answers. The class docblock on `flashcard-label.controller.ts` now
+says that, rather than deferring the whole subject.
+
+### Fourth review round — what the new guards and the new migration exposed
+
+Closing one class of hole made the next one reachable, which is most of what
+this round found.
+
+**`GET /flashcard/decks/collections` disclosed other collectors.** The
+write-time `assertReadable` and the read-time predicate both scoped which
+*decks* came back; `with: { decksUsers: true }` hydrated the join rows in full
+regardless, and tedrisat registers no `ClassSerializerInterceptor` while
+`FlashcardDeckResponse` has no field to strip them — so collecting a popular
+public deck handed the caller the Keycloak `sub` of everyone else who had
+collected it, and those ids are directly actionable elsewhere in this API
+(`POST /courses/:id/enrollments/:userId/approve` takes one as a path param).
+The relation is gone: nothing read it, and the caller's own membership is what
+the `exists(...)` predicate already answers. Pinned by an assertion on the whole
+response body rather than on the field name.
+
+**`PUT /flashcard/cards/progress` was the last unguarded target in the card
+controller.** The row written always belongs to the caller — the service
+spreads `userId` last — but `flashcardId` came off the body unchecked, so
+progress could be recorded against a card in a deck the caller may not read,
+and a real id answered 200 while an unknown one tripped the FK as a 500. It now
+resolves each distinct card's deck and asserts readability; de-duplicated
+first, because a study session posts many cards from one deck.
+
+**Migration 0013 made two latent defects live.** `flashcard_labelings` could
+not be written to before it, so nothing had ever exercised the table:
+
+- `flashcard_id` is `NOT NULL` and its foreign key said `ON DELETE SET NULL`.
+  Postgres accepts that pairing at DDL time and only fails when a referenced
+  card is deleted, so the first labelled card would have been undeletable — and
+  with it any deck holding it, since `flashcards.deck_id` cascades. Both the
+  schema and the migration now say `cascade`, which is what `label_id` beside
+  it and `deck_labelings.deck_id` opposite already said.
+- The stats write was three statements outside any transaction, with the insert
+  that can fail happening *last*: a bad target left the usage counter moved
+  with no labeling row behind it, permanently and cumulatively. Both
+  repositories now have `labelAndCountUsage`, one transaction, labeling first,
+  and the counter as a single `onConflictDoUpdate` rather than a
+  read-and-branch two concurrent first-labelings both lost.
+
+**The unique indexes landed after all.** `deck_label_stats.label_id` and
+`flashcard_label_stats.label_id` were the only columns either table is filtered
+on — including `updateLabelStats`'s `UPDATE ... WHERE label_id = $1`, which
+takes no `LIMIT` and scanned unconditionally on every labeling. The earlier
+deferral rested on the column-name drift, which 0013 itself removes; `unique`
+rather than plain is safe precisely because both tables were unwritable until
+that migration, so neither can hold duplicates. The `.limit(1)` fixes stay —
+they bound the read path independently — and the upsert above depends on the
+constraint.
+
+**Two round trips became one on the two hottest reads.** `GET
+/flashcard/cards/:id` read the card row, then the deck, then the card again;
+`GET /flashcard/decks/:id` read `decks` twice. Both now read once and decide
+from the columns the row already carries. The rule stays in
+`FlashcardDeckService` — `findReadable` and `assertReadable` share one private
+`assertVisibleTo` — rather than being inlined into a controller. The write
+handlers keep `deckOf`/`assertOwner`: they have no row in hand and must decide
+before mutating.
+
+**`deck_labels_decks` is still there, still deliberate.** A reviewer read the
+0013 snapshot and reached the same conclusion recorded against the migration
+above: the table exists in the database and in no schema file, `drizzle-kit`
+therefore proposes dropping it, and a rename-only migration is not where a
+destructive change belongs. It stays out of this PR in both the SQL and the
+snapshot. Whether it is dropped or re-declared is its own issue.
