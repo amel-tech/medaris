@@ -60,16 +60,23 @@ copied between the apps, would pick up whichever file it happened to import.
   docblock line named the deleted function and now refers to "the shared
   resolver".
 - **teskilat `test/unit/swagger-env.spec.ts` → `swagger-policy.spec.ts`.** The
-  existing cases are kept and call the shared resolver with teskilat's rule.
-  Five new cases put the two policies side by side:
+  existing cases are kept, at the same count (24 tests in the project), and
+  now call the shared resolver with teskilat's rule.
+- **`libs/common/test/config/swagger-production.config.spec.ts` (new).** Holds
+  six cases for the resolver itself, with both policies side by side:
   - `throw-unless-opted-in` throws and names the opt-in and the service;
   - the opt-in unlocks only `throw-unless-opted-in`;
   - `refuse-in-production` never throws;
   - only `refuse-in-production` reports a suppression;
-  - both policies agree outside production and when the flag is off.
+  - both policies agree outside production and when the flag is off;
+  - the notice names the service and the variable, and says there is no
+    opt-in.
 
-  The shared lib has no test target (`libs/common/project.json` declares only
-  `lint`), so the spec lives with a consuming app, as the MDRS-30 specs do.
+  `libs/common` has a Vitest `test` target, inferred from
+  `libs/common/vitest.config.ts` rather than declared in `project.json`. An
+  earlier version of this record said the library had none, which was wrong.
+  The cases were first written into teskilat's spec and moved here during
+  review.
 
 ## Verification
 
@@ -79,11 +86,15 @@ copied between the apps, would pick up whichever file it happened to import.
   - teskilat → `throw-unless-opted-in` at both call sites: 6 tests fail — 1 in
     `swagger-policy.spec.ts` ("resolves swagger.enabled to false in
     production") and 5 in `swagger.e2e.spec.ts`.
-  - Both restored.
+  - The opt-in check removed inside the resolver, so `throw-unless-opted-in`
+    returns `true` in production: 1 of the 6 common cases fails ("throws in
+    production without the opt-in").
+  - All restored.
 - **Gate** with `--skip-nx-cache` and Docker running:
   - typecheck 17, lint 17, module-boundaries 17, build 8 and test 5 projects,
     all green;
-  - tedrisat `tests="377" failures="0"`, teskilat `tests="29" failures="0"`;
+  - tedrisat `tests="377" failures="0"`, teskilat 24 passed, common 57 passed
+    (51 before this change);
   - `pnpm run security-check` exits 0;
   - `tools/ci/biome-ratchet.mjs` reports `warnings 79 (baseline 79)`. Its one
     `format` error comes from the untracked, git-excluded `.cursor/mcp.json`
