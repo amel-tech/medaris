@@ -45,16 +45,12 @@ describe("flashcard label readers", () => {
   const labelRepo = {
     getById: vi.fn(),
     getLabelStats: vi.fn(),
-    flashcardLabeling: vi.fn(),
-    updateLabelStats: vi.fn(),
-    createLabelStats: vi.fn(),
+    labelAndCountUsage: vi.fn(),
   };
   const deckLabelRepo = {
     getById: vi.fn(),
     getLabelStats: vi.fn(),
-    deckLabeling: vi.fn(),
-    updateLabelStats: vi.fn(),
-    createLabelStats: vi.fn(),
+    labelAndCountUsage: vi.fn(),
   };
   // Permissive: the card resolves to a deck, and every deck is readable. See
   // the note above.
@@ -133,8 +129,11 @@ describe("flashcard label readers", () => {
           createdBy: "someone-else",
         })
       ).rejects.toBeInstanceOf(FlashcardLabelForbiddenError);
-      expect(labelRepo.flashcardLabeling).not.toHaveBeenCalled();
-      expect(labelRepo.updateLabelStats).not.toHaveBeenCalled();
+      // `labelAndCountUsage` is the service's only write — the insert and the
+      // stats upsert in one transaction. The mocks used to name the three
+      // repository methods it replaced, which the service no longer calls, so
+      // their not-called assertions held no matter what (MDRS-81).
+      expect(labelRepo.labelAndCountUsage).not.toHaveBeenCalled();
       // The label is checked first, so a caller who fails there never causes a
       // lookup of the card they named.
       expect(cardService.findDeckId).not.toHaveBeenCalled();
@@ -199,7 +198,7 @@ describe("flashcard label readers", () => {
           createdBy: "someone-else",
         })
       ).rejects.toBeInstanceOf(FlashcardDeckLabelForbiddenError);
-      expect(deckLabelRepo.deckLabeling).not.toHaveBeenCalled();
+      expect(deckLabelRepo.labelAndCountUsage).not.toHaveBeenCalled();
       expect(deckService.assertReadable).not.toHaveBeenCalled();
     });
   });
