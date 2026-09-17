@@ -1,9 +1,9 @@
-import type { CellContext, RowData } from "@tanstack/react-table";
-import type {
-  LegacyColumnDef as ColumnDef,
-  LegacyFeatures,
-} from "@tanstack/react-table/legacy";
+import type { RowData } from "@tanstack/react-table";
 import React from "react";
+import type {
+  DataTableColumnDef as ColumnDef,
+  DataTableCellContext,
+} from "../features";
 
 import { EditableInput } from "./editable-input";
 import { EditableSelect } from "./editable-select";
@@ -11,7 +11,7 @@ import { EditableSwitch } from "./editable-switch";
 import { EditableTextarea } from "./editable-textarea";
 
 export function EditableCell<TData extends RowData>(
-  props: CellContext<LegacyFeatures, TData, unknown>
+  props: DataTableCellContext<TData>
 ) {
   const {
     getValue,

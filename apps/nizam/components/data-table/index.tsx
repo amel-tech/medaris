@@ -8,15 +8,14 @@ import {
   TableHeader,
   TableRow,
 } from "@medaris/ui/components/table";
-import { flexRender, type RowData } from "@tanstack/react-table";
-import {
-  type LegacyColumnDef as ColumnDef,
-  getCoreRowModel,
-  type LegacyTableOptions as TableOptions,
-  useLegacyTable as useReactTable,
-} from "@tanstack/react-table/legacy";
+import { flexRender, type RowData, useTable } from "@tanstack/react-table";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import {
+  type DataTableColumnDef as ColumnDef,
+  type DataTableOptions,
+  dataTableFeatures,
+} from "./features";
 
 export interface DataTableProps<TData extends RowData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -25,7 +24,7 @@ export interface DataTableProps<TData extends RowData, TValue> {
   onRowUpdate?: (updatedRow: TData) => Promise<boolean> | boolean;
   onRowClick?: (row: TData) => void;
   onRowDelete?: (id: string) => Promise<boolean> | boolean;
-  options?: TableOptions<TData>;
+  options?: Partial<DataTableOptions<TData>>;
 }
 
 export function DataTable<TData extends RowData, TValue>({
@@ -84,12 +83,12 @@ export function DataTable<TData extends RowData, TValue>({
     }
   };
 
-  const table = useReactTable({
+  const table = useTable({
+    features: dataTableFeatures,
     data: tableData,
     // v9's per-column TValue is checked contravariantly; a heterogeneous
     // ColumnDef<TData, TValue>[] must be widened before it reaches the table.
     columns: columns as unknown as ColumnDef<TData, unknown>[],
-    getCoreRowModel: getCoreRowModel(),
     defaultColumn: (defaultColumn as Partial<ColumnDef<TData, unknown>>) || {
       size: 200,
       minSize: 50,
@@ -133,11 +132,10 @@ export function DataTable<TData extends RowData, TValue>({
             table.getRowModel().rows.map((row) => (
               <TableRow
                 key={row.id}
-                data-state={row.getIsSelected() && "selected"}
                 className={onRowClick ? "cursor-pointer hover:bg-muted/50" : ""}
                 onClick={() => onRowClick?.(row.original)}
               >
-                {row.getVisibleCells().map((cell) => (
+                {row.getAllCells().map((cell) => (
                   <TableCell
                     key={cell.id}
                     style={{ width: cell.column.getSize() }}

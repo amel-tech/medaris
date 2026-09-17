@@ -14,10 +14,10 @@ import {
   AlertDialogTrigger,
 } from "@medaris/ui/components/alert-dialog";
 import { Button } from "@medaris/ui/components/button";
-import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 import { useTranslations } from "next-intl";
 import React from "react";
 import { createInputColumn } from "~/components/data-table/editable";
+import type { DataTableColumnDef as ColumnDef } from "~/components/data-table/features";
 
 /**
  * `canEdit` is the deck-ownership flag threaded down from the page. It is a

@@ -2,8 +2,8 @@ import { Skeleton } from "@medaris/ui/components/skeleton";
 import { Switch } from "@medaris/ui/components/switch";
 import { cn } from "@medaris/ui/lib/utils";
 import type { RowData } from "@tanstack/react-table";
-import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 import type React from "react";
+import type { DataTableColumnDef as ColumnDef } from "../features";
 
 export const EditableSwitch: React.FC<{
   value: boolean;
