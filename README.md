@@ -70,7 +70,7 @@ Nx runs with `neverConnectToCloud: true` — no remote cache, no analytics. CI t
 
 Those tests run on **Vitest**; MDRS-20 moved them off Jest at an unchanged count — 91 across 10 suites as measured then, before MDRS-35 added tedrisat's 15-test `test/unit/config.spec.ts` — and no Jest dependency or config file remains. It did **not** close the frontend gap — there was no frontend spec to migrate, and scaffolding a runner with nothing to run would only have produced a target that passes vacuously. Writing the first frontend specs, with the `@nx/vite` + `jsdom` setup they need, is tracked separately. See [`docs/migration/mdrs-20-jest-to-vitest.md`](docs/migration/mdrs-20-jest-to-vitest.md).
 
-Seven of tedrisat's nineteen suites are the `test/e2e/*.e2e.spec.ts` files: `apps/tedrisat/vitest.config.ts` matches them too, so **`pnpm test` needs a running Docker daemon** — those suites start a Testcontainers `postgres:17-alpine`. `pnpm --filter @medaris/tedrisat test:e2e` runs the same seven under `apps/tedrisat/vitest.integration.config.ts` rather than adding coverage.
+Nine of tedrisat's twenty-three suites are the `test/e2e/*.e2e.spec.ts` files: `apps/tedrisat/vitest.config.ts` matches them too, so **`pnpm test` needs a running Docker daemon** — those suites start a Testcontainers `postgres:17-alpine`, and `keycloak-audience.e2e.spec.ts` also a `quay.io/keycloak/keycloak:26.3.2`. `pnpm --filter @medaris/tedrisat test:e2e` runs the same nine under `apps/tedrisat/vitest.integration.config.ts` rather than adding coverage.
 
 ## Toolchain
 
