@@ -12,7 +12,7 @@ import {
   type SwaggerCspRequest,
   shouldRelaxSwaggerHeaders,
 } from "./config/swagger-csp";
-import { resolveSwaggerOauthRedirectOrigin } from "./config/swagger-env";
+import { resolveSwaggerOauthRedirectOrigin } from "./config/swagger-oauth-redirect";
 
 async function bootstrap() {
   const logger = LoggerFactory.create();
@@ -45,7 +45,7 @@ async function bootstrap() {
     );
     // The other half of that concatenation. KEYCLOAK_REDIRECT_URL is in no
     // schema, so an absent value used to stringify into
-    // `undefined/docs/oauth2-redirect.html` — see config/swagger-env.ts.
+    // `undefined/docs/oauth2-redirect.html` — see config/swagger-oauth-redirect.ts.
     const oauthRedirectOrigin = resolveSwaggerOauthRedirectOrigin();
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     // helmet() already ran for every route in applyGlobalMiddleware above, so

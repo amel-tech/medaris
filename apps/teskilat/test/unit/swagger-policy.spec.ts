@@ -1,22 +1,40 @@
 /**
- * MDRS-69 — teskilat's production Swagger refusal.
+ * MDRS-69 — teskilat's production Swagger refusal, and MDRS-85 — the shared
+ * resolver it now goes through.
  *
  * The decision recorded here: under `NODE_ENV=production` teskilat never mounts
  * Swagger UI, whatever `SWAGGER_ENABLED` says, and there is no opt-in. See
- * `src/config/swagger-env.ts` for why it resolves to `false` instead of
- * throwing the way tedrisat's guard does.
+ * `libs/common/src/config/swagger-production.config.ts` for why the
+ * `refuse-in-production` policy resolves to `false` instead of throwing the way
+ * tedrisat's `throw-unless-opted-in` policy does.
  *
  * `test/e2e/swagger.e2e.spec.ts` asserts the same rule as HTTP behaviour, so
  * this file is not the only evidence that the module goes unmounted.
  */
-import configuration from "../../src/config/config";
 import {
-  SWAGGER_PRODUCTION_SUPPRESSION_NOTICE,
-  swaggerEnabledUnlessProduction,
+  resolveSwaggerEnabled,
+  type SwaggerProductionRule,
+  swaggerProductionSuppressionNotice,
   swaggerSuppressedByProduction,
-} from "../../src/config/swagger-env";
+} from "@medaris/common";
+import configuration from "../../src/config/config";
 
-describe("swaggerEnabledUnlessProduction", () => {
+/** The rule `src/config/config.ts` and `src/swagger.ts` both name. */
+const TESKILAT: SwaggerProductionRule = {
+  policy: "refuse-in-production",
+  service: "@medaris/teskilat",
+};
+
+/** tedrisat's rule, for the cases that pin how the two policies differ. */
+const TEDRISAT: SwaggerProductionRule = {
+  policy: "throw-unless-opted-in",
+  service: "@medaris/tedrisat",
+};
+
+const swaggerEnabledUnlessProduction = (env: NodeJS.ProcessEnv) =>
+  resolveSwaggerEnabled(TESKILAT, env);
+
+describe("resolveSwaggerEnabled — refuse-in-production (teskilat)", () => {
   it("refuses in production even with SWAGGER_ENABLED=true", () => {
     expect(
       swaggerEnabledUnlessProduction({
@@ -73,10 +91,10 @@ describe("swaggerEnabledUnlessProduction", () => {
   });
 });
 
-describe("swaggerSuppressedByProduction", () => {
+describe("swaggerSuppressedByProduction — refuse-in-production (teskilat)", () => {
   it("is true only when the flag was set and production is the reason", () => {
     expect(
-      swaggerSuppressedByProduction({
+      swaggerSuppressedByProduction(TESKILAT, {
         NODE_ENV: "production",
         SWAGGER_ENABLED: "true",
       })
@@ -85,11 +103,11 @@ describe("swaggerSuppressedByProduction", () => {
 
   it("is false when nobody asked for Swagger", () => {
     // Otherwise every production container would log the warning on boot.
-    expect(swaggerSuppressedByProduction({ NODE_ENV: "production" })).toBe(
-      false
-    );
     expect(
-      swaggerSuppressedByProduction({
+      swaggerSuppressedByProduction(TESKILAT, { NODE_ENV: "production" })
+    ).toBe(false);
+    expect(
+      swaggerSuppressedByProduction(TESKILAT, {
         NODE_ENV: "production",
         SWAGGER_ENABLED: "false",
       })
@@ -98,7 +116,7 @@ describe("swaggerSuppressedByProduction", () => {
 
   it("is false outside production, where the flag is honoured", () => {
     expect(
-      swaggerSuppressedByProduction({
+      swaggerSuppressedByProduction(TESKILAT, {
         NODE_ENV: "development",
         SWAGGER_ENABLED: "true",
       })
@@ -106,10 +124,61 @@ describe("swaggerSuppressedByProduction", () => {
   });
 
   it("names the variable and says there is no opt-in", () => {
-    expect(SWAGGER_PRODUCTION_SUPPRESSION_NOTICE).toContain("SWAGGER_ENABLED");
-    expect(SWAGGER_PRODUCTION_SUPPRESSION_NOTICE).toContain(
-      "There is no opt-in"
+    const notice = swaggerProductionSuppressionNotice(TESKILAT);
+    expect(notice).toContain("SWAGGER_ENABLED");
+    expect(notice).toContain("There is no opt-in");
+    expect(notice).toContain("@medaris/teskilat");
+  });
+});
+
+describe("the two policies side by side (MDRS-85)", () => {
+  const PRODUCTION_WITH_FLAG = {
+    NODE_ENV: "production",
+    SWAGGER_ENABLED: "true",
+  };
+
+  it("throw-unless-opted-in throws in production without the opt-in, naming it and the service", () => {
+    expect(() => resolveSwaggerEnabled(TEDRISAT, PRODUCTION_WITH_FLAG)).toThrow(
+      /@medaris\/tedrisat refuses to start.*SWAGGER_ALLOW_IN_PRODUCTION/
     );
+  });
+
+  it("throw-unless-opted-in honours the opt-in; refuse-in-production does not", () => {
+    const optedIn = {
+      ...PRODUCTION_WITH_FLAG,
+      SWAGGER_ALLOW_IN_PRODUCTION: "true",
+    };
+    expect(resolveSwaggerEnabled(TEDRISAT, optedIn)).toBe(true);
+    expect(resolveSwaggerEnabled(TESKILAT, optedIn)).toBe(false);
+  });
+
+  it("refuse-in-production never throws on the shared key", () => {
+    expect(() =>
+      resolveSwaggerEnabled(TESKILAT, PRODUCTION_WITH_FLAG)
+    ).not.toThrow();
+  });
+
+  it("only refuse-in-production reports a suppression to log", () => {
+    expect(swaggerSuppressedByProduction(TESKILAT, PRODUCTION_WITH_FLAG)).toBe(
+      true
+    );
+    expect(swaggerSuppressedByProduction(TEDRISAT, PRODUCTION_WITH_FLAG)).toBe(
+      false
+    );
+  });
+
+  it("agree outside production and when the flag is off", () => {
+    for (const rule of [TESKILAT, TEDRISAT]) {
+      expect(
+        resolveSwaggerEnabled(rule, {
+          NODE_ENV: "development",
+          SWAGGER_ENABLED: "true",
+        })
+      ).toBe(true);
+      expect(resolveSwaggerEnabled(rule, { NODE_ENV: "production" })).toBe(
+        false
+      );
+    }
   });
 });
 

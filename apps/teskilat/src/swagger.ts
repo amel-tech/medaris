@@ -8,15 +8,25 @@
  * `test/e2e/swagger.e2e.spec.ts` drives this function against a real Nest
  * application and asserts the HTTP status of the documentation path.
  */
-import { ILogger } from "@medaris/common";
+import {
+  ILogger,
+  resolveSwaggerEnabled,
+  type SwaggerProductionRule,
+  swaggerProductionSuppressionNotice,
+  swaggerSuppressedByProduction,
+} from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
-import {
-  SWAGGER_PRODUCTION_SUPPRESSION_NOTICE,
-  swaggerEnabledUnlessProduction,
-  swaggerSuppressedByProduction,
-} from "./config/swagger-env";
+
+/**
+ * teskilat's production rule for `SWAGGER_ENABLED`: refuse, never throw
+ * (MDRS-69). `config/config.ts` names the same policy at its own call site.
+ */
+const SWAGGER_RULE: SwaggerProductionRule = {
+  policy: "refuse-in-production",
+  service: "@medaris/teskilat",
+};
 
 /**
  * Mounts Swagger UI if — and only if — **both** the live environment and the
@@ -24,14 +34,14 @@ import {
  *
  * Two independent layers, because one of them is not enough:
  *
- *   1. `swaggerEnabledUnlessProduction(env)` reads the environment as it is **now**.
+ *   1. `resolveSwaggerEnabled(SWAGGER_RULE, env)` reads the environment as it is **now**.
  *   2. `config.get("swagger.enabled")` is the value the config factory resolved
  *      when the module was compiled.
  *
  * Layer 2 alone was the bug this signature used to have. A `ConfigService`
  * whose factory ran before `NODE_ENV=production` was set carries
  * `swagger.enabled: true`, so the old body logged
- * `SWAGGER_PRODUCTION_SUPPRESSION_NOTICE` — "this service never mounts Swagger
+ * the production-suppression notice — "this service never mounts Swagger
  * UI" — and then mounted it on the next line. In a real container the factory
  * runs after the image's `ENV NODE_ENV=production`, so the guard held in
  * practice; the docstring's claim that no argument could mount the UI in
@@ -48,18 +58,19 @@ export function mountSwagger(
   logger?: Pick<ILogger, "warn">,
   env: NodeJS.ProcessEnv = process.env
 ): boolean {
-  if (swaggerSuppressedByProduction(env)) {
+  if (swaggerSuppressedByProduction(SWAGGER_RULE, env)) {
     // Not silent: an operator who set the flag and expected docs learns it
     // from the service log rather than from a 404 on /docs.
+    const notice = swaggerProductionSuppressionNotice(SWAGGER_RULE);
     if (logger) {
-      logger.warn(SWAGGER_PRODUCTION_SUPPRESSION_NOTICE);
+      logger.warn(notice);
     } else {
-      console.warn(SWAGGER_PRODUCTION_SUPPRESSION_NOTICE);
+      console.warn(notice);
     }
   }
 
   if (
-    !swaggerEnabledUnlessProduction(env) ||
+    !resolveSwaggerEnabled(SWAGGER_RULE, env) ||
     !config.get<boolean>("swagger.enabled")
   ) {
     return false;

@@ -18,7 +18,7 @@ async function bootstrap() {
   const config = app.get(ConfigService);
 
   // Never mounts under NODE_ENV=production, which apps/teskilat/Dockerfile
-  // pins — see config/swagger-env.ts.
+  // pins — see swagger.ts and libs/common's swagger-production.config.ts.
   mountSwagger(app, config, logger);
 
   const port = config.get<number>("port") || 3002;

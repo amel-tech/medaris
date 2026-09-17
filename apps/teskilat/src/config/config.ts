@@ -1,5 +1,5 @@
+import { resolveSwaggerEnabled } from "@medaris/common";
 import * as pkg from "../../package.json";
-import { swaggerEnabledUnlessProduction } from "./swagger-env";
 
 const version = pkg.version || "0.0.1";
 
@@ -55,9 +55,14 @@ export default () => ({
     serviceVersion: version,
   },
   swagger: {
-    // Never true under NODE_ENV=production, whatever SWAGGER_ENABLED says —
-    // see ./swagger-env.ts for why this refuses rather than throwing.
-    enabled: swaggerEnabledUnlessProduction(),
+    // Never true under NODE_ENV=production, whatever SWAGGER_ENABLED says, and
+    // never throws: the key is shared with tedrisat, so a throw here would take
+    // this service down when tedrisat's docs are enabled (MDRS-69). The policy
+    // is documented in libs/common's swagger-production.config.ts.
+    enabled: resolveSwaggerEnabled({
+      policy: "refuse-in-production",
+      service: "@medaris/teskilat",
+    }),
     // SWAGGER_PATH, the same name tedrisat reads and the one the root
     // .env.example ships as API__SWAGGER_PATH. It used to be SWAGGER_ENDPOINT,
     // which no .env key produced, so under `nx run teskilat:dev` the path was
