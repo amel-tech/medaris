@@ -82,10 +82,19 @@ async function stopContainer(): Promise<void> {
  * signal, and these handlers live here rather than in the helper because the
  * main process is now the only one holding the container. Testcontainers' Ryuk
  * reaper is the backstop if the process dies without running either.
+ *
+ * `once`, so a second Ctrl-C reaches the default handler instead of starting a
+ * second stop on a container that is already going away.
  */
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
-  process.on(signal, () => {
-    void stopContainer().then(() => process.exit(0));
+  process.once(signal, () => {
+    // 128 + the signal number, the shell convention. Exiting 0 — which is what
+    // the per-fork handlers this replaced did — reports an interrupted run as a
+    // passing one, and `-t test` is the gate CLAUDE.md says cannot be skipped.
+    const code = signal === "SIGINT" ? 130 : 143;
+    // `finally`, not `then`: a container that fails to stop must still exit,
+    // rather than leave the process hanging with no exit code at all.
+    void stopContainer().finally(() => process.exit(code));
   });
 }
 
