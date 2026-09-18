@@ -505,6 +505,43 @@ describe("FlashcardDeckLabelController (e2e)", () => {
   });
 });
 
+// Seeding shared by the two labeling blocks below. They assert opposite
+// outcomes on the same endpoint, so both seed through one pair of helpers: a
+// change to the deck, card or label create contract is fixed once.
+
+/** A deck owned by `app`'s user, with one card in it. Returns both ids. */
+const seedDeckWithCard = async (app: INestApplication, isPublic: boolean) => {
+  const deck = await request(app.getHttpServer())
+    .post("/flashcard/decks")
+    .send({ title: isPublic ? "Public Deck" : "Private Deck", isPublic });
+  expect(deck.status).toBe(201);
+
+  const cards = await request(app.getHttpServer())
+    .post(`/flashcard/decks/${deck.body.id}/cards`)
+    .send([
+      { type: "VOCABULARY", contentFront: "front 0", contentBack: "back 0" },
+    ]);
+  expect(cards.status).toBe(201);
+
+  return {
+    deckId: deck.body.id as string,
+    cardId: cards.body[0].id as string,
+  };
+};
+
+/** A label owned by `app`'s user, created through `path`. */
+const seedLabel = async (
+  app: INestApplication,
+  path: string,
+  scope: Scope = Scope.PERSONAL
+) => {
+  const created = await request(app.getHttpServer())
+    .post(`${path}/create`)
+    .send({ title: "Kelime Hazinesi", scope });
+  expect(created.status).toBe(201);
+  return created.body.id as string;
+};
+
 /**
  * The TARGET of a labeling, as opposed to the label itself.
  *
@@ -564,37 +601,8 @@ describe("Labeling — target readability (e2e)", () => {
     await attackerApp.close();
   });
 
-  /** A deck of the owner's, with one card in it. Returns both ids. */
-  const seedOwnerDeckWithCard = async (isPublic: boolean) => {
-    const deck = await request(ownerApp.getHttpServer())
-      .post("/flashcard/decks")
-      .send({ title: isPublic ? "Public Deck" : "Private Deck", isPublic });
-    expect(deck.status).toBe(201);
-
-    const cards = await request(ownerApp.getHttpServer())
-      .post(`/flashcard/decks/${deck.body.id}/cards`)
-      .send([
-        { type: "VOCABULARY", contentFront: "front 0", contentBack: "back 0" },
-      ]);
-    expect(cards.status).toBe(201);
-
-    return {
-      deckId: deck.body.id as string,
-      cardId: cards.body[0].id as string,
-    };
-  };
-
-  /** A label belonging to whoever's app is passed. */
-  const seedLabel = async (app: INestApplication, path: string) => {
-    const created = await request(app.getHttpServer())
-      .post(`${path}/create`)
-      .send({ title: "Kelime Hazinesi", scope: Scope.PERSONAL });
-    expect(created.status).toBe(201);
-    return created.body.id as string;
-  };
-
   it("refuses to label a card inside another user's private deck", async () => {
-    const { cardId } = await seedOwnerDeckWithCard(false);
+    const { cardId } = await seedDeckWithCard(ownerApp, false);
     const labelId = await seedLabel(attackerApp, "/flashcard-label");
 
     const response = await request(attackerApp.getHttpServer())
@@ -606,7 +614,7 @@ describe("Labeling — target readability (e2e)", () => {
   });
 
   it("refuses to label another user's private deck", async () => {
-    const { deckId } = await seedOwnerDeckWithCard(false);
+    const { deckId } = await seedDeckWithCard(ownerApp, false);
     const labelId = await seedLabel(attackerApp, "/flashcard-deck-label");
 
     const response = await request(attackerApp.getHttpServer())
@@ -646,7 +654,7 @@ describe("Labeling — target readability (e2e)", () => {
   // deck stays labelable by anyone, and the author is never locked out of
   // their own.
   it("lets a stranger label a card in a PUBLIC deck", async () => {
-    const { cardId } = await seedOwnerDeckWithCard(true);
+    const { cardId } = await seedDeckWithCard(ownerApp, true);
     const labelId = await seedLabel(attackerApp, "/flashcard-label");
 
     const response = await request(attackerApp.getHttpServer())
@@ -657,7 +665,7 @@ describe("Labeling — target readability (e2e)", () => {
   });
 
   it("lets the author label a card in their own private deck", async () => {
-    const { cardId } = await seedOwnerDeckWithCard(false);
+    const { cardId } = await seedDeckWithCard(ownerApp, false);
     const labelId = await seedLabel(ownerApp, "/flashcard-label");
 
     const response = await request(ownerApp.getHttpServer())
@@ -718,35 +726,6 @@ describe("Labeling — label ownership (e2e)", () => {
     await attackerApp.close();
   });
 
-  /** A PUBLIC deck of the owner's, with one card in it. */
-  const seedPublicDeckWithCard = async () => {
-    const deck = await request(ownerApp.getHttpServer())
-      .post("/flashcard/decks")
-      .send({ title: "Public Deck", isPublic: true });
-    expect(deck.status).toBe(201);
-
-    const cards = await request(ownerApp.getHttpServer())
-      .post(`/flashcard/decks/${deck.body.id}/cards`)
-      .send([
-        { type: "VOCABULARY", contentFront: "front 0", contentBack: "back 0" },
-      ]);
-    expect(cards.status).toBe(201);
-
-    return {
-      deckId: deck.body.id as string,
-      cardId: cards.body[0].id as string,
-    };
-  };
-
-  /** A PUBLIC label of the owner's — the case the issue left open. */
-  const seedOwnerLabel = async (path: string) => {
-    const created = await request(ownerApp.getHttpServer())
-      .post(`${path}/create`)
-      .send({ title: "Kelime Hazinesi", scope: Scope.PUBLIC });
-    expect(created.status).toBe(201);
-    return created.body.id as string;
-  };
-
   const countRows = async (table: string) => {
     const result = await databaseService.db.execute(
       `SELECT count(*)::int AS n FROM "${table}"`
@@ -763,8 +742,8 @@ describe("Labeling — label ownership (e2e)", () => {
   };
 
   it("refuses to attach a card to another user's PUBLIC label and moves nothing", async () => {
-    const { cardId } = await seedPublicDeckWithCard();
-    const labelId = await seedOwnerLabel("/flashcard-label");
+    const { cardId } = await seedDeckWithCard(ownerApp, true);
+    const labelId = await seedLabel(ownerApp, "/flashcard-label", Scope.PUBLIC);
 
     const response = await request(attackerApp.getHttpServer())
       .post("/flashcard-label/labeling")
@@ -777,8 +756,12 @@ describe("Labeling — label ownership (e2e)", () => {
   });
 
   it("refuses to attach a deck to another user's PUBLIC label and moves nothing", async () => {
-    const { deckId } = await seedPublicDeckWithCard();
-    const labelId = await seedOwnerLabel("/flashcard-deck-label");
+    const { deckId } = await seedDeckWithCard(ownerApp, true);
+    const labelId = await seedLabel(
+      ownerApp,
+      "/flashcard-deck-label",
+      Scope.PUBLIC
+    );
 
     const response = await request(attackerApp.getHttpServer())
       .post("/flashcard-deck-label/labeling")
@@ -794,9 +777,17 @@ describe("Labeling — label ownership (e2e)", () => {
   // move the counter, so the zero asserted above is a refusal and not a
   // counter that never moves.
   it("lets the owner apply their own label, and counts the use", async () => {
-    const { cardId, deckId } = await seedPublicDeckWithCard();
-    const cardLabelId = await seedOwnerLabel("/flashcard-label");
-    const deckLabelId = await seedOwnerLabel("/flashcard-deck-label");
+    const { cardId, deckId } = await seedDeckWithCard(ownerApp, true);
+    const cardLabelId = await seedLabel(
+      ownerApp,
+      "/flashcard-label",
+      Scope.PUBLIC
+    );
+    const deckLabelId = await seedLabel(
+      ownerApp,
+      "/flashcard-deck-label",
+      Scope.PUBLIC
+    );
 
     const cardLabeling = await request(ownerApp.getHttpServer())
       .post("/flashcard-label/labeling")
