@@ -11,21 +11,35 @@ recorded that nobody had measured the difference.
 
 ## What changed
 
-Fourteen files in two apps, plus one new file per app. The same change was
-applied to both apps.
+Fourteen files in two apps, plus one new file in `@medaris/ui`. The same
+change was applied to both apps.
 
-- **`components/data-table/features.ts` (new, byte-identical in both apps).**
-  Registers `tableFeatures({ columnSizingFeature })` and exports the table's
+- **`libs/ui/src/lib/data-table-features.ts` (new), imported by both apps as
+  `@medaris/ui/lib/data-table-features`.** The first revision of this PR
+  added it as a byte-identical `components/data-table/features.ts` in each
+  app. Review pointed out that it is the type authority for both `DataTable`
+  trees, so a feature registered in only one copy would type-check and then
+  fail at render time; it now exists once. `libs/ui` gains
+  `@tanstack/react-table` (`catalog:`) as a dependency. The file stays
+  `scope:ui` / `platform:web`, which both apps may import. Registers `tableFeatures({ columnSizingFeature })` and exports the table's
   types with the feature set baked in: `DataTableColumnDef`,
   `DataTableCellContext`, `DataTableOptions`. The column hooks and editable
   cells import these types instead of `LegacyColumnDef` / `LegacyFeatures`.
 - **`components/data-table/index.tsx`.** `useLegacyTable` becomes `useTable`
   with `features: dataTableFeatures`. `getCoreRowModel()` is removed, because
   v9 always includes the core row model. The `options` prop becomes
-  `Partial<DataTableOptions<TData>>`; no caller passes it.
+  `Partial<Omit<DataTableOptions<TData>, "data" | "columns" | "defaultColumn" | "meta">>`
+  and is spread first, so the component's own keys always win. No caller passes
+  it. Plain `Partial<DataTableOptions>`, as the first revision had it, would
+  have let an `options.meta` replace the component's `meta` and silently drop
+  `updateData`: editable cells would stop saving with no error, because
+  `editable-cell.tsx` calls it through optional chaining.
 - **`editable/*.tsx` and the three `use*Columns.tsx` hooks.** Only the type
   imports change, plus `EditableCell`'s props type
   (`CellContext<LegacyFeatures, …>` becomes `DataTableCellContext<TData>`).
+  The actions columns also lose `enableSorting: false` and
+  `enableColumnFilter: false`. With only column sizing registered, no feature
+  reads those keys, and leaving them in suggests the table can sort or filter.
 - **No `@tanstack/react-table/legacy` import remains under `apps/`.**
 
 ### Two calls the issue's inventory missed
@@ -91,7 +105,14 @@ outputs were diffed:
 - **Fail-closed check:** with `tableFeatures({})` in place of the column-sizing
   registration, the harness fails with `TypeError: header.getSize is not a
   function`. A missing feature is therefore a render-time crash, not a silent
-  change, and that is why `features.ts` warns about it.
+  change, and that is why `data-table-features.ts` warns about it.
+
+The harness ran on the first revision of this PR. It was **not** re-run after
+the review follow-up, which moved `features.ts` into `@medaris/ui`, narrowed
+`options`, reordered its spread and dropped the two inert column keys. None of
+those change what renders when no caller passes `options`, which is every call
+site today. After the follow-up, typecheck, lint, module-boundaries, test and
+build for `tedris-web`, `nizam-web` and `ui` were re-run and are green.
 
 **Not verified:** interactive behaviour in a browser (typing in an editable
 cell, blur, the delete dialog). Those code paths were not changed. The update
