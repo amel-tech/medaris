@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { join } from "node:path";
 import { IJwtVerifier, JWT_VERIFIER } from "@medaris/common";
@@ -33,7 +33,11 @@ import { createTestApp, startTestDatabase } from "../helpers/test-app.helper";
  * audience check did it.
  */
 
-const KEYCLOAK_IMAGE = "quay.io/keycloak/keycloak:26.3.2";
+// Must track `run-keycloak` in apps/keycloak-theme/package.json, the Keycloak
+// version of record (docs/runbooks/deploy-keycloak-theme.md). KEYCLOAK_IMAGE
+// overrides it, so a version bump can be tried here before it is pinned.
+const KEYCLOAK_IMAGE =
+  process.env.KEYCLOAK_IMAGE ?? "quay.io/keycloak/keycloak:26.3.2";
 const REALM = "amel-tech-dev";
 const API_CLIENT_ID = "tedrisat-api";
 const WEB_ORIGIN = "http://localhost:4000";
@@ -50,15 +54,27 @@ describe("Keycloak realm ↔ audience check (e2e)", () => {
   let app: INestApplication;
   let firstRun: string;
 
-  const runSetup = () =>
+  const runSetup = (env: NodeJS.ProcessEnv = {}) =>
     execFileSync("bash", [SETUP_SCRIPT, "--with-test-users"], {
       env: {
         ...process.env,
         KC_URL: kcUrl,
         WEB_CLIENTS: `tedris-dev=${WEB_ORIGIN}`,
+        ...env,
       },
       encoding: "utf8",
+      stdio: "pipe",
     });
+
+  /** stderr of a run that is expected to fail. */
+  const failedSetup = (env: NodeJS.ProcessEnv = {}) => {
+    try {
+      runSetup(env);
+    } catch (error) {
+      return String((error as { stderr?: string }).stderr);
+    }
+    throw new Error("setup-realm.sh was expected to fail");
+  };
 
   const adminToken = async () => {
     const response = await fetch(
@@ -135,7 +151,14 @@ describe("Keycloak realm ↔ audience check (e2e)", () => {
       headers: { Cookie: cookies },
       body: new URLSearchParams({ username, password: username }),
     });
-    const location = submitted.headers.get("location") ?? "";
+    // Wrong credentials or a stale session re-render the login page with 200
+    // and no Location, so check before parsing.
+    const location = submitted.headers.get("location");
+    if (!location) {
+      throw new Error(
+        `login through ${clientId} did not redirect (status ${submitted.status})`
+      );
+    }
     const code = new URL(location).searchParams.get("code");
     if (!code) throw new Error(`login through ${clientId} gave ${location}`);
 
@@ -153,6 +176,11 @@ describe("Keycloak realm ↔ audience check (e2e)", () => {
         }),
       }
     );
+    if (!tokens.ok) {
+      throw new Error(
+        `token exchange for ${clientId} → ${tokens.status}: ${await tokens.text()}`
+      );
+    }
     return ((await tokens.json()) as { access_token: string }).access_token;
   };
 
@@ -266,5 +294,50 @@ describe("Keycloak realm ↔ audience check (e2e)", () => {
     await expect(
       app.get<IJwtVerifier>(JWT_VERIFIER).verifyToken(token)
     ).rejects.toThrow(/jwt audience invalid/);
+  });
+
+  it("treats a URL that only starts with http://localhost: as remote", () => {
+    // curl would read `localhost:1` as userinfo and connect to the host after
+    // the @; the script must refuse before it sends the admin credentials.
+    expect(
+      failedSetup({ KC_URL: "http://localhost:1@auth.example.invalid" })
+    ).toContain("is not localhost");
+  });
+
+  it("does not create a missing web client remotely from the localhost defaults", () => {
+    // 0.0.0.0 reaches the same container but is not classified as localhost,
+    // so this is the remote path without needing a second Keycloak.
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      KC_URL: kcUrl.replace("localhost", "0.0.0.0"),
+      ALLOW_REMOTE: "1",
+      KC_ADMIN_USER: "admin",
+      KC_ADMIN_PASSWORD: "admin",
+    };
+    delete env.WEB_CLIENTS;
+    const result = spawnSync("bash", [SETUP_SCRIPT], { env, encoding: "utf8" });
+
+    expect(result.status).toBe(0);
+    // tedris-dev exists and keeps its mapper; the other two defaults are
+    // missing and must be reported, not created with localhost redirects.
+    expect(result.stdout).toContain("tedris-dev exists");
+    expect(result.stdout).not.toContain("created");
+    expect(result.stderr).toContain(
+      "nizam-dev does not exist on this realm and was not created"
+    );
+    expect(result.stderr).toContain(
+      "nazir-dev does not exist on this realm and was not created"
+    );
+  });
+
+  // Last on purpose: it leaves a user in the realm that every later
+  // --with-test-users run would refuse.
+  it("refuses --with-test-users in a realm that has other users", async () => {
+    await adminApi("POST", "/users", {
+      username: "someone-real",
+      enabled: true,
+    });
+
+    expect(failedSetup()).toContain("already has other users");
   });
 });

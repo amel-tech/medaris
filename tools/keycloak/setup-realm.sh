@@ -14,14 +14,20 @@
 #                 (NextAuth holds the secret server-side), standard flow only,
 #                 PKCE S256 required, each with an audience mapper that puts
 #                 `tedrisat-api` into the access token's `aud`.
-#   test users    owner-user / stranger-user — only with --with-test-users, and
-#                 only against a localhost Keycloak.
+#   test users    owner-user / stranger-user — only with --with-test-users,
+#                 only against a localhost Keycloak, and only in a realm that
+#                 holds no other user.
 #
 # A second run changes nothing and prints `exists` for every step. An EXISTING
 # client is never reconfigured: its redirect URIs, flows and secret are left as
 # they are, and only a missing audience mapper is added. That makes the script
 # safe to point at a realm that already serves users; a client whose settings
 # drift from the ones above is reported as a warning, not overwritten.
+#
+# Against a remote Keycloak a MISSING web client is only created when
+# WEB_CLIENTS was set explicitly. The defaults are localhost origins, and a
+# client created from them on a shared realm would send authorization codes to
+# whatever listens on a user's localhost.
 #
 # Talks to the admin REST API with curl + jq, so it needs no container exec and
 # works against any reachable Keycloak.
@@ -38,6 +44,8 @@
 #   WEB_CLIENTS         default "tedris-dev=http://localhost:4000
 #                                nizam-dev=http://localhost:4001
 #                                nazir-dev=http://localhost:4002"
+#                       (localhost only; a remote run needs it set to create
+#                       a missing client)
 #   ALLOW_REMOTE=1      required to run against a non-localhost KC_URL
 
 set -euo pipefail
@@ -46,6 +54,7 @@ KC_URL="${KC_URL:-http://localhost:8080}"
 KC_URL="${KC_URL%/}"
 REALM="${REALM:-amel-tech-dev}"
 API_CLIENT_ID="${API_CLIENT_ID:-tedrisat-api}"
+WEB_CLIENTS_EXPLICIT="${WEB_CLIENTS:+1}"
 WEB_CLIENTS="${WEB_CLIENTS:-tedris-dev=http://localhost:4000 nizam-dev=http://localhost:4001 nazir-dev=http://localhost:4002}"
 
 WITH_TEST_USERS=0
@@ -72,10 +81,19 @@ for bin in curl jq; do
   }
 done
 
+# Classified on the host curl will actually connect to, not on a URL prefix:
+# `http://localhost:8080@auth.example.org` starts with `http://localhost:` but
+# sends everything, admin credentials included, to auth.example.org.
+kc_host="${KC_URL#*://}"
+kc_host="${kc_host%%/*}"
+kc_host="${kc_host##*@}"
+kc_host="${kc_host%%:*}"
 is_local=0
-case "$KC_URL" in
-  http://localhost:* | http://localhost | http://127.0.0.1:* | http://127.0.0.1) is_local=1 ;;
-esac
+if [[ "$KC_URL" == http://* ]]; then
+  case "$kc_host" in
+    localhost | 127.0.0.1) is_local=1 ;;
+  esac
+fi
 
 if [[ $is_local -eq 0 ]]; then
   if [[ "${ALLOW_REMOTE:-}" != "1" ]]; then
@@ -178,6 +196,13 @@ for entry in $WEB_CLIENTS; do
       warn "$client_id does not require PKCE S256"
     [[ "$(jq -r .directAccessGrantsEnabled <<<"$current")" == "false" ]] ||
       warn "$client_id allows the password grant"
+    [[ "$(jq -r .implicitFlowEnabled <<<"$current")" == "false" ]] ||
+      warn "$client_id allows the implicit flow; it is about to receive the $API_CLIENT_ID audience"
+    [[ "$(jq -r .serviceAccountsEnabled <<<"$current")" == "false" ]] ||
+      warn "$client_id has a service account, which can mint an $API_CLIENT_ID token with no user"
+  elif [[ $is_local -eq 0 && -z "$WEB_CLIENTS_EXPLICIT" ]]; then
+    warn "$client_id does not exist on this realm and was not created; set WEB_CLIENTS with its real origin to create it"
+    continue
   else
     api POST "/realms/$REALM/clients" "$(jq -n --arg id "$client_id" --arg o "$origin" '{
       clientId: $id,
@@ -225,13 +250,23 @@ echo "[4/4] test users"
 if [[ $WITH_TEST_USERS -eq 0 ]]; then
   echo "      skipped (pass --with-test-users on a localhost Keycloak)"
 else
+  # The localhost check reads the URL, and a port-forward to a shared realm
+  # reads as localhost too. So the realm itself must also look throwaway: it
+  # may hold no user other than the two created here.
+  others=$(api GET "/realms/$REALM/users?briefRepresentation=true&max=3" |
+    jq -r '[.[].username | select(. != "owner-user" and . != "stranger-user")] | length')
+  if [[ "$others" != "0" ]]; then
+    echo "setup-realm: realm $REALM already has other users; --with-test-users only runs against a throwaway realm." >&2
+    exit 1
+  fi
   for username in owner-user stranger-user; do
     found=$(api GET "/realms/$REALM/users?exact=true&username=$username" | jq -r '.[0].id // empty')
     if [[ -n "$found" ]]; then
       echo "      $username exists"
     else
       # The password equals the username: these users exist only in a
-      # throwaway local realm, which is what the localhost guard above enforces.
+      # throwaway local realm, which the localhost and other-users guards
+      # above enforce.
       api POST "/realms/$REALM/users" "$(jq -n --arg u "$username" '{
         username: $u,
         enabled: true,
