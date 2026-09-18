@@ -11,7 +11,13 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const source = readFileSync(join(__dirname, "../../src/otel.ts"), "utf8");
-const specifiers = [...source.matchAll(/from\s+"([^"]+)"/g)].map((m) => m[1]);
+// `from "…"`, a bare side-effect `import "…"` and `require("…")`, in either
+// quote style: each of them loads the module before `sdk.start()`.
+const specifiers = [
+  ...source.matchAll(
+    /(?:\bfrom\s+|\bimport\s+|\brequire\s*\()["']([^"']+)["']/g
+  ),
+].map((m) => m[1]);
 
 const allowed = (specifier: string) =>
   specifier.startsWith("@opentelemetry/") ||
