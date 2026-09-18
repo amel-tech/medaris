@@ -26,7 +26,7 @@ Expected: every project green on typecheck, lint and module-boundaries; every bu
 
 Two prerequisites that look optional and are not:
 
-- **`-t test` needs a running Docker daemon.** `apps/tedrisat/vitest.config.ts` matches `test/**/*.spec.ts`, which includes the nine `test/e2e/*.e2e.spec.ts` suites, and those start a Testcontainers `postgres:17-alpine` — `keycloak-audience.e2e.spec.ts` also starts `quay.io/keycloak/keycloak:26.3.2` (MDRS-42). Of tedrisat's 23 suites, 9 are e2e. `test:e2e` re-runs the same nine under a separate config — it is not extra coverage.
+- **`-t test` needs a running Docker daemon, plus `curl` and `jq` on the host.** `apps/tedrisat/vitest.config.ts` matches `test/**/*.spec.ts`, which includes the nine `test/e2e/*.e2e.spec.ts` suites, and those start a Testcontainers `postgres:17-alpine` — `keycloak-audience.e2e.spec.ts` also starts `quay.io/keycloak/keycloak:26.3.2` (MDRS-42). Of tedrisat's 23 suites, 9 are e2e. `test:e2e` re-runs the same nine under a separate config — it is not extra coverage. `keycloak-audience.e2e.spec.ts` runs `tools/keycloak/setup-realm.sh`, which exits 1 when `curl` or `jq` is missing — a missing tool, not a regression.
 - **`-t build` needs the root `.env` for the four Next.js apps.** They validate the environment at build time, so a fresh worktree fails with `Invalid environment variables` until `cp .env.example .env` has been run. That is a missing file, not a regression.
 
 **`-t test` is the only gate that catches a broken NestJS container.** `typecheck` and `build` stay green while dependency injection is already broken at runtime — this has happened, see below. Never skip it.

@@ -101,8 +101,12 @@ exactly as today. The order matters.
    tools/keycloak/setup-realm.sh
    ```
 
-   The clients exist there already, so the run adds the three audience mappers
-   and `tedrisat-api` if it is missing, and reports any drift as warnings. Tokens
+   The run adds the audience mapper to each existing web client, creates
+   `tedrisat-api` if it is missing, and reports any drift as warnings. A web
+   client that does **not** exist on the realm is reported and skipped: without
+   `WEB_CLIENTS` the script only knows the localhost origins, and a remote run
+   never creates a client from them. To create one, pass its real origin, e.g.
+   `WEB_CLIENTS="nazir-dev=https://nazir.medaris.app"`. Tokens
    issued afterwards carry `aud: [tedrisat-api, account]`, which the running
    service still accepts under `account`. **Log in to tedris and nizam at this
    point** — this is the check the acceptance criterion asks for.
@@ -127,3 +131,23 @@ exactly as today. The order matters.
   - (b) `audience: this.policy.audience` removed from `jwt-verifier.service.ts`
     and `common` rebuilt: case 5 fails, 4 pass.
   - Both restored, 5/5 pass.
+
+## Review follow-up
+
+The AI review of PR #77 found gaps in the script's guards. All were fixed in
+the same PR:
+
+| Finding | Change | Pinned by |
+| --- | --- | --- |
+| `is_local` matched a URL prefix, so `http://localhost:8080@auth.example.org` counted as local and got the `admin`/`admin` defaults | Classified on the host curl connects to (userinfo, port and path stripped). Only `http://localhost` and `http://127.0.0.1` count as local | case "treats a URL that only starts with http://localhost: as remote" |
+| A remote run created a missing web client from the localhost `WEB_CLIENTS` defaults | A remote run creates a missing client only when `WEB_CLIENTS` is set; otherwise it warns and skips | case "does not create a missing web client remotely…", which reaches the same container through `0.0.0.0` so the remote path runs |
+| `--with-test-users` relied only on the URL, and a port-forward to a shared realm reads as localhost | Also refuses when the realm holds any user other than `owner-user` / `stranger-user` | case "refuses --with-test-users in a realm that has other users" |
+| Drift report skipped two flows | Also warns on `implicitFlowEnabled` and `serviceAccountsEnabled` | not covered by a test |
+| Editing the script did not invalidate tedrisat's cached `test`, and `nx affected` left it out | `apps/tedrisat/project.json` adds `{workspaceRoot}/tools/keycloak/**` to `test` and `test:e2e` inputs. `nx show projects --affected --files=tools/keycloak/setup-realm.sh` returned `[]` before and `["tedrisat"]` after | — |
+| `new URL("")` hid the login diagnostic; the token exchange was not checked | Explicit errors for a missing redirect and a non-2xx token response | — |
+| The Keycloak image was pinned twice with nothing tying the copies together | The spec's constant names `apps/keycloak-theme/package.json` as the version of record, and `KEYCLOAK_IMAGE` overrides it | — |
+| `-t test` now needs `curl` and `jq` | Added to the prerequisites in CLAUDE.md and README | — |
+
+The three pinned cases were run against the previous script: all three fail,
+and the other five pass. With the new script, `keycloak-audience.e2e.spec.ts`
+passes 8/8.
