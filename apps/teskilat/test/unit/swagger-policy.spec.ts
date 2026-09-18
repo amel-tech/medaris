@@ -15,17 +15,12 @@
  */
 import {
   resolveSwaggerEnabled,
-  type SwaggerProductionRule,
   swaggerProductionSuppressionNotice,
   swaggerSuppressedByProduction,
 } from "@medaris/common";
-import configuration from "../../src/config/config";
-
-/** The rule `src/config/config.ts` and `src/swagger.ts` both name. */
-const TESKILAT: SwaggerProductionRule = {
-  policy: "refuse-in-production",
-  service: "@medaris/teskilat",
-};
+import configuration, {
+  SWAGGER_RULE as TESKILAT,
+} from "../../src/config/config";
 
 const swaggerEnabledUnlessProduction = (env: NodeJS.ProcessEnv) =>
   resolveSwaggerEnabled(TESKILAT, env);

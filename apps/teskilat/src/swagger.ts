@@ -11,22 +11,13 @@
 import {
   ILogger,
   resolveSwaggerEnabled,
-  type SwaggerProductionRule,
   swaggerProductionSuppressionNotice,
   swaggerSuppressedByProduction,
 } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
-
-/**
- * teskilat's production rule for `SWAGGER_ENABLED`: refuse, never throw
- * (MDRS-69). `config/config.ts` names the same policy at its own call site.
- */
-const SWAGGER_RULE: SwaggerProductionRule = {
-  policy: "refuse-in-production",
-  service: "@medaris/teskilat",
-};
+import { SWAGGER_RULE } from "./config/config";
 
 /**
  * Mounts Swagger UI if — and only if — **both** the live environment and the
