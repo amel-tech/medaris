@@ -124,16 +124,17 @@ logged a connection-pool error, so neither status is yet explained.
 Neither file reproduces it alone: `course.e2e.spec.ts` passed 8 runs out of 8
 and `flashcard-bulk.e2e.spec.ts` 3 out of 3, run on their own on this branch.
 
-Two things are established and one is not. It is **pre-existing** — it happens
-on the base commit with none of this applied. It is **not container-related** —
-on the base commit each file had its own container and it happened anyway. What
-is *not* established is whether 2-in-6 differs from 1-in-8: the samples are far
-too small to separate those, and this record deliberately does not claim the
-rate is unchanged. One candidate worth checking first is that every app boot
-makes a real network call — `Failed to pre-load JWKS keys during module
-initialization: JWKS fetch failed` appears in every run, on both commits,
-because the test environment points `KEYCLOAK_JWKS_URL` at the live
-`auth.medaris.app`.
+One thing is established and one is not. It is **not introduced by this change**
+— it happens on the base commit with none of this applied, where every file had
+its own container, so neither the shared container nor the per-file databases
+can be what creates it. What that does **not** show is that sharing a container
+leaves the rate alone: 2-in-6 against 1-in-8 is far too small a sample to
+separate, and this record deliberately does not claim the rate is unchanged.
+
+One candidate worth checking first is that every app boot makes a real network
+call — `Failed to pre-load JWKS keys during module initialization: JWKS fetch
+failed` appears in every run, on both commits, because the test environment
+points `KEYCLOAK_JWKS_URL` at the live `auth.medaris.app`.
 
 This needs its own issue and its own measurement, on a machine that can afford
 the runs to make a rate meaningful.
