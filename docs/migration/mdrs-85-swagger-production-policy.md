@@ -34,10 +34,13 @@ copied between the apps, would pick up whichever file it happened to import.
   `resolveSwaggerOauthRedirectOrigin` it also held moved, unchanged, to
   `config/swagger-oauth-redirect.ts`. Its importers (`main.ts`,
   `test/unit/config.spec.ts`) and one comment in `throttle-env.ts` were updated.
-- **teskilat.** `config/config.ts` and `swagger.ts` both name
-  `refuse-in-production` at their own call site. `swagger-env.ts` is deleted.
+- **teskilat.** `config/config.ts` exports the rule once as `SWAGGER_RULE`
+  (`refuse-in-production`); `swagger.ts` and `test/unit/swagger-policy.spec.ts`
+  import it rather than re-declaring the literal. `swagger-env.ts` is deleted.
 - **Exactly one implementation remains.** `grep -rn "swagger-env\|swaggerEnabledUnlessProduction" apps libs` finds only the history
-  note in the new file's header and a local alias inside teskilat's unit spec.
+  note in the new file's header. The same grep over `docker-compose.yml` and
+  `docs/runbooks` — which the first revision of this PR did not cover — finds
+  nothing either; both pointed at the deleted file until the review follow-up.
 
 ### What changed in behaviour
 
@@ -99,3 +102,18 @@ copied between the apps, would pick up whichever file it happened to import.
   - `tools/ci/biome-ratchet.mjs` reports `warnings 79 (baseline 79)`. Its one
     `format` error comes from the untracked, git-excluded `.cursor/mcp.json`
     and also reproduces on `origin/main`.
+
+## Review follow-up
+
+- **OpenTelemetry bootstrap.** Moving the policy into `@medaris/common` made
+  `config/config.ts` import that barrel, and `src/otel.ts` called
+  `configuration()`. `main.ts` imports `./otel` before anything else, so pino,
+  winston and `@nestjs/core` were required before `sdk.start()` and their
+  auto-instrumentations would not have patched them. `otel.ts` in both APIs now
+  reads `OTEL_ENABLED`, `SERVICE_NAME`, `NODE_ENV` and the package version
+  directly, and `test/unit/otel-bootstrap.spec.ts` in each API pins its import
+  list, because no other gate notices this regression.
+- **teskilat's rule literal** is declared once, as above.
+- **Stale `swagger-env.ts` pointers** in `docker-compose.yml` and
+  `docs/runbooks/deploy-teskilat-api.md` now name the shared resolver and
+  `swagger-policy.spec.ts`.

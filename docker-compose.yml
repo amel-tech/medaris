@@ -30,8 +30,9 @@ services:
       # ENV, so the old `development` fallback silently moved every container
       # that did not set the key into the relaxed branch of every environment
       # check — and this is the master switch for two of them: cors.config.ts
-      # accepts a `*` origin list only under development, and swagger-env.ts
-      # demands SWAGGER_ALLOW_IN_PRODUCTION only under production. Hardening
+      # accepts a `*` origin list only under development, and
+      # libs/common/src/config/swagger-production.config.ts demands
+      # SWAGGER_ALLOW_IN_PRODUCTION only under production. Hardening
       # either of those while this said development would have been decorative.
       NODE_ENV: ${TEDRISAT__NODE_ENV:-${API__NODE_ENV:-production}}
       PORT: ${TEDRISAT__PORT:-3001}
@@ -50,8 +51,9 @@ services:
       SWAGGER_PATH: ${TEDRISAT__SWAGGER_PATH:-${API__SWAGGER_PATH:-/docs}}
       # MDRS-33's opt-in. Without this key the refusal it guards has no remedy
       # reachable from the root .env: with NODE_ENV=production above, turning
-      # SWAGGER_ENABLED on makes swagger-env.ts throw in the config factory and
-      # the container restart-loops. Shipping the gate without its own escape
+      # SWAGGER_ENABLED on makes the shared resolver
+      # (libs/common/src/config/swagger-production.config.ts) throw in the
+      # config factory and the container restart-loops. Shipping the gate without its own escape
       # hatch would make the documented production-Swagger path impossible.
       SWAGGER_ALLOW_IN_PRODUCTION: ${TEDRISAT__SWAGGER_ALLOW_IN_PRODUCTION:-${API__SWAGGER_ALLOW_IN_PRODUCTION:-false}}
       # The root .env carries the host-side DB_HOST=localhost; inside the
