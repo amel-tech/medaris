@@ -2,13 +2,14 @@
 #
 # CodeRabbit configuration (MDRS-90).
 #
-# This file carries the six review lenses that tools/ai-review/lenses.yaml
-# defined for the Claude gate (MDRS-50): authz, schema-drift, config-secrets,
-# correctness, perf-scale, boundaries-duplication. Each lens becomes one or more
-# `path_instructions` entries. Every repository-specific claim below was
-# re-verified against the tree on 2026-09-18 and cites the path it came from;
-# several claims in the original lens file were already stale by then, so do
-# not copy from there without re-checking.
+# This file carries the six review lenses of the Claude gate (MDRS-50, retired
+# by MDRS-90 — `tools/ai-review/lenses.yaml` before that commit, in git history):
+# authz, schema-drift, config-secrets, correctness, perf-scale,
+# boundaries-duplication. Each lens becomes one or more `path_instructions`
+# entries. Every repository-specific claim below was re-verified against the
+# tree on 2026-09-18 and cites the path it came from; several claims in the
+# original lens file were already stale by then, so do not copy from there
+# without re-checking.
 #
 # What is deliberately NOT here:
 #  - a review window, a queue, a drain, an admin-only bypass. Those rationed the

@@ -2,7 +2,7 @@
 
 CodeRabbit reviews every non-draft pull request. Its behaviour is defined by
 [`.coderabbit.yaml`](../.coderabbit.yaml) at the repository root, which carries the
-six review lenses the Claude multi-lens gate (MDRS-50) used to run — authorization,
+six review lenses the Claude multi-lens gate (MDRS-50, retired here) used to run — authorization,
 schema and contract drift, configuration and secrets, correctness, performance, module
 boundaries and duplication — as path-scoped instructions, re-verified against the tree
 on 2026-09-18. Implements MDRS-90.
@@ -123,7 +123,8 @@ The config is a repository file, so tuning is a pull request like any other, and
   and `quiet` drops the advisory findings the lenses are designed to deliver.
 - **A lens missed something real** → add the invariant it would have needed, with a
   `path:line` citation you have verified. A category name on its own is worthless; the
-  original lens file explains why at length and was right.
+  original lens file (`tools/ai-review/lenses.yaml` before MDRS-90, in git history)
+  explains why at length and was right.
 - **A static tool is noisy** → turn it off in `reviews.tools` with a one-line reason,
   as the existing entries do. `reactDoctor` is the one on probation.
 - **A custom pre-merge check should block** → not before it has been `warning` long
