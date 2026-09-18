@@ -1,9 +1,9 @@
-import type { RowData } from "@tanstack/react-table";
-import React from "react";
 import type {
   DataTableColumnDef as ColumnDef,
   DataTableCellContext,
-} from "../features";
+} from "@medaris/ui/lib/data-table-features";
+import type { RowData } from "@tanstack/react-table";
+import React from "react";
 
 import { EditableInput } from "./editable-input";
 import { EditableSelect } from "./editable-select";

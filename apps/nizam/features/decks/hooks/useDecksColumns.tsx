@@ -14,11 +14,11 @@ import {
   AlertDialogTrigger,
 } from "@medaris/ui/components/alert-dialog";
 import { Button } from "@medaris/ui/components/button";
+import type { DataTableColumnDef as ColumnDef } from "@medaris/ui/lib/data-table-features";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import React from "react";
 import { createInputColumn } from "~/components/data-table/editable";
-import type { DataTableColumnDef as ColumnDef } from "~/components/data-table/features";
 
 export function useDecksColumns() {
   const router = useRouter();
@@ -86,8 +86,6 @@ export function useDecksColumns() {
             </AlertDialog>
           </div>
         ),
-        enableSorting: false,
-        enableColumnFilter: false,
       },
     ],
     [router, t]

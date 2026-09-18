@@ -8,14 +8,14 @@ import {
   TableHeader,
   TableRow,
 } from "@medaris/ui/components/table";
-import { flexRender, type RowData, useTable } from "@tanstack/react-table";
-import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
 import {
   type DataTableColumnDef as ColumnDef,
   type DataTableOptions,
   dataTableFeatures,
-} from "./features";
+} from "@medaris/ui/lib/data-table-features";
+import { flexRender, type RowData, useTable } from "@tanstack/react-table";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 
 export interface DataTableProps<TData extends RowData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -24,7 +24,15 @@ export interface DataTableProps<TData extends RowData, TValue> {
   onRowUpdate?: (updatedRow: TData) => Promise<boolean> | boolean;
   onRowClick?: (row: TData) => void;
   onRowDelete?: (id: string) => Promise<boolean> | boolean;
-  options?: Partial<DataTableOptions<TData>>;
+  /**
+   * Table options beyond the ones this component owns. `data`, `columns`,
+   * `defaultColumn` and `meta` are excluded: they come from the props above,
+   * and a `meta` override would silently drop `updateData`, so editable cells
+   * would stop saving without an error.
+   */
+  options?: Partial<
+    Omit<DataTableOptions<TData>, "data" | "columns" | "defaultColumn" | "meta">
+  >;
 }
 
 export function DataTable<TData extends RowData, TValue>({
@@ -84,6 +92,7 @@ export function DataTable<TData extends RowData, TValue>({
   };
 
   const table = useTable({
+    ...options,
     features: dataTableFeatures,
     data: tableData,
     // v9's per-column TValue is checked contravariantly; a heterogeneous
@@ -100,7 +109,6 @@ export function DataTable<TData extends RowData, TValue>({
       onRowDelete: onRowDelete,
       loadingCells: loadingCells,
     },
-    ...options,
   });
 
   return (

@@ -1,9 +1,9 @@
 import { Input } from "@medaris/ui/components/input";
 import { Skeleton } from "@medaris/ui/components/skeleton";
+import type { DataTableColumnDef as ColumnDef } from "@medaris/ui/lib/data-table-features";
 import { cn } from "@medaris/ui/lib/utils";
 import type { RowData } from "@tanstack/react-table";
 import type React from "react";
-import type { DataTableColumnDef as ColumnDef } from "../features";
 
 export const EditableInput: React.FC<{
   value: string;

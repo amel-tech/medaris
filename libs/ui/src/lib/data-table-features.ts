@@ -22,7 +22,9 @@ import {
  * feature first — calling an API whose feature is missing fails at runtime,
  * not at the type level for untyped callers.
  *
- * Kept identical in apps/tedris and apps/nizam.
+ * Lives in @medaris/ui rather than in each app, because it is the type
+ * authority for both the tedris and the nizam `DataTable`: a feature
+ * registered in only one copy would type-check and then fail at render time.
  */
 export const dataTableFeatures = tableFeatures({ columnSizingFeature });
 
