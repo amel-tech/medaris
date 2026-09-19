@@ -90,8 +90,22 @@ function databaseNameForCurrentFile(): string {
  *
  * The environment must be populated BEFORE AppModule is imported, so that
  * `configuration()` reads these values rather than the defaults.
+ *
+ * **Exported because a suite may need phase one on its own.**
+ * `keycloak-audience.e2e.spec.ts` (MDRS-42) starts its own Keycloak container
+ * and has to replace the `KEYCLOAK_*` values this function writes before
+ * `createTestApp` imports AppModule. It therefore calls this directly, edits
+ * the environment, and only then boots the app. The early return above is what
+ * makes that safe: `createTestApp` calls this again, finds the database already
+ * made, and returns without writing the placeholder `KEYCLOAK_*` values back
+ * over the suite's real ones.
+ *
+ * Do not "simplify" the early return into an unconditional assignment, and do
+ * not inline this back into `createTestApp` — either one silently points that
+ * suite at production Keycloak instead of its own container, and its
+ * assertions would still pass or fail for the wrong reason.
  */
-async function useDatabaseForThisFile(): Promise<void> {
+export async function useDatabaseForThisFile(): Promise<void> {
   if (databaseForThisFile) {
     return;
   }
