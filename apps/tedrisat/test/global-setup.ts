@@ -59,22 +59,39 @@ declare module "vitest" {
   }
 }
 
-let container: StartedPostgreSqlContainer | null = null;
+/**
+ * The in-flight or settled start — a PROMISE, not the container it resolves to.
+ *
+ * Holding the resolved container instead would leave a hole for the whole
+ * duration of `start()`: image pull, container create and the wait strategy,
+ * which is the longest single stretch of the run and exactly when a developer
+ * reaches for Ctrl-C. A signal in that window would find this still `null`,
+ * `stopContainer` would return immediately, and the process would exit with a
+ * Postgres container nothing holds a reference to. Ryuk would be the only thing
+ * left to reap it, and `TESTCONTAINERS_RYUK_DISABLED=true` is a real setting.
+ *
+ * It is assigned synchronously in the same statement that calls `.start()`,
+ * before any await point, so the window closes rather than merely narrows.
+ */
+let startup: Promise<StartedPostgreSqlContainer> | null = null;
 
 /**
- * Stops the container if it is still up. Idempotent, so the signal handlers and
- * `teardown` below can both call it.
+ * Stops the container if it is still up, waiting for an in-flight start first.
+ * Idempotent, so the signal handlers and `teardown` below can both call it.
  */
 async function stopContainer(): Promise<void> {
-  if (!container) {
+  const pending = startup;
+  if (!pending) {
     return;
   }
-
-  const stopping = container;
-  container = null;
+  startup = null;
 
   console.log("Stopping the shared PostgreSQL container...");
-  await stopping.stop();
+  // A start that threw leaves nothing to stop, and rethrowing here would only
+  // replace the real failure with a teardown one. Ryuk stays the backstop for a
+  // container that got far enough to exist before failing.
+  const started = await pending.catch(() => null);
+  await started?.stop();
 }
 
 /**
@@ -85,6 +102,11 @@ async function stopContainer(): Promise<void> {
  *
  * `once`, so a second Ctrl-C reaches the default handler instead of starting a
  * second stop on a container that is already going away.
+ *
+ * A signal that arrives mid-`start()` does NOT exit immediately: `stopContainer`
+ * waits for the start to settle so that it has something to stop. That is the
+ * deliberate trade — a few seconds against a leaked container — and the second
+ * Ctrl-C is the way out of it.
  */
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {
@@ -101,12 +123,14 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
 export async function setup(project: TestProject): Promise<void> {
   console.log("Starting the shared PostgreSQL container for tests...");
 
-  container = await new PostgreSqlContainer("postgres:17-alpine")
+  startup = new PostgreSqlContainer("postgres:17-alpine")
     .withDatabase("tedrisat_test")
     .withUsername("testuser")
     .withPassword("testpass")
     .withExposedPorts(5432)
     .start();
+
+  const container = await startup;
 
   project.provide("postgres", {
     host: container.getHost(),

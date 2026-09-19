@@ -38,7 +38,7 @@ every change to tedrisat.
 
 | File | Change |
 | --- | --- |
-| `apps/tedrisat/test/global-setup.ts` | **New.** Starts the one container in the main process, hands the workers its connection details through `project.provide("postgres", …)`, stops it in `teardown`. Carries the `ProvidedContext` augmentation and the `SIGINT`/`SIGTERM` handlers that used to sit in the helper. |
+| `apps/tedrisat/test/global-setup.ts` | **New.** Starts the one container in the main process, hands the workers its connection details through `project.provide("postgres", …)`, stops it in `teardown`. Carries the `ProvidedContext` augmentation and the `SIGINT`/`SIGTERM` handlers that used to sit in the helper. The module holds the startup **promise**, not the resolved container — see below. |
 | `apps/tedrisat/test/helpers/test-app.helper.ts` | Container lifecycle removed. `createTestApp` now `inject`s the connection details and, once per test file, creates that file's own database inside the shared container before populating `process.env` and importing `AppModule`. |
 | `apps/tedrisat/vitest.config.ts` | `globalSetup: ["./test/global-setup.ts"]`. The `fileParallelism: false` comment no longer claims suites race for the Docker daemon — they cannot, the container is up before any worker runs — and states the reason it stays serial anyway. |
 | `apps/tedrisat/vitest.integration.config.ts` | Same `globalSetup` entry. It is not inherited: this file merges the workspace-root integration base, not its sibling. |
@@ -73,6 +73,28 @@ migration machinery was needed. The name is derived from the test file path —
 stem for readability, an 8-character sha1 prefix for uniqueness — and validated
 against `/^[a-z0-9_]{1,63}$/` before it is interpolated into `CREATE DATABASE`,
 which takes an identifier and cannot be parameterised.
+
+### Why the module holds the startup promise, not the container
+
+Review finding on this PR. The first revision assigned the module-level
+`container` only once `await …start()` had resolved, which left it `null` for
+the whole duration of `start()` — image pull, container create and the wait
+strategy, the longest single stretch of the run and exactly when a developer
+reaches for Ctrl-C. A signal in that window found `stopContainer`'s
+`if (!container) return`, and the process exited with a Postgres container that
+nothing held a reference to. Ryuk was the only thing left to reap it, and
+`TESTCONTAINERS_RYUK_DISABLED=true` is a real setting.
+
+`startup` now holds the promise instead, assigned synchronously in the same
+statement that calls `.start()` — before any await point, so the window closes
+rather than merely narrows. `stopContainer` awaits it, swallowing a rejected
+start (there is nothing to stop, and rethrowing would replace the real failure
+with a teardown one) before calling `stop()` on whatever it resolved to.
+
+The trade-off, stated rather than hidden: a signal arriving mid-`start()` no
+longer exits immediately, because the handler waits for the start to settle so
+it has something to stop. A few seconds against a leaked container is the right
+default, and a second Ctrl-C reaches the default handler as before.
 
 ## Measurements
 
