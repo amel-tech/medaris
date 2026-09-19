@@ -505,6 +505,43 @@ describe("FlashcardDeckLabelController (e2e)", () => {
   });
 });
 
+// Seeding shared by the two labeling blocks below. They assert opposite
+// outcomes on the same endpoint, so both seed through one pair of helpers: a
+// change to the deck, card or label create contract is fixed once.
+
+/** A deck owned by `app`'s user, with one card in it. Returns both ids. */
+const seedDeckWithCard = async (app: INestApplication, isPublic: boolean) => {
+  const deck = await request(app.getHttpServer())
+    .post("/flashcard/decks")
+    .send({ title: isPublic ? "Public Deck" : "Private Deck", isPublic });
+  expect(deck.status).toBe(201);
+
+  const cards = await request(app.getHttpServer())
+    .post(`/flashcard/decks/${deck.body.id}/cards`)
+    .send([
+      { type: "VOCABULARY", contentFront: "front 0", contentBack: "back 0" },
+    ]);
+  expect(cards.status).toBe(201);
+
+  return {
+    deckId: deck.body.id as string,
+    cardId: cards.body[0].id as string,
+  };
+};
+
+/** A label owned by `app`'s user, created through `path`. */
+const seedLabel = async (
+  app: INestApplication,
+  path: string,
+  scope: Scope = Scope.PERSONAL
+) => {
+  const created = await request(app.getHttpServer())
+    .post(`${path}/create`)
+    .send({ title: "Kelime Hazinesi", scope });
+  expect(created.status).toBe(201);
+  return created.body.id as string;
+};
+
 /**
  * The TARGET of a labeling, as opposed to the label itself.
  *
@@ -564,37 +601,8 @@ describe("Labeling — target readability (e2e)", () => {
     await attackerApp.close();
   });
 
-  /** A deck of the owner's, with one card in it. Returns both ids. */
-  const seedOwnerDeckWithCard = async (isPublic: boolean) => {
-    const deck = await request(ownerApp.getHttpServer())
-      .post("/flashcard/decks")
-      .send({ title: isPublic ? "Public Deck" : "Private Deck", isPublic });
-    expect(deck.status).toBe(201);
-
-    const cards = await request(ownerApp.getHttpServer())
-      .post(`/flashcard/decks/${deck.body.id}/cards`)
-      .send([
-        { type: "VOCABULARY", contentFront: "front 0", contentBack: "back 0" },
-      ]);
-    expect(cards.status).toBe(201);
-
-    return {
-      deckId: deck.body.id as string,
-      cardId: cards.body[0].id as string,
-    };
-  };
-
-  /** A label belonging to whoever's app is passed. */
-  const seedLabel = async (app: INestApplication, path: string) => {
-    const created = await request(app.getHttpServer())
-      .post(`${path}/create`)
-      .send({ title: "Kelime Hazinesi", scope: Scope.PERSONAL });
-    expect(created.status).toBe(201);
-    return created.body.id as string;
-  };
-
   it("refuses to label a card inside another user's private deck", async () => {
-    const { cardId } = await seedOwnerDeckWithCard(false);
+    const { cardId } = await seedDeckWithCard(ownerApp, false);
     const labelId = await seedLabel(attackerApp, "/flashcard-label");
 
     const response = await request(attackerApp.getHttpServer())
@@ -606,7 +614,7 @@ describe("Labeling — target readability (e2e)", () => {
   });
 
   it("refuses to label another user's private deck", async () => {
-    const { deckId } = await seedOwnerDeckWithCard(false);
+    const { deckId } = await seedDeckWithCard(ownerApp, false);
     const labelId = await seedLabel(attackerApp, "/flashcard-deck-label");
 
     const response = await request(attackerApp.getHttpServer())
@@ -646,7 +654,7 @@ describe("Labeling — target readability (e2e)", () => {
   // deck stays labelable by anyone, and the author is never locked out of
   // their own.
   it("lets a stranger label a card in a PUBLIC deck", async () => {
-    const { cardId } = await seedOwnerDeckWithCard(true);
+    const { cardId } = await seedDeckWithCard(ownerApp, true);
     const labelId = await seedLabel(attackerApp, "/flashcard-label");
 
     const response = await request(attackerApp.getHttpServer())
@@ -657,7 +665,7 @@ describe("Labeling — target readability (e2e)", () => {
   });
 
   it("lets the author label a card in their own private deck", async () => {
-    const { cardId } = await seedOwnerDeckWithCard(false);
+    const { cardId } = await seedDeckWithCard(ownerApp, false);
     const labelId = await seedLabel(ownerApp, "/flashcard-label");
 
     const response = await request(ownerApp.getHttpServer())
@@ -665,5 +673,134 @@ describe("Labeling — target readability (e2e)", () => {
       .send({ labelId, flashcardId: cardId });
 
     expect(response.status).toBe(201);
+  });
+});
+
+/**
+ * MDRS-81. The LABEL side of a labeling, as opposed to the target above.
+ *
+ * `labelId` arrives in the request body, so without a check an authenticated
+ * caller could hang their card or deck on another user's label, move that
+ * owner's `usage_count` and write a labeling row against a label the read
+ * routes already refuse them (MDRS-56). Both services now `assertOwner` the
+ * label before anything else; `flashcard-label-readers.spec.ts` pins that with
+ * mocks. These cases pin it against a real database, which the mocks cannot:
+ * migration `0013_label_schema_drift` is what made the write path reachable at
+ * all, so this is the first configuration in which the hole could be exercised.
+ *
+ * The target is a PUBLIC deck on purpose. The target branch lets a stranger
+ * label it, so the only thing that can refuse these requests is the label
+ * check — a private target would pass for the wrong reason.
+ */
+describe("Labeling — label ownership (e2e)", () => {
+  let ownerApp: INestApplication;
+  let attackerApp: INestApplication;
+  let databaseService: DatabaseService;
+  let dbUtils: TestDatabaseUtils;
+
+  const tables = [
+    "flashcard_labelings",
+    "deck_labelings",
+    "flashcard_label_stats",
+    "deck_label_stats",
+    "flashcard_labels",
+    "deck_label",
+    "flashcards",
+    "decks",
+  ];
+
+  beforeAll(async () => {
+    ownerApp = await createTestApp({ authUserId: TEST_USER_ID });
+    attackerApp = await createTestApp({ authUserId: OTHER_USER_ID });
+    databaseService = ownerApp.get<DatabaseService>(DatabaseService);
+    dbUtils = new TestDatabaseUtils(databaseService);
+  });
+
+  beforeEach(async () => {
+    await dbUtils.cleanTables(...tables);
+  });
+
+  afterAll(async () => {
+    await dbUtils.cleanTables(...tables);
+    await ownerApp.close();
+    await attackerApp.close();
+  });
+
+  const countRows = async (table: string) => {
+    const result = await databaseService.db.execute(
+      `SELECT count(*)::int AS n FROM "${table}"`
+    );
+    return (result.rows[0] as { n: number }).n;
+  };
+
+  const usageCount = async (path: string, labelId: string) => {
+    const stats = await request(ownerApp.getHttpServer()).get(
+      `${path}/getStats/${labelId}`
+    );
+    expect(stats.status).toBe(200);
+    return stats.body.usageCount as number;
+  };
+
+  it("refuses to attach a card to another user's PUBLIC label and moves nothing", async () => {
+    const { cardId } = await seedDeckWithCard(ownerApp, true);
+    const labelId = await seedLabel(ownerApp, "/flashcard-label", Scope.PUBLIC);
+
+    const response = await request(attackerApp.getHttpServer())
+      .post("/flashcard-label/labeling")
+      .send({ labelId, flashcardId: cardId });
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("FLASHCARD_LABEL_FORBIDDEN");
+    expect(await countRows("flashcard_labelings")).toBe(0);
+    expect(await usageCount("/flashcard-label", labelId)).toBe(0);
+  });
+
+  it("refuses to attach a deck to another user's PUBLIC label and moves nothing", async () => {
+    const { deckId } = await seedDeckWithCard(ownerApp, true);
+    const labelId = await seedLabel(
+      ownerApp,
+      "/flashcard-deck-label",
+      Scope.PUBLIC
+    );
+
+    const response = await request(attackerApp.getHttpServer())
+      .post("/flashcard-deck-label/labeling")
+      .send({ labelId, deckId });
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("FLASHCARD_DECK_LABEL_FORBIDDEN");
+    expect(await countRows("deck_labelings")).toBe(0);
+    expect(await usageCount("/flashcard-deck-label", labelId)).toBe(0);
+  });
+
+  // The counterweight: the same requests from the label's owner succeed and DO
+  // move the counter, so the zero asserted above is a refusal and not a
+  // counter that never moves.
+  it("lets the owner apply their own label, and counts the use", async () => {
+    const { cardId, deckId } = await seedDeckWithCard(ownerApp, true);
+    const cardLabelId = await seedLabel(
+      ownerApp,
+      "/flashcard-label",
+      Scope.PUBLIC
+    );
+    const deckLabelId = await seedLabel(
+      ownerApp,
+      "/flashcard-deck-label",
+      Scope.PUBLIC
+    );
+
+    const cardLabeling = await request(ownerApp.getHttpServer())
+      .post("/flashcard-label/labeling")
+      .send({ labelId: cardLabelId, flashcardId: cardId });
+    const deckLabeling = await request(ownerApp.getHttpServer())
+      .post("/flashcard-deck-label/labeling")
+      .send({ labelId: deckLabelId, deckId });
+
+    expect(cardLabeling.status).toBe(201);
+    expect(deckLabeling.status).toBe(201);
+    expect(await countRows("flashcard_labelings")).toBe(1);
+    expect(await countRows("deck_labelings")).toBe(1);
+    expect(await usageCount("/flashcard-label", cardLabelId)).toBe(1);
+    expect(await usageCount("/flashcard-deck-label", deckLabelId)).toBe(1);
   });
 });
