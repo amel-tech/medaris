@@ -63,11 +63,11 @@ async function isDeckInCollection(deckId: string): Promise<boolean> {
 export default async function Page({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ locale: string; id: string }>;
 }) {
-  const { id } = await params;
+  const { locale, id } = await params;
 
-  const accessToken = await requireAccessToken();
+  const accessToken = await requireAccessToken(`/${locale}/decks/${id}`);
   const [deck, cards, isInCollection] = await Promise.all([
     getDeck(id),
     getDeckCards(id),
