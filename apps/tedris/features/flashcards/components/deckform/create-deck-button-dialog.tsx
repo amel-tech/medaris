@@ -57,7 +57,17 @@ export default function CreateDeckButtonDialog() {
       // characters" and the like. authenticatedAction already unwraps it from
       // the ResponseError body; showing the generic sentence instead left the
       // visitor with no idea which field to fix.
-      const reason = "error" in result ? result.error : "";
+      //
+      // Only for a 400. The same field carries "fetch failed" when tedrisat is
+      // unreachable and "Unauthorized: No access token found" when the token
+      // has gone — untranslated internals that the localized fallback says
+      // better.
+      //
+      // `"status" in result` rather than the `success` discriminant: tsc does
+      // not narrow this union on the `else` branch — the same reason the first
+      // version of this line reached for `"error" in result`.
+      const reason =
+        "status" in result && result.status === 400 ? result.error : "";
       toastHelper.error({
         title: t("CreateDeckButtonDialog.creationError"),
         description:

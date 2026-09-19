@@ -12,7 +12,7 @@ type ApiClient = Awaited<ReturnType<typeof createServerTedrisatAPIs>>;
 /** Result type for actions: success with data, or failure with server error message. */
 export type AuthenticatedActionResult<T> =
   | { success: true; data: T }
-  | { success: false; error: string };
+  | { success: false; error: string; status?: number };
 
 /**
  * Wrapper for Server Actions that require authentication.
@@ -45,7 +45,7 @@ export async function authenticatedAction<T>(
       } catch {
         message = error.response.statusText || "Request failed";
       }
-      return { success: false, error: message };
+      return { success: false, error: message, status: error.response.status };
     }
     return {
       success: false,

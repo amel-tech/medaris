@@ -109,7 +109,14 @@ function DeckForm({ id }: IDeckFormProps) {
                 </FlashCard>
               </div>
             ))}
-            <Button variant="secondary" className="w-full" onClick={onAddCard}>
+            {/* type="button" for the same reason as the back button above:
+                without it this appends a row and submits the deck at once. */}
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={onAddCard}
+            >
               {t("DeckForm.addCard")}
             </Button>
           </div>
