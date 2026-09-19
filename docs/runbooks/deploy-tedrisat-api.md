@@ -8,6 +8,7 @@
 | Workflow | `.github/workflows/tedrisat-api.yaml` |
 | GHCR image | `ghcr.io/amel-tech/medaris-tedrisat-api` |
 | Container port | `3001` |
+| Coolify application | `tedrisat-service` — uuid `uk08w4w8gkkgwossks8wgock`, project *Medaris*, environment `development`, server `mdrs2` (`45.147.47.108`), `https://api-tedrisat-dev.medaris.net` |
 | Coolify webhook secret | `TEDRISAT_SERVICE_COOLIFY_WEBHOOK` (repo secret — **not yet set**) |
 | Deploy token | `COOLIFY_DEPLOY_TOKEN` (org secret — present) |
 
@@ -156,17 +157,24 @@ You can always address an old build by its immutable digest:
 
 ### 3.2 Re-point the deployment
 
-Which of the two paths applies depends on how the Coolify service is
-configured, and that cannot be read from this repository.
+Read from Coolify through its API on 2026-09-15 (MDRS-86), not assumed: the
+`tedrisat-service` application has build pack `dockerimage`, so Coolify never builds
+from git and the GHCR image is exactly what runs. As of 2026-09-15 it still pulls **`ghcr.io/amel-tech/madrasah-backend-tedrisat-api:tedrisat-dev`** — the old repository's image, on the tag that repository's `ci-dev.yaml` moved on every push to `main`. MDRS-86 re-points it to **`ghcr.io/amel-tech/medaris-tedrisat-api:latest`**
+(rollback value if that re-point has to be undone: `ghcr.io/amel-tech/madrasah-backend-tedrisat-api:tedrisat-dev`).
 
-**TODO(verify against Coolify):** determine whether the `Tedrisat API` service pulls
-`ghcr.io/amel-tech/medaris-tedrisat-api:latest` or a pinned tag/digest. Record the
-answer here. Everything below assumes one or the other.
+`latest` is deliberate: it is the tag every workflow run on the default branch
+and every release already moves, so `development` follows `main` without a
+tag of its own, and a future `production` environment pins `<semver>` instead.
+Path B below is therefore the live path; Path A is what a pinned environment
+would use.
+
 
 **Path A — the service pulls a pinned tag or digest.**
 Edit the image reference in the Coolify service configuration to the previous
 tag/digest and redeploy from the Coolify UI.
-**TODO(verify against Coolify):** exact field name and screen.
+The two fields are **Docker Image** and **Docker Image Tag** on the application's
+*General* tab; through the API they are `docker_registry_image_name` and
+`docker_registry_image_tag` on `PATCH /api/v1/applications/uk08w4w8gkkgwossks8wgock`.
 
 **Path B — the service pulls `:latest`.**
 Move `latest` back to the old digest, then fire the same webhook the workflow
@@ -190,9 +198,12 @@ curl --fail-with-body --silent --show-error \
 ```
 
 `$COOLIFY_WEBHOOK` is the value of the `TEDRISAT_SERVICE_COOLIFY_WEBHOOK` repo secret.
-**TODO(verify against Coolify):** whether this webhook forces a fresh pull or
-only restarts the existing container. If it only restarts, the rollback also
-needs a pull step in Coolify.
+Its value is Coolify's deploy endpoint for this application,
+`https://coolify.medaris.net/api/v1/deploy?uuid=uk08w4w8gkkgwossks8wgock&force=false` — a
+*deploy*, not a restart, so for a `dockerimage` application it re-resolves the
+tag before starting the container. **TODO(verify against Coolify):** confirm on
+the first MDRS-86 deploy that the digest Coolify runs afterwards is the one the
+workflow pushed; until then treat "re-pull" as documented, not measured.
 
 ### 3.3 What NOT to do
 
@@ -221,8 +232,8 @@ exist, `nest build` emits `dist/src/main.js` here.
 Then confirm the deployed service, not just the image:
 
 * Coolify shows the service healthy and the container restarted within the last
-  few minutes. **TODO(verify against Coolify):** the service's URL and where its
-  logs are.
+  few minutes. The service answers at `https://api-tedrisat-dev.medaris.net`; its logs are on
+  the application's *Logs* tab in Coolify, and in `docker logs` on `mdrs2`.
 * The running container reports the digest you intended:
 
 ```bash

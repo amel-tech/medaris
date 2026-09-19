@@ -8,6 +8,7 @@
 | Workflow | `.github/workflows/nizam-web.yaml` |
 | GHCR image | `ghcr.io/amel-tech/medaris-nizam-web` |
 | Container port | `4001` |
+| Coolify application | `nizam-web` — uuid `fkc4gcgo884wk84sssgc8oso`, project *Medaris*, environment `development`, server `mdrs1` (`193.111.78.115`), `https://nizam-dev.medaris.app` |
 | Coolify webhook secret | `NIZAM_WEB_COOLIFY_WEBHOOK` (repo secret — **not yet set**) |
 | Deploy token | `COOLIFY_DEPLOY_TOKEN` (org secret — present) |
 
@@ -15,6 +16,37 @@ The image name is not hardcoded: the workflow sets
 `IMAGE_NAME: ${{ github.repository }}-nizam-web` and `REGISTRY: ghcr.io`, and
 `github.repository` is `amel-tech/medaris`, so the full reference is
 `ghcr.io/amel-tech/medaris-nizam-web`.
+
+---
+
+## 0. Build inputs the workflow refuses to run without
+
+`NEXT_PUBLIC_*` is inlined into the client bundle at `next build`, so the
+values the browser gets are fixed when the image is built, not when Coolify
+starts it — a runtime variable on the Coolify service cannot change them.
+Since MDRS-86, `.github/workflows/nizam-web.yaml` passes them as
+Docker build args, read from **repository variables** (Settings → Secrets and
+variables → Actions → *Variables*) under this app's prefix:
+
+| Repository variable | | Reaches the build as |
+|---|---|---|
+| `NIZAM_WEB_NEXT_PUBLIC_KEYCLOAK_ISSUER` | required | `NEXT_PUBLIC_KEYCLOAK_ISSUER` |
+| `NIZAM_WEB_NEXT_PUBLIC_KEYCLOAK_CLIENT_ID` | required | `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID` |
+| `NIZAM_WEB_NEXT_PUBLIC_NEXTAUTH_URL` | required | `NEXT_PUBLIC_NEXTAUTH_URL` |
+| `NIZAM_WEB_NEXT_PUBLIC_TEDRISAT_API_BASE_URL` | required | `NEXT_PUBLIC_TEDRISAT_API_BASE_URL` |
+| `NIZAM_WEB_NEXT_PUBLIC_API_MOCKING` | optional — omitted when empty | `NEXT_PUBLIC_API_MOCKING` |
+
+The *Resolve NEXT_PUBLIC build args* step fails the run, before any build
+minute is spent, when a required one is unset. It also never forwards an empty
+optional one: `libs/env/src/root-env.cjs` treats any key already in
+`process.env` — even `""` — as authoritative, so an empty build arg would
+shadow the `.env.example` placeholder and fail `env.ts` validation with a
+message from deep inside `next build`. A `docker build` with no build args at
+all still works and ships the placeholders; that is the local-only path.
+
+The server-side keys (`KEYCLOAK_CLIENT_SECRET`, `NEXTAUTH_SECRET`, …) are not
+build inputs: they are read at request time from the container's environment,
+which is where Coolify's variables do apply.
 
 ---
 
@@ -115,17 +147,24 @@ You can always address an old build by its immutable digest:
 
 ### 3.2 Re-point the deployment
 
-Which of the two paths applies depends on how the Coolify service is
-configured, and that cannot be read from this repository.
+Read from Coolify through its API on 2026-09-15 (MDRS-86), not assumed: the
+`nizam-web` application has build pack `dockerimage`, so Coolify never builds
+from git and the GHCR image is exactly what runs. As of 2026-09-15 it still pulls **`ghcr.io/amel-tech/madrasah-frontend-nizam-web:nizam-dev`** — the old repository's image, on the tag that repository's `ci-dev.yaml` moved on every push to `main`. MDRS-86 re-points it to **`ghcr.io/amel-tech/medaris-nizam-web:latest`**
+(rollback value if that re-point has to be undone: `ghcr.io/amel-tech/madrasah-frontend-nizam-web:nizam-dev`).
 
-**TODO(verify against Coolify):** determine whether the `Nizam Web` service pulls
-`ghcr.io/amel-tech/medaris-nizam-web:latest` or a pinned tag/digest. Record the
-answer here. Everything below assumes one or the other.
+`latest` is deliberate: it is the tag every workflow run on the default branch
+and every release already moves, so `development` follows `main` without a
+tag of its own, and a future `production` environment pins `<semver>` instead.
+Path B below is therefore the live path; Path A is what a pinned environment
+would use.
+
 
 **Path A — the service pulls a pinned tag or digest.**
 Edit the image reference in the Coolify service configuration to the previous
 tag/digest and redeploy from the Coolify UI.
-**TODO(verify against Coolify):** exact field name and screen.
+The two fields are **Docker Image** and **Docker Image Tag** on the application's
+*General* tab; through the API they are `docker_registry_image_name` and
+`docker_registry_image_tag` on `PATCH /api/v1/applications/fkc4gcgo884wk84sssgc8oso`.
 
 **Path B — the service pulls `:latest`.**
 Move `latest` back to the old digest, then fire the same webhook the workflow
@@ -149,9 +188,12 @@ curl --fail-with-body --silent --show-error \
 ```
 
 `$COOLIFY_WEBHOOK` is the value of the `NIZAM_WEB_COOLIFY_WEBHOOK` repo secret.
-**TODO(verify against Coolify):** whether this webhook forces a fresh pull or
-only restarts the existing container. If it only restarts, the rollback also
-needs a pull step in Coolify.
+Its value is Coolify's deploy endpoint for this application,
+`https://coolify.medaris.net/api/v1/deploy?uuid=fkc4gcgo884wk84sssgc8oso&force=false` — a
+*deploy*, not a restart, so for a `dockerimage` application it re-resolves the
+tag before starting the container. **TODO(verify against Coolify):** confirm on
+the first MDRS-86 deploy that the digest Coolify runs afterwards is the one the
+workflow pushed; until then treat "re-pull" as documented, not measured.
 
 ### 3.3 What NOT to do
 
@@ -181,8 +223,8 @@ unexpected status as "check env first", not "bad image".
 Then confirm the deployed service, not just the image:
 
 * Coolify shows the service healthy and the container restarted within the last
-  few minutes. **TODO(verify against Coolify):** the service's URL and where its
-  logs are.
+  few minutes. The service answers at `https://nizam-dev.medaris.app`; its logs are on
+  the application's *Logs* tab in Coolify, and in `docker logs` on `mdrs1`.
 * The running container reports the digest you intended:
 
 ```bash
