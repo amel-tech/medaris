@@ -48,14 +48,14 @@
   },
   "CreateDeckButtonDialog": {
     "cancel": "يلغي",
-    "cardCreated": "تم إنشاء البطاقة",
-    "cardCreatedDescription": "تم إنشاء البطاقة التعليمية بنجاح.",
+    "cardCreated": "تم إنشاء المجموعة",
+    "cardCreatedDescription": "تم إنشاء المجموعة بنجاح.",
     "createDeck": "إنشاء مجموعة أوراق اللعب",
     "createNewDeck": "إنشاء مجموعة جديدة",
     "creationError": "خطأ في الإنشاء",
-    "creationErrorDescription": "حدث خطأ أثناء إنشاء البطاقة التعليمية.",
+    "creationErrorDescription": "حدث خطأ أثناء إنشاء المجموعة.",
     "creationFailed": "فشل الإنشاء",
-    "creationFailedDescription": "فشل في إنشاء البطاقة التعليمية. الرجاء المحاولة مرة أخرى.",
+    "creationFailedDescription": "فشل إنشاء المجموعة. الرجاء المحاولة مرة أخرى.",
     "newDeck": "سطح جديد"
   },
   "DataTable": {
@@ -289,5 +289,9 @@
     "subtitle": "تابع جميع حلقات الدراسة الجارية في مكان واحد.",
     "empty": "لا توجد دروس قيد التقدم.",
     "count": "{count} دروس"
+  },
+  "Validation": {
+    "minChars": "أدخل {count} أحرف على الأقل.",
+    "maxChars": "أدخل {count} حرفًا كحد أقصى."
   }
 }

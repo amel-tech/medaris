@@ -6,17 +6,17 @@ import {
 import { notFound } from "next/navigation";
 import { env } from "~/env";
 import { DeckCardsPage } from "~/features/flashcards/components/deck-cards-page";
-import { getAccessToken } from "~/lib/auth_options";
+import { requireAccessToken } from "~/lib/require-access-token";
 import { subjectOf } from "~/lib/token-subject";
 
 export default async function Page({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ locale: string; id: string }>;
 }) {
-  const { id } = await params;
+  const { locale, id } = await params;
 
-  const token = await getAccessToken();
+  const token = await requireAccessToken(`/${locale}/decks/${id}/cards`);
   const API = await createServerTedrisatAPIs(token, env.TEDRISAT_API_BASE_URL);
 
   // The deck is fetched for one field, `authorId`: this route is reachable for

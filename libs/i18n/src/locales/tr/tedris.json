@@ -48,14 +48,14 @@
   },
   "CreateDeckButtonDialog": {
     "cancel": "İptal etmek",
-    "cardCreated": "Kart Oluşturuldu",
-    "cardCreatedDescription": "Kartvizit başarıyla oluşturuldu.",
+    "cardCreated": "Deste Oluşturuldu",
+    "cardCreatedDescription": "Deste başarıyla oluşturuldu.",
     "createDeck": "Deste Oluştur",
     "createNewDeck": "yeni deste oluştur",
     "creationError": "Oluşturma Hatası",
-    "creationErrorDescription": "Bilgi kartı oluşturulurken bir hata oluştu.",
+    "creationErrorDescription": "Deste oluşturulurken bir hata oluştu.",
     "creationFailed": "Oluşturma Başarısız",
-    "creationFailedDescription": "Bilgi kartı oluşturulamadı. Lütfen tekrar deneyin.",
+    "creationFailedDescription": "Deste oluşturulamadı. Lütfen tekrar deneyin.",
     "newDeck": "Yeni Deste"
   },
   "DataTable": {
@@ -314,5 +314,9 @@
     "subtitle": "Devam eden ders halkalarını tek yerden takip et.",
     "empty": "Devam eden dersin bulunmuyor.",
     "count": "{count} ders"
+  },
+  "Validation": {
+    "minChars": "En az {count} karakter girin.",
+    "maxChars": "En fazla {count} karakter girebilirsiniz."
   }
 }
