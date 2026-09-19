@@ -5,7 +5,10 @@ import { IJwtVerifier, JWT_VERIFIER } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { GenericContainer, StartedTestContainer, Wait } from "testcontainers";
-import { createTestApp, startTestDatabase } from "../helpers/test-app.helper";
+import {
+  createTestApp,
+  useDatabaseForThisFile,
+} from "../helpers/test-app.helper";
 
 /**
  * MDRS-42. The realm half of the audience check MDRS-30 put in
@@ -215,10 +218,14 @@ describe("Keycloak realm ↔ audience check (e2e)", () => {
       attributes: { "pkce.code.challenge.method": "S256" },
     });
 
-    // The Postgres container sets placeholder KEYCLOAK_* values; they are
-    // replaced after it starts and before AppModule is first imported, which
-    // is when `configuration()` reads them.
-    await startTestDatabase();
+    // Phase one of `createTestApp`, on its own: this makes this file's database
+    // and writes the environment, including placeholder KEYCLOAK_* values
+    // pointing at the deployed realm. They are replaced immediately below, and
+    // the `createTestApp` call further down re-enters this function, finds the
+    // database already made and returns — so it does not write the placeholders
+    // back over the four lines that follow. AppModule is imported inside
+    // `createTestApp`, which is when `configuration()` reads any of this.
+    await useDatabaseForThisFile();
     process.env.KEYCLOAK_JWKS_URL = `${kcUrl}/realms/${REALM}/protocol/openid-connect/certs`;
     process.env.KEYCLOAK_ISSUER = `${kcUrl}/realms/${REALM}`;
     process.env.KEYCLOAK_AUDIENCE = API_CLIENT_ID;
