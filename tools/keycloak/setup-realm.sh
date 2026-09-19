@@ -47,6 +47,12 @@
 #                       (localhost only; a remote run needs it set to create
 #                       a missing client)
 #   ALLOW_REMOTE=1      required to run against a non-localhost KC_URL
+#   ALLOW_INSECURE_HTTP=1
+#                       required on top of ALLOW_REMOTE to reach a remote
+#                       Keycloak over http://, which sends the admin password
+#                       in cleartext. Prefer https://; this exists for a
+#                       trusted local network and for the e2e suite, which
+#                       drives the remote path against a container.
 
 set -euo pipefail
 
@@ -102,6 +108,14 @@ if [[ $is_local -eq 0 ]]; then
   fi
   if [[ -z "${KC_ADMIN_USER:-}" || -z "${KC_ADMIN_PASSWORD:-}" ]]; then
     echo "setup-realm: KC_ADMIN_USER and KC_ADMIN_PASSWORD have no default for a remote Keycloak." >&2
+    exit 1
+  fi
+  # Remote AND cleartext are two separate refusals. ALLOW_REMOTE says "yes, that
+  # realm"; it says nothing about the transport. Over http:// `authenticate`
+  # posts the MASTER realm admin password, and whoever is on the path also gets
+  # the admin bearer token it returns and every write made with it.
+  if [[ "$KC_URL" == http://* && "${ALLOW_INSECURE_HTTP:-}" != "1" ]]; then
+    echo "setup-realm: $KC_URL would send the admin password in cleartext. Use https://, or set ALLOW_INSECURE_HTTP=1 if this is a trusted local network." >&2
     exit 1
   fi
   if [[ $WITH_TEST_USERS -eq 1 || $PRINT_SECRETS -eq 1 ]]; then

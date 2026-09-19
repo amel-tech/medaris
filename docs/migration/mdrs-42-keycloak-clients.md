@@ -38,6 +38,17 @@ makes it safe to run against a realm that already serves users (see
 `KC_URL` requires `ALLOW_REMOTE=1` and explicit admin credentials.
 `--with-test-users` and `--print-secrets` are refused there.
 
+**Remote and cleartext are two separate refusals** (review follow-up). The first
+revision gated only on "is this localhost", so `ALLOW_REMOTE=1` against an
+`http://` host was enough to make `authenticate` post the **master realm** admin
+password unencrypted — and whoever is on the path also gets the admin bearer
+token it returns and every write made with it. `ALLOW_REMOTE` answers "yes, that
+realm"; it says nothing about the transport. A remote `http://` target now needs
+`ALLOW_INSECURE_HTTP=1` as well, so an unencrypted admin login is something an
+operator typed rather than a default. The e2e suite drives the remote path
+against a container that speaks http only, and sets both flags; the spec above
+it asserts that one flag alone is refused.
+
 ### `apps/tedrisat/test/e2e/keycloak-audience.e2e.spec.ts` (new)
 
 The spec starts `quay.io/keycloak/keycloak:26.3.2` in a Testcontainer, runs the

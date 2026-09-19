@@ -304,13 +304,30 @@ describe("Keycloak realm ↔ audience check (e2e)", () => {
     ).toContain("is not localhost");
   });
 
+  it("refuses a remote http:// target until the cleartext flag is set too", () => {
+    // ALLOW_REMOTE says "yes, that realm"; it says nothing about the transport.
+    // Without the second flag the script must refuse before `authenticate`
+    // posts the master-realm admin password over an unencrypted connection.
+    expect(
+      failedSetup({
+        KC_URL: kcUrl.replace("localhost", "0.0.0.0"),
+        ALLOW_REMOTE: "1",
+        KC_ADMIN_USER: "admin",
+        KC_ADMIN_PASSWORD: "admin",
+      })
+    ).toContain("would send the admin password in cleartext");
+  });
+
   it("does not create a missing web client remotely from the localhost defaults", () => {
     // 0.0.0.0 reaches the same container but is not classified as localhost,
-    // so this is the remote path without needing a second Keycloak.
+    // so this is the remote path without needing a second Keycloak. The
+    // container speaks http only, hence the cleartext opt-in the test above
+    // proves is otherwise required.
     const env: NodeJS.ProcessEnv = {
       ...process.env,
       KC_URL: kcUrl.replace("localhost", "0.0.0.0"),
       ALLOW_REMOTE: "1",
+      ALLOW_INSECURE_HTTP: "1",
       KC_ADMIN_USER: "admin",
       KC_ADMIN_PASSWORD: "admin",
     };
