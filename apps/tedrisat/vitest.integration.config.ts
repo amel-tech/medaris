@@ -22,6 +22,20 @@ export default mergeConfig(
       root: __dirname,
       include: ["test/**/*.e2e.spec.ts"],
       exclude: ["node_modules/**", "dist/**"],
+      // The same single container the `test` target gets (MDRS-84). It has to
+      // be named here too: `globalSetup` is not inherited from the sibling
+      // config — this file merges the workspace-root integration base, not
+      // `./vitest.config.ts` — so leaving it out would give this target no
+      // container at all and `inject("postgres")` would throw in every suite.
+      //
+      // The workspace-root `vitest.integration.config.ts` still explains its
+      // `fileParallelism: false` in terms of "parallel suites each start their
+      // own postgres". That was true of tedrisat until MDRS-84 and is still
+      // true of nothing else — teskilat, the only other consumer, uses no
+      // containers. It is left as-is rather than edited because `nx.json`
+      // lists the root configs under `sharedGlobals`, so touching one
+      // invalidates every project's cached `test` result.
+      globalSetup: ["./test/global-setup.ts"],
     },
   })
 );
