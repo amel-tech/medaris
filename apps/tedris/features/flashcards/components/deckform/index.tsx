@@ -7,11 +7,14 @@ import { Form } from "@medaris/ui/custom/form";
 import ATFormGroupTextArea from "@medaris/ui/custom/form-group-text-area";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import React from "react";
+import React, { useMemo } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
-import type z from "zod";
 
-import { deckCardsFormSchema } from "~/features/flashcards/validations/deck-cards-form-schema";
+import {
+  createDeckCardsFormSchema,
+  type DeckCardsFormValues,
+} from "~/features/flashcards/validations/deck-cards-form-schema";
+import { useFieldMessages } from "~/features/flashcards/validations/field-messages";
 import FlashCard from "../flashcard";
 
 interface IDeckFormProps {
@@ -29,8 +32,11 @@ function DeckForm({ id }: IDeckFormProps) {
   const t = useTranslations("tedris");
   const router = useRouter();
 
-  const form = useForm<z.infer<typeof deckCardsFormSchema>>({
-    resolver: zodResolver(deckCardsFormSchema),
+  const messages = useFieldMessages();
+  const schema = useMemo(() => createDeckCardsFormSchema(messages), [messages]);
+
+  const form = useForm<DeckCardsFormValues>({
+    resolver: zodResolver(schema),
     defaultValues: {
       cards: [
         {

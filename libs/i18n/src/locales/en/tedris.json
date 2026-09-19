@@ -48,14 +48,14 @@
   },
   "CreateDeckButtonDialog": {
     "cancel": "Cancel",
-    "cardCreated": "Card Created",
-    "cardCreatedDescription": "Flashcard was created successfully.",
+    "cardCreated": "Deck Created",
+    "cardCreatedDescription": "The deck was created successfully.",
     "createDeck": "Create Deck",
     "createNewDeck": "create new deck",
     "creationError": "Creation Error",
-    "creationErrorDescription": "An error occurred while creating the flashcard.",
+    "creationErrorDescription": "An error occurred while creating the deck.",
     "creationFailed": "Creation Failed",
-    "creationFailedDescription": "Failed to create the flashcard. Please try again.",
+    "creationFailedDescription": "Failed to create the deck. Please try again.",
     "newDeck": "New Deck"
   },
   "DataTable": {
@@ -314,5 +314,9 @@
     "subtitle": "Track all your in-progress study circles in one place.",
     "empty": "You have no courses in progress.",
     "count": "{count} courses"
+  },
+  "Validation": {
+    "minChars": "Enter at least {count} characters.",
+    "maxChars": "Enter at most {count} characters."
   }
 }

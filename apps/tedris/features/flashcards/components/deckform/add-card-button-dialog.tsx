@@ -15,22 +15,25 @@ import { Form } from "@medaris/ui/custom/form";
 import ATFormGroupTextArea from "@medaris/ui/custom/form-group-text-area";
 import { toastHelper } from "@medaris/ui/lib/toast-helper";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import type z from "zod";
 import { createFlashcards } from "~/features/flashcards/actions";
-import { flashcardFormSchema } from "~/features/flashcards/validations/flashcard-form-schema";
-
-type FlashcardFormValues = z.infer<typeof flashcardFormSchema>;
+import { useFieldMessages } from "~/features/flashcards/validations/field-messages";
+import {
+  createFlashcardFormSchema,
+  type FlashcardFormValues,
+} from "~/features/flashcards/validations/flashcard-form-schema";
 
 const emptyCard: FlashcardFormValues = { contentFront: "", contentBack: "" };
 
 export default function AddCardButtonDialog({ deckId }: { deckId: string }) {
   const t = useTranslations("tedris");
   const [open, setOpen] = useState(false);
+  const messages = useFieldMessages();
+  const schema = useMemo(() => createFlashcardFormSchema(messages), [messages]);
 
   const form = useForm<FlashcardFormValues>({
-    resolver: zodResolver(flashcardFormSchema),
+    resolver: zodResolver(schema),
     defaultValues: emptyCard,
   });
 
