@@ -10,7 +10,13 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiBody, ApiResponse } from "@nestjs/swagger";
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiOperation,
+  ApiResponse,
+} from "@nestjs/swagger";
 import {
   CreateFlashcardLabelDto,
   CreateFlashcardLabelingDto,
@@ -72,9 +78,15 @@ import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
  * "probably should" be readable by anyone. If that is the product intent, it
  * belongs with the scope/visibility model, not with a UUID lookup.
  *
- * Scope note: the REST of this controller closes the AUTHENTICATION hole only.
- * Whether the caller may label a card or deck they do not own is still
- * unchecked and belongs with the flashcard ownership work — see MDRS-26.
+ * Scope note: MDRS-27 closed the AUTHENTICATION hole here and left the target
+ * of a labeling unchecked, deferred to MDRS-26. That deferral is over — both
+ * `/labeling` routes now assert the caller may READ the card or deck they are
+ * labelling, through the same `FlashcardDeckService.assertReadable` the card
+ * and deck routes use; see `FlashcardLabelService.flashcardLabeling`. What is
+ * still MDRS-26's is the read side: no route surfaces labelings back, and
+ * `CardIncludeEnum` exposes only `progress`, so whether a deck owner sees
+ * another user's private annotation on their card is not yet a question this
+ * module answers.
  */
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
@@ -82,8 +94,12 @@ import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
 export class FlashcardlabelController {
   constructor(private readonly labelService: FlashcardLabelService) {}
 
+  @ApiOperation({
+    summary: "Create a flashcard label",
+    operationId: "createFlashcardLabel",
+  })
   @ApiBody({ type: CreateFlashcardLabelDto })
-  @ApiResponse({ status: 200, type: FlashcardCreateLabelResponse })
+  @ApiCreatedResponse({ type: FlashcardCreateLabelResponse })
   @Post("/create")
   async createFlashcardLabel(
     @Req() request: AuthorizedRequest,
@@ -97,6 +113,10 @@ export class FlashcardlabelController {
     });
   }
 
+  @ApiOperation({
+    summary: "Delete a flashcard label",
+    operationId: "deleteFlashcardLabel",
+  })
   @ApiResponse({ status: 200, schema: { type: "boolean" } })
   @ApiResponse({
     status: 403,
@@ -111,8 +131,17 @@ export class FlashcardlabelController {
     return await this.labelService.deleteLabel(labelId, request.user.sub);
   }
 
+  @ApiOperation({
+    summary: "Attach a label to a flashcard",
+    operationId: "createFlashcardLabeling",
+  })
   @ApiBody({ type: CreateFlashcardLabelingDto })
-  @ApiResponse({ status: 200, type: FlashcardLabelingResponse })
+  @ApiCreatedResponse({ type: FlashcardLabelingResponse })
+  @ApiResponse({
+    status: 403,
+    description: "The label, or the card's deck, belongs to another user",
+  })
+  @ApiResponse({ status: 404, description: "No such label, or no such card" })
   @Post("/labeling")
   async flahscardLabeling(
     @Req() request: AuthorizedRequest,
@@ -124,6 +153,13 @@ export class FlashcardlabelController {
     });
   }
 
+  // 404 rather than an empty 200 (MDRS-58): both readers used to return `null`
+  // for an unknown id, which Nest serialises as a body-less 200 while this
+  // decorator promised a FlashcardLabelResponse. See FlashcardLabelService.getById.
+  @ApiOperation({
+    summary: "Get a flashcard label by ID",
+    operationId: "getFlashcardLabelById",
+  })
   @ApiResponse({ status: 200, type: FlashcardLabelResponse })
   @ApiResponse({
     status: 403,
@@ -138,6 +174,10 @@ export class FlashcardlabelController {
     return await this.labelService.getById(id, request.user.sub);
   }
 
+  @ApiOperation({
+    summary: "Get usage statistics for a flashcard label",
+    operationId: "getFlashcardLabelStats",
+  })
   @ApiResponse({ status: 200, type: labelStatsResponse })
   @ApiResponse({
     status: 403,
@@ -148,7 +188,7 @@ export class FlashcardlabelController {
   async getLabelStats(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
-  ): Promise<labelStatsResponse | null> {
+  ): Promise<labelStatsResponse> {
     return await this.labelService.getLabelStats(id, request.user.sub);
   }
 }

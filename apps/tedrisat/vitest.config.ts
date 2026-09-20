@@ -17,17 +17,37 @@ export default mergeConfig(
       // Verbatim from jest.config.json `testMatch`.
       include: ["test/**/*.spec.ts", "src/**/*.spec.ts"],
       exclude: ["node_modules/**", "dist/**"],
+      // The one `postgres:17-alpine` this run gets (MDRS-84). Before it, the
+      // container lived in a module-level singleton in
+      // test/helpers/test-app.helper.ts, which `pool: "forks"` below made
+      // per-file rather than per-run: 8 e2e suites, 8 container boots.
+      // `globalSetup` runs once in the main process and hands the workers the
+      // connection details through `provide`/`inject`.
+      globalSetup: ["./test/global-setup.ts"],
       // jest.config.json set `testTimeout: 60000` and `maxWorkers: 1`. Jest
-      // applied that timeout to hooks too; Vitest does not, and the
-      // Testcontainers boot lives in a `beforeAll`.
+      // applied that timeout to hooks too; Vitest does not. The Testcontainers
+      // boot has moved to `globalSetup`, which is governed by neither of these
+      // — but `createTestApp` still creates a database and runs the migrations
+      // from a `beforeAll`, so `hookTimeout` stays generous.
       testTimeout: 60_000,
       hookTimeout: 180_000,
       teardownTimeout: 60_000,
-      // jest.config.json's `maxWorkers: 1` — the e2e suites each boot their
-      // own postgres container and must not race for the Docker daemon. Vitest 4
-      // removed `poolOptions`, so `singleFork` would be silently ignored;
-      // `fileParallelism: false` is the option that actually serialises, and it
-      // forces `maxWorkers` to 1.
+      // jest.config.json's `maxWorkers: 1`. Vitest 4 removed `poolOptions`, so
+      // `singleFork` would be silently ignored; `fileParallelism: false` is the
+      // option that actually serialises, and it forces `maxWorkers` to 1.
+      //
+      // MDRS-84 removed the original reason for it — suites no longer race for
+      // the Docker daemon, because there is only one container and `globalSetup`
+      // has already started it before any worker runs. It stays serial on
+      // purpose all the same: each e2e file boots one or two full Nest
+      // applications with their own pg pools, and letting eight files do that
+      // at once would point a multiple of those connections at one postgres
+      // whose `max_connections` nobody has sized. Turning it on is its own
+      // change, with its own measurement.
+      //
+      // `pool: "forks"` is now load-bearing for a second reason: the per-file
+      // database name in test-app.helper.ts is a module-level variable, and it
+      // is the fresh-fork-per-file behaviour that keeps it per file.
       pool: "forks",
       fileParallelism: false,
       maxWorkers: 1,
@@ -37,6 +57,12 @@ export default mergeConfig(
         exclude: [
           "src/main.ts",
           "src/otel.ts",
+          // MDRS-58's spec exporter. A process entry point like main.ts above:
+          // it boots the Nest container in preview mode and writes a file, so
+          // the only way to exercise it is to run it. What it delegates to —
+          // src/config/openapi-document.ts — is unit-tested directly, in
+          // test/unit/openapi-document.spec.ts.
+          "src/openapi/export-openapi.ts",
           // MDRS-25's root-.env loader — see the note in apps/teskilat's config.
           "src/load-env.ts",
           "src/config/config.ts",

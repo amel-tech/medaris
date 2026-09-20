@@ -39,6 +39,15 @@ export class FlashcardService {
     return this.cardRepo.findByDeckId(deckId, userId, toIncludeSet(include));
   }
 
+  /**
+   * The parent deck of a card, or `null` when the card does not exist. The
+   * card routes are authorized through their deck — there is no per-card
+   * ownership table — so every `cards/:id` handler resolves this first.
+   */
+  async findDeckId(cardId: string): Promise<string | null> {
+    return this.cardRepo.findDeckId(cardId);
+  }
+
   async createMany(
     deckId: string,
     authorId: string,

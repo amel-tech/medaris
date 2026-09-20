@@ -4,9 +4,13 @@ import { DeckCardsTable } from "~/features/flashcards/components/deck-cards-tabl
 export function DeckCardsPage({
   deckId,
   flashcards,
+  isOwner,
 }: {
   deckId: string;
   flashcards: FlashcardResponse[];
+  isOwner: boolean;
 }) {
-  return <DeckCardsTable deckId={deckId} flashcards={flashcards} />;
+  return (
+    <DeckCardsTable deckId={deckId} flashcards={flashcards} isOwner={isOwner} />
+  );
 }

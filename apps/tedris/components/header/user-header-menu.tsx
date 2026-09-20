@@ -17,9 +17,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@medaris/ui/components/dropdown-menu";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { UserAvatar } from "~/features/user-avatar";
+import { keycloakSignOut } from "~/lib/keycloak-logout";
 import Version from "./version";
 
 type UserHeaderMenuProps = {
@@ -77,7 +78,10 @@ export const UserHeaderMenu = ({ imageIssuer }: UserHeaderMenuProps) => {
           </p>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer">
+        <DropdownMenuItem
+          onClick={() => keycloakSignOut(session?.idToken)}
+          className="cursor-pointer"
+        >
           <SignOutIcon className="text-neutral-primary" />
           <p className="text-neutral-primary text-sm">
             {t("UserHeaderMenu.signOut")}

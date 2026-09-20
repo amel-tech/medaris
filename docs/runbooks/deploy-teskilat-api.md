@@ -297,11 +297,12 @@ If someone reports "the docs are 404 on teskilat", the container log carries
 and the answer is to read the schema from a non-production run, not to change a
 flag.
 
-Enforced in two independent places — `apps/teskilat/src/config/swagger-env.ts`
-via the config factory, and again in `mountSwagger`
+Enforced in two independent places — the config factory
+(`apps/teskilat/src/config/config.ts`, through the shared resolver in
+`libs/common/src/config/swagger-production.config.ts`), and again in `mountSwagger`
 (`apps/teskilat/src/swagger.ts`) against the environment as it is at mount time,
 so a stale config value cannot mount the UI on its own. Covered by
-`apps/teskilat/test/unit/swagger-env.spec.ts` (the resolver) and
+`apps/teskilat/test/unit/swagger-policy.spec.ts` (the resolver) and
 `apps/teskilat/test/e2e/swagger.e2e.spec.ts`, which boots the application and
 asserts `GET /docs` and `GET /docs-json` → 404 with the flag on — including the
 case where the compiled config says `enabled: true` and only the live

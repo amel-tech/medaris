@@ -58,8 +58,19 @@ export class ResourceResponse {
 export class EnrollmentResponse {
   @ApiProperty() userId!: string;
   @ApiProperty() courseId!: string;
-  @ApiPropertyOptional({ type: String }) studentName!: string | null;
-  @ApiPropertyOptional({ type: String }) studentEmail!: string | null;
+  // `nullable: true` is load-bearing here, unlike on the sibling fields that
+  // omit it: course.service.ts:118 sends `student.name ?? null`, so the wire
+  // really does carry JSON null. Until MDRS-58 the committed spec said so —
+  // these two properties, on this class and on PendingEnrollmentResponse, were
+  // the only four `nullable: true` flags in the whole document — and dropping
+  // the flag while regenerating would have narrowed the published contract to
+  // "absent or string" for a response that is neither. The rest of this file
+  // has the same gap and never claimed otherwise; see the follow-up in
+  // docs/migration/mdrs-58-tedrisat-spec-exporter.md.
+  @ApiPropertyOptional({ type: String, nullable: true })
+  studentName!: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true })
+  studentEmail!: string | null;
   @ApiProperty({ description: "Percent complete, 0-100" }) progress!: number;
   @ApiProperty({ enum: EnrollmentStatus }) status!: EnrollmentStatus;
   @ApiProperty() createdAt!: Date;

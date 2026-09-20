@@ -1,7 +1,21 @@
+import {
+  resolveSwaggerEnabled,
+  type SwaggerProductionRule,
+} from "@medaris/common";
 import * as pkg from "../../package.json";
-import { swaggerEnabledUnlessProduction } from "./swagger-env";
 
 const version = pkg.version || "0.0.1";
+
+/**
+ * teskilat's production rule for `SWAGGER_ENABLED`: refuse, never throw
+ * (MDRS-69). Declared once and imported by `src/swagger.ts` and the unit spec,
+ * because `mountSwagger` evaluates the same rule a second time at mount and the
+ * two evaluations must not be able to drift apart.
+ */
+export const SWAGGER_RULE: SwaggerProductionRule = {
+  policy: "refuse-in-production",
+  service: "@medaris/teskilat",
+};
 
 /**
  * MDRS-69 removed the `database` block this factory used to carry.
@@ -55,9 +69,11 @@ export default () => ({
     serviceVersion: version,
   },
   swagger: {
-    // Never true under NODE_ENV=production, whatever SWAGGER_ENABLED says —
-    // see ./swagger-env.ts for why this refuses rather than throwing.
-    enabled: swaggerEnabledUnlessProduction(),
+    // Never true under NODE_ENV=production, whatever SWAGGER_ENABLED says, and
+    // never throws: the key is shared with tedrisat, so a throw here would take
+    // this service down when tedrisat's docs are enabled (MDRS-69). The policy
+    // is documented in libs/common's swagger-production.config.ts.
+    enabled: resolveSwaggerEnabled(SWAGGER_RULE),
     // SWAGGER_PATH, the same name tedrisat reads and the one the root
     // .env.example ships as API__SWAGGER_PATH. It used to be SWAGGER_ENDPOINT,
     // which no .env key produced, so under `nx run teskilat:dev` the path was

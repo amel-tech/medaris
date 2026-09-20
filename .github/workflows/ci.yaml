@@ -248,6 +248,24 @@ jobs:
       - name: Assert release config consistency
         run: node tools/ci/assert-release-config.mjs
 
+      # Env/compose parity (MDRS-70): since MDRS-25 the compose `environment:`
+      # block is an allowlist, so a key .env.example ships but docker-compose.yml
+      # does not name reaches no container — while still changing
+      # `nx run <api>:dev`. Three such divergences shipped in one integration and
+      # every one was found by reading. See tools/ci/assert-env-compose-parity.mjs.
+      - name: Assert .env.example / docker-compose parity
+        run: node tools/ci/assert-env-compose-parity.mjs
+
+      # OpenAPI spec freshness (PR #69 review): MDRS-58 added the exporter so
+      # the committed contract would stop going stale, and then nothing ran it.
+      # Four handlers' 403/404 declarations never reached the published spec,
+      # and the exporter was broken outright for weeks with every gate green.
+      # This re-runs the export half only — no Java toolchain needed — and
+      # diffs it against the committed artifact, ignoring `info.version`, which
+      # release-please moves without anyone touching a route.
+      - name: Assert the committed OpenAPI spec is fresh
+        run: node tools/ci/assert-openapi-spec-fresh.mjs
+
       # The five targets are kept identical to the root `affected` script so the
       # local and CI gates cannot drift.
       - name: Verify affected projects

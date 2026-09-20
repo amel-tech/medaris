@@ -2,7 +2,7 @@
   "name": "@medaris/source",
   "version": "0.0.0",
   "private": true,
-  "description": "Medaris monorepo — 7 apps, 10 libs, one pnpm workspace",
+  "description": "Medaris monorepo \u2014 7 apps, 10 libs, one pnpm workspace",
   "packageManager": "pnpm@11.4.0",
   "engines": {
     "node": ">=22",
@@ -21,6 +21,9 @@
     "lint:root": "node tools/ci/biome-ratchet.mjs",
     "assert:affected-isolation": "node tools/ci/assert-affected-isolation.mjs",
     "assert:release-config": "node tools/ci/assert-release-config.mjs",
+    "assert:env-compose-parity": "node tools/ci/assert-env-compose-parity.mjs",
+    "assert:openapi-fresh": "node tools/ci/assert-openapi-spec-fresh.mjs",
+    "openapi:tedrisat": "pnpm --filter @medaris/tedrisat run openapi:export ../../libs/services/swagger-docs/tedrisat.json && pnpm --filter @medaris/services run generate:tedrisat",
     "assert:traceability": "node tools/ci/assert-traceability.mjs",
     "reconcile:linear": "node tools/ci/reconcile-linear.mjs",
     "audit:ci": "audit-ci --config ./audit-ci.json",
