@@ -1,7 +1,7 @@
 import configuration from "../../src/config/config";
 import { resolveDatabaseSsl } from "../../src/config/database-ssl";
 import { requireDbPassword } from "../../src/config/security-env";
-import { resolveSwaggerOauthRedirectOrigin } from "../../src/config/swagger-env";
+import { resolveSwaggerOauthRedirectOrigin } from "../../src/config/swagger-oauth-redirect";
 
 const VALID_JWKS_URL =
   "https://auth.medaris.app/realms/amel-tech-dev/protocol/openid-connect/certs";

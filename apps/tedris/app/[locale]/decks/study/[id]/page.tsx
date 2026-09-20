@@ -6,12 +6,12 @@ import {
 import { notFound } from "next/navigation";
 import { env } from "~/env";
 import { StudyPage } from "~/features/flashcards/components/study-page";
-import { auth } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth_options";
+import { requireAccessToken } from "~/lib/require-access-token";
 
 async function getDeck(deckId: string): Promise<FlashcardDeckResponse | null> {
   try {
-    const session = await auth();
-    const token = session?.accessToken;
+    const token = await getAccessToken();
     const { decks } = await createServerTedrisatAPIs(
       token,
       env.TEDRISAT_API_BASE_URL
@@ -26,8 +26,7 @@ async function getDeck(deckId: string): Promise<FlashcardDeckResponse | null> {
 
 async function getDeckCards(deckId: string): Promise<FlashcardResponse[]> {
   try {
-    const session = await auth();
-    const token = session?.accessToken;
+    const token = await getAccessToken();
     const API = await createServerTedrisatAPIs(
       token,
       env.TEDRISAT_API_BASE_URL
@@ -46,10 +45,11 @@ async function getDeckCards(deckId: string): Promise<FlashcardResponse[]> {
 export default async function Page({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ locale: string; id: string }>;
 }) {
-  const { id } = await params;
+  const { locale, id } = await params;
 
+  await requireAccessToken(`/${locale}/decks/study/${id}`);
   const [deck, cards] = await Promise.all([getDeck(id), getDeckCards(id)]);
 
   if (!deck) {

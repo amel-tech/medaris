@@ -6,12 +6,13 @@ import {
 import { notFound } from "next/navigation";
 import { env } from "~/env";
 import { DeckDetailPage } from "~/features/flashcards/components/deck-detail-page";
-import { auth } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth_options";
+import { requireAccessToken } from "~/lib/require-access-token";
+import { subjectOf } from "~/lib/token-subject";
 
 async function getDeck(deckId: string): Promise<FlashcardDeckResponse | null> {
   try {
-    const session = await auth();
-    const token = session?.accessToken;
+    const token = await getAccessToken();
     const { decks } = await createServerTedrisatAPIs(
       token,
       env.TEDRISAT_API_BASE_URL
@@ -26,8 +27,7 @@ async function getDeck(deckId: string): Promise<FlashcardDeckResponse | null> {
 
 async function getDeckCards(deckId: string): Promise<FlashcardResponse[]> {
   try {
-    const session = await auth();
-    const token = session?.accessToken;
+    const token = await getAccessToken();
     const API = await createServerTedrisatAPIs(
       token,
       env.TEDRISAT_API_BASE_URL
@@ -46,8 +46,7 @@ async function getDeckCards(deckId: string): Promise<FlashcardResponse[]> {
 
 async function isDeckInCollection(deckId: string): Promise<boolean> {
   try {
-    const session = await auth();
-    const token = session?.accessToken;
+    const token = await getAccessToken();
     if (!token) return false;
     const API = await createServerTedrisatAPIs(
       token,
@@ -64,10 +63,11 @@ async function isDeckInCollection(deckId: string): Promise<boolean> {
 export default async function Page({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ locale: string; id: string }>;
 }) {
-  const { id } = await params;
+  const { locale, id } = await params;
 
+  const accessToken = await requireAccessToken(`/${locale}/decks/${id}`);
   const [deck, cards, isInCollection] = await Promise.all([
     getDeck(id),
     getDeckCards(id),
@@ -78,7 +78,14 @@ export default async function Page({
     notFound();
   }
 
+  const currentUserId = subjectOf(accessToken);
+
   return (
-    <DeckDetailPage deck={deck} cards={cards} isInCollection={isInCollection} />
+    <DeckDetailPage
+      deck={deck}
+      cards={cards}
+      isInCollection={isInCollection}
+      isOwner={!!currentUserId && deck.authorId === currentUserId}
+    />
   );
 }

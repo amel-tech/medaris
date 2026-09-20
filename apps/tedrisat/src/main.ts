@@ -3,15 +3,16 @@ import "./otel";
 import { applyGlobalMiddleware, LoggerFactory } from "@medaris/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
-import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
+import { buildTedrisatOpenApiConfig } from "./config/openapi-document";
 import {
   endpointPrefixOf,
   SWAGGER_OAUTH2_REDIRECT_SEGMENT,
   type SwaggerCspRequest,
   shouldRelaxSwaggerHeaders,
 } from "./config/swagger-csp";
-import { resolveSwaggerOauthRedirectOrigin } from "./config/swagger-env";
+import { resolveSwaggerOauthRedirectOrigin } from "./config/swagger-oauth-redirect";
 
 async function bootstrap() {
   const logger = LoggerFactory.create();
@@ -27,30 +28,13 @@ async function bootstrap() {
   // Swagger configuration
   const swaggerEnabled = config.get<boolean>("swagger.enabled");
   if (swaggerEnabled) {
-    const swaggerConfig = new DocumentBuilder()
-      .addBearerAuth()
-      .addOAuth2(
-        {
-          type: "oauth2",
-          flows: {
-            implicit: {
-              authorizationUrl: config
-                .get<string>("KEYCLOAK_JWKS_URL")
-                ?.replace("/certs", "/auth"),
-              tokenUrl: config
-                .get<string>("KEYCLOAK_JWKS_URL")
-                ?.replace("/certs", "/token"),
-              scopes: {},
-            },
-          },
-        },
-        "bearer"
-      )
-      .setTitle("Tedrisat Service API")
-      .setDescription("Education management service for Madrasah platform")
-      .setVersion(config.get<string>("version") || "1.0.0")
-      .addTag("tedrisat", "Education management endpoints")
-      .build();
+    // Shared with openapi/export-openapi.ts, which writes the committed
+    // libs/services/swagger-docs/tedrisat.json. Keeping the metadata in one
+    // factory is what stops the two from describing different APIs (MDRS-58).
+    const swaggerConfig = buildTedrisatOpenApiConfig({
+      version: config.get<string>("version") || "1.0.0",
+      jwksUrl: config.get<string>("KEYCLOAK_JWKS_URL"),
+    });
     // Normalised once, then used for all three consumers below — the mount
     // path, the predicate and the OAuth2 redirect URL. That last one
     // concatenates the endpoint onto an origin, so an unslashed
@@ -61,7 +45,7 @@ async function bootstrap() {
     );
     // The other half of that concatenation. KEYCLOAK_REDIRECT_URL is in no
     // schema, so an absent value used to stringify into
-    // `undefined/docs/oauth2-redirect.html` — see config/swagger-env.ts.
+    // `undefined/docs/oauth2-redirect.html` — see config/swagger-oauth-redirect.ts.
     const oauthRedirectOrigin = resolveSwaggerOauthRedirectOrigin();
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     // helmet() already ran for every route in applyGlobalMiddleware above, so

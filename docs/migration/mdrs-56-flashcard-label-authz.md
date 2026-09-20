@@ -356,3 +356,79 @@ rather than running both.
 `libs/services/swagger-docs/tedrisat.json` is *not* touched here. The committed
 spec contains no label paths at all today (verified: no path key matching
 `label`); regenerating it is #55's deliverable.
+
+## Follow-up 1 closed — migration `0013_label_schema_drift` (PR #69, 2026-09-15)
+
+All five items of the schema/migration drift above are repaired by one
+forward-only migration, generated with `drizzle-kit generate` (the three rename
+prompts answered as renames rather than drop-and-create) so the `.sql`,
+`meta/0013_snapshot.json` and the `_journal.json` entry land together. `0007` is
+not edited.
+
+```sql
+ALTER TABLE "Flashcard_labeling"     RENAME TO "flashcard_labelings";
+ALTER TABLE "deck_label_stats"       RENAME COLUMN "lable_id"   TO "label_id";
+ALTER TABLE "flashcard_label_stats"  RENAME COLUMN "usageCount" TO "usage_count";
+ALTER TABLE "deck_labelings" ALTER COLUMN "private_to_user_id" DROP NOT NULL;
+ALTER TABLE "deck_labelings" ALTER COLUMN "create_at" SET DEFAULT now();
+```
+
+plus the three foreign-key constraints that carried the old names, dropped and
+re-added under the new ones. The renames preserve data; nothing is dropped.
+
+**One statement was removed from the generated file by hand.** `drizzle-kit`
+also proposed `DROP TABLE "deck_labels_decks" CASCADE`, because that table was
+created by `0007` and is declared in no schema file. It is unreferenced by any
+code, but dropping a table is destructive and no reviewer asked for it, so the
+statement was deleted and the table was restored into `meta/0013_snapshot.json`
+verbatim from `0012`. The database and the snapshot therefore stay in exactly
+the relationship they were already in; a future `db:generate` will propose the
+same drop, as it would have before. Deciding that table's fate is its own issue.
+
+What this makes reachable, and what pins it: `GET /flashcard-label/getStats/:id`
+and `GET /flashcard-deck-label/getStats/:id` returned a 500 for every caller,
+owner included. `flashcard-label.e2e.spec.ts` carried a deliberately negative
+assertion (`not.toBe(403)`, `not.toBe(404)`) with a note saying it should become
+a 200 the day the drift was fixed. It now asserts the 200 and the zero-valued
+body for both routes, so a reverted migration fails a test rather than a
+request. `POST /flashcard-label/labeling` — which targeted a table that did not
+exist under that name — is reachable for the first time.
+
+The blocker on the `deck_label_stats.label_id` unique index (recorded against
+the `LIMIT 1` fix in `mdrs-63-bulk-export-authz.md`) is gone with it: the index
+can now name a column that exists. It is still not added here, because a unique
+index is a claim about existing rows that wants its own issue.
+
+## Follow-up 5 closed — label ownership on `POST /labeling` (MDRS-81, 2026-09-17)
+
+The `assertOwner` call item 5 describes is already on `main`: PR #69 added it to
+both `flashcardLabeling` and `deckLabeling`, ahead of the target check, during
+the MDRS-58 review. What PR #69 did not add was evidence that holds against a
+real database, and migration `0013` above is what made that evidence possible.
+MDRS-81 supplies it.
+
+**The PUBLIC-scope question from items 3 and 5 is answered owner-only.** A caller
+may not apply someone else's label, PUBLIC or not. This is the reversible
+direction: allowing PUBLIC labels to be shared later only adds a rule, and it
+belongs in the MDRS-41/MDRS-43 scope model if it is ever wanted.
+
+What pins it:
+
+- `flashcard-label.e2e.spec.ts`, block *Labeling — label ownership*: a stranger
+  attaching a card, and then a deck, to the owner's **PUBLIC** label gets a 403
+  with `FLASHCARD_LABEL_FORBIDDEN` / `FLASHCARD_DECK_LABEL_FORBIDDEN`. No
+  labeling row is written, and the owner's `usageCount` stays at 0. The target
+  is a PUBLIC deck, so the target check lets the request through and only the
+  label check can refuse it. A third case has the owner apply both labels and
+  checks for one row each and `usageCount` 1, which shows that the zeros above
+  mean a refusal and not a counter that never moves.
+- `flashcard-label-readers.spec.ts` mocked `flashcardLabeling`,
+  `updateLabelStats` and `createLabelStats`, and asserted that they were not
+  called. After the transaction rewrite the service calls none of the three; its
+  only write is `labelAndCountUsage`. Those assertions therefore held whatever
+  the service did. The mocks and assertions now name `labelAndCountUsage`.
+
+Measured fail-closed on 2026-09-17: with both
+`assertOwner(newLabeling.labelId, …)` lines deleted, 4 of the 53 tests in the two
+files fail (the two new e2e refusals and the two unit refusals). With the lines
+restored, all 53 pass.

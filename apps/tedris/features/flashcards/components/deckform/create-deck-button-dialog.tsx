@@ -17,18 +17,25 @@ import { Form } from "@medaris/ui/custom/form";
 import { toastHelper } from "@medaris/ui/lib/toast-helper";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
-import type z from "zod";
 import { createFlashCardDeck } from "~/features/flashcards/actions";
-import { deckMetaFormSchema } from "../../validations/deck-meta-form-schema";
+import {
+  createDeckMetaFormSchema,
+  type DeckMetaFormValues,
+} from "../../validations/deck-meta-form-schema";
+import { useFieldMessages } from "../../validations/field-messages";
 import DeckMetaForm from "./deck-meta-form";
 
 export default function CreateDeckButtonDialog() {
   const t = useTranslations("tedris");
   const router = useRouter();
 
-  const form = useForm<z.infer<typeof deckMetaFormSchema>>({
-    resolver: zodResolver(deckMetaFormSchema),
+  const messages = useFieldMessages();
+  const schema = useMemo(() => createDeckMetaFormSchema(messages), [messages]);
+
+  const form = useForm<DeckMetaFormValues>({
+    resolver: zodResolver(schema),
     defaultValues: {
       title: "",
       description: "",
@@ -46,9 +53,25 @@ export default function CreateDeckButtonDialog() {
       });
       router.push(`/decks/${id}/cards`);
     } else {
+      // The API's own reason — "title must be longer than or equal to 5
+      // characters" and the like. authenticatedAction already unwraps it from
+      // the ResponseError body; showing the generic sentence instead left the
+      // visitor with no idea which field to fix.
+      //
+      // Only for a 400. The same field carries "fetch failed" when tedrisat is
+      // unreachable and "Unauthorized: No access token found" when the token
+      // has gone — untranslated internals that the localized fallback says
+      // better.
+      //
+      // `"status" in result` rather than the `success` discriminant: tsc does
+      // not narrow this union on the `else` branch — the same reason the first
+      // version of this line reached for `"error" in result`.
+      const reason =
+        "status" in result && result.status === 400 ? result.error : "";
       toastHelper.error({
         title: t("CreateDeckButtonDialog.creationError"),
-        description: t("CreateDeckButtonDialog.creationErrorDescription"),
+        description:
+          reason || t("CreateDeckButtonDialog.creationErrorDescription"),
       });
     }
   };

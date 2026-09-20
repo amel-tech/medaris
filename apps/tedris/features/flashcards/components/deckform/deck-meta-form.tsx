@@ -3,11 +3,10 @@ import ATFormGroupTabs from "@medaris/ui/custom/form-group-tabs";
 import ATFormGroupTextArea from "@medaris/ui/custom/form-group-text-area";
 import { useTranslations } from "next-intl";
 import type { Control } from "react-hook-form";
-import type z from "zod";
-import type { deckMetaFormSchema } from "~/features/flashcards/validations/deck-meta-form-schema";
+import type { DeckMetaFormValues } from "~/features/flashcards/validations/deck-meta-form-schema";
 
 interface IDeckMetaFormProps {
-  control: Control<z.infer<typeof deckMetaFormSchema>>;
+  control: Control<DeckMetaFormValues>;
 }
 
 export default function DeckMetaForm({ control }: IDeckMetaFormProps) {

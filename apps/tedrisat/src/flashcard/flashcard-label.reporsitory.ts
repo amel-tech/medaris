@@ -58,6 +58,45 @@ export class FlashcardLabelRepository implements IFlashcardLabelRepository {
       .returning();
     return labeling;
   }
+  /**
+   * The labeling and its usage counter, in one transaction. See the twin on
+   * `FlashcardDeckLabelRepository.labelAndCountUsage` for why: the counter used
+   * to move before the insert that can fail, and the read-and-branch on the
+   * stats row was a race two concurrent first-labelings both lost.
+   */
+  async labelAndCountUsage(
+    newLabeling: IFlashcardLabeling
+  ): Promise<IFlashcardLabeling> {
+    return this.databaseService.db.transaction(async (tx) => {
+      const [labeling] = await tx
+        .insert(flashcardLabelings)
+        .values({
+          labelId: newLabeling.labelId,
+          flashcardId: newLabeling.flashcardId,
+          createdBy: newLabeling.createdBy,
+          privateToUserId: newLabeling.privateToUserId ?? null,
+        })
+        .returning();
+
+      await tx
+        .insert(flashcardLabelStats)
+        .values({
+          labelId: newLabeling.labelId,
+          usageCount: 1,
+          lastUsedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: flashcardLabelStats.labelId,
+          set: {
+            usageCount: sql`${flashcardLabelStats.usageCount} + 1`,
+            lastUsedAt: new Date(),
+          },
+        });
+
+      return labeling;
+    });
+  }
+
   async createLabelStats(
     newStats: IFlashcardLabelStats
   ): Promise<IFlashcardLabelStats> {
@@ -79,10 +118,13 @@ export class FlashcardLabelRepository implements IFlashcardLabelRepository {
     return stats[0];
   }
   async getLabelStats(labelId: string): Promise<IFlashcardLabelStats | null> {
+    // One row per label, one row ever read — see the same note on
+    // `FlashcardDeckLabelRepository.getLabelStats`.
     const stats = await this.databaseService.db
       .select()
       .from(flashcardLabelStats)
-      .where(eq(flashcardLabelStats.labelId, labelId));
+      .where(eq(flashcardLabelStats.labelId, labelId))
+      .limit(1);
     return stats.length > 0 ? stats[0] : null;
   }
 }

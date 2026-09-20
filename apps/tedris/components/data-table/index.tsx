@@ -8,13 +8,12 @@ import {
   TableHeader,
   TableRow,
 } from "@medaris/ui/components/table";
-import { flexRender, type RowData } from "@tanstack/react-table";
 import {
-  type LegacyColumnDef as ColumnDef,
-  getCoreRowModel,
-  type LegacyTableOptions as TableOptions,
-  useLegacyTable as useReactTable,
-} from "@tanstack/react-table/legacy";
+  type DataTableColumnDef as ColumnDef,
+  type DataTableOptions,
+  dataTableFeatures,
+} from "@medaris/ui/lib/data-table-features";
+import { flexRender, type RowData, useTable } from "@tanstack/react-table";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
@@ -25,7 +24,15 @@ export interface DataTableProps<TData extends RowData, TValue> {
   onRowUpdate?: (updatedRow: TData) => Promise<boolean> | boolean;
   onRowClick?: (row: TData) => void;
   onRowDelete?: (id: string) => Promise<boolean> | boolean;
-  options?: TableOptions<TData>;
+  /**
+   * Table options beyond the ones this component owns. `data`, `columns`,
+   * `defaultColumn` and `meta` are excluded: they come from the props above,
+   * and a `meta` override would silently drop `updateData`, so editable cells
+   * would stop saving without an error.
+   */
+  options?: Partial<
+    Omit<DataTableOptions<TData>, "data" | "columns" | "defaultColumn" | "meta">
+  >;
 }
 
 export function DataTable<TData extends RowData, TValue>({
@@ -84,12 +91,13 @@ export function DataTable<TData extends RowData, TValue>({
     }
   };
 
-  const table = useReactTable({
+  const table = useTable({
+    ...options,
+    features: dataTableFeatures,
     data: tableData,
     // v9's per-column TValue is checked contravariantly; a heterogeneous
     // ColumnDef<TData, TValue>[] must be widened before it reaches the table.
     columns: columns as unknown as ColumnDef<TData, unknown>[],
-    getCoreRowModel: getCoreRowModel(),
     defaultColumn: (defaultColumn as Partial<ColumnDef<TData, unknown>>) || {
       size: 200,
       minSize: 50,
@@ -101,7 +109,6 @@ export function DataTable<TData extends RowData, TValue>({
       onRowDelete: onRowDelete,
       loadingCells: loadingCells,
     },
-    ...options,
   });
 
   return (
@@ -133,11 +140,10 @@ export function DataTable<TData extends RowData, TValue>({
             table.getRowModel().rows.map((row) => (
               <TableRow
                 key={row.id}
-                data-state={row.getIsSelected() && "selected"}
                 className={onRowClick ? "cursor-pointer hover:bg-muted/50" : ""}
                 onClick={() => onRowClick?.(row.original)}
               >
-                {row.getVisibleCells().map((cell) => (
+                {row.getAllCells().map((cell) => (
                   <TableCell
                     key={cell.id}
                     style={{ width: cell.column.getSize() }}

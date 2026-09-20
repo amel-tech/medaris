@@ -1,17 +1,24 @@
 import { Injectable } from "@nestjs/common";
+import { CardNotFoundError } from "./errors/card-not-found.error";
 import { FlashcardLabelForbiddenError } from "./errors/flashcard-label-forbidden.error";
 import { FlashcardLabelNotFoundError } from "./errors/flashcard-label-not-found.error";
+import { FlashcardService } from "./flashcard.service";
+import { FlashcardDeckService } from "./flashcard-deck.service";
 import { FlashcardLabelRepository } from "./flashcard-label.reporsitory";
 import {
   ICreateFlashcardLabel,
   IFlashcardLabel,
   IFlashcardLabeling,
-  IFlashcardLabelStats,
+  IFlashcardLabelStatsRead,
 } from "./flashcard-label.reporsitory.interface";
 
 @Injectable()
 export class FlashcardLabelService {
-  constructor(private readonly flashcardLabelRepo: FlashcardLabelRepository) {}
+  constructor(
+    private readonly flashcardLabelRepo: FlashcardLabelRepository,
+    private readonly cardService: FlashcardService,
+    private readonly deckService: FlashcardDeckService
+  ) {}
   async createLabel(
     createLabelDto: ICreateFlashcardLabel
   ): Promise<IFlashcardLabel> {
@@ -51,19 +58,31 @@ export class FlashcardLabelService {
   async flashcardLabeling(
     newLabeling: IFlashcardLabeling
   ): Promise<IFlashcardLabeling> {
-    const labelStats = await this.flashcardLabelRepo.getLabelStats(
-      newLabeling.labelId
+    // Two assertions, because a labeling names two resources.
+    //
+    // The label being attached is the caller's, or this is a 403/404 — the
+    // same rule the three siblings apply. Without it any authenticated caller
+    // could hang their card on another user's label and move its stats
+    // (MDRS-58 review). `createdBy` is the verified `request.user.sub`.
+    await this.assertOwner(newLabeling.labelId, newLabeling.createdBy);
+
+    // And the TARGET card has to be one the caller may see. `flashcardId` came
+    // off the DTO unchecked, so a row could be written against any card UUID
+    // in the system — write-side pollution inside another user's private deck,
+    // and an existence oracle either way, since a real id answered 201 while a
+    // missing one tripped the foreign key as a 500. Cards carry no access rule
+    // of their own, so the decision is the parent deck's, exactly as on the
+    // card routes. `assertReadable` rather than `assertOwner`: labelling a card
+    // in somebody else's PUBLIC deck is a private annotation on a public
+    // thing, which is what `privateToUserId` is for.
+    await this.assertTargetReadable(
+      newLabeling.flashcardId,
+      newLabeling.createdBy
     );
-    if (labelStats) {
-      await this.flashcardLabelRepo.updateLabelStats(newLabeling.labelId);
-    } else {
-      await this.flashcardLabelRepo.createLabelStats({
-        labelId: newLabeling.labelId,
-        usageCount: 1,
-        lastUsedAt: new Date(),
-      });
-    }
-    return await this.flashcardLabelRepo.flashcardLabeling(newLabeling);
+    // One call, one transaction — see `labelAndCountUsage`. The stats
+    // read-and-branch that used to sit here ran before the insert that can
+    // fail, and two concurrent first-labelings both took the create branch.
+    return await this.flashcardLabelRepo.labelAndCountUsage(newLabeling);
   }
   /**
    * MDRS-56. Both reads go through `assertOwner` first, exactly as
@@ -82,11 +101,16 @@ export class FlashcardLabelService {
    * widen the blast radius of an authorization change. Revisit it when
    * MDRS-41's policy layer replaces this method wholesale.
    *
-   * The return type is non-nullable, and that is a consequence of the above
-   * rather than a tidy-up: with `assertOwner` in front and the guard below, no
-   * path returns `null` any more. Leaving `| null` on would have published a
-   * nullable 200 body to the generated client — the exact shape this change
-   * removes. `getLabelStats` keeps its `| null`, which is still reachable.
+   * Both readers throw rather than resolving null (MDRS-58). They used to hand
+   * `null` straight back, and the controller declared a 200 carrying a
+   * `FlashcardLabelResponse`. Nest serialises `null` as an EMPTY body, so an
+   * unknown id answered `200` with nothing in it while the published contract
+   * promised an object. Once MDRS-58 generated a client from that contract the
+   * mismatch stopped being cosmetic: `JSONApiResponse.value()` calls
+   * `response.json()` on the empty body and the caller gets
+   * `SyntaxError: Unexpected end of JSON input` from a method whose signature
+   * says it returns a label. `GlobalExceptionFilter` turns the
+   * `FlashcardLabelNotFoundError` into the 404 the controllers document.
    */
   async getById(id: string, userId: string): Promise<IFlashcardLabel> {
     await this.assertOwner(id, userId);
@@ -105,19 +129,49 @@ export class FlashcardLabelService {
    * Ownership is asserted against the LABEL, not the stats row. `labelStats`
    * carries no owner column of its own, and a label with no stats row yet is a
    * legitimate empty read rather than a denial — distinguishing "never used"
-   * from "not yours" is precisely what the assertion is for.
+   * from "not yours" is precisely what the assertion is for (MDRS-56).
    *
-   * That empty read is what the repository does; it is NOT what the route does
-   * today. `flashcard_label_stats` is unqueryable — the migration created
-   * `usageCount`, the schema declares `usage_count` — so every caller,
-   * including the owner, currently gets a 500 before the null path is
-   * reached. Follow-up 1 in docs/migration/mdrs-56-flashcard-label-authz.md.
+   * The stats row is created lazily — `createLabel` inserts only the label and
+   * `flashcardLabeling` adds the stats row on the first use — so a label that
+   * exists and has never been applied has no row. That is answered with a
+   * zero-valued stats object, not a 404: the 404 is reserved for a label that
+   * does not exist (or is not the caller's, which `assertOwner` reports as
+   * 403), so the generated client can tell an unused label from a deleted one
+   * (MDRS-58 review). Returning `null` was not an option either — Nest
+   * serialises it as an empty 200 body the generated client cannot parse.
+   *
+   * Whether the row is queryable at all used to be a separate defect: the
+   * migration created `usageCount` where the schema declares `usage_count`,
+   * so this select threw before any row was found. Migration
+   * `0013_label_schema_drift` renames the column, which is what makes the
+   * fallback above reachable; `flashcard-label.e2e.spec.ts` pins the 200.
    */
   async getLabelStats(
     id: string,
     userId: string
-  ): Promise<IFlashcardLabelStats | null> {
+  ): Promise<IFlashcardLabelStatsRead> {
     await this.assertOwner(id, userId);
-    return await this.flashcardLabelRepo.getLabelStats(id);
+    const stats = await this.flashcardLabelRepo.getLabelStats(id);
+    return stats ?? { labelId: id, usageCount: 0, lastUsedAt: null };
+  }
+
+  /**
+   * The caller may see the card they are labelling, or this throws.
+   *
+   * `FlashcardRepository.findDeckId` is the one-column lookup the card routes
+   * use for the same question; a card that is not there is a
+   * `CardNotFoundError`, which keeps the FK violation from surfacing as a 500
+   * and makes the 404/403 split the same one every other route in this module
+   * uses.
+   */
+  private async assertTargetReadable(
+    cardId: string,
+    userId: string
+  ): Promise<void> {
+    const deckId = await this.cardService.findDeckId(cardId);
+    if (deckId === null) {
+      throw new CardNotFoundError(cardId);
+    }
+    await this.deckService.assertReadable(deckId, userId);
   }
 }

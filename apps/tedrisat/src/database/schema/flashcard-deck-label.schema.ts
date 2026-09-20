@@ -4,6 +4,7 @@ import {
   pgTable as table,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { Scope } from "../../flashcard/domain/flashcard-label.enum";
@@ -33,17 +34,25 @@ export const deckLabelings = table("deck_labelings", {
   createdAt: timestamp("create_at").notNull().defaultNow(),
 });
 
-export const deckLabelsStats = table("deck_label_stats", {
-  id: uuid("id").notNull().primaryKey().defaultRandom(),
+export const deckLabelsStats = table(
+  "deck_label_stats",
+  {
+    id: uuid("id").notNull().primaryKey().defaultRandom(),
 
-  labelId: uuid("label_id")
-    .notNull()
-    .references(() => deckLabels.id, { onDelete: "cascade" }),
+    labelId: uuid("label_id")
+      .notNull()
+      .references(() => deckLabels.id, { onDelete: "cascade" }),
 
-  usageCount: integer("usage_count").notNull().default(0),
+    usageCount: integer("usage_count").notNull().default(0),
 
-  lastUsedAt: timestamp("last_used_at", { mode: "date" }).notNull(),
-});
+    lastUsedAt: timestamp("last_used_at", { mode: "date" }).notNull(),
+  },
+  // See the twin on `flashcardLabelStats`: same access pattern, same absence
+  // of an index, and unique for the same reason. This column was `lable_id`
+  // in the database until migration 0013, so the table was unwritable and
+  // cannot hold duplicates.
+  (table) => [uniqueIndex("deck_label_stats_label_id_idx").on(table.labelId)]
+);
 
 // ORM Relations
 export const deckLabelRelations = relations(deckLabels, ({ many }) => ({

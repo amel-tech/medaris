@@ -98,7 +98,8 @@ manual steps; see MDRS-86 for the exact values.
 | -- | -- |
 | `apps/{tedris,nizam,nazir,landing}/env.ts`, `.env.example`, `apps/*/project.json` | every `NEXT_PUBLIC_*` key removed — see *One image for every environment* below |
 | `apps/tedris/{lib/image-hosts.ts,features/user-avatar.tsx,components/header/*}` | the avatar host check takes the issuer as a prop from the server component instead of `env.NEXT_PUBLIC_KEYCLOAK_ISSUER` |
-| `apps/tedris/features/keycloak/logout.tsx`, `apps/nizam/components/keycloak/logout.tsx` | deleted — rendered nowhere (both apps sign out with `signOut()`), and the only other `NEXT_PUBLIC_*` readers |
+| `apps/{tedris,nizam}/lib/keycloak-sign-out-config.ts` (new), `apps/{tedris,nizam}/lib/keycloak-logout.ts` | MDRS-28 (#72, merged meanwhile) made sign-out reach Keycloak's end-session endpoint through `createKeycloakSignOut` from `@medaris/services/auth-client`, fed by three `NEXT_PUBLIC_*` values. They now come from a `"use server"` action, `getKeycloakSignOutConfig`, that returns `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_ISSUER` and `NEXTAUTH_URL` at request time; the call sites are unchanged |
+| `tools/ci/assert-env-compose-parity.mjs`, `.coderabbit.yaml` | the ten `NEXT_PUBLIC_*` exemptions and the review guidance that described them removed/rewritten |
 | `apps/{tedris,nizam,nazir,landing}/Dockerfile` | the "KNOWN LIMITATION" paragraph replaced: nothing from `.env.example` reaches the browser any more |
 | `apps/{tedris,nizam,nazir,landing}/project.json` | `build.dependsOn: ["^build", "^typecheck"]` — see *The web images never built* below |
 | `.github/workflows/{tedrisat-api,teskilat-api,tedris,nizam,nazir,landing-web}.yaml` | a pinned `docker/setup-buildx-action` step — see *The first real run* below |
@@ -161,13 +162,23 @@ the code showed that was solving a problem the apps barely had:
 | `NEXT_PUBLIC_TEDRISAT_API_BASE_URL`, `NEXT_PUBLIC_API_MOCKING` | nothing — declared in `env.ts`, read nowhere (`git grep`) |
 | `NEXT_PUBLIC_TEDRIS_APP_URL` (landing) | nothing |
 
-And neither `logout.tsx` is rendered: `git grep KeycloakLogout` finds no
-import, both apps sign out through `signOut()` in their header menus. So the
-only live browser-side consumer was the avatar host check. It now receives
+And neither `logout.tsx` was rendered at the time: `git grep KeycloakLogout`
+found no import, both apps signed out through `signOut()` in their header
+menus. MDRS-28 (#72) then landed on `main` while this branch was open,
+deleted those two files itself and replaced them with a real Keycloak
+end-session sign-out (`lib/keycloak-logout.ts` in both apps, built on
+`createKeycloakSignOut` from `@medaris/services/auth-client`) — which read the
+same three `NEXT_PUBLIC_*` values, so at merge time the browser-side consumers
+were that sign-out and the avatar host check. The avatar check now receives
 `KEYCLOAK_ISSUER` as a prop from the server component that already owns the
-session (`components/header/header.tsx` → `UserHeaderMenu` → `UserAvatar`),
-the `client` blocks are gone from all four `env.ts` files, and the nine
-`NEXT_PUBLIC_*` lines are gone from `.env.example`. Nothing environment-specific
+session (`components/header/header.tsx` → `UserHeaderMenu` → `UserAvatar`);
+the sign-out obtains its three values from a server action,
+`getKeycloakSignOutConfig`, at call time (the call sites in the header menus
+are untouched, and the config fetch precedes `signOut()`, so the single-step
+navigation MDRS-28 relies on is preserved). The `client` blocks are gone from
+all four `env.ts` files, and the nine `NEXT_PUBLIC_*` lines are gone from
+`.env.example` together with their exemptions in
+`tools/ci/assert-env-compose-parity.mjs`. Nothing environment-specific
 is inlined, the image is the same bytes for `development` and `production`, and
 the values live where the APIs' already live: in the Coolify application.
 

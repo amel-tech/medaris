@@ -15,7 +15,7 @@ import type { ThrottlerOptions } from "@nestjs/throttler";
  * This lives here, not in `libs/common/src/throttler/`, because it is
  * tedrisat-only tuning: teskilat has no bulk route and no `@Throttle` override
  * to feed it. The generic default budget and `RateLimitModule` stay shared —
- * this file mirrors `security-env.ts` / `swagger-env.ts` next to it, each
+ * this file mirrors `security-env.ts` / `database-ssl.ts` next to it, each
  * owning the app-specific slice of the environment its own app reads.
  */
 const DEFAULT_BULK_LIMIT = 10;

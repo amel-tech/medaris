@@ -59,6 +59,17 @@ export class FlashcardRepository implements IFlashcardRepository {
     });
   }
 
+  async findDeckId(id: string): Promise<string | null> {
+    // One column, LIMIT 1 — the same shape as
+    // `FlashcardDeckRepository.findAuthorId`, for the same reason.
+    const rows = await this.databaseService.db
+      .select({ deckId: flashcards.deckId })
+      .from(flashcards)
+      .where(eq(flashcards.id, id))
+      .limit(1);
+    return rows[0]?.deckId ?? null;
+  }
+
   async createMany(cards: ICreateFlashcard[]): Promise<IFlashcard[]> {
     // `values([])` compiles to invalid SQL. Guarded here as well as in the
     // service so the repository is safe regardless of who calls it.
