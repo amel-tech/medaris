@@ -96,8 +96,10 @@ manual steps; see MDRS-86 for the exact values.
 
 | File | Change |
 | -- | -- |
-| `apps/{tedris,nizam,nazir,landing}/Dockerfile` | `ARG` per `NEXT_PUBLIC_*` key `env.ts` declares, no defaults; the "KNOWN LIMITATION" paragraph replaced by the mechanism |
-| `.github/workflows/{tedris,nizam,nazir,landing}-web.yaml` | a *Resolve NEXT_PUBLIC build args* step that reads `vars.<APP>_WEB_NEXT_PUBLIC_*`, fails on a missing required one, forwards only non-empty ones; `build-args:` on the build step |
+| `apps/{tedris,nizam,nazir,landing}/env.ts`, `.env.example`, `apps/*/project.json` | every `NEXT_PUBLIC_*` key removed — see *One image for every environment* below |
+| `apps/tedris/{lib/image-hosts.ts,features/user-avatar.tsx,components/header/*}` | the avatar host check takes the issuer as a prop from the server component instead of `env.NEXT_PUBLIC_KEYCLOAK_ISSUER` |
+| `apps/tedris/features/keycloak/logout.tsx`, `apps/nizam/components/keycloak/logout.tsx` | deleted — rendered nowhere (both apps sign out with `signOut()`), and the only other `NEXT_PUBLIC_*` readers |
+| `apps/{tedris,nizam,nazir,landing}/Dockerfile` | the "KNOWN LIMITATION" paragraph replaced: nothing from `.env.example` reaches the browser any more |
 | `apps/{tedris,nizam,nazir,landing}/project.json` | `build.dependsOn: ["^build", "^typecheck"]` — see *The web images never built* below |
 | `.github/workflows/{tedrisat-api,teskilat-api,tedris,nizam,nazir,landing-web}.yaml` | a pinned `docker/setup-buildx-action` step — see *The first real run* below |
 | `.dockerignore` | `.claude` excluded — a git-ignored worktree under `.claude/worktrees/` made every local `docker build` fail with Nx's duplicate-project error |
@@ -145,33 +147,48 @@ the libs' declarations first wherever it runs. That also removes a latent
 ordering assumption in CI, where `nx affected -t lint typecheck test build`
 had no edge forcing a lib's `typecheck` ahead of an app's `build`.
 
-### Why `ARG` without a default, and why the workflow filters empties
+### One image for every environment
 
-`libs/env/src/root-env.cjs` applies the root `.env` with
-`if (process.env[key] !== undefined) continue;` — a key already in the
-environment wins, and `""` counts as present. Docker puts a build arg into the
-environment of the stage's `RUN` steps only when it was passed. So:
+The first draft of this pull request passed `NEXT_PUBLIC_*` values as Docker
+build args from repository variables, one set per environment — which meant
+two builds of the same commit and a GitHub variable set to maintain. Reading
+the code showed that was solving a problem the apps barely had:
 
-- no build arg → the key is absent → the placeholder from `.env.example`
-  applies, and a plain `docker build` / `docker compose build` keeps working;
-- a build arg with a value → it is present → it beats the placeholder;
-- a build arg passed as `""` → present and empty → shadows the placeholder and
-  `env.ts` (`min(1)`, `emptyStringAsUndefined: false`) fails the build with a
-  message from inside `next build`.
+| Key | Read in client code by |
+| -- | -- |
+| `NEXT_PUBLIC_KEYCLOAK_ISSUER` | tedris `lib/image-hosts.ts` (avatar host check); the two `logout.tsx` files |
+| `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID`, `NEXT_PUBLIC_NEXTAUTH_URL` | the two `logout.tsx` files only |
+| `NEXT_PUBLIC_TEDRISAT_API_BASE_URL`, `NEXT_PUBLIC_API_MOCKING` | nothing — declared in `env.ts`, read nowhere (`git grep`) |
+| `NEXT_PUBLIC_TEDRIS_APP_URL` (landing) | nothing |
 
-The workflow step exists for the third case: it fails early, naming the
-repository variables, and never forwards an empty optional one. Exercised
-locally by running the step's script with and without the variables set
-(both outcomes as designed).
+And neither `logout.tsx` is rendered: `git grep KeycloakLogout` finds no
+import, both apps sign out through `signOut()` in their header menus. So the
+only live browser-side consumer was the avatar host check. It now receives
+`KEYCLOAK_ISSUER` as a prop from the server component that already owns the
+session (`components/header/header.tsx` → `UserHeaderMenu` → `UserAvatar`),
+the `client` blocks are gone from all four `env.ts` files, and the nine
+`NEXT_PUBLIC_*` lines are gone from `.env.example`. Nothing environment-specific
+is inlined, the image is the same bytes for `development` and `production`, and
+the values live where the APIs' already live: in the Coolify application.
+
+The old repositories worked the same way in practice, which is why the
+placeholders never hurt: `@next/env` never overrides a key already in
+`process.env` (`processEnv()` in `@next/env/dist/index.js` assigns a parsed key
+only when `initialEnv[key]` is undefined), so the server-side
+`TEDRISAT_API_BASE_URL` always came from Coolify at runtime, and the inlined
+`NEXT_PUBLIC_*` copies were either unread or coincidentally equal to the
+development values.
+
+One build-time remnant stays: tedris's `images.remotePatterns` is computed in
+`next.config.js` at `next build` from `KEYCLOAK_ISSUER`, i.e. from the host in
+`.env.example`. That host is the one shared Keycloak for every environment;
+only the realm differs and the realm is not part of the host.
 
 ### Measured on a local image
 
-Built `apps/tedris/Dockerfile` to the `build` stage twice — see the pull
-request for the two counts. The check is `grep -rl` over
-`apps/tedris/.next/static` for the real host and for the `localhost:3001`
-placeholder, with and without
-`--build-arg NEXT_PUBLIC_TEDRISAT_API_BASE_URL=https://api-tedrisat-dev.medaris.net`.
-The numbers are in §6 below.
+Built `apps/tedris/Dockerfile` to the `build` stage with no build args and
+searched `apps/tedris/.next/static` for every value that used to be inlined;
+the counts are in §6.
 
 ## 4. What remains manual
 
@@ -183,15 +200,12 @@ In the order that keeps each step reversible:
    this repository (`GET /repos/amel-tech/medaris/actions/organization-secrets`
    lists it). `KC_SSH_*` and `RELEASE_PLEASE_TOKEN` are credentials and must be
    entered by a person.
-2. Repository variables `<APP>_WEB_NEXT_PUBLIC_*` for the four web apps (the
-   web runbooks' §0 list them). Without them the web workflows now fail at the
-   resolve step rather than shipping placeholders.
-3. Coolify keys per app from the *refuses to boot* column in §1.
-4. Per app: dispatch its workflow on `main`, confirm the digest in the job
+2. Coolify keys per app from the *refuses to boot* column in §1.
+3. Per app: dispatch its workflow on `main`, confirm the digest in the job
    summary is the one Coolify runs, then re-point the next app.
-5. Push the 43 tags (MDRS-9 §7 step 2) before merging any release-please pull
+4. Push the 43 tags (MDRS-9 §7 step 2) before merging any release-please pull
    request.
-6. `push: main` on `deploy-affected.yaml`, after one watched real run.
+5. `push: main` on `deploy-affected.yaml`, after one watched real run.
 
 ## 5. Not verified
 
@@ -205,22 +219,24 @@ In the order that keeps each step reversible:
 ## 6. Gate
 
 Measured on this branch, local Docker, `apps/tedris/Dockerfile` to the `build`
-stage, counting files under `apps/tedris/.next/static` with `grep -rl`:
+stage with **no build args** (exit 0), counting files under
+`apps/tedris/.next/static` with `grep -rl` for each value that used to be
+inlined:
 
-| Build | `--build-arg NEXT_PUBLIC_TEDRISAT_API_BASE_URL=…api-tedrisat-dev.medaris.net` | files containing the real host | files containing `localhost:3001` |
-| -- | -- | -- | -- |
-| A | passed | 1 | 0 |
-| B | not passed | 0 | 1 |
+| Value searched for | Files in `.next/static` |
+| -- | -- |
+| `localhost:4000` (was `NEXT_PUBLIC_NEXTAUTH_URL`) | 0 |
+| `localhost:3001` (was `NEXT_PUBLIC_TEDRISAT_API_BASE_URL`) | 0 |
+| `tedris-dev` (was `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID`) | 0 |
+| `auth.medaris.app` (was `NEXT_PUBLIC_KEYCLOAK_ISSUER`) | 0 |
+| `NEXT_PUBLIC_` | 0 |
 
-Both builds exit 0 — B is the "plain `docker build` still works" case, A is
-the deploy case. Before the `project.json` change the same build failed at
-`next build` with `TS6305` (§3).
+Nothing environment-specific reaches the browser bundle. Before the
+`project.json` change the same build failed at `next build` with `TS6305` (§3).
 
-`pnpm exec nx run-many -t lint typecheck module-boundaries -p
+`pnpm exec nx run-many -t lint typecheck test build module-boundaries -p
 tedris-web,nizam-web,nazir-web,landing-web --skip-nx-cache`: `Successfully ran
-targets lint, typecheck, module-boundaries for 4 projects and 8 tasks they
-depend on`. `node tools/ci/assert-release-config.mjs`: `✔ release config: 7
-components, one config, one manifest, chain intact.` The four edited workflow
-files parse as YAML, and the *Resolve NEXT_PUBLIC build args* script was run
-locally with all variables set (four args emitted, the empty optional one
-omitted) and with none set (exit 1 naming the four missing variables).
+targets lint, typecheck, test, build, module-boundaries for 4 projects and 8
+tasks they depend on`. `node tools/ci/assert-release-config.mjs`: `✔ release config: 7
+components, one config, one manifest, chain intact.` The six edited workflow
+files parse as YAML.
