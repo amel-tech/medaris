@@ -166,10 +166,9 @@ recorded here:
 
 | | Value | How it was verified |
 |---|---|---|
-| Coolify configuration (what the next deploy pulls) | `ghcr.io/amel-tech/medaris-tedrisat-api:sha-29f145e` | `GET /api/v1/applications/<uuid>` after the `PATCH`, 2026-09-16 |
-| Running container | the same image — deployment `ib9pf3gab9ew060x77gazg41` finished, health check green, `https://api-tedrisat-dev.medaris.net/health` → 200 | Coolify deployment status + the public endpoint, 2026-09-16 |
-| Target once this branch is on `main` | `ghcr.io/amel-tech/medaris-tedrisat-api:latest` | not yet — a branch run never pushes `latest`, so the first verified deploy used the immutable `sha-` tag |
-| Rollback value | `ghcr.io/amel-tech/madrasah-backend-tedrisat-api:tedrisat-dev` | the configuration before MDRS-86 |
+| Coolify configuration (what the next deploy pulls) | `ghcr.io/amel-tech/medaris-tedrisat-api:latest`, health check `/health:3001` on | `GET /api/v1/applications/<uuid>` after the `PATCH`, 2026-09-20 |
+| Running container | `latest` as pushed by the first `main` run (`sha-5d52210`) — deployment `vp4vf43jbxr2tpp3je247l8r` finished, `running:healthy`, `https://api-tedrisat-dev.medaris.net/health` → 200 | Coolify deployment status + the public endpoint, 2026-09-20 |
+| Rollback value | `ghcr.io/amel-tech/madrasah-backend-tedrisat-api:tedrisat-dev`; or, to stay on `medaris` images, the previous `sha-<short>` tag (`sha-29f145e` was the first verified one) | — |
 
 
 `latest` is deliberate: it is the tag every workflow run on the default branch

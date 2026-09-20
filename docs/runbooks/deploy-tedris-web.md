@@ -141,10 +141,9 @@ recorded here:
 
 | | Value |
 |---|---|
-| Coolify configuration (what the next deploy pulls) | `ghcr.io/amel-tech/madrasah-frontend-tedris-web:tedris-dev` — unchanged; the tag the old repository's `ci-dev.yaml` moved on every push to `main` |
-| Running container | the same image, last built 2026-06-18 |
-| Target | `ghcr.io/amel-tech/medaris-tedris-web:latest`, after this branch is on `main`, one `main` run has pushed `latest`, and the application's runtime keys are in place (§0 says there are no build inputs) |
-| Rollback value | `ghcr.io/amel-tech/madrasah-frontend-tedris-web:tedris-dev` |
+| Coolify configuration (what the next deploy pulls) | `ghcr.io/amel-tech/medaris-tedris-web:latest` (set 2026-09-20); health check still off — Next answers `/` with a locale redirect (307/308) and Coolify's check expects 200, so a dedicated health route is needed before it can be enabled |
+| Running container | `latest` as pushed by the first `main` run (`sha-5d52210`) — deployed 2026-09-20 through the API, `GET https://tedris-dev.medaris.app/` → 200 after redirects, and the served page and its chunks carry no `localhost` value |
+| Rollback value | `ghcr.io/amel-tech/madrasah-frontend-tedris-web:tedris-dev` (the pre-MDRS-86 image, last built 2026-06-18); or the previous `sha-<short>` tag once there is more than one |
 
 
 `latest` is deliberate: it is the tag every workflow run on the default branch

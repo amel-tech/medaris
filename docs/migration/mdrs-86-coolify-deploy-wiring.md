@@ -79,16 +79,20 @@ separately, because a `PATCH` changes only what the *next* deploy pulls.
 
 | Application | Coolify configuration | Running container | Rollback value |
 | -- | -- | -- | -- |
-| `teskilat-service` | `ghcr.io/amel-tech/medaris-teskilat-api:sha-29f145e`, health check `/health:3002` on | the same image since 2026-09-15 — deployment `o8bd2jaa67w6qjjkm356yj69` finished, `running:healthy`, `https://api-teskilat-dev.medaris.net/health` → 200 | `ghcr.io/amel-tech/madrasah-backend-teskilat-api:teskilat-dev`, health check off |
-| `tedrisat-service` | `ghcr.io/amel-tech/medaris-tedrisat-api:sha-29f145e`, health check `/health:3001` on, `signoz-net` alias kept | the same image since 2026-09-16 — deployment `ib9pf3gab9ew060x77gazg41` finished, `running:healthy`, `https://api-tedrisat-dev.medaris.net/health` → 200; protected routes 401 without a token, CORS allows the dev web origins and refuses a foreign one | `ghcr.io/amel-tech/madrasah-backend-tedrisat-api:tedrisat-dev`, health check off |
-| `tedris-web`, `nizam-web`, `nazir-web`, `landing-web` | unchanged: `ghcr.io/amel-tech/madrasah-frontend-<app>:<app>-dev` | the same, last built 2026-06-18 | — (nothing to undo) |
+| `teskilat-service` | `ghcr.io/amel-tech/medaris-teskilat-api:latest`, health check `/health:3002` on | `latest` = `sha-5d52210`, deployment `no2adzkoffgtovymmkaz9k9k` finished 2026-09-20, `running:healthy`, `/health` 200 | `ghcr.io/amel-tech/madrasah-backend-teskilat-api:teskilat-dev` |
+| `tedrisat-service` | `ghcr.io/amel-tech/medaris-tedrisat-api:latest`, health check `/health:3001` on, `signoz-net` alias kept | `latest` = `sha-5d52210`, deployment `vp4vf43jbxr2tpp3je247l8r` finished 2026-09-20, `running:healthy`, `/health` 200 | `ghcr.io/amel-tech/madrasah-backend-tedrisat-api:tedrisat-dev` |
+| `tedris-web`, `nizam-web`, `nazir-web`, `landing-web` | `ghcr.io/amel-tech/medaris-<app>-web:latest`, health checks off (see below) | `latest` = `sha-5d52210`, each deployed 2026-09-20, `GET /` 200 after redirects, no `localhost` value in the served page or sampled chunks | `ghcr.io/amel-tech/madrasah-frontend-<app>-web:<app>-dev` |
 
-Why `sha-29f145e` and not `latest`: the two API images were built by
-dispatching each workflow from this branch, and a run outside the default
-branch pushes only `sha-<short>`. The first webhook deploy of each therefore
-failed on the missing `latest` (expected) and the application was re-pointed
-to the immutable tag and deployed through the API. `latest` becomes the
-configured tag once this branch is on `main` and one `main` run has pushed it.
+The path there: the two API images were first built from this branch (a run
+outside the default branch pushes only `sha-<short>`), so the first verified
+deploys used `sha-29f145e`. After the merge (`5d52210`), all six workflows
+were dispatched from `main` — green, the first time the four web images ever
+built in CI — and every application was switched to `latest` and redeployed
+through the API. Configuration and running container agree from here on.
+
+Web health checks stay off on purpose: Next answers `/` with a locale
+redirect (307/308) and Coolify's check expects 200, so enabling it would mark
+every deploy failed. A small health route per web app is the follow-up.
 
 Keys added by hand before those deploys: `ALLOWED_ORIGINS` on teskilat;
 `ALLOWED_ORIGINS`, `KEYCLOAK_ISSUER`, `KEYCLOAK_AUDIENCE`,
