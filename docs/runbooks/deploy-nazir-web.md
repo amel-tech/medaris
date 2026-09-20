@@ -134,8 +134,18 @@ You can always address an old build by its immutable digest:
 
 Read from Coolify through its API on 2026-09-15 (MDRS-86), not assumed: the
 `nazir-web` application has build pack `dockerimage`, so Coolify never builds
-from git and the GHCR image is exactly what runs. As of 2026-09-15 it still pulls **`ghcr.io/amel-tech/madrasah-frontend-nazir-web:nazir-dev`** — the old repository's image, on the tag that repository's `ci-dev.yaml` moved on every push to `main`. MDRS-86 re-points it to **`ghcr.io/amel-tech/medaris-nazir-web:latest`**
-(rollback value if that re-point has to be undone: `ghcr.io/amel-tech/madrasah-frontend-nazir-web:nazir-dev`).
+from git and the GHCR image is exactly what runs.
+
+Configuration and the running container are two different facts, so both are
+recorded here:
+
+| | Value |
+|---|---|
+| Coolify configuration (what the next deploy pulls) | `ghcr.io/amel-tech/madrasah-frontend-nazir-web:nazir-dev` — unchanged; the tag the old repository's `ci-dev.yaml` moved on every push to `main` |
+| Running container | the same image, last built 2026-06-18 |
+| Target | `ghcr.io/amel-tech/medaris-nazir-web:latest`, after this branch is on `main`, one `main` run has pushed `latest`, and the application's runtime keys are in place (§0 says there are no build inputs) |
+| Rollback value | `ghcr.io/amel-tech/madrasah-frontend-nazir-web:nazir-dev` |
+
 
 `latest` is deliberate: it is the tag every workflow run on the default branch
 and every release already moves, so `development` follows `main` without a
