@@ -74,23 +74,32 @@ access has confirmed nothing else references them.
 ## 2. Changes made in Coolify (reversible)
 
 Before any write, every application's full configuration and key list was
-dumped to files. One application was changed:
+dumped to files. Configuration and the running container are recorded
+separately, because a `PATCH` changes only what the *next* deploy pulls.
 
-| Application | Field | Before | After |
+| Application | Coolify configuration | Running container | Rollback value |
 | -- | -- | -- | -- |
-| `teskilat-service` | `docker_registry_image_name` | `ghcr.io/amel-tech/madrasah-backend-teskilat-api` | `ghcr.io/amel-tech/medaris-teskilat-api` |
-| `teskilat-service` | `docker_registry_image_tag` | `teskilat-dev` | `latest` |
-| `teskilat-service` | `health_check_enabled` / path / port | `false` / `/` / — | `true` / `/health` / `3002` |
+| `teskilat-service` | `ghcr.io/amel-tech/medaris-teskilat-api:sha-29f145e`, health check `/health:3002` on | the same image since 2026-09-15 — deployment `o8bd2jaa67w6qjjkm356yj69` finished, `running:healthy`, `https://api-teskilat-dev.medaris.net/health` → 200 | `ghcr.io/amel-tech/madrasah-backend-teskilat-api:teskilat-dev`, health check off |
+| `tedrisat-service` | `ghcr.io/amel-tech/medaris-tedrisat-api:sha-29f145e`, health check `/health:3001` on, `signoz-net` alias kept | the same image since 2026-09-16 — deployment `ib9pf3gab9ew060x77gazg41` finished, `running:healthy`, `https://api-tedrisat-dev.medaris.net/health` → 200; protected routes 401 without a token, CORS allows the dev web origins and refuses a foreign one | `ghcr.io/amel-tech/madrasah-backend-tedrisat-api:tedrisat-dev`, health check off |
+| `tedris-web`, `nizam-web`, `nazir-web`, `landing-web` | unchanged: `ghcr.io/amel-tech/madrasah-frontend-<app>:<app>-dev` | the same, last built 2026-06-18 | — (nothing to undo) |
 
-This is configuration only: the running container is untouched until a deploy
-is triggered, and `PATCH` with the *Before* column undoes it. teskilat went
-first because `ALLOWED_ORIGINS` is the only key it lacks. The other five stay on
-their old image until each has its missing keys.
+Why `sha-29f145e` and not `latest`: the two API images were built by
+dispatching each workflow from this branch, and a run outside the default
+branch pushes only `sha-<short>`. The first webhook deploy of each therefore
+failed on the missing `latest` (expected) and the application was re-pointed
+to the immutable tag and deployed through the API. `latest` becomes the
+configured tag once this branch is on `main` and one `main` run has pushed it.
 
-Not done, because this session's permission policy refused the writes: adding
-`ALLOWED_ORIGINS` to teskilat, writing `TESKILAT_SERVICE_COOLIFY_WEBHOOK` to the
-repository, and dispatching the Teskilat API workflow. Those three are the next
-manual steps; see MDRS-86 for the exact values.
+Keys added by hand before those deploys: `ALLOWED_ORIGINS` on teskilat;
+`ALLOWED_ORIGINS`, `KEYCLOAK_ISSUER`, `KEYCLOAK_AUDIENCE`,
+`KEYCLOAK_ALLOWED_CLIENTS`, `SWAGGER_ALLOW_IN_PRODUCTION` on tedrisat. The
+six `<APP>_COOLIFY_WEBHOOK` repository secrets were also entered by hand
+(this session's permission policy refused those writes).
+
+Still open on both APIs: the Coolify variable `NODE_ENV=development`
+overrides the image's `production`, which the health response confirms
+(`"environment":"development"`); it should be removed so the strict checks
+apply.
 
 ## 3. What this pull request carries
 

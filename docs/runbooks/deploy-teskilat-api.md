@@ -178,8 +178,18 @@ You can always address an old build by its immutable digest:
 
 Read from Coolify through its API on 2026-09-15 (MDRS-86), not assumed: the
 `teskilat-service` application has build pack `dockerimage`, so Coolify never builds
-from git and the GHCR image is exactly what runs. Since 2026-09-15 it pulls **`ghcr.io/amel-tech/medaris-teskilat-api:latest`**
-(rollback value if that re-point has to be undone: `ghcr.io/amel-tech/madrasah-backend-teskilat-api:teskilat-dev`).
+from git and the GHCR image is exactly what runs.
+
+Configuration and the running container are two different facts, so both are
+recorded here:
+
+| | Value | How it was verified |
+|---|---|---|
+| Coolify configuration (what the next deploy pulls) | `ghcr.io/amel-tech/medaris-teskilat-api:sha-29f145e` | `GET /api/v1/applications/<uuid>` after the `PATCH`, 2026-09-15 |
+| Running container | the same image — deployment `o8bd2jaa67w6qjjkm356yj69` finished, health check green, `https://api-teskilat-dev.medaris.net/health` → 200 | Coolify deployment status + the public endpoint, 2026-09-15 |
+| Target once this branch is on `main` | `ghcr.io/amel-tech/medaris-teskilat-api:latest` | not yet — a branch run never pushes `latest`, so the first verified deploy used the immutable `sha-` tag |
+| Rollback value | `ghcr.io/amel-tech/madrasah-backend-teskilat-api:teskilat-dev` | the configuration before MDRS-86 |
+
 
 `latest` is deliberate: it is the tag every workflow run on the default branch
 and every release already moves, so `development` follows `main` without a
