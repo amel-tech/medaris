@@ -5,12 +5,10 @@
   "targets": {
     "lint": {},
     "build": {
+      "dependsOn": ["^build", "^typecheck"],
       "inputs": [
         "production",
         "^production",
-        {
-          "env": "NEXT_PUBLIC_TEDRIS_APP_URL"
-        },
         {
           "env": "OTEL_EXPORTER_OTLP_ENDPOINT"
         },

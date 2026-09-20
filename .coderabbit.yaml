@@ -360,14 +360,14 @@ reviews:
            credential fallback is high severity; the correct pattern fails loudly at
            boot. Non-credential fallbacks (`PORT`, `LOG_LEVEL`, `DB_HOST`,
            `OTEL_EXPORTER_OTLP_ENDPOINT`, `SWAGGER_PATH`, cache TTLs) are fine.
-        2. SECRETS UNDER `NEXT_PUBLIC_`. Those values are inlined into the client
-           bundle at build time. apps/tedris/env.ts keeps `KEYCLOAK_CLIENT_SECRET`
-           (:9) and `NEXTAUTH_SECRET` (:12) in the `server` block and only public
-           OIDC values (`NEXT_PUBLIC_KEYCLOAK_ISSUER`, `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID`,
-           `NEXT_PUBLIC_NEXTAUTH_URL`, `NEXT_PUBLIC_API_MOCKING`,
-           `NEXT_PUBLIC_TEDRISAT_API_BASE_URL`) in `client`. A new
-           `NEXT_PUBLIC_*SECRET|*_TOKEN|*_KEY|*_PASSWORD`, or an entry moved from
-           `server` to `client`, is high severity.
+        2. ANYTHING UNDER `NEXT_PUBLIC_`. Those values are inlined into the client
+           bundle at build time, which pins the image to one environment. Since
+           MDRS-86 the four web apps declare NO `NEXT_PUBLIC_*` key: every
+           `client` block in apps/*/env.ts is empty, and the browser gets what it
+           needs (the Keycloak sign-out config, the avatar image host) from a
+           server action or a server component's props. A new `NEXT_PUBLIC_*`
+           key, or an entry moved from `server` to `client`, is high severity —
+           a secret under that prefix doubly so.
         3. A NEW VARIABLE IN THE WRONG NUMBER OF PLACES. @t3-oss/env-nextjs needs it
            in the schema block AND in `runtimeEnv` of env.ts, then in the root
            .env.example under the right prefix. An API key also needs a line in
@@ -417,9 +417,10 @@ reviews:
            20827887 requires `Verify` and `Commit hygiene` by exact name) is high.
 
         Do NOT report:
-        - `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID` / `_ISSUER` / `_NEXTAUTH_URL` /
-          `_TEDRISAT_API_BASE_URL` / `_API_MOCKING` as secrets. They are public by
-          design.
+        - `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_ISSUER` or `NEXTAUTH_URL` reaching the
+          browser through `getKeycloakSignOutConfig` (a server action) or as a
+          prop. They are public OIDC values by design; the point of MDRS-86 is
+          that they arrive at request time rather than being inlined.
         - Adopting dotenv, a secret manager or a config framework.
         - A bare dependency version you have not opened the package.json and seen.
 

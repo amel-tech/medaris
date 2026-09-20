@@ -73,10 +73,11 @@ COPY . .
 # apps/nazir/env.ts validates the environment at build time via
 # @t3-oss/env-nextjs, so `next build` needs values present. Since MDRS-25 there
 # is one .env, at the root; next.config.js applies it and strips the app prefix.
-# .env.example holds placeholders only. KNOWN LIMITATION, unchanged by MDRS-25:
-# every NEXT_PUBLIC_* value is inlined into the client bundle at build time, so
-# the placeholder is what ships. Fixing that means passing real values as build
-# args from the deploy workflow — MDRS-16 left it open and it is still open.
+# .env.example holds placeholders only, and that is all this build needs:
+# since MDRS-86 no NEXT_PUBLIC_ value exists in any web app, so nothing from
+# this file is inlined into the browser bundle. Every real value is read on the
+# server at request time from the container's environment, which makes this
+# image environment-agnostic — the same bytes serve development and production.
 # The placeholder .env is never copied into the runtime stage.
 RUN cp .env.example .env
 ENV NEXT_TELEMETRY_DISABLED=1

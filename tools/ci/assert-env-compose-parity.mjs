@@ -173,28 +173,10 @@ const ROOT_ONLY_KEYS = {
  * staleness checks below — the list cannot grow silently and cannot rot, which
  * is the only thing that would make it worse than no gate at all.
  */
-const NEXT_PUBLIC_BAKED_AT_BUILD =
-  "NEXT_PUBLIC_* is inlined into the client bundle at `next build`, not read at runtime. apps/<app>/Dockerfile copies .env.example to .env before the build, so the image carries the template's placeholder and no `environment:` entry can change it — a `.env` edit plus `docker compose up` does not reach it. Passing real values as build args is MDRS-16's remaining item (see the web-profile comment in docker-compose.yml); when that lands, the key becomes mapped and this entry must go.";
-
-/**
- * Every `NEXT_PUBLIC_*` key the template ships, named one by one rather than
- * matched by pattern, so the staleness checks below apply to each: the day
- * MDRS-16 passes one of them as a build arg, its entry fails as obsolete and
- * has to be removed, and a NEW `NEXT_PUBLIC_*` key fails check 5 until someone
- * adds it here deliberately.
- */
-const NEXT_PUBLIC_KEYS = [
-  "WEB__NEXT_PUBLIC_KEYCLOAK_ISSUER",
-  "WEB__NEXT_PUBLIC_TEDRISAT_API_BASE_URL",
-  "WEB__NEXT_PUBLIC_API_MOCKING",
-  "TEDRIS__NEXT_PUBLIC_NEXTAUTH_URL",
-  "TEDRIS__NEXT_PUBLIC_KEYCLOAK_CLIENT_ID",
-  "NIZAM__NEXT_PUBLIC_NEXTAUTH_URL",
-  "NIZAM__NEXT_PUBLIC_KEYCLOAK_CLIENT_ID",
-  "NAZIR__NEXT_PUBLIC_NEXTAUTH_URL",
-  "NAZIR__NEXT_PUBLIC_KEYCLOAK_CLIENT_ID",
-  "LANDING__NEXT_PUBLIC_TEDRIS_APP_URL",
-];
+// MDRS-86 removed every NEXT_PUBLIC_* key from the template: the web images
+// carry nothing environment-specific, so there is no "baked at build" class of
+// key left to exempt. A new NEXT_PUBLIC_* key fails check 5 like any other
+// unmapped key, which is the intended pressure.
 
 const UNMAPPED_ON_PURPOSE = {
   API__DB_HOST:
@@ -203,9 +185,6 @@ const UNMAPPED_ON_PURPOSE = {
     'compose pins `./dist/src/database/migrations`. The template names `./src/...` for `nest start`; the image runs compiled output, and tsc mirrors the source tree so the compiled migrations sit under dist/src/. Interpolating the template value made the service log "Can\'t find meta/_journal.json" and then serve traffic against an unmigrated database.',
   WEB__TEDRISAT_API_BASE_URL:
     "compose pins `TEDRISAT_API_BASE_URL: http://tedrisat:3001` on the three apps that call the API — the service name it answers on inside the compose network, the same shape as API__DB_HOST. The template's `localhost:3001` is only ever correct for `nx run <app>-web:dev`.",
-  ...Object.fromEntries(
-    NEXT_PUBLIC_KEYS.map((key) => [key, NEXT_PUBLIC_BAKED_AT_BUILD])
-  ),
 };
 
 /**

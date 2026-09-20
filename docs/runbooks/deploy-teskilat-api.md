@@ -8,6 +8,7 @@
 | Workflow | `.github/workflows/teskilat-api.yaml` |
 | GHCR image | `ghcr.io/amel-tech/medaris-teskilat-api` |
 | Container port | `3002` |
+| Coolify application | `teskilat-service` — uuid `hswgow0040s8k0wg8oggcos4`, project *Medaris*, environment `development`, server `mdrs2` (`45.147.47.108`), `https://api-teskilat-dev.medaris.net` |
 | Coolify webhook secret | `TESKILAT_SERVICE_COOLIFY_WEBHOOK` (repo secret — **not yet set**) |
 | Deploy token | `COOLIFY_DEPLOY_TOKEN` (org secret — present) |
 
@@ -163,17 +164,34 @@ You can always address an old build by its immutable digest:
 
 ### 3.2 Re-point the deployment
 
-Which of the two paths applies depends on how the Coolify service is
-configured, and that cannot be read from this repository.
+Read from Coolify through its API on 2026-09-15 (MDRS-86), not assumed: the
+`teskilat-service` application has build pack `dockerimage`, so Coolify never builds
+from git and the GHCR image is exactly what runs.
 
-**TODO(verify against Coolify):** determine whether the `Teskilat API` service pulls
-`ghcr.io/amel-tech/medaris-teskilat-api:latest` or a pinned tag/digest. Record the
-answer here. Everything below assumes one or the other.
+Configuration and the running container are two different facts, so both are
+recorded here:
+
+| | Value | How it was verified |
+|---|---|---|
+| Coolify configuration (what the next deploy pulls) | `ghcr.io/amel-tech/medaris-teskilat-api:sha-29f145e` | `GET /api/v1/applications/<uuid>` after the `PATCH`, 2026-09-15 |
+| Running container | the same image — deployment `o8bd2jaa67w6qjjkm356yj69` finished, health check green, `https://api-teskilat-dev.medaris.net/health` → 200 | Coolify deployment status + the public endpoint, 2026-09-15 |
+| Target once this branch is on `main` | `ghcr.io/amel-tech/medaris-teskilat-api:latest` | not yet — a branch run never pushes `latest`, so the first verified deploy used the immutable `sha-` tag |
+| Rollback value | `ghcr.io/amel-tech/madrasah-backend-teskilat-api:teskilat-dev` | the configuration before MDRS-86 |
+
+
+`latest` is deliberate: it is the tag every workflow run on the default branch
+and every release already moves, so `development` follows `main` without a
+tag of its own, and a future `production` environment pins `<semver>` instead.
+Path B below is therefore the live path; Path A is what a pinned environment
+would use.
+
 
 **Path A — the service pulls a pinned tag or digest.**
 Edit the image reference in the Coolify service configuration to the previous
 tag/digest and redeploy from the Coolify UI.
-**TODO(verify against Coolify):** exact field name and screen.
+The two fields are **Docker Image** and **Docker Image Tag** on the application's
+*General* tab; through the API they are `docker_registry_image_name` and
+`docker_registry_image_tag` on `PATCH /api/v1/applications/hswgow0040s8k0wg8oggcos4`.
 
 **Path B — the service pulls `:latest`.**
 Move `latest` back to the old digest, then fire the same webhook the workflow
@@ -197,9 +215,12 @@ curl --fail-with-body --silent --show-error \
 ```
 
 `$COOLIFY_WEBHOOK` is the value of the `TESKILAT_SERVICE_COOLIFY_WEBHOOK` repo secret.
-**TODO(verify against Coolify):** whether this webhook forces a fresh pull or
-only restarts the existing container. If it only restarts, the rollback also
-needs a pull step in Coolify.
+Its value is Coolify's deploy endpoint for this application,
+`https://coolify.medaris.net/api/v1/deploy?uuid=hswgow0040s8k0wg8oggcos4&force=false` — a
+*deploy*, not a restart, so for a `dockerimage` application it re-resolves the
+tag before starting the container. **TODO(verify against Coolify):** confirm on
+the first MDRS-86 deploy that the digest Coolify runs afterwards is the one the
+workflow pushed; until then treat "re-pull" as documented, not measured.
 
 ### 3.3 What NOT to do
 
@@ -228,8 +249,8 @@ exist, `nest build` emits `dist/src/main.js` here.
 Then confirm the deployed service, not just the image:
 
 * Coolify shows the service healthy and the container restarted within the last
-  few minutes. **TODO(verify against Coolify):** the service's URL and where its
-  logs are.
+  few minutes. The service answers at `https://api-teskilat-dev.medaris.net`; its logs are on
+  the application's *Logs* tab in Coolify, and in `docker logs` on `mdrs2`.
 * The running container reports the digest you intended:
 
 ```bash

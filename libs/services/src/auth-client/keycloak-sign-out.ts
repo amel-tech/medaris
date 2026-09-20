@@ -1,9 +1,9 @@
 import { signOut } from "next-auth/react";
 
 export interface KeycloakSignOutConfig {
-  /** `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID`. */
+  /** `KEYCLOAK_CLIENT_ID`, read on the server and handed over at call time. */
   clientId: string;
-  /** `NEXT_PUBLIC_KEYCLOAK_ISSUER` — the realm URL, without a trailing slash. */
+  /** `KEYCLOAK_ISSUER` — the realm URL, without a trailing slash. */
   issuer: string;
   /** Where Keycloak sends the browser afterwards; the app's own origin. */
   postLogoutRedirectUri: string;
@@ -24,7 +24,9 @@ export interface KeycloakSignOutConfig {
  * A factory rather than a function so this file reads no `~/env`: the three
  * values are the only thing that differed between the two byte-identical
  * copies this replaces, and the race above is exactly the kind of detail that
- * gets fixed in one copy and not the other.
+ * gets fixed in one copy and not the other. Since MDRS-86 each app obtains
+ * them from a server action at call time, not from `NEXT_PUBLIC_*` keys, so
+ * the browser bundle carries no environment-specific value.
  *
  * Client-only, hence the `auth-client` subpath: `next-auth/react` belongs to
  * the browser bundle, while `@medaris/services/auth` reaches `next/headers`
