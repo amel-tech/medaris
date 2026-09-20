@@ -1,8 +1,7 @@
 // MDRS-66: the root-.env bootstrap lives in exactly one place, `@medaris/env`.
 // Next only reads .env files from the project directory, so the root file is
-// applied to process.env here — early enough for NEXT_PUBLIC_* inlining and for
-// env.ts's build-time validation, both of which happen after this module is
-// evaluated.
+// applied to process.env here — early enough for env.ts's build-time
+// validation, which happens after this module is evaluated.
 //
 // `createRequire` rather than a static `import`: @medaris/env is CommonJS and
 // needs no build step, which matters because Next evaluates this file before any
@@ -27,10 +26,19 @@ const withNextIntl = createNextIntlPlugin("./lib/i18n/request.ts");
  * unparseable — no remote image is better than every remote image. env.ts
  * requires the variable, so a real build never reaches the empty case.
  *
+ * MDRS-86: this is the one Keycloak-derived value that is still fixed at
+ * `next build` — Next evaluates this file once, at build time, and the image
+ * build copies .env.example, so the allow-listed host is the host in
+ * WEB__KEYCLOAK_ISSUER there. That is the one shared Keycloak
+ * (auth.medaris.app) for every environment; only the realm differs, and the
+ * realm is not part of the host. A different Keycloak host would need a
+ * rebuild. The browser-side mirror (lib/image-hosts.ts) takes the runtime
+ * issuer from the server instead, so nothing here is NEXT_PUBLIC_.
+ *
  * @returns {import('next').NextConfig['images']['remotePatterns']}
  */
 function keycloakRemotePatterns() {
-  const issuer = process.env.NEXT_PUBLIC_KEYCLOAK_ISSUER;
+  const issuer = process.env.KEYCLOAK_ISSUER;
 
   if (!issuer) {
     return [];

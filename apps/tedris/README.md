@@ -39,11 +39,10 @@ NEXTAUTH_SECRET=your-nextauth-secret
 
 ### Client-side Variables
 
-```env
-NEXT_PUBLIC_KEYCLOAK_ISSUER=http://localhost:8080/realms/madrasah-dev
-NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=madrasah-client
-NEXT_PUBLIC_NEXTAUTH_URL=http://localhost:4000
-```
+None. Since MDRS-86 the app declares no `NEXT_PUBLIC_*` key: such values are
+inlined into the browser bundle at build time and would pin the image to one
+environment. Anything the browser needs is read on the server and passed down
+as a prop (see `components/header/header.tsx` → `UserAvatar`).
 
 ## 🌍 Internationalization (i18n)
 

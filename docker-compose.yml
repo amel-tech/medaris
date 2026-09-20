@@ -214,12 +214,10 @@ services:
   # only ever means "run the built app". Frontend development is
   # `pnpm nx run <app>-web:dev`, not a container.
   #
-  # NEXT_PUBLIC_* is baked into the image at BUILD time from .env.example's
-  # placeholder values (apps/<app>/Dockerfile does `cp .env.example .env`
-  # before `next build`). Locally the placeholders happen to be right
-  # (http://localhost:...), but changing a NEXT_PUBLIC_ value needs an image
-  # rebuild, not a restart. Passing real values as build args is MDRS-16's
-  # remaining item, out of scope here.
+  # Nothing environment-specific is baked into these images: since MDRS-86
+  # no web app declares a NEXT_PUBLIC_ key, so `cp .env.example .env` before
+  # `next build` only satisfies env.ts's build-time validation. Every value
+  # the running app uses comes from the `environment:` block below.
   #
   # Environment is spelled out key by key, exactly like the API services and
   # for the same two reasons (see the header comment): the runtime image has no
@@ -239,21 +237,12 @@ services:
   # of these; a hand-trimmed backend-only `.env` no longer works with any
   # compose command in this file.
   #
-  # These runtime keys also have baked NEXT_PUBLIC_ twins in .env.example
-  # (NEXT_PUBLIC_KEYCLOAK_ISSUER, NEXT_PUBLIC_KEYCLOAK_CLIENT_ID,
-  # NEXT_PUBLIC_TEDRISAT_API_BASE_URL) that a `.env` edit and `docker compose
-  # up` do not reach — they are compiled into the client bundle at `next
-  # build` (see above). Pointing WEB__KEYCLOAK_ISSUER at a different realm
-  # than NEXT_PUBLIC_KEYCLOAK_ISSUER, for instance, boots cleanly and fails
-  # only later, when the browser half of the OIDC flow and NextAuth's
-  # server-side validation disagree on which realm issued the token. Changing
-  # an issuer, client id, or API base URL for these containers means an image
-  # rebuild, not just a fresh `docker compose up`. MDRS-86 closed MDRS-16's
-  # build-arg item for the DEPLOY images: each web Dockerfile now takes the
-  # NEXT_PUBLIC_* keys as build args and the deploy workflow passes the real
-  # values in. This file passes none, deliberately, so `docker compose build`
-  # still produces the placeholder bundle: a local web image is for
-  # smoke-testing the container, not the OIDC round trip.
+  # These keys used to have NEXT_PUBLIC_ twins baked into the bundle, which
+  # a `.env` edit and `docker compose up` could not reach. MDRS-86 removed
+  # every NEXT_PUBLIC_ key from the web apps, so changing an issuer, client id
+  # or API base URL here is a restart, not a rebuild — the same as the APIs.
+  # The one build-time remnant is tedris's `images.remotePatterns` host,
+  # derived from WEB__KEYCLOAK_ISSUER in .env.example (see its next.config.js).
 
   tedris:
     build:
@@ -320,8 +309,7 @@ services:
       - tedrisat
 
   # No auth: landing carries neither Keycloak credentials nor NEXTAUTH_*, and
-  # it calls no API server-side — its NEXT_PUBLIC_TEDRIS_APP_URL link target is
-  # baked at build time like every other NEXT_PUBLIC_ value.
+  # it calls no API server-side.
   landing:
     build:
       context: .

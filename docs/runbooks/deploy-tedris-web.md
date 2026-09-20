@@ -19,34 +19,19 @@ The image name is not hardcoded: the workflow sets
 
 ---
 
-## 0. Build inputs the workflow refuses to run without
+## 0. Build inputs
 
-`NEXT_PUBLIC_*` is inlined into the client bundle at `next build`, so the
-values the browser gets are fixed when the image is built, not when Coolify
-starts it — a runtime variable on the Coolify service cannot change them.
-Since MDRS-86, `.github/workflows/tedris-web.yaml` passes them as
-Docker build args, read from **repository variables** (Settings → Secrets and
-variables → Actions → *Variables*) under this app's prefix:
+None. The image is environment-agnostic (MDRS-86): the app declares no
+`NEXT_PUBLIC_*` key, so nothing from `.env.example` — which the build stage
+copies only to satisfy `env.ts`'s build-time validation — reaches the browser
+bundle. Every value the running app uses is read on the server at request time
+from the Coolify application's environment, exactly like the two APIs, and the
+same image serves `development` and `production`.
 
-| Repository variable | | Reaches the build as |
-|---|---|---|
-| `TEDRIS_WEB_NEXT_PUBLIC_KEYCLOAK_ISSUER` | required | `NEXT_PUBLIC_KEYCLOAK_ISSUER` |
-| `TEDRIS_WEB_NEXT_PUBLIC_KEYCLOAK_CLIENT_ID` | required | `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID` |
-| `TEDRIS_WEB_NEXT_PUBLIC_NEXTAUTH_URL` | required | `NEXT_PUBLIC_NEXTAUTH_URL` |
-| `TEDRIS_WEB_NEXT_PUBLIC_TEDRISAT_API_BASE_URL` | required | `NEXT_PUBLIC_TEDRISAT_API_BASE_URL` |
-| `TEDRIS_WEB_NEXT_PUBLIC_API_MOCKING` | optional — omitted when empty | `NEXT_PUBLIC_API_MOCKING` |
-
-The *Resolve NEXT_PUBLIC build args* step fails the run, before any build
-minute is spent, when a required one is unset. It also never forwards an empty
-optional one: `libs/env/src/root-env.cjs` treats any key already in
-`process.env` — even `""` — as authoritative, so an empty build arg would
-shadow the `.env.example` placeholder and fail `env.ts` validation with a
-message from deep inside `next build`. A `docker build` with no build args at
-all still works and ships the placeholders; that is the local-only path.
-
-The server-side keys (`KEYCLOAK_CLIENT_SECRET`, `NEXTAUTH_SECRET`, …) are not
-build inputs: they are read at request time from the container's environment,
-which is where Coolify's variables do apply.
+The one build-time remnant is in tedris only: `images.remotePatterns` in its
+`next.config.js` is derived from `WEB__KEYCLOAK_ISSUER` in `.env.example` at
+`next build`, i.e. the host of the one shared Keycloak. A different Keycloak
+host would need a rebuild; a different realm does not.
 
 ---
 

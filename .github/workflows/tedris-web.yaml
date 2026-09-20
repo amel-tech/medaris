@@ -117,45 +117,6 @@ jobs:
             type=sha
             type=raw,value=stable,enable=${{ github.event_name == 'release' }}
 
-      # MDRS-86: NEXT_PUBLIC_* is inlined at `next build`, so the values the
-      # browser gets are decided in this job, not by a variable on the Coolify
-      # service. They come from repository variables (Settings → Secrets and
-      # variables → Actions → Variables), one set per app under the
-      # `TEDRIS_WEB_` prefix, and reach apps/tedris/Dockerfile as build args.
-      # Only non-empty values are passed on: an empty build arg is a
-      # defined-but-blank key that shadows the placeholder .env and fails
-      # env.ts validation deep inside the build, with a far worse message than
-      # this step's. Required ones missing fail here, before any build minute
-      # is spent and before a placeholder bundle could reach GHCR.
-      - name: Resolve NEXT_PUBLIC build args
-        id: buildargs
-        env:
-          NEXT_PUBLIC_KEYCLOAK_ISSUER: ${{ vars.TEDRIS_WEB_NEXT_PUBLIC_KEYCLOAK_ISSUER }}
-          NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: ${{ vars.TEDRIS_WEB_NEXT_PUBLIC_KEYCLOAK_CLIENT_ID }}
-          NEXT_PUBLIC_NEXTAUTH_URL: ${{ vars.TEDRIS_WEB_NEXT_PUBLIC_NEXTAUTH_URL }}
-          NEXT_PUBLIC_TEDRISAT_API_BASE_URL: ${{ vars.TEDRIS_WEB_NEXT_PUBLIC_TEDRISAT_API_BASE_URL }}
-          NEXT_PUBLIC_API_MOCKING: ${{ vars.TEDRIS_WEB_NEXT_PUBLIC_API_MOCKING }}
-        run: |
-          set -euo pipefail
-          required="NEXT_PUBLIC_KEYCLOAK_ISSUER NEXT_PUBLIC_KEYCLOAK_CLIENT_ID NEXT_PUBLIC_NEXTAUTH_URL NEXT_PUBLIC_TEDRISAT_API_BASE_URL"
-          optional="NEXT_PUBLIC_API_MOCKING"
-          missing=""
-          for k in $required; do
-            if [ -z "${!k:-}" ]; then missing="$missing TEDRIS_WEB_$k"; fi
-          done
-          if [ -n "$missing" ]; then
-            echo "::error::Repository variable(s) not set:$missing — without them the client bundle ships the .env.example placeholders (localhost API URL, dev issuer). See docs/runbooks/deploy-tedris-web.md §0."
-            exit 1
-          fi
-          {
-            echo "args<<EOF"
-            for k in $required $optional; do
-              if [ -n "${!k:-}" ]; then echo "$k=${!k}"; fi
-            done
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-          echo "Passing build args for: $required $optional (empty optional ones omitted)"
-
       - name: Build and push Docker image
         id: build
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
@@ -163,7 +124,6 @@ jobs:
           context: .
           file: ./apps/tedris/Dockerfile
           push: true
-          build-args: ${{ steps.buildargs.outputs.args }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=tedris-web

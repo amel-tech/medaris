@@ -72,25 +72,12 @@ RUN apk add --no-cache perl-utils
 COPY . .
 # apps/nazir/env.ts validates the environment at build time via
 # @t3-oss/env-nextjs, so `next build` needs values present. Since MDRS-25 there
-# is one .env, at the root; next.config.js applies it and strips the app prefix,
-# and a key already in process.env always wins over the file
-# (libs/env/src/root-env.cjs: `if (process.env[key] !== undefined) continue`).
-#
-# NEXT_PUBLIC_* is inlined into the client bundle by this build, so whatever is
-# in the environment HERE is what the browser gets — a runtime variable on the
-# Coolify service can never change it. MDRS-86 closes the build-arg item
-# MDRS-16 left open: the deploy workflow passes the real values as build args,
-# which are present in this stage's environment and therefore beat the copied
-# placeholder file. Each ARG deliberately has NO default: an unset ARG is
-# absent from the environment and the placeholder applies, so a plain
-# `docker build` and `docker compose build` keep working; an ARG set to "" is a
-# defined key that shadows the file and fails env.ts validation (`min(1)`)
-# loudly. The workflow refuses to pass an empty one for exactly that reason.
-ARG NEXT_PUBLIC_KEYCLOAK_ISSUER
-ARG NEXT_PUBLIC_KEYCLOAK_CLIENT_ID
-ARG NEXT_PUBLIC_NEXTAUTH_URL
-ARG NEXT_PUBLIC_TEDRISAT_API_BASE_URL
-ARG NEXT_PUBLIC_API_MOCKING
+# is one .env, at the root; next.config.js applies it and strips the app prefix.
+# .env.example holds placeholders only, and that is all this build needs:
+# since MDRS-86 no NEXT_PUBLIC_ value exists in any web app, so nothing from
+# this file is inlined into the browser bundle. Every real value is read on the
+# server at request time from the container's environment, which makes this
+# image environment-agnostic — the same bytes serve development and production.
 # The placeholder .env is never copied into the runtime stage.
 RUN cp .env.example .env
 ENV NEXT_TELEMETRY_DISABLED=1

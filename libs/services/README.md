@@ -70,7 +70,7 @@ function MyComponent() {
   
   const fetchData = async () => {
     const { decks } = createTedrisatAPIs({
-      baseUrl: process.env.NEXT_PUBLIC_TEDRISAT_API_BASE_URL!,
+      baseUrl: apiBaseUrl, // handed down from a server component — the web apps declare no NEXT_PUBLIC_* key (MDRS-86)
       token: session?.accessToken
     })
     
