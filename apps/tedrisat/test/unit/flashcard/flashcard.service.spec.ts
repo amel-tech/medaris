@@ -1,9 +1,11 @@
+import { AuthzForbiddenError, AuthzService } from "@medaris/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { CardIncludeEnum } from "../../../src/flashcard/domain/card-include.enum";
 import { FlashcardProgressStatus } from "../../../src/flashcard/domain/flashcard-progress-status.enum";
 import { FlashcardType } from "../../../src/flashcard/domain/flashcard-type.enum";
 import { CreateFlashcardDto } from "../../../src/flashcard/dto/create-flashcard.dto";
 import { CreateFlashcardProgressDto } from "../../../src/flashcard/dto/create-flashcard-progress.dto";
+import { CardNotFoundError } from "../../../src/flashcard/errors/card-not-found.error";
 import { FlashcardRepository } from "../../../src/flashcard/flashcard.repository";
 import { IFlashcard } from "../../../src/flashcard/flashcard.repository.interface";
 import { FlashcardService } from "../../../src/flashcard/flashcard.service";
@@ -24,13 +26,30 @@ describe("FlashcardService", () => {
     findByDeckId: vi.fn(),
     createMany: vi.fn(),
     replaceManyProgress: vi.fn(),
+    findVisibilityByIds: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
   };
 
+  // Only `isSystemAdmin` is reached from this service — the realm bypass on
+  // the progress route. Defaults to "not an admin" so every test below runs
+  // the checked path; the one bypass test overrides it.
+  const mockAuthzService = { isSystemAdmin: vi.fn().mockReturnValue(false) };
+
   const DECK_ID = "8f14e45f-ceea-467a-9e9a-1c1b9b0d5a11";
   const USER_ID = "623fdf08-fd0e-481b-a927-4a1c15135e62";
   const CARD_ID = "1f9d5b6a-3c2e-4f80-9a11-7de0c5f2b4a3";
+  // `replaceManyProgress` takes the whole token payload, not just `sub`: the
+  // SYSTEM_ADMIN bypass reads `realm_access`.
+  const USER = { sub: USER_ID } as Parameters<
+    FlashcardService["replaceManyProgress"]
+  >[0];
+  const ownVisibility = {
+    cardId: CARD_ID,
+    deckId: DECK_ID,
+    authorId: USER_ID,
+    isPublic: false,
+  };
 
   const card: IFlashcard = {
     id: CARD_ID,
@@ -49,6 +68,7 @@ describe("FlashcardService", () => {
       providers: [
         FlashcardService,
         { provide: FlashcardRepository, useValue: mockFlashcardRepository },
+        { provide: AuthzService, useValue: mockAuthzService },
       ],
     }).compile();
 
@@ -57,6 +77,7 @@ describe("FlashcardService", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    mockAuthzService.isSystemAdmin.mockReturnValue(false);
   });
 
   describe("findById", () => {
@@ -181,12 +202,20 @@ describe("FlashcardService", () => {
       { flashcardId: CARD_ID, status: FlashcardProgressStatus.LEARNING },
     ];
 
+    beforeEach(() => {
+      // Default: the caller owns the card's deck, so the visibility check
+      // passes and each test below exercises what it is actually about.
+      mockFlashcardRepository.findVisibilityByIds.mockResolvedValue([
+        ownVisibility,
+      ]);
+    });
+
     it("attaches the caller's userId to every row", async () => {
       mockFlashcardRepository.replaceManyProgress.mockResolvedValue([
         { ...progress[0], userId: USER_ID },
       ]);
 
-      const result = await service.replaceManyProgress(USER_ID, progress);
+      const result = await service.replaceManyProgress(USER, progress);
 
       expect(mockFlashcardRepository.replaceManyProgress).toHaveBeenCalledWith([
         { ...progress[0], userId: USER_ID },
@@ -207,7 +236,7 @@ describe("FlashcardService", () => {
       ] as CreateFlashcardProgressDto[];
       mockFlashcardRepository.replaceManyProgress.mockResolvedValue([]);
 
-      await service.replaceManyProgress(USER_ID, spoofed);
+      await service.replaceManyProgress(USER, spoofed);
 
       expect(mockFlashcardRepository.replaceManyProgress).toHaveBeenCalledWith([
         { ...progress[0], userId: USER_ID },
@@ -218,9 +247,84 @@ describe("FlashcardService", () => {
       const error = new Error("Database connection failed");
       mockFlashcardRepository.replaceManyProgress.mockRejectedValue(error);
 
-      await expect(
-        service.replaceManyProgress(USER_ID, progress)
-      ).rejects.toThrow(error);
+      await expect(service.replaceManyProgress(USER, progress)).rejects.toThrow(
+        error
+      );
+    });
+
+    // MDRS-43 AC-5. The two outcomes are deliberately different: "no such
+    // card" is a 404 and "a deck you cannot reach" is a 403. Before this,
+    // a real id in somebody else's private deck answered 200 and an unknown
+    // id tripped the `flashcardId` FK as a 500.
+    it("404s an id with no card behind it, and writes nothing", async () => {
+      mockFlashcardRepository.findVisibilityByIds.mockResolvedValue([]);
+
+      await expect(service.replaceManyProgress(USER, progress)).rejects.toThrow(
+        CardNotFoundError
+      );
+      expect(
+        mockFlashcardRepository.replaceManyProgress
+      ).not.toHaveBeenCalled();
+    });
+
+    it("403s a card in another user's private deck, and writes nothing", async () => {
+      mockFlashcardRepository.findVisibilityByIds.mockResolvedValue([
+        { ...ownVisibility, authorId: "11111111-1111-1111-1111-111111111111" },
+      ]);
+
+      await expect(service.replaceManyProgress(USER, progress)).rejects.toThrow(
+        AuthzForbiddenError
+      );
+      expect(
+        mockFlashcardRepository.replaceManyProgress
+      ).not.toHaveBeenCalled();
+    });
+
+    it("allows a card in another user's PUBLIC deck — studying one is the point", async () => {
+      mockFlashcardRepository.findVisibilityByIds.mockResolvedValue([
+        {
+          ...ownVisibility,
+          authorId: "11111111-1111-1111-1111-111111111111",
+          isPublic: true,
+        },
+      ]);
+      mockFlashcardRepository.replaceManyProgress.mockResolvedValue([]);
+
+      await service.replaceManyProgress(USER, progress);
+
+      expect(
+        mockFlashcardRepository.replaceManyProgress
+      ).toHaveBeenCalledOnce();
+    });
+
+    it("de-duplicates ids before asking, so a study session pays one query", async () => {
+      mockFlashcardRepository.replaceManyProgress.mockResolvedValue([]);
+
+      await service.replaceManyProgress(USER, [
+        ...progress,
+        ...progress,
+        ...progress,
+      ]);
+
+      expect(
+        mockFlashcardRepository.findVisibilityByIds
+      ).toHaveBeenCalledExactlyOnceWith([CARD_ID]);
+    });
+
+    // The realm bypass has to hold here too, or this route would be the one
+    // place in the module where SYSTEM_ADMIN does not.
+    it("skips the check entirely for SYSTEM_ADMIN", async () => {
+      mockAuthzService.isSystemAdmin.mockReturnValue(true);
+      mockFlashcardRepository.replaceManyProgress.mockResolvedValue([]);
+
+      await service.replaceManyProgress(USER, progress);
+
+      expect(
+        mockFlashcardRepository.findVisibilityByIds
+      ).not.toHaveBeenCalled();
+      expect(
+        mockFlashcardRepository.replaceManyProgress
+      ).toHaveBeenCalledOnce();
     });
   });
 

@@ -35,6 +35,18 @@ export class KoskService {
     return kosk;
   }
 
+  /**
+   * The köşk's owner, or `null` when there is no such köşk.
+   *
+   * `isOwner` below answers the same read as a boolean and is the right
+   * shape for most callers. `TedrisatRoleResolver` needs the third state:
+   * "no such köşk" is a 404 and "not your köşk" is a 403, and a boolean
+   * cannot tell them apart.
+   */
+  async findOwnerId(koskId: string): Promise<string | null> {
+    return this.koskRepo.findOwnerId(koskId);
+  }
+
   /** True if `userId` owns the köşk; false if not (incl. a missing köşk). */
   async isOwner(koskId: string, userId: string): Promise<boolean> {
     const ownerId = await this.koskRepo.findOwnerId(koskId);

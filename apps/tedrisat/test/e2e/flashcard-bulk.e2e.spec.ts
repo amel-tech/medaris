@@ -17,6 +17,21 @@ import { TestDatabaseUtils } from "../helpers/test-database.helper";
  * nothing bounded how many rows a single INSERT could carry.
  */
 
+/**
+ * The error code every deny in this spec now carries.
+ *
+ * It used to be `DECK_FORBIDDEN` — `FlashcardDeckService.assertVisibleTo`'s
+ * own error, raised from inside the handler. MDRS-43 moved the decision in
+ * front of the handler: these routes carry `@Authz`, so `AuthzGuard` denies
+ * first and `AuthzForbiddenError` is what reaches the wire. The status is
+ * unchanged at 403, and the protection is the same protection — what moved is
+ * which layer names it, and it is now the same name on every guarded route
+ * instead of one per module. `flashcard-label.e2e.spec.ts` still asserts
+ * `DECK_FORBIDDEN`, correctly: the label controllers are outside MDRS-43's
+ * four and still decide in the service.
+ */
+const AUTHZ_FORBIDDEN = "AUTHZ_FORBIDDEN";
+
 const card = (n: number) => ({
   type: FlashcardType.VOCABULARY,
   contentFront: `front ${n}`,
@@ -252,7 +267,7 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
       .send(cards(3));
 
     expect(response.status).toBe(403);
-    expect(response.body.code).toBe("DECK_FORBIDDEN");
+    expect(response.body.code).toBe(AUTHZ_FORBIDDEN);
     // The finding is a write, so assert the absence of rows rather than
     // trusting the status code alone.
     expect(await countCards()).toBe(0);
@@ -267,7 +282,7 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
       });
 
     expect(response.status).toBe(403);
-    expect(response.body.code).toBe("DECK_FORBIDDEN");
+    expect(response.body.code).toBe(AUTHZ_FORBIDDEN);
     expect(await countCards()).toBe(0);
   });
 
@@ -277,7 +292,7 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
       .send(cards(2));
 
     expect(response.status).toBe(403);
-    expect(response.body.code).toBe("DECK_FORBIDDEN");
+    expect(response.body.code).toBe(AUTHZ_FORBIDDEN);
     expect(await countCards()).toBe(0);
   });
 
@@ -336,13 +351,60 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
       .send(cards(3));
 
     expect(response.status).toBe(403);
-    expect(response.body.code).toBe("DECK_FORBIDDEN");
+    expect(response.body.code).toBe(AUTHZ_FORBIDDEN);
 
     const cardsInPublicDeck = await request(ownerApp.getHttpServer()).get(
       `/flashcard/cards?deckId=${publicDeck.body.id}`
     );
     expect(cardsInPublicDeck.status).toBe(200);
     expect(cardsInPublicDeck.body).toHaveLength(0);
+  });
+
+  /**
+   * MDRS-43 hole #3, the mirror image of the test above. `resolveDeckRole`
+   * reads `authorId` BEFORE `isPublic`; get that order wrong and making your
+   * own deck public demotes you to a stranger on it, which is a one-way door:
+   * flipping the flag back is itself an owner scope.
+   *
+   * The unit spec pins the ordering against a stubbed service. This pins it
+   * against the live guard, because that is where the consequence lands — the
+   * scopes are resolved through the matrix, and the deck row comes from
+   * Postgres rather than from a mock that could agree with the bug.
+   */
+  it("keeps every owner scope on the owner's own PUBLIC deck", async () => {
+    const publicDeck = await request(ownerApp.getHttpServer())
+      .post("/flashcard/decks")
+      .send({ title: "Owner Goes Public", isPublic: true });
+    expect(publicDeck.status).toBe(201);
+    const id = publicDeck.body.id;
+
+    // create_flashcard
+    const created = await request(ownerApp.getHttpServer())
+      .post(`/flashcard/decks/${id}/cards/bulk`)
+      .send(cards(1));
+    expect(created.status).toBe(201);
+
+    // manage_flashcards, through the card's parent-deck resolver
+    const listed = await request(ownerApp.getHttpServer()).get(
+      `/flashcard/cards?deckId=${id}`
+    );
+    expect(listed.status).toBe(200);
+    const patchedCard = await request(ownerApp.getHttpServer())
+      .patch(`/flashcard/cards/${listed.body[0].id}`)
+      .send({ contentFront: "still mine" });
+    expect(patchedCard.status).toBe(200);
+
+    // manage_private_deck — including the flag itself, which is the way back
+    const backToPrivate = await request(ownerApp.getHttpServer())
+      .patch(`/flashcard/decks/${id}`)
+      .send({ title: "Back To Mine" });
+    expect(backToPrivate.status).toBe(200);
+    expect(backToPrivate.body.title).toBe("Back To Mine");
+
+    const removed = await request(ownerApp.getHttpServer()).delete(
+      `/flashcard/decks/${id}`
+    );
+    expect(removed.status).toBe(200);
   });
 
   /**
@@ -381,7 +443,7 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
     );
 
     expect(response.status).toBe(403);
-    expect(response.body.code).toBe("DECK_FORBIDDEN");
+    expect(response.body.code).toBe(AUTHZ_FORBIDDEN);
 
     // The row, not just the status code: a cascade would have taken the cards.
     const survivor = await request(ownerApp.getHttpServer()).get(
@@ -403,7 +465,7 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
       .send({ isPublic: true, title: "Hijacked" });
 
     expect(response.status).toBe(403);
-    expect(response.body.code).toBe("DECK_FORBIDDEN");
+    expect(response.body.code).toBe(AUTHZ_FORBIDDEN);
 
     const unchanged = await request(ownerApp.getHttpServer()).get(
       `/flashcard/decks/${deckId}`
@@ -419,7 +481,7 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
       .send({ title: "Hijacked", isPublic: true });
 
     expect(response.status).toBe(403);
-    expect(response.body.code).toBe("DECK_FORBIDDEN");
+    expect(response.body.code).toBe(AUTHZ_FORBIDDEN);
   });
 
   /**
@@ -481,13 +543,13 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
       .patch(`/flashcard/cards/${cardId}`)
       .send({ contentFront: "defaced" });
     expect(patched.status).toBe(403);
-    expect(patched.body.code).toBe("DECK_FORBIDDEN");
+    expect(patched.body.code).toBe(AUTHZ_FORBIDDEN);
 
     const deleted = await request(attackerApp.getHttpServer()).delete(
       `/flashcard/cards/${cardId}`
     );
     expect(deleted.status).toBe(403);
-    expect(deleted.body.code).toBe("DECK_FORBIDDEN");
+    expect(deleted.body.code).toBe(AUTHZ_FORBIDDEN);
 
     const after = await request(ownerApp.getHttpServer()).get(
       `/flashcard/cards/${cardId}`
@@ -537,7 +599,7 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
     );
 
     expect(response.status).toBe(403);
-    expect(response.body.code).toBe("DECK_FORBIDDEN");
+    expect(response.body.code).toBe(AUTHZ_FORBIDDEN);
 
     const collections = await request(attackerApp.getHttpServer()).get(
       "/flashcard/decks/collections"
@@ -663,7 +725,7 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
       .send([{ flashcardId: cardId, status: "LEARNING" }]);
 
     expect(response.status).toBe(403);
-    expect(response.body.code).toBe("DECK_FORBIDDEN");
+    expect(response.body.code).toBe(AUTHZ_FORBIDDEN);
   });
 
   it("answers 404, not 500, for progress against a card that does not exist", async () => {
@@ -708,6 +770,6 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
     );
 
     expect(response.status).toBe(403);
-    expect(response.body.code).toBe("DECK_FORBIDDEN");
+    expect(response.body.code).toBe(AUTHZ_FORBIDDEN);
   });
 });

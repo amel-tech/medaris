@@ -1,4 +1,13 @@
-import { AuthGuard, MedarisValidationPipe } from "@medaris/common";
+import {
+  AuthGuard,
+  Authz,
+  AuthzExempt,
+  AuthzGuard,
+  byParam,
+  ENTITIES,
+  MedarisValidationPipe,
+  SCOPES,
+} from "@medaris/common";
 import {
   Body,
   Controller,
@@ -36,7 +45,7 @@ import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
 
 @ApiTags("courses")
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, AuthzGuard)
 @Controller()
 export class CourseController {
   constructor(private readonly courseService: CourseService) {}
@@ -47,6 +56,10 @@ export class CourseController {
   })
   @ApiOkResponse({ type: CourseSummaryResponse, isArray: true })
   @ApiNotFoundResponse()
+  // Authorized against the parent köşk, not the courses: the list has no
+  // single resource of its own, and `VIEW` on a köşk is what decides whether
+  // its shelf of courses is visible at all.
+  @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK, "koskId"))
   @Get("kosks/:koskId/courses")
   async findByKosk(
     @Req() request: AuthorizedRequest,
@@ -61,6 +74,10 @@ export class CourseController {
   })
   @ApiCreatedResponse({ type: CourseDetailResponse })
   @ApiNotFoundResponse()
+  // A course that does not exist yet is authorized against its parent köşk —
+  // `MANAGE_COURSES` sits on the köşk's KOSK_MANAGER row and on no other, so
+  // only the köşk's owner may open a course under it.
+  @Authz(SCOPES.MANAGE_COURSES, byParam(ENTITIES.KOSK, "koskId"))
   @Post("kosks/:koskId/courses")
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   async create(
@@ -76,6 +93,9 @@ export class CourseController {
     operationId: "getEnrolledCourses",
   })
   @ApiOkResponse({ type: EnrolledCourseResponse, isArray: true })
+  // Exempt: no resource in the request. The rows are the caller's own
+  // enrollments, selected by `sub`, so there is nothing for a scope to name.
+  @AuthzExempt()
   @Get("courses/enrolled")
   async findEnrolled(
     @Req() request: AuthorizedRequest
@@ -89,6 +109,18 @@ export class CourseController {
   })
   @ApiOkResponse({ type: CourseDetailResponse })
   @ApiNotFoundResponse()
+  // TODO(MDRS-43 · open decision): exempt as a PLACEHOLDER, not as a verdict.
+  //
+  // `@Authz(VIEW, byParam(COURSE))` is the obvious annotation and it would
+  // change behaviour: the COURSE matrix gives its PUBLIC row `[ENROLL]` and
+  // nothing else, so a caller with no relationship to the course — today the
+  // common case, and the one tedris's course landing page is built for — would
+  // start getting 403 on the page that carries the "Kayıt ol" button. Plan
+  // §4.1 does read that way (VIEW starts at PENDING, VIEW_DETAILS at
+  // ENROLLED), so the choice is between honouring the matrix and keeping an
+  // unauthenticated-browse flow that exists in the product today. That is a
+  // product decision, not a mechanical mapping, so it is not made here.
+  @AuthzExempt()
   @Get("courses/:id")
   async findById(
     @Req() request: AuthorizedRequest,
@@ -103,6 +135,7 @@ export class CourseController {
   })
   @ApiOkResponse({ type: CourseDetailResponse })
   @ApiNotFoundResponse()
+  @Authz(SCOPES.EDIT, byParam(ENTITIES.COURSE))
   @Patch("courses/:id")
   async update(
     @Req() request: AuthorizedRequest,
@@ -120,6 +153,7 @@ export class CourseController {
   })
   @ApiOkResponse({ type: CourseDetailResponse })
   @ApiNotFoundResponse()
+  @Authz(SCOPES.EDIT, byParam(ENTITIES.COURSE))
   @Put("courses/:id")
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   async replace(
@@ -136,6 +170,7 @@ export class CourseController {
   })
   @ApiOkResponse({ type: Boolean })
   @ApiNotFoundResponse()
+  @Authz(SCOPES.DELETE, byParam(ENTITIES.COURSE))
   @Delete("courses/:id")
   async delete(
     @Req() request: AuthorizedRequest,
@@ -150,6 +185,10 @@ export class CourseController {
   })
   @ApiCreatedResponse({ type: EnrollmentResponse })
   @ApiNotFoundResponse()
+  // `ENROLL` is the one scope on the COURSE PUBLIC row: any authenticated
+  // caller may ask to join a course that exists. Whether the request lands as
+  // ENROLLED or PENDING is `requires_approval`'s business, not the matrix's.
+  @Authz(SCOPES.ENROLL, byParam(ENTITIES.COURSE))
   @Post("courses/:id/enroll")
   async enroll(
     @Req() request: AuthorizedRequest,
@@ -172,6 +211,11 @@ export class CourseController {
   })
   @ApiOkResponse({ type: PendingEnrollmentResponse, isArray: true })
   @ApiNotFoundResponse()
+  // Köşk-scoped, so it authorizes on the köşk: `MANAGE_ENROLLMENTS` lives on
+  // the COURSE row and there is no course in this request. `MANAGE_COURSES` is
+  // the KOSK row's owner-only scope and the closest true statement — the
+  // service still narrows to the köşk's owner.
+  @Authz(SCOPES.MANAGE_COURSES, byParam(ENTITIES.KOSK, "koskId"))
   @Get("kosks/:koskId/enrollments/pending")
   async pendingEnrollments(
     @Req() request: AuthorizedRequest,
@@ -193,6 +237,7 @@ export class CourseController {
   // follow-up in docs/migration/mdrs-58-tedrisat-spec-exporter.md.
   @ApiCreatedResponse({ type: EnrollmentResponse })
   @ApiNotFoundResponse()
+  @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
   @Post("courses/:id/enrollments/:userId/approve")
   async approveEnrollment(
     @Req() request: AuthorizedRequest,
@@ -208,6 +253,11 @@ export class CourseController {
   })
   @ApiOkResponse({ type: Boolean })
   @ApiNotFoundResponse()
+  // Same scope as approve: the matrix does not distinguish granting a seat
+  // from refusing one. `MANAGE_ENROLLMENTS` reaches MUDERRIS as well as
+  // KOSK_MANAGER, and `CourseService` still restricts both routes to the
+  // köşk's owner — the guard is the outer fence, not the whole rule.
+  @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
   @Delete("courses/:id/enrollments/:userId")
   async rejectEnrollment(
     @Req() request: AuthorizedRequest,
@@ -222,6 +272,13 @@ export class CourseController {
     operationId: "updateCourseProgress",
   })
   @ApiOkResponse({ type: EnrollmentResponse })
+  // The matrix has no "record progress" scope, and the real requirement is
+  // that the caller hold an active enrollment. `VIEW_DETAILS` is exactly that
+  // line — ENROLLED, MUDERRIS and KOSK_MANAGER carry it, PENDING and PUBLIC do
+  // not — so it is the honest way to say it with the scopes that exist.
+  // `CourseService.updateProgress` remains the precise check: it 404s a
+  // missing or still-pending enrollment rather than silently promoting it.
+  @Authz(SCOPES.VIEW_DETAILS, byParam(ENTITIES.COURSE))
   @Put("courses/:id/progress")
   async updateProgress(
     @Req() request: AuthorizedRequest,

@@ -1,4 +1,12 @@
-import { AuthGuard } from "@medaris/common";
+import {
+  AuthGuard,
+  Authz,
+  AuthzExempt,
+  AuthzGuard,
+  byParam,
+  ENTITIES,
+  SCOPES,
+} from "@medaris/common";
 import {
   Body,
   Controller,
@@ -34,7 +42,7 @@ const MAX_PAGE_SIZE = 50;
 
 @ApiTags("kosks")
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, AuthzGuard)
 @Controller("kosks")
 export class KoskController {
   constructor(private readonly koskService: KoskService) {}
@@ -46,6 +54,12 @@ export class KoskController {
   @ApiQuery({ name: "page", required: false, type: Number })
   @ApiQuery({ name: "limit", required: false, type: Number })
   @ApiOkResponse({ type: PaginatedKoskResponse })
+  // Exempt: a paginated list has no single resource to authorize. Note what
+  // this does NOT do — `kosks.is_private` is still not applied to the listing,
+  // and the matrix cannot apply it either, because the KOSK PUBLIC row grants
+  // `VIEW` unconditionally. Enforcing that column is its own change; the
+  // MDRS-43 brief supersedes it and this task does not smuggle it in.
+  @AuthzExempt()
   @Get()
   async findAll(
     @Req() request: AuthorizedRequest,
@@ -63,6 +77,7 @@ export class KoskController {
   })
   @ApiOkResponse({ type: KoskResponse })
   @ApiNotFoundResponse()
+  @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK))
   @Get(":id")
   async findById(
     @Req() request: AuthorizedRequest,
@@ -76,6 +91,17 @@ export class KoskController {
     operationId: "createKosk",
   })
   @ApiCreatedResponse({ type: KoskResponse })
+  // TODO(MDRS-43 · open decision): exempt as a PLACEHOLDER, not as a verdict.
+  //
+  // `CREATE_KOSK` is deliberately on NO kosk matrix row — `auth-matrix.ts`
+  // says so above the PUBLIC row, and `TedrisatRoleResolver.resolveKoskRole`
+  // repeats the warning — because köşk creation is meant to be SYSTEM_ADMIN
+  // only, through the realm bypass. So `@Authz(CREATE_KOSK, forNew(KOSK))`
+  // here would 403 every ordinary caller, and today ordinary callers open
+  // köşks. The two ways out are opposite decisions: apply the matrix and lose
+  // self-service köşks, or keep self-service and leave this route exempt with
+  // that written down. Neither is a mapping question, so neither is made here.
+  @AuthzExempt()
   @Post()
   async create(
     @Req() request: AuthorizedRequest,
@@ -92,6 +118,7 @@ export class KoskController {
   })
   @ApiOkResponse({ type: KoskResponse })
   @ApiNotFoundResponse()
+  @Authz(SCOPES.EDIT, byParam(ENTITIES.KOSK))
   @Patch(":id")
   async update(
     @Req() request: AuthorizedRequest,
@@ -108,6 +135,7 @@ export class KoskController {
   })
   @ApiOkResponse({ type: Boolean })
   @ApiNotFoundResponse()
+  @Authz(SCOPES.DELETE, byParam(ENTITIES.KOSK))
   @Delete(":id")
   async delete(
     @Req() request: AuthorizedRequest,
@@ -122,6 +150,8 @@ export class KoskController {
   })
   @ApiCreatedResponse({ type: Boolean })
   @ApiNotFoundResponse()
+  // Following is a read affordance: you may subscribe to a köşk you may see.
+  @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK))
   @Post(":id/follow")
   async follow(
     @Req() request: AuthorizedRequest,
@@ -135,6 +165,10 @@ export class KoskController {
     operationId: "unfollowKosk",
   })
   @ApiOkResponse({ type: Boolean })
+  // Exempt, unlike `follow`: this deletes the caller's own `kosk_followers`
+  // row, and leaving must not depend on still being allowed in. Same reasoning
+  // as `FlashcardDeckController.removeFromUserCollection`.
+  @AuthzExempt()
   @Delete(":id/follow")
   async unfollow(
     @Req() request: AuthorizedRequest,

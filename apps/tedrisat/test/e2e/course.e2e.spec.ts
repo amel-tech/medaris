@@ -2,7 +2,10 @@ import { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { DatabaseService } from "../../src/database/database.service";
-import { courses } from "../../src/database/schema/course.schema";
+import {
+  courseMuderris,
+  courses,
+} from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
 import { TestDatabaseUtils } from "../helpers/test-database.helper";
@@ -668,6 +671,60 @@ describe("CourseController (e2e)", () => {
       await request(app.getHttpServer())
         .delete(`/courses/${otherCourse.id}`)
         .expect(403);
+    });
+
+    /**
+     * MDRS-43 AC-6, the müderris scenario. It resolves to a NEGATIVE in our
+     * schema, and the divergence is worth pinning rather than papering over:
+     *
+     *   - plan §4.1, transcribed into `MATRIX.course`, gives MUDERRIS `EDIT`,
+     *     so `@Authz(SCOPES.EDIT)` on `PATCH /courses/:id` lets a müderris
+     *     through the guard;
+     *   - `CourseService.assertCourseOwner` then narrows to the parent köşk's
+     *     owner, and a müderris who does not own the köşk is refused there.
+     *
+     * The guard is the outer fence and the service is the inner one, so the
+     * effective rule is the stricter of the two and nothing is open that was
+     * closed before. What this test records is that the two layers do not yet
+     * agree — closing that gap means either widening the service to the matrix
+     * or narrowing the matrix, and both are product decisions outside this
+     * task. Note also HOW the müderris has to be made: `course_muderris.userId`
+     * is nullable, the create DTO never sets it, and there is no assignment
+     * endpoint — so MUDERRIS is unreachable through the API today and a direct
+     * insert is the only way to reach the row at all.
+     */
+    it("refuses a müderris who does not own the köşk, though the matrix grants EDIT", async () => {
+      const [otherKosk] = await databaseService.db
+        .insert(kosks)
+        .values({ ownerId: OTHER_USER_ID, name: "Müderris Köşkü" })
+        .returning();
+      const [course] = await databaseService.db
+        .insert(courses)
+        .values({
+          koskId: otherKosk.id,
+          authorId: OTHER_USER_ID,
+          title: "Sarf Dersi",
+          status: CourseStatus.PUBLISHED,
+        })
+        .returning();
+      await databaseService.db.insert(courseMuderris).values({
+        courseId: course.id,
+        userId: TEST_USER_ID,
+        name: "Müderris Ahmed Hilmi",
+      });
+
+      await request(app.getHttpServer())
+        .patch(`/courses/${course.id}`)
+        .send({ title: "Müderris düzeltti" })
+        .expect(403);
+
+      // and the title really did not move
+      await request(app.getHttpServer())
+        .get(`/courses/${course.id}`)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.title).toBe("Sarf Dersi");
+        });
     });
 
     it("hides DRAFT courses from non-owners", async () => {

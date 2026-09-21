@@ -1,4 +1,14 @@
-import { AuthGuard, ExcelService } from "@medaris/common";
+import {
+  AuthGuard,
+  Authz,
+  AuthzExempt,
+  AuthzGuard,
+  byParam,
+  byQuery,
+  ENTITIES,
+  ExcelService,
+  SCOPES,
+} from "@medaris/common";
 import {
   Body,
   Controller,
@@ -39,6 +49,7 @@ import {
 } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { BULK_THROTTLE } from "../config/throttle-env";
+import { byParentDeckOfCard } from "./authz/deck-of-card.resolver";
 import {
   IncludeApiQuery,
   IncludeQuery,
@@ -58,7 +69,6 @@ import { FlashcardProgressResponse } from "./dto/flashcard-progress-response.dto
 import { FlashcardResponse } from "./dto/flashcard-response.dto";
 import { UpdateFlashcardDto } from "./dto/update-flashcard.dto";
 import { BulkValidationError } from "./errors/bulk-validation.error";
-import { CardNotFoundError } from "./errors/card-not-found.error";
 import { FlashcardService } from "./flashcard.service";
 import { FlashcardBulkService } from "./flashcard-bulk.service";
 import { FlashcardDeckService } from "./flashcard-deck.service";
@@ -66,7 +76,7 @@ import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
 
 @ApiTags("flashcard-cards")
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, AuthzGuard)
 @Controller("flashcard/")
 export class FlashcardController {
   constructor(
@@ -89,6 +99,7 @@ export class FlashcardController {
     description: "Deck is private and owned by another user",
   })
   @IncludeApiQuery(CardIncludeEnum)
+  @Authz(SCOPES.VIEW, byParentDeckOfCard())
   @Get("cards/:id")
   async findById(
     @Req() request: AuthorizedRequest,
@@ -98,12 +109,10 @@ export class FlashcardController {
     const userId = request.user.sub;
     // `FlashcardRepository.findById` filters on `flashcards.id` alone, so the
     // card's own row proves nothing about who may see it — the deck is the
-    // only thing carrying a visibility rule. But that row already holds
-    // `deckId`, so read it first and decide from what it carries rather than
-    // paying `deckOf` a separate round trip for the same row; three serial
-    // hops become two. Nothing leaks by deciding after the read: this handler
-    // is what puts the card into the response, and a card in somebody else's
-    // private deck still answers 403 before any of it is serialised.
+    // only thing carrying a visibility rule. `byParentDeckOfCard` above walks
+    // `flashcards.deckId` and hands the guard the deck, so by the time this
+    // handler runs the access question is already settled and the only thing
+    // left is whether the card row itself exists.
     const card = await this.cardService.findById(cardId, userId, include);
     if (!card) {
       throw new HttpException(
@@ -111,7 +120,6 @@ export class FlashcardController {
         HttpStatus.NOT_FOUND
       );
     }
-    await this.deckService.assertReadable(card.deckId, userId);
     return card;
   }
 
@@ -127,6 +135,7 @@ export class FlashcardController {
   })
   @ApiQuery({ name: "deckId", required: true, type: String })
   @IncludeApiQuery(CardIncludeEnum)
+  @Authz(SCOPES.VIEW, byQuery(ENTITIES.FLASHCARD_DECK, "deckId"))
   @Get("cards")
   async findByDeckId(
     @Req() request: AuthorizedRequest,
@@ -136,31 +145,10 @@ export class FlashcardController {
     const userId = request.user.sub;
     // The `userId` threaded into `findByDeckId` is NOT a scoping argument —
     // it only narrows the optional `progress` relation, and the rows come
-    // back filtered on `deckId` alone either way. Without this line the
-    // export route's 403 was reachable around: the same card content came
-    // back from `GET /flashcard/cards?deckId=<id>`. `assertReadable`, not
-    // `assertOwner`, because a public deck is meant to be browsable.
-    await this.deckService.assertReadable(deckId, userId);
+    // back filtered on `deckId` alone either way. The guard is what scopes
+    // this route, off the `deckId` QUERY param rather than a route param;
+    // `VIEW` and not an owner scope, because a public deck is browsable.
     return this.cardService.findByDeckId(deckId, userId, include);
-  }
-
-  /**
-   * The parent deck of a card, or a 404 in the shape the card routes already
-   * return. Cards carry no access rule of their own — `flashcards.authorId`
-   * is provenance, not permission, and a deck's cards are all written by its
-   * author anyway — so every `cards/:id` handler decides on the deck.
-   */
-  private async deckOf(cardId: string): Promise<string> {
-    const deckId = await this.cardService.findDeckId(cardId);
-    if (deckId === null) {
-      // `CardNotFoundError`, not a bare `HttpException`: the same 404 the
-      // labeling routes raise for the same question, so a client can branch on
-      // `CARD_NOT_FOUND` rather than on prose. The inline 404 below on
-      // `findById` is the card's own row being absent, which is a different
-      // read and keeps its own message.
-      throw new CardNotFoundError(cardId);
-    }
-    return deckId;
   }
 
   // POST Requests
@@ -175,6 +163,7 @@ export class FlashcardController {
   @ApiCreatedResponse({ type: FlashcardResponse, isArray: true })
   @ApiNotFoundResponse({ description: "Deck not found" })
   @ApiForbiddenResponse({ description: "Deck belongs to another user" })
+  @Authz(SCOPES.CREATE_FLASHCARD, byParam(ENTITIES.FLASHCARD_DECK, "deckId"))
   @Post("decks/:deckId/cards")
   async createMany(
     @Req() request: AuthorizedRequest,
@@ -182,12 +171,12 @@ export class FlashcardController {
     @Body(new ParseArrayPipe({ items: CreateFlashcardDto }))
     cardsDto: CreateFlashcardDto[]
   ): Promise<FlashcardResponse[]> {
-    // Ownership is asserted at the HTTP edge on purpose: this is the MDRS-63
-    // stopgap that MDRS-43 replaces with @Authz on exactly these handlers.
-    // The service methods below are NOT guarded — do not copy this
-    // placement into a module MDRS-43 will not revisit.
+    // The MDRS-63 `assertOwner` stopgap is now the `@Authz` above — this is
+    // the replacement that comment promised. `CREATE_FLASHCARD` rather than a
+    // manage scope: on today's reachable matrix only DECK_OWNER carries it,
+    // so behaviour is unchanged, but the kosk/medrese/course deck variants
+    // land on this same row when their resolver dispatch does.
     const authorId = request.user.sub;
-    await this.deckService.assertOwner(deckId, authorId);
     return this.cardService.createMany(deckId, authorId, cardsDto);
   }
 
@@ -203,30 +192,28 @@ export class FlashcardController {
   @ApiForbiddenResponse({
     description: "A card's deck is private and owned by another user",
   })
+  // Exempt: `@Authz` names ONE resource and this route's body names N cards
+  // in any number of decks, so the check cannot be expressed as a decorator
+  // without authorizing only the first id. The equivalent lives one layer
+  // down, in `FlashcardService.replaceManyProgress`, which resolves every
+  // id's deck in a single query and separates "no such card" (404) from
+  // "deck you cannot reach" (403).
+  @AuthzExempt()
   @Put("cards/progress")
   async replaceManyProgress(
     @Req() request: AuthorizedRequest,
     @Body(new ParseArrayPipe({ items: CreateFlashcardProgressDto }))
     progressDto: CreateFlashcardProgressDto[]
   ): Promise<FlashcardProgressResponse[]> {
-    const userId = request.user.sub;
-    // The last route in this controller without a target check. The row
-    // written always belongs to the caller — `replaceManyProgress` spreads
-    // `userId` last — but `flashcardId` came off the body unchecked, so
-    // progress could be recorded against any card UUID, including one inside
-    // another user's private deck, and a real id answered 200 while an unknown
-    // one tripped the FK as a 500. `assertReadable`, because studying somebody
-    // else's public deck is what this route is for.
+    // The whole `AuthenticatedUser`, not just `sub`: the check inside needs
+    // `realm_access` for the SYSTEM_ADMIN bypass that `AuthzService.can`
+    // applies on every decorated route, and this route has no decorator.
     //
-    // De-duplicated first: a study session posts many cards from one deck, and
-    // the checks would otherwise be one pair of queries per row.
-    const cardIds = [...new Set(progressDto.map((p) => p.flashcardId))];
-    await Promise.all(
-      cardIds.map(async (cardId) =>
-        this.deckService.assertReadable(await this.deckOf(cardId), userId)
-      )
-    );
-    return this.cardService.replaceManyProgress(userId, progressDto);
+    // The MDRS-63 stopgap that stood here — `deckOf` then `assertReadable`,
+    // two queries per distinct card — is now one batched query in the service,
+    // which is also the only layer that can separate "no such card" from
+    // "deck you cannot reach" for a list of ids.
+    return this.cardService.replaceManyProgress(request.user, progressDto);
   }
 
   @ApiOperation({
@@ -239,19 +226,15 @@ export class FlashcardController {
   @ApiOkResponse({ type: FlashcardResponse })
   @ApiNotFoundResponse()
   @ApiForbiddenResponse({ description: "Deck belongs to another user" })
+  @Authz(SCOPES.MANAGE_FLASHCARDS, byParentDeckOfCard())
   @Put("cards/:id")
   async replace(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) cardId: string,
     @Body() cardDto: CreateFlashcardDto
   ): Promise<FlashcardResponse> {
-    // Same edge assertion as the deck-scoped writes above: without it any
-    // authenticated caller who knew a card UUID could rewrite a card inside
-    // a deck this controller otherwise protects.
-    await this.deckService.assertOwner(
-      await this.deckOf(cardId),
-      request.user.sub
-    );
+    // `MANAGE_FLASHCARDS` on the parent deck — the guard walks `deckId` for
+    // us, so the `deckOf` + `assertOwner` pair this used to open with is gone.
     const updatedCard = await this.cardService.update(cardId, cardDto);
     if (!updatedCard) {
       throw new HttpException(
@@ -273,16 +256,13 @@ export class FlashcardController {
   @ApiOkResponse({ type: FlashcardResponse })
   @ApiNotFoundResponse()
   @ApiForbiddenResponse({ description: "Deck belongs to another user" })
+  @Authz(SCOPES.MANAGE_FLASHCARDS, byParentDeckOfCard())
   @Patch("cards/:id")
   async update(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) cardId: string,
     @Body() cardDto: UpdateFlashcardDto
   ): Promise<FlashcardResponse> {
-    await this.deckService.assertOwner(
-      await this.deckOf(cardId),
-      request.user.sub
-    );
     const updatedCard = await this.cardService.update(cardId, cardDto);
     if (!updatedCard) {
       throw new HttpException(
@@ -304,15 +284,12 @@ export class FlashcardController {
   @ApiOkResponse()
   @ApiNotFoundResponse()
   @ApiForbiddenResponse({ description: "Deck belongs to another user" })
+  @Authz(SCOPES.MANAGE_FLASHCARDS, byParentDeckOfCard())
   @Delete("cards/:id")
   async deleteCard(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) cardId: string
   ): Promise<boolean> {
-    await this.deckService.assertOwner(
-      await this.deckOf(cardId),
-      request.user.sub
-    );
     return this.cardService.delete(cardId);
   }
 
@@ -336,6 +313,7 @@ export class FlashcardController {
     description: "Bulk rate limit exceeded — see the Retry-After header",
   })
   @Throttle({ default: BULK_THROTTLE })
+  @Authz(SCOPES.CREATE_FLASHCARD, byParam(ENTITIES.FLASHCARD_DECK, "deckId"))
   @Post("decks/:deckId/cards/bulk")
   async bulk(
     @Req() request: AuthorizedRequest,
@@ -355,12 +333,8 @@ export class FlashcardController {
   ): Promise<BulkFlashcardResponse> {
     // `findById` proved the deck exists and nothing more, so any valid token
     // could write MAX_BULK_ROWS cards into a deck it merely knew the id of.
-    // Ownership is asserted at the HTTP edge on purpose: this is the MDRS-63
-    // stopgap that MDRS-43 replaces with @Authz on exactly these handlers.
-    // The service methods below are NOT guarded — do not copy this
-    // placement into a module MDRS-43 will not revisit.
-    await this.deckService.assertOwner(deckId, request.user.sub);
-
+    // The MDRS-63 `assertOwner` stopgap that closed it is now the `@Authz`
+    // above, same as the JSON sibling.
     const result = await this.cardBulkService.addFlashcards(
       deckId,
       request.user.sub,
@@ -372,6 +346,10 @@ export class FlashcardController {
   }
 
   // Get Bulk Sample File
+  // Exempt: the one route in this controller that reads no user data at all.
+  // `generateSample` builds an empty workbook from a static column config, so
+  // there is no resource to name and nothing a scope could protect.
+  @AuthzExempt()
   @Get("cards/bulk/sample")
   @ApiOperation({
     summary: "Download flashcard import template",
@@ -393,6 +371,7 @@ export class FlashcardController {
 
   // Get Export File
   @Throttle({ default: BULK_THROTTLE })
+  @Authz(SCOPES.MANAGE_FLASHCARDS, byParam(ENTITIES.FLASHCARD_DECK, "deckId"))
   @Get("decks/:deckId/cards/bulk/export")
   @ApiOperation({
     summary: "Export flashcards from a deck",
@@ -420,8 +399,13 @@ export class FlashcardController {
     // looks like a scoping argument and is not one: it passes no `include`,
     // so `buildWith` returns `{}` and the id is never read at all. Even with
     // an `include` it would only scope the progress relation — the rows come
-    // back filtered on `deckId` alone either way. The access decision has to
-    // happen here.
+    // back filtered on `deckId` alone either way.
+    //
+    // `MANAGE_FLASHCARDS`, not `VIEW`: a whole-deck export is an owner
+    // affordance, and widening it to every public-deck reader would be a
+    // behaviour change this task has no mandate for. `findOwned` stays for the
+    // `title` the filename needs — the guard has already settled access, so it
+    // is the read, not the assertion, that is load-bearing now.
     const deck = await this.deckService.findOwned(deckId, request.user.sub);
 
     return this.cardBulkService.exportFlashcards(
@@ -434,6 +418,7 @@ export class FlashcardController {
 
   // Post Import File
   @Throttle({ default: BULK_THROTTLE })
+  @Authz(SCOPES.CREATE_FLASHCARD, byParam(ENTITIES.FLASHCARD_DECK, "deckId"))
   @Post("decks/:deckId/cards/bulk/import")
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({
@@ -477,13 +462,10 @@ export class FlashcardController {
     @Param("deckId", ParseUUIDPipe) deckId: string,
     @Req() request: AuthorizedRequest
   ) {
-    // Same hole as `bulk`, reached through a file instead of a JSON body.
-    // FileInterceptor and ParseFilePipe have already buffered and checked the
-    // upload by the time this runs — Nest resolves parameters before the body
-    // — so this refuses before the spreadsheet is *parsed*, not before it is
-    // received.
-    await this.deckService.assertOwner(deckId, request.user.sub);
-
+    // Same hole as `bulk`, reached through a file instead of a JSON body, and
+    // closed by the same `@Authz` above. The guard runs BEFORE the interceptor
+    // buffers the upload, which is strictly better than the `assertOwner` this
+    // replaces: that one refused after ParseFilePipe had already accepted 5MB.
     const format = this.excelService.detectFormat(
       file.mimetype,
       file.originalname
