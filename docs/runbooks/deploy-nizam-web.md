@@ -102,9 +102,14 @@ Either:
 * **Release path** — create a GitHub release tagged `nizam-web-v<semver>`. The
   workflow builds, pushes, and calls the Coolify webhook.
 * **Manual path** — Actions → **Nizam Web** → *Run workflow*.
-* **Fan-out path** — Actions → **Deploy Affected** → *Run workflow* with
-  `dry_run: false`. It calls this workflow only when `nx affected` reports
-  `nizam-web`, which includes every change to a lib this app depends on.
+* **Automatic path (development)** — every push to `main` runs **CD
+  (development)** (`.github/workflows/cd-development.yaml`), which calls this
+  workflow when `nx affected` lists this app — including for a change to a lib
+  it depends on. Nothing to click; the run appears under the dispatcher's name.
+* **Fan-out path, by hand** — Actions → **CD (development)** → *Run workflow*
+  with `dry_run: false` (default `true` only reports). Same dispatcher, same
+  affected computation; useful to redeploy after a Coolify-side change with
+  no commit.
 
 Each run writes the digest and the exact tag list to its job summary
 ("Record pushed image"). **That summary is the rollback record** — copy the
