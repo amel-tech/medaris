@@ -114,7 +114,8 @@ const RELEASE_COMPONENTS = [
  * hold a key there; the branch shape is the one thing release-please controls
  * and a token choice cannot change. Anchored on both ends and closed over the
  * component list — an unanchored `release-please` substring would wave through
- * `feature/release-please-tweak`.
+ * `feature/release-please-tweak`. Only honoured for a head in the base
+ * repository; see the same-repo check at the use site.
  */
 const RELEASE_BRANCH = new RegExp(
   `^release-please--branches--main--components--(${RELEASE_COMPONENTS.join("|")})$`
@@ -195,7 +196,20 @@ if (exemptActor) {
   process.exit();
 }
 
-const releaseComponent = branch.match(RELEASE_BRANCH)?.[1];
+// Same-repository heads only. `head.ref` is chosen by whoever pushes it, so a
+// fork could name its branch `release-please--branches--main--components--
+// tedrisat` and walk through this exemption with no key; release-please only
+// ever pushes to the base repository, so a matching branch from anywhere else
+// is not a release PR whatever it is called.
+const headRepo =
+  typeof pr.head?.repo?.full_name === "string" ? pr.head.repo.full_name : "";
+const baseRepo =
+  typeof pr.base?.repo?.full_name === "string" ? pr.base.repo.full_name : "";
+const sameRepo = headRepo !== "" && headRepo === baseRepo;
+
+const releaseComponent = sameRepo
+  ? branch.match(RELEASE_BRANCH)?.[1]
+  : undefined;
 if (releaseComponent) {
   summary([
     "## Traceability — exempt",
