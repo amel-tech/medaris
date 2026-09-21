@@ -1,6 +1,9 @@
-name: Deploy Affected
+name: CD (development)
 
-# Dispatcher for the seven per-app deploy workflows (MDRS-16).
+# Continuous delivery to Coolify's `development` environment: the dispatcher
+# for the per-app deploy workflows (MDRS-16, wired to `push: main` and renamed
+# from deploy-affected.yaml by MDRS-86). Production is not this file: a
+# GitHub release triggers the per-app workflows directly (MDRS-87).
 #
 # WHY THIS EXISTS
 # Every deployable thing in this repo depends on libs/. A change to libs/ui
@@ -38,7 +41,11 @@ name: Deploy Affected
 #     empty, so nx-set-shas picks the base: the last SUCCESSFUL run of this
 #     workflow on `main`. A successful dry run also moves that anchor, so a
 #     dry run followed by a push diffs from the dry run's commit, not from
-#     the last deploy; run dry runs from a branch when that matters.
+#     the last deploy; run dry runs from a branch when that matters. The
+#     rename from deploy-affected.yaml starts a fresh run history, so the
+#     very first run has no anchor and nx-set-shas falls back to HEAD~1:
+#     seed it once after merging with a `workflow_dispatch`, `dry_run: true`,
+#     `base: 5d52210` (the commit every development app runs today).
 #   * keycloak-theme is EXCLUDED from the push fan-out. Its workflow ships a
 #     JAR over SSH and restarts the one Keycloak in the Amel-Tech Auth project,
 #     which serves applications outside Medaris. That stays a hand-dispatched
@@ -72,7 +79,7 @@ permissions:
 # `deploy-<app>` concurrency groups, so a queued dispatcher run cannot overtake
 # an in-flight deploy of the same app either.
 concurrency:
-  group: deploy-affected
+  group: cd-development
   cancel-in-progress: false
 
 jobs:

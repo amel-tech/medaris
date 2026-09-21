@@ -44,8 +44,9 @@ runs today and all of them are needed by the first `medaris` image.
 already move on every default-branch run and every release, so no workflow
 edit is needed for it; a future `production` pins `<semver>`, which the release
 path already produces. What replaces `ci-dev.yaml` is the `push: main` trigger
-on `deploy-affected.yaml` — still to be added, after the one watched
-`dry_run: false` run its header requires.
+on the dispatcher — added by the follow-up pull request that also renamed it
+from `deploy-affected.yaml` to `cd-development.yaml` ("CD (development)"),
+after the 2026-09-20 dry run and six green `main` dispatches; see §4 step 5.
 
 ### Environment keys, read without values
 
@@ -225,7 +226,12 @@ In the order that keeps each step reversible:
    summary is the one Coolify runs, then re-point the next app.
 4. Push the 43 tags (MDRS-9 §7 step 2) before merging any release-please pull
    request.
-5. `push: main` on `deploy-affected.yaml`, after one watched real run.
+5. `push: main` on the dispatcher — done: `.github/workflows/cd-development.yaml`
+   (renamed from `deploy-affected.yaml`, name "CD (development)") runs on every
+   push to `main`; keycloak-theme is excluded from that fan-out because its
+   workflow restarts the shared Keycloak. The dispatcher's own first real
+   fan-out is the first push after the merge and must be watched; seed its
+   nx-set-shas anchor first with one `dry_run: true`, `base: 5d52210` dispatch.
 
 ## 5. Not verified
 
