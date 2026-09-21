@@ -89,37 +89,20 @@ const EXEMPT_ACTORS = new Set([
 ]);
 
 /**
- * The seven release-please components of ADR-001 §D3, spelled out because this
- * job checks out exactly one file (see traceability.yaml) and must not read
- * `release-please-config.json` at runtime. `tools/ci/assert-release-config.mjs`
- * checks this list against that config, so a component added or renamed there
- * alone fails the release-config gate rather than silently un-exempting its
- * release PR.
- */
-const RELEASE_COMPONENTS = [
-  "tedrisat",
-  "teskilat",
-  "tedris-web",
-  "nizam-web",
-  "nazir-web",
-  "landing-web",
-  "keycloak-theme",
-];
-
-/**
  * The head branch release-please creates with `separate-pull-requests: true`,
  * one per component: `release-please--branches--main--components--<component>`.
  * A release PR has no Linear issue behind it and release-please rewrites its
  * title on every push to `main`, so neither carrier the gate accepts can ever
  * hold a key there; the branch shape is the one thing release-please controls
- * and a token choice cannot change. Anchored on both ends and closed over the
- * component list — an unanchored `release-please` substring would wave through
- * `feature/release-please-tweak`. Only honoured for a head in the base
- * repository; see the same-repo check at the use site.
+ * and a token choice cannot change. Anchored on both ends — an unanchored
+ * `release-please` substring would wave through `feature/release-please-tweak`.
+ * Deliberately not closed over the component list: the same-repo check at the
+ * use site is what keeps a fork out, and a list here would have to be kept in
+ * step with release-please-config.json for no additional protection. Only
+ * honoured for a head in the base repository.
  */
-const RELEASE_BRANCH = new RegExp(
-  `^release-please--branches--main--components--(${RELEASE_COMPONENTS.join("|")})$`
-);
+const RELEASE_BRANCH =
+  /^release-please--branches--main--components--([a-z0-9-]+)$/;
 
 function summary(lines) {
   const text = `${lines.join("\n")}\n`;
