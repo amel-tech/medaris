@@ -16,6 +16,10 @@
  *   * the head branch name contains mdrs-<n> — what Linear's "copy branch name"
  *     produces, and what the integration also matches.
  *
+ * Two kinds of PR are exempt because no human titled them and no issue exists
+ * to name: dependabot's (by author), and release-please's release PRs (by head
+ * branch shape — see RELEASE_BRANCH for why the author is not usable there).
+ *
  * Deliberately NOT checked: a per-commit key. All 21 commits on main since the
  * 24 July history merge already carry one, so such a rule would fire on nothing,
  * and it would not have caught the one commit that did slip (4305356, whose body
@@ -66,14 +70,55 @@ const BRANCH_KEY = /mdrs-[1-9]\d*/i;
  * in ruleset/bypass contexts. Five such PRs existed here (all dependabot, all
  * since closed) and every one of them would fail this gate for no reason a
  * human could act on.
+ *
+ * `release-please` is listed for completeness, NOT because it fires here. The
+ * Release Please workflow runs on `RELEASE_PLEASE_TOKEN`, a user PAT — it has
+ * to, because a PR opened with `github.token` never emits the `release` event
+ * and the seven deploy workflows would never run — so the author of every
+ * release PR is the human who owns that PAT, and this set never matches it
+ * (MDRS-91: seven release PRs red on this gate). Release PRs are recognised by
+ * RELEASE_BRANCH below instead; the actor form only takes over if the token
+ * is ever swapped for a GitHub App identity.
  */
 const EXEMPT_ACTORS = new Set([
   "dependabot", // `app/dependabot`, after the prefix is stripped
   "dependabot[bot]",
   "dependabot-preview[bot]",
-  "release-please", // `app/release-please`
+  "release-please", // `app/release-please`, only on a bot token — see above
   "release-please[bot]",
 ]);
+
+/**
+ * The seven release-please components of ADR-001 §D3, spelled out because this
+ * job checks out exactly one file (see traceability.yaml) and must not read
+ * `release-please-config.json` at runtime. `tools/ci/assert-release-config.mjs`
+ * checks this list against that config, so a component added or renamed there
+ * alone fails the release-config gate rather than silently un-exempting its
+ * release PR.
+ */
+const RELEASE_COMPONENTS = [
+  "tedrisat",
+  "teskilat",
+  "tedris-web",
+  "nizam-web",
+  "nazir-web",
+  "landing-web",
+  "keycloak-theme",
+];
+
+/**
+ * The head branch release-please creates with `separate-pull-requests: true`,
+ * one per component: `release-please--branches--main--components--<component>`.
+ * A release PR has no Linear issue behind it and release-please rewrites its
+ * title on every push to `main`, so neither carrier the gate accepts can ever
+ * hold a key there; the branch shape is the one thing release-please controls
+ * and a token choice cannot change. Anchored on both ends and closed over the
+ * component list — an unanchored `release-please` substring would wave through
+ * `feature/release-please-tweak`.
+ */
+const RELEASE_BRANCH = new RegExp(
+  `^release-please--branches--main--components--(${RELEASE_COMPONENTS.join("|")})$`
+);
 
 function summary(lines) {
   const text = `${lines.join("\n")}\n`;
@@ -146,6 +191,20 @@ if (exemptActor) {
     "",
     `PR #${pr.number ?? "?"} was opened by \`${exemptActor}\`, an automation`,
     "account with no Linear issue behind it. Exempt by actor; no key required.",
+  ]);
+  process.exit();
+}
+
+const releaseComponent = branch.match(RELEASE_BRANCH)?.[1];
+if (releaseComponent) {
+  summary([
+    "## Traceability — exempt",
+    "",
+    `PR #${pr.number ?? "?"} is release-please's release PR for`,
+    `\`${releaseComponent}\` (head branch \`${branch}\`). A release has no Linear`,
+    "issue behind it and release-please rewrites the title on every push to",
+    "`main`, so no key is required. Exempt by branch shape, not by a key match",
+    "(MDRS-91).",
   ]);
   process.exit();
 }

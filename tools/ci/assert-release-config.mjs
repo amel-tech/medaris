@@ -290,6 +290,32 @@ for (const component of components) {
   if (owner) notes.push(`${component} → ${WORKFLOW_DIR}/${owner}`);
 }
 
+// ── 8. The Traceability gate exempts exactly these release branches ──────────
+//
+// `assert-traceability.mjs` runs from a one-file sparse checkout and therefore
+// carries the component list inline (MDRS-91). Read it as text — importing the
+// gate would execute it — and pin it here, so a component added or renamed in
+// the config without touching the gate fails this assertion instead of its
+// release PR quietly failing Traceability.
+
+const TRACEABILITY_PATH = "tools/ci/assert-traceability.mjs";
+const traceability = readFileSync(join(repoRoot, TRACEABILITY_PATH), "utf8");
+const gateListMatch = traceability.match(
+  /const RELEASE_COMPONENTS = \[([^\]]*)\];/
+);
+const gateComponents = gateListMatch
+  ? [...gateListMatch[1].matchAll(/"([^"]+)"/g)].map((m) => m[1])
+  : null;
+check(
+  gateComponents !== null && sameSet(gateComponents, components),
+  `${TRACEABILITY_PATH} exempts exactly the 7 release-please branches`,
+  gateComponents === null
+    ? "could not find `const RELEASE_COMPONENTS = [...]` in the gate"
+    : `gate:     ${JSON.stringify(sorted(gateComponents))}\n    expected: ${JSON.stringify(
+        sorted(components)
+      )}\n    A component missing there has its release PR rejected by Traceability (MDRS-91).`
+);
+
 // ── Result ────────────────────────────────────────────────────────────────────
 
 if (notes.length > 0) {
@@ -308,6 +334,7 @@ if (failures.length > 0) {
       "    commitlint.config.mjs (scope-enum)\n" +
       `    ${WORKSPACE_PATH} (packages)\n` +
       `    ${WORKFLOW_DIR}/<component>*.yaml (release tag guard)\n` +
+      `    ${TRACEABILITY_PATH} (RELEASE_COMPONENTS)\n` +
       "  See docs/migration/mdrs-17-release-please-consolidation.md and ADR-001 §D3/§D10."
   );
   process.exit(1);
