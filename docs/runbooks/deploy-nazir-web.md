@@ -9,7 +9,7 @@
 | GHCR image | `ghcr.io/amel-tech/medaris-nazir-web` |
 | Container port | `4002` |
 | Coolify application | `nazir-web` — uuid `rcwww0wkosws0g8ks8oks4c4`, project *Medaris*, environment `development`, server `mdrs1` (`193.111.78.115`), `https://nazir-dev.medaris.app` |
-| Coolify webhook secret | `NAZIR_WEB_COOLIFY_WEBHOOK` (repo secret — **not yet set**) |
+| Coolify webhook secret | `NAZIR_WEB_COOLIFY_WEBHOOK` (repo secret — set 2026-09-16) |
 | Deploy token | `COOLIFY_DEPLOY_TOKEN` (org secret — present) |
 
 The image name is not hardcoded: the workflow sets
@@ -146,10 +146,9 @@ recorded here:
 
 | | Value |
 |---|---|
-| Coolify configuration (what the next deploy pulls) | `ghcr.io/amel-tech/madrasah-frontend-nazir-web:nazir-dev` — unchanged; the tag the old repository's `ci-dev.yaml` moved on every push to `main` |
-| Running container | the same image, last built 2026-06-18 |
-| Target | `ghcr.io/amel-tech/medaris-nazir-web:latest`, after this branch is on `main`, one `main` run has pushed `latest`, and the application's runtime keys are in place (§0 says there are no build inputs) |
-| Rollback value | `ghcr.io/amel-tech/madrasah-frontend-nazir-web:nazir-dev` |
+| Coolify configuration (what the next deploy pulls) | `ghcr.io/amel-tech/medaris-nazir-web:latest` (set 2026-09-20); health check still off — Next answers `/` with a locale redirect (307/308) and Coolify's check expects 200, so a dedicated health route is needed before it can be enabled |
+| Running container | `latest` as pushed by the first `main` run (`sha-5d52210`) — deployed 2026-09-20 through the API, `GET https://nazir-dev.medaris.app/` → 200 after redirects, and the served page and its chunks carry no `localhost` value |
+| Rollback value | `ghcr.io/amel-tech/madrasah-frontend-nazir-web:nazir-dev` (the pre-MDRS-86 image, last built 2026-06-18); or the previous `sha-<short>` tag once there is more than one |
 
 
 `latest` is deliberate: it is the tag every workflow run on the default branch
@@ -236,37 +235,25 @@ docker buildx imagetools inspect ghcr.io/amel-tech/medaris-nazir-web:latest \
 
 ## 5. Known blockers
 
-1. **`NAZIR_WEB_COOLIFY_WEBHOOK` is not set.** The repository has zero repo secrets; only the org
-   secret `COOLIFY_DEPLOY_TOKEN` exists. Until the webhook secret is added, the
-   deploy step fails fast with an explicit error (MDRS-16 added that guard —
-   previously the `curl` swallowed every failure and the job went green while
-   nothing deployed). The value lives in Coolify and must be copied by someone
-   with access.
-2. **Image build.** `apps/nazir/Dockerfile` was rewritten from the old
-   npm + `turbo.json` form to a staged pnpm-workspace build under a separate
-   issue, and lands alongside this runbook. The workflow's `context: .` +
-   `file: ./apps/nazir/Dockerfile` pair is unchanged and correct — verified
-   by running exactly that pair locally
-   (`docker build -f apps/nazir/Dockerfile .` from the repo root). Still
-   confirm a green run of `.github/workflows/nazir-web.yaml` before relying on the
-   push/deploy half, which cannot be exercised locally.
+The first three items this section carried (webhook secret unset, image build
+unverified in CI, `NEXT_PUBLIC_*` placeholders baked into the bundle) are
+closed by MDRS-86 and kept here only as history:
 
-3. **NOT PRODUCTION-DEPLOYABLE YET — `NEXT_PUBLIC_*` placeholders are baked into
-   the client bundle.** `apps/nazir/env.ts` validates the environment at build
-   time, so the Dockerfile does `cp apps/nazir/.env.example apps/nazir/.env`
-   before `next build`. Next inlines every `NEXT_PUBLIC_*` value into the client
-   bundle as a string literal at that moment, and **no runtime environment
-   variable can override it afterwards**. Verified inside the built image: a
-   server chunk under `/app/apps/nazir/.next/server/chunks/` contains
-   `NEXT_PUBLIC_TEDRISAT_API_BASE_URL:"http://localhost:3001"`, alongside the
-   `amel-tech-dev` realm, the `nazir-dev` client id and a `localhost` NextAuth
-   URL. This is pre-existing — the Dockerfile this one replaces did the same
-   `cp` — not a regression, but it means a production deploy of this image talks
-   to `localhost`. The fix is to declare the `NEXT_PUBLIC_*` values as `ARG`s,
-   export them to `ENV` before `nx build`, and pass them from the workflow's
-   `build-args:`. That spans `.github/` and `apps/` together and is tracked as a
-   follow-up, deliberately outside MDRS-16's scope. **Until it lands, treat this
-   image as build-verified but not production-deployable.**
+1. **Webhook secret** — `NAZIR_WEB_COOLIFY_WEBHOOK` was set on 2026-09-16; the
+   deploy step's guard no longer fires.
+2. **Image build in CI** — run `35536080527` (`.github/workflows/nazir-web.yaml`
+   on `main` at `5d52210`, 2026-09-20) built, pushed `latest` + `sha-5d52210`
+   and called the webhook, all green. Before MDRS-86 this image could not build
+   in CI at all (`TS6305`, see the migration record).
+3. **`NEXT_PUBLIC_*` placeholders** — MDRS-16 measured a server chunk in the
+   built image carrying `NEXT_PUBLIC_TEDRISAT_API_BASE_URL:"http://localhost:3001"` and the other `localhost` values from
+   `.env.example`. MDRS-86 removed every `NEXT_PUBLIC_*` key from the app
+   instead of passing real values as build args, so there is nothing left to
+   inline (§0). Verified at the source (`git grep NEXT_PUBLIC -- '*.ts' '*.tsx'`
+   on `main` matches only comments) and on the served page and its referenced
+   JS on 2026-09-20; the server chunks of the deployed image were not
+   re-inspected.
+
 4. **Order of operations: create the repo secrets BEFORE merging.** The runner
    stage does `rm -f ./apps/nazir/.env`, which is the right call — the
    placeholders are literals such as `NEXTAUTH_SECRET=NEXT_AUTH_SECRET` and

@@ -9,7 +9,7 @@
 | GHCR image | `ghcr.io/amel-tech/medaris-tedrisat-api` |
 | Container port | `3001` |
 | Coolify application | `tedrisat-service` — uuid `uk08w4w8gkkgwossks8wgock`, project *Medaris*, environment `development`, server `mdrs2` (`45.147.47.108`), `https://api-tedrisat-dev.medaris.net` |
-| Coolify webhook secret | `TEDRISAT_SERVICE_COOLIFY_WEBHOOK` (repo secret — **not yet set**) |
+| Coolify webhook secret | `TEDRISAT_SERVICE_COOLIFY_WEBHOOK` (repo secret — set 2026-09-15/16) |
 | Deploy token | `COOLIFY_DEPLOY_TOKEN` (org secret — present) |
 
 The image name is not hardcoded: the workflow sets
@@ -171,10 +171,9 @@ recorded here:
 
 | | Value | How it was verified |
 |---|---|---|
-| Coolify configuration (what the next deploy pulls) | `ghcr.io/amel-tech/medaris-tedrisat-api:sha-29f145e` | `GET /api/v1/applications/<uuid>` after the `PATCH`, 2026-09-16 |
-| Running container | the same image — deployment `ib9pf3gab9ew060x77gazg41` finished, health check green, `https://api-tedrisat-dev.medaris.net/health` → 200 | Coolify deployment status + the public endpoint, 2026-09-16 |
-| Target once this branch is on `main` | `ghcr.io/amel-tech/medaris-tedrisat-api:latest` | not yet — a branch run never pushes `latest`, so the first verified deploy used the immutable `sha-` tag |
-| Rollback value | `ghcr.io/amel-tech/madrasah-backend-tedrisat-api:tedrisat-dev` | the configuration before MDRS-86 |
+| Coolify configuration (what the next deploy pulls) | `ghcr.io/amel-tech/medaris-tedrisat-api:latest`, health check `/health:3001` on | `GET /api/v1/applications/<uuid>` after the `PATCH`, 2026-09-20 |
+| Running container | `latest` as pushed by the first `main` run (`sha-5d52210`) — deployment `vp4vf43jbxr2tpp3je247l8r` finished, `running:healthy`, `https://api-tedrisat-dev.medaris.net/health` → 200 | Coolify deployment status + the public endpoint, 2026-09-20 |
+| Rollback value | `ghcr.io/amel-tech/madrasah-backend-tedrisat-api:tedrisat-dev`; or, to stay on `medaris` images, the previous `sha-<short>` tag (`sha-29f145e` was the first verified one) | — |
 
 
 `latest` is deliberate: it is the tag every workflow run on the default branch
@@ -288,17 +287,14 @@ naming the variable to change.
 
 ## 6. Known blockers
 
-1. **`TEDRISAT_SERVICE_COOLIFY_WEBHOOK` is not set.** The repository has zero repo secrets; only the org
-   secret `COOLIFY_DEPLOY_TOKEN` exists. Until the webhook secret is added, the
-   deploy step fails fast with an explicit error (MDRS-16 added that guard —
-   previously the `curl` swallowed every failure and the job went green while
-   nothing deployed). The value lives in Coolify and must be copied by someone
-   with access.
-2. **Image build.** `apps/tedrisat/Dockerfile` was rewritten from the old
-   npm + `turbo.json` form to a staged pnpm-workspace build under a separate
-   issue, and lands alongside this runbook. The workflow's `context: .` +
-   `file: ./apps/tedrisat/Dockerfile` pair is unchanged and correct — verified
-   by running exactly that pair locally
-   (`docker build -f apps/tedrisat/Dockerfile .` from the repo root). Still
-   confirm a green run of `.github/workflows/tedrisat-api.yaml` before relying on the
-   push/deploy half, which cannot be exercised locally.
+Both items this section carried are closed by MDRS-86 and kept as history:
+
+1. **Webhook secret** — `TEDRISAT_SERVICE_COOLIFY_WEBHOOK` was set by hand (teskilat
+   2026-09-15, tedrisat 2026-09-16); the deploy step's guard no longer fires.
+2. **Image build in CI** — first real run from a branch on 2026-09-15/16 (image
+   `sha-29f145e`, deployed and verified through `/health`), then run
+   `35535866401` from `main` at `5d52210` on 2026-09-20 pushed `latest`, and
+   the application was switched to it (§3.2). The very first attempt, run
+   `35003840022`, failed before building with *Cache export is not supported
+   for the docker driver* — the missing `docker/setup-buildx-action` step
+   MDRS-86 added to all six image workflows.
