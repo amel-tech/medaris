@@ -17,24 +17,42 @@ name: Deploy Affected
 #   libs/tokens/package.json   -> keycloak-theme, landing-web, nazir-web,
 #                                 nizam-web, tedris-web
 #
-# DELIBERATELY workflow_dispatch ONLY.
-# There is no `push:` trigger here, and adding one is NOT part of MDRS-16. A
-# dispatcher that can deploy up to seven production services must be watched
-# through at least one real run before it is allowed to fire unattended. Run it
-# once with `dry_run: true` (the default) to see the project list without
-# deploying, once with `dry_run: false` to watch a real fan-out, and only then
-# open a follow-up to wire it to `push: branches: [main]`.
+# TRIGGERS (MDRS-86)
+# `push: main` is the development channel: every merge redeploys the affected
+# apps to Coolify's `development` environment through the six image workflows.
+# `workflow_dispatch` stays for a dry run (`dry_run: true`, the default) or a
+# hand-picked base. The pre-condition the original header set — watch the
+# dispatcher through a real run before letting it fire unattended — was met
+# on 2026-09-20 as far as it could be without restarting the shared Keycloak:
+# the `detect` job was watched in dry run 35535778107 (base 29f145e, head
+# 5d52210, all seven deployables listed), and the six image workflows it
+# would have called were each dispatched from `main` at 5d52210 and went
+# green (runs 35535864998, 35535866401, 35536077688, 35536079051,
+# 35536080527, 35536081989). What has NOT run is the dispatcher's own
+# `dry_run: false` fan-out; the first `push` run is that run, and it must be
+# watched.
 #
-# Whoever does that follow-up: the seven called workflows' job-level `if:` gates
-# were rewritten by MDRS-16 to `github.event_name != 'release' || startsWith(…)`
-# precisely so a `push:` trigger here keeps working. Inside a reusable workflow
-# the `github` context is the CALLER's, so `github.event_name` would become
-# 'push' — under the old `== 'workflow_dispatch' || == 'workflow_call'` gates
-# every deploy would have been skipped, silently and green. Also replace the
-# `github.event.inputs.dry_run != 'true'` guards below, which are always true on
-# a push (no inputs), with whatever gate that trigger should have.
+# Two things a `push` event changes, both handled below:
+#   * `github.event.inputs.*` is empty on a push. `dry_run != 'true'` is
+#     therefore true — a push is always a real deploy — and `inputs.base` is
+#     empty, so nx-set-shas picks the base: the last SUCCESSFUL run of this
+#     workflow on `main`. A successful dry run also moves that anchor, so a
+#     dry run followed by a push diffs from the dry run's commit, not from
+#     the last deploy; run dry runs from a branch when that matters.
+#   * keycloak-theme is EXCLUDED from the push fan-out. Its workflow ships a
+#     JAR over SSH and restarts the one Keycloak in the Amel-Tech Auth project,
+#     which serves applications outside Medaris. That stays a hand-dispatched
+#     deploy in a window agreed with that project's owner.
+#
+# The seven called workflows' job-level `if:` gates read
+# `github.event_name != 'release' || startsWith(…)`: inside a reusable
+# workflow the `github` context is the CALLER's, so on a push the event name
+# is 'push' and every gate passes — the trap the old
+# `== 'workflow_dispatch' || == 'workflow_call'` form would have sprung.
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       dry_run:
@@ -130,7 +148,8 @@ jobs:
             echo
             echo "- base: \`${NX_BASE:-unset}\`"
             echo "- head: \`${NX_HEAD:-unset}\`"
-            echo "- dry run: \`${{ inputs.dry_run }}\`"
+            echo "- event: \`${{ github.event_name }}\`"
+            echo "- dry run: \`${{ inputs.dry_run || 'false' }}\`"
             echo
             if [ "$count" -eq 0 ]; then
               echo "Nothing to deploy."
@@ -204,10 +223,11 @@ jobs:
       packages: write
     secrets: inherit
 
-  # No packages: write — this one ships a JAR over SSH, not an image.
+  # No packages: write — this one ships a JAR over SSH, not an image. Never on
+  # a push: it restarts the shared Keycloak (see the header).
   keycloak-theme:
     needs: detect
-    if: ${{ github.event.inputs.dry_run != 'true' && contains(fromJSON(needs.detect.outputs.projects), 'keycloak-theme') }}
+    if: ${{ github.event_name != 'push' && github.event.inputs.dry_run != 'true' && contains(fromJSON(needs.detect.outputs.projects), 'keycloak-theme') }}
     uses: ./.github/workflows/keycloak-theme-app.yaml
     permissions:
       contents: read
