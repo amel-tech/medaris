@@ -22,6 +22,7 @@
  * a fresh database per test file inside this one container; see
  * `test/helpers/test-app.helper.ts` for why.
  */
+import { generateKeyPairSync } from "node:crypto";
 import {
   PostgreSqlContainer,
   type StartedPostgreSqlContainer,
@@ -53,11 +54,54 @@ export interface TestPostgresConnection {
   adminDatabase: string;
 }
 
+/**
+ * The realm this run pretends to be (MDRS-89).
+ *
+ * Before this, every `createTestApp` booted `KeycloakPublicKeyProvider` against
+ * the live `auth.medaris.app`, because `overrideGuard(AuthGuard)` replaces the
+ * guard and not the key provider — its `onModuleInit` ran regardless and
+ * `app.init()` awaited it. Measured on `2b9457f`: 22 `createTestApp` call sites
+ * across the nine e2e files, 21 of them pointed at production.
+ *
+ * That made the gate depend on a host being reachable, and the dependency was
+ * invisible in both directions: the provider swallows a failed fetch and logs,
+ * so a run where the realm is down looks identical to one where it is up. On
+ * 2026-09-18 every boot on one machine logged `Failed to pre-load JWKS keys`;
+ * on 2026-09-20 the same commit on the same machine logged none, because the
+ * host had become reachable again. Same code, two different paths through
+ * `onModuleInit`, no way to tell from the output which one a run took.
+ *
+ * The keypair is generated once per run here rather than per file: RSA-2048
+ * keygen is the expensive part, and the workers only need the PEMs.
+ */
+export interface TestKeycloakKeys {
+  /** The `kid` both the stub provider and every minted token carry. */
+  kid: string;
+  /** SPKI PEM — what the stub key provider hands the verifier. */
+  publicKey: string;
+  /** PKCS#8 PEM — what `mintTestToken` signs with. */
+  privateKey: string;
+  /** `iss` the verifier is configured with and tokens must carry. */
+  issuer: string;
+  /** `aud` the verifier is configured with and tokens must carry. */
+  audience: string;
+  /**
+   * The JWKS URL the app is configured with. An RFC 2606 `.invalid` host on
+   * purpose: nothing should reach it, and if some future code path does, DNS
+   * fails it fast and deterministically instead of quietly succeeding against
+   * a real realm.
+   */
+  jwksUrl: string;
+}
+
 declare module "vitest" {
   export interface ProvidedContext {
     postgres: TestPostgresConnection;
+    keycloak: TestKeycloakKeys;
   }
 }
+
+const TEST_REALM_ISSUER = "https://keycloak.invalid/realms/amel-tech-dev";
 
 /**
  * The in-flight or settled start — a PROMISE, not the container it resolves to.
@@ -143,6 +187,21 @@ export async function setup(project: TestProject): Promise<void> {
   console.log(
     `Shared PostgreSQL container started at ${container.getConnectionUri()}`
   );
+
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: "spki", format: "pem" },
+    privateKeyEncoding: { type: "pkcs8", format: "pem" },
+  });
+
+  project.provide("keycloak", {
+    kid: "medaris-test-key",
+    publicKey,
+    privateKey,
+    issuer: TEST_REALM_ISSUER,
+    audience: "tedrisat-api",
+    jwksUrl: `${TEST_REALM_ISSUER}/protocol/openid-connect/certs`,
+  });
 }
 
 export async function teardown(): Promise<void> {

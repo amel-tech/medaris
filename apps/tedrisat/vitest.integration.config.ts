@@ -36,6 +36,10 @@ export default mergeConfig(
       // lists the root configs under `sharedGlobals`, so touching one
       // invalidates every project's cached `test` result.
       globalSetup: ["./test/global-setup.ts"],
+      // MDRS-89: runs in every worker and refuses any fetch that leaves this
+      // machine. `globalSetup` above cannot do this — it runs once in the main
+      // process, and the requests happen inside the forks.
+      setupFiles: ["./test/setup-no-network.ts"],
     },
   })
 );
