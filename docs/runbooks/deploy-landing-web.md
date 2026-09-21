@@ -9,7 +9,7 @@
 | GHCR image | `ghcr.io/amel-tech/medaris-landing-web` |
 | Container port | `4003` |
 | Coolify application | `landing-web` — uuid `r4s0cscgkcow0s8gg0wco4kw`, project *Medaris*, environment `development`, server `mdrs1` (`193.111.78.115`), `https://medaris.app` |
-| Coolify webhook secret | `LANDING_WEB_COOLIFY_WEBHOOK` (repo secret — **not yet set**) |
+| Coolify webhook secret | `LANDING_WEB_COOLIFY_WEBHOOK` (repo secret — set 2026-09-16) |
 | Deploy token | `COOLIFY_DEPLOY_TOKEN` (org secret — present) |
 
 The image name is not hardcoded: the workflow sets
@@ -230,27 +230,20 @@ docker buildx imagetools inspect ghcr.io/amel-tech/medaris-landing-web:latest \
 
 ## 5. Known blockers
 
-1. **`LANDING_WEB_COOLIFY_WEBHOOK` is not set.** The repository has zero repo secrets; only the org
-   secret `COOLIFY_DEPLOY_TOKEN` exists. Until the webhook secret is added, the
-   deploy step fails fast with an explicit error (MDRS-16 added that guard —
-   previously the `curl` swallowed every failure and the job went green while
-   nothing deployed). The value lives in Coolify and must be copied by someone
-   with access.
-2. **Image build.** `apps/landing/Dockerfile` was rewritten from the old
-   npm + `turbo.json` form to a staged pnpm-workspace build under a separate
-   issue, and lands alongside this runbook. The workflow's `context: .` +
-   `file: ./apps/landing/Dockerfile` pair is unchanged and correct — verified
-   by running exactly that pair locally
-   (`docker build -f apps/landing/Dockerfile .` from the repo root). Still
-   confirm a green run of `.github/workflows/landing-web.yaml` before relying on the
-   push/deploy half, which cannot be exercised locally.
+The three items this section carried (webhook secret unset, image build
+unverified in CI, `NEXT_PUBLIC_TEDRIS_APP_URL` baked in as `localhost:4000`)
+are closed by MDRS-86 and kept here only as history:
 
-3. **`NEXT_PUBLIC_TEDRIS_APP_URL` is baked in as `http://localhost:4000`.** The
-   Dockerfile copies `.env.example` to `.env` before `next build` because
-   `apps/landing/env.ts` validates at build time, and Next inlines every
-   `NEXT_PUBLIC_*` value into the client bundle as a literal — no runtime
-   variable overrides it. Unlike the three authenticated frontends, every field
-   in `apps/landing/env.ts` is `.optional()`, so this image still boots with the
-   `.env` removed; the only consequence is that links to the Tedris app point at
-   `localhost:4000`. The same follow-up fixes it: `ARG` -> `ENV` before
-   `nx build` -> `build-args:` in the workflow.
+1. **Webhook secret** — `LANDING_WEB_COOLIFY_WEBHOOK` was set on 2026-09-16; the
+   deploy step's guard no longer fires.
+2. **Image build in CI** — run `35536081989` (`.github/workflows/landing-web.yaml`
+   on `main` at `5d52210`, 2026-09-20) built, pushed `latest` + `sha-5d52210`
+   and called the webhook, all green. Before MDRS-86 this image could not build
+   in CI at all (`TS6305`, see the migration record).
+3. **`NEXT_PUBLIC_TEDRIS_APP_URL`** — MDRS-16 measured it baked into the built
+   image as `http://localhost:4000`. It was declared in `apps/landing/env.ts`
+   and read nowhere; MDRS-86 removed it with every other `NEXT_PUBLIC_*` key,
+   so there is nothing left to inline (§0). Verified at the source
+   (`git grep NEXT_PUBLIC -- '*.ts' '*.tsx'` on `main` matches only comments)
+   and on the served page and its referenced JS on 2026-09-20; the server
+   chunks of the deployed image were not re-inspected.
