@@ -79,5 +79,19 @@ globalThis.fetch = (async (input: FetchInput, init?: FetchInit) => {
     );
   }
 
-  return realFetch(input, init);
+  // A loopback URL can still answer 302 to somewhere else, and `realFetch`
+  // follows redirects inside itself — the wrapper is not re-entered, so the
+  // hostname check above would never see the second hop. Refusing to follow at
+  // all is what closes that: the check runs on every URL this suite actually
+  // requests, because every hop has to be requested explicitly.
+  //
+  // `manual` is honoured when a caller asks for it, since it hands the response
+  // back without following and a caller that then fetches the `Location` comes
+  // back through here. Anything else — including an explicit `follow` — becomes
+  // `error`, because honouring it would reopen the hole it is meant to close.
+  // A suite that genuinely needs a loopback redirect followed asks for
+  // `manual` and follows it itself.
+  const redirect = init?.redirect === "manual" ? "manual" : "error";
+
+  return realFetch(input, { ...init, redirect });
 }) as typeof globalThis.fetch;

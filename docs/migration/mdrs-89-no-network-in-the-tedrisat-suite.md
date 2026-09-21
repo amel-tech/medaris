@@ -82,13 +82,42 @@ thirty lines duplicated when `teskilat` grows an auth suite.
 
 ## Verification
 
-`pnpm nx run-many -t typecheck lint module-boundaries build test --projects=tedrisat,common,teskilat --skip-nx-cache` → green.
+The gate:
 
-| | Before (`5d52210`) | After |
-| -- | -- | -- |
-| Test files / tests | 24 / 390 | 24 / **392** |
-| Outbound requests to `auth.medaris.app` per run | 21 | **0** |
-| `Failed to pre-load JWKS keys` lines | 0 (the host was up) | 0 (nothing fetches) |
+```
+$ pnpm nx run-many -t typecheck lint module-boundaries build test \
+    --projects=tedrisat,common,teskilat --skip-nx-cache
+NX   Successfully ran targets typecheck, lint, module-boundaries, build, test
+     for 3 projects and 1 task they depend on
+```
+
+Test counts, `nx run tedrisat:test --skip-nx-cache --output-style=static`:
+
+```
+before (5d52210)   Test Files  24 passed (24)    Tests  390 passed (390)
+after              Test Files  24 passed (24)    Tests  392 passed (392)
+```
+
+`biome-ratchet`: `errors 0 (baseline 0) · warnings 79 (baseline 79) · infos 24
+(baseline 25)`.
+
+### The "21 outbound requests" figure is a static count, not an instrumented one
+
+It is `grep -c "await createTestApp(" apps/tedrisat/test/e2e/*.ts` summed to
+**22**, minus the one call in `keycloak-audience.e2e.spec.ts`, which points its
+`KEYCLOAK_*` at its own container before booting. Every one of those call sites
+sits in a `beforeAll`/`beforeEach` that the passing run executes, and each boot
+constructs `KeycloakPublicKeyProvider` and awaits its `onModuleInit`, so 21 is
+the number of app boots that would have fetched the deployed realm. It was
+**not** measured by counting requests as they left the process.
+
+The **after** figure is measured, and by the guard rather than by a count: any
+non-loopback `fetch` throws, the run is green, therefore none happened.
+
+`Failed to pre-load JWKS keys` is 0 both before and after this branch, for two
+different reasons — before, because the host was up and the fetches succeeded;
+after, because nothing fetches. That is exactly why the line was useless as a
+criterion, and why it is not one here.
 
 Against the acceptance criteria:
 
