@@ -46,15 +46,17 @@ convention.
 | --- | --- |
 | `apps/tedrisat/test/global-setup.ts` | Generates one RSA-2048 keypair per run and `provide`s it as `keycloak` — `kid`, both PEMs, and the `issuer` / `audience` / `jwksUrl` the app is configured with. Keygen is the expensive part, so it happens once, not per file. |
 | `apps/tedrisat/test/helpers/test-keycloak.helper.ts` | **New.** `stubPublicKeyProvider()` returns the in-process `IPublicKeyProvider`; `mintTestToken()` / `bearerFor()` sign RS256 tokens with the run's private key. |
-| `apps/tedrisat/test/helpers/test-app.helper.ts` | `createTestApp` takes `keyProvider?: "stub" \| "real"`, default `"stub"`, and overrides `PUBLIC_KEY_PROVIDER` accordingly. The `KEYCLOAK_*` environment now comes from the provided context — `.invalid` hosts, not the deployed realm. |
-| `apps/tedrisat/test/setup-no-network.ts` | **New.** A `setupFiles` entry that replaces `globalThis.fetch` in every worker and throws on any non-loopback host. |
+| `apps/tedrisat/test/helpers/test-app.helper.ts` | `createTestApp` takes `keyProvider?: "stub" \| "real"`, default `"stub"`, and overrides `PUBLIC_KEY_PROVIDER` accordingly. The `KEYCLOAK_*` writes moved out of `useDatabaseForThisFile` into `applyStubKeycloakEnv`, which runs in stub mode only — see below. |
+| `apps/tedrisat/test/setup-no-network.ts` | **New.** A `setupFiles` entry that replaces `globalThis.fetch` in every worker, refuses any non-loopback host, refuses to follow a redirect out of loopback, and records every refusal. |
+| `apps/tedrisat/test/helpers/network-refusals.ts` | **New.** The refusal ledger, in its own module so the guard's spec can drain it without re-running the setup file's side effects. |
+| `apps/tedrisat/test/unit/no-network-guard.spec.ts` | **New.** The guard's own regression test, four clauses. |
 | `apps/tedrisat/vitest.config.ts`, `vitest.integration.config.ts` | Both name the setup file. `globalSetup` cannot do this — it runs once in the main process and the requests happen inside the forks. |
 | `apps/tedrisat/test/e2e/keycloak-audience.e2e.spec.ts` | Opts into `keyProvider: "real"`. |
 | `apps/tedrisat/test/e2e/flashcard-label.e2e.spec.ts` | Two tests added to the MDRS-27 authentication block: a minted token is accepted, and one signed under an unknown `kid` is refused. |
 | `apps/tedrisat/test/unit/config.spec.ts`, `openapi-document.spec.ts` | String fixtures moved off `auth.medaris.app` onto `keycloak.invalid`. Nothing dereferenced them; a production hostname in a test file is an invitation. |
 | `apps/tedrisat/test/unit/jwt-claim-validation.spec.ts` | Comment no longer points at the deleted `DummyPublicKeyProvider`, and records why this spec keeps its own keypair. |
 | `libs/common/src/auth-guard/key-providers/dummy-provider.ts` | **Deleted.** |
-| `CLAUDE.md` | The no-network rule, and the suite count corrected 23 → 24 (already stale before this branch). |
+| `CLAUDE.md` | The no-network rule with its real scope, and the suite count 23 → 25 (it was already stale by one before this branch; the guard's spec accounts for the other). |
 
 ### Why `"real"` exists rather than an unconditional stub
 
@@ -70,6 +72,23 @@ about Keycloak.
 The issue also contradicted itself: step 1 said "nothing in the e2e path may
 call `fetch`", step 4 said throw "on any **non-loopback** URL". Step 4 is the
 one that survives contact with that suite, and it is what shipped.
+
+### Why the `KEYCLOAK_*` writes are bound to the mode
+
+`keyProvider: "real"` first shipped depending on an unwritten rule. The
+placeholder values were written by `useDatabaseForThisFile`, which is memoised,
+so a suite that called it itself and *then* set its own `KEYCLOAK_*` kept them —
+which is what `keycloak-audience.e2e.spec.ts` happened to do. A suite that set
+the variables and called `createTestApp({ keyProvider: "real" })` directly, the
+obvious way to write it, had them overwritten with `keycloak.invalid`, the
+failed pre-load swallowed by `onModuleInit`, and every request answered 401 for
+a reason nothing in the output named. Raised in review on PR #91.
+
+The writes now live in `applyStubKeycloakEnv`, called from `createTestApp` in
+stub mode only, so call order cannot matter. `KEYCLOAK_ALLOWED_CLIENTS` is
+deleted there as well: the verifier only enforces an `azp` allow-list when it is
+set, `mintTestToken` stamps no `azp`, and an inherited value would have turned
+every minted token into an unexplained 401.
 
 ### Why `DummyPublicKeyProvider` was deleted rather than replaced
 
@@ -95,7 +114,7 @@ Test counts, `nx run tedrisat:test --skip-nx-cache --output-style=static`:
 
 ```
 before (5d52210)   Test Files  24 passed (24)    Tests  390 passed (390)
-after              Test Files  24 passed (24)    Tests  392 passed (392)
+after              Test Files  25 passed (25)    Tests  396 passed (396)
 ```
 
 `biome-ratchet`: `errors 0 (baseline 0) · warnings 79 (baseline 79) · infos 24
@@ -111,8 +130,17 @@ constructs `KeycloakPublicKeyProvider` and awaits its `onModuleInit`, so 21 is
 the number of app boots that would have fetched the deployed realm. It was
 **not** measured by counting requests as they left the process.
 
-The **after** figure is measured, and by the guard rather than by a count: any
-non-loopback `fetch` throws, the run is green, therefore none happened.
+The **after** figure is measured by the guard rather than by a count, and the
+argument needs one more step than it first appeared to. "Any non-loopback fetch
+throws, the run is green, therefore none happened" is **not** sound on its own:
+the caller most likely to trip the guard is `KeycloakPublicKeyProvider`, whose
+`onModuleInit` catches everything and logs — a refusal raised inside it would
+have been swallowed exactly as the original problem was, one level up. Raised in
+review on PR #91.
+
+So the guard also **records** every refusal, and an `afterEach` the swallowing
+code cannot reach fails the test on anything left unacknowledged. With that, a
+green run does carry the claim.
 
 `Failed to pre-load JWKS keys` is 0 both before and after this branch, for two
 different reasons — before, because the host was up and the fetches succeeded;
@@ -121,9 +149,13 @@ criterion, and why it is not one here.
 
 Against the acceptance criteria:
 
-- **No outbound call.** The guard is armed, not assumed: a throwaway spec
-  asserting `fetch("https://auth.medaris.app/")` rejects with `/MDRS-89/` and
-  `fetch("http://127.0.0.1:1/")` does not, passed 2/2 and was then deleted.
+- **No outbound call.** The guard is armed, not assumed — and the proof is a
+  committed spec rather than a throwaway one. `test/unit/no-network-guard.spec.ts`
+  asserts all four clauses: a non-loopback host is refused, loopback is not, a
+  loopback 3xx is refused, and that same 3xx is handed back when the caller asks
+  for `redirect: "manual"`. The first version of this branch proved the same
+  thing with a spec it then deleted, leaving the rule the whole issue rests on
+  untested; raised in review.
 - **No `auth.medaris.app` under `apps/tedrisat/test/`** except two comments that
   explain the history.
 - **The MDRS-27 block still answers 401 on all ten routes** — unchanged, still
@@ -133,6 +165,16 @@ Against the acceptance criteria:
   and one under an unknown `kid` is refused. The first is what distinguishes a
   working key provider from a suppressed fetch.
 - **No unreachable provider remains** in `libs/common/src/auth-guard`.
+
+### What the guard does and does not cover
+
+It replaces `globalThis.fetch`. It does not see `node:http` / `node:https`
+clients, `undici.request`, or anything a child process does —
+`tools/keycloak/setup-realm.sh` shells out to `curl` and is invisible to it.
+Covering those means an undici `setGlobalDispatcher` with a connect hook, which
+would reach `fetch` and `undici.request` together but still not the http
+modules; that is wider than this issue and has not been done. `CLAUDE.md` states
+the same limit rather than the flattering version.
 
 ### Acceptance criterion 1 was rewritten, deliberately
 

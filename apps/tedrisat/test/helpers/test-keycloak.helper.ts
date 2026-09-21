@@ -1,5 +1,6 @@
 import { createSign } from "node:crypto";
 import type { IPublicKeyProvider } from "@medaris/common";
+import { KeyNotFoundError } from "@medaris/common";
 import { inject } from "vitest";
 
 /**
@@ -40,7 +41,11 @@ export function stubPublicKeyProvider(): IPublicKeyProvider {
   return {
     async getKey(requestedKid: string): Promise<string> {
       if (requestedKid !== kid) {
-        throw new Error(`Key not found: ${requestedKid}`);
+        // The real provider's own error class, not a bare `Error`: `AuthGuard`
+        // has a catch-all today, but `keycloak-audience.e2e.spec.ts` calls
+        // `verifyToken()` directly, and anything that branches on the class
+        // would behave differently under the stub than in production.
+        throw new KeyNotFoundError(`Signing key not found: ${requestedKid}`);
       }
       return publicKey;
     },

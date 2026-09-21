@@ -154,16 +154,45 @@ export async function useDatabaseForThisFile(): Promise<void> {
   process.env.LOG_LEVEL = "info";
   process.env.OTEL_ENABLED = "false";
   process.env.SWAGGER_ENABLED = "false";
-  // MDRS-89: an RFC 2606 `.invalid` host, not the deployed realm. These are the
-  // values `createTestApp` boots against unless a suite replaces them, and the
-  // stubbed key provider means nothing ever dereferences the URL. If some
-  // future code path does, DNS fails it fast instead of quietly succeeding
-  // against production Keycloak — which is what happened here until MDRS-89:
-  // 21 of this suite's 22 app boots made a real request to auth.medaris.app.
+  // The KEYCLOAK_* variables are deliberately NOT written here — see
+  // `applyStubKeycloakEnv`, which `createTestApp` calls only in stub mode.
+}
+
+/**
+ * Points the app at this run's fake realm (MDRS-89).
+ *
+ * Called from `createTestApp` in stub mode only, immediately before AppModule
+ * is imported. It used to live in `useDatabaseForThisFile`, which made
+ * `keyProvider: "real"` depend on an unwritten rule: a suite had to call that
+ * function itself, THEN set its own `KEYCLOAK_*`, because otherwise
+ * `createTestApp` ran it first and overwrote them. A suite that set the
+ * variables and called `createTestApp({ keyProvider: "real" })` directly —
+ * the obvious way to write it — booted against `keycloak.invalid`, had the
+ * failed pre-load swallowed by `onModuleInit`, and answered 401 to everything
+ * for a reason nothing in the output named.
+ *
+ * Binding the writes to the mode instead makes call order irrelevant: in
+ * `"real"` mode nothing here runs and the suite's own values stand.
+ */
+function applyStubKeycloakEnv(): void {
   const keycloak = inject("keycloak");
+
+  // RFC 2606 `.invalid`, not the deployed realm. The stubbed provider means
+  // nothing dereferences the URL; if some future code path does, DNS fails it
+  // fast instead of quietly succeeding against production Keycloak — which is
+  // what happened until MDRS-89: 21 of this suite's 22 app boots made a real
+  // request to auth.medaris.app.
   process.env.KEYCLOAK_JWKS_URL = keycloak.jwksUrl;
   process.env.KEYCLOAK_ISSUER = keycloak.issuer;
   process.env.KEYCLOAK_AUDIENCE = keycloak.audience;
+
+  // Pinned by deletion, not left to the ambient environment. The verifier only
+  // enforces an `azp` allow-list when this is set, and `mintTestToken` stamps
+  // no `azp`; an inherited value — a shell that sourced the root `.env` through
+  // a prefix-stripping tool, a CI job exporting it for another step — would
+  // turn every minted token into a 401 with nothing in the output to explain
+  // it.
+  delete process.env.KEYCLOAK_ALLOWED_CLIENTS;
 }
 
 /**
@@ -190,15 +219,21 @@ export async function useDatabaseForThisFile(): Promise<void> {
  *   real provider and verifier accept. Stubbing it there would leave nine
  *   passing tests that assert nothing about Keycloak.
  *
- * A suite asking for `"real"` owns pointing `KEYCLOAK_*` somewhere reachable
- * before it calls this; the loopback allowance in `test/setup-no-network.ts` is
- * what lets it.
+ * A suite asking for `"real"` owns its own `KEYCLOAK_*` values and may set them
+ * at any point before this call — nothing here overwrites them, because the
+ * placeholders are written only in stub mode. The loopback allowance in
+ * `test/setup-no-network.ts` is what lets such a suite reach its container.
  */
 export async function createTestApp(options?: {
   authUserId?: string;
   keyProvider?: "stub" | "real";
 }): Promise<INestApplication> {
   await useDatabaseForThisFile();
+
+  const useStub = (options?.keyProvider ?? "stub") === "stub";
+  if (useStub) {
+    applyStubKeycloakEnv();
+  }
 
   // Import AppModule lazily so configuration() runs after env vars are set.
   const { AppModule } = await import("../../src/app.module");
@@ -207,7 +242,7 @@ export async function createTestApp(options?: {
     imports: [AppModule],
   });
 
-  if ((options?.keyProvider ?? "stub") === "stub") {
+  if (useStub) {
     builder
       .overrideProvider(PUBLIC_KEY_PROVIDER)
       .useValue(stubPublicKeyProvider());

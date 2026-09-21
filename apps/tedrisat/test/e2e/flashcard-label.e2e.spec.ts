@@ -79,7 +79,6 @@ describe("Label controllers — authentication (e2e)", () => {
       .get(`/flashcard-label/${SOME_UUID}`)
       .set("Authorization", bearerFor({ sub: TEST_USER_ID }));
 
-    expect(response.status).not.toBe(401);
     expect(response.status).toBe(404);
   });
 

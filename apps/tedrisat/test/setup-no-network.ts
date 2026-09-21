@@ -11,14 +11,46 @@
  * is not a gate — it is why 21 outbound requests per run to production Keycloak
  * survived in this suite for months, and why the day the host became reachable
  * again the only visible symptom (that log line) disappeared while the requests
- * kept happening. A future provider that reintroduces a fetch now fails the
- * run instead of adding a line nobody reads.
+ * kept happening.
+ *
+ * **Throwing is not enough, for exactly that reason.** The code most likely to
+ * trip this guard is the code that swallows errors: `fetchPublicKey` rewraps
+ * anything as `JWKS fetch failed: …` and `onModuleInit` catches it and calls
+ * `console.error`. A refusal raised inside that hook would be caught by the
+ * thing being guarded and the run would stay green — the exact failure mode
+ * MDRS-89 is about, reproduced one level up. So every refusal is also RECORDED,
+ * and an `afterEach` that the swallowing code cannot reach fails the test.
+ *
+ * **Scope, stated honestly.** This replaces `globalThis.fetch` and nothing
+ * else. It does not see `node:http` / `node:https` clients, `undici.request`,
+ * or anything a child process does — `tools/keycloak/setup-realm.sh` shells out
+ * to `curl` and is invisible here. Covering those means an undici
+ * `setGlobalDispatcher` with a connect hook (which would reach `fetch` and
+ * `undici.request` together) plus something for the http modules; that is a
+ * wider change than MDRS-89 and has not been made.
  *
  * Loopback is allowed because it has a legitimate caller:
  * `keycloak-audience.e2e.spec.ts` (MDRS-42) starts its own Keycloak container
  * and talks to it on a mapped port. "No network" here means "nothing leaves
  * this machine", not "no HTTP".
  */
+
+import { afterEach } from "vitest";
+import { consumeRefusals, recordRefusal } from "./helpers/network-refusals";
+
+afterEach(() => {
+  const seen = consumeRefusals();
+  if (seen.length === 0) {
+    return;
+  }
+
+  throw new Error(
+    `MDRS-89: ${seen.length} outbound fetch attempt(s) were refused and the ` +
+      `error was swallowed by the code under test: ${seen.join(", ")}. ` +
+      "The refusal itself is above; this hook exists because the caller most " +
+      "likely to make one is the caller that catches its own failures."
+  );
+});
 
 const LOOPBACK_HOSTNAMES = new Set([
   "localhost",
@@ -69,6 +101,7 @@ globalThis.fetch = (async (input: FetchInput, init?: FetchInit) => {
   }
 
   if (!isLoopback(hostname)) {
+    recordRefusal(target);
     throw new Error(
       `MDRS-89: the tedrisat test suite tried to reach ${target}. ` +
         "Tests must not depend on a host being up — point this at a stub, a " +
@@ -81,17 +114,29 @@ globalThis.fetch = (async (input: FetchInput, init?: FetchInit) => {
 
   // A loopback URL can still answer 302 to somewhere else, and `realFetch`
   // follows redirects inside itself — the wrapper is not re-entered, so the
-  // hostname check above would never see the second hop. Refusing to follow at
-  // all is what closes that: the check runs on every URL this suite actually
-  // requests, because every hop has to be requested explicitly.
+  // hostname check above would never see the second hop.
   //
-  // `manual` is honoured when a caller asks for it, since it hands the response
-  // back without following and a caller that then fetches the `Location` comes
-  // back through here. Anything else — including an explicit `follow` — becomes
-  // `error`, because honouring it would reopen the hole it is meant to close.
-  // A suite that genuinely needs a loopback redirect followed asks for
-  // `manual` and follows it itself.
-  const redirect = init?.redirect === "manual" ? "manual" : "error";
+  // `manual` internally, never `error`: `error` makes undici raise a bare
+  // `TypeError: unexpected redirect`, which carries none of the context this
+  // file promises and reads like a bug in the application. Taking the response
+  // back unfollowed lets the refusal below name the hop it refused.
+  const wantsManual = init?.redirect === "manual";
+  const response = await realFetch(input, { ...init, redirect: "manual" });
 
-  return realFetch(input, { ...init, redirect });
+  // A caller that asked for `manual` gets the 3xx to deal with itself, and
+  // whatever it fetches next comes back through this guard.
+  if (wantsManual || response.status < 300 || response.status >= 400) {
+    return response;
+  }
+
+  const location = response.headers.get("location");
+  recordRefusal(`${target} → ${location ?? "(no Location header)"}`);
+  throw new Error(
+    `MDRS-89: ${target} answered ${response.status} redirecting to ` +
+      `${location ?? "an unnamed location"}, and the suite does not follow ` +
+      "redirects — the second hop would bypass the loopback check that let " +
+      'the first one through. Ask for `redirect: "manual"` and follow it ' +
+      "yourself if the target is loopback. See " +
+      "apps/tedrisat/test/setup-no-network.ts."
+  );
 }) as typeof globalThis.fetch;
