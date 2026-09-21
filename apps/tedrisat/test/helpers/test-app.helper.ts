@@ -5,11 +5,13 @@ import {
   GlobalExceptionFilter,
   LoggerFactory,
   MedarisValidationPipe,
+  PUBLIC_KEY_PROVIDER,
 } from "@medaris/common";
 import { ExecutionContext, INestApplication } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { Client } from "pg";
 import { expect, inject } from "vitest";
+import { stubPublicKeyProvider } from "./test-keycloak.helper";
 
 // Fixed user id injected by the stubbed AuthGuard in tests.
 export const TEST_USER_ID = "623fdf08-fd0e-481b-a927-4a1c15135e62";
@@ -152,10 +154,16 @@ export async function useDatabaseForThisFile(): Promise<void> {
   process.env.LOG_LEVEL = "info";
   process.env.OTEL_ENABLED = "false";
   process.env.SWAGGER_ENABLED = "false";
-  process.env.KEYCLOAK_JWKS_URL =
-    "https://auth.medaris.app/realms/amel-tech-dev/protocol/openid-connect/certs";
-  process.env.KEYCLOAK_ISSUER = "https://auth.medaris.app/realms/amel-tech-dev";
-  process.env.KEYCLOAK_AUDIENCE = "tedrisat-api";
+  // MDRS-89: an RFC 2606 `.invalid` host, not the deployed realm. These are the
+  // values `createTestApp` boots against unless a suite replaces them, and the
+  // stubbed key provider means nothing ever dereferences the URL. If some
+  // future code path does, DNS fails it fast instead of quietly succeeding
+  // against production Keycloak — which is what happened here until MDRS-89:
+  // 21 of this suite's 22 app boots made a real request to auth.medaris.app.
+  const keycloak = inject("keycloak");
+  process.env.KEYCLOAK_JWKS_URL = keycloak.jwksUrl;
+  process.env.KEYCLOAK_ISSUER = keycloak.issuer;
+  process.env.KEYCLOAK_AUDIENCE = keycloak.audience;
 }
 
 /**
@@ -167,9 +175,28 @@ export async function useDatabaseForThisFile(): Promise<void> {
  * Pass `authUserId` to stub the AuthGuard so guarded endpoints run as that
  * user (the guard only auto-bypasses when NODE_ENV === 'development', which is
  * not the case under Vitest).
+ *
+ * `keyProvider` selects where the app gets its signing keys (MDRS-89):
+ *
+ * - `"stub"`, the default — `PUBLIC_KEY_PROVIDER` is replaced with an
+ *   in-process provider holding this run's generated public key. Nothing
+ *   fetches anything. Note this is a SEPARATE override from `authUserId`:
+ *   `overrideGuard(AuthGuard)` swaps the guard and leaves the provider in
+ *   place, so before MDRS-89 even a fully impersonated app still booted
+ *   `KeycloakPublicKeyProvider` and awaited its `onModuleInit` fetch.
+ * - `"real"` — the container keeps `KeycloakPublicKeyProvider`. Its one caller
+ *   is `keycloak-audience.e2e.spec.ts` (MDRS-42), which runs a Keycloak of its
+ *   own and exists specifically to prove that the realm mints the audience the
+ *   real provider and verifier accept. Stubbing it there would leave nine
+ *   passing tests that assert nothing about Keycloak.
+ *
+ * A suite asking for `"real"` owns pointing `KEYCLOAK_*` somewhere reachable
+ * before it calls this; the loopback allowance in `test/setup-no-network.ts` is
+ * what lets it.
  */
 export async function createTestApp(options?: {
   authUserId?: string;
+  keyProvider?: "stub" | "real";
 }): Promise<INestApplication> {
   await useDatabaseForThisFile();
 
@@ -179,6 +206,12 @@ export async function createTestApp(options?: {
   const builder = Test.createTestingModule({
     imports: [AppModule],
   });
+
+  if ((options?.keyProvider ?? "stub") === "stub") {
+    builder
+      .overrideProvider(PUBLIC_KEY_PROVIDER)
+      .useValue(stubPublicKeyProvider());
+  }
 
   if (options?.authUserId !== undefined) {
     const userId = options.authUserId;

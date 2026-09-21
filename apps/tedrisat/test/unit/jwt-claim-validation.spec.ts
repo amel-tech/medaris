@@ -14,11 +14,14 @@ import request from "supertest";
 /**
  * Covers the claim checks MDRS-30 added to JwtVerifierService.
  *
- * The realm signing key is generated here rather than taken from
- * DummyPublicKeyProvider, which ships a public key only — there is no private
- * key in the repository to sign fixtures with. Tokens are assembled with
+ * The realm signing key is generated here. Tokens are assembled with
  * node:crypto rather than `jsonwebtoken` so the fixtures do not depend on the
  * same library that verifies them.
+ *
+ * This spec owns its keypair rather than taking the run-wide one that
+ * `test/global-setup.ts` provides (MDRS-89): it is a unit spec, it needs a
+ * second key to prove `kid` resolution, and `inject()` would tie it to a
+ * `globalSetup` that boots a Postgres container it has no use for.
  */
 
 const KID = "mdrs-30-test-kid";

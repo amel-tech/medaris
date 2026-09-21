@@ -231,8 +231,12 @@ describe("Keycloak realm ↔ audience check (e2e)", () => {
     process.env.KEYCLOAK_AUDIENCE = API_CLIENT_ID;
     process.env.KEYCLOAK_ALLOWED_CLIENTS = `tedris-dev,${PROBE_CLIENT_ID}`;
 
-    // No authUserId: the real AuthGuard is mounted.
-    app = await createTestApp();
+    // No authUserId: the real AuthGuard is mounted. `keyProvider: "real"`
+    // (MDRS-89) keeps `KeycloakPublicKeyProvider` too, so the JWKS fetch below
+    // goes to the container started above — this is the one suite in the repo
+    // that must not have its key provider stubbed, since proving the realm
+    // mints the audience the real provider accepts is the entire point of it.
+    app = await createTestApp({ keyProvider: "real" });
   }, 300_000);
 
   afterAll(async () => {
