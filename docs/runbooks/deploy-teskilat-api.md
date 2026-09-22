@@ -69,19 +69,20 @@ credentials, not app configuration, and they reach no teskilat container.
 
 ## 1. How a release tag becomes an image tag
 
-`docker/metadata-action` is configured with three tag rules:
+`docker/metadata-action` is configured with four tag rules:
 
 ```yaml
 type=match,pattern=teskilat-v(.+),group=1
 type=raw,value=latest,enable=${{ github.event_name == 'release' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
 type=sha
-type=raw,value=stable,enable=${{ github.event_name == 'release' }}
+type=raw,value=stable,enable=${{ github.event_name == 'release' && github.event.release.prerelease == false }}
 ```
 
 | Trigger | Tags produced |
 |---|---|
-| Release created, tag `teskilat-v0.1.1` | `0.1.1`, `latest`, `sha-<short>`, `stable` |
-| Release created, tag `teskilat-something-without-v` | `latest`, `sha-<short>`, `stable` — **no version tag** |
+| Full release published, tag `teskilat-v0.1.1` | `0.1.1`, `latest`, `sha-<short>`, `stable` |
+| Full release published, tag `teskilat-something-without-v` | `latest`, `sha-<short>`, `stable` — **no version tag** |
+| Pre-release created, tag `teskilat-v<semver>-rc.1` | `<semver>-rc.1`, `latest`, `sha-<short>` — **no `stable`**, so production is untouched and the deploy goes to development |
 | `workflow_dispatch` / `workflow_call` on `main` | `latest`, `sha-<short>` |
 | `workflow_dispatch` / `workflow_call` on any other branch | `sha-<short>` only |
 
@@ -136,7 +137,7 @@ Two channels (MDRS-87), told apart by the event that started the run:
 | Channel | Coolify application | Pulls | Started by | Webhook secret |
 |---|---|---|---|---|
 | development | the `development` one in the header | `latest` | any *development* path below | `TESKILAT_SERVICE_COOLIFY_WEBHOOK` |
-| production | its twin in the `production` environment | `stable` | *Release path* below | `TESKILAT_SERVICE_PROD_COOLIFY_WEBHOOK` |
+| production | its twin in the `production` environment | `stable` | *Release path* below, full releases only | `TESKILAT_SERVICE_PROD_COOLIFY_WEBHOOK` |
 
 Release-please is not part of the development channel: its release PRs stay
 open until someone decides to ship, and merging one is the production trigger.
@@ -144,7 +145,10 @@ open until someone decides to ship, and merging one is the production trigger.
 * **Release path (production)** — merge the release-please PR for `teskilat` (or
   create a GitHub release tagged `teskilat-v<semver>` by hand). The workflow
   builds, pushes `<semver>` + `latest` + `sha-…` + `stable`, and calls the
-  **production** webhook. `latest` moving here is harmless: the release commit
+  **production** webhook. A **pre-release** does none of that: `stable` is
+  guarded on `github.event.release.prerelease == false`, so an `-rc` build
+  goes to development like any other `main` build. `latest` moving on a full
+  release is harmless: the release commit
   is the head of `main`, so development receives the build it would anyway.
 * **Automatic path (development)** — every push to `main` runs **CD
   (development)** (`.github/workflows/cd-development.yaml`), which calls this

@@ -8,7 +8,7 @@ are tracked on the issue and are not done as of this writing.
 
 | File | Change |
 | -- | -- |
-| `.github/workflows/{tedrisat-api,teskilat-api,tedris-web,nizam-web,nazir-web,landing-web}.yaml` | `metadata-action` gains `type=raw,value=stable,enable=${{ github.event_name == 'release' }}`; the *Deploy to Coolify* step picks `<APP>_PROD_COOLIFY_WEBHOOK` on a `release` and the existing `<APP>_COOLIFY_WEBHOOK` otherwise, each checked on its own so an unset secret fails naming itself and never falls back to the other channel |
+| `.github/workflows/{tedrisat-api,teskilat-api,tedris-web,nizam-web,nazir-web,landing-web}.yaml` | `metadata-action` gains `type=raw,value=stable,enable=${{ github.event_name == 'release' && github.event.release.prerelease == false }}`; the *Deploy to Coolify* step picks `<APP>_PROD_COOLIFY_WEBHOOK` under that same condition and the existing `<APP>_COOLIFY_WEBHOOK` otherwise, each checked on its own so an unset secret fails naming itself and never falls back to the other channel |
 | `docs/runbooks/deploy-*.md` (6) | §1 tag table and rule block carry `stable`; §2 describes the two channels alongside the `cd-development.yaml` paths MDRS-86 added; §3 Path B names `stable` for production; *Known blockers* gains the unset production webhook |
 
 `keycloak-theme-app.yaml` is untouched: it deploys to the single shared
@@ -19,13 +19,26 @@ Keycloak in the *Amel-Tech Auth* project, which has no environment split.
 | Channel | Coolify environment | Pulls | Moves when |
 | -- | -- | -- | -- |
 | development | `development` | `latest` | every workflow run on `main` |
-| production | `production` | `stable` | only on a GitHub release |
+| production | `production` | `stable` | only on a full GitHub release |
 | rollback | either | `<semver>` / `sha-<short>` | never |
 
 No `dev` tag is reintroduced: `latest` already plays that role (the old
 repositories' `ci-dev.yaml` pushed `<app>-dev`; see the MDRS-86 record for why
 that disappeared). `latest` also moves on a release; the release commit is the
 head of `main`, so development receives the same build.
+
+**Why `prerelease == false` and not a different trigger.** The six workflows
+run on `release: created`, which GitHub fires for a pre-release as well —
+only drafts are excluded. Without a guard, a hand-cut `…-v2.0.0-rc.1` would
+move `stable` and redeploy production with a release candidate, which is the
+one thing this channel exists to prevent. The guard is on the two places that
+mean *production* — the `stable` tag rule and the webhook choice — rather than
+on the trigger itself, so the development path is untouched: a pre-release
+still builds, still pushes `<semver>-rc.1` + `latest` + `sha-…`, and still
+deploys to `development`, which is where a release candidate belongs.
+Switching the trigger to `release: released` would also work for production,
+but it would stop a pre-release deploying anywhere at all and it would change
+a trigger the six runbooks and the MDRS-16 record describe.
 
 ## Verified
 
@@ -56,8 +69,8 @@ with the *other* channel's secret present, which is what proves there is no
 fallback:
 
 ```sh
-IS_RELEASE=true  DEV_WEBHOOK=https://example.invalid/dev PROD_WEBHOOK= COOLIFY_TOKEN=x bash deploy-step.sh; echo "exit $?"
-IS_RELEASE=false DEV_WEBHOOK= PROD_WEBHOOK=https://example.invalid/prod COOLIFY_TOKEN=x bash deploy-step.sh; echo "exit $?"
+IS_PRODUCTION=true  DEV_WEBHOOK=https://example.invalid/dev PROD_WEBHOOK= COOLIFY_TOKEN=x bash deploy-step.sh; echo "exit $?"
+IS_PRODUCTION=false DEV_WEBHOOK= PROD_WEBHOOK=https://example.invalid/prod COOLIFY_TOKEN=x bash deploy-step.sh; echo "exit $?"
 ```
 
 ```
@@ -81,4 +94,18 @@ substituted; only tedrisat's was executed.
   section says so under its own secret name.
 - The first release also needs the 43 historical tags pushed first (MDRS-17
   §3–§4, MDRS-86 §4 step 4). Every currently open release-please PR is from the
-  anchorless first run and proposes a spurious version.
+  anchorless first run and proposes a spurious version. The 43 are still
+  pushable — that part *was* measured, on 2026-09-22:
+
+  ```sh
+  { gh api --paginate repos/amel-tech/madrasah-frontend/tags --jq '.[] | "\(.commit.sha) \(.name)"'
+    gh api --paginate repos/amel-tech/madrasah-backend/tags  --jq '.[] | "\(.commit.sha) \(.name)"'; } > tags.txt
+  wc -l < tags.txt
+  while read sha name; do
+    git merge-base --is-ancestor "$sha" origin/main || echo "unreachable: $name"
+  done < tags.txt
+  ```
+
+  `43` tag lines, and every one of the 43 commits is an ancestor of
+  `origin/main` — nothing printed `unreachable`. The two source repositories
+  still hold the 37 + 6 tags MDRS-17 §2 counted.

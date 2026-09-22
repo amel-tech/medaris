@@ -108,16 +108,23 @@ jobs:
           # nothing. The explicit expression below fires `latest` for every
           # release as well as for the default branch.
           #
-          # `stable` (MDRS-87) moves ONLY on a release and is what the Coolify
-          # `production` application pulls; `latest` is what `development`
-          # pulls. Two moving tags, one per channel, and the immutable
-          # `<semver>` / `sha-…` pair for rollback. There is deliberately no
-          # `dev` tag: `latest` already plays that role.
+          # `stable` (MDRS-87) moves ONLY on a full release and is what the
+          # Coolify `production` application pulls; `latest` is what
+          # `development` pulls. Two moving tags, one per channel, and the
+          # immutable `<semver>` / `sha-…` pair for rollback. There is
+          # deliberately no `dev` tag: `latest` already plays that role.
+          #
+          # `prerelease == false` is the whole guard. The trigger is
+          # `release: created`, which fires for a pre-release too (only drafts
+          # are excluded), so without it a hand-cut `…-rc.1` would move
+          # `stable` and redeploy production with a release candidate. A
+          # pre-release still builds and still moves `latest`, so it reaches
+          # `development` — which is where an rc belongs.
           tags: |
             type=match,pattern=tedrisat-v(.+),group=1
             type=raw,value=latest,enable=${{ github.event_name == 'release' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
             type=sha
-            type=raw,value=stable,enable=${{ github.event_name == 'release' }}
+            type=raw,value=stable,enable=${{ github.event_name == 'release' && github.event.release.prerelease == false }}
 
       - name: Build and push Docker image
         id: build
@@ -155,23 +162,24 @@ jobs:
       # issue exists to close. Secrets are passed through `env` rather than
       # spliced into the script body.
       #
-      # MDRS-87: the webhook is chosen by event. A `release` deploys to the
-      # Coolify `production` application through TEDRISAT_SERVICE_PROD_COOLIFY_WEBHOOK;
-      # every other trigger — workflow_dispatch, or the workflow_call
-      # cd-development.yaml makes on every push to `main` — deploys to
-      # `development` through TEDRISAT_SERVICE_COOLIFY_WEBHOOK. The secret each branch
-      # needs is checked on its own so a release with no production webhook
-      # fails here, naming the secret — it must never fall back to the
-      # development one.
+      # MDRS-87: the webhook is chosen by event. A full release — not a
+      # pre-release, see `prerelease == false` above — deploys to the Coolify
+      # `production` application through TEDRISAT_SERVICE_PROD_COOLIFY_WEBHOOK;
+      # everything else deploys to `development` through
+      # TEDRISAT_SERVICE_COOLIFY_WEBHOOK: a pre-release, a
+      # workflow_dispatch, and the workflow_call cd-development.yaml makes on
+      # every push to `main`. The secret each branch needs is checked on its
+      # own, so a release with no production webhook fails here naming that
+      # secret — it must never fall back to the development one.
       - name: Deploy to Coolify
         env:
-          IS_RELEASE: ${{ github.event_name == 'release' }}
+          IS_PRODUCTION: ${{ github.event_name == 'release' && github.event.release.prerelease == false }}
           DEV_WEBHOOK: ${{ secrets.TEDRISAT_SERVICE_COOLIFY_WEBHOOK }}
           PROD_WEBHOOK: ${{ secrets.TEDRISAT_SERVICE_PROD_COOLIFY_WEBHOOK }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
         run: |
           set -euo pipefail
-          if [ "${IS_RELEASE}" = "true" ]; then
+          if [ "${IS_PRODUCTION}" = "true" ]; then
             COOLIFY_WEBHOOK="${PROD_WEBHOOK}"; CHANNEL="production"; SECRET_NAME="TEDRISAT_SERVICE_PROD_COOLIFY_WEBHOOK"
           else
             COOLIFY_WEBHOOK="${DEV_WEBHOOK}"; CHANNEL="development"; SECRET_NAME="TEDRISAT_SERVICE_COOLIFY_WEBHOOK"
