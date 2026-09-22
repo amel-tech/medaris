@@ -92,9 +92,12 @@ calls this workflow on every push to `main`, so under the old gate
 `github.event_name` would be `'push'`, no clause would match, and every deploy
 would have been skipped silently and reported success.
 
-> As of this writing the repository has **no git tags and no releases**
-> (`gh api repos/amel-tech/medaris/tags` and `.../releases` are both empty), so
-> the only tags any first deploy can produce are `latest` and `sha-<short>`.
+> The 43 historical tags MDRS-9 preserved were pushed on 2026-09-22
+> (`gh api --paginate repos/amel-tech/medaris/tags --jq '.[].name' | wc -l` →
+> `43`), so release-please finally has a release anchor per component. The
+> repository still has **no releases** (`gh api repos/amel-tech/medaris/releases
+> --jq 'length'` → `0`), so no deploy has yet produced a `<semver>` or `stable`
+> tag; every image in GHCR is from a `latest` / `sha-<short>` run.
 
 ---
 

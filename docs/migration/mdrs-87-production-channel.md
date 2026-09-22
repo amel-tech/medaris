@@ -92,10 +92,9 @@ substituted; only tedrisat's was executed.
   applications do not exist yet, so the first release will push the four image
   tags and then fail on the webhook step. Each runbook's *Known blockers*
   section says so under its own secret name.
-- The first release also needs the 43 historical tags pushed first (MDRS-17
-  §3–§4, MDRS-86 §4 step 4). Every currently open release-please PR is from the
-  anchorless first run and proposes a spurious version. The 43 are still
-  pushable — that part *was* measured, on 2026-09-22:
+- ~~The first release also needs the 43 historical tags pushed first~~ — done
+  on 2026-09-22, after this branch was written (MDRS-17 §3–§4, MDRS-86 §4
+  step 4). What was measured before pushing them:
 
   ```sh
   { gh api --paginate repos/amel-tech/madrasah-frontend/tags --jq '.[] | "\(.commit.sha) \(.name)"'
@@ -107,5 +106,9 @@ substituted; only tedrisat's was executed.
   ```
 
   `43` tag lines, and every one of the 43 commits is an ancestor of
-  `origin/main` — nothing printed `unreachable`. The two source repositories
-  still hold the 37 + 6 tags MDRS-17 §2 counted.
+  `origin/main` — nothing printed `unreachable`. After the push,
+  `gh api --paginate repos/amel-tech/medaris/tags --jq '.[].name' | wc -l` →
+  `43`, and `gh api repos/amel-tech/medaris/releases --jq 'length'` → `0`: the
+  anchor exists, the first release does not. release-please was re-run by
+  `workflow_dispatch` and its seven PRs dropped from 276 changelog entries
+  (178 of them duplicates of earlier sections) to 79 with none duplicated.
