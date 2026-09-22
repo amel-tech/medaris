@@ -110,5 +110,45 @@ substituted; only tedrisat's was executed.
   `gh api --paginate repos/amel-tech/medaris/tags --jq '.[].name' | wc -l` →
   `43`, and `gh api repos/amel-tech/medaris/releases --jq 'length'` → `0`: the
   anchor exists, the first release does not. release-please was re-run by
-  `workflow_dispatch` and its seven PRs dropped from 276 changelog entries
-  (178 of them duplicates of earlier sections) to 79 with none duplicated.
+  `workflow_dispatch` (run `35684036232`) and regenerated all seven PRs. What
+  the seven now write, counted per PR — added changelog entries, and how many
+  of them already appear in that component's `CHANGELOG.md` on `main`:
+
+  ```sh
+  while read -r pr path; do
+    added=$(gh pr diff "$pr" | grep -c '^+\* ')
+    d=0
+    while IFS= read -r line; do
+      text=${line%%(\[*}; text=${text#+}
+      git show "origin/main:$path/CHANGELOG.md" | grep -qF -- "$text" && d=$((d+1))
+    done < <(gh pr diff "$pr" | grep '^+\* ')
+    printf '#%s %-20s entries %3d  already present %3d\n' "$pr" "$path" "$added" "$d"
+  done <<'ROWS'
+  83 apps/tedrisat
+  84 apps/nazir
+  85 apps/landing
+  86 apps/teskilat
+  87 apps/tedris
+  88 apps/nizam
+  89 apps/keycloak-theme
+  ROWS
+  ```
+
+  ```
+  #83 apps/tedrisat           entries  22  already present   0
+  #84 apps/nazir              entries   7  already present   0
+  #85 apps/landing            entries   7  already present   0
+  #86 apps/teskilat           entries  12  already present   0
+  #87 apps/tedris             entries  12  already present   0
+  #88 apps/nizam              entries  12  already present   0
+  #89 apps/keycloak-theme     entries   7  already present   0
+  ```
+
+  **79 entries, 0 of them duplicates.** The same counting logic, run on the
+  *anchorless* PRs earlier on 2026-09-22 before the tags were pushed, gave 276
+  entries of which 178 were already present (per PR, entries/present: 77/52,
+  17/10, 25/18, 12/0, 66/45, 67/48, 12/5). release-please has since overwritten
+  those seven branches, so that pair of numbers cannot be re-derived from the
+  repository and is recorded here as a one-time measurement — with the 276
+  landing one short of the 277 MDRS-17 §4 predicted independently, from the
+  dry run.

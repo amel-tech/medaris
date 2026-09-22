@@ -137,7 +137,10 @@ this task deliberately created none.
 > (#83–#89) and not merged. With the tags pushed, release-please was re-run by
 > `workflow_dispatch` and regenerated all seven from each component's own last
 > release: 276 changelog entries became 79, and the 178 that duplicated an
-> earlier section became 0. The proposed versions did **not** change — the
+> earlier section became 0 — the per-PR counts, the script that produced them
+> and the caveat on the two "before" numbers are in
+> `mdrs-87-production-channel.md` §Not verified. The proposed versions did
+> **not** change — the
 > three majors in §4's table are driven by the repo-wide `BREAKING CHANGE`
 > footers this section describes, which genuinely are in each component's
 > post-release range, so they are a release decision now rather than a
