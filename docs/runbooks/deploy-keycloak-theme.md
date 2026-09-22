@@ -80,7 +80,7 @@ gives a Keycloak that starts but silently falls back to the built-in theme.
   `apps/keycloak-theme/package.json#version` (currently `1.4.0`) so a human can
   correlate the release with the deployed theme.
 * **Manual path** — Actions → **Keycloak Theme Deploy** → *Run workflow*.
-* **Fan-out path** — Actions → **Deploy Affected** with `dry_run: false`. This
+* **Fan-out path** — Actions → **CD (development)** (`cd-development.yaml`) with `dry_run: false`. Never on a push: the dispatcher excludes this app from its `push: main` fan-out because the workflow restarts the shared Keycloak (MDRS-86). This
   workflow is called whenever `nx affected` reports `keycloak-theme`, which
   includes changes to `libs/ui`, `libs/icons` and `libs/tokens`.
 

@@ -24,6 +24,10 @@ export default mergeConfig(
       // `globalSetup` runs once in the main process and hands the workers the
       // connection details through `provide`/`inject`.
       globalSetup: ["./test/global-setup.ts"],
+      // MDRS-89: runs in every worker and refuses any fetch that leaves this
+      // machine. `globalSetup` above cannot do this — it runs once in the main
+      // process, and the requests happen inside the forks.
+      setupFiles: ["./test/setup-no-network.ts"],
       // jest.config.json set `testTimeout: 60000` and `maxWorkers: 1`. Jest
       // applied that timeout to hooks too; Vitest does not. The Testcontainers
       // boot has moved to `globalSetup`, which is governed by neither of these

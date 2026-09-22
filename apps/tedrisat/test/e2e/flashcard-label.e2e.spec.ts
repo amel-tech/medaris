@@ -4,6 +4,7 @@ import { DatabaseService } from "../../src/database/database.service";
 import { Scope } from "../../src/flashcard/domain/flashcard-label.enum";
 import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
 import { TestDatabaseUtils } from "../helpers/test-database.helper";
+import { bearerFor } from "../helpers/test-keycloak.helper";
 
 const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";
 const SOME_UUID = "22222222-2222-2222-2222-222222222222";
@@ -54,6 +55,40 @@ describe("Label controllers — authentication (e2e)", () => {
         url: string
       ) => request.Test
     )(path).send({});
+
+    expect(response.status).toBe(401);
+  });
+
+  /**
+   * The other half of the ten assertions above, and the one that proves
+   * MDRS-89's stub is a working key provider rather than a suppressed fetch.
+   *
+   * This app mounts the real `AuthGuard`, the real `JwtVerifierService` and —
+   * since MDRS-89 — an in-process `PUBLIC_KEY_PROVIDER` holding this run's
+   * generated public key. The token below is signed with the matching private
+   * key and carries the claims the verifier requires. If the stub were merely
+   * silencing the network, `getKey` would find nothing and this would be a
+   * eleventh 401.
+   *
+   * 404, not 200: the label id is a well-formed UUID that no row uses. What
+   * matters is that the request got past the guard to reach the service, which
+   * a 401 would not have.
+   */
+  it("accepts a token minted with this run's key and reaches the route", async () => {
+    const response = await request(app.getHttpServer())
+      .get(`/flashcard-label/${SOME_UUID}`)
+      .set("Authorization", bearerFor({ sub: TEST_USER_ID }));
+
+    expect(response.status).toBe(404);
+  });
+
+  it("rejects a token signed with a key the realm does not publish", async () => {
+    const response = await request(app.getHttpServer())
+      .get(`/flashcard-label/${SOME_UUID}`)
+      .set(
+        "Authorization",
+        bearerFor({ sub: TEST_USER_ID, header: { kid: "not-this-realm" } })
+      );
 
     expect(response.status).toBe(401);
   });

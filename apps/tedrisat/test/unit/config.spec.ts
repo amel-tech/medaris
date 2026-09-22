@@ -3,9 +3,12 @@ import { resolveDatabaseSsl } from "../../src/config/database-ssl";
 import { requireDbPassword } from "../../src/config/security-env";
 import { resolveSwaggerOauthRedirectOrigin } from "../../src/config/swagger-oauth-redirect";
 
+// RFC 2606 `.invalid`, not the deployed host (MDRS-89). These are string
+// fixtures — nothing here dereferences them — but a production hostname sitting
+// in a test file is an invitation for the next person to point something at it.
 const VALID_JWKS_URL =
-  "https://auth.medaris.app/realms/amel-tech-dev/protocol/openid-connect/certs";
-const VALID_ISSUER = "https://auth.medaris.app/realms/amel-tech-dev";
+  "https://keycloak.invalid/realms/amel-tech-dev/protocol/openid-connect/certs";
+const VALID_ISSUER = "https://keycloak.invalid/realms/amel-tech-dev";
 const VALID_AUDIENCE = "tedrisat-api";
 
 /** Everything readSecurityEnv demands, so each test can remove one variable. */

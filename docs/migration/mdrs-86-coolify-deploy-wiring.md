@@ -44,8 +44,9 @@ runs today and all of them are needed by the first `medaris` image.
 already move on every default-branch run and every release, so no workflow
 edit is needed for it; a future `production` pins `<semver>`, which the release
 path already produces. What replaces `ci-dev.yaml` is the `push: main` trigger
-on `deploy-affected.yaml` — still to be added, after the one watched
-`dry_run: false` run its header requires.
+on the dispatcher — added by the follow-up pull request that also renamed it
+from `deploy-affected.yaml` to `cd-development.yaml` ("CD (development)"),
+after the 2026-09-20 dry run and six green `main` dispatches; see §4 step 5.
 
 ### Environment keys, read without values
 
@@ -79,16 +80,53 @@ separately, because a `PATCH` changes only what the *next* deploy pulls.
 
 | Application | Coolify configuration | Running container | Rollback value |
 | -- | -- | -- | -- |
-| `teskilat-service` | `ghcr.io/amel-tech/medaris-teskilat-api:sha-29f145e`, health check `/health:3002` on | the same image since 2026-09-15 — deployment `o8bd2jaa67w6qjjkm356yj69` finished, `running:healthy`, `https://api-teskilat-dev.medaris.net/health` → 200 | `ghcr.io/amel-tech/madrasah-backend-teskilat-api:teskilat-dev`, health check off |
-| `tedrisat-service` | `ghcr.io/amel-tech/medaris-tedrisat-api:sha-29f145e`, health check `/health:3001` on, `signoz-net` alias kept | the same image since 2026-09-16 — deployment `ib9pf3gab9ew060x77gazg41` finished, `running:healthy`, `https://api-tedrisat-dev.medaris.net/health` → 200; protected routes 401 without a token, CORS allows the dev web origins and refuses a foreign one | `ghcr.io/amel-tech/madrasah-backend-tedrisat-api:tedrisat-dev`, health check off |
-| `tedris-web`, `nizam-web`, `nazir-web`, `landing-web` | unchanged: `ghcr.io/amel-tech/madrasah-frontend-<app>:<app>-dev` | the same, last built 2026-06-18 | — (nothing to undo) |
+| `teskilat-service` | `ghcr.io/amel-tech/medaris-teskilat-api:latest`, health check `/health:3002` on | `latest` = `sha-5d52210`, deployment `no2adzkoffgtovymmkaz9k9k` finished 2026-09-20, `running:healthy`, `/health` 200 | `ghcr.io/amel-tech/madrasah-backend-teskilat-api:teskilat-dev` |
+| `tedrisat-service` | `ghcr.io/amel-tech/medaris-tedrisat-api:latest`, health check `/health:3001` on, `signoz-net` alias kept | `latest` = `sha-5d52210`, deployment `vp4vf43jbxr2tpp3je247l8r` finished 2026-09-20, `running:healthy`, `/health` 200 | `ghcr.io/amel-tech/madrasah-backend-tedrisat-api:tedrisat-dev` |
+| `tedris-web`, `nizam-web`, `nazir-web`, `landing-web` | `ghcr.io/amel-tech/medaris-<app>-web:latest`, health checks off (see below) | `latest` = `sha-5d52210`, each deployed 2026-09-20, `GET /` 200 after redirects; inspected per app below | `ghcr.io/amel-tech/madrasah-frontend-<app>-web:<app>-dev` |
 
-Why `sha-29f145e` and not `latest`: the two API images were built by
-dispatching each workflow from this branch, and a run outside the default
-branch pushes only `sha-<short>`. The first webhook deploy of each therefore
-failed on the missing `latest` (expected) and the application was re-pointed
-to the immutable tag and deployed through the API. `latest` becomes the
-configured tag once this branch is on `main` and one `main` run has pushed it.
+The path there: the two API images were first built from this branch (a run
+outside the default branch pushes only `sha-<short>`), so the first verified
+deploys used `sha-29f145e`. After the merge (`5d52210`), all six workflows
+were dispatched from `main` — the first time the four web images ever built
+in CI — and every application was switched to `latest` and redeployed
+through the API. Configuration and running container agree from here on.
+
+The six runs, plus the dispatcher's dry run, as GitHub reports them:
+
+```
+$ gh run list -R amel-tech/medaris -b main --json databaseId,name,event,conclusion,headSha,createdAt \
+    --jq '.[] | select(.event=="workflow_dispatch") | "\(.databaseId)  \(.name)  \(.headSha[:7])  \(.conclusion)  \(.createdAt)"'
+35535778107  Deploy Affected  5d52210  success  2026-09-20T20:30:40Z   (dry_run: true, base: 29f145e)
+35535864998  Teskilat API     5d52210  success  2026-09-20T20:32:17Z
+35535866401  Tedrisat API     5d52210  success  2026-09-20T20:32:19Z
+35536077688  Tedris Web       5d52210  success  2026-09-20T20:36:16Z
+35536079051  Nizam Web        5d52210  success  2026-09-20T20:36:18Z
+35536080527  Nazir Web        5d52210  success  2026-09-20T20:36:20Z
+35536081989  Landing Web      5d52210  success  2026-09-20T20:36:22Z
+```
+
+What was inspected on the deployed web apps, per app, on 2026-09-20 — and
+what was not:
+
+| App | Served page (`GET /`, redirects followed) | JS files the page references | Not inspected |
+| -- | -- | -- | -- |
+| tedris-web | 200; no `localhost:<port>` string | 1 file fetched, none | server-side chunks inside the image |
+| nizam-web | 200; none | 1 file, none | same |
+| nazir-web | 200; none | 1 file, none | same |
+| landing-web | 200; none | 1 file, none | same |
+
+The server-side chunks are where MDRS-16 originally measured the inlined
+`NEXT_PUBLIC_TEDRISAT_API_BASE_URL:"http://localhost:3001"` (tedris, nizam,
+nazir) and `NEXT_PUBLIC_TEDRIS_APP_URL=http://localhost:4000` (landing). They
+were not re-inspected on the deployed images. The stronger evidence is
+upstream of any artifact: `git grep NEXT_PUBLIC -- '*.ts' '*.tsx'` on `main`
+matches only comments, so there is no value left for `next build` to inline,
+and the local tedris build in §6 shows zero files carrying any of the former
+values under `.next/static`.
+
+Web health checks stay off on purpose: Next answers `/` with a locale
+redirect (307/308) and Coolify's check expects 200, so enabling it would mark
+every deploy failed. A small health route per web app is the follow-up.
 
 Keys added by hand before those deploys: `ALLOWED_ORIGINS` on teskilat;
 `ALLOWED_ORIGINS`, `KEYCLOAK_ISSUER`, `KEYCLOAK_AUDIENCE`,
@@ -111,7 +149,7 @@ apply.
 | `tools/ci/assert-env-compose-parity.mjs`, `.coderabbit.yaml` | the ten `NEXT_PUBLIC_*` exemptions and the review guidance that described them removed/rewritten |
 | `apps/{tedris,nizam,nazir,landing}/Dockerfile` | the "KNOWN LIMITATION" paragraph replaced: nothing from `.env.example` reaches the browser any more |
 | `apps/{tedris,nizam,nazir,landing}/project.json` | `build.dependsOn: ["^build", "^typecheck"]` — see *The web images never built* below |
-| `.github/workflows/{tedrisat-api,teskilat-api,tedris,nizam,nazir,landing-web}.yaml` | a pinned `docker/setup-buildx-action` step — see *The first real run* below |
+| `.github/workflows/{tedrisat-api,teskilat-api,tedris-web,nizam-web,nazir-web,landing-web}.yaml` | a pinned `docker/setup-buildx-action` step — see *The first real run* below |
 | `.dockerignore` | `.claude` excluded — a git-ignored worktree under `.claude/worktrees/` made every local `docker build` fail with Nx's duplicate-project error |
 | `docker-compose.yml` | the comment that pointed at "MDRS-16's build-arg item" now says what closed it and that compose deliberately passes no build args |
 | `docs/runbooks/deploy-*.md` (6) | Coolify application row in the header; §3.2 and §4 TODOs replaced with what was read; a §0 on the web runbooks for the repository variables |
@@ -225,7 +263,12 @@ In the order that keeps each step reversible:
    summary is the one Coolify runs, then re-point the next app.
 4. Push the 43 tags (MDRS-9 §7 step 2) before merging any release-please pull
    request.
-5. `push: main` on `deploy-affected.yaml`, after one watched real run.
+5. `push: main` on the dispatcher — done: `.github/workflows/cd-development.yaml`
+   (renamed from `deploy-affected.yaml`, name "CD (development)") runs on every
+   push to `main`; keycloak-theme is excluded from that fan-out because its
+   workflow restarts the shared Keycloak. The dispatcher's own first real
+   fan-out is the first push after the merge and must be watched; seed its
+   nx-set-shas anchor first with one `dry_run: true`, `base: 5d52210` dispatch.
 
 ## 5. Not verified
 

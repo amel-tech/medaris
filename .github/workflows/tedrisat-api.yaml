@@ -43,7 +43,9 @@ jobs:
     # which is a trap for `workflow_call`: inside a reusable workflow the
     # `github` context belongs to the CALLER, so `github.event_name` is never
     # 'workflow_call' — it is whatever triggered the caller. It happens to work
-    # today only because deploy-affected.yaml is workflow_dispatch-only. The
+    # today only because the dispatcher was workflow_dispatch-only; since MDRS-86
+    # cd-development.yaml calls this on every push to main, and this gate is why
+    # that works. The
     # moment that dispatcher gains a `push:` trigger, event_name becomes 'push',
     # no clause matches, and every deploy is silently skipped with a green
     # checkmark. Stating the one real restriction instead — "on a release, the
@@ -88,7 +90,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           # `type=sha` is the fix for a real hole: `type=match` only fires on a
           # release tag and `enable={{is_default_branch}}` only on main, so a
-          # workflow_dispatch (or a workflow_call from deploy-affected.yaml) on
+          # workflow_dispatch (or a workflow_call from cd-development.yaml) on
           # any other branch produced ZERO tags — metadata-action emitted an
           # empty `tags` output and build-push-action failed on the push with
           # nothing useful to say. `type=sha` is enabled for every event, so
@@ -155,11 +157,12 @@ jobs:
       #
       # MDRS-87: the webhook is chosen by event. A `release` deploys to the
       # Coolify `production` application through TEDRISAT_SERVICE_PROD_COOLIFY_WEBHOOK;
-      # every other trigger (workflow_dispatch, workflow_call from
-      # deploy-affected.yaml, a future push) deploys to `development` through
-      # TEDRISAT_SERVICE_COOLIFY_WEBHOOK. The secret each branch needs is
-      # checked on its own so a release with no production webhook fails here,
-      # naming the secret — it must never fall back to the development one.
+      # every other trigger — workflow_dispatch, or the workflow_call
+      # cd-development.yaml makes on every push to `main` — deploys to
+      # `development` through TEDRISAT_SERVICE_COOLIFY_WEBHOOK. The secret each branch
+      # needs is checked on its own so a release with no production webhook
+      # fails here, naming the secret — it must never fall back to the
+      # development one.
       - name: Deploy to Coolify
         env:
           IS_RELEASE: ${{ github.event_name == 'release' }}
