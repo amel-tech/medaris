@@ -37,18 +37,20 @@ host would need a rebuild; a different realm does not.
 
 ## 1. How a release tag becomes an image tag
 
-`docker/metadata-action` is configured with three tag rules:
+`docker/metadata-action` is configured with four tag rules:
 
 ```yaml
 type=match,pattern=landing-web-v(.+),group=1
 type=raw,value=latest,enable=${{ github.event_name == 'release' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
 type=sha
+type=raw,value=stable,enable=${{ github.event_name == 'release' && github.event.release.prerelease == false }}
 ```
 
 | Trigger | Tags produced |
 |---|---|
-| Release created, tag `landing-web-v1.4.0` | `1.4.0`, `latest`, `sha-<short>` |
-| Release created, tag `landing-web-something-without-v` | `latest`, `sha-<short>` — **no version tag** |
+| Full release published, tag `landing-web-v1.4.0` | `1.4.0`, `latest`, `sha-<short>`, `stable` |
+| Full release published, tag `landing-web-something-without-v` | `latest`, `sha-<short>`, `stable` — **no version tag** |
+| Pre-release created, tag `landing-web-v<semver>-rc.1` | `<semver>-rc.1`, `latest`, `sha-<short>` — **no `stable`**, so production is untouched and the deploy goes to development |
 | `workflow_dispatch` / `workflow_call` on `main` | `latest`, `sha-<short>` |
 | `workflow_dispatch` / `workflow_call` on any other branch | `sha-<short>` only |
 
@@ -84,29 +86,47 @@ version tag** — only `latest` and `sha-…`. Always tag releases as `landing-w
 MDRS-16 rewrote this gate. The old form enumerated allowed events
 (`== 'workflow_dispatch' || == 'workflow_call' || startsWith(…)`), which is a
 trap: inside a reusable workflow the `github` context is the **caller's**, so
-`github.event_name` is never `'workflow_call'`. It only worked because the
-dispatcher is `workflow_dispatch`-only today; the moment anything calls this
-workflow from a `push`, the old gate would have skipped the deploy silently and
-reported success.
+`github.event_name` is never `'workflow_call'`. It only worked while the
+dispatcher was `workflow_dispatch`-only; since MDRS-86 `cd-development.yaml`
+calls this workflow on every push to `main`, so under the old gate
+`github.event_name` would be `'push'`, no clause would match, and every deploy
+would have been skipped silently and reported success.
 
-> As of this writing the repository has **no git tags and no releases**
-> (`gh api repos/amel-tech/medaris/tags` and `.../releases` are both empty), so
-> the only tags any first deploy can produce are `latest` and `sha-<short>`.
+> The 43 historical tags MDRS-9 preserved were pushed on 2026-09-22
+> (`gh api --paginate repos/amel-tech/medaris/tags --jq '.[].name' | wc -l` →
+> `43`), so release-please finally has a release anchor per component. The
+> repository still has **no releases** (`gh api repos/amel-tech/medaris/releases
+> --jq 'length'` → `0`), so no deploy has yet produced a `<semver>` or `stable`
+> tag; every image in GHCR is from a `latest` / `sha-<short>` run.
 
 ---
 
 ## 2. Normal deploy
 
-Either:
+Two channels (MDRS-87), told apart by the event that started the run:
 
-* **Release path** — create a GitHub release tagged `landing-web-v<semver>`. The
-  workflow builds, pushes, and calls the Coolify webhook.
-* **Manual path** — Actions → **Landing Web** → *Run workflow*.
+| Channel | Coolify application | Pulls | Started by | Webhook secret |
+|---|---|---|---|---|
+| development | the `development` one in the header | `latest` | any *development* path below | `LANDING_WEB_COOLIFY_WEBHOOK` |
+| production | its twin in the `production` environment | `stable` | *Release path* below, full releases only | `LANDING_WEB_PROD_COOLIFY_WEBHOOK` |
+
+Release-please is not part of the development channel: its release PRs stay
+open until someone decides to ship, and merging one is the production trigger.
+
+* **Release path (production)** — merge the release-please PR for `landing-web` (or
+  create a GitHub release tagged `landing-web-v<semver>` by hand). The workflow
+  builds, pushes `<semver>` + `latest` + `sha-…` + `stable`, and calls the
+  **production** webhook. A **pre-release** does none of that: `stable` is
+  guarded on `github.event.release.prerelease == false`, so an `-rc` build
+  goes to development like any other `main` build. `latest` moving on a full
+  release is harmless: the release commit
+  is the head of `main`, so development receives the build it would anyway.
 * **Automatic path (development)** — every push to `main` runs **CD
   (development)** (`.github/workflows/cd-development.yaml`), which calls this
   workflow when `nx affected` lists this app — including for a change to a lib
   it depends on. Nothing to click; the run appears under the dispatcher's name.
-* **Fan-out path, by hand** — Actions → **CD (development)** → *Run workflow*
+* **Manual path (development)** — Actions → **Landing Web** → *Run workflow* on `main`.
+* **Fan-out path, by hand (development)** — Actions → **CD (development)** → *Run workflow*
   with `dry_run: false` (default `true` only reports). Same dispatcher, same
   affected computation; useful to redeploy after a Coolify-side change with
   no commit.
@@ -165,7 +185,9 @@ The two fields are **Docker Image** and **Docker Image Tag** on the application'
 *General* tab; through the API they are `docker_registry_image_name` and
 `docker_registry_image_tag` on `PATCH /api/v1/applications/r4s0cscgkcow0s8gg0wco4kw`.
 
-**Path B — the service pulls `:latest`.**
+**Path B — the application pulls a moving tag (`latest` for development, `stable` for production).**
+The commands below say `latest`; for production substitute `stable` and the
+production webhook secret.
 Move `latest` back to the old digest, then fire the same webhook the workflow
 uses. No rebuild, so the bytes are provably the ones that worked:
 
@@ -252,3 +274,10 @@ are closed by MDRS-86 and kept here only as history:
    (`git grep NEXT_PUBLIC -- '*.ts' '*.tsx'` on `main` matches only comments)
    and on the served page and its referenced JS on 2026-09-20; the server
    chunks of the deployed image were not re-inspected.
+
+**Still open (MDRS-87).** `LANDING_WEB_PROD_COOLIFY_WEBHOOK` is not set, and the Coolify
+`production` application it points at does not exist yet. Until both do, a
+release pushes `<semver>` + `latest` + `sha-…` + `stable` to GHCR and then the
+*Deploy to Coolify* step exits 1 naming that secret: GHCR is updated,
+production is untouched, the run is red. It never falls back to the
+development webhook.

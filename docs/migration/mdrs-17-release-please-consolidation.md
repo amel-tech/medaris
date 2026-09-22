@@ -125,6 +125,27 @@ measures exactly what that costs.
 This record does not fix it: pushing tags is outside a pull request's reach, and
 this task deliberately created none.
 
+> **Addendum, 2026-09-22 (MDRS-87 review).** The 43 tags are now pushed.
+> Each tag commit was checked with `git merge-base --is-ancestor <sha>
+> origin/main` before the push — 43 ancestors, 0 unreachable, confirming MDRS-9's
+> SHA-preservation claim — and afterwards `gh api --paginate
+> repos/amel-tech/medaris/tags --jq '.[].name' | wc -l` → `43`. No workflow
+> fires on a tag push. `gh api repos/amel-tech/medaris/releases --jq 'length'`
+> is still `0`.
+
+> **Addendum, 2026-09-22.** The seven PRs from that anchorless run were opened
+> (#83–#89) and not merged. With the tags pushed, release-please was re-run by
+> `workflow_dispatch` and regenerated all seven from each component's own last
+> release: 276 changelog entries became 79, and the 178 that duplicated an
+> earlier section became 0 — the per-PR counts, the script that produced them
+> and the caveat on the two "before" numbers are in
+> `mdrs-87-production-channel.md` §Not verified. The proposed versions did
+> **not** change — the
+> three majors in §4's table are driven by the repo-wide `BREAKING CHANGE`
+> footers this section describes, which genuinely are in each component's
+> post-release range, so they are a release decision now rather than a
+> generation artefact.
+
 ## 4. The dry-run — what was actually verified
 
 ADR-001 §D10 requires a dry run before the first real release. It was run against
@@ -186,7 +207,7 @@ point at tags that do not exist in this repo.
 
 **Do not merge a release PR from that first run.** Push the 43 tags first
 (§3), then re-run the dry run: with anchors present, each component's diff starts
-at its own last release.
+at its own last release. *(Done 2026-09-22 — see the addenda in §3.)*
 
 ## 5. Gate
 
