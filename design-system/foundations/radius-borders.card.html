@@ -1,0 +1,31 @@
+<!-- @dsCard group="Foundations" viewport="760x300" name="Radius & borders" subtitle="Seven radii, four widths — and which control each one belongs to" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:24px;background:var(--background-white);font-family:var(--font-ui)}
+.grid{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+.box{width:88px}
+.sh{height:56px;background:var(--sky-100);border:1px solid var(--sky-300)}
+.k{font-family:var(--font-mono);font-size:10px;color:var(--text-neutral-secondary);margin-top:5px;display:block}
+.u{font-size:10px;color:var(--text-neutral-disabled);display:block}
+.w{display:flex;gap:20px;align-items:flex-end}
+.wb{width:90px}
+.wl{height:0;border-top-style:solid;border-top-color:var(--gray-900)}
+.h{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-neutral-disabled);margin:0 0 10px}
+</style></head><body>
+<p class="h">Radius</p>
+<div class="grid">
+<div class="box"><div class="sh" style="border-radius:4px"></div><span class="k">xxs · 4</span><span class="u">mini controls</span></div>
+<div class="box"><div class="sh" style="border-radius:6px"></div><span class="k">xs · 6</span><span class="u">inputs, nav items</span></div>
+<div class="box"><div class="sh" style="border-radius:8px"></div><span class="k">s · 8</span><span class="u">buttons, badges</span></div>
+<div class="box"><div class="sh" style="border-radius:12px"></div><span class="k">m · 12</span><span class="u">cards, dialogs</span></div>
+<div class="box"><div class="sh" style="border-radius:20px"></div><span class="k">l · 20</span><span class="u">large surfaces</span></div>
+<div class="box"><div class="sh" style="border-radius:30px"></div><span class="k">xl · 30</span><span class="u">hero panels</span></div>
+<div class="box"><div class="sh" style="border-radius:999px"></div><span class="k">full · 999</span><span class="u">avatars, pills</span></div>
+</div>
+<p class="h">Border width</p>
+<div class="w">
+<div class="wb"><div class="wl" style="border-top-width:0.5px"></div><span class="k">xs · 0.5</span></div>
+<div class="wb"><div class="wl" style="border-top-width:1px"></div><span class="k">s · 1 — default</span></div>
+<div class="wb"><div class="wl" style="border-top-width:2px"></div><span class="k">m · 2 — active tab</span></div>
+<div class="wb"><div class="wl" style="border-top-width:4px"></div><span class="k">l · 4</span></div>
+</div>
+</body></html>

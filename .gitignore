@@ -5,8 +5,15 @@
 # Never committed. `local_docs/` holds the Master Book (documentation vault +
 # its local dashboard); `.claude/` holds agent worktrees and session state;
 # `.playwright-mcp/` holds browser-session scratch output.
+#
+# `.claude/*` with a negation, not a bare `.claude/` — the same shape as
+# `.vscode/*` below. A bare directory pattern excludes the directory itself and
+# git then refuses to re-include anything under it, so the shared skills in
+# `.claude/skills/` (the medaris-design-system skill) could never be committed.
+# Worktrees, `settings.local.json` and every other `.claude/` entry stay ignored.
 local_docs/
-.claude/
+.claude/*
+!.claude/skills/
 .playwright-mcp/
 
 # --- merged from madrasah-backend (MDRS-9) ---

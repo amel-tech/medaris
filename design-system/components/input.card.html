@@ -1,0 +1,32 @@
+<!-- @dsCard group="Forms" viewport="820x420" name="Input" subtitle="36px default, 6px radius, 1px gray-300 — with all seven states the file defines" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:24px;background:var(--background-white);font-family:var(--font-ui)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 28px;max-width:720px}
+.k{font-family:var(--font-mono);font-size:10px;color:var(--text-neutral-disabled);display:block;margin-bottom:5px}
+.sizes{display:flex;gap:12px;align-items:center;margin-top:22px}
+.note{margin-top:18px;font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:720px}
+</style></head><body>
+<div class="grid">
+<div><span class="k">empty</span><input class="mds-input" value="" readonly></div>
+<div><span class="k">placeholder</span><input class="mds-input" placeholder="Talebe adı" readonly></div>
+<div><span class="k">value</span><input class="mds-input" value="Ahmed b. Hanbel" readonly></div>
+<div><span class="k">focus</span><input class="mds-input is-focus" value="Ahmed b. Hanbel" readonly></div>
+<div><span class="k">error</span><input class="mds-input is-error" value="ahmed@" readonly></div>
+<div><span class="k">error + focus</span><input class="mds-input is-error is-focus" value="ahmed@" readonly></div>
+<div><span class="k">disabled</span><input class="mds-input is-disabled" value="Değiştirilemez" disabled></div>
+<div><span class="k">field — label, help, error</span>
+  <div class="mds-field">
+    <label class="mds-label">E-posta</label>
+    <input class="mds-input is-error" value="ahmed@" readonly>
+    <span class="mds-error">Geçerli bir e-posta girin.</span>
+  </div>
+</div>
+</div>
+<div class="sizes">
+<input class="mds-input mds-input--mini" style="width:130px" placeholder="Mini 24" readonly>
+<input class="mds-input mds-input--small" style="width:150px" placeholder="Small 32" readonly>
+<input class="mds-input" style="width:170px" placeholder="Regular 36" readonly>
+<input class="mds-input mds-input--large" style="width:190px" placeholder="Large 42" readonly>
+</div>
+<p class="note">Inputs are the one control on <code>--radius-xs</code> (6) rather than <code>--radius-s</code> (8) — that is the file's value and it is what visually separates a field from a button sitting next to it. Placeholder text uses <code>--text-neutral-disabled</code>; the Figma kit reaches for <code>neutral-500</code> there while the semantic layer says <code>gray-500</code>, a drift of two hue steps that this layer resolves in favour of the token.</p>
+</body></html>

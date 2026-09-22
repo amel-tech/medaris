@@ -110,6 +110,11 @@ reviews:
   # The snapshots beside it are whole-schema JSON dumps and are excluded.
   path_filters:
     - "!libs/services/src/**/generated/**"
+    # `design-system/` is a byte-for-byte mirror of the claude.ai/design
+    # "Medaris Design System" project, pulled by the medaris-design-system
+    # skill. It is authored there, not here: a review comment on a mirrored
+    # file has nowhere to land, and the next pull overwrites it.
+    - "!design-system/**"
     - "!apps/keycloak-theme/src/kc.gen.tsx"
     - "!**/routeTree.gen.ts"
     - "!apps/tedrisat/src/database/migrations/meta/*_snapshot.json"

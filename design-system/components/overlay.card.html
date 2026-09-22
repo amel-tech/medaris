@@ -1,0 +1,24 @@
+<!-- @dsCard group="Feedback" viewport="820x360" name="Dialog, toast, tooltip" subtitle="Everything that floats: 12px radius on a dialog, shadow-xl, one destructive action at most" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:24px;background:var(--background-neutral-primary);font-family:var(--font-ui);display:flex;gap:24px;align-items:flex-start}
+.dlg{width:400px;background:var(--background-white);border-radius:var(--radius-m);box-shadow:var(--shadow-xl);padding:var(--space-lg)}
+.dlg h4{font-family:var(--font-display);font-size:18px;font-weight:600;margin:0 0 8px}
+.dlg p{font-size:14px;color:var(--text-neutral-tertiary);line-height:1.6;margin:0 0 20px}
+.acts{display:flex;justify-content:flex-end;gap:8px}
+.col{display:flex;flex-direction:column;gap:16px}
+.toast{width:300px;display:flex;gap:10px;align-items:flex-start;background:var(--background-white);border:1px solid var(--border-neutral-primary);border-radius:var(--radius-s);box-shadow:var(--shadow-lg);padding:12px 14px}
+.toast b{display:block;font-size:13px;margin-bottom:2px}
+.toast span{font-size:12px;color:var(--text-neutral-tertiary)}
+.tipwrap{display:flex;align-items:center;gap:10px}
+</style></head><body>
+<div class="dlg">
+  <h4>Dersi sil</h4>
+  <p>Sarf Dersi ve ona bağlı 24 ezber kartı kalıcı olarak silinecek. Bu işlem geri alınamaz.</p>
+  <div class="acts"><button class="mds-btn mds-btn--regular mds-btn--ghost">Vazgeç</button><button class="mds-btn mds-btn--regular mds-btn--destructive">Kalıcı olarak sil</button></div>
+</div>
+<div class="col">
+  <div class="toast"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--icon-success-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top:1px"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/></svg><span><b>Kart 12 talebeye atandı</b><span>Geri al</span></span></div>
+  <div class="toast"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--icon-error-primary)" stroke-width="2" stroke-linecap="round" style="margin-top:1px"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg><span><b>Bağlantı kesildi</b><span>Değişiklikler kaydedilmedi.</span></span></div>
+  <div class="tipwrap"><button class="mds-btn mds-icon-btn mds-btn--small mds-btn--outline"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button><span class="mds-tooltip">Yalnızca müderris görebilir</span></div>
+</div>
+</body></html>

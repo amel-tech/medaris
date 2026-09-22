@@ -1,0 +1,16 @@
+<!-- @dsCard group="Foundations" viewport="820x460" name="Headings — Cairo" subtitle="h1 64 → h6 20. Cairo carries every heading; it has the Arabic companion the product needs" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:24px;background:var(--background-white)}
+.row{display:flex;align-items:baseline;gap:20px;padding:10px 0;border-bottom:1px solid var(--gray-100)}
+.meta{flex:none;width:150px;font-family:var(--font-mono);font-size:10px;color:var(--text-neutral-disabled);line-height:1.5}
+.spec{display:block;color:var(--text-neutral-tertiary)}
+.note{margin-top:16px;font-family:var(--font-ui);font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6}
+</style></head><body>
+<div class="row"><span class="meta">--fs-h1<span class="spec">Cairo Bold 64</span></span><span class="mds-h1">Medresem</span></div>
+<div class="row"><span class="meta">--fs-h2<span class="spec">Cairo Bold 48</span></span><span class="mds-h2">Derslerim</span></div>
+<div class="row"><span class="meta">--fs-h3<span class="spec">Cairo Bold 40</span></span><span class="mds-h3">Talebelerim</span></div>
+<div class="row"><span class="meta">--fs-h4<span class="spec">Cairo Bold 32</span></span><span class="mds-h4">Ezber Kartları</span></div>
+<div class="row"><span class="meta">--fs-h5<span class="spec">Cairo SemiBold 24</span></span><span class="mds-h5">Bugün yapılacaklar</span></div>
+<div class="row"><span class="meta">--fs-h6<span class="spec">Cairo SemiBold 20</span></span><span class="mds-h6">Son gönderilen kartlar</span></div>
+<p class="note"><b>Every text style in the Figma file ships at 100% line height.</b> That is right for the single-line headings above and wrong the moment one wraps, so the token layer keeps <code>--lh-tight: 1</code> as the extracted value and adds <code>--lh-snug: 1.25</code> for h3 and below. The snug value is a proposal — it is the one number here that is not read off the file.</p>
+</body></html>

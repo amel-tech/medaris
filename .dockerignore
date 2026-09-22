@@ -59,3 +59,7 @@ docker/
 docs/
 .migration/
 local_docs/
+# The committed mirror of the claude.ai/design project (see
+# .claude/skills/medaris-design-system/SKILL.md). Reference material for
+# people and agents; no app imports it.
+design-system/
