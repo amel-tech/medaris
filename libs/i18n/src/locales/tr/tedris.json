@@ -318,5 +318,10 @@
   "Validation": {
     "minChars": "En az {count} karakter girin.",
     "maxChars": "En fazla {count} karakter girebilirsiniz."
+  },
+  "DeckUnavailable": {
+    "title": "Bu desteye ulaşılamıyor",
+    "description": "Deste silinmiş olabilir ya da sahibi onu yalnızca kendine açık tutuyor.",
+    "backToDecks": "Destelere dön"
   }
 }

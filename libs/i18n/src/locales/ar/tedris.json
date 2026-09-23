@@ -293,5 +293,10 @@
   "Validation": {
     "minChars": "أدخل {count} أحرف على الأقل.",
     "maxChars": "أدخل {count} حرفًا كحد أقصى."
+  },
+  "DeckUnavailable": {
+    "title": "هذه المجموعة غير متاحة",
+    "description": "ربما حُذفت، أو أن صاحبها يبقيها خاصة به.",
+    "backToDecks": "العودة إلى المجموعات"
   }
 }

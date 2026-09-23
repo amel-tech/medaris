@@ -3,9 +3,9 @@ import {
   type FlashcardDeckResponse,
   type FlashcardResponse,
 } from "@medaris/services/tedrisat";
-import { notFound } from "next/navigation";
 import { env } from "~/env";
 import { DeckCardsPage } from "~/features/flashcards/components/deck-cards-page";
+import { DeckUnavailable } from "~/features/flashcards/components/deck-unavailable";
 import { requireAccessToken } from "~/lib/require-access-token";
 import { subjectOf } from "~/lib/token-subject";
 
@@ -28,7 +28,7 @@ export default async function Page({
   // as well, so a private deck belonging to someone else now throws here too —
   // and an uncaught rejection inside `Promise.all` takes the whole page to the
   // error boundary, which would also make the sibling's `.catch` protect
-  // nothing. A visitor who may not read this deck gets the not-found page,
+  // nothing. A visitor who may not read this deck gets `DeckUnavailable`,
   // which is the shape `[id]/page.tsx` already uses for the same pair.
   const [cards, deck] = await Promise.all([
     API.cards
@@ -40,7 +40,7 @@ export default async function Page({
   ]);
 
   if (!deck) {
-    notFound();
+    return <DeckUnavailable />;
   }
 
   const currentUserId = subjectOf(token);

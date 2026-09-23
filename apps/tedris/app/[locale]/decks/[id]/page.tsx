@@ -2,14 +2,19 @@ import {
   createServerTedrisatAPIs,
   type FlashcardDeckResponse,
   type FlashcardResponse,
+  ResponseError,
 } from "@medaris/services/tedrisat";
-import { notFound } from "next/navigation";
 import { env } from "~/env";
 import { DeckDetailPage } from "~/features/flashcards/components/deck-detail-page";
+import { DeckUnavailable } from "~/features/flashcards/components/deck-unavailable";
 import { getAccessToken } from "~/lib/auth_options";
 import { requireAccessToken } from "~/lib/require-access-token";
 import { subjectOf } from "~/lib/token-subject";
 
+/**
+ * `null` when the API refused (403) or could not find (404) the deck — both
+ * expected outcomes of MDRS-43's authz, so neither is logged as an error.
+ */
 async function getDeck(deckId: string): Promise<FlashcardDeckResponse | null> {
   try {
     const token = await getAccessToken();
@@ -20,6 +25,12 @@ async function getDeck(deckId: string): Promise<FlashcardDeckResponse | null> {
     const deck = await decks.getFlashcardDeckById({ id: deckId });
     return deck || null;
   } catch (error) {
+    if (
+      error instanceof ResponseError &&
+      (error.response.status === 403 || error.response.status === 404)
+    ) {
+      return null;
+    }
     console.error("Error fetching deck:", error);
     return null;
   }
@@ -68,15 +79,16 @@ export default async function Page({
   const { id } = await params;
 
   const accessToken = await requireAccessToken();
-  const [deck, cards, isInCollection] = await Promise.all([
-    getDeck(id),
+  const deck = await getDeck(id);
+
+  if (!deck) {
+    return <DeckUnavailable />;
+  }
+
+  const [cards, isInCollection] = await Promise.all([
     getDeckCards(id),
     isDeckInCollection(id),
   ]);
-
-  if (!deck) {
-    notFound();
-  }
 
   const currentUserId = subjectOf(accessToken);
 

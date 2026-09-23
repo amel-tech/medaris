@@ -318,5 +318,10 @@
   "Validation": {
     "minChars": "Enter at least {count} characters.",
     "maxChars": "Enter at most {count} characters."
+  },
+  "DeckUnavailable": {
+    "title": "This deck isn't available",
+    "description": "It may have been deleted, or its owner keeps it private.",
+    "backToDecks": "Back to decks"
   }
 }
