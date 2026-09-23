@@ -1,0 +1,37 @@
+:root {
+  --sp-1: 2px;
+  --sp-2: 4px;
+  --sp-3: 6px;
+  --sp-4: 7px;
+  --sp-5: 8px;
+  --sp-6: 9px;
+  --sp-7: 10px;
+  --sp-8: 11px;
+  --sp-9: 12px;
+  --sp-10: 14px;
+  --sp-11: 16px;
+  --sp-12: 18px;
+  --sp-13: 20px;
+  --sp-14: 22px;
+  --sp-15: 24px;
+  --sp-16: 26px;
+  --sp-17: 28px;
+  --sp-18: 30px;
+  --sp-19: 36px;
+  --sp-20: 40px;
+  --gap-card-grid: 16px; /* Tedris card grids */
+  --gap-card-grid-nizam: 22px; /* Nizam card grids — roomier */
+  --pad-card: 16px;
+  --pad-card-nizam: 22px;
+  --pad-section: 24px;
+  --pad-page-x: 36px; /* Tedris page gutter */
+  --pad-page-x-nizam: 40px; /* Nizam panel gutter */
+  --sidebar-w: 268px;
+  --sidebar-w-tedris: 264px;
+  --rail-w-icon: 66px;
+  --rail-w-list: 300px;
+  --aside-w: 360px;
+  --aside-w-nizam: 340px;
+  --content-max: 1440px;
+  --reading-max: 720px;
+}

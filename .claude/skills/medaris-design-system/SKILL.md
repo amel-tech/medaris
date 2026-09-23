@@ -22,6 +22,16 @@ Mirror provenance — update this block on every pull:
   seconds included — the staleness check below compares strings)
 - 76 files, each re-fetched independently and `cmp`-verified after writing
 
+Contributions waiting to be pulled into the project — one entry per
+directory, removed when the project contains it:
+
+- `design-system/madrasah-frontend/` — the claude.ai/design project
+  **madrasah-frontend** (`97374549-58bc-4a6c-a915-b3bcd421721b`, owner Samet),
+  164 files, exported 2026-09-23 (MDRS-93). Its `PROVENANCE.md` says what it
+  is, what was left out and where it diverges from the system. It is **not**
+  part of the mirror: §1's staleness check does not cover it, and §5 keeps it
+  until the canonical project has it (see §6).
+
 The mirror is read-only. Nothing in the repo builds from it, Biome is told to
 ignore it (`biome.json`, `!design-system`), CodeRabbit is told not to review
 it, and the Docker build context excludes it. Do not hand-edit a mirrored file:
@@ -144,7 +154,13 @@ not a build:
    newline). `isBase64: true` (`.thumbnail`, WebP) is decoded with `base64 -d`.
    `truncated: true` means the file exceeded 256 KiB — stop and report it
    rather than committing a partial file.
-3. Delete local files that no longer exist remotely.
+3. Delete local files that no longer exist remotely — **except** a directory
+   listed under *Contributions waiting to be pulled* in the provenance block.
+   Those are inbound, not mirrored: deleting one before the project holds it
+   loses the contribution. When `list_files` shows the project now contains
+   it, treat it as mirrored from then on (its files are compared and
+   overwritten like any other), and remove its entry from the provenance
+   block.
 4. Verify: re-fetch each file independently (a fresh agent, or a second pass
    that has not seen the local copy), write it to scratch and `cmp` it against
    the mirror. Two independent transcriptions that agree is the evidence.
@@ -153,3 +169,33 @@ not a build:
    seconds included — do not round or truncate it), and the file count.
 6. Commit as `docs(docs): …` — the mirror is documentation, not a package, and
    `design-system` is deliberately not a commitlint scope.
+
+## 6. Contributing a design to the system
+
+claude.ai/design does not let one project be shared into another, so a
+design made in a project other than the canonical one reaches the system
+through this repo. The direction is fixed: **repo → canonical project →
+mirror refresh**. Nothing is ever written to the canonical project from
+here; Taha pulls, using design sync from the repo, and the canonical project
+stays the only place the system is authored.
+
+1. Export the source project (its zip export, or `DesignSync get_file` per
+   path when the tool can reach it — `get_file` works on a
+   `PROJECT_TYPE_PROJECT` too, `list_projects` just does not list it).
+2. Copy it **verbatim** into `design-system/<source-project-name>/`, under
+   the project's own paths so its relative links keep resolving. Leave out
+   scratch and editor state (`_check/`, `.thumbnail`,
+   `.design-canvas.state.json`), uploads that are not design, and anything
+   that proposes changes to `apps/` or `libs/` — those are code decisions and
+   go through their own issue.
+3. Write `<dir>/PROVENANCE.md`: source project id and owner, export date,
+   file count, what was left out, and a table of where it diverges from the
+   canonical system (token names, brand colour, type). Do not resolve the
+   divergences in the repo; the pull is where the re-expression onto the
+   semantic layer and the `.mds-*` classes happens.
+4. Add the directory to the provenance block at the top of this file, verify
+   every file with `cmp` against the export, and open the PR as
+   `docs(docs): MDRS-<n> …`. `biome.json`, `.coderabbit.yaml` and
+   `.dockerignore` already cover all of `design-system/`.
+5. Hand the PR to Taha. After the pull, the next §5 refresh sees the files
+   in `list_files`, and the directory becomes part of the mirror.

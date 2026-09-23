@@ -1,0 +1,20 @@
+/* Minimal element defaults shared by both apps. */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-feature-settings: var(--font-feature-ui);
+  color: var(--text-body);
+  background: var(--surface);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: #1739a8; text-decoration: underline; }
+
+[dir="rtl"], .ar {
+  font-family: var(--font-arabic);
+  direction: rtl;
+  line-height: var(--lh-arabic);
+}

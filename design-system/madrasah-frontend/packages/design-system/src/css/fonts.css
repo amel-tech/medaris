@@ -1,0 +1,3 @@
+/* Inter — UI typeface for both apps. Amiri — Arabic/Qur'anic text.
+   CDN-hosted for now; self-host and replace with @font-face when the repo vendors binaries. */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=swap");

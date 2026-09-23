@@ -1,0 +1,95 @@
+{
+  "name": "design-system",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/design-system/src",
+  "projectType": "library",
+  "tags": [
+    "type:design-system",
+    "scope:shared"
+  ],
+  "targets": {
+    "tokens": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "{projectRoot}/tokens/tokens.json",
+        "{projectRoot}/tools/build-tokens.mjs"
+      ],
+      "outputs": [
+        "{projectRoot}/src/css",
+        "{projectRoot}/src/tokens.ts",
+        "{projectRoot}/src/tailwind-preset.js"
+      ],
+      "options": {
+        "cwd": "packages/design-system",
+        "command": "node tools/build-tokens.mjs"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "dependsOn": [
+        "tokens",
+        "docs"
+      ],
+      "inputs": [
+        "{projectRoot}/src/**/*",
+        "{projectRoot}/tsup.config.ts"
+      ],
+      "outputs": [
+        "{projectRoot}/dist"
+      ],
+      "options": {
+        "cwd": "packages/design-system",
+        "command": "npx tsup"
+      }
+    },
+    "check-tokens": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/design-system",
+        "command": "node tools/build-tokens.mjs && git diff --exit-code -- src"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/design-system",
+        "command": "npx tsc --noEmit -p tsconfig.json"
+      }
+    },
+    "manifest": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        "tokens",
+        "docs"
+      ],
+      "options": {
+        "cwd": "packages/design-system",
+        "command": "node tools/manifest.mjs"
+      }
+    },
+    "verify-sync": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/design-system",
+        "command": "node tools/manifest.mjs --check"
+      }
+    },
+    "docs": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "{projectRoot}/src/components/**/*.jsx",
+        "{projectRoot}/tools/build-docs.mjs"
+      ],
+      "outputs": [
+        "{projectRoot}/docs/ds-components.jsx"
+      ],
+      "options": {
+        "cwd": "packages/design-system",
+        "command": "node tools/build-docs.mjs"
+      }
+    }
+  }
+}
