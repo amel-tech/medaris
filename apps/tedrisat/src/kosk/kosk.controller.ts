@@ -91,16 +91,16 @@ export class KoskController {
     operationId: "createKosk",
   })
   @ApiCreatedResponse({ type: KoskResponse })
-  // TODO(MDRS-43 · open decision): exempt as a PLACEHOLDER, not as a verdict.
+  // Exempt by product decision (MDRS-43, 2026-09-23): any authenticated user
+  // may open a köşk and becomes its KOSK_MANAGER; opening dersler inside it
+  // stays with that owner (`MANAGE_COURSES`). Self-service is kept on purpose
+  // for now and may be narrowed later.
   //
-  // `CREATE_KOSK` is deliberately on NO kosk matrix row — `auth-matrix.ts`
-  // says so above the PUBLIC row, and `TedrisatRoleResolver.resolveKoskRole`
-  // repeats the warning — because köşk creation is meant to be SYSTEM_ADMIN
-  // only, through the realm bypass. So `@Authz(CREATE_KOSK, forNew(KOSK))`
-  // here would 403 every ordinary caller, and today ordinary callers open
-  // köşks. The two ways out are opposite decisions: apply the matrix and lose
-  // self-service köşks, or keep self-service and leave this route exempt with
-  // that written down. Neither is a mapping question, so neither is made here.
+  // The matrix still says otherwise: `CREATE_KOSK` is on NO kosk row, so
+  // köşk creation there is SYSTEM_ADMIN only, through the realm bypass. That
+  // is why this route is exempt rather than `@Authz(CREATE_KOSK, forNew(KOSK))`
+  // — the decorator would 403 every ordinary caller. Narrowing later means
+  // swapping in that decorator and hiding nizam's "Yeni Köşk" from non-admins.
   @AuthzExempt()
   @Post()
   async create(
