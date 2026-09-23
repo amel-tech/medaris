@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.2.0](https://github.com/amel-tech/medaris/compare/tedrisat-v0.1.5...tedrisat-v0.2.0) (2026-09-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **repo:** the root check-types script is renamed to typecheck, and every package's check-types/type-check script is renamed with it. Use pnpm typecheck.
+* **repo:** MDRS-10 — convert two npm workspaces into a single pnpm workspace ([#9](https://github.com/amel-tech/medaris/issues/9))
+* **repo:** merge madrasah-backend history into medaris
+
+### Features
+
+* **repo:** MDRS-10 — convert two npm workspaces into a single pnpm workspace ([#9](https://github.com/amel-tech/medaris/issues/9)) ([4eb2784](https://github.com/amel-tech/medaris/commit/4eb2784e70e852d9dc5e76693ba1bc0cedda9ad2))
+* **repo:** MDRS-11 adopt Nx 23 for task orchestration and wire TS project references ([#11](https://github.com/amel-tech/medaris/issues/11)) ([68fcfe3](https://github.com/amel-tech/medaris/commit/68fcfe3826ab7f08ee5990078769f5ec6aba7fae))
+* **repo:** MDRS-12 — adopt Biome, reduce ESLint to a boundaries-only shell ([#12](https://github.com/amel-tech/medaris/issues/12)) ([6bc1296](https://github.com/amel-tech/medaris/commit/6bc12966234dd44e50b79a6d236b005c5106e395))
+* **repo:** MDRS-42 per-app Keycloak clients and the audience the API checks ([#77](https://github.com/amel-tech/medaris/issues/77)) ([c32205b](https://github.com/amel-tech/medaris/commit/c32205b7ede2c5c31aaff44d51f25c7c50105940))
+* **tedrisat, common:** MDRS-31 add rate limiting, starting with the bulk routes ([#59](https://github.com/amel-tech/medaris/issues/59)) ([79f24a8](https://github.com/amel-tech/medaris/commit/79f24a8d8a1582183df2c3f4ca0dcdca99916526))
+* **tedrisat, common:** MDRS-36 escape formula triggers in CSV and Excel exports ([37b48ff](https://github.com/amel-tech/medaris/commit/37b48ff57254e2934d8a33b3c2c23c3e7f9caad8))
+
+
+### Bug Fixes
+
+* **common:** MDRS-29 stop leaking internal errors and rejected values ([#47](https://github.com/amel-tech/medaris/issues/47)) ([2f67473](https://github.com/amel-tech/medaris/commit/2f67473c559723fe22710d40865649e499de72b7))
+* **repo:** MDRS-68 read the compose database credentials from the environment ([#53](https://github.com/amel-tech/medaris/issues/53)) ([bb72f7e](https://github.com/amel-tech/medaris/commit/bb72f7e1f581ab5023e08d4c3ca97407846b14e6))
+* **repo:** MDRS-71 match docker compose when parsing the root .env, and hash it for the cache ([#45](https://github.com/amel-tech/medaris/issues/45)) ([fede062](https://github.com/amel-tech/medaris/commit/fede062decd91026fa4184958b95aea1a648bc73))
+* **repo:** MDRS-75 throw on an unterminated quote in the root .env ([#63](https://github.com/amel-tech/medaris/issues/63)) ([7918823](https://github.com/amel-tech/medaris/commit/791882321ad1b6504100c97e31b9c45b4245ca8d))
+* **tedris-web, nizam-web:** MDRS-28 rebuild the single PR on main, one commit per task ([#69](https://github.com/amel-tech/medaris/issues/69)) ([9cf36a8](https://github.com/amel-tech/medaris/commit/9cf36a8b2e44fd33169e668a8fe5892b53e36b5c))
+* **tedrisat:** MDRS-27 put both label controllers behind AuthGuard ([#28](https://github.com/amel-tech/medaris/issues/28)) ([c7934b0](https://github.com/amel-tech/medaris/commit/c7934b0f88e319de4d91b7cebdde35e271ca98b3))
+* **tedrisat:** MDRS-35 — remove silent security-config fallbacks and verify database TLS ([#19](https://github.com/amel-tech/medaris/issues/19)) ([1d80e7f](https://github.com/amel-tech/medaris/commit/1d80e7f50bb6ceaa102361391a881b3085514859))
+* **tedrisat:** MDRS-56 — assert ownership on the label read routes ([#56](https://github.com/amel-tech/medaris/issues/56)) ([758237c](https://github.com/amel-tech/medaris/commit/758237c9b96262c6a2808bda6c3dd6a3b4d8b85c))
+* **tedrisat:** MDRS-57 — consolidate on one validator and one transformer ([#58](https://github.com/amel-tech/medaris/issues/58)) ([0f46a38](https://github.com/amel-tech/medaris/commit/0f46a3865d509616858df6263dc42b1d60cfd302))
+* **tedrisat:** MDRS-84 export the helper entry point MDRS-42's suite calls ([#82](https://github.com/amel-tech/medaris/issues/82)) ([2b9457f](https://github.com/amel-tech/medaris/commit/2b9457f2c448d15e3dc3477d0d83cff541f2647b))
+* **tedrisat:** MDRS-89 stop the e2e suite calling production Keycloak ([#91](https://github.com/amel-tech/medaris/issues/91)) ([4c78043](https://github.com/amel-tech/medaris/commit/4c7804321c9f17725dd56e308dfa29ec7c120f2e))
+
+
+### Performance Improvements
+
+* **tedrisat:** MDRS-84 start one Postgres container per run, not per file ([#80](https://github.com/amel-tech/medaris/issues/80)) ([b4e1e40](https://github.com/amel-tech/medaris/commit/b4e1e406b511d03eab82103584ef0c6a8c3af97e))
+
+
+### Miscellaneous Chores
+
+* **repo:** merge madrasah-backend history into medaris ([7da5455](https://github.com/amel-tech/medaris/commit/7da545574eef84f2280d0f74ac05aeb17a136ffc))
+
 ## [0.1.5](https://github.com/amel-tech/madrasah-backend/compare/tedrisat-v0.1.4...tedrisat-v0.1.5) (2026-06-17)
 
 
