@@ -1,0 +1,15 @@
+:root {
+  --shadow-hairline: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-chip: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-float: 0 4px 14px rgba(15,23,42,0.22); /* round play button */
+  --shadow-card-lift: 0 8px 30px -20px rgba(15,23,42,0.2);
+  --shadow-inline-editor: 0 12px 30px -18px rgba(15,23,42,0.25);
+  --shadow-toast: 0 16px 40px -16px rgba(15,23,42,0.22);
+  --shadow-sticky-card: 0 20px 40px -28px rgba(15,23,42,0.18);
+  --shadow-avatar-tile: 0 8px 24px -12px rgba(0,0,0,0.2);
+  --shadow-player: 0 24px 50px -24px rgba(0,0,0,0.6);
+  --shadow-dialog: 0 30px 60px -20px rgba(15,23,42,0.4);
+  --scrim-dialog: rgba(15,23,42,0.55);
+  --scrim-media: linear-gradient(transparent, rgba(0,0,0,0.75));
+  --scrim-media-40: linear-gradient(transparent 40%, rgba(0,0,0,0.45));
+}

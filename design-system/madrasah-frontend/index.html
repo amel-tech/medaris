@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Online Madrasah — Köşk & Kurs Sayfaları</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Amiri:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
+  #root { height: 100vh; }
+  * { box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-sources/design-canvas.jsx"></script>
+<script type="text/babel" src="design-sources/shared.jsx"></script>
+<script type="text/babel" src="design-sources/kosk-list.jsx"></script>
+<script type="text/babel" src="design-sources/kosk.jsx"></script>
+<script type="text/babel" src="design-sources/new-course.jsx"></script>
+<script type="text/babel" src="design-sources/course.jsx"></script>
+<script type="text/babel" src="design-sources/lesson.jsx"></script>
+<script type="text/babel" src="design-sources/nizam.jsx"></script>
+<script type="text/babel" src="design-sources/tedris-alt.jsx"></script>
+<script type="text/babel" src="design-sources/tedris-layouts.jsx"></script>
+<script type="text/babel" src="design-sources/nizam-layouts.jsx"></script>
+
+<script type="text/babel">
+  const App = () => (
+    <DesignCanvas>
+      <DCSection
+        id="madrasah-pages"
+        title="Online Madrasah — Köşk & Kurs"
+        subtitle="Talebenin köşke girişten kursa, oradan tüm müfredatı görmeye kadar olan akışı. 1440px masaüstü genişliği; aralarındaki bağlantılar tıklanabilir."
+      >
+        <DCArtboard id="kosk-list" label="/kosk (Köşkler listesi)" width={1440} height={1340}>
+          <KoskListPage />
+        </DCArtboard>
+
+        <DCArtboard id="kosk" label="/kosk/[koskId]" width={1440} height={1280}>
+          <KoskPage />
+        </DCArtboard>
+
+        <DCArtboard id="course" label="/courses/[courseId]" width={1440} height={2000}>
+          <CoursePage />
+        </DCArtboard>
+
+        <DCArtboard id="syllabus" label="/courses/[courseId]/syllabus (modal)" width={1440} height={1280}>
+          <CoursePageWithModal />
+        </DCArtboard>
+
+        <DCArtboard id="new-course" label="/kosk/[koskId]/courses/new" width={1440} height={1900}>
+          <NewCoursePage />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="lesson-pages"
+        title="Çalışma sayfaları — İçerik türüne göre"
+        subtitle="«Derse devam et» tıklandığında açılan çalışma ekranı. Aynı kabuk (müfredat rayı + içerik sahnesi); merkez, dersin formatına göre değişir: video, doküman, canlı halka, sınav."
+      >
+        <DCArtboard id="lesson-video" label="/lessons/[id] · Video ders" width={1440} height={1180}>
+          <LessonPage type="video" />
+        </DCArtboard>
+
+        <DCArtboard id="lesson-doc" label="/lessons/[id] · Doküman (PDF)" width={1440} height={900}>
+          <LessonPage type="doc" />
+        </DCArtboard>
+
+        <DCArtboard id="lesson-live" label="/lessons/[id] · Canlı halka (platform içi)" width={1440} height={1080}>
+          <LessonPage type="live" />
+        </DCArtboard>
+
+        <DCArtboard id="lesson-live-ext" label="/lessons/[id] · Canlı halka (harici: Meet/Zoom/Jitsi)" width={1440} height={1080}>
+          <LessonPage type="live" provider="meet" />
+        </DCArtboard>
+
+        <DCArtboard id="lesson-quiz" label="/lessons/[id] · Sınav" width={1440} height={900}>
+          <LessonPage type="quiz" />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="nizam-pages"
+        title="Nizam — Müderris yönetim uygulaması"
+        subtitle="Müderrislerin köşk ve kursları oluşturup düzenlediği yönetim arayüzü. Sol kenar çubuğu + İçerik bölümü (Desteler, Köşkler). Ekran görüntülerine göre yeniden oluşturuldu."
+      >
+        <DCArtboard id="nz-desteler" label="Nizam · Desteler (bilgi kartı desteleri)" width={1440} height={820}>
+          <NzDecksList />
+        </DCArtboard>
+
+        <DCArtboard id="nz-deste-detay" label="Nizam · Deste detayı (kartlar)" width={1440} height={820}>
+          <NzDeckDetail />
+        </DCArtboard>
+
+        <DCArtboard id="nz-koskler" label="Nizam · Köşkler" width={1440} height={820}>
+          <NzKosks />
+        </DCArtboard>
+
+        <DCArtboard id="nz-kosk-detay" label="Nizam · Köşk detayı" width={1440} height={820}>
+          <NzKoskDetail />
+        </DCArtboard>
+
+        <DCArtboard id="nz-kurs-duzenle" label="Nizam · Kursu Düzenle" width={1440} height={1900}>
+          <NzCourseEdit />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="tedris-layouts"
+        title="Tedris — Farklı layout yönleri"
+        subtitle="Öğrenme uygulaması için 4 ıraksak yön. A: sol kenar çubuğu (Nizam ile tutarlı). B: iki-pano okuyucu (köşk listesi ↔ detay). C: bento gösterge paneli (widget ızgarası). D: içerik feed'i (yatay raylar, sidebar yok)."
+      >
+        <DCArtboard id="td-sidebar" label="Tedris A · Sol kenar çubuğu" width={1440} height={1080}>
+          <TedrisAltPage />
+        </DCArtboard>
+
+        <DCArtboard id="td-twopane" label="Tedris B · İki-pano okuyucu" width={1280} height={880}>
+          <TedrisTwoPane />
+        </DCArtboard>
+
+        <DCArtboard id="td-bento" label="Tedris C · Bento gösterge paneli" width={1280} height={880}>
+          <TedrisBento />
+        </DCArtboard>
+
+        <DCArtboard id="td-feed" label="Tedris D · İçerik feed (yatay raylar)" width={1280} height={880}>
+          <TedrisFeed />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="nizam-layouts"
+        title="Nizam — Farklı layout yönleri"
+        subtitle="Yönetim uygulaması için sidebar dışında 3 ıraksak yön. A: ikon-ray + yoğun tablo (maks. çalışma alanı). B: üst nav + bağlamsal alt sekmeler (Linear/Vercel tarzı). C: üç-sütun master-detail (ray → liste → satır-içi editör)."
+      >
+        <DCArtboard id="nz-iconrail" label="Nizam A · İkon ray + yoğun tablo" width={1280} height={820}>
+          <NizamIconRail />
+        </DCArtboard>
+
+        <DCArtboard id="nz-topnav" label="Nizam B · Üst nav + alt sekmeler" width={1280} height={820}>
+          <NizamTopNav />
+        </DCArtboard>
+
+        <DCArtboard id="nz-threecol" label="Nizam C · Üç-sütun master-detail" width={1280} height={820}>
+          <NizamThreeCol />
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+
+  // Variant that has the syllabus modal open by default — so the user can
+  // see the modal state directly in the canvas without clicking.
+  // `contained` keeps the overlay scoped to the artboard, not the whole page.
+  const CoursePageWithModal = () => (
+    <div style={{ position: "relative", height: "100%", overflow: "hidden" }}>
+      <CoursePage />
+      <SyllabusModal onClose={() => {}} contained />
+    </div>
+  );
+
+  window.CoursePageWithModal = CoursePageWithModal;
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!-- @dsCard group="Components" viewport="700x380" subtitle="DataTable, WeekAccordion, LessonRow" name="Data" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../css/index.css">
+<style>body{padding:18px;background:var(--surface)}.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.col{display:flex;flex-direction:column;gap:12px}.lbl{font:var(--fw-semibold) var(--fs-10)/1 var(--font-ui);letter-spacing:var(--tracking-eyebrow);text-transform:uppercase;color:var(--faint)}</style>
+</head><body><div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="../../../docs/ds-components.jsx"></script>
+<script type="text/babel">
+const { DataTable, WeekAccordion, LessonRow, Badge, IconButton, Icon } = window.MadrasahDS;
+const kosks = [
+  {name:"Süleymaniye Köşkü",courses:14,students:482,status:"Aktif",active:true},
+  {name:"Fâtih Köşkü",courses:11,students:364,status:"Aktif",active:true},
+  {name:"Nûruosmaniye Köşkü",courses:6,students:158,status:"Taslak",active:false},
+];
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <div className="col" style={{gap:16}}>
+    <DataTable rowKey={r=>r.name} rows={kosks} columns={[
+      {header:"Köşk",width:"2fr",strong:true,key:"name"},
+      {header:"Ders",width:"70px",muted:true,key:"courses"},
+      {header:"Talebe",width:"80px",muted:true,key:"students"},
+      {header:"Durum",width:"100px",cell:r=><Badge tone={r.active?"success":"neutral"}>{r.status}</Badge>},
+      {header:"İşlem",width:"80px",align:"right",cell:()=><>
+        <IconButton variant="bare" label="Gör" icon={<Icon name="eye" size={16}/>} />
+        <IconButton variant="bare" label="Sil" icon={<Icon name="trash" size={16}/>} /></>},
+    ]} />
+    <div className="col" style={{gap:8}}>
+      <WeekAccordion week={2} title="İkinci ve Üçüncü Bab" state="done" meta={<span>5 ders</span>} />
+      <WeekAccordion week={3} title="Dördüncü ve Beşinci Bab" state="active" open
+        summary="فَتَح bâbı ve harf-i halk illetleri." meta={<><span>4 ders</span><span>135 dk</span></>}>
+        <LessonRow title="Dördüncü babın şerhi" type="video" duration="29 dk" done />
+        <LessonRow title="Beşinci babın şerhi" type="video" duration="31 dk" source="Bina · s. 20-24" current />
+        <LessonRow title="Hafta sonu müzakeresi" type="live" duration="45 dk" typeLabel="Canlı ders" />
+      </WeekAccordion>
+      <WeekAccordion week={4} title="Altıncı Bab ve Tekrar" state="locked" meta={<span>3 ders</span>} />
+    </div>
+  </div>
+);
+</script></body></html>

@@ -1,0 +1,57 @@
+<!-- @dsCard group="Components" viewport="700x300" subtitle="Button, IconButton, Badge, Pill, Avatar, Progress" name="Core" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../css/index.css">
+<style>body{padding:18px;background:var(--surface)}.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.col{display:flex;flex-direction:column;gap:12px}.lbl{font:var(--fw-semibold) var(--fs-10)/1 var(--font-ui);letter-spacing:var(--tracking-eyebrow);text-transform:uppercase;color:var(--faint)}</style>
+</head><body><div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="../../../docs/ds-components.jsx"></script>
+<script type="text/babel">
+const { Button, IconButton, Badge, Pill, Avatar, AvatarStack, ProgressBar, ProgressRing, Icon } = window.MadrasahDS;
+const I = (n,s=15,p={}) => <Icon name={n} size={s} {...p} />;
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <div className="col" style={{gap:16}}>
+    <div>
+      <div className="lbl" style={{marginBottom:8}}>Buttons</div>
+      <div className="row">
+        <Button icon={I("plus",16)}>Yeni Köşk</Button>
+        <Button variant="create" icon={I("plus",16)}>Yeni Ders Aç</Button>
+        <Button variant="ghost">Taslak Kaydet</Button>
+        <Button variant="ghost" size="sm" icon={I("filter",14)}>Filtre</Button>
+        <Button variant="link" iconAfter={I("arrowRight",13)}>Tüm müfredatı gör</Button>
+        <Button disabled>Devre dışı</Button>
+        <IconButton label="Gör" icon={I("eye",17)} />
+        <IconButton label="Sil" icon={I("trash",17)} />
+        <IconButton variant="solid" size="sm" label="Ekle" icon={I("plus",16)} />
+      </div>
+    </div>
+    <div>
+      <div className="lbl" style={{marginBottom:8}}>Badges &amp; pills</div>
+      <div className="row">
+        <Badge tone="published" shape="chip">Yayında</Badge>
+        <Badge tone="draft" shape="chip">Taslak</Badge>
+        <Badge tone="success">Tamamlandı</Badge>
+        <Badge tone="accent">Devam ediyor</Badge>
+        <Badge tone="live" icon={I("headset",12)}>Canlı ders</Badge>
+        <Badge tone="live" dot>14 dk sonra</Badge>
+        <Badge tone="warning">Sınav</Badge>
+        <span style={{width:14}} />
+        <Pill active>Tümü</Pill><Pill>Devam ediyorum</Pill><Pill tag>Arapça</Pill><Pill tag>Fıkıh</Pill>
+      </div>
+    </div>
+    <div>
+      <div className="lbl" style={{marginBottom:8}}>Avatars &amp; progress</div>
+      <div className="row" style={{gap:18}}>
+        <Avatar initials="AH" hue={145} />
+        <Avatar initials="SY" hue={270} />
+        <Avatar initials="DU" shape="square" size={34} ring={false} />
+        <AvatarStack people={[{initials:"MÖ",hue:28},{initials:"AH",hue:145},{initials:"SY",hue:270},{initials:"FK",hue:200},{initials:"İA",hue:340},{initials:"X",hue:0},{initials:"Y",hue:0}]} />
+        <div style={{width:150}}><ProgressBar value={0.35} showLabel /></div>
+        <div style={{width:110}}><ProgressBar value={1} height={6} /></div>
+        <ProgressRing value={0.42} size={44} />
+      </div>
+    </div>
+  </div>
+);
+</script></body></html>

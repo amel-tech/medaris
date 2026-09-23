@@ -1,0 +1,5 @@
+/* Design-file entry point.
+   All token CSS lives in the vendored-to-codebase package, so this file and the
+   repo consume byte-identical bytes. Regenerate with:
+       cd packages/design-system && node tools/build-tokens.mjs            */
+@import "packages/design-system/src/css/index.css";

@@ -1,0 +1,56 @@
+:root {
+  --white: #ffffff;
+  --ink: #16181d; /* Nizam body ink */
+  --ink-tedris: #0f172a; /* Tedris body ink / dark button */
+  --brand-navy: #0b1f3a; /* Madrasah mark + Tedris wordmark */
+  --nizam-shell: #1c2430; /* Nizam mark ground */
+  --nizam-shell-fg: #bfe3ea; /* Nizam mark arch */
+  --muted: #64748b;
+  --faint: #94a3b8;
+  --slate-600: #3f444c;
+  --slate-500: #6b7280;
+  --line: #e7e8ea; /* Nizam hairline */
+  --line-soft: #eef0f2;
+  --border: #e5e7eb; /* Tedris hairline */
+  --border-soft: #eef0f3;
+  --surface: #ffffff;
+  --surface-alt: #f8fafc;
+  --surface-sunken: #f3f4f6;
+  --surface-table-head: #fafafa;
+  --surface-page-alt: #fafafa;
+  --nav-active: #f1f2f4;
+  --avatar-ground: #eceef1;
+  --doc-desk: #eceef1;
+  --player-ground: #0b1020;
+  --accent: #1d4ed8; /* Tedris primary accent / active tab */
+  --accent-soft: #eff4ff;
+  --green: #0f9d63; /* Nizam create action */
+  --green-dark: #0c8454;
+  --amber: #f59e0b; /* rating stars */
+  --success: #16a34a;
+  --success-fg: #15803d;
+  --success-bg: #dcfce7;
+  --warning: #d97706;
+  --warning-bg: #fffbeb;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --type-video: #1d4ed8;
+  --type-doc: #64748b;
+  --type-live: #dc2626;
+  --type-quiz: #d97706;
+  --platform-meet: #00897b;
+  --platform-meet-soft: #e6f4f1;
+  --platform-zoom: #2d8cff;
+  --platform-zoom-soft: #e9f2ff;
+  --platform-jitsi: #1d6fb8;
+  --platform-jitsi-soft: #e7f0f9;
+  --text-body: var(--ink);
+  --text-secondary: var(--muted);
+  --text-tertiary: var(--faint);
+  --text-inverse: var(--white);
+  --surface-card: var(--surface);
+  --surface-card-border: var(--line);
+  --action-primary: var(--ink-tedris);
+  --action-create: var(--green);
+  --focus-ring: var(--accent);
+}
