@@ -109,17 +109,14 @@ export class CourseController {
   })
   @ApiOkResponse({ type: CourseDetailResponse })
   @ApiNotFoundResponse()
-  // TODO(MDRS-43 · open decision): exempt as a PLACEHOLDER, not as a verdict.
+  // Exempt by product decision (MDRS-43, 2026-09-23): a caller with no
+  // relationship to the course may open its page, because that page carries
+  // the "Kayıt ol" button and the PRD lets even guests see a course teaser.
+  // DRAFT courses stay hidden from non-owners inside the service.
   //
-  // `@Authz(VIEW, byParam(COURSE))` is the obvious annotation and it would
-  // change behaviour: the COURSE matrix gives its PUBLIC row `[ENROLL]` and
-  // nothing else, so a caller with no relationship to the course — today the
-  // common case, and the one tedris's course landing page is built for — would
-  // start getting 403 on the page that carries the "Kayıt ol" button. Plan
-  // §4.1 does read that way (VIEW starts at PENDING, VIEW_DETAILS at
-  // ENROLLED), so the choice is between honouring the matrix and keeping an
-  // unauthenticated-browse flow that exists in the product today. That is a
-  // product decision, not a mechanical mapping, so it is not made here.
+  // The matrix reads stricter: the COURSE PUBLIC row holds only `[ENROLL]`,
+  // VIEW starts at PENDING, so `@Authz(VIEW, byParam(COURSE))` here would 403
+  // exactly the visitor this page is built for.
   @AuthzExempt()
   @Get("courses/:id")
   async findById(
