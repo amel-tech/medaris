@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.2.0](https://github.com/amel-tech/medaris/compare/teskilat-v0.1.1...teskilat-v0.2.0) (2026-09-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **repo:** the root check-types script is renamed to typecheck, and every package's check-types/type-check script is renamed with it. Use pnpm typecheck.
+* **repo:** MDRS-10 — convert two npm workspaces into a single pnpm workspace ([#9](https://github.com/amel-tech/medaris/issues/9))
+* **repo:** merge madrasah-backend history into medaris
+
+### Features
+
+* **auth-guard:** use config service to inject keycloak jwks url ([6838bec](https://github.com/amel-tech/medaris/commit/6838bec3ca76f07c7b77c56cd80d5c7112b2395d))
+* **repo:** MDRS-10 — convert two npm workspaces into a single pnpm workspace ([#9](https://github.com/amel-tech/medaris/issues/9)) ([4eb2784](https://github.com/amel-tech/medaris/commit/4eb2784e70e852d9dc5e76693ba1bc0cedda9ad2))
+* **repo:** MDRS-11 adopt Nx 23 for task orchestration and wire TS project references ([#11](https://github.com/amel-tech/medaris/issues/11)) ([68fcfe3](https://github.com/amel-tech/medaris/commit/68fcfe3826ab7f08ee5990078769f5ec6aba7fae))
+* **repo:** MDRS-12 — adopt Biome, reduce ESLint to a boundaries-only shell ([#12](https://github.com/amel-tech/medaris/issues/12)) ([6bc1296](https://github.com/amel-tech/medaris/commit/6bc12966234dd44e50b79a6d236b005c5106e395))
+* **tedrisat, common:** MDRS-31 add rate limiting, starting with the bulk routes ([#59](https://github.com/amel-tech/medaris/issues/59)) ([79f24a8](https://github.com/amel-tech/medaris/commit/79f24a8d8a1582183df2c3f4ca0dcdca99916526))
+* update health check response to use dynamic version from config… ([cb3cc07](https://github.com/amel-tech/medaris/commit/cb3cc07528a84e5dad57c13f509e128e22fb3a0e))
+* update health check response to use dynamic version from configuration ([c6f71e4](https://github.com/amel-tech/medaris/commit/c6f71e49148a224caef375be675381d57ec75a9c))
+
+
+### Bug Fixes
+
+* **teskilat:** MDRS-69 — drop the dead DB config and refuse Swagger in production ([#54](https://github.com/amel-tech/medaris/issues/54)) ([1ef6627](https://github.com/amel-tech/medaris/commit/1ef66278d0bdd59bb3c55f0efbf52cd4eb8b8aa7))
+
+
+### Miscellaneous Chores
+
+* **repo:** merge madrasah-backend history into medaris ([7da5455](https://github.com/amel-tech/medaris/commit/7da545574eef84f2280d0f74ac05aeb17a136ffc))
+
 ## [0.1.1](https://github.com/amel-tech/madrasah-backend/compare/teskilat-v0.1.0...teskilat-v0.1.1) (2025-08-21)
 
 
