@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.2.0](https://github.com/amel-tech/medaris/compare/nazir-web-v0.1.6...nazir-web-v0.2.0) (2026-09-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **repo:** the root check-types script is renamed to typecheck, and every package's check-types/type-check script is renamed with it. Use pnpm typecheck.
+* **repo:** MDRS-10 — convert two npm workspaces into a single pnpm workspace ([#9](https://github.com/amel-tech/medaris/issues/9))
+* **repo:** merge madrasah-frontend history into medaris
+
+### Features
+
+* **repo:** MDRS-10 — convert two npm workspaces into a single pnpm workspace ([#9](https://github.com/amel-tech/medaris/issues/9)) ([4eb2784](https://github.com/amel-tech/medaris/commit/4eb2784e70e852d9dc5e76693ba1bc0cedda9ad2))
+* **repo:** MDRS-11 adopt Nx 23 for task orchestration and wire TS project references ([#11](https://github.com/amel-tech/medaris/issues/11)) ([68fcfe3](https://github.com/amel-tech/medaris/commit/68fcfe3826ab7f08ee5990078769f5ec6aba7fae))
+* **repo:** MDRS-12 — adopt Biome, reduce ESLint to a boundaries-only shell ([#12](https://github.com/amel-tech/medaris/issues/12)) ([6bc1296](https://github.com/amel-tech/medaris/commit/6bc12966234dd44e50b79a6d236b005c5106e395))
+
+
+### Miscellaneous Chores
+
+* **repo:** merge madrasah-frontend history into medaris ([196ff8c](https://github.com/amel-tech/medaris/commit/196ff8c713dd6160f348d94d0a2baf06088faa06))
+
 ## [0.1.6](https://github.com/amel-tech/madrasah-frontend/compare/nazir-web-v0.1.5...nazir-web-v0.1.6) (2026-06-18)
 
 
