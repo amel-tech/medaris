@@ -1,0 +1,19 @@
+/* Medaris — elevation and focus.
+   Verbatim from the Figma effect styles (shadow-2xs .. shadow-2xl, focus, focus error).
+   Shadows are black at low alpha, never tinted: depth is not a brand signal here. */
+:root {
+  --shadow-2xs: 0 1px 0 0 #0000000D;
+  --shadow-xs:  0 1px 2px 0 #0000000D;
+  --shadow-sm:  0 1px 2px -1px #0000001A, 0 1px 3px 0 #0000001A;
+  --shadow-md:  0 2px 4px -2px #0000001A, 0 4px 6px -1px #0000001A;
+  --shadow-lg:  0 4px 6px -4px #0000001A, 0 10px 15px -3px #0000001A;
+  --shadow-xl:  0 8px 10px -6px #0000001A, 0 20px 25px -5px #0000001A;
+  --shadow-2xl: 0 25px 50px -12px #00000040;
+
+  /* Focus rings. The Figma value is a neutral grey ring, not a brand one —
+     recorded here as-is. See the focus card: this is the one token in the
+     system that does not currently clear a contrast check on its own. */
+  --ring-focus: 0 0 0 3px #E5E5E5;
+  --ring-focus-error: 0 0 0 3px #FECACA;
+  --ring-focus-brand: 0 0 0 3px var(--sky-600); /* proposed — 4.10:1 on white, 3.91:1 on the page */
+}

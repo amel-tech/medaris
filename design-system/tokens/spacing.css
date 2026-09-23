@@ -1,0 +1,19 @@
+/* Medaris — spacing scale.
+   Verbatim from the Figma variable collection "typography" (spacing/xs .. spacing/4xl).
+   Eight steps, no in-between values: if a gap is not on this list it is wrong. */
+:root {
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 40px;
+  --space-3xl: 56px;
+  --space-4xl: 64px;
+
+  /* Breakpoints — the three layout frames on the Design System page,
+     and the three modes of the (retired) "global" collection. */
+  --bp-mobile: 390px;
+  --bp-tablet: 768px;
+  --bp-desktop: 1440px;
+}

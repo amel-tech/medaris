@@ -1,0 +1,20 @@
+<!-- @dsCard group="Navigation" viewport="760x260" name="Tabs & breadcrumb" subtitle="2px active underline in brand, 1px hairline under the rest" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:24px;background:var(--background-white);font-family:var(--font-ui)}
+.crumb{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-neutral-tertiary);margin-bottom:20px}
+.crumb a{color:var(--text-neutral-tertiary);text-decoration:none}
+.crumb a:hover{color:var(--text-neutral-primary);text-decoration:underline}
+.crumb .cur{color:var(--text-neutral-primary);font-weight:500}
+.body{padding:20px 12px;font-size:14px;color:var(--text-neutral-tertiary)}
+.note{margin-top:8px;font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:660px}
+</style></head><body>
+<nav class="crumb"><a href="#">Ana Sayfa</a><span>/</span><a href="#">Derslerim</a><span>/</span><span class="cur">Sarf Dersi</span></nav>
+<div class="mds-tabs">
+  <button class="mds-tab is-active">Genel</button>
+  <button class="mds-tab">Talebeler</button>
+  <button class="mds-tab">Ezber Kartları</button>
+  <button class="mds-tab">Ayarlar</button>
+</div>
+<div class="body">Sarf Dersi · 12 talebe · haftada 2 ders</div>
+<p class="note">Tabs switch a view without changing the URL's meaning; a breadcrumb says where the URL already is. Both, on the same screen, is normal here — the breadcrumb locates the ders, the tabs cut it. The active tab is the only element in the system that uses <code>--border-m</code>.</p>
+</body></html>

@@ -1,0 +1,18 @@
+/* Medaris — motion.
+   NOT extracted: the Figma file defines no motion tokens. Everything below is a
+   proposal, kept deliberately short so it is cheap to replace once motion is designed.
+   Rule of thumb behind the numbers: a control responds in one frame budget (120ms),
+   a surface that enters or leaves takes 200ms, nothing exceeds 320ms. */
+:root {
+  --duration-instant: 80ms;
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --duration-instant: 0ms; --duration-fast: 0ms; --duration-base: 0ms; --duration-slow: 0ms; }
+}

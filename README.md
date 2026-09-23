@@ -41,6 +41,8 @@ Nx project names are not always the directory names — commands take the **proj
 
 Libraries live in `libs/` and resolve as `@medaris/*`: `common`, `hooks`, `i18n`, `icons`, `services`, `tokens`, `types`, `ui`, `utils`.
 
+`design-system/` is not a package. It is a byte-for-byte mirror of the **Medaris Design System** project on claude.ai/design — tokens, component specs, rendered cards and the three open accessibility decisions — for people and agents who cannot reach that project. Read it through the `medaris-design-system` skill in `.claude/skills/`, which prefers the live project when the session can reach it and explains how the mirror is refreshed. Nothing builds from it, Biome does not format it, and edits belong in the claude.ai/design project, not here.
+
 **`libs/common` must be built before either Nest app will start** — without it they fail at boot with `TS2307`. `pnpm build` handles the ordering, and `nx run tedrisat:dev` does too via `dependsOn: ["^build"]`.
 
 ## Commands
