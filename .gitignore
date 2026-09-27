@@ -31,6 +31,10 @@ dist/
 .turbo
 .data/
 data/
+# `data/` above is for local database volumes, but it also matches the
+# `components/data/` group of the parked design export (MDRS-93). Re-include
+# that one directory; a bare `data/` rule is otherwise kept as it was.
+!design-system/madrasah-frontend/packages/design-system/src/components/data/
 coverage/
 
 # --- merged from madrasah-frontend (MDRS-9) ---

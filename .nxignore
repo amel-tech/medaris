@@ -1,0 +1,5 @@
+# design-system/ holds verbatim design exports, not workspace code (MDRS-92,
+# MDRS-93). The madrasah-frontend export ships its own project.json and
+# package.json; without this entry Nx registers it as a `design-system`
+# project tagged `scope:shared` and CI runs its tokens/docs/typecheck targets.
+design-system/

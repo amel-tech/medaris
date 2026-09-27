@@ -113,7 +113,9 @@ reviews:
     # `design-system/` is a byte-for-byte mirror of the claude.ai/design
     # "Medaris Design System" project, pulled by the medaris-design-system
     # skill. It is authored there, not here: a review comment on a mirrored
-    # file has nowhere to land, and the next pull overwrites it.
+    # file has nowhere to land, and the next pull overwrites it. The same
+    # holds for a contribution parked under it (a subdirectory carrying a
+    # PROVENANCE.md): a verbatim export of another claude.ai/design project.
     - "!design-system/**"
     - "!apps/keycloak-theme/src/kc.gen.tsx"
     - "!**/routeTree.gen.ts"
