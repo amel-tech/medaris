@@ -73,6 +73,7 @@ jobs:
               - '.migration'
               - 'libs/services/src/**/generated'
               - 'apps/keycloak-theme/src/kc.gen.tsx'
+              - 'design-system'
 
       - name: Run CodeQL analysis
         uses: github/codeql-action/analyze@v3
