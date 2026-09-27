@@ -194,8 +194,11 @@ stays the only place the system is authored.
    divergences in the repo; the pull is where the re-expression onto the
    semantic layer and the `.mds-*` classes happens.
 4. Add the directory to the provenance block at the top of this file, verify
-   every file with `cmp` against the export, and open the PR as
-   `docs(docs): MDRS-<n> …`. `biome.json`, `.coderabbit.yaml` and
-   `.dockerignore` already cover all of `design-system/`.
+   every exported file with `cmp` against the export (`PROVENANCE.md` has no
+   counterpart there — check it against step 3 instead), and open the PR as
+   `docs(docs): MDRS-<n> …`. `biome.json`, `.coderabbit.yaml`,
+   `.dockerignore`, `.nxignore` and the CodeQL `paths-ignore` already cover
+   all of `design-system/`, so a `project.json` or `package.json` inside an
+   export registers nothing.
 5. Hand the PR to Taha. After the pull, the next §5 refresh sees the files
    in `list_files`, and the directory becomes part of the mirror.
