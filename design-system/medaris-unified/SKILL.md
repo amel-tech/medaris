@@ -15,6 +15,17 @@ For production code: import the components under `components/` — they are thin
 wrappers over the same CSS, so nothing drifts. Read the matching `.prompt.md`
 before using one; each holds the rules that are not visible in the markup.
 
+Lessons, weeks, course covers and live sessions have their own components —
+`LessonRow`, `WeekAccordion`, `CoverPattern`, `PlatformChip`, `SessionJoin` — drawn
+by `medrese.css`, with the locked, current, live and ended states built in
+(MDS-DOM-04, MDS-DOM-05). Use them before composing a lesson list from generic
+parts.
+
+Icons are the names in `assets/icons.svg`; `components/icon.card.html` shows every
+one. Never draw or import another glyph (MDS-ICON-01). A component writes its own
+words from props with Turkish defaults (`content/ui-strings.json`); in Nizam pass
+the *siz* forms (MDS-VOICE-01).
+
 If the work is user-facing, import `tokens/a11y-overrides.css` after
 `tokens/semantic.css`. Six extracted colour pairs fail WCAG AA without it, and the
 `foundations/contrast-audit.card.html` card has the measurements.

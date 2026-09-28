@@ -3,7 +3,7 @@
   "fields": {
     "state": "the API enum value, or a descriptive key where the API has none",
     "label": "the badge text; null = no badge",
-    "badge": "the Badge variant (.mds-badge--<variant>); brand and live are contracted, not built yet (rules.md, Contracted, not built yet)",
+    "badge": "the Badge variant (.mds-badge--<variant>)",
     "icon": "the glyph beside the label, by its icon registry name",
     "dot": "true: the 8px dot in currentColor goes before the label",
     "cta": "the primary action shown in this state; an object when it depends on the course (approval required or direct)",
@@ -15,8 +15,9 @@
     "provisional": "the type is not authorable yet; the row exists so it can be rendered",
     "draft": "the copy is a draft",
     "note": "why the row differs from a source",
-    "render": "the class that draws it, when it is not a Badge; .mds-nav-item__count is contracted, not built yet (rules.md)",
-    "srSuffix": "text after the value for screen readers only"
+    "render": "the class that draws it, when it is not a Badge",
+    "srSuffix": "text after the value for screen readers only",
+    "locked": "the course page's locked reason in this state, printed once above the programme, never per row (MDS-DOM-05, MDS-VOICE-04); one sentence for every page that shows it"
   },
   "families": {
     "identity": ["primary", "secondary", "outline", "ghost", "destructive"],
@@ -30,9 +31,9 @@
       { "state": "HIDDEN", "label": "Gizli", "badge": "ghost", "audience": "management" }
     ],
     "enrolment.talebe": [
-      { "state": "SIGNED_OUT", "label": null, "cta": "Başvurmak için giriş yap" },
-      { "state": "NONE", "label": null, "cta": { "approval": "Kayıt başvurusu yap", "direct": "Kursa kaydol" }, "note": "also the state after a rejected application: the API deletes the pending enrolment, so the talebe may apply again" },
-      { "state": "PENDING", "label": "Onay bekliyor", "badge": "secondary", "icon": "clock", "cta": null },
+      { "state": "SIGNED_OUT", "label": null, "cta": "Başvurmak için giriş yap", "locked": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Kursa kaydolduğunda görebilirsin." },
+      { "state": "NONE", "label": null, "cta": { "approval": "Kayıt başvurusu yap", "direct": "Kursa kaydol" }, "locked": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Kursa kaydolduğunda görebilirsin.", "note": "also the state after a rejected application: the API deletes the pending enrolment, so the talebe may apply again" },
+      { "state": "PENDING", "label": "Onay bekliyor", "badge": "secondary", "icon": "clock", "cta": null, "locked": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Kursa kaydolduğunda görebilirsin." },
       { "state": "ENROLLED", "label": "Devam ediyor", "badge": "brand", "cta": "Derse devam et", "shows": "the next session" },
       { "state": "COMPLETED", "label": "Tamamlandı", "badge": "success", "icon": "check" },
       { "state": "BANNED", "label": null, "text": "Bu kursa erişimin kaldırıldı." },

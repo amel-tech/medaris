@@ -56,9 +56,9 @@ Per file, in this order.
    read `transform`. `review: true` (Badge `tone="live"`) is decided per use from
    `valueContexts`. Sub-types (`DataTableColumn`, `BreadcrumbItem`, `TabItem`) by `subTypes`.
    Every component file stands alone (MDS-COMP-06): pass components into slots.
-   Some targets are contracts the unified system builds after launch; `check-map.mjs` prints them
-   under *targets contracted but not built yet*. Port the tokens, literals and copy of a screen
-   that needs one now, and the element when it is built, never with a stand-in (MDS-AGENT-03).
+   Every component target is built. A target named before it exists is printed by `check-map.mjs`
+   under *targets contracted but not built yet*: port the rest of the screen, and the element
+   once it is built, never with a stand-in (MDS-AGENT-03).
 2. **Tokens, property by property.** For `var(--x)`: a matching `tokens[x].contexts[].when` wins;
    else `tokens[x].byProperty[<class>]` (text = color / caret-color / text-decoration-color; bg =
    background*; border = border* / outline*; icon = fill / stroke; ring = the focus box-shadow);
@@ -87,9 +87,8 @@ Per file, in this order.
    `openDecision` is a draft until that decision is made.
 8. **Root:** `<html lang="tr" data-app="…">` (MDS-LAY-03); a sidebar's `<nav>` gets
    `.mds-nav--light` and an `aria-label` (SPEC-D3-04 default: ported screens keep a light
-   sidebar). `.mds-nav--light` is contracted, not built yet (`medaris-unified/rules.md`,
-   *Contracted, not built yet*): without it the nav items keep the inverse sidebar's colours,
-   1.24:1 on white, so a sidebar waits for it as step 1 says.
+   sidebar). Without `.mds-nav--light` the nav items keep the inverse sidebar's colours, 1.24:1
+   on white.
 9. **Run** `node tools/design-system/check-port.mjs <file-or-dir>`. It warns and exits 0; it reads
    this map and `design-system/medaris-unified` unless `--map` / `--ds` say otherwise. It prints each
    token's route (`byProperty` for the property it finds, `contexts`, the note) and lists every #95

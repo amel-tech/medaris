@@ -37,7 +37,7 @@ hr { border: 0; border-top: var(--border-s) solid var(--border-neutral-primary);
 }
 /* proposed — box-shadow is not painted in forced-colors mode; keep focus visible there.
    The ring's colour in normal mode is OPEN-1 and is not touched. Component states (MDS-A11Y-08)
-   are not covered yet: their forced-colours rules come with the Phase 1b class layer. */
+   have their forced-colours rules beside them in components.css and medrese.css. */
 @media (forced-colors: active) { :focus-visible { outline: 2px solid CanvasText !important; outline-offset: 2px; } }
 /* proposed — literal letter-spacing never reaches Arabic script (token-based tracking is re-pointed in typography.css) */
 :lang(ar), :lang(ota-Arab) { letter-spacing: 0; }

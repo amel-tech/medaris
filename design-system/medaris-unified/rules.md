@@ -11,8 +11,7 @@ madrasah-frontend design system, whose names this system retires. `OPEN-n` and `
 owner's open decisions: the table at the end says what the system does until each is decided.
 
 Where a rule names a component, class or file the system does not have yet, the rule is the
-contract for adding it (MDS-AGENT-03): add it that way, never a stand-in. The classes the rules and
-`content/` already name are listed with the tokens they read under *Contracted, not built yet*.
+contract for adding it (MDS-AGENT-03): add it that way, never a stand-in.
 
 ## Tokens
 
@@ -313,23 +312,6 @@ Rule: a token in the right `tokens/*.css`, declared once and marked proposed; cl
 
 ### MDS-AGENT-04 — Reading the manifest
 Rule: trust a token's `name`, `value` and `definedIn`; do not trust its `kind`, a generator heuristic that labels many non-colour tokens `color` (`--space-inset-card`, `--elevation-modal`, `--transition-colors`) and some non-font tokens `font` (`--tracking-wide`). Take a token's category from `definedIn` and its name prefix.
-
-## Contracted, not built yet
-
-The rules above and `content/` name these classes; the Phase 1b class layer adds them. Until it
-does, nothing draws them: port the tokens, literals and copy of a screen that needs one now, and the
-element once it exists (MDS-AGENT-03). Each reads only tokens that exist today; the ratios are
-measured by `verify-contrast.mjs`.
-
-| class | draws | reads |
-| -- | -- | -- |
-| `.mds-badge--brand` | Badge `brand` ("Devam ediyor") | `--text-brand-primary` on `--background-brand-tertiary`, 8.24:1 |
-| `.mds-badge--live` + `.mds-badge__dot` | Badge `live` with its dot ("Şu an canlı") | `--text-live-primary` on `--background-live-subtle`, 5.30:1; the dot is 8px, `currentColor`, `--radius-full`, `aria-hidden` |
-| `.mds-alert--neutral` | the neutral Alert (MDS-VOICE-07) | `--text-neutral-primary` on `--background-neutral-secondary`, border `--border-neutral-primary`, 16.19:1; its icon `--icon-neutral-tertiary`, 6.90:1 |
-| `.mds-nav--light` | the light sidebar: on the `<nav>` around the nav items | item `--text-neutral-tertiary` on white, 7.56:1; hover `--text-neutral-primary` on `--background-neutral-secondary`; active (`.is-active` or `aria-current="page"`) `--text-brand-primary` on `--background-brand-tertiary`, semibold, 8.24:1; section label `--text-neutral-tertiary`. Without it, the canonical nav colours measure 1.24:1 on white |
-| `.mds-nav-item__count` | a count at a nav item's end | inverse: white on `--background-neutral-inverse-tertiary`, 10.35:1; current `--text-brand-primary` on white, 9.46:1. Light: `--text-brand-primary` on `--background-brand-tertiary`, 8.24:1; current white on `--background-brand-primary`, 9.46:1 |
-| `.mds-platform-chip` + `__dot`, `--<platform id>` | a meeting platform (MDS-COL-06) | the name `--text-neutral-primary` on `--background-neutral-secondary`, 16.19:1, `--radius-s`; the 8px dot `--icon-platform-<id>`, or `--icon-neutral-disabled` for an unknown host |
-| forced-colours rules for component states | MDS-A11Y-08 | today only focus has one (`tokens/base.css`) |
 
 ## Open decisions these rules cite
 

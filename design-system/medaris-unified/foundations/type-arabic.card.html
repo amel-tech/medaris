@@ -1,16 +1,25 @@
 <!-- @dsCard group="Foundations" viewport="820x300" name="Arabic + Latin" subtitle="IBM Plex Sans Arabic against IBM Plex Sans — one superfamily, so a gloss sits under an ayah without a seam" -->
-<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
 body{margin:0;padding:24px;background:var(--background-white)}
-.pair{max-width:640px;padding:20px 24px;border:1px solid var(--border-neutral-primary);border-radius:var(--radius-m);background:var(--background-neutral-primary)}
-.ar{font-family:var(--font-arabic);font-size:28px;font-weight:500;line-height:1.9;color:var(--text-neutral-primary);margin:0 0 12px;text-align:right}
-.tr{font-family:var(--font-ui);font-size:16px;line-height:1.6;color:var(--text-neutral-secondary);margin:0}
-.ref{font-family:var(--font-mono);font-size:11px;color:var(--text-neutral-disabled);margin-top:12px}
-.note{margin-top:16px;font-family:var(--font-ui);font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:640px}
+.grid{display:grid;grid-template-columns:1.25fr 1fr;gap:16px}
+.pair{display:flex;flex-direction:column;gap:12px;padding:20px 24px;border:1px solid var(--border-neutral-primary);border-radius:var(--radius-m);background:var(--background-neutral-primary)}
+.pair p{margin:0}
+.tr{font-family:var(--font-ui);font-size:var(--fs-body);line-height:var(--lh-body);color:var(--text-neutral-secondary)}
+.ref{margin-block-start:auto;font-family:var(--font-mono);font-size:var(--fs-footnote);line-height:var(--lh-snug);color:var(--text-neutral-tertiary)}
+@media (max-width:599.98px){.grid{grid-template-columns:1fr}}
+.note{margin-top:16px;font-family:var(--font-ui);font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6}
 </style></head><body>
-<div class="pair">
-  <p class="ar" dir="rtl">اقْرَأْ بِاسْمِ رَبِّكَ الَّذِي خَلَقَ</p>
-  <p class="tr">Yaratan Rabbinin adıyla oku.</p>
-  <p class="ref">96:1 · --font-arabic / --font-ui</p>
+<div class="grid">
+  <div class="pair">
+    <p class="mds-arabic-text" lang="ar" dir="rtl">اقْرَأْ بِاسْمِ رَبِّكَ الَّذِي خَلَقَ</p>
+    <p class="tr">Yaratan Rabbinin adıyla oku.</p>
+    <p class="ref" lang="en">96:1 · .mds-arabic-text — --font-arabic-text, 24 / 1.9</p>
+  </div>
+  <div class="pair">
+    <p class="mds-body">Beşinci babın şerhi — <span lang="ar" dir="rtl" class="mds-arabic">فَتَحَ</span> bâbı</p>
+    <p class="mds-caption">Kaynak: <span lang="ar" dir="rtl" class="mds-arabic">بِنَاءُ الأَفْعَالِ</span> · s. 20–24</p>
+    <p class="ref" lang="en">.mds-arabic — 18 beside 16; never below 16, so 16 in a 12px caption</p>
+  </div>
 </div>
-<p class="note">Arabic runs at 1.9 leading, not 1.5: the script needs the room and looks starved at body leading. Cairo also covers Arabic and is the fallback, but Plex Arabic shares the Latin's proportions, so a bilingual card stays optically level. Always set <code>dir="rtl"</code> on the Arabic element itself, never on a shared ancestor.</p>
+<p class="note" lang="en">Arabic runs at 1.9 leading, not 1.5: harakat need the room and look starved at body leading. Plex Arabic shares the Latin's proportions, so a bilingual card stays optically level. <code>.mds-arabic-text</code> is for classical and Qur'anic text; its face is SPEC-D3-06 and stays this stack until it is decided. Always set <code>lang="ar" dir="rtl"</code> on the Arabic element itself, never on a shared ancestor.</p>
 </body></html>

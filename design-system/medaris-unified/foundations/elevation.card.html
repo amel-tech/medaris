@@ -1,10 +1,14 @@
-<!-- @dsCard group="Foundations" viewport="820x260" name="Elevation" subtitle="Seven shadows, all neutral black at low alpha — depth is never a brand signal" -->
-<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+<!-- @dsCard group="Foundations" viewport="820x400" name="Elevation" subtitle="Seven shadows, all neutral black at low alpha — depth is never a brand signal; five roles name the ones in use" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
 body{margin:0;padding:28px;background:var(--background-neutral-primary);font-family:var(--font-ui)}
-.grid{display:flex;gap:16px;flex-wrap:wrap}
-.b{width:96px;height:72px;background:var(--background-white);border-radius:var(--radius-s);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;color:var(--text-neutral-tertiary)}
+.h{margin:0 0 12px}
+.grid{display:flex;gap:12px;flex-wrap:wrap}
+.grid + .h{margin-top:28px}
+.b{width:96px;height:72px;background:var(--background-white);border-radius:var(--radius-s);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:var(--font-mono);font-size:10px;color:var(--text-neutral-tertiary)}
+.b strong{font-weight:var(--weight-semibold);color:var(--text-neutral-primary)}
 .note{margin-top:22px;font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:700px}
 </style></head><body>
+<p class="mds-eyebrow h" lang="en">Extracted</p>
 <div class="grid">
 <div class="b" style="box-shadow:var(--shadow-2xs)">2xs</div>
 <div class="b" style="box-shadow:var(--shadow-xs)">xs</div>
@@ -14,5 +18,13 @@ body{margin:0;padding:28px;background:var(--background-neutral-primary);font-fam
 <div class="b" style="box-shadow:var(--shadow-xl)">xl</div>
 <div class="b" style="box-shadow:var(--shadow-2xl)">2xl</div>
 </div>
-<p class="note">Three of these are enough in practice: <b>xs</b> for a resting card, <b>md</b> for anything that hovers over the page (tooltip, dropdown), <b>xl</b> for a modal. The rest exist because the source file has them. An earlier generation of shadow tokens in the same file was tinted blue and red; those are not carried forward.</p>
+<p class="mds-eyebrow h" lang="en">Roles — proposed</p>
+<div class="grid" lang="en">
+<div class="b" style="box-shadow:var(--elevation-resting)"><strong>resting</strong>xs</div>
+<div class="b" style="box-shadow:var(--elevation-overlay)"><strong>overlay</strong>md</div>
+<div class="b" style="box-shadow:var(--elevation-raised)"><strong>raised</strong>lg</div>
+<div class="b" style="box-shadow:var(--elevation-modal)"><strong>modal</strong>xl</div>
+<div class="b" style="box-shadow:var(--elevation-stage)"><strong>stage</strong>2xl</div>
+</div>
+<p class="note" lang="en">Name the role, not the step: <b>resting</b> for a card or a chip on media, and always with a hairline; <b>overlay</b> for a tooltip, menu or popover; <b>raised</b> for a toast, the sticky enrol card or the inline editor; <b>modal</b> for a dialog; <b>stage</b> for the video player. Hover never lifts a surface. 2xs and sm exist because the source file has them. An earlier generation of shadow tokens in the same file was tinted blue and red; those are not carried forward.</p>
 </body></html>

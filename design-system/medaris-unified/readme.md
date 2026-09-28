@@ -44,7 +44,8 @@ and icons. Never mix them inside one element.
 
 ```
 styles.css              everything, in the right order
-components.css          the .mds-* class layer
+components.css          the .mds-* class layer (generic); canonical classes extracted, the rest marked NOT extracted / proposed
+medrese.css             NOT extracted — the .mds-* class layer for the medrese domain (lessons, weeks, covers, sessions)
 rules.md                every rule, with an id — the only place a rule is stated
 tokens/
   fonts.css             Cairo, IBM Plex Sans / Arabic / Mono
@@ -62,11 +63,24 @@ tokens/
 components/             .jsx + .d.ts + .prompt.md per component, and its card
 foundations/            token cards
 patterns/               the app shell and the ezber card
-content/                vocabulary, status map, platforms, providers, time zones — data, not prose
+content/                vocabulary, status map, platforms, providers, time zones, the strings
+                        components write — data, not prose
+assets/                 the Medaris mark, the icon sprite
 ```
 
 Prototypes link `styles.css` and use the `.mds-*` classes; React work imports the
 components. They are the same CSS, so the two cannot drift.
+
+- **Icons** come from `assets/icons.svg` and nowhere else (MDS-ICON-01): `<Icon name="…">` in
+  React, `<svg class="mds-icon" aria-hidden="true"><use href="assets/icons.svg#…"/></svg>` in
+  HTML. Chromium does not load the sprite into a page opened from `file://`: serve the page.
+  Glyphs the class layers draw themselves (a check, a chevron, a lesson type) are masks that
+  `tools/design-system/icons.mjs` in the Medaris repo generates from the same sprite.
+- **A component never renders another one** (MDS-COMP-06): it writes that component's class
+  markup, and a caller passes components into its slots.
+- **The words a component writes itself** ("Kapat", "Yükleniyor", "Sıradaki") are props with a
+  Turkish default, listed in `content/ui-strings.json`. A Nizam screen passes its *siz* forms
+  (MDS-VOICE-01).
 
 ## Three things to decide
 
@@ -90,8 +104,8 @@ Two more measured gaps, smaller, not covered by `a11y-overrides.css`:
 
 - **Info text on its tint** is 4.24:1 (`--text-info-primary` is blue-600; the contrast
   card used to show 5.49:1, which was blue-700). Until it is decided (SPEC-D3-03),
-  nothing puts body text on the info tint: a notice that only explains is a neutral
-  one (MDS-VOICE-07).
+  nothing puts body text on the info tint: a notice that only explains is the neutral
+  Alert (MDS-VOICE-07), which is also Alert's default tone.
 - **The switch off state** is 1.23:1 — track against white, and the white knob
   against the track (SPEC-D3-21).
 
