@@ -134,6 +134,13 @@
       "when": 1790603700261,
       "tag": "0018_hide_instead_of_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790604498513,
+      "tag": "0019_lesson_duration_minutes_course_time_zone",
+      "breakpoints": true
     }
   ]
 }

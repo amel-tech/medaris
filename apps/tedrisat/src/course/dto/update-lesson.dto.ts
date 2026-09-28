@@ -22,7 +22,7 @@ import { CreateLessonDto } from "./create-course.dto";
  * Optional, but never null: `@IsOptional()` skips validation for `null` as
  * well as `undefined`, so a NOT NULL column declared with it would let
  * `{"title": null}` through to Postgres and answer 500 instead of 400. The
- * nullable columns (duration, kaynak, scheduledAt, meetingUrl, agenda) keep
+ * nullable columns (durationMinutes, kaynak, scheduledAt, meetingUrl, agenda) keep
  * `PartialType`'s `@IsOptional()`, where null means "clear the field".
  */
 const OmittedButNotNull = () =>

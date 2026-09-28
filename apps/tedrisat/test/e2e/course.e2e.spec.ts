@@ -36,18 +36,23 @@ const coursePayload = () => ({
     {
       weekNumber: 2,
       title: "İkinci Bab",
-      lessons: [{ title: "Ölçme", type: "QUIZ", duration: "10 soru" }],
+      lessons: [{ title: "Ölçme", type: "QUIZ" }],
     },
     {
       weekNumber: 1,
       title: "Birinci Bab",
       summary: "Müfredat tanıtımı",
       lessons: [
-        { title: "Açılış", type: "VIDEO", duration: "12 dk", isPreview: true },
+        {
+          title: "Açılış",
+          type: "VIDEO",
+          durationMinutes: 12,
+          isPreview: true,
+        },
         {
           title: "Şerh",
           type: "VIDEO",
-          duration: "28 dk",
+          durationMinutes: 28,
           kaynak: "Bina · s. 4-9",
         },
       ],
@@ -296,7 +301,7 @@ describe("CourseController (e2e)", () => {
         {
           weekNumber: 1,
           title: "Tek Hafta",
-          lessons: [{ title: "Yeni Ders", type: "VIDEO", duration: "20 dk" }],
+          lessons: [{ title: "Yeni Ders", type: "VIDEO", durationMinutes: 20 }],
         },
       ];
 
@@ -390,7 +395,7 @@ describe("CourseController (e2e)", () => {
               {
                 title: "Açılış halkası",
                 type: "LIVE",
-                duration: "60 dk",
+                durationMinutes: 60,
                 scheduledAt,
                 meetingUrl: "https://meet.google.com/bqx-mfzn-rde",
                 agenda,
@@ -410,6 +415,10 @@ describe("CourseController (e2e)", () => {
       expect(new Date(lesson.scheduledAt).toISOString()).toBe(scheduledAt);
       expect(lesson.meetingUrl).toBe("https://meet.google.com/bqx-mfzn-rde");
       expect(lesson.agenda).toEqual(agenda);
+      expect(lesson.durationMinutes).toBe(60);
+      // The deprecated free-text column is never served (MDRS-110).
+      expect(lesson).not.toHaveProperty("duration");
+      expect(created.timeZone).toBe("Europe/Istanbul");
 
       // Replace keeps the lesson row (same id) and updates the live fields.
       const newScheduledAt = "2026-08-17T18:00:00.000Z";
@@ -447,6 +456,8 @@ describe("CourseController (e2e)", () => {
       expect(updatedLesson.agenda).toEqual([
         { time: "21:00", title: "Tek adım" },
       ]);
+      // PUT is a full replace: a lesson sent without a length has none.
+      expect(updatedLesson.durationMinutes).toBeNull();
     });
 
     it("rejects a malformed meeting URL", () => {
@@ -466,6 +477,97 @@ describe("CourseController (e2e)", () => {
         .post(`/kosks/${koskId}/courses`)
         .send(payload)
         .expect(400);
+    });
+
+    it("stores a course's time zone and edits it, refusing what is not an IANA zone (MDRS-110)", async () => {
+      const created = (
+        await request(app.getHttpServer())
+          .post(`/kosks/${koskId}/courses`)
+          .send({ ...coursePayload(), timeZone: "Europe/Berlin" })
+          .expect(201)
+      ).body;
+      expect(created.timeZone).toBe("Europe/Berlin");
+
+      const patched = (
+        await request(app.getHttpServer())
+          .patch(`/courses/${created.id}`)
+          .send({ timeZone: "America/New_York" })
+          .expect(200)
+      ).body;
+      expect(patched.timeZone).toBe("America/New_York");
+
+      // A PUT that leaves the zone out keeps it.
+      const replaced = (
+        await request(app.getHttpServer())
+          .put(`/courses/${created.id}`)
+          .send({ title: created.title })
+          .expect(200)
+      ).body;
+      expect(replaced.timeZone).toBe("America/New_York");
+
+      // Stored in canonical IANA form, whatever spelling Intl accepts.
+      const canonical = (
+        await request(app.getHttpServer())
+          .patch(`/courses/${created.id}`)
+          .send({ timeZone: "europe/berlin" })
+          .expect(200)
+      ).body;
+      expect(canonical.timeZone).toBe("Europe/Berlin");
+      const alias = (
+        await request(app.getHttpServer())
+          .post(`/kosks/${koskId}/courses`)
+          .send({ ...coursePayload(), timeZone: "Turkey" })
+          .expect(201)
+      ).body;
+      expect(alias.timeZone).toBe("Europe/Istanbul");
+      await request(app.getHttpServer())
+        .put(`/courses/${created.id}`)
+        .send({ title: created.title, timeZone: "America/New_York" })
+        .expect(200);
+
+      for (const timeZone of ["Mars/Olympus", null, "", "+03:00"]) {
+        await request(app.getHttpServer())
+          .patch(`/courses/${created.id}`)
+          .send({ timeZone })
+          .expect(400);
+        await request(app.getHttpServer())
+          .put(`/courses/${created.id}`)
+          .send({ title: created.title, timeZone })
+          .expect(400);
+      }
+    });
+
+    it("takes a lesson's length as whole minutes only (MDRS-110)", async () => {
+      const withLesson = (lesson: Record<string, unknown>) => ({
+        ...coursePayload(),
+        weeks: [
+          {
+            weekNumber: 1,
+            title: "Birinci Bab",
+            lessons: [{ title: "Canlı ders", type: "LIVE", ...lesson }],
+          },
+        ],
+      });
+      for (const lesson of [
+        { durationMinutes: 0 },
+        { durationMinutes: 1441 },
+        { durationMinutes: 30.5 },
+        { durationMinutes: "60 dk" },
+        // The free-text field is gone from the contract.
+        { duration: "60 dk" },
+      ]) {
+        await request(app.getHttpServer())
+          .post(`/kosks/${koskId}/courses`)
+          .send(withLesson(lesson))
+          .expect(400);
+      }
+      const created = (
+        await request(app.getHttpServer())
+          .post(`/kosks/${koskId}/courses`)
+          .send(withLesson({}))
+          .expect(201)
+      ).body;
+      expect(created.weeks[0].lessons[0].durationMinutes).toBeNull();
     });
 
     it("refuses the köşk owner's DELETE — only SYSTEM_ADMIN deletes (MDRS-124)", async () => {

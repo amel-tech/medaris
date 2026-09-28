@@ -24,6 +24,7 @@ import {
 } from "./course.repository.interface";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
+import { withCanonicalTimeZone } from "./domain/time-zone";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { EnrollmentNotFoundError } from "./errors/enrollment-not-found.error";
 
@@ -111,7 +112,11 @@ export class CourseService {
     course: Omit<ICreateCourse, "koskId" | "authorId">
   ): Promise<ICourseDetail> {
     await this.koskService.assertOwner(koskId, authorId); // köşk owner only
-    return this.courseRepo.create({ ...course, koskId, authorId });
+    return this.courseRepo.create({
+      ...withCanonicalTimeZone(course),
+      koskId,
+      authorId,
+    });
   }
 
   async update(
@@ -120,7 +125,10 @@ export class CourseService {
     updates: IUpdateCourse
   ): Promise<ICourse> {
     await this.assertCourseOwner(id, userId);
-    const updated = await this.courseRepo.update(id, updates);
+    const updated = await this.courseRepo.update(
+      id,
+      withCanonicalTimeZone(updates)
+    );
     if (!updated) {
       throw new CourseNotFoundError(id);
     }
@@ -133,7 +141,7 @@ export class CourseService {
     data: IReplaceCourse
   ): Promise<ICourseDetail> {
     await this.assertCourseOwner(id, userId);
-    return this.courseRepo.replace(id, userId, data);
+    return this.courseRepo.replace(id, userId, withCanonicalTimeZone(data));
   }
 
   // ---- session-level writes (MDRS-95) ----

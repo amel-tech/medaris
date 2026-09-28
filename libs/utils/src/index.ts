@@ -1,4 +1,5 @@
 export * from "./meeting-platform";
+export * from "./time-zone";
 
 export const formatDate = (date: Date): string => {
   return new Intl.DateTimeFormat("tr-TR", {
