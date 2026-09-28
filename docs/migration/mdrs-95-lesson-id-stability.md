@@ -58,7 +58,9 @@ tr, en and ar).
 - `nx affected -t typecheck test build lint module-boundaries --base=413beec`:
   green for tedrisat, nizam-web, tedris-web, landing-web, services (and their
   dependencies); tedrisat 25 files / 409 tests.
-- `course.e2e.spec.ts`: 39 tests, including the new ones — move through PUT
+- `course.e2e.spec.ts`: 39 tests at `11cce33` (`git show
+  11cce33:apps/tedrisat/test/e2e/course.e2e.spec.ts | grep -cE '^\s*it\('` →
+  `39`; the file has grown since), including the new ones — move through PUT
   keeps the id; week dropped and re-added keeps lesson ids and archives the old
   week; a dropped lesson is archived, not deleted, and leaves the summary
   count; PATCH with a new `weekId` keeps the id; PATCH to another course's week

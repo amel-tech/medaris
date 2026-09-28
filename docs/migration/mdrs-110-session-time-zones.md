@@ -73,12 +73,12 @@ UI follows the existing patterns of each screen.
   7 projects (tedrisat, tedris-web, nizam-web, landing-web, services, i18n,
   utils), all green; tedrisat 32 test files, 477 tests passed.
 - `test/e2e/lesson-duration-migration.e2e.spec.ts`: applies 0000–0018, inserts
-  17 lessons with different duration texts, runs 0019 and checks every
+  20 lessons with different duration texts (the `CASES` array), runs 0019 and checks every
   `duration_minutes`, the course's `time_zone`, then the rollback and 0019
   again.
 - `test/e2e/course.e2e.spec.ts`: `durationMinutes` round-trips and `duration`
   is not served; a course's zone is set on create, changed by PATCH, kept by a
-  PUT that omits it; `Mars/Olympus`, `null` and `""` are 400 on PATCH and PUT;
+  PUT that omits it; `Mars/Olympus`, `null`, `""` and `"+03:00"` are 400 on PATCH and PUT;
   `durationMinutes` of 0, 1441, 30.5, `"60 dk"` and a legacy `duration` are
   400.
 - The zone arithmetic was checked by hand in Node: 18:00Z is 21:00 Istanbul
