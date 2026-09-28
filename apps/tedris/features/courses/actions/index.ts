@@ -1,6 +1,8 @@
 "use server";
 
 import {
+  type CalendarFeedLinkResponse,
+  type CalendarFeedStatusResponse,
   type CourseDetailResponse,
   type CourseSummaryResponse,
   createServerTedrisatAPIs,
@@ -137,3 +139,28 @@ export const updateCourseProgress = async (
   if (result.success) revalidatePath(`/courses/${courseId}`);
   return result;
 };
+
+/**
+ * B11 (MDRS-120): whether the viewer has a calendar-feed URL. The URL itself
+ * cannot be read back — tedrisat keeps only its hash — so this is all the
+ * page can show until a new one is issued. Null when tedrisat cannot answer.
+ */
+export const getMyCalendarFeed =
+  async (): Promise<CalendarFeedStatusResponse | null> => {
+    try {
+      const accessToken = await getAccessToken();
+      const { me } = await createServerTedrisatAPIs(
+        accessToken,
+        env.TEDRISAT_API_BASE_URL
+      );
+      return await me.getMyCalendarFeed();
+    } catch (error) {
+      console.error("Error fetching the calendar feed status:", error);
+      return null;
+    }
+  };
+
+/** Issues a new calendar-feed URL; the previous one stops working. */
+export const regenerateMyCalendarFeed = async (): Promise<
+  AuthenticatedActionResult<CalendarFeedLinkResponse>
+> => authenticatedAction((api) => api.me.regenerateMyCalendarFeed());

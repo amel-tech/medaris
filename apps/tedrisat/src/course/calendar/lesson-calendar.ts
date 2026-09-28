@@ -41,6 +41,16 @@ export interface CalendarLessonInput {
   now: Date;
 }
 
+/** `locale` if it is one the description line is written in, else `tr`. */
+export const toCalendarLocale = (
+  locale: string | null | undefined
+): CalendarLocale => {
+  const primary = locale?.toLowerCase().split(/[-_]/)[0];
+  return primary === CALENDAR_LOCALES.en || primary === CALENDAR_LOCALES.ar
+    ? primary
+    : CALENDAR_LOCALES.tr;
+};
+
 /** The session page a calendar entry links to, without a locale prefix. */
 export const sessionPageUrl = (
   webUrl: string,
@@ -119,29 +129,71 @@ export const foldIcsLine = (line: string): string => {
   return out.join("\r\n ");
 };
 
-export const buildLessonIcs = (input: CalendarLessonInput): string => {
+/** One session's event, as the file and the feed (MDRS-120) both write it. */
+export type CalendarEventInput = CalendarLessonInput & {
+  /**
+   * Written as `STATUS:CANCELLED` (RFC 5545 §3.8.1.11), so a subscribed
+   * calendar marks the event cancelled instead of keeping it as planned.
+   */
+  cancelled?: boolean;
+};
+
+/** The `VEVENT` block, unfolded. */
+const lessonEventLines = (input: CalendarEventInput): string[] => {
   const { course, lesson, sessionPageUrl: pageUrl, locale, now } = input;
   const end = lessonEnd(lesson.scheduledAt, lesson.durationMinutes);
-
-  const lines = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//Medaris//tedrisat//TR",
-    "CALSCALE:GREGORIAN",
-    "METHOD:PUBLISH",
+  return [
     "BEGIN:VEVENT",
     `UID:${lessonCalendarUid(lesson.id)}`,
     `DTSTAMP:${formatIcsUtc(now)}`,
     `SEQUENCE:${course.version}`,
     `DTSTART:${formatIcsUtc(lesson.scheduledAt)}`,
     ...(end ? [`DTEND:${formatIcsUtc(end)}`] : []),
+    ...(input.cancelled ? ["STATUS:CANCELLED"] : []),
     `SUMMARY:${escapeIcsText(lessonCalendarSummary(course.title, lesson.title))}`,
     `DESCRIPTION:${escapeIcsText(lessonCalendarDescription(pageUrl, locale))}`,
     // URL is a URI value (§3.8.4.6) and is not TEXT-escaped; LOCATION is TEXT.
     `URL:${pageUrl}`,
     `LOCATION:${escapeIcsText(pageUrl)}`,
     "END:VEVENT",
-    "END:VCALENDAR",
   ];
-  return `${lines.map(foldIcsLine).join("\r\n")}\r\n`;
 };
+
+const CALENDAR_HEAD = [
+  "BEGIN:VCALENDAR",
+  "VERSION:2.0",
+  "PRODID:-//Medaris//tedrisat//TR",
+  "CALSCALE:GREGORIAN",
+  "METHOD:PUBLISH",
+];
+
+const serialize = (lines: string[]): string =>
+  `${lines.map(foldIcsLine).join("\r\n")}\r\n`;
+
+export const buildLessonIcs = (input: CalendarLessonInput): string =>
+  serialize([...CALENDAR_HEAD, ...lessonEventLines(input), "END:VCALENDAR"]);
+
+/** The name a subscribing calendar app shows for the feed (MDRS-120). */
+export const CALENDAR_FEED_NAME = "Medaris";
+
+/**
+ * How often the feed asks to be re-read. Apple Calendar and Outlook honour
+ * these two hints; Google Calendar ignores both and refreshes a subscribed
+ * calendar on its own schedule, which can take hours.
+ */
+const FEED_REFRESH = "PT1H";
+
+/**
+ * A personal calendar feed (MDRS-120): every event in the same format and
+ * with the same UID as the one-session file, so a moved session updates in
+ * place on the next refresh instead of appearing twice.
+ */
+export const buildCalendarFeedIcs = (events: CalendarEventInput[]): string =>
+  serialize([
+    ...CALENDAR_HEAD,
+    `X-WR-CALNAME:${escapeIcsText(CALENDAR_FEED_NAME)}`,
+    `REFRESH-INTERVAL;VALUE=DURATION:${FEED_REFRESH}`,
+    `X-PUBLISHED-TTL:${FEED_REFRESH}`,
+    ...events.flatMap(lessonEventLines),
+    "END:VCALENDAR",
+  ]);

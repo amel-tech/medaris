@@ -3024,6 +3024,103 @@
         ]
       }
     },
+    "/calendar/{file}": {
+      "get": {
+        "description": "Every session of every course the feed's owner is enrolled in, teaches or manages, from 30 days back to 180 days ahead. Removed sessions carry `STATUS:CANCELLED`; UIDs and SEQUENCE are those of `GET /lessons/:id/calendar.ics` (MDRS-117). No meeting links.",
+        "operationId": "getCalendarFeed",
+        "parameters": [
+          {
+            "name": "file",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No feed has this URL: never issued, or replaced (CALENDAR_FEED_NOT_FOUND)."
+          },
+          "429": {
+            "description": ""
+          },
+          "503": {
+            "description": "TEDRIS_WEB_URL is not configured on this server (CALENDAR_NOT_CONFIGURED)."
+          }
+        },
+        "summary": "A personal calendar feed for Apple Calendar and Google Calendar",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/me/calendar-feed": {
+      "get": {
+        "operationId": "getMyCalendarFeed",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarFeedStatusResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Whether the caller has a calendar-feed URL",
+        "tags": [
+          "me"
+        ]
+      },
+      "post": {
+        "description": "The URL is returned this once — only a hash of its secret is stored. The previous URL answers 404 from now on.",
+        "operationId": "regenerateMyCalendarFeed",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarFeedLinkResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "TEDRIS_WEB_URL is not configured on this server (CALENDAR_NOT_CONFIGURED)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Issue a new calendar-feed URL; the previous one stops working",
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/me": {
       "get": {
         "operationId": "getMe",
@@ -5515,6 +5612,49 @@
         "required": [
           "labelId",
           "usageCount"
+        ]
+      },
+      "CalendarFeedStatusResponse": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "description": "Whether the caller has a feed URL. The URL itself cannot be shown again: only its hash is stored."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the current URL was issued; null without one."
+          }
+        },
+        "required": [
+          "active",
+          "createdAt"
+        ]
+      },
+      "CalendarFeedLinkResponse": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "example": "https://tedris.medaris.app/calendar/Xk3…Q.ics",
+            "description": "The feed as https — for Google Calendar's \"From URL\"."
+          },
+          "webcalUrl": {
+            "type": "string",
+            "example": "webcal://tedris.medaris.app/calendar/Xk3…Q.ics",
+            "description": "The same feed as webcal — Apple Calendar subscribes to it."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "url",
+          "webcalUrl",
+          "createdAt"
         ]
       },
       "NazirMadrasahRef": {

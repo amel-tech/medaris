@@ -5,6 +5,8 @@ export * from './AgendaStepResponse';
 export * from './BulkFlashcardErrorContext';
 export * from './BulkFlashcardErrorResponse';
 export * from './BulkFlashcardResponse';
+export * from './CalendarFeedLinkResponse';
+export * from './CalendarFeedStatusResponse';
 export * from './CourseDetailResponse';
 export * from './CourseSummaryResponse';
 export * from './CreateCourseDto';

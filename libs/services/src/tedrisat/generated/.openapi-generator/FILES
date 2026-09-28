@@ -1,6 +1,7 @@
 .gitignore
 .npmignore
 README.md
+src/apis/CalendarApi.ts
 src/apis/CoursesApi.ts
 src/apis/FlashcardCardsApi.ts
 src/apis/FlashcardDeckLabelApi.ts
@@ -19,6 +20,8 @@ src/models/AgendaStepResponse.ts
 src/models/BulkFlashcardErrorContext.ts
 src/models/BulkFlashcardErrorResponse.ts
 src/models/BulkFlashcardResponse.ts
+src/models/CalendarFeedLinkResponse.ts
+src/models/CalendarFeedStatusResponse.ts
 src/models/CourseDetailResponse.ts
 src/models/CourseSummaryResponse.ts
 src/models/CreateCourseDto.ts

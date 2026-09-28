@@ -141,6 +141,13 @@
       "when": 1790604498513,
       "tag": "0019_lesson_duration_minutes_course_time_zone",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790620770376,
+      "tag": "0020_calendar_feed_tokens",
+      "breakpoints": true
     }
   ]
 }

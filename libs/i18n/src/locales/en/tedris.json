@@ -329,5 +329,28 @@
     "google": "Google Calendar",
     "apple": "Apple Calendar / Outlook (.ics)",
     "linkIsOnPage": "The meeting link is on the session page:"
+  },
+  "CalendarSubscription": {
+    "link": "Calendar subscription",
+    "breadcrumb": "Calendar subscription",
+    "title": "Calendar subscription",
+    "subtitle": "Have your courses' sessions show up in Google Calendar or Apple Calendar by themselves. When a session is moved or cancelled, your calendar follows.",
+    "none": "You do not have a calendar link yet.",
+    "unknown": "Your link status could not be read right now.",
+    "active": "You have a calendar link (created on {date}). For your security it is shown only when it is created; regenerate it to see a link again.",
+    "create": "Create link",
+    "regenerate": "Regenerate link",
+    "confirmRegenerate": "Creating a new link stops your old one, if you have one, and calendars subscribed to it will no longer update. Continue?",
+    "failed": "The link could not be created. Please try again.",
+    "newLink": "Your new link is ready. It will not be shown again once you leave this page.",
+    "appleTitle": "Apple Calendar (macOS, iOS)",
+    "appleOpen": "Open in Apple Calendar",
+    "googleTitle": "Google Calendar",
+    "googleSteps": "In Google Calendar, open Settings → Add calendar → From URL, and paste this link.",
+    "googleOpen": "Add by URL in Google Calendar",
+    "googleDelay": "Google refreshes subscribed calendars on its own schedule, which can take hours. A last-minute change may not reach your calendar in time — the session page is always current.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "private": "This link is yours alone: anyone who has it can see course titles and times. Meeting links are never in the calendar. If you have shared it, regenerate it."
   }
 }
