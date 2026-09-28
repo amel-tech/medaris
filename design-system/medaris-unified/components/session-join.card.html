@@ -1,0 +1,84 @@
+<!-- @dsCard group="Medrese" viewport="820x1120" name="Session join" subtitle="Derse katıl as the primary action in every session state; the platform as a chip, the link behind a disclosure" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:var(--space-lg);background:var(--background-neutral-primary);font-family:var(--font-ui);color:var(--text-neutral-primary)}
+.chips{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-sm);margin-block-start:var(--space-sm)}
+.chips .mds-eyebrow{inline-size:100%}
+.chips .mds-eyebrow:not(:first-child){margin-block-start:var(--space-xs)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md);align-items:start}
+.col{display:flex;flex-direction:column;gap:var(--space-md);min-inline-size:0}
+.col > .mds-eyebrow{margin-block-end:calc(var(--space-sm) - var(--space-md))}
+@media (max-width:599.98px){.row{grid-template-columns:1fr}}
+.note{margin:var(--space-md) 0 0;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-tertiary)}
+</style></head><body>
+<div class="row">
+  <div class="col">
+    <p class="mds-eyebrow" lang="en">Live · link changed · the viewer in Berlin</p>
+    <section class="mds-join" aria-labelledby="j1-t j1-at">
+      <header class="mds-join__header"><p class="mds-eyebrow" id="j1-t">Canlı ders</p><span class="mds-badge mds-badge--live"><span class="mds-badge__dot" aria-hidden="true"></span>Şu an canlı</span></header>
+      <p class="mds-join__time"><time id="j1-at" datetime="2026-10-10T21:00:00+03:00">10 Ekim Cumartesi 21:00 İstanbul</time><span><span class="mds-sep" aria-hidden="true">·</span><span class="mds-join__zone">20:00 senin saatinle</span></span><span><span class="mds-sep" aria-hidden="true">·</span><time class="mds-join__zone" datetime="PT60M">60&nbsp;dk</time></span></p>
+      <span class="mds-platform-chip mds-platform-chip--zoom"><span class="mds-platform-chip__dot" aria-hidden="true"></span>Zoom</span>
+      <div class="mds-join__action">
+        <a class="mds-btn mds-btn--primary mds-btn--large mds-btn--full mds-join__link" href="https://zoom.us/j/81234567890" target="_blank" rel="noopener noreferrer">Derse katıl<span class="mds-visually-hidden"> (yeni sekmede açılır)</span></a>
+        <details class="mds-join__reveal" open><summary>Bağlantıyı göster</summary><p class="mds-join__url" dir="ltr">https://zoom.us/j/81234567890</p></details>
+      </div>
+      <p class="mds-join__notice">Bağlantı dün güncellendi.</p>
+    </section>
+    <p class="mds-eyebrow" lang="en">Not enrolled — the reason and the one action</p>
+    <section class="mds-join" aria-labelledby="j6-t j6-at" data-density="compact">
+      <header class="mds-join__header"><p class="mds-eyebrow" id="j6-t">Canlı ders</p><span class="mds-badge mds-badge--secondary"><time datetime="2026-10-13T21:00:00+03:00">3 gün sonra</time></span></header>
+      <p class="mds-join__time"><time id="j6-at" datetime="2026-10-13T21:00:00+03:00">13 Ekim Salı 21:00</time><span><span class="mds-sep" aria-hidden="true">·</span><time class="mds-join__zone" datetime="PT60M">60&nbsp;dk</time></span></p>
+      <div class="mds-join__action"><p class="mds-join__status mds-join__status--locked">Bu oturumun bağlantısı kayıtlı talebelere açıktır.</p><a class="mds-btn mds-btn--primary mds-btn--large mds-btn--full" href="#kaydol">Kursa kaydol</a></div>
+    </section>
+    <p class="mds-eyebrow" lang="en">Cancelled</p>
+    <section class="mds-join" aria-labelledby="j5-t j5-at" data-density="compact">
+      <header class="mds-join__header"><p class="mds-eyebrow" id="j5-t">Canlı ders</p><span class="mds-badge mds-badge--outline">İptal edildi</span></header>
+      <p class="mds-join__time"><time id="j5-at" datetime="2026-10-11T14:00:00+03:00">11 Ekim Pazar 14:00</time><span><span class="mds-sep" aria-hidden="true">·</span><time class="mds-join__zone" datetime="PT45M">45&nbsp;dk</time></span></p>
+      <p class="mds-join__status">Bu oturum iptal edildi.</p>
+    </section>
+    <div class="chips">
+      <p class="mds-eyebrow" lang="en">Platform chip · meeting</p>
+      <span class="mds-platform-chip mds-platform-chip--google-meet"><span class="mds-platform-chip__dot" aria-hidden="true"></span>Google Meet</span>
+      <span class="mds-platform-chip mds-platform-chip--zoom"><span class="mds-platform-chip__dot" aria-hidden="true"></span>Zoom</span>
+      <span class="mds-platform-chip mds-platform-chip--jitsi"><span class="mds-platform-chip__dot" aria-hidden="true"></span>Jitsi Meet</span>
+      <span class="mds-platform-chip mds-platform-chip--unknown"><span class="mds-platform-chip__dot" aria-hidden="true"></span>Bilinmeyen platform<span class="mds-platform-chip__host" dir="ltr">toplanti.ornek.org</span></span>
+      <span class="mds-platform-chip mds-platform-chip--zoom" role="status"><span class="mds-platform-chip__dot" aria-hidden="true"></span>Zoom<span class="mds-visually-hidden">, bağlantıdan algılandı</span></span>
+      <p class="mds-eyebrow" lang="en">Platform chip · recording</p>
+      <span class="mds-platform-chip mds-platform-chip--youtube">YouTube</span>
+      <span class="mds-platform-chip mds-platform-chip--google-drive">Google Drive</span>
+      <span class="mds-platform-chip mds-platform-chip--unknown"><span class="mds-platform-chip__host" dir="ltr">video.ornek.org</span></span>
+    </div>
+  </div>
+  <div class="col">
+    <p class="mds-eyebrow" lang="en">Upcoming, inside the join window</p>
+    <section class="mds-join" aria-labelledby="j7-t j7-at" data-density="compact">
+      <header class="mds-join__header"><p class="mds-eyebrow" id="j7-t">Canlı ders</p><span class="mds-badge mds-badge--secondary"><time datetime="2026-10-10T21:00:00+03:00">5 dakika sonra</time></span><div class="mds-join__actions"><button type="button" class="mds-btn mds-btn--ghost mds-btn--small">Takvime ekle</button></div></header>
+      <p class="mds-join__time"><time id="j7-at" datetime="2026-10-10T21:00:00+03:00">10 Ekim Cumartesi 21:00</time><span><span class="mds-sep" aria-hidden="true">·</span><time class="mds-join__zone" datetime="PT60M">60&nbsp;dk</time></span></p>
+      <span class="mds-platform-chip mds-platform-chip--google-meet"><span class="mds-platform-chip__dot" aria-hidden="true"></span>Google Meet</span>
+      <div class="mds-join__action">
+        <a class="mds-btn mds-btn--primary mds-btn--large mds-btn--full mds-join__link" href="https://meet.google.com/abc-defg-hij" target="_blank" rel="noopener noreferrer">Derse katıl<span class="mds-visually-hidden"> (yeni sekmede açılır)</span></a>
+        <details class="mds-join__reveal"><summary>Bağlantıyı göster</summary><p class="mds-join__url" dir="ltr">https://meet.google.com/abc-defg-hij</p></details>
+      </div>
+    </section>
+    <p class="mds-eyebrow" lang="en">Upcoming, before the join window</p>
+    <section class="mds-join" aria-labelledby="j2-t j2-at" data-density="compact">
+      <header class="mds-join__header"><p class="mds-eyebrow" id="j2-t">Canlı ders</p><span class="mds-badge mds-badge--secondary"><time datetime="2026-10-10T21:00:00+03:00">2 saat sonra</time></span><div class="mds-join__actions"><button type="button" class="mds-btn mds-btn--ghost mds-btn--small">Takvime ekle</button></div></header>
+      <p class="mds-join__time"><time id="j2-at" datetime="2026-10-10T21:00:00+03:00">10 Ekim Cumartesi 21:00</time><span><span class="mds-sep" aria-hidden="true">·</span><time class="mds-join__zone" datetime="PT60M">60&nbsp;dk</time></span></p>
+      <span class="mds-platform-chip mds-platform-chip--google-meet"><span class="mds-platform-chip__dot" aria-hidden="true"></span>Google Meet</span>
+      <p class="mds-join__status">Katılım, ders başlamadan 10 dakika önce açılır.</p>
+    </section>
+    <p class="mds-eyebrow" lang="en">No link yet</p>
+    <section class="mds-join" aria-labelledby="j3-t j3-at" data-density="compact">
+      <header class="mds-join__header"><p class="mds-eyebrow" id="j3-t">Canlı ders</p><span class="mds-badge mds-badge--secondary"><time datetime="2026-10-17T21:00:00+03:00">7 gün sonra</time></span></header>
+      <p class="mds-join__time"><time id="j3-at" datetime="2026-10-17T21:00:00+03:00">17 Ekim Cumartesi 21:00</time><span><span class="mds-sep" aria-hidden="true">·</span><time class="mds-join__zone" datetime="PT60M">60&nbsp;dk</time></span></p>
+      <p class="mds-join__status">Bağlantı henüz eklenmedi.</p>
+    </section>
+    <p class="mds-eyebrow" lang="en">Ended, with its recordings</p>
+    <section class="mds-join" aria-labelledby="j4-t j4-at" data-density="compact">
+      <header class="mds-join__header"><p class="mds-eyebrow" id="j4-t">Canlı ders</p><span class="mds-badge mds-badge--ghost">Sona erdi</span></header>
+      <p class="mds-join__time"><time id="j4-at" datetime="2026-10-03T21:00:00+03:00">3 Ekim Cumartesi 21:00</time><span><span class="mds-sep" aria-hidden="true">·</span><time class="mds-join__zone" datetime="PT60M">60&nbsp;dk</time></span></p>
+      <a class="mds-btn mds-btn--secondary mds-btn--large mds-btn--full" href="#kayitlar">Ders kayıtlarına git</a>
+    </section>
+  </div>
+</div>
+<p class="note" lang="en">The join action is always the primary "Derse katıl", never platform-coloured. A meeting chip is the name beside a decorative dot (the last one is the link editor's detected state); a recording provider is its name alone, an unknown one its host alone. The meeting link stays behind "Bağlantıyı göster", in LTR mono, with no copy button. Where there is no button, a neutral line says why. Both zones print when the course's differs from the viewer's. A not-enrolled viewer sees the state and the time, never the platform or the link.</p>
+</body></html>

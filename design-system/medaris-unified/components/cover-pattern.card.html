@@ -1,0 +1,27 @@
+<!-- @dsCard group="Medrese" viewport="820x460" name="Cover pattern" subtitle="Four calm tones on the canonical ramps; a course hashes to one and keeps it" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:var(--space-lg);background:var(--background-white);font-family:var(--font-ui);color:var(--text-neutral-primary)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-md)}
+.grid + .mds-eyebrow{margin-block-start:var(--space-lg)}
+.mds-eyebrow.h{margin-block-end:var(--space-sm)}
+.col{display:flex;flex-direction:column;gap:var(--space-sm);min-inline-size:0}
+code{font-family:var(--font-mono);font-size:var(--fs-footnote);line-height:var(--lh-snug);color:var(--text-neutral-secondary);overflow-wrap:anywhere}
+@media (max-width:599.98px){.grid{grid-template-columns:repeat(2,1fr)}}
+.note{margin:var(--space-md) 0 0;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-tertiary)}
+</style></head><body>
+<p class="mds-eyebrow h" lang="en">Tones — md, 140</p>
+<div class="grid">
+  <div class="col"><div class="mds-cover mds-cover--sky"><p class="mds-eyebrow mds-cover__label" dir="auto">Nahiv</p></div><code lang="en">tone="sky" · 6.12 · 5.38:1</code></div>
+  <div class="col"><div class="mds-cover mds-cover--blue"><p class="mds-eyebrow mds-cover__label" dir="auto">Tecvid</p></div><code lang="en">tone="blue" · 6.27 · 5.47:1</code></div>
+  <div class="col"><div class="mds-cover mds-cover--green"><p class="mds-eyebrow mds-cover__label" dir="auto">Sarf</p></div><code lang="en">tone="green" · 6.18 · 5.66:1</code></div>
+  <div class="col"><div class="mds-cover mds-cover--slate"><p class="mds-eyebrow mds-cover__label" dir="auto">Mantık</p></div><code lang="en">tone="slate" · 11.18 · 10.00:1</code></div>
+</div>
+<p class="mds-eyebrow h" lang="en">From the id — sm, 84</p>
+<div class="grid">
+  <div class="col"><div class="mds-cover mds-cover--green mds-cover--sm"><p class="mds-eyebrow mds-cover__label" dir="auto">Sarf</p></div><code lang="en">seed="bina-ve-izhar-serhi" → green</code></div>
+  <div class="col"><div class="mds-cover mds-cover--blue mds-cover--sm"><p class="mds-eyebrow mds-cover__label" dir="auto">Sarf</p></div><code lang="en">seed="emsile-ve-bina" → blue</code></div>
+  <div class="col"><div class="mds-cover mds-cover--sky mds-cover--sm"><p class="mds-eyebrow mds-cover__label" dir="auto">Tecvid</p></div><code lang="en">seed="tecvid-temel" → sky</code></div>
+  <div class="col"><div class="mds-cover mds-cover--slate mds-cover--sm"><p class="mds-eyebrow mds-cover__label" dir="auto">Fıkıh</p></div><code lang="en">seed="fikih-giris" → slate</code></div>
+</div>
+<p class="note" lang="en">The only decorative colour, and never a status: sky, blue, green and slate only, with no chip on top. The label takes the tone's ink; its ratio is measured on the from and to stops with the 18% arc pattern under it. A course keeps its tone everywhere — the one chosen for it, or FNV-1a of its id mod 4 — so two courses of one subject may differ. lg (220) is the course page's hero.</p>
+</body></html>

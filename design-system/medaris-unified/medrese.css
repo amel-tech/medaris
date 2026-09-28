@@ -1,0 +1,301 @@
+/* Medaris — medrese layer.
+   NOT extracted — proposals for the medrese domain: the programme (weeks and their lessons),
+   course covers, meeting platforms and the talebe's join card. Loaded after components.css.
+   Every colour, radius and type value reads a token from tokens/*.css, and this file declares
+   none (MDS-TOK-02); lengths are scale steps, the in-component 12px, or the component's own sizes.
+   The glyphs these classes fix are masks: each section sizes and colours its glyph, and
+   tools/design-system/icons.mjs writes the images into the last section from assets/icons.svg.
+   The ratios in the comments are WCAG 2.x, computed from the token files. */
+
+/* ---------------------------------------------------------------- Lesson row */
+/* One lesson: ol.mds-lesson-list > li.mds-lesson-row. The type is its glyph and its printed
+   label, drawn neutral (MDS-COL-05); the state is the medallion plus words. Meta runs are
+   spaced by .mds-sep's own padding; each separator is wrapped in one span with the part after
+   it, so a wrapped line carries the dot to its start instead of ending on it. */
+.mds-lesson-list { list-style: none; margin: 0; padding: 0; }
+.mds-lesson-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-block-size: 48px;
+  padding-block: var(--space-sm);
+  padding-inline: var(--space-md);
+  border-radius: var(--radius-s);
+  font-family: var(--font-ui);
+  color: var(--text-neutral-primary);
+  transition: var(--transition-colors);
+}
+.mds-lesson-row:has(a.mds-lesson-row__title):hover { background: var(--background-neutral-primary); }
+
+/* every type on the same neutral pair, 6.90:1; the transparent ring is the one forced colours draw */
+.mds-lesson-row__medallion {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 32px;
+  block-size: 32px;
+  border: var(--border-s) solid transparent;
+  border-radius: var(--radius-full);
+  background: var(--background-neutral-secondary);
+  color: var(--icon-neutral-tertiary);
+}
+.mds-lesson-row__medallion::before, .mds-lesson-row__lock {
+  content: "";
+  flex: none;
+  inline-size: 16px;
+  block-size: 16px;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-size: contain; mask-size: contain;
+}
+
+.mds-lesson-row__main { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; gap: 2px; }
+.mds-lesson-row__title { font-size: var(--fs-body-sm); font-weight: var(--weight-medium); line-height: var(--lh-snug); color: var(--text-neutral-primary); text-decoration: none; overflow-wrap: anywhere; }
+/* the whole row is the link; the row draws the focus ring, so the link's own is removed */
+a.mds-lesson-row__title::after { content: ""; position: absolute; inset: 0; }
+.mds-lesson-row__title:focus-visible { outline: none; box-shadow: none; }
+.mds-lesson-row:has(.mds-lesson-row__title:focus-visible) { z-index: 1; box-shadow: var(--ring-focus); }
+
+.mds-lesson-row__meta { display: flex; flex-wrap: wrap; align-items: baseline; margin: 0; font-size: var(--fs-caption); line-height: var(--lh-body); color: var(--text-neutral-tertiary); }   /* 7.56:1 on white, 7.09:1 on the tint */
+.mds-lesson-row__meta time { font-variant-numeric: tabular-nums; }
+.mds-lesson-row__marker { color: var(--text-brand-primary); font-weight: var(--weight-semibold); }
+.mds-lesson-row__trailing { position: relative; z-index: 1; flex: none; display: flex; align-items: center; gap: var(--space-sm); }
+.mds-lesson-row__lock { color: var(--icon-neutral-tertiary); }   /* 7.56:1 on white */
+.mds-lesson-row__duration { flex: none; min-inline-size: var(--space-3xl); font-size: var(--fs-caption); text-align: end; color: var(--text-neutral-tertiary); font-variant-numeric: tabular-nums; }
+
+/* current: tint + brand medallion + the "Sıradaki" marker; the tint is 1.07:1 and never alone */
+.mds-lesson-row:has(.mds-lesson-row__title[aria-current="step"]) { background: var(--background-brand-subtle); }
+.mds-lesson-row:has(.mds-lesson-row__title[aria-current="step"]) .mds-lesson-row__medallion { background: var(--background-brand-primary); color: var(--text-white); }   /* 9.46:1 */
+.mds-lesson-row__title[aria-current="step"] { font-weight: var(--weight-semibold); }   /* 16.64:1 on the tint */
+/* done: a check on the success pair, 4.57:1; the title stays as it is (tekrar is the method) */
+.mds-lesson-row.is-done .mds-lesson-row__medallion { background: var(--background-success-subtle); color: var(--icon-success-primary); }
+/* locked: the title stays readable (17.74:1); the dashed ring is decorative (2.54:1) — the lock
+   and the reason printed once above the programme carry the state */
+.mds-lesson-row.is-locked .mds-lesson-row__medallion { background: none; border-style: dashed; border-color: var(--border-neutral-tertiary); }
+
+@media (forced-colors: active) {
+  .mds-lesson-row__medallion { border-color: CanvasText; }
+  .mds-lesson-row__medallion::before, .mds-lesson-row__lock { forced-color-adjust: none; background-color: CanvasText; }
+  .mds-lesson-row:has(.mds-lesson-row__title[aria-current="step"]) .mds-lesson-row__medallion { forced-color-adjust: none; background: Highlight; border-color: Highlight; }
+  .mds-lesson-row:has(.mds-lesson-row__title[aria-current="step"]) .mds-lesson-row__medallion::before { background-color: HighlightText; }
+}
+
+/* ---------------------------------------------------------------- Week accordion */
+/* The APG accordion: hN > button[aria-expanded] + panel. No overflow: hidden anywhere here,
+   so no focus ring is clipped. */
+.mds-weeks { display: flex; flex-direction: column; gap: var(--space-sm); }
+.mds-week { container-type: inline-size; background: var(--background-white); border: var(--border-s) solid var(--border-neutral-primary); border-radius: var(--radius-m); }
+.mds-week.is-active { border-color: var(--border-neutral-secondary); }
+.mds-week__heading { margin: 0; font: inherit; }
+.mds-week__trigger {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "medallion titles meta chevron";
+  align-items: center;
+  column-gap: 12px;
+  row-gap: var(--space-xs);
+  inline-size: 100%;
+  padding-block: 12px;
+  padding-inline: var(--space-md);
+  background: none;
+  border: 0;
+  border-radius: calc(var(--radius-m) - var(--border-s));
+  font-family: var(--font-ui);
+  text-align: start;
+  color: var(--text-neutral-primary);
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+.mds-week__trigger:hover { background: var(--background-neutral-primary); }
+.mds-week__trigger[aria-expanded="true"] { border-end-start-radius: 0; border-end-end-radius: 0; }
+.mds-week__trigger:focus-visible { outline: none; box-shadow: var(--ring-focus); }
+
+.mds-week__medallion {
+  grid-area: medallion;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 32px;
+  block-size: 32px;
+  border: var(--border-s) solid transparent;
+  border-radius: var(--radius-full);
+  background: var(--background-neutral-secondary);
+  color: var(--text-neutral-primary);
+  font-size: var(--fs-caption);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}   /* 16.19:1 */
+.mds-week.is-active .mds-week__medallion { background: var(--background-brand-primary); color: var(--text-white); }   /* 9.46:1 */
+.mds-week.is-done .mds-week__medallion { background: var(--background-success-subtle); color: var(--icon-success-primary); }   /* 4.57:1 */
+.mds-week.is-locked .mds-week__medallion { background: none; border-style: dashed; border-color: var(--border-neutral-tertiary); color: var(--icon-neutral-tertiary); }   /* glyph 7.56:1 */
+.mds-week.is-done .mds-week__medallion::before, .mds-week.is-locked .mds-week__medallion::before, .mds-week__chevron {
+  content: "";
+  inline-size: 16px;
+  block-size: 16px;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-size: contain; mask-size: contain;
+}
+
+.mds-week__titles { grid-area: titles; display: flex; flex-direction: column; gap: var(--space-xs); min-inline-size: 0; }
+.mds-week__eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
+.mds-week__title { font-size: var(--fs-body); font-weight: var(--weight-semibold); line-height: var(--lh-snug); overflow-wrap: anywhere; }   /* 17.74:1 */
+.mds-week__meta { grid-area: meta; display: flex; flex-wrap: wrap; justify-content: flex-end; font-size: var(--fs-caption); line-height: var(--lh-body); text-align: end; color: var(--text-neutral-tertiary); }   /* 7.56:1 */
+.mds-week__meta time { font-variant-numeric: tabular-nums; }
+/* collapsed points along the reading direction, open points down */
+.mds-week__chevron { grid-area: chevron; flex: none; color: var(--icon-neutral-tertiary); transition: var(--transition-disclosure); }
+.mds-week__trigger[aria-expanded="false"] .mds-week__chevron { rotate: -90deg; }
+.mds-week__trigger[aria-expanded="false"]:dir(rtl) .mds-week__chevron { rotate: 90deg; }
+
+/* The panel's rows sit under the week title: its inset + the 32px medallion + the 12px gap. */
+.mds-week__panel { border-block-start: var(--border-s) solid var(--border-neutral-primary); padding-block: var(--space-xs); }
+.mds-week__panel[hidden] { display: none; }
+.mds-week__panel .mds-lesson-list { padding-inline: var(--space-xs); }
+.mds-week__panel .mds-lesson-row { padding-inline-start: calc(var(--space-md) + 32px + 12px - var(--space-xs)); }
+.mds-week__summary, .mds-week__empty { margin: 0; padding-block: var(--space-sm) var(--space-xs); padding-inline: calc(var(--space-md) + 32px + 12px) var(--space-md); font-size: var(--fs-body-sm); line-height: var(--lh-body); color: var(--text-neutral-tertiary); }   /* 7.56:1 */
+.mds-week__empty { padding-block-end: var(--space-sm); }
+
+/* Narrow (the 300px pane, a phone): the meta under the title, the rows under the week medallion,
+   and the duration column only as wide as its text. */
+@container (max-width: 479.98px) {
+  .mds-week__trigger { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "medallion titles chevron" ". meta ."; }
+  .mds-week__meta { justify-content: flex-start; text-align: start; }
+  .mds-week__panel .mds-lesson-row { padding-inline-start: calc(var(--space-md) - var(--space-xs)); }
+  .mds-week__panel .mds-lesson-row__duration { min-inline-size: 0; }
+  .mds-week__summary, .mds-week__empty { padding-inline-start: var(--space-md); }
+}
+
+@media (forced-colors: active) {
+  .mds-week__medallion { border-color: CanvasText; }
+  .mds-week.is-active .mds-week__medallion { forced-color-adjust: none; background: Highlight; border-color: Highlight; color: HighlightText; }
+  .mds-week.is-done .mds-week__medallion::before, .mds-week.is-locked .mds-week__medallion::before, .mds-week__chevron { forced-color-adjust: none; background-color: CanvasText; }
+}
+
+/* ---------------------------------------------------------------- Cover pattern */
+/* The only decorative colour (MDS-COL-07): one of four calm tones, the arc motif at 18% in the
+   tone's ink, the label in that ink. The label is measured on each stop with the pattern
+   composited under it: sky 6.12 · 5.38, blue 6.27 · 5.47, green 6.18 · 5.66, slate 11.18 · 10.00. */
+.mds-cover { position: relative; display: flex; align-items: flex-end; block-size: 140px; padding: var(--space-md); border-radius: var(--radius-s); overflow: hidden; }
+.mds-cover--sm { block-size: 84px; padding: 12px; }
+.mds-cover--lg { block-size: 220px; }
+.mds-cover--sky   { background: linear-gradient(135deg, var(--cover-sky-from), var(--cover-sky-to)); color: var(--cover-sky-fg); }
+.mds-cover--blue  { background: linear-gradient(135deg, var(--cover-blue-from), var(--cover-blue-to)); color: var(--cover-blue-fg); }
+.mds-cover--green { background: linear-gradient(135deg, var(--cover-green-from), var(--cover-green-to)); color: var(--cover-green-fg); }
+.mds-cover--slate { background: linear-gradient(135deg, var(--cover-slate-from), var(--cover-slate-to)); color: var(--cover-slate-fg); }
+/* The motif is the cover's own drawing, not an icon glyph: #95's arc, one 36px tile. */
+.mds-cover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0.18;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Cpath d='M0 18a18 18 0 0 1 36 0M0 18a18 18 0 0 0 36 0' fill='none' stroke='black'/%3E%3C/svg%3E") 0 0 / 36px 36px repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Cpath d='M0 18a18 18 0 0 1 36 0M0 18a18 18 0 0 0 36 0' fill='none' stroke='black'/%3E%3C/svg%3E") 0 0 / 36px 36px repeat;
+}
+/* markup: <p class="mds-eyebrow mds-cover__label">. This layer loads after typography.css, so
+   inherit beats the eyebrow's grey, which fails on three of the tones. */
+.mds-cover__label { position: relative; color: inherit; }
+
+/* Forced colours drop the gradient: a hairline keeps the tile's extent. */
+@media (forced-colors: active) {
+  .mds-cover { border: var(--border-s) solid CanvasText; }
+}
+
+/* ---------------------------------------------------------------- Platform chip */
+/* A meeting platform is its name in neutral text (16.19:1) beside a decorative 8px dot on a ramp
+   step (MDS-COL-06, the default of SPEC-D3-18); a recording provider is its name alone. */
+.mds-platform-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-inline-size: 100%;
+  block-size: 24px;
+  padding-inline: var(--space-sm);
+  border: var(--border-s) solid transparent;
+  border-radius: var(--radius-s);
+  background: var(--background-neutral-secondary);
+  color: var(--text-neutral-primary);
+  font-family: var(--font-ui);
+  font-size: var(--fs-caption);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+.mds-platform-chip__dot { flex: none; inline-size: 8px; block-size: 8px; border-radius: var(--radius-full); background: var(--icon-neutral-disabled); }
+.mds-platform-chip--google-meet .mds-platform-chip__dot { background: var(--icon-platform-google-meet); }
+.mds-platform-chip--zoom .mds-platform-chip__dot { background: var(--icon-platform-zoom); }
+.mds-platform-chip--jitsi .mds-platform-chip__dot { background: var(--icon-platform-jitsi); }
+.mds-platform-chip__host { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; font-family: var(--font-mono); font-weight: var(--weight-regular); color: var(--text-neutral-tertiary); }   /* 6.90:1 */
+/* Forced colours: the transparent border draws the chip; the dot stays, in the text colour. */
+@media (forced-colors: active) {
+  .mds-platform-chip > .mds-platform-chip__dot { forced-color-adjust: none; background: CanvasText; }
+}
+
+/* ---------------------------------------------------------------- Session join */
+/* The talebe's card for one oturum (MDS-DOM-04): state, time in both zones, the platform, the
+   primary "Derse katıl", and the meeting link behind a disclosure. It renders the badge, chip and
+   button markup itself; a status line stands where the button would be when there is none. */
+.mds-join {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-inset-card);
+  background: var(--background-white);
+  border: var(--border-s) solid var(--border-neutral-primary);
+  border-radius: var(--radius-m);
+  box-shadow: var(--elevation-resting);
+  font-family: var(--font-ui);
+  color: var(--text-neutral-primary);
+}
+.mds-join__header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
+.mds-join__actions { display: flex; align-items: center; gap: var(--space-sm); margin-inline-start: auto; }
+.mds-join__time { display: flex; flex-wrap: wrap; align-items: baseline; margin: 0; font-size: var(--fs-body); font-weight: var(--weight-medium); line-height: var(--lh-body); font-variant-numeric: tabular-nums; }   /* 17.74:1 */
+.mds-join__zone { font-weight: var(--weight-regular); color: var(--text-neutral-tertiary); }   /* 7.56:1 */
+.mds-join > .mds-platform-chip { align-self: flex-start; }
+.mds-join__action { display: flex; flex-direction: column; gap: var(--space-sm); }
+.mds-join__status { display: flex; align-items: center; gap: var(--space-sm); min-block-size: 42px; margin: 0; padding-block: var(--space-sm); padding-inline: var(--space-md); border-radius: var(--radius-s); background: var(--background-neutral-secondary); font-size: var(--fs-body-sm); line-height: var(--lh-body); color: var(--text-neutral-primary); }   /* 16.19:1 */
+.mds-join__status--locked::before, .mds-join__link::after, .mds-join__reveal > summary::before {
+  content: "";
+  flex: none;
+  inline-size: 16px;
+  block-size: 16px;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-size: contain; mask-size: contain;
+}
+.mds-join__status--locked::before { color: var(--icon-neutral-tertiary); }   /* 6.90:1 */
+.mds-join__reveal > summary { display: inline-flex; align-items: center; gap: var(--space-xs); min-block-size: 24px; list-style: none; font-size: var(--fs-body-sm); font-weight: var(--weight-medium); color: var(--text-brand-primary); cursor: pointer; }   /* 9.46:1 */
+.mds-join__reveal > summary::-webkit-details-marker { display: none; }
+.mds-join__reveal > summary:hover { text-decoration: underline; }
+.mds-join__reveal > summary::before { transition: var(--transition-disclosure); }
+.mds-join__reveal:not([open]) > summary::before { rotate: -90deg; }
+.mds-join__reveal:not([open]) > summary:dir(rtl)::before { rotate: 90deg; }
+.mds-join__url { margin-block: var(--space-sm) 0; padding-block: var(--space-sm); padding-inline: 12px; border-radius: var(--radius-xs); background: var(--background-neutral-secondary); font-family: var(--font-mono); font-size: var(--fs-body-sm); line-height: var(--lh-body); overflow-wrap: anywhere; }   /* 16.19:1 */
+.mds-join__notice { margin: 0; font-size: var(--fs-body-sm); line-height: var(--lh-body); color: var(--text-neutral-tertiary); }   /* 7.56:1 */
+
+@media (forced-colors: active) {
+  .mds-join__status { border: var(--border-s) solid CanvasText; }
+  .mds-join__status--locked::before, .mds-join__reveal > summary::before { forced-color-adjust: none; background-color: CanvasText; }
+  .mds-join__link::after { forced-color-adjust: none; background-color: LinkText; }
+}
+
+/* ----------------------------------------------- Glyph masks (generated) */
+/* Written by tools/design-system/icons.mjs from assets/icons.svg and the masks
+   file (tools/design-system/icon-masks.json); never edit it by hand. Each rule
+   sets only the glyph: the requesting component's section sizes and colours it. */
+.mds-join__link::after { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M224,104a8,8,0,0,1-16,0V59.32l-66.33,66.34a8,8,0,0,1-11.32-11.32L196.68,48H152a8,8,0,0,1,0-16h64a8,8,0,0,1,8,8Zm-40,24a8,8,0,0,0-8,8v72H48V80h72a8,8,0,0,0,0-16H48A16,16,0,0,0,32,80V208a16,16,0,0,0,16,16H176a16,16,0,0,0,16-16V136A8,8,0,0,0,184,128Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M224,104a8,8,0,0,1-16,0V59.32l-66.33,66.34a8,8,0,0,1-11.32-11.32L196.68,48H152a8,8,0,0,1,0-16h64a8,8,0,0,1,8,8Zm-40,24a8,8,0,0,0-8,8v72H48V80h72a8,8,0,0,0,0-16H48A16,16,0,0,0,32,80V208a16,16,0,0,0,16,16H176a16,16,0,0,0,16-16V136A8,8,0,0,0,184,128Z'/%3E%3C/svg%3E"); }
+.mds-join__reveal > summary::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); }
+.mds-join__status--locked::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Zm-68-56a12,12,0,1,1-12-12A12,12,0,0,1,140,152Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Zm-68-56a12,12,0,1,1-12-12A12,12,0,0,1,140,152Z'/%3E%3C/svg%3E"); }
+.mds-lesson-row--document .mds-lesson-row__medallion::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Zm-32-80a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,136Zm0,32a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,168Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Zm-32-80a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,136Zm0,32a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,168Z'/%3E%3C/svg%3E"); }
+.mds-lesson-row--live .mds-lesson-row__medallion::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M251.77,73a8,8,0,0,0-8.21.39L208,97.05V72a16,16,0,0,0-16-16H32A16,16,0,0,0,16,72V184a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V159l35.56,23.71A8,8,0,0,0,248,184a8,8,0,0,0,8-8V80A8,8,0,0,0,251.77,73ZM192,184H32V72H192V184Zm48-22.95-32-21.33V116.28L240,95Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M251.77,73a8,8,0,0,0-8.21.39L208,97.05V72a16,16,0,0,0-16-16H32A16,16,0,0,0,16,72V184a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V159l35.56,23.71A8,8,0,0,0,248,184a8,8,0,0,0,8-8V80A8,8,0,0,0,251.77,73ZM192,184H32V72H192V184Zm48-22.95-32-21.33V116.28L240,95Z'/%3E%3C/svg%3E"); }
+.mds-lesson-row--quiz .mds-lesson-row__medallion::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M140,180a12,12,0,1,1-12-12A12,12,0,0,1,140,180ZM128,72c-22.06,0-40,16.15-40,36v4a8,8,0,0,0,16,0v-4c0-11,10.77-20,24-20s24,9,24,20-10.77,20-24,20a8,8,0,0,0-8,8v8a8,8,0,0,0,16,0v-.72c18.24-3.35,32-17.9,32-35.28C168,88.15,150.06,72,128,72Zm104,56A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M140,180a12,12,0,1,1-12-12A12,12,0,0,1,140,180ZM128,72c-22.06,0-40,16.15-40,36v4a8,8,0,0,0,16,0v-4c0-11,10.77-20,24-20s24,9,24,20-10.77,20-24,20a8,8,0,0,0-8,8v8a8,8,0,0,0,16,0v-.72c18.24-3.35,32-17.9,32-35.28C168,88.15,150.06,72,128,72Zm104,56A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z'/%3E%3C/svg%3E"); }
+.mds-lesson-row--video .mds-lesson-row__medallion::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm48.24-94.78-64-40A8,8,0,0,0,100,88v80a8,8,0,0,0,12.24,6.78l64-40a8,8,0,0,0,0-13.56ZM116,153.57V102.43L156.91,128Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm48.24-94.78-64-40A8,8,0,0,0,100,88v80a8,8,0,0,0,12.24,6.78l64-40a8,8,0,0,0,0-13.56ZM116,153.57V102.43L156.91,128Z'/%3E%3C/svg%3E"); }
+.mds-lesson-row.is-done .mds-lesson-row__medallion::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); }
+.mds-lesson-row__lock { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Zm-68-56a12,12,0,1,1-12-12A12,12,0,0,1,140,152Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Zm-68-56a12,12,0,1,1-12-12A12,12,0,0,1,140,152Z'/%3E%3C/svg%3E"); }
+.mds-week.is-done .mds-week__medallion::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); }
+.mds-week.is-locked .mds-week__medallion::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Zm-68-56a12,12,0,1,1-12-12A12,12,0,0,1,140,152Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Zm-68-56a12,12,0,1,1-12-12A12,12,0,0,1,140,152Z'/%3E%3C/svg%3E"); }
+.mds-week__chevron { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); }
