@@ -20,5 +20,19 @@ If the work is user-facing, import `tokens/a11y-overrides.css` after
 `foundations/contrast-audit.card.html` card has the measurements.
 
 The product is Turkish, and it renders Arabic. Write copy in Turkish unless asked
-otherwise, and give Arabic runs `--font-arabic`, 1.9 leading and `dir="rtl"` on the
-element itself.
+otherwise, and wrap Arabic runs in `lang="ar" dir="rtl" class="mds-arabic"`
+(classical text: `.mds-arabic-text`) on the element itself (MDS-TYPE-04).
+
+Before building anything, read `rules.md`, then the component's `.prompt.md`. Before
+writing copy or showing a state, read `content/vocabulary.json` and
+`content/status-map.json`. Each rule has an id; cite it rather than restating it.
+
+Set `lang` and `data-app` on the root of every screen (MDS-LAY-03). Name roles, never
+ramps (MDS-TOK-01). If the system lacks something, add it the system's way
+(MDS-AGENT-03) — never an inline style.
+
+In a prototype drawn inside a fixed-size artboard, dialogs and toasts are positioned
+inside the frame (`position: absolute`), or the scrim escapes the artboard. Production
+code uses the native `<dialog>` with `showModal()`.
+
+Sample content is real (MDS-VOICE-06).

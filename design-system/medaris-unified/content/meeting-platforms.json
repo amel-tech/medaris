@@ -1,0 +1,19 @@
+{
+  "$comment": "Mirrors libs/utils/src/meeting-platform.ts (resolveMeetingPlatform: ids, labels, host matching) as the code behaves today. Dot colours live in tokens/domain.css as --icon-platform-<id>; the vendor hex values in libs/utils are not design tokens. Proposal, not current behaviour: accept only https links — a libs/utils issue. Rules: MDS-DOM-03, MDS-COL-06, MDS-TOK-04.",
+  "fields": {
+    "id": "the MeetingPlatformId the resolver returns; also the --icon-platform-<id> suffix",
+    "label": "the label the resolver returns, shown as the chip's text",
+    "hostSuffixes": "the hosts the resolver matches, with every subdomain",
+    "dotToken": "the token that colours the chip's 8px decorative dot",
+    "codeLabel": "the label the resolver returns for an unknown host (empty: the caller decides)",
+    "uiLabel": "what the UI shows for an unknown host",
+    "showHost": "true: the link's host is shown too, in dir=\"ltr\""
+  },
+  "match": "hostname of new URL(link.includes('://') ? link : 'https://' + link), lower-cased; a platform matches when hostname === suffix || hostname.endsWith('.' + suffix); platforms are tried in the order listed and the first match wins; any scheme the URL parser accepts; an empty or missing link, or a parse failure, is unknown (so is a scheme-less link that contains '://' later, e.g. in its query)",
+  "platforms": [
+    { "id": "google-meet", "label": "Google Meet", "hostSuffixes": ["meet.google.com"], "dotToken": "--icon-platform-google-meet" },
+    { "id": "zoom", "label": "Zoom", "hostSuffixes": ["zoom.us"], "dotToken": "--icon-platform-zoom" },
+    { "id": "jitsi", "label": "Jitsi Meet", "hostSuffixes": ["jit.si", "meet.jit.si"], "dotToken": "--icon-platform-jitsi" }
+  ],
+  "unknown": { "id": "unknown", "codeLabel": "", "uiLabel": "Bilinmeyen platform", "showHost": true, "dotToken": "--icon-neutral-disabled" }
+}
