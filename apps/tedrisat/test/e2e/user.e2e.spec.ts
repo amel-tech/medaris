@@ -10,7 +10,10 @@ import {
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { users } from "../../src/database/schema/user.schema";
 import { createTestApp } from "../helpers/test-app.helper";
-import { TestDatabaseUtils } from "../helpers/test-database.helper";
+import {
+  COURSE_TREE_TABLES,
+  TestDatabaseUtils,
+} from "../helpers/test-database.helper";
 import { bearerFor } from "../helpers/test-keycloak.helper";
 
 /**
@@ -78,7 +81,7 @@ describe("Users (e2e)", () => {
   });
 
   beforeEach(async () => {
-    await dbUtils.cleanTables("kosks", "users");
+    await dbUtils.cleanTables(...COURSE_TREE_TABLES, "users");
     const [kosk] = await databaseService.db
       .insert(kosks)
       .values({ ownerId: MANAGER_ID, name: "Süleymaniye Köşkü" })
@@ -95,7 +98,7 @@ describe("Users (e2e)", () => {
   });
 
   afterAll(async () => {
-    await dbUtils.cleanTables("kosks", "users");
+    await dbUtils.cleanTables(...COURSE_TREE_TABLES, "users");
     await app.close();
   });
 

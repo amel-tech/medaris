@@ -215,6 +215,7 @@
         ]
       },
       "delete": {
+        "description": "Removes the köşk, its followers, and every course with its weeks, lessons, müderris, resources and enrollments, in one transaction, and records an audit entry. Köşk managers cannot delete (MDRS-124).",
         "operationId": "deleteKosk",
         "parameters": [
           {
@@ -237,6 +238,9 @@
               }
             }
           },
+          "403": {
+            "description": ""
+          },
           "404": {
             "description": ""
           }
@@ -246,7 +250,7 @@
             "bearer": []
           }
         ],
-        "summary": "Delete a köşk",
+        "summary": "Delete a köşk for real (SYSTEM_ADMIN only)",
         "tags": [
           "kosks"
         ]
@@ -796,6 +800,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "archived",
+            "required": false,
+            "in": "query",
+            "description": "true lists the köşk's hidden courses instead (the Arşiv view) — köşk manager and SYSTEM_ADMIN only.",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -811,6 +824,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": ""
           },
           "404": {
             "description": ""
@@ -1040,6 +1056,7 @@
         ]
       },
       "delete": {
+        "description": "Removes the course and its weeks, lessons, müderris, resources and enrollments in one transaction and records an audit entry. Everyone else hides instead (MDRS-124).",
         "operationId": "deleteCourse",
         "parameters": [
           {
@@ -1062,6 +1079,9 @@
               }
             }
           },
+          "403": {
+            "description": ""
+          },
           "404": {
             "description": ""
           }
@@ -1071,7 +1091,92 @@
             "bearer": []
           }
         ],
-        "summary": "Delete a course",
+        "summary": "Delete a course for real (SYSTEM_ADMIN only)",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/archive": {
+      "post": {
+        "description": "The köşk manager's way to take a course down: nothing is deleted, every list leaves it out, and it answers 404 to everyone but the köşk manager and SYSTEM_ADMIN until it is restored (MDRS-124).",
+        "operationId": "archiveCourse",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseDetailResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Hide a course (Gizle)",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/restore": {
+      "post": {
+        "operationId": "restoreCourse",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseDetailResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Restore a hidden course (Geri al)",
         "tags": [
           "courses"
         ]
@@ -3591,6 +3696,17 @@
             "type": "number",
             "description": "Optimistic-concurrency token. Send it back with PUT /courses/:id and PATCH /lessons/:id; a stale value is refused with 409."
           },
+          "archivedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the köşk manager hid the course (MDRS-124); null while it is live. Only the köşk manager and SYSTEM_ADMIN ever see a non-null value."
+          },
+          "archivedBy": {
+            "type": "string",
+            "nullable": true,
+            "description": "Who hid the course; null while it is live."
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -4085,6 +4201,17 @@
             "type": "number",
             "description": "Optimistic-concurrency token. Send it back with PUT /courses/:id and PATCH /lessons/:id; a stale value is refused with 409."
           },
+          "archivedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the köşk manager hid the course (MDRS-124); null while it is live. Only the köşk manager and SYSTEM_ADMIN ever see a non-null value."
+          },
+          "archivedBy": {
+            "type": "string",
+            "nullable": true,
+            "description": "Who hid the course; null while it is live."
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -4191,6 +4318,17 @@
           "version": {
             "type": "number",
             "description": "Optimistic-concurrency token. Send it back with PUT /courses/:id and PATCH /lessons/:id; a stale value is refused with 409."
+          },
+          "archivedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the köşk manager hid the course (MDRS-124); null while it is live. Only the köşk manager and SYSTEM_ADMIN ever see a non-null value."
+          },
+          "archivedBy": {
+            "type": "string",
+            "nullable": true,
+            "description": "Who hid the course; null while it is live."
           },
           "createdAt": {
             "format": "date-time",

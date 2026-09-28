@@ -125,6 +125,18 @@ export interface EnrolledCourseResponse {
      */
     version: number;
     /**
+     * When the köşk manager hid the course (MDRS-124); null while it is live. Only the köşk manager and SYSTEM_ADMIN ever see a non-null value.
+     * @type {Date}
+     * @memberof EnrolledCourseResponse
+     */
+    archivedAt?: Date | null;
+    /**
+     * Who hid the course; null while it is live.
+     * @type {string}
+     * @memberof EnrolledCourseResponse
+     */
+    archivedBy?: string | null;
+    /**
      * 
      * @type {Date}
      * @memberof EnrolledCourseResponse
@@ -239,6 +251,8 @@ export function EnrolledCourseResponseFromJSONTyped(json: any, ignoreDiscriminat
         'grantsCertificate': json['grantsCertificate'],
         'requiresApproval': json['requiresApproval'],
         'version': json['version'],
+        'archivedAt': json['archivedAt'] == null ? undefined : (new Date(json['archivedAt'])),
+        'archivedBy': json['archivedBy'] == null ? undefined : json['archivedBy'],
         'createdAt': (new Date(json['createdAt'])),
         'updatedAt': (new Date(json['updatedAt'])),
         'koskName': json['koskName'],
@@ -275,6 +289,8 @@ export function EnrolledCourseResponseToJSONTyped(value?: EnrolledCourseResponse
         'grantsCertificate': value['grantsCertificate'],
         'requiresApproval': value['requiresApproval'],
         'version': value['version'],
+        'archivedAt': value['archivedAt'] === null ? null : ((value['archivedAt'] as any)?.toISOString()),
+        'archivedBy': value['archivedBy'],
         'createdAt': ((value['createdAt']).toISOString()),
         'updatedAt': ((value['updatedAt']).toISOString()),
         'koskName': value['koskName'],

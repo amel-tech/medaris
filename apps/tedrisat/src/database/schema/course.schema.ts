@@ -24,10 +24,17 @@ export const lessonType = pgEnum("lesson_type", LessonType);
 export const enrollmentStatus = pgEnum("enrollment_status", EnrollmentStatus);
 
 // Tables
+//
+// Every foreign key in this file is `ON DELETE RESTRICT` (MDRS-124). They were
+// CASCADE, so one DELETE of a köşk silently took every course, week, lesson,
+// müderris, resource and enrollment under it. Now a stray DELETE fails loudly,
+// and the one path that deletes for real — SYSTEM_ADMIN's, in
+// `course/course-purge.ts` — removes the children itself, in one transaction,
+// and writes what it removed to `audit_log`.
 export const courses = table("courses", {
   id: uuid("id").primaryKey().defaultRandom(),
   koskId: uuid("kosk_id")
-    .references(() => kosks.id, { onDelete: "cascade" })
+    .references(() => kosks.id, { onDelete: "restrict" })
     .notNull(),
   authorId: uuid("author_id").notNull(),
   title: text("title").notNull(),
@@ -47,6 +54,12 @@ export const courses = table("courses", {
   // A counter rather than `updated_at`: the column is a naive timestamp with
   // microsecond precision, which a JSON round-trip truncates to milliseconds.
   version: integer("version").default(0).notNull(),
+  // Hidden by its köşk manager (MDRS-124). Reads leave a hidden course out and
+  // answer 404 for it, as they do for a draft, except to the people who may
+  // bring it back: the köşk manager and SYSTEM_ADMIN. `archivedBy` is the
+  // account that hid it — not a foreign key, like every other user column.
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  archivedBy: uuid("archived_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -54,15 +67,15 @@ export const courses = table("courses", {
 export const courseWeeks = table("course_weeks", {
   id: uuid("id").primaryKey().defaultRandom(),
   courseId: uuid("course_id")
-    .references(() => courses.id, { onDelete: "cascade" })
+    .references(() => courses.id, { onDelete: "restrict" })
     .notNull(),
   weekNumber: integer("week_number").notNull(),
   title: text("title").notNull(),
   summary: text("summary"),
   orderIndex: integer("order_index").default(0).notNull(),
   // Set when a whole-course PUT drops the week (MDRS-95). The row is kept so
-  // that its archived lessons — and whatever points at them — survive: a
-  // DELETE here would cascade to every lesson the week ever held.
+  // that its archived lessons — and whatever points at them — survive. A
+  // DELETE here is refused while the week holds any lesson (MDRS-124).
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -71,7 +84,7 @@ export const courseWeeks = table("course_weeks", {
 export const lessons = table("lessons", {
   id: uuid("id").primaryKey().defaultRandom(),
   weekId: uuid("week_id")
-    .references(() => courseWeeks.id, { onDelete: "cascade" })
+    .references(() => courseWeeks.id, { onDelete: "restrict" })
     .notNull(),
   title: text("title").notNull(),
   type: lessonType().notNull(),
@@ -87,7 +100,7 @@ export const lessons = table("lessons", {
   orderIndex: integer("order_index").default(0).notNull(),
   // Removing a lesson hides it; it never deletes it (MDRS-95, following the
   // MDRS-124 decision). Recordings and calendar events will reference lesson
-  // ids, and the foreign keys below a lesson cascade.
+  // ids.
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -98,7 +111,7 @@ export const courseMuderris = table(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     courseId: uuid("course_id")
-      .references(() => courses.id, { onDelete: "cascade" })
+      .references(() => courses.id, { onDelete: "restrict" })
       .notNull(),
     userId: uuid("user_id"),
     name: text("name").notNull(),
@@ -123,7 +136,7 @@ export const courseMuderris = table(
 export const courseResources = table("course_resources", {
   id: uuid("id").primaryKey().defaultRandom(),
   courseId: uuid("course_id")
-    .references(() => courses.id, { onDelete: "cascade" })
+    .references(() => courses.id, { onDelete: "restrict" })
     .notNull(),
   name: text("name").notNull(),
   meta: text("meta"),
@@ -137,7 +150,7 @@ export const enrollments = table(
   {
     userId: uuid("user_id").notNull(),
     courseId: uuid("course_id")
-      .references(() => courses.id, { onDelete: "cascade" })
+      .references(() => courses.id, { onDelete: "restrict" })
       .notNull(),
     studentName: text("student_name"),
     studentEmail: text("student_email"),

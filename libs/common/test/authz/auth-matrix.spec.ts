@@ -105,6 +105,25 @@ describe("auth-matrix structural invariants", () => {
     expect(granting).toEqual([]);
   });
 
+  // MDRS-124: nobody but SYSTEM_ADMIN deletes anything; the people who run
+  // things hide instead. Checked over every entity, so a new row cannot
+  // quietly bring DELETE back.
+  it("no role row on any entity grants DELETE", () => {
+    const granting = Object.entries(MATRIX).flatMap(([entity, rows]) =>
+      Object.entries(rows ?? {})
+        .filter(([, scopes]) => scopes?.includes(SCOPES.DELETE))
+        .map(([role]) => `${entity}:${role}`)
+    );
+    expect(granting).toEqual([]);
+  });
+
+  it("only the köşk manager may hide or restore a course", () => {
+    const granting = Object.entries(MATRIX[ENTITIES.COURSE] ?? {})
+      .filter(([, scopes]) => scopes?.includes(SCOPES.ARCHIVE))
+      .map(([role]) => role);
+    expect(granting).toEqual([ROLES.KOSK_MANAGER]);
+  });
+
   it("a nazır's köşk scopes are a subset of the köşk manager's, without DELETE", () => {
     const nazir = MATRIX[ENTITIES.KOSK][ROLES.MADRASAH_NAZIR] ?? [];
     const manager = MATRIX[ENTITIES.KOSK][ROLES.KOSK_MANAGER] ?? [];

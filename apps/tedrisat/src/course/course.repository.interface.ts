@@ -1,3 +1,4 @@
+import type { IPurgeCounts } from "./course-purge";
 import { CourseLevel } from "./domain/course-level.enum";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
@@ -71,6 +72,10 @@ export interface ICourse {
   requiresApproval: boolean;
   /** Optimistic-concurrency token; bumped by every course or syllabus write. */
   version: number;
+  /** When the köşk manager hid the course (MDRS-124); null while live. */
+  archivedAt: Date | null;
+  /** Who hid it; null while live. */
+  archivedBy: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -228,7 +233,8 @@ export interface ICourseRepository {
   findSummariesByKosk(
     koskId: string,
     userId: string,
-    includeDrafts: boolean
+    includeDrafts: boolean,
+    archived?: boolean
   ): Promise<ICourseSummary[]>;
   findDetailById(id: string, userId: string): Promise<ICourseDetail | null>;
   findEnrolledByUser(userId: string): Promise<IEnrolledCourse[]>;
@@ -240,7 +246,10 @@ export interface ICourseRepository {
     userId: string,
     data: IReplaceCourse
   ): Promise<ICourseDetail>;
-  delete(id: string): Promise<boolean>;
+  archive(id: string, userId: string): Promise<ICourse | null>;
+  restore(id: string): Promise<ICourse | null>;
+  /** SYSTEM_ADMIN's delete: the course, its children and an audit entry. */
+  purge(id: string, actorId: string): Promise<IPurgeCounts | null>;
   /** The course a lesson belongs to, archived or not; null if no such lesson. */
   findLessonCourseId(lessonId: string): Promise<string | null>;
   createLesson(

@@ -115,7 +115,8 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * Delete a köşk
+     * Removes the köşk, its followers, and every course with its weeks, lessons, müderris, resources and enrollments, in one transaction, and records an audit entry. Köşk managers cannot delete (MDRS-124).
+     * Delete a köşk for real (SYSTEM_ADMIN only)
      */
     async deleteKoskRaw(requestParameters: DeleteKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<boolean>> {
         if (requestParameters['id'] == null) {
@@ -153,7 +154,8 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * Delete a köşk
+     * Removes the köşk, its followers, and every course with its weeks, lessons, müderris, resources and enrollments, in one transaction, and records an audit entry. Köşk managers cannot delete (MDRS-124).
+     * Delete a köşk for real (SYSTEM_ADMIN only)
      */
     async deleteKosk(requestParameters: DeleteKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
         const response = await this.deleteKoskRaw(requestParameters, initOverrides);

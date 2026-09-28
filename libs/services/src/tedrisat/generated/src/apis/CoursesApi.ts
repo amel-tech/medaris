@@ -51,6 +51,10 @@ export interface ApproveEnrollmentRequest {
     userId: string;
 }
 
+export interface ArchiveCourseRequest {
+    id: string;
+}
+
 export interface CreateCourseRequest {
     koskId: string;
     createCourseDto: CreateCourseDto;
@@ -70,6 +74,7 @@ export interface GetCourseByIdRequest {
 
 export interface GetCoursesByKoskRequest {
     koskId: string;
+    archived?: boolean;
 }
 
 export interface GetPendingEnrollmentsRequest {
@@ -84,6 +89,10 @@ export interface RejectEnrollmentRequest {
 export interface ReplaceCourseRequest {
     id: string;
     replaceCourseDto: ReplaceCourseDto;
+}
+
+export interface RestoreCourseRequest {
+    id: string;
 }
 
 export interface UpdateCourseRequest {
@@ -152,6 +161,50 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * The köşk manager\'s way to take a course down: nothing is deleted, every list leaves it out, and it answers 404 to everyone but the köşk manager and SYSTEM_ADMIN until it is restored (MDRS-124).
+     * Hide a course (Gizle)
+     */
+    async archiveCourseRaw(requestParameters: ArchiveCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseDetailResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling archiveCourse().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/archive`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseDetailResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The köşk manager\'s way to take a course down: nothing is deleted, every list leaves it out, and it answers 404 to everyone but the köşk manager and SYSTEM_ADMIN until it is restored (MDRS-124).
+     * Hide a course (Gizle)
+     */
+    async archiveCourse(requestParameters: ArchiveCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDetailResponse> {
+        const response = await this.archiveCourseRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Create a new course under a köşk
      */
     async createCourseRaw(requestParameters: CreateCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseDetailResponse>> {
@@ -204,7 +257,8 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Delete a course
+     * Removes the course and its weeks, lessons, müderris, resources and enrollments in one transaction and records an audit entry. Everyone else hides instead (MDRS-124).
+     * Delete a course for real (SYSTEM_ADMIN only)
      */
     async deleteCourseRaw(requestParameters: DeleteCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<boolean>> {
         if (requestParameters['id'] == null) {
@@ -242,7 +296,8 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Delete a course
+     * Removes the course and its weeks, lessons, müderris, resources and enrollments in one transaction and records an audit entry. Everyone else hides instead (MDRS-124).
+     * Delete a course for real (SYSTEM_ADMIN only)
      */
     async deleteCourse(requestParameters: DeleteCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
         const response = await this.deleteCourseRaw(requestParameters, initOverrides);
@@ -345,6 +400,10 @@ export class CoursesApi extends runtime.BaseAPI {
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['archived'] != null) {
+            queryParameters['archived'] = requestParameters['archived'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -554,6 +613,48 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async replaceCourse(requestParameters: ReplaceCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDetailResponse> {
         const response = await this.replaceCourseRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Restore a hidden course (Geri al)
+     */
+    async restoreCourseRaw(requestParameters: RestoreCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseDetailResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling restoreCourse().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/restore`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseDetailResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Restore a hidden course (Geri al)
+     */
+    async restoreCourse(requestParameters: RestoreCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDetailResponse> {
+        const response = await this.restoreCourseRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

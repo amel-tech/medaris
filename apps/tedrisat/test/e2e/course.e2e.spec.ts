@@ -11,7 +11,10 @@ import {
 } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
-import { TestDatabaseUtils } from "../helpers/test-database.helper";
+import {
+  COURSE_TREE_TABLES,
+  TestDatabaseUtils,
+} from "../helpers/test-database.helper";
 
 const MISSING_UUID = "00000000-0000-0000-0000-000000000000";
 
@@ -67,8 +70,7 @@ describe("CourseController (e2e)", () => {
   });
 
   beforeEach(async () => {
-    // Deleting köşks cascades to courses → weeks/lessons/müderris/resources/enrollments.
-    await dbUtils.cleanTables("kosks");
+    await dbUtils.cleanTables(...COURSE_TREE_TABLES);
     const kosk = await request(app.getHttpServer())
       .post("/kosks")
       .send({ name: "Süleymaniye Köşkü" })
@@ -77,7 +79,7 @@ describe("CourseController (e2e)", () => {
   });
 
   afterAll(async () => {
-    await dbUtils.cleanTables("kosks");
+    await dbUtils.cleanTables(...COURSE_TREE_TABLES);
     await app.close();
   });
 
@@ -466,15 +468,15 @@ describe("CourseController (e2e)", () => {
         .expect(400);
     });
 
-    it("deletes a course", async () => {
+    it("refuses the köşk owner's DELETE — only SYSTEM_ADMIN deletes (MDRS-124)", async () => {
       const created = await createCourse().expect(201);
       await request(app.getHttpServer())
         .delete(`/courses/${created.body.id}`)
-        .expect(200);
+        .expect(403);
 
       return request(app.getHttpServer())
         .get(`/courses/${created.body.id}`)
-        .expect(404);
+        .expect(200);
     });
   });
 
