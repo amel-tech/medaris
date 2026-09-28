@@ -3818,7 +3818,7 @@
           "meetingUrl": {
             "type": "string",
             "example": "https://meet.google.com/bqx-mfzn-rde",
-            "description": "External meeting link (Meet/Zoom/Jitsi…). The platform is resolved from the URL on the client."
+            "description": "External meeting link (Meet/Zoom/Jitsi…), https only (MDRS-111). The platform is resolved from the URL on the client."
           },
           "agenda": {
             "description": "Müzakere akışı — agenda steps shown to students.",
@@ -4673,7 +4673,7 @@
           "meetingUrl": {
             "type": "string",
             "example": "https://meet.google.com/bqx-mfzn-rde",
-            "description": "External meeting link (Meet/Zoom/Jitsi…). The platform is resolved from the URL on the client."
+            "description": "External meeting link (Meet/Zoom/Jitsi…), https only (MDRS-111). The platform is resolved from the URL on the client."
           },
           "agenda": {
             "description": "Müzakere akışı — agenda steps shown to students.",
@@ -4778,7 +4778,7 @@
           "meetingUrl": {
             "type": "string",
             "example": "https://meet.google.com/bqx-mfzn-rde",
-            "description": "External meeting link (Meet/Zoom/Jitsi…). The platform is resolved from the URL on the client."
+            "description": "External meeting link (Meet/Zoom/Jitsi…), https only (MDRS-111). The platform is resolved from the URL on the client."
           },
           "agenda": {
             "description": "Müzakere akışı — agenda steps shown to students.",

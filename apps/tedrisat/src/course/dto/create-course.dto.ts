@@ -100,10 +100,14 @@ export class CreateLessonDto {
   @ApiPropertyOptional({
     example: "https://meet.google.com/bqx-mfzn-rde",
     description:
-      "External meeting link (Meet/Zoom/Jitsi…). The platform is resolved from the URL on the client.",
+      "External meeting link (Meet/Zoom/Jitsi…), https only (MDRS-111). The " +
+      "platform is resolved from the URL on the client.",
   })
   @IsOptional()
-  @IsUrl({ require_protocol: true })
+  @IsUrl(
+    { require_protocol: true, protocols: ["https"] },
+    { message: "$property must be an https:// URL" }
+  )
   @MaxLength(500)
   meetingUrl?: string;
 

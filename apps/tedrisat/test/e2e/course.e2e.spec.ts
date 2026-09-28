@@ -479,6 +479,32 @@ describe("CourseController (e2e)", () => {
         .expect(400);
     });
 
+    it.each([
+      "http://meet.google.com/bqx-mfzn-rde",
+      "ftp://meet.google.com/bqx-mfzn-rde",
+    ])("rejects %s with a 400 naming the meeting URL field (MDRS-111)", async (meetingUrl) => {
+      const payload = {
+        ...coursePayload(),
+        weeks: [
+          {
+            weekNumber: 1,
+            title: "Birinci Bab",
+            lessons: [{ title: "Canlı ders", type: "LIVE", meetingUrl }],
+          },
+        ],
+      };
+      const res = await request(app.getHttpServer())
+        .post(`/kosks/${koskId}/courses`)
+        .send(payload)
+        .expect(400);
+      expect(res.body.context.errors).toEqual([
+        expect.objectContaining({
+          property: "weeks.0.lessons.0.meetingUrl",
+          constraints: { isUrl: "meetingUrl must be an https:// URL" },
+        }),
+      ]);
+    });
+
     it("stores a course's time zone and edits it, refusing what is not an IANA zone (MDRS-110)", async () => {
       const created = (
         await request(app.getHttpServer())
@@ -1006,6 +1032,23 @@ describe("CourseController (e2e)", () => {
       expect(res.body).toHaveProperty("code", "COURSE_VERSION_CONFLICT");
 
       expect((await lessonRow(lesson.id)).title).toBe("Birinci düzenleme");
+    });
+
+    it("PATCH /lessons/:id refuses a meeting link that is not https (MDRS-111)", async () => {
+      const detail = await createAndLoad();
+      const lesson = detail.weeks[0].lessons[0];
+      const res = await request(app.getHttpServer())
+        .patch(`/lessons/${lesson.id}`)
+        .send({
+          version: detail.version,
+          meetingUrl: "http://zoom.us/j/8842031567",
+        })
+        .expect(400);
+      expect(res.body.context.errors[0]).toHaveProperty(
+        "property",
+        "meetingUrl"
+      );
+      expect((await lessonRow(lesson.id)).meetingUrl).toBeNull();
     });
 
     it("PATCH /lessons/:id answers 400, not 500, to null on a required field", async () => {
