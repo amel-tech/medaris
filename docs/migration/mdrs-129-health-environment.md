@@ -1,6 +1,8 @@
 # MDRS-129 — `/health` reports the configured environment
 
-Base: `f5a71db`. Two services, two unit specs, one e2e assertion. The
+Base: `f5a71db`. Two services, two unit specs, one e2e assertion
+(`git diff --stat f5a71db 6c970fc -- apps` → `5 files changed`: the two
+`app.service.ts`, the two `app.controller.spec.ts`, `app.e2e.spec.ts`). The
 `HealthCheckDto` shape is unchanged.
 
 ## What was done
@@ -33,9 +35,13 @@ Base: `f5a71db`. Two services, two unit specs, one e2e assertion. The
 `TEDRISAT__SERVICE_NAME=tedrisat-service` and
 `TESKILAT__SERVICE_NAME=teskilat-service`; where the key is not set, the value
 is the package name, `@medaris/tedrisat` / `@medaris/teskilat`. The body used to
-say `tedrisat` / `teskilat` whatever the environment held. Nothing in the repo
-reads the `service` field other than the two specs above (checked with
-`git grep` over `.github`, `tools`, both Dockerfiles and `docker-compose.yml`).
+say `tedrisat` / `teskilat` whatever the environment held. Within the paths
+searched, nothing reads the `service` field other than the two unit specs and
+`apps/tedrisat/test/e2e/app.e2e.spec.ts` above: `git grep -n
+"\.service\b\|\"service\"" -- .github tools apps/tedrisat/Dockerfile
+apps/teskilat/Dockerfile docker-compose.yml` returns one line, a comment in
+`docker-compose.yml` naming `jwt-verifier.service.ts`. Other paths were not
+searched.
 
 ## Verified
 
