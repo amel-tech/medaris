@@ -29,3 +29,21 @@ hr { border: 0; border-top: var(--border-s) solid var(--border-neutral-primary);
 
 /* Arabic and any other RTL run */
 [dir="rtl"] { font-family: var(--font-arabic); }
+
+/* proposed — reduced motion for everything, literal animations included (the skeleton pulse).
+   Replaces the token override in motion.css, so every token keeps one value. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+/* proposed — box-shadow is not painted in forced-colors mode; keep focus visible there.
+   The ring's colour in normal mode is OPEN-1 and is not touched. Component states (MDS-A11Y-08)
+   are not covered yet: their forced-colours rules come with the Phase 1b class layer. */
+@media (forced-colors: active) { :focus-visible { outline: 2px solid CanvasText !important; outline-offset: 2px; } }
+/* proposed — literal letter-spacing never reaches Arabic script (token-based tracking is re-pointed in typography.css) */
+:lang(ar), :lang(ota-Arab) { letter-spacing: 0; }
+/* proposed — right-to-left text, marked or detected, gets the Arabic face (extends the canonical [dir="rtl"] rule).
+   :where() keeps it at zero specificity, so a class that sets a face (.mds-arabic-text) still wins. */
+:where([dir="rtl"], [dir="auto"]:dir(rtl)) { font-family: var(--font-arabic); }
+/* proposed — fixed layers (toaster, sticky enrol card) report their height on <html>, so focus is never hidden
+   under them (WCAG 2.4.11). Set on the layer itself it reaches nothing (MDS-A11Y-09). */
+html { scroll-padding-block-end: var(--mds-fixed-end, 0px); }

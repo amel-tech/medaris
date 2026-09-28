@@ -20,9 +20,7 @@
   border-radius: var(--radius-s);
   cursor: pointer;
   text-decoration: none;
-  transition: background var(--duration-fast) var(--ease-out),
-              border-color var(--duration-fast) var(--ease-out),
-              color var(--duration-fast) var(--ease-out);
+  transition: var(--transition-colors);
 }
 .mds-btn:focus-visible { outline: none; box-shadow: var(--ring-focus); }
 .mds-btn[disabled], .mds-btn.is-disabled { opacity: 0.5; pointer-events: none; }
@@ -139,7 +137,7 @@
   border: var(--border-s) solid var(--border-neutral-primary);
   border-radius: var(--radius-m);
   box-shadow: var(--shadow-xs);
-  padding: var(--space-lg);
+  padding: var(--space-inset-card);
 }
 .mds-card__title { font-family: var(--font-display); font-size: var(--fs-h6); font-weight: var(--weight-semibold); line-height: var(--lh-snug); margin: 0; }
 .mds-card__body  { font-size: var(--fs-body-sm); color: var(--text-neutral-tertiary); margin: var(--space-sm) 0 0; line-height: var(--lh-body); }
@@ -160,8 +158,8 @@
 
 /* ---------------------------------------------------------------- Table */
 .mds-table { width: 100%; border-collapse: collapse; font-family: var(--font-ui); font-size: var(--fs-body-sm); }
-.mds-table th { text-align: left; padding: 12px var(--space-md); font-weight: var(--weight-medium); color: var(--text-neutral-tertiary); border-bottom: var(--border-s) solid var(--border-neutral-primary); white-space: nowrap; }
-.mds-table td { padding: 12px var(--space-md); border-bottom: var(--border-s) solid var(--border-neutral-primary); color: var(--text-neutral-primary); }
+.mds-table th { text-align: left; padding: var(--space-cell-block) var(--space-cell-inline); font-weight: var(--weight-medium); color: var(--text-neutral-tertiary); border-bottom: var(--border-s) solid var(--border-neutral-primary); white-space: nowrap; }
+.mds-table td { padding: var(--space-cell-block) var(--space-cell-inline); border-bottom: var(--border-s) solid var(--border-neutral-primary); color: var(--text-neutral-primary); }
 .mds-table tbody tr:hover td { background: var(--background-neutral-primary); }
 
 /* ---------------------------------------------------------------- Tabs */
@@ -183,7 +181,7 @@
 .mds-nav-item { display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 12px; border-radius: var(--radius-xs); font-family: var(--font-ui); font-size: var(--fs-body-sm); font-weight: var(--weight-medium); color: var(--text-neutral-inverse-secondary); text-decoration: none; cursor: pointer; }
 .mds-nav-item:hover { background: var(--background-neutral-inverse-secondary); color: var(--text-neutral-inverse-primary); }
 .mds-nav-item.is-active { background: var(--background-brand-primary); color: var(--text-white); }
-.mds-nav-section { font-family: var(--font-ui); font-size: var(--fs-caption); font-weight: var(--weight-semibold); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-neutral-inverse-tertiary); padding: 0 12px; margin: var(--space-lg) 0 var(--space-sm); }
+.mds-nav-section { font-family: var(--font-ui); font-size: var(--fs-caption); font-weight: var(--weight-semibold); text-transform: uppercase; letter-spacing: var(--tracking-wide); color: var(--text-neutral-inverse-tertiary); padding: 0 12px; margin: var(--space-lg) 0 var(--space-sm); }
 
 /* ---------------------------------------------------------------- Tooltip */
 .mds-tooltip { display: inline-block; padding: 6px var(--space-sm); border-radius: var(--radius-xs); background: var(--background-neutral-inverse-primary); color: var(--text-neutral-inverse-primary); font-family: var(--font-ui); font-size: var(--fs-caption); box-shadow: var(--shadow-md); }

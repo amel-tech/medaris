@@ -7,6 +7,19 @@
    text styles ships at 100%, which is correct for a single-line heading and
    unreadable for a paragraph. --lh-tight preserves the Figma value; --lh-body and
    --lh-snug are proposals, not extracted, and are flagged as such in the type card. */
+
+/* proposed — an Arabic-script region: the Arabic companion face, no tracking, and a leading that
+   clears vocalised ink (measured: IBM Plex Sans Arabic 1.58–1.60 em, Cairo 1.62 em on Q 96:1).
+   Declared before :root so the manifest records the defaults (MDS-TOK-02).
+   ota-Arab only: Latin-script Ottoman terms (müderris, icâzet) are Turkish, lang="tr" (MDS-TYPE-05). */
+html:lang(ar), :lang(ar), html:lang(ota-Arab), :lang(ota-Arab) {
+  --font-ui: var(--font-arabic);
+  --tracking-wide: 0;
+  --tracking-tight: 0;
+  --lh-tight: var(--lh-arabic);
+  --lh-snug: var(--lh-arabic);
+}
+
 :root {
   /* Families */
   --font-display: "Cairo", "Segoe UI", system-ui, sans-serif;
@@ -46,6 +59,16 @@
   /* Tracking */
   --tracking-tight: -0.02em;  /* proposed, for --fs-h1 and up */
   --tracking-normal: 0;
+
+  /* proposed — named roles on canonical steps */
+  --tracking-wide: 0.06em;                 /* proposed — eyebrows, nav sections */
+  --lh-arabic: 1.9;                        /* proposed — the .mds-arabic literal, named */
+  --lh-prose: var(--lh-body);              /* proposed — long-form reading */
+  --font-arabic-text: "IBM Plex Sans Arabic", "Cairo", "Noto Naskh Arabic", serif; /* proposed — classical/Qur'anic text; face is SPEC-D3-06 */
+  --lh-arabic-text: var(--lh-arabic);      /* proposed — 2 for Scheherazade New, 2.1 for Amiri */
+  --fs-arabic-inline: 1.125em;             /* proposed — relative: one step above the surrounding text (18 beside 16) */
+  --fs-arabic-text: var(--fs-h5);          /* proposed — 24: ezber faces, ayah blocks */
+  --fs-arabic-min: var(--fs-body);         /* proposed — 16: vocalised Arabic is never smaller */
 }
 
 /* Ready-made heading + body classes, so a prototype never has to
@@ -77,5 +100,12 @@
 /* The -light pairs exist in Figma too: same size, Regular weight. */
 .mds-body-lg-light, .mds-body-light, .mds-body-sm-light { font-weight: var(--weight-regular); }
 
-/* Arabic runs. Always pair with dir="rtl" on the element or an ancestor. */
-.mds-arabic { font-family: var(--font-arabic); line-height: 1.9; }
+/* Arabic runs. Always pair with lang="ar" dir="rtl" on the element itself (MDS-TYPE-04).
+   UI and inline Arabic: one step above its context, never below 16 (a 12px caption still gets 16). */
+.mds-arabic { font-family: var(--font-arabic); font-size: max(var(--fs-arabic-min), var(--fs-arabic-inline)); line-height: var(--lh-arabic); letter-spacing: 0; }
+/* proposed — classical and Qur'anic text: ezber faces, ayah and metin blocks.
+   [dir] outranks the [dir="rtl"] face rule in base.css, which every such element carries (MDS-TYPE-04). */
+.mds-arabic-text, .mds-arabic-text[dir] { font-family: var(--font-arabic-text); font-size: var(--fs-arabic-text); line-height: var(--lh-arabic-text); letter-spacing: 0; }
+/* proposed — eyebrow. Turkish text is uppercased only under lang="tr" (i → İ); text in another
+   language carries its own lang (MDS-TYPE-05). */
+.mds-eyebrow { font-family: var(--font-ui); font-size: var(--fs-caption); font-weight: var(--weight-semibold); line-height: var(--lh-tight); text-transform: uppercase; letter-spacing: var(--tracking-wide); color: var(--text-neutral-tertiary); margin: 0; }

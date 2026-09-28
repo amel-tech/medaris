@@ -1,5 +1,6 @@
 /* Medaris — elevation and focus.
-   Verbatim from the Figma effect styles (shadow-2xs .. shadow-2xl, focus, focus error).
+   Verbatim from the Figma effect styles (shadow-2xs .. shadow-2xl, focus, focus error),
+   except the lines marked proposed.
    Shadows are black at low alpha, never tinted: depth is not a brand signal here. */
 :root {
   --shadow-2xs: 0 1px 0 0 #0000000D;
@@ -16,4 +17,11 @@
   --ring-focus: 0 0 0 3px #E5E5E5;
   --ring-focus-error: 0 0 0 3px #FECACA;
   --ring-focus-brand: 0 0 0 3px var(--sky-600); /* proposed — 4.10:1 on white, 3.91:1 on the page */
+
+  /* proposed — elevation roles: name the purpose, point at the extracted shadows */
+  --elevation-resting: var(--shadow-xs);   /* proposed — cards, chips on media */
+  --elevation-overlay: var(--shadow-md);   /* proposed — tooltip, menu, popover */
+  --elevation-raised: var(--shadow-lg);    /* proposed — toast, sticky enrol card, inline editor */
+  --elevation-modal: var(--shadow-xl);     /* proposed — dialog */
+  --elevation-stage: var(--shadow-2xl);    /* proposed — video player */
 }

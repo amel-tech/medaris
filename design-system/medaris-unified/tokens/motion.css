@@ -2,7 +2,9 @@
    NOT extracted: the Figma file defines no motion tokens. Everything below is a
    proposal, kept deliberately short so it is cheap to replace once motion is designed.
    Rule of thumb behind the numbers: a control responds in one frame budget (120ms),
-   a surface that enters or leaves takes 200ms, nothing exceeds 320ms. */
+   a surface that enters or leaves takes 200ms, nothing exceeds 320ms.
+   Reduced motion is one universal rule in base.css, not an override of these tokens:
+   a second declaration would become the value the manifest records (MDS-TOK-02). */
 :root {
   --duration-instant: 80ms;
   --duration-fast: 120ms;
@@ -11,8 +13,8 @@
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-}
 
-@media (prefers-reduced-motion: reduce) {
-  :root { --duration-instant: 0ms; --duration-fast: 0ms; --duration-base: 0ms; --duration-slow: 0ms; }
+  /* Composites: a control changing colour on hover, a chevron opening a disclosure */
+  --transition-colors: background-color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+  --transition-disclosure: transform var(--duration-base) var(--ease-in-out), rotate var(--duration-base) var(--ease-in-out);
 }

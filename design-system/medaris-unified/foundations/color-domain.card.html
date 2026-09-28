@@ -1,0 +1,93 @@
+<!-- @dsCard group="Foundations" viewport="820x480" name="Domain colour" subtitle="Live state, platform dots, rating and the four cover tones — every pair measured" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:var(--space-lg);background:var(--background-white);font-family:var(--font-ui);color:var(--text-neutral-primary)}
+.row{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-md)}
+.row + .row{margin-top:var(--space-lg)}
+.col{display:flex;flex-direction:column;gap:var(--space-sm);min-inline-size:0}
+.cover{position:relative;display:flex;align-items:flex-end;block-size:72px;padding:var(--space-md);border-radius:var(--radius-s);overflow:hidden}
+.cover::before{content:"";position:absolute;inset:0;background:currentColor;opacity:.18;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Cpath d='M0 18a18 18 0 0 1 36 0M0 18a18 18 0 0 0 36 0' fill='none' stroke='black'/%3E%3C/svg%3E") 0 0/36px 36px repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Cpath d='M0 18a18 18 0 0 1 36 0M0 18a18 18 0 0 0 36 0' fill='none' stroke='black'/%3E%3C/svg%3E") 0 0/36px 36px repeat}
+.cover .label{position:relative;color:inherit}
+.sky{background:linear-gradient(135deg,var(--cover-sky-from),var(--cover-sky-to));color:var(--cover-sky-fg)}
+.blue{background:linear-gradient(135deg,var(--cover-blue-from),var(--cover-blue-to));color:var(--cover-blue-fg)}
+.green{background:linear-gradient(135deg,var(--cover-green-from),var(--cover-green-to));color:var(--cover-green-fg)}
+.slate{background:linear-gradient(135deg,var(--cover-slate-from),var(--cover-slate-to));color:var(--cover-slate-fg)}
+.scrim{padding-block-end:var(--space-sm)}
+.scrim::after{content:"";position:absolute;inset:0;background:var(--gradient-scrim-media)}
+.scrim .label{z-index:1;color:var(--text-white)}
+.chips{display:flex;flex-wrap:wrap;gap:var(--space-sm)}
+.chip{display:inline-flex;align-items:center;gap:6px;block-size:24px;padding:0 var(--space-sm);border-radius:var(--radius-s);background:var(--background-neutral-secondary);color:var(--text-neutral-primary);font-size:var(--fs-caption);font-weight:var(--weight-medium);white-space:nowrap}
+.dot{flex:none;inline-size:8px;block-size:8px;border-radius:var(--radius-full);background:currentColor}
+.chip .dot{background:var(--icon-neutral-disabled)}
+.meet .dot{background:var(--icon-platform-google-meet)}
+.zoom .dot{background:var(--icon-platform-zoom)}
+.jitsi .dot{background:var(--icon-platform-jitsi)}
+.live-pair{background:var(--background-live-subtle);color:var(--text-live-primary);align-self:flex-start}
+.rating{display:inline-flex;align-items:center;gap:var(--space-xs);font-size:var(--fs-body-sm);font-weight:var(--weight-semibold)}
+.rating svg{inline-size:16px;block-size:16px;color:var(--icon-rating)}
+.rating span{font-weight:var(--weight-regular);color:var(--text-neutral-tertiary)}
+code{font-family:var(--font-mono);font-size:var(--fs-footnote);color:var(--text-neutral-secondary);line-height:var(--lh-snug)}
+.m{font-family:var(--font-mono);font-size:var(--fs-footnote);color:var(--text-neutral-tertiary);line-height:var(--lh-snug)}
+.ok{font-weight:var(--weight-semibold);color:var(--text-success-primary);white-space:nowrap}
+.dec{font-weight:var(--weight-semibold);color:var(--text-neutral-secondary);white-space:nowrap}
+.note{margin:var(--space-md) 0 0;font-size:var(--fs-caption);color:var(--text-neutral-tertiary);line-height:var(--lh-body)}
+</style></head><body>
+<div class="row">
+  <div class="col">
+    <p class="mds-eyebrow" lang="en">Cover · sky</p>
+    <div class="cover sky"><p class="mds-eyebrow label">Nahiv</p></div>
+    <code lang="en">--cover-sky-from · -to · -fg</code>
+    <span class="m" lang="en">sky-100 → 200, ink sky-900<br>label <span class="ok">6.12 · 5.38:1</span></span>
+  </div>
+  <div class="col">
+    <p class="mds-eyebrow" lang="en">Cover · blue</p>
+    <div class="cover blue"><p class="mds-eyebrow label">Tecvid</p></div>
+    <code lang="en">--cover-blue-from · -to · -fg</code>
+    <span class="m" lang="en">blue-100 → 200, ink blue-900<br>label <span class="ok">6.27 · 5.47:1</span></span>
+  </div>
+  <div class="col">
+    <p class="mds-eyebrow" lang="en">Cover · green</p>
+    <div class="cover green"><p class="mds-eyebrow label">Sarf</p></div>
+    <code lang="en">--cover-green-from · -to · -fg</code>
+    <span class="m" lang="en">green-100 → 200, ink green-900<br>label <span class="ok">6.18 · 5.66:1</span></span>
+  </div>
+  <div class="col">
+    <p class="mds-eyebrow" lang="en">Cover · slate</p>
+    <div class="cover slate"><p class="mds-eyebrow label">Mantık</p></div>
+    <code lang="en">--cover-slate-from · -to · -fg</code>
+    <span class="m" lang="en">slate-100 → 200, ink slate-900<br>label <span class="ok">11.18 · 10.00:1</span></span>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <p class="mds-eyebrow" lang="en">Live now — a state</p>
+    <span class="mds-badge live-pair"><span class="dot" aria-hidden="true"></span>Şu an canlı</span>
+    <code lang="en">--text-live-primary<br>--background-live-subtle</code>
+    <span class="m" lang="en">red-700 on red-100 <span class="ok">5.30:1</span></span>
+  </div>
+  <div class="col">
+    <p class="mds-eyebrow" lang="en">Meeting platform dot</p>
+    <div class="chips">
+      <span class="chip meet"><span class="dot" aria-hidden="true"></span>Google Meet</span>
+      <span class="chip zoom"><span class="dot" aria-hidden="true"></span>Zoom</span>
+      <span class="chip jitsi"><span class="dot" aria-hidden="true"></span>Jitsi Meet</span>
+    </div>
+    <code lang="en">--icon-platform-&lt;id&gt;</code>
+    <span class="m" lang="en">name <span class="ok">16.19:1</span><br>dot on chip <span class="dec">4.58 · 3.36 · 5.42:1</span></span>
+  </div>
+  <div class="col">
+    <p class="mds-eyebrow" lang="en">Rating</p>
+    <span class="rating"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 .9l2.2 4.6 5 .7-3.6 3.5.9 5L8 12.3l-4.5 2.4.9-5L.8 6.2l5-.7z"/></svg>4,8 <span>(126)</span></span>
+    <code lang="en">--icon-rating</code>
+    <span class="m" lang="en">yellow-500 · number <span class="ok">17.74:1</span><br>star on white <span class="dec">1.92:1</span></span>
+  </div>
+  <div class="col">
+    <p class="mds-eyebrow" lang="en">Media scrim</p>
+    <div class="cover sky scrim"><p class="mds-eyebrow label">Ders kaydı</p></div>
+    <code lang="en">--gradient-scrim-media</code>
+    <span class="m" lang="en">black, 0 → 75%; text in its last 28%<br>white there, over white <span class="ok">4.59:1</span></span>
+  </div>
+</div>
+<p class="note" lang="en">WCAG 2.x, computed from the token files. A cover label is measured on its from and to stops with the 18% pattern under it. Dots and the star are decorative (grey figures): the words and the number carry the meaning. If OPEN-2 adopts the overrides, the live pair equals the error pair — the dot and the words tell them apart. Text on the media scrim starts in its last 28%, where it is at least 54% black. The live badge and the platform chips are drawn by this card; the classes that draw them in a product are contracted in <code>rules.md</code> and not built yet.</p>
+</body></html>

@@ -1,17 +1,17 @@
-<!-- @dsCard group="Foundations" viewport="820x560" name="Contrast audit" subtitle="The pairs the product actually renders, measured. Seven fail AA as extracted; six have a one-token fix" -->
-<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+<!-- @dsCard group="Foundations" viewport="820x1060" name="Contrast audit" subtitle="The pairs the product actually renders, measured. Ten fail AA as extracted: six have a one-token fix in a11y-overrides.css; info, the error focus ring, the switch off state and the control boundary are open" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
 body{margin:0;padding:24px;background:var(--background-white);font-family:var(--font-ui)}
 table{border-collapse:collapse;width:100%;font-size:12px}
-th{text-align:left;font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-neutral-disabled);font-weight:400;padding:0 10px 8px 0;border-bottom:1px solid var(--gray-200)}
+th{text-align:left;font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-neutral-disabled);font-weight:400;padding:0 10px 8px 0;white-space:nowrap;border-bottom:1px solid var(--gray-200)}
 td{padding:7px 10px 7px 0;border-bottom:1px solid var(--gray-100);vertical-align:middle;color:var(--text-neutral-primary)}
 .sw span{display:inline-flex;align-items:center;justify-content:center;width:34px;height:22px;border-radius:4px;font-size:11px;font-weight:600;border:1px solid #0000001a}
 .ok{font-family:var(--font-mono);color:var(--green-700);font-weight:600}
 .bad{font-family:var(--font-mono);color:var(--red-700);font-weight:600}
-.req{font-family:var(--font-mono);font-size:10px;color:var(--text-neutral-disabled)}
+.req{font-family:var(--font-mono);font-size:10px;color:var(--text-neutral-disabled);white-space:nowrap}
 .fix{font-family:var(--font-mono);font-size:10px;color:var(--text-neutral-tertiary)}
 .note{margin-top:16px;font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6}
 </style></head><body>
-<table>
+<table lang="en">
 <tr><th>Pair</th><th>As extracted</th><th>Ratio</th><th>AA</th><th>Fix</th></tr>
 <tr>
   <td>Body text on page</td>
@@ -64,10 +64,10 @@ td{padding:7px 10px 7px 0;border-bottom:1px solid var(--gray-100);vertical-align
 </tr>
 <tr>
   <td>Info text on subtle</td>
-  <td class="sw"><span style="background:#DBEAFE;color:#1D4ED8">Aa</span></td>
-  <td class="ok">5.49:1</td>
+  <td class="sw"><span style="background:#DBEAFE;color:#2563EB">Aa</span></td>
+  <td class="bad">4.24:1</td>
   <td class="req">needs 4.5:1</td>
-  <td></td>
+  <td><span class="sw"><span style="background:#DBEAFE;color:#1D4ED8">Aa</span></span> <span class="fix">blue-700 → 5.49:1 (SPEC-D3-03)</span></td>
 </tr>
 <tr>
   <td>Success text on subtle</td>
@@ -112,21 +112,36 @@ td{padding:7px 10px 7px 0;border-bottom:1px solid var(--gray-100);vertical-align
   <td><span class="sw"><span style="background:#EAB308;color:#111827">Aa</span></span> <span class="fix">gray-900 label → 9.25:1</span></td>
 </tr>
 <tr>
-  <td>Focus ring against page</td>
+  <td>Focus ring against white</td>
   <td class="sw"><span style="background:#FFFFFF;color:#E5E5E5">Aa</span></td>
   <td class="bad">1.26:1</td>
   <td class="req">needs 3:1</td>
   <td><span class="sw"><span style="background:#FFFFFF;color:#0284C7">Aa</span></span> <span class="fix">sky-600 ring → 4.10:1</span></td>
 </tr>
 <tr>
-  <td>Input border against white</td>
+  <td>Invalid-field focus ring</td>
+  <td class="sw"><span style="background:#FFFFFF;color:#FECACA">Aa</span></td>
+  <td class="bad">1.45:1</td>
+  <td class="req">needs 3:1</td>
+  <td><span class="fix">OPEN-1, not covered by overrides</span></td>
+</tr>
+<tr>
+  <td>Switch off track against white</td>
+  <td class="sw"><span style="background:#FFFFFF;color:#E2E8F0">Aa</span></td>
+  <td class="bad">1.23:1</td>
+  <td class="req">needs 3:1</td>
+  <td><span class="fix">SPEC-D3-21</span></td>
+</tr>
+<tr>
+  <td>Field, checkbox, radio and select boundary</td>
   <td class="sw"><span style="background:#FFFFFF;color:#D1D5DB">Aa</span></td>
   <td class="bad">1.47:1</td>
   <td class="req">needs 3:1</td>
-  <td><span class="fix">— see note</span></td>
+  <td><span class="fix">OPEN-3 — see note</span></td>
 </tr>
 </table>
-<p class="note">Ratios are WCAG 2.x relative luminance, computed from the hex values in <code>tokens/semantic.css</code>. Text pairs are held to 4.5:1 because the entire control layer is 14px Medium — below the 18.66px/bold threshold that would allow 3:1. Focus and control boundaries are held to 3:1 under WCAG 2.2 <i>Non-text contrast</i> and <i>Focus appearance</i>.<br><br>
-The <b>input border</b> row has no clean token fix: <code>gray-300</code> at 1.47:1 is the file's value for every field outline, and raising it to <code>gray-400</code> only reaches 2.2:1. Fields are still identifiable by their white fill against the <code>slate-50</code> page, which is itself only 1.05:1 — so in practice an input on a white card has no perceivable boundary. That is a design decision to take, not a token to swap, and it is the largest open item in this system.<br><br>
+<p class="note" lang="en">Ratios are WCAG 2.x relative luminance, computed from the hex values in <code>tokens/semantic.css</code> and, for the rings, <code>tokens/elevation.css</code>. Text pairs are held to 4.5:1 because the entire control layer is 14px Medium — below the 18.66px/bold threshold that would allow 3:1. Focus and control boundaries are held to 3:1 under WCAG 2.2 <i>Non-text contrast</i> and <i>Focus appearance</i>.<br><br>
+The <b>control boundary</b> row (OPEN-3) has no clean token fix: <code>gray-300</code> at 1.47:1 is the file's value for every field, checkbox, radio and select outline, and raising it to <code>gray-400</code> only reaches 2.54:1. Fields are still identifiable by their white fill against the <code>slate-50</code> page, which is itself only 1.05:1 — so in practice an input on a white card has no perceivable boundary. That is a design decision to take, not a token to swap, and it is the largest open item in this system.<br><br>
+Info, the invalid-field ring and the switch have no line in the overrides either. Info text needs <code>blue-700</code>, which is SPEC-D3-03. The overrides re-point only <code>--ring-focus</code>, so the invalid-field ring stays with OPEN-1. The switch's off track, and the white knob on it, sit at 1.23:1 (SPEC-D3-21).<br><br>
 Applying the fixes: <code>@import url("tokens/a11y-overrides.css")</code> after <code>tokens/semantic.css</code>.</p>
 </body></html>

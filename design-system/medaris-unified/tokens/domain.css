@@ -1,0 +1,36 @@
+/* Medaris — medrese domain colours.
+   NOT extracted — proposals for the medrese domain, each built on the primitives in colors.css.
+   A suffix is the API value, lower-cased (MDS-TOK-04). See the "Domain colour" card for every pair. */
+:root {
+  /* Live now: a session state, not a lesson type. Always with its dot and its words. */
+  --text-live-primary: var(--red-700);
+  --background-live-subtle: var(--red-100);
+
+  /* Meeting platforms: the 8px decorative dot in the platform chip, never a fill behind text.
+     Suffix = the libs/utils platform id. What "branded" means is SPEC-D3-18; this is its default. */
+  --icon-platform-google-meet: var(--green-700);
+  --icon-platform-zoom: var(--blue-500);
+  --icon-platform-jitsi: var(--sky-700);
+
+  /* Rating star: decorative, always beside the number */
+  --icon-rating: var(--yellow-500);
+
+  /* Legibility over imagery. A gradient, so it does not sit under --background-*.
+     White text on it starts in its last 28%: at least 54% black under the cap line, 4.59:1 over white. */
+  --gradient-scrim-media: linear-gradient(transparent, color-mix(in srgb, var(--black) 75%, transparent));
+
+  /* Course covers, one tone per course: from → to is the wash, fg the pattern and label ink.
+     Never a status hue (MDS-COL-07). */
+  --cover-sky-from: var(--sky-100);
+  --cover-sky-to: var(--sky-200);
+  --cover-sky-fg: var(--sky-900);
+  --cover-blue-from: var(--blue-100);
+  --cover-blue-to: var(--blue-200);
+  --cover-blue-fg: var(--blue-900);
+  --cover-green-from: var(--green-100);
+  --cover-green-to: var(--green-200);
+  --cover-green-fg: var(--green-900);
+  --cover-slate-from: var(--slate-100);
+  --cover-slate-to: var(--slate-200);
+  --cover-slate-fg: var(--slate-900);
+}

@@ -1,0 +1,76 @@
+<!-- @dsCard group="Foundations" viewport="820x420" name="Layout and density" subtitle="Spacing roles, the compact region down to table cells, sidebar/pane/aside widths and the prose measure" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:var(--space-lg);background:var(--background-white);font-family:var(--font-ui);color:var(--text-neutral-primary)}
+.row{display:grid;grid-template-columns:340px 1fr;gap:var(--space-lg);align-items:start}
+.row + .row{margin-top:var(--space-lg);grid-template-columns:var(--layout-measure-prose) 1fr}
+.col{display:flex;flex-direction:column;gap:var(--space-sm);min-inline-size:0}
+.roles{display:grid;grid-template-columns:150px 1fr 1fr;align-items:center;row-gap:var(--space-sm);column-gap:var(--space-sm)}
+.cell{display:flex;align-items:center;gap:var(--space-sm)}
+.bar{block-size:12px;background:var(--background-brand-primary);border-radius:2px}
+code,.m{font-family:var(--font-mono);font-size:var(--fs-footnote);line-height:var(--lh-snug)}
+code{color:var(--text-neutral-secondary)}
+.m{color:var(--text-neutral-tertiary)}
+.pair{display:flex;gap:var(--space-md);align-items:flex-start}
+.pair > div{display:flex;flex-direction:column;gap:var(--space-xs)}
+.prose{max-inline-size:var(--layout-measure-prose);font-size:var(--fs-body);line-height:var(--lh-prose);margin:0}
+.w{display:flex;flex-direction:column;gap:var(--space-xs)}
+.w .bar{block-size:8px;margin-bottom:var(--space-xs)}
+</style></head><body>
+<div class="row">
+  <div class="col">
+    <p class="mds-eyebrow" lang="en">Spacing roles</p>
+    <div class="roles" lang="en">
+      <span></span><span class="m">default</span><span class="m">compact</span>
+      <code>--space-inset-card</code>
+      <span class="cell"><span class="bar" style="inline-size:var(--space-inset-card)"></span><span class="m">24</span></span>
+      <span class="cell" data-density="compact"><span class="bar" style="inline-size:var(--space-inset-card)"></span><span class="m">16</span></span>
+      <code>--space-gap-stack</code>
+      <span class="cell"><span class="bar" style="inline-size:var(--space-gap-stack)"></span><span class="m">24</span></span>
+      <span class="cell" data-density="compact"><span class="bar" style="inline-size:var(--space-gap-stack)"></span><span class="m">16</span></span>
+      <code>--space-gap-grid</code>
+      <span class="cell"><span class="bar" style="inline-size:var(--space-gap-grid)"></span><span class="m">16</span></span>
+      <span class="cell" data-density="compact"><span class="bar" style="inline-size:var(--space-gap-grid)"></span><span class="m">16</span></span>
+      <code>--space-gutter-page</code>
+      <span class="cell"><span class="bar" style="inline-size:var(--space-gutter-page)"></span><span class="m">32</span></span>
+      <span class="cell" data-density="compact"><span class="bar" style="inline-size:var(--space-gutter-page)"></span><span class="m">24</span></span>
+      <code>--space-cell-block</code>
+      <span class="cell"><span class="bar" style="inline-size:var(--space-cell-block)"></span><span class="m">12</span></span>
+      <span class="cell" data-density="compact"><span class="bar" style="inline-size:var(--space-cell-block)"></span><span class="m">8</span></span>
+      <code>--space-cell-inline</code>
+      <span class="cell"><span class="bar" style="inline-size:var(--space-cell-inline)"></span><span class="m">16</span></span>
+      <span class="cell" data-density="compact"><span class="bar" style="inline-size:var(--space-cell-inline)"></span><span class="m">12</span></span>
+    </div>
+    <span class="m" lang="en">Below 768px the page gutter is 16 in either density.</span>
+  </div>
+  <div class="col">
+    <p class="mds-eyebrow" lang="en">A compact region, down to table cells</p>
+    <div class="pair">
+      <div>
+        <span class="m" lang="en">default</span>
+        <div class="mds-card"><table class="mds-table"><thead><tr><th>Talebe</th><th>Hafta</th></tr></thead><tbody><tr><td>Ayşe</td><td>3</td></tr></tbody></table></div>
+      </div>
+      <div>
+        <span class="m" lang="en">data-density="compact"</span>
+        <div class="mds-card" data-density="compact"><table class="mds-table"><thead><tr><th>Talebe</th><th>Hafta</th></tr></thead><tbody><tr><td>Ayşe</td><td>3</td></tr></tbody></table></div>
+      </div>
+    </div>
+    <span class="m" lang="en">Density is a region, not an app: set it on any container.</span>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <p class="mds-eyebrow" lang="en">Prose measure</p>
+    <p class="prose">Bir kurs haftalara, her hafta da tarihli oturumlara ayrılır. Talebe sıradaki oturumu, ders akışını ve geçmiş ders kayıtlarını aynı sayfada bulur. Uzun bir açıklama bu ölçüyü aşmaz.</p>
+    <span class="m" lang="en">--layout-measure-prose 34em with --lh-prose: about 80 characters of 16px IBM Plex Sans a line</span>
+  </div>
+  <div class="col">
+    <p class="mds-eyebrow" lang="en">Layout widths, half size</p>
+    <div class="w" lang="en">
+      <code>--layout-sidebar 248</code><span class="bar" style="inline-size:calc(var(--layout-sidebar) / 2)"></span>
+      <code>--layout-pane 300</code><span class="bar" style="inline-size:calc(var(--layout-pane) / 2)"></span>
+      <code>--layout-aside 340</code><span class="bar" style="inline-size:calc(var(--layout-aside) / 2)"></span>
+      <code>--layout-content-max 1440</code>
+    </div>
+  </div>
+</div>
+</body></html>
