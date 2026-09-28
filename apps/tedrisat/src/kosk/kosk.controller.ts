@@ -1,4 +1,11 @@
-import { AuthGuard } from "@medaris/common";
+import {
+  AuthGuard,
+  Authz,
+  AuthzGuard,
+  type AuthzResolve,
+  ENTITIES,
+  SCOPES,
+} from "@medaris/common";
 import {
   Body,
   Controller,
@@ -17,6 +24,7 @@ import {
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -27,10 +35,32 @@ import { CreateKoskDto } from "./dto/create-kosk.dto";
 import { KoskResponse } from "./dto/kosk-response.dto";
 import { PaginatedKoskResponse } from "./dto/paginated-kosk-response.dto";
 import { UpdateKoskDto } from "./dto/update-kosk.dto";
+import { KoskNotFoundError } from "./errors/kosk-not-found.error";
 import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
 import { KoskService } from "./kosk.service";
 
 const MAX_PAGE_SIZE = 50;
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Authorizes a `/kosks/:id` route against that köşk, answering a missing or
+ * malformed id as not-found first. Guards run before pipes, and the role
+ * resolver reads a missing köşk as PUBLIC, so without this a PATCH to a köşk
+ * that does not exist would be a 403 instead of the 404 it was before the
+ * route moved to `@Authz`.
+ */
+const byExistingKosk: AuthzResolve = async (req, moduleRef) => {
+  const koskId = typeof req.params.id === "string" ? req.params.id : "";
+  if (
+    !UUID_REGEX.test(koskId) ||
+    !(await moduleRef.get(KoskService, { strict: false }).exists(koskId))
+  ) {
+    throw new KoskNotFoundError(koskId);
+  }
+  return { entity: ENTITIES.KOSK, id: koskId };
+};
 
 @ApiTags("kosks")
 @ApiBearerAuth()
@@ -91,14 +121,41 @@ export class KoskController {
     operationId: "updateKosk",
   })
   @ApiOkResponse({ type: KoskResponse })
+  @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Patch(":id")
+  // Method-level, not class-level: most handlers here still check ownership
+  // in `KoskService` and have not moved to `@Authz`. This one and
+  // `leaveMadrasah` have, so that a nazır of the köşk's medrese gets `EDIT`
+  // from the matrix (MDRS-106).
+  @UseGuards(AuthzGuard)
+  @Authz(SCOPES.EDIT, byExistingKosk)
   async update(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() koskDto: UpdateKoskDto
   ): Promise<KoskResponse> {
-    await this.koskService.update(id, request.user.sub, koskDto);
+    await this.koskService.update(id, koskDto);
+    return this.koskService.findById(id, request.user.sub);
+  }
+
+  @ApiOperation({
+    summary: "Detach a köşk from its medrese",
+    description:
+      "The köşk's own way out of a medrese: its manager (or a nazır of that medrese) makes it standalone again.",
+    operationId: "leaveMadrasah",
+  })
+  @ApiOkResponse({ type: KoskResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Delete(":id/madrasah")
+  @UseGuards(AuthzGuard)
+  @Authz(SCOPES.EDIT, byExistingKosk)
+  async leaveMadrasah(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<KoskResponse> {
+    await this.koskService.leaveMadrasah(id);
     return this.koskService.findById(id, request.user.sub);
   }
 

@@ -10,11 +10,17 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { courses } from "./course.schema";
+import { madrasahs } from "./madrasah.schema";
 
 // Köşk = publisher / school that owns courses.
 export const kosks = table("kosks", {
   id: uuid("id").primaryKey().defaultRandom(),
   ownerId: uuid("owner_id").notNull(),
+  // The medrese this köşk is affiliated with, if any (MDRS-106). A köşk may
+  // stand alone; deleting its medrese makes it stand alone again.
+  madrasahId: uuid("madrasah_id").references(() => madrasahs.id, {
+    onDelete: "set null",
+  }),
   name: text("name").notNull(),
   handle: text("handle"),
   description: text("description"),
@@ -45,7 +51,11 @@ export const koskFollowers = table(
   (table) => [primaryKey({ columns: [table.userId, table.koskId] })]
 );
 
-export const kosksRelations = relations(kosks, ({ many }) => ({
+export const kosksRelations = relations(kosks, ({ many, one }) => ({
+  madrasah: one(madrasahs, {
+    fields: [kosks.madrasahId],
+    references: [madrasahs.id],
+  }),
   courses: many(courses),
   followers: many(koskFollowers),
 }));

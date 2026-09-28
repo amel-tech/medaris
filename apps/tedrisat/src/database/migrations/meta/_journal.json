@@ -120,6 +120,13 @@
       "when": 1790601713927,
       "tag": "0016_users",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790602509202,
+      "tag": "0017_madrasahs",
+      "breakpoints": true
     }
   ]
 }
