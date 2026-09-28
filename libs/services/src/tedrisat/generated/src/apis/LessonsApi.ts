@@ -38,6 +38,11 @@ export interface CreateLessonRequest {
     createWeekLessonDto: CreateWeekLessonDto;
 }
 
+export interface GetLessonCalendarRequest {
+    id: string;
+    locale?: GetLessonCalendarLocaleEnum;
+}
+
 export interface UpdateLessonRequest {
     id: string;
     updateLessonDto: UpdateLessonDto;
@@ -151,6 +156,58 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
+     * Authorized like the session page (`GET /courses/:id`). The event links to the Medaris session page, never to the meeting link. `UID` is derived from the lesson id and `SEQUENCE` is the course version, so a re-import after the session moved updates the event instead of duplicating it (MDRS-117).
+     * One session as an iCalendar (.ics) file, for Apple Calendar, Google Calendar and Outlook
+     */
+    async getLessonCalendarRaw(requestParameters: GetLessonCalendarRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<string>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getLessonCalendar().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['locale'] != null) {
+            queryParameters['locale'] = requestParameters['locale'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/calendar.ics`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<string>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Authorized like the session page (`GET /courses/:id`). The event links to the Medaris session page, never to the meeting link. `UID` is derived from the lesson id and `SEQUENCE` is the course version, so a re-import after the session moved updates the event instead of duplicating it (MDRS-117).
+     * One session as an iCalendar (.ics) file, for Apple Calendar, Google Calendar and Outlook
+     */
+    async getLessonCalendar(requestParameters: GetLessonCalendarRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<string> {
+        const response = await this.getLessonCalendarRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Update a lesson; a new weekId moves it and keeps its id
      */
     async updateLessonRaw(requestParameters: UpdateLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonMutationResponse>> {
@@ -203,3 +260,13 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
 }
+
+/**
+ * @export
+ */
+export const GetLessonCalendarLocaleEnum = {
+    Tr: 'tr',
+    En: 'en',
+    Ar: 'ar'
+} as const;
+export type GetLessonCalendarLocaleEnum = typeof GetLessonCalendarLocaleEnum[keyof typeof GetLessonCalendarLocaleEnum];

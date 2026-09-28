@@ -1403,6 +1403,66 @@
         ]
       }
     },
+    "/lessons/{id}/calendar.ics": {
+      "get": {
+        "description": "Authorized like the session page (`GET /courses/:id`). The event links to the Medaris session page, never to the meeting link. `UID` is derived from the lesson id and `SEQUENCE` is the course version, so a re-import after the session moved updates the event instead of duplicating it (MDRS-117).",
+        "operationId": "getLessonCalendar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "locale",
+            "required": false,
+            "in": "query",
+            "description": "Language of the one-line description; `tr` when omitted. Titles are the course's own.",
+            "schema": {
+              "enum": [
+                "tr",
+                "en",
+                "ar"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such live lesson, or it belongs to a course the caller may not see (LESSON_NOT_FOUND)."
+          },
+          "409": {
+            "description": "The lesson has no scheduled time (LESSON_NOT_SCHEDULED)."
+          },
+          "503": {
+            "description": "TEDRIS_WEB_URL is not configured on this server (CALENDAR_NOT_CONFIGURED)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One session as an iCalendar (.ics) file, for Apple Calendar, Google Calendar and Outlook",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
     "/courses/{courseId}/weeks/{weekId}/lessons": {
       "post": {
         "operationId": "createLesson",

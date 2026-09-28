@@ -298,5 +298,11 @@
     "istanbul": "إسطنبول",
     "yourTime": "{time} بتوقيتك",
     "minutes": "{minutes} دقيقة"
+  },
+  "AddToCalendar": {
+    "button": "أضف إلى التقويم",
+    "google": "تقويم Google",
+    "apple": "تقويم Apple / Outlook (.ics)",
+    "linkIsOnPage": "رابط الاجتماع موجود في صفحة الجلسة:"
   }
 }

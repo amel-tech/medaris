@@ -323,5 +323,11 @@
     "istanbul": "İstanbul",
     "yourTime": "{time} senin saatinle",
     "minutes": "{minutes} dk"
+  },
+  "AddToCalendar": {
+    "button": "Takvime ekle",
+    "google": "Google Takvim",
+    "apple": "Apple Takvim / Outlook (.ics)",
+    "linkIsOnPage": "Toplantı bağlantısı oturum sayfasındadır:"
   }
 }

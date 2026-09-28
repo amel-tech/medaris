@@ -21,6 +21,7 @@ import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { SessionTime } from "~/components/session-time";
+import { AddToCalendarMenu } from "./add-to-calendar";
 import { HueAvatar } from "./cover";
 import { LiveStatusBadge } from "./live-status-badge";
 import { LessonTypeIcon } from "./syllabus";
@@ -65,6 +66,10 @@ export const LessonPage = ({
       : platform.label;
   const scheduledAt = lesson.scheduledAt ? new Date(lesson.scheduledAt) : null;
   const muderris = course.muderris[0];
+  // B10 sits on B7, the enrolled view of this page — the same rule as the
+  // course page's menu.
+  const enrolled =
+    Boolean(course.enrollment) && course.enrollment?.status !== "PENDING";
 
   const lessonHref = (l: LessonResponse) =>
     `/courses/${course.id}/lessons/${l.id}`;
@@ -205,6 +210,19 @@ export const LessonPage = ({
                       ? ` · ${t("SessionTime.minutes", { minutes: lesson.durationMinutes })}`
                       : ""}
                   </span>
+                )}
+                {enrolled && scheduledAt && (
+                  <AddToCalendarMenu
+                    className="ms-auto"
+                    courseId={course.id}
+                    courseTitle={course.title}
+                    lesson={{
+                      id: lesson.id,
+                      title: lesson.title,
+                      scheduledAt,
+                      durationMinutes: lesson.durationMinutes ?? null,
+                    }}
+                  />
                 )}
               </div>
               <h1 className="mb-4 text-[22px] font-bold tracking-tight">
@@ -349,23 +367,30 @@ export const LessonPage = ({
   );
 };
 
-/** Next upcoming LIVE lesson of a course (soonest scheduledAt in the
- *  future), used by the course page's continue button. */
-export const nextLiveLesson = (
+/** The soonest LIVE lesson that has not started yet, or null. "Takvime
+ *  ekle" on the course page needs a real session time, so no fallback. */
+export const upcomingLiveLesson = (
   course: CourseDetailResponse
-): LessonResponse | null => {
+): (LessonResponse & { scheduledAt: Date }) | null => {
   const now = Date.now();
-  const live = course.weeks
+  const upcoming = course.weeks
     .flatMap((w) => w.lessons)
     .filter(
-      (l) =>
+      (l): l is LessonResponse & { scheduledAt: Date } =>
         l.type === "LIVE" &&
-        l.scheduledAt &&
+        l.scheduledAt != null &&
         new Date(l.scheduledAt).getTime() > now
     )
     .sort(
       (a, b) =>
-        new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime()
+        new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
     );
-  return live[0] ?? course.weeks[0]?.lessons[0] ?? null;
+  return upcoming[0] ?? null;
 };
+
+/** Next upcoming LIVE lesson of a course, else its first lesson; used by the
+ *  course page's continue button. */
+export const nextLiveLesson = (
+  course: CourseDetailResponse
+): LessonResponse | null =>
+  upcomingLiveLesson(course) ?? course.weeks[0]?.lessons[0] ?? null;

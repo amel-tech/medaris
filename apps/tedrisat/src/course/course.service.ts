@@ -16,6 +16,7 @@ import {
   ICreateLesson,
   IEnrolledCourse,
   IEnrollment,
+  ILesson,
   ILessonMutation,
   IPendingEnrollment,
   IReplaceCourse,
@@ -27,6 +28,8 @@ import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import { withCanonicalTimeZone } from "./domain/time-zone";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { EnrollmentNotFoundError } from "./errors/enrollment-not-found.error";
+import { LessonNotFoundError } from "./errors/lesson-not-found.error";
+import { LessonNotScheduledError } from "./errors/lesson-not-scheduled.error";
 
 export interface StudentIdentity {
   name?: string | null;
@@ -95,6 +98,45 @@ export class CourseService {
       }
     }
     return course;
+  }
+
+  /**
+   * A scheduled session and its course, for a calendar entry (MDRS-117).
+   *
+   * Authorized exactly like the session page, which is rendered from
+   * `GET /courses/:id`: whoever `getDetail` shows the course to may have the
+   * entry. A lesson that is missing, archived, or in a course the caller may
+   * not see is one answer — LESSON_NOT_FOUND — so the route does not tell
+   * a hidden course apart from a lesson that never existed.
+   */
+  async getScheduledLesson(
+    lessonId: string,
+    user: AuthenticatedUser
+  ): Promise<{
+    course: ICourseDetail;
+    lesson: ILesson & { scheduledAt: Date };
+  }> {
+    const courseId = await this.courseRepo.findLessonCourseId(lessonId);
+    if (!courseId) throw new LessonNotFoundError(lessonId);
+
+    let course: ICourseDetail;
+    try {
+      course = await this.getDetail(courseId, user);
+    } catch (error) {
+      if (error instanceof CourseNotFoundError) {
+        throw new LessonNotFoundError(lessonId);
+      }
+      throw error;
+    }
+
+    // The detail carries live lessons only, so an archived one is not here.
+    const lesson = course.weeks
+      .flatMap((week) => week.lessons)
+      .find((l) => l.id === lessonId);
+    if (!lesson) throw new LessonNotFoundError(lessonId);
+    if (!lesson.scheduledAt) throw new LessonNotScheduledError(lessonId);
+
+    return { course, lesson: { ...lesson, scheduledAt: lesson.scheduledAt } };
   }
 
   /** Ensures the course exists and its köşk is owned by `userId`, else throws. */

@@ -323,5 +323,11 @@
     "istanbul": "Istanbul",
     "yourTime": "{time} your time",
     "minutes": "{minutes} min"
+  },
+  "AddToCalendar": {
+    "button": "Add to calendar",
+    "google": "Google Calendar",
+    "apple": "Apple Calendar / Outlook (.ics)",
+    "linkIsOnPage": "The meeting link is on the session page:"
   }
 }

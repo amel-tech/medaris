@@ -98,6 +98,10 @@ services:
       # to construct without it, and that error names the variable better than a
       # compose interpolation failure would.
       KEYCLOAK_ALLOWED_CLIENTS: ${TEDRISAT__KEYCLOAK_ALLOWED_CLIENTS:-${API__KEYCLOAK_ALLOWED_CLIENTS:-}}
+      # tedris-web's public origin, the base of the session-page links in
+      # calendar files (MDRS-117). Empty is allowed: only GET
+      # /lessons/:id/calendar.ics needs it, and it answers 503 until it is set.
+      TEDRIS_WEB_URL: ${TEDRISAT__TEDRIS_WEB_URL:-}
       # Both carry the API__ tier the file header promises ("the app-specific
       # spelling first, then the group one"). Without it the
       # API__KEYCLOAK_REDIRECT_URL that .env.example ships reached the container
