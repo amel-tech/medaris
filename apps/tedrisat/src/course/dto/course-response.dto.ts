@@ -24,6 +24,16 @@ export class LessonResponse {
   @ApiProperty() orderIndex!: number;
 }
 
+/** A lesson written through a session-level endpoint (MDRS-95). */
+export class LessonMutationResponse extends LessonResponse {
+  @ApiProperty({
+    description:
+      "The course version this write produced; send it with the next PUT " +
+      "/courses/:id or PATCH /lessons/:id.",
+  })
+  courseVersion!: number;
+}
+
 export class WeekResponse {
   @ApiProperty() id!: string;
   @ApiProperty() courseId!: string;
@@ -96,6 +106,12 @@ class CourseBase {
   @ApiProperty({ enum: CourseStatus }) status!: CourseStatus;
   @ApiProperty() grantsCertificate!: boolean;
   @ApiProperty() requiresApproval!: boolean;
+  @ApiProperty({
+    description:
+      "Optimistic-concurrency token. Send it back with PUT /courses/:id and " +
+      "PATCH /lessons/:id; a stale value is refused with 409.",
+  })
+  version!: number;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
 }

@@ -41,6 +41,12 @@ export const courses = table("courses", {
   status: courseStatus().default(CourseStatus.DRAFT).notNull(),
   grantsCertificate: boolean("grants_certificate").default(false).notNull(),
   requiresApproval: boolean("requires_approval").default(false).notNull(),
+  // Optimistic-concurrency token (MDRS-95). Every write to the course or to
+  // its syllabus bumps it; a whole-course PUT or a lesson PATCH that carries
+  // a stale value is refused with 409 instead of overwriting the newer save.
+  // A counter rather than `updated_at`: the column is a naive timestamp with
+  // microsecond precision, which a JSON round-trip truncates to milliseconds.
+  version: integer("version").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -54,6 +60,10 @@ export const courseWeeks = table("course_weeks", {
   title: text("title").notNull(),
   summary: text("summary"),
   orderIndex: integer("order_index").default(0).notNull(),
+  // Set when a whole-course PUT drops the week (MDRS-95). The row is kept so
+  // that its archived lessons — and whatever points at them — survive: a
+  // DELETE here would cascade to every lesson the week ever held.
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -75,6 +85,10 @@ export const lessons = table("lessons", {
   agenda: jsonb("agenda").$type<{ time: string; title: string }[]>(),
   isPreview: boolean("is_preview").default(false).notNull(),
   orderIndex: integer("order_index").default(0).notNull(),
+  // Removing a lesson hides it; it never deletes it (MDRS-95, following the
+  // MDRS-124 decision). Recordings and calendar events will reference lesson
+  // ids, and the foreign keys below a lesson cascade.
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
