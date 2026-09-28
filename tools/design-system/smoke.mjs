@@ -34,22 +34,100 @@ const sourceDir = path.dirname(bundlePath);
 // required prop needs its sample here, or the run fails and names the prop.
 const SAMPLES = {
   AvatarStack: () => ({ people: [{ name: "İsmail Ağa" }, { name: "Ayşe" }] }),
+  Checkbox: () => ({ label: "İcâzet verilebilir", description: "Tek cümle." }),
+  ChoiceChips: () => ({
+    legend: "Günler",
+    name: "gunler",
+    multiple: true,
+    options: [
+      { value: "pzt", label: "Pzt" },
+      { value: "sal", label: "Sal" },
+    ],
+    defaultValue: ["sal"],
+  }),
+  Dialog: () => ({
+    open: true,
+    onClose: () => {},
+    title: "Kursu gizle",
+    kind: "alert",
+    children: "Kurs talebelerden gizlenecek.",
+  }),
   Field: (ns) => ({
     label: "E-posta",
     children: React.createElement(ns.Input ?? "input"),
   }),
+  Icon: () => ({ name: "search" }),
   IconButton: () => ({ icon: "×", label: "Kapat" }),
   Input: () => ({ placeholder: "ornek@medaris.org" }),
+  Radio: () => ({ label: "Köşk", name: "kapsam", value: "kosk" }),
+  RadioGroup: () => ({
+    legend: "Yasağın kapsamı",
+    name: "kapsam",
+    options: [
+      { value: "kurs", label: "Yalnızca bu kurs" },
+      { value: "kosk", label: "Köşkten de yasakla", description: "Tek cümle." },
+    ],
+    defaultValue: "kurs",
+  }),
+  Select: () => ({ options: ["Türkçe", { value: "en", label: "English" }] }),
+  Switch: () => ({ label: "Herkese açık" }),
+  SystemState: () => ({
+    kind: "not-found",
+    title: "Sayfa bulunamadı",
+    children: "Aradığın sayfa taşınmış ya da kaldırılmış olabilir.",
+  }),
   Textarea: () => ({ rows: 3 }),
+  Toast: () => ({ title: "Kurs gizlendi", onClose: () => {} }),
   Stat: () => ({ label: "Talebe", value: 42 }),
+  Progress: () => ({ label: "Kurs ilerlemesi", value: 72, showValue: true }),
+  Tooltip: () => ({
+    label: "Bağlantıyı kopyala",
+    children: React.createElement("button", { type: "button" }, "Kopyala"),
+  }),
+  AppBar: (ns) => ({
+    title: "Oturumlar",
+    children: React.createElement(
+      ns.NavItem ?? "a",
+      { href: "/oturumlar" },
+      "Oturumlar"
+    ),
+  }),
+  Breadcrumb: () => ({
+    items: [{ label: "Köşkler", href: "/koskler" }, "Nûruosmaniye Köşkü"],
+  }),
+  NavItem: () => ({ href: "/basvurular", count: 3, children: "Başvurular" }),
   Table: () => ({
-    columns: [{ key: "ad", header: "Ad" }],
+    caption: "Talebeler",
+    columns: [{ key: "ad", header: "Ad", rowHeader: true, sortable: true }],
     rows: [{ ad: "İsmail Ağa" }],
+    sort: { key: "ad", direction: "ascending" },
   }),
   Tabs: () => ({
-    tabs: [{ value: "dersler", label: "Dersler" }],
+    tabs: [{ value: "dersler", label: "Dersler", count: 12 }],
     value: "dersler",
+    label: "Kurs bölümleri",
+    idBase: "kurs",
   }),
+  CoverPattern: () => ({ seed: "bina-ve-izhar-serhi", label: "Sarf" }),
+  LessonRow: () => ({
+    title: "Beşinci babın şerhi",
+    type: "live",
+    state: "current",
+    href: "/oturum/5",
+    startsAt: "2026-10-03T21:00:00+03:00",
+    timeZone: "Europe/Berlin",
+    courseTimeZone: "Europe/Istanbul",
+    durationMinutes: 60,
+  }),
+  PlatformChip: () => ({ platform: "zoom" }),
+  SessionJoin: () => ({
+    startsAt: "2026-10-03T21:00:00+03:00",
+    state: "live",
+    platform: "zoom",
+    href: "https://zoom.us/j/81234567890",
+    now: "2026-10-03T21:05:00+03:00",
+  }),
+  WeekAccordion: () => ({ week: 3, title: "Dördüncü ve Beşinci Bab" }),
 };
 
 // Members of `export interface <name> { … }` with whether each is optional.

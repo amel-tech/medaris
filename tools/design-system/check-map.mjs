@@ -42,13 +42,11 @@ if (!map.pin?.pr95Package)
 const PKG = fromRoot(map.pin.pr95Package);
 if (!fs.existsSync(PKG)) usageError(USAGE, `#95 package not found: ${PKG}`);
 
-// Phase 1b components and classes (migration spec §1.3, §3) that a target may
-// name before they are built, and Phase 2 reserved names (§3.5). A name that is
-// already in the manifest must leave these lists; the run says when one is.
-// biome-ignore format: name lists
-const CONTRACTED_COMPONENTS = ["Select", "Checkbox", "Radio", "RadioGroup", "Switch", "ChoiceChips", "Breadcrumb", "Dialog", "Toast", "Toaster", "Tooltip", "Icon", "iconNames", "Logo", "EmptyState", "SystemState", "AppBar", "CoverPattern", "LessonRow", "WeekAccordion", "PlatformChip", "SessionJoin"];
-// biome-ignore format: name lists
-const CONTRACTED_CLASSES = [".mds-badge--brand", ".mds-badge--live", ".mds-nav--light", ".mds-lesson-row__medallion", ".mds-alert--neutral"];
+// Components and classes a target may name before they are built (a contract
+// in the migration spec), and Phase 2 reserved names (§3.5). A contracted name
+// must leave its list once it is in the manifest; the run says when one is.
+const CONTRACTED_COMPONENTS = [];
+const CONTRACTED_CLASSES = [];
 // biome-ignore format: name lists
 const RESERVED = ["Combobox", "DateTimeField", "RecurrencePreview", "TimeZoneLabel", "EnrolmentCard", "RecordingCard", "VideoEmbed", "Menu", "ProgressRing"];
 
@@ -286,7 +284,7 @@ check(
 );
 check(
   !entryErrors.length,
-  "components: every target built, contracted (Phase 1b) or reserved (Phase 2)",
+  "components: every target built, contracted or reserved (Phase 2)",
   entryErrors.join("; ")
 );
 

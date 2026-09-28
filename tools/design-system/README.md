@@ -17,6 +17,7 @@ that version), `react` and `react-dom`. Run `pnpm install` first.
 | `verify-contrast.mjs <design-system-dir>` | recomputes every contrast ratio the system states: the pair table in the script and each row of `foundations/contrast-audit.card.html`, including the card's subtitle counts |
 | `check-map.mjs <pr95-map.json> <design-system-dir> [--before=<dir>] [--write-pin]` | validates the #95 port map against the #95 package and the target design system; recomputes the `pin` fingerprint by its recipe |
 | `value-bridge.mjs <pr95-map.json> <design-system-dir> <out.css> [--check]` | generates `pr95-value-bridge.css` from the map and the design system's manifest; a map entry with `inherits` is left out |
+| `icons.mjs --dir <design-system-dir> [--masks <file>] [--check]` | writes every copy of `assets/icons.svg`: the `name` union in `Icon.d.ts`, the generated block in `Icon.jsx` (path tables, mirrored set, `iconNames`) and the "Glyph masks (generated)" section of each class layer, one `mask-image` per request in `icon-masks.json`; `--check` fails when a copy differs from the sprite or a requested glyph is not in it |
 | `check-port.mjs <file-or-dir>… [--map=…] [--ds=…]` | lists what a screen ported from #95 still carries, with the map's route for each token, silent prop values and components not built yet; warns only |
 
 Every script prints its usage with `--help`. A relative path is taken from the
@@ -37,6 +38,9 @@ cp /tmp/regen/_ds_bundle.js /tmp/regen/_ds_manifest.json \
 node tools/design-system/regen.mjs design-system/medaris-unified /tmp/regen --check
 node tools/design-system/smoke.mjs design-system/medaris-unified
 ```
+
+Run `icons.mjs --dir design-system/medaris-unified` first when the sprite or
+`icon-masks.json` changed: it edits `Icon.jsx`, which the bundle is built from.
 
 Never regenerate the mirror (`design-system/` itself): it is pulled from the
 project, not built here. `regen.mjs design-system /tmp/out --check` is how to
@@ -63,15 +67,20 @@ sync the app's output wins and this script is what changes:
   render. `smoke.mjs` catches it.
 - **Adherence.** Only the first `export interface` of each `.d.ts` is read, with
   `Props` stripped from its name; only inline unions of string literals get a
-  value rule.
+  value rule. Inherited members (`extends React.…HTMLAttributes`) are not
+  read, so a native attribute a component's examples rely on (`checked`,
+  `onChange`, `type`) is redeclared in its Props interface.
 
 ## Limits
 
+- The adherence rules can never allow `aria-*`, `data-*` or any other
+  hyphenated attribute on a component: the member pattern takes only `\w+`
+  names, so `<Input aria-label="…">` always draws a warning.
 - `smoke.mjs` renders on the server (`react-dom/server`): effects do not run and
   there is no DOM. A component that gains a required prop needs a sample in
   `SAMPLES`.
 - `check-map.mjs` accepts component and class targets that exist in the design
-  system or are listed as contracted (Phase 1b) or reserved (Phase 2) at the top
+  system or are listed as contracted or reserved (Phase 2) at the top
   of the script. It fails when a listed name has been built, so remove the name
   then.
 - `verify-contrast.mjs` maps each audit-card row to its token pair by label. A
@@ -81,5 +90,7 @@ sync the app's output wins and this script is what changes:
   picks a `byProperty` target from the property name on the same line as the
   `var()`; a shorthand such as `font` or a value split across lines gets every
   route instead.
-- `icons.mjs` (the union, `iconNames` and masks generated from `assets/icons.svg`)
-  lands in Phase 1b with the sprite, its only input.
+- `icons.mjs` writes only the mask image. The section that asks for a mask sizes
+  it and sets its colour, repeat and position; a glyph drawn as a mask vanishes
+  in forced colours unless that section sets `forced-color-adjust: none` and a
+  system colour.
