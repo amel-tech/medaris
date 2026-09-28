@@ -1,0 +1,2753 @@
+{
+ "$comment": "#95 (madrasah-frontend) → unified Medaris design system, v2. Every #95 token (172), component export (25 functions + controlStyle, ICON_NAMES, FILLED_ICON_NAMES), sub-type (3) and raw colour literal (8) appears exactly once. tokens.*: `to` is the default target; `byProperty` (text = color/caret-color/text-decoration-color; bg = background*; border = border*/outline*; icon = fill/stroke; ring = focus box-shadow) wins over `to`; `contexts` (array of {when, to, property?, inherits?}) win over byProperty and need a human or agent to match `when`. Every target is a bare token name or a .mds-* class; prose lives in `note`. kind: exact | role | nearest | dropped. collision: the same name exists elsewhere; inherits (on a token): its targets are pairs that wait on that open decision, so the value bridge leaves the name out; resolvesSilently: benign|drift — a missed rename of that name does NOT fail, it resolves to the unified system's value; check-port greps for exactly these names. components.*: op rename | restructure | drop | reserved; props.<p> = {to, values?, valueContexts?, transform?, note?}; `requires` lists props the unified component needs that #95 did not have; `set` lists props to add. review: true = decide per use. A #95 name missing from this file is a bug in this file.",
+ "pin": {
+  "pr95Fingerprint": "d9b0f85dd7aa",
+  "pr95Files": 139,
+  "pr95Package": "design-system/madrasah-frontend/packages/design-system",
+  "recipe": "files = tokens/, src/, tools/, docs/ (recursive) + package.json, tsup.config.ts, tsconfig.json, project.json, DESIGN_RULES.md, GUIDE.md, PROMPTS.md, README.md, SYNC.md, minus dist/, node_modules/, MANIFEST.json (the INCLUDE rules of #95's tools/manifest.mjs); paths relative to the package, sorted by code unit; lines `path:sha256hex`; joined with \\n, no trailing newline; sha256; first 12 hex",
+  "canonicalTokensBefore": 253,
+  "unifiedTokensAfter": 296,
+  "mapKeysThatAreCanonicalNames": 12,
+  "stillCanonicalAfterAliasRetirement": 12
+ },
+ "tokens": {
+  "--white": {
+   "to": "--text-white",
+   "kind": "exact",
+   "delta": "ΔE 0.0",
+   "from": "#ffffff",
+   "byProperty": {
+    "text": "--text-white",
+    "bg": "--background-white",
+    "border": "--background-white",
+    "icon": "--text-white"
+   },
+   "decision": "COL-P2",
+   "collision": true,
+   "resolvesSilently": "benign",
+   "silentNote": "same value (#FFFFFF), but a ramp name in product code (MDS-TOK-01)"
+  },
+  "--ink": {
+   "to": "--text-neutral-primary",
+   "kind": "role",
+   "delta": "ΔE 2.1",
+   "from": "#16181d",
+   "byProperty": {
+    "text": "--text-neutral-primary",
+    "icon": "--icon-neutral-primary",
+    "border": "--border-brand-primary"
+   },
+   "decision": "COL-P2"
+  },
+  "--ink-tedris": {
+   "to": "--text-neutral-primary",
+   "kind": "role",
+   "delta": "ΔE 0.8",
+   "from": "#0f172a",
+   "byProperty": {
+    "text": "--text-neutral-primary",
+    "bg": "--background-brand-primary"
+   },
+   "decision": "COL-P1"
+  },
+  "--brand-navy": {
+   "to": "--background-brand-primary",
+   "kind": "role",
+   "delta": "ΔE 15.5",
+   "from": "#0b1f3a",
+   "byProperty": {
+    "bg": "--background-brand-primary",
+    "text": "--text-brand-primary",
+    "icon": "--icon-brand-primary"
+   },
+   "decision": "COL-P1"
+  },
+  "--nizam-shell": {
+   "to": "--background-neutral-inverse-secondary",
+   "kind": "role",
+   "delta": "ΔE 2.4",
+   "from": "#1c2430",
+   "byProperty": {
+    "bg": "--background-neutral-inverse-secondary"
+   },
+   "decision": "COL-P2"
+  },
+  "--nizam-shell-fg": {
+   "to": "--icon-brand-inverse",
+   "kind": "role",
+   "delta": "ΔE 6.2",
+   "from": "#bfe3ea",
+   "byProperty": {
+    "icon": "--icon-brand-inverse"
+   },
+   "decision": "COL-P2"
+  },
+  "--muted": {
+   "to": "--text-neutral-tertiary",
+   "kind": "role",
+   "delta": "ΔE 10.9",
+   "from": "#64748b",
+   "byProperty": {
+    "text": "--text-neutral-tertiary",
+    "icon": "--icon-neutral-tertiary"
+   },
+   "decision": "COL-P2",
+   "collision": true,
+   "resolvesSilently": "drift",
+   "silentNote": "only while SPEC-D3-19 keeps the alias: #95 text colour → canonical slate-100 background as text (1.10:1)"
+  },
+  "--faint": {
+   "to": "--text-neutral-disabled",
+   "kind": "role",
+   "delta": "ΔE 16.0",
+   "from": "#94a3b8",
+   "byProperty": {
+    "text": "--text-neutral-disabled",
+    "icon": "--icon-neutral-disabled",
+    "bg": "--icon-neutral-disabled"
+   },
+   "decision": "COL-P2"
+  },
+  "--slate-600": {
+   "to": "--text-neutral-tertiary",
+   "kind": "role",
+   "delta": "ΔE 6.2",
+   "from": "#3f444c",
+   "byProperty": {
+    "text": "--text-neutral-tertiary",
+    "icon": "--icon-neutral-tertiary"
+   },
+   "decision": "COL-P2",
+   "collision": true,
+   "resolvesSilently": "drift",
+   "silentNote": "#95 #3f444c → canonical #475569, and a ramp name in product code"
+  },
+  "--slate-500": {
+   "to": "--icon-neutral-tertiary",
+   "kind": "role",
+   "delta": "ΔE 10.5",
+   "from": "#6b7280",
+   "byProperty": {
+    "icon": "--icon-neutral-tertiary",
+    "bg": "--background-neutral-secondary",
+    "text": "--text-neutral-tertiary"
+   },
+   "decision": "COL-P2",
+   "collision": true,
+   "contexts": [
+    {
+     "when": "Badge tone=draft (Taslak)",
+     "to": ".mds-badge--outline",
+     "note": "P-06: Taslak is outline (canonical badge card)"
+    }
+   ],
+   "resolvesSilently": "drift",
+   "silentNote": "#95 #6b7280 (gray-500's value) → canonical #64748B, and a ramp name"
+  },
+  "--line": {
+   "to": "--border-neutral-primary",
+   "kind": "role",
+   "delta": "ΔE 0.4",
+   "from": "#e7e8ea",
+   "byProperty": {
+    "border": "--border-neutral-primary"
+   },
+   "decision": "COL-P2",
+   "contexts": [
+    {
+     "when": "Input / Textarea / Select border",
+     "to": "--border-neutral-secondary",
+     "property": "border",
+     "note": "via .mds-input",
+     "inherits": "OPEN-3"
+    }
+   ]
+  },
+  "--line-soft": {
+   "to": "--border-neutral-subtle",
+   "kind": "role",
+   "delta": "ΔE 1.3",
+   "from": "#eef0f2",
+   "byProperty": {
+    "border": "--border-neutral-subtle"
+   },
+   "decision": "COL-D2-1"
+  },
+  "--border": {
+   "to": "--border-neutral-primary",
+   "kind": "exact",
+   "delta": "ΔE 0.0",
+   "from": "#e5e7eb",
+   "byProperty": {
+    "border": "--border-neutral-primary",
+    "bg": "--border-neutral-primary"
+   },
+   "decision": "COL-P2",
+   "collision": true,
+   "contexts": [
+    {
+     "when": "Kilitli dashed medallion ring",
+     "to": "--border-neutral-tertiary",
+     "property": "border",
+     "note": "decorative; the lock glyph and the visible reason carry the state (2.54:1)"
+    },
+    {
+     "when": "unchecked checkbox / radio border",
+     "to": "--border-neutral-secondary",
+     "property": "border",
+     "inherits": "OPEN-3"
+    }
+   ],
+   "collidesWith": "libs/ui (shadcn --border)"
+  },
+  "--border-soft": {
+   "to": "--border-neutral-subtle",
+   "kind": "role",
+   "delta": "ΔE 1.3",
+   "from": "#eef0f3",
+   "byProperty": {
+    "border": "--border-neutral-subtle",
+    "bg": "--border-neutral-subtle"
+   },
+   "decision": "COL-D2-1"
+  },
+  "--surface": {
+   "to": "--background-white",
+   "kind": "exact",
+   "delta": "ΔE 0.0",
+   "from": "#ffffff",
+   "byProperty": {
+    "bg": "--background-white"
+   },
+   "decision": "COL-P2",
+   "contexts": [
+    {
+     "when": "page / app shell ground",
+     "to": "--background-neutral-primary",
+     "property": "bg",
+     "note": "base.css body"
+    },
+    {
+     "when": "Shell sidebar (<aside>) ground",
+     "to": "--background-white",
+     "property": "bg",
+     "note": "the sidebar is a light nav: put .mds-nav--light on the <nav> (SPEC-D3-04 default b)"
+    }
+   ]
+  },
+  "--surface-alt": {
+   "to": "--background-neutral-primary",
+   "kind": "exact",
+   "delta": "ΔE 0.0",
+   "from": "#f8fafc",
+   "byProperty": {
+    "bg": "--background-neutral-primary"
+   },
+   "decision": "COL-P2"
+  },
+  "--surface-sunken": {
+   "to": "--background-neutral-secondary",
+   "kind": "role",
+   "delta": "ΔE 0.4",
+   "from": "#f3f4f6",
+   "byProperty": {
+    "bg": "--background-neutral-secondary"
+   },
+   "decision": "COL-P2",
+   "contexts": [
+    {
+     "when": "Progress track",
+     "to": "--background-neutral-tertiary",
+     "property": "bg",
+     "note": ".mds-progress draws it"
+    }
+   ]
+  },
+  "--surface-table-head": {
+   "to": "--background-neutral-primary",
+   "kind": "role",
+   "delta": "ΔE 0.4",
+   "from": "#fafafa",
+   "byProperty": {
+    "bg": "--background-neutral-primary"
+   },
+   "decision": "COL-P2"
+  },
+  "--surface-page-alt": {
+   "to": "--background-neutral-primary",
+   "kind": "role",
+   "delta": "ΔE 0.4",
+   "from": "#fafafa",
+   "byProperty": {
+    "bg": "--background-neutral-primary"
+   },
+   "decision": "COL-P2"
+  },
+  "--nav-active": {
+   "to": "--background-neutral-secondary",
+   "kind": "role",
+   "delta": "ΔE 0.8",
+   "from": "#f1f2f4",
+   "byProperty": {
+    "bg": "--background-neutral-secondary"
+   },
+   "decision": "COL-P2",
+   "note": "SPEC-D3-04 interim default (b): #95 screens keep their light sidebar — the active item is .mds-nav--light's --background-brand-tertiary + --text-brand-primary (8.24:1), not a grey fill. On the inverse sidebar (options a/c) it is --background-brand-primary."
+  },
+  "--avatar-ground": {
+   "to": "--background-brand-tertiary",
+   "kind": "role",
+   "delta": "ΔE 2.1",
+   "from": "#eceef1",
+   "byProperty": {
+    "bg": "--background-brand-tertiary"
+   },
+   "decision": "COL-P4"
+  },
+  "--doc-desk": {
+   "to": "--background-neutral-tertiary",
+   "kind": "role",
+   "delta": "ΔE 2.1",
+   "from": "#eceef1",
+   "byProperty": {
+    "bg": "--background-neutral-tertiary"
+   },
+   "decision": "COL-P2"
+  },
+  "--player-ground": {
+   "to": "--background-black",
+   "kind": "role",
+   "delta": "ΔE 18.1",
+   "from": "#0b1020",
+   "byProperty": {
+    "bg": "--background-black"
+   },
+   "decision": "COL-D2-9"
+  },
+  "--accent": {
+   "to": "--text-brand-primary",
+   "kind": "role",
+   "delta": "ΔE 17.3",
+   "from": "#1d4ed8",
+   "byProperty": {
+    "text": "--text-brand-primary",
+    "bg": "--background-brand-primary",
+    "border": "--border-brand-primary",
+    "icon": "--icon-brand-primary"
+   },
+   "decision": "COL-P1",
+   "collision": true,
+   "contexts": [
+    {
+     "when": "Badge tone=accent (Devam ediyor)",
+     "to": ".mds-badge--brand",
+     "note": "--text-brand-primary on --background-brand-tertiary, 8.24:1"
+    },
+    {
+     "when": "Toast tone=info icon",
+     "to": "--icon-info-primary",
+     "property": "icon"
+    }
+   ],
+   "resolvesSilently": "drift",
+   "silentNote": "only while SPEC-D3-19 keeps the alias: #95 Tedris accent text → canonical sky-900 fill value"
+  },
+  "--accent-soft": {
+   "to": "--background-brand-tertiary",
+   "kind": "role",
+   "delta": "ΔE 2.0",
+   "from": "#eff4ff",
+   "byProperty": {
+    "bg": "--background-brand-tertiary"
+   },
+   "decision": "COL-P1",
+   "contexts": [
+    {
+     "when": "selected quiz option / current row fill",
+     "to": "--background-brand-subtle",
+     "property": "bg",
+     "note": "1.07:1 against white: pair it with a visible text marker"
+    },
+    {
+     "when": "video lesson medallion ground",
+     "to": "--background-neutral-secondary",
+     "property": "bg",
+     "note": "SPEC-D2-06 v2: neutral medallion"
+    }
+   ]
+  },
+  "--green": {
+   "to": "--background-brand-primary",
+   "kind": "role",
+   "delta": "ΔE 27.1",
+   "from": "#0f9d63",
+   "byProperty": {
+    "bg": "--background-brand-primary",
+    "border": "--border-brand-primary",
+    "text": "--text-brand-primary"
+   },
+   "decision": "COL-D3-1"
+  },
+  "--green-dark": {
+   "to": "--background-brand-secondary",
+   "kind": "role",
+   "delta": "ΔE 16.7",
+   "from": "#0c8454",
+   "byProperty": {
+    "bg": "--background-brand-secondary"
+   },
+   "decision": "COL-D3-1 default (hover of the primary action)"
+  },
+  "--amber": {
+   "to": "--icon-rating",
+   "kind": "role",
+   "delta": "ΔE 5.3",
+   "from": "#f59e0b",
+   "byProperty": {
+    "icon": "--icon-rating"
+   },
+   "decision": "COL-D2-7"
+  },
+  "--success": {
+   "to": "--background-success-bold",
+   "kind": "exact",
+   "delta": "ΔE 0.0",
+   "from": "#16a34a",
+   "byProperty": {
+    "bg": "--background-success-bold",
+    "icon": "--icon-success-primary"
+   },
+   "decision": "COL-P3"
+  },
+  "--success-fg": {
+   "to": "--text-success-primary",
+   "kind": "exact",
+   "delta": "ΔE 0.0",
+   "from": "#15803d",
+   "byProperty": {
+    "text": "--text-success-primary"
+   },
+   "decision": "COL-P3"
+  },
+  "--success-bg": {
+   "to": "--background-success-subtle",
+   "kind": "exact",
+   "delta": "ΔE 0.0",
+   "from": "#dcfce7",
+   "byProperty": {
+    "bg": "--background-success-subtle"
+   },
+   "decision": "COL-P3"
+  },
+  "--warning": {
+   "to": "--text-warning-primary",
+   "kind": "role",
+   "delta": "ΔE 15.0",
+   "from": "#d97706",
+   "byProperty": {
+    "text": "--text-warning-primary",
+    "icon": "--icon-warning-primary",
+    "border": "--border-warning-primary"
+   },
+   "decision": "COL-P3",
+   "contexts": [
+    {
+     "when": "quiz lesson label",
+     "to": "--text-neutral-tertiary",
+     "property": "text",
+     "note": "SPEC-D2-06 v2"
+    },
+    {
+     "when": "quiz lesson glyph",
+     "to": "--icon-neutral-tertiary",
+     "property": "icon",
+     "note": "SPEC-D2-06 v2"
+    }
+   ],
+   "inherits": "OPEN-2",
+   "note": "kept out of the value bridge: every target is an OPEN-2 pair. Bridged, #95 warning text (3.07:1 on its tint) would drop to 1.79:1"
+  },
+  "--warning-bg": {
+   "to": "--background-warning-subtle",
+   "kind": "role",
+   "delta": "ΔE 5.0",
+   "from": "#fffbeb",
+   "byProperty": {
+    "bg": "--background-warning-subtle"
+   },
+   "decision": "COL-P3",
+   "contexts": [
+    {
+     "when": "quiz lesson medallion ground",
+     "to": "--background-neutral-secondary",
+     "property": "bg",
+     "note": "SPEC-D2-06 v2"
+    }
+   ],
+   "inherits": "OPEN-2",
+   "note": "kept out of the value bridge with --warning, so the #95 warning pair keeps its values until the port"
+  },
+  "--danger": {
+   "to": "--text-error-primary",
+   "kind": "exact",
+   "delta": "ΔE 0.0",
+   "from": "#dc2626",
+   "byProperty": {
+    "text": "--text-error-primary",
+    "bg": "--background-error-base",
+    "border": "--border-error-primary",
+    "icon": "--icon-error-primary"
+   },
+   "decision": "COL-P3",
+   "contexts": [
+    {
+     "when": "Badge tone=live on a LIVE session state (Şu an canlı; #95 'Canlı halka')",
+     "to": "--text-live-primary",
+     "property": "text",
+     "note": "the live-now state pair, with the dot"
+    },
+    {
+     "when": "live lesson medallion glyph / 'Canlı ders' type label",
+     "to": "--icon-neutral-tertiary",
+     "property": "icon",
+     "note": "a lesson type is not a state (MDS-COL-05); label → --text-neutral-tertiary"
+    }
+   ]
+  },
+  "--danger-bg": {
+   "to": "--background-error-subtle",
+   "kind": "role",
+   "delta": "ΔE 3.9",
+   "from": "#fef2f2",
+   "byProperty": {
+    "bg": "--background-error-subtle"
+   },
+   "decision": "COL-P3",
+   "contexts": [
+    {
+     "when": "Badge tone=live on a LIVE session state",
+     "to": "--background-live-subtle",
+     "property": "bg"
+    },
+    {
+     "when": "live lesson medallion ground",
+     "to": "--background-neutral-secondary",
+     "property": "bg",
+     "note": "SPEC-D2-06 v2"
+    }
+   ]
+  },
+  "--type-video": {
+   "to": "--text-neutral-tertiary",
+   "kind": "role",
+   "delta": "ΔE 19.6",
+   "from": "#1d4ed8",
+   "byProperty": {
+    "text": "--text-neutral-tertiary",
+    "icon": "--icon-neutral-tertiary"
+   },
+   "decision": "SPEC-D2-06 (v2: neutral medallions)",
+   "note": "Lesson type VIDEO is named by its icon and label, drawn neutral (medallion --icon-neutral-tertiary on --background-neutral-secondary, 6.90:1). A per-type colour family returns only when a second lesson type is authorable (Phase 2), with pairs chosen to stay distinct from the status tones under both outcomes of OPEN-2."
+  },
+  "--type-doc": {
+   "to": "--text-neutral-tertiary",
+   "kind": "role",
+   "delta": "ΔE 10.9",
+   "from": "#64748b",
+   "byProperty": {
+    "text": "--text-neutral-tertiary",
+    "icon": "--icon-neutral-tertiary"
+   },
+   "decision": "SPEC-D2-06 (v2: neutral medallions)",
+   "note": "Lesson type DOCUMENT is named by its icon and label, drawn neutral (medallion --icon-neutral-tertiary on --background-neutral-secondary, 6.90:1). A per-type colour family returns only when a second lesson type is authorable (Phase 2), with pairs chosen to stay distinct from the status tones under both outcomes of OPEN-2."
+  },
+  "--type-live": {
+   "to": "--text-neutral-tertiary",
+   "kind": "role",
+   "delta": "ΔE 26.7",
+   "from": "#dc2626",
+   "byProperty": {
+    "text": "--text-neutral-tertiary",
+    "icon": "--icon-neutral-tertiary"
+   },
+   "decision": "SPEC-D2-06 (v2: neutral medallions)",
+   "note": "Lesson type LIVE is named by its icon and label, drawn neutral (medallion --icon-neutral-tertiary on --background-neutral-secondary, 6.90:1). A per-type colour family returns only when a second lesson type is authorable (Phase 2), with pairs chosen to stay distinct from the status tones under both outcomes of OPEN-2."
+  },
+  "--type-quiz": {
+   "to": "--text-neutral-tertiary",
+   "kind": "role",
+   "delta": "ΔE 28.6",
+   "from": "#d97706",
+   "byProperty": {
+    "text": "--text-neutral-tertiary",
+    "icon": "--icon-neutral-tertiary"
+   },
+   "decision": "SPEC-D2-06 (v2: neutral medallions)",
+   "note": "Lesson type QUIZ is named by its icon and label, drawn neutral (medallion --icon-neutral-tertiary on --background-neutral-secondary, 6.90:1). A per-type colour family returns only when a second lesson type is authorable (Phase 2), with pairs chosen to stay distinct from the status tones under both outcomes of OPEN-2."
+  },
+  "--platform-meet": {
+   "to": "--icon-platform-google-meet",
+   "kind": "role",
+   "delta": "ΔE 8.4",
+   "from": "#00897b",
+   "byProperty": {
+    "icon": "--icon-platform-google-meet",
+    "bg": "--icon-platform-google-meet",
+    "text": "--text-neutral-primary"
+   },
+   "decision": "SPEC-D3-18 default (a)",
+   "note": "bg = the 8px decorative dot only (.mds-platform-chip__dot), never a fill behind text; text = the platform name in neutral text. A #95 white-on-platform button becomes the primary 'Derse katıl' button."
+  },
+  "--platform-meet-soft": {
+   "to": "--background-neutral-secondary",
+   "kind": "role",
+   "delta": "ΔE 1.9",
+   "from": "#e6f4f1",
+   "byProperty": {
+    "bg": "--background-neutral-secondary"
+   },
+   "decision": "SPEC-D3-18 default (a)"
+  },
+  "--platform-zoom": {
+   "to": "--icon-platform-zoom",
+   "kind": "role",
+   "delta": "ΔE 2.7",
+   "from": "#2d8cff",
+   "byProperty": {
+    "icon": "--icon-platform-zoom",
+    "bg": "--icon-platform-zoom",
+    "text": "--text-neutral-primary"
+   },
+   "decision": "SPEC-D3-18 default (a)",
+   "note": "bg = the 8px decorative dot only (.mds-platform-chip__dot), never a fill behind text; text = the platform name in neutral text. A #95 white-on-platform button becomes the primary 'Derse katıl' button."
+  },
+  "--platform-zoom-soft": {
+   "to": "--background-neutral-secondary",
+   "kind": "role",
+   "delta": "ΔE 1.7",
+   "from": "#e9f2ff",
+   "byProperty": {
+    "bg": "--background-neutral-secondary"
+   },
+   "decision": "SPEC-D3-18 default (a)"
+  },
+  "--platform-jitsi": {
+   "to": "--icon-platform-jitsi",
+   "kind": "role",
+   "delta": "ΔE 4.1",
+   "from": "#1d6fb8",
+   "byProperty": {
+    "icon": "--icon-platform-jitsi",
+    "bg": "--icon-platform-jitsi",
+    "text": "--text-neutral-primary"
+   },
+   "decision": "SPEC-D3-18 default (a)",
+   "note": "bg = the 8px decorative dot only (.mds-platform-chip__dot), never a fill behind text; text = the platform name in neutral text. A #95 white-on-platform button becomes the primary 'Derse katıl' button."
+  },
+  "--platform-jitsi-soft": {
+   "to": "--background-neutral-secondary",
+   "kind": "role",
+   "delta": "ΔE 1.9",
+   "from": "#e7f0f9",
+   "byProperty": {
+    "bg": "--background-neutral-secondary"
+   },
+   "decision": "SPEC-D3-18 default (a)"
+  },
+  "--text-body": {
+   "to": "--text-neutral-primary",
+   "kind": "role",
+   "delta": "ΔE 2.1",
+   "from": "#16181d",
+   "byProperty": {
+    "text": "--text-neutral-primary"
+   },
+   "decision": "COL-P2"
+  },
+  "--text-secondary": {
+   "to": "--text-neutral-tertiary",
+   "kind": "role",
+   "delta": "ΔE 10.9",
+   "from": "#64748b",
+   "byProperty": {
+    "text": "--text-neutral-tertiary"
+   },
+   "decision": "COL-P2"
+  },
+  "--text-tertiary": {
+   "to": "--text-neutral-disabled",
+   "kind": "role",
+   "delta": "ΔE 16.0",
+   "from": "#94a3b8",
+   "byProperty": {
+    "text": "--text-neutral-disabled"
+   },
+   "decision": "COL-P2"
+  },
+  "--text-inverse": {
+   "to": "--text-white",
+   "kind": "exact",
+   "delta": "ΔE 0.0",
+   "from": "#ffffff",
+   "byProperty": {
+    "text": "--text-white",
+    "icon": "--text-white"
+   },
+   "decision": "COL-P1"
+  },
+  "--surface-card": {
+   "to": "--background-white",
+   "kind": "exact",
+   "delta": "ΔE 0.0",
+   "from": "#ffffff",
+   "byProperty": {
+    "bg": "--background-white"
+   },
+   "decision": "COL-P2"
+  },
+  "--surface-card-border": {
+   "to": "--border-neutral-primary",
+   "kind": "role",
+   "delta": "ΔE 0.4",
+   "from": "#e7e8ea",
+   "byProperty": {
+    "border": "--border-neutral-primary"
+   },
+   "decision": "COL-P2"
+  },
+  "--action-primary": {
+   "to": "--background-brand-primary",
+   "kind": "role",
+   "delta": "ΔE 19.1",
+   "from": "#0f172a",
+   "byProperty": {
+    "bg": "--background-brand-primary"
+   },
+   "decision": "COL-P1",
+   "contexts": [
+    {
+     "when": "Badge tone=published (Yayında)",
+     "to": ".mds-badge--primary"
+    }
+   ]
+  },
+  "--action-create": {
+   "to": "--background-brand-primary",
+   "kind": "role",
+   "delta": "ΔE 27.1",
+   "from": "#0f9d63",
+   "byProperty": {
+    "bg": "--background-brand-primary"
+   },
+   "decision": "COL-D3-1"
+  },
+  "--focus-ring": {
+   "to": "--ring-focus",
+   "kind": "role",
+   "delta": "a colour (#1d4ed8) → canonical box-shadow composite; its value is open decision #1",
+   "from": "#1d4ed8",
+   "byProperty": {
+    "ring": "--ring-focus"
+   },
+   "decision": "OPEN-1",
+   "note": "Open decision 1. --ring-focus is a whole box-shadow: write `box-shadow: var(--ring-focus)`, never `outline-color`. The invalid-field ring --ring-focus-error (#FECACA, 1.45:1) is part of the same decision; a11y-overrides.css re-points only --ring-focus. Kept out of the value bridge: #95 used the name as a colour (6.70:1 on white), and the bridged value would be a whole box-shadow at 1.26:1.",
+   "inherits": "OPEN-1"
+  },
+  "--scrim-dialog": {
+   "to": "--background-neutral-scrim",
+   "kind": "exact",
+   "delta": "ΔE 0.0 (alpha 0.55 → 0.55)",
+   "from": "rgba(15,23,42,0.55)",
+   "byProperty": {
+    "bg": "--background-neutral-scrim"
+   },
+   "decision": "COL-D2-8"
+  },
+  "--scrim-media": {
+   "to": "--gradient-scrim-media",
+   "kind": "role",
+   "delta": "gradient",
+   "from": "linear-gradient(transparent, rgba(0,0,0,0.75))",
+   "byProperty": {
+    "bg": "--gradient-scrim-media"
+   },
+   "decision": "COL-D2-8"
+  },
+  "--scrim-media-40": {
+   "to": "--gradient-scrim-media",
+   "kind": "nearest",
+   "delta": "start 40% → 0%, alpha 0.45 → 0.75; 0 uses in #95 components and kits",
+   "from": "linear-gradient(transparent 40%, rgba(0,0,0,0.45))",
+   "byProperty": {
+    "bg": "--gradient-scrim-media"
+   },
+   "decision": "K2 (TSS merge over COL-D2-8 drop)"
+  },
+  "--font-ui": {
+   "to": "--font-ui",
+   "kind": "role",
+   "delta": "family swap",
+   "from": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Helvetica, Arial, sans-serif",
+   "decision": "policy",
+   "note": "Inter is not a brand face; x-height 0.546 → 0.516 em, so equal px renders 5.5% smaller — the reason ties round up in the size table.",
+   "collision": true,
+   "resolvesSilently": "benign",
+   "silentNote": "benign for body text and controls, which converge on the canonical family (Plex Sans); a heading set in --font-ui takes .mds-h* instead (Cairo, --font-display; MDS-TYPE-01, MDS-TYPE-03)"
+  },
+  "--font-arabic": {
+   "to": "--font-arabic",
+   "kind": "role",
+   "delta": "family swap",
+   "from": "\"Amiri\", \"Scheherazade New\", serif",
+   "decision": "D3",
+   "note": "UI and inline Arabic → --font-arabic (IBM Plex Sans Arabic). Classical and Qur'anic text → --font-arabic-text (.mds-arabic-text); its face is SPEC-D3-06.",
+   "collision": true,
+   "resolvesSilently": "drift",
+   "silentNote": "classical/Qur'anic text silently takes the UI Arabic face; it should be .mds-arabic-text / --font-arabic-text"
+  },
+  "--font-mono": {
+   "to": "--font-mono",
+   "kind": "role",
+   "delta": "family swap",
+   "from": "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+   "decision": "policy",
+   "note": "#95 used the system mono stack; canonical names Plex Mono.",
+   "collision": true,
+   "resolvesSilently": "benign",
+   "silentNote": "converges on Plex Mono, the policy outcome"
+  },
+  "--font-feature-ui": {
+   "to": null,
+   "kind": "dropped",
+   "delta": "—",
+   "from": "\"ss01\", \"cv11\"",
+   "decision": "policy",
+   "note": "\"ss01\",\"cv11\" are Inter's open digits + single-storey a. Carried over it would switch Plex Sans' and Plex Sans Arabic's ss01 (alternate a) on every body run — measured in the GSUB tables. Canonical sets no features."
+  },
+  "--fs-10": {
+   "to": "--fs-footnote",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "10px",
+   "decision": "policy",
+   "note": "LiveLesson badge/meta → .mds-footnote"
+  },
+  "--fs-11": {
+   "to": "--fs-caption",
+   "kind": "nearest",
+   "delta": "+1px (11 → 12)",
+   "from": "11px",
+   "decision": "policy",
+   "note": "eyebrow, week labels, progress meta → .mds-eyebrow / .mds-caption"
+  },
+  "--fs-12": {
+   "to": "--fs-caption",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "12px",
+   "decision": "policy",
+   "note": "meta line → .mds-caption"
+  },
+  "--fs-13": {
+   "to": "--fs-body-sm",
+   "kind": "nearest",
+   "delta": "+1px (13 → 14)",
+   "from": "13px",
+   "decision": "policy",
+   "note": "Button sm → .mds-btn--small (14, control layer); Field hint → .mds-help (12); Toast description → 12"
+  },
+  "--fs-14": {
+   "to": "--fs-body-sm",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "14px",
+   "decision": "policy",
+   "note": "controls → 14; **#95 body copy (14) → .mds-body 16** — canonical: reading text is 16"
+  },
+  "--fs-15": {
+   "to": "--fs-body",
+   "kind": "nearest",
+   "delta": "+1px (15 → 16)",
+   "from": "15px",
+   "decision": "policy",
+   "note": "Input text, Button lg, SidebarItem → 14 (control layer, −1); card title / subtitle prose → 16"
+  },
+  "--fs-16": {
+   "to": "--fs-body",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "16px",
+   "decision": "policy",
+   "note": "flashcard Latin face, subtitles → .mds-body"
+  },
+  "--fs-17": {
+   "to": "--fs-body-lg",
+   "kind": "nearest",
+   "delta": "+1px (17 → 18)",
+   "from": "17px",
+   "decision": "policy",
+   "note": "Logo wordmark, platform name → .mds-body-lg (Plex 600)"
+  },
+  "--fs-18": {
+   "to": "--fs-body-lg",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "18px",
+   "decision": "policy",
+   "note": "Tedris section <h2> → .mds-h6 (20, +2) by role; non-heading → .mds-body-lg"
+  },
+  "--fs-19": {
+   "to": "--fs-h6",
+   "kind": "nearest",
+   "delta": "+1px (19 → 20)",
+   "from": "19px",
+   "decision": "policy",
+   "note": "section headings, card titles → .mds-h6"
+  },
+  "--fs-21": {
+   "to": "--fs-h6",
+   "kind": "nearest",
+   "delta": "-1px (21 → 20)",
+   "from": "21px",
+   "decision": "policy",
+   "note": "Nizam köşk section heading → .mds-h6"
+  },
+  "--fs-22": {
+   "to": "--fs-h5",
+   "kind": "nearest",
+   "delta": "+2px (22 → 24)",
+   "from": "22px",
+   "decision": "policy",
+   "note": "Dialog title → canonical dialog title (h6 20, −2); Arabic flashcard face → --fs-arabic-text (24)"
+  },
+  "--fs-24": {
+   "to": "--fs-h5",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "24px",
+   "decision": "policy",
+   "note": "unused in #95 components and kits"
+  },
+  "--fs-26": {
+   "to": "--fs-h5",
+   "kind": "nearest",
+   "delta": "-2px (26 → 24)",
+   "from": "26px",
+   "decision": "policy",
+   "note": "Tedris page title → **page title = .mds-h4 32 (+6)** as in canonical app-shell h1"
+  },
+  "--fs-28": {
+   "to": "--fs-h4",
+   "kind": "nearest",
+   "delta": "+4px (28 → 32)",
+   "from": "28px",
+   "decision": "policy",
+   "note": "unused in #95 components and kits"
+  },
+  "--fs-33": {
+   "to": "--fs-h4",
+   "kind": "nearest",
+   "delta": "-1px (33 → 32)",
+   "from": "33px",
+   "decision": "policy",
+   "note": "Nizam page title → .mds-h4"
+  },
+  "--fs-34": {
+   "to": "--fs-h4",
+   "kind": "nearest",
+   "delta": "-2px (34 → 32)",
+   "from": "34px",
+   "decision": "policy",
+   "note": "Tedris course hero title → .mds-h4"
+  },
+  "--fs-11-5": {
+   "to": "--fs-caption",
+   "kind": "nearest",
+   "delta": "+0.5px (11.5 → 12)",
+   "from": "11.5px",
+   "decision": "policy",
+   "note": "Tabs label → .mds-tab 14 (+2.5, control layer); shell role text → 12"
+  },
+  "--fs-12-5": {
+   "to": "--fs-caption",
+   "kind": "nearest",
+   "delta": "-0.5px (12.5 → 12)",
+   "from": "12.5px",
+   "decision": "policy",
+   "note": "DataTable header → .mds-table th 14 (+1.5); Logo sub / meta → 12"
+  },
+  "--fs-13-5": {
+   "to": "--fs-body-sm",
+   "kind": "nearest",
+   "delta": "+0.5px (13.5 → 14)",
+   "from": "13.5px",
+   "decision": "policy",
+   "note": "mono input, checkbox description, shell user name → 14"
+  },
+  "--fs-14-5": {
+   "to": "--fs-body-sm",
+   "kind": "nearest",
+   "delta": "-0.5px (14.5 → 14)",
+   "from": "14.5px",
+   "decision": "policy",
+   "note": "unused in #95 components and kits"
+  },
+  "--fw-regular": {
+   "to": "--weight-regular",
+   "kind": "exact",
+   "delta": "±0",
+   "from": "400",
+   "decision": "policy",
+   "note": "same value"
+  },
+  "--fw-medium": {
+   "to": "--weight-medium",
+   "kind": "exact",
+   "delta": "±0",
+   "from": "500",
+   "decision": "policy",
+   "note": "same value"
+  },
+  "--fw-semibold": {
+   "to": "--weight-semibold",
+   "kind": "exact",
+   "delta": "±0",
+   "from": "600",
+   "decision": "policy",
+   "note": "same value"
+  },
+  "--fw-bold": {
+   "to": "--weight-bold",
+   "kind": "exact",
+   "delta": "±0",
+   "from": "700",
+   "decision": "policy",
+   "note": "same value"
+  },
+  "--fw-extrabold": {
+   "to": "--weight-extrabold",
+   "kind": "exact",
+   "delta": "±0",
+   "from": "800",
+   "decision": "policy",
+   "note": "Valid with --font-display (Cairo wght 200–1000) only: Plex Sans' wght axis stops at 700, Plex Sans Arabic's static cuts at Bold. #95's 800 page titles become .mds-h4 = Cairo 700."
+  },
+  "--tracking-display": {
+   "to": null,
+   "kind": "dropped",
+   "delta": "33px page title → h4 (no tracking): +0.8px per gap",
+   "from": "-0.8px",
+   "decision": "policy",
+   "note": "−0.8px at 33px = −0.024em. Canonical applies tracking only from h2 (48) up."
+  },
+  "--tracking-title": {
+   "to": null,
+   "kind": "dropped",
+   "delta": "+0.5px per gap",
+   "from": "-0.5px",
+   "decision": "policy",
+   "note": "−0.5px at 26px = −0.019em."
+  },
+  "--tracking-heading": {
+   "to": null,
+   "kind": "dropped",
+   "delta": "+0.3px per gap",
+   "from": "-0.3px",
+   "decision": "policy",
+   "note": "−0.3px at 19px = −0.016em."
+  },
+  "--tracking-subhead": {
+   "to": null,
+   "kind": "dropped",
+   "delta": "+0.2px per gap",
+   "from": "-0.2px",
+   "decision": "policy",
+   "note": "−0.2px at 15px = −0.013em."
+  },
+  "--tracking-normal": {
+   "to": "--tracking-normal",
+   "kind": "exact",
+   "delta": "±0",
+   "from": "0",
+   "decision": "policy",
+   "note": "identical",
+   "collision": true,
+   "resolvesSilently": "benign",
+   "silentNote": "same value (0)"
+  },
+  "--tracking-eyebrow": {
+   "to": "--tracking-wide",
+   "kind": "nearest",
+   "delta": "0.6px at 11px → 0.06em at 12px (+0.12px)",
+   "from": "0.6px",
+   "decision": "D2",
+   "note": "Used by .mds-eyebrow and .mds-nav-section. Never on Arabic runs."
+  },
+  "--lh-tight": {
+   "to": null,
+   "kind": "dropped",
+   "delta": "#95 page titles (→ h4) 1.15 → 1.25: +3.2px per line at 32px",
+   "from": "1.15",
+   "decision": "policy",
+   "collision": true,
+   "note": "Same name, different value (#95 1.15, canonical 1). Do not keep the name: use the heading class (.mds-h1…h6) which carries its leading.",
+   "resolvesSilently": "drift",
+   "silentNote": "#95 1.15 → canonical 1: wrapped headings collide"
+  },
+  "--lh-heading": {
+   "to": "--lh-snug",
+   "kind": "nearest",
+   "delta": "1.3 → 1.25 (-0.05)",
+   "from": "1.3",
+   "decision": "policy"
+  },
+  "--lh-snug": {
+   "to": "--lh-body",
+   "kind": "nearest",
+   "delta": "1.45 → 1.5 (+0.05)",
+   "from": "1.45",
+   "decision": "policy",
+   "note": "#95 --lh-snug (1.45) is a meta-row leading; canonical --lh-snug (1.25) is a heading leading — same name, different meaning.",
+   "collision": true,
+   "resolvesSilently": "drift",
+   "silentNote": "#95 1.45 → canonical 1.25"
+  },
+  "--lh-body": {
+   "to": "--lh-body",
+   "kind": "nearest",
+   "delta": "1.55 → 1.5 (-0.05)",
+   "from": "1.55",
+   "decision": "policy",
+   "note": "Same name, 1.55 vs 1.5.",
+   "collision": true,
+   "resolvesSilently": "drift",
+   "silentNote": "#95 1.55 → canonical 1.5"
+  },
+  "--lh-relaxed": {
+   "to": "--lh-prose",
+   "kind": "nearest",
+   "delta": "1.65 → 1.5 (-0.15)",
+   "from": "1.65",
+   "decision": "D2",
+   "note": "Unused in #95 components and kits. Canonical cards set notes at a raw 1.6; the owner may later bind --lh-prose to 1.6 (SPEC-D2-12)."
+  },
+  "--lh-arabic": {
+   "to": "--lh-arabic",
+   "kind": "nearest",
+   "delta": "2 → 1.9 (-0.1)",
+   "from": "2",
+   "decision": "policy",
+   "note": "Canonical .mds-arabic is 1.9; classical text uses --lh-arabic-text.",
+   "collision": true,
+   "resolvesSilently": "drift",
+   "silentNote": "#95 2 → unified 1.9; classical and Qur'anic text takes --lh-arabic-text (.mds-arabic-text)"
+  },
+  "--sp-1": {
+   "to": null,
+   "kind": "dropped",
+   "delta": "+2px",
+   "from": "2px",
+   "decision": "D2",
+   "note": "layout use → --space-xs (+2)"
+  },
+  "--sp-2": {
+   "to": "--space-xs",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "4px",
+   "decision": "policy"
+  },
+  "--sp-3": {
+   "to": "--space-sm",
+   "kind": "nearest",
+   "delta": "+2px (6 → 8)",
+   "from": "6px",
+   "decision": "D2",
+   "note": "in components.css 6 appears only inside components (.mds-btn--mini/--small, .mds-badge, .mds-field gap; .mds-tooltip padding) — component-owned; as a layout gap → 8"
+  },
+  "--sp-4": {
+   "to": "--space-sm",
+   "kind": "nearest",
+   "delta": "+1px (7 → 8)",
+   "from": "7px",
+   "decision": "policy"
+  },
+  "--sp-5": {
+   "to": "--space-sm",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "8px",
+   "decision": "policy"
+  },
+  "--sp-6": {
+   "to": "--space-sm",
+   "kind": "nearest",
+   "delta": "-1px (9 → 8)",
+   "from": "9px",
+   "decision": "policy"
+  },
+  "--sp-7": {
+   "to": "--space-sm",
+   "kind": "nearest",
+   "delta": "-2px (10 → 8)",
+   "from": "10px",
+   "decision": "policy"
+  },
+  "--sp-8": {
+   "to": "--space-sm",
+   "kind": "nearest",
+   "delta": "-3px (11 → 8)",
+   "from": "11px",
+   "decision": "policy"
+  },
+  "--sp-9": {
+   "to": "--space-md",
+   "kind": "nearest",
+   "delta": "+4px (12 → 16)",
+   "from": "12px",
+   "decision": "D2",
+   "note": "in components.css 12 appears only inside components (small button, control, textarea, tab, alert, nav item and nav section padding and gap; table cells read --space-cell-block) — component-owned; as a layout gap → 16"
+  },
+  "--sp-10": {
+   "to": "--space-md",
+   "kind": "nearest",
+   "delta": "+2px (14 → 16)",
+   "from": "14px",
+   "decision": "policy"
+  },
+  "--sp-11": {
+   "to": "--space-md",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "16px",
+   "decision": "policy"
+  },
+  "--sp-12": {
+   "to": "--space-md",
+   "kind": "nearest",
+   "delta": "-2px (18 → 16)",
+   "from": "18px",
+   "decision": "policy"
+  },
+  "--sp-13": {
+   "to": "--space-lg",
+   "kind": "nearest",
+   "delta": "+4px (20 → 24)",
+   "from": "20px",
+   "decision": "D2"
+  },
+  "--sp-14": {
+   "to": "--space-lg",
+   "kind": "nearest",
+   "delta": "+2px (22 → 24)",
+   "from": "22px",
+   "decision": "policy"
+  },
+  "--sp-15": {
+   "to": "--space-lg",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "24px",
+   "decision": "policy"
+  },
+  "--sp-16": {
+   "to": "--space-lg",
+   "kind": "nearest",
+   "delta": "-2px (26 → 24)",
+   "from": "26px",
+   "decision": "policy"
+  },
+  "--sp-17": {
+   "to": "--space-xl",
+   "kind": "nearest",
+   "delta": "+4px (28 → 32)",
+   "from": "28px",
+   "decision": "D2"
+  },
+  "--sp-18": {
+   "to": "--space-xl",
+   "kind": "nearest",
+   "delta": "+2px (30 → 32)",
+   "from": "30px",
+   "decision": "policy"
+  },
+  "--sp-19": {
+   "to": "--space-2xl",
+   "kind": "nearest",
+   "delta": "+4px (36 → 40)",
+   "from": "36px",
+   "decision": "D2"
+  },
+  "--sp-20": {
+   "to": "--space-2xl",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "40px",
+   "decision": "policy"
+  },
+  "--gap-card-grid": {
+   "to": "--space-gap-grid",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "16px",
+   "decision": "D2",
+   "note": "canonical app-shell grid gap is 16"
+  },
+  "--gap-card-grid-nizam": {
+   "to": "--space-gap-grid",
+   "kind": "nearest",
+   "delta": "-6px (22 → 16)",
+   "from": "22px",
+   "decision": "D2",
+   "note": "one grid gap for both apps; canonical app-shell (a müderris dashboard) uses 16"
+  },
+  "--pad-card": {
+   "to": "--space-inset-card",
+   "kind": "nearest",
+   "delta": "+8px (16 → 24)",
+   "from": "16px",
+   "decision": "D2",
+   "note": "Tedris media/course cards. ±0 inside a data-density=\"compact\" region (--space-inset-card → --space-md)."
+  },
+  "--pad-card-nizam": {
+   "to": "--space-inset-card",
+   "kind": "nearest",
+   "delta": "+2px (22 → 24)",
+   "from": "22px",
+   "decision": "D2",
+   "note": "= canonical .mds-card padding (24)"
+  },
+  "--pad-section": {
+   "to": "--space-inset-card",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "24px",
+   "decision": "D2",
+   "note": "#95 uses it for bordered form sections — a card inset, merged"
+  },
+  "--pad-page-x": {
+   "to": "--space-gutter-page",
+   "kind": "nearest",
+   "delta": "-4px (36 → 32)",
+   "from": "36px",
+   "decision": "D2",
+   "note": "unused in #95 kits (they use a raw 30px); canonical app-shell gutter is 32"
+  },
+  "--pad-page-x-nizam": {
+   "to": "--space-gutter-page",
+   "kind": "nearest",
+   "delta": "-8px (40 → 32)",
+   "from": "40px",
+   "decision": "D2",
+   "note": "canonical app-shell (müderris dashboard) gutter is 32; 40 = --space-2xl is the alternative"
+  },
+  "--sidebar-w": {
+   "to": "--layout-sidebar",
+   "kind": "nearest",
+   "delta": "-20px (268 → 248)",
+   "from": "268px",
+   "decision": "policy",
+   "note": "canonical app-shell and sidebar card: 248"
+  },
+  "--sidebar-w-tedris": {
+   "to": "--layout-sidebar",
+   "kind": "nearest",
+   "delta": "-16px (264 → 248)",
+   "from": "264px",
+   "decision": "policy",
+   "note": "one sidebar width"
+  },
+  "--rail-w-icon": {
+   "to": null,
+   "kind": "dropped",
+   "delta": "—",
+   "from": "66px",
+   "decision": "SPEC-D2-14 (v2)",
+   "note": "The collapsed icon rail is Phase 2 (no launch screen needs it); the name --layout-rail is reserved for it. Until then use the full sidebar, and below 768 the AppBar + nav sheet."
+  },
+  "--rail-w-list": {
+   "to": "--layout-pane",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "300px",
+   "decision": "D2",
+   "note": "no canonical equivalent — the one new raw layout value kept from #95"
+  },
+  "--aside-w": {
+   "to": "--layout-aside",
+   "kind": "nearest",
+   "delta": "-20px (360 → 340)",
+   "from": "360px",
+   "decision": "D2",
+   "note": "340 is the canonical ezber-card width: an ezber card fits the aside at its native size"
+  },
+  "--aside-w-nizam": {
+   "to": "--layout-aside",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "340px",
+   "decision": "D2"
+  },
+  "--content-max": {
+   "to": "--layout-content-max",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "1440px",
+   "decision": "D2",
+   "note": "alias; note var() is not allowed inside @media"
+  },
+  "--reading-max": {
+   "to": "--layout-measure-prose",
+   "kind": "role",
+   "delta": "720px → 34em",
+   "from": "720px",
+   "decision": "D2",
+   "note": "720px of 16px IBM Plex Sans holds ≈100–105 characters of Turkish per line (measured on two samples); 34em holds ≈76–80, inside WCAG 1.4.8's 80."
+  },
+  "--r-2": {
+   "to": "--radius-xxs",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "4px",
+   "decision": "policy"
+  },
+  "--r-3": {
+   "to": "--radius-xxs",
+   "kind": "nearest",
+   "delta": "-1px (5 → 4)",
+   "from": "5px",
+   "decision": "D2",
+   "note": "checkbox → .mds-check (xxs) — agrees"
+  },
+  "--r-4": {
+   "to": "--radius-xs",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "6px",
+   "decision": "policy"
+  },
+  "--r-5": {
+   "to": "--radius-xs",
+   "kind": "nearest",
+   "delta": "-1px (7 → 6)",
+   "from": "7px",
+   "decision": "D2",
+   "note": "32px icon tile"
+  },
+  "--r-6": {
+   "to": "--radius-s",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "8px",
+   "decision": "policy"
+  },
+  "--r-7": {
+   "to": "--radius-s",
+   "kind": "nearest",
+   "delta": "-1px (9 → 8)",
+   "from": "9px",
+   "decision": "policy",
+   "note": "SidebarItem → .mds-nav-item (xs 6, −3) by role"
+  },
+  "--r-8": {
+   "to": "--radius-s",
+   "kind": "nearest",
+   "delta": "-2px (10 → 8)",
+   "from": "10px",
+   "decision": "D2",
+   "note": "Button md → --radius-s — agrees by role"
+  },
+  "--r-9": {
+   "to": "--radius-m",
+   "kind": "nearest",
+   "delta": "+1px (11 → 12)",
+   "from": "11px",
+   "decision": "policy",
+   "note": "Button lg / IconButton → --radius-s (−3) by role; 46px tiles → --radius-m (+1)"
+  },
+  "--r-10": {
+   "to": "--radius-m",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "12px",
+   "decision": "policy",
+   "note": "Toast → --radius-s (−4) per canonical overlay card; DataTable / WeekAccordion shells → m (±0)"
+  },
+  "--r-11": {
+   "to": "--radius-m",
+   "kind": "nearest",
+   "delta": "-1px (13 → 12)",
+   "from": "13px",
+   "decision": "policy"
+  },
+  "--r-12": {
+   "to": "--radius-m",
+   "kind": "nearest",
+   "delta": "-2px (14 → 12)",
+   "from": "14px",
+   "decision": "policy"
+  },
+  "--r-14": {
+   "to": "--radius-m",
+   "kind": "nearest",
+   "delta": "-4px (16 → 12)",
+   "from": "16px",
+   "decision": "D2",
+   "note": "Dialog → m (−4) per canonical overlay card; app panels → --radius-l via --r-panel"
+  },
+  "--r-16": {
+   "to": "--radius-l",
+   "kind": "nearest",
+   "delta": "+2px (18 → 20)",
+   "from": "18px",
+   "decision": "policy"
+  },
+  "--r-pill": {
+   "to": "--radius-full",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "999px",
+   "decision": "policy"
+  },
+  "--r-input": {
+   "to": "--radius-xs",
+   "kind": "exact",
+   "delta": "±0px",
+   "from": "6px",
+   "decision": "policy",
+   "note": "#95 token = 6 but DESIGN_RULES/GUIDE say 8 and its screens draw 10; canonical inputs are 6"
+  },
+  "--r-button": {
+   "to": "--radius-s",
+   "kind": "nearest",
+   "delta": "-2px (10 → 8)",
+   "from": "10px",
+   "decision": "policy",
+   "note": "canonical: every control on s"
+  },
+  "--r-button-nizam": {
+   "to": "--radius-s",
+   "kind": "nearest",
+   "delta": "-3px (11 → 8)",
+   "from": "11px",
+   "decision": "policy",
+   "note": "no per-app radius"
+  },
+  "--r-card": {
+   "to": "--radius-m",
+   "kind": "nearest",
+   "delta": "-2px (14 → 12)",
+   "from": "14px",
+   "decision": "policy",
+   "note": "canonical cards and dialogs on m"
+  },
+  "--r-panel": {
+   "to": "--radius-l",
+   "kind": "nearest",
+   "delta": "+4px (16 → 20)",
+   "from": "16px",
+   "decision": "D2",
+   "note": "Nizam's bordered page panel — the largest surface; tie between m (−4) and l (+4) resolved by the canonical radius card's role list"
+  },
+  "--r-avatar-square": {
+   "to": "--radius-s",
+   "kind": "nearest",
+   "delta": "+2px (6 → 8)",
+   "from": "6px",
+   "decision": "D2",
+   "note": "Square = an institution or object: <Avatar entity> (.mds-avatar--entity, --radius-s). People are always circles. K25 overrides TSS: --radius-xs is the input radius."
+  },
+  "--r-badge": {
+   "to": "--radius-s",
+   "kind": "role",
+   "delta": "-991px (999 → 8)",
+   "from": "999px",
+   "decision": "policy",
+   "note": "#95 Pill (filter / toggle chip) keeps --radius-full"
+  },
+  "--r-status-chip": {
+   "to": "--radius-s",
+   "kind": "role",
+   "delta": "+3px (5 → 8)",
+   "from": "5px",
+   "decision": "policy",
+   "note": "a status chip is a badge"
+  },
+  "--shadow-hairline": {
+   "to": "--elevation-resting",
+   "kind": "nearest",
+   "delta": "profile-nearest --shadow-xs (L1 0.04)",
+   "from": "0 1px 3px rgba(0,0,0,0.06)",
+   "decision": "policy"
+  },
+  "--shadow-chip": {
+   "to": "--elevation-resting",
+   "kind": "nearest",
+   "delta": "profile-nearest --shadow-xs (L1 0.09)",
+   "from": "0 1px 3px rgba(0,0,0,0.08)",
+   "decision": "policy"
+  },
+  "--shadow-float": {
+   "to": "--elevation-raised",
+   "kind": "nearest",
+   "delta": "profile-nearest --shadow-lg (L1 0.76)",
+   "from": "0 4px 14px rgba(15,23,42,0.22)",
+   "decision": "policy",
+   "note": "slate-tinted in #95 → black (canonical: never tinted)"
+  },
+  "--shadow-card-lift": {
+   "to": "--elevation-resting",
+   "kind": "nearest",
+   "delta": "profile-nearest --shadow-xs (L1 0.42)",
+   "from": "0 8px 30px -20px rgba(15,23,42,0.2)",
+   "decision": "policy",
+   "note": "hover lift — unused in #95 components and kits; #95 itself says hover never lifts. slate-tinted in #95 → black (canonical: never tinted)"
+  },
+  "--shadow-inline-editor": {
+   "to": "--elevation-raised",
+   "kind": "nearest",
+   "delta": "profile-nearest --shadow-lg (L1 0.33)",
+   "from": "0 12px 30px -18px rgba(15,23,42,0.25)",
+   "decision": "policy",
+   "note": "slate-tinted in #95 → black (canonical: never tinted)"
+  },
+  "--shadow-toast": {
+   "to": "--elevation-raised",
+   "kind": "nearest",
+   "delta": "profile-nearest --shadow-xl (L1 0.51); role puts it on --shadow-lg",
+   "from": "0 16px 40px -16px rgba(15,23,42,0.22)",
+   "decision": "policy",
+   "note": "canonical overlay card: toast = shadow-lg. slate-tinted in #95 → black (canonical: never tinted)"
+  },
+  "--shadow-sticky-card": {
+   "to": "--elevation-raised",
+   "kind": "nearest",
+   "delta": "profile-nearest --shadow-lg (L1 0.6)",
+   "from": "0 20px 40px -28px rgba(15,23,42,0.18)",
+   "decision": "policy",
+   "note": "slate-tinted in #95 → black (canonical: never tinted)"
+  },
+  "--shadow-avatar-tile": {
+   "to": "--elevation-raised",
+   "kind": "nearest",
+   "delta": "profile-nearest --shadow-lg (L1 0.39)",
+   "from": "0 8px 24px -12px rgba(0,0,0,0.2)",
+   "decision": "policy"
+  },
+  "--shadow-player": {
+   "to": "--elevation-stage",
+   "kind": "nearest",
+   "delta": "profile-nearest --shadow-2xl (L1 1.99)",
+   "from": "0 24px 50px -24px rgba(0,0,0,0.6)",
+   "decision": "policy"
+  },
+  "--shadow-dialog": {
+   "to": "--elevation-modal",
+   "kind": "nearest",
+   "delta": "profile-nearest --shadow-2xl (L1 3.14); role puts it on --shadow-xl",
+   "from": "0 30px 60px -20px rgba(15,23,42,0.4)",
+   "decision": "policy",
+   "note": "canonical: modal = shadow-xl. slate-tinted in #95 → black (canonical: never tinted)"
+  },
+  "--dur-fast": {
+   "to": "--duration-fast",
+   "kind": "nearest",
+   "delta": "150ms → 120ms",
+   "from": "150ms",
+   "decision": "policy"
+  },
+  "--dur-base": {
+   "to": "--duration-base",
+   "kind": "exact",
+   "delta": "200ms → 200ms",
+   "from": "200ms",
+   "decision": "policy"
+  },
+  "--ease-standard": {
+   "to": "--ease-out",
+   "kind": "role",
+   "delta": "`ease` → cubic-bezier(0.16,1,0.3,1)",
+   "from": "ease",
+   "decision": "policy"
+  },
+  "--transition-hover": {
+   "to": "--transition-colors",
+   "kind": "role",
+   "delta": "150 → 120ms",
+   "from": "border-color 150ms ease, background-color 150ms ease, color 150ms ease",
+   "decision": "D2",
+   "note": ".mds-btn reads it: background-color, border-color and color at --duration-fast"
+  },
+  "--transition-disclosure": {
+   "to": "--transition-disclosure",
+   "kind": "role",
+   "delta": "±0ms",
+   "from": "transform 200ms ease",
+   "decision": "D2",
+   "collision": true,
+   "resolvesSilently": "benign",
+   "silentNote": "#95 transform 200ms ease → unified transform and rotate, 200ms ease-in-out: the same chevron turn"
+  },
+  "--transition-rail": {
+   "to": null,
+   "kind": "dropped",
+   "delta": "—",
+   "from": "grid-template-columns 200ms ease",
+   "decision": "SPEC-D2-15 (v2)",
+   "note": "Phase 2 with the collapsed rail (reserved name --transition-layout); unused in #95 components and kits."
+  }
+ },
+ "components": {
+  "Button": {
+   "to": "Button",
+   "op": "rename",
+   "props": {
+    "variant": {
+     "to": "variant",
+     "values": {
+      "primary": "primary",
+      "create": "primary",
+      "danger": "destructive",
+      "ghost": "outline",
+      "quiet": "ghost",
+      "link": "link"
+     },
+     "note": "same names, different meanings: #95 ghost = canonical outline; #95 quiet = canonical ghost"
+    },
+    "size": {
+     "to": "size",
+     "values": {
+      "sm": "small",
+      "md": "regular",
+      "lg": "large"
+     }
+    },
+    "icon": {
+     "to": "iconLeft"
+    },
+    "iconAfter": {
+     "to": "iconRight"
+    },
+    "fullWidth": {
+     "to": "fullWidth"
+    },
+    "disabled": {
+     "to": "disabled"
+    },
+    "as": {
+     "to": "href",
+     "transform": "as=\"a\" + href → href (renders <a class=\"mds-btn\">); disabled link → <a role=\"link\" aria-disabled=\"true\"> without href",
+     "note": "restructure"
+    },
+    "children": {
+     "to": "children"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   }
+  },
+  "IconButton": {
+   "to": "IconButton",
+   "op": "rename",
+   "props": {
+    "icon": {
+     "to": "icon"
+    },
+    "label": {
+     "to": "label"
+    },
+    "variant": {
+     "to": "variant",
+     "values": {
+      "ghost": "outline",
+      "bare": "ghost",
+      "solid": "primary"
+     }
+    },
+    "size": {
+     "to": "size",
+     "values": {
+      "sm": "small",
+      "md": "regular",
+      "lg": "large"
+     }
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   }
+  },
+  "Badge": {
+   "to": "Badge",
+   "op": "rename",
+   "review": true,
+   "props": {
+    "tone": {
+     "to": "variant",
+     "values": {
+      "neutral": "secondary",
+      "accent": "brand",
+      "success": "success",
+      "warning": "secondary",
+      "live": "live",
+      "published": "primary",
+      "draft": "outline"
+     },
+     "valueContexts": {
+      "live": [
+       {
+        "when": "the text is the LIVE session state ('Şu an canlı'; #95 'Canlı halka' → 'Şu an canlı')",
+        "to": "live",
+        "set": {
+         "dot": true
+        }
+       },
+       {
+        "when": "the text names the lesson type ('Canlı ders')",
+        "to": "secondary",
+        "set": {
+         "icon": "<Icon name=\"video\" size=\"sm\"/>"
+        }
+       },
+       {
+        "when": "a countdown ('14 dk sonra') — an upcoming session",
+        "to": "secondary",
+        "set": {
+         "icon": "<Icon name=\"clock\" size=\"sm\"/>"
+        },
+        "note": "the time goes in <time datetime>"
+       }
+      ]
+     },
+     "note": "tone=live is decided per use (review: true): 2 of its 3 #95 uses are not live-now. warning → secondary: a lesson type ('Sınav') is what a thing is. accent → brand (8.24:1)"
+    },
+    "icon": {
+     "to": "icon"
+    },
+    "dot": {
+     "to": "dot"
+    },
+    "shape": {
+     "to": null,
+     "note": "one badge radius (--radius-s)"
+    },
+    "children": {
+     "to": "children"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   }
+  },
+  "Pill": {
+   "to": "ChoiceChips",
+   "op": "restructure",
+   "alternatives": {
+    "tag": "Badge"
+   },
+   "props": {
+    "active": {
+     "to": "value",
+     "transform": "a group of <Pill>s → one <ChoiceChips options=[…]>; the active Pill's key becomes value"
+    },
+    "tag": {
+     "to": null,
+     "transform": "<Pill tag> → <Badge variant=\"secondary\">",
+     "note": "a static tag is a badge"
+    },
+    "icon": {
+     "to": "options[].icon"
+    },
+    "children": {
+     "to": "options[].label"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   },
+   "requires": {
+    "legend": "what the chips choose, e.g. 'Alan' (visually hidden when filtering a list)",
+    "name": "a form name, e.g. the filter key"
+   }
+  },
+  "Avatar": {
+   "to": "Avatar",
+   "op": "rename",
+   "props": {
+    "initials": {
+     "to": "name",
+     "note": "full name; the component derives the letters and uses the name as the accessible label"
+    },
+    "hue": {
+     "to": null,
+     "note": "no per-person colours"
+    },
+    "size": {
+     "to": "size",
+     "values": {
+      "number<=35": "sm",
+      "36..47": "md",
+      ">=48": "lg"
+     }
+    },
+    "shape": {
+     "to": "entity",
+     "values": {
+      "circle": "(omit)",
+      "square": "true"
+     },
+     "note": "square = an institution or object; a person is always a circle"
+    },
+    "ring": {
+     "to": null,
+     "note": "AvatarStack draws the separating ring"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   }
+  },
+  "AvatarStack": {
+   "to": "AvatarStack",
+   "op": "rename",
+   "props": {
+    "people": {
+     "to": "people",
+     "transform": "{initials,hue} → {name,src}"
+    },
+    "size": {
+     "to": null,
+     "note": "a stack is always sm"
+    },
+    "max": {
+     "to": "max"
+    },
+    "overflow": {
+     "to": "total",
+     "transform": "total head-count; +N = total − shown"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   }
+  },
+  "Card": {
+   "to": "Card",
+   "op": "rename",
+   "props": {
+    "app": {
+     "to": null,
+     "note": "both apps take the canonical inset; a dense region sets data-density=\"compact\""
+    },
+    "interactive": {
+     "to": "href",
+     "transform": "interactive + onClick → href (the title becomes a stretched link)",
+     "note": "restructure"
+    },
+    "pad": {
+     "to": null,
+     "note": "density only"
+    },
+    "media": {
+     "to": "media"
+    },
+    "footer": {
+     "to": "footer"
+    },
+    "children": {
+     "to": "children"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   }
+  },
+  "ProgressBar": {
+   "to": "Progress",
+   "op": "rename",
+   "props": {
+    "value": {
+     "to": "value",
+     "transform": "value × 100 (#95 is 0..1)"
+    },
+    "height": {
+     "to": null,
+     "note": "8px track"
+    },
+    "tone": {
+     "to": null,
+     "note": "brand at every value"
+    },
+    "showLabel": {
+     "to": "showValue"
+    },
+    "label": {
+     "to": "label"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   },
+   "requires": {
+    "label": "the bar's name, e.g. 'Kurs ilerlemesi'"
+   }
+  },
+  "ProgressRing": {
+   "to": null,
+   "op": "reserved",
+   "reservedName": "ProgressRing",
+   "props": {
+    "value": {
+     "to": "value",
+     "transform": "× 100"
+    },
+    "size": {
+     "to": "size"
+    },
+    "thickness": {
+     "to": null
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   },
+   "note": "Phase 2; no launch screen uses it. Until then a Progress bar."
+  },
+  "DataTable": {
+   "to": "Table",
+   "op": "rename",
+   "props": {
+    "columns": {
+     "to": "columns",
+     "transform": "each DataTableColumn → TableColumn (see subTypes.DataTableColumn)"
+    },
+    "rows": {
+     "to": "rows"
+    },
+    "rowKey": {
+     "to": "rowKey"
+    },
+    "empty": {
+     "to": "empty",
+     "note": "one sentence in the surface's register"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   },
+   "requires": {
+    "caption": "the table's name — the nearest heading's text (visually hidden unless captionVisible)"
+   }
+  },
+  "Field": {
+   "to": "Field",
+   "op": "rename",
+   "props": {
+    "label": {
+     "to": "label"
+    },
+    "required": {
+     "to": "required"
+    },
+    "hint": {
+     "to": "help"
+    },
+    "htmlFor": {
+     "to": null,
+     "note": "Field generates and wires the ids"
+    },
+    "children": {
+     "to": "children"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   }
+  },
+  "Input": {
+   "to": "Input",
+   "op": "rename",
+   "props": {
+    "mono": {
+     "to": "mono"
+    },
+    "invalid": {
+     "to": "error",
+     "note": "sets aria-invalid"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   }
+  },
+  "Textarea": {
+   "to": "Textarea",
+   "op": "rename",
+   "props": {
+    "rows": {
+     "to": "rows"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   }
+  },
+  "Select": {
+   "to": "Select",
+   "op": "rename",
+   "props": {
+    "value": {
+     "to": "value"
+    },
+    "options": {
+     "to": "options"
+    },
+    "onChange": {
+     "to": "onChange",
+     "note": "native change event"
+    },
+    "name": {
+     "to": "name"
+    },
+    "id": {
+     "to": "id",
+     "note": "normally supplied by Field"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   }
+  },
+  "CheckboxRow": {
+   "to": "Checkbox",
+   "op": "rename",
+   "set": {
+    "bordered": true
+   },
+   "props": {
+    "checked": {
+     "to": "checked"
+    },
+    "icon": {
+     "to": "icon"
+    },
+    "title": {
+     "to": "label"
+    },
+    "description": {
+     "to": "description"
+    },
+    "onChange": {
+     "to": "onChange",
+     "note": "native change event on the real <input type=checkbox>"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   }
+  },
+  "Breadcrumb": {
+   "to": "Breadcrumb",
+   "op": "rename",
+   "props": {
+    "items": {
+     "to": "items",
+     "transform": "string | BreadcrumbItem, unchanged (see subTypes.BreadcrumbItem); the last item is the current page"
+    },
+    "size": {
+     "to": null,
+     "note": "one size"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   }
+  },
+  "SidebarItem": {
+   "to": "NavItem",
+   "op": "restructure",
+   "container": ".mds-nav--light",
+   "props": {
+    "icon": {
+     "to": "icon",
+     "transform": "#95 19px icon → <Icon size=\"sm\">"
+    },
+    "label": {
+     "to": "children"
+    },
+    "active": {
+     "to": "active",
+     "note": "renders aria-current=\"page\""
+    },
+    "trailing": {
+     "to": "trailing"
+    },
+    "collapsed": {
+     "to": null,
+     "note": "the collapsed rail is Phase 2: render the full item"
+    },
+    "onClick": {
+     "to": "href",
+     "transform": "onClick → href: NavItem is a link; routing is by URL"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   },
+   "requires": {
+    "href": "the route of the screen the item opens"
+   },
+   "note": "Every #95 shell draws the sidebar light (var(--surface) = white). Put the items in a <nav class=\"mds-nav--light\" aria-label=…> (SPEC-D3-04 default b). Without it, canonical NavItem text is gray-200 on white, 1.24:1."
+  },
+  "Tabs": {
+   "to": "Tabs",
+   "op": "rename",
+   "props": {
+    "items": {
+     "to": "tabs",
+     "transform": "string items → {value,label}; TabItem → TabsTab (see subTypes.TabItem)"
+    },
+    "value": {
+     "to": "value"
+    },
+    "onChange": {
+     "to": "onChange"
+    },
+    "underline": {
+     "to": null,
+     "note": "brand underline only"
+    },
+    "size": {
+     "to": null,
+     "note": "14px control layer only"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   },
+   "requires": {
+    "idBase": "a slug of the screen, e.g. 'kurs-kayitlari' (tab and panel ids)",
+    "label": "the tab set's accessible name, e.g. 'Kurs bölümleri'"
+   }
+  },
+  "Dialog": {
+   "to": "Dialog",
+   "op": "rename",
+   "props": {
+    "open": {
+     "to": "open"
+    },
+    "onClose": {
+     "to": "onClose"
+    },
+    "eyebrow": {
+     "to": "eyebrow"
+    },
+    "title": {
+     "to": "title"
+    },
+    "headerExtra": {
+     "to": "headerActions"
+    },
+    "actions": {
+     "to": "footer"
+    },
+    "width": {
+     "to": "size",
+     "values": {
+      "<=480": "sm",
+      "481..800": "md",
+      ">800": "lg"
+     }
+    },
+    "contained": {
+     "to": null,
+     "note": "canvas mocks render the static .mds-dialog__panel markup"
+    },
+    "children": {
+     "to": "children"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   }
+  },
+  "Toast": {
+   "to": "Toast",
+   "op": "rename",
+   "props": {
+    "tone": {
+     "to": "tone",
+     "values": {
+      "success": "success",
+      "info": "info",
+      "danger": "error"
+     }
+    },
+    "title": {
+     "to": "title"
+    },
+    "description": {
+     "to": "description"
+    },
+    "action": {
+     "to": "action"
+    },
+    "anchored": {
+     "to": null,
+     "note": "position belongs to <Toaster>"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   },
+   "note": "render inside the app's single <Toaster>"
+  },
+  "LessonRow": {
+   "to": "LessonRow",
+   "op": "rename",
+   "props": {
+    "title": {
+     "to": "title"
+    },
+    "type": {
+     "to": "type",
+     "values": {
+      "video": "video",
+      "doc": "document",
+      "live": "live",
+      "quiz": "quiz"
+     },
+     "note": "suffix = the PRD/API enum"
+    },
+    "duration": {
+     "to": "durationMinutes",
+     "transform": "'31 dk' → 31; rendered <time datetime=\"PT31M\">"
+    },
+    "source": {
+     "to": "source"
+    },
+    "typeLabel": {
+     "to": "typeLabel"
+    },
+    "done": {
+     "to": "state",
+     "values": {
+      "true": "done"
+     }
+    },
+    "current": {
+     "to": "state",
+     "values": {
+      "true": "current"
+     }
+    },
+    "indent": {
+     "to": null,
+     "note": "WeekAccordion's logical padding"
+    },
+    "trailing": {
+     "to": "trailing"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   },
+   "note": "a row the viewer may not open takes access=\"locked\": the title stays in --text-neutral-primary, no link, lock glyph; the reason is printed once at programme level"
+  },
+  "WeekAccordion": {
+   "to": "WeekAccordion",
+   "op": "rename",
+   "props": {
+    "week": {
+     "to": "week"
+    },
+    "title": {
+     "to": "title"
+    },
+    "state": {
+     "to": "state",
+     "values": {
+      "default": "default",
+      "done": "done",
+      "active": "active",
+      "locked": "default"
+     },
+     "transform": "state=\"locked\" → access=\"locked\" (+ state default): the week still expands; its lesson titles and dates stay visible"
+    },
+    "summary": {
+     "to": "summary"
+    },
+    "meta": {
+     "to": "meta"
+    },
+    "open": {
+     "to": "open"
+    },
+    "onToggle": {
+     "to": "onToggle"
+    },
+    "children": {
+     "to": "children"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   }
+  },
+  "CoverPattern": {
+   "to": "CoverPattern",
+   "op": "rename",
+   "props": {
+    "hue": {
+     "to": "tone",
+     "values": {
+      "145 (sarf)": "green",
+      "28 (sarf-alt)": "slate",
+      "270 (nahiv)": "blue",
+      "200 (nahiv-alt)": "sky",
+      "60 (mantık)": "slate",
+      "340 (akaid)": "slate",
+      "165 (tefsir)": "green",
+      "215 (köşk)": "sky",
+      "220 (default)": "sky"
+     },
+     "transform": "any other hue: nearest of the four tones — 0–86: slate, 87–184: green, 185–234: sky, 235–338: blue, 339–359: slate; prefer seed={course.id}"
+    },
+    "height": {
+     "to": "size",
+     "values": {
+      "<=100": "sm",
+      "101..180": "md",
+      ">180": "lg"
+     }
+    },
+    "label": {
+     "to": "label"
+    },
+    "dense": {
+     "to": "size",
+     "values": {
+      "true": "sm"
+     }
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   }
+  },
+  "Icon": {
+   "to": "Icon",
+   "op": "rename",
+   "props": {
+    "name": {
+     "to": "name",
+     "note": "same registry names"
+    },
+    "size": {
+     "to": "size",
+     "values": {
+      "<=17": "sm",
+      "18..21": "md",
+      ">=22": "lg"
+     }
+    },
+    "filled": {
+     "to": "filled"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   }
+  },
+  "Logo": {
+   "to": "Logo",
+   "op": "rename",
+   "props": {
+    "mark": {
+     "to": "app",
+     "values": {
+      "madrasah": "tedris",
+      "nizam": "nizam"
+     },
+     "note": "SPEC-D3-02 default: one live Medaris mark for every app; app only sets the subtitle"
+    },
+    "size": {
+     "to": "size",
+     "values": {
+      "<=24": "sm",
+      "25..40": "md",
+      ">40": "lg"
+     }
+    },
+    "withWordmark": {
+     "to": "wordmark"
+    },
+    "subtitle": {
+     "to": "subtitle",
+     "note": "'Online Madrasah' → the app's name; the product is Medaris"
+    },
+    "style": {
+     "to": null,
+     "note": "no inline style: className only"
+    }
+   }
+  },
+  "controlStyle": {
+   "to": null,
+   "op": "drop",
+   "props": {},
+   "note": "the .mds-input class is the shared control box"
+  },
+  "ICON_NAMES": {
+   "to": "iconNames",
+   "op": "rename",
+   "props": {},
+   "note": "a lowercase export (a capitalised export is taken for a component by the bundle generator); generated from assets/icons.svg"
+  },
+  "FILLED_ICON_NAMES": {
+   "to": "iconNames",
+   "op": "restructure",
+   "props": {},
+   "note": "folded into the registry: a name is fill-capable when its sprite symbol has a -fill twin (star, play, bookmark)"
+  }
+ },
+ "subTypes": {
+  "DataTableColumn": {
+   "to": "TableColumn",
+   "fields": {
+    "header": {
+     "to": "header"
+    },
+    "key": {
+     "to": "key",
+     "transform": "required: the row field it shows; if #95 omitted it, derive it from the field name or use `col-${index}`"
+    },
+    "cell": {
+     "to": "render"
+    },
+    "width": {
+     "to": "width",
+     "transform": "fr / auto tracks → omit width (the table sizes columns); px or % → keep on <col>"
+    },
+    "align": {
+     "to": "align"
+    },
+    "muted": {
+     "to": "emphasis",
+     "values": {
+      "true": "muted"
+     }
+    },
+    "strong": {
+     "to": "emphasis",
+     "values": {
+      "true": "strong"
+     }
+    }
+   }
+  },
+  "BreadcrumbItem": {
+   "to": "BreadcrumbItem",
+   "fields": {
+    "label": {
+     "to": "label"
+    },
+    "href": {
+     "to": "href",
+     "note": "omit on the current page"
+    }
+   }
+  },
+  "TabItem": {
+   "to": "TabsTab",
+   "fields": {
+    "id": {
+     "to": "value"
+    },
+    "label": {
+     "to": "label"
+    },
+    "badge": {
+     "to": "count",
+     "transform": "number only; a string badge becomes part of the label"
+    }
+   }
+  }
+ },
+ "literals": {
+  "#dbeafe": {
+   "where": "Logo.jsx — Madrasah mark glyph",
+   "to": null,
+   "note": "the #95 marks are not used (SPEC-D3-02 default a): render <Logo>"
+  },
+  "#cbd5e1": {
+   "where": "WeekAccordion.jsx — active week border",
+   "to": "--border-neutral-secondary",
+   "property": "border"
+  },
+  "rgba(29, 78, 216, 0.04)": {
+   "where": "LessonRow.jsx — current-lesson row fill",
+   "to": "--background-brand-subtle",
+   "property": "bg",
+   "note": "plus the visible 'Sıradaki' marker"
+  },
+  "rgba(100,116,139,.4)": {
+   "where": "LessonRow.jsx — strike-through on done lessons",
+   "to": null,
+   "note": "no strikethrough on done (tekrar is the method)"
+  },
+  "rgba(255,255,255,.94)": {
+   "where": "OgrenmeScreen.jsx — chip over cover art",
+   "to": "--background-white",
+   "property": "bg",
+   "note": "opaque"
+  },
+  "#fcfcfd": {
+   "where": "LiveLessonScreen.jsx — curriculum rail ground",
+   "to": "--background-neutral-primary",
+   "property": "bg"
+  },
+  "oklch(0.97 0.025 145)": {
+   "where": "CourseScreen.jsx — course header gradient wash",
+   "to": null,
+   "note": "no decorative gradient outside a course cover (MDS-COL-07): the header keeps the plain surface the wash ends on (--surface → --background-white); a course's colour is its CoverPattern"
+  },
+  "#1739a8": {
+   "where": "packages/design-system/src/css/base.css `a:hover` (and GUIDE.md:147)",
+   "to": null,
+   "note": "link hover is an underline in --text-brand-primary; no second link colour"
+  }
+ },
+ "css": {
+  "[dir=\"rtl\"], .ar": {
+   "from": "font-family: var(--font-arabic); direction: rtl; line-height: var(--lh-arabic)",
+   "to": "lang=\"ar\" dir=\"rtl\" on the element + class .mds-arabic (UI and inline runs) or .mds-arabic-text (classical and Qur'anic text)",
+   "note": "unified base.css gives right-to-left text ([dir=rtl], or dir=auto that resolves to rtl) --font-arabic only, at a specificity a face class beats (.mds-arabic-text sets --font-arabic-text); the leading and size come from the class"
+  },
+  "a": {
+   "from": "color: var(--accent); text-decoration: none",
+   "to": "base.css a (--text-brand-primary, underlined) or <Button variant=\"link\">",
+   "note": "#95 links had no underline; unified links keep it (colour never alone)"
+  },
+  "a:hover": {
+   "from": "color: #1739a8; text-decoration: underline",
+   "to": null,
+   "note": "see literals #1739a8"
+  },
+  "ar / backAr flags in kit data (e.g. DecksScreen backAr: true, lesson.jsx ar: true)": {
+   "to": "render that field inside <span lang=\"ar\" dir=\"rtl\" class=\"mds-arabic-text\">",
+   "note": "a flag in data becomes markup at render time"
+  },
+  "bare Arabic runs inside Turkish strings (e.g. CourseScreen.jsx:18 'Beşinci babın şerhi — فَتَحَ bâbı')": {
+   "to": "a string the screen writes: split it, the Arabic run in <span lang=\"ar\" dir=\"rtl\" class=\"mds-arabic\">…</span>; a string that stands for author or user data (a lesson title, as here): the whole string in <bdi>, or on an element with dir=\"auto\" (MDS-TYPE-07)",
+   "note": "check-port flags Arabic-script characters outside an element carrying lang=\"ar\", a <bdi> or dir=\"auto\""
+  },
+  "hue-templated colours in kit markup (e.g. OgrenmeScreen.jsx:36 `oklch(0.92 0.05 ${item.hue})`, the köşk tile on a course cover)": {
+   "to": "<Avatar entity name=\"{köşk}\"> (.mds-avatar--entity): a square köşk tile on the avatar ground",
+   "note": "a colour computed from a hue has no token: a course's colour is its CoverPattern tone (MDS-COL-07), and a köşk or medrese is a square entity tile (MDS-SHAPE-03). The #95 mark inside the tile is not used (literals: #dbeafe)"
+  }
+ },
+ "globals": {
+  "window.DS": {
+   "to": "window.MedarisDesignSystem_628e07",
+   "note": "the bundle namespace the canonical project's generator writes (read from _ds_bundle.js); in code, import from the package instead. `const { Button } = window.DS` → `const { Button } = window.MedarisDesignSystem_628e07`"
+  },
+  "window.MadrasahDS": {
+   "to": "window.MedarisDesignSystem_628e07",
+   "note": "same as window.DS (used by the #95 cards)"
+  }
+ },
+ "jsApi": {
+  "tokens": {
+   "to": null,
+   "note": "dropped: read tokens in CSS with var(--name); a JS consumer reads _ds_manifest.json"
+  },
+  "cssVar": {
+   "to": null,
+   "note": "dropped: write var(--name) directly"
+  },
+  "TokenName": {
+   "to": null,
+   "note": "dropped type: the manifest's token names are the list"
+  }
+ },
+ "reserved": {
+  "date-time field": {
+   "to": "DateTimeField",
+   "phase": 2
+  },
+  "weekday picker": {
+   "to": "ChoiceChips",
+   "note": "multiple, inside a Field with a visible legend 'Günler'"
+  },
+  "recurrence preview list": {
+   "to": "RecurrencePreview",
+   "phase": 2
+  },
+  "time-zone label": {
+   "to": "TimeZoneLabel",
+   "phase": 2
+  },
+  "user picker (search by e-mail)": {
+   "to": "Combobox",
+   "phase": 2
+  },
+  "recording card": {
+   "to": "RecordingCard",
+   "phase": 2
+  },
+  "video embed": {
+   "to": "VideoEmbed",
+   "phase": 2
+  },
+  "upload progress": {
+   "to": "Progress",
+   "note": "label 'Yükleniyor' + showValue"
+  },
+  "calendar menu": {
+   "to": "Menu",
+   "phase": 2
+  },
+  "locked-lesson row": {
+   "to": "LessonRow",
+   "note": "access=\"locked\""
+  },
+  "enrollment status card": {
+   "to": "EnrolmentCard",
+   "phase": 2
+  },
+  "empty state": {
+   "to": "EmptyState"
+  },
+  "role badge": {
+   "to": "Badge",
+   "note": "variant=\"secondary\": a role is what someone is (identity family)"
+  }
+ }
+}
