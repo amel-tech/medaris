@@ -1,27 +1,42 @@
-<!-- @dsCard group="Data display" viewport="820x300" name="Card" subtitle="12px radius, 1px hairline, shadow-xs — the container every list item and dashboard tile is built from" -->
-<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:24px;background:var(--background-neutral-primary);font-family:var(--font-ui)}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-.foot{display:flex;align-items:center;gap:8px;margin-top:18px}
-.stat{font-family:var(--font-display);font-size:32px;font-weight:700;line-height:1;color:var(--text-neutral-primary)}
+<!-- @dsCard group="Data display" viewport="820x640" name="Card" subtitle="12px radius, 1px hairline, resting elevation — a cover on top, a meta footer, a whole-card link in the title, and Stat with its cue" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:var(--space-lg);background:var(--background-neutral-primary);font-family:var(--font-ui);color:var(--text-neutral-primary)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-md);align-items:start}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-md);align-items:stretch;margin-block-start:var(--space-md)}
+.foot{display:flex;align-items:center;gap:var(--space-sm);margin-block-start:var(--space-md)}
+.meta{display:flex;flex-wrap:wrap;align-items:center;margin:0}
+.stats .mds-progress__label{margin-block-start:12px}
+.note{margin:var(--space-md) 0 0;font-size:var(--fs-caption);color:var(--text-neutral-tertiary);line-height:var(--lh-body);max-inline-size:760px}
+.note code{white-space:nowrap}
 </style></head><body>
 <div class="grid">
-  <div class="mds-card">
-    <div class="top"><h3 class="mds-card__title">Sarf Dersi</h3><span class="mds-badge mds-badge--success">Aktif</span></div>
-    <p class="mds-card__body">12 talebe · haftada 2 ders · son ders 3 gün önce</p>
-    <div class="foot"><button class="mds-btn mds-btn--small mds-btn--primary">Derse git</button><button class="mds-btn mds-btn--small mds-btn--ghost">Düzenle</button></div>
+  <div class="mds-card mds-card--interactive">
+    <div class="mds-card__media"><div class="mds-cover mds-cover--sky"><p class="mds-eyebrow mds-cover__label" dir="auto">Nahiv</p></div></div>
+    <div class="mds-card__header"><h3 class="mds-card__title" dir="auto"><a class="mds-card__link" href="#avamil">Avâmil ve Emsile</a></h3></div>
+    <p class="mds-card__body" dir="auto">Müderris Abdülhamit Karaosmanoğlu</p>
+    <div class="mds-card__footer"><p class="meta">12 hafta<span class="mds-sep" aria-hidden="true">·</span>Cmt 21:00</p></div>
   </div>
-  <div class="mds-card">
-    <div class="top"><h3 class="mds-card__title">Nahiv Dersi</h3><span class="mds-badge mds-badge--warning">Bekliyor</span></div>
-    <p class="mds-card__body">4 talebe · başlangıç tarihi henüz belirlenmedi</p>
-    <div class="foot"><button class="mds-btn mds-btn--small mds-btn--outline">Planla</button></div>
+  <div class="mds-card mds-card--interactive" style="border-color:var(--border-neutral-secondary);box-shadow:var(--ring-focus)">
+    <div class="mds-card__media"><div class="mds-cover mds-cover--green"><p class="mds-eyebrow mds-cover__label" dir="auto">Sarf</p></div></div>
+    <div class="mds-card__header"><h3 class="mds-card__title" dir="auto"><a class="mds-card__link" href="#bina">Bina ve Maksud</a></h3><span class="mds-badge mds-badge--brand">Devam ediyor</span></div>
+    <p class="mds-card__body" dir="auto">Müderris Ahmed Hüsrev Efendi</p>
+    <div class="mds-card__footer"><p class="meta"><bdi>Nûruosmaniye Köşkü</bdi></p></div>
   </div>
-  <div class="mds-card">
-    <p class="mds-caption" style="margin:0 0 8px">Bu hafta tamamlanan ezber</p>
-    <span class="stat">38</span>
-    <p class="mds-card__body" style="margin-top:10px">Geçen haftaya göre +6</p>
-    <div class="mds-progress" style="margin-top:14px"><div class="mds-progress__bar" style="width:72%"></div></div>
+  <div class="mds-card" data-density="compact">
+    <div class="mds-card__header"><h3 class="mds-card__title" dir="auto">Sarf Dersi</h3><span class="mds-badge mds-badge--primary">Yayında</span></div>
+    <p class="mds-card__body">12 talebe · haftada 2 oturum · son oturum 3 gün önce</p>
+    <div class="foot"><button type="button" class="mds-btn mds-btn--small mds-btn--primary">Oturum ekle</button><button type="button" class="mds-btn mds-btn--small mds-btn--ghost">Düzenle</button></div>
+    <div class="mds-card__footer">Güncelleme: 26 Eylül 2026</div>
   </div>
 </div>
+<div class="stats">
+  <div class="mds-card mds-stat"><span class="mds-caption">Kayıtlı talebe</span><span class="mds-stat__value">1.248</span></div>
+  <div class="mds-card mds-stat mds-stat--success"><span class="mds-caption">Kursu tamamlayan</span><span class="mds-stat__value"><span class="mds-stat__cue">+6 bu hafta</span>38</span></div>
+  <div class="mds-card mds-stat mds-stat--error"><span class="mds-caption">Yüklenemeyen ders kaydı</span><span class="mds-stat__value"><span class="mds-stat__cue"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#warning"/></svg></span>2</span></div>
+  <div class="mds-card mds-stat"><span class="mds-caption">Bu hafta ezber</span><span class="mds-stat__value">38</span>
+    <div class="mds-progress__label"><span id="hedef">Haftalık hedef</span><span class="mds-progress__value" aria-hidden="true">%72</span></div>
+    <div class="mds-progress" role="progressbar" aria-labelledby="hedef" aria-valuenow="72" aria-valuemin="0" aria-valuemax="100" aria-valuetext="%72"><div class="mds-progress__bar" style="--mds-progress:72%"></div></div>
+  </div>
+</div>
+<p class="note" lang="en">A clickable card is one link, in its title: its <code>::after</code> covers the card, so it is one tab stop and the buttons inside still work. Hover changes the border only, and the card draws the link's focus ring (second card: hover and focus). <code>media</code> is a full-bleed CoverPattern; <code>footer</code> is the hairline meta row. The third card is a <code>data-density="compact"</code> region, 16px inset. A Stat's tone colours the number only beside its cue — a delta label or an icon printed first (MDS-COL-03); without one it renders neutral.</p>
 </body></html>

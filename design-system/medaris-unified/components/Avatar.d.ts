@@ -1,16 +1,17 @@
 import * as React from 'react';
 
-export declare function initials(name?: string): string;
-
 export interface AvatarProps extends React.HTMLAttributes<HTMLSpanElement> {
+  /** the person's or the institution's full name: the initials and the accessible name */
   name?: string;
   src?: string;
+  /** 32 / 40 / 56 */
   size?: 'sm' | 'md' | 'lg';
+  /** the name is printed beside it: aria-hidden, no role */
+  decorative?: boolean;
+  /** an institution or object (köşk, medrese, deste): a square on --radius-s */
+  entity?: boolean;
+  /** the locale that upper-cases the initials; default the nearest lang attribute, else tr-TR */
+  locale?: string;
 }
 export declare function Avatar(props: AvatarProps): JSX.Element;
-
-export interface AvatarStackProps {
-  people: Array<{ name?: string; src?: string }>;
-  max?: number;
-}
-export declare function AvatarStack(props: AvatarStackProps): JSX.Element;
+export declare function initials(name?: string, locale?: string): string;

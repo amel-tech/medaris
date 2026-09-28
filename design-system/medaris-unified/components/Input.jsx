@@ -1,34 +1,26 @@
 import React from 'react';
 
-export function Input({ size = 'regular', error = false, className = '', ...rest }) {
+/* Wraps .mds-input. Native attributes, aria-* included, go to the <input>. With
+   `leading` or `trailing` the input sits in .mds-input-group; both adornments
+   are decorative, so a unit is also written into the label ("Süre (dk)"). */
+export function Input({
+  size = 'regular', error = false, mono = false, leading, trailing, className = '', ...rest
+}) {
   const cls = [
     'mds-input',
     size !== 'regular' && `mds-input--${size}`,
-    error && 'is-error',
+    mono && 'mds-input--mono',
     className,
   ].filter(Boolean).join(' ');
-  return <input className={cls} aria-invalid={error || undefined} {...rest} />;
-}
-
-export function Textarea({ error = false, className = '', ...rest }) {
-  const cls = ['mds-input', 'mds-textarea', error && 'is-error', className]
-    .filter(Boolean).join(' ');
-  return <textarea className={cls} aria-invalid={error || undefined} {...rest} />;
-}
-
-let uid = 0;
-export function Field({ label, help, error, children, className = '' }) {
-  const id = React.useMemo(() => `mds-f${++uid}`, []);
-  const describedBy = error ? `${id}-e` : help ? `${id}-h` : undefined;
+  const input = (
+    <input className={cls} dir={mono ? 'ltr' : undefined} aria-invalid={error || undefined} {...rest} />
+  );
+  if (!leading && !trailing) return input;
   return (
-    <div className={['mds-field', className].filter(Boolean).join(' ')}>
-      {label && <label className="mds-label" htmlFor={id}>{label}</label>}
-      {React.isValidElement(children)
-        ? React.cloneElement(children, { id, error: Boolean(error), 'aria-describedby': describedBy })
-        : children}
-      {error
-        ? <span className="mds-error" id={`${id}-e`}>{error}</span>
-        : help ? <span className="mds-help" id={`${id}-h`}>{help}</span> : null}
-    </div>
+    <span className="mds-input-group">
+      {leading && <span className="mds-input-group__leading" aria-hidden="true">{leading}</span>}
+      {input}
+      {trailing && <span className="mds-input-group__trailing" aria-hidden="true">{trailing}</span>}
+    </span>
   );
 }

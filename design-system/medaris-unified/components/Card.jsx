@@ -1,28 +1,29 @@
 import React from 'react';
 
-export function Card({ title, action, children, className = '', ...rest }) {
+/* .mds-card. A clickable card is one link, in its title (href): the link's ::after covers the card,
+   so it is one tab stop and the buttons inside it still work. */
+export function Card({
+  title, action, headingLevel = 3, media, footer, href, density = 'regular',
+  children, className = '', ...rest
+}) {
+  const Heading = `h${[2, 3, 4].includes(headingLevel) ? headingLevel : 3}`;
+  const interactive = Boolean(href && title);
+  const cls = ['mds-card', interactive && 'mds-card--interactive', className].filter(Boolean).join(' ');
   return (
-    <div className={['mds-card', className].filter(Boolean).join(' ')} {...rest}>
+    <div className={cls} data-density={density === 'compact' ? 'compact' : undefined} {...rest}>
+      {media && <div className="mds-card__media">{media}</div>}
       {(title || action) && (
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-sm)' }}>
-          {title && <h3 className="mds-card__title">{title}</h3>}
+        <div className="mds-card__header">
+          {title && (
+            <Heading className="mds-card__title" dir="auto">
+              {interactive ? <a className="mds-card__link" href={href}>{title}</a> : title}
+            </Heading>
+          )}
           {action}
         </div>
       )}
       {children}
-    </div>
-  );
-}
-
-export function Stat({ label, value, tone = 'neutral', children }) {
-  const color = tone === 'error' ? 'var(--text-error-primary)'
-    : tone === 'success' ? 'var(--text-success-primary)'
-    : 'var(--text-neutral-primary)';
-  return (
-    <div className="mds-card">
-      <span className="mds-caption">{label}</span>
-      <span style={{ display: 'block', marginTop: 6, fontFamily: 'var(--font-display)', fontSize: 'var(--fs-h4)', fontWeight: 'var(--weight-bold)', lineHeight: 1, color }}>{value}</span>
-      {children}
+      {footer && <div className="mds-card__footer">{footer}</div>}
     </div>
   );
 }

@@ -1,32 +1,94 @@
-<!-- @dsCard group="Forms" viewport="820x420" name="Input" subtitle="36px default, 6px radius, 1px gray-300 — with all seven states the file defines" -->
-<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:24px;background:var(--background-white);font-family:var(--font-ui)}
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 28px;max-width:720px}
-.k{font-family:var(--font-mono);font-size:10px;color:var(--text-neutral-disabled);display:block;margin-bottom:5px}
-.sizes{display:flex;gap:12px;align-items:center;margin-top:22px}
-.note{margin-top:18px;font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:720px}
+<!-- @dsCard group="Forms" viewport="820x760" name="Input" subtitle="36px default, 6px radius, 1px gray-300 — the seven states the file defines, read-only, and the field around them" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:var(--space-lg);background:var(--background-white);font-family:var(--font-ui);color:var(--text-neutral-primary)}
+.sec{display:flex;flex-direction:column;gap:12px;max-inline-size:772px}
+.sec + .sec{margin-block-start:var(--space-lg)}
+.sec > p{margin:0}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-md)}
+.grid--3{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-md) var(--space-lg)}
+.k{display:block;margin-block-end:var(--space-xs);font-family:var(--font-mono);font-size:var(--fs-footnote);color:var(--text-neutral-tertiary)}
+.sizes{display:flex;gap:12px;align-items:center}
+.sizes .mds-input{flex:1;min-inline-size:0}
+.note{margin:0;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-tertiary)}
 </style></head><body>
+<div class="sec">
+<p class="mds-eyebrow" lang="en">States</p>
 <div class="grid">
-<div><span class="k">empty</span><input class="mds-input" value="" readonly></div>
-<div><span class="k">placeholder</span><input class="mds-input" placeholder="Talebe adı" readonly></div>
-<div><span class="k">value</span><input class="mds-input" value="Ahmed b. Hanbel" readonly></div>
-<div><span class="k">focus</span><input class="mds-input is-focus" value="Ahmed b. Hanbel" readonly></div>
-<div><span class="k">error</span><input class="mds-input is-error" value="ahmed@" readonly></div>
-<div><span class="k">error + focus</span><input class="mds-input is-error is-focus" value="ahmed@" readonly></div>
-<div><span class="k">disabled</span><input class="mds-input is-disabled" value="Değiştirilemez" disabled></div>
-<div><span class="k">field — label, help, error</span>
-  <div class="mds-field">
-    <label class="mds-label">E-posta</label>
-    <input class="mds-input is-error" value="ahmed@" readonly>
-    <span class="mds-error">Geçerli bir e-posta girin.</span>
-  </div>
+<div><span class="k" lang="en">empty</span><input class="mds-input" aria-label="Talebe adı"></div>
+<div><span class="k" lang="en">placeholder</span><input class="mds-input" placeholder="Talebe adı" aria-label="Talebe adı"></div>
+<div><span class="k" lang="en">value</span><input class="mds-input" value="Ahmed b. Hanbel" aria-label="Talebe adı"></div>
+<div><span class="k" lang="en">focus</span><input class="mds-input is-focus" value="Ahmed b. Hanbel" aria-label="Talebe adı"></div>
+<div><span class="k" lang="en">error — aria-invalid</span><input class="mds-input" aria-invalid="true" value="ahmed@" aria-label="E-posta"></div>
+<div><span class="k" lang="en">error + focus</span><input class="mds-input is-error is-focus" aria-invalid="true" value="ahmed@" aria-label="E-posta"></div>
+<div><span class="k" lang="en">read-only</span><input class="mds-input" readonly value="abdulhamit@medaris.org" aria-label="E-posta"></div>
+<div><span class="k" lang="en">disabled</span><input class="mds-input" disabled value="Değiştirilemez" aria-label="Kurs kodu"></div>
 </div>
 </div>
-<div class="sizes">
-<input class="mds-input mds-input--mini" style="width:130px" placeholder="Mini 24" readonly>
-<input class="mds-input mds-input--small" style="width:150px" placeholder="Small 32" readonly>
-<input class="mds-input" style="width:170px" placeholder="Regular 36" readonly>
-<input class="mds-input mds-input--large" style="width:190px" placeholder="Large 42" readonly>
+
+<div class="sec">
+<p class="mds-eyebrow" lang="en">In a field — label, help or error, required, mono, adornments, file</p>
+<p class="mds-help">* zorunlu alan</p>
+<div class="grid grid--3">
+<div class="mds-field">
+  <label class="mds-label" for="i1">Kurs adı<span class="mds-required" aria-hidden="true">*</span></label>
+  <input class="mds-input" id="i1" required aria-required="true" aria-describedby="i1-h" value="Tefsir Usûlüne Giriş">
+  <span class="mds-help" id="i1-h">Talebeler bu adı görür.</span>
 </div>
-<p class="note">Inputs are the one control on <code>--radius-xs</code> (6) rather than <code>--radius-s</code> (8) — that is the file's value and it is what visually separates a field from a button sitting next to it. Placeholder text uses <code>--text-neutral-disabled</code>; the Figma kit reaches for <code>neutral-500</code> there while the semantic layer says <code>gray-500</code>, a drift of two hue steps that this layer resolves in favour of the token.</p>
+<div class="mds-field">
+  <label class="mds-label" for="i2">E-posta</label>
+  <input class="mds-input" id="i2" type="email" aria-invalid="true" aria-describedby="i2-e" value="ahmed@">
+  <span class="mds-error" id="i2-e">Geçerli bir e-posta girin.</span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="i3">E-posta</label>
+  <input class="mds-input" id="i3" type="email" readonly aria-describedby="i3-h" value="abdulhamit@medaris.org">
+  <span class="mds-help" id="i3-h">Giriş yaptığınız adres.</span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="i4">Toplantı bağlantısı<span class="mds-required" aria-hidden="true">*</span></label>
+  <input class="mds-input mds-input--mono" id="i4" type="url" dir="ltr" required aria-required="true" value="https://meet.google.com/bqx-mfzn-rde">
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="i5">Kurs ara</label>
+  <span class="mds-input-group">
+    <span class="mds-input-group__leading" aria-hidden="true"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#search"/></svg></span>
+    <input class="mds-input" id="i5" type="search" placeholder="Kurs, köşk veya müderris">
+  </span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="i6">Süre (dk)</label>
+  <span class="mds-input-group">
+    <input class="mds-input" id="i6" type="number" value="60">
+    <span class="mds-input-group__trailing" aria-hidden="true">dk</span>
+  </span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="i7">Ders kaydı</label>
+  <input class="mds-input" id="i7" type="file" accept="video/*">
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="i8">Etiketler</label>
+  <input class="mds-input" id="i8" aria-describedby="i8-h" value="fıkıh, usûl, Hanefî">
+  <span class="mds-help" id="i8-h">Virgülle ayırın.</span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="i9">Ders özeti</label>
+  <textarea class="mds-input mds-textarea" id="i9" rows="2" dir="auto">Usûl-i tefsîrin temel kavramları: nüzûl sebepleri, nâsih ve mensûh.</textarea>
+</div>
+</div>
+</div>
+
+<div class="sec">
+<p class="mds-eyebrow" lang="en">Sizes — 24 · 32 · 36 · 42</p>
+<div class="sizes" lang="en">
+<input class="mds-input mds-input--mini" placeholder="Mini 24" aria-label="Mini">
+<input class="mds-input mds-input--small" placeholder="Small 32" aria-label="Small">
+<input class="mds-input" placeholder="Regular 36" aria-label="Regular">
+<input class="mds-input mds-input--large" placeholder="Large 42" aria-label="Large">
+</div>
+</div>
+
+<div class="sec">
+<p class="note" lang="en">Inputs are the one control on <code>--radius-xs</code> (6) rather than <code>--radius-s</code> (8) — that is the file's value and it is what visually separates a field from a button sitting next to it. Placeholder text uses <code>--text-neutral-disabled</code>. Read-only keeps the value in primary ink on the secondary ground; disabled greys it and leaves the form. Adornments are <code>aria-hidden</code>, so a unit is also in the label. The boundary (1.47:1 on white) is OPEN-3 and the error ring (1.45:1) OPEN-1: both as extracted.</p>
+</div>
 </body></html>

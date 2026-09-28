@@ -1,26 +1,48 @@
-<!-- @dsCard group="Navigation" viewport="760x480" name="Sidebar" subtitle="The müderris navigation on slate-900 — active item takes the brand fill, not a tint" -->
-<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:0;background:var(--background-neutral-primary);font-family:var(--font-ui)}
-.side{width:248px;min-height:480px;background:var(--background-neutral-inverse-primary);padding:20px 12px;display:flex;flex-direction:column}
-.brand{display:flex;align-items:center;gap:10px;padding:0 12px 4px;color:var(--text-white);font-family:var(--font-display);font-size:18px;font-weight:700}
-.mark{width:28px;height:28px;border-radius:8px;background:var(--background-brand-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700}
+<!-- @dsCard group="Navigation" viewport="760x520" name="Sidebar" subtitle="Two surfaces: inverse for the müderris shell, .mds-nav--light for screens ported from #95 (SPEC-D3-04); counts on both, a lock at inline-end" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;background:var(--background-neutral-primary);font-family:var(--font-ui);color:var(--text-neutral-primary)}
+.row{display:grid;grid-template-columns:var(--layout-sidebar) var(--layout-sidebar) 1fr;min-block-size:520px}
+.side{display:flex;flex-direction:column;padding:var(--space-lg) var(--space-md)}
+.side--inverse{background:var(--background-neutral-inverse-primary)}
+.side--light{background:var(--background-white);border-inline-end:var(--border-s) solid var(--border-neutral-primary)}
+.side>.mds-logo{margin-block-end:var(--space-xs)}
 .spacer{flex:1}
-.user{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--background-neutral-inverse-secondary);margin-top:12px}
-.uname{font-size:13px;color:var(--text-neutral-inverse-primary);font-weight:500;line-height:1.3}
-.urole{font-size:11px;color:var(--text-neutral-inverse-tertiary)}
-svg{flex:none}
+.notes{display:flex;flex-direction:column;gap:var(--space-md);padding:var(--space-lg)}
+.note{margin:0;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-tertiary)}
 </style></head><body>
-<nav class="side">
-  <div class="brand"><span class="mark">M</span> Medaris</div>
-  <div class="mds-nav-section">Genel</div>
-  <a class="mds-nav-item is-active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg> Ana Sayfa</a>
-  <a class="mds-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h7a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H4z"/><path d="M20 5h-3a3 3 0 0 0-3 3v11a2 2 0 0 1 2-2h4z"/></svg> Derslerim</a>
-  <a class="mds-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6M18 20a6 6 0 0 0-3-5.2"/></svg> Talebelerim</a>
-  <a class="mds-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M7 9h6M7 13h4"/><path d="M21 8v9a2 2 0 0 1-2 2"/></svg> Ezber Kartları</a>
-  <div class="mds-nav-section">Müderris</div>
-  <a class="mds-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l7-5 7 5v12"/><path d="M10 21v-5h4v5"/></svg> Medresem</a>
-  <a class="mds-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 15H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7"/></svg> Ayarlar</a>
-  <span class="spacer"></span>
-  <div class="user"><span class="mds-avatar mds-avatar--sm">TA</span><span><span class="uname">Taha Ayan</span><br><span class="urole">Müderris</span></span></div>
-</nav>
+<div class="row">
+  <nav class="side side--inverse" aria-label="Ana menü">
+    <span class="mds-logo mds-logo--inverse" role="img" aria-label="Medaris — Nizam"><svg class="mds-logo__mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect class="mds-logo__ground" width="48" height="48" rx="12"/><g class="mds-logo__arch" filter="url(#sb-f1)"><path d="M14.4327 24.2434V38.1C14.4327 38.9284 15.1042 39.6 15.9327 39.6H23.7173V8.4C15.0737 9.68201 14.9368 16.815 16.0327 20.4C14.0326 21.2 14.4327 23.2 14.4327 24.2434Z"/><path d="M33.3172 24.2434V38.1C33.3172 38.9284 32.6456 39.6 31.8172 39.6H24.0325V8.4C32.6762 9.68201 32.8131 16.815 31.7172 20.4C33.7172 21.2 33.3172 23.2 33.3172 24.2434Z"/></g><defs><filter id="sb-f1" x="14.4" y="8.4" width="18.9498" height="31.2" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset/><feGaussianBlur stdDeviation="0.375"/><feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3 0"/><feBlend mode="normal" in2="shape" result="effect1_innerShadow_1_2"/></filter></defs></svg><span class="mds-logo__text"><span class="mds-logo__word">Medaris</span><span class="mds-logo__subtitle" dir="auto">Nizam</span></span></span>
+    <div class="mds-nav-section">Genel</div>
+    <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#home"/></svg>Ana sayfa</a>
+    <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#book"/></svg>Kurslarım</a>
+    <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#calendar"/></svg>Oturumlar<span class="mds-nav-item__count">2<span class="mds-visually-hidden"> bağlantısı eksik</span></span></a>
+    <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#users"/></svg>Talebeler</a>
+    <div class="mds-nav-section">Yönetim</div>
+    <a class="mds-nav-item" href="#" aria-current="page"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#student"/></svg>Başvurular<span class="mds-nav-item__count">5<span class="mds-visually-hidden"> bekleyen</span></span></a>
+    <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#settings"/></svg>Ayarlar</a>
+    <span class="spacer"></span>
+    <a class="mds-nav-user" href="#"><span class="mds-avatar mds-avatar--sm" aria-hidden="true">AK</span><span class="mds-nav-user__text"><span class="mds-nav-user__name"><bdi>Abdülhamit Karaosmanoğlu</bdi></span><span class="mds-nav-user__role">Müderris<span class="mds-visually-hidden">, ayarlar</span></span></span><svg class="mds-icon mds-icon--sm mds-icon--directional" aria-hidden="true"><use href="../assets/icons.svg#chevronRight"/></svg></a>
+  </nav>
+  <nav class="side side--light mds-nav--light" aria-label="Talebe menüsü">
+    <span class="mds-logo" role="img" aria-label="Medaris — Tedris"><svg class="mds-logo__mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect class="mds-logo__ground" width="48" height="48" rx="12"/><g class="mds-logo__arch" filter="url(#sb-f2)"><path d="M14.4327 24.2434V38.1C14.4327 38.9284 15.1042 39.6 15.9327 39.6H23.7173V8.4C15.0737 9.68201 14.9368 16.815 16.0327 20.4C14.0326 21.2 14.4327 23.2 14.4327 24.2434Z"/><path d="M33.3172 24.2434V38.1C33.3172 38.9284 32.6456 39.6 31.8172 39.6H24.0325V8.4C32.6762 9.68201 32.8131 16.815 31.7172 20.4C33.7172 21.2 33.3172 23.2 33.3172 24.2434Z"/></g><defs><filter id="sb-f2" x="14.4" y="8.4" width="18.9498" height="31.2" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset/><feGaussianBlur stdDeviation="0.375"/><feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3 0"/><feBlend mode="normal" in2="shape" result="effect1_innerShadow_1_2"/></filter></defs></svg><span class="mds-logo__text"><span class="mds-logo__word">Medaris</span><span class="mds-logo__subtitle" dir="auto">Tedris</span></span></span>
+    <div class="mds-nav-section">Genel</div>
+    <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#home"/></svg>Ana sayfa</a>
+    <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#search"/></svg>Keşfet</a>
+    <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#calendar"/></svg>Programım</a>
+    <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#bell"/></svg>Bildirimler<span class="mds-nav-item__count">3<span class="mds-visually-hidden"> okunmamış</span></span></a>
+    <div class="mds-nav-section">Kurslarım</div>
+    <a class="mds-nav-item" href="#" aria-current="page"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#book"/></svg><bdi>Emsile ve Bina</bdi><span class="mds-nav-item__count">1<span class="mds-visually-hidden"> yeni ders kaydı</span></span></a>
+    <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#book"/></svg><bdi>Akaid Risalesi</bdi><span class="mds-nav-item__trailing"><svg class="mds-icon mds-icon--sm" role="img" aria-label="Kilitli"><use href="../assets/icons.svg#lock"/></svg></span></a>
+    <span class="spacer"></span>
+    <a class="mds-nav-user" href="#"><span class="mds-avatar mds-avatar--sm" aria-hidden="true">ZD</span><span class="mds-nav-user__text"><span class="mds-nav-user__name"><bdi>Zeynep Kübra Demirci</bdi></span><span class="mds-nav-user__role">Talebe<span class="mds-visually-hidden">, ayarlar</span></span></span><svg class="mds-icon mds-icon--sm mds-icon--directional" aria-hidden="true"><use href="../assets/icons.svg#chevronRight"/></svg></a>
+  </nav>
+  <div class="notes" lang="en">
+    <p class="mds-eyebrow">Inverse · light</p>
+    <p class="note">The inverse surface is the canonical müderris shell: the current item takes the brand fill. <code>.mds-nav--light</code> on the <code>&lt;nav&gt;</code> draws the same items on white, with a brand tint and semibold text for the current one — every screen ported from #95 uses it until SPEC-D3-04 is decided.</p>
+    <p class="note">A count sits at inline-end with a visually hidden word after it (“5 bekleyen”); on the current item it inverts. A lock says the course waits on something; the page it opens says what.</p>
+    <p class="note">The current item is <code>aria-current="page"</code> on the link itself. Items the viewer's roles cannot use are not drawn.</p>
+    <p class="note"><code>.mds-nav-user</code> ends every nav: the signed-in person, one link to the settings page, where “Çıkış yap” lives. AppBar's sheet ends with the same link below 768.</p>
+  </div>
+</div>
 </body></html>

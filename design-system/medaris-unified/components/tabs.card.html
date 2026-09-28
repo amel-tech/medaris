@@ -1,20 +1,31 @@
-<!-- @dsCard group="Navigation" viewport="760x260" name="Tabs & breadcrumb" subtitle="2px active underline in brand, 1px hairline under the rest" -->
-<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:24px;background:var(--background-white);font-family:var(--font-ui)}
-.crumb{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-neutral-tertiary);margin-bottom:20px}
-.crumb a{color:var(--text-neutral-tertiary);text-decoration:none}
-.crumb a:hover{color:var(--text-neutral-primary);text-decoration:underline}
-.crumb .cur{color:var(--text-neutral-primary);font-weight:500}
-.body{padding:20px 12px;font-size:14px;color:var(--text-neutral-tertiary)}
-.note{margin-top:8px;font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:660px}
+<!-- @dsCard group="Navigation" viewport="820x350" name="Tabs & breadcrumb" subtitle="2px brand underline on the selected tab, counts in a pill; the breadcrumb says where the URL is, and at 390 keeps only the way back" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:var(--space-lg);background:var(--background-white);font-family:var(--font-ui);color:var(--text-neutral-primary);display:flex;flex-direction:column;gap:var(--space-md)}
+.panel{padding-block:var(--space-md);font-size:var(--fs-body-sm);color:var(--text-neutral-tertiary)}
+.phone{display:grid;grid-template-columns:390px 1fr;gap:var(--space-lg);align-items:start}
+.phone iframe{display:block;inline-size:390px;block-size:156px;border:var(--border-s) solid var(--border-neutral-primary);border-radius:var(--radius-m)}
+.notes{display:flex;flex-direction:column;gap:var(--space-sm)}
+.note{margin:0;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-tertiary)}
 </style></head><body>
-<nav class="crumb"><a href="#">Ana Sayfa</a><span>/</span><a href="#">Derslerim</a><span>/</span><span class="cur">Sarf Dersi</span></nav>
-<div class="mds-tabs">
-  <button class="mds-tab is-active">Genel</button>
-  <button class="mds-tab">Talebeler</button>
-  <button class="mds-tab">Ezber Kartları</button>
-  <button class="mds-tab">Ayarlar</button>
+<nav class="mds-breadcrumb" aria-label="Sayfa yolu"><ol class="mds-breadcrumb__list">
+  <li class="mds-breadcrumb__item"><a class="mds-breadcrumb__link" href="#"><bdi>Köşkler</bdi></a><span class="mds-breadcrumb__sep" aria-hidden="true">/</span></li>
+  <li class="mds-breadcrumb__item"><a class="mds-breadcrumb__link" href="#"><span class="mds-breadcrumb__back" aria-hidden="true"></span><bdi>Nûruosmaniye Köşkü</bdi></a><span class="mds-breadcrumb__sep" aria-hidden="true">/</span></li>
+  <li class="mds-breadcrumb__item"><span class="mds-breadcrumb__current" aria-current="page"><bdi>Emsile ve Bina</bdi></span></li>
+</ol></nav>
+<div>
+  <div class="mds-tabs" role="tablist" aria-label="Kurs bölümleri">
+    <button type="button" class="mds-tab" role="tab" id="kurs-tab-genel" aria-controls="kurs-panel-genel" aria-selected="true" tabindex="0">Genel</button>
+    <button type="button" class="mds-tab" role="tab" id="kurs-tab-talebeler" aria-controls="kurs-panel-talebeler" aria-selected="false" tabindex="-1">Talebeler<span class="mds-tab__count">28</span></button>
+    <button type="button" class="mds-tab" role="tab" id="kurs-tab-oturumlar" aria-controls="kurs-panel-oturumlar" aria-selected="false" tabindex="-1">Oturumlar<span class="mds-tab__count">12</span></button>
+    <button type="button" class="mds-tab" role="tab" id="kurs-tab-kayitlar" aria-controls="kurs-panel-kayitlar" aria-selected="false" tabindex="-1">Ders kayıtları<span class="mds-tab__count">4</span></button>
+  </div>
+  <div class="panel" role="tabpanel" id="kurs-panel-genel" aria-labelledby="kurs-tab-genel" tabindex="0"><bdi>Emsile ve Bina</bdi> · 28 talebe · haftada 2 oturum</div>
 </div>
-<div class="body">Sarf Dersi · 12 talebe · haftada 2 ders</div>
-<p class="note">Tabs switch a view without changing the URL's meaning; a breadcrumb says where the URL already is. Both, on the same screen, is normal here — the breadcrumb locates the ders, the tabs cut it. The active tab is the only element in the system that uses <code>--border-m</code>.</p>
+<div class="phone">
+  <iframe title="Aynı sayfa başı, 390 genişliğinde" srcdoc="<!doctype html><html lang='tr'><head><meta charset='utf-8'><link rel='stylesheet' href='../styles.css'><style>body{margin:0;padding:var(--space-md);background:var(--background-white);display:flex;flex-direction:column;gap:var(--space-sm)}</style></head><body><nav class='mds-breadcrumb' aria-label='Sayfa yolu'><ol class='mds-breadcrumb__list'><li class='mds-breadcrumb__item'><a class='mds-breadcrumb__link' href='#'><bdi>Köşkler</bdi></a><span class='mds-breadcrumb__sep' aria-hidden='true'>/</span></li><li class='mds-breadcrumb__item'><a class='mds-breadcrumb__link' href='#'><span class='mds-breadcrumb__back' aria-hidden='true'></span><bdi>Nûruosmaniye Köşkü</bdi></a><span class='mds-breadcrumb__sep' aria-hidden='true'>/</span></li><li class='mds-breadcrumb__item'><span class='mds-breadcrumb__current' aria-current='page'><bdi>Emsile ve Bina</bdi></span></li></ol></nav><h1 class='mds-h4'>Emsile ve Bina</h1><div class='mds-tabs' role='tablist' aria-label='Kurs bölümleri'><button type='button' class='mds-tab' role='tab' aria-selected='true'>Genel</button><button type='button' class='mds-tab' role='tab' aria-selected='false' tabindex='-1'>Talebeler<span class='mds-tab__count'>28</span></button><button type='button' class='mds-tab' role='tab' aria-selected='false' tabindex='-1'>Oturumlar<span class='mds-tab__count'>12</span></button><button type='button' class='mds-tab' role='tab' aria-selected='false' tabindex='-1'>Ders kayıtları<span class='mds-tab__count'>4</span></button></div></body></html>"></iframe>
+  <div class="notes" lang="en">
+    <p class="note">Tabs cut one object into views; the breadcrumb says where the URL already is, so the two sit together. The selected tab is the only use of <code>--border-m</code>. When the tabs are separate pages, the same row is a <code>&lt;nav&gt;</code> of links with <code>aria-current="page"</code>.</p>
+    <p class="note">At 390 the breadcrumb keeps only the parent, as a back link, and a row wider than the phone scrolls inside itself.</p>
+  </div>
+</div>
 </body></html>

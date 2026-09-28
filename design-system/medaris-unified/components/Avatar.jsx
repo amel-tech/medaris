@@ -1,34 +1,39 @@
 import React from 'react';
 
-/** Initials from a Turkish name: first letter of the first two words. */
-export function initials(name = '') {
-  return name.trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toLocaleUpperCase('tr-TR');
+// Lower-case name particles that take no letter: "Ahmed b. Hanbel" → AH.
+const particles = new Set(['b.', 'bin', 'ibn', 'bt.', 'bint']);
+// Honorifics after the name take no letter either: "İsmail Hakkı Efendi" → İH.
+const honorifics = new Set(['Efendi', 'Bey', 'Hanım', 'Hoca']);
+
+/** Initials: the first letters of the first and the last word that is not a particle or an
+    honorific, upper-cased in the page's locale (tr-TR: i becomes İ). A double given name keeps
+    the surname: "Zeynep Kübra Demirci" → ZD. */
+export function initials(name = '', locale = 'tr-TR') {
+  const words = name.normalize('NFC').trim().split(/\s+/).filter((w) => w && !particles.has(w) && !honorifics.has(w));
+  const letters = (words.length > 1 ? [words[0], words[words.length - 1]] : words).map((w) => Array.from(w)[0]).join('');
+  try { return letters.toLocaleUpperCase(locale); } catch (e) { return letters.toLocaleUpperCase('tr-TR'); }
 }
 
-export function Avatar({ name, src, size = 'md', className = '', ...rest }) {
-  const cls = ['mds-avatar', size !== 'md' && `mds-avatar--${size}`, className].filter(Boolean).join(' ');
-  return (
-    <span className={cls} title={name} {...rest}>
-      {src ? <img src={src} alt={name || ''} /> : initials(name)}
-    </span>
-  );
+// The page's locale (MDS-NUM-01): the locale prop, else the nearest lang once mounted, else tr-TR.
+function usePageLocale(ref, locale) {
+  const [found, setFound] = React.useState(null);
+  React.useEffect(() => {
+    const el = ref.current && ref.current.closest('[lang]');
+    setFound((el && el.lang) || null);
+  }, []);
+  return locale || found || 'tr-TR';
 }
 
-export function AvatarStack({ people = [], max = 3 }) {
-  const shown = people.slice(0, max);
-  const rest = people.length - shown.length;
+export function Avatar({ name, src, size = 'md', decorative = false, entity = false, locale, className = '', ...rest }) {
+  const ref = React.useRef(null);
+  const lang = usePageLocale(ref, locale);
+  const cls = ['mds-avatar', size !== 'md' && `mds-avatar--${size}`, entity && 'mds-avatar--entity', className]
+    .filter(Boolean).join(' ');
+  // Standalone, the avatar is an image named by the person; beside the printed name it is hidden.
+  const a11y = decorative || !name ? { 'aria-hidden': 'true' } : { role: 'img', 'aria-label': name };
   return (
-    <span style={{ display: 'flex' }}>
-      {shown.map((p, i) => (
-        <Avatar key={p.name || i} name={p.name} src={p.src} size="sm"
-          style={{ marginLeft: i ? -10 : 0, boxShadow: '0 0 0 2px var(--background-white)' }} />
-      ))}
-      {rest > 0 && (
-        <span className="mds-avatar mds-avatar--sm"
-          style={{ marginLeft: -10, boxShadow: '0 0 0 2px var(--background-white)', background: 'var(--background-neutral-tertiary)', color: 'var(--text-neutral-tertiary)' }}>
-          +{rest}
-        </span>
-      )}
+    <span ref={ref} className={cls} {...a11y} {...rest}>
+      {src ? <img src={src} alt="" /> : initials(name, lang)}
     </span>
   );
 }

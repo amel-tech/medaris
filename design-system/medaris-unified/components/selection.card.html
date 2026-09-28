@@ -1,30 +1,55 @@
-<!-- @dsCard group="Forms" viewport="760x280" name="Checkbox, radio, switch" subtitle="16px boxes, 36×20 switch — all three fill with sky-900 when on" -->
-<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:24px;background:var(--background-white);font-family:var(--font-ui)}
-.cols{display:flex;gap:56px}
-.h{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-neutral-disabled);margin:0 0 12px}
-label{display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:12px;color:var(--text-neutral-primary)}
-.note{margin-top:18px;font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:700px}
+<!-- @dsCard group="Forms" viewport="820x700" name="Checkbox, radio, switch" subtitle="16px boxes, 36×20 switch, each in a label at least 24px tall — all three fill with sky-900 when on" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:var(--space-lg);background:var(--background-white);font-family:var(--font-ui);color:var(--text-neutral-primary)}
+.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-xl)}
+.col{display:flex;flex-direction:column;gap:12px}
+.col > p{margin:0}
+.rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-xl);margin-block-start:var(--space-lg);padding-block-start:var(--space-lg);border-block-start:var(--border-s) solid var(--border-neutral-primary)}
+.note{margin:var(--space-lg) 0 0;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-tertiary)}
 </style></head><body>
 <div class="cols">
-<div>
-<p class="h">Checkbox</p>
-<label><input type="checkbox" class="mds-check" checked> Ezber tamamlandı</label>
-<label><input type="checkbox" class="mds-check"> Tekrar gerekiyor</label>
-<label style="opacity:.5"><input type="checkbox" class="mds-check" disabled> Kilitli</label>
+<div class="col">
+<p class="mds-eyebrow" lang="en">Checkbox</p>
+<label class="mds-choice"><input type="checkbox" class="mds-check" checked><span class="mds-choice__text"><span class="mds-choice__label">Ezber tamamlandı</span></span></label>
+<label class="mds-choice"><input type="checkbox" class="mds-check"><span class="mds-choice__text"><span class="mds-choice__label">Tekrar gerekiyor</span></span></label>
+<label class="mds-choice"><input type="checkbox" class="mds-check" style="box-shadow:var(--ring-focus)"><span class="mds-choice__text"><span class="mds-choice__label">Sesli okuma eklendi</span></span></label>
+<div class="mds-field"><label class="mds-choice"><input type="checkbox" class="mds-check" required aria-required="true" aria-invalid="true" aria-describedby="c-e"><span class="mds-choice__text"><span class="mds-choice__label">Aydınlatma Metni'ni okudum</span></span></label><span class="mds-error" id="c-e">Devam etmek için metni okuduğunu onayla.</span></div>
+<label class="mds-choice"><input type="checkbox" class="mds-check" disabled><span class="mds-choice__text"><span class="mds-choice__label">Kilitli</span></span></label>
 </div>
-<div>
-<p class="h">Radio</p>
-<label><input type="radio" name="r" class="mds-radio" checked> Müderris</label>
-<label><input type="radio" name="r" class="mds-radio"> Talebe</label>
-<label style="opacity:.5"><input type="radio" name="r2" class="mds-radio" disabled> Misafir</label>
+<div class="col">
+<p class="mds-eyebrow" lang="en">Radio group — fieldset</p>
+<fieldset class="mds-choice-group">
+<legend class="mds-label">Rol</legend>
+<label class="mds-choice"><input type="radio" name="rol" class="mds-radio" checked><span class="mds-choice__text"><span class="mds-choice__label">Müderris</span></span></label>
+<label class="mds-choice"><input type="radio" name="rol" class="mds-radio" style="box-shadow:var(--ring-focus)"><span class="mds-choice__text"><span class="mds-choice__label">Talebe</span></span></label>
+<label class="mds-choice"><input type="radio" name="rol" class="mds-radio"><span class="mds-choice__text"><span class="mds-choice__label">Köşk yöneticisi</span></span></label>
+<label class="mds-choice"><input type="radio" name="rol" class="mds-radio" disabled><span class="mds-choice__text"><span class="mds-choice__label">Ziyaretçi</span></span></label>
+</fieldset>
 </div>
-<div>
-<p class="h">Switch</p>
-<label><input type="checkbox" class="mds-switch" checked> Günlük hatırlatma</label>
-<label><input type="checkbox" class="mds-switch"> Herkese açık kart</label>
-<label style="opacity:.5"><input type="checkbox" class="mds-switch" disabled> Yönetici modu</label>
+<div class="col">
+<p class="mds-eyebrow" lang="en">Switch</p>
+<label class="mds-choice"><input type="checkbox" role="switch" class="mds-switch" checked><span class="mds-choice__text"><span class="mds-choice__label">Günlük hatırlatma</span></span></label>
+<label class="mds-choice"><input type="checkbox" role="switch" class="mds-switch" aria-labelledby="s-l" aria-describedby="s-d"><span class="mds-choice__text"><span class="mds-choice__label" id="s-l">Herkese açık</span><span class="mds-choice__desc" id="s-d">Kursa kayıtlı olmayanlar da bu ders kaydını izleyebilir.</span></span></label>
+<label class="mds-choice"><input type="checkbox" role="switch" class="mds-switch" checked style="box-shadow:var(--ring-focus)"><span class="mds-choice__text"><span class="mds-choice__label">Bildirimleri e-postayla al</span></span></label>
+<label class="mds-choice"><input type="checkbox" role="switch" class="mds-switch" disabled><span class="mds-choice__text"><span class="mds-choice__label">Yönetici modu</span></span></label>
 </div>
 </div>
-<p class="note">Checkbox and radio share one 16px box and differ only in radius — <code>--radius-xxs</code> against <code>--radius-full</code>. A switch commits immediately; a checkbox waits for a submit. If a control needs a Save button next to it, it is not a switch.</p>
+
+<div class="rows">
+<div class="col">
+<p class="mds-eyebrow" lang="en">Bordered — settings rows</p>
+<label class="mds-choice mds-choice--bordered"><input type="checkbox" class="mds-check" name="icazet" checked aria-labelledby="b1-l" aria-describedby="b1-d"><span class="mds-choice__icon" aria-hidden="true"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#certificate"/></svg></span><span class="mds-choice__text"><span class="mds-choice__label" id="b1-l">İcâzet verilebilir</span><span class="mds-choice__desc" id="b1-d">Müfredatı tamamlayan talebeler, müderrisin değerlendirmesiyle icâzete aday olur.</span></span></label>
+<label class="mds-choice mds-choice--bordered"><input type="checkbox" class="mds-check" name="onay" aria-labelledby="b2-l" aria-describedby="b2-d"><span class="mds-choice__icon" aria-hidden="true"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#shieldCheck"/></svg></span><span class="mds-choice__text"><span class="mds-choice__label" id="b2-l">Kayıt başvurusu onaylansın</span><span class="mds-choice__desc" id="b2-d">Talebeler kursa ancak siz onayladıktan sonra katılır.</span></span></label>
+</div>
+<div class="col">
+<p class="mds-eyebrow" lang="en">Bordered radio group</p>
+<fieldset class="mds-choice-group">
+<legend class="mds-label">Yasağın kapsamı</legend>
+<label class="mds-choice mds-choice--bordered"><input type="radio" class="mds-radio" name="kapsam" checked aria-labelledby="k1-l" aria-describedby="k1-d"><span class="mds-choice__text"><span class="mds-choice__label" id="k1-l">Yalnızca bu kurs</span><span class="mds-choice__desc" id="k1-d">Talebe bu kursa erişemez.</span></span></label>
+<label class="mds-choice mds-choice--bordered"><input type="radio" class="mds-radio" name="kapsam" aria-labelledby="k2-l" aria-describedby="k2-d"><span class="mds-choice__text"><span class="mds-choice__label" id="k2-l">Köşkten de yasakla</span><span class="mds-choice__desc" id="k2-d">Köşkün bütün kurslarına erişemez.</span></span></label>
+<label class="mds-choice mds-choice--bordered"><input type="radio" class="mds-radio" name="kapsam" aria-labelledby="k3-l" aria-describedby="k3-d"><span class="mds-choice__text"><span class="mds-choice__label" id="k3-l">Medreseden de yasakla</span><span class="mds-choice__desc" id="k3-d">Medresenin bütün köşklerine erişemez.</span></span></label>
+</fieldset>
+</div>
+</div>
+<p class="note" lang="en">Checkbox and radio share one 16px box and differ only in radius — <code>--radius-xxs</code> against <code>--radius-full</code>; the label around each is the 24px target. A switch commits immediately; a checkbox waits for a submit. If a control needs a Save button next to it, it is not a switch. Open, not fixed: the unchecked boundary is 1.47:1 (OPEN-3) and the switch off state 1.23:1 (SPEC-D3-21).</p>
 </body></html>

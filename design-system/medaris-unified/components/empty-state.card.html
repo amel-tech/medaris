@@ -1,0 +1,43 @@
+<!-- @dsCard group="Feedback" viewport="820x640" name="Empty and system states" subtitle="One sentence about what is missing; whole-page states for 404, 403, errors and the device restriction" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;background:var(--background-neutral-primary);font-family:var(--font-ui);color:var(--text-neutral-primary)}
+.split{display:grid;grid-template-columns:400px 1fr}
+.lists{display:flex;flex-direction:column;gap:var(--space-sm);padding:var(--space-lg)}
+.region{background:var(--background-white);border:var(--border-s) solid var(--border-neutral-primary);border-radius:var(--radius-m)}
+.region-head{padding-block-start:var(--space-md);padding-inline:var(--space-lg)}
+.next{margin-block-start:var(--space-sm)}
+.page{position:relative;border-inline-start:var(--border-s) solid var(--border-neutral-primary)}
+.page > .mds-eyebrow{position:absolute;inset-block-start:var(--space-lg);inset-inline-start:var(--space-lg)}
+.page > .note{position:absolute;inset-block-end:var(--space-lg);inset-inline:var(--space-lg);margin:0;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-tertiary)}
+</style></head><body>
+<div class="split">
+  <div class="lists">
+    <p class="mds-eyebrow" lang="en">EmptyState — an empty list (<span lang="tr">Tedris, sen</span>)</p>
+    <section class="region" aria-labelledby="r1">
+      <div class="region-head"><h2 class="mds-h6" id="r1">Kurslarım</h2></div>
+      <div class="mds-empty">
+        <span class="mds-empty__icon"><svg class="mds-icon mds-icon--lg" aria-hidden="true"><use href="../assets/icons.svg#book"/></svg></span>
+        <p class="mds-empty__text">Henüz bir kursa kaydolmadın.</p>
+        <a class="mds-btn mds-btn--regular mds-btn--secondary" href="/koskler">Köşkleri keşfet</a>
+      </div>
+    </section>
+    <p class="mds-eyebrow next" lang="en">SystemState — 403 in the shell (<span lang="tr">Nizam, siz</span>)</p>
+    <div class="region">
+      <section class="mds-system-state" aria-labelledby="s1">
+        <h2 class="mds-h5" id="s1">Bu sayfaya erişiminiz yok</h2>
+        <p class="mds-system-state__text">Bu köşkü yalnızca köşk yöneticileri ve medrese nazırları yönetebilir.</p>
+        <a class="mds-btn mds-btn--regular mds-btn--secondary" href="/koskler">Köşklerime dön</a>
+      </section>
+    </div>
+  </div>
+  <div class="page">
+    <p class="mds-eyebrow" lang="en">SystemState — the device restriction (B15)</p>
+    <main class="mds-system-state mds-system-state--page" aria-labelledby="s2">
+      <span class="mds-logo mds-logo--lg" role="img" aria-label="Medaris"><svg class="mds-logo__mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect class="mds-logo__ground" width="48" height="48" rx="12"/><g class="mds-logo__arch" filter="url(#es-logo-f1)"><path d="M14.4327 24.2434V38.1C14.4327 38.9284 15.1042 39.6 15.9327 39.6H23.7173V8.4C15.0737 9.68201 14.9368 16.815 16.0327 20.4C14.0326 21.2 14.4327 23.2 14.4327 24.2434Z"/><path d="M33.3172 24.2434V38.1C33.3172 38.9284 32.6456 39.6 31.8172 39.6H24.0325V8.4C32.6762 9.68201 32.8131 16.815 31.7172 20.4C33.7172 21.2 33.3172 23.2 33.3172 24.2434Z"/></g><defs><filter id="es-logo-f1" x="14.4" y="8.4" width="18.9498" height="31.2" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset/><feGaussianBlur stdDeviation="0.375"/><feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3 0"/><feBlend mode="normal" in2="shape" result="effect1_innerShadow_1_2"/></filter></defs></svg></span>
+      <h1 class="mds-h4" id="s2">Erişim kısıtlandı</h1>
+      <p class="mds-system-state__text">Bu bilgisayar erişim kısıtlamasına alınmıştır. Lütfen sistem yöneticisiyle görüşün.</p>
+    </main>
+    <p class="note" lang="en"><code>not-found</code>, <code>forbidden</code>, <code>error</code> and <code>no-role</code> offer at most one way back. <code>restricted</code> replaces the whole app: no chrome, no action, and the owner’s two sentences verbatim. Inside the shell the state is a <code>&lt;section&gt;</code> and its heading follows the page, as in the 403.</p>
+  </div>
+</div>
+</body></html>

@@ -1,20 +1,44 @@
-<!-- @dsCard group="Data display" viewport="820x320" name="Table" subtitle="12/16 cells, hairline rows, header in neutral-tertiary — the talebe list is the reference case" -->
-<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:24px;background:var(--background-white)}
-.wrap{border:1px solid var(--border-neutral-primary);border-radius:var(--radius-m);overflow:hidden}
-.mds-table tbody tr:last-child td{border-bottom:0}
-.nm{display:flex;align-items:center;gap:10px}
-.note{margin-top:16px;font-family:var(--font-ui);font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:740px}
+<!-- @dsCard group="Data display" viewport="820x800" name="Table" subtitle="A named table in a frame: hairline rows, logical alignment, sortable headers, a compact region, an empty sentence; at 390 a stack table draws each row as a card" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:var(--space-lg);background:var(--background-white);font-family:var(--font-ui);color:var(--text-neutral-primary);display:flex;flex-direction:column;gap:var(--space-lg)}
+.col{display:flex;flex-direction:column;gap:var(--space-sm)}
+.acts{display:inline-flex;gap:var(--space-xs)}
+.phone{display:grid;grid-template-columns:390px 1fr;gap:var(--space-lg);align-items:start}
+.phone iframe{display:block;inline-size:390px;block-size:420px;border:var(--border-s) solid var(--border-neutral-primary);border-radius:var(--radius-m)}
+.notes{display:flex;flex-direction:column;gap:var(--space-sm);margin-block-start:var(--space-sm)}
+.note{margin:0;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-tertiary)}
 </style></head><body>
-<div class="wrap">
+<div class="col">
+<p class="mds-eyebrow" lang="en">Scroll table, compact region</p>
+<div class="mds-table-wrap" data-density="compact">
 <table class="mds-table">
-<thead><tr><th>Talebe</th><th>Ders</th><th>Ezber durumu</th><th>Son teslim</th><th></th></tr></thead>
+<caption class="mds-table__caption">Nûruosmaniye Köşkü kursları</caption>
+<thead><tr><th scope="col">Kurs</th><th scope="col">Müderris</th><th scope="col" class="is-end"><button type="button" class="mds-table__sort">Talebe<span class="mds-table__sort-icon" aria-hidden="true"></span></button></th><th scope="col" aria-sort="ascending"><button type="button" class="mds-table__sort">Başlangıç<span class="mds-table__sort-icon" aria-hidden="true"></span></button></th><th scope="col">Durum</th><th scope="col" class="is-end"><span class="mds-visually-hidden">İşlemler</span></th></tr></thead>
 <tbody>
-<tr><td><span class="nm"><span class="mds-avatar mds-avatar--sm">AH</span>Ahmed Hüsrev</span></td><td>Sarf</td><td><span class="mds-badge mds-badge--success">Tamamlandı</span></td><td>2 gün önce</td><td style="text-align:right"><button class="mds-btn mds-btn--mini mds-btn--ghost">Aç</button></td></tr>
-<tr><td><span class="nm"><span class="mds-avatar mds-avatar--sm">ZK</span>Zeynep Kübra</span></td><td>Nahiv</td><td><span class="mds-badge mds-badge--warning">Bekliyor</span></td><td>Bugün</td><td style="text-align:right"><button class="mds-btn mds-btn--mini mds-btn--ghost">Aç</button></td></tr>
-<tr><td><span class="nm"><span class="mds-avatar mds-avatar--sm">MF</span>Mustafa Fatih</span></td><td>Sarf</td><td><span class="mds-badge mds-badge--destructive">Gecikti</span></td><td>4 gün gecikme</td><td style="text-align:right"><button class="mds-btn mds-btn--mini mds-btn--ghost">Aç</button></td></tr>
-<tr><td><span class="nm"><span class="mds-avatar mds-avatar--sm">HN</span>Hatice Nur</span></td><td>Akaid</td><td><span class="mds-badge mds-badge--info">Yeni atandı</span></td><td>—</td><td style="text-align:right"><button class="mds-btn mds-btn--mini mds-btn--ghost">Aç</button></td></tr>
+<tr><th scope="row"><bdi>Emsile ve Bina</bdi></th><td class="mds-table__cell--muted"><bdi>Abdülhamit Karaosmanoğlu</bdi></td><td class="is-end">28</td><td><time datetime="2026-10-05">5 Ekim 2026</time></td><td><span class="mds-badge mds-badge--primary">Yayında</span></td><td class="is-end"><span class="acts"><button type="button" class="mds-btn mds-btn--mini mds-btn--ghost">Düzenle</button><button type="button" class="mds-btn mds-btn--mini mds-btn--ghost">Gizle</button></span></td></tr>
+<tr><th scope="row"><bdi>Kırk Hadis — <span lang="ar" dir="rtl" class="mds-arabic">الأربعون النووية</span></bdi></th><td class="mds-table__cell--muted"><bdi>Ömer Faruk Hilmi</bdi></td><td class="is-end">112</td><td><time datetime="2026-10-12">12 Ekim 2026</time></td><td><span class="mds-badge mds-badge--primary">Yayında</span></td><td class="is-end"><span class="acts"><button type="button" class="mds-btn mds-btn--mini mds-btn--ghost">Düzenle</button><button type="button" class="mds-btn mds-btn--mini mds-btn--ghost">Gizle</button></span></td></tr>
+<tr><th scope="row"><bdi>Akaid Risalesi</bdi></th><td class="mds-table__cell--muted"><bdi>Hatice Nur Aydın</bdi></td><td class="is-end">14</td><td><time datetime="2026-10-19">19 Ekim 2026</time></td><td><span class="mds-badge mds-badge--outline">Taslak</span></td><td class="is-end"><span class="acts"><button type="button" class="mds-btn mds-btn--mini mds-btn--ghost">Düzenle</button><button type="button" class="mds-btn mds-btn--mini mds-btn--ghost">Gizle</button></span></td></tr>
 </tbody></table>
 </div>
-<p class="note">Header cells are Medium in <code>--text-neutral-tertiary</code>, never bold and never inverted — the data is the thing being read, not the schema. Rows carry a hairline, not a fill; zebra striping is not part of this system. The row action is a mini ghost button, right-aligned, and appears in every row rather than on hover, so it survives on touch.</p>
+</div>
+<div class="phone">
+  <div class="col">
+    <p class="mds-eyebrow" lang="en">Stack table at 390</p>
+    <iframe title="Oturumlar tablosu 390 genişliğinde: her satır bir kart" srcdoc="<!doctype html><html lang='tr'><head><meta charset='utf-8'><link rel='stylesheet' href='../styles.css'><style>body{margin:0;padding:var(--space-md);background:var(--background-white)}</style></head><body><div class='mds-table-wrap'><table class='mds-table mds-table--stack' role='table' aria-labelledby='o'><caption class='mds-table__caption' id='o'>Bu haftanın oturumları</caption><thead role='rowgroup'><tr role='row'><th scope='col' role='columnheader'>Oturum</th><th scope='col' role='columnheader'>Kurs</th><th scope='col' role='columnheader'>Durum</th><th scope='col' role='columnheader' class='is-end'><span class='mds-visually-hidden'>İşlemler</span></th></tr></thead><tbody role='rowgroup'><tr role='row'><th scope='row' role='rowheader'><time datetime='2026-10-03T21:00+03:00'>3 Ekim 2026 Cumartesi · 21:00</time></th><td role='cell' data-label='Kurs'><bdi>Emsile ve Bina</bdi></td><td role='cell' data-label='Durum'><span class='mds-badge mds-badge--secondary'><svg class='mds-icon mds-icon--sm' aria-hidden='true'><use href='../assets/icons.svg#link'/></svg>Bağlantı eksik</span></td><td role='cell' class='is-end mds-table__primary-action'><button type='button' class='mds-btn mds-btn--small mds-btn--outline'>Toplantı bağlantısı ekle</button><button type='button' class='mds-btn mds-btn--small mds-btn--ghost'>Oturumu iptal et</button></td></tr><tr role='row'><th scope='row' role='rowheader'><time datetime='2026-10-04T20:00+03:00'>4 Ekim 2026 Pazar · 20:00</time></th><td role='cell' data-label='Kurs'><bdi>Kırk Hadis</bdi></td><td role='cell' data-label='Durum'><span class='mds-badge mds-badge--secondary'>Planlandı</span></td><td role='cell' class='is-end mds-table__primary-action'><button type='button' class='mds-btn mds-btn--small mds-btn--outline'>Toplantı bağlantısını güncelle</button><button type='button' class='mds-btn mds-btn--small mds-btn--ghost'>Oturumu iptal et</button></td></tr></tbody></table></div></body></html>"></iframe>
+  </div>
+  <div class="col">
+    <p class="mds-eyebrow" lang="en">Empty</p>
+    <div class="mds-table-wrap">
+    <table class="mds-table">
+    <caption class="mds-table__caption">Arşiv</caption>
+    <thead><tr><th scope="col">Kurs</th><th scope="col">Gizlendiği gün</th><th scope="col" class="is-end"><span class="mds-visually-hidden">İşlemler</span></th></tr></thead>
+    <tbody><tr><td class="mds-table__empty" colspan="3">Arşivde gizlenmiş bir kurs yok.</td></tr></tbody>
+    </table>
+    </div>
+    <div class="notes" lang="en">
+      <p class="note">Every table has a caption, shown or visually hidden. Headers are Medium in <code>--text-neutral-tertiary</code>, never bold and never a filled band; rows carry a hairline, never stripes. A sortable header is a button, and the sorted column carries <code>aria-sort</code>. Numbers align to inline-end.</p>
+      <p class="note">Row actions are always drawn at inline-end; the owned-record action is “Gizle”, never “Sil”. A compact region tightens the cells to 8/12. Below 768 a scroll table scrolls in its frame; a stack table draws each row as a card, its primary action full width and the others under it.</p>
+    </div>
+  </div>
+</div>
 </body></html>

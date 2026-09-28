@@ -1,23 +1,32 @@
-<!-- @dsCard group="Data display" viewport="760x220" name="Badge" subtitle="24px pill for status. Primary's label is sky-100, not white — the file's own choice, and it reads better" -->
-<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:24px;background:var(--background-white);font-family:var(--font-ui)}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
-.h{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-neutral-disabled);margin:0 0 8px}
-.note{margin-top:6px;font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:700px}
+<!-- @dsCard group="Data display" viewport="760x340" name="Badge" subtitle="24px status label in two families: what a thing is, and how it is going — brand for in progress, live with its dot for a session on air" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:var(--space-lg);background:var(--background-white);font-family:var(--font-ui);color:var(--text-neutral-primary)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-block:var(--space-sm) var(--space-md)}
+.note{margin:var(--space-xs) 0 0;font-size:var(--fs-caption);color:var(--text-neutral-tertiary);line-height:var(--lh-body);max-inline-size:700px}
+.note code{white-space:nowrap}
 </style></head><body>
-<p class="h">Kit variants</p>
+<p class="mds-eyebrow" lang="en">Identity — what a thing is</p>
 <div class="row">
-<span class="mds-badge mds-badge--primary">Müderris</span>
-<span class="mds-badge mds-badge--secondary">Talebe</span>
+<span class="mds-badge mds-badge--primary">Yayında</span>
+<span class="mds-badge mds-badge--secondary">Planlandı</span>
 <span class="mds-badge mds-badge--outline">Taslak</span>
-<span class="mds-badge mds-badge--ghost">Arşiv</span>
-<span class="mds-badge mds-badge--destructive">Gecikti</span>
+<span class="mds-badge mds-badge--ghost">Gizli</span>
+<span class="mds-badge mds-badge--destructive">Yasaklı</span>
 </div>
-<p class="h">Status tones — the semantic set, added for the product</p>
+<p class="mds-eyebrow" lang="en">Progress — how it is going</p>
 <div class="row">
+<span class="mds-badge mds-badge--brand">Devam ediyor</span>
+<span class="mds-badge mds-badge--live"><span class="mds-badge__dot" aria-hidden="true"></span>Şu an canlı</span>
 <span class="mds-badge mds-badge--success">Tamamlandı</span>
-<span class="mds-badge mds-badge--warning">Bekliyor</span>
+<span class="mds-badge mds-badge--warning">Başvuru</span>
 <span class="mds-badge mds-badge--info">Yeni</span>
 </div>
-<p class="note">The Figma kit ships only the top row. Ezber progress needs an outcome colour that is not "destructive", so the subtle/primary pairs from the semantic layer are extended into three more tones. They introduce no new values — each is a <code>*-subtle</code> background under a <code>*-primary</code> text.</p>
+<p class="mds-eyebrow" lang="en">With an icon — a lesson type, and the states that wait on OPEN-2</p>
+<div class="row">
+<span class="mds-badge mds-badge--secondary"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#video"/></svg>Canlı ders</span>
+<span class="mds-badge mds-badge--secondary"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#clock"/></svg>Onay bekliyor</span>
+<span class="mds-badge mds-badge--secondary"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#link"/></svg>Bağlantı eksik</span>
+<span class="mds-badge mds-badge--outline"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#ban"/></svg>Yasaklı</span>
+</div>
+<p class="note" lang="en"><b>brand</b> is <code>--text-brand-primary</code> on <code>--background-brand-tertiary</code>, 8.24:1; <b>live</b> is <code>--text-live-primary</code> on <code>--background-live-subtle</code>, 5.30:1, and always carries its 8px dot beside the words. Live is the state of a session on air (“Şu an canlı”); the lesson type “Canlı ders” is <code>secondary</code> with its icon (MDS-COL-05). Primary's label is <code>--text-brand-inverse</code>, not white — the Figma file's own choice. As extracted, <b>warning</b> text measures 1.79:1 and white on <b>destructive</b> 3.76:1 (OPEN-2), and <b>info</b> 4.24:1 (SPEC-D3-03): no launch state uses them, so “Onay bekliyor”, “Bağlantı eksik” and “Yasaklı” are neutral with an icon until those decisions are made (<code>content/status-map.json</code>).</p>
 </body></html>

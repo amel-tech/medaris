@@ -1,0 +1,71 @@
+<!-- @dsCard group="Forms" viewport="760x300" name="Select" subtitle="A native select in the input box — saat dilimi, dil; up to about fifteen options" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:var(--space-lg);background:var(--background-white);font-family:var(--font-ui);color:var(--text-neutral-primary)}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-md) var(--space-lg)}
+.k{display:block;margin-block-end:var(--space-xs);font-family:var(--font-mono);font-size:var(--fs-footnote);color:var(--text-neutral-tertiary)}
+.note{margin:var(--space-lg) 0 0;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-tertiary)}
+</style></head><body>
+<div class="grid">
+<div class="mds-field">
+  <label class="mds-label" for="s1">Saat dilimi</label>
+  <span class="mds-select"><select class="mds-input" id="s1" aria-describedby="s1-h">
+    <option value="" disabled hidden>Seçin</option>
+    <option value="Europe/Istanbul" selected>İstanbul</option>
+    <option value="Europe/Berlin">Berlin</option>
+    <option value="Europe/Amsterdam">Amsterdam</option>
+    <option value="Europe/Brussels">Brüksel</option>
+    <option value="Europe/Paris">Paris</option>
+    <option value="Europe/Vienna">Viyana</option>
+    <option value="Europe/London">Londra</option>
+    <option value="America/New_York">New York</option>
+    <option value="other">Diğer…</option>
+  </select></span>
+  <span class="mds-help" id="s1-h">Ders saatleri bu saat diliminde gösterilir.</span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="s2">Medrese<span class="mds-required" aria-hidden="true">*</span></label>
+  <span class="mds-select"><select class="mds-input" id="s2" required aria-required="true">
+    <option value="" disabled selected hidden>Seçin</option>
+    <option>Süleymaniye Medresesi</option>
+    <option>Fâtih Medresesi</option>
+    <option>Nûruosmaniye Medresesi</option>
+  </select></span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="s3">Medrese</label>
+  <span class="mds-select"><select class="mds-input" id="s3" aria-invalid="true" aria-describedby="s3-e">
+    <option value="" disabled selected hidden>Seçin</option>
+    <option>Süleymaniye Medresesi</option>
+    <option>Fâtih Medresesi</option>
+  </select></span>
+  <span class="mds-error" id="s3-e">Listeden bir medrese seçin.</span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="s4">Dil</label>
+  <span class="mds-select"><select class="mds-input is-focus" id="s4">
+    <option value="tr" selected>Türkçe</option>
+    <option value="en" lang="en">English</option>
+  </select></span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="s5">Dil</label>
+  <span class="mds-select"><select class="mds-input" id="s5" disabled>
+    <option value="tr" selected>Türkçe</option>
+  </select></span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="s6">Hafta</label>
+  <span class="mds-select"><select class="mds-input mds-input--small" id="s6">
+    <option>1. hafta</option>
+    <option>2. hafta</option>
+    <option selected>3. hafta</option>
+    <option>4. hafta</option>
+    <option>5. hafta</option>
+    <option>6. hafta</option>
+    <option>7. hafta</option>
+    <option>8. hafta</option>
+  </select></span>
+</div>
+</div>
+<p class="note" lang="en">A native <code>&lt;select&gt;</code> in the <code>.mds-input</code> box: keyboard, type-ahead and the phone's own picker come with it. The chevron is the sprite's <code>chevronDown</code> as a CSS mask (7.56:1); the hidden "Seçin" option shows until something is chosen. Two or three options belong in a radio group or chips, so all of them stay visible; the meeting platform is never picked. The boundary is OPEN-3.</p>
+</body></html>
