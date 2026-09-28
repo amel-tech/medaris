@@ -1,0 +1,15 @@
+<!-- @dsCard group="Feedback" viewport="760x320" name="Alert" subtitle="Four tones, each a subtle background inside its own primary border" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><link rel="stylesheet" href="../tokens/a11y-overrides.css"><style>
+body{margin:0;padding:24px;background:var(--background-white);font-family:var(--font-ui)}
+.stack{display:flex;flex-direction:column;gap:12px;max-width:640px}
+svg{flex:none;margin-top:1px}
+.note{margin-top:18px;font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:640px}
+</style></head><body>
+<div class="stack">
+<div class="mds-alert mds-alert--info"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><div><p class="mds-alert__title">Yeni dönem başladı</p>Derslerinizi yeni döneme taşımak için Medresem sayfasını açın.</div></div>
+<div class="mds-alert mds-alert--success"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/></svg><div><p class="mds-alert__title">Ezber kartı gönderildi</p>12 talebeye atandı.</div></div>
+<div class="mds-alert mds-alert--warning"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16h.01"/></svg><div><p class="mds-alert__title">Üç talebe geride kaldı</p>Son bir haftada hiç ezber teslim etmediler.</div></div>
+<div class="mds-alert mds-alert--error"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg><div><p class="mds-alert__title">Ders silinemedi</p>Bu derse bağlı aktif ezber kartları var.</div></div>
+</div>
+<p class="note">An alert states what happened and what to do about it, in that order, in two lines. If it needs a third line it is a dialog. The warning tone above is rendered with the accessibility override applied. As extracted, <code>--text-warning-primary</code> is <code>yellow-500</code> on <code>yellow-100</code> — a measured <b>1.79:1</b>, which is not readable at any size. <code>tokens/a11y-overrides.css</code> moves it to <code>yellow-700</code> (4.58:1); the contrast audit card has the rest.</p>
+</body></html>

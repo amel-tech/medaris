@@ -1,0 +1,89 @@
+<!-- @dsCard group="Patterns" viewport="1200x680" name="App shell — müderris dashboard" subtitle="Sidebar + header + content, at the 1440 desktop breakpoint. The whole system in one screen" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;background:var(--background-neutral-primary);font-family:var(--font-ui)}
+.app{display:grid;grid-template-columns:248px 1fr;min-height:680px}
+.side{background:var(--background-neutral-inverse-primary);padding:20px 12px;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:10px;padding:0 12px 4px;color:#fff;font-family:var(--font-display);font-size:18px;font-weight:700}
+.mark{width:28px;height:28px;border-radius:8px;background:var(--background-brand-primary);display:flex;align-items:center;justify-content:center;font-size:14px}
+.spacer{flex:1}
+.user{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--background-neutral-inverse-secondary);margin-top:12px}
+.uname{font-size:13px;color:var(--text-neutral-inverse-primary);font-weight:500}
+.urole{font-size:11px;color:var(--text-neutral-inverse-tertiary)}
+.main{display:flex;flex-direction:column;min-width:0}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 32px;background:var(--background-white);border-bottom:1px solid var(--border-neutral-primary)}
+.search{position:relative;width:320px}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--icon-neutral-tertiary)}
+.search input{padding-left:32px}
+.content{padding:28px 32px;display:flex;flex-direction:column;gap:24px;overflow:auto}
+.hd{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+.hd h1{font-family:var(--font-display);font-size:32px;font-weight:700;line-height:1.2;margin:0}
+.hd p{font-size:14px;color:var(--text-neutral-tertiary);margin:6px 0 0}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.stat{font-family:var(--font-display);font-size:32px;font-weight:700;line-height:1;color:var(--text-neutral-primary);display:block;margin:6px 0 0}
+.two{display:grid;grid-template-columns:1.35fr 1fr;gap:16px;align-items:start}
+.mds-card h3{margin:0}
+.list{display:flex;flex-direction:column;gap:2px;margin-top:12px}
+.li{display:flex;align-items:center;gap:12px;padding:9px 8px;border-radius:var(--radius-xs);font-size:14px}
+.li:hover{background:var(--background-neutral-primary)}
+.li .g{flex:1;min-width:0}
+.li small{display:block;font-size:12px;color:var(--text-neutral-tertiary)}
+.todo{display:flex;align-items:center;gap:10px;padding:8px 0;font-size:14px;border-bottom:1px solid var(--gray-100)}
+.todo:last-child{border-bottom:0}
+</style></head><body>
+<div class="app">
+  <nav class="side">
+    <div class="brand"><span class="mark">M</span> Medaris</div>
+    <div class="mds-nav-section">Genel</div>
+    <a class="mds-nav-item is-active">Ana Sayfa</a>
+    <a class="mds-nav-item">Derslerim</a>
+    <a class="mds-nav-item">Talebelerim</a>
+    <a class="mds-nav-item">Ezber Kartları</a>
+    <div class="mds-nav-section">Müderris</div>
+    <a class="mds-nav-item">Medresem</a>
+    <a class="mds-nav-item">Ayarlar</a>
+    <span class="spacer"></span>
+    <div class="user"><span class="mds-avatar mds-avatar--sm">TA</span><span><span class="uname">Taha Ayan</span><br><span class="urole">Müderris</span></span></div>
+  </nav>
+  <div class="main">
+    <header class="top">
+      <div class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input class="mds-input search-i" style="padding-left:32px" placeholder="Talebe, ders veya kart ara" readonly></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="mds-btn mds-icon-btn mds-btn--regular mds-btn--ghost"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+        <button class="mds-btn mds-btn--regular mds-btn--primary">Yeni Ders Oluştur</button>
+      </div>
+    </header>
+    <div class="content">
+      <div class="hd">
+        <div><h1>Selâmün aleyküm, Taha</h1><p>Bugün 3 ezber teslimi seni bekliyor.</p></div>
+        <div style="display:flex;gap:8px"><button class="mds-btn mds-btn--small mds-btn--outline">Talebe Ekle</button><button class="mds-btn mds-btn--small mds-btn--outline">Medreseyi Yönet</button></div>
+      </div>
+      <div class="tiles">
+        <div class="mds-card"><span class="mds-caption">Aktif ders</span><span class="stat">4</span></div>
+        <div class="mds-card"><span class="mds-caption">Talebe</span><span class="stat">28</span></div>
+        <div class="mds-card"><span class="mds-caption">Bu hafta ezber</span><span class="stat">38</span><div class="mds-progress" style="margin-top:12px"><div class="mds-progress__bar" style="width:72%"></div></div></div>
+        <div class="mds-card"><span class="mds-caption">Geciken</span><span class="stat" style="color:var(--text-error-primary)">3</span></div>
+      </div>
+      <div class="two">
+        <div class="mds-card">
+          <div style="display:flex;align-items:center;justify-content:space-between"><h3 class="mds-card__title">Son gönderilen ezber kartları</h3><button class="mds-btn mds-btn--mini mds-btn--ghost">Tümü</button></div>
+          <div class="list">
+            <div class="li"><span class="mds-avatar mds-avatar--sm">AH</span><span class="g">Ahmed Hüsrev<small>Bakara 1–5 · Sarf</small></span><span class="mds-badge mds-badge--success">Tamamlandı</span></div>
+            <div class="li"><span class="mds-avatar mds-avatar--sm">ZK</span><span class="g">Zeynep Kübra<small>Nahiv · fiil çekimleri</small></span><span class="mds-badge mds-badge--warning">Bekliyor</span></div>
+            <div class="li"><span class="mds-avatar mds-avatar--sm">MF</span><span class="g">Mustafa Fatih<small>Bakara 6–10 · Sarf</small></span><span class="mds-badge mds-badge--destructive">Gecikti</span></div>
+            <div class="li"><span class="mds-avatar mds-avatar--sm">HN</span><span class="g">Hatice Nur<small>Akaid · giriş</small></span><span class="mds-badge mds-badge--info">Yeni atandı</span></div>
+          </div>
+        </div>
+        <div class="mds-card">
+          <h3 class="mds-card__title">Bugün yapılacaklar</h3>
+          <div style="margin-top:10px">
+            <label class="todo"><input type="checkbox" class="mds-check" checked> Sarf dersi kartlarını gözden geçir</label>
+            <label class="todo"><input type="checkbox" class="mds-check"> Üç geciken talebeye hatırlatma gönder</label>
+            <label class="todo"><input type="checkbox" class="mds-check"> Nahiv dersinin tarihini belirle</label>
+          </div>
+          <div class="mds-alert mds-alert--info" style="margin-top:16px;font-size:13px">Yeni dönem başladı — derslerini taşımayı unutma.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

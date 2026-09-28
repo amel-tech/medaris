@@ -1,0 +1,27 @@
+<!-- @dsCard group="Data display" viewport="820x300" name="Card" subtitle="12px radius, 1px hairline, shadow-xs — the container every list item and dashboard tile is built from" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:24px;background:var(--background-neutral-primary);font-family:var(--font-ui)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.foot{display:flex;align-items:center;gap:8px;margin-top:18px}
+.stat{font-family:var(--font-display);font-size:32px;font-weight:700;line-height:1;color:var(--text-neutral-primary)}
+</style></head><body>
+<div class="grid">
+  <div class="mds-card">
+    <div class="top"><h3 class="mds-card__title">Sarf Dersi</h3><span class="mds-badge mds-badge--success">Aktif</span></div>
+    <p class="mds-card__body">12 talebe · haftada 2 ders · son ders 3 gün önce</p>
+    <div class="foot"><button class="mds-btn mds-btn--small mds-btn--primary">Derse git</button><button class="mds-btn mds-btn--small mds-btn--ghost">Düzenle</button></div>
+  </div>
+  <div class="mds-card">
+    <div class="top"><h3 class="mds-card__title">Nahiv Dersi</h3><span class="mds-badge mds-badge--warning">Bekliyor</span></div>
+    <p class="mds-card__body">4 talebe · başlangıç tarihi henüz belirlenmedi</p>
+    <div class="foot"><button class="mds-btn mds-btn--small mds-btn--outline">Planla</button></div>
+  </div>
+  <div class="mds-card">
+    <p class="mds-caption" style="margin:0 0 8px">Bu hafta tamamlanan ezber</p>
+    <span class="stat">38</span>
+    <p class="mds-card__body" style="margin-top:10px">Geçen haftaya göre +6</p>
+    <div class="mds-progress" style="margin-top:14px"><div class="mds-progress__bar" style="width:72%"></div></div>
+  </div>
+</div>
+</body></html>

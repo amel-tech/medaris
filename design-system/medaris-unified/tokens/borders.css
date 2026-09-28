@@ -1,0 +1,18 @@
+/* Medaris — radii and border widths.
+   Verbatim from the Figma variable collection "size".
+   The component layer confirms them: mini controls sit on --radius-xxs,
+   inputs on --radius-xs, every other control on --radius-s. */
+:root {
+  --radius-xxs: 4px;
+  --radius-xs: 6px;
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 20px;
+  --radius-xl: 30px;
+  --radius-full: 999px;
+
+  --border-xs: 0.5px;
+  --border-s: 1px;
+  --border-m: 2px;
+  --border-l: 4px;
+}

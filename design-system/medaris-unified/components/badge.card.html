@@ -1,0 +1,23 @@
+<!-- @dsCard group="Data display" viewport="760x220" name="Badge" subtitle="24px pill for status. Primary's label is sky-100, not white — the file's own choice, and it reads better" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:24px;background:var(--background-white);font-family:var(--font-ui)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.h{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-neutral-disabled);margin:0 0 8px}
+.note{margin-top:6px;font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:700px}
+</style></head><body>
+<p class="h">Kit variants</p>
+<div class="row">
+<span class="mds-badge mds-badge--primary">Müderris</span>
+<span class="mds-badge mds-badge--secondary">Talebe</span>
+<span class="mds-badge mds-badge--outline">Taslak</span>
+<span class="mds-badge mds-badge--ghost">Arşiv</span>
+<span class="mds-badge mds-badge--destructive">Gecikti</span>
+</div>
+<p class="h">Status tones — the semantic set, added for the product</p>
+<div class="row">
+<span class="mds-badge mds-badge--success">Tamamlandı</span>
+<span class="mds-badge mds-badge--warning">Bekliyor</span>
+<span class="mds-badge mds-badge--info">Yeni</span>
+</div>
+<p class="note">The Figma kit ships only the top row. Ezber progress needs an outcome colour that is not "destructive", so the subtle/primary pairs from the semantic layer are extended into three more tones. They introduce no new values — each is a <code>*-subtle</code> background under a <code>*-primary</code> text.</p>
+</body></html>
