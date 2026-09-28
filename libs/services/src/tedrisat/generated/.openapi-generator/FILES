@@ -37,6 +37,7 @@ src/models/CreateLessonDto.ts
 src/models/CreateMadrasahDto.ts
 src/models/CreateMuderrisDto.ts
 src/models/CreateResourceDto.ts
+src/models/CreateSessionBatchDto.ts
 src/models/CreateWeekDto.ts
 src/models/CreateWeekLessonDto.ts
 src/models/DeckLabelStatsResponse.ts
@@ -68,9 +69,14 @@ src/models/NazirMadrasahRef.ts
 src/models/PaginatedKoskResponse.ts
 src/models/PaginatedMadrasahResponse.ts
 src/models/PendingEnrollmentResponse.ts
+src/models/PlannedSessionResponse.ts
 src/models/ReplaceCourseDto.ts
 src/models/ResourceResponse.ts
 src/models/RowError.ts
+src/models/SessionBatchLessonResponse.ts
+src/models/SessionBatchPreviewResponse.ts
+src/models/SessionBatchResponse.ts
+src/models/SessionBatchWeekResponse.ts
 src/models/TaughtCourseRef.ts
 src/models/UpdateCourseDto.ts
 src/models/UpdateFlashcardDeckDto.ts
@@ -82,6 +88,7 @@ src/models/UpdateMeDto.ts
 src/models/UpdateProgressDto.ts
 src/models/UserSummaryResponse.ts
 src/models/WeekResponse.ts
+src/models/WeeklyPatternDto.ts
 src/models/index.ts
 src/runtime.ts
 tsconfig.esm.json

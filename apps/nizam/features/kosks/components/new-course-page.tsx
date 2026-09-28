@@ -36,6 +36,7 @@ import {
   listTimeZones,
   meetingUrlProblem,
   normalizeMeetingUrl,
+  shiftDatetimeLocal,
   timeZoneCity,
   toZonedDatetimeLocal,
 } from "@medaris/utils";
@@ -56,6 +57,7 @@ import {
   MEETING_URL_PROBLEM_KEY,
   toMinutes,
 } from "./live-lesson-editor";
+import { WeeklySessionsPanel } from "./weekly-sessions-panel";
 
 type LessonDraft = {
   id?: string;
@@ -221,7 +223,9 @@ export const NewCoursePage = ({
 
   // Duplicate a week (with its lessons) right below the original. The clone
   // drops every id so the backend creates fresh records instead of moving
-  // the originals on the next PUT replace.
+  // the originals on the next PUT replace, and every session moves seven
+  // days on — same local time, next week (MDRS-109). Before, the copies
+  // landed on the originals' instant.
   const copyWeek = (wi: number) => {
     const src = weeks[wi];
     if (!src) return;
@@ -233,6 +237,7 @@ export const NewCoursePage = ({
       lessons: src.lessons.map((l) => ({
         ...l,
         id: undefined,
+        scheduledAt: shiftDatetimeLocal(l.scheduledAt, 7),
         agenda: l.agenda.map((s) => ({ ...s })),
       })),
     };
@@ -784,6 +789,17 @@ export const NewCoursePage = ({
               <AddButton onClick={() => setWeeks([...weeks, newWeek()])}>
                 {t("NewCoursePage.addWeek")}
               </AddButton>
+              {course ? (
+                <WeeklySessionsPanel
+                  koskId={kosk.id}
+                  courseId={course.id}
+                  courseTimeZone={course.timeZone ?? DEFAULT_TIME_ZONE}
+                />
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  {t("WeeklySessions.saveCourseFirst")}
+                </p>
+              )}
             </div>
           </Section>
         </div>

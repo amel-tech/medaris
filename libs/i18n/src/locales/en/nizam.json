@@ -294,5 +294,48 @@
     "istanbul": "Istanbul",
     "yourTime": "{time} your time",
     "minutes": "{minutes} min"
+  },
+  "WeeklySessions": {
+    "title": "Weekly repeat",
+    "hint": "Create the live sessions that meet on the same days and time every week, in one go.",
+    "open": "Add a weekly repeat",
+    "close": "Close",
+    "saveCourseFirst": "Weekly repeat is available once the course has been saved.",
+    "sessionTitle": "Session title",
+    "sessionTitlePlaceholder": "e.g. Weekly müzakere",
+    "weekdays": "Days",
+    "weekday": {
+      "1": "Mon",
+      "2": "Tue",
+      "3": "Wed",
+      "4": "Thu",
+      "5": "Fri",
+      "6": "Sat",
+      "7": "Sun"
+    },
+    "startTime": "Start time",
+    "duration": "Duration (min)",
+    "timeZone": "Time zone",
+    "startDate": "Start date",
+    "endMode": "Ends",
+    "endByCount": "Number of sessions",
+    "endByDate": "End date",
+    "meetingUrl": "Meeting link (first session only)",
+    "meetingUrlHint": "Links change every week; the other sessions are created without one.",
+    "previewButton": "Preview",
+    "previewTitle": "{count} sessions will be created",
+    "create": "Create sessions",
+    "creating": "Creating...",
+    "created": "{count} sessions created.",
+    "reloadNote": "Sessions are saved straight away and the page reloads; save any unsaved changes in the form first.",
+    "validation": "A title, at least one day, a time, a duration, a start date and an end are required.",
+    "problem": {
+      "INVALID_DATE": "The date is not valid.",
+      "END_OR_COUNT_REQUIRED": "Enter either an end date or a number of sessions.",
+      "END_BEFORE_START": "The end date cannot be before the start date.",
+      "RANGE_TOO_LONG": "A repeat can last one year at most.",
+      "TOO_MANY_SESSIONS": "At most 200 sessions can be created at once.",
+      "NO_SESSIONS": "None of the chosen days falls in this range."
+    }
   }
 }

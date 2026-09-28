@@ -15,17 +15,29 @@
 
 import * as runtime from '../runtime';
 import type {
+  CreateSessionBatchDto,
   CreateWeekLessonDto,
   LessonMutationResponse,
+  SessionBatchPreviewResponse,
+  SessionBatchResponse,
   UpdateLessonDto,
+  WeeklyPatternDto,
 } from '../models/index';
 import {
+    CreateSessionBatchDtoFromJSON,
+    CreateSessionBatchDtoToJSON,
     CreateWeekLessonDtoFromJSON,
     CreateWeekLessonDtoToJSON,
     LessonMutationResponseFromJSON,
     LessonMutationResponseToJSON,
+    SessionBatchPreviewResponseFromJSON,
+    SessionBatchPreviewResponseToJSON,
+    SessionBatchResponseFromJSON,
+    SessionBatchResponseToJSON,
     UpdateLessonDtoFromJSON,
     UpdateLessonDtoToJSON,
+    WeeklyPatternDtoFromJSON,
+    WeeklyPatternDtoToJSON,
 } from '../models/index';
 
 export interface ArchiveLessonRequest {
@@ -38,9 +50,19 @@ export interface CreateLessonRequest {
     createWeekLessonDto: CreateWeekLessonDto;
 }
 
+export interface CreateSessionBatchRequest {
+    courseId: string;
+    createSessionBatchDto: CreateSessionBatchDto;
+}
+
 export interface GetLessonCalendarRequest {
     id: string;
     locale?: GetLessonCalendarLocaleEnum;
+}
+
+export interface PreviewSessionBatchRequest {
+    courseId: string;
+    weeklyPatternDto: WeeklyPatternDto;
 }
 
 export interface UpdateLessonRequest {
@@ -156,6 +178,60 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
+     * Expands the pattern in its IANA zone, so each session keeps its local start time across daylight-saving changes, and inserts every session in one transaction. The week holding `startDate` is \"Hafta 1\"; each session goes into the week of its date, and a missing week is created as \"Hafta N\". Bumps the course version like the other session-level writes (MDRS-109).
+     * Create live sessions from a weekly pattern
+     */
+    async createSessionBatchRaw(requestParameters: CreateSessionBatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SessionBatchResponse>> {
+        if (requestParameters['courseId'] == null) {
+            throw new runtime.RequiredError(
+                'courseId',
+                'Required parameter "courseId" was null or undefined when calling createSessionBatch().'
+            );
+        }
+
+        if (requestParameters['createSessionBatchDto'] == null) {
+            throw new runtime.RequiredError(
+                'createSessionBatchDto',
+                'Required parameter "createSessionBatchDto" was null or undefined when calling createSessionBatch().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{courseId}/sessions/batch`;
+        urlPath = urlPath.replace(`{${"courseId"}}`, encodeURIComponent(String(requestParameters['courseId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateSessionBatchDtoToJSON(requestParameters['createSessionBatchDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SessionBatchResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Expands the pattern in its IANA zone, so each session keeps its local start time across daylight-saving changes, and inserts every session in one transaction. The week holding `startDate` is \"Hafta 1\"; each session goes into the week of its date, and a missing week is created as \"Hafta N\". Bumps the course version like the other session-level writes (MDRS-109).
+     * Create live sessions from a weekly pattern
+     */
+    async createSessionBatch(requestParameters: CreateSessionBatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionBatchResponse> {
+        const response = await this.createSessionBatchRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Authorized like the session page (`GET /courses/:id`). The event links to the Medaris session page, never to the meeting link. `UID` is derived from the lesson id and `SEQUENCE` is the course version, so a re-import after the session moved updates the event instead of duplicating it (MDRS-117).
      * One session as an iCalendar (.ics) file, for Apple Calendar, Google Calendar and Outlook
      */
@@ -204,6 +280,60 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async getLessonCalendar(requestParameters: GetLessonCalendarRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<string> {
         const response = await this.getLessonCalendarRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Expands the pattern exactly as `POST /courses/:courseId/sessions/batch` would and writes nothing, so the editor can show the list before it is saved (MDRS-109).
+     * Preview the sessions a weekly pattern would create
+     */
+    async previewSessionBatchRaw(requestParameters: PreviewSessionBatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SessionBatchPreviewResponse>> {
+        if (requestParameters['courseId'] == null) {
+            throw new runtime.RequiredError(
+                'courseId',
+                'Required parameter "courseId" was null or undefined when calling previewSessionBatch().'
+            );
+        }
+
+        if (requestParameters['weeklyPatternDto'] == null) {
+            throw new runtime.RequiredError(
+                'weeklyPatternDto',
+                'Required parameter "weeklyPatternDto" was null or undefined when calling previewSessionBatch().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{courseId}/sessions/batch/preview`;
+        urlPath = urlPath.replace(`{${"courseId"}}`, encodeURIComponent(String(requestParameters['courseId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: WeeklyPatternDtoToJSON(requestParameters['weeklyPatternDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SessionBatchPreviewResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Expands the pattern exactly as `POST /courses/:courseId/sessions/batch` would and writes nothing, so the editor can show the list before it is saved (MDRS-109).
+     * Preview the sessions a weekly pattern would create
+     */
+    async previewSessionBatch(requestParameters: PreviewSessionBatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionBatchPreviewResponse> {
+        const response = await this.previewSessionBatchRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

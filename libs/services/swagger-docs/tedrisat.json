@@ -1626,6 +1626,118 @@
         ]
       }
     },
+    "/courses/{courseId}/sessions/batch/preview": {
+      "post": {
+        "description": "Expands the pattern exactly as `POST /courses/:courseId/sessions/batch` would and writes nothing, so the editor can show the list before it is saved (MDRS-109).",
+        "operationId": "previewSessionBatch",
+        "parameters": [
+          {
+            "name": "courseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeeklyPatternDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionBatchPreviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation, or a pattern that cannot be expanded (INVALID_SESSION_PATTERN)."
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview the sessions a weekly pattern would create",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/courses/{courseId}/sessions/batch": {
+      "post": {
+        "description": "Expands the pattern in its IANA zone, so each session keeps its local start time across daylight-saving changes, and inserts every session in one transaction. The week holding `startDate` is \"Hafta 1\"; each session goes into the week of its date, and a missing week is created as \"Hafta N\". Bumps the course version like the other session-level writes (MDRS-109).",
+        "operationId": "createSessionBatch",
+        "parameters": [
+          {
+            "name": "courseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSessionBatchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionBatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation, or a pattern that cannot be expanded (INVALID_SESSION_PATTERN)."
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create live sessions from a weekly pattern",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
     "/lessons/{id}": {
       "patch": {
         "operationId": "updateLesson",
@@ -5022,6 +5134,280 @@
           "isPreview",
           "orderIndex",
           "courseVersion"
+        ]
+      },
+      "WeeklyPatternDto": {
+        "type": "object",
+        "properties": {
+          "weekdays": {
+            "example": [
+              2,
+              4
+            ],
+            "description": "ISO weekdays the session falls on: 1 = Monday … 7 = Sunday.",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "startTime": {
+            "type": "string",
+            "example": "21:00",
+            "description": "Local start time, 24-hour HH:mm, in `timeZone`."
+          },
+          "timeZone": {
+            "type": "string",
+            "example": "Europe/Istanbul",
+            "description": "IANA zone the start time is meant in; the course's zone when omitted. Sessions keep this local time across daylight-saving changes."
+          },
+          "startDate": {
+            "type": "string",
+            "example": "2026-10-06",
+            "description": "First calendar day of the range, YYYY-MM-DD. The Monday-to-Sunday week that holds it is \"Hafta 1\"."
+          },
+          "endDate": {
+            "type": "string",
+            "example": "2026-11-30",
+            "description": "Last calendar day, inclusive. Exactly one of this or count."
+          },
+          "count": {
+            "type": "number",
+            "example": 8,
+            "minimum": 1,
+            "maximum": 200,
+            "description": "How many sessions to create. Exactly one of this or endDate."
+          }
+        },
+        "required": [
+          "weekdays",
+          "startTime",
+          "startDate"
+        ]
+      },
+      "PlannedSessionResponse": {
+        "type": "object",
+        "properties": {
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-10-06T18:00:00.000Z"
+          },
+          "localDate": {
+            "type": "string",
+            "example": "2026-10-06",
+            "description": "Calendar date in the pattern's zone."
+          },
+          "weekNumber": {
+            "type": "number",
+            "example": 1
+          }
+        },
+        "required": [
+          "scheduledAt",
+          "localDate",
+          "weekNumber"
+        ]
+      },
+      "SessionBatchPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "timeZone": {
+            "type": "string",
+            "example": "Europe/Istanbul"
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlannedSessionResponse"
+            }
+          }
+        },
+        "required": [
+          "timeZone",
+          "sessions"
+        ]
+      },
+      "CreateSessionBatchDto": {
+        "type": "object",
+        "properties": {
+          "weekdays": {
+            "example": [
+              2,
+              4
+            ],
+            "description": "ISO weekdays the session falls on: 1 = Monday … 7 = Sunday.",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "startTime": {
+            "type": "string",
+            "example": "21:00",
+            "description": "Local start time, 24-hour HH:mm, in `timeZone`."
+          },
+          "timeZone": {
+            "type": "string",
+            "example": "Europe/Istanbul",
+            "description": "IANA zone the start time is meant in; the course's zone when omitted. Sessions keep this local time across daylight-saving changes."
+          },
+          "startDate": {
+            "type": "string",
+            "example": "2026-10-06",
+            "description": "First calendar day of the range, YYYY-MM-DD. The Monday-to-Sunday week that holds it is \"Hafta 1\"."
+          },
+          "endDate": {
+            "type": "string",
+            "example": "2026-11-30",
+            "description": "Last calendar day, inclusive. Exactly one of this or count."
+          },
+          "count": {
+            "type": "number",
+            "example": 8,
+            "minimum": 1,
+            "maximum": 200,
+            "description": "How many sessions to create. Exactly one of this or endDate."
+          },
+          "title": {
+            "type": "string",
+            "example": "Canlı ders",
+            "description": "Title every generated session starts with."
+          },
+          "durationMinutes": {
+            "type": "number",
+            "example": 60,
+            "minimum": 1,
+            "maximum": 1440
+          },
+          "meetingUrl": {
+            "type": "string",
+            "example": "https://meet.google.com/bqx-mfzn-rde",
+            "description": "Set on the first session only. Links change every week, so the others start empty."
+          }
+        },
+        "required": [
+          "weekdays",
+          "startTime",
+          "startDate",
+          "title",
+          "durationMinutes"
+        ]
+      },
+      "SessionBatchWeekResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "weekNumber": {
+            "type": "number"
+          },
+          "title": {
+            "type": "string"
+          },
+          "created": {
+            "type": "boolean",
+            "description": "Whether this batch created the week."
+          }
+        },
+        "required": [
+          "id",
+          "weekNumber",
+          "title",
+          "created"
+        ]
+      },
+      "SessionBatchLessonResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "weekId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "VIDEO",
+              "DOCUMENT",
+              "LIVE",
+              "QUIZ"
+            ]
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "Length of the lesson in minutes; null when not set."
+          },
+          "kaynak": {
+            "type": "string"
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "meetingUrl": {
+            "type": "string"
+          },
+          "agenda": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgendaStepResponse"
+            }
+          },
+          "isPreview": {
+            "type": "boolean"
+          },
+          "orderIndex": {
+            "type": "number"
+          },
+          "weekNumber": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "weekId",
+          "title",
+          "type",
+          "isPreview",
+          "orderIndex",
+          "weekNumber"
+        ]
+      },
+      "SessionBatchResponse": {
+        "type": "object",
+        "properties": {
+          "courseVersion": {
+            "type": "number",
+            "description": "The course version this write produced; send it with the next PUT /courses/:id or PATCH /lessons/:id."
+          },
+          "timeZone": {
+            "type": "string",
+            "example": "Europe/Istanbul"
+          },
+          "weeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionBatchWeekResponse"
+            }
+          },
+          "lessons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionBatchLessonResponse"
+            }
+          }
+        },
+        "required": [
+          "courseVersion",
+          "timeZone",
+          "weeks",
+          "lessons"
         ]
       },
       "UpdateLessonDto": {

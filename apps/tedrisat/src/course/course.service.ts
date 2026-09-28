@@ -20,16 +20,37 @@ import {
   ILessonMutation,
   IPendingEnrollment,
   IReplaceCourse,
+  ISessionBatchResult,
   IUpdateCourse,
   IUpdateLesson,
 } from "./course.repository.interface";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import { withCanonicalTimeZone } from "./domain/time-zone";
+import {
+  expandWeeklyPattern,
+  IPlannedSession,
+  IsoWeekday,
+  IWeeklyPattern,
+  WeeklyPatternInvalid,
+} from "./domain/weekly-pattern";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { EnrollmentNotFoundError } from "./errors/enrollment-not-found.error";
+import { InvalidSessionPatternError } from "./errors/invalid-session-pattern.error";
 import { LessonNotFoundError } from "./errors/lesson-not-found.error";
 import { LessonNotScheduledError } from "./errors/lesson-not-scheduled.error";
+
+/** A weekly pattern as the API takes it; `timeZone` defaults to the course's. */
+export type SessionPatternInput = Omit<
+  IWeeklyPattern,
+  "weekdays" | "timeZone"
+> & { weekdays: number[]; timeZone?: string };
+
+export interface SessionBatchInput extends SessionPatternInput {
+  title: string;
+  durationMinutes: number;
+  meetingUrl?: string;
+}
 
 export interface StudentIdentity {
   name?: string | null;
@@ -210,6 +231,68 @@ export class CourseService {
   /** Hides the lesson; nothing attached to it is deleted (MDRS-124). */
   async archiveLesson(lessonId: string): Promise<ILessonMutation> {
     return this.courseRepo.archiveLesson(lessonId);
+  }
+
+  // ---- weekly pattern → sessions (MDRS-109) ----
+  // Authorized by `@Authz(SCOPES.EDIT, …)` on LessonController, like the
+  // three writes above.
+
+  /** The sessions a pattern would create; nothing is written. */
+  async previewSessionBatch(
+    courseId: string,
+    pattern: SessionPatternInput
+  ): Promise<{ timeZone: string; sessions: IPlannedSession[] }> {
+    return this.planSessions(courseId, pattern);
+  }
+
+  /** Expands the pattern and inserts every session in one transaction. */
+  async createSessionBatch(
+    courseId: string,
+    input: SessionBatchInput
+  ): Promise<ISessionBatchResult & { timeZone: string }> {
+    const { title, durationMinutes, meetingUrl, ...pattern } = input;
+    let timeZone = "";
+    const result = await this.courseRepo.createSessionBatch(courseId, {
+      title,
+      durationMinutes,
+      meetingUrl,
+      plan: (courseZone) => {
+        const planned = this.expand(pattern, courseZone);
+        timeZone = planned.timeZone;
+        return planned.sessions;
+      },
+    });
+    return { ...result, timeZone };
+  }
+
+  private async planSessions(
+    courseId: string,
+    pattern: SessionPatternInput
+  ): Promise<{ timeZone: string; sessions: IPlannedSession[] }> {
+    const courseZone = await this.courseRepo.findTimeZone(courseId);
+    if (courseZone === null) throw new CourseNotFoundError(courseId);
+    return this.expand(pattern, courseZone);
+  }
+
+  /** The pattern in its own zone, or the course's when it names none. */
+  private expand(
+    pattern: SessionPatternInput,
+    courseZone: string
+  ): { timeZone: string; sessions: IPlannedSession[] } {
+    const timeZone = pattern.timeZone ?? courseZone;
+    try {
+      const sessions = expandWeeklyPattern({
+        ...pattern,
+        weekdays: pattern.weekdays as IsoWeekday[],
+        timeZone,
+      });
+      return { timeZone, sessions };
+    } catch (error) {
+      if (error instanceof WeeklyPatternInvalid) {
+        throw new InvalidSessionPatternError(error.problem);
+      }
+      throw error;
+    }
   }
 
   // ---- hide / restore / delete (MDRS-124) ----

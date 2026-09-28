@@ -15,6 +15,8 @@ import {
   Delete,
   Get,
   Header,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseEnumPipe,
   ParseUUIDPipe,
@@ -28,6 +30,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -50,6 +53,12 @@ import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
 import { LessonMutationResponse } from "./dto/course-response.dto";
 import { CreateWeekLessonDto } from "./dto/create-lesson.dto";
+import {
+  CreateSessionBatchDto,
+  SessionBatchPreviewResponse,
+  SessionBatchResponse,
+  WeeklyPatternDto,
+} from "./dto/session-batch.dto";
 import { UpdateLessonDto } from "./dto/update-lesson.dto";
 import { CalendarNotConfiguredError } from "./errors/calendar-not-configured.error";
 import { LessonNotFoundError } from "./errors/lesson-not-found.error";
@@ -180,6 +189,60 @@ export class LessonController {
     @Body() dto: CreateWeekLessonDto
   ): Promise<LessonMutationResponse> {
     return this.courseService.createLesson(courseId, weekId, dto);
+  }
+
+  @ApiOperation({
+    summary: "Preview the sessions a weekly pattern would create",
+    description:
+      "Expands the pattern exactly as `POST /courses/:courseId/sessions/batch` " +
+      "would and writes nothing, so the editor can show the list before it " +
+      "is saved (MDRS-109).",
+    operationId: "previewSessionBatch",
+  })
+  @ApiOkResponse({ type: SessionBatchPreviewResponse })
+  @ApiBadRequestResponse({
+    description:
+      "Field validation, or a pattern that cannot be expanded (INVALID_SESSION_PATTERN).",
+  })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Post("courses/:courseId/sessions/batch/preview")
+  @HttpCode(HttpStatus.OK)
+  @Authz(SCOPES.EDIT, byParam(ENTITIES.COURSE, "courseId"))
+  @UsePipes(new MedarisValidationPipe({ transform: true }))
+  async previewBatch(
+    @Param("courseId", ParseUUIDPipe) courseId: string,
+    @Body() dto: WeeklyPatternDto
+  ): Promise<SessionBatchPreviewResponse> {
+    return this.courseService.previewSessionBatch(courseId, dto);
+  }
+
+  @ApiOperation({
+    summary: "Create live sessions from a weekly pattern",
+    description:
+      "Expands the pattern in its IANA zone, so each session keeps its local " +
+      "start time across daylight-saving changes, and inserts every session " +
+      'in one transaction. The week holding `startDate` is "Hafta 1"; each ' +
+      "session goes into the week of its date, and a missing week is created " +
+      'as "Hafta N". Bumps the course version like the other session-level ' +
+      "writes (MDRS-109).",
+    operationId: "createSessionBatch",
+  })
+  @ApiCreatedResponse({ type: SessionBatchResponse })
+  @ApiBadRequestResponse({
+    description:
+      "Field validation, or a pattern that cannot be expanded (INVALID_SESSION_PATTERN).",
+  })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Post("courses/:courseId/sessions/batch")
+  @Authz(SCOPES.EDIT, byParam(ENTITIES.COURSE, "courseId"))
+  @UsePipes(new MedarisValidationPipe({ transform: true }))
+  async createBatch(
+    @Param("courseId", ParseUUIDPipe) courseId: string,
+    @Body() dto: CreateSessionBatchDto
+  ): Promise<SessionBatchResponse> {
+    return this.courseService.createSessionBatch(courseId, dto);
   }
 
   @ApiOperation({
