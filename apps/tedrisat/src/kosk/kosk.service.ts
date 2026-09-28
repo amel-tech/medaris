@@ -5,6 +5,7 @@ import { KoskRepository } from "./kosk.repository";
 import {
   ICreateKosk,
   IKosk,
+  IKoskRef,
   IKoskWithStats,
   IPaginatedKosks,
   IUpdateKosk,
@@ -39,6 +40,16 @@ export class KoskService {
   async isOwner(koskId: string, userId: string): Promise<boolean> {
     const ownerId = await this.koskRepo.findOwnerId(koskId);
     return ownerId !== null && ownerId === userId;
+  }
+
+  /** The köşks `userId` manages, by name — for the `GET /me` role summary. */
+  async findManagedBy(userId: string): Promise<IKoskRef[]> {
+    return this.koskRepo.findOwnedBy(userId);
+  }
+
+  /** True if `userId` manages at least one köşk. */
+  async managesAny(userId: string): Promise<boolean> {
+    return this.koskRepo.ownsAny(userId);
   }
 
   /** Ensures the köşk exists and is owned by `userId`, else throws. */

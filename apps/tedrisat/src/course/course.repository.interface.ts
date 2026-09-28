@@ -217,6 +217,13 @@ export interface ILessonMutation extends ILesson {
   courseVersion: number;
 }
 
+/** A course as it appears in a caller's role summary (`GET /me`, MDRS-104). */
+export interface ICourseRef {
+  id: string;
+  title: string;
+  koskId: string;
+}
+
 export interface ICourseRepository {
   findSummariesByKosk(
     koskId: string,
@@ -255,6 +262,7 @@ export interface ICourseRepository {
   findEnrollment(userId: string, courseId: string): Promise<IEnrollment | null>;
   /** Whether `userId` is listed in `course_muderris` for `courseId`. */
   isMuderris(courseId: string, userId: string): Promise<boolean>;
+  findTaughtBy(userId: string): Promise<ICourseRef[]>;
   findPendingByKosk(koskId: string): Promise<IPendingEnrollment[]>;
   setEnrollmentStatus(
     userId: string,

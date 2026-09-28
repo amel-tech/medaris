@@ -113,6 +113,13 @@
       "when": 1790600862460,
       "tag": "0015_lesson_archive_course_version",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790601713927,
+      "tag": "0016_users",
+      "breakpoints": true
     }
   ]
 }
