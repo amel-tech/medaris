@@ -85,12 +85,13 @@
   },
   "header": {
     "brand": "Medrese",
-    "cta": "Bekleme Listesine Katıl",
+    "cta": "Kayıt ol",
     "nav": {
       "curriculum": "MÜFREDAT",
       "partnerships": "ORTAKLIKLAR",
       "vision": "VİZYONUMUZ"
-    }
+    },
+    "signIn": "Giriş yap"
   },
   "hero": {
     "badge": "Yakında — 2026",
@@ -138,10 +139,10 @@
     }
   },
   "waitlist": {
-    "buttonLabel": "Bekleme Listesine Katıl",
-    "description": "Öğrenme merkezimiz şu anda aktif olarak geliştirme aşamasındadır. Geliştirme güncellemeleri ve özel lansman öncesi avantajlardan haberdar olmak için bekleme listemize katılın.",
-    "placeholder": "E-posta adresi",
-    "privacyNotice": "Gizliliğiniz korunur. Spam yoktur.",
+    "description": "Hesabını oluştur, köşkleri keşfet ve derslere katıl. Kayıt ücretsizdir.",
+    "haveAccount": "Zaten hesabın var mı?",
+    "register": "Kayıt ol",
+    "signIn": "Giriş yap",
     "title": "İlk Öğrenenlerden Olun"
   }
 }

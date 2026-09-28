@@ -352,5 +352,32 @@
     "copy": "Copy",
     "copied": "Copied",
     "private": "This link is yours alone: anyone who has it can see course titles and times. Meeting links are never in the calendar. If you have shared it, regenerate it."
+  },
+  "Auth": {
+    "signIn": "Sign in",
+    "register": "Sign up",
+    "redirectingSignIn": "Taking you to the sign-in page…",
+    "redirectingRegister": "Taking you to the sign-up page…",
+    "continue": "Continue",
+    "errorTitle": "We couldn't sign you in",
+    "errorDescription": "Something went wrong while signing you in. Please try again.",
+    "accessDenied": "This account is not allowed to sign in.",
+    "configurationError": "Sign-in is unavailable right now. Please try again later.",
+    "retry": "Try again",
+    "backHome": "Back to the home page",
+    "signOutTitle": "Sign out",
+    "signOutDescription": "Are you sure you want to sign out?",
+    "signOutConfirm": "Sign out"
+  },
+  "WelcomePage": {
+    "title": "Welcome!",
+    "titleWithName": "Welcome, {name}!",
+    "description": "Your account is ready. Your first steps:",
+    "steps": {
+      "kosk": "Pick a köşk and follow it",
+      "course": "Enrol in a course",
+      "decks": "Study with flashcards"
+    },
+    "start": "Start learning"
   }
 }

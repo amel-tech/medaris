@@ -36,7 +36,7 @@
     "next.config.js",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", ".next/**"],
+  "exclude": ["node_modules", ".next/**", "vitest.config.ts"],
   "references": [
     {
       "path": "../../libs/i18n"

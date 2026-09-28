@@ -8,15 +8,15 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@medaris/ui/components/sidebar";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useMemo } from "react";
 import KeycloakLogin from "~/components/keycloak/login";
 import { NavMain } from "~/components/layout/nav-main";
 import { NavUser } from "~/components/layout/nav-user";
+import { Link } from "~/lib/i18n/navigation";
 import LocaleSwitcher from "../i18n/locale-switcher";
-import { routes } from "./nav-routes";
+import { homeHref, routes } from "./nav-routes";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
@@ -47,7 +47,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/home">
+              <Link href={homeHref}>
                 <div>
                   <MadrasahLogoIcon size={36} />
                 </div>

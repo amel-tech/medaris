@@ -337,5 +337,19 @@
       "TOO_MANY_SESSIONS": "Tek seferde en fazla 200 oturum oluşturulabilir.",
       "NO_SESSIONS": "Seçilen aralıkta seçilen günlerden hiçbiri yok."
     }
+  },
+  "Auth": {
+    "signIn": "Giriş yap",
+    "redirectingSignIn": "Giriş sayfasına yönlendiriliyorsunuz…",
+    "continue": "Devam et",
+    "errorTitle": "Giriş yapılamadı",
+    "errorDescription": "Giriş sırasında bir sorun oluştu. Lütfen tekrar deneyin.",
+    "accessDenied": "Bu hesabın giriş izni yok.",
+    "configurationError": "Giriş hizmeti şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
+    "retry": "Tekrar dene",
+    "backHome": "Ana sayfaya dön",
+    "signOutTitle": "Çıkış yap",
+    "signOutDescription": "Oturumunuzu kapatmak istediğinize emin misiniz?",
+    "signOutConfirm": "Çıkış yap"
   }
 }

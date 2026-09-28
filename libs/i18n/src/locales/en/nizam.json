@@ -337,5 +337,19 @@
       "TOO_MANY_SESSIONS": "At most 200 sessions can be created at once.",
       "NO_SESSIONS": "None of the chosen days falls in this range."
     }
+  },
+  "Auth": {
+    "signIn": "Sign in",
+    "redirectingSignIn": "Taking you to the sign-in page…",
+    "continue": "Continue",
+    "errorTitle": "We couldn't sign you in",
+    "errorDescription": "Something went wrong while signing you in. Please try again.",
+    "accessDenied": "This account is not allowed to sign in.",
+    "configurationError": "Sign-in is unavailable right now. Please try again later.",
+    "retry": "Try again",
+    "backHome": "Back to the home page",
+    "signOutTitle": "Sign out",
+    "signOutDescription": "Are you sure you want to sign out?",
+    "signOutConfirm": "Sign out"
   }
 }
