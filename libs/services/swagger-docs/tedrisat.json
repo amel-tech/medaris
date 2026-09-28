@@ -299,6 +299,109 @@
         ]
       }
     },
+    "/kosks/{id}/managers/{userId}": {
+      "post": {
+        "description": "Idempotent. Open to the köşk's managers and SYSTEM_ADMIN — not to a nazır of its medrese (MDRS-126).",
+        "operationId": "addKoskManager",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "No such köşk, or the user has never signed in (KOSK_MANAGER_UNKNOWN_USER)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Make a user a manager of the köşk",
+        "tags": [
+          "kosks"
+        ]
+      },
+      "delete": {
+        "description": "The last manager cannot be removed (409 KOSK_LAST_MANAGER). A manager may remove themselves while another remains (MDRS-126).",
+        "operationId": "removeKoskManager",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "No such köşk, or the user is not one of its managers"
+          },
+          "409": {
+            "description": "The user is the köşk's last manager (KOSK_LAST_MANAGER)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a manager from the köşk",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
     "/kosks/{id}/follow": {
       "post": {
         "operationId": "followKosk",
@@ -3324,7 +3427,15 @@
             "type": "string"
           },
           "ownerId": {
-            "type": "string"
+            "type": "string",
+            "description": "Who created the köşk. Grants nothing since MDRS-126 — see managerIds"
+          },
+          "managerIds": {
+            "description": "Who manages the köşk, oldest first; never empty (MDRS-126)",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "madrasahId": {
             "type": "string",
@@ -3429,6 +3540,7 @@
         "required": [
           "id",
           "ownerId",
+          "managerIds",
           "name",
           "coverHue",
           "isPrivate",

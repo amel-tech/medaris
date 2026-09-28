@@ -1,7 +1,7 @@
 import { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
-import { kosks } from "../../src/database/schema/kosk.schema";
+import { koskManagers, kosks } from "../../src/database/schema/kosk.schema";
 import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
 import {
   COURSE_TREE_TABLES,
@@ -216,6 +216,11 @@ describe("KoskController (e2e)", () => {
         .insert(kosks)
         .values({ ownerId: OTHER_USER_ID, name: "Başka Köşk" })
         .returning();
+      await databaseService.db.insert(koskManagers).values({
+        koskId: other.id,
+        userId: OTHER_USER_ID,
+        addedBy: OTHER_USER_ID,
+      });
 
       await request(app.getHttpServer())
         .patch(`/kosks/${other.id}`)

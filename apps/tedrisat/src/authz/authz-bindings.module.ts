@@ -16,7 +16,7 @@ import { TedrisatRoleResolver } from "./tedrisat-role-resolver.service";
  * a globally-registered provider's constructor at boot.
  *
  * The resolver reads ownership, membership and enrollment through the
- * feature modules — `KoskService.isOwner`, `FlashcardDeckService.findById`,
+ * feature modules — `KoskService.isManager`, `FlashcardDeckService.findById`,
  * and `CourseRepository` for the course lookups no service exposes — rather
  * than through `DatabaseService` directly, so the authorization decision and
  * the domain code share one code path over each table (review findings on

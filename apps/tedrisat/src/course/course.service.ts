@@ -54,16 +54,16 @@ export class CourseService {
     user: AuthenticatedUser,
     archived = false
   ): Promise<ICourseSummary[]> {
-    const kosk = await this.koskService.findById(koskId, user.sub); // throws if köşk is missing
-    const isOwner = kosk.ownerId === user.sub;
+    await this.koskService.findById(koskId, user.sub); // throws if köşk is missing
+    const isManager = await this.koskService.isManager(koskId, user.sub);
     if (archived) {
-      if (!isOwner && !this.authz.isSystemAdmin(user)) {
+      if (!isManager && !this.authz.isSystemAdmin(user)) {
         throw new KoskForbiddenError();
       }
       return this.courseRepo.findSummariesByKosk(koskId, user.sub, true, true);
     }
-    // Only the köşk owner sees DRAFT courses; everyone else gets PUBLISHED only.
-    return this.courseRepo.findSummariesByKosk(koskId, user.sub, isOwner);
+    // Only the köşk's managers see DRAFT courses; everyone else gets PUBLISHED only.
+    return this.courseRepo.findSummariesByKosk(koskId, user.sub, isManager);
   }
 
   async findEnrolledCourses(userId: string): Promise<IEnrolledCourse[]> {
@@ -92,8 +92,8 @@ export class CourseService {
     // A DRAFT course is invisible to anyone but its köşk owner — surface it as
     // not-found rather than forbidden so its existence isn't leaked.
     if (course.status === CourseStatus.DRAFT) {
-      const isOwner = await this.koskService.isOwner(course.koskId, userId);
-      if (!isOwner) {
+      const isManager = await this.koskService.isManager(course.koskId, userId);
+      if (!isManager) {
         throw new CourseNotFoundError(id);
       }
     }
@@ -145,7 +145,7 @@ export class CourseService {
     if (koskId === null) {
       throw new CourseNotFoundError(courseId);
     }
-    await this.koskService.assertOwner(koskId, userId);
+    await this.koskService.assertManager(koskId, userId);
   }
 
   async create(
@@ -153,7 +153,7 @@ export class CourseService {
     authorId: string,
     course: Omit<ICreateCourse, "koskId" | "authorId">
   ): Promise<ICourseDetail> {
-    await this.koskService.assertOwner(koskId, authorId); // köşk owner only
+    await this.koskService.assertManager(koskId, authorId); // köşk managers only
     return this.courseRepo.create({
       ...withCanonicalTimeZone(course),
       koskId,
@@ -256,7 +256,7 @@ export class CourseService {
     koskId: string,
     userId: string
   ): Promise<IPendingEnrollment[]> {
-    await this.koskService.assertOwner(koskId, userId); // köşk owner only
+    await this.koskService.assertManager(koskId, userId); // köşk managers only
     return this.courseRepo.findPendingByKosk(koskId);
   }
 

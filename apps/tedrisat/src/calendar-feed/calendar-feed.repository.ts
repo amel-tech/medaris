@@ -11,7 +11,7 @@ import {
   enrollments,
   lessons,
 } from "../database/schema/course.schema";
-import { kosks } from "../database/schema/kosk.schema";
+import { koskManagers } from "../database/schema/kosk.schema";
 import { users } from "../database/schema/user.schema";
 
 /** One session as the feed needs it — and nothing else (no meeting link). */
@@ -113,6 +113,11 @@ export class CalendarFeedRepository {
       .select({ id: courseMuderris.courseId })
       .from(courseMuderris)
       .where(eq(courseMuderris.userId, userId));
+    // The köşks the user is one of the managers of (MDRS-126).
+    const manages = this.db
+      .select({ id: koskManagers.koskId })
+      .from(koskManagers)
+      .where(eq(koskManagers.userId, userId));
 
     const rows = await this.db
       .select({
@@ -129,14 +134,13 @@ export class CalendarFeedRepository {
       .from(lessons)
       .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
       .innerJoin(courses, eq(courses.id, courseWeeks.courseId))
-      .innerJoin(kosks, eq(kosks.id, courses.koskId))
       .where(
         and(
           isNull(courses.archivedAt),
           gte(lessons.scheduledAt, from),
           lte(lessons.scheduledAt, to),
           or(
-            eq(kosks.ownerId, userId),
+            inArray(courses.koskId, manages),
             and(
               eq(courses.status, CourseStatus.PUBLISHED),
               or(inArray(courses.id, enrolledIn), inArray(courses.id, teaches))
