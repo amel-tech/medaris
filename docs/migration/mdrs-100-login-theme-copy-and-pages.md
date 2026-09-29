@@ -17,7 +17,10 @@ repository.
   and `ar`. It supplies the two keys Keycloak does not define
   (`loginAccountSubtitle`, `registerSubtitle` — the pages printed the key
   itself), the Turkish entries Keycloak's `tr` set lacks (it has 271 of the 470
-  English login messages), the field-validation and server messages a
+  English login messages — counted with `grep -cE '^\s+"?[A-Za-z0-9_.-]+"?:'
+  en.ts tr.ts` in
+  `apps/keycloak-theme/node_modules/keycloakify/src/login/i18n/messages_defaultSet/`,
+  keycloakify 11.16.0, output `en.ts:470` `tr.ts:271`), the field-validation and server messages a
   registrant can meet, and the product's own wording where it differs from
   Keycloak's ("Giriş yap" / "Kayıt ol", as in `libs/i18n`). Two Arabic defaults
   were wrong and are overridden (`updatePasswordTitle` said "password updated";
@@ -116,8 +119,13 @@ for why happy-dom is configured the way it is. Four spec files:
 - The gate (`nx affected -t typecheck test build lint module-boundaries`
   against the branch base) — see the PR for the run.
 - Deliberately breaking it: with `src/login/i18n.ts` put back to its previous
-  version, 23 of the 92 page tests fail (raw `registerSubtitle` /
-  `loginAccountSubtitle`, English left on Turkish and Arabic pages).
+  version (`git show 85e8a9b0^:apps/keycloak-theme/src/login/i18n.ts`), 26 of
+  the 92 page tests fail (raw `registerSubtitle` / `loginAccountSubtitle`,
+  English left on Turkish and Arabic pages, and `login-verify-email.ftl` not
+  rendering because `emailVerifyResend` is missing). Command, from
+  `apps/keycloak-theme`: `pnpm exec vitest run test/pages.spec.tsx`; output
+  `Tests  26 failed | 66 passed (92)`, and `Tests  92 passed (92)` with the
+  current file.
 - `keycloakify build` (with a Maven downloaded for the run; the gate has no
   target for it) produced both JARs; the JAR contains
   `theme/medaris-keycloak-theme/email/**` and the login `messages_tr.properties`
