@@ -61,8 +61,8 @@ checks ran in Chromium on Linux, and forced colours were only emulated there.
 
 ```
 styles.css       imports everything below, in order
-tokens/          fonts, colors, semantic, typography, spacing, layout,
-                 borders, elevation, motion, domain, base
+tokens/          fonts, colors, semantic, theme, typography, spacing,
+                 layout, borders, elevation, motion, domain, base
 components.css   the generic .mds-* classes
 medrese.css      the medrese classes: lesson rows, weeks, covers, platform
                  chips, joining a session, the mütalaa folio
@@ -139,6 +139,8 @@ Both themes are complete, and every colour pair passes in both (`contrast.md`).
 
 - A page follows the system preference.
 - `data-theme="dark"` or `data-theme="light"` on `<html>` forces one theme.
+- In Claude Design the theme switcher lists both themes (Theme Light, Theme Dark), because each is an
+  `html[data-theme="…"]` rule. A viewer on a dark system picks Theme Light to see the day theme.
 - `data-theme="dark"` on an element below `<html>` makes a night island. A light island inside a
   night page is not supported.
 - The night theme swaps ink and paper: warm paper text on a blue-black page. The primary button

@@ -9,7 +9,7 @@
      outline: var(--ring-focus-outline); outline-offset: var(--ring-focus-offset); box-shadow: var(--ring-focus);
    The transparent outline is what forced-colours mode paints (box-shadow is not painted there).
    --ring-focus is re-declared wherever a theme is set, so a night island gets the night ring. */
-:root[data-theme="dark"], [data-theme="dark"] {
+html[data-theme="dark"], [data-theme="dark"] {
   --elevation-overlay: 0 0 0 1px rgb(0 0 0 / 0.4), 0 12px 32px -8px rgb(0 0 0 / 0.6);
   --elevation-raised: 0 0 0 1px rgb(0 0 0 / 0.45), 0 16px 40px -12px rgb(0 0 0 / 0.65);
   --elevation-modal: 0 0 0 1px rgb(0 0 0 / 0.5), 0 32px 80px -16px rgb(0 0 0 / 0.75);

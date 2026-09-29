@@ -88,9 +88,9 @@ Check: `verify-contrast.mjs`, which also fails when `contrast.md` is stale; `che
 Source: WCAG 2.2, 1.4.3 and 1.4.11.
 
 ### MDS-COL-09 — Night is a theme
-Rule: the night theme re-points the semantic roles and nothing else. A page follows the system preference; `data-theme="dark"` or `data-theme="light"` on `<html>` forces one. `data-theme="dark"` on an element below `<html>` makes a night island; a light island inside a night page is not supported. Covers and the domain tokens are the same in both themes. Every card, prototype and screen is looked at by day and by night.
+Rule: the night theme re-points the semantic roles and nothing else. A page follows the system preference; `data-theme="dark"` or `data-theme="light"` on `<html>` forces one. Each forced theme is an `html[data-theme="…"]` rule (`tokens/theme.css`), the form a theme switcher lists and applies; `--theme` names the theme that is on. `data-theme="dark"` on an element below `<html>` makes a night island; a light island inside a night page is not supported. Covers and the domain tokens are the same in both themes. Every card, prototype and screen is looked at by day and by night.
 Why: a 60-minute lesson at 21:00 is read on the night page.
-Check: `verify-contrast.mjs` fails a night block that re-points a primitive, or whose two copies differ; `check.mjs` renders every page by day, dark by preference, dark by `data-theme` and as a night island (THEME, RESOLVE, CONTRAST).
+Check: `verify-contrast.mjs` fails a night block that re-points a primitive, or whose two copies differ; `check.mjs` renders every page by day, dark by preference, dark by `data-theme`, as a night island, and light by `data-theme` on a dark system (THEME, RESOLVE, CONTRAST).
 
 ## Type
 

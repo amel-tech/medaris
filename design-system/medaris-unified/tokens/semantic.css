@@ -18,7 +18,7 @@
    Both come before the default :root (MDS-TOK-02), and both outrank it. */
 
 /* ------------------------------------------------------------------ night: "ink" */
-:root[data-theme="dark"], [data-theme="dark"] {
+html[data-theme="dark"], [data-theme="dark"] {
   color-scheme: dark;
   /* neutral · background */
   --background-neutral-page: var(--murekkep-950);

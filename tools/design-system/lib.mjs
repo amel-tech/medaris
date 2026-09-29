@@ -118,7 +118,7 @@ export const COLOUR_FILES = ["colors", "semantic", "elevation", "domain"].map(
 
 // The colour tokens of a design system in its two themes. `day` is every
 // top-level `:root` declaration. Each file writes its night values twice, under
-// `:root[data-theme="dark"]` and under `prefers-color-scheme: dark`; `night` is
+// `html[data-theme="dark"]` and under `prefers-color-scheme: dark`; `night` is
 // `day` with the first on top, and `problems` names a file whose two differ.
 export function colourThemes(dir) {
   const day = new Map();
@@ -139,7 +139,7 @@ export function colourThemes(dir) {
       }
     }
     const attr = blocks.find((b) =>
-      b.selector.startsWith(':root[data-theme="dark"]')
+      b.selector.startsWith('html[data-theme="dark"]')
     );
     const media = blocks.find((b) =>
       b.parent?.includes("prefers-color-scheme: dark")

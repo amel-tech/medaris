@@ -293,6 +293,18 @@ function darkRoots() {
   for (const d of docs) d.documentElement.dataset.theme = "dark";
 }
 
+// The light theme pinned on a dark system: what a viewer gets from the theme
+// switcher, or a page that sets data-theme="light" itself.
+function lightRoots() {
+  const docs = [document];
+  for (let i = 0; i < docs.length; i++) {
+    for (const f of docs[i].querySelectorAll("iframe")) {
+      if (f.contentDocument) docs.push(f.contentDocument);
+    }
+  }
+  for (const d of docs) d.documentElement.dataset.theme = "light";
+}
+
 function nightIsland() {
   const d = document.createElement("div");
   d.id = "__island";
@@ -1132,6 +1144,7 @@ async function run() {
     ["dark (prefers-color-scheme)", "dark", null],
     ["dark (data-theme)", "light", "dark"],
     ["dark (island)", "light", "island"],
+    ["light (data-theme on a dark system)", "dark", "light"],
   ];
   let measured = 0;
   let focused = 0;
@@ -1144,10 +1157,16 @@ async function run() {
     for (const [label, scheme, attr] of modes) {
       const { targetId, sessionId } = await open(page, sizeOf(page), scheme);
       if (attr === "dark") await call(sessionId, darkRoots);
+      if (attr === "light") await call(sessionId, lightRoots);
       if (attr === "island") await call(sessionId, nightIsland);
       if (attr) await call(sessionId, settle);
       const out = await call(sessionId, probe, names);
-      const theme = scheme === "dark" || attr ? "dark" : "light";
+      const theme =
+        attr === "light"
+          ? "light"
+          : scheme === "dark" || attr
+            ? "dark"
+            : "light";
       const wrong = names.filter(
         (n) => norm(out.tokens[n]) !== norm(expected[theme][n])
       );
@@ -1231,7 +1250,11 @@ async function run() {
         }
       }
       await call(sessionId, mark, true);
-      if (label !== "dark (prefers-color-scheme)") {
+      if (
+        label === "light" ||
+        label === "dark (data-theme)" ||
+        label === "dark (island)"
+      ) {
         focused += await tabThrough(sessionId, `${f} ${label}`);
         const dialogs = await evaluate(
           sessionId,
