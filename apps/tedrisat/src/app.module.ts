@@ -9,6 +9,7 @@ import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { AuthzBindingsModule } from "./authz/authz-bindings.module";
+import { CalendarFeedModule } from "./calendar-feed/calendar-feed.module";
 import { configuration } from "./config";
 import { CourseModule } from "./course/course.module";
 import { DatabaseModule } from "./database/database.module";
@@ -39,6 +40,7 @@ import { UserModule } from "./user/user.module";
     KoskModule,
     MadrasahModule,
     CourseModule,
+    CalendarFeedModule,
     UserModule,
   ],
   controllers: [AppController],

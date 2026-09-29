@@ -20,6 +20,8 @@ local_docs/
 node_modules
 .env
 .env.staging
+# MDRS-97: filled copies of config/keycloak/env/*.env.example
+config/keycloak/env/*.env
 dist/
 *.log
 .DS_Store

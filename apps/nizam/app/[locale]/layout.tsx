@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import AppLayout from "~/components/layout/app-layout";
+import { LegalFooter } from "~/components/legal-footer";
 import { ClientProviders } from "~/components/providers/client-providers";
 import { routing } from "~/lib/i18n/routing";
 
@@ -35,7 +36,7 @@ export default async function LocaleLayout({
       <body className={inter.className}>
         <NextIntlClientProvider>
           <ClientProviders>
-            <AppLayout>{children}</AppLayout>
+            <AppLayout footer={<LegalFooter />}>{children}</AppLayout>
           </ClientProviders>
         </NextIntlClientProvider>
       </body>

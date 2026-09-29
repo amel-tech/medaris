@@ -9,7 +9,7 @@ import {
   enrollments,
   lessons,
 } from "../../src/database/schema/course.schema";
-import { kosks } from "../../src/database/schema/kosk.schema";
+import { koskManagers, kosks } from "../../src/database/schema/kosk.schema";
 import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
 import {
   COURSE_TREE_TABLES,
@@ -763,6 +763,11 @@ describe("CourseController (e2e)", () => {
         .insert(kosks)
         .values({ ownerId: OTHER_USER_ID, name: "Başka Köşk" })
         .returning();
+      await databaseService.db.insert(koskManagers).values({
+        koskId: otherKosk.id,
+        userId: OTHER_USER_ID,
+        addedBy: OTHER_USER_ID,
+      });
       return request(app.getHttpServer())
         .get(`/kosks/${otherKosk.id}/enrollments/pending`)
         .expect(403);
@@ -776,6 +781,11 @@ describe("CourseController (e2e)", () => {
         .insert(kosks)
         .values({ ownerId: OTHER_USER_ID, name: "Başka Köşk" })
         .returning();
+      await databaseService.db.insert(koskManagers).values({
+        koskId: otherKosk.id,
+        userId: OTHER_USER_ID,
+        addedBy: OTHER_USER_ID,
+      });
       const [otherCourse] = await databaseService.db
         .insert(courses)
         .values({
@@ -811,6 +821,11 @@ describe("CourseController (e2e)", () => {
         .insert(kosks)
         .values({ ownerId: OTHER_USER_ID, name: "Başka Köşk" })
         .returning();
+      await databaseService.db.insert(koskManagers).values({
+        koskId: otherKosk.id,
+        userId: OTHER_USER_ID,
+        addedBy: OTHER_USER_ID,
+      });
       const [draft] = await databaseService.db
         .insert(courses)
         .values({
@@ -1172,6 +1187,11 @@ describe("CourseController (e2e)", () => {
         .insert(kosks)
         .values({ ownerId: OTHER_USER_ID, name: "Başka Köşk" })
         .returning();
+      await databaseService.db.insert(koskManagers).values({
+        koskId: otherKosk.id,
+        userId: OTHER_USER_ID,
+        addedBy: OTHER_USER_ID,
+      });
       const [otherCourse] = await databaseService.db
         .insert(courses)
         .values({

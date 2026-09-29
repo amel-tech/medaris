@@ -16,17 +16,41 @@ import {
   ICreateLesson,
   IEnrolledCourse,
   IEnrollment,
+  ILesson,
   ILessonMutation,
   IPendingEnrollment,
   IReplaceCourse,
+  ISessionBatchResult,
   IUpdateCourse,
   IUpdateLesson,
 } from "./course.repository.interface";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import { withCanonicalTimeZone } from "./domain/time-zone";
+import {
+  expandWeeklyPattern,
+  IPlannedSession,
+  IsoWeekday,
+  IWeeklyPattern,
+  WeeklyPatternInvalid,
+} from "./domain/weekly-pattern";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { EnrollmentNotFoundError } from "./errors/enrollment-not-found.error";
+import { InvalidSessionPatternError } from "./errors/invalid-session-pattern.error";
+import { LessonNotFoundError } from "./errors/lesson-not-found.error";
+import { LessonNotScheduledError } from "./errors/lesson-not-scheduled.error";
+
+/** A weekly pattern as the API takes it; `timeZone` defaults to the course's. */
+export type SessionPatternInput = Omit<
+  IWeeklyPattern,
+  "weekdays" | "timeZone"
+> & { weekdays: number[]; timeZone?: string };
+
+export interface SessionBatchInput extends SessionPatternInput {
+  title: string;
+  durationMinutes: number;
+  meetingUrl?: string;
+}
 
 export interface StudentIdentity {
   name?: string | null;
@@ -51,16 +75,16 @@ export class CourseService {
     user: AuthenticatedUser,
     archived = false
   ): Promise<ICourseSummary[]> {
-    const kosk = await this.koskService.findById(koskId, user.sub); // throws if köşk is missing
-    const isOwner = kosk.ownerId === user.sub;
+    await this.koskService.findById(koskId, user.sub); // throws if köşk is missing
+    const isManager = await this.koskService.isManager(koskId, user.sub);
     if (archived) {
-      if (!isOwner && !this.authz.isSystemAdmin(user)) {
+      if (!isManager && !this.authz.isSystemAdmin(user)) {
         throw new KoskForbiddenError();
       }
       return this.courseRepo.findSummariesByKosk(koskId, user.sub, true, true);
     }
-    // Only the köşk owner sees DRAFT courses; everyone else gets PUBLISHED only.
-    return this.courseRepo.findSummariesByKosk(koskId, user.sub, isOwner);
+    // Only the köşk's managers see DRAFT courses; everyone else gets PUBLISHED only.
+    return this.courseRepo.findSummariesByKosk(koskId, user.sub, isManager);
   }
 
   async findEnrolledCourses(userId: string): Promise<IEnrolledCourse[]> {
@@ -89,12 +113,51 @@ export class CourseService {
     // A DRAFT course is invisible to anyone but its köşk owner — surface it as
     // not-found rather than forbidden so its existence isn't leaked.
     if (course.status === CourseStatus.DRAFT) {
-      const isOwner = await this.koskService.isOwner(course.koskId, userId);
-      if (!isOwner) {
+      const isManager = await this.koskService.isManager(course.koskId, userId);
+      if (!isManager) {
         throw new CourseNotFoundError(id);
       }
     }
     return course;
+  }
+
+  /**
+   * A scheduled session and its course, for a calendar entry (MDRS-117).
+   *
+   * Authorized exactly like the session page, which is rendered from
+   * `GET /courses/:id`: whoever `getDetail` shows the course to may have the
+   * entry. A lesson that is missing, archived, or in a course the caller may
+   * not see is one answer — LESSON_NOT_FOUND — so the route does not tell
+   * a hidden course apart from a lesson that never existed.
+   */
+  async getScheduledLesson(
+    lessonId: string,
+    user: AuthenticatedUser
+  ): Promise<{
+    course: ICourseDetail;
+    lesson: ILesson & { scheduledAt: Date };
+  }> {
+    const courseId = await this.courseRepo.findLessonCourseId(lessonId);
+    if (!courseId) throw new LessonNotFoundError(lessonId);
+
+    let course: ICourseDetail;
+    try {
+      course = await this.getDetail(courseId, user);
+    } catch (error) {
+      if (error instanceof CourseNotFoundError) {
+        throw new LessonNotFoundError(lessonId);
+      }
+      throw error;
+    }
+
+    // The detail carries live lessons only, so an archived one is not here.
+    const lesson = course.weeks
+      .flatMap((week) => week.lessons)
+      .find((l) => l.id === lessonId);
+    if (!lesson) throw new LessonNotFoundError(lessonId);
+    if (!lesson.scheduledAt) throw new LessonNotScheduledError(lessonId);
+
+    return { course, lesson: { ...lesson, scheduledAt: lesson.scheduledAt } };
   }
 
   /** Ensures the course exists and its köşk is owned by `userId`, else throws. */
@@ -103,7 +166,7 @@ export class CourseService {
     if (koskId === null) {
       throw new CourseNotFoundError(courseId);
     }
-    await this.koskService.assertOwner(koskId, userId);
+    await this.koskService.assertManager(koskId, userId);
   }
 
   async create(
@@ -111,7 +174,7 @@ export class CourseService {
     authorId: string,
     course: Omit<ICreateCourse, "koskId" | "authorId">
   ): Promise<ICourseDetail> {
-    await this.koskService.assertOwner(koskId, authorId); // köşk owner only
+    await this.koskService.assertManager(koskId, authorId); // köşk managers only
     return this.courseRepo.create({
       ...withCanonicalTimeZone(course),
       koskId,
@@ -170,6 +233,68 @@ export class CourseService {
     return this.courseRepo.archiveLesson(lessonId);
   }
 
+  // ---- weekly pattern → sessions (MDRS-109) ----
+  // Authorized by `@Authz(SCOPES.EDIT, …)` on LessonController, like the
+  // three writes above.
+
+  /** The sessions a pattern would create; nothing is written. */
+  async previewSessionBatch(
+    courseId: string,
+    pattern: SessionPatternInput
+  ): Promise<{ timeZone: string; sessions: IPlannedSession[] }> {
+    return this.planSessions(courseId, pattern);
+  }
+
+  /** Expands the pattern and inserts every session in one transaction. */
+  async createSessionBatch(
+    courseId: string,
+    input: SessionBatchInput
+  ): Promise<ISessionBatchResult & { timeZone: string }> {
+    const { title, durationMinutes, meetingUrl, ...pattern } = input;
+    let timeZone = "";
+    const result = await this.courseRepo.createSessionBatch(courseId, {
+      title,
+      durationMinutes,
+      meetingUrl,
+      plan: (courseZone) => {
+        const planned = this.expand(pattern, courseZone);
+        timeZone = planned.timeZone;
+        return planned.sessions;
+      },
+    });
+    return { ...result, timeZone };
+  }
+
+  private async planSessions(
+    courseId: string,
+    pattern: SessionPatternInput
+  ): Promise<{ timeZone: string; sessions: IPlannedSession[] }> {
+    const courseZone = await this.courseRepo.findTimeZone(courseId);
+    if (courseZone === null) throw new CourseNotFoundError(courseId);
+    return this.expand(pattern, courseZone);
+  }
+
+  /** The pattern in its own zone, or the course's when it names none. */
+  private expand(
+    pattern: SessionPatternInput,
+    courseZone: string
+  ): { timeZone: string; sessions: IPlannedSession[] } {
+    const timeZone = pattern.timeZone ?? courseZone;
+    try {
+      const sessions = expandWeeklyPattern({
+        ...pattern,
+        weekdays: pattern.weekdays as IsoWeekday[],
+        timeZone,
+      });
+      return { timeZone, sessions };
+    } catch (error) {
+      if (error instanceof WeeklyPatternInvalid) {
+        throw new InvalidSessionPatternError(error.problem);
+      }
+      throw error;
+    }
+  }
+
   // ---- hide / restore / delete (MDRS-124) ----
   // Authorization is `@Authz` on CourseController: `ARCHIVE` (the köşk
   // manager) for hide and restore, `DELETE` (SYSTEM_ADMIN only — it is on no
@@ -214,7 +339,7 @@ export class CourseService {
     koskId: string,
     userId: string
   ): Promise<IPendingEnrollment[]> {
-    await this.koskService.assertOwner(koskId, userId); // köşk owner only
+    await this.koskService.assertManager(koskId, userId); // köşk managers only
     return this.courseRepo.findPendingByKosk(koskId);
   }
 

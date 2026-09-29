@@ -63,6 +63,9 @@ describe("Keycloak realm ↔ audience check (e2e)", () => {
         ...process.env,
         KC_URL: kcUrl,
         WEB_CLIENTS: `tedris-dev=${WEB_ORIGIN}`,
+        // MDRS-98: a KC_SMTP_HOST exported in the developer's shell would
+        // turn the mail-sender step on here; this suite is about clients.
+        KC_SMTP_HOST: "",
         ...env,
       },
       encoding: "utf8",
@@ -341,6 +344,7 @@ describe("Keycloak realm ↔ audience check (e2e)", () => {
       ALLOW_INSECURE_HTTP: "1",
       KC_ADMIN_USER: "admin",
       KC_ADMIN_PASSWORD: "admin",
+      KC_SMTP_HOST: "",
     };
     delete env.WEB_CLIENTS;
     const result = spawnSync("bash", [SETUP_SCRIPT], { env, encoding: "utf8" });

@@ -1,0 +1,26 @@
+{
+  "clientId": "nizam-local",
+  "name": "nizam (local)",
+  "standardFlowEnabled": true,
+  "baseUrl": "http://localhost:4001",
+  "redirectUris": ["http://localhost:4001/api/auth/callback/keycloak"],
+  "webOrigins": ["http://localhost:4001"],
+  "attributes": {
+    "pkce.code.challenge.method": "S256",
+    "post.logout.redirect.uris": "http://localhost:4001##http://localhost:4001/"
+  },
+  "protocolMappers": [
+    {
+      "name": "audience-tedrisat-api",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-audience-mapper",
+      "consentRequired": false,
+      "config": {
+        "included.client.audience": "tedrisat-api",
+        "access.token.claim": "true",
+        "id.token.claim": "false",
+        "introspection.token.claim": "true"
+      }
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "enabled": true,
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": false,
+  "verifyEmail": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "rememberMe": false,
+  "sslRequired": "external",
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "failureFactor": 10,
+  "waitIncrementSeconds": 60,
+  "minimumQuickLoginWaitSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxFailureWaitSeconds": 900,
+  "maxDeltaTimeSeconds": 43200,
+  "passwordPolicy": "length(10) and notEmail(undefined) and notUsername(undefined)",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["tr", "en", "ar"],
+  "defaultLocale": "tr",
+  "loginTheme": "medaris-keycloak-theme",
+  "emailTheme": "medaris-keycloak-theme",
+  "accessTokenLifespan": 300,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "accessCodeLifespanLogin": 1800,
+  "actionTokenGeneratedByUserLifespan": 300,
+  "actionTokenGeneratedByAdminLifespan": 43200,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "ssoSessionIdleTimeoutRememberMe": 0,
+  "ssoSessionMaxLifespanRememberMe": 0,
+  "clientSessionIdleTimeout": 0,
+  "clientSessionMaxLifespan": 0,
+  "offlineSessionIdleTimeout": 2592000,
+  "offlineSessionMaxLifespanEnabled": false,
+  "revokeRefreshToken": false,
+  "roles": {
+    "realm": [
+      {
+        "name": "SYSTEM_ADMIN",
+        "description": "Full administrative access to tedrisat. Checked by name in libs/common/src/authz/scopes.ts (ROLES.SYSTEM_ADMIN)."
+      }
+    ]
+  }
+}

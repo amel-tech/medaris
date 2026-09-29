@@ -2,6 +2,7 @@ import { resolveSwaggerEnabled } from "@medaris/common";
 import * as pkg from "../../package.json";
 import { resolveDatabaseSsl } from "./database-ssl";
 import { readSecurityEnv } from "./security-env";
+import { readTedrisWebUrl } from "./tedris-web-url";
 import { assertBulkThrottleEnv } from "./throttle-env";
 
 const version = pkg.version || "0.0.1";
@@ -56,6 +57,11 @@ export default () => {
       enabled: process.env.AUTO_MIGRATIONS_ENABLED === "true" || false,
       migrationsFolder:
         process.env.AUTO_MIGRATIONS_FOLDER || "./src/database/migrations",
+    },
+    tedrisWeb: {
+      // Base of the session-page links in calendar entries (MDRS-117); null
+      // when unset, and those routes answer 503.
+      url: readTedrisWebUrl(process.env),
     },
     keycloak: {
       jwksUrl: security.jwksUrl,
