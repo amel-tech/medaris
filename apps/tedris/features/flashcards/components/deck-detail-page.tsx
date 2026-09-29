@@ -4,6 +4,8 @@ import {
   ArrowRightIcon,
   BookmarkSimpleIcon,
   CardsIcon,
+  GlobeIcon,
+  LockIcon,
   StarIcon,
   StudentIcon,
   TrashIcon,
@@ -35,6 +37,7 @@ import {
   addDeckToCollection,
   deleteDeck,
   removeDeckFromCollection,
+  setDeckVisibility,
 } from "~/features/flashcards/actions";
 import { SampleCards } from "~/features/flashcards/components/sample-cards";
 
@@ -58,6 +61,7 @@ export function DeckDetailPage({
   const router = useRouter();
   const [isInCollection, setIsInCollection] = useState(initialIsInCollection);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isPublic, setIsPublic] = useState(deck.isPublic);
   const cardCount = cards.length;
   const sampleCards = cards.slice(0, 8);
   const tags = MOCK_TAGS;
@@ -120,6 +124,31 @@ export function DeckDetailPage({
       });
       setIsProcessing(false);
     }
+  };
+
+  const handleToggleVisibility = async () => {
+    setIsProcessing(true);
+    const result = await setDeckVisibility(deck.id, !isPublic);
+    if (result.success) {
+      setIsPublic(result.data);
+      toastHelper.success({
+        title: t("DeckDetailClient.visibilityChanged"),
+        description: result.data
+          ? t("DeckDetailClient.madePublic")
+          : t("DeckDetailClient.madePrivate"),
+      });
+    } else {
+      toastHelper.error({
+        title: t("DeckDetailClient.visibilityError"),
+        // `in`, not `result.success`: tedris compiles with `strict: false`,
+        // which does not narrow the result union on its discriminant.
+        description:
+          "error" in result
+            ? result.error
+            : t("DeckDetailClient.visibilityError"),
+      });
+    }
+    setIsProcessing(false);
   };
 
   const handleToggleCollection = async () => {
@@ -205,6 +234,20 @@ export function DeckDetailPage({
                   ? t("DeckDetailClient.removeFromCollection")
                   : t("DeckDetailClient.addToMyCollection")}
             </Button>
+            {isOwner && (
+              <Button
+                size="lg"
+                variant="outline"
+                className="gap-2"
+                onClick={handleToggleVisibility}
+                disabled={isProcessing}
+              >
+                {isPublic ? <LockIcon size={20} /> : <GlobeIcon size={20} />}
+                {isPublic
+                  ? t("DeckDetailClient.makePrivate")
+                  : t("DeckDetailClient.makePublic")}
+              </Button>
+            )}
             {isOwner && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>

@@ -118,6 +118,10 @@
     "addToMyCollection": "Koleksiyonuma ekle",
     "by": "ile",
     "cards": "kartlar",
+    "madePrivate": "Deste artık yalnız sana açık.",
+    "madePublic": "Deste artık herkese açık.",
+    "makePrivate": "Özel yap",
+    "makePublic": "Halka aç",
     "noCardsDescription": "Bu destede henüz hiç bilgi kartı yok. Pratik yapmaya başlamak için birkaç kart ekleyin.",
     "noCardsInDeck": "Bu destede hiç kart yok.",
     "practiceNow": "Şimdi Pratik Yapın",
@@ -125,7 +129,9 @@
     "removeFromCollection": "Koleksiyondan kaldır",
     "removing": "Kaldırılıyor...",
     "sampleCards": "Örnek Kartlar",
-    "students": "öğrenciler"
+    "students": "öğrenciler",
+    "visibilityChanged": "Görünürlük değişti",
+    "visibilityError": "Görünürlük değiştirilemedi"
   },
   "DeckForm": {
     "addCard": "Kart Ekle",
