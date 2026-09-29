@@ -229,7 +229,6 @@ export class FlashcardController {
   @Authz(SCOPES.MANAGE_FLASHCARDS, byParentDeckOfCard())
   @Put("cards/:id")
   async replace(
-    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) cardId: string,
     @Body() cardDto: CreateFlashcardDto
   ): Promise<FlashcardResponse> {
@@ -259,7 +258,6 @@ export class FlashcardController {
   @Authz(SCOPES.MANAGE_FLASHCARDS, byParentDeckOfCard())
   @Patch("cards/:id")
   async update(
-    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) cardId: string,
     @Body() cardDto: UpdateFlashcardDto
   ): Promise<FlashcardResponse> {
@@ -287,7 +285,6 @@ export class FlashcardController {
   @Authz(SCOPES.MANAGE_FLASHCARDS, byParentDeckOfCard())
   @Delete("cards/:id")
   async deleteCard(
-    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) cardId: string
   ): Promise<boolean> {
     return this.cardService.delete(cardId);

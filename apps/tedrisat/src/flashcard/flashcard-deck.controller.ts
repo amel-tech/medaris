@@ -208,7 +208,6 @@ export class FlashcardDeckController {
   @Authz(SCOPES.MANAGE_PRIVATE_DECK, byParam(ENTITIES.FLASHCARD_DECK))
   @Put(":id")
   async replace(
-    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) deckId: string,
     @Body() deckDto: CreateFlashcardDeckDto
   ): Promise<FlashcardDeckResponse> {
@@ -242,7 +241,6 @@ export class FlashcardDeckController {
   @Authz(SCOPES.MANAGE_PRIVATE_DECK, byParam(ENTITIES.FLASHCARD_DECK))
   @Patch(":id")
   async updateDeck(
-    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) deckId: string,
     @Body() deckDto: UpdateFlashcardDeckDto
   ): Promise<FlashcardDeckResponse> {
@@ -270,10 +268,7 @@ export class FlashcardDeckController {
   @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @Authz(SCOPES.MANAGE_PRIVATE_DECK, byParam(ENTITIES.FLASHCARD_DECK))
   @Delete(":id")
-  async delete(
-    @Req() request: AuthorizedRequest,
-    @Param("id", ParseUUIDPipe) deckId: string
-  ): Promise<boolean> {
+  async delete(@Param("id", ParseUUIDPipe) deckId: string): Promise<boolean> {
     // MDRS-83 added the delete affordance to tedris behind a client-side
     // `isOwner` flag, and a Server Action is an HTTP endpoint like any other:
     // the flag is display-only. `decks.delete` filters on `decks.id` alone
