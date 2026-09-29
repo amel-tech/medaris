@@ -1,99 +1,101 @@
-/* Medaris — component layer.
-   The measurements of the canonical classes were read off the component symbols in
-   "Online Medrese UI UX.fig" (Design System page): the heights, paddings, gaps, radii
-   and fills of every class that the mirror's components.css also draws are the file's,
-   not invented.
-
-   NOT extracted — everything the #95 migration added (MDS-TOK-06). A section that opens
-   with "NOT extracted" is a proposal whole; inside a canonical section, a proposal says
-   "proposed" on its line or on the comment that opens its block.
-
-   One deliberate divergence: the Figma components render in Geist, because the
-   kit was imported before the brand type was chosen. The brand type IS chosen —
-   the "typography" collection names Cairo and IBM Plex Sans — so this layer sets
-   IBM Plex Sans. Retyping the Figma kit closes the gap in the other direction. */
+/* Medaris — component layer, "Mürekkep ve kâğıt". Every look goes through the semantic tokens
+   (tokens/semantic.css); each component's .prompt.md says why it looks the way it does.
+   This file declares no custom property; data variables (--mds-*) are read with a fallback (MDS-TOK-02).
+   Focus: tokens/base.css draws the two-band ring on every :focus-visible. A rule here that sets box-shadow
+   on a focused element composes var(--ring-focus) into it, never after an outer shadow (an elevation painted over
+   the ring would dim it). outline: none appears only where a parent draws the ring for its stretched link (the
+   interactive card, the lesson row), as MDS-A11Y-01 allows. A focus ring is never drawn outside a modal layer,
+   where its ground would be the page under the scrim (check.mjs).
+   Disabled: one rule everywhere (MDS-A11Y-11). A disabled control drops its tone: a sunken well, a hairline, the
+   disabled ink. A text field or a select keeps its control edge, dashed, so it still reads as a field. Its text
+   is ≥ 3:1 on every ground (contrast.md), although WCAG 1.4.3 exempts it. No opacity. */
 
 /* ---------------------------------------------------------------- Icon */
-/* NOT extracted — glyphs from assets/icons.svg on the 256 Phosphor box, filled in currentColor, so
-   an icon takes its colour, forced colours included, from the text around it. */
+/* Glyphs from assets/icons.svg (Phosphor Regular) on the 256 box, filled in currentColor. */
 .mds-icon { flex: none; inline-size: 20px; block-size: 20px; fill: currentColor; }
 .mds-icon--sm { inline-size: 16px; block-size: 16px; }
 .mds-icon--lg { inline-size: 24px; block-size: 24px; }
 .mds-icon--directional:dir(rtl) { scale: -1 1; }
 
 /* ---------------------------------------------------------------- Logo */
-/* NOT extracted — a proposal of the #95 migration (MDS-TOK-06). */
-.mds-logo { display: inline-flex; align-items: center; gap: var(--space-sm); color: var(--text-neutral-primary); }
+/* The mark: an ink page with the scribe's double ruled frame (cetvel) and the qalam's rhombic nokta in
+   lâciverd. It follows the theme (ink by day, paper by night) and names no primitive. The large lockup adds
+   مدارس as outlined paths, so a Latin-only page never fetches the Naskh file. */
+.mds-logo { display: inline-flex; align-items: center; gap: var(--space-3); color: var(--text-neutral-default); }
 .mds-logo__mark { flex: none; inline-size: 32px; block-size: 32px; }
+.mds-logo--sm { gap: var(--space-2); }
 .mds-logo--sm .mds-logo__mark { inline-size: 24px; block-size: 24px; }
-.mds-logo--lg { gap: 12px; }
+.mds-logo--sm .mds-logo__rule--inner { display: none; }
+.mds-logo--lg { gap: var(--space-4); }
 .mds-logo--lg .mds-logo__mark { inline-size: 48px; block-size: 48px; }
-/* The mark's two asset colours, the one exception to MDS-TOK-01 until SPEC-D3-02
-   is decided; option (d) re-points them to sky-900 / sky-100. */
-.mds-logo__ground { fill: #004F80; }
-.mds-logo__arch { fill: #DEE8FF; }
+.mds-logo__ground { fill: var(--text-neutral-default); }
+.mds-logo__rule { fill: none; stroke: var(--text-neutral-on-bold); vector-effect: non-scaling-stroke; }
+.mds-logo__nokta { fill: var(--icon-logo-nokta); }
 .mds-logo__text { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
-.mds-logo__word { font-family: var(--font-display); font-size: var(--fs-body-lg); font-weight: var(--weight-bold); line-height: var(--lh-tight); white-space: nowrap; }
-.mds-logo--sm .mds-logo__word { font-size: var(--fs-body); }
-.mds-logo--lg .mds-logo__word { font-size: var(--fs-h5); }
-.mds-logo__subtitle { font-family: var(--font-ui); font-size: var(--fs-caption); font-weight: var(--weight-medium); line-height: var(--lh-snug); color: var(--text-neutral-tertiary); white-space: nowrap; }
-.mds-logo--inverse { color: var(--text-white); }
-.mds-logo--inverse .mds-logo__subtitle { color: var(--text-neutral-inverse-tertiary); }
-/* The mark is an image: it keeps its colours; the wordmark follows the system's. */
+.mds-logo__word { font-family: var(--font-reading); font-size: var(--fs-h4); font-weight: var(--weight-semibold); line-height: 1.1; letter-spacing: -0.01em; white-space: nowrap; }
+.mds-logo--sm .mds-logo__word { font-size: var(--fs-h5); }
+.mds-logo--lg .mds-logo__word { font-size: var(--fs-h2); }
+.mds-logo__arabic { display: block; block-size: 18px; inline-size: auto; fill: var(--text-neutral-muted); }
+.mds-logo__subtitle { font-family: var(--font-ui); font-size: var(--fs-eyebrow); font-weight: var(--weight-semibold); line-height: 1.2; letter-spacing: var(--tracking-wide); color: var(--text-neutral-subtle); white-space: nowrap; }
+.mds-logo__subtitle:is(:lang(tr), :lang(en)) { text-transform: uppercase; }
 @media (forced-colors: active) {
-  .mds-logo__mark { forced-color-adjust: none; }
+  .mds-logo__ground { fill: CanvasText; }
+  .mds-logo__rule { stroke: Canvas; }
+  .mds-logo__nokta { fill: Canvas; }
+  .mds-logo__arabic { fill: CanvasText; }
 }
 
 /* ---------------------------------------------------------------- Button */
+/* The primary action is written in ink: an ink fill by day, a paper fill by night. */
 .mds-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: var(--space-2);
+  block-size: var(--size-control-regular);
+  padding-inline: var(--space-4);
+  border: var(--border-width-thin) solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-neutral-default);
   font-family: var(--font-ui);
-  font-weight: var(--weight-medium);
+  font-size: var(--fs-body-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
   white-space: nowrap;
-  border: var(--border-s) solid transparent;
-  border-radius: var(--radius-s);
-  cursor: pointer;
   text-decoration: none;
+  cursor: pointer;
   transition: var(--transition-colors);
 }
-.mds-btn:focus-visible { outline: none; box-shadow: var(--ring-focus); }
-.mds-btn[disabled], .mds-btn.is-disabled { opacity: 0.5; pointer-events: none; }
-/* proposed — aria-disabled keeps the control focusable and named: a busy button, which the binding also stops
-   acting on click and Enter/Space (MDS-A11Y-11), and a disabled link, <a role="link"> without href. */
-.mds-btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
-/* proposed — a disabled link takes no hover, like a disabled <button>; the binding also drops its clicks. */
+/* aria-disabled keeps the control focusable and named: a busy button (MDS-A11Y-11), a disabled link.
+   A busy button keeps its tone and its full contrast; only its cursor and its spinner change. */
+.mds-btn[aria-disabled="true"] { cursor: not-allowed; }
 .mds-btn[aria-disabled="true"]:not([aria-busy="true"]) { pointer-events: none; }
 .mds-btn[aria-busy="true"] { cursor: progress; }
-.mds-btn--full { inline-size: 100%; } /* proposed */
+.mds-btn--full { inline-size: 100%; }
 
-/* sizes — height / padding / gap / radius / size straight from the symbols */
-.mds-btn--mini    { block-size: 24px; padding: 0 var(--space-sm); gap: 6px; border-radius: var(--radius-xxs); font-size: var(--fs-caption); }
-.mds-btn--small   { block-size: 32px; padding: 0 12px;            gap: 6px; font-size: var(--fs-body-sm); }
-.mds-btn--regular { block-size: 36px; padding: 0 var(--space-md);  gap: var(--space-sm); font-size: var(--fs-body-sm); }
-.mds-btn--large   { block-size: 42px; padding: 0 var(--space-lg);  gap: var(--space-sm); font-size: var(--fs-body-sm); }
+.mds-btn--mini    { block-size: var(--size-control-mini); padding-inline: var(--space-2); gap: var(--space-1); border-radius: var(--radius-tag); font-size: var(--fs-caption); }
+.mds-btn--small   { block-size: var(--size-control-small); padding-inline: var(--space-3); gap: 6px; }
+.mds-btn--regular { block-size: var(--size-control-regular); padding-inline: var(--space-4); }
+.mds-btn--large   { block-size: var(--size-control-large); padding-inline: var(--space-6); font-size: var(--fs-body); }
 
-.mds-btn--primary { background: var(--background-brand-primary); color: var(--text-white); }
-.mds-btn--primary:hover { background: var(--background-brand-secondary); }
+.mds-btn--primary { background: var(--background-action-bold); color: var(--text-neutral-on-bold); }
+.mds-btn--primary:hover { background: var(--background-action-bold-hover); }
+.mds-btn--secondary { background: var(--background-neutral-sunken); color: var(--text-neutral-default); }
+.mds-btn--secondary:hover { background: var(--background-neutral-hover); }
+.mds-btn--outline { background: var(--background-neutral-surface); border-color: var(--border-neutral-control); }
+.mds-btn--outline:hover { background: var(--background-neutral-hover); border-color: var(--border-neutral-strong); }
+.mds-btn--ghost:hover { background: var(--background-neutral-hover); }
+/* Red ink on paper at rest; it fills with red only under the pointer, as the commitment is made. */
+.mds-btn--destructive { background: var(--background-error-subtle); border-color: var(--border-error-default); color: var(--text-error-default); }
+.mds-btn--destructive:hover { background: var(--background-error-bold); border-color: var(--background-error-bold); color: var(--text-neutral-on-bold); }
+.mds-btn--link { block-size: auto; min-block-size: 24px; padding: 0; color: var(--text-brand-default); font-weight: var(--weight-medium); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
+.mds-btn--link:hover { text-decoration-thickness: 2px; }
+/* Disabled drops the tone of every variant, destructive included: a disabled "Sil" must not read as armed. */
+.mds-btn:is([disabled], .is-disabled, [aria-disabled="true"]:not([aria-busy="true"])) { background: var(--background-neutral-sunken); border-color: var(--border-neutral-subtle); color: var(--text-neutral-disabled); pointer-events: none; }
+.mds-btn:is(.mds-btn--ghost, .mds-btn--link):is([disabled], .is-disabled, [aria-disabled="true"]:not([aria-busy="true"])) { background: transparent; border-color: transparent; }
 
-.mds-btn--secondary { background: var(--background-neutral-secondary); color: var(--text-neutral-primary); }
-.mds-btn--secondary:hover { background: var(--background-neutral-tertiary); }
-
-.mds-btn--outline { background: transparent; border-color: var(--border-neutral-secondary); color: var(--text-neutral-primary); }
-.mds-btn--outline:hover { background: var(--background-neutral-secondary); }
-
-.mds-btn--ghost { background: transparent; color: var(--text-neutral-primary); }
-.mds-btn--ghost:hover { background: var(--background-neutral-secondary); }
-
-.mds-btn--destructive { background: var(--background-error-base); color: var(--text-white); }
-.mds-btn--destructive:hover { background: var(--background-error-bold); }
-
-.mds-btn--link { background: transparent; color: var(--text-brand-primary); padding: 0; block-size: auto; }
-.mds-btn--link:hover { text-decoration: underline; }
-
-/* proposed — the busy glyph in place of iconLeft: `spinner` from the sprite as a mask (Glyph masks), turned by
-   the mds-spin keyframes. Reduced motion stops it in base.css; the status region still speaks. */
+/* The busy glyph in place of iconLeft: `spinner` from the sprite as a mask, turned by mds-spin. */
 .mds-btn__spinner {
   flex: none;
   inline-size: 16px;
@@ -104,13 +106,12 @@
   animation: mds-spin 0.8s linear infinite;
 }
 
-/* Icon button — square, same heights */
-.mds-icon-btn { padding: 0; inline-size: 36px; }
-.mds-icon-btn.mds-btn--mini { inline-size: 24px; }
-.mds-icon-btn.mds-btn--small { inline-size: 32px; }
-.mds-icon-btn.mds-btn--large { inline-size: 42px; }
+/* Icon button — square at every height */
+.mds-icon-btn { padding: 0; inline-size: var(--size-control-regular); }
+.mds-icon-btn.mds-btn--mini { inline-size: var(--size-control-mini); }
+.mds-icon-btn.mds-btn--small { inline-size: var(--size-control-small); }
+.mds-icon-btn.mds-btn--large { inline-size: var(--size-control-large); }
 
-/* proposed — a mask glyph is a background, which forced colours paint over: give it the button's text colour. */
 @media (forced-colors: active) {
   .mds-btn:is([disabled], .is-disabled, [aria-disabled="true"]:not([aria-busy="true"])) { color: GrayText; border-color: GrayText; }
   .mds-btn__spinner { forced-color-adjust: none; background-color: ButtonText; }
@@ -118,185 +119,196 @@
 }
 
 /* ---------------------------------------------------------------- Badge */
+/* Identity by line, not by fill: "Yayında" (primary) is inked on a paper tint, "Taslak" (outline) is
+   pencilled with a dashed edge, "Gizli" (ghost) is a glyph and grey words. Progress tones are tints. */
 .mds-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   block-size: 24px;
-  padding: 0 var(--space-sm);
-  border: var(--border-s) solid transparent;
-  border-radius: var(--radius-s);
+  padding-inline: var(--space-2);
+  border: var(--border-width-thin) solid transparent;
+  border-radius: var(--radius-tag);
+  background: var(--background-neutral-sunken);
+  color: var(--text-neutral-muted);
   font-family: var(--font-ui);
   font-size: var(--fs-caption);
   font-weight: var(--weight-medium);
+  line-height: 1;
   white-space: nowrap;
 }
-.mds-badge--primary     { background: var(--background-brand-primary); color: var(--text-brand-inverse); }
-.mds-badge--secondary   { background: var(--background-neutral-secondary); color: var(--text-neutral-primary); }
-.mds-badge--outline     { background: transparent; border-color: var(--border-neutral-secondary); color: var(--text-neutral-primary); }
-.mds-badge--ghost       { background: transparent; color: var(--text-neutral-secondary); }
-.mds-badge--destructive { background: var(--background-error-base); color: var(--text-white); }
-.mds-badge--brand       { background: var(--background-brand-tertiary); color: var(--text-brand-primary); }   /* proposed — 8.24:1 */
-.mds-badge--live        { background: var(--background-live-subtle); color: var(--text-live-primary); }       /* proposed — 5.30:1; a state, never a lesson type */
-.mds-badge--success     { background: var(--background-success-subtle); color: var(--text-success-primary); }
-.mds-badge--warning     { background: var(--background-warning-subtle); color: var(--text-warning-primary); }
-.mds-badge--info        { background: var(--background-info-subtle); color: var(--text-info-primary); }
-/* proposed — the dot is decoration beside words that carry the state (MDS-COL-03): aria-hidden, never alone. */
+.mds-badge .mds-icon { inline-size: 14px; block-size: 14px; }
+.mds-badge--primary     { background: var(--background-neutral-hover); color: var(--text-neutral-default); font-weight: var(--weight-semibold); }
+.mds-badge--secondary   { background: var(--background-neutral-sunken); color: var(--text-neutral-muted); }
+.mds-badge--outline     { background: transparent; border-style: dashed; border-color: var(--border-neutral-control); color: var(--text-neutral-muted); }
+.mds-badge--ghost       { background: transparent; padding-inline: 0; color: var(--text-neutral-subtle); }
+.mds-badge--destructive { background: var(--background-error-subtle); color: var(--text-error-default); }
+.mds-badge--brand       { background: var(--background-brand-subtle); color: var(--text-brand-default); }
+.mds-badge--live        { background: var(--background-live-subtle); color: var(--text-live-default); }
+.mds-badge--success     { background: var(--background-success-subtle); color: var(--text-success-default); }
+.mds-badge--warning     { background: var(--background-warning-subtle); color: var(--text-warning-default); }
+.mds-badge--info        { background: var(--background-info-subtle); color: var(--text-info-default); }
+/* The dot repeats words that carry the state (MDS-COL-03): aria-hidden, never alone. */
 .mds-badge__dot { flex: none; inline-size: 8px; block-size: 8px; border-radius: var(--radius-full); background: currentColor; }
+.mds-badge--live .mds-badge__dot { background: var(--border-live-default); }
 @media (forced-colors: active) {
-  .mds-badge__dot { forced-color-adjust: none; background: CanvasText; }
+  .mds-badge { border-color: CanvasText; }
+  /* the forced edge would touch the glyph and the word */
+  .mds-badge--ghost { padding-inline: var(--space-2); }
+  .mds-badge__dot, .mds-badge--live .mds-badge__dot { forced-color-adjust: none; background: CanvasText; }
 }
 
 /* ---------------------------------------------------------------- Input */
 .mds-input {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-2);
   inline-size: 100%;
-  block-size: 36px;
-  padding: 0 12px;
-  background: var(--background-white);
-  border: var(--border-s) solid var(--border-neutral-secondary);
-  border-radius: var(--radius-xs);
+  block-size: var(--size-control-regular);
+  padding-inline: var(--space-3);
+  background: var(--background-neutral-field);
+  border: var(--border-width-thin) solid var(--border-neutral-control);
+  border-radius: var(--radius-control);
+  color: var(--text-neutral-default);
   font-family: var(--font-ui);
   font-size: var(--fs-body-sm);
-  color: var(--text-neutral-primary);
+  line-height: 1.2;
+  transition: var(--transition-colors);
 }
-.mds-input--mini    { block-size: 24px; padding: 0 var(--space-sm); font-size: var(--fs-caption); }
-.mds-input--small   { block-size: 32px; }
-.mds-input--large   { block-size: 42px; padding: 0 var(--space-md); }
-.mds-input::placeholder { color: var(--text-neutral-disabled); }
-.mds-input:focus, .mds-input.is-focus { outline: none; box-shadow: var(--ring-focus); border-color: var(--border-neutral-tertiary); }
-.mds-input[aria-invalid="true"], .mds-input.is-error { border-color: var(--border-error-primary); }
-/* #FECACA, 1.45:1 on white: the ring's colour is OPEN-1 */
-.mds-input[aria-invalid="true"]:focus, .mds-input.is-error:focus, .mds-input.is-error.is-focus { box-shadow: var(--ring-focus-error); }
-/* proposed — read-only is not disabled: the value stays --text-neutral-primary and can be selected and copied */
-.mds-input[readonly] { background: var(--background-neutral-secondary); cursor: default; }
-.mds-input[disabled], .mds-input.is-disabled { background: var(--background-neutral-secondary); color: var(--text-neutral-disabled); cursor: not-allowed; }
-/* proposed — meeting links, IDs, handles; the element also carries dir="ltr" */
+.mds-input--mini  { block-size: var(--size-control-mini); padding-inline: var(--space-2); border-radius: var(--radius-tag); font-size: var(--fs-caption); }
+.mds-input--small { block-size: var(--size-control-small); }
+.mds-input--large { block-size: var(--size-control-large); padding-inline: var(--space-4); font-size: var(--fs-body); }
+.mds-input::placeholder { color: var(--text-neutral-subtle); opacity: 1; }
+/* A disabled, read-only or invalid field keeps its own edge under the pointer. */
+.mds-input:hover:not([disabled], [readonly], .is-disabled, [aria-invalid="true"], .is-error) { border-color: var(--border-neutral-strong); }
+.mds-input:focus, .mds-input.is-focus { border-color: var(--border-neutral-strong); outline: var(--ring-focus-outline); outline-offset: var(--ring-focus-offset); box-shadow: var(--ring-focus); }
+/* Invalid: the red edge is doubled (1px border + 1px inset), so it reads without colour vision. */
+.mds-input[aria-invalid="true"], .mds-input.is-error { border-color: var(--border-error-default); box-shadow: inset 0 0 0 1px var(--border-error-default); }
+.mds-input[aria-invalid="true"]:focus, .mds-input.is-error:focus, .mds-input.is-error.is-focus { box-shadow: inset 0 0 0 1px var(--border-error-default), var(--ring-focus); }
+/* Read-only is not disabled: the value stays in ink and can be focused, selected and copied. */
+.mds-input[readonly] { background: var(--background-neutral-sunken); cursor: default; }
+.mds-input[disabled], .mds-input.is-disabled { background: var(--background-neutral-sunken); border-style: dashed; color: var(--text-neutral-disabled); cursor: not-allowed; }
 .mds-input--mono { font-family: var(--font-mono); }
-/* proposed — after .mds-input, which sets the Latin face: Arabic typed into a dir="auto" field, or any field on an RTL page */
 .mds-input:dir(rtl) { font-family: var(--font-arabic); }
-/* proposed — forced colours: the disabled ground is not painted, so the value turns GrayText as a native field's does */
 @media (forced-colors: active) {
   .mds-input[disabled], .mds-input.is-disabled { color: GrayText; border-color: GrayText; }
+  /* the inset second line is a shadow, which forced colours drop: the edge itself doubles */
+  .mds-input[aria-invalid="true"], .mds-input.is-error { border-width: 2px; border-style: double; border-color: CanvasText; }
+}
+/* A phone never zooms into a field: 16px text below 768. */
+@media (max-width: 767.98px) {
+  .mds-input:not(.mds-input--mini), .mds-select > select:not(.mds-input--mini) { font-size: var(--fs-body); }
 }
 
-/* resize: block is the logical form of the canonical resize: vertical */
-.mds-textarea { block-size: auto; min-block-size: 80px; padding: var(--space-sm) 12px; resize: block; line-height: var(--lh-body); }
+.mds-textarea { block-size: auto; min-block-size: 96px; padding-block: var(--space-2); padding-inline: var(--space-3); resize: block; line-height: var(--lh-body); }
 
-/* proposed — the native file input in the input box; its button reads as a mini secondary button.
-   The button's words come from the browser, in the browser's language, not the page's. */
-/* the 24px button centred in the 36px box, inside its 1px border */
-.mds-input[type="file"] { padding-block: calc((36px - 24px) / 2 - var(--border-s)); padding-inline-start: calc((36px - 24px) / 2 - var(--border-s)); cursor: pointer; }
+/* The native file input: its button reads as a mini secondary button. */
+.mds-input[type="file"] { padding-block: calc((var(--size-control-regular) - var(--size-control-mini)) / 2 - var(--border-width-thin)); padding-inline-start: calc((var(--size-control-regular) - var(--size-control-mini)) / 2 - var(--border-width-thin)); cursor: pointer; }
 .mds-input[type="file"]::file-selector-button {
-  block-size: 24px;
-  margin-inline-end: var(--space-sm);
-  padding: 0 var(--space-sm);
+  block-size: var(--size-control-mini);
+  margin-inline-end: var(--space-2);
+  padding: 0 var(--space-2);
   border: 0;
-  border-radius: var(--radius-xxs);
-  background: var(--background-neutral-secondary);
-  color: var(--text-neutral-primary);
+  border-radius: var(--radius-tag);
+  background: var(--background-neutral-sunken);
+  color: var(--text-neutral-default);
   font-family: var(--font-ui);
   font-size: var(--fs-caption);
-  font-weight: var(--weight-medium);
+  font-weight: var(--weight-semibold);
   cursor: pointer;
   transition: var(--transition-colors);
 }
-.mds-input[type="file"]:hover::file-selector-button { background: var(--background-neutral-tertiary); }
+.mds-input[type="file"]:hover::file-selector-button { background: var(--background-neutral-hover); }
 .mds-input[type="file"][disabled]::file-selector-button { cursor: not-allowed; }
 
-/* proposed — adornments: a decorative glyph at inline-start (search), a unit or glyph at inline-end ("dk").
-   Neither takes the pointer, so a click on one lands in the field. */
+/* Adornments: a decorative glyph at inline-start (search), a unit at inline-end ("dk"). */
 .mds-input-group { position: relative; display: flex; align-items: center; }
 .mds-input-group > .mds-input { flex: 1; }
 .mds-input-group__leading, .mds-input-group__trailing { position: absolute; display: inline-flex; align-items: center; pointer-events: none; }
-.mds-input-group__leading { inset-inline-start: 12px; color: var(--icon-neutral-tertiary); }
-.mds-input-group__trailing { inset-inline-end: 12px; font-family: var(--font-ui); font-size: var(--fs-body-sm); color: var(--text-neutral-tertiary); }
-/* room for the adornment: its 12px inset, the 16px glyph and an 8px gap */
-.mds-input-group:has(.mds-input-group__leading) > .mds-input { padding-inline-start: calc(12px + 16px + var(--space-sm)); }
-.mds-input-group:has(.mds-input-group__trailing) > .mds-input { padding-inline-end: var(--space-2xl); }
+.mds-input-group__leading { inset-inline-start: var(--space-3); color: var(--text-neutral-subtle); }
+.mds-input-group__trailing { inset-inline-end: var(--space-3); font-family: var(--font-ui); font-size: var(--fs-body-sm); color: var(--text-neutral-subtle); }
+.mds-input-group:has(.mds-input-group__leading) > .mds-input { padding-inline-start: calc(var(--space-3) + 16px + var(--space-2)); }
+.mds-input-group:has(.mds-input-group__trailing) > .mds-input { padding-inline-end: var(--space-10); }
 
 /* ---------------------------------------------------------------- Field */
-.mds-field { display: flex; flex-direction: column; gap: 6px; }
-.mds-label { font-family: var(--font-ui); font-size: var(--fs-body-sm); font-weight: var(--weight-medium); color: var(--text-neutral-primary); }
-.mds-help  { font-family: var(--font-ui); font-size: var(--fs-caption); color: var(--text-neutral-tertiary); }
-.mds-error { font-family: var(--font-ui); font-size: var(--fs-caption); color: var(--text-error-primary); }
-/* proposed — decorative: the control carries required, so the requirement is announced natively */
-.mds-required { color: var(--text-error-primary); margin-inline-start: 2px; }
+.mds-field { display: flex; flex-direction: column; gap: 6px; min-inline-size: 0; }
+.mds-label { font-family: var(--font-ui); font-size: var(--fs-body-sm); font-weight: var(--weight-medium); line-height: var(--lh-ui); color: var(--text-neutral-default); }
+.mds-help  { font-family: var(--font-ui); font-size: var(--fs-caption); line-height: 1.45; color: var(--text-neutral-subtle); }
+.mds-error { font-family: var(--font-ui); font-size: var(--fs-caption); font-weight: var(--weight-medium); line-height: 1.45; color: var(--text-error-default); }
+/* Decorative: the control carries required. Not red — red is for what went wrong. */
+.mds-required { margin-inline-start: 2px; color: var(--text-neutral-subtle); font-weight: var(--weight-regular); }
 
 /* ---------------------------------------------------------------- Select */
-/* NOT extracted — a native <select> in the .mds-input box. The chevron is the sprite's chevronDown as a mask
-   (Glyph masks, generated), at inline-end in either direction. */
 .mds-select { position: relative; display: block; }
-.mds-select > select { appearance: none; padding-inline-end: calc(12px + 16px + var(--space-sm)); cursor: pointer; }
-.mds-select > select:disabled { cursor: not-allowed; }
-/* the placeholder option is showing: it reads as a placeholder, not as a choice */
-.mds-select > select:has(> option[value=""]:checked) { color: var(--text-neutral-disabled); }
-.mds-select > select > option { color: var(--text-neutral-primary); }
-.mds-select::after { content: ""; position: absolute; inset-block: 0; inset-inline-end: 12px; margin-block: auto; inline-size: 16px; block-size: 16px; background-color: var(--icon-neutral-tertiary); mask-position: center; mask-size: contain; mask-repeat: no-repeat; pointer-events: none; }
-.mds-select:has(> select:disabled)::after { background-color: var(--icon-neutral-disabled); }
+.mds-select > select { appearance: none; padding-inline-end: calc(var(--space-3) + 16px + var(--space-2)); cursor: pointer; }
+/* Chromium's own sheet fades a disabled select to 0.7; the system never fades (MDS-A11Y-11). */
+.mds-select > select:disabled { opacity: 1; cursor: not-allowed; }
+.mds-select > select:not(:disabled):has(> option[value=""]:checked) { color: var(--text-neutral-subtle); }
+.mds-select > select > option { color: var(--text-neutral-default); }
+.mds-select::after { content: ""; position: absolute; inset-block: 0; inset-inline-end: var(--space-3); margin-block: auto; inline-size: 16px; block-size: 16px; background-color: var(--text-neutral-muted); mask-position: center; mask-size: contain; mask-repeat: no-repeat; pointer-events: none; }
+.mds-select:has(> select:disabled)::after { background-color: var(--text-neutral-disabled); }
 @media (forced-colors: active) {
   .mds-select::after { background-color: CanvasText; }
   .mds-select:has(> select:disabled)::after { background-color: GrayText; }
 }
 
 /* ------------------------------------------------- Checkbox / Radio / Switch */
+/* 18px marks inside a label at least 24px tall. Checked and on are the action ink. */
 .mds-check, .mds-radio {
   appearance: none; margin: 0; flex: none; position: relative;
-  inline-size: 16px; block-size: 16px;
-  background: var(--background-white);
-  border: var(--border-s) solid var(--border-neutral-secondary);
+  inline-size: 18px; block-size: 18px;
+  background: var(--background-neutral-field);
+  border: var(--border-width-thin) solid var(--border-neutral-control);
   cursor: pointer;
   transition: var(--transition-colors);
 }
-.mds-check { border-radius: var(--radius-xxs); }
+.mds-check { border-radius: var(--radius-mark); }
 .mds-radio { border-radius: var(--radius-full); }
-.mds-check:checked, .mds-radio:checked { background: var(--background-brand-primary); border-color: var(--background-brand-primary); }
-/* proposed — the check is the sprite's glyph as a mask (Glyph masks, generated), filling the 14px inside the border */
-.mds-check::after { content: ""; position: absolute; inset: 0; mask-position: center; mask-size: contain; mask-repeat: no-repeat; }
-.mds-check:checked::after { background-color: var(--text-white); }
-.mds-radio:checked { box-shadow: inset 0 0 0 3px var(--background-white); }
-:is(.mds-check, .mds-radio):hover:not(:checked, :disabled),
-.mds-choice:hover > :is(.mds-check, .mds-radio):not(:checked, :disabled) { border-color: var(--border-neutral-tertiary); }
+.mds-check:checked { background: var(--background-action-bold); border-color: var(--background-action-bold); }
+.mds-check::after { content: ""; position: absolute; inset: 2px; mask-position: center; mask-size: contain; mask-repeat: no-repeat; }
+.mds-check:checked::after { background-color: var(--text-neutral-on-bold); }
+/* The radio's dot is the fill showing through a 4px ring of the field colour. */
+.mds-radio:checked { background: var(--background-action-bold); border-color: var(--background-action-bold); box-shadow: inset 0 0 0 4px var(--background-neutral-field); }
+.mds-radio:checked:focus-visible { box-shadow: inset 0 0 0 4px var(--background-neutral-field), var(--ring-focus); }
+:is(.mds-check, .mds-radio):hover:not(:checked, :disabled, [aria-invalid="true"]),
+.mds-choice:hover > :is(.mds-check, .mds-radio):not(:checked, :disabled, [aria-invalid="true"]) { border-color: var(--border-neutral-strong); }
 :is(.mds-check, .mds-radio):checked:hover:not(:disabled),
-.mds-choice:hover > :is(.mds-check, .mds-radio):checked:not(:disabled) { background-color: var(--background-brand-secondary); border-color: var(--background-brand-secondary); }
-:is(.mds-check, .mds-radio)[aria-invalid="true"]:not(:checked) { border-color: var(--border-error-primary); }
-.mds-check:focus-visible, .mds-radio:focus-visible { outline: none; box-shadow: var(--ring-focus); }
-/* proposed — the ring must not erase the dot, which is itself an inset shadow */
-.mds-radio:checked:focus-visible { box-shadow: inset 0 0 0 3px var(--background-white), var(--ring-focus); }
+.mds-choice:hover > :is(.mds-check, .mds-radio):checked:not(:disabled) { background-color: var(--background-action-bold-hover); border-color: var(--background-action-bold-hover); }
+:is(.mds-check, .mds-radio)[aria-invalid="true"]:not(:checked) { border-color: var(--border-error-default); box-shadow: inset 0 0 0 1px var(--border-error-default); }
+:is(.mds-check, .mds-radio)[aria-invalid="true"]:not(:checked):focus-visible { box-shadow: inset 0 0 0 1px var(--border-error-default), var(--ring-focus); }
 
-/* The switch is a native checkbox with role="switch". Its off state is 1.23:1, track on white
-   and knob on track: SPEC-D3-21, named, not fixed. The transparent border draws nothing here
-   and becomes the track's outline in forced colours; the knob sits 1px inside it, 2px from the edge. */
-.mds-switch { appearance: none; margin: 0; flex: none; inline-size: 36px; block-size: 20px; border: var(--border-s) solid transparent; border-radius: var(--radius-full); background: var(--background-neutral-tertiary); position: relative; cursor: pointer; transition: var(--transition-colors); }
-.mds-switch::after { content: ""; position: absolute; inset-block-start: 1px; inset-inline-start: 1px; inline-size: 16px; block-size: 16px; border-radius: var(--radius-full); background: var(--background-white); box-shadow: var(--shadow-xs); transition: translate var(--duration-fast) var(--ease-out); }
-.mds-switch:checked { background: var(--background-brand-primary); }
-.mds-switch:checked:hover:not(:disabled), .mds-choice:hover > .mds-switch:checked:not(:disabled) { background: var(--background-brand-secondary); }
-.mds-switch:checked::after { translate: 16px 0; }
+/* The switch is a native checkbox with role="switch". Off: a field track with a control edge and a knob in
+   the control ink (3.89:1). On: the action ink, knob in --text-neutral-on-bold. */
+.mds-switch { appearance: none; margin: 0; flex: none; position: relative; inline-size: 36px; block-size: 20px; border: var(--border-width-thin) solid var(--border-neutral-control); border-radius: var(--radius-full); background: var(--background-neutral-field); cursor: pointer; transition: var(--transition-colors); }
+.mds-switch::after { content: ""; position: absolute; inset-block-start: 2px; inset-inline-start: 2px; inline-size: 14px; block-size: 14px; border-radius: var(--radius-full); background: var(--border-neutral-control); transition: translate var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard); }
+.mds-switch:hover:not(:checked, :disabled), .mds-choice:hover > .mds-switch:not(:checked, :disabled) { border-color: var(--border-neutral-strong); }
+.mds-switch:checked { background: var(--background-action-bold); border-color: var(--background-action-bold); }
+.mds-switch:checked:hover:not(:disabled), .mds-choice:hover > .mds-switch:checked:not(:disabled) { background: var(--background-action-bold-hover); border-color: var(--background-action-bold-hover); }
+.mds-switch:checked::after { translate: 16px 0; background: var(--text-neutral-on-bold); }
 .mds-switch:dir(rtl):checked::after { translate: -16px 0; }
-.mds-switch:focus-visible { outline: none; box-shadow: var(--ring-focus); }
-:is(.mds-check, .mds-radio, .mds-switch):disabled { cursor: not-allowed; }
+:is(.mds-check, .mds-radio, .mds-switch):disabled { background-color: var(--background-neutral-sunken); border-color: var(--border-neutral-subtle); cursor: not-allowed; }
+.mds-check:disabled:checked::after { background-color: var(--text-neutral-disabled); }
+.mds-radio:disabled:checked { background-color: var(--text-neutral-disabled); box-shadow: inset 0 0 0 4px var(--background-neutral-sunken); }
+.mds-switch:disabled::after, .mds-switch:disabled:checked::after { background: var(--text-neutral-disabled); }
 
-/* proposed — a choice: the control, an optional glyph, a label and a description, all inside one <label>.
-   The label is the hit area, at least 24px tall (WCAG 2.5.8). */
-.mds-choice { display: flex; align-items: flex-start; gap: var(--space-sm); min-block-size: 24px; font-family: var(--font-ui); font-size: var(--fs-body-sm); line-height: var(--lh-body); color: var(--text-neutral-primary); cursor: pointer; }
-.mds-choice > :is(.mds-check, .mds-radio) { margin-block-start: 2px; }
-.mds-choice__icon { display: inline-flex; flex: none; margin-block-start: 2px; color: var(--icon-neutral-secondary); }
+/* A choice: the control, an optional glyph, a label and a description, all inside one <label>. */
+.mds-choice { display: flex; align-items: flex-start; gap: var(--space-3); min-block-size: 24px; font-family: var(--font-ui); font-size: var(--fs-body-sm); line-height: var(--lh-ui); color: var(--text-neutral-default); cursor: pointer; }
+.mds-choice > :is(.mds-check, .mds-radio) { margin-block-start: 1px; }
+.mds-choice > .mds-switch { margin-block-start: 0; }
+.mds-choice__icon { display: inline-flex; flex: none; margin-block-start: 2px; color: var(--text-neutral-muted); }
 .mds-choice__text { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
-.mds-choice__label { font-weight: var(--weight-medium); }
-.mds-choice__desc { font-size: var(--fs-caption); line-height: var(--lh-body); color: var(--text-neutral-tertiary); }
-/* proposed — a settings row (was #95 CheckboxRow): stacked in the settings column, never inline in a form */
-.mds-choice--bordered { padding: var(--space-md); border: var(--border-s) solid var(--border-neutral-primary); border-radius: var(--radius-s); background: var(--background-white); transition: var(--transition-colors); }
-.mds-choice--bordered:hover { border-color: var(--border-neutral-secondary); }
-.mds-choice--bordered:has(> :checked) { border-color: var(--border-brand-primary); }
-.mds-choice:has(> :disabled) { opacity: 0.5; cursor: not-allowed; }
-/* proposed — RadioGroup: a fieldset of choices under a visible legend */
-.mds-choice-group { display: flex; flex-direction: column; gap: 12px; min-inline-size: 0; margin: 0; padding: 0; border: 0; }
-.mds-choice-group > legend { padding: 0; padding-block-end: 6px; }
+.mds-choice__label { font-weight: var(--weight-regular); }
+.mds-choice__desc { font-size: var(--fs-caption); line-height: 1.45; color: var(--text-neutral-subtle); }
+/* A settings row: a bordered card around one choice. Selected, its edge thickens in lâciverd. */
+.mds-choice--bordered { padding: var(--space-4); border: var(--border-width-thin) solid var(--border-neutral-subtle); border-radius: var(--radius-control); background: var(--background-neutral-surface); transition: var(--transition-colors); }
+.mds-choice--bordered:where(:not(:has(> :disabled))):hover { border-color: var(--border-neutral-control); }
+.mds-choice--bordered:has(> :checked) { border-color: var(--border-brand-default); box-shadow: inset 0 0 0 1px var(--border-brand-default); }
+/* Disabled drops the tone here too: a checked disabled row must not read as selected. */
+.mds-choice--bordered:has(> :disabled) { border-color: var(--border-neutral-subtle); box-shadow: none; }
+.mds-choice:has(> :disabled), .mds-choice:has(> :disabled) :is(.mds-choice__icon, .mds-choice__desc) { color: var(--text-neutral-disabled); cursor: not-allowed; }
+.mds-choice-group { display: flex; flex-direction: column; gap: var(--space-3); min-inline-size: 0; margin: 0; padding: 0; border: 0; }
+.mds-choice-group > legend { padding: 0; padding-block-end: var(--space-2); }
 
-/* proposed — forced colours: fills and inset shadows are not painted, so every on state is redrawn in
-   system colours; the focus outline comes from tokens/base.css. */
 @media (forced-colors: active) {
   :is(.mds-check, .mds-radio):checked { background-color: Highlight; border-color: Highlight; }
   .mds-check:checked::after { background-color: HighlightText; }
@@ -305,26 +317,32 @@
   .mds-switch:checked::after { background-color: HighlightText; }
   :is(.mds-check, .mds-radio, .mds-switch):disabled { border-color: GrayText; }
   .mds-switch:disabled::after { background-color: GrayText; }
+  .mds-check:disabled:checked { background-color: Canvas; border-color: GrayText; }
+  .mds-check:disabled:checked::after { background-color: GrayText; }
+  .mds-radio:disabled:checked { background-color: GrayText; border-color: GrayText; }
   .mds-choice--bordered:has(> :checked) { border-color: Highlight; }
+  .mds-choice--bordered:has(> :disabled) { border-color: GrayText; }
+  /* the red inset is a shadow, which forced colours drop; an 18px mark takes a 2px edge instead */
+  :is(.mds-check, .mds-radio)[aria-invalid="true"]:not(:checked) { border-width: 2px; border-color: CanvasText; }
+  .mds-switch:disabled:checked { background-color: Canvas; border-color: GrayText; }
+  .mds-switch:disabled:checked::after { background-color: GrayText; }
+  .mds-choice:has(> :disabled), .mds-choice:has(> :disabled) :is(.mds-choice__icon, .mds-choice__desc) { color: GrayText; }
 }
 
 /* ---------------------------------------------------------------- Choice chips */
-/* NOT extracted — a fieldset of native radios (one) or checkboxes (any); each chip is a label around a
-   transparent input. Chips filter or answer; they never navigate. */
-.mds-chips { display: flex; flex-wrap: wrap; gap: var(--space-sm); min-inline-size: 0; margin: 0; padding: 0; border: 0; }
-.mds-chips > legend:not(.mds-visually-hidden) { padding: 0; padding-block-end: 6px; }
-/* The transparent border draws nothing here and outlines every chip in forced colours. */
+.mds-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); min-inline-size: 0; margin: 0; padding: 0; border: 0; }
+.mds-chips > legend:not(.mds-visually-hidden) { padding: 0; padding-block-end: var(--space-2); }
 .mds-chip {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  block-size: 32px;
-  padding: 0 12px;
-  border: var(--border-s) solid transparent;
+  block-size: var(--size-control-small);
+  padding-inline: var(--space-3);
+  border: var(--border-width-thin) solid var(--border-neutral-control);
   border-radius: var(--radius-full);
-  background: var(--background-neutral-secondary);
-  color: var(--text-neutral-primary);
+  background: var(--background-neutral-surface);
+  color: var(--text-neutral-muted);
   font-family: var(--font-ui);
   font-size: var(--fs-body-sm);
   font-weight: var(--weight-medium);
@@ -333,174 +351,168 @@
   transition: var(--transition-colors);
 }
 .mds-chip > input { appearance: none; position: absolute; inset: 0; inline-size: 100%; block-size: 100%; margin: 0; opacity: 0; cursor: inherit; }
-.mds-chip:hover:not(:has(> input:disabled)) { background: var(--background-neutral-tertiary); }
-.mds-chip:has(> input:checked) { background: var(--background-brand-primary); color: var(--text-white); }
-.mds-chip:has(> input:checked:not(:disabled)):hover { background: var(--background-brand-secondary); }
-.mds-chip:has(> input:focus-visible) { box-shadow: var(--ring-focus); }
-.mds-chip:has(> input:disabled) { opacity: 0.5; cursor: not-allowed; }
-/* The checked chip opts out of forcing: forced, its HighlightText label sits on the Canvas
-   backplate drawn behind text, and disappears. */
+.mds-chip:hover:not(:has(> input:disabled)) { background: var(--background-neutral-hover); color: var(--text-neutral-default); }
+.mds-chip:has(> input:checked) { background: var(--background-action-bold); border-color: var(--background-action-bold); color: var(--text-neutral-on-bold); }
+.mds-chip:has(> input:checked:not(:disabled)):hover { background: var(--background-action-bold-hover); color: var(--text-neutral-on-bold); }
+.mds-chip:has(> input:focus-visible) { outline: var(--ring-focus-outline); outline-offset: var(--ring-focus-offset); box-shadow: var(--ring-focus); }
+.mds-chip:has(> input:disabled) { background: var(--background-neutral-sunken); border-color: var(--border-neutral-subtle); color: var(--text-neutral-disabled); cursor: not-allowed; }
+/* Disabled but selected still reads as selected: the hover fill and a doubled control edge, against the
+   sunken fill and hairline of a disabled chip that is not selected. */
+.mds-chip:has(> input:disabled:checked) { background: var(--background-neutral-hover); border-color: var(--border-neutral-control); box-shadow: inset 0 0 0 1px var(--border-neutral-control); }
 @media (forced-colors: active) {
   .mds-chip:has(> input:checked) { forced-color-adjust: none; background-color: Highlight; border-color: Highlight; color: HighlightText; }
   .mds-chip:has(> input:focus-visible) { outline: 2px solid CanvasText; outline-offset: 2px; }
+  .mds-chip:has(> input:disabled) { background-color: Canvas; border-color: GrayText; color: GrayText; }
+  /* the same selector as the hover rule, so a hovered checked chip stays Highlight */
+  .mds-chip:has(> input:checked:not(:disabled)):hover { background-color: Highlight; color: HighlightText; }
+  /* the inset second edge is a shadow, which forced colours drop */
+  .mds-chip:has(> input:disabled:checked) { outline: var(--border-width-thin) solid GrayText; outline-offset: -3px; }
 }
 
 /* ---------------------------------------------------------------- Card */
+/* A sheet on the page: paper, a hairline, no shadow (MDS-SHAPE-02). */
 .mds-card {
-  background: var(--background-white);
-  border: var(--border-s) solid var(--border-neutral-primary);
-  border-radius: var(--radius-m);
-  box-shadow: var(--elevation-resting);
+  background: var(--background-neutral-surface);
+  border: var(--border-width-thin) solid var(--border-neutral-subtle);
+  border-radius: var(--radius-surface);
   padding: var(--space-inset-card);
 }
-.mds-card__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-sm); } /* proposed */
-.mds-card__title { font-family: var(--font-display); font-size: var(--fs-h6); font-weight: var(--weight-semibold); line-height: var(--lh-snug); margin: 0; }
-.mds-card__body  { font-size: var(--fs-body-sm); color: var(--text-neutral-tertiary); margin: 0; margin-block-start: var(--space-sm); line-height: var(--lh-body); }
-
-/* proposed — full-bleed slots: media cancels the inset above it, the footer the inset below it. The media's
-   own shape gives way to the card's corners. */
+/* A badge beside the title wraps under it rather than squeeze it below 12ch. */
+.mds-card__header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
+.mds-card__title { flex: 1 1 12ch; margin: 0; font-family: var(--font-reading); font-size: var(--fs-h3); font-weight: var(--weight-semibold); line-height: var(--lh-tight); color: var(--text-neutral-default); text-wrap: balance; }
+.mds-card__body { margin: 0; margin-block-start: var(--space-2); font-size: var(--fs-body-sm); line-height: var(--lh-body); color: var(--text-neutral-muted); }
 .mds-card__media {
   margin-block: calc(var(--space-inset-card) * -1) var(--space-inset-card);
   margin-inline: calc(var(--space-inset-card) * -1);
-  border-start-start-radius: calc(var(--radius-m) - var(--border-s));
-  border-start-end-radius: calc(var(--radius-m) - var(--border-s));
+  border-start-start-radius: calc(var(--radius-surface) - var(--border-width-thin));
+  border-start-end-radius: calc(var(--radius-surface) - var(--border-width-thin));
   overflow: hidden;
 }
 .mds-card > .mds-card__media > * { border-radius: 0; }
 .mds-card__footer {
   margin-block: var(--space-inset-card) calc(var(--space-inset-card) * -1);
   margin-inline: calc(var(--space-inset-card) * -1);
-  padding-block: 12px;
+  padding-block: var(--space-3);
   padding-inline: var(--space-inset-card);
-  border-block-start: var(--border-s) solid var(--border-neutral-subtle);
-  font-size: var(--fs-body-sm);
-  color: var(--text-neutral-tertiary);
+  border-block-start: var(--border-width-thin) solid var(--border-neutral-subtle);
+  font-size: var(--fs-caption);
+  color: var(--text-neutral-subtle);
 }
-
-/* proposed — a clickable card is one link, in its title; its ::after covers the card. Hover changes the border
-   only (MDS-SHAPE-02). The card draws the link's focus ring; in forced colours base.css outlines the
-   link itself. Other links and buttons inside stay clickable above the cover. */
+/* A meta run breaks between its parts, never inside a time ("Cmt 21:00"). */
+.mds-card__footer time { white-space: nowrap; }
+/* A clickable card is one link, in its title; its ::after covers the card. Hover changes the edge only. */
 .mds-card--interactive { position: relative; transition: var(--transition-colors); }
-.mds-card--interactive:hover { border-color: var(--border-neutral-secondary); }
+.mds-card--interactive:hover { border-color: var(--border-neutral-control); }
 .mds-card__link { color: inherit; text-decoration: none; }
-.mds-card__link::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius-m); }
+.mds-card__link::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius-surface); }
 .mds-card__link:focus-visible { outline: none; box-shadow: none; }
-.mds-card--interactive:has(.mds-card__link:focus-visible) { box-shadow: var(--ring-focus); }
+.mds-card--interactive:has(.mds-card__link:focus-visible) { outline: var(--ring-focus-outline); outline-offset: var(--ring-focus-offset); box-shadow: var(--ring-focus); }
 .mds-card--interactive :is(a, button):not(.mds-card__link) { position: relative; z-index: 1; }
 
 /* ---------------------------------------------------------------- Stat */
-/* NOT extracted — a number on a card: its label, the number in Cairo at h4, then any context. A tone colours the
-   number only beside its cue, an icon or a delta label printed first (MDS-COL-03).
-   The label is a block, so a wrapped label keeps its own caption leading, not the tile's. */
 .mds-stat > .mds-caption { display: block; }
 .mds-stat__value {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 6px;
-  margin-block-start: 6px;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: var(--weight-bold);
+  margin-block-start: var(--space-1);
+  font-family: var(--font-reading);
+  font-size: var(--fs-h1);
+  font-weight: var(--weight-medium);
   line-height: var(--lh-tight);
-  color: var(--text-neutral-primary);
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--text-neutral-default);
 }
-.mds-stat--success .mds-stat__value { color: var(--text-success-primary); }
-.mds-stat--error .mds-stat__value { color: var(--text-error-primary); }
-.mds-stat__cue { display: inline-flex; align-items: center; gap: var(--space-xs); font-family: var(--font-ui); font-size: var(--fs-body-sm); font-weight: var(--weight-semibold); line-height: var(--lh-snug); }
-/* Forced colours back each line of text with a plate; at line-height 1 the number's plate covers the
-   label's descenders, so the number gets its snug leading there. */
+.mds-stat--success .mds-stat__value { color: var(--text-success-default); }
+.mds-stat--error .mds-stat__value { color: var(--text-error-default); }
+.mds-stat__cue { display: inline-flex; align-items: center; gap: var(--space-1); font-family: var(--font-ui); font-size: var(--fs-body-sm); font-weight: var(--weight-semibold); line-height: var(--lh-snug); }
 @media (forced-colors: active) {
   .mds-stat__value { line-height: var(--lh-snug); }
 }
 
 /* ---------------------------------------------------------------- Alert */
-.mds-alert { display: flex; gap: 12px; padding: 12px var(--space-md); border: var(--border-s) solid; border-radius: var(--radius-s); font-size: var(--fs-body-sm); line-height: var(--lh-body); }
-.mds-alert__title { font-weight: var(--weight-semibold); margin: 0; margin-block-end: 2px; }
-/* proposed — the tone's glyph from the sprite as a mask (Glyph masks): info for neutral and info, check for
-   success, warning for warning and error. 16px beside 14px text (MDS-ICON-01), in the tone's colour. */
+/* A tint and its glyph; the words stay in ink. The transparent edge outlines it in forced colours. */
+.mds-alert { display: flex; gap: var(--space-3); padding-block: var(--space-3); padding-inline: var(--space-4); border: var(--border-width-thin) solid transparent; border-radius: var(--radius-surface); color: var(--text-neutral-default); font-size: var(--fs-body-sm); line-height: var(--lh-body); }
+.mds-alert__title { margin: 0; margin-block-end: 2px; font-weight: var(--weight-semibold); }
 .mds-alert__icon {
   flex: none;
   inline-size: 16px;
   block-size: 16px;
-  margin-block-start: 2px;
+  margin-block-start: 3px;
   background-color: currentColor;
   -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
   -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
 }
-/* proposed — neutral explains or restricts (MDS-VOICE-07): 16.19:1, its icon 6.90:1. */
-.mds-alert--neutral { background: var(--background-neutral-secondary); border-color: var(--border-neutral-primary); color: var(--text-neutral-primary); }
-.mds-alert--neutral .mds-alert__icon { color: var(--icon-neutral-tertiary); }
-.mds-alert--info    { background: var(--background-info-subtle);    border-color: var(--border-info-primary);    color: var(--text-info-primary); }
-.mds-alert--success { background: var(--background-success-subtle); border-color: var(--border-success-primary); color: var(--text-success-primary); }
-.mds-alert--warning { background: var(--background-warning-subtle); border-color: var(--border-warning-primary); color: var(--text-warning-primary); }
-.mds-alert--error   { background: var(--background-error-subtle);   border-color: var(--border-error-primary);   color: var(--text-error-primary); }
+.mds-alert--neutral { background: var(--background-neutral-sunken); }
+.mds-alert--neutral .mds-alert__icon { color: var(--text-neutral-muted); }
+.mds-alert--info    { background: var(--background-info-subtle); }
+.mds-alert--success { background: var(--background-success-subtle); }
+.mds-alert--warning { background: var(--background-warning-subtle); }
+.mds-alert--error   { background: var(--background-error-subtle); }
+.mds-alert--info    :is(.mds-alert__icon, .mds-alert__title) { color: var(--text-info-default); }
+.mds-alert--success :is(.mds-alert__icon, .mds-alert__title) { color: var(--text-success-default); }
+.mds-alert--warning :is(.mds-alert__icon, .mds-alert__title) { color: var(--text-warning-default); }
+.mds-alert--error   :is(.mds-alert__icon, .mds-alert__title) { color: var(--text-error-default); }
 @media (forced-colors: active) {
+  .mds-alert { border-color: CanvasText; }
   .mds-alert__icon { forced-color-adjust: none; background-color: CanvasText; }
 }
 
 /* ---------------------------------------------------------------- Avatar */
-.mds-avatar { display: inline-flex; align-items: center; justify-content: center; inline-size: 40px; block-size: 40px; border-radius: var(--radius-full); background: var(--background-brand-tertiary); color: var(--text-brand-primary); font-family: var(--font-ui); font-size: var(--fs-body-sm); font-weight: var(--weight-semibold); overflow: hidden; flex: none; }
+/* A person is a circle in paper with ink initials; an institution (köşk, medrese, deste) is a square tile. */
+.mds-avatar { display: inline-flex; align-items: center; justify-content: center; flex: none; inline-size: 40px; block-size: 40px; overflow: hidden; border-radius: var(--radius-full); background: var(--background-neutral-sunken); box-shadow: inset 0 0 0 1px var(--border-neutral-subtle); color: var(--text-neutral-muted); font-family: var(--font-ui); font-size: var(--fs-body-sm); font-weight: var(--weight-semibold); }
 .mds-avatar--sm { inline-size: 32px; block-size: 32px; font-size: var(--fs-caption); }
-.mds-avatar--lg { inline-size: 56px; block-size: 56px; font-size: var(--fs-body-lg); }
+.mds-avatar--lg { inline-size: 56px; block-size: 56px; font-size: var(--fs-body); }
 .mds-avatar img { inline-size: 100%; block-size: 100%; object-fit: cover; }
-/* proposed — a person is a circle; an institution or object (köşk, medrese, deste) is a square tile (MDS-SHAPE-03). */
-.mds-avatar--entity { border-radius: var(--radius-s); }
-/* proposed — a stack overlaps small avatars on a white ring by 4px, which clears the second initial of
-   every tile; the last tile counts the rest (6.13:1). */
+.mds-avatar--entity { border-radius: var(--radius-tag); background: var(--cover-laciverd); box-shadow: none; color: var(--text-on-cover); font-family: var(--font-reading); }
 .mds-avatar-stack { display: flex; }
-.mds-avatar-stack > .mds-avatar { box-shadow: 0 0 0 2px var(--background-white); }
-.mds-avatar-stack > .mds-avatar + .mds-avatar { margin-inline-start: calc(var(--space-xs) * -1); }
-.mds-avatar--more { background: var(--background-neutral-tertiary); color: var(--text-neutral-tertiary); }
-/* proposed — forced colours paint the fill over and drop the ring: an outline keeps each shape. */
+.mds-avatar-stack > .mds-avatar { box-shadow: 0 0 0 2px var(--background-neutral-surface); }
+.mds-avatar-stack > .mds-avatar + .mds-avatar { margin-inline-start: calc(var(--space-1) * -1); }
+.mds-avatar--more { background: var(--background-neutral-hover); color: var(--text-neutral-muted); }
 @media (forced-colors: active) {
-  .mds-avatar { border: var(--border-s) solid CanvasText; }
+  .mds-avatar { border: var(--border-width-thin) solid CanvasText; }
 }
 
 /* ---------------------------------------------------------------- Table */
-/* proposed — the frame scrolls instead of clipping, so a wide table stays reachable at 390. While it scrolls,
-   Table makes it a focusable region named by the caption. Cell padding reads the density roles:
-   a data-density="compact" region tightens the cells. */
-.mds-table-wrap { border: var(--border-s) solid var(--border-neutral-primary); border-radius: var(--radius-m); background: var(--background-white); overflow: auto; }
-.mds-table-wrap:focus-visible { outline: none; box-shadow: var(--ring-focus); }
-.mds-table { inline-size: 100%; border-collapse: collapse; font-family: var(--font-ui); font-size: var(--fs-body-sm); }
+/* A ledger: paper, hairline rows, headers in small grey type, figures lined up. Cell padding reads the
+   density roles, so a data-density="compact" region tightens the cells. */
+.mds-table-wrap { overflow: auto; background: var(--background-neutral-surface); border: var(--border-width-thin) solid var(--border-neutral-subtle); border-radius: var(--radius-surface); }
+.mds-table { inline-size: 100%; border-collapse: collapse; font-family: var(--font-ui); font-size: var(--fs-body-sm); line-height: var(--lh-ui); font-variant-numeric: lining-nums tabular-nums; }
 .mds-table col { inline-size: var(--mds-col-w, auto); }
-.mds-table__caption { padding-block: var(--space-md) var(--space-sm); padding-inline: var(--space-cell-inline); text-align: start; font-weight: var(--weight-semibold); color: var(--text-neutral-primary); }
-.mds-table th, .mds-table td { padding: var(--space-cell-block) var(--space-cell-inline); border-block-end: var(--border-s) solid var(--border-neutral-primary); text-align: start; }
-.mds-table thead th { font-weight: var(--weight-medium); color: var(--text-neutral-tertiary); white-space: nowrap; }
-.mds-table td, .mds-table tbody th { font-weight: var(--weight-regular); color: var(--text-neutral-primary); }
+.mds-table__caption { padding-block: var(--space-4) var(--space-2); padding-inline: var(--space-cell-inline); text-align: start; font-family: var(--font-reading); font-size: var(--fs-h5); font-weight: var(--weight-semibold); color: var(--text-neutral-default); }
+.mds-table th, .mds-table td { padding: var(--space-cell-block) var(--space-cell-inline); border-block-end: var(--border-width-thin) solid var(--border-neutral-subtle); text-align: start; vertical-align: middle; }
+.mds-table thead th { padding-block: var(--space-2); font-size: var(--fs-caption); font-weight: var(--weight-medium); color: var(--text-neutral-subtle); white-space: nowrap; }
+.mds-table td, .mds-table tbody th { font-weight: var(--weight-regular); color: var(--text-neutral-default); }
 .mds-table :is(th, td).is-end { text-align: end; }
-/* proposed — numbers, row actions and dates keep to one line; the text columns take the wrapping. */
 .mds-table :is(.is-end, time) { white-space: nowrap; }
 .mds-table tbody tr:last-child > :is(th, td) { border-block-end: 0; }
-.mds-table tbody tr:hover > :is(th, td) { background: var(--background-neutral-primary); }
-.mds-table .mds-table__cell--muted { color: var(--text-neutral-tertiary); }
+.mds-table tbody tr:hover > :is(th, td) { background: var(--background-neutral-hover); }
+/* "Yayında" is filled with the hover colour: on a hovered row it takes the surface, so it keeps its shape. */
+.mds-table tbody tr:hover .mds-badge--primary { background: var(--background-neutral-surface); }
+.mds-table .mds-table__cell--muted { color: var(--text-neutral-subtle); }
 .mds-table .mds-table__cell--strong { font-weight: var(--weight-semibold); }
-.mds-table thead th[aria-sort] { color: var(--text-neutral-primary); }
-.mds-table__sort { display: inline-flex; align-items: center; gap: var(--space-xs); min-block-size: 24px; padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
-.mds-table__sort:hover { color: var(--text-neutral-primary); }
-.mds-table__sort:focus-visible { outline: none; box-shadow: var(--ring-focus); border-radius: var(--radius-xxs); }
-.mds-table__sort-icon { flex: none; inline-size: 16px; block-size: 16px; background-color: currentColor; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; }
-.mds-table .mds-table__empty { padding: var(--space-xl); text-align: center; color: var(--text-neutral-tertiary); }
+.mds-table thead th[aria-sort] { color: var(--text-neutral-default); }
+.mds-table__sort { display: inline-flex; align-items: center; gap: var(--space-1); min-block-size: 24px; padding: 0; border: 0; border-radius: var(--radius-tag); background: none; font: inherit; color: inherit; cursor: pointer; }
+.mds-table__sort:hover { color: var(--text-neutral-default); }
+.mds-table__sort-icon { flex: none; inline-size: 14px; block-size: 14px; background-color: currentColor; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; }
+.mds-table .mds-table__empty { padding: var(--space-8); text-align: center; color: var(--text-neutral-subtle); }
 .mds-table tbody tr:hover > .mds-table__empty { background: none; }
-/* proposed — below 768 a responsive="stack" table draws each row as a card: the header row is hidden but
-   read, each cell carries its column name in data-label, and the primary row action goes full
-   width. Table adds the explicit table roles, because display: block can drop the semantics.
-   A header row with a sort button stays visible as a sort bar holding only the sortable headers,
-   so no focusable control sits inside a clipped box. */
 @media (max-width: 767.98px) {
   .mds-table--stack, .mds-table--stack :is(caption, tbody, tr, td, th[scope="row"]) { display: block; }
   .mds-table--stack thead { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .mds-table--stack tr { padding-block: var(--space-sm); padding-inline: var(--space-cell-inline); border-block-end: var(--border-s) solid var(--border-neutral-primary); }
+  .mds-table--stack tr { padding-block: var(--space-3); padding-inline: var(--space-cell-inline); border-block-end: var(--border-width-thin) solid var(--border-neutral-subtle); }
   .mds-table--stack tbody tr:last-child { border-block-end: 0; }
-  .mds-table--stack :is(td, th[scope="row"]) { padding-block: var(--space-xs); padding-inline: 0; border: 0; }
+  .mds-table--stack :is(td, th[scope="row"]) { padding-block: var(--space-1); padding-inline: 0; border: 0; }
   .mds-table--stack :is(th, td).is-end { text-align: start; }
   .mds-table--stack th[scope="row"] { font-weight: var(--weight-semibold); }
-  .mds-table--stack td[data-label]::before { content: attr(data-label); content: attr(data-label) / ""; display: block; font-size: var(--fs-caption); color: var(--text-neutral-tertiary); }
-  .mds-table--stack td.mds-table__primary-action { display: flex; flex-direction: column; gap: var(--space-xs); padding-block-start: var(--space-sm); }
+  .mds-table--stack td[data-label]::before { content: attr(data-label); content: attr(data-label) / ""; display: block; font-size: var(--fs-caption); color: var(--text-neutral-subtle); }
+  .mds-table--stack td.mds-table__primary-action { display: flex; flex-direction: column; gap: var(--space-1); padding-block-start: var(--space-2); }
   .mds-table--stack td.mds-table__primary-action .mds-btn { inline-size: 100%; }
   .mds-table--stack tbody tr:hover > :is(th, td) { background: none; }
+  /* a stacked row takes no hover fill, so "Yayında" keeps its own */
+  .mds-table--stack tbody tr:hover .mds-badge--primary { background: var(--background-neutral-hover); }
   .mds-table--stack thead:has(.mds-table__sort) { position: static; display: block; inline-size: auto; block-size: auto; overflow: visible; clip-path: none; }
-  .mds-table--stack thead:has(.mds-table__sort) tr { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-md); }
+  .mds-table--stack thead:has(.mds-table__sort) tr { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); }
   .mds-table--stack thead:has(.mds-table__sort) th { padding: 0; border: 0; }
   .mds-table--stack thead:has(.mds-table__sort) th:not(:has(.mds-table__sort)) { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); }
 }
@@ -509,25 +521,21 @@
 }
 
 /* ---------------------------------------------------------------- Tabs */
-.mds-tabs { display: flex; gap: var(--space-xs); border-block-end: var(--border-s) solid var(--border-neutral-primary); }
-.mds-tab { display: inline-flex; align-items: center; appearance: none; background: none; border: 0; border-block-end: var(--border-m) solid transparent; margin-block-end: -1px; padding: var(--space-sm) 12px; font-family: var(--font-ui); font-size: var(--fs-body-sm); font-weight: var(--weight-medium); color: var(--text-neutral-tertiary); text-decoration: none; white-space: nowrap; cursor: pointer; }
-.mds-tab:hover { color: var(--text-neutral-primary); }
-.mds-tab:is(.is-active, [aria-selected="true"], [aria-current="page"]) { color: var(--text-brand-primary); border-block-end-color: var(--border-brand-primary); }
-.mds-tab:focus-visible { outline: none; box-shadow: var(--ring-focus); }
-/* proposed — a count after the tab's name */
-.mds-tab__count { margin-inline-start: 6px; padding-inline: 6px; border-radius: var(--radius-full); background: var(--background-neutral-secondary); color: var(--text-neutral-tertiary); font-size: var(--fs-caption); }
-.mds-tab:is(.is-active, [aria-selected="true"], [aria-current="page"]) .mds-tab__count { background: var(--background-brand-tertiary); color: var(--text-brand-primary); }
-/* proposed — a row wider than the phone scrolls inside itself rather than widening the page. The hairline
-   moves inside the scroller, where the active underline can still cover it. The scroller clips,
-   so it keeps 3px of room on three sides for the focus ring's spread, outdented so the tabs stay
-   on the content edge. */
+/* Where you are is lâciverd: a 2px underline under ink text. */
+.mds-tabs { display: flex; gap: var(--space-1); border-block-end: var(--border-width-thin) solid var(--border-neutral-subtle); }
+.mds-tab { display: inline-flex; align-items: center; min-block-size: var(--size-control-regular); appearance: none; margin-block-end: -1px; padding-block: var(--space-2); padding-inline: var(--space-3); background: none; border: 0; border-block-end: var(--border-width-thick) solid transparent; border-start-start-radius: var(--radius-control); border-start-end-radius: var(--radius-control); color: var(--text-neutral-muted); font-family: var(--font-ui); font-size: var(--fs-body-sm); font-weight: var(--weight-medium); text-decoration: none; white-space: nowrap; cursor: pointer; transition: var(--transition-colors); }
+.mds-tab:hover { color: var(--text-neutral-default); background: var(--background-neutral-hover); }
+.mds-tab:is(.is-active, [aria-selected="true"], [aria-current="page"]) { color: var(--text-neutral-default); font-weight: var(--weight-semibold); border-block-end-color: var(--border-brand-default); }
+.mds-tab__count { margin-inline-start: 6px; padding-inline: 6px; border-radius: var(--radius-full); background: var(--background-neutral-sunken); color: var(--text-neutral-muted); font-size: var(--fs-caption); font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; }
+.mds-tab:is(.is-active, [aria-selected="true"], [aria-current="page"]) .mds-tab__count { background: var(--background-brand-subtle); color: var(--text-brand-default); }
 @media (max-width: 767.98px) {
-  .mds-tabs { overflow: auto; scrollbar-width: none; padding-block-start: 3px; padding-inline: 3px; margin-inline: -3px; scroll-padding-inline: 3px; border-block-end: 0; box-shadow: inset 0 -1px 0 var(--border-neutral-primary); }
+  .mds-tabs { overflow: auto; scrollbar-width: none; padding-block-start: 4px; padding-inline: 4px; margin-inline: -4px; scroll-padding-inline: 4px; border-block-end: 0; box-shadow: inset 0 -1px 0 var(--border-neutral-subtle); }
   .mds-tab { flex: none; margin-block-end: 0; }
+  /* the scrolling row clips below the tab, so the ring is drawn inside it: the same two bands, lâciverd outermost */
+  .mds-tab:focus-visible { box-shadow: inset 0 0 0 var(--ring-focus-width) var(--ring-focus-color), inset 0 0 0 calc(var(--ring-focus-width) + var(--ring-focus-offset)) var(--ring-focus-gap); }
 }
-/* proposed — forced colours paint a transparent border in CanvasText: only the selected tab keeps a line. */
 @media (forced-colors: active) {
-  .mds-tabs { border-block-end: var(--border-s) solid CanvasText; }
+  .mds-tabs { border-block-end: var(--border-width-thin) solid CanvasText; }
   .mds-tab { margin-block-end: 0; border-block-end-color: Canvas; }
   .mds-tab:is(.is-active, [aria-selected="true"], [aria-current="page"]) { border-block-end-color: Highlight; }
 }
@@ -536,13 +544,12 @@
 }
 
 /* ---------------------------------------------------------------- Breadcrumb */
-/* NOT extracted — below 768 only the parent stays, as a back link with an arrow. */
-.mds-breadcrumb__list { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); margin: 0; padding: 0; list-style: none; font-family: var(--font-ui); font-size: var(--fs-caption); line-height: var(--lh-body); color: var(--text-neutral-tertiary); }
-.mds-breadcrumb__item { display: inline-flex; align-items: center; gap: var(--space-sm); min-inline-size: 0; }
-.mds-breadcrumb__link { display: inline-flex; align-items: center; gap: var(--space-xs); min-block-size: 24px; color: var(--text-neutral-tertiary); text-decoration: none; }
-.mds-breadcrumb__link:hover { color: var(--text-neutral-primary); text-decoration: underline; }
-.mds-breadcrumb__current { color: var(--text-neutral-primary); font-weight: var(--weight-medium); }
-.mds-breadcrumb__sep { color: var(--text-neutral-disabled); }
+.mds-breadcrumb__list { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; padding: 0; list-style: none; font-family: var(--font-ui); font-size: var(--fs-caption); line-height: var(--lh-body); color: var(--text-neutral-subtle); }
+.mds-breadcrumb__item { display: inline-flex; align-items: center; gap: var(--space-2); min-inline-size: 0; }
+.mds-breadcrumb__link { display: inline-flex; align-items: center; gap: var(--space-1); min-block-size: 24px; color: var(--text-neutral-muted); text-decoration: none; }
+.mds-breadcrumb__link:hover { color: var(--text-neutral-default); text-decoration: underline; }
+.mds-breadcrumb__current { color: var(--text-neutral-default); font-weight: var(--weight-medium); }
+.mds-breadcrumb__sep { color: var(--text-neutral-subtle); }
 .mds-breadcrumb__back { display: none; flex: none; inline-size: 16px; block-size: 16px; background-color: currentColor; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; }
 .mds-breadcrumb__back:dir(rtl) { scale: -1 1; }
 @media (max-width: 767.98px) {
@@ -555,111 +562,92 @@
 }
 
 /* ------------------------------------------------------- Progress / Slider */
-.mds-progress { block-size: var(--space-sm); border-radius: var(--radius-full); background: var(--background-neutral-tertiary); overflow: hidden; }
-/* The binding writes the value as a data variable: style="--mds-progress: 72%". Brand at every value. */
-.mds-progress__bar { inline-size: var(--mds-progress, 0%); block-size: 100%; border-radius: var(--radius-full); background: var(--background-brand-primary); }
-/* proposed — the label row above the track */
-.mds-progress__label { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: var(--space-sm); margin-block-end: 6px; font-size: var(--fs-caption); color: var(--text-neutral-tertiary); }
-/* proposed — the percent keeps to inline-end, on its own line when the name is long */
-.mds-progress__value { display: inline-flex; align-items: center; gap: var(--space-xs); margin-inline-start: auto; font-variant-numeric: tabular-nums; }
-/* proposed — completion: the check before "%100 tamamlandı", from the sprite as a mask (Glyph masks). */
+/* A 6px sunken track with a hairline, filled in the lâciverd mark colour (≥ 3:1 on the track). */
+.mds-progress { block-size: 6px; overflow: hidden; border-radius: var(--radius-full); background: var(--background-neutral-sunken); box-shadow: inset 0 0 0 1px var(--border-neutral-subtle); }
+.mds-progress__bar { inline-size: var(--mds-progress, 0%); block-size: 100%; border-radius: var(--radius-full); background: var(--border-brand-default); }
+.mds-progress__label { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: var(--space-2); margin-block-end: 6px; font-size: var(--fs-caption); color: var(--text-neutral-subtle); }
+.mds-progress__value { display: inline-flex; align-items: center; gap: var(--space-1); margin-inline-start: auto; font-variant-numeric: lining-nums tabular-nums; }
 .mds-progress__check {
   flex: none;
   inline-size: 16px;
   block-size: 16px;
-  color: var(--icon-success-primary);
+  color: var(--text-success-default);
   background-color: currentColor;
   -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
   -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
 }
-/* proposed — the track and the fill are both backgrounds, which forced colours paint over. */
 @media (forced-colors: active) {
-  .mds-progress { border: var(--border-s) solid CanvasText; }
+  .mds-progress { border: var(--border-width-thin) solid CanvasText; }
   .mds-progress__bar { forced-color-adjust: none; background-color: Highlight; }
   .mds-progress__check { forced-color-adjust: none; background-color: CanvasText; }
 }
 
 /* ---------------------------------------------------- Separator / Skeleton */
-.mds-separator { border: 0; border-block-start: var(--border-s) solid var(--border-neutral-primary); margin: 0; }
-/* proposed — a stand-in for content that is loading, shaped like it. The binding sets the size as data
-   variables (style="--mds-skeleton-w: 60%; --mds-skeleton-h: 14px"). Always aria-hidden: the
-   loading region says aria-busy="true" and one visually hidden sentence. */
-.mds-skeleton { inline-size: var(--mds-skeleton-w, 100%); block-size: var(--mds-skeleton-h, 12px); background: var(--background-neutral-tertiary); border-radius: var(--radius-xxs); animation: mds-pulse 1.6s var(--ease-in-out) infinite; }
+/* The skeleton is decoration, in the hairline colour: the hover fill all but vanished on the night surface. */
+.mds-separator { margin: 0; border: 0; border-block-start: var(--border-width-thin) solid var(--border-neutral-subtle); }
+.mds-skeleton { inline-size: var(--mds-skeleton-w, 100%); block-size: var(--mds-skeleton-h, 12px); border-radius: var(--radius-mark); background: var(--border-neutral-subtle); animation: mds-pulse 1.6s var(--ease-standard) infinite; }
 @keyframes mds-pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.5 } }
 @media (forced-colors: active) {
   .mds-skeleton { forced-color-adjust: none; background-color: GrayText; }
 }
 
 /* ---------------------------------------------------------------- Sidebar */
-/* NavItem and NavSection draw on the inverse surface (slate-900, the canonical müderris shell).
-   Inside .mds-nav--light they draw on white: the port target for every #95 shell (SPEC-D3-04).
-   proposed — the count, the trailing slot, .mds-nav--light and the forced-colours block. */
-.mds-nav-item { display: flex; align-items: center; gap: 12px; block-size: 36px; padding-inline: 12px; border-radius: var(--radius-xs); font-family: var(--font-ui); font-size: var(--fs-body-sm); font-weight: var(--weight-medium); color: var(--text-neutral-inverse-secondary); text-decoration: none; cursor: pointer; }
-.mds-nav-item:hover { background: var(--background-neutral-inverse-secondary); color: var(--text-neutral-inverse-primary); }
-.mds-nav-item:is(.is-active, [aria-current="page"]) { background: var(--background-brand-primary); color: var(--text-white); }
-.mds-nav-item:focus-visible { outline: none; box-shadow: var(--ring-focus); }
-.mds-nav-item__count { display: inline-flex; align-items: center; justify-content: center; margin-inline-start: auto; min-inline-size: 20px; block-size: 20px; padding-inline: 6px; border-radius: var(--radius-full); font-size: var(--fs-caption); font-weight: var(--weight-semibold); background: var(--background-neutral-inverse-tertiary); color: var(--text-white); }
-.mds-nav-item:is(.is-active, [aria-current="page"]) .mds-nav-item__count { background: var(--background-white); color: var(--text-brand-primary); }
-.mds-nav-item__trailing { display: inline-flex; margin-inline-start: auto; }
+/* One sidebar in every app: a paper surface beside the page. The current item is a lâciverd tint, ink text
+   in semibold, and a lâciverd glyph. */
+.mds-nav-item { display: flex; align-items: center; gap: var(--space-3); min-block-size: 36px; padding-inline: var(--space-3); border-radius: var(--radius-control); color: var(--text-neutral-muted); font-family: var(--font-ui); font-size: var(--fs-body-sm); font-weight: var(--weight-medium); line-height: 1.2; text-decoration: none; cursor: pointer; transition: var(--transition-colors); }
+.mds-nav-item > .mds-icon { color: var(--text-neutral-subtle); }
+.mds-nav-item:hover { background: var(--background-neutral-hover); color: var(--text-neutral-default); }
+.mds-nav-item:is(.is-active, [aria-current="page"]) { background: var(--background-brand-subtle); color: var(--text-neutral-default); font-weight: var(--weight-semibold); }
+.mds-nav-item:is(.is-active, [aria-current="page"]) > .mds-icon { color: var(--text-brand-default); }
+.mds-nav-item__count { display: inline-flex; align-items: center; justify-content: center; margin-inline-start: auto; min-inline-size: 22px; block-size: 20px; padding-inline: 6px; border-radius: var(--radius-full); background: var(--background-neutral-sunken); color: var(--text-neutral-muted); font-size: var(--fs-caption); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
+.mds-nav-item:is(.is-active, [aria-current="page"]) .mds-nav-item__count { background: var(--background-neutral-surface); color: var(--text-brand-default); }
+.mds-nav-item__trailing { display: inline-flex; margin-inline-start: auto; color: var(--text-neutral-subtle); }
 .mds-nav-item__count + .mds-nav-item__trailing { margin-inline-start: 0; }
-.mds-nav-section { font-family: var(--font-ui); font-size: var(--fs-caption); font-weight: var(--weight-semibold); text-transform: uppercase; letter-spacing: var(--tracking-wide); color: var(--text-neutral-inverse-tertiary); padding-inline: 12px; margin-block: var(--space-lg) var(--space-sm); margin-inline: 0; }
-.mds-nav--light .mds-nav-item { color: var(--text-neutral-tertiary); }
-.mds-nav--light .mds-nav-item:hover { background: var(--background-neutral-secondary); color: var(--text-neutral-primary); }
-.mds-nav--light .mds-nav-item:is(.is-active, [aria-current="page"]) { background: var(--background-brand-tertiary); color: var(--text-brand-primary); font-weight: var(--weight-semibold); }
-.mds-nav--light .mds-nav-section { color: var(--text-neutral-tertiary); }
-.mds-nav--light .mds-nav-item__count { background: var(--background-brand-tertiary); color: var(--text-brand-primary); }
-/* proposed — the signed-in person at the nav's foot: one link to the settings page, which holds
-   "Çıkış yap" (B11, B13). The name and role are its text; the chevron is decoration. */
-.mds-nav-user { display: flex; align-items: center; gap: var(--space-sm); margin-block-start: 12px; padding: var(--space-sm) 12px; border-block-start: var(--border-s) solid var(--border-neutral-inverse-primary); font-family: var(--font-ui); color: var(--text-neutral-inverse-primary); text-decoration: none; }
-.mds-nav-user:hover { background: var(--background-neutral-inverse-secondary); }
-.mds-nav-user:focus-visible { outline: none; box-shadow: var(--ring-focus); }
+.mds-nav-section { margin: 0; margin-block: var(--space-5) var(--space-2); padding-inline: var(--space-3); font-family: var(--font-ui); font-size: var(--fs-eyebrow); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-wide); color: var(--text-neutral-subtle); }
+.mds-nav-section:is(:lang(tr), :lang(en)) { text-transform: uppercase; }
+.mds-nav-user { display: flex; align-items: center; gap: var(--space-3); margin-block-start: var(--space-3); padding: var(--space-3); border-block-start: var(--border-width-thin) solid var(--border-neutral-subtle); color: var(--text-neutral-default); font-family: var(--font-ui); text-decoration: none; transition: var(--transition-colors); }
+.mds-nav-user:hover { background: var(--background-neutral-hover); }
 .mds-nav-user__text { display: flex; flex: 1; flex-direction: column; min-inline-size: 0; }
 .mds-nav-user__name { font-size: var(--fs-body-sm); font-weight: var(--weight-medium); line-height: var(--lh-snug); overflow-wrap: anywhere; }
-.mds-nav-user__role { font-size: var(--fs-caption); line-height: var(--lh-snug); color: var(--text-neutral-inverse-tertiary); }
-.mds-nav-user > .mds-icon { flex: none; color: var(--text-neutral-inverse-tertiary); }
-.mds-nav--light .mds-nav-user { border-block-start-color: var(--border-neutral-primary); color: var(--text-neutral-primary); }
-.mds-nav--light .mds-nav-user:hover { background: var(--background-neutral-secondary); }
-.mds-nav--light :is(.mds-nav-user__role, .mds-nav-user > .mds-icon) { color: var(--text-neutral-tertiary); }
-.mds-nav--light .mds-nav-item:is(.is-active, [aria-current="page"]) .mds-nav-item__count { background: var(--background-brand-primary); color: var(--text-white); }
+/* Several roles: each but the last ends on its .mds-sep, and a line breaks only between roles. */
+.mds-nav-user__role { display: flex; flex-wrap: wrap; font-size: var(--fs-caption); line-height: var(--lh-snug); color: var(--text-neutral-subtle); }
+.mds-nav-user > .mds-icon { flex: none; color: var(--text-neutral-subtle); }
 @media (forced-colors: active) {
-  :is(.mds-nav-item, .mds-nav--light .mds-nav-item):is(.is-active, [aria-current="page"]) { forced-color-adjust: none; background: Highlight; color: HighlightText; }
-  :is(.mds-nav-item, .mds-nav--light .mds-nav-item):is(.is-active, [aria-current="page"]) .mds-nav-item__count { background: HighlightText; color: Highlight; }
-  .mds-nav-item__count { border: var(--border-s) solid; }
+  .mds-nav-item:is(.is-active, [aria-current="page"]) { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+  .mds-nav-item:is(.is-active, [aria-current="page"]) > .mds-icon { color: HighlightText; }
+  .mds-nav-item:is(.is-active, [aria-current="page"]) .mds-nav-item__count { background: HighlightText; color: Highlight; }
+  .mds-nav-item__count { border: var(--border-width-thin) solid; }
 }
 
 /* ---------------------------------------------------------------- App bar */
-/* NOT extracted — compact chrome below 768 (MDS-LAY-04): the bar replaces the sidebar, which the shell hides at
-   the same width, and its menu opens the nav sheet, a native modal <dialog> at inline-start.
-   At 768 and up the bar is not drawn and AppBar closes an open sheet. */
+/* Below 768 the bar replaces the sidebar; its menu opens the nav sheet, a modal <dialog> at inline-start. */
 .mds-appbar { display: none; }
 @media (max-width: 767.98px) {
-  .mds-appbar { display: flex; align-items: center; gap: var(--space-sm); block-size: 56px; padding-inline: var(--space-md); background: var(--background-white); border-block-end: var(--border-s) solid var(--border-neutral-primary); }
+  .mds-appbar { display: flex; align-items: center; gap: var(--space-2); block-size: 56px; padding-inline: var(--space-2); background: var(--background-neutral-surface); border-block-end: var(--border-width-thin) solid var(--border-neutral-subtle); }
 }
-.mds-appbar__menu { flex: none; margin-inline-start: calc(var(--space-sm) * -1); }
-.mds-appbar__title { flex: 1; min-inline-size: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-ui); font-size: var(--fs-body); font-weight: var(--weight-semibold); line-height: var(--lh-snug); color: var(--text-neutral-primary); }
-.mds-appbar__actions { display: flex; align-items: center; gap: var(--space-xs); }
+.mds-appbar__menu { flex: none; }
+/* The title clips only sideways (overflow-x clip, overflow-y visible): a vertical clip would cut the descent of an
+   inline Arabic word and turn a final ي into ى. (overflow-inline is not in Chromium yet; the bar is horizontal.) */
+.mds-appbar__title { flex: 1; min-inline-size: 0; margin: 0; overflow: clip visible; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-reading); font-size: var(--fs-h5); font-weight: var(--weight-semibold); line-height: var(--lh-snug); color: var(--text-neutral-default); }
+.mds-appbar__actions { display: flex; align-items: center; gap: var(--space-1); }
 .mds-appbar__menu-icon, .mds-sheet__close-icon { flex: none; inline-size: 20px; block-size: 20px; background-color: currentColor; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; }
-.mds-sheet { position: fixed; inset-block: 0; inset-inline: 0 auto; margin: 0; inline-size: min(320px, 85vw); max-inline-size: 100%; block-size: 100%; max-block-size: 100%; padding: 0; border: 0; border-inline-end: var(--border-s) solid var(--border-neutral-primary); background: var(--background-white); color: var(--text-neutral-primary); box-shadow: var(--elevation-modal); }
-/* ::backdrop may not inherit custom properties in every engine; the fallback repeats the token's
-   value (slate-900 at 55%, tokens/semantic.css) and changes with it. */
-.mds-sheet::backdrop { background: var(--background-neutral-scrim, rgb(15 23 42 / 0.55)); }
-.mds-sheet__body { display: flex; flex-direction: column; gap: var(--space-md); min-block-size: 100%; padding: var(--space-md); }
-.mds-sheet__head { display: flex; align-items: center; gap: var(--space-sm); }
+.mds-sheet { position: fixed; inset-block: 0; inset-inline: 0 auto; margin: 0; inline-size: min(320px, 85vw); max-inline-size: 100%; block-size: 100%; max-block-size: 100%; padding: 0; border: 0; border-inline-end: var(--border-width-thin) solid var(--border-neutral-subtle); background: var(--background-neutral-surface); color: var(--text-neutral-default); box-shadow: var(--elevation-modal); }
+/* ::backdrop inherits from its dialog, so the scrim follows the theme. */
+.mds-sheet::backdrop { background: var(--background-neutral-scrim); }
+.mds-sheet__body { display: flex; flex-direction: column; gap: var(--space-4); min-block-size: 100%; padding: var(--space-4); }
+.mds-sheet__head { display: flex; align-items: center; gap: var(--space-2); }
 .mds-sheet__close { margin-inline-start: auto; }
 .mds-sheet__foot { margin-block-start: auto; }
-/* Masked glyphs: a forced background would paint them over. Each takes its control's system colour. */
 @media (forced-colors: active) {
   .mds-appbar__menu-icon, .mds-sheet__close-icon { forced-color-adjust: none; background-color: ButtonText; }
 }
 
 /* ---------------------------------------------------------------- Tooltip */
-.mds-tooltip { display: inline-block; padding: 6px var(--space-sm); border-radius: var(--radius-xs); background: var(--background-neutral-inverse-primary); color: var(--text-neutral-inverse-primary); font-family: var(--font-ui); font-size: var(--fs-caption); box-shadow: var(--elevation-overlay); }
-/* proposed — in an anchor it shows on hover and on keyboard focus, stays while the pointer is on it (::before
-   bridges the 6px gap), and Esc hides it until the pointer leaves or focus moves: the binding sets
-   data-dismissed (WCAG 1.4.13, MDS-A11Y-10). .is-open shows it in a static card.
-   Hidden is display: none, so a hidden bubble never widens a scrolling frame. The binding writes
-   --mds-tooltip-shift to keep a shown bubble inside the viewport and any clipping frame. */
-.mds-tooltip-anchor { position: relative; display: inline-flex; }
+/* A slip of paper over the page: surface, hairline, overlay shadow. */
+.mds-tooltip { display: inline-block; max-inline-size: 280px; padding: 6px var(--space-2); border: var(--border-width-thin) solid var(--border-neutral-subtle); border-radius: var(--radius-tag); background: var(--background-neutral-surface); color: var(--text-neutral-default); font-family: var(--font-ui); font-size: var(--fs-caption); line-height: 1.4; box-shadow: var(--elevation-overlay); }
+/* fit-content: a column flex parent (a dialog body, a field) would otherwise stretch the anchor, and the bubble
+   would centre on the empty row. */
+.mds-tooltip-anchor { position: relative; display: inline-flex; inline-size: fit-content; }
 .mds-tooltip-anchor > .mds-tooltip {
   position: absolute;
   inset-block-end: calc(100% + 6px);
@@ -670,7 +658,7 @@
   pointer-events: none;
   display: none;
   opacity: 0;
-  transition: opacity var(--duration-fast) var(--ease-out), display var(--duration-fast) allow-discrete;
+  transition: opacity var(--duration-fast) var(--ease-standard), display var(--duration-fast) allow-discrete;
 }
 .mds-tooltip-anchor:dir(rtl) > .mds-tooltip { translate: calc(50% + var(--mds-tooltip-shift, 0px)) 0; }
 .mds-tooltip-anchor--bottom > .mds-tooltip { inset-block-end: auto; inset-block-start: calc(100% + 6px); }
@@ -680,88 +668,78 @@
 }
 .mds-tooltip-anchor > .mds-tooltip::before { content: ""; position: absolute; inset-inline: 0; inset-block-start: 100%; block-size: 6px; }
 .mds-tooltip-anchor--bottom > .mds-tooltip::before { inset-block-start: auto; inset-block-end: 100%; }
+/* A bar at the top of the page and a dialog header have no room above: their tooltips open below. */
+:is(.mds-appbar__actions, .mds-dialog__actions) .mds-tooltip-anchor > .mds-tooltip { inset-block-end: auto; inset-block-start: calc(100% + 6px); }
+:is(.mds-appbar__actions, .mds-dialog__actions) .mds-tooltip-anchor > .mds-tooltip::before { inset-block-start: auto; inset-block-end: 100%; }
+/* Tooltip and IconButton set data-placement when the bubble would be clipped on its own side. */
+.mds-tooltip-anchor[data-placement="bottom"] > .mds-tooltip { inset-block-end: auto; inset-block-start: calc(100% + 6px); }
+.mds-tooltip-anchor[data-placement="bottom"] > .mds-tooltip::before { inset-block-start: auto; inset-block-end: 100%; }
+.mds-tooltip-anchor[data-placement="top"] > .mds-tooltip { inset-block-start: auto; inset-block-end: calc(100% + 6px); }
+.mds-tooltip-anchor[data-placement="top"] > .mds-tooltip::before { inset-block-end: auto; inset-block-start: 100%; }
 @media (forced-colors: active) {
-  .mds-tooltip { outline: var(--border-s) solid CanvasText; }
+  .mds-tooltip { outline: var(--border-width-thin) solid CanvasText; }
 }
 
 /* ---------------------------------------------------------------- Dialog */
-/* NOT extracted — a native <dialog> opened with showModal(): the top layer, the inert page and Esc come from the
-   browser. A canvas mock draws the same markup as <div class="mds-dialog"> inside the artboard.
-   Nothing here sets display on .mds-dialog: that would show a closed <dialog>. */
+/* A native <dialog> opened with showModal(). Nothing here sets display on .mds-dialog. */
 .mds-dialog {
-  inline-size: min(400px, 100% - 2 * var(--space-md));
+  inline-size: min(440px, 100% - 2 * var(--space-4));
   max-inline-size: none;
-  max-block-size: calc(100dvh - 2 * var(--space-lg));
+  max-block-size: calc(100dvh - 2 * var(--space-6));
   padding: 0;
   overflow: hidden;
   border: 0;
-  border-radius: var(--radius-m);
-  background: var(--background-white);
-  color: var(--text-neutral-primary);
+  border-radius: var(--radius-surface);
+  background: var(--background-neutral-surface);
+  color: var(--text-neutral-default);
   font-family: var(--font-ui);
   box-shadow: var(--elevation-modal);
 }
-.mds-dialog--md { inline-size: min(640px, 100% - 2 * var(--space-md)); }
-.mds-dialog--lg { inline-size: min(960px, 100% - 2 * var(--space-md)); }
-/* ::backdrop may not inherit custom properties in every engine; the fallback repeats the token's
-   value (slate-900 at 55%, tokens/semantic.css) and changes with it. */
-.mds-dialog::backdrop { background: var(--background-neutral-scrim, rgb(15 23 42 / 0.55)); }
-/* A modal <dialog> does not lock the page's scroll by itself. */
-html:has(.mds-dialog[open]:modal) { overflow: hidden; }
-
+.mds-dialog--md { inline-size: min(640px, 100% - 2 * var(--space-4)); }
+.mds-dialog--lg { inline-size: min(960px, 100% - 2 * var(--space-4)); }
+.mds-dialog::backdrop { background: var(--background-neutral-scrim); }
+html:has(:is(.mds-dialog, .mds-sheet)[open]:modal) { overflow: hidden; }
 .mds-dialog__panel { display: flex; flex-direction: column; max-block-size: inherit; margin: 0; }
-.mds-dialog__header { display: flex; align-items: flex-start; gap: var(--space-md); padding-block: var(--space-lg) var(--space-xs); padding-inline: var(--space-lg); }
-.mds-dialog__heading { display: flex; flex-direction: column; gap: var(--space-xs); flex: 1; min-inline-size: 0; }
-.mds-dialog__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-h6); font-weight: var(--weight-semibold); line-height: var(--lh-snug); color: var(--text-neutral-primary); }
-.mds-dialog__actions { display: flex; align-items: center; gap: var(--space-sm); flex: none; }
+.mds-dialog__header { display: flex; align-items: flex-start; gap: var(--space-4); padding-block: var(--space-6) var(--space-1); padding-inline: var(--space-6); }
+.mds-dialog__heading { display: flex; flex-direction: column; gap: var(--space-1); flex: 1; min-inline-size: 0; }
+.mds-dialog__title { margin: 0; font-family: var(--font-reading); font-size: var(--fs-h3); font-weight: var(--weight-semibold); line-height: var(--lh-tight); color: var(--text-neutral-default); text-wrap: balance; }
+.mds-dialog__actions { display: flex; align-items: center; gap: var(--space-2); flex: none; margin-block-start: -6px; margin-inline-end: -6px; }
 .mds-dialog__close::before { content: ""; inline-size: 16px; block-size: 16px; background-color: currentColor; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-size: contain; mask-size: contain; }
-/* The body scrolls and spaces its children, text and fields alike, with one gap; its 4px block
-   padding keeps a field's focus ring inside the scroller. */
-.mds-dialog__body { display: flex; flex-direction: column; gap: var(--space-md); flex: 1 1 auto; min-block-size: 0; overflow: auto; padding-block: var(--space-xs); padding-inline: var(--space-lg); font-size: var(--fs-body-sm); line-height: var(--lh-body); color: var(--text-neutral-tertiary); }
+/* The body scrolls; its 4px block padding keeps a field's focus ring inside the scroller. */
+.mds-dialog__body { display: flex; flex-direction: column; gap: var(--space-4); flex: 1 1 auto; min-block-size: 0; overflow: auto; padding-block: var(--space-3) var(--space-6); padding-inline: var(--space-6); font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-neutral-muted); }
 .mds-dialog__body > * { margin-block: 0; }
 .mds-dialog__body > :is(p, ul, ol, h3, h4) { max-inline-size: var(--layout-measure-prose); }
-.mds-dialog__footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-sm); padding-block: var(--space-md) var(--space-lg); padding-inline: var(--space-lg); }
-.mds-dialog__meta { margin: 0; margin-inline-end: auto; font-size: var(--fs-caption); line-height: var(--lh-body); color: var(--text-neutral-tertiary); }
-
-/* lg reads (the full müfredat) and is never a form: hairlines, and body text at reading size. */
-.mds-dialog--lg .mds-dialog__header { padding-block-end: var(--space-md); border-block-end: var(--border-s) solid var(--border-neutral-primary); }
-.mds-dialog--lg .mds-dialog__body { padding-block: var(--space-md); font-size: var(--fs-body); color: var(--text-neutral-primary); }
-.mds-dialog--lg .mds-dialog__footer { padding-block: var(--space-md); border-block-start: var(--border-s) solid var(--border-neutral-primary); }
-/* The reading body takes focus so the keyboard can scroll it. Its own ring would be clipped at
-   the dialog's edge, so the dialog draws it (MDS-A11Y-01). */
-.mds-dialog__body:focus-visible { box-shadow: none; }
-.mds-dialog:has(.mds-dialog__body:focus-visible) { box-shadow: var(--elevation-modal), var(--ring-focus); }
-
-/* Forced colours paint no shadow and no backdrop tint: the dialog keeps an edge, the glyph the button's text colour. */
+.mds-dialog__body strong { color: var(--text-neutral-default); font-weight: var(--weight-semibold); }
+/* The footer is the desk under the sheet: page-coloured, a hairline above it. */
+.mds-dialog__footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); padding-block: var(--space-4); padding-inline: var(--space-6); border-block-start: var(--border-width-thin) solid var(--border-neutral-subtle); background: var(--background-neutral-page); }
+.mds-dialog__meta { margin: 0; margin-inline-end: auto; font-size: var(--fs-caption); line-height: var(--lh-body); color: var(--text-neutral-subtle); }
+.mds-dialog--lg .mds-dialog__header { padding-block-end: var(--space-4); border-block-end: var(--border-width-thin) solid var(--border-neutral-subtle); }
+.mds-dialog--lg .mds-dialog__body { padding-block: var(--space-4); font-family: var(--font-reading); font-size: var(--fs-reading); line-height: var(--lh-reading); color: var(--text-neutral-default); }
+/* A focused scroller draws its ring inside itself, on the dialog surface. Outside, the ring would sit on the page
+   under the scrim, a ground it cannot keep 3:1 against, and the modal's shadow would paint over it. */
+.mds-dialog__body:focus-visible { outline: var(--ring-focus-width) solid var(--ring-focus-color); outline-offset: calc(-1 * (var(--ring-focus-width) + var(--ring-focus-offset))); box-shadow: none; }
 @media (forced-colors: active) {
-  .mds-dialog { border: var(--border-s) solid CanvasText; }
-  .mds-dialog:has(.mds-dialog__body:focus-visible) { outline: 2px solid CanvasText; outline-offset: 2px; }
+  .mds-dialog { border: var(--border-width-thin) solid CanvasText; }
   .mds-dialog__close::before { forced-color-adjust: none; background-color: ButtonText; }
 }
 
 /* ----------------------------------------------------------------- Toast */
-/* NOT extracted — the toaster is mounted once per app, before any toast, with both live regions already in
-   place (a region created together with its content is not announced): role="status" holds
-   success and info, role="alert" warning and error. Bottom inline-end; full width below 768. */
-.mds-toaster { position: fixed; inset-block-end: var(--space-lg); inset-inline-end: var(--space-lg); z-index: 100; inline-size: min(300px, 100% - 2 * var(--space-md)); }
-.mds-toaster > [role] { display: flex; flex-direction: column; gap: var(--space-sm); }
-.mds-toaster > :not(:empty) ~ :not(:empty) { padding-block-start: var(--space-sm); }
+.mds-toaster { position: fixed; inset-block-end: var(--space-6); inset-inline-end: var(--space-6); z-index: 100; inline-size: min(320px, 100% - 2 * var(--space-4)); }
+.mds-toaster > [role] { display: flex; flex-direction: column; gap: var(--space-2); }
+.mds-toaster > :not(:empty) ~ :not(:empty) { padding-block-start: var(--space-2); }
 @media (max-width: 767.98px) {
-  .mds-toaster { inset-block-end: var(--space-md); inset-inline: var(--space-md); inline-size: auto; }
+  .mds-toaster { inset-block-end: var(--space-4); inset-inline: var(--space-4); inline-size: auto; }
 }
-
-.mds-toast { display: flex; align-items: flex-start; gap: 12px; padding-block: 12px; padding-inline: var(--space-md); background: var(--background-white); border: var(--border-s) solid var(--border-neutral-primary); border-radius: var(--radius-s); box-shadow: var(--elevation-raised); font-family: var(--font-ui); color: var(--text-neutral-primary); }
-/* The tone glyph is a mask (tools/design-system/icon-masks.json), centred on the title's first line. */
+.mds-toast { display: flex; align-items: flex-start; gap: var(--space-3); padding-block: var(--space-3); padding-inline: var(--space-4); border: var(--border-width-thin) solid var(--border-neutral-subtle); border-radius: var(--radius-surface); background: var(--background-neutral-surface); color: var(--text-neutral-default); font-family: var(--font-ui); box-shadow: var(--elevation-raised); }
 .mds-toast__icon { flex: none; inline-size: 16px; block-size: 16px; margin-block-start: 2px; background-color: currentColor; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-size: contain; mask-size: contain; }
-.mds-toast--success .mds-toast__icon { color: var(--icon-success-primary); }   /* 5.02:1 on white */
-.mds-toast--info .mds-toast__icon { color: var(--icon-info-primary); }         /* 5.17:1 */
-.mds-toast--warning .mds-toast__icon { color: var(--icon-warning-primary); }   /* 1.92:1 — inherits OPEN-2 */
-.mds-toast--error .mds-toast__icon { color: var(--icon-error-primary); }       /* 4.83:1 */
+.mds-toast--success .mds-toast__icon { color: var(--text-success-default); }
+.mds-toast--info .mds-toast__icon { color: var(--text-info-default); }
+.mds-toast--warning .mds-toast__icon { color: var(--text-warning-default); }
+.mds-toast--error .mds-toast__icon { color: var(--text-error-default); }
 .mds-toast__body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-inline-size: 0; }
-.mds-toast__title { margin: 0; font-size: var(--fs-body-sm); font-weight: var(--weight-semibold); line-height: var(--lh-body); color: var(--text-neutral-primary); }
-.mds-toast__desc { margin: 0; font-size: var(--fs-caption); line-height: var(--lh-body); color: var(--text-neutral-tertiary); }
-/* The one action sits under the text, so a 300px toast keeps its title on one line. */
-.mds-toast__action { display: flex; padding-block-start: var(--space-xs); }
+.mds-toast__title { margin: 0; font-size: var(--fs-body-sm); font-weight: var(--weight-semibold); line-height: var(--lh-ui); color: var(--text-neutral-default); }
+.mds-toast__desc { margin: 0; font-size: var(--fs-caption); line-height: 1.45; color: var(--text-neutral-subtle); }
+.mds-toast__action { display: flex; padding-block-start: var(--space-1); }
 .mds-toast__close::before { content: ""; inline-size: 16px; block-size: 16px; background-color: currentColor; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-size: contain; mask-size: contain; }
 @media (forced-colors: active) {
   .mds-toast__icon { forced-color-adjust: none; background-color: CanvasText; }
@@ -769,23 +747,17 @@ html:has(.mds-dialog[open]:modal) { overflow: hidden; }
 }
 
 /* ----------------------------------------------- Empty and system states */
-/* NOT extracted — EmptyState: a list or region with nothing in it. SystemState: a page that is only a state
-   (404, 403, an error, the device restriction, no role); --page centres it in the viewport
-   when there is no app chrome around it. */
-.mds-empty { display: flex; flex-direction: column; align-items: center; gap: var(--space-md); padding-block: var(--space-2xl); padding-inline: var(--space-lg); text-align: center; }
-.mds-empty__icon { display: inline-flex; color: var(--icon-neutral-tertiary); }
-.mds-empty__text { margin: 0; max-inline-size: var(--layout-measure-prose); font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-neutral-primary); }
-
-.mds-system-state { display: flex; flex-direction: column; align-items: center; gap: var(--space-md); max-inline-size: var(--layout-measure-prose); margin-inline: auto; padding-block: var(--space-2xl); padding-inline: var(--space-gutter-page); text-align: center; }
+.mds-empty { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); padding-block: var(--space-10); padding-inline: var(--space-6); text-align: center; }
+.mds-empty__icon { display: inline-flex; color: var(--text-neutral-subtle); }
+.mds-empty__text { margin: 0; max-inline-size: var(--layout-measure-prose); font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-neutral-default); }
+.mds-system-state { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); max-inline-size: var(--layout-measure-prose); margin-inline: auto; padding-block: var(--space-10); padding-inline: var(--space-gutter-page); text-align: center; }
 .mds-system-state--page { justify-content: center; min-block-size: 100dvh; }
-.mds-system-state__text { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-neutral-primary); }
+.mds-system-state__text { margin: 0; font-family: var(--font-reading); font-size: var(--fs-reading); line-height: var(--lh-reading); color: var(--text-neutral-default); }
 
 /* ------------------------------------------------------------- Utilities */
-/* NOT extracted — text for assistive technology only: a caption, a legend, a busy label, ", tamamlandı". */
 .mds-visually-hidden { position: absolute; inline-size: 1px; block-size: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* The middle dot between the parts of a meta run ("Cmt 21:00 · 60 dk"); always aria-hidden. */
-.mds-sep { padding-inline: var(--space-xs); }
-/* The busy spinner's turn (Button loading); reduced motion stops it in base.css. */
+.mds-sep { padding-inline: 0.4em; color: var(--text-neutral-subtle); }
 @keyframes mds-spin { to { rotate: 1turn; } }
 
 /* ----------------------------------------------- Glyph masks (generated) */

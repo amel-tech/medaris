@@ -1,42 +1,49 @@
-/* Medaris — spacing scale.
-   Verbatim from the Figma variable collection "typography" (spacing/xs .. spacing/4xl),
-   except the lines marked proposed.
-   Eight steps, no in-between values: if a gap is not on this list it is wrong. The
-   table-cell roles name the 12 the class layer already draws inside components (MDS-TOK-05). */
+/* Medaris — space and density.
+   The scale is --space-N = N × 4px, so an agent derives the name from the pixel value. There are no
+   in-between values: 2px and 6px appear only inside components as hairline offsets and icon gaps.
+   Density is a region, not an app (MDS-LAY-02): data-density="compact" re-points the roles below.
+   Tedris is comfortable by default; Nizam puts data-density="compact" on its main region. */
 
-/* proposed — density is a region, not an app. Written before :root so the manifest records the defaults. */
+/* compact: Nizam tables, filters, dense forms. Before :root so the manifest records the defaults. */
 html[data-density="compact"], [data-density="compact"] {
-  --space-inset-card: var(--space-md);   /* 16 */
-  --space-gap-stack: var(--space-md);    /* 16 */
-  --space-gutter-page: var(--space-lg);  /* 24 */
-  --space-cell-block: var(--space-sm);   /* 8 */
-  --space-cell-inline: 12px;             /* the canonical in-component 12 */
+  --space-inset-card: var(--space-4);   /* 16 */
+  --space-gap-stack: var(--space-3);    /* 12 */
+  --space-cell-block: var(--space-2);   /* 8 */
+  --space-cell-inline: var(--space-3);  /* 12 */
+  --size-control-regular: 32px;
 }
-/* The phone gutter. var() is not allowed in a media condition: 767.98px is --bp-tablet written out.
+/* The phone. var() is not allowed in a media condition: 767.98px is --bp-tablet written out.
    :root [data-density] outranks [data-density], so a compact region below 768 gets 16 too. */
-@media (max-width: 767.98px) { html:root, :root [data-density="compact"] { --space-gutter-page: var(--space-md); } }
+@media (max-width: 767.98px) {
+  html:root, :root [data-density="compact"] { --space-gutter-page: var(--space-4); --space-inset-card: var(--space-4); }
+}
 
 :root {
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 32px;
-  --space-2xl: 40px;
-  --space-3xl: 56px;
-  --space-4xl: 64px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
+  --space-20: 80px;
 
-  /* proposed — spacing roles; re-pointed by [data-density="compact"] */
-  --space-inset-card: var(--space-lg);    /* proposed — card inset */
-  --space-gap-stack: var(--space-lg);     /* proposed — between page sections */
-  --space-gap-grid: var(--space-md);      /* proposed — card grids */
-  --space-gutter-page: var(--space-xl);   /* proposed — page gutter */
-  --space-cell-block: 12px;               /* proposed — the .mds-table literal, named */
-  --space-cell-inline: var(--space-md);   /* proposed — table cell, inline */
+  /* roles — comfortable (Tedris) values; [data-density="compact"] re-points them */
+  --space-inset-card: var(--space-6);    /* card, panel and dialog padding */
+  --space-gap-stack: var(--space-4);     /* between stacked blocks inside a card or form */
+  --space-gap-section: var(--space-10);  /* between page sections */
+  --space-gap-grid: var(--space-5);      /* card grids */
+  --space-gutter-page: var(--space-10);  /* page side gutter */
+  --space-cell-block: var(--space-3);    /* table cell, block axis */
+  --space-cell-inline: var(--space-4);   /* table cell, inline axis */
 
-  /* Breakpoints — the three layout frames on the Design System page,
-     and the three modes of the (retired) "global" collection. */
-  --bp-mobile: 390px;
-  --bp-tablet: 768px;
-  --bp-desktop: 1440px;
+  /* control heights — every target ≥ 24px (WCAG 2.5.8) */
+  --size-control-mini: 24px;     /* in-row actions, a control beside a badge */
+  --size-control-small: 32px;
+  --size-control-regular: 40px;  /* 32 in a compact region */
+  --size-control-large: 48px;    /* "Derse katıl", "Giriş yap", the sticky enrol card */
 }

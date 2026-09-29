@@ -1,20 +1,11 @@
-/* Medaris — motion.
-   NOT extracted: the Figma file defines no motion tokens. Everything below is a
-   proposal, kept deliberately short so it is cheap to replace once motion is designed.
-   Rule of thumb behind the numbers: a control responds in one frame budget (120ms),
-   a surface that enters or leaves takes 200ms, nothing exceeds 320ms.
-   Reduced motion is one universal rule in base.css, not an override of these tokens:
-   a second declaration would become the value the manifest records (MDS-TOK-02). */
+/* Medaris — motion. Functional only (MDS-MOT-01): colour changes, the switch knob, a disclosure opening.
+   Nothing enters, lifts, scales, bounces or reveals on scroll. Reduced motion is one global rule in
+   tokens/base.css, not an override here (an override would become the value the manifest records). */
 :root {
-  --duration-instant: 80ms;
-  --duration-fast: 120ms;
-  --duration-base: 200ms;
-  --duration-slow: 320ms;
+  --duration-fast: 120ms;   /* a control responding: hover, press, check */
+  --duration-base: 180ms;   /* a disclosure opening, a dialog fading in */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-
-  /* Composites: a control changing colour on hover, a chevron opening a disclosure */
-  --transition-colors: background-color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
-  --transition-disclosure: transform var(--duration-base) var(--ease-in-out), rotate var(--duration-base) var(--ease-in-out);
+  --transition-colors: color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+  --transition-disclosure: rotate var(--duration-base) var(--ease-standard), grid-template-rows var(--duration-base) var(--ease-standard);
 }

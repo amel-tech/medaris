@@ -1,10 +1,14 @@
-/* Medaris — layout measures.
-   NOT extracted: proposals, each on a canonical step or a canonical pattern's own width.
-   var() cannot be used inside @media; write the breakpoint in px there. */
+/* Medaris — layout measures and breakpoints.
+   var() cannot be used inside @media: write the breakpoint in px there (767.98px for "below tablet"). */
 :root {
-  --layout-sidebar: 248px;                 /* canonical app-shell and sidebar card */
-  --layout-pane: 300px;                    /* master-list pane (#95 --rail-w-list) */
-  --layout-aside: 340px;                   /* canonical ezber-card width */
-  --layout-content-max: var(--bp-desktop); /* 1440 */
-  --layout-measure-prose: 34em;            /* ≈76–80 characters of 16px IBM Plex Sans Turkish (WCAG 1.4.8) */
+  --layout-sidebar: 256px;        /* Nizam and Nazır sidebar */
+  --layout-pane: 300px;           /* master-list pane */
+  --layout-aside: 344px;          /* Tedris course aside: the join card, the ezber deck */
+  --layout-content-max: 1200px;   /* Tedris reading pages; Nizam runs full width beside the sidebar */
+  --layout-measure-prose: 58ch;   /* running text, dialogs included; ch follows the element's own face: Literata 18 ≈ 604px, about 70 characters a line */
+  --layout-topbar: 64px;          /* Tedris top bar; the phone AppBar is 56px */
+
+  --bp-mobile: 390px;
+  --bp-tablet: 768px;
+  --bp-desktop: 1440px;
 }

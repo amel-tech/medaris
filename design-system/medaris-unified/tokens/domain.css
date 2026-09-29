@@ -1,36 +1,29 @@
-/* Medaris — medrese domain colours.
-   NOT extracted — proposals for the medrese domain, each built on the primitives in colors.css.
-   A suffix is the API value, lower-cased (MDS-TOK-04). See the "Domain colour" card for every pair. */
+/* Medaris — medrese domain tokens. Theme-independent: they read the same by day and by night.
+   A suffix is the API value, lower-cased (MDS-TOK-04). */
 :root {
-  /* Live now: a session state, not a lesson type. Always with its dot and its words. */
-  --text-live-primary: var(--red-700);
-  --background-live-subtle: var(--red-100);
+  /* Meeting platforms: the 8px decorative dot beside the printed name (MDS-COL-06), never a fill behind text. */
+  --icon-platform-zoom: var(--laciverd-500);
+  --icon-platform-google-meet: var(--zumrut-500);
+  --icon-platform-jitsi: var(--safran-500);
+  --icon-platform-unknown: var(--murekkep-400);
 
-  /* Meeting platforms: the 8px decorative dot in the platform chip, never a fill behind text.
-     Suffix = the libs/utils platform id. What "branded" means is SPEC-D3-18; this is its default. */
-  --icon-platform-google-meet: var(--green-700);
-  --icon-platform-zoom: var(--blue-500);
-  --icon-platform-jitsi: var(--sky-700);
+  /* The logo's nokta: mid lâciverd, ≥ 3:1 on the ink ground of the day mark and the paper ground of the night mark. */
+  --icon-logo-nokta: var(--laciverd-500);
 
-  /* Rating star: decorative, always beside the number */
-  --icon-rating: var(--yellow-500);
+  /* Rating star: decorative, always beside its number. */
+  --icon-rating: var(--safran-500);
 
-  /* Legibility over imagery. A gradient, so it does not sit under --background-*.
-     White text on it starts in its last 28%: at least 54% black under the cap line, 4.59:1 over white. */
-  --gradient-scrim-media: linear-gradient(transparent, color-mix(in srgb, var(--black) 75%, transparent));
+  /* Legibility over imagery (a recording's poster). The ramp reaches full strength at 70% and holds it; text
+     starts there, in --text-on-cover (≥ 4.5:1 over a pure white poster pixel, contrast.md "Text over media"). */
+  --gradient-scrim-media: linear-gradient(transparent, rgb(11 14 20 / 0.82) 70%);
 
-  /* Course covers, one tone per course: from → to is the wash, fg the pattern and label ink.
-     Never a status hue (MDS-COL-07). */
-  --cover-sky-from: var(--sky-100);
-  --cover-sky-to: var(--sky-200);
-  --cover-sky-fg: var(--sky-900);
-  --cover-blue-from: var(--blue-100);
-  --cover-blue-to: var(--blue-200);
-  --cover-blue-fg: var(--blue-900);
-  --cover-green-from: var(--green-100);
-  --cover-green-to: var(--green-200);
-  --cover-green-fg: var(--green-900);
-  --cover-slate-from: var(--slate-100);
-  --cover-slate-to: var(--slate-200);
-  --cover-slate-fg: var(--slate-900);
+  /* Course covers — bookcloth. Four cloths, no status (MDS-COL-07). The order is the hash order:
+     FNV-1a(seed) mod 4 → laciverd, bordo, zumrut, murekkep; with neither tone nor seed, murekkep.
+     The label on a cloth is --text-on-cover (≥ 8.6:1 on every cloth); the blind stamp is --stamp-on-cover. */
+  --cover-laciverd: var(--laciverd-800);
+  --cover-bordo: var(--lal-900);
+  --cover-zumrut: var(--zumrut-800);
+  --cover-murekkep: var(--murekkep-850);
+  --text-on-cover: var(--kagit-100);
+  --stamp-on-cover: rgb(254 253 249 / 0.22);
 }

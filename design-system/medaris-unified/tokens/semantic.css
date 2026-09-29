@@ -1,110 +1,222 @@
-/* Medaris — semantic colour roles.
-   Extracted verbatim from "Online Medrese UI UX.fig" → variable collection "color" → semantic/*,
-   except the three lines marked proposed.
-   Four roles (background, text, border, icon) x seven tones. Product code uses only these;
-   the primitives in colors.css exist so this file has something to point at. */
+/* Medaris — semantic colour roles. The only colours a component reads.
+   Grammar: --{property}-{tone}-{variant}
+     property  background | text | border          (an icon takes currentColor or a text-* role)
+     tone      neutral | action | brand | success | warning | error | info | live
+     variant   neutral background: page surface sunken field hover scrim
+               neutral text: default muted subtle disabled on-bold · neutral border: subtle control strong
+               action background: bold bold-hover
+               every other tone: background-{tone}-subtle · background-{tone}-bold · text-{tone}-default · border-{tone}-default
+   Rules an agent can rely on (verify-contrast.mjs proves each, in both themes):
+     text-*-default and text-neutral-{default,muted,subtle} ≥ 4.5:1 on page, surface, sunken, field, hover, brand-subtle and their own subtle tint
+     text-neutral-on-bold ≥ 4.5:1 on every *-bold fill;  border-*-default and *-bold ≥ 3:1 on page, surface and sunken
+     border-neutral-control ≥ 3:1 on every ground;  border-neutral-subtle is decoration only
+     text-neutral-disabled ≥ 3:1 on page, surface, sunken, field and hover (a policy: WCAG exempts disabled text)
+   A theme re-points these names and nothing else. The night block is written twice on purpose — once for an
+   explicit [data-theme="dark"] (on an element below <html> it makes a night island; base.css gives the island
+   its own ground and ink, and check.mjs renders every page inside one), once for the system
+   preference when no theme is forced — and is generated from one table (verify-contrast.mjs fails if they differ).
+   Both come before the default :root (MDS-TOK-02), and both outrank it. */
+
+/* ------------------------------------------------------------------ night: "ink" */
+:root[data-theme="dark"], [data-theme="dark"] {
+  color-scheme: dark;
+  /* neutral · background */
+  --background-neutral-page: var(--murekkep-950);
+  --background-neutral-surface: var(--murekkep-900);
+  --background-neutral-sunken: var(--murekkep-1000);
+  --background-neutral-field: var(--murekkep-950);
+  --background-neutral-hover: var(--murekkep-850);
+  --background-neutral-scrim: rgb(5 7 10 / 0.72);
+
+  /* action · the one primary action, and every checked or on state. Ink by day, paper by night. */
+  --background-action-bold: var(--kagit-150);
+  --background-action-bold-hover: var(--kagit-50);
+
+  /* neutral · text */
+  --text-neutral-default: var(--kagit-150);
+  --text-neutral-muted: var(--kagit-300);
+  --text-neutral-subtle: var(--kagit-500);
+  --text-neutral-disabled: var(--murekkep-400);
+  --text-neutral-on-bold: var(--murekkep-950);
+
+  /* neutral · border */
+  --border-neutral-subtle: var(--murekkep-800);
+  --border-neutral-control: var(--murekkep-400);
+  --border-neutral-strong: var(--kagit-400);
+
+  /* brand · lâciverd: where you are */
+  --background-brand-subtle: var(--laciverd-950);
+  --background-brand-bold: var(--laciverd-300);
+  --text-brand-default: var(--laciverd-300);
+  --border-brand-default: var(--laciverd-400);
+
+  /* success · zümrüt */
+  --background-success-subtle: var(--zumrut-950);
+  --background-success-bold: var(--zumrut-300);
+  --text-success-default: var(--zumrut-300);
+  --border-success-default: var(--zumrut-400);
+
+  /* warning · safran */
+  --background-warning-subtle: var(--safran-950);
+  --background-warning-bold: var(--safran-300);
+  --text-warning-default: var(--safran-300);
+  --border-warning-default: var(--safran-400);
+
+  /* error · lal. The destructive button, an invalid field, a failed action. */
+  --background-error-subtle: var(--lal-950);
+  --background-error-bold: var(--lal-300);
+  --text-error-default: var(--lal-300);
+  --border-error-default: var(--lal-400);
+
+  /* info · lâciverd, the same ink as brand: a notice, never a place */
+  --background-info-subtle: var(--laciverd-950);
+  --background-info-bold: var(--laciverd-300);
+  --text-info-default: var(--laciverd-300);
+  --border-info-default: var(--laciverd-400);
+
+  /* live · lal, the rubric: a session happening now. Always the dot and the words 'Şu an canlı'. */
+  --background-live-subtle: var(--lal-950);
+  --background-live-bold: var(--lal-400);
+  --text-live-default: var(--lal-300);
+  --border-live-default: var(--lal-400);
+
+  /* focus · a two-band ring: a gap in paper (day) or ink (night), then lâciverd. tokens/elevation.css composes it. */
+  --ring-focus-color: var(--laciverd-300);
+  --ring-focus-gap: var(--murekkep-950);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    /* neutral · background */
+    --background-neutral-page: var(--murekkep-950);
+    --background-neutral-surface: var(--murekkep-900);
+    --background-neutral-sunken: var(--murekkep-1000);
+    --background-neutral-field: var(--murekkep-950);
+    --background-neutral-hover: var(--murekkep-850);
+    --background-neutral-scrim: rgb(5 7 10 / 0.72);
+
+    /* action · the one primary action, and every checked or on state. Ink by day, paper by night. */
+    --background-action-bold: var(--kagit-150);
+    --background-action-bold-hover: var(--kagit-50);
+
+    /* neutral · text */
+    --text-neutral-default: var(--kagit-150);
+    --text-neutral-muted: var(--kagit-300);
+    --text-neutral-subtle: var(--kagit-500);
+    --text-neutral-disabled: var(--murekkep-400);
+    --text-neutral-on-bold: var(--murekkep-950);
+
+    /* neutral · border */
+    --border-neutral-subtle: var(--murekkep-800);
+    --border-neutral-control: var(--murekkep-400);
+    --border-neutral-strong: var(--kagit-400);
+
+    /* brand · lâciverd: where you are */
+    --background-brand-subtle: var(--laciverd-950);
+    --background-brand-bold: var(--laciverd-300);
+    --text-brand-default: var(--laciverd-300);
+    --border-brand-default: var(--laciverd-400);
+
+    /* success · zümrüt */
+    --background-success-subtle: var(--zumrut-950);
+    --background-success-bold: var(--zumrut-300);
+    --text-success-default: var(--zumrut-300);
+    --border-success-default: var(--zumrut-400);
+
+    /* warning · safran */
+    --background-warning-subtle: var(--safran-950);
+    --background-warning-bold: var(--safran-300);
+    --text-warning-default: var(--safran-300);
+    --border-warning-default: var(--safran-400);
+
+    /* error · lal. The destructive button, an invalid field, a failed action. */
+    --background-error-subtle: var(--lal-950);
+    --background-error-bold: var(--lal-300);
+    --text-error-default: var(--lal-300);
+    --border-error-default: var(--lal-400);
+
+    /* info · lâciverd, the same ink as brand: a notice, never a place */
+    --background-info-subtle: var(--laciverd-950);
+    --background-info-bold: var(--laciverd-300);
+    --text-info-default: var(--laciverd-300);
+    --border-info-default: var(--laciverd-400);
+
+    /* live · lal, the rubric: a session happening now. Always the dot and the words 'Şu an canlı'. */
+    --background-live-subtle: var(--lal-950);
+    --background-live-bold: var(--lal-400);
+    --text-live-default: var(--lal-300);
+    --border-live-default: var(--lal-400);
+
+    /* focus · a two-band ring: a gap in paper (day) or ink (night), then lâciverd. tokens/elevation.css composes it. */
+    --ring-focus-color: var(--laciverd-300);
+    --ring-focus-gap: var(--murekkep-950);
+  }
+}
+
+/* ------------------------------------------------------------------ day: "paper", the default */
 :root {
-  /* background */
-  --background-neutral-primary: var(--slate-50);
-  --background-neutral-secondary: var(--slate-100);
-  --background-neutral-tertiary: var(--slate-200);
-  --background-neutral-disabled: var(--slate-300);
-  --background-neutral-inverse-primary: var(--slate-900);
-  --background-neutral-inverse-secondary: var(--slate-800);
-  --background-neutral-inverse-tertiary: var(--slate-700);
-  --background-brand-primary: var(--sky-900);
-  --background-brand-secondary: var(--sky-700);
-  --background-brand-tertiary: var(--sky-100);
-  --background-success-base: var(--green-500);
-  --background-success-bold: var(--green-600);
-  --background-success-subtle: var(--green-100);
-  --background-warning-base: var(--yellow-400);
-  --background-warning-bold: var(--yellow-500);
-  --background-warning-subtle: var(--yellow-100);
-  --background-error-base: var(--red-500);
-  --background-error-bold: var(--red-600);
-  --background-error-subtle: var(--red-100);
-  --background-info-base: var(--blue-600);
-  --background-info-bold: var(--blue-700);
-  --background-info-subtle: var(--blue-100);
-  --background-black: var(--black);
-  --background-white: var(--white);
+  color-scheme: light;
+  /* neutral · background */
+  --background-neutral-page: var(--kagit-50); /* the page: ivory paper by day, blue-black ink by night */
+  --background-neutral-surface: var(--kagit-0); /* a sheet on the page: card, table, dialog, sidebar, top bar, toast, tooltip */
+  --background-neutral-sunken: var(--kagit-100); /* a well: secondary button, read-only field, link box, neutral badge and alert, progress track */
+  --background-neutral-field: var(--kagit-0); /* inside a text field, select, checkbox, radio and the switch track when off; at night one step above the sunken well, so a read-only field reads as read-only */
+  --background-neutral-hover: var(--kagit-150); /* hover on rows, ghost and secondary buttons, nav items */
+  --background-neutral-scrim: rgb(11 14 20 / 0.48); /* behind a modal dialog or the nav sheet */
 
-  /* text */
-  --text-neutral-primary: var(--gray-900);
-  --text-neutral-secondary: var(--gray-800);
-  --text-neutral-tertiary: var(--gray-600);
-  --text-neutral-disabled: var(--gray-500);
-  --text-neutral-inverse-primary: var(--gray-100);
-  --text-neutral-inverse-secondary: var(--gray-200);
-  --text-neutral-inverse-tertiary: var(--gray-300);
-  --text-brand-primary: var(--sky-900);
-  --text-brand-secondary: var(--sky-800);
-  --text-brand-inverse: var(--sky-100);
-  --text-success-primary: var(--green-700);
-  --text-success-secondary: var(--green-600);
-  --text-success-inverse: var(--green-50);
-  --text-warning-primary: var(--yellow-500);
-  --text-warning-secondary: var(--yellow-400);
-  --text-warning-inverse: var(--yellow-50);
-  --text-error-primary: var(--red-600);
-  --text-error-secondary: var(--red-500);
-  --text-error-inverse: var(--red-50);
-  --text-info-primary: var(--blue-600);
-  --text-info-secondary: var(--blue-500);
-  --text-info-inverse: var(--blue-50);
-  --text-black: var(--black);
-  --text-white: var(--white);
+  /* action · the one primary action, and every checked or on state. Ink by day, paper by night. */
+  --background-action-bold: var(--murekkep-900); /* primary button, checked checkbox and radio, switch on, selected chip */
+  --background-action-bold-hover: var(--murekkep-800); /* hover of the above */
 
-  /* border */
-  --border-neutral-primary: var(--gray-200);
-  --border-neutral-secondary: var(--gray-300);
-  --border-neutral-tertiary: var(--gray-400);
-  --border-neutral-inverse-primary: var(--gray-800);
-  --border-neutral-inverse-secondary: var(--gray-700);
-  --border-neutral-inverse-tertiary: var(--gray-600);
-  --border-brand-primary: var(--sky-900);
-  --border-brand-secondary: var(--sky-800);
-  --border-brand-inverse: var(--sky-100);
-  --border-success-primary: var(--green-700);
-  --border-success-secondary: var(--green-600);
-  --border-success-inverse: var(--green-50);
-  --border-warning-primary: var(--yellow-500);
-  --border-warning-secondary: var(--yellow-400);
-  --border-warning-inverse: var(--yellow-50);
-  --border-error-primary: var(--red-700);
-  --border-error-secondary: var(--red-600);
-  --border-error-inverse: var(--red-50);
-  --border-info-primary: var(--blue-700);
-  --border-info-secondary: var(--blue-600);
-  --border-info-inverse: var(--blue-50);
+  /* neutral · text */
+  --text-neutral-default: var(--murekkep-900); /* body text, titles, values */
+  --text-neutral-muted: var(--murekkep-700); /* secondary text: a description, a nav item at rest, the lead under a title */
+  --text-neutral-subtle: var(--murekkep-600); /* meta, help, table headers, placeholders, time zones (still ≥ 4.5:1 everywhere) */
+  --text-neutral-disabled: var(--murekkep-400); /* disabled text and marks, every control: ≥ 3:1 on every ground by policy (WCAG 1.4.3 exempts it); never information */
+  --text-neutral-on-bold: var(--kagit-0); /* the one text colour for any *-bold fill, every tone, both themes */
 
-  /* icon */
-  --icon-neutral-primary: var(--gray-900);
-  --icon-neutral-secondary: var(--gray-800);
-  --icon-neutral-tertiary: var(--gray-600);
-  --icon-neutral-disabled: var(--gray-500);
-  --icon-neutral-inverse-primary: var(--gray-100);
-  --icon-neutral-inverse-secondary: var(--gray-200);
-  --icon-neutral-inverse-tertiary: var(--gray-300);
-  --icon-brand-primary: var(--sky-900);
-  --icon-brand-secondary: var(--sky-800);
-  --icon-brand-inverse: var(--sky-100);
-  --icon-success-primary: var(--green-700);
-  --icon-success-secondary: var(--green-600);
-  --icon-success-inverse: var(--green-50);
-  --icon-warning-primary: var(--yellow-500);
-  --icon-warning-secondary: var(--yellow-400);
-  --icon-warning-inverse: var(--yellow-50);
-  --icon-error-primary: var(--red-600);
-  --icon-error-secondary: var(--red-500);
-  --icon-error-inverse: var(--red-50);
-  --icon-info-primary: var(--blue-600);
-  --icon-info-secondary: var(--blue-500);
-  --icon-info-inverse: var(--blue-50);
+  /* neutral · border */
+  --border-neutral-subtle: var(--kagit-200); /* decorative hairline: dividers, card and table edges. Never the only edge of a control */
+  --border-neutral-control: var(--murekkep-400); /* the edge that identifies a control: ≥ 3:1 on every ground */
+  --border-neutral-strong: var(--murekkep-700); /* control hover and focus edge, the outline button's hover edge */
 
-  /* proposed — roles #95 needed and the Figma file does not have */
-  --border-neutral-subtle: var(--gray-100);        /* proposed — dividers inside a container; decorative */
-  --background-brand-subtle: var(--sky-50);        /* proposed — a selected or current full row; never the only signal (1.07:1) */
-  --background-neutral-scrim: color-mix(in srgb, var(--background-neutral-inverse-primary) 55%, transparent); /* proposed — dialog backdrop */
+  /* brand · lâciverd: where you are */
+  --background-brand-subtle: var(--laciverd-50); /* the current lesson row, the active nav item, the selected tab count */
+  --background-brand-bold: var(--laciverd-700); /* the current lesson medallion; takes --text-neutral-on-bold */
+  --text-brand-default: var(--laciverd-700); /* links, the 'Sıradaki' marker, the active tab, accent text */
+  --border-brand-default: var(--laciverd-600); /* 3:1 mark: active tab underline, progress fill, selected choice edge */
+
+  /* success · zümrüt */
+  --background-success-subtle: var(--zumrut-50);
+  --background-success-bold: var(--zumrut-700);
+  --text-success-default: var(--zumrut-700);
+  --border-success-default: var(--zumrut-600);
+
+  /* warning · safran */
+  --background-warning-subtle: var(--safran-50);
+  --background-warning-bold: var(--safran-700);
+  --text-warning-default: var(--safran-800);
+  --border-warning-default: var(--safran-700);
+
+  /* error · lal. The destructive button, an invalid field, a failed action. */
+  --background-error-subtle: var(--lal-50);
+  --background-error-bold: var(--lal-700);
+  --text-error-default: var(--lal-700);
+  --border-error-default: var(--lal-600);
+
+  /* info · lâciverd, the same ink as brand: a notice, never a place */
+  --background-info-subtle: var(--laciverd-50);
+  --background-info-bold: var(--laciverd-700);
+  --text-info-default: var(--laciverd-700);
+  --border-info-default: var(--laciverd-600);
+
+  /* live · lal, the rubric: a session happening now. Always the dot and the words 'Şu an canlı'. */
+  --background-live-subtle: var(--lal-50);
+  --background-live-bold: var(--lal-600);
+  --text-live-default: var(--lal-700);
+  --border-live-default: var(--lal-600); /* the live dot */
+
+  /* focus · a two-band ring: a gap in paper (day) or ink (night), then lâciverd. tokens/elevation.css composes it. */
+  --ring-focus-color: var(--laciverd-600); /* ≥ 3:1 against every ground and against the gap */
+  --ring-focus-gap: var(--kagit-0); /* ≥ 3:1 against every filled control, so the ring reads on ink, paper and red alike */
 }
