@@ -29,6 +29,8 @@ export interface IKoskMadrasahRef {
 
 export interface IKoskWithStats extends IKosk {
   madrasah: IKoskMadrasahRef | null;
+  /** Who manages the köşk (MDRS-126), oldest first; never empty. */
+  managerIds: string[];
   courseCount: number;
   studentCount: number;
   muderrisCount: number;
@@ -74,6 +76,37 @@ export interface IUpdateKosk {
   ratingCount?: number;
 }
 
+/**
+ * Who is changing a köşk's managers (MDRS-126). `bypass` is SYSTEM_ADMIN,
+ * who may do so without being a manager.
+ */
+export interface IManagerActor {
+  id: string;
+  bypass: boolean;
+}
+
+/**
+ * What adding a manager came to (MDRS-126). `forbidden` — the actor was no
+ * longer a manager by the time the köşk was locked; `unknown-user` — no
+ * `users` row, i.e. that person has never signed in.
+ */
+export type AddManagerOutcome =
+  | "added"
+  | "no-kosk"
+  | "forbidden"
+  | "unknown-user";
+
+/**
+ * What removing a manager came to (MDRS-126). `last` — the user is the köşk's
+ * only manager and stays; `not-manager` — the user was not one to begin with.
+ */
+export type RemoveManagerOutcome =
+  | "removed"
+  | "no-kosk"
+  | "forbidden"
+  | "last"
+  | "not-manager";
+
 /** A köşk as it appears in a caller's role summary (`GET /me`, MDRS-104). */
 export interface IKoskRef {
   id: string;
@@ -88,10 +121,23 @@ export interface IKoskRepository {
   ): Promise<IKoskWithStats[]>;
   count(): Promise<number>;
   findById(id: string, userId: string): Promise<IKoskWithStats | null>;
-  findOwnerId(id: string): Promise<string | null>;
-  findOwnedBy(ownerId: string): Promise<IKoskRef[]>;
-  ownsAny(ownerId: string): Promise<boolean>;
+  exists(id: string): Promise<boolean>;
+  isManager(koskId: string, userId: string): Promise<boolean>;
+  findManagedBy(userId: string): Promise<IKoskRef[]>;
+  managesAny(userId: string): Promise<boolean>;
+  /** Creates the köşk with its creator (`ownerId`) as its first manager. */
   create(kosk: ICreateKosk): Promise<IKosk>;
+  /** Idempotent: adding a manager twice leaves one row. */
+  addManager(
+    koskId: string,
+    userId: string,
+    actor: IManagerActor
+  ): Promise<AddManagerOutcome>;
+  removeManager(
+    koskId: string,
+    userId: string,
+    actor: IManagerActor
+  ): Promise<RemoveManagerOutcome>;
   update(id: string, updates: IUpdateKosk): Promise<IKosk | null>;
   /** SYSTEM_ADMIN's delete: the köşk, its courses, their children, an audit entry. */
   purge(

@@ -160,3 +160,20 @@ export const listTimeZones = (current?: string): string[] => {
   if (current && isValidTimeZone(current)) zones.add(current);
   return [...zones].sort();
 };
+
+/**
+ * A `datetime-local` value moved by whole calendar days, wall-clock time
+ * unchanged: `shiftDatetimeLocal("2026-10-20T21:00", 7)` is
+ * `"2026-10-27T21:00"`. Read in the course's zone, that is the same local time
+ * a week later even when daylight saving changes in between — which is what
+ * "Haftayı kopyala" means (MDRS-109). A value that is not `YYYY-MM-DDTHH:mm`
+ * (including '') is returned unchanged.
+ */
+export const shiftDatetimeLocal = (value: string, days: number): string => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})$/.exec(value);
+  if (!m) return value;
+  const d = new Date(
+    Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + days)
+  );
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${m[4]}`;
+};

@@ -23,9 +23,10 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { enrollInCourse } from "../actions";
+import { AddToCalendarMenu } from "./add-to-calendar";
 import { CoverPlaceholder, HueAvatar } from "./cover";
 import { levelLabel } from "./labels";
-import { nextLiveLesson } from "./lesson-page";
+import { nextLiveLesson, upcomingLiveLesson } from "./lesson-page";
 import { SyllabusModal, WeekModule } from "./syllabus";
 
 const initials = (name: string) =>
@@ -66,6 +67,7 @@ export const CoursePage = ({
   const previewWeeks = course.weeks.slice(0, 5);
   const remaining = course.weeks.length - previewWeeks.length;
   const continueLesson = nextLiveLesson(course);
+  const upcomingLesson = enrolled ? upcomingLiveLesson(course) : null;
 
   const handleEnroll = () =>
     startTransition(async () => {
@@ -240,6 +242,20 @@ export const CoursePage = ({
                       ? t("CoursePage.requestEnroll")
                       : t("CoursePage.enroll")}
                 </button>
+              )}
+
+              {upcomingLesson && (
+                <AddToCalendarMenu
+                  className="mt-2.5 w-full"
+                  courseId={course.id}
+                  courseTitle={course.title}
+                  lesson={{
+                    id: upcomingLesson.id,
+                    title: upcomingLesson.title,
+                    scheduledAt: upcomingLesson.scheduledAt,
+                    durationMinutes: upcomingLesson.durationMinutes ?? null,
+                  }}
+                />
               )}
 
               <div className="mt-2.5 flex gap-2">

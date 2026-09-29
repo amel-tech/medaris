@@ -10,6 +10,12 @@ import { clsx } from "keycloakify/tools/clsx";
 import { useState } from "react";
 import { FieldContainer } from "../components/FieldContainer";
 import { PasswordWrapper } from "../components/PasswordWrapper";
+import {
+  fieldDir,
+  fieldErrorClassName,
+  linkClassName,
+  primaryButtonClassName,
+} from "../components/styles";
 import type { I18n } from "../i18n";
 import type { KcContext } from "../KcContext";
 import type { ExtendedPageProps } from "../types/PageProps";
@@ -60,7 +66,7 @@ export default function Login(
               <a
                 tabIndex={0}
                 href={url.registrationUrl}
-                className="text-brand-primary hover:underline font-medium"
+                className={linkClassName}
               >
                 {msg("doRegister")}
               </a>
@@ -172,6 +178,7 @@ export default function Login(
                     name="username"
                     defaultValue={login.username ?? ""}
                     id="username"
+                    dir={fieldDir("username")}
                     placeholder={
                       !realm.loginWithEmailAllowed
                         ? msgStr("username")
@@ -182,7 +189,7 @@ export default function Login(
                     autoComplete="username"
                     className={cn(
                       messagesPerField.existsError("username", "password") &&
-                        "border border-error-secondary !text-error-primary placeholder:text-error-primary"
+                        fieldErrorClassName
                     )}
                   />
                   {messagesPerField.existsError("username", "password") && (
@@ -219,6 +226,7 @@ export default function Login(
                     tabIndex={0}
                     id="password"
                     name="password"
+                    dir={fieldDir("password")}
                     autoComplete="current-password"
                     aria-invalid={messagesPerField.existsError(
                       "username",
@@ -228,7 +236,7 @@ export default function Login(
                     className={cn(
                       "w-full pr-10",
                       messagesPerField.existsError("username", "password") &&
-                        "border border-error-secondary !text-error-primary placeholder:text-error-primary"
+                        fieldErrorClassName
                     )}
                   />
                 </PasswordWrapper>
@@ -285,7 +293,7 @@ export default function Login(
                 <Button
                   tabIndex={0}
                   disabled={isLoginButtonDisabled}
-                  className="w-full bg-brand-primary text-white h-[48px] hover:bg-brand-primary/90 disabled:opacity-50 font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                  className={primaryButtonClassName}
                   type="submit"
                 >
                   {msgStr("doLogIn")}

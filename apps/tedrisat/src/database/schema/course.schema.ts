@@ -84,37 +84,43 @@ export const courseWeeks = table("course_weeks", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const lessons = table("lessons", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  weekId: uuid("week_id")
-    .references(() => courseWeeks.id, { onDelete: "restrict" })
-    .notNull(),
-  title: text("title").notNull(),
-  type: lessonType().notNull(),
-  // Deprecated (MDRS-110): the free-text duration ("60 dk") it replaces.
-  // Nothing reads or writes it any more; migration 0019 copied its minutes
-  // into `duration_minutes`, and a follow-up migration drops it once the
-  // release that stopped using it is live.
-  duration: text("duration"),
-  // Length of the lesson in whole minutes (MDRS-110). A calendar event needs
-  // an end time, and free text could not give one.
-  durationMinutes: integer("duration_minutes"),
-  kaynak: text("kaynak"),
-  // Live-session fields (type = LIVE). `withTimezone` because students and
-  // müderris may be in different zones; created/updated remain naive for
-  // backward compatibility with the original migration.
-  scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
-  meetingUrl: text("meeting_url"),
-  agenda: jsonb("agenda").$type<{ time: string; title: string }[]>(),
-  isPreview: boolean("is_preview").default(false).notNull(),
-  orderIndex: integer("order_index").default(0).notNull(),
-  // Removing a lesson hides it; it never deletes it (MDRS-95, following the
-  // MDRS-124 decision). Recordings and calendar events will reference lesson
-  // ids.
-  archivedAt: timestamp("archived_at", { withTimezone: true }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+export const lessons = table(
+  "lessons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    weekId: uuid("week_id")
+      .references(() => courseWeeks.id, { onDelete: "restrict" })
+      .notNull(),
+    title: text("title").notNull(),
+    type: lessonType().notNull(),
+    // Deprecated (MDRS-110): the free-text duration ("60 dk") it replaces.
+    // Nothing reads or writes it any more; migration 0019 copied its minutes
+    // into `duration_minutes`, and a follow-up migration drops it once the
+    // release that stopped using it is live.
+    duration: text("duration"),
+    // Length of the lesson in whole minutes (MDRS-110). A calendar event needs
+    // an end time, and free text could not give one.
+    durationMinutes: integer("duration_minutes"),
+    kaynak: text("kaynak"),
+    // Live-session fields (type = LIVE). `withTimezone` because students and
+    // müderris may be in different zones; created/updated remain naive for
+    // backward compatibility with the original migration.
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+    meetingUrl: text("meeting_url"),
+    agenda: jsonb("agenda").$type<{ time: string; title: string }[]>(),
+    isPreview: boolean("is_preview").default(false).notNull(),
+    orderIndex: integer("order_index").default(0).notNull(),
+    // Removing a lesson hides it; it never deletes it (MDRS-95, following the
+    // MDRS-124 decision). Recordings and calendar events will reference lesson
+    // ids.
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  // The calendar feed's range predicate (MDRS-120), run on every calendar
+  // app's poll of every subscriber.
+  (t) => [index("lessons_scheduled_at_idx").on(t.scheduledAt)]
+);
 
 export const courseMuderris = table(
   "course_muderris",

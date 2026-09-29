@@ -111,7 +111,13 @@ export const MATRIX: Record<Entity, Partial<Record<Role, Scope[]>>> = {
     // nothing by being resolved as the manager.
     [ROLES.MADRASAH_NAZIR]: [SCOPES.VIEW, SCOPES.EDIT, SCOPES.MANAGE_COURSES],
     // No `DELETE` (MDRS-124): deleting a köşk is SYSTEM_ADMIN's alone.
-    [ROLES.KOSK_MANAGER]: [SCOPES.VIEW, SCOPES.EDIT, SCOPES.MANAGE_COURSES],
+    // `MANAGE_KOSK_MANAGERS` (MDRS-126) is on this row only — see scopes.ts.
+    [ROLES.KOSK_MANAGER]: [
+      SCOPES.VIEW,
+      SCOPES.EDIT,
+      SCOPES.MANAGE_COURSES,
+      SCOPES.MANAGE_KOSK_MANAGERS,
+    ],
     // Anyone authenticated may view a köşk. `CREATE_KOSK` is
     // intentionally absent from every role except the SYSTEM_ADMIN
     // realm bypass: only platform admins may open new köşks and assign

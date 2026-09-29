@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowRight } from "@medaris/icons/ssr";
 import { getLocale, getTranslations } from "next-intl/server";
-import { heroCtaHref } from "./data";
+import { landingEntryHref } from "~/lib/tedris-entry";
+import { heroCtaIntent } from "./data";
 
 export async function HeroSection() {
   const t = await getTranslations("landing.hero");
@@ -34,7 +35,7 @@ export async function HeroSection() {
         <div className="flex justify-center">
           <a
             className="bg-primary text-white px-12 py-4 rounded-full font-semibold text-lg shadow-xl shadow-primary/10 hover:shadow-primary/20 transition-all flex items-center group"
-            href={heroCtaHref}
+            href={landingEntryHref(heroCtaIntent, locale)}
           >
             {t("cta")}
             <ArrowIcon

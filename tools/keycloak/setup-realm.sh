@@ -6,6 +6,12 @@
 # (scripts/setup-keycloak.sh) and adapted to the monorepo; the differences are
 # listed in docs/migration/mdrs-42-keycloak-clients.md.
 #
+# MDRS-97: the `medaris` realm (production) is provisioned declaratively from
+# config/keycloak/ (see config/keycloak/RUNBOOK.md), not by this script. This
+# script stays for the shared `amel-tech-dev` realm, whose other clients rule
+# out a full reconfiguration, and for keycloak-audience.e2e.spec.ts. Its mail
+# sender step shares config/keycloak/scripts/lib/smtp.sh with `provision`.
+#
 # Creates, when missing:
 #   realm         amel-tech-dev (REALM)
 #   API client    tedrisat-api — confidential, every login flow disabled. It
@@ -17,8 +23,12 @@
 #   test users    owner-user / stranger-user — only with --with-test-users,
 #                 only against a localhost Keycloak, and only in a realm that
 #                 holds no other user.
+#   mail sender   the realm's SMTP server (MDRS-98) — only when KC_SMTP_HOST
+#                 is set; see "Mail sender" below.
 #
-# A second run changes nothing and prints `exists` for every step. An EXISTING
+# A second run changes nothing and prints `exists` for every step — except the
+# mail sender, which is rewritten from KC_SMTP_* whenever KC_SMTP_HOST is set
+# (see "Mail sender" below). An EXISTING
 # client is never reconfigured: its redirect URIs, flows and secret are left as
 # they are, and only a missing audience mapper is added. That makes the script
 # safe to point at a realm that already serves users; a client whose settings
@@ -53,6 +63,32 @@
 #                       in cleartext. Prefer https://; this exists for a
 #                       trusted local network and for the e2e suite, which
 #                       drives the remote path against a container.
+#
+# Mail sender (MDRS-98). Keycloak cannot send the verification or the
+# password-reset e-mail without an SMTP server. With KC_SMTP_HOST unset this
+# step is skipped and the realm's mail settings are left as they are. With it
+# set, the settings below are written to the realm on every run: the
+# environment is the source of record, so rotating the password is a re-run.
+# Keycloak never returns the stored password, which is why it cannot be
+# compared and is re-sent instead of being reported as unchanged.
+#   KC_SMTP_HOST              SMTP server host name
+#   KC_SMTP_SECURITY          starttls (default) | ssl | none
+#   KC_SMTP_PORT              default 465 with ssl, 587 otherwise
+#   KC_SMTP_FROM              sender address, e.g. no-reply@<domain>; required
+#   KC_SMTP_FROM_DISPLAY_NAME optional
+#   KC_SMTP_REPLY_TO          optional
+#   KC_SMTP_ENVELOPE_FROM     optional bounce address (SPF checks this domain)
+#   KC_SMTP_USER              optional; set together with KC_SMTP_PASSWORD
+#   KC_SMTP_PASSWORD          read from the environment only — it is never
+#                             printed and never put on a command line, so feed
+#                             it from the secret store, not from a file in the
+#                             repository.
+#   ALLOW_INSECURE_SMTP=1     required to combine credentials with
+#                             KC_SMTP_SECURITY=none, which sends the SMTP
+#                             password in cleartext from Keycloak to the SMTP
+#                             server. That hop does not depend on KC_URL, so
+#                             this is asked for even against localhost; it
+#                             exists for a test server on a private network.
 
 set -euo pipefail
 
@@ -127,6 +163,14 @@ fi
 KC_ADMIN_USER="${KC_ADMIN_USER:-admin}"
 KC_ADMIN_PASSWORD="${KC_ADMIN_PASSWORD:-admin}"
 
+# The mail sender is checked before anything is written, so a half-set
+# environment fails the run instead of leaving the realm half-configured. The
+# checks and the payload live in config/keycloak/scripts/lib/smtp.sh, shared
+# with config/keycloak/scripts/provision (MDRS-97).
+# shellcheck source=../../config/keycloak/scripts/lib/smtp.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../../config/keycloak/scripts/lib/smtp.sh"
+smtp_check setup-realm
+
 TOKEN=""
 authenticate() {
   TOKEN=$(curl -sS --fail-with-body -X POST \
@@ -147,9 +191,15 @@ api() {
   local args=(-sS --fail-with-body -X "$method" "$KC_URL/admin$path"
     -H "Authorization: Bearer $TOKEN")
   if [[ -n "$body" ]]; then
-    args+=(-H "Content-Type: application/json" --data "$body")
+    # On stdin, not in argv: a body can carry a secret (the SMTP password), and
+    # a command line is readable by every user on the machine. The admin
+    # password and the bearer token are still arguments; see
+    # docs/migration/mdrs-98-realm-mail-sender.md, Follow-up.
+    args+=(-H "Content-Type: application/json" --data-binary @-)
+    curl "${args[@]}" <<<"$body"
+  else
+    curl "${args[@]}"
   fi
-  curl "${args[@]}"
 }
 
 # status PATH — prints the HTTP status of a GET, without failing.
@@ -167,7 +217,7 @@ warn() { echo "      warning: $*" >&2; }
 
 authenticate
 
-echo "[1/4] realm $REALM"
+echo "[1/5] realm $REALM"
 if [[ "$(status "/realms/$REALM")" == "200" ]]; then
   echo "      exists"
 else
@@ -175,7 +225,7 @@ else
   echo "      created"
 fi
 
-echo "[2/4] API client $API_CLIENT_ID"
+echo "[2/5] API client $API_CLIENT_ID"
 api_uuid=$(client_uuid "$API_CLIENT_ID")
 if [[ -n "$api_uuid" ]]; then
   echo "      exists"
@@ -194,7 +244,7 @@ else
   echo "      created"
 fi
 
-echo "[3/4] web clients"
+echo "[3/5] web clients"
 for entry in $WEB_CLIENTS; do
   client_id="${entry%%=*}"
   origin="${entry#*=}"
@@ -260,7 +310,7 @@ for entry in $WEB_CLIENTS; do
   fi
 done
 
-echo "[4/4] test users"
+echo "[4/5] test users"
 if [[ $WITH_TEST_USERS -eq 0 ]]; then
   echo "      skipped (pass --with-test-users on a localhost Keycloak)"
 else
@@ -294,6 +344,17 @@ else
       echo "      $username created (password: $username)"
     fi
   done
+fi
+
+echo "[5/5] mail sender"
+if [[ -z "${KC_SMTP_HOST:-}" ]]; then
+  echo "      skipped (set KC_SMTP_HOST to configure it)"
+else
+  # Built by jq from $ENV, so the password never appears in any argv, and
+  # sent to curl on stdin by api().
+  smtp=$(smtp_server with-password | jq '{smtpServer: .}')
+  api PUT "/realms/$REALM" "$smtp" >/dev/null
+  echo "      configured ($(smtp_describe))"
 fi
 
 if [[ $PRINT_SECRETS -eq 1 ]]; then

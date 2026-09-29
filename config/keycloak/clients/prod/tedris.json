@@ -1,0 +1,26 @@
+{
+  "clientId": "tedris",
+  "name": "tedris",
+  "standardFlowEnabled": true,
+  "baseUrl": "https://tedris.medaris.app",
+  "redirectUris": ["https://tedris.medaris.app/api/auth/callback/keycloak"],
+  "webOrigins": ["https://tedris.medaris.app"],
+  "attributes": {
+    "pkce.code.challenge.method": "S256",
+    "post.logout.redirect.uris": "https://tedris.medaris.app##https://tedris.medaris.app/"
+  },
+  "protocolMappers": [
+    {
+      "name": "audience-tedrisat-api",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-audience-mapper",
+      "consentRequired": false,
+      "config": {
+        "included.client.audience": "tedrisat-api",
+        "access.token.claim": "true",
+        "id.token.claim": "false",
+        "introspection.token.claim": "true"
+      }
+    }
+  ]
+}

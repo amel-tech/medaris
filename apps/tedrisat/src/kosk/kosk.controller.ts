@@ -3,6 +3,7 @@ import {
   Authz,
   AuthzGuard,
   type AuthzResolve,
+  AuthzService,
   ENTITIES,
   SCOPES,
 } from "@medaris/common";
@@ -23,6 +24,7 @@ import {
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
@@ -67,7 +69,18 @@ const byExistingKosk: AuthzResolve = async (req, moduleRef) => {
 @UseGuards(AuthGuard)
 @Controller("kosks")
 export class KoskController {
-  constructor(private readonly koskService: KoskService) {}
+  constructor(
+    private readonly koskService: KoskService,
+    private readonly authz: AuthzService
+  ) {}
+
+  /** Who is changing the managers, for the check under the köşk lock. */
+  private managerActor(request: AuthorizedRequest) {
+    return {
+      id: request.user.sub,
+      bypass: this.authz.isSystemAdmin(request.user),
+    };
+  }
 
   @ApiOperation({
     summary: "Get a paginated list of köşks",
@@ -176,6 +189,60 @@ export class KoskController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<boolean> {
     return this.koskService.delete(id, request.user.sub);
+  }
+
+  @ApiOperation({
+    summary: "Make a user a manager of the köşk",
+    description:
+      "Idempotent. Open to the köşk's managers and SYSTEM_ADMIN — not to a nazır of its medrese (MDRS-126).",
+    operationId: "addKoskManager",
+  })
+  @ApiCreatedResponse({ type: KoskResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse({
+    description:
+      "No such köşk, or the user has never signed in (KOSK_MANAGER_UNKNOWN_USER)",
+  })
+  @Post(":id/managers/:userId")
+  @UseGuards(AuthzGuard)
+  @Authz(SCOPES.MANAGE_KOSK_MANAGERS, byExistingKosk)
+  async addManager(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("userId", ParseUUIDPipe) userId: string
+  ): Promise<KoskResponse> {
+    await this.koskService.addManager(id, userId, this.managerActor(request));
+    return this.koskService.findById(id, request.user.sub);
+  }
+
+  @ApiOperation({
+    summary: "Remove a manager from the köşk",
+    description:
+      "The last manager cannot be removed (409 KOSK_LAST_MANAGER). A manager may remove themselves while another remains (MDRS-126).",
+    operationId: "removeKoskManager",
+  })
+  @ApiOkResponse({ type: KoskResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse({
+    description: "No such köşk, or the user is not one of its managers",
+  })
+  @ApiConflictResponse({
+    description: "The user is the köşk's last manager (KOSK_LAST_MANAGER)",
+  })
+  @Delete(":id/managers/:userId")
+  @UseGuards(AuthzGuard)
+  @Authz(SCOPES.MANAGE_KOSK_MANAGERS, byExistingKosk)
+  async removeManager(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("userId", ParseUUIDPipe) userId: string
+  ): Promise<KoskResponse> {
+    await this.koskService.removeManager(
+      id,
+      userId,
+      this.managerActor(request)
+    );
+    return this.koskService.findById(id, request.user.sub);
   }
 
   @ApiOperation({

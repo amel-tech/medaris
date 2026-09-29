@@ -34,11 +34,17 @@ export interface KoskResponse {
      */
     id: string;
     /**
-     * 
+     * Who created the köşk. Grants nothing since MDRS-126 — see managerIds
      * @type {string}
      * @memberof KoskResponse
      */
     ownerId: string;
+    /**
+     * Who manages the köşk, oldest first; never empty (MDRS-126)
+     * @type {Array<string>}
+     * @memberof KoskResponse
+     */
+    managerIds: Array<string>;
     /**
      * The affiliated medrese's id; null for a standalone köşk
      * @type {string}
@@ -173,6 +179,7 @@ export interface KoskResponse {
 export function instanceOfKoskResponse(value: object): value is KoskResponse {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('ownerId' in value) || value['ownerId'] === undefined) return false;
+    if (!('managerIds' in value) || value['managerIds'] === undefined) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('coverHue' in value) || value['coverHue'] === undefined) return false;
     if (!('isPrivate' in value) || value['isPrivate'] === undefined) return false;
@@ -203,6 +210,7 @@ export function KoskResponseFromJSONTyped(json: any, ignoreDiscriminator: boolea
         
         'id': json['id'],
         'ownerId': json['ownerId'],
+        'managerIds': json['managerIds'],
         'madrasahId': json['madrasahId'] == null ? undefined : json['madrasahId'],
         'madrasah': json['madrasah'] == null ? undefined : KoskMadrasahRefFromJSON(json['madrasah']),
         'name': json['name'],
@@ -240,6 +248,7 @@ export function KoskResponseToJSONTyped(value?: KoskResponse | null, ignoreDiscr
         
         'id': value['id'],
         'ownerId': value['ownerId'],
+        'managerIds': value['managerIds'],
         'madrasahId': value['madrasahId'],
         'madrasah': KoskMadrasahRefToJSON(value['madrasah']),
         'name': value['name'],

@@ -16,8 +16,17 @@ export class KoskResponse {
   @ApiProperty()
   id!: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description:
+      "Who created the köşk. Grants nothing since MDRS-126 — see managerIds",
+  })
   ownerId!: string;
+
+  @ApiProperty({
+    type: [String],
+    description: "Who manages the köşk, oldest first; never empty (MDRS-126)",
+  })
+  managerIds!: string[];
 
   @ApiPropertyOptional({
     type: String,

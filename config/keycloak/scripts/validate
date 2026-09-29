@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+# config/keycloak/scripts/validate [<env>] — MDRS-97.
+#
+# Checks the package without talking to any server: every JSON file parses,
+# the required fields are there, the web clients are the shape RUNBOOK.md
+# promises (confidential, PKCE S256, exact URIs, no wildcard, the tedrisat-api
+# audience mapper), and no file carries a literal secret. With <env>, only that
+# environment's clients are checked; without, every environment's.
+#
+# Exit 0 when everything passes, 1 with one line per problem otherwise.
+# provision runs it first and stops on a failure.
+
+PREFIX=validate
+# shellcheck source=./lib/core.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/core.sh"
+require_tools jq
+
+PROBLEMS=()
+problem() { PROBLEMS+=("$*"); }
+
+if [[ $# -gt 0 ]]; then
+  read_env_arg "$1"
+  envs=("$ENV_NAME")
+else
+  read -r -a envs <<<"$(list_envs)"
+fi
+
+rel() { printf '%s' "${1#"$KC_CONFIG_DIR"/}"; }
+
+# 1. Every JSON file parses.
+parsed=1
+while IFS= read -r file; do
+  if ! jq empty "$file" 2>/dev/null; then
+    problem "$(rel "$file"): not valid JSON"
+    parsed=0
+  fi
+done < <(find "$KC_CONFIG_DIR" -type f -name '*.json' | sort)
+
+if [[ $parsed -eq 1 ]]; then
+  # 2. No literal secret, anywhere. Secrets come from the environment at
+  #    provisioning time; a key that names one, or a value that looks like a
+  #    token or a private key, fails the run.
+  while IFS= read -r line; do problem "$line"; done < <(
+    while IFS= read -r file; do
+      jq -r --arg f "$(rel "$file")" '
+        (paths(scalars) as $p
+          | getpath($p) as $v
+          | ($p | map(tostring)) as $keys
+          | select(
+              any($keys[]; test("^(secret|clientsecret|client_secret|password|passwd|credentials?|privatekey|private_key|apikey|api_key|token|accesstoken|refreshtoken)$"; "i"))
+              or (($v | type) == "string" and ($v | test("-----BEGIN [A-Z ]*PRIVATE KEY-----|^eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}")))
+            )
+          | "\($f): literal secret at .\($keys | join(".")) — secrets come from the environment, see RUNBOOK.md"),
+        (if type == "object" and has("smtpServer")
+         then "\($f): smtpServer is set from KC_SMTP_* at provisioning time, not from a file"
+         else empty end)' "$file"
+    done < <(find "$KC_CONFIG_DIR" -type f -name '*.json' | sort)
+  )
+
+  # env/*.env.example: placeholders only; every secret-looking value empty.
+  while IFS= read -r file; do
+    while IFS= read -r line; do
+      [[ "$line" =~ ^([A-Z0-9_]+)=(.*)$ ]] || continue
+      key="${BASH_REMATCH[1]}"
+      value="${BASH_REMATCH[2]}"
+      if [[ "$key" =~ (SECRET|PASSWORD) && -n "$value" ]]; then
+        problem "$(rel "$file"): $key has a value; an example file keeps it empty"
+      fi
+    done <"$file"
+  done < <(find "$KC_CONFIG_DIR/env" -type f -name '*.env.example' 2>/dev/null | sort)
+
+  # 3. The realm.
+  base="$KC_CONFIG_DIR/realms/_base.json"
+  realm_file="$KC_CONFIG_DIR/realms/$KC_REALM.json"
+  if [[ ! -f "$base" ]]; then
+    problem "realms/_base.json is missing"
+  elif [[ ! -f "$realm_file" ]]; then
+    problem "realms/$KC_REALM.json is missing (KC_REALM=$KC_REALM)"
+  else
+    while IFS= read -r line; do problem "$line"; done < <(
+      jq -r --arg r "$KC_REALM" '
+        ((keys - ["realm", "displayName"])[]
+          | "realms/\($r).json: \(.) belongs in realms/_base.json; a realm file holds only realm and displayName"),
+        (if .realm != $r then "realms/\($r).json: realm is \(.realm | tojson), not \($r | tojson)" else empty end),
+        (if (.displayName // "") == "" then "realms/\($r).json: displayName is missing" else empty end)
+      ' "$realm_file"
+      jq -r '
+        ["enabled", "registrationAllowed", "verifyEmail", "loginWithEmailAllowed",
+         "duplicateEmailsAllowed", "resetPasswordAllowed", "bruteForceProtected",
+         "passwordPolicy", "sslRequired", "internationalizationEnabled",
+         "supportedLocales", "defaultLocale", "loginTheme", "emailTheme",
+         "accessTokenLifespan", "ssoSessionIdleTimeout", "ssoSessionMaxLifespan",
+         "offlineSessionIdleTimeout", "accessCodeLifespan"] as $required
+        | ($required - keys)[] | "realms/_base.json: \(.) is required"' "$base"
+      jq -r '
+        if (.roles.realm // []) | any(.name == "SYSTEM_ADMIN") | not
+        then "realms/_base.json: the SYSTEM_ADMIN realm role is required (ROLES.SYSTEM_ADMIN in libs/common/src/authz/scopes.ts)"
+        else empty end,
+        (if (.sslRequired // "none") == "none" then "realms/_base.json: sslRequired must not be none" else empty end),
+        (if (.defaultLocale // "") as $l | (.supportedLocales // []) | index($l) | not
+         then "realms/_base.json: defaultLocale is not one of supportedLocales" else empty end)
+      ' "$base"
+    )
+  fi
+
+  # 4. The user profile: first name, last name and e-mail required, and
+  #    nothing beyond the four built-in attributes except privacyNoticeRead
+  #    (MDRS-102) — the "Aydınlatma Metni'ni okudum" box on the registration
+  #    form, which Keycloak refuses to register without: required for users,
+  #    one accepted value, and an https link to the notice.
+  profile="$KC_CONFIG_DIR/user-profile.json"
+  if [[ ! -f "$profile" ]]; then
+    problem "user-profile.json is missing"
+  else
+    while IFS= read -r line; do problem "$line"; done < <(jq -r '
+      (.attributes // []) as $a
+      | (["email", "firstName", "lastName"][] as $n
+          | ($a | map(select(.name == $n)) | .[0]) as $attr
+          | if $attr == null then "user-profile.json: \($n) is missing"
+            elif (($attr.required.roles // []) | index("user")) == null
+            then "user-profile.json: \($n) must be required for users"
+            else empty end),
+        (($a | map(select(.name == "privacyNoticeRead")) | .[0]) as $p
+          | if $p == null then "user-profile.json: privacyNoticeRead is missing"
+            else
+              (if (($p.required.roles // []) | index("user")) == null
+               then "user-profile.json: privacyNoticeRead must be required for users" else empty end),
+              (if ($p.validations.options.options // []) != ["yes"]
+               then "user-profile.json: privacyNoticeRead must accept exactly [\"yes\"]" else empty end),
+              (if ($p.annotations.linkUrl // "") | test("^https://[^/]+/.") | not
+               then "user-profile.json: privacyNoticeRead needs an https linkUrl to the notice" else empty end)
+            end),
+        ($a[] | .name
+          | select(IN("username", "email", "firstName", "lastName", "privacyNoticeRead") | not)
+          | "user-profile.json: \(.) is not one of the four built-in attributes or privacyNoticeRead")
+    ' "$profile")
+  fi
+
+  # 5. The clients of each environment.
+  for env in "${envs[@]}"; do
+    dir="$KC_CONFIG_DIR/clients/$env"
+    api_ids=()
+    while IFS= read -r file; do
+      merged=$(jq -s '.[0] * .[1]' "$KC_CONFIG_DIR/clients/_base.json" "$file")
+      if [[ "$(jq -r '.standardFlowEnabled or .implicitFlowEnabled or .directAccessGrantsEnabled or .serviceAccountsEnabled' <<<"$merged")" == "false" ]]; then
+        api_ids+=("$(jq -r .clientId <<<"$merged")")
+      fi
+    done < <(find "$dir" -maxdepth 1 -type f -name '*.json' | sort)
+    [[ ${#api_ids[@]} -gt 0 ]] ||
+      problem "clients/$env/: no API client (one with every flow off)"
+    api_list=$(printf '%s\n' "${api_ids[@]}" | jq -R . | jq -sc .)
+
+    while IFS= read -r file; do
+      while IFS= read -r line; do problem "$line"; done < <(
+        jq -s -r --arg f "$(rel "$file")" --argjson apis "$api_list" '
+          (.[0] * .[1]) as $c
+          | (if ($c.clientId // "") == "" then "\($f): clientId is missing" else empty end),
+            (if $c.standardFlowEnabled then
+               (if $c.publicClient != false then "\($f): a web client must be confidential" else empty end),
+               (if ($c.attributes["pkce.code.challenge.method"] // "") != "S256" then "\($f): a web client must require PKCE S256" else empty end),
+               (if $c.implicitFlowEnabled or $c.directAccessGrantsEnabled or $c.serviceAccountsEnabled
+                then "\($f): a web client uses the standard flow only" else empty end),
+               (if ($c.redirectUris // []) | length == 0 then "\($f): redirectUris is empty" else empty end),
+               (if ($c.webOrigins // []) | length == 0 then "\($f): webOrigins is empty" else empty end),
+               (if ($c.attributes["post.logout.redirect.uris"] // "") == "" then "\($f): post.logout.redirect.uris is empty" else empty end),
+               ((($c.redirectUris // []) + ($c.webOrigins // [])
+                  + (($c.attributes["post.logout.redirect.uris"] // "") | split("##")))[]
+                 | select(test("\\*") or . == "+" or . == "-")
+                 | "\($f): \(tojson) is not an exact URI") ,
+               (if ([$c.protocolMappers // [] | .[]
+                     | select(.protocolMapper == "oidc-audience-mapper"
+                              and (.config["included.client.audience"] as $aud | $apis | index($aud)) != null
+                              and .config["access.token.claim"] == "true")] | length) == 0
+                then "\($f): no audience mapper puts the API client into the access token" else empty end)
+             else empty end)
+        ' "$KC_CONFIG_DIR/clients/_base.json" "$file"
+      )
+    done < <(find "$dir" -maxdepth 1 -type f -name '*.json' | sort)
+
+    dupes=$(find "$dir" -maxdepth 1 -type f -name '*.json' -exec jq -r .clientId {} + | sort | uniq -d)
+    [[ -z "$dupes" ]] || problem "clients/$env/: clientId used twice: $dupes"
+  done
+fi
+
+if [[ ${#PROBLEMS[@]} -gt 0 ]]; then
+  printf '%s\n' "${PROBLEMS[@]}" >&2
+  echo "validate: ${#PROBLEMS[@]} problem(s) in $KC_CONFIG_DIR" >&2
+  exit 1
+fi
+echo "validate: ok (realm $KC_REALM; environments: ${envs[*]})"

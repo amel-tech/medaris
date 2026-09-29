@@ -9,7 +9,7 @@
     "start": "next start --port 4000",
     "clean": "rm -rf .turbo .next node_modules dist",
     "typecheck": "tsc --noEmit",
-    "test": "echo 'Tests not implemented'",
+    "test": "vitest run",
     "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
@@ -49,6 +49,7 @@
     "lightningcss": "catalog:",
     "next-intl": "catalog:",
     "postcss": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
