@@ -1,45 +1,85 @@
-<!-- @dsCard group="Data display" viewport="760x400" name="Avatar, progress, skeleton" subtitle="Identity, completion and the loading state that stands in for both — a person is a circle, an institution a square tile" -->
+<!-- @dsCard group="Data display" viewport="820x640" name="Avatar, progress, skeleton" subtitle="A person is a paper circle with muted initials; an institution is a small bookcloth tile. A 6px track with a lâciverd bar. A skeleton shaped like the lines that are coming" -->
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:var(--space-lg);background:var(--background-white);font-family:var(--font-ui);color:var(--text-neutral-primary)}
-.row{display:flex;align-items:center;gap:12px;margin-block:var(--space-sm) var(--space-lg)}
-.row .gap{inline-size:var(--space-md)}
-.bars{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-lg);margin-block:var(--space-sm) var(--space-lg)}
-.sk{display:flex;flex-direction:column;gap:var(--space-sm);max-inline-size:300px;margin-block-start:var(--space-sm)}
-.note{margin:var(--space-lg) 0 0;font-size:var(--fs-caption);color:var(--text-neutral-tertiary);line-height:var(--lh-body);max-inline-size:700px}
+body{margin:0;padding:var(--space-6);background:var(--background-neutral-surface);font-family:var(--font-ui);color:var(--text-neutral-default)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--space-10);row-gap:var(--space-8)}
+.sec{display:flex;flex-direction:column;gap:var(--space-3);min-inline-size:0}
+.wide{grid-column:1 / -1}
+.row{display:flex;align-items:flex-end;gap:var(--space-4)}
+.who{display:flex;flex-direction:column;align-items:center;gap:var(--space-2)}
+.who > .mds-caption{white-space:nowrap}
+.person{display:flex;align-items:center;gap:var(--space-3)}
+.person__text{display:flex;flex-direction:column;gap:2px}
+.person__name{font-size:var(--fs-body-sm);font-weight:var(--weight-medium);line-height:var(--lh-snug)}
+.stacks{display:flex;align-items:center;gap:var(--space-8)}
+.bars{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--space-10);row-gap:var(--space-5)}
+.sk{display:flex;flex-direction:column;gap:var(--space-5)}
+.sk__row{display:flex;flex-direction:column;gap:var(--space-2)}
+.note{margin:0;font-size:var(--fs-caption);color:var(--text-neutral-subtle);line-height:var(--lh-body)}
 .note code{white-space:nowrap}
 </style></head><body>
-<p class="mds-eyebrow" lang="en">Avatar — 32 / 40 / 56, initials in the page's locale · entity tile · stack with a total</p>
-<div class="row">
-  <span class="mds-avatar mds-avatar--sm" role="img" aria-label="Ahmed b. Hanbel">AH</span>
-  <span class="mds-avatar" role="img" aria-label="İsmail Hakkı Efendi">İH</span>
-  <span class="mds-avatar mds-avatar--lg" role="img" aria-label="Mehmed Âkif Ersoy">ME</span>
-  <span class="gap"></span>
-  <span class="mds-avatar mds-avatar--entity" role="img" aria-label="Süleymaniye Medresesi">SM</span>
-  <span class="mds-avatar mds-avatar--lg mds-avatar--entity" role="img" aria-label="Nûruosmaniye Köşkü">NK</span>
-  <span class="gap"></span>
-  <span class="mds-avatar-stack" role="group" aria-label="12 talebe"><span class="mds-avatar mds-avatar--sm" role="img" aria-label="Ahmed Hüsrev">AH</span><span class="mds-avatar mds-avatar--sm" role="img" aria-label="Zeynep Kübra">ZK</span><span class="mds-avatar mds-avatar--sm" role="img" aria-label="Mehmed Fâtih">MF</span><span class="mds-avatar mds-avatar--sm mds-avatar--more" aria-hidden="true">+9</span></span>
+<div class="grid">
+  <section class="sec" aria-labelledby="s-person">
+    <p class="mds-eyebrow" id="s-person">Kişi · 32 / 40 / 56</p>
+    <div class="row">
+      <div class="who"><span class="mds-avatar mds-avatar--sm" role="img" aria-label="Ahmed b. Hanbel">AH</span><span class="mds-caption" aria-hidden="true">Ahmed b. Hanbel</span></div>
+      <div class="who"><span class="mds-avatar" role="img" aria-label="İsmail Hakkı Efendi">İH</span><span class="mds-caption" aria-hidden="true">İsmail Hakkı Efendi</span></div>
+      <div class="who"><span class="mds-avatar mds-avatar--lg" role="img" aria-label="Mehmed Âkif Ersoy">ME</span><span class="mds-caption" aria-hidden="true">Mehmed Âkif Ersoy</span></div>
+    </div>
+  </section>
+  <section class="sec" aria-labelledby="s-entity">
+    <p class="mds-eyebrow" id="s-entity">Kurum ve deste</p>
+    <div class="row">
+      <div class="who"><span class="mds-avatar mds-avatar--sm mds-avatar--entity" role="img" aria-label="Nûruosmaniye Köşkü">NK</span><span class="mds-caption" aria-hidden="true">Köşk</span></div>
+      <div class="who"><span class="mds-avatar mds-avatar--entity" role="img" aria-label="Süleymaniye Medresesi">SM</span><span class="mds-caption" aria-hidden="true">Medrese</span></div>
+      <div class="who"><span class="mds-avatar mds-avatar--lg mds-avatar--entity" role="img" aria-label="Mehmûz fiiller destesi">MD</span><span class="mds-caption" aria-hidden="true">Deste</span></div>
+    </div>
+  </section>
+  <section class="sec" aria-labelledby="s-named">
+    <p class="mds-eyebrow" id="s-named">Adıyla birlikte</p>
+    <div class="person">
+      <span class="mds-avatar" aria-hidden="true">AK</span>
+      <span class="person__text"><span class="person__name">Abdülhamit Karaosmanoğlu</span><span class="mds-caption">Müderris<span class="mds-sep" aria-hidden="true">·</span><bdi>Nûruosmaniye Köşkü</bdi></span></span>
+    </div>
+  </section>
+  <section class="sec" aria-labelledby="s-stack">
+    <p class="mds-eyebrow" id="s-stack">Grup</p>
+    <div class="stacks">
+      <span class="mds-avatar-stack" role="group" aria-label="12 talebe"><span class="mds-avatar mds-avatar--sm" role="img" aria-label="Zeynep Betül Karahanlı">ZK</span><span class="mds-avatar mds-avatar--sm" role="img" aria-label="Muhammed Said Özdemiroğlu">MÖ</span><span class="mds-avatar mds-avatar--sm" role="img" aria-label="Hatice Kübra Yıldırımoğlu">HY</span><span class="mds-avatar mds-avatar--sm mds-avatar--more" aria-hidden="true">+9</span></span>
+      <span class="mds-avatar-stack"><span class="mds-avatar mds-avatar--sm" role="img" aria-label="Yusuf Ziya Kemaloğlu">YK</span><span class="mds-avatar mds-avatar--sm" role="img" aria-label="Ömer Faruk Yılmazoğlu">ÖY</span></span>
+    </div>
+  </section>
+  <section class="sec wide" aria-labelledby="s-progress">
+    <p class="mds-eyebrow" id="s-progress">İlerleme</p>
+    <div class="bars">
+      <div>
+        <div class="mds-progress__label"><span id="p1">Bakara Sûresi</span><span class="mds-progress__value" aria-hidden="true">%72</span></div>
+        <div class="mds-progress" role="progressbar" aria-labelledby="p1" aria-valuenow="72" aria-valuemin="0" aria-valuemax="100" aria-valuetext="%72"><div class="mds-progress__bar" style="--mds-progress:72%"></div></div>
+      </div>
+      <div>
+        <div class="mds-progress__label"><span id="p2">Ders kaydı yükleniyor</span><span class="mds-progress__value" aria-hidden="true">%18</span></div>
+        <div class="mds-progress" role="progressbar" aria-labelledby="p2" aria-valuenow="18" aria-valuemin="0" aria-valuemax="100" aria-valuetext="%18"><div class="mds-progress__bar" style="--mds-progress:18%"></div></div>
+      </div>
+      <div>
+        <div class="mds-progress__label"><span id="p3">Nisâ Sûresi</span><span class="mds-progress__value" aria-hidden="true">%0</span></div>
+        <div class="mds-progress" role="progressbar" aria-labelledby="p3" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-valuetext="%0"><div class="mds-progress__bar" style="--mds-progress:0%"></div></div>
+      </div>
+      <div>
+        <div class="mds-progress__label"><span id="p4">Kurs ilerlemesi</span><span class="mds-progress__value" aria-hidden="true"><span class="mds-progress__check"></span>%100 tamamlandı</span></div>
+        <div class="mds-progress" role="progressbar" aria-labelledby="p4" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-valuetext="%100 tamamlandı"><div class="mds-progress__bar" style="--mds-progress:100%"></div></div>
+      </div>
+    </div>
+  </section>
+  <section class="sec" aria-labelledby="s-skeleton">
+    <p class="mds-eyebrow" id="s-skeleton">Yükleniyor</p>
+    <div class="sk" aria-busy="true">
+      <span class="mds-visually-hidden">Dersler yükleniyor</span>
+      <div class="sk__row"><div class="mds-skeleton" aria-hidden="true" style="--mds-skeleton-w:62%;--mds-skeleton-h:var(--space-4)"></div><div class="mds-skeleton" aria-hidden="true" style="--mds-skeleton-w:88%"></div></div>
+      <div class="sk__row"><div class="mds-skeleton" aria-hidden="true" style="--mds-skeleton-w:48%;--mds-skeleton-h:var(--space-4)"></div><div class="mds-skeleton" aria-hidden="true" style="--mds-skeleton-w:80%"></div></div>
+      <div class="sk__row"><div class="mds-skeleton" aria-hidden="true" style="--mds-skeleton-w:56%;--mds-skeleton-h:var(--space-4)"></div><div class="mds-skeleton" aria-hidden="true" style="--mds-skeleton-w:84%"></div></div>
+    </div>
+  </section>
+  <section class="sec">
+    <p class="note" lang="en">Initials skip the particles <i>b.</i>, <i>bin</i>, <i>ibn</i>, <i>bt.</i>, <i>bint</i> and the honorifics after a name, and upper-case in the page's locale (<i>i</i> → <i>İ</i>). A labelled stack is a group, so its +N tile is hidden. The bar is lâciverd at every value; its width is the <code>--mds-progress</code> data variable. Skeleton bars are hidden; the loading region carries <code>aria-busy</code> and one hidden sentence.</p>
+  </section>
 </div>
-<p class="mds-eyebrow" lang="en">Progress — the percent in Intl, the check and the words at 100</p>
-<div class="bars">
-  <div>
-    <div class="mds-progress__label"><span id="p1">Bakara sûresi</span><span class="mds-progress__value" aria-hidden="true">%72</span></div>
-    <div class="mds-progress" role="progressbar" aria-labelledby="p1" aria-valuenow="72" aria-valuemin="0" aria-valuemax="100" aria-valuetext="%72"><div class="mds-progress__bar" style="--mds-progress:72%"></div></div>
-  </div>
-  <div>
-    <div class="mds-progress__label"><span id="p2">Nisâ sûresi</span><span class="mds-progress__value" aria-hidden="true">%18</span></div>
-    <div class="mds-progress" role="progressbar" aria-labelledby="p2" aria-valuenow="18" aria-valuemin="0" aria-valuemax="100" aria-valuetext="%18"><div class="mds-progress__bar" style="--mds-progress:18%"></div></div>
-  </div>
-  <div>
-    <div class="mds-progress__label"><span id="p3">Kurs ilerlemesi</span><span class="mds-progress__value" aria-hidden="true"><span class="mds-progress__check"></span>%100 tamamlandı</span></div>
-    <div class="mds-progress" role="progressbar" aria-labelledby="p3" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-valuetext="%100 tamamlandı"><div class="mds-progress__bar" style="--mds-progress:100%"></div></div>
-  </div>
-</div>
-<p class="mds-eyebrow" lang="en">Skeleton — shaped like the lines that are coming</p>
-<div class="sk" aria-busy="true">
-  <span class="mds-visually-hidden">Dersler yükleniyor</span>
-  <div class="mds-skeleton" aria-hidden="true" style="--mds-skeleton-w:60%;--mds-skeleton-h:14px"></div>
-  <div class="mds-skeleton" aria-hidden="true" style="--mds-skeleton-w:90%"></div>
-  <div class="mds-skeleton" aria-hidden="true" style="--mds-skeleton-w:75%"></div>
-</div>
-<p class="note" lang="en">Initials skip the particles <i>b.</i>, <i>bin</i>, <i>ibn</i>, <i>bt.</i> and <i>bint</i> and upper-case in the page's locale (<i>i</i> → <i>İ</i>). A standalone avatar is <code>role="img"</code> named by the person; the stack is a group named by its head-count, so its +N tile is hidden. The bar is brand at every value; its width is the <code>--mds-progress</code> data variable. Skeletons are hidden from assistive technology: the loading region carries <code>aria-busy</code> and one visually hidden sentence.</p>
 </body></html>

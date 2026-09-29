@@ -1,7 +1,7 @@
 import React from 'react';
 
-// The eyebrow's id must be unique per instance. React.useId where it exists; a
-// module counter only for a React without it.
+// The ids must be unique per instance. React.useId where it exists; a module
+// counter only for a React without it.
 let seq = 0;
 const useUid = React.useId || (() => React.useState(() => `j${++seq}`)[0]);
 
@@ -14,6 +14,22 @@ const cities = {
 };
 const MINUTE = 60000;
 const HOUR = 60 * MINUTE;
+
+// The page's locale (MDS-NUM-01): the locale prop, else the nearest lang once mounted, else tr-TR.
+function usePageLocale(ref, locale) {
+  const [found, setFound] = React.useState(null);
+  React.useEffect(() => {
+    const el = ref.current && ref.current.closest('[lang]');
+    setFound((el && el.lang) || null);
+  }, []);
+  return locale || found || 'tr-TR';
+}
+
+// A meta run: each part but the last ends on its separator, so a wrapped line ends on the dot and
+// never starts with it.
+function joinRun(parts) {
+  return parts.map((p, i) => (i < parts.length - 1 ? <span key={`run${i}`}>{p}<span className="mds-sep" aria-hidden="true">·</span></span> : p));
+}
 
 function format(locale, at, timeZone, options) {
   try {
@@ -30,13 +46,16 @@ function dayNumber(at, timeZone) {
   return Date.UTC(y, m - 1, d) / (24 * HOUR);
 }
 
-// "14 dakika sonra", "2 saat sonra", "yarın", "3 gün sonra"
+// "14 dakika sonra", "2 saat sonra", "Yarın", "3 gün sonra": a badge label, so its first letter is
+// upper-cased in the page's locale (MDS-VOICE-02); Intl writes "yarın" and "şimdi".
 function countdown(locale, at, now, timeZone) {
   const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
   const ms = at - now;
-  if (Math.abs(ms) < HOUR) return rtf.format(Math.round(ms / MINUTE), 'minute');
-  if (Math.abs(ms) < 24 * HOUR) return rtf.format(Math.round(ms / HOUR), 'hour');
-  return rtf.format(dayNumber(at, timeZone) - dayNumber(now, timeZone), 'day');
+  let s;
+  if (Math.abs(ms) < HOUR) s = rtf.format(Math.round(ms / MINUTE), 'minute');
+  else if (Math.abs(ms) < 24 * HOUR) s = rtf.format(Math.round(ms / HOUR), 'hour');
+  else s = rtf.format(dayNumber(at, timeZone) - dayNumber(now, timeZone), 'day');
+  return s.charAt(0).toLocaleUpperCase(locale) + s.slice(1);
 }
 
 export function SessionJoin({
@@ -46,6 +65,8 @@ export function SessionJoin({
   courseTimeZone,
   courseZoneName,
   state = 'upcoming',
+  title,
+  headingLevel = 2,
   platform,
   platformLabel,
   host,
@@ -72,13 +93,16 @@ export function SessionJoin({
   recordingsLabel = 'Ders kayıtlarına git',
   localTimeLabel = 'senin saatinle',
   minuteUnit = 'dk',
-  locale = 'tr-TR',
+  locale: localeProp,
   className = '',
   ...rest
 }) {
-  const titleId = `mds-join-${useUid().replace(/[^\w-]/g, '')}`;
-  // named by the eyebrow and the start, so two cards on one page are two distinct regions
-  const atId = `${titleId}-at`;
+  const ref = React.useRef(null);
+  const locale = usePageLocale(ref, localeProp);
+  const eyebrowId = `mds-join-${useUid().replace(/[^\w-]/g, '')}`;
+  const headingId = `${eyebrowId}-h`;
+  const atId = `${eyebrowId}-at`;
+  const Heading = `h${[2, 3, 4].includes(headingLevel) ? headingLevel : 2}`;
   // Without a fixed `now`, re-render every 30 s: the countdown and the join window move.
   const [, setTick] = React.useState(0);
   React.useEffect(() => {
@@ -89,6 +113,8 @@ export function SessionJoin({
 
   const at = new Date(startsAt);
   const valid = !Number.isNaN(at.getTime());
+  // Named by the title, or else the eyebrow, and the start: two cards on one page are two distinct regions.
+  const labelledBy = [title ? headingId : eyebrowId, valid && atId].filter(Boolean).join(' ');
   const nowAt = now ? new Date(now) : new Date();
   const locked = access === 'locked';
 
@@ -127,7 +153,8 @@ export function SessionJoin({
   const status = (text, extra) => <p className={['mds-join__status', extra].filter(Boolean).join(' ')}>{text}</p>;
   const open = state === 'upcoming' || state === 'live';
   const windowOpen = state === 'live' || !valid || at - nowAt <= joinWindowMinutes * MINUTE;
-  const known = platform !== 'unknown' && platformLabels[platform];
+  // An unknown host prints "Bilinmeyen platform" and the host (MDS-DOM-03).
+  const known = platform === 'unknown' ? undefined : platformLabels[platform];
   const chip = !locked && open && platform && (
     <span className={`mds-platform-chip mds-platform-chip--${platform}`}>
       <span className="mds-platform-chip__dot" aria-hidden="true" />
@@ -166,15 +193,16 @@ export function SessionJoin({
 
   const cls = ['mds-join', className].filter(Boolean).join(' ');
   return (
-    <section className={cls} aria-labelledby={valid ? `${titleId} ${atId}` : titleId} {...rest}>
+    <section ref={ref} className={cls} aria-labelledby={labelledBy} {...rest}>
       <header className="mds-join__header">
-        <p className="mds-eyebrow" id={titleId}>{label}</p>
+        <p className="mds-eyebrow" id={eyebrowId}>{label}</p>
         {badge}
         {actions && <div className="mds-join__actions">{actions}</div>}
       </header>
+      {title && <Heading className="mds-join__title" id={headingId} dir="auto">{title}</Heading>}
       {times.length > 0 && (
         <p className="mds-join__time">
-          {times.map((t, i) => (i ? <span key={`run${i}`}><span className="mds-sep" aria-hidden="true">·</span>{t}</span> : t))}
+          {valid ? <>{times[0]}{joinRun(times.slice(1))}</> : joinRun(times)}
         </p>
       )}
       {chip}

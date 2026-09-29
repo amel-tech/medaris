@@ -1,11 +1,11 @@
-A native 16px checkbox inside its own label, which is the 24px hit area. `bordered` makes it a settings row.
+A native 18px checkbox inside its own label, which is the hit area (at least 24px tall). `bordered` makes it a settings row.
 
 ```jsx
-<Checkbox name="tekrar" label="Tekrar gerekiyor" />
+<Checkbox name="hatirlat" label="10 dk önce hatırlat" defaultChecked />
 
 <Checkbox
   bordered
-  icon={<Icon name="certificate" size="sm" />}
+  icon={<Icon name="icazet" size="sm" />}
   label="İcâzet verilebilir"
   description="Müfredatı tamamlayan talebeler, müderrisin değerlendirmesiyle icâzete aday olur."
   checked={icazet}
@@ -26,33 +26,29 @@ A native 16px checkbox inside its own label, which is the 24px hit area. `border
 </label>
 ```
 
-Native attributes, `aria-*` included, go to the `<input>`; `className` goes to the `<label>`. The check is the sprite's `check` glyph, drawn by `.mds-check::after` as a mask; there is no check element. Without `bordered`, drop the modifier; `icon` and `description` are optional.
+Native attributes, `aria-*` included, go to the `<input>`; `className` goes to the `<label>`. The check is the sprite's `check` glyph, drawn by `.mds-check::after` as a mask 2px inside the box; there is no check element. Without `bordered`, drop the modifier; `icon` and `description` are optional. The label is 14px regular, the description 13px in `--text-neutral-subtle`, and the mark sits 12px before them. A bordered row has 16px padding, a `--border-neutral-subtle` hairline, `--radius-control` and a surface fill.
 
 ## States
 
-- **Unchecked:** white box, `--border-neutral-secondary`; hover `--border-neutral-tertiary`, 2.54:1, still below 3:1 (OPEN-3).
-- **Checked:** `--background-brand-primary` fill, the white check 9.46:1 on it; hover `--background-brand-secondary`, 5.93:1. A bordered row's border turns `--border-brand-primary`.
-- **Focus:** `--ring-focus` on the box (OPEN-1); in forced colours the outline from `tokens/base.css`.
-- **Invalid:** `[aria-invalid="true"]`, unchecked: `--border-error-primary`. `Field` sets it.
-- **Disabled:** the whole choice at 50% and `not-allowed`.
-- **Forced colours:** checked is a `Highlight` box with a `HighlightText` check.
+- **Unchecked:** a `--background-neutral-field` box with a `--border-neutral-control` edge and `--radius-mark` (2px). Hover, on the box or its label: `--border-neutral-strong`. A bordered row's hairline turns `--border-neutral-control` on hover.
+- **Checked:** the action fill `--background-action-bold`: ink by day, paper by night. The check is `--text-neutral-on-bold`. Hover: `--background-action-bold-hover`. A bordered row's edge turns 2px lapis (`--border-brand-default` plus a 1px inset).
+- **Focus:** the ring from `tokens/base.css`, around the box.
+- **Invalid:** `[aria-invalid="true"]`, unchecked: the edge is `--border-error-default`, doubled by a 1px inset; hover keeps it red. Focused, the ring is added outside the inset. `Field` sets it.
+- **Disabled:** a `--background-neutral-sunken` box with a `--border-neutral-subtle` edge; checked, the check is `--text-neutral-disabled`. The label, icon and description turn `--text-neutral-disabled`. There is no opacity. A disabled bordered row keeps its hairline, checked or not, and does not answer the pointer.
+- **Forced colours:** checked is a `Highlight` box with a `HighlightText` check; disabled is `GrayText`; invalid is a 2px `CanvasText` edge.
 
 ## A11y contract
 
-- A native checkbox: Space toggles it, and its name is the label's text alone: `aria-labelledby` points at `.mds-choice__label`, because the wrapping `<label>` would also fold the description into the name.
+- A native checkbox: Space toggles it. Its name is the label's text alone: `aria-labelledby` points at `.mds-choice__label`, because the wrapping `<label>` would also fold the description into the name.
 - The description is its `aria-describedby`; a `Field` help or error is appended to it.
 - The hit area is the whole label, at least 24px tall.
-- The unchecked boundary is gray-300 on white, 1.47:1 (OPEN-3): named, not fixed.
+- One focus ring, in both themes. The unchecked edge is 3.89:1 on the field by day and 4.61:1 by night; the check is 16.60:1 on the action fill by day and 14.43:1 by night; disabled text is 3:1 or more (a policy: WCAG exempts it). Every pair is in `contrast.md`.
 
 ## Rules
 
-MDS-A11Y-02, MDS-A11Y-05, MDS-A11Y-06, MDS-A11Y-07, MDS-A11Y-08, MDS-ICON-01, MDS-SHAPE-01, MDS-VOICE-01, MDS-COMP-06.
+MDS-A11Y-01, MDS-A11Y-02, MDS-A11Y-05, MDS-A11Y-06, MDS-A11Y-07, MDS-A11Y-08, MDS-A11Y-11, MDS-COL-08, MDS-ICON-01, MDS-SHAPE-01, MDS-VOICE-01, MDS-COMP-06.
 
 - A checkbox waits for a submit. A setting that applies the moment it changes is a Switch.
 - Bordered rows stack in the settings column, never inline in the main form flow.
 - The description is one neutral sentence. The icâzet row promises nothing while SPEC-D3-09 is open.
-- A choice this viewer cannot make is absent, not disabled.
-
-## From #95
-
-`pr95-migration/pr95-map.json#components.CheckboxRow`
+- A choice this viewer cannot make is absent, not disabled. When a choice is disabled for everyone, its description says why ("Kurs yayında olduğu için değiştirilemez.").

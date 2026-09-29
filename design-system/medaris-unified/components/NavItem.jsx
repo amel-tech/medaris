@@ -19,7 +19,7 @@ function formatCount(n, locale) {
 }
 
 /* Wraps .mds-nav-item. A link, never a button: routing is by URL, and aria-current
-   marks the viewer's page. Inverse surface by default; inside .mds-nav--light on white. */
+   marks the viewer's page. The same item in the sidebar and in AppBar's nav sheet. */
 export function NavItem({ href, icon, active = false, count, countLabel, trailing, locale, children, className = '', ...rest }) {
   const ref = React.useRef(null);
   const lang = usePageLocale(ref, locale);

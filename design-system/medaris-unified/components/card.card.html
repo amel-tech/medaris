@@ -1,42 +1,62 @@
-<!-- @dsCard group="Data display" viewport="820x640" name="Card" subtitle="12px radius, 1px hairline, resting elevation — a cover on top, a meta footer, a whole-card link in the title, and Stat with its cue" -->
+<!-- @dsCard group="Data display" viewport="820x700" name="Card" subtitle="A paper sheet with a hairline and no shadow; a bookcloth band on top, a meta footer, a whole-card link in the Literata title; Stat with its cue" -->
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:var(--space-lg);background:var(--background-neutral-primary);font-family:var(--font-ui);color:var(--text-neutral-primary)}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-md);align-items:start}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-md);align-items:stretch;margin-block-start:var(--space-md)}
-.foot{display:flex;align-items:center;gap:var(--space-sm);margin-block-start:var(--space-md)}
-.meta{display:flex;flex-wrap:wrap;align-items:center;margin:0}
-.stats .mds-progress__label{margin-block-start:12px}
-.note{margin:var(--space-md) 0 0;font-size:var(--fs-caption);color:var(--text-neutral-tertiary);line-height:var(--lh-body);max-inline-size:760px}
+body{margin:0;padding:var(--space-6);background:var(--background-neutral-page);font-family:var(--font-ui);color:var(--text-neutral-default)}
+.sec{display:flex;flex-direction:column;gap:var(--space-3)}
+.sec + .sec{margin-block-start:var(--space-8)}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-4);align-items:start}
+.cell{display:flex;flex-direction:column;gap:var(--space-2)}
+/* A stat row: each stat subgrids the row's tracks, so a two-line label never drops its number (Stat.prompt.md). */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(4,auto);column-gap:var(--space-4);row-gap:0}
+.stats > .mds-stat{display:grid;grid-row:span 4;grid-template-rows:subgrid;align-content:start}
+.stats .mds-progress__label{margin-block-start:var(--space-3)}
+.acts{display:flex;gap:var(--space-2);margin-block-start:var(--space-4)}
+.demo-focus{border-color:var(--border-neutral-control);outline:var(--ring-focus-outline);outline-offset:var(--ring-focus-offset);box-shadow:var(--ring-focus)}
+.note{margin:var(--space-6) 0 0;font-size:var(--fs-caption);color:var(--text-neutral-subtle);line-height:var(--lh-body);max-inline-size:720px}
 .note code{white-space:nowrap}
 </style></head><body>
-<div class="grid">
-  <div class="mds-card mds-card--interactive">
-    <div class="mds-card__media"><div class="mds-cover mds-cover--sky"><p class="mds-eyebrow mds-cover__label" dir="auto">Nahiv</p></div></div>
-    <div class="mds-card__header"><h3 class="mds-card__title" dir="auto"><a class="mds-card__link" href="#avamil">Avâmil ve Emsile</a></h3></div>
-    <p class="mds-card__body" dir="auto">Müderris Abdülhamit Karaosmanoğlu</p>
-    <div class="mds-card__footer"><p class="meta">12 hafta<span class="mds-sep" aria-hidden="true">·</span>Cmt 21:00</p></div>
+<section class="sec" aria-labelledby="s-card">
+  <p class="mds-eyebrow" id="s-card">Kart</p>
+  <div class="grid">
+    <div class="cell">
+      <p class="mds-caption">Varsayılan</p>
+      <div class="mds-card mds-card--interactive">
+        <div class="mds-card__media"><div class="mds-cover mds-cover--laciverd mds-cover--sm"><p class="mds-eyebrow mds-cover__label" lang="ar" dir="rtl">النحو</p></div></div>
+        <div class="mds-card__header"><h3 class="mds-card__title" dir="auto"><a class="mds-card__link" href="#kafiye">Kâfiye: nahve giriş</a></h3></div>
+        <p class="mds-card__body" dir="auto">Müderris Mehmet Emin Işıkoğlu</p>
+        <div class="mds-card__footer">16 hafta<span class="mds-sep" aria-hidden="true">·</span><time datetime="2026-10-04T20:00+03:00">Paz 20:00</time></div>
+      </div>
+    </div>
+    <div class="cell">
+      <p class="mds-caption">Üzerinde ve odakta</p>
+      <div class="mds-card mds-card--interactive demo-focus">
+        <div class="mds-card__media"><div class="mds-cover mds-cover--bordo mds-cover--sm"><p class="mds-eyebrow mds-cover__label" lang="ar" dir="rtl">الصرف</p></div></div>
+        <div class="mds-card__header"><h3 class="mds-card__title" dir="auto"><a class="mds-card__link" href="#emsile">Emsile ve Bina</a></h3><span class="mds-badge mds-badge--brand">Devam ediyor</span></div>
+        <p class="mds-card__body" dir="auto">Müderris Abdülhamit Karaosmanoğlu</p>
+        <div class="mds-card__footer">12 hafta<span class="mds-sep" aria-hidden="true">·</span><time datetime="2026-10-03T21:00+03:00">Cmt 21:00</time></div>
+      </div>
+    </div>
+    <div class="cell">
+      <p class="mds-caption">Sıkı yoğunluk (Nizam)</p>
+      <div class="mds-card" data-density="compact">
+        <div class="mds-card__header"><h3 class="mds-card__title" dir="auto">İsâgûcî Şerhi</h3><span class="mds-badge mds-badge--outline">Taslak</span></div>
+        <p class="mds-card__body">Mantık<span class="mds-sep" aria-hidden="true">·</span>14 hafta<span class="mds-sep" aria-hidden="true">·</span>oturum yok</p>
+        <div class="acts"><button type="button" class="mds-btn mds-btn--small mds-btn--outline">Düzenle</button><button type="button" class="mds-btn mds-btn--small mds-btn--ghost">Yayınla</button></div>
+        <div class="mds-card__footer">Son değişiklik: <time datetime="2026-09-26">26 Eylül 2026</time></div>
+      </div>
+    </div>
   </div>
-  <div class="mds-card mds-card--interactive" style="border-color:var(--border-neutral-secondary);box-shadow:var(--ring-focus)">
-    <div class="mds-card__media"><div class="mds-cover mds-cover--green"><p class="mds-eyebrow mds-cover__label" dir="auto">Sarf</p></div></div>
-    <div class="mds-card__header"><h3 class="mds-card__title" dir="auto"><a class="mds-card__link" href="#bina">Bina ve Maksud</a></h3><span class="mds-badge mds-badge--brand">Devam ediyor</span></div>
-    <p class="mds-card__body" dir="auto">Müderris Ahmed Hüsrev Efendi</p>
-    <div class="mds-card__footer"><p class="meta"><bdi>Nûruosmaniye Köşkü</bdi></p></div>
+</section>
+<section class="sec" aria-labelledby="s-stat">
+  <p class="mds-eyebrow" id="s-stat">İstatistik</p>
+  <div class="stats">
+    <div class="mds-card mds-stat"><span class="mds-caption">Kayıtlı talebe</span><span class="mds-stat__value">1.248</span></div>
+    <div class="mds-card mds-stat mds-stat--success"><span class="mds-caption">Kursu tamamlayan</span><span class="mds-stat__value"><span class="mds-stat__cue">+6 bu hafta</span>38</span></div>
+    <div class="mds-card mds-stat mds-stat--error"><span class="mds-caption">Yüklenemeyen ders kaydı</span><span class="mds-stat__value"><span class="mds-stat__cue"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#warning"/></svg></span>2</span></div>
+    <div class="mds-card mds-stat"><span class="mds-caption">Bu hafta ezber</span><span class="mds-stat__value">38</span>
+      <div class="mds-progress__label"><span id="hedef">Haftalık hedef</span><span class="mds-progress__value" aria-hidden="true">%72</span></div>
+      <div class="mds-progress" role="progressbar" aria-labelledby="hedef" aria-valuenow="72" aria-valuemin="0" aria-valuemax="100" aria-valuetext="%72"><div class="mds-progress__bar" style="--mds-progress:72%"></div></div>
+    </div>
   </div>
-  <div class="mds-card" data-density="compact">
-    <div class="mds-card__header"><h3 class="mds-card__title" dir="auto">Sarf Dersi</h3><span class="mds-badge mds-badge--primary">Yayında</span></div>
-    <p class="mds-card__body">12 talebe · haftada 2 oturum · son oturum 3 gün önce</p>
-    <div class="foot"><button type="button" class="mds-btn mds-btn--small mds-btn--primary">Oturum ekle</button><button type="button" class="mds-btn mds-btn--small mds-btn--ghost">Düzenle</button></div>
-    <div class="mds-card__footer">Güncelleme: 26 Eylül 2026</div>
-  </div>
-</div>
-<div class="stats">
-  <div class="mds-card mds-stat"><span class="mds-caption">Kayıtlı talebe</span><span class="mds-stat__value">1.248</span></div>
-  <div class="mds-card mds-stat mds-stat--success"><span class="mds-caption">Kursu tamamlayan</span><span class="mds-stat__value"><span class="mds-stat__cue">+6 bu hafta</span>38</span></div>
-  <div class="mds-card mds-stat mds-stat--error"><span class="mds-caption">Yüklenemeyen ders kaydı</span><span class="mds-stat__value"><span class="mds-stat__cue"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#warning"/></svg></span>2</span></div>
-  <div class="mds-card mds-stat"><span class="mds-caption">Bu hafta ezber</span><span class="mds-stat__value">38</span>
-    <div class="mds-progress__label"><span id="hedef">Haftalık hedef</span><span class="mds-progress__value" aria-hidden="true">%72</span></div>
-    <div class="mds-progress" role="progressbar" aria-labelledby="hedef" aria-valuenow="72" aria-valuemin="0" aria-valuemax="100" aria-valuetext="%72"><div class="mds-progress__bar" style="--mds-progress:72%"></div></div>
-  </div>
-</div>
-<p class="note" lang="en">A clickable card is one link, in its title: its <code>::after</code> covers the card, so it is one tab stop and the buttons inside still work. Hover changes the border only, and the card draws the link's focus ring (second card: hover and focus). <code>media</code> is a full-bleed CoverPattern; <code>footer</code> is the hairline meta row. The third card is a <code>data-density="compact"</code> region, 16px inset. A Stat's tone colours the number only beside its cue — a delta label or an icon printed first (MDS-COL-03); without one it renders neutral.</p>
+</section>
+<p class="note" lang="en">A clickable card is one link, in its title. The link's <code>::after</code> covers the card, so the card is one tab stop and the buttons inside still work. Hover only darkens the edge; focus draws the one ring around the card (second card). The third card sits in a <code>data-density="compact"</code> region, so its inset is 16. A Stat's tone colours the number only next to its cue, a delta label or an icon (MDS-COL-03).</p>
 </body></html>

@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 export interface AlertProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> {
-  /** neutral explains or restricts, error reports a failed action, warning asks this reader to act, success confirms; info inherits SPEC-D3-03. @default "neutral" */
+  /** neutral explains or restricts, info reports news the reader need not act on, success confirms, warning asks this reader to act, error reports a failed action. @default "neutral" */
   tone?: 'neutral' | 'info' | 'success' | 'warning' | 'error';
   title?: React.ReactNode;
 }

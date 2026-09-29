@@ -9,7 +9,7 @@ export interface SystemStateProps extends Omit<React.HTMLAttributes<HTMLElement>
   children: React.ReactNode;
   /** at most one way back or forward, only one this viewer can take */
   action?: React.ReactNode;
-  /** the Logo, passed by the caller when there is no app chrome */
+  /** the lg Logo lockup, passed by the caller when there is no app chrome */
   logo?: React.ReactNode;
   /** inside the app shell, which owns the main landmark: renders a section instead */
   shell?: boolean;

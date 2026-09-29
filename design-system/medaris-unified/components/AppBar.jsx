@@ -71,8 +71,8 @@ export function AppBar({
               <span className="mds-sheet__close-icon" aria-hidden="true" />
             </button>
           </div>
-          <nav className="mds-nav--light" aria-label={navLabel}>{children}</nav>
-          {footer && <div className="mds-sheet__foot mds-nav--light">{footer}</div>}
+          <nav aria-label={navLabel}>{children}</nav>
+          {footer && <div className="mds-sheet__foot">{footer}</div>}
         </div>
       </dialog>
     </>

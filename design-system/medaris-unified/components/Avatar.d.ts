@@ -8,7 +8,7 @@ export interface AvatarProps extends React.HTMLAttributes<HTMLSpanElement> {
   size?: 'sm' | 'md' | 'lg';
   /** the name is printed beside it: aria-hidden, no role */
   decorative?: boolean;
-  /** an institution or object (köşk, medrese, deste): a square on --radius-s */
+  /** an institution or object (köşk, medrese, deste): a square tile on --radius-tag in the lâciverd cloth */
   entity?: boolean;
   /** the locale that upper-cases the initials; default the nearest lang attribute, else tr-TR */
   locale?: string;

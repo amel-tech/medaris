@@ -5,22 +5,40 @@ import React from 'react';
 let seq = 0;
 const useUid = React.useId || (() => React.useState(() => `t${++seq}`)[0]);
 
-// Keeps a shown bubble inside the viewport and every clipping ancestor (a table frame, a
-// sheet): measured once it shows, the shift is written as a data variable the class layer reads.
+// Keeps a shown bubble inside the viewport and every clipping ancestor (a table frame, a dialog,
+// a scrolling body), measured once it shows. Clipped above or below, it moves to the other side
+// when it fits there (data-placement); clipped sideways, it shifts by a data variable the class
+// layer reads.
 function place(anchor) {
   const tip = anchor && anchor.querySelector(':scope > .mds-tooltip');
   if (!tip) return;
   tip.style.removeProperty('--mds-tooltip-shift');
-  const r = tip.getBoundingClientRect();
+  anchor.removeAttribute('data-placement');
+  let r = tip.getBoundingClientRect();
   if (!r.width) return;
+  const root = document.documentElement;
   let lo = 8;
-  let hi = document.documentElement.clientWidth - 8;
+  let hi = root.clientWidth - 8;
+  let top = 0;
+  let bottom = root.clientHeight;
   for (let el = anchor.parentElement; el && el !== document.body; el = el.parentElement) {
-    if (getComputedStyle(el).overflowX === 'visible') continue;
+    const s = getComputedStyle(el);
     const b = el.getBoundingClientRect();
-    lo = Math.max(lo, b.left + el.clientLeft);
-    hi = Math.min(hi, b.left + el.clientLeft + el.clientWidth);
+    if (s.overflowX !== 'visible') {
+      lo = Math.max(lo, b.left + el.clientLeft);
+      hi = Math.min(hi, b.left + el.clientLeft + el.clientWidth);
+    }
+    if (s.overflowY !== 'visible') {
+      top = Math.max(top, b.top + el.clientTop);
+      bottom = Math.min(bottom, b.top + el.clientTop + el.clientHeight);
+    }
   }
+  const a = anchor.getBoundingClientRect();
+  const gap = a.top - r.bottom >= 0 ? a.top - r.bottom : r.top - a.bottom;
+  const above = r.bottom <= a.top;
+  if (above && r.top < top && a.bottom + gap + r.height <= bottom) anchor.setAttribute('data-placement', 'bottom');
+  if (!above && r.bottom > bottom && a.top - gap - r.height >= top) anchor.setAttribute('data-placement', 'top');
+  if (anchor.hasAttribute('data-placement')) r = tip.getBoundingClientRect();
   const shift = r.left < lo ? lo - r.left : r.right > hi ? Math.max(hi - r.right, lo - r.left) : 0;
   if (shift) tip.style.setProperty('--mds-tooltip-shift', `${Math.round(shift)}px`);
 }

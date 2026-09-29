@@ -1,79 +1,146 @@
-<!-- @dsCard group="Feedback" viewport="820x600" name="Dialog, toast, tooltip" subtitle="Everything that floats: a 12px dialog on elevation-modal whose confirmation footer is ghost Vazgeç plus one action, toasts in the toaster's two live regions, a tooltip on an icon button" -->
+<!-- @dsCard group="Feedback" viewport="980x1206" name="Dialog, toast, tooltip" subtitle="Everything that floats. Dialogs are paper on elevation-modal with the page-coloured desk as their footer; each shows where focus starts. Toasts sit in the toaster's two live regions; the tooltip is a paper slip" -->
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:var(--space-lg);background:var(--background-neutral-primary);font-family:var(--font-ui);color:var(--text-neutral-primary)}
-.grid{display:grid;grid-template-columns:400px 1fr;gap:var(--space-lg);align-items:start}
-.col{display:flex;flex-direction:column;gap:var(--space-md)}
-.aside{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-sm)}
-.tip{padding-block-start:var(--space-xl);padding-inline-start:var(--space-2xl)}
-.note{margin:0;margin-block-start:var(--space-lg);font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-tertiary)}
+body{margin:0;padding:var(--space-6);background:var(--background-neutral-page);font-family:var(--font-ui);color:var(--text-neutral-default)}
+.grid{display:grid;grid-template-columns:440px minmax(0,1fr);gap:var(--space-6);align-items:start}
+.col{display:flex;flex-direction:column;gap:var(--space-3)}
+.col > .mds-caption:not(:first-child){margin-block-start:var(--space-5)}
+.demo-focus{outline:var(--ring-focus-outline);outline-offset:var(--ring-focus-offset);box-shadow:var(--ring-focus)}
+.demo-focus-inside{outline:var(--ring-focus-width) solid var(--ring-focus-color);outline-offset:calc(-1 * (var(--ring-focus-width) + var(--ring-focus-offset)))}
+.demo-toaster{position:static;inline-size:320px}
+.tip{padding-block-start:var(--space-10);padding-inline-start:var(--space-10)}
+.note{margin:var(--space-5) 0 0;font-size:var(--fs-caption);color:var(--text-neutral-subtle);line-height:var(--lh-body);max-inline-size:760px}
+.note code{white-space:nowrap}
 </style></head><body>
 <div class="grid">
   <div class="col">
-    <p class="mds-eyebrow" lang="en"><span lang="tr">Kalıcı olarak sil</span> — ghost + destructive</p>
+    <p class="mds-caption">Onay: odak Vazgeç’te başlar</p>
     <div class="mds-dialog" role="alertdialog" aria-labelledby="d1-t" aria-describedby="d1-b">
       <div class="mds-dialog__panel">
         <div class="mds-dialog__header">
           <div class="mds-dialog__heading">
             <p class="mds-eyebrow" dir="auto">Nûruosmaniye Köşkü</p>
-            <h2 class="mds-dialog__title" id="d1-t" dir="auto">Kursu kalıcı olarak sil</h2>
+            <h2 class="mds-dialog__title" id="d1-t" dir="auto">Kursu gizle</h2>
           </div>
           <div class="mds-dialog__actions"><button type="button" class="mds-btn mds-icon-btn mds-btn--small mds-btn--ghost mds-dialog__close" aria-label="Kapat"></button></div>
         </div>
-        <div class="mds-dialog__body" id="d1-b"><p><bdi>Bina ve İzhar Şerhi</bdi>, 12 oturumu, 8 ders kaydı ve 94 talebenin kaydıyla birlikte kalıcı olarak silinecek. Bu işlem geri alınamaz.</p></div>
+        <div class="mds-dialog__body" id="d1-b">
+          <p><strong><bdi>Bina ve İzhar Şerhi</bdi></strong> talebelerden ve köşk sayfasından gizlenecek. 35 talebe bu kursun oturumlarına ve ders kayıtlarına erişemeyecek.</p>
+          <p>Hiçbir şey silinmez; Arşiv’den geri alabilirsiniz.</p>
+        </div>
         <div class="mds-dialog__footer">
-          <button type="button" class="mds-btn mds-btn--regular mds-btn--ghost" value="cancel">Vazgeç</button>
-          <button type="button" class="mds-btn mds-btn--regular mds-btn--destructive">Kalıcı olarak sil</button>
+          <button type="button" class="mds-btn mds-btn--regular mds-btn--ghost demo-focus" value="cancel">Vazgeç</button>
+          <button type="button" class="mds-btn mds-btn--regular mds-btn--primary" value="confirm">Gizle</button>
         </div>
       </div>
     </div>
-    <p class="mds-eyebrow" lang="en">Reversible — ghost + primary, the exact verb</p>
-    <div class="mds-dialog" role="alertdialog" aria-labelledby="d2-t" aria-describedby="d2-b">
+
+    <p class="mds-caption">Form: odak ilk alanda başlar</p>
+    <div class="mds-dialog" aria-labelledby="d2-t">
+      <form method="dialog" class="mds-dialog__panel">
+        <div class="mds-dialog__header">
+          <div class="mds-dialog__heading">
+            <p class="mds-eyebrow" dir="auto">Emsile ve Bina</p>
+            <h2 class="mds-dialog__title" id="d2-t" dir="auto">Talebeyi yasakla</h2>
+          </div>
+          <div class="mds-dialog__actions"><button type="button" class="mds-btn mds-icon-btn mds-btn--small mds-btn--ghost mds-dialog__close" aria-label="Kapat"></button></div>
+        </div>
+        <div class="mds-dialog__body">
+          <p><strong><bdi>Zeynep Betül Karahanlı</bdi></strong> bu kursun oturumlarına ve ders kayıtlarına erişemeyecek. Yasağı Talebeler sayfasından kaldırabilirsiniz.</p>
+          <div class="mds-field">
+            <label class="mds-label" for="d2-r">Yasaklama gerekçesi<span class="mds-required" aria-hidden="true">*</span></label>
+            <textarea class="mds-input mds-textarea is-focus" id="d2-r" rows="3" dir="auto" required aria-required="true"></textarea>
+          </div>
+        </div>
+        <div class="mds-dialog__footer">
+          <button type="button" class="mds-btn mds-btn--regular mds-btn--ghost" value="cancel">Vazgeç</button>
+          <button type="submit" class="mds-btn mds-btn--regular mds-btn--primary" value="confirm">Yasakla</button>
+        </div>
+      </form>
+    </div>
+
+    <p class="mds-caption">Kalıcı silme: yalnızca sistem yöneticisi görür</p>
+    <div class="mds-dialog" role="alertdialog" aria-labelledby="d3-t" aria-describedby="d3-b">
       <div class="mds-dialog__panel">
         <div class="mds-dialog__header">
           <div class="mds-dialog__heading">
             <p class="mds-eyebrow" dir="auto">Nûruosmaniye Köşkü</p>
-            <h2 class="mds-dialog__title" id="d2-t" dir="auto">Kursu gizle</h2>
+            <h2 class="mds-dialog__title" id="d3-t" dir="auto">Kursu kalıcı olarak sil</h2>
           </div>
           <div class="mds-dialog__actions"><button type="button" class="mds-btn mds-icon-btn mds-btn--small mds-btn--ghost mds-dialog__close" aria-label="Kapat"></button></div>
         </div>
-        <div class="mds-dialog__body" id="d2-b"><p><bdi>Bina ve İzhar Şerhi</bdi> talebelerden ve köşk sayfasından gizlenecek. Hiçbir şey silinmez; Arşiv’den geri alabilirsiniz.</p></div>
+        <div class="mds-dialog__body" id="d3-b"><p><strong><bdi>Merâhu’l-Ervâh</bdi></strong>, 10 oturumu, 8 ders kaydı ve 11 talebenin kaydıyla birlikte kalıcı olarak silinecek. Bu işlem geri alınamaz.</p></div>
         <div class="mds-dialog__footer">
           <button type="button" class="mds-btn mds-btn--regular mds-btn--ghost" value="cancel">Vazgeç</button>
-          <button type="button" class="mds-btn mds-btn--regular mds-btn--primary">Gizle</button>
+          <button type="button" class="mds-btn mds-btn--regular mds-btn--destructive" value="confirm">Kalıcı olarak sil</button>
         </div>
       </div>
     </div>
   </div>
-  <div class="aside">
-    <p class="mds-eyebrow" lang="en">Tooltip on an icon button</p>
+
+  <div class="col">
+    <p class="mds-caption">Okuma (lg): odak gövdede, halka içeride</p>
+    <div class="mds-dialog mds-dialog--lg" aria-labelledby="d4-t">
+      <div class="mds-dialog__panel">
+        <div class="mds-dialog__header">
+          <div class="mds-dialog__heading">
+            <p class="mds-eyebrow" dir="auto">Tam müfredat</p>
+            <h2 class="mds-dialog__title" id="d4-t" dir="auto">Emsile ve Bina</h2>
+          </div>
+          <div class="mds-dialog__actions">
+            <button type="button" class="mds-btn mds-btn--small mds-btn--ghost"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#download"/></svg>PDF olarak indir</button>
+            <button type="button" class="mds-btn mds-icon-btn mds-btn--small mds-btn--ghost mds-dialog__close" aria-label="Kapat"></button>
+          </div>
+        </div>
+        <div class="mds-dialog__body demo-focus-inside" role="region" aria-labelledby="d4-t" tabindex="0">
+          <p>Kurs 12 haftada iki kitabı birlikte okur: Emsile fiilin kalıplarını, Bina bu kalıpların bablarını öğretir. 3. ile 6. hafta arası:</p>
+          <ol start="3">
+            <li>Sülâsî mücerred bablar</li>
+            <li>Mezîd fiiller ve bablar</li>
+            <li>Mehmûz fiiller: kara’e ve emr-i hâzır</li>
+            <li>Muzâaf fiiller</li>
+          </ol>
+        </div>
+        <div class="mds-dialog__footer"><p class="mds-dialog__meta">Son güncelleme: <time datetime="2026-10-03">3 Ekim 2026</time></p></div>
+      </div>
+    </div>
+
+    <p class="mds-caption">İpucu</p>
     <div class="tip">
       <span class="mds-tooltip-anchor is-open">
         <button type="button" class="mds-btn mds-icon-btn mds-btn--small mds-btn--outline" aria-label="Kursu gizle"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#eyeOff"/></svg></button>
         <span class="mds-tooltip" role="tooltip" aria-hidden="true">Kursu gizle</span>
       </span>
     </div>
-    <p class="note" lang="en">Both dialogs are <code>kind="alert"</code>: focus starts on Vazgeç, and a click on the backdrop (<code>--background-neutral-scrim</code>) does nothing. Widths 400 / 640 / 960; <code>lg</code> is a reading dialog with a 16px body. The toaster sits at the bottom inline-end: success and info in its <code>role="status"</code> region, warning and error in <code>role="alert"</code>, which never close by themselves.</p>
+
+    <p class="mds-caption">Bildirimler</p>
+    <section class="mds-toaster demo-toaster" aria-label="Bildirimler">
+      <div role="status" aria-atomic="false">
+        <div class="mds-toast mds-toast--success">
+          <span class="mds-toast__icon" aria-hidden="true"></span>
+          <div class="mds-toast__body"><p class="mds-toast__title">Kurs gizlendi</p><p class="mds-toast__desc">Arşiv’den geri alabilirsiniz.</p><div class="mds-toast__action"><button type="button" class="mds-btn mds-btn--mini mds-btn--ghost">Geri al</button></div></div>
+          <button type="button" class="mds-btn mds-icon-btn mds-btn--mini mds-btn--ghost mds-toast__close" aria-label="Kapat"></button>
+        </div>
+        <div class="mds-toast mds-toast--info">
+          <span class="mds-toast__icon" aria-hidden="true"></span>
+          <div class="mds-toast__body"><p class="mds-toast__title">Ders kaydı yüklendi</p><p class="mds-toast__desc">Kayıt işleniyor; hazır olunca talebeler görecek.</p></div>
+          <button type="button" class="mds-btn mds-icon-btn mds-btn--mini mds-btn--ghost mds-toast__close" aria-label="Kapat"></button>
+        </div>
+      </div>
+      <div role="alert" aria-atomic="false">
+        <div class="mds-toast mds-toast--warning">
+          <span class="mds-toast__icon" aria-hidden="true"></span>
+          <div class="mds-toast__body"><p class="mds-toast__title">Oturum bağlantısız kaydedildi</p><p class="mds-toast__desc">Talebeler katılamaz; oturum başlamadan toplantı bağlantısını ekleyin.</p></div>
+          <button type="button" class="mds-btn mds-icon-btn mds-btn--mini mds-btn--ghost mds-toast__close" aria-label="Kapat"></button>
+        </div>
+        <div class="mds-toast mds-toast--error">
+          <span class="mds-toast__icon" aria-hidden="true"></span>
+          <div class="mds-toast__body"><p class="mds-toast__title">Toplantı bağlantısı kaydedilemedi</p><p class="mds-toast__desc">Sunucuya ulaşılamadı. Tekrar deneyin.</p></div>
+          <button type="button" class="mds-btn mds-icon-btn mds-btn--mini mds-btn--ghost mds-toast__close" aria-label="Kapat"></button>
+        </div>
+      </div>
+    </section>
+    <p class="note" lang="en">A dialog is paper on <code>--elevation-modal</code>, 440 / 640 / 960 wide. Its footer is the page colour, the desk under the sheet. The rings here show where focus starts: "Vazgeç" in a confirmation, the first field in a form, the body in an <code>lg</code> reading dialog, which draws its ring inside itself. In the product the toaster is fixed at the bottom inline-end. Warning and error toasts go to its <code>role="alert"</code> region and never close by themselves.</p>
   </div>
 </div>
-<section class="mds-toaster" aria-label="Bildirimler">
-  <div role="status" aria-atomic="false">
-    <div class="mds-toast mds-toast--success">
-      <span class="mds-toast__icon" aria-hidden="true"></span>
-      <div class="mds-toast__body"><p class="mds-toast__title">Deste 12 talebeye atandı</p><p class="mds-toast__desc">Sarf destesi, 3. hafta.</p><div class="mds-toast__action"><button type="button" class="mds-btn mds-btn--mini mds-btn--ghost">Geri al</button></div></div>
-      <button type="button" class="mds-btn mds-icon-btn mds-btn--mini mds-btn--ghost mds-toast__close" aria-label="Kapat"></button>
-    </div>
-    <div class="mds-toast mds-toast--info">
-      <span class="mds-toast__icon" aria-hidden="true"></span>
-      <div class="mds-toast__body"><p class="mds-toast__title">Ders kaydı yüklendi</p><p class="mds-toast__desc">YouTube işliyor; birkaç dakika sürebilir.</p></div>
-      <button type="button" class="mds-btn mds-icon-btn mds-btn--mini mds-btn--ghost mds-toast__close" aria-label="Kapat"></button>
-    </div>
-  </div>
-  <div role="alert" aria-atomic="false">
-    <div class="mds-toast mds-toast--error">
-      <span class="mds-toast__icon" aria-hidden="true"></span>
-      <div class="mds-toast__body"><p class="mds-toast__title">Toplantı bağlantısı kaydedilemedi</p><p class="mds-toast__desc">Sunucuya ulaşılamadı. Tekrar deneyin.</p></div>
-      <button type="button" class="mds-btn mds-icon-btn mds-btn--mini mds-btn--ghost mds-toast__close" aria-label="Kapat"></button>
-    </div>
-  </div>
-</section>
+
 </body></html>

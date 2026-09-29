@@ -1,41 +1,51 @@
-<!-- @dsCard group="Medrese" viewport="820x560" name="Lesson row" subtitle="Lesson types by icon and label, drawn neutral; current, done and locked — the title always readable" -->
+<!-- @dsCard group="Medrese" viewport="820x1050" name="Lesson row" subtitle="A ledger line: the type as glyph and label, drawn neutral; current, done and locked, the title always readable" -->
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:var(--space-lg);background:var(--background-neutral-primary);font-family:var(--font-ui);color:var(--text-neutral-primary)}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-lg);align-items:start}
-.col{display:flex;flex-direction:column;gap:var(--space-sm);min-inline-size:0}
-.col .mds-eyebrow + *{margin-block-start:0}
-.col .mds-eyebrow:not(:first-child){margin-block-start:var(--space-sm)}
-.list{padding:var(--space-xs);background:var(--background-white);border:var(--border-s) solid var(--border-neutral-primary);border-radius:var(--radius-m)}
+body{margin:0;padding:var(--space-6);background:var(--background-neutral-page);font-family:var(--font-ui);color:var(--text-neutral-default)}
+.wide{display:flex;flex-direction:column;gap:var(--space-3);margin-block-end:var(--space-8)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6) var(--space-8);align-items:start}
+.col{display:flex;flex-direction:column;gap:var(--space-3);min-inline-size:0}
+.col > .mds-eyebrow:not(:first-child){margin-block-start:var(--space-5)}
+.note{margin:var(--space-6) 0 0;max-inline-size:72ch;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-subtle)}
 @media (max-width:599.98px){.row{grid-template-columns:1fr}}
-.note{margin:var(--space-md) 0 0;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-tertiary)}
 </style></head><body>
+<div class="wide">
+  <p class="mds-eyebrow">Kayıtlı: tamamlanan, sıradaki ve şu an canlı, sonraki</p>
+  <ol class="mds-lesson-list">
+    <li class="mds-lesson-row mds-lesson-row--live is-done"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><a href="#oturum-3" class="mds-lesson-row__title" dir="auto">Sülâsî mücerred bablar<span class="mds-visually-hidden">, tamamlandı</span></a><p class="mds-lesson-row__meta"><span><span>Canlı ders</span><span class="mds-sep" aria-hidden="true">·</span></span><time datetime="2026-09-19T21:00:00+03:00">19 Eyl Cmt 21:00</time></p></div><time class="mds-lesson-row__duration" datetime="PT60M">60&nbsp;dk</time></li>
+    <li class="mds-lesson-row mds-lesson-row--live is-done"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><a href="#oturum-4" class="mds-lesson-row__title" dir="auto">Mezîd fiiller ve bablar<span class="mds-visually-hidden">, tamamlandı</span></a><p class="mds-lesson-row__meta"><span><span>Canlı ders</span><span class="mds-sep" aria-hidden="true">·</span></span><time datetime="2026-09-26T21:00:00+03:00">26 Eyl Cmt 21:00</time></p></div><time class="mds-lesson-row__duration" datetime="PT60M">60&nbsp;dk</time></li>
+    <li class="mds-lesson-row mds-lesson-row--live"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><a href="#oturum-5" class="mds-lesson-row__title" dir="auto" aria-current="step">Mehmûz fiiller: kara’e ve emr-i hâzır</a><p class="mds-lesson-row__meta"><span><span class="mds-lesson-row__marker">Sıradaki</span><span class="mds-sep" aria-hidden="true">·</span></span><span><span>Canlı ders</span><span class="mds-sep" aria-hidden="true">·</span></span><span><bdi class="mds-lesson-row__source">Bina, s. 20–24</bdi><span class="mds-sep" aria-hidden="true">·</span></span><time datetime="2026-10-03T21:00:00+03:00">3 Eki Cmt 21:00</time></p></div><span class="mds-lesson-row__trailing"><span class="mds-badge mds-badge--live"><span class="mds-badge__dot" aria-hidden="true"></span>Şu an canlı</span></span><time class="mds-lesson-row__duration" datetime="PT60M">60&nbsp;dk</time></li>
+    <li class="mds-lesson-row mds-lesson-row--live"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><a href="#oturum-6" class="mds-lesson-row__title" dir="auto">Hafta sonu müzakeresi</a><p class="mds-lesson-row__meta"><span><span>Canlı ders</span><span class="mds-sep" aria-hidden="true">·</span></span><time datetime="2026-10-04T14:00:00+03:00">4 Eki Paz 14:00</time></p></div><time class="mds-lesson-row__duration" datetime="PT45M">45&nbsp;dk</time></li>
+  </ol>
+</div>
 <div class="row">
   <div class="col">
-    <p class="mds-eyebrow" lang="en">Enrolled — done, current, next</p>
-    <div class="list"><ol class="mds-lesson-list">
-      <li class="mds-lesson-row mds-lesson-row--live is-done"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><a href="#oturum-4" class="mds-lesson-row__title" dir="auto">Dördüncü babın şerhi<span class="mds-visually-hidden">, tamamlandı</span></a><p class="mds-lesson-row__meta"><span>Canlı ders</span><span><span class="mds-sep" aria-hidden="true">·</span><time datetime="2026-10-10T14:00:00+03:00">10 Eki Cmt 14:00</time></span></p></div><time class="mds-lesson-row__duration" datetime="PT60M">60&nbsp;dk</time></li>
-      <li class="mds-lesson-row mds-lesson-row--live"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><a href="#oturum-5" class="mds-lesson-row__title" dir="auto" aria-current="step">Beşinci babın şerhi — <span lang="ar" dir="rtl" class="mds-arabic">فَتَحَ</span> bâbı</a><p class="mds-lesson-row__meta"><span class="mds-lesson-row__marker">Sıradaki</span><span><span class="mds-sep" aria-hidden="true">·</span><span>Canlı ders</span></span><span><span class="mds-sep" aria-hidden="true">·</span><bdi class="mds-lesson-row__source">Bina, s. 20–24</bdi></span><span><span class="mds-sep" aria-hidden="true">·</span><time datetime="2026-10-10T21:00:00+03:00">10 Eki Cmt 21:00</time></span></p></div><time class="mds-lesson-row__duration" datetime="PT60M">60&nbsp;dk</time></li>
-      <li class="mds-lesson-row mds-lesson-row--live"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><a href="#oturum-6" class="mds-lesson-row__title" dir="auto">Hafta sonu müzakeresi</a><p class="mds-lesson-row__meta"><span>Canlı ders</span><span><span class="mds-sep" aria-hidden="true">·</span><time datetime="2026-10-11T14:00:00+03:00">11 Eki Paz 14:00</time></span></p></div><time class="mds-lesson-row__duration" datetime="PT45M">45&nbsp;dk</time></li>
-    </ol></div>
-    <p class="mds-eyebrow" lang="en">The viewer in Berlin — both zones</p>
-    <div class="list"><ol class="mds-lesson-list">
-      <li class="mds-lesson-row mds-lesson-row--live"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><a href="#oturum-6" class="mds-lesson-row__title" dir="auto">Hafta sonu müzakeresi</a><p class="mds-lesson-row__meta"><span>Canlı ders</span><span><span class="mds-sep" aria-hidden="true">·</span><time datetime="2026-10-11T14:00:00+03:00">11 Eki Paz 14:00 İstanbul</time></span><span><span class="mds-sep" aria-hidden="true">·</span><span>13:00 senin saatinle</span></span></p></div><time class="mds-lesson-row__duration" datetime="PT45M">45&nbsp;dk</time></li>
-    </ol></div>
+    <p class="mds-eyebrow">Berlin’deki izleyici: iki saat dilimi</p>
+    <ol class="mds-lesson-list">
+      <li class="mds-lesson-row mds-lesson-row--live"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><a href="#oturum-6" class="mds-lesson-row__title" dir="auto">Hafta sonu müzakeresi</a><p class="mds-lesson-row__meta"><span><span>Canlı ders</span><span class="mds-sep" aria-hidden="true">·</span></span><span><time datetime="2026-10-04T14:00:00+03:00">4 Eki Paz 14:00 İstanbul</time><span class="mds-sep" aria-hidden="true">·</span></span><span>13:00 senin saatinle</span></p></div><time class="mds-lesson-row__duration" datetime="PT45M">45&nbsp;dk</time></li>
+    </ol>
+    <p class="mds-eyebrow">Üzerinde</p>
+    <ol class="mds-lesson-list">
+      <li class="mds-lesson-row mds-lesson-row--live" style="background:var(--background-neutral-hover)"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><a href="#oturum-7" class="mds-lesson-row__title" dir="auto" tabindex="-1">Genel tekrar</a><p class="mds-lesson-row__meta"><span><span>Canlı ders</span><span class="mds-sep" aria-hidden="true">·</span></span><time datetime="2026-10-11T14:00:00+03:00">11 Eki Paz 14:00</time></p></div><time class="mds-lesson-row__duration" datetime="PT45M">45&nbsp;dk</time></li>
+    </ol>
+    <p class="mds-eyebrow">Odakta</p>
+    <ol class="mds-lesson-list">
+      <li class="mds-lesson-row mds-lesson-row--live" style="z-index:1;outline:var(--ring-focus-outline);outline-offset:var(--ring-focus-offset);box-shadow:var(--ring-focus)"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><a href="#oturum-7" class="mds-lesson-row__title" dir="auto" tabindex="-1">Genel tekrar</a><p class="mds-lesson-row__meta"><span><span>Canlı ders</span><span class="mds-sep" aria-hidden="true">·</span></span><time datetime="2026-10-11T14:00:00+03:00">11 Eki Paz 14:00</time></p></div><time class="mds-lesson-row__duration" datetime="PT45M">45&nbsp;dk</time></li>
+    </ol>
   </div>
   <div class="col">
-    <p class="mds-eyebrow" lang="en">Not enrolled — the reason once, above</p>
+    <p class="mds-eyebrow">Kayıtsız: neden bir kez, üstte</p>
     <div class="mds-alert mds-alert--neutral" role="status"><span class="mds-alert__icon" aria-hidden="true"></span><div>Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Kursa kaydolduğunda görebilirsin.</div></div>
-    <div class="list"><ol class="mds-lesson-list">
-      <li class="mds-lesson-row mds-lesson-row--live is-locked"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><span class="mds-lesson-row__title" dir="auto">Altıncı babın şerhi</span><p class="mds-lesson-row__meta"><span>Canlı ders</span><span><span class="mds-sep" aria-hidden="true">·</span><time datetime="2026-10-17T21:00:00+03:00">17 Eki Cmt 21:00</time></span></p></div><span class="mds-lesson-row__lock" role="img" aria-label="Kilitli"></span><time class="mds-lesson-row__duration" datetime="PT60M">60&nbsp;dk</time></li>
-      <li class="mds-lesson-row mds-lesson-row--live is-locked"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><span class="mds-lesson-row__title" dir="auto">İf'âl babı ve tekrar</span><p class="mds-lesson-row__meta"><span>Canlı ders</span><span><span class="mds-sep" aria-hidden="true">·</span><time datetime="2026-10-24T21:00:00+03:00">24 Eki Cmt 21:00</time></span></p></div><span class="mds-lesson-row__lock" role="img" aria-label="Kilitli"></span><time class="mds-lesson-row__duration" datetime="PT60M">60&nbsp;dk</time></li>
-    </ol></div>
-    <p class="mds-eyebrow" lang="en">Rendered, not authored yet</p>
-    <div class="list"><ol class="mds-lesson-list">
-      <li class="mds-lesson-row mds-lesson-row--video"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><a href="#ders-1" class="mds-lesson-row__title" dir="auto">Birinci babın îsâgûcîsi</a><p class="mds-lesson-row__meta"><span>Video ders</span></p></div><time class="mds-lesson-row__duration" datetime="PT28M">28&nbsp;dk</time></li>
-      <li class="mds-lesson-row mds-lesson-row--document"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><a href="#ders-2" class="mds-lesson-row__title" dir="auto">Tatbikat defteri</a><p class="mds-lesson-row__meta"><span>Doküman</span></p></div></li>
+    <ol class="mds-lesson-list">
+      <li class="mds-lesson-row mds-lesson-row--live is-locked"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><span class="mds-lesson-row__title" dir="auto">Muzâaf fiiller</span><p class="mds-lesson-row__meta"><span><span>Canlı ders</span><span class="mds-sep" aria-hidden="true">·</span></span><time datetime="2026-10-10T21:00:00+03:00">10 Eki Cmt 21:00</time></p></div><span class="mds-lesson-row__lock" role="img" aria-label="Kilitli"></span><time class="mds-lesson-row__duration" datetime="PT60M">60&nbsp;dk</time></li>
+      <li class="mds-lesson-row mds-lesson-row--live is-locked"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><span class="mds-lesson-row__title" dir="auto">Misâl ve ecvef fiiller</span><p class="mds-lesson-row__meta"><span><span>Canlı ders</span><span class="mds-sep" aria-hidden="true">·</span></span><time datetime="2026-10-17T21:00:00+03:00">17 Eki Cmt 21:00</time></p></div><span class="mds-lesson-row__lock" role="img" aria-label="Kilitli"></span><time class="mds-lesson-row__duration" datetime="PT60M">60&nbsp;dk</time></li>
+    </ol>
+    <p class="mds-eyebrow">Gösterilir, henüz oluşturulamaz</p>
+    <ol class="mds-lesson-list">
+      <li class="mds-lesson-row mds-lesson-row--video"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><a href="#ders-1" class="mds-lesson-row__title" dir="auto">Emsile’ye giriş: <span lang="ar" dir="rtl" class="mds-arabic">نصر</span> babının kalıpları</a><p class="mds-lesson-row__meta"><span>Video ders</span></p></div><time class="mds-lesson-row__duration" datetime="PT28M">28&nbsp;dk</time></li>
+      <li class="mds-lesson-row mds-lesson-row--document"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><a href="#ders-2" class="mds-lesson-row__title" dir="auto">Tasrîf cetveli</a><p class="mds-lesson-row__meta"><span><span>Doküman</span><span class="mds-sep" aria-hidden="true">·</span></span><bdi class="mds-lesson-row__source">Emsile, s. 3–6</bdi></p></div></li>
       <li class="mds-lesson-row mds-lesson-row--quiz"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><a href="#ders-3" class="mds-lesson-row__title" dir="auto">Sülâsî bablar tekrarı</a><p class="mds-lesson-row__meta"><span>Sınav</span></p></div></li>
-    </ol></div>
+    </ol>
   </div>
 </div>
-<p class="note" lang="en">Every type sits on the same neutral medallion (6.90:1): the glyph and the printed label name it, so red never paints every live lesson. Current is the brand medallion, the 1.07:1 tint and the visible "Sıradaki" (8.87:1); done is a check, with ", tamamlandı" for screen readers, never a strikethrough. A locked title stays in primary ink (17.74:1) and its date stays public; the dashed ring is decoration.</p>
+<p class="note" lang="en">Every type sits on the same neutral medallion. The glyph and the printed label name it, so red never paints every live lesson. Current is the lâciverd medallion, the tint and the printed "Sıradaki". The tint alone is 1.12:1, so it never works alone. Done is a check, with ", tamamlandı" for screen readers, never a strikethrough. A locked title stays in ink and its date stays public; the dashed edge is decoration. The row draws the focus ring for its link.</p>
 </body></html>

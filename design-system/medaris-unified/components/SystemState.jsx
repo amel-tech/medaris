@@ -17,7 +17,7 @@ export function SystemState({ kind, title, children, action, logo, shell = false
   return (
     <Region {...rest} className={cls} aria-labelledby={id}>
       {logo}
-      <Heading className={headingLevel === 1 ? 'mds-h4' : 'mds-h5'} id={id}>{title}</Heading>
+      <Heading className={headingLevel === 1 ? 'mds-h1' : 'mds-h2'} id={id}>{title}</Heading>
       <p className="mds-system-state__text">{children}</p>
       {!restricted && action}
     </Region>

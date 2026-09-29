@@ -5,6 +5,22 @@ import React from 'react';
 let seq = 0;
 const useUid = React.useId || (() => React.useState(() => `w${++seq}`)[0]);
 
+// The page's locale (MDS-NUM-01): the locale prop, else the nearest lang once mounted, else tr-TR.
+function usePageLocale(ref, locale) {
+  const [found, setFound] = React.useState(null);
+  React.useEffect(() => {
+    const el = ref.current && ref.current.closest('[lang]');
+    setFound((el && el.lang) || null);
+  }, []);
+  return locale || found || 'tr-TR';
+}
+
+// A meta run: each part but the last ends on its separator, so a wrapped line ends on the dot and
+// never starts with it.
+function joinRun(parts) {
+  return parts.map((p, i) => (i < parts.length - 1 ? <span key={`run${i}`}>{p}<span className="mds-sep" aria-hidden="true">·</span></span> : p));
+}
+
 // A date-only value ("2026-10-17") is that calendar day wherever the viewer is.
 function openDate(iso, locale) {
   const at = new Date(iso);
@@ -32,11 +48,13 @@ export function WeekAccordion({
   lockedLabel = ', kilitli',
   opensOnLabel = '{date} tarihinde açılır',
   emptyLabel = 'Bu hafta için henüz ders eklenmedi.',
-  locale = 'tr-TR',
+  locale: localeProp,
   children,
   className = '',
   ...rest
 }) {
+  const ref = React.useRef(null);
+  const locale = usePageLocale(ref, localeProp);
   const [own, setOwn] = React.useState(defaultOpen);
   const isOpen = open ?? own;
   const uid = useUid().replace(/[^\w-]/g, '');
@@ -63,7 +81,7 @@ export function WeekAccordion({
   const rows = React.Children.toArray(children);
 
   return (
-    <div className={cls} {...rest}>
+    <div ref={ref} className={cls} {...rest}>
       <Heading className="mds-week__heading">
         <button type="button" className="mds-week__trigger" id={buttonId} aria-expanded={isOpen} aria-controls={panelId} onClick={toggle}>
           <span className="mds-week__medallion" aria-hidden="true">{shown === 'done' || shown === 'locked' ? null : n}</span>
@@ -78,7 +96,7 @@ export function WeekAccordion({
           </span>
           {metaItems.length > 0 && (
             <span className="mds-week__meta">
-              {metaItems.map((m, i) => (i ? <span key={`run${i}`}><span className="mds-sep" aria-hidden="true">·</span>{m}</span> : m))}
+              {joinRun(metaItems)}
             </span>
           )}
           <span className="mds-week__chevron" aria-hidden="true" />

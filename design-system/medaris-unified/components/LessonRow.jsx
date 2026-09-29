@@ -8,6 +8,22 @@ const cities = {
   'Europe/Paris': 'Paris', 'Europe/Vienna': 'Viyana', 'Europe/London': 'Londra', 'America/New_York': 'New York',
 };
 
+// The page's locale (MDS-NUM-01): the locale prop, else the nearest lang once mounted, else tr-TR.
+function usePageLocale(ref, locale) {
+  const [found, setFound] = React.useState(null);
+  React.useEffect(() => {
+    const el = ref.current && ref.current.closest('[lang]');
+    setFound((el && el.lang) || null);
+  }, []);
+  return locale || found || 'tr-TR';
+}
+
+// A meta run: each part but the last ends on its separator, so a wrapped line ends on the dot and
+// never starts with it.
+function joinRun(parts) {
+  return parts.map((p, i) => (i < parts.length - 1 ? <span key={`run${i}`}>{p}<span className="mds-sep" aria-hidden="true">·</span></span> : p));
+}
+
 function format(locale, at, timeZone, options) {
   try {
     return new Intl.DateTimeFormat(locale, { ...options, timeZone }).format(at);
@@ -55,11 +71,13 @@ export function LessonRow({
   lockedLabel = 'Kilitli',
   localTimeLabel = 'senin saatinle',
   minuteUnit = 'dk',
-  locale = 'tr-TR',
+  locale: localeProp,
   trailing,
   className = '',
   ...rest
 }) {
+  const ref = React.useRef(null);
+  const locale = usePageLocale(ref, localeProp);
   const locked = access === 'locked';
   const cls = ['mds-lesson-row', `mds-lesson-row--${type}`, state === 'done' && 'is-done', locked && 'is-locked', className].filter(Boolean).join(' ');
 
@@ -73,12 +91,12 @@ export function LessonRow({
   if (startsAt) meta.push(...sessionTimes(startsAt, { timeZone, courseTimeZone, courseZoneName, localTimeLabel, locale }));
 
   return (
-    <li className={cls} {...rest}>
+    <li ref={ref} className={cls} {...rest}>
       <span className="mds-lesson-row__medallion" aria-hidden="true" />
       <div className="mds-lesson-row__main">
         {href && !locked ? <a href={href} {...titleProps}>{name}</a> : <span {...titleProps}>{name}</span>}
         <p className="mds-lesson-row__meta">
-          {meta.map((m, i) => (i ? <span key={`run${i}`}><span className="mds-sep" aria-hidden="true">·</span>{m}</span> : m))}
+          {joinRun(meta)}
         </p>
       </div>
       {trailing && <span className="mds-lesson-row__trailing">{trailing}</span>}

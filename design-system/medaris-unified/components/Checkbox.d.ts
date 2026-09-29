@@ -6,7 +6,7 @@ export interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputE
   description?: React.ReactNode;
   /** a decorative glyph before the label, in bordered settings rows */
   icon?: React.ReactNode;
-  /** a settings row with a hairline border (was #95 CheckboxRow) */
+  /** a settings row: a hairline border, 16px padding, a lapis edge when checked */
   bordered?: boolean;
   /* native attributes the examples use, redeclared so the adherence rules accept them */
   name?: string;

@@ -1,27 +1,77 @@
-<!-- @dsCard group="Medrese" viewport="820x460" name="Cover pattern" subtitle="Four calm tones on the canonical ramps; a course hashes to one and keeps it" -->
+<!-- @dsCard group="Medrese" viewport="820x1130" name="Cover pattern" subtitle="Bookcloth in four tones with a blind stamp; a course hashes to one cloth and keeps it, by day and by night" -->
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:var(--space-lg);background:var(--background-white);font-family:var(--font-ui);color:var(--text-neutral-primary)}
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-md)}
-.grid + .mds-eyebrow{margin-block-start:var(--space-lg)}
-.mds-eyebrow.h{margin-block-end:var(--space-sm)}
-.col{display:flex;flex-direction:column;gap:var(--space-sm);min-inline-size:0}
-code{font-family:var(--font-mono);font-size:var(--fs-footnote);line-height:var(--lh-snug);color:var(--text-neutral-secondary);overflow-wrap:anywhere}
-@media (max-width:599.98px){.grid{grid-template-columns:repeat(2,1fr)}}
-.note{margin:var(--space-md) 0 0;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-tertiary)}
+body{margin:0;padding:var(--space-6);background:var(--background-neutral-page);font-family:var(--font-ui);color:var(--text-neutral-default)}
+section{display:flex;flex-direction:column;gap:var(--space-3)}
+section + section{margin-block-start:var(--space-8)}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-4)}
+.cell{display:flex;flex-direction:column;gap:var(--space-2);min-inline-size:0}
+code{font-family:var(--font-mono);font-size:var(--fs-caption);line-height:var(--lh-snug);color:var(--text-neutral-muted);overflow-wrap:anywhere}
+.sizes{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-6)}
+.book{inline-size:165px}
+.band{inline-size:180px}
+.course-card{inline-size:248px}
+.course-card .mds-card__title{font-size:var(--fs-h5)}
+.course{display:flex;align-items:center;gap:var(--space-3);padding-block:var(--space-2);padding-inline:var(--space-3);background:var(--background-neutral-surface);border:var(--border-width-thin) solid var(--border-neutral-subtle);border-radius:var(--radius-control)}
+.course__text{display:flex;flex-direction:column;gap:1px}
+.course__title{font-family:var(--font-reading);font-size:var(--fs-body-sm);font-weight:var(--weight-semibold)}
+.vocab{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--space-2) var(--space-4);margin:0}
+.vocab div{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-2);padding-block:var(--space-1);border-block-end:var(--border-width-thin) solid var(--border-neutral-subtle)}
+.vocab dt{font-size:var(--fs-body-sm)}
+.vocab dd{margin:0}
+.note{margin:var(--space-6) 0 0;max-inline-size:72ch;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-subtle)}
+@media (max-width:599.98px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.vocab{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style></head><body>
-<p class="mds-eyebrow h" lang="en">Tones — md, 140</p>
-<div class="grid">
-  <div class="col"><div class="mds-cover mds-cover--sky"><p class="mds-eyebrow mds-cover__label" dir="auto">Nahiv</p></div><code lang="en">tone="sky" · 6.12 · 5.38:1</code></div>
-  <div class="col"><div class="mds-cover mds-cover--blue"><p class="mds-eyebrow mds-cover__label" dir="auto">Tecvid</p></div><code lang="en">tone="blue" · 6.27 · 5.47:1</code></div>
-  <div class="col"><div class="mds-cover mds-cover--green"><p class="mds-eyebrow mds-cover__label" dir="auto">Sarf</p></div><code lang="en">tone="green" · 6.18 · 5.66:1</code></div>
-  <div class="col"><div class="mds-cover mds-cover--slate"><p class="mds-eyebrow mds-cover__label" dir="auto">Mantık</p></div><code lang="en">tone="slate" · 11.18 · 10.00:1</code></div>
-</div>
-<p class="mds-eyebrow h" lang="en">From the id — sm, 84</p>
-<div class="grid">
-  <div class="col"><div class="mds-cover mds-cover--green mds-cover--sm"><p class="mds-eyebrow mds-cover__label" dir="auto">Sarf</p></div><code lang="en">seed="bina-ve-izhar-serhi" → green</code></div>
-  <div class="col"><div class="mds-cover mds-cover--blue mds-cover--sm"><p class="mds-eyebrow mds-cover__label" dir="auto">Sarf</p></div><code lang="en">seed="emsile-ve-bina" → blue</code></div>
-  <div class="col"><div class="mds-cover mds-cover--sky mds-cover--sm"><p class="mds-eyebrow mds-cover__label" dir="auto">Tecvid</p></div><code lang="en">seed="tecvid-temel" → sky</code></div>
-  <div class="col"><div class="mds-cover mds-cover--slate mds-cover--sm"><p class="mds-eyebrow mds-cover__label" dir="auto">Fıkıh</p></div><code lang="en">seed="fikih-giris" → slate</code></div>
-</div>
-<p class="note" lang="en">The only decorative colour, and never a status: sky, blue, green and slate only, with no chip on top. The label takes the tone's ink; its ratio is measured on the from and to stops with the 18% arc pattern under it. A course keeps its tone everywhere — the one chosen for it, or FNV-1a of its id mod 4 — so two courses of one subject may differ. lg (220) is the course page's hero.</p>
+<section>
+  <p class="mds-eyebrow">Dört bez · md, 140 yüksek · etiket ilmin Arapça adı</p>
+  <div class="grid">
+    <div class="cell"><div class="mds-cover mds-cover--laciverd"><p class="mds-eyebrow mds-cover__label" lang="ar" dir="rtl">النحو</p></div><code lang="en">tone="laciverd" · label 10.57:1</code></div>
+    <div class="cell"><div class="mds-cover mds-cover--bordo"><p class="mds-eyebrow mds-cover__label" lang="ar" dir="rtl">الصرف</p></div><code lang="en">tone="bordo" · label 11.34:1</code></div>
+    <div class="cell"><div class="mds-cover mds-cover--zumrut"><p class="mds-eyebrow mds-cover__label" lang="ar" dir="rtl">السيرة</p></div><code lang="en">tone="zumrut" · label 8.69:1</code></div>
+    <div class="cell"><div class="mds-cover mds-cover--murekkep"><p class="mds-eyebrow mds-cover__label" lang="ar" dir="rtl">المنطق</p></div><code lang="en">tone="murekkep" · label 13.16:1</code></div>
+  </div>
+</section>
+<section>
+  <p class="mds-eyebrow">Boylar: biçimi sayfa belirler</p>
+  <div class="sizes">
+    <div class="cell book"><div class="mds-cover mds-cover--bordo mds-cover--lg"><p class="mds-eyebrow mds-cover__label" lang="ar" dir="rtl">الصرف</p></div><code lang="en">lg, 220 · a 3:4 book on the course page</code></div>
+    <div class="cell course-card">
+      <article class="mds-card">
+        <div class="mds-card__media"><div class="mds-cover mds-cover--bordo mds-cover--sm"><p class="mds-eyebrow mds-cover__label" lang="ar" dir="rtl">الصرف</p></div></div>
+        <h3 class="mds-card__title">Emsile ve Bina</h3>
+        <p class="mds-card__body">Nûruosmaniye Köşkü · 12 hafta</p>
+      </article>
+      <code lang="en">sm, 84 · a band in a card's media slot</code>
+    </div>
+    <div class="cell band"><div class="mds-cover mds-cover--zumrut mds-cover--sm"><p class="mds-eyebrow mds-cover__label" dir="auto">Siyer</p></div><code lang="en">sm with a short Latin label</code></div>
+    <div class="cell">
+      <div class="course"><div class="mds-cover mds-cover--bordo mds-cover--xs"></div><span class="course__text"><bdi class="course__title">Emsile ve Bina</bdi><span class="mds-caption">Sarf · 12 hafta</span></span></div>
+      <code lang="en">xs, 24 × 32 · a table row</code>
+    </div>
+  </div>
+</section>
+<section>
+  <p class="mds-eyebrow">Kimlikten: <code lang="en">coverTone(seed)</code></p>
+  <div class="grid">
+    <div class="cell"><div class="mds-cover mds-cover--bordo mds-cover--sm"><p class="mds-eyebrow mds-cover__label" dir="auto">Sarf</p></div><code lang="en">seed="emsile-ve-bina" → bordo</code></div>
+    <div class="cell"><div class="mds-cover mds-cover--laciverd mds-cover--sm"><p class="mds-eyebrow mds-cover__label" dir="auto">Mantık</p></div><code lang="en">seed="fenari-serhi" → laciverd</code></div>
+    <div class="cell"><div class="mds-cover mds-cover--zumrut mds-cover--sm"><p class="mds-eyebrow mds-cover__label" dir="auto">Belâgat</p></div><code lang="en">seed="telhis-okumalari" → zumrut</code></div>
+    <div class="cell"><div class="mds-cover mds-cover--murekkep mds-cover--sm"><p class="mds-eyebrow mds-cover__label" dir="auto">Akaid</p></div><code lang="en">seed="nuniye-serhi" → murekkep</code></div>
+  </div>
+</section>
+<section>
+  <p class="mds-eyebrow">Etiket sözlüğü</p>
+  <dl class="vocab">
+    <div><dt>Sarf</dt><dd><span lang="ar" dir="rtl" class="mds-arabic">الصرف</span></dd></div>
+    <div><dt>Nahiv</dt><dd><span lang="ar" dir="rtl" class="mds-arabic">النحو</span></dd></div>
+    <div><dt>Mantık</dt><dd><span lang="ar" dir="rtl" class="mds-arabic">المنطق</span></dd></div>
+    <div><dt>Akaid</dt><dd><span lang="ar" dir="rtl" class="mds-arabic">العقائد</span></dd></div>
+    <div><dt>Hadis</dt><dd><span lang="ar" dir="rtl" class="mds-arabic">الحديث</span></dd></div>
+    <div><dt>Siyer</dt><dd><span lang="ar" dir="rtl" class="mds-arabic">السيرة</span></dd></div>
+    <div><dt>Fıkıh</dt><dd><span lang="ar" dir="rtl" class="mds-arabic">الفقه</span></dd></div>
+    <div><dt>Tefsir</dt><dd><span lang="ar" dir="rtl" class="mds-arabic">التفسير</span></dd></div>
+    <div><dt>Belâgat</dt><dd><span lang="ar" dir="rtl" class="mds-arabic">البلاغة</span></dd></div>
+    <div><dt>Tecvid</dt><dd><span lang="ar" dir="rtl" class="mds-arabic">التجويد</span></dd></div>
+  </dl>
+</section>
+<p class="note" lang="en">A course is a bound book. The cloth is flat, with a blind-stamped double frame and şemse, and a spine on the inline-start side (the right side on an Arabic page). The stamp is ornament and never carries status. The covers look the same by day and by night; a 1px control edge keeps the mürekkep cloth visible on the night page. One course keeps one cloth everywhere: the one its manager chose, or FNV-1a of its id mod 4. So two courses of one science may differ. Label ratios are from contrast.md.</p>
 </body></html>

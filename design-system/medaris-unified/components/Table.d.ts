@@ -12,7 +12,7 @@ export interface TableProps<Row = any> {
   /** the sorted column; the caller sorts the rows */
   sort?: TableSort;
   onSortChange?: TableSortHandler;
-  /** below 768: scroll inside the frame (canonical) or stack each row as a card */
+  /** below 768: scroll inside the frame (the default) or stack each row as a card */
   responsive?: 'scroll' | 'stack';
   className?: string;
 }

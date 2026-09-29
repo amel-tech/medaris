@@ -11,7 +11,7 @@ export interface DialogProps extends Omit<React.DialogHTMLAttributes<HTMLDialogE
   eyebrow?: string;
   /** alert: a confirmation — role="alertdialog", the backdrop does nothing, focus starts on the first footer button */
   kind?: 'dialog' | 'alert';
-  /** 400 / 640 / 960; lg is for reading, never for a form */
+  /** 440 / 640 / 960; lg is for reading, never for a form */
   size?: 'sm' | 'md' | 'lg';
   /** beside the close button, never in the footer */
   headerActions?: React.ReactNode;

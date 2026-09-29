@@ -1,19 +1,31 @@
-<!-- @dsCard group="Foundations" viewport="820x520" name="Icons" subtitle="75 names from one sprite on a 24 grid, currentColor only; arrows and chevrons mirror in RTL" -->
+<!-- @dsCard group="Foundations" viewport="1040x940" name="Icons" subtitle="Phosphor Regular from one sprite, in currentColor: an icon takes the text role of its place; fill only as a state; arrows and chevrons mirror in RTL" -->
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:var(--space-lg);background:var(--background-white);font-family:var(--font-ui);color:var(--text-neutral-primary)}
-.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:0 var(--space-sm);margin:var(--space-sm) 0 0;padding:0;list-style:none}
-.grid li{display:flex;align-items:center;gap:var(--space-sm);block-size:26px;min-inline-size:0;color:var(--icon-neutral-secondary)}
-.grid code,.m{font-family:var(--font-mono);font-size:var(--fs-footnote);color:var(--text-neutral-secondary);white-space:nowrap}
-.d{font-size:var(--fs-caption);color:var(--text-brand-primary)}
-.row{display:flex;align-items:flex-end;gap:var(--space-xl);margin-block-start:var(--space-md);padding-block-start:var(--space-md);border-block-start:var(--border-s) solid var(--border-neutral-primary)}
-.col{display:flex;flex-direction:column;gap:var(--space-sm)}
-.set{display:flex;align-items:center;gap:var(--space-md);color:var(--icon-neutral-secondary)}
-.set span{display:flex;flex-direction:column;align-items:center;gap:var(--space-xs)}
-.star{color:var(--icon-rating)}
-.note{margin:0;max-inline-size:280px;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-tertiary)}
+body{margin:0;padding:var(--space-8);background:var(--background-neutral-page);font-family:var(--font-ui);color:var(--text-neutral-default);display:flex;flex-direction:column;gap:var(--space-6)}
+.sheet{padding:var(--space-5) var(--space-6);background:var(--background-neutral-surface);border:var(--border-width-thin) solid var(--border-neutral-subtle);border-radius:var(--radius-surface)}
+.grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0 var(--space-3);margin:var(--space-3) 0 0;padding:0;list-style:none}
+.grid li{display:flex;align-items:center;gap:var(--space-2);block-size:28px;min-inline-size:0;color:var(--text-neutral-default)}
+.grid code{font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--text-neutral-muted);white-space:nowrap;overflow:clip visible;text-overflow:ellipsis}
+.d{font-size:var(--fs-caption);color:var(--text-brand-default)}
+.row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-5);align-items:start}
+.col{display:flex;flex-direction:column;gap:var(--space-3)}
+.set{display:flex;align-items:flex-end;gap:var(--space-5)}
+.set > span{display:flex;flex-direction:column;align-items:center;gap:var(--space-2)}
+.m{font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--text-neutral-subtle)}
+.roles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-3) var(--space-6);margin:0;padding:0;list-style:none;font-size:var(--fs-body-sm)}
+.roles li{display:flex;align-items:center;gap:var(--space-2)}
+.r-default{color:var(--text-neutral-default)}
+.r-subtle{color:var(--text-neutral-subtle)}
+.r-brand{color:var(--text-brand-default)}
+.r-success{color:var(--text-success-default)}
+.r-error{color:var(--text-error-default)}
+.r-rating{color:var(--icon-rating)}
+.r-muted{color:var(--text-neutral-muted)}
+.roles .m{margin-inline-start:var(--space-1)}
+.note{margin:0;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-subtle)}
 </style></head><body>
-<p class="mds-eyebrow" lang="en">Registry — Phosphor regular; fill twins beside star, play, bookmark; <span aria-hidden="true">↔</span> mirrors under RTL</p>
-<ul class="grid" lang="en">
+<div class="sheet">
+  <p class="mds-eyebrow">Kayıt defteri · <code lang="en">assets/icons.svg</code>; star, play ve bookmark için dolu bir ikiz; <span aria-hidden="true">↔</span> sağdan sola yazıda aynalanır</p>
+  <ul class="grid" lang="en">
 <li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#search"/></svg><code>search</code></li>
 <li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#bell"/></svg><code>bell</code></li>
 <li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#globe"/></svg><code>globe</code></li>
@@ -89,31 +101,58 @@ body{margin:0;padding:var(--space-lg);background:var(--background-white);font-fa
 <li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#video"/></svg><code>video</code></li>
 <li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#calendarPlus"/></svg><code>calendarPlus</code></li>
 <li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#menu"/></svg><code>menu</code></li>
-</ul>
+<li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#courses"/></svg><code>courses</code></li>
+<li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#done"/></svg><code>done</code></li>
+<li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#chats"/></svg><code>chats</code></li>
+<li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#icazet"/></svg><code>icazet</code></li>
+<li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#inbox"/></svg><code>inbox</code></li>
+<li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#kosk"/></svg><code>kosk</code></li>
+<li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#medrese"/></svg><code>medrese</code></li>
+<li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><code>moon</code></li>
+<li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><code>sun</code></li>
+<li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#note"/></svg><code>note</code></li>
+<li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#headphones"/></svg><code>headphones</code></li>
+<li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#key"/></svg><code>key</code></li>
+<li><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#envelope"/></svg><code>envelope</code></li>
+  </ul>
+</div>
 <div class="row">
-  <div class="col">
-    <p class="mds-eyebrow" lang="en">Sizes</p>
+  <div class="sheet col">
+    <p class="mds-eyebrow">Boylar</p>
     <div class="set">
       <span><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#calendar"/></svg><code class="m" lang="en">sm 16</code></span>
       <span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#calendar"/></svg><code class="m" lang="en">md 20</code></span>
       <span><svg class="mds-icon mds-icon--lg" aria-hidden="true"><use href="../assets/icons.svg#calendar"/></svg><code class="m" lang="en">lg 24</code></span>
     </div>
   </div>
-  <div class="col">
-    <p class="mds-eyebrow" lang="en">Filled</p>
+  <div class="sheet col">
+    <p class="mds-eyebrow">Dolgu bir durumdur</p>
     <div class="set">
-      <span class="star"><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#star"/></svg><code class="m" lang="en">star</code></span>
-      <span class="star"><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#star-fill"/></svg><code class="m" lang="en">filled</code></span>
+      <span class="r-rating"><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#star"/></svg><code class="m" lang="en">star</code></span>
+      <span class="r-rating"><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#star-fill"/></svg><code class="m" lang="en">filled</code></span>
+      <span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#bookmark"/></svg><code class="m" lang="en">bookmark</code></span>
+      <span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#bookmark-fill"/></svg><code class="m" lang="en">saved</code></span>
     </div>
   </div>
-  <div class="col">
+  <div class="sheet col">
     <p class="mds-eyebrow" lang="en">dir="ltr" · dir="rtl"</p>
     <div class="set">
-      <span dir="ltr"><svg class="mds-icon mds-icon--directional" aria-hidden="true"><use href="../assets/icons.svg#arrowRight"/></svg><code class="m" lang="en">arrowRight</code></span>
-      <span dir="rtl"><svg class="mds-icon mds-icon--directional" aria-hidden="true"><use href="../assets/icons.svg#arrowRight"/></svg><code class="m" lang="en" dir="ltr">arrowRight</code></span>
-      <span dir="rtl"><svg class="mds-icon mds-icon--directional" aria-hidden="true"><use href="../assets/icons.svg#chevronRight"/></svg><code class="m" lang="en" dir="ltr">chevronRight</code></span>
+      <span dir="ltr"><svg class="mds-icon mds-icon--directional" aria-hidden="true"><use href="../assets/icons.svg#arrowRight"/></svg><code class="m" lang="en">ltr</code></span>
+      <span dir="rtl"><svg class="mds-icon mds-icon--directional" aria-hidden="true"><use href="../assets/icons.svg#arrowRight"/></svg><code class="m" lang="en" dir="ltr">rtl</code></span>
+      <span dir="ltr"><svg class="mds-icon mds-icon--directional" aria-hidden="true"><use href="../assets/icons.svg#chevronRight"/></svg><code class="m" lang="en">ltr</code></span>
+      <span dir="rtl"><svg class="mds-icon mds-icon--directional" aria-hidden="true"><use href="../assets/icons.svg#chevronRight"/></svg><code class="m" lang="en" dir="ltr">rtl</code></span>
     </div>
   </div>
-  <p class="note" lang="en">Every glyph fills with <code>currentColor</code>. A decorative icon is <code>aria-hidden</code>; an icon-only control is named by the control. Add a glyph to <code>assets/icons.svg</code>, never a hand-drawn path.</p>
 </div>
+  <div class="sheet col">
+    <p class="mds-eyebrow">Renk, bulunduğu yerin metin rolüdür</p>
+    <ul class="roles">
+      <li><svg class="mds-icon mds-icon--sm r-default" aria-hidden="true"><use href="../assets/icons.svg#plus"/></svg><span class="r-default">Kurs oluştur</span><span class="m" lang="en">button</span></li>
+      <li><svg class="mds-icon mds-icon--sm r-subtle" aria-hidden="true"><use href="../assets/icons.svg#calendar"/></svg><span class="r-muted">Oturumlar</span><span class="m" lang="en">nav item</span></li>
+      <li><svg class="mds-icon mds-icon--sm r-brand" aria-hidden="true"><use href="../assets/icons.svg#courses"/></svg><span class="r-default">Kurslar</span><span class="m" lang="en">current page</span></li>
+      <li><svg class="mds-icon mds-icon--sm r-success" aria-hidden="true"><use href="../assets/icons.svg#done"/></svg><span class="r-default">Ders tamamlandı</span><span class="m" lang="en">done</span></li>
+      <li><svg class="mds-icon mds-icon--sm r-error" aria-hidden="true"><use href="../assets/icons.svg#warning"/></svg><span class="r-error">Bağlantı açılamadı</span><span class="m" lang="en">error</span></li>
+    </ul>
+  </div>
+<p class="note" lang="en">One weight, Phosphor Regular: its stroke matches the text stem. There are no icon colour roles: a glyph takes the text role of its place (only a set star and a platform dot have domain colours), and every text role holds 4.5:1 on its ground in both themes. A decorative icon is <code>aria-hidden</code>; an icon-only control is named by the control. Add a glyph by copying its Phosphor path into the sprite and running <code>icons.mjs</code>, never by drawing one.</p>
 </body></html>

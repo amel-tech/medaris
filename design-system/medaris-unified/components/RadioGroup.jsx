@@ -27,6 +27,7 @@ export function RadioGroup({
               type="radio" className="mds-radio" name={name} value={o.value}
               disabled={o.disabled} aria-labelledby={labelId} aria-describedby={descId} onChange={change} {...state}
             />
+            {o.icon && <span className="mds-choice__icon" aria-hidden="true">{o.icon}</span>}
             <span className="mds-choice__text">
               <span className="mds-choice__label" id={labelId}>{o.label}</span>
               {o.description && <span className="mds-choice__desc" id={descId}>{o.description}</span>}

@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-export interface SessionJoinProps extends React.HTMLAttributes<HTMLElement> {
+export interface SessionJoinProps extends Omit<React.HTMLAttributes<HTMLElement>, 'title'> {
   /** ISO 8601 with offset */
   startsAt: string;
   /** printed after the time: <time datetime="PT60M">60 dk</time> */
@@ -13,6 +13,10 @@ export interface SessionJoinProps extends React.HTMLAttributes<HTMLElement> {
   courseZoneName?: string;
   /** content/status-map.json session: upcoming is PLANNED, with a countdown */
   state?: 'upcoming' | 'live' | 'ended' | 'cancelled';
+  /** the session's title, dir="auto"; the card is then named by it and the start. Leave it out on the session's own page */
+  title?: React.ReactNode;
+  /** the title's heading level; default 2 */
+  headingLevel?: 2 | 3 | 4;
   /** resolved by the app from the link's host (libs/utils resolveMeetingPlatform); never parsed here */
   platform?: 'google-meet' | 'zoom' | 'jitsi' | 'unknown';
   /** default from content/meeting-platforms.json; "Bilinmeyen platform" for unknown */
@@ -65,7 +69,7 @@ export interface SessionJoinProps extends React.HTMLAttributes<HTMLElement> {
   localTimeLabel?: string;
   /** default "dk" */
   minuteUnit?: string;
-  /** default "tr-TR": the page's lang */
+  /** dates and numbers; default the nearest lang attribute, else tr-TR */
   locale?: string;
   className?: string;
 }

@@ -11,7 +11,7 @@ export interface AppBarProps {
   navLabel?: string;
   /** the sheet's close button; default "Kapat" */
   closeLabel?: string;
-  /** the NavItems, rendered in the sheet inside .mds-nav--light */
+  /** the NavSections and NavItems, rendered in the sheet's <nav> */
   children: React.ReactNode;
   /** at most two icon buttons at inline-end, e.g. notifications */
   actions?: React.ReactNode;

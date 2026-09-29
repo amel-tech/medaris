@@ -24,6 +24,9 @@ function usePageLocale(ref, locale) {
   return locale || found || 'tr-TR';
 }
 
+const arabicScript = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/;
+const arabicPage = /^(ar|ota-arab|fa|ur)\b/i;
+
 export function Avatar({ name, src, size = 'md', decorative = false, entity = false, locale, className = '', ...rest }) {
   const ref = React.useRef(null);
   const lang = usePageLocale(ref, locale);
@@ -31,9 +34,11 @@ export function Avatar({ name, src, size = 'md', decorative = false, entity = fa
     .filter(Boolean).join(' ');
   // Standalone, the avatar is an image named by the person; beside the printed name it is hidden.
   const a11y = decorative || !name ? { 'aria-hidden': 'true' } : { role: 'img', 'aria-label': name };
+  // A Latin-script name on an Arabic-script page is a Latin island (MDS-TYPE-07): its initials keep the Latin face.
+  const island = name && !arabicScript.test(name) && arabicPage.test(lang) ? 'tr' : undefined;
   return (
-    <span ref={ref} className={cls} {...a11y} {...rest}>
-      {src ? <img src={src} alt="" /> : initials(name, lang)}
+    <span ref={ref} className={cls} lang={island} {...a11y} {...rest}>
+      {src ? <img src={src} alt="" /> : initials(name, island || lang)}
     </span>
   );
 }

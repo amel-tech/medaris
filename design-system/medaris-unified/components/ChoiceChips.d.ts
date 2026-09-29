@@ -1,10 +1,10 @@
 import * as React from 'react';
 
 export interface ChoiceChipsProps {
-  /** what the chips choose ("Alan", "Günler"); announced even when hidden */
+  /** what the chips choose ("İlim", "Ders günleri"); announced even when hidden */
   legend: string;
   name: string;
-  /** false: a filter over a list on screen, the legend visually hidden; true: a form field such as "Günler" */
+  /** false: a filter over a list on screen, the legend visually hidden; true: a form field such as "Ders günleri" */
   legendVisible?: boolean;
   options: ChoiceChipsOption[];
   /** checkboxes instead of radios: any number of chips checked */

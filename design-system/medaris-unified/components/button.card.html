@@ -1,65 +1,122 @@
-<!-- @dsCard group="Actions" viewport="820x680" name="Button" subtitle="Five variants × four sizes × four states — heights 24 / 32 / 36 / 42, read off the Figma symbols; links, busy, full width and the icon button's tooltip" -->
+<!-- @dsCard group="Actions" viewport="880x1260" name="Button" subtitle="Six variants at rest, hover, focus and disabled; heights 24 / 32 / 40 / 48; a link, busy, icons, the icon button with its tooltip, confirmation footers and the full-width phone button" -->
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:var(--space-lg);background:var(--background-white);font-family:var(--font-ui);color:var(--text-neutral-primary)}
-table{border-collapse:collapse}
-th{font-family:var(--font-mono);font-size:var(--fs-footnote);text-transform:uppercase;letter-spacing:var(--tracking-wide);color:var(--text-neutral-tertiary);font-weight:var(--weight-regular);text-align:start;padding-block:0 var(--space-sm);padding-inline:0 var(--space-md)}
-td{padding-block:0 12px;padding-inline:0 var(--space-md);vertical-align:middle}
-.rl{font-family:var(--font-mono);font-size:var(--fs-footnote);color:var(--text-neutral-secondary);padding-inline-end:var(--space-md)}
-.row{display:flex;align-items:center;gap:12px}
-.sec{margin-block-start:var(--space-lg)}
-.sec .mds-eyebrow{margin-block-end:var(--space-sm)}
-.tip{padding-block-start:var(--space-xl)}
-.phone{inline-size:342px}
-.note{margin:var(--space-md) 0 0;font-size:var(--fs-caption);color:var(--text-neutral-tertiary);line-height:var(--lh-body);max-inline-size:760px}
-.note code{white-space:nowrap}
+body{padding:var(--space-8)}
+.sec,.col{display:flex;flex-direction:column;gap:var(--space-3)}
+.sec+.sec{margin-block-start:var(--space-8)}
+.head{display:flex;flex-direction:column;gap:var(--space-1)}
+.grid{border-collapse:collapse}
+.grid th{padding-block:0 var(--space-2);padding-inline:0 var(--space-6);text-align:start;vertical-align:bottom}
+.grid td{padding-block:var(--space-2);padding-inline:0 var(--space-6);vertical-align:middle}
+.grid tbody th{padding-block:var(--space-2);vertical-align:middle}
+.k{font-family:var(--font-mono);font-size:var(--fs-caption);font-weight:var(--weight-regular);color:var(--text-neutral-muted)}
+.row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-6)}
+.fig{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-2);margin:0}
+.fig .mds-caption{white-space:nowrap}
+.tips{padding-block:var(--space-10)}
+.pair{display:grid;grid-template-columns:minmax(0,1fr) 342px;gap:var(--space-6);align-items:start}
+.foot{display:flex;flex-direction:column;border:var(--border-width-thin) solid var(--border-neutral-subtle);border-radius:var(--radius-surface);background:var(--background-neutral-surface)}
+.foot>div{display:flex;align-items:center;justify-content:flex-end;gap:var(--space-2);padding:var(--space-4) var(--space-6)}
+.foot>div+div{border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+.foot p{margin-inline-end:auto}
+.enrol{display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-4);border:var(--border-width-thin) solid var(--border-neutral-subtle);border-radius:var(--radius-surface);background:var(--background-neutral-surface)}
+/* Hover and focus drawn at rest, so the card shows them; each mirrors its rule in components.css. */
+.is-hover.mds-btn--primary{background:var(--background-action-bold-hover)}
+.is-hover:is(.mds-btn--secondary,.mds-btn--ghost){background:var(--background-neutral-hover)}
+.is-hover.mds-btn--outline{background:var(--background-neutral-hover);border-color:var(--border-neutral-strong)}
+.is-hover.mds-btn--destructive{background:var(--background-error-bold);border-color:var(--background-error-bold);color:var(--text-neutral-on-bold)}
+.is-hover.mds-btn--link{text-decoration-thickness:2px}
+.is-focus{outline:var(--ring-focus-outline);outline-offset:var(--ring-focus-offset);box-shadow:var(--ring-focus)}
 </style></head><body>
-<table>
-<tr lang="en"><th></th><th>Default</th><th>Hover</th><th>Disabled</th><th>Focus</th></tr>
-<tr><td class="rl" lang="en">primary</td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--primary">Ders oluştur</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--primary" style="background:var(--background-brand-secondary)">Ders oluştur</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--primary is-disabled">Ders oluştur</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--primary" style="box-shadow:var(--ring-focus)">Ders oluştur</button></td></tr>
-<tr><td class="rl" lang="en">secondary</td>
+
+<section class="sec">
+<div class="head"><p class="mds-eyebrow">Tür ve durum</p><p class="mds-caption">Birincil işlem mürekkeple yazılır. Pasif düğme tonunu bırakır, soluklaşmaz.</p></div>
+<table class="grid">
+<thead><tr><td></td><th scope="col" class="mds-eyebrow">Olağan</th><th scope="col" class="mds-eyebrow">Üzerinde</th><th scope="col" class="mds-eyebrow">Odakta</th><th scope="col" class="mds-eyebrow">Pasif</th></tr></thead>
+<tbody>
+<tr><th scope="row" class="k" lang="en">primary</th>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--primary">Oturumu kaydet</button></td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--primary is-hover">Oturumu kaydet</button></td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--primary is-focus">Oturumu kaydet</button></td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--primary" disabled>Oturumu kaydet</button></td></tr>
+<tr><th scope="row" class="k" lang="en">secondary</th>
 <td><button type="button" class="mds-btn mds-btn--regular mds-btn--secondary">Talebe ekle</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--secondary" style="background:var(--background-neutral-tertiary)">Talebe ekle</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--secondary is-disabled">Talebe ekle</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--secondary" style="box-shadow:var(--ring-focus)">Talebe ekle</button></td></tr>
-<tr><td class="rl" lang="en">outline</td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--secondary is-hover">Talebe ekle</button></td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--secondary is-focus">Talebe ekle</button></td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--secondary" disabled>Talebe ekle</button></td></tr>
+<tr><th scope="row" class="k" lang="en">outline</th>
 <td><button type="button" class="mds-btn mds-btn--regular mds-btn--outline">Önizle</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--outline" style="background:var(--background-neutral-secondary)">Önizle</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--outline is-disabled">Önizle</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--outline" style="box-shadow:var(--ring-focus)">Önizle</button></td></tr>
-<tr><td class="rl" lang="en">ghost</td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--outline is-hover">Önizle</button></td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--outline is-focus">Önizle</button></td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--outline" disabled>Önizle</button></td></tr>
+<tr><th scope="row" class="k" lang="en">ghost</th>
 <td><button type="button" class="mds-btn mds-btn--regular mds-btn--ghost">Vazgeç</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--ghost" style="background:var(--background-neutral-secondary)">Vazgeç</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--ghost is-disabled">Vazgeç</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--ghost" style="box-shadow:var(--ring-focus)">Vazgeç</button></td></tr>
-<tr><td class="rl" lang="en">destructive</td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--ghost is-hover">Vazgeç</button></td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--ghost is-focus">Vazgeç</button></td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--ghost" disabled>Vazgeç</button></td></tr>
+<tr><th scope="row" class="k" lang="en">destructive</th>
 <td><button type="button" class="mds-btn mds-btn--regular mds-btn--destructive">Kalıcı olarak sil</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--destructive" style="background:var(--background-error-bold)">Kalıcı olarak sil</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--destructive is-disabled">Kalıcı olarak sil</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--destructive" style="box-shadow:var(--ring-focus)">Kalıcı olarak sil</button></td></tr>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--destructive is-hover">Kalıcı olarak sil</button></td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--destructive is-focus">Kalıcı olarak sil</button></td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--destructive" disabled>Kalıcı olarak sil</button></td></tr>
+<tr><th scope="row" class="k" lang="en">link</th>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--link">Tümünü gör</button></td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--link is-hover">Tümünü gör</button></td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--link is-focus">Tümünü gör</button></td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--link" disabled>Tümünü gör</button></td></tr>
+</tbody>
 </table>
+</section>
+
+<section class="sec">
+<div class="head"><p class="mds-eyebrow">Boyut</p><p class="mds-caption">Tablo satırındaki işlem mini, sayfanın işlemi regular, telefondaki kayıt kartı large.</p></div>
 <div class="row">
-<button type="button" class="mds-btn mds-btn--mini mds-btn--primary">Mini 24</button>
-<button type="button" class="mds-btn mds-btn--small mds-btn--primary">Small 32</button>
-<button type="button" class="mds-btn mds-btn--regular mds-btn--primary">Regular 36</button>
-<button type="button" class="mds-btn mds-btn--large mds-btn--primary">Large 42</button>
+<figure class="fig"><button type="button" class="mds-btn mds-btn--mini mds-btn--outline">Onayla</button><figcaption class="mds-caption k" lang="en">mini · 24</figcaption></figure>
+<figure class="fig"><button type="button" class="mds-btn mds-btn--small mds-btn--secondary"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#plus"/></svg>Talebe ekle</button><figcaption class="mds-caption k" lang="en">small · 32</figcaption></figure>
+<figure class="fig"><button type="button" class="mds-btn mds-btn--regular mds-btn--primary"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#plus"/></svg>Kurs oluştur</button><figcaption class="mds-caption k" lang="en">regular · 40</figcaption></figure>
+<figure class="fig"><button type="button" class="mds-btn mds-btn--large mds-btn--primary">Derse katıl</button><figcaption class="mds-caption k" lang="en">large · 48</figcaption></figure>
 </div>
-<div class="sec">
-<p class="mds-eyebrow" lang="en">Link · disabled link · busy · leading icon · icon button</p>
-<div class="row tip">
-<a class="mds-btn mds-btn--regular mds-btn--outline" href="#kurs">Kursu gör</a>
-<a class="mds-btn mds-btn--regular mds-btn--outline" role="link" aria-disabled="true">Kursu gör</a>
-<button type="submit" class="mds-btn mds-btn--regular mds-btn--primary" aria-disabled="true" aria-busy="true"><span class="mds-btn__spinner" aria-hidden="true"></span>Kaydet</button><span class="mds-visually-hidden" role="status">Yükleniyor</span>
-<button type="button" class="mds-btn mds-btn--regular mds-btn--secondary"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#plus"/></svg>Talebe ekle</button>
-<span class="mds-tooltip-anchor is-open"><button type="button" class="mds-btn mds-icon-btn mds-btn--regular mds-btn--ghost" aria-label="Bildirimler"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#bell"/></svg></button><span class="mds-tooltip" role="tooltip" aria-hidden="true">Bildirimler</span></span>
+</section>
+
+<section class="sec">
+<div class="head"><p class="mds-eyebrow">Bağlantı, meşgul, simge</p><p class="mds-caption">Meşgul düğme odağını ve adını korur. Yanındaki durum bölgesi “Yükleniyor” der.</p></div>
+<div class="row">
+<figure class="fig"><a class="mds-btn mds-btn--regular mds-btn--outline" href="#kurs">Kursu gör</a><figcaption class="mds-caption">Bağlantı</figcaption></figure>
+<figure class="fig"><a class="mds-btn mds-btn--regular mds-btn--outline" role="link" aria-disabled="true">Kursu gör</a><figcaption class="mds-caption">Pasif bağlantı</figcaption></figure>
+<figure class="fig"><span><button type="submit" class="mds-btn mds-btn--regular mds-btn--primary" aria-disabled="true" aria-busy="true"><span class="mds-btn__spinner" aria-hidden="true"></span>Kaydet</button><span class="mds-visually-hidden" role="status">Yükleniyor</span></span><figcaption class="mds-caption">Meşgul</figcaption></figure>
+<figure class="fig"><button type="button" class="mds-btn mds-btn--regular mds-btn--outline"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#download"/></svg>Listeyi indir</button><figcaption class="mds-caption">Simge başta</figcaption></figure>
+<figure class="fig"><a class="mds-btn mds-btn--regular mds-btn--secondary" href="#ders">Derse devam et<svg class="mds-icon mds-icon--sm mds-icon--directional" aria-hidden="true"><use href="../assets/icons.svg#arrowRight"/></svg></a><figcaption class="mds-caption">Simge sonda</figcaption></figure>
+</div>
+</section>
+
+<section class="sec">
+<div class="head"><p class="mds-eyebrow">Simge düğmesi ve ipucu</p><p class="mds-caption">Simge düğmesinin adı ipucunda da görünür. İpucu üzerine gelince ve klavyeyle odaklanınca açılır, Esc ile kapanır.</p></div>
+<div class="row tips">
+<figure class="fig"><span class="mds-tooltip-anchor"><button type="button" class="mds-btn mds-icon-btn mds-btn--mini mds-btn--ghost" aria-label="Diğer işlemler"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#more"/></svg></button><span class="mds-tooltip" role="tooltip" aria-hidden="true">Diğer işlemler</span></span><figcaption class="mds-caption k" lang="en">mini</figcaption></figure>
+<figure class="fig"><span class="mds-tooltip-anchor"><button type="button" class="mds-btn mds-icon-btn mds-btn--small mds-btn--ghost" aria-label="Kapat"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#close"/></svg></button><span class="mds-tooltip" role="tooltip" aria-hidden="true">Kapat</span></span><figcaption class="mds-caption k" lang="en">small</figcaption></figure>
+<figure class="fig"><span class="mds-tooltip-anchor is-open"><button type="button" class="mds-btn mds-icon-btn mds-btn--regular mds-btn--ghost" aria-label="Bildirimler"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#bell"/></svg></button><span class="mds-tooltip" role="tooltip" aria-hidden="true">Bildirimler</span></span><figcaption class="mds-caption k" lang="en">regular</figcaption></figure>
+<figure class="fig"><span class="mds-tooltip-anchor"><button type="button" class="mds-btn mds-icon-btn mds-btn--large mds-btn--outline" aria-label="Menüyü aç"><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#menu"/></svg></button><span class="mds-tooltip" role="tooltip" aria-hidden="true">Menüyü aç</span></span><figcaption class="mds-caption k" lang="en">large</figcaption></figure>
+<figure class="fig"><span class="mds-tooltip-anchor"><button type="button" class="mds-btn mds-icon-btn mds-btn--regular mds-btn--outline" aria-label="Bağlantıyı kopyala"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#copy"/></svg></button><span class="mds-tooltip" role="tooltip" aria-hidden="true">Bağlantıyı kopyala</span></span><figcaption class="mds-caption k" lang="en">outline</figcaption></figure>
+<figure class="fig"><span class="mds-tooltip-anchor"><button type="button" class="mds-btn mds-icon-btn mds-btn--regular mds-btn--ghost" aria-label="Dersi kaydet" aria-pressed="true"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#bookmark-fill"/></svg></button><span class="mds-tooltip" role="tooltip" aria-hidden="true">Dersi kaydet</span></span><figcaption class="mds-caption">Basılı</figcaption></figure>
+<figure class="fig"><span class="mds-tooltip-anchor mds-tooltip-anchor--bottom is-open"><button type="button" class="mds-btn mds-btn--small mds-btn--ghost" aria-describedby="tip-ics"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#calendarPlus"/></svg>Takvime ekle</button><span class="mds-tooltip" role="tooltip" id="tip-ics">Takvim dosyası (.ics) indirilir</span></span><figcaption class="mds-caption">Açıklayan ipucu</figcaption></figure>
+</div>
+</section>
+
+<section class="sec">
+<div class="pair">
+<div class="col">
+<div class="head"><p class="mds-eyebrow">Onay altlığı</p><p class="mds-caption">Geri alınabilen işlem birincil düğmeyle onaylanır. Kırmızı yalnızca kalıcı silmedir.</p></div>
+<div class="foot">
+<div><p class="mds-caption">Kursu gizle</p><button type="button" class="mds-btn mds-btn--regular mds-btn--ghost">Vazgeç</button><button type="button" class="mds-btn mds-btn--regular mds-btn--primary">Gizle</button></div>
+<div><p class="mds-caption">Kursu kalıcı olarak sil</p><button type="button" class="mds-btn mds-btn--regular mds-btn--ghost">Vazgeç</button><button type="button" class="mds-btn mds-btn--regular mds-btn--destructive">Kalıcı olarak sil</button></div>
 </div>
 </div>
-<div class="sec phone">
-<p class="mds-eyebrow" lang="en">Full width — the sticky enrol card at 390</p>
+<div class="col">
+<div class="head"><p class="mds-eyebrow">Tam genişlik</p><p class="mds-caption">Telefondaki kayıt kartı, 390 genişlikte.</p></div>
+<div class="enrol">
+<div><h2 class="mds-h5">Emsile ve Bina</h2><p class="mds-caption">Sarf · 12 hafta · Cmt 21:00</p></div>
 <button type="button" class="mds-btn mds-btn--large mds-btn--primary mds-btn--full">Kursa kaydol</button>
 </div>
-<p class="note" lang="en">One primary per surface; destructive only ever says “Kalıcı olarak sil”, to the right of a ghost “Vazgeç” (MDS-COMP-03, MDS-COMP-05). <b>Mini</b> is the only size that drops to <code>--radius-xxs</code> and 12px text; the other three share 14px Medium and <code>--radius-s</code>, and differ only in height and inline padding (8 / 12 / 16 / 24). Destructive fills with <code>--background-error-base</code>, whose hover is <code>--background-error-bold</code>; white on it is 3.76:1 as extracted (OPEN-2). Focus is <code>--ring-focus</code> on every variant; its colour is OPEN-1. A busy button keeps its focus and name: <code>aria-disabled</code> and <code>aria-busy</code>, the spinner in place of the leading icon, and “Yükleniyor” in a status region beside it. A disabled link is <code>&lt;a role="link" aria-disabled="true"&gt;</code> without <code>href</code>. The icon button’s tooltip is its <code>aria-label</code>, shown on hover and keyboard focus.</p>
+</div>
+</div>
+</section>
 </body></html>

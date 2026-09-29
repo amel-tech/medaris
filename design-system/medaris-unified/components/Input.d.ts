@@ -1,10 +1,11 @@
 import * as React from 'react';
 
 export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
+  /** 24 · 32 · 40 (32 in a compact region) · 48 px */
   size?: 'mini' | 'small' | 'regular' | 'large';
   /** sets aria-invalid="true"; inside Field, the field's error sets it */
   error?: boolean;
-  /** IBM Plex Mono and dir="ltr": meeting links, IDs, handles */
+  /** Atkinson Hyperlegible Mono and dir="ltr": meeting links, IDs, handles */
   mono?: boolean;
   /** a decorative glyph at inline-start (a search icon); aria-hidden */
   leading?: React.ReactNode;

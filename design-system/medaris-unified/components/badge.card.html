@@ -1,32 +1,85 @@
-<!-- @dsCard group="Data display" viewport="760x340" name="Badge" subtitle="24px status label in two families: what a thing is, and how it is going — brand for in progress, live with its dot for a session on air" -->
+<!-- @dsCard group="Data display" viewport="760x860" name="Badge" subtitle="A 24px status label in two families: what a thing is, and how it is going; glyphs, counted enrolment badges in a Nizam course row, and the Arabic interface" -->
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:var(--space-lg);background:var(--background-white);font-family:var(--font-ui);color:var(--text-neutral-primary)}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-block:var(--space-sm) var(--space-md)}
-.note{margin:var(--space-xs) 0 0;font-size:var(--fs-caption);color:var(--text-neutral-tertiary);line-height:var(--lh-body);max-inline-size:700px}
-.note code{white-space:nowrap}
+body{padding:var(--space-8)}
+.sec{display:flex;flex-direction:column;gap:var(--space-3)}
+.sec+.sec{margin-block-start:var(--space-8)}
+.head{display:flex;flex-direction:column;gap:var(--space-1)}
+.row{display:flex;flex-wrap:wrap;align-items:flex-start;gap:var(--space-5)}
+.fig{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-2);margin:0}
+.k{font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--text-neutral-muted);white-space:nowrap}
+.course{display:flex;align-items:center;gap:var(--space-3)}
+.course__text{display:flex;flex-direction:column}
+.course__title{font-family:var(--font-reading);font-weight:var(--weight-semibold)}
+.counts{display:flex;flex-wrap:wrap;gap:var(--space-1)}
+.none{color:var(--text-neutral-subtle)}
+.ar{display:flex;flex-wrap:wrap;gap:var(--space-3)}
 </style></head><body>
-<p class="mds-eyebrow" lang="en">Identity — what a thing is</p>
+
+<section class="sec">
+<div class="head"><p class="mds-eyebrow">Kimlik: ne olduğu</p><p class="mds-caption">Bir şeyin kendi durumu. “Yayında” kenarsız bir mürekkep tonudur, “Onayla” düğmesiyle karışmaz.</p></div>
 <div class="row">
-<span class="mds-badge mds-badge--primary">Yayında</span>
-<span class="mds-badge mds-badge--secondary">Planlandı</span>
-<span class="mds-badge mds-badge--outline">Taslak</span>
-<span class="mds-badge mds-badge--ghost">Gizli</span>
-<span class="mds-badge mds-badge--destructive">Yasaklı</span>
+<figure class="fig"><span class="mds-badge mds-badge--primary">Yayında</span><figcaption class="k" lang="en">primary</figcaption></figure>
+<figure class="fig"><span class="mds-badge mds-badge--secondary">Planlandı</span><figcaption class="k" lang="en">secondary</figcaption></figure>
+<figure class="fig"><span class="mds-badge mds-badge--outline">Taslak</span><figcaption class="k" lang="en">outline</figcaption></figure>
+<figure class="fig"><span class="mds-badge mds-badge--ghost"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#eyeOff"/></svg>Gizli</span><figcaption class="k" lang="en">ghost</figcaption></figure>
+<figure class="fig"><span class="mds-badge mds-badge--destructive"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#ban"/></svg>Yasaklı</span><figcaption class="k" lang="en">destructive</figcaption></figure>
 </div>
-<p class="mds-eyebrow" lang="en">Progress — how it is going</p>
+</section>
+
+<section class="sec">
+<div class="head"><p class="mds-eyebrow">İlerleme: nasıl gittiği</p><p class="mds-caption">“Şu an canlı” her zaman noktası ve sözüyle gelir; hata ise simgesiyle. Renk tek başına bir şey söylemez.</p></div>
 <div class="row">
-<span class="mds-badge mds-badge--brand">Devam ediyor</span>
-<span class="mds-badge mds-badge--live"><span class="mds-badge__dot" aria-hidden="true"></span>Şu an canlı</span>
-<span class="mds-badge mds-badge--success">Tamamlandı</span>
-<span class="mds-badge mds-badge--warning">Başvuru</span>
-<span class="mds-badge mds-badge--info">Yeni</span>
+<figure class="fig"><span class="mds-badge mds-badge--brand">Devam ediyor</span><figcaption class="k" lang="en">brand</figcaption></figure>
+<figure class="fig"><span class="mds-badge mds-badge--live"><span class="mds-badge__dot" aria-hidden="true"></span>Şu an canlı</span><figcaption class="k" lang="en">live</figcaption></figure>
+<figure class="fig"><span class="mds-badge mds-badge--success"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Tamamlandı</span><figcaption class="k" lang="en">success</figcaption></figure>
+<figure class="fig"><span class="mds-badge mds-badge--warning"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#clock"/></svg>Onay bekliyor</span><figcaption class="k" lang="en">warning</figcaption></figure>
+<figure class="fig"><span class="mds-badge mds-badge--info">Yeni ders kaydı</span><figcaption class="k" lang="en">info</figcaption></figure>
 </div>
-<p class="mds-eyebrow" lang="en">With an icon — a lesson type, and the states that wait on OPEN-2</p>
+</section>
+
+<section class="sec">
+<div class="head"><p class="mds-eyebrow">Ders türü ve oturum</p><p class="mds-caption">Ders türü bir durum değildir: “Canlı ders” ikincil rozet ve simgesiyle yazılır.</p></div>
 <div class="row">
 <span class="mds-badge mds-badge--secondary"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#video"/></svg>Canlı ders</span>
-<span class="mds-badge mds-badge--secondary"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#clock"/></svg>Onay bekliyor</span>
-<span class="mds-badge mds-badge--secondary"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#link"/></svg>Bağlantı eksik</span>
-<span class="mds-badge mds-badge--outline"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#ban"/></svg>Yasaklı</span>
+<span class="mds-badge mds-badge--secondary"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#playCircle"/></svg>Video ders</span>
+<span class="mds-badge mds-badge--secondary"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#doc"/></svg>Doküman</span>
+<span class="mds-badge mds-badge--warning"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#link"/></svg>Bağlantı eksik</span>
+<span class="mds-badge mds-badge--ghost">Sona erdi</span>
+<span class="mds-badge mds-badge--outline">İptal edildi</span>
 </div>
-<p class="note" lang="en"><b>brand</b> is <code>--text-brand-primary</code> on <code>--background-brand-tertiary</code>, 8.24:1; <b>live</b> is <code>--text-live-primary</code> on <code>--background-live-subtle</code>, 5.30:1, and always carries its 8px dot beside the words. Live is the state of a session on air (“Şu an canlı”); the lesson type “Canlı ders” is <code>secondary</code> with its icon (MDS-COL-05). Primary's label is <code>--text-brand-inverse</code>, not white — the Figma file's own choice. As extracted, <b>warning</b> text measures 1.79:1 and white on <b>destructive</b> 3.76:1 (OPEN-2), and <b>info</b> 4.24:1 (SPEC-D3-03): no launch state uses them, so “Onay bekliyor”, “Bağlantı eksik” and “Yasaklı” are neutral with an icon until those decisions are made (<code>content/status-map.json</code>).</p>
+</section>
+
+<section class="sec">
+<div class="head"><p class="mds-eyebrow">Nizam’da kurs satırı</p><p class="mds-caption">Kursun kendi durumu bir sütunda. Kayıt durumları sayılı rozetlerle ayrı sütunda.</p></div>
+<div class="mds-table-wrap" data-density="compact">
+<table class="mds-table">
+<thead><tr><th scope="col">Kurs</th><th scope="col">Kayıtlar</th><th scope="col">Durum</th></tr></thead>
+<tbody>
+<tr><th scope="row"><span class="course"><span class="mds-cover mds-cover--bordo mds-cover--xs" aria-hidden="true"></span><span class="course__text"><span class="course__title">Emsile ve Bina</span><span class="mds-caption">Sarf · 12 hafta</span></span></span></th>
+<td><span class="counts"><span class="mds-badge mds-badge--warning"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#clock"/></svg>3 onay bekliyor</span></span></td>
+<td><span class="mds-badge mds-badge--primary">Yayında</span></td></tr>
+<tr><th scope="row"><span class="course"><span class="mds-cover mds-cover--laciverd mds-cover--xs" aria-hidden="true"></span><span class="course__text"><span class="course__title">Bina ve İzhar Şerhi</span><span class="mds-caption">Sarf · 10 hafta</span></span></span></th>
+<td><span class="counts"><span class="mds-badge mds-badge--warning"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#clock"/></svg>2 onay bekliyor</span><span class="mds-badge mds-badge--destructive"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#ban"/></svg>1 yasaklı</span></span></td>
+<td><span class="mds-badge mds-badge--primary">Yayında</span></td></tr>
+<tr><th scope="row"><span class="course"><span class="mds-cover mds-cover--murekkep mds-cover--xs" aria-hidden="true"></span><span class="course__text"><span class="course__title">İsâgûcî Şerhi</span><span class="mds-caption">Mantık · 14 hafta</span></span></span></th>
+<td><span class="none">—</span></td>
+<td><span class="mds-badge mds-badge--outline">Taslak</span></td></tr>
+<tr><th scope="row"><span class="course"><span class="mds-cover mds-cover--bordo mds-cover--xs" aria-hidden="true"></span><span class="course__text"><span class="course__title">Merâhu’l-Ervâh</span><span class="mds-caption">Sarf · 10 hafta</span></span></span></th>
+<td><span class="none">—</span></td>
+<td><span class="mds-badge mds-badge--ghost"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#eyeOff"/></svg>Gizli</span></td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="sec">
+<div class="head"><p class="mds-eyebrow">Arapça arayüz</p><p class="mds-caption">Aynı işaretleme, lang="ar" dir="rtl". Nokta ve simge sözün önünde, sağda durur.</p></div>
+<div class="ar" lang="ar" dir="rtl">
+<span class="mds-badge mds-badge--primary">منشور</span>
+<span class="mds-badge mds-badge--outline">مسودة</span>
+<span class="mds-badge mds-badge--live"><span class="mds-badge__dot" aria-hidden="true"></span>مباشر الآن</span>
+<span class="mds-badge mds-badge--success"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>مكتمل</span>
+<span class="mds-badge mds-badge--destructive"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#ban"/></svg>محظور</span>
+</div>
+</section>
 </body></html>

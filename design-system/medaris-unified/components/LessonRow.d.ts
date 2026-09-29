@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 export interface LessonRowProps extends Omit<React.HTMLAttributes<HTMLLIElement>, 'title'> {
-  /** rendered with dir="auto"; an Arabic run inside it carries lang="ar" dir="rtl" className="mds-arabic" */
+  /** rendered with dir="auto"; an Arabic run inside it carries lang="ar" dir="rtl" className="mds-arabic", without harakat */
   title: React.ReactNode;
   /** the PRD lesson type, lower-cased; fixes the glyph and the label. Only live is authored at launch */
   type: 'video' | 'document' | 'live' | 'quiz';
@@ -35,7 +35,7 @@ export interface LessonRowProps extends Omit<React.HTMLAttributes<HTMLLIElement>
   localTimeLabel?: string;
   /** default "dk" */
   minuteUnit?: string;
-  /** default "tr-TR": the page's lang */
+  /** dates and numbers; default the nearest lang attribute, else tr-TR */
   locale?: string;
   /** badges or row actions, above the stretched link */
   trailing?: React.ReactNode;

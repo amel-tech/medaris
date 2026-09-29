@@ -1,6 +1,8 @@
 import React from 'react';
 
-const tones = ['sky', 'blue', 'green', 'slate'];
+// The hash order. Changing it re-colours every course that has no chosen tone.
+const tones = ['laciverd', 'bordo', 'zumrut', 'murekkep'];
+const arabicScript = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/;
 
 /** The tone a seed hashes to: FNV-1a 32-bit over its UTF-8 bytes, mod 4. Lone surrogates count
  *  as U+FFFD, as TextEncoder encodes them, so every platform gets the same tone. */
@@ -18,12 +20,16 @@ export function coverTone(seed = '') {
   return tones[(h >>> 0) % 4];
 }
 
-export function CoverPattern({ tone, seed, size = 'md', label, className = '', ...rest }) {
-  const t = tones.includes(tone) ? tone : seed != null && seed !== '' ? coverTone(seed) : 'slate';
+export function CoverPattern({ tone, seed, size = 'md', label, labelLang, className = '', ...rest }) {
+  const t = tones.includes(tone) ? tone : seed != null && seed !== '' ? coverTone(seed) : 'murekkep';
   const cls = ['mds-cover', `mds-cover--${t}`, size !== 'md' && `mds-cover--${size}`, className].filter(Boolean).join(' ');
+  // An Arabic label needs lang="ar" on itself: that sets it in Naskh (MDS-TYPE-04).
+  const lang = labelLang ?? (label && arabicScript.test(label) ? 'ar' : undefined);
   return (
     <div className={cls} {...rest}>
-      {label && <p className="mds-eyebrow mds-cover__label" dir="auto">{label}</p>}
+      {label && size !== 'xs' && (
+        <p className="mds-eyebrow mds-cover__label" lang={lang} dir={lang === 'ar' ? 'rtl' : 'auto'}>{label}</p>
+      )}
     </div>
   );
 }

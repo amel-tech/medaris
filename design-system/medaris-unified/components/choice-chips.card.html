@@ -1,28 +1,38 @@
-<!-- @dsCard group="Forms" viewport="760x360" name="Choice chips" subtitle="Native radios or checkboxes as chips: a list filter, or a form field such as the weekdays" -->
+<!-- @dsCard group="Forms" viewport="760x730" name="Choice chips" subtitle="Native radios or checkboxes drawn as 32px chips: a list filter, a form field such as the weekdays, glyphs, every state, and the Arabic interface" -->
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:var(--space-lg);background:var(--background-white);font-family:var(--font-ui);color:var(--text-neutral-primary)}
-.sec{display:flex;flex-direction:column;gap:var(--space-sm)}
-.sec > p{margin:0}
-.sec + .sec{margin-block-start:var(--space-md)}
-.states{display:flex;flex-wrap:wrap;gap:var(--space-md)}
-.states > span{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-xs)}
-.k{font-family:var(--font-mono);font-size:var(--fs-footnote);color:var(--text-neutral-tertiary)}
-.note{margin:var(--space-md) 0 0;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-tertiary)}
+body{padding:var(--space-8)}
+.sec{display:flex;flex-direction:column;gap:var(--space-3)}
+.sec+.sec{margin-block-start:var(--space-8)}
+.head{display:flex;flex-direction:column;gap:var(--space-1)}
+.grid{border-collapse:collapse}
+.grid th{padding-block:0 var(--space-2);padding-inline:0 var(--space-8);text-align:start;font-weight:var(--weight-regular)}
+.grid td{padding-block:var(--space-2);padding-inline:0 var(--space-8)}
+.grid tbody th{padding-block:var(--space-2);vertical-align:middle}
+.grid th.mds-eyebrow{font-weight:var(--weight-semibold)}
+/* Hover and focus drawn at rest, so the card shows them; each mirrors its rule in components.css. */
+.mds-chip.is-hover{background:var(--background-neutral-hover);color:var(--text-neutral-default)}
+.mds-chip.is-hover:has(> input:checked){background:var(--background-action-bold-hover);color:var(--text-neutral-on-bold)}
+.mds-chip.is-focus{outline:var(--ring-focus-outline);outline-offset:var(--ring-focus-offset);box-shadow:var(--ring-focus)}
+@media (forced-colors: active){.mds-chip.is-focus{outline:2px solid CanvasText;outline-offset:2px}.mds-chip.is-hover:has(> input:checked){background:Highlight;color:HighlightText}}
 </style></head><body>
-<div class="sec">
-<p class="mds-eyebrow" lang="en">Filter — one choice, legend visually hidden</p>
-<fieldset class="mds-chips"><legend class="mds-visually-hidden">Alan</legend>
-<label class="mds-chip"><input type="radio" name="alan" value="tumu" checked>Tümü</label>
-<label class="mds-chip"><input type="radio" name="alan" value="fikih">Fıkıh</label>
-<label class="mds-chip"><input type="radio" name="alan" value="hadis">Hadis</label>
-<label class="mds-chip"><input type="radio" name="alan" value="tefsir">Tefsir</label>
-<label class="mds-chip"><input type="radio" name="alan" value="akaid">Akaid</label>
-<label class="mds-chip"><input type="radio" name="alan" value="arapca">Arapça</label>
+
+<section class="sec">
+<div class="head"><p class="mds-eyebrow">Süzgeç: tek seçim</p><p class="mds-caption">Ekrandaki listeyi daraltır. Başlığı gizlidir ama ekran okuyucu okur. Hiçbir şey daraltmıyorsa “Tümü” seçilidir.</p></div>
+<fieldset class="mds-chips"><legend class="mds-visually-hidden">İlim</legend>
+<label class="mds-chip"><input type="radio" name="ilim" value="tumu" checked>Tümü</label>
+<label class="mds-chip"><input type="radio" name="ilim" value="sarf">Sarf</label>
+<label class="mds-chip"><input type="radio" name="ilim" value="nahiv">Nahiv</label>
+<label class="mds-chip"><input type="radio" name="ilim" value="mantik">Mantık</label>
+<label class="mds-chip"><input type="radio" name="ilim" value="fikih">Fıkıh</label>
+<label class="mds-chip"><input type="radio" name="ilim" value="hadis">Hadis</label>
+<label class="mds-chip"><input type="radio" name="ilim" value="tefsir">Tefsir</label>
+<label class="mds-chip"><input type="radio" name="ilim" value="belagat">Belâgat</label>
 </fieldset>
-</div>
-<div class="sec">
-<p class="mds-eyebrow" lang="en">Form field — multiple, legend visible</p>
-<fieldset class="mds-chips"><legend class="mds-label">Günler</legend>
+</section>
+
+<section class="sec">
+<div class="head"><p class="mds-eyebrow">Form alanı: çoklu seçim</p><p class="mds-caption">Başlık görünür. Gün adları sayfanın dilinde, pazartesiden başlar.</p></div>
+<fieldset class="mds-chips"><legend class="mds-label">Ders günleri</legend>
 <label class="mds-chip"><input type="checkbox" name="gunler" value="pzt" checked>Pzt</label>
 <label class="mds-chip"><input type="checkbox" name="gunler" value="sal">Sal</label>
 <label class="mds-chip"><input type="checkbox" name="gunler" value="car" checked>Çar</label>
@@ -31,17 +41,44 @@ body{margin:0;padding:var(--space-lg);background:var(--background-white);font-fa
 <label class="mds-chip"><input type="checkbox" name="gunler" value="cmt" checked>Cmt</label>
 <label class="mds-chip"><input type="checkbox" name="gunler" value="paz">Paz</label>
 </fieldset>
-</div>
-<div class="sec">
-<p class="mds-eyebrow" lang="en">States</p>
-<div class="states">
-<span><label class="mds-chip"><input type="checkbox" name="d1">Başlangıç</label><span class="k" lang="en">idle</span></span>
-<span><label class="mds-chip" style="background:var(--background-neutral-tertiary)"><input type="checkbox" name="d2">Başlangıç</label><span class="k" lang="en">hover</span></span>
-<span><label class="mds-chip"><input type="checkbox" name="d3" checked>Başlangıç</label><span class="k" lang="en">checked</span></span>
-<span><label class="mds-chip" style="background:var(--background-brand-secondary)"><input type="checkbox" name="d4" checked>Başlangıç</label><span class="k" lang="en">checked + hover</span></span>
-<span><label class="mds-chip" style="box-shadow:var(--ring-focus)"><input type="checkbox" name="d5">Başlangıç</label><span class="k" lang="en">focus</span></span>
-<span><label class="mds-chip"><input type="checkbox" name="d6" disabled>Başlangıç</label><span class="k" lang="en">disabled</span></span>
-</div>
-</div>
-<p class="note" lang="en">Each chip is a label around a transparent native input, so arrow keys, exclusivity and the checked state come with it. Chips filter a list on screen or answer a form question — they never navigate. Checked 9.46:1, idle 16.19:1. Weekdays come from <code>Intl.DateTimeFormat('tr-TR', {weekday: 'short'})</code>, Monday first.</p>
+</section>
+
+<section class="sec">
+<div class="head"><p class="mds-eyebrow">Simgeli</p><p class="mds-caption">Simge süstür; adı etiket taşır.</p></div>
+<fieldset class="mds-chips"><legend class="mds-visually-hidden">Ders türü</legend>
+<label class="mds-chip"><input type="checkbox" name="tur" value="canli" checked><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#video"/></svg>Canlı ders</label>
+<label class="mds-chip"><input type="checkbox" name="tur" value="video"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#playCircle"/></svg>Video ders</label>
+<label class="mds-chip"><input type="checkbox" name="tur" value="dokuman"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#doc"/></svg>Doküman</label>
+</fieldset>
+</section>
+
+<section class="sec">
+<div class="head"><p class="mds-eyebrow">Durumlar</p><p class="mds-caption">Seçili çip mürekkeple dolar. Pasif çip tonunu bırakır. Pasif ve seçiliyse koyu zemini ve çift kenarı kalır, yine seçili okunur.</p></div>
+<table class="grid">
+<thead><tr><td></td><th scope="col" class="mds-eyebrow">Olağan</th><th scope="col" class="mds-eyebrow">Üzerinde</th><th scope="col" class="mds-eyebrow">Odakta</th><th scope="col" class="mds-eyebrow">Pasif</th></tr></thead>
+<tbody>
+<tr><th scope="row" class="mds-caption">Seçili değil</th>
+<td><label class="mds-chip"><input type="checkbox" name="s1">Nahiv</label></td>
+<td><label class="mds-chip is-hover"><input type="checkbox" name="s2">Nahiv</label></td>
+<td><label class="mds-chip is-focus"><input type="checkbox" name="s3">Nahiv</label></td>
+<td><label class="mds-chip"><input type="checkbox" name="s4" disabled>Belâgat</label></td></tr>
+<tr><th scope="row" class="mds-caption">Seçili</th>
+<td><label class="mds-chip"><input type="checkbox" name="s5" checked>Nahiv</label></td>
+<td><label class="mds-chip is-hover"><input type="checkbox" name="s6" checked>Nahiv</label></td>
+<td><label class="mds-chip is-focus"><input type="checkbox" name="s7" checked>Nahiv</label></td>
+<td><label class="mds-chip"><input type="checkbox" name="s8" disabled checked>Belâgat</label></td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="sec">
+<div class="head"><p class="mds-eyebrow">Arapça arayüz</p><p class="mds-caption">Aynı işaretleme, lang="ar" dir="rtl".</p></div>
+<fieldset class="mds-chips" lang="ar" dir="rtl"><legend class="mds-visually-hidden">العلم</legend>
+<label class="mds-chip"><input type="radio" name="ilm" value="all" checked>الكل</label>
+<label class="mds-chip"><input type="radio" name="ilm" value="sarf">الصرف</label>
+<label class="mds-chip"><input type="radio" name="ilm" value="nahw">النحو</label>
+<label class="mds-chip"><input type="radio" name="ilm" value="mantiq">المنطق</label>
+<label class="mds-chip"><input type="radio" name="ilm" value="fiqh">الفقه</label>
+</fieldset>
+</section>
 </body></html>
