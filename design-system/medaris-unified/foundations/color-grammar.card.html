@@ -1,0 +1,74 @@
+<!-- @dsCard group="Foundations" viewport="820x1340" name="Colour grammar" subtitle="--{property}-{tone}-{variant}. The number of roles has a ceiling that rises only by decision. Each variant carries a contrast promise that verify-contrast.mjs proves in both themes." -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.f-id{white-space:nowrap}
+.f-formula{display:flex;flex-wrap:wrap;align-items:flex-start;gap:0 2px;font-family:var(--font-mono);font-size:var(--fs-h4);line-height:1.2}
+.f-formula > span{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-1)}
+.f-formula b{font-weight:var(--weight-regular);padding-block-end:var(--space-1);border-block-end:var(--border-width-thick) solid var(--border-brand-default)}
+.f-formula i{font-family:var(--font-ui);font-style:normal;font-size:var(--fs-caption);color:var(--text-neutral-subtle)}
+.f-formula .f-dash{padding-block-end:var(--space-1);color:var(--text-neutral-subtle)}
+.mds-table :is(th,td){vertical-align:top}
+.mds-table code{font-size:var(--fs-caption)}
+.f-bold{display:inline-flex;align-items:center;block-size:24px;padding-inline:var(--space-2);border-radius:var(--radius-tag);background:var(--f-bg);color:var(--text-neutral-on-bold);font-size:var(--fs-caption);font-weight:var(--weight-semibold);white-space:nowrap}
+.f-word{font-size:var(--fs-body-sm);font-weight:var(--weight-medium);color:var(--f-fg)}
+.f-mark{display:inline-flex;align-items:center;gap:var(--space-2)}
+.f-mark::before{content:"";inline-size:40px;block-size:3px;border-radius:var(--radius-full);background:var(--f-bd)}
+.f-mark::after{content:"";inline-size:8px;block-size:8px;border-radius:var(--radius-full);background:var(--f-bd)}
+.f-rules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3) var(--space-6);margin:0;padding:0;list-style:none;counter-reset:f-rule}
+.f-rules li{display:grid;grid-template-columns:24px minmax(0,1fr);gap:var(--space-2);font-size:var(--fs-body-sm);line-height:var(--lh-body);counter-increment:f-rule}
+.f-rules li::before{content:counter(f-rule);font-family:var(--font-reading);font-weight:var(--weight-semibold);color:var(--text-brand-default)}
+</style></head><body>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Token dilbilgisi</h2><p class="mds-caption">Her renk adı üç parçadır. Bir ekran ilkel adım adlandırmaz; bu adlardan birini okur.</p></header>
+<p class="f-formula" aria-label="--background-neutral-page: özellik background, ton neutral, değişken page"><span class="f-dash" aria-hidden="true">--</span><span aria-hidden="true"><b>background</b><i>özellik</i></span><span class="f-dash" aria-hidden="true">-</span><span aria-hidden="true"><b>neutral</b><i>ton</i></span><span class="f-dash" aria-hidden="true">-</span><span aria-hidden="true"><b>page</b><i>değişken</i></span></p>
+<div class="mds-table-wrap" data-density="compact">
+<table class="mds-table">
+<caption class="mds-visually-hidden">Token dilbilgisi ve her değişkenin sözü</caption>
+<thead><tr><th scope="col">Özellik</th><th scope="col">Ton</th><th scope="col">Değişken</th><th scope="col">Söz (iki temada)</th></tr></thead>
+<tbody>
+<tr><th scope="row"><code>background</code></th><td><code>neutral</code></td><td><code>page</code> <code>surface</code> <code>sunken</code> <code>field</code> <code>hover</code> <code>scrim</code></td><td>Üzerine metin konabilen zeminler</td></tr>
+<tr><th scope="row"><code>background</code></th><td><code>action</code></td><td><code>bold</code> <code>bold-hover</code></td><td>Asıl işlem ve her işaretli ya da açık durum</td></tr>
+<tr><th scope="row"><code>background</code></th><td><code>brand</code> <code>success</code> <code>warning</code> <code>error</code> <code>info</code> <code>live</code></td><td><code>subtle</code> <code>bold</code></td><td>subtle bir tonlu zemin, bold düz bir dolgu</td></tr>
+<tr><th scope="row"><code>text</code></th><td><code>neutral</code></td><td><code>default</code> <code>muted</code> <code>subtle</code> <code>disabled</code> <code>on-bold</code></td><td>default, muted, subtle her zeminde ≥ 4,5:1; disabled ≥ 3:1 (politika); on-bold her bold dolguda ≥ 4,5:1</td></tr>
+<tr><th scope="row"><code>text</code></th><td><code>brand</code> <code>success</code> <code>warning</code> <code>error</code> <code>info</code> <code>live</code></td><td><code>default</code></td><td>Her zeminde ve kendi tonlu zemininde ≥ 4,5:1</td></tr>
+<tr><th scope="row"><code>border</code></th><td><code>neutral</code></td><td><code>subtle</code> <code>control</code> <code>strong</code></td><td>subtle yalnızca süs; control her zeminde ≥ 3:1</td></tr>
+<tr><th scope="row"><code>border</code></th><td><code>brand</code> <code>success</code> <code>warning</code> <code>error</code> <code>info</code> <code>live</code></td><td><code>default</code></td><td>3:1 bir işaret: kenar, nokta, ilerleme dolgusu</td></tr>
+<tr><th scope="row"><code>ring-focus</code></th><td></td><td><code>color</code> <code>gap</code></td><td>İki bantlı odak halkası, her zeminde ≥ 3:1</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Altı ton, dört değişken</h2><p class="mds-caption">Tonlu zemin rozettir; dolgunun üstündeki yazı her zaman on-bold'dur; işaret border-*-default'tur.</p></header>
+<div class="mds-table-wrap" data-density="compact">
+<table class="mds-table">
+<caption class="mds-visually-hidden">Her tonun dört değişkeni</caption>
+<thead><tr><th scope="col">Ton</th><th scope="col">subtle + default</th><th scope="col">bold + on-bold</th><th scope="col">text-*-default</th><th scope="col">border-*-default</th></tr></thead>
+<tbody>
+<tr><th scope="row"><code>brand</code><span class="mds-caption"> · lâciverd</span></th><td><span class="mds-badge mds-badge--brand">Devam ediyor</span></td><td><span class="f-bold" style="--f-bg: var(--background-brand-bold)">Sıradaki</span></td><td><span class="f-word" style="--f-fg: var(--text-brand-default)">Tümünü gör</span></td><td><span class="f-mark" style="--f-bd: var(--border-brand-default)"><span class="mds-visually-hidden">işaret</span></span></td></tr>
+<tr><th scope="row"><code>success</code><span class="mds-caption"> · zümrüt</span></th><td><span class="mds-badge mds-badge--success">Kayıtlı</span></td><td><span class="f-bold" style="--f-bg: var(--background-success-bold)">Tamamlandı</span></td><td><span class="f-word" style="--f-fg: var(--text-success-default)">Ders kaydedildi.</span></td><td><span class="f-mark" style="--f-bd: var(--border-success-default)"><span class="mds-visually-hidden">işaret</span></span></td></tr>
+<tr><th scope="row"><code>warning</code><span class="mds-caption"> · safran</span></th><td><span class="mds-badge mds-badge--warning"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#clock"/></svg>Onay bekliyor</span></td><td><span class="f-bold" style="--f-bg: var(--background-warning-bold)">3 bekliyor</span></td><td><span class="f-word" style="--f-fg: var(--text-warning-default)">Bağlantı eksik.</span></td><td><span class="f-mark" style="--f-bd: var(--border-warning-default)"><span class="mds-visually-hidden">işaret</span></span></td></tr>
+<tr><th scope="row"><code>error</code><span class="mds-caption"> · lal</span></th><td><span class="mds-badge mds-badge--destructive"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#ban"/></svg>Yasaklı</span></td><td><span class="f-bold" style="--f-bg: var(--background-error-bold)">Kalıcı olarak sil</span></td><td><span class="f-word" style="--f-fg: var(--text-error-default)">Bağlantı geçersiz.</span></td><td><span class="f-mark" style="--f-bd: var(--border-error-default)"><span class="mds-visually-hidden">işaret</span></span></td></tr>
+<tr><th scope="row"><code>info</code><span class="mds-caption"> · lâciverd</span></th><td><span class="mds-badge mds-badge--info">Yeni</span></td><td><span class="f-bold" style="--f-bg: var(--background-info-bold)">Duyuru</span></td><td><span class="f-word" style="--f-fg: var(--text-info-default)">Kayıtlar 7 gün kalır.</span></td><td><span class="f-mark" style="--f-bd: var(--border-info-default)"><span class="mds-visually-hidden">işaret</span></span></td></tr>
+<tr><th scope="row"><code>live</code><span class="mds-caption"> · lal</span></th><td><span class="mds-badge mds-badge--live"><span class="mds-badge__dot" aria-hidden="true"></span>Şu an canlı</span></td><td><span class="f-bold" style="--f-bg: var(--background-live-bold)">Canlı</span></td><td><span class="f-word" style="--f-fg: var(--text-live-default)">Şu an canlı</span></td><td><span class="f-mark" style="--f-bd: var(--border-live-default)"><span class="mds-visually-hidden">işaret</span></span></td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Güvenilecek dört kural</h2></header>
+<ol class="f-rules">
+<li><span>Bir <code>*-bold</code> dolgunun üstündeki her yazı ve glif <code>--text-neutral-on-bold</code>'dur: her tonda, iki temada.</span></li>
+<li><span>Yazının arkasındaki dolgu <code>background-*</code>'tır. 3:1 bir işaret (ilerleme, canlı nokta, etkin sekmenin alt çizgisi) <code>border-*-default</code>'tur.</span></li>
+<li><span>"primary" bir renk değildir; yalnızca Button ve Badge'in bir türüdür. Asıl işlem mürekkeptir <span class="f-id">(MDS-COL-01)</span>.</span></li>
+<li><span>Devre dışı bir denetim tonunu bırakır, solmaz: çukur zemin, ince kenar, <code>--text-neutral-disabled</code>.</span></li>
+</ol>
+<p class="mds-caption">Renk rollerinin sayısının bir tavanı var; sözlük yalnızca kararla büyür (<code>verify-contrast.mjs</code>). Ölçümler: <code>contrast.md</code>.</p>
+</section>
+</body></html>

@@ -1,147 +1,89 @@
-<!-- @dsCard group="Foundations" viewport="820x1060" name="Contrast audit" subtitle="The pairs the product actually renders, measured. Ten fail AA as extracted: six have a one-token fix in a11y-overrides.css; info, the error focus ring, the switch off state and the control boundary are open" -->
+<!-- @dsCard group="Foundations" viewport="820x1430" name="Contrast" subtitle="Every colour pair the system promises passes in both themes. There are no open accessibility decisions. The full table is contrast.md." -->
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:24px;background:var(--background-white);font-family:var(--font-ui)}
-table{border-collapse:collapse;width:100%;font-size:12px}
-th{text-align:left;font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-neutral-disabled);font-weight:400;padding:0 10px 8px 0;white-space:nowrap;border-bottom:1px solid var(--gray-200)}
-td{padding:7px 10px 7px 0;border-bottom:1px solid var(--gray-100);vertical-align:middle;color:var(--text-neutral-primary)}
-.sw span{display:inline-flex;align-items:center;justify-content:center;width:34px;height:22px;border-radius:4px;font-size:11px;font-weight:600;border:1px solid #0000001a}
-.ok{font-family:var(--font-mono);color:var(--green-700);font-weight:600}
-.bad{font-family:var(--font-mono);color:var(--red-700);font-weight:600}
-.req{font-family:var(--font-mono);font-size:10px;color:var(--text-neutral-disabled);white-space:nowrap}
-.fix{font-family:var(--font-mono);font-size:10px;color:var(--text-neutral-tertiary)}
-.note{margin-top:16px;font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6}
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.f-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-4)}
+.f-stats .mds-stat__value{font-variant-numeric:lining-nums tabular-nums}
+.mds-table .is-end{text-align:end}
+.mds-table td.is-end,.mds-table th.is-end{font-variant-numeric:lining-nums tabular-nums;white-space:nowrap}
+.f-pass{display:inline-flex;align-items:center;gap:var(--space-1);color:var(--text-success-default);font-weight:var(--weight-medium)}
+.f-tight{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-4)}
+.f-tight > div{display:flex;flex-direction:column;gap:var(--space-2)}
+.f-t{display:flex;align-items:center;justify-content:center;block-size:72px;padding-inline:var(--space-3);border-radius:var(--radius-control);background:var(--background-neutral-hover)}
+.f-t--text{font-size:var(--fs-caption);color:var(--text-neutral-subtle)}
+.f-t__field{display:flex;align-items:center;inline-size:100%;block-size:32px;padding-inline:var(--space-3);border:var(--border-width-thin) solid var(--border-neutral-control);border-radius:var(--radius-control);font-size:var(--fs-body-sm);color:var(--text-neutral-subtle)}
+.f-t__ring{display:inline-flex;align-items:center;block-size:32px;padding-inline:var(--space-3);border-radius:var(--radius-control);font-size:var(--fs-body-sm);font-weight:var(--weight-semibold);box-shadow:var(--ring-focus)}
+.f-both{display:flex;align-items:center;gap:var(--space-1);font-size:var(--fs-body-sm);font-weight:var(--weight-semibold);font-variant-numeric:lining-nums tabular-nums}
+.f-both .mds-icon{inline-size:14px;block-size:14px;color:var(--text-neutral-subtle)}
+.f-both .mds-icon:not(:first-child){margin-inline-start:var(--space-2)}
+.f-exempt{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-2) var(--space-6);font-size:var(--fs-caption);line-height:1.45;color:var(--text-neutral-subtle)}
+.f-exempt b{font-weight:var(--weight-medium);color:var(--text-neutral-default)}
+.f-cmds{display:flex;flex-direction:column;gap:var(--space-3);margin:0;padding:0;list-style:none}
+.f-cmds li{display:flex;flex-direction:column;gap:var(--space-1);font-size:var(--fs-body-sm);line-height:var(--lh-body)}
+.f-cmds li > code{font-size:var(--fs-body-sm);color:var(--text-neutral-default)}
 </style></head><body>
-<table lang="en">
-<tr><th>Pair</th><th>As extracted</th><th>Ratio</th><th>AA</th><th>Fix</th></tr>
-<tr>
-  <td>Body text on page</td>
-  <td class="sw"><span style="background:#F8FAFC;color:#111827">Aa</span></td>
-  <td class="ok">16.96:1</td>
-  <td class="req">needs 4.5:1</td>
-  <td></td>
-</tr>
-<tr>
-  <td>Tertiary text on white</td>
-  <td class="sw"><span style="background:#FFFFFF;color:#4B5563">Aa</span></td>
-  <td class="ok">7.56:1</td>
-  <td class="req">needs 4.5:1</td>
-  <td></td>
-</tr>
-<tr>
-  <td>Placeholder on white</td>
-  <td class="sw"><span style="background:#FFFFFF;color:#6B7280">Aa</span></td>
-  <td class="ok">4.83:1</td>
-  <td class="req">needs 4.5:1</td>
-  <td></td>
-</tr>
-<tr>
-  <td>Primary button label</td>
-  <td class="sw"><span style="background:#0C4A6E;color:#FFFFFF">Aa</span></td>
-  <td class="ok">9.46:1</td>
-  <td class="req">needs 4.5:1</td>
-  <td></td>
-</tr>
-<tr>
-  <td>Primary badge label</td>
-  <td class="sw"><span style="background:#0C4A6E;color:#E0F2FE">Aa</span></td>
-  <td class="ok">8.24:1</td>
-  <td class="req">needs 4.5:1</td>
-  <td></td>
-</tr>
-<tr>
-  <td>Secondary button label</td>
-  <td class="sw"><span style="background:#F1F5F9;color:#111827">Aa</span></td>
-  <td class="ok">16.19:1</td>
-  <td class="req">needs 4.5:1</td>
-  <td></td>
-</tr>
-<tr>
-  <td>Sidebar item on inverse</td>
-  <td class="sw"><span style="background:#0F172A;color:#E5E7EB">Aa</span></td>
-  <td class="ok">14.42:1</td>
-  <td class="req">needs 4.5:1</td>
-  <td></td>
-</tr>
-<tr>
-  <td>Info text on subtle</td>
-  <td class="sw"><span style="background:#DBEAFE;color:#2563EB">Aa</span></td>
-  <td class="bad">4.24:1</td>
-  <td class="req">needs 4.5:1</td>
-  <td><span class="sw"><span style="background:#DBEAFE;color:#1D4ED8">Aa</span></span> <span class="fix">blue-700 → 5.49:1 (SPEC-D3-03)</span></td>
-</tr>
-<tr>
-  <td>Success text on subtle</td>
-  <td class="sw"><span style="background:#DCFCE7;color:#15803D">Aa</span></td>
-  <td class="ok">4.57:1</td>
-  <td class="req">needs 4.5:1</td>
-  <td></td>
-</tr>
-<tr>
-  <td>Error text on subtle</td>
-  <td class="sw"><span style="background:#FEE2E2;color:#DC2626">Aa</span></td>
-  <td class="bad">3.95:1</td>
-  <td class="req">needs 4.5:1</td>
-  <td><span class="sw"><span style="background:#FEE2E2;color:#B91C1C">Aa</span></span> <span class="fix">red-700 → 5.30:1</span></td>
-</tr>
-<tr>
-  <td>Warning text on subtle</td>
-  <td class="sw"><span style="background:#FEF9C3;color:#EAB308">Aa</span></td>
-  <td class="bad">1.79:1</td>
-  <td class="req">needs 4.5:1</td>
-  <td><span class="sw"><span style="background:#FEF9C3;color:#A16207">Aa</span></span> <span class="fix">yellow-700 → 4.58:1</span></td>
-</tr>
-<tr>
-  <td>Destructive button label</td>
-  <td class="sw"><span style="background:#EF4444;color:#FFFFFF">Aa</span></td>
-  <td class="bad">3.76:1</td>
-  <td class="req">needs 4.5:1</td>
-  <td><span class="sw"><span style="background:#DC2626;color:#FFFFFF">Aa</span></span> <span class="fix">red-600 fill → 4.83:1</span></td>
-</tr>
-<tr>
-  <td>Label on success-bold fill</td>
-  <td class="sw"><span style="background:#16A34A;color:#FFFFFF">Aa</span></td>
-  <td class="bad">3.30:1</td>
-  <td class="req">needs 4.5:1</td>
-  <td><span class="sw"><span style="background:#15803D;color:#FFFFFF">Aa</span></span> <span class="fix">green-700 fill → 5.02:1</span></td>
-</tr>
-<tr>
-  <td>Label on warning-bold fill</td>
-  <td class="sw"><span style="background:#EAB308;color:#FFFFFF">Aa</span></td>
-  <td class="bad">1.92:1</td>
-  <td class="req">needs 4.5:1</td>
-  <td><span class="sw"><span style="background:#EAB308;color:#111827">Aa</span></span> <span class="fix">gray-900 label → 9.25:1</span></td>
-</tr>
-<tr>
-  <td>Focus ring against white</td>
-  <td class="sw"><span style="background:#FFFFFF;color:#E5E5E5">Aa</span></td>
-  <td class="bad">1.26:1</td>
-  <td class="req">needs 3:1</td>
-  <td><span class="sw"><span style="background:#FFFFFF;color:#0284C7">Aa</span></span> <span class="fix">sky-600 ring → 4.10:1</span></td>
-</tr>
-<tr>
-  <td>Invalid-field focus ring</td>
-  <td class="sw"><span style="background:#FFFFFF;color:#FECACA">Aa</span></td>
-  <td class="bad">1.45:1</td>
-  <td class="req">needs 3:1</td>
-  <td><span class="fix">OPEN-1, not covered by overrides</span></td>
-</tr>
-<tr>
-  <td>Switch off track against white</td>
-  <td class="sw"><span style="background:#FFFFFF;color:#E2E8F0">Aa</span></td>
-  <td class="bad">1.23:1</td>
-  <td class="req">needs 3:1</td>
-  <td><span class="fix">SPEC-D3-21</span></td>
-</tr>
-<tr>
-  <td>Field, checkbox, radio and select boundary</td>
-  <td class="sw"><span style="background:#FFFFFF;color:#D1D5DB">Aa</span></td>
-  <td class="bad">1.47:1</td>
-  <td class="req">needs 3:1</td>
-  <td><span class="fix">OPEN-3 — see note</span></td>
-</tr>
+<!-- The two verify-contrast blocks are written by tools/design-system/verify-contrast.mjs --write; never edit them by hand. -->
+<section class="f-sec">
+<div class="f-stats">
+<!-- verify-contrast: stats -->
+<div class="mds-card mds-stat mds-stat--success"><span class="mds-caption">Denetim, iki temada</span><span class="mds-stat__value">336</span><span class="mds-stat__cue"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Hepsi geçiyor</span></div>
+<div class="mds-card mds-stat"><span class="mds-caption">Renk rolü</span><span class="mds-stat__value">42</span><span class="mds-caption">Tavan 42: yalnızca kararla büyür</span></div>
+<div class="mds-card mds-stat"><span class="mds-caption">İlkel adım</span><span class="mds-stat__value">46</span><span class="mds-caption">Her biri bir rol tarafından okunur</span></div>
+<!-- /verify-contrast -->
+</div>
+<p class="mds-body-sm">Açık erişilebilirlik kararı yok. Palet, her çift iki temada da geçecek biçimde kuruldu; WCAG 2.2 AA eşikleri aşağıda.</p>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Geçiş tablosu</h2><p class="mds-caption">contrast.md ile aynı sıra. Sayılar iki basamağa kesilir, asla yukarı yuvarlanmaz.</p></header>
+<div class="mds-table-wrap" data-density="compact">
+<table class="mds-table">
+<caption class="mds-visually-hidden">Karşıtlık denetimleri, gündüz ve gece</caption>
+<thead><tr><th scope="col">Denetim</th><th scope="col" class="is-end">Eşik</th><th scope="col" class="is-end">Çift × tema</th><th scope="col" class="is-end">Gündüz en az</th><th scope="col" class="is-end">Gece en az</th><th scope="col">Sonuç</th></tr></thead>
+<tbody>
+<!-- verify-contrast: summary -->
+<tr><th scope="row">Nötr metin, her zeminde</th><td class="is-end">4,5:1</td><td class="is-end">24 × 2</td><td class="is-end">5,47:1</td><td class="is-end">4,63:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Ton metni, her zeminde</th><td class="is-end">4,5:1</td><td class="is-end">36 × 2</td><td class="is-end">5,90:1</td><td class="is-end">7,07:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Tonlu zeminde metin</th><td class="is-end">4,5:1</td><td class="is-end">18 × 2</td><td class="is-end">6,68:1</td><td class="is-end">7,38:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Dolgu üstünde metin</th><td class="is-end">4,5:1</td><td class="is-end">8 × 2</td><td class="is-end">6,01:1</td><td class="is-end">5,97:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Denetim kenarları</th><td class="is-end">3:1</td><td class="is-end">15 × 2</td><td class="is-end">3,12:1</td><td class="is-end">3,87:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">İşaretli ve açık durumlar</th><td class="is-end">3:1</td><td class="is-end">6 × 2</td><td class="is-end">3,89:1</td><td class="is-end">4,61:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Odak halkası, zemine karşı</th><td class="is-end">3:1</td><td class="is-end">7 × 2</td><td class="is-end">5,38:1</td><td class="is-end">7,07:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Odak halkası, bileşene karşı</th><td class="is-end">3:1</td><td class="is-end">8 × 2</td><td class="is-end">5,38:1</td><td class="is-end">7,07:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Durum işaretleri</th><td class="is-end">3:1</td><td class="is-end">36 × 2</td><td class="is-end">4,70:1</td><td class="is-end">5,51:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Kapak etiketleri</th><td class="is-end">4,5:1</td><td class="is-end">4 × 2</td><td class="is-end">8,69:1</td><td class="is-end">8,69:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Görsel üstünde metin</th><td class="is-end">4,5:1</td><td class="is-end">1 × 2</td><td class="is-end">9,86:1</td><td class="is-end">9,86:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Devre dışı metin (politika)</th><td class="is-end">3:1</td><td class="is-end">5 × 2</td><td class="is-end">3,12:1</td><td class="is-end">3,87:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<!-- /verify-contrast -->
+</tbody>
 </table>
-<p class="note" lang="en">Ratios are WCAG 2.x relative luminance, computed from the hex values in <code>tokens/semantic.css</code> and, for the rings, <code>tokens/elevation.css</code>. Text pairs are held to 4.5:1 because the entire control layer is 14px Medium — below the 18.66px/bold threshold that would allow 3:1. Focus and control boundaries are held to 3:1 under WCAG 2.2 <i>Non-text contrast</i> and <i>Focus appearance</i>.<br><br>
-The <b>control boundary</b> row (OPEN-3) has no clean token fix: <code>gray-300</code> at 1.47:1 is the file's value for every field, checkbox, radio and select outline, and raising it to <code>gray-400</code> only reaches 2.54:1. Fields are still identifiable by their white fill against the <code>slate-50</code> page, which is itself only 1.05:1 — so in practice an input on a white card has no perceivable boundary. That is a design decision to take, not a token to swap, and it is the largest open item in this system.<br><br>
-Info, the invalid-field ring and the switch have no line in the overrides either. Info text needs <code>blue-700</code>, which is SPEC-D3-03. The overrides re-point only <code>--ring-focus</code>, so the invalid-field ring stays with OPEN-1. The switch's off track, and the white knob on it, sit at 1.23:1 (SPEC-D3-21).<br><br>
-Applying the fixes: <code>@import url("tokens/a11y-overrides.css")</code> after <code>tokens/semantic.css</code>.</p>
+</div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Sınıra en yakın dört çift</h2><p class="mds-caption">Hepsi üzerine gelme zemininde, en açık zemin. Örnekler bu kartın temasında çizilir.</p></header>
+<div class="f-tight">
+<div><span class="f-t f-t--text">3. hafta · 19 Eyl Cmt 21:00</span><span class="mds-caption">Silik metin, üzerine gelme zemininde; eşik 4,5:1</span><span class="f-both"><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><span class="mds-visually-hidden">Gündüz </span>5,47:1 <svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><span class="mds-visually-hidden">Gece </span>4,63:1</span></div>
+<div><span class="f-t"><span class="f-t__field">Ad soyad</span></span><span class="mds-caption">Denetim kenarı, üzerine gelme zemininde; eşik 3:1</span><span class="f-both"><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><span class="mds-visually-hidden">Gündüz </span>3,12:1 <svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><span class="mds-visually-hidden">Gece </span>3,87:1</span></div>
+<div><span class="f-t"><span class="f-t__ring">Düzenle</span></span><span class="mds-caption">Odak halkası, üzerine gelme zemininde; eşik 3:1</span><span class="f-both"><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><span class="mds-visually-hidden">Gündüz </span>5,38:1 <svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><span class="mds-visually-hidden">Gece </span>7,07:1</span></div>
+<div><span class="f-t f-t--text is-disabled" style="color: var(--text-neutral-disabled)">Kaydet</span><span class="mds-caption">Devre dışı metin, üzerine gelme zemininde; eşik 3:1</span><span class="f-both"><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><span class="mds-visually-hidden">Gündüz </span>3,12:1 <svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><span class="mds-visually-hidden">Gece </span>3,87:1</span></div>
+</div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Gerekmeyenler</h2><p class="mds-caption">Süs ya da tek başına bilgi taşımayan işaretler. Yanlışlıkla eksik sanılmasın diye ölçülür.</p></header>
+<ul class="f-exempt">
+<li><b>Kıl çizgi</b> · 1,32 / 1,39:1. Süs; hiçbir denetimi tek başına tanıtmaz.</li>
+<li><b>Şu anki satırın tonu</b> · 1,12 / 1,05:1. Tek işaret değil; Sıradaki yazısı ve madalyon taşır.</li>
+<li><b>Platform noktaları ve yıldız</b> · yanlarında her zaman yazı ya da sayı var.</li>
+<li><b>Kapağın kör baskısı</b> · 1,93:1. Süs.</li>
+</ul>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Nasıl doğrulanır</h2></header>
+<ul class="f-cmds">
+<li><code>node tools/design-system/verify-contrast.mjs</code><span>Her çifti <code>tokens/*.css</code>'ten iki temada yeniden hesaplar; <code>contrast.md</code> güncel değilse düşer.</span></li>
+<li><code>node tools/design-system/check.mjs</code><span>Her kartı dört tema yolunda açar, boyanmış her metni kendi zeminine karşı ölçer, Tab ile her odak halkasını dener.</span></li>
+</ul>
+</section>
 </body></html>

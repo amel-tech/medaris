@@ -1,25 +1,58 @@
-<!-- @dsCard group="Foundations" viewport="820x300" name="Arabic + Latin" subtitle="IBM Plex Sans Arabic against IBM Plex Sans — one superfamily, so a gloss sits under an ayah without a seam" -->
+<!-- @dsCard group="Foundations" viewport="820x1090" name="Arabic — Noto Naskh Arabic" subtitle="Classical text at 26/2.0, an inline word at 1.2em, and the whole Arabic interface one step larger and one weight heavier. A Latin island inside it returns to its Latin size (MDS-TYPE-04)." -->
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:24px;background:var(--background-white)}
-.grid{display:grid;grid-template-columns:1.25fr 1fr;gap:16px}
-.pair{display:flex;flex-direction:column;gap:12px;padding:20px 24px;border:1px solid var(--border-neutral-primary);border-radius:var(--radius-m);background:var(--background-neutral-primary)}
-.pair p{margin:0}
-.tr{font-family:var(--font-ui);font-size:var(--fs-body);line-height:var(--lh-body);color:var(--text-neutral-secondary)}
-.ref{margin-block-start:auto;font-family:var(--font-mono);font-size:var(--fs-footnote);line-height:var(--lh-snug);color:var(--text-neutral-tertiary)}
-@media (max-width:599.98px){.grid{grid-template-columns:1fr}}
-.note{margin-top:16px;font-family:var(--font-ui);font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6}
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.f-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-6);align-items:start}
+.f-matn{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-5);border:var(--border-width-thin) solid var(--border-neutral-subtle);border-radius:var(--radius-surface);background:var(--background-neutral-surface)}
+.f-spec{display:flex;flex-direction:column;gap:var(--space-2);margin:0;padding:0;list-style:none;font-size:var(--fs-caption);line-height:1.45;color:var(--text-neutral-muted)}
+.f-spec code{color:var(--text-neutral-default)}
+.f-inline{display:flex;flex-direction:column;gap:var(--space-3)}
+.f-ar{display:flex;flex-direction:column;gap:var(--space-4)}
+.f-ar .f-foot{display:flex;flex-wrap:wrap;gap:var(--space-2);justify-content:flex-end}
 </style></head><body>
-<div class="grid">
-  <div class="pair">
-    <p class="mds-arabic-text" lang="ar" dir="rtl">اقْرَأْ بِاسْمِ رَبِّكَ الَّذِي خَلَقَ</p>
-    <p class="tr">Yaratan Rabbinin adıyla oku.</p>
-    <p class="ref" lang="en">96:1 · .mds-arabic-text — --font-arabic-text, 24 / 1.9</p>
-  </div>
-  <div class="pair">
-    <p class="mds-body">Beşinci babın şerhi — <span lang="ar" dir="rtl" class="mds-arabic">فَتَحَ</span> bâbı</p>
-    <p class="mds-caption">Kaynak: <span lang="ar" dir="rtl" class="mds-arabic">بِنَاءُ الأَفْعَالِ</span> · s. 20–24</p>
-    <p class="ref" lang="en">.mds-arabic — 18 beside 16; never below 16, so 16 in a 12px caption</p>
-  </div>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Klasik metin · .mds-arabic-text</h2><p class="mds-caption">Naskh 26/2,0, --weight-book 400. Hiçbir bölgede ölçeklenmez.</p></header>
+<div class="f-two">
+<figure class="f-matn"><p class="mds-arabic-text" lang="ar" dir="rtl">أَمَّا بَعْدُ، فَهٰذِهِ رِسَالَةٌ فِي الْمَنْطِقِ أَوْرَدْتُ فِيهَا مَا يَجِبُ اسْتِحْضَارُهُ</p><figcaption class="mds-source">Esîrüddîn el-Ebherî (ö. 663/1265) · <cite>İsâgûcî</cite>, giriş</figcaption></figure>
+<figure class="f-matn"><p class="mds-arabic-text" lang="ar" dir="rtl">نَصَرَ يَنْصُرُ نَصْرًا فَهُوَ نَاصِرٌ وَذَاكَ مَنْصُورٌ</p><figcaption class="mds-source"><cite>Emsile-i muhtelife</cite> · nasara babı, ilk satır</figcaption></figure>
 </div>
-<p class="note" lang="en">Arabic runs at 1.9 leading, not 1.5: harakat need the room and look starved at body leading. Plex Arabic shares the Latin's proportions, so a bilingual card stays optically level. <code>.mds-arabic-text</code> is for classical and Qur'anic text; its face is SPEC-D3-06 and stays this stack until it is decided. Always set <code>lang="ar" dir="rtl"</code> on the Arabic element itself, never on a shared ancestor.</p>
+<p class="mds-caption">Kaynak satırı (<code>.mds-source</code>): yazar (ö. hicrî/milâdî) · <i>eser</i>, yer. 26px'te Naskh çanağı 9,8px, yanındaki Literata 18'in x yüksekliği 9,1px: iki yazı aynı irilikte okunur.</p>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Satır içinde · .mds-arabic</h2><p class="mds-caption">1,2em, satır yüksekliği 1, bölünmez, yön olarak yalıtılmış.</p></header>
+<div class="f-two">
+<div class="f-inline">
+<p class="mds-reading">Dördüncü ve beşinci âyetteki <span class="mds-arabic" lang="ar" dir="rtl">عَلَّمَ</span> ise tef’îl babındandır; «bildi» mânâsındaki <span class="mds-arabic" lang="ar" dir="rtl">عَلِمَ</span> fiilini «öğretti» mânâsına taşır.</p>
+<p class="mds-body-sm">Bu hafta: <span class="mds-arabic" lang="ar" dir="rtl">الأمثلة</span> ve <span class="mds-arabic" lang="ar" dir="rtl">إيساغوجي</span> · Paz 20:00</p>
+</div>
+<ul class="f-spec">
+<li>Harekeli satır içi Arapça yalnızca okuma metninde (<code>--lh-reading</code>). Arayüz metninde kelime harekesiz yazılır: satır aralığı dar.</li>
+<li>1,25em'de hemze ve sükûn üst satırın alt uzantısına değer; 1,2em'de 1,5px boşluk kalır.</li>
+<li>Üç kelimeden uzun bir parça bloktur. Her zaman <code>lang="ar" dir="rtl"</code>.</li>
+</ul>
+</div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Arapça arayüz ve Latin adası</h2><p class="mds-caption">Aynı işaretleme, lang="ar" dir="rtl" ile.</p></header>
+<div class="f-two">
+<form class="mds-card f-ar" lang="ar" dir="rtl" onsubmit="return false">
+<h3 class="mds-h4">جلسة جديدة</h3>
+<p class="mds-body-sm">المدرس: <span lang="tr" dir="ltr">Müderris Abdülhamit Karaosmanoğlu</span></p>
+<div class="mds-field"><label class="mds-label" for="f-a1">عنوان الجلسة</label><input class="mds-input" id="f-a1" value="الأفعال المضاعفة"></div>
+<div class="mds-field"><label class="mds-label" for="f-a2">رابط الاجتماع</label><input class="mds-input mds-input--mono" id="f-a2" dir="ltr" aria-invalid="true" aria-describedby="f-a2-e" value="zoom.us/j/"><span class="mds-error" id="f-a2-e">رقم الاجتماع ناقص.</span></div>
+<p class="mds-caption">الدرس القادم يوم الخميس الساعة ٢١:٠٠</p>
+<div class="f-foot"><button type="button" class="mds-btn mds-btn--ghost">إلغاء</button><button type="submit" class="mds-btn mds-btn--primary">حفظ الجلسة</button></div>
+</form>
+<ul class="f-spec">
+<li>Bölge her rolü yeniden yönlendirir: arayüz ve başlık yüzü Naskh olur.</li>
+<li>Her boyut bir adım büyür: denetim 14 → 16, başlık 18 → 20.</li>
+<li>Bir kalınlık ağırlaşır: 400 → 500. Satır aralığı 1,8, harf aralığı 0.</li>
+<li>Latin adası (<code>lang="tr"</code>, bir bağlantı) Latin yüzüne ve boyutuna döner: 14px Instrument Sans.</li>
+<li>Arapça içindeki Latin ada, bağlantı ve kimlik <code>dir="ltr"</code> taşır.</li>
+</ul>
+</div>
+</section>
 </body></html>

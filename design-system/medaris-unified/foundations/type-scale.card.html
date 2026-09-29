@@ -1,0 +1,83 @@
+<!-- @dsCard group="Foundations" viewport="820x1250" name="Type scale" subtitle="Sizes are role names: pick the role, not the pixel. An Arabic region moves each step up; the matn and the Qur'an never scale with it." -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.mds-table :is(th,td){vertical-align:middle}
+.mds-table .is-end{text-align:end;font-variant-numeric:lining-nums tabular-nums}
+.f-s{margin:0;white-space:nowrap;line-height:1.3;color:var(--text-neutral-default)}
+.f-s--ui{font-family:var(--font-ui)}
+.f-s--reading{font-family:var(--font-reading);font-weight:var(--weight-semibold)}
+.f-s--book{font-family:var(--font-reading);font-weight:var(--weight-book)}
+.f-s--eyebrow{font-weight:var(--weight-semibold);letter-spacing:var(--tracking-wide);text-transform:uppercase}
+.f-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-6)}
+.f-col{display:flex;flex-direction:column;gap:var(--space-3)}
+.mds-table td > [dir="rtl"]{text-align:end}
+.f-list{display:flex;flex-direction:column;gap:var(--space-1);margin:0;padding:0;list-style:none;font-size:var(--fs-caption);line-height:1.45;color:var(--text-neutral-muted)}
+.f-list code{color:var(--text-neutral-default)}
+</style></head><body>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Boyutlar rol adıdır</h2><p class="mds-caption">Parantezdeki değer bir Arapça bölgede (lang="ar") geçerlidir.</p></header>
+<div class="mds-table-wrap" data-density="compact">
+<table class="mds-table">
+<caption class="mds-visually-hidden">Yazı boyutları</caption>
+<thead><tr><th scope="col">Token</th><th scope="col" class="is-end">Latin</th><th scope="col" class="is-end">Arapça</th><th scope="col">Kullanım</th><th scope="col">Örnek</th></tr></thead>
+<tbody>
+<tr><th scope="row"><code>--fs-display</code></th><td class="is-end">40</td><td class="is-end">44</td><td>Kurs vitrini, tanıtım, giriş</td><td><p class="f-s f-s--reading" style="font-size: var(--fs-display); font-weight: var(--weight-medium)">Emsile</p></td></tr>
+<tr><th scope="row"><code>--fs-h1</code></th><td class="is-end">30</td><td class="is-end">34</td><td>Sayfa başlığı, sayfada bir tane</td><td><p class="f-s f-s--reading" style="font-size: var(--fs-h1); font-weight: var(--weight-medium)">İsâgûcî</p></td></tr>
+<tr><th scope="row"><code>--fs-h2</code></th><td class="is-end">24</td><td class="is-end">28</td><td>Bölüm başlığı</td><td><p class="f-s f-s--reading" style="font-size: var(--fs-h2)">Müfredat</p></td></tr>
+<tr><th scope="row"><code>--fs-h3</code></th><td class="is-end">20</td><td class="is-end">23</td><td>Kart ve iletişim kutusu başlığı</td><td><p class="f-s f-s--reading" style="font-size: var(--fs-h3)">Kursu kaldır?</p></td></tr>
+<tr><th scope="row"><code>--fs-h4</code></th><td class="is-end">18</td><td class="is-end">20</td><td>Karttaki küçük bölüm</td><td><p class="f-s f-s--reading" style="font-size: var(--fs-h4)">Bu hafta</p></td></tr>
+<tr><th scope="row"><code>--fs-h5</code></th><td class="is-end">16</td><td class="is-end">18</td><td>Ders ve hafta başlığı</td><td><p class="f-s f-s--reading" style="font-size: var(--fs-h5)">Mehmûz fiiller</p></td></tr>
+<tr><th scope="row"><code>--fs-h6</code></th><td class="is-end">14</td><td class="is-end">16</td><td>Sık panelde blok etiketi</td><td><p class="f-s f-s--reading" style="font-size: var(--fs-h6)">Katılım</p></td></tr>
+<tr><th scope="row"><code>--fs-reading</code></th><td class="is-end">18</td><td class="is-end">20</td><td>Literata okuma metni</td><td><p class="f-s f-s--book" style="font-size: var(--fs-reading)">Şerhi mütalaa et</p></td></tr>
+<tr><th scope="row"><code>--fs-body</code></th><td class="is-end">16</td><td class="is-end">18</td><td>Sans akan metin; telefonda her alan</td><td><p class="f-s f-s--ui" style="font-size: var(--fs-body)">Oturumlarınız</p></td></tr>
+<tr><th scope="row"><code>--fs-body-sm</code></th><td class="is-end">14</td><td class="is-end">16</td><td>Her denetim ve tablo hücresi</td><td><p class="f-s f-s--ui" style="font-size: var(--fs-body-sm)">Derse katıl</p></td></tr>
+<tr><th scope="row"><code>--fs-caption</code></th><td class="is-end">13</td><td class="is-end">15</td><td>Üst bilgi, yardım, rozet, tablo başlığı</td><td><p class="f-s f-s--ui" style="font-size: var(--fs-caption)">3. hafta · 21:00</p></td></tr>
+<tr><th scope="row"><code>--fs-eyebrow</code></th><td class="is-end">12</td><td class="is-end">14</td><td>Yalnızca büyük harfli üst başlık</td><td><p class="f-s f-s--eyebrow" style="font-size: var(--fs-eyebrow)">Mütalaa</p></td></tr>
+<tr><th scope="row"><code>--fs-arabic</code></th><td class="is-end">26</td><td class="is-end">aynı</td><td>Klasik blok (matn); hiç ölçeklenmez</td><td><p class="mds-arabic-text" lang="ar" dir="rtl">نَصَرَ يَنْصُرُ</p></td></tr>
+<tr><th scope="row"><code>--fs-quran</code></th><td class="is-end">34</td><td class="is-end">aynı</td><td>Kur’ân; telefonda 28</td><td><p class="mds-quran" lang="ar" dir="rtl">ٱقْرَأْ</p></td></tr>
+<tr><th scope="row"><code>--fs-arabic-inline</code></th><td class="is-end">1.2em</td><td class="is-end">aynı</td><td>Latin metin içindeki Arapça kelime; en az 16px</td><td><p class="f-s f-s--book" style="font-size: var(--fs-reading)">«<span class="mds-arabic" lang="ar" dir="rtl">قَرَأَ</span>» fiili</p></td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<section class="f-sec">
+<div class="f-grid">
+<div class="f-col">
+<header class="f-head"><h2 class="mds-h5">Satır aralığı</h2></header>
+<ul class="f-list">
+<li><code>--lh-display 1.15</code> · Arapça <code>1.8</code></li>
+<li><code>--lh-tight 1.25</code> · çok satırlı başlık</li>
+<li><code>--lh-snug 1.35</code> · tek satırlı başlık; Î Â Û İ kesilmez</li>
+<li><code>--lh-ui 1.43</code> · denetim ve hücre: 14 → 20</li>
+<li><code>--lh-body 1.5</code> · sans akan metin</li>
+<li><code>--lh-reading 1.7</code> · Literata okuma</li>
+<li><code>--lh-arabic 1.8</code> · Naskh arayüz; ölçülen en az 1,70</li>
+<li><code>--lh-arabic-text 2</code> · harekeli matn</li>
+<li><code>--lh-quran 2.25</code> · Kur’ân; ölçülen en az 2,03</li>
+</ul>
+</div>
+<div class="f-col">
+<header class="f-head"><h2 class="mds-h5">Kalınlık</h2></header>
+<ul class="f-list">
+<li><code>--weight-regular 400</code> · Arapça <code>500</code></li>
+<li><code>--weight-medium 500</code> · Arapça <code>600</code></li>
+<li><code>--weight-semibold 600</code> · Arapça <code>700</code></li>
+<li><code>--weight-book 400</code> · metin kayıtları (Kur’ân, matn, okuma); hiç değişmez</li>
+</ul>
+<p class="mds-caption">Arapça arayüz bir kalınlık ağırdır: 15–16px etiketler gece sayfasında da tutar.</p>
+</div>
+<div class="f-col">
+<header class="f-head"><h2 class="mds-h5">Harf aralığı</h2></header>
+<ul class="f-list">
+<li><code>--tracking-tight -0.012em</code> · h1 ve vitrin</li>
+<li><code>--tracking-wide 0.07em</code> · büyük harfli üst başlık, yalnızca tr ve en</li>
+<li>Arapçada harf aralığı her zaman 0.</li>
+</ul>
+</div>
+</div>
+</section>
+</body></html>

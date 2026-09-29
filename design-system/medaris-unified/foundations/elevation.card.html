@@ -1,30 +1,26 @@
-<!-- @dsCard group="Foundations" viewport="820x400" name="Elevation" subtitle="Seven shadows, all neutral black at low alpha — depth is never a brand signal; five roles name the ones in use" -->
+<!-- @dsCard group="Foundations" viewport="820x570" name="Elevation" subtitle="Nothing at rest casts a shadow: a resting surface is a hairline. Only floating layers lift. Shadows are ink-tinted by day, black with a 1px ring by night." -->
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:28px;background:var(--background-neutral-primary);font-family:var(--font-ui)}
-.h{margin:0 0 12px}
-.grid{display:flex;gap:12px;flex-wrap:wrap}
-.grid + .h{margin-top:28px}
-.b{width:96px;height:72px;background:var(--background-white);border-radius:var(--radius-s);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:var(--font-mono);font-size:10px;color:var(--text-neutral-tertiary)}
-.b strong{font-weight:var(--weight-semibold);color:var(--text-neutral-primary)}
-.note{margin-top:22px;font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:700px}
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-tok{font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--text-neutral-muted);white-space:normal;overflow-wrap:anywhere}
+.f-id{white-space:nowrap}
+.f-desk{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-5)}
+.f-slot{display:flex;flex-direction:column;gap:var(--space-2)}
+.f-stage{display:flex;align-items:center;justify-content:center;block-size:176px;padding:var(--space-5);border-radius:var(--radius-surface);background:var(--background-neutral-page);box-shadow:inset 0 0 0 1px var(--border-neutral-subtle)}
+.f-stage--scrim{overflow:clip;background:var(--background-neutral-scrim)}
+.f-stage .mds-card{inline-size:100%}
+.f-stage .mds-toast{inline-size:320px;max-inline-size:100%}
+.f-modal{display:flex;flex-direction:column;gap:var(--space-2);inline-size:100%;padding:var(--space-5);border-radius:var(--radius-surface);background:var(--background-neutral-surface);box-shadow:var(--elevation-modal)}
+.f-modal p:last-child{font-size:var(--fs-body-sm);color:var(--text-neutral-muted)}
 </style></head><body>
-<p class="mds-eyebrow h" lang="en">Extracted</p>
-<div class="grid">
-<div class="b" style="box-shadow:var(--shadow-2xs)">2xs</div>
-<div class="b" style="box-shadow:var(--shadow-xs)">xs</div>
-<div class="b" style="box-shadow:var(--shadow-sm)">sm</div>
-<div class="b" style="box-shadow:var(--shadow-md)">md</div>
-<div class="b" style="box-shadow:var(--shadow-lg)">lg</div>
-<div class="b" style="box-shadow:var(--shadow-xl)">xl</div>
-<div class="b" style="box-shadow:var(--shadow-2xl)">2xl</div>
+<section class="f-sec">
+<div class="f-desk">
+<div class="f-slot"><div class="f-stage"><div class="mds-card"><h3 class="mds-card__title">Kâfiye: nahve giriş</h3><p class="mds-card__body">Müderris Mehmet Emin Işıkoğlu</p></div></div><code class="f-tok">durağan · kıl çizgi, gölge yok</code><span class="mds-caption">Kart, tablo, kenar çubuğu, katılma kartı <span class="f-id">(MDS-SHAPE-02)</span></span></div>
+<div class="f-slot"><div class="f-stage"><span class="mds-tooltip" role="tooltip">Bağlantıyı kopyala</span></div><code class="f-tok">--elevation-overlay</code><span class="mds-caption">Menü, açılır kutu, ipucu</span></div>
+<div class="f-slot"><div class="f-stage"><div class="mds-toast mds-toast--success" role="status"><span class="mds-toast__icon" aria-hidden="true"></span><div class="mds-toast__body"><p class="mds-toast__title">Kurs gizlendi</p><p class="mds-toast__desc">Arşiv’den geri alabilirsiniz.</p></div></div></div><code class="f-tok">--elevation-raised</code><span class="mds-caption">Bildirim, yapışkan kayıt kartı</span></div>
+<div class="f-slot"><div class="f-stage f-stage--scrim"><div class="f-modal" role="img" aria-label="İletişim kutusu örneği"><p class="mds-h3">Kursu yayından kaldır?</p><p>Talebeler kursu artık göremez.</p></div></div><code class="f-tok">--elevation-modal ·<br>--background-neutral-scrim</code><span class="mds-caption">İletişim kutusu, gezinme çekmecesi; arkasında perde</span></div>
 </div>
-<p class="mds-eyebrow h" lang="en">Roles — proposed</p>
-<div class="grid" lang="en">
-<div class="b" style="box-shadow:var(--elevation-resting)"><strong>resting</strong>xs</div>
-<div class="b" style="box-shadow:var(--elevation-overlay)"><strong>overlay</strong>md</div>
-<div class="b" style="box-shadow:var(--elevation-raised)"><strong>raised</strong>lg</div>
-<div class="b" style="box-shadow:var(--elevation-modal)"><strong>modal</strong>xl</div>
-<div class="b" style="box-shadow:var(--elevation-stage)"><strong>stage</strong>2xl</div>
-</div>
-<p class="note" lang="en">Name the role, not the step: <b>resting</b> for a card or a chip on media, and always with a hairline; <b>overlay</b> for a tooltip, menu or popover; <b>raised</b> for a toast, the sticky enrol card or the inline editor; <b>modal</b> for a dialog; <b>stage</b> for the video player. Hover never lifts a surface. 2xs and sm exist because the source file has them. An earlier generation of shadow tokens in the same file was tinted blue and red; those are not carried forward.</p>
+</section>
 </body></html>

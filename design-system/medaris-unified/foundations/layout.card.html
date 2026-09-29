@@ -1,76 +1,55 @@
-<!-- @dsCard group="Foundations" viewport="820x420" name="Layout and density" subtitle="Spacing roles, the compact region down to table cells, sidebar/pane/aside widths and the prose measure" -->
+<!-- @dsCard group="Foundations" viewport="820x980" name="Layout" subtitle="Tedris reads in a 1200px column with a 344px aside under a 64px top bar; Nizam runs full width beside a 256px sidebar. Three breakpoints, one prose measure." -->
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:var(--space-lg);background:var(--background-white);font-family:var(--font-ui);color:var(--text-neutral-primary)}
-.row{display:grid;grid-template-columns:340px 1fr;gap:var(--space-lg);align-items:start}
-.row + .row{margin-top:var(--space-lg);grid-template-columns:var(--layout-measure-prose) 1fr}
-.col{display:flex;flex-direction:column;gap:var(--space-sm);min-inline-size:0}
-.roles{display:grid;grid-template-columns:150px 1fr 1fr;align-items:center;row-gap:var(--space-sm);column-gap:var(--space-sm)}
-.cell{display:flex;align-items:center;gap:var(--space-sm)}
-.bar{block-size:12px;background:var(--background-brand-primary);border-radius:2px}
-code,.m{font-family:var(--font-mono);font-size:var(--fs-footnote);line-height:var(--lh-snug)}
-code{color:var(--text-neutral-secondary)}
-.m{color:var(--text-neutral-tertiary)}
-.pair{display:flex;gap:var(--space-md);align-items:flex-start}
-.pair > div{display:flex;flex-direction:column;gap:var(--space-xs)}
-.prose{max-inline-size:var(--layout-measure-prose);font-size:var(--fs-body);line-height:var(--lh-prose);margin:0}
-.w{display:flex;flex-direction:column;gap:var(--space-xs)}
-.w .bar{block-size:8px;margin-bottom:var(--space-xs)}
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.f-id{white-space:nowrap}
+.f-plan{position:relative;display:grid;inline-size:720px;max-inline-size:100%;block-size:200px;border:var(--border-width-thin) solid var(--border-neutral-subtle);border-radius:var(--radius-control);background:var(--background-neutral-page);overflow:hidden}
+.f-plan--tedris{grid-template-rows:32px minmax(0,1fr)}
+.f-plan--nizam{grid-template-columns:128px minmax(0,1fr)}
+.f-box{display:flex;flex-direction:column;justify-content:flex-start;gap:2px;min-inline-size:0;padding:var(--space-2);border:var(--border-width-thin) solid var(--border-neutral-subtle);background:var(--background-neutral-surface);font-size:var(--fs-caption);line-height:1.35;color:var(--text-neutral-subtle)}
+.f-box b{font-weight:var(--weight-semibold);color:var(--text-neutral-default)}
+.f-top{flex-direction:row;align-items:center;gap:var(--space-2);border-width:0 0 1px}
+.f-top .mds-logo__mark{inline-size:16px;block-size:16px}
+.f-body{display:grid;grid-template-columns:minmax(0,1fr) 172px;gap:10px;inline-size:600px;max-inline-size:calc(100% - 40px);margin-inline:auto;padding-block:var(--space-3)}
+.f-side{border-width:0;border-inline-end-width:1px}
+.f-main{display:grid;grid-template-columns:150px minmax(0,1fr);gap:10px;padding:var(--space-3) 20px}
+.f-ruler{position:relative;inline-size:720px;max-inline-size:100%;block-size:56px;border-block-start:var(--border-width-thin) solid var(--border-neutral-strong);margin-block-start:var(--space-2)}
+.f-tick{position:absolute;inset-block-start:-5px;inset-inline-start:var(--f-at);display:flex;flex-direction:column;align-items:flex-end;gap:var(--space-1);translate:-100% 0;white-space:nowrap}
+.f-tick::before{content:"";align-self:flex-end;inline-size:1px;block-size:9px;background:var(--border-neutral-strong)}
+.f-tick code{font-size:var(--fs-caption)}
+.f-measure{display:flex;flex-direction:column;gap:var(--space-2)}
+.f-measure .mds-reading{padding-block-end:var(--space-2);border-block-end:var(--border-width-thick) solid var(--border-brand-default)}
 </style></head><body>
-<div class="row">
-  <div class="col">
-    <p class="mds-eyebrow" lang="en">Spacing roles</p>
-    <div class="roles" lang="en">
-      <span></span><span class="m">default</span><span class="m">compact</span>
-      <code>--space-inset-card</code>
-      <span class="cell"><span class="bar" style="inline-size:var(--space-inset-card)"></span><span class="m">24</span></span>
-      <span class="cell" data-density="compact"><span class="bar" style="inline-size:var(--space-inset-card)"></span><span class="m">16</span></span>
-      <code>--space-gap-stack</code>
-      <span class="cell"><span class="bar" style="inline-size:var(--space-gap-stack)"></span><span class="m">24</span></span>
-      <span class="cell" data-density="compact"><span class="bar" style="inline-size:var(--space-gap-stack)"></span><span class="m">16</span></span>
-      <code>--space-gap-grid</code>
-      <span class="cell"><span class="bar" style="inline-size:var(--space-gap-grid)"></span><span class="m">16</span></span>
-      <span class="cell" data-density="compact"><span class="bar" style="inline-size:var(--space-gap-grid)"></span><span class="m">16</span></span>
-      <code>--space-gutter-page</code>
-      <span class="cell"><span class="bar" style="inline-size:var(--space-gutter-page)"></span><span class="m">32</span></span>
-      <span class="cell" data-density="compact"><span class="bar" style="inline-size:var(--space-gutter-page)"></span><span class="m">24</span></span>
-      <code>--space-cell-block</code>
-      <span class="cell"><span class="bar" style="inline-size:var(--space-cell-block)"></span><span class="m">12</span></span>
-      <span class="cell" data-density="compact"><span class="bar" style="inline-size:var(--space-cell-block)"></span><span class="m">8</span></span>
-      <code>--space-cell-inline</code>
-      <span class="cell"><span class="bar" style="inline-size:var(--space-cell-inline)"></span><span class="m">16</span></span>
-      <span class="cell" data-density="compact"><span class="bar" style="inline-size:var(--space-cell-inline)"></span><span class="m">12</span></span>
-    </div>
-    <span class="m" lang="en">Below 768px the page gutter is 16 in either density.</span>
-  </div>
-  <div class="col">
-    <p class="mds-eyebrow" lang="en">A compact region, down to table cells</p>
-    <div class="pair">
-      <div>
-        <span class="m" lang="en">default</span>
-        <div class="mds-card"><table class="mds-table"><thead><tr><th>Talebe</th><th>Hafta</th></tr></thead><tbody><tr><td>Ayşe</td><td>3</td></tr></tbody></table></div>
-      </div>
-      <div>
-        <span class="m" lang="en">data-density="compact"</span>
-        <div class="mds-card" data-density="compact"><table class="mds-table"><thead><tr><th>Talebe</th><th>Hafta</th></tr></thead><tbody><tr><td>Ayşe</td><td>3</td></tr></tbody></table></div>
-      </div>
-    </div>
-    <span class="m" lang="en">Density is a region, not an app: set it on any container.</span>
-  </div>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Tedris · okuma sayfası</h2><p class="mds-caption">Yarım ölçek. İçerik en çok 1200px; kenar sütunu katılma kartını ve ezber destesini taşır.</p></header>
+<div class="f-plan f-plan--tedris" role="img" aria-label="Tedris sayfa planı">
+<div class="f-box f-top"><svg class="mds-logo__mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect class="mds-logo__ground" width="48" height="48" rx="3"/><rect class="mds-logo__rule" x="5.5" y="5.5" width="37" height="37" stroke-width="1.5"/><rect class="mds-logo__rule mds-logo__rule--inner" x="9.5" y="9.5" width="29" height="29" stroke-width="1"/><path class="mds-logo__nokta" d="M24 15.5 32.5 24 24 32.5 15.5 24Z"/></svg><b>--layout-topbar 64</b><span>telefonda 56</span></div>
+<div class="f-body"><div class="f-box"><b>--layout-content-max 1200</b><span>kurs, program, mütalaa</span></div><div class="f-box"><b>--layout-aside 344</b><span>katılma kartı</span></div></div>
 </div>
-<div class="row">
-  <div class="col">
-    <p class="mds-eyebrow" lang="en">Prose measure</p>
-    <p class="prose">Bir kurs haftalara, her hafta da tarihli oturumlara ayrılır. Talebe sıradaki oturumu, ders akışını ve geçmiş ders kayıtlarını aynı sayfada bulur. Uzun bir açıklama bu ölçüyü aşmaz.</p>
-    <span class="m" lang="en">--layout-measure-prose 34em with --lh-prose: about 80 characters of 16px IBM Plex Sans a line</span>
-  </div>
-  <div class="col">
-    <p class="mds-eyebrow" lang="en">Layout widths, half size</p>
-    <div class="w" lang="en">
-      <code>--layout-sidebar 248</code><span class="bar" style="inline-size:calc(var(--layout-sidebar) / 2)"></span>
-      <code>--layout-pane 300</code><span class="bar" style="inline-size:calc(var(--layout-pane) / 2)"></span>
-      <code>--layout-aside 340</code><span class="bar" style="inline-size:calc(var(--layout-aside) / 2)"></span>
-      <code>--layout-content-max 1440</code>
-    </div>
-  </div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Nizam · yönetim ekranı</h2><p class="mds-caption">Yarım ölçek. Kenar çubuğunun yanında tam genişlik; ana-ayrıntı listesi bir bölmede.</p></header>
+<div class="f-plan f-plan--nizam" role="img" aria-label="Nizam sayfa planı">
+<div class="f-box f-side"><b>--layout-sidebar 256</b><span>tek yüzey, kıl çizgi</span></div>
+<div class="f-main"><div class="f-box"><b>--layout-pane 300</b><span>liste bölmesi</span></div><div class="f-box"><b>tam genişlik</b><span>tablo, form; data-density="compact"</span></div></div>
 </div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Kırılma noktaları</h2><p class="mds-caption">0'dan 1440'a. var() bir @media koşulunda kullanılamaz: “tabletin altı” için 767.98px yazılır.</p></header>
+<div class="f-ruler" role="img" aria-label="Kırılma noktaları: 390, 768, 1440">
+<span class="f-tick" style="--f-at: calc(390 / 1440 * 100%)"><code>--bp-mobile 390</code></span>
+<span class="f-tick" style="--f-at: calc(768 / 1440 * 100%)"><code>--bp-tablet 768</code></span>
+<span class="f-tick" style="--f-at: 100%"><code>--bp-desktop 1440</code></span>
+</div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Okuma ölçüsü</h2><p class="mds-caption">--layout-measure-prose 58ch. ch, öğenin kendi yüzünü izler: Literata 18'de yaklaşık 604px, satırda yaklaşık 70 harf.</p></header>
+<div class="f-measure">
+<p class="mds-reading">Bir kurs haftalara, her hafta da tarihli oturumlara ayrılır. Talebe sıradaki oturumu, ders akışını ve geçmiş ders kayıtlarını aynı sayfada bulur. Uzun bir açıklama bu ölçüyü aşmaz.</p>
+<p class="mds-caption">Yön için yalnızca mantıksal özellikler: <code>margin-inline</code>, <code>padding-block</code>, <code>inset-inline-start</code>. Arapçada sayfa kendiliğinden aynalanır <span class="f-id">(MDS-LAY-05)</span>.</p>
+</div>
+</section>
 </body></html>

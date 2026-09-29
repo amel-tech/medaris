@@ -1,36 +1,58 @@
-<!-- @dsCard group="Foundations" viewport="820x540" name="Semantic — border" subtitle="Hairlines and outlines. Nothing in the product draws a border from a primitive." -->
+<!-- @dsCard group="Foundations" viewport="820x1000" name="Semantic — border" subtitle="A hairline decorates, a control edge identifies, a tone edge marks. Two widths: 1px for every edge, 2px for the active tab and a selected choice." -->
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
-body{margin:0;padding:20px;background:var(--background-white);font-family:var(--font-ui)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.cell{display:flex;flex-direction:column;gap:4px}
-.sw{height:40px;border-radius:var(--radius-xs);border:1px solid var(--gray-200)}
-.sw-t{display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;background:var(--gray-50);border-color:transparent}
-.sw-b{background:var(--background-white);border-width:2px;border-style:solid}
-.sw-i{display:flex;align-items:center;justify-content:center;background:var(--gray-50);border-color:transparent}
-code{font-family:var(--font-mono);font-size:10px;color:var(--text-neutral-primary);line-height:1.3}
-.p{font-family:var(--font-mono);font-size:9px;color:var(--text-neutral-disabled)}
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.f-tok{font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--text-neutral-muted);overflow-wrap:anywhere}
+.f-theme{display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--text-neutral-subtle);white-space:nowrap}
+.f-theme > span{display:inline-flex;align-items:center;gap:var(--space-1)}
+.f-theme .mds-icon{inline-size:14px;block-size:14px}
+.f-ratio{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:var(--fs-caption);line-height:1.45;font-variant-numeric:lining-nums tabular-nums;white-space:nowrap}
+.f-colhead{display:grid;gap:var(--space-4);padding-block-end:var(--space-2);border-block-end:var(--border-width-thin) solid var(--border-neutral-subtle);font-size:var(--fs-caption);font-weight:var(--weight-medium);color:var(--text-neutral-subtle)}
+.f-colhead > :last-child{text-align:end}
+.f-rows{display:flex;flex-direction:column;margin:0;padding:0;list-style:none}
+.f-row,.f-colhead{grid-template-columns:140px minmax(0,1fr) 128px 64px}
+.f-row{display:grid;gap:var(--space-4);align-items:center;padding-block:var(--space-3);border-block-end:var(--border-width-thin) solid var(--border-neutral-subtle)}
+.f-start{justify-self:start}
+.f-prog{inline-size:128px}
+.f-row:last-child{border-block-end:0}
+.f-row__text{display:flex;flex-direction:column;gap:2px;min-inline-size:0}
+.f-bs{display:flex;align-items:center;inline-size:128px;block-size:32px;padding-inline:var(--space-3);border-radius:var(--radius-control);font-size:var(--fs-body-sm);color:var(--text-neutral-subtle)}
+.f-bs--card{border:var(--border-width-thin) solid var(--border-neutral-subtle);border-radius:var(--radius-surface);background:var(--background-neutral-surface)}
+.f-bs--field{border:var(--border-width-thin) solid var(--border-neutral-control);background:var(--background-neutral-field)}
+.f-bs--strong{border-color:var(--border-neutral-strong);color:var(--text-neutral-default)}
+.f-bs--error{border-color:var(--border-error-default);box-shadow:inset 0 0 0 1px var(--border-error-default);font-family:var(--font-mono);color:var(--text-neutral-default)}
+.f-bs--mark{padding:0;gap:var(--space-2)}
+.f-bs--mark::before{content:"";flex:1;block-size:3px;border-radius:var(--radius-full);background:var(--f-bd)}
+.f-bs--mark::after{content:"";inline-size:10px;block-size:10px;border-radius:var(--radius-full);background:var(--f-bd)}
+.f-widths{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-6)}
+.f-width{display:flex;flex-direction:column;gap:var(--space-2)}
+.f-width__line{block-size:0;border-block-start:var(--f-w) solid var(--border-neutral-strong);margin-block:var(--space-2)}
 </style></head><body>
-<div class="grid">
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-neutral-primary)"></div><code>neutral-primary</code><span class="p">gray-200</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-neutral-secondary)"></div><code>neutral-secondary</code><span class="p">gray-300</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-neutral-tertiary)"></div><code>neutral-tertiary</code><span class="p">gray-400</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-neutral-inverse-primary)"></div><code>neutral-inverse-primary</code><span class="p">gray-800</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-neutral-inverse-secondary)"></div><code>neutral-inverse-secondary</code><span class="p">gray-700</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-neutral-inverse-tertiary)"></div><code>neutral-inverse-tertiary</code><span class="p">gray-600</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-brand-primary)"></div><code>brand-primary</code><span class="p">sky-900</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-brand-secondary)"></div><code>brand-secondary</code><span class="p">sky-800</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-brand-inverse)"></div><code>brand-inverse</code><span class="p">sky-100</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-success-primary)"></div><code>success-primary</code><span class="p">green-700</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-success-secondary)"></div><code>success-secondary</code><span class="p">green-600</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-success-inverse)"></div><code>success-inverse</code><span class="p">green-50</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-warning-primary)"></div><code>warning-primary</code><span class="p">yellow-500</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-warning-secondary)"></div><code>warning-secondary</code><span class="p">yellow-400</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-warning-inverse)"></div><code>warning-inverse</code><span class="p">yellow-50</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-error-primary)"></div><code>error-primary</code><span class="p">red-700</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-error-secondary)"></div><code>error-secondary</code><span class="p">red-600</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-error-inverse)"></div><code>error-inverse</code><span class="p">red-50</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-info-primary)"></div><code>info-primary</code><span class="p">blue-700</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-info-secondary)"></div><code>info-secondary</code><span class="p">blue-600</span></div>
-<div class="cell"><div class="sw sw-b" style="border-color:var(--border-info-inverse)"></div><code>info-inverse</code><span class="p">blue-50</span></div>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Kenar rolleri</h2><p class="mds-caption">Oran, rolün üzerinde durduğu her zemindeki en düşük değer; eşik 3:1.</p></header>
+<div class="f-colhead" aria-hidden="true"><span>Örnek</span><span>Rol</span><span>Adım</span><span>En düşük</span></div>
+<!-- The ratios are copied from contrast.md; when verify-contrast.mjs --write changes it, change them here too. -->
+<ul class="f-rows">
+<li class="f-row" style="--f-bd: var(--border-neutral-subtle)"><span class="f-bs f-bs--card"></span><span class="f-row__text"><code class="f-tok">--border-neutral-subtle</code><span class="mds-caption">Süs kıl çizgisi: ayraç, kart ve tablo kenarı. Bir denetimin tek kenarı olamaz; oran gerekmez.</span></span><span class="f-theme"><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><span class="mds-visually-hidden">Gündüz: </span>kagit-200</span><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><span class="mds-visually-hidden">Gece: </span>murekkep-800</span></span><span class="f-ratio"><span>süs</span></span></li>
+<li class="f-row" style="--f-bd: var(--border-neutral-control)"><span class="f-bs f-bs--field">Ad soyad</span><span class="f-row__text"><code class="f-tok">--border-neutral-control</code><span class="mds-caption">Bir denetimi tanıtan kenar: alan, seçim, onay kutusu, radyo, anahtar</span></span><span class="f-theme"><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><span class="mds-visually-hidden">Gündüz: </span>murekkep-400</span><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><span class="mds-visually-hidden">Gece: </span>murekkep-400</span></span><span class="f-ratio"><span><span class="mds-visually-hidden">Gündüz en az </span>3,12:1</span><span><span class="mds-visually-hidden">Gece en az </span>3,87:1</span></span></li>
+<li class="f-row" style="--f-bd: var(--border-neutral-strong)"><span class="f-bs f-bs--field f-bs--strong">Ad soyad</span><span class="f-row__text"><code class="f-tok">--border-neutral-strong</code><span class="mds-caption">Denetimin üzerine gelince ve odakta kenarı</span></span><span class="f-theme"><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><span class="mds-visually-hidden">Gündüz: </span>murekkep-700</span><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><span class="mds-visually-hidden">Gece: </span>kagit-400</span></span><span class="f-ratio"><span><span class="mds-visually-hidden">Gündüz en az </span>7,60:1</span><span><span class="mds-visually-hidden">Gece en az </span>6,38:1</span></span></li>
+<li class="f-row" style="--f-bd: var(--border-brand-default)"><div class="mds-progress f-prog" role="progressbar" aria-label="Kurs ilerlemesi" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" aria-valuetext="%60"><div class="mds-progress__bar" style="--mds-progress: 60%"></div></div><span class="f-row__text"><code class="f-tok">--border-brand-default</code><span class="mds-caption">İlerleme dolgusu, etkin sekmenin alt çizgisi, seçili seçim kartının kenarı</span></span><span class="f-theme"><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><span class="mds-visually-hidden">Gündüz: </span>laciverd-600</span><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><span class="mds-visually-hidden">Gece: </span>laciverd-400</span></span><span class="f-ratio"><span><span class="mds-visually-hidden">Gündüz en az </span>5,84:1</span><span><span class="mds-visually-hidden">Gece en az </span>5,51:1</span></span></li>
+<li class="f-row" style="--f-bd: var(--border-success-default)"><span class="f-bs f-bs--mark"></span><span class="f-row__text"><code class="f-tok">--border-success-default</code><span class="mds-caption">Başarı işareti</span></span><span class="f-theme"><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><span class="mds-visually-hidden">Gündüz: </span>zumrut-600</span><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><span class="mds-visually-hidden">Gece: </span>zumrut-400</span></span><span class="f-ratio"><span><span class="mds-visually-hidden">Gündüz en az </span>4,70:1</span><span><span class="mds-visually-hidden">Gece en az </span>6,37:1</span></span></li>
+<li class="f-row" style="--f-bd: var(--border-warning-default)"><span class="f-bs f-bs--mark"></span><span class="f-row__text"><code class="f-tok">--border-warning-default</code><span class="mds-caption">Uyarı işareti</span></span><span class="f-theme"><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><span class="mds-visually-hidden">Gündüz: </span>safran-700</span><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><span class="mds-visually-hidden">Gece: </span>safran-400</span></span><span class="f-ratio"><span><span class="mds-visually-hidden">Gündüz en az </span>5,50:1</span><span><span class="mds-visually-hidden">Gece en az </span>6,92:1</span></span></li>
+<li class="f-row" style="--f-bd: var(--border-error-default)"><span class="f-bs f-bs--field f-bs--error">zoom.us/j/</span><span class="f-row__text"><code class="f-tok">--border-error-default</code><span class="mds-caption">Geçersiz alanın kenarı (iki kat), hata işareti</span></span><span class="f-theme"><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><span class="mds-visually-hidden">Gündüz: </span>lal-600</span><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><span class="mds-visually-hidden">Gece: </span>lal-400</span></span><span class="f-ratio"><span><span class="mds-visually-hidden">Gündüz en az </span>4,83:1</span><span><span class="mds-visually-hidden">Gece en az </span>5,01:1</span></span></li>
+<li class="f-row" style="--f-bd: var(--border-info-default)"><span class="f-bs f-bs--mark"></span><span class="f-row__text"><code class="f-tok">--border-info-default</code><span class="mds-caption">Bilgi işareti</span></span><span class="f-theme"><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><span class="mds-visually-hidden">Gündüz: </span>laciverd-600</span><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><span class="mds-visually-hidden">Gece: </span>laciverd-400</span></span><span class="f-ratio"><span><span class="mds-visually-hidden">Gündüz en az </span>5,84:1</span><span><span class="mds-visually-hidden">Gece en az </span>5,51:1</span></span></li>
+<li class="f-row" style="--f-bd: var(--border-live-default)"><span class="mds-badge mds-badge--live f-start"><span class="mds-badge__dot" aria-hidden="true"></span>Şu an canlı</span><span class="f-row__text"><code class="f-tok">--border-live-default</code><span class="mds-caption">Canlı noktası</span></span><span class="f-theme"><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><span class="mds-visually-hidden">Gündüz: </span>lal-600</span><span><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><span class="mds-visually-hidden">Gece: </span>lal-400</span></span><span class="f-ratio"><span><span class="mds-visually-hidden">Gündüz en az </span>5,24:1</span><span><span class="mds-visually-hidden">Gece en az </span>5,52:1</span></span></li>
+</ul>
+<p class="mds-caption">Odak halkası iki bantlıdır: <code>--ring-focus-gap</code> ve <code>--ring-focus-color</code>. Ayrıntısı “Focus ring” kartında.</p>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">İki kalınlık</h2></header>
+<div class="f-widths">
+<div class="f-width" style="--f-w: var(--border-width-thin)"><code class="f-tok">--border-width-thin · 1px</code><span class="f-width__line"></span><span class="mds-caption">Her kenar: kıl çizgi, denetim, rozet.</span></div>
+<div class="f-width" style="--f-w: var(--border-width-thick)"><code class="f-tok">--border-width-thick · 2px</code><span class="f-width__line"></span><span class="mds-caption">Yalnızca etkin sekmenin alt çizgisi.</span></div>
 </div>
+</section>
 </body></html>

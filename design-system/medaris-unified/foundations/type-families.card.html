@@ -1,0 +1,38 @@
+<!-- @dsCard group="Foundations" viewport="820x1000" name="Type families" subtitle="Five faces, one job each. A page downloads only the faces it paints: a Latin-only Nizam page costs 120.6 KB of type." -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.f-tok{font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--text-neutral-muted);overflow-wrap:anywhere}
+.f-fams{display:flex;flex-direction:column;margin:0;padding:0;list-style:none}
+.f-fam{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:var(--space-6);align-items:center;padding-block:var(--space-4);border-block-end:var(--border-width-thin) solid var(--border-neutral-subtle)}
+.f-fam:last-child{border-block-end:0}
+.f-fam__sample{font-size:var(--fs-h2);line-height:var(--lh-snug)}
+.f-fam .mds-arabic-text,.f-fam .mds-quran{text-align:start}
+.f-fam__meta{display:flex;flex-direction:column;gap:2px}
+.f-fam__name{font-size:var(--fs-body-sm);font-weight:var(--weight-semibold)}
+.f-costs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-4)}
+.f-costs > div{display:flex;flex-direction:column;gap:2px;padding:var(--space-4);border-radius:var(--radius-control);background:var(--background-neutral-sunken)}
+.f-costs b{font-family:var(--font-reading);font-size:var(--fs-h3);font-weight:var(--weight-medium);font-variant-numeric:lining-nums tabular-nums}
+</style></head><body>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Beş yüz, her birinin tek işi</h2><p class="mds-caption">MDS-TYPE-01. Sistem yazı tipi yok; her yüz Google Fonts'tan gelir.</p></header>
+<ul class="f-fams">
+<li class="f-fam"><p class="f-fam__sample" style="font-family: var(--font-ui)">Derse katıl · Talebeler · 21:00</p><div class="f-fam__meta"><span class="f-fam__name">Instrument Sans</span><code class="f-tok">--font-ui</code><span class="mds-caption">Her denetim, tablo, gezinme, etiket ve üst bilgi.</span><span class="mds-caption">400–600 · 40,9 KB, her sayfada</span></div></li>
+<li class="f-fam"><p class="f-fam__sample" style="font-family: var(--font-reading)">İsâgûcî Şerhi · <i>el-Ebherî</i></p><div class="f-fam__meta"><span class="f-fam__name">Literata</span><code class="f-tok">--font-reading</code><span class="mds-caption">Okuma metni (şerh, meâl, açıklama) ve her başlık.</span><span class="mds-caption">400–600, italik 400 · 69,8 KB her sayfada; italik 38,5 KB, kullanılınca</span></div></li>
+<li class="f-fam"><p class="mds-arabic-text" lang="ar" dir="rtl">الأمثلة المختلفة وبناء الأفعال</p><div class="f-fam__meta"><span class="f-fam__name">Noto Naskh Arabic</span><code class="f-tok">--font-arabic</code><span class="mds-caption">Klasik Arapça metin ve bütün Arapça arayüz.</span><span class="mds-caption">400–700 · 92,0 + 19,3 KB, yalnızca Arapça olan sayfada</span></div></li>
+<li class="f-fam"><p class="mds-quran" lang="ar" dir="rtl">بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</p><div class="f-fam__meta"><span class="f-fam__name">Scheherazade New</span><code class="f-tok">--font-quran</code><span class="mds-caption">Yalnızca Kur’ân metni.</span><span class="mds-caption">400 · 67,4 KB tek dosya, yalnızca Kur’ân olan sayfada</span></div></li>
+<li class="f-fam"><p class="f-fam__sample" style="font-family: var(--font-mono)">meet.google.com/abc-defg-hij</p><div class="f-fam__meta"><span class="f-fam__name">Atkinson Hyperlegible Mono</span><code class="f-tok">--font-mono</code><span class="mds-caption">Toplantı bağlantıları ve kimlikler: <span class="mds-mono">I l 1 O 0</span> hiç karışmaz.</span><span class="mds-caption">400 · 9,9 KB, yalnızca bağlantı ya da kimlik gösterilince</span></div></li>
+</ul>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Bir sayfanın yazı yükü</h2><p class="mds-caption">Başsız Chromium'da ağ üzerinden ölçüldü.</p></header>
+<div class="f-costs">
+<div><b>120,6 KB</b><span class="mds-caption">Nizam, yalnızca Latin: tablo, form, toplantı bağlantısı</span></div>
+<div><b>327,6 KB</b><span class="mds-caption">Tedris kurs sayfası, mütalaa ile: Kur’ân, matn, şerh</span></div>
+<div><b>299,5 KB</b><span class="mds-caption">Telefon: oturum, giriş ve Arapça giriş</span></div>
+</div>
+</section>
+</body></html>

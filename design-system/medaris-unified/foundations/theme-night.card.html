@@ -1,0 +1,52 @@
+<!-- @dsCard group="Foundations" viewport="820x1240" name="Night theme" subtitle="The same screen by day and by night. The night theme swaps paper and ink; it re-points semantic roles only, never a primitive." -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.f-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-5)}
+.f-frame{display:flex;flex-direction:column;gap:var(--space-2);margin:0}
+.f-frame figcaption{display:flex;align-items:center;gap:var(--space-2);font-size:var(--fs-body-sm);font-weight:var(--weight-semibold)}
+.f-frame iframe{display:block;inline-size:100%;block-size:360px;border:var(--border-width-thin) solid var(--border-neutral-subtle);border-radius:var(--radius-surface)}
+.mds-table :is(th,td){vertical-align:top}
+.f-ways{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-4);margin:0;padding:0;list-style:none}
+.f-ways li{display:flex;flex-direction:column;gap:var(--space-1);font-size:var(--fs-body-sm);line-height:var(--lh-body)}
+</style></head><body>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Gündüz kâğıt, gece mürekkep</h2><p class="mds-caption">Aynı işaretleme iki kez: soldaki çerçeve data-theme="light", sağdaki data-theme="dark".</p></header>
+<!-- The two frames hold the same screen; change both. Each frame sets its theme on its own <html>. -->
+<div class="f-pair">
+<figure class="f-frame"><figcaption><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg>Gündüz</figcaption><iframe title="Gündüz teması" srcdoc="<!doctype html><html lang='tr' data-theme='light'><head><meta charset='utf-8'><link rel='stylesheet' href='../styles.css'><style>body{padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)}.top{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2)}.mds-card{display:flex;flex-direction:column;gap:var(--space-3)}.row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}.mds-arabic-text{font-size:var(--fs-h3);text-align:center}</style></head><body><header class='top'><span class='mds-logo mds-logo--sm' role='img' aria-label='Medaris'><svg class='mds-logo__mark' viewBox='0 0 48 48' aria-hidden='true' focusable='false'><rect class='mds-logo__ground' width='48' height='48' rx='3'/><rect class='mds-logo__rule' x='5.5' y='5.5' width='37' height='37' stroke-width='1.5'/><rect class='mds-logo__rule mds-logo__rule--inner' x='9.5' y='9.5' width='29' height='29' stroke-width='1'/><path class='mds-logo__nokta' d='M24 15.5 32.5 24 24 32.5 15.5 24Z'/></svg><span class='mds-logo__text'><span class='mds-logo__word'>Medaris</span></span></span><span class='mds-badge mds-badge--live'><span class='mds-badge__dot' aria-hidden='true'></span>Şu an canlı</span></header><article class='mds-card'><div><p class='mds-eyebrow'>5. hafta · Sarf</p><h1 class='mds-card__title'>Mehmûz fiiller</h1><p class='mds-caption'>Müderris Abdülhamit Karaosmanoğlu · Cmt 21:00</p></div><p class='mds-arabic-text' lang='ar' dir='rtl'>نَصَرَ يَنْصُرُ نَصْرًا فَهُوَ نَاصِرٌ</p><div class='mds-progress' role='progressbar' aria-label='Kurs ilerlemesi' aria-valuenow='35' aria-valuemin='0' aria-valuemax='100' aria-valuetext='%35'><div class='mds-progress__bar' style='--mds-progress: 35%'></div></div><div class='row'><button type='button' class='mds-btn mds-btn--primary'>Derse katıl</button><button type='button' class='mds-btn mds-btn--outline'>Programı gör</button></div><div class='row'><span class='mds-badge mds-badge--success'>Kayıtlı</span><span class='mds-badge mds-badge--warning'><svg class='mds-icon mds-icon--sm' aria-hidden='true'><use href='../assets/icons.svg#clock'/></svg>Onay bekliyor</span><span class='mds-badge mds-badge--destructive'><svg class='mds-icon mds-icon--sm' aria-hidden='true'><use href='../assets/icons.svg#ban'/></svg>Yasaklı</span></div><p><a href='#'>Ders notlarını aç</a></p></article></body></html>"></iframe></figure>
+<figure class="f-frame"><figcaption><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg>Gece</figcaption><iframe title="Gece teması" srcdoc="<!doctype html><html lang='tr' data-theme='dark'><head><meta charset='utf-8'><link rel='stylesheet' href='../styles.css'><style>body{padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)}.top{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2)}.mds-card{display:flex;flex-direction:column;gap:var(--space-3)}.row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}.mds-arabic-text{font-size:var(--fs-h3);text-align:center}</style></head><body><header class='top'><span class='mds-logo mds-logo--sm' role='img' aria-label='Medaris'><svg class='mds-logo__mark' viewBox='0 0 48 48' aria-hidden='true' focusable='false'><rect class='mds-logo__ground' width='48' height='48' rx='3'/><rect class='mds-logo__rule' x='5.5' y='5.5' width='37' height='37' stroke-width='1.5'/><rect class='mds-logo__rule mds-logo__rule--inner' x='9.5' y='9.5' width='29' height='29' stroke-width='1'/><path class='mds-logo__nokta' d='M24 15.5 32.5 24 24 32.5 15.5 24Z'/></svg><span class='mds-logo__text'><span class='mds-logo__word'>Medaris</span></span></span><span class='mds-badge mds-badge--live'><span class='mds-badge__dot' aria-hidden='true'></span>Şu an canlı</span></header><article class='mds-card'><div><p class='mds-eyebrow'>5. hafta · Sarf</p><h1 class='mds-card__title'>Mehmûz fiiller</h1><p class='mds-caption'>Müderris Abdülhamit Karaosmanoğlu · Cmt 21:00</p></div><p class='mds-arabic-text' lang='ar' dir='rtl'>نَصَرَ يَنْصُرُ نَصْرًا فَهُوَ نَاصِرٌ</p><div class='mds-progress' role='progressbar' aria-label='Kurs ilerlemesi' aria-valuenow='35' aria-valuemin='0' aria-valuemax='100' aria-valuetext='%35'><div class='mds-progress__bar' style='--mds-progress: 35%'></div></div><div class='row'><button type='button' class='mds-btn mds-btn--primary'>Derse katıl</button><button type='button' class='mds-btn mds-btn--outline'>Programı gör</button></div><div class='row'><span class='mds-badge mds-badge--success'>Kayıtlı</span><span class='mds-badge mds-badge--warning'><svg class='mds-icon mds-icon--sm' aria-hidden='true'><use href='../assets/icons.svg#clock'/></svg>Onay bekliyor</span><span class='mds-badge mds-badge--destructive'><svg class='mds-icon mds-icon--sm' aria-hidden='true'><use href='../assets/icons.svg#ban'/></svg>Yasaklı</span></div><p><a href='#'>Ders notlarını aç</a></p></article></body></html>"></iframe></figure>
+</div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Ne yer değiştirir</h2><p class="mds-caption">Adlar aynı kalır; gece yalnızca gösterdikleri adımı değiştirir.</p></header>
+<div class="mds-table-wrap" data-density="compact">
+<table class="mds-table">
+<caption class="mds-visually-hidden">Gündüz ve gece adımları</caption>
+<thead><tr><th scope="col">Rol</th><th scope="col">Token</th><th scope="col">Gündüz</th><th scope="col">Gece</th><th scope="col">Not</th></tr></thead>
+<tbody>
+<tr><th scope="row">Sayfa</th><td><code>--background-neutral-page</code></td><td><code>kagit-50</code></td><td><code>murekkep-950</code></td><td class="mds-caption"></td></tr>
+<tr><th scope="row">Yaprak</th><td><code>--background-neutral-surface</code></td><td><code>kagit-0</code></td><td><code>murekkep-900</code></td><td class="mds-caption"></td></tr>
+<tr><th scope="row">Metin</th><td><code>--text-neutral-default</code></td><td><code>murekkep-900</code></td><td><code>kagit-150</code></td><td class="mds-caption">sayfada 15,65:1 → 14,43:1</td></tr>
+<tr><th scope="row">Asıl işlem</th><td><code>--background-action-bold</code></td><td><code>murekkep-900</code></td><td><code>kagit-150</code></td><td class="mds-caption">mürekkep düğme, gece kâğıt düğme</td></tr>
+<tr><th scope="row">Vurgu</th><td><code>--text-brand-default</code></td><td><code>laciverd-700</code></td><td><code>laciverd-300</code></td><td class="mds-caption">bağlantı, Sıradaki</td></tr>
+<tr><th scope="row">Hata ve canlı</th><td><code>--text-error-default</code></td><td><code>lal-700</code></td><td><code>lal-300</code></td><td class="mds-caption"></td></tr>
+<tr><th scope="row">Odak halkası</th><td><code>--ring-focus-color</code></td><td><code>laciverd-600</code></td><td><code>laciverd-300</code></td><td class="mds-caption">boşluk kagit-0 → murekkep-950</td></tr>
+<tr><th scope="row">Denetim kenarı</th><td><code>--border-neutral-control</code></td><td><code>murekkep-400</code></td><td><code>murekkep-400</code></td><td class="mds-caption">iki temada aynı adım</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Gece nasıl açılır</h2></header>
+<ol class="f-ways">
+<li><b>Kullanıcının seçimi</b><span><code>&lt;html data-theme="dark"&gt;</code></span></li>
+<li><b>Sistemin tercihi</b><span><code>prefers-color-scheme: dark</code>, <code>data-theme="light"</code> yoksa.</span></li>
+<li><b>Gece adası</b><span>Bir öğede <code>data-theme="dark"</code>; <code>tokens/base.css</code> adaya kendi zeminini ve mürekkebini verir.</span></li>
+</ol>
+<p class="mds-caption">Tema hiçbir ilkel adımı değiştirmez; <code>verify-contrast.mjs</code> bunu denetler. Kapaklar ve alan renkleri iki temada aynıdır. Gece gölgeleri siyahtır ve 1px bir halka taşır. Gece içinde gündüz adası desteklenmez.</p>
+</section>
+</body></html>
