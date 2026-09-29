@@ -107,7 +107,7 @@ export class FlashcardDeckService {
    */
   async findReadable(
     deckId: string,
-    userId: string,
+    userId: string | null,
     include?: string[]
   ): Promise<IFlashcardDeck> {
     const deck = await this.findById(deckId, include);
@@ -118,12 +118,13 @@ export class FlashcardDeckService {
 
   /**
    * The read rule, written once: the author always, anybody else only when the
-   * deck is public. A deck that is not there is a 404 on both paths.
+   * deck is public. A deck that is not there is a 404 on both paths. A `null`
+   * caller is an anonymous one (MDRS-45) and is nobody's author.
    */
   private assertVisibleTo(
     deckId: string,
     deck: { authorId: string; isPublic: boolean } | null,
-    userId: string
+    userId: string | null
   ): void {
     if (deck === null) {
       throw new DeckNotFoundError(deckId);
@@ -164,6 +165,7 @@ export class FlashcardDeckService {
     }
   }
 
+  /** Public decks only — the list an anonymous caller sees (MDRS-45). */
   async findAll(include?: string[]): Promise<IFlashcardDeck[]> {
     const includeSet = new Set(include);
     return this.deckRepo.findAll(includeSet);

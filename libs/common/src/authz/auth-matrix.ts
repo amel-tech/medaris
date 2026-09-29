@@ -185,6 +185,12 @@ export const MATRIX: Record<Entity, Partial<Record<Role, Scope[]>>> = {
     // and "any authenticated caller may create a private deck for
     // themselves".
     [ROLES.PUBLIC]: [SCOPES.VIEW, SCOPES.CREATE_PRIVATE_DECK],
+    // ANONYMOUS = no token at all (MDRS-45, PRD:76 "public decks" for the
+    // Guest persona). Reading a public deck and nothing else: it does not
+    // inherit the PUBLIC row, because creating a deck needs an author.
+    // `resolveAnonymous` answers 404 for a private deck before this row is
+    // read, so VIEW here never reaches one.
+    [ROLES.ANONYMOUS]: [SCOPES.VIEW],
   },
 
   // Plan §4.6 — Ijazah.

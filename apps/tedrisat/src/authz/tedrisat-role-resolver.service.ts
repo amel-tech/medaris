@@ -1,4 +1,5 @@
 import {
+  AnonymousRole,
   ENTITIES,
   ResourceRef,
   ROLES,
@@ -87,6 +88,45 @@ export class TedrisatRoleResolver implements RoleResolver {
       default:
         return null;
     }
+  }
+
+  /**
+   * The caller with no token (MDRS-45). Only reached for an `@AuthzPublic()`
+   * handler. Decks are the one entity opened so far; köşk, medrese and course
+   * pages are MDRS-122's, which reuses this hook rather than a second
+   * mechanism. Every other entity answers `null` and the guard refuses.
+   */
+  async resolveAnonymous(resource: ResourceRef): Promise<AnonymousRole | null> {
+    switch (resource.entity) {
+      case ENTITIES.FLASHCARD_DECK:
+        return this.resolveAnonymousDeckRole(resource);
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * The anonymous half of `resolveDeckRole`, with the same answers where the
+   * two overlap, so an anonymous visitor learns no more than a stranger with a
+   * token does:
+   *
+   * - Non-UUID id: ANONYMOUS, as the authenticated branch answers PUBLIC —
+   *   the handler's `ParseUUIDPipe` then gives the 400 it gives everyone.
+   *   Safe because the ANONYMOUS row holds VIEW alone; no create scope can
+   *   ride the `forNew` sentinel through here.
+   * - Deck missing, or private: `DeckNotFoundError`, the same 404 for both
+   *   (MDRS-45 AC-2, as MDRS-43 AC-4 is for a stranger). There is no author
+   *   to compare against, so a private deck is never readable here.
+   * - Public deck: ANONYMOUS.
+   */
+  private async resolveAnonymousDeckRole(
+    resource: ResourceRef
+  ): Promise<AnonymousRole> {
+    if (!UUID_REGEX.test(resource.id)) return ROLES.ANONYMOUS;
+
+    const deck = await this.deckService.findVisibility(resource.id);
+    if (!deck || !deck.isPublic) throw new DeckNotFoundError(resource.id);
+    return ROLES.ANONYMOUS;
   }
 
   /**

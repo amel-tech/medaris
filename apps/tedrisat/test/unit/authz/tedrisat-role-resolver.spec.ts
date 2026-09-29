@@ -146,6 +146,65 @@ describe("TedrisatRoleResolver", () => {
     });
   });
 
+  describe("resolveAnonymous — a caller with no token (MDRS-45)", () => {
+    it("returns ANONYMOUS for a public deck", async () => {
+      const { resolver } = build({
+        deck: { id: REAL_UUID, isPublic: true, authorId: "owner-1" },
+      });
+      await expect(
+        resolver.resolveAnonymous({
+          entity: ENTITIES.FLASHCARD_DECK,
+          id: REAL_UUID,
+        })
+      ).resolves.toBe(ROLES.ANONYMOUS);
+    });
+
+    it("404s a private deck, exactly as a missing one", async () => {
+      const { resolver } = build({
+        deck: { id: REAL_UUID, isPublic: false, authorId: "owner-1" },
+      });
+      await expect(
+        resolver.resolveAnonymous({
+          entity: ENTITIES.FLASHCARD_DECK,
+          id: REAL_UUID,
+        })
+      ).rejects.toBeInstanceOf(DeckNotFoundError);
+    });
+
+    it("404s a deck that does not exist", async () => {
+      const { resolver } = build({ deck: null });
+      await expect(
+        resolver.resolveAnonymous({
+          entity: ENTITIES.FLASHCARD_DECK,
+          id: OTHER_UUID,
+        })
+      ).rejects.toBeInstanceOf(DeckNotFoundError);
+    });
+
+    it("returns ANONYMOUS for a non-UUID id without touching the repository, so the pipe answers 400", async () => {
+      const { resolver, deck } = build();
+      await expect(
+        resolver.resolveAnonymous({
+          entity: ENTITIES.FLASHCARD_DECK,
+          id: "not-a-uuid",
+        })
+      ).resolves.toBe(ROLES.ANONYMOUS);
+      expect(deck.findVisibility).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ENTITIES.KOSK,
+      ENTITIES.COURSE,
+      ENTITIES.MADRASAH,
+      ENTITIES.IJAZAH,
+    ])("refuses %s — MDRS-122 opens köşk, medrese and course pages", async (entity) => {
+      const { resolver } = build();
+      await expect(
+        resolver.resolveAnonymous({ entity, id: REAL_UUID })
+      ).resolves.toBeNull();
+    });
+  });
+
   describe("kosk dispatch", () => {
     it("returns KOSK_MANAGER when caller owns the köşk", async () => {
       const { resolver } = build({ koskOwnerId: "manager-1" });
