@@ -1,0 +1,31 @@
+/* Medaris — element defaults.
+   Anything a prototype gets for free by linking styles.css. */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--background-neutral-primary);
+  color: var(--text-neutral-primary);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  font-weight: var(--weight-regular);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); margin: 0; }
+h1 { font-size: var(--fs-h1); font-weight: var(--weight-bold); line-height: var(--lh-tight); letter-spacing: var(--tracking-tight); }
+h2 { font-size: var(--fs-h2); font-weight: var(--weight-bold); line-height: var(--lh-tight); letter-spacing: var(--tracking-tight); }
+h3 { font-size: var(--fs-h3); font-weight: var(--weight-bold); line-height: var(--lh-snug); }
+h4 { font-size: var(--fs-h4); font-weight: var(--weight-bold); line-height: var(--lh-snug); }
+h5 { font-size: var(--fs-h5); font-weight: var(--weight-semibold); line-height: var(--lh-snug); }
+h6 { font-size: var(--fs-h6); font-weight: var(--weight-semibold); line-height: var(--lh-snug); }
+
+p { margin: 0 0 var(--space-md); }
+a { color: var(--text-brand-primary); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+code, kbd, samp { font-family: var(--font-mono); font-size: 0.9em; }
+hr { border: 0; border-top: var(--border-s) solid var(--border-neutral-primary); margin: var(--space-lg) 0; }
+:focus-visible { outline: none; box-shadow: var(--ring-focus); border-radius: var(--radius-xxs); }
+
+/* Arabic and any other RTL run */
+[dir="rtl"] { font-family: var(--font-arabic); }

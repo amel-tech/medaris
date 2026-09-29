@@ -34,7 +34,9 @@ jobs:
     # which is a trap for `workflow_call`: inside a reusable workflow the
     # `github` context belongs to the CALLER, so `github.event_name` is never
     # 'workflow_call' — it is whatever triggered the caller. It happens to work
-    # today only because deploy-affected.yaml is workflow_dispatch-only. The
+    # today only because the dispatcher was workflow_dispatch-only; since MDRS-86
+    # cd-development.yaml calls this on every push to main, and this gate is why
+    # that works. The
     # moment that dispatcher gains a `push:` trigger, event_name becomes 'push',
     # no clause matches, and the deploy is silently skipped with a green
     # checkmark. Stating the one real restriction instead — "on a release, the

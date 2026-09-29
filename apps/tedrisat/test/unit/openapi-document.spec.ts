@@ -6,7 +6,7 @@ import {
 } from "../../src/config/openapi-document";
 
 const JWKS_URL =
-  "https://auth.medaris.app/realms/amel-tech-dev/protocol/openid-connect/certs";
+  "https://keycloak.invalid/realms/amel-tech-dev/protocol/openid-connect/certs";
 
 /**
  * These assertions exist because `src/openapi/export-openapi.ts` writes the
@@ -32,9 +32,9 @@ describe("buildTedrisatOpenApiConfig", () => {
       flows: {
         implicit: {
           authorizationUrl:
-            "https://auth.medaris.app/realms/amel-tech-dev/protocol/openid-connect/auth",
+            "https://keycloak.invalid/realms/amel-tech-dev/protocol/openid-connect/auth",
           tokenUrl:
-            "https://auth.medaris.app/realms/amel-tech-dev/protocol/openid-connect/token",
+            "https://keycloak.invalid/realms/amel-tech-dev/protocol/openid-connect/token",
           scopes: {},
         },
       },

@@ -12,11 +12,25 @@ import { getAccessToken } from "~/lib/auth_options";
  * got a 401 and rendered the framework's raw error overlay — a ResponseError
  * from the generated client — instead of a sign-in prompt.
  *
+ * `callbackUrl` is the path to come back to once the sign-in completes. Pass
+ * it: without one NextAuth falls back to `baseUrl`, so a visitor whose refresh
+ * token died while reading `/tr/decks/<id>/cards` re-authenticates and lands
+ * on `/` — locale and destination both gone. It must be same-origin and start
+ * with `/`; `authOptions.callbacks.redirect` rejects anything else.
+ *
  * Call this BEFORE any `try`: `redirect()` signals by throwing, so a
  * surrounding catch would swallow it and fall back to empty data.
  */
-export async function requireAccessToken(): Promise<string> {
+export async function requireAccessToken(
+  callbackUrl?: string
+): Promise<string> {
   const accessToken = await getAccessToken();
-  if (!accessToken) redirect("/api/auth/signin");
+  if (!accessToken) {
+    redirect(
+      callbackUrl
+        ? `/api/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`
+        : "/api/auth/signin"
+    );
+  }
   return accessToken;
 }

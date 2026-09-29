@@ -45,11 +45,11 @@ async function getDeckCards(deckId: string): Promise<FlashcardResponse[]> {
 export default async function Page({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ locale: string; id: string }>;
 }) {
-  const { id } = await params;
+  const { locale, id } = await params;
 
-  await requireAccessToken();
+  await requireAccessToken(`/${locale}/decks/study/${id}`);
   const [deck, cards] = await Promise.all([getDeck(id), getDeckCards(id)]);
 
   if (!deck) {

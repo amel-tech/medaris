@@ -1,0 +1,26 @@
+<!-- @dsCard group="Navigation" viewport="760x480" name="Sidebar" subtitle="The müderris navigation on slate-900 — active item takes the brand fill, not a tint" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:0;background:var(--background-neutral-primary);font-family:var(--font-ui)}
+.side{width:248px;min-height:480px;background:var(--background-neutral-inverse-primary);padding:20px 12px;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:10px;padding:0 12px 4px;color:var(--text-white);font-family:var(--font-display);font-size:18px;font-weight:700}
+.mark{width:28px;height:28px;border-radius:8px;background:var(--background-brand-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700}
+.spacer{flex:1}
+.user{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--background-neutral-inverse-secondary);margin-top:12px}
+.uname{font-size:13px;color:var(--text-neutral-inverse-primary);font-weight:500;line-height:1.3}
+.urole{font-size:11px;color:var(--text-neutral-inverse-tertiary)}
+svg{flex:none}
+</style></head><body>
+<nav class="side">
+  <div class="brand"><span class="mark">M</span> Medaris</div>
+  <div class="mds-nav-section">Genel</div>
+  <a class="mds-nav-item is-active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg> Ana Sayfa</a>
+  <a class="mds-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h7a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H4z"/><path d="M20 5h-3a3 3 0 0 0-3 3v11a2 2 0 0 1 2-2h4z"/></svg> Derslerim</a>
+  <a class="mds-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6M18 20a6 6 0 0 0-3-5.2"/></svg> Talebelerim</a>
+  <a class="mds-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M7 9h6M7 13h4"/><path d="M21 8v9a2 2 0 0 1-2 2"/></svg> Ezber Kartları</a>
+  <div class="mds-nav-section">Müderris</div>
+  <a class="mds-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l7-5 7 5v12"/><path d="M10 21v-5h4v5"/></svg> Medresem</a>
+  <a class="mds-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 15H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7"/></svg> Ayarlar</a>
+  <span class="spacer"></span>
+  <div class="user"><span class="mds-avatar mds-avatar--sm">TA</span><span><span class="uname">Taha Ayan</span><br><span class="urole">Müderris</span></span></div>
+</nav>
+</body></html>

@@ -1,0 +1,20 @@
+<!-- @dsCard group="Data display" viewport="820x320" name="Table" subtitle="12/16 cells, hairline rows, header in neutral-tertiary — the talebe list is the reference case" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:24px;background:var(--background-white)}
+.wrap{border:1px solid var(--border-neutral-primary);border-radius:var(--radius-m);overflow:hidden}
+.mds-table tbody tr:last-child td{border-bottom:0}
+.nm{display:flex;align-items:center;gap:10px}
+.note{margin-top:16px;font-family:var(--font-ui);font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:740px}
+</style></head><body>
+<div class="wrap">
+<table class="mds-table">
+<thead><tr><th>Talebe</th><th>Ders</th><th>Ezber durumu</th><th>Son teslim</th><th></th></tr></thead>
+<tbody>
+<tr><td><span class="nm"><span class="mds-avatar mds-avatar--sm">AH</span>Ahmed Hüsrev</span></td><td>Sarf</td><td><span class="mds-badge mds-badge--success">Tamamlandı</span></td><td>2 gün önce</td><td style="text-align:right"><button class="mds-btn mds-btn--mini mds-btn--ghost">Aç</button></td></tr>
+<tr><td><span class="nm"><span class="mds-avatar mds-avatar--sm">ZK</span>Zeynep Kübra</span></td><td>Nahiv</td><td><span class="mds-badge mds-badge--warning">Bekliyor</span></td><td>Bugün</td><td style="text-align:right"><button class="mds-btn mds-btn--mini mds-btn--ghost">Aç</button></td></tr>
+<tr><td><span class="nm"><span class="mds-avatar mds-avatar--sm">MF</span>Mustafa Fatih</span></td><td>Sarf</td><td><span class="mds-badge mds-badge--destructive">Gecikti</span></td><td>4 gün gecikme</td><td style="text-align:right"><button class="mds-btn mds-btn--mini mds-btn--ghost">Aç</button></td></tr>
+<tr><td><span class="nm"><span class="mds-avatar mds-avatar--sm">HN</span>Hatice Nur</span></td><td>Akaid</td><td><span class="mds-badge mds-badge--info">Yeni atandı</span></td><td>—</td><td style="text-align:right"><button class="mds-btn mds-btn--mini mds-btn--ghost">Aç</button></td></tr>
+</tbody></table>
+</div>
+<p class="note">Header cells are Medium in <code>--text-neutral-tertiary</code>, never bold and never inverted — the data is the thing being read, not the schema. Rows carry a hairline, not a fill; zebra striping is not part of this system. The row action is a mini ghost button, right-aligned, and appears in every row rather than on hover, so it survives on touch.</p>
+</body></html>

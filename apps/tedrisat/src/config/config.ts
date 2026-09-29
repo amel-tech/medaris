@@ -1,7 +1,7 @@
+import { resolveSwaggerEnabled } from "@medaris/common";
 import * as pkg from "../../package.json";
 import { resolveDatabaseSsl } from "./database-ssl";
 import { readSecurityEnv } from "./security-env";
-import { resolveSwaggerEnabled } from "./swagger-env";
 import { assertBulkThrottleEnv } from "./throttle-env";
 
 const version = pkg.version || "0.0.1";
@@ -44,7 +44,12 @@ export default () => {
       serviceVersion: version,
     },
     swagger: {
-      enabled: resolveSwaggerEnabled(process.env),
+      // Throws in production unless SWAGGER_ALLOW_IN_PRODUCTION=true (MDRS-33);
+      // the policy is documented in libs/common's swagger-production.config.ts.
+      enabled: resolveSwaggerEnabled(
+        { policy: "throw-unless-opted-in", service: "@medaris/tedrisat" },
+        process.env
+      ),
       endpoint: process.env.SWAGGER_PATH || "/docs",
     },
     autoMigrations: {

@@ -1,0 +1,31 @@
+/* Medaris — accessibility overrides.
+   NOT imported by styles.css. Six semantic pairs extracted from Figma do not
+   reach WCAG 2.2 AA; every ratio below was measured, not estimated. This file
+   is the smallest set of substitutions that fixes them without adding a value
+   that is not already on a primitive ramp.
+
+   Import it after tokens/semantic.css to adopt the fixes wholesale, or lift the
+   individual lines. See the "Contrast audit" card for the full measurement table. */
+:root {
+  /* 1.79:1 → 4.58:1. yellow-500 on yellow-100 is unreadable at any size. */
+  --text-warning-primary: var(--yellow-700);
+  --icon-warning-primary: var(--yellow-700);
+  --border-warning-primary: var(--yellow-700);
+
+  /* 3.95:1 → 5.30:1 */
+  --text-error-primary: var(--red-700);
+  --icon-error-primary: var(--red-700);
+
+  /* 1.92:1 → 9.25:1. Warning is the one bold tone that takes dark text. */
+  --text-on-warning-bold: var(--gray-900);
+
+  /* 3.30:1 → 5.02:1 for white label text on a filled success control */
+  --background-success-bold: var(--green-700);
+
+  /* 3.76:1 → 6.47:1 for white label text on a destructive button */
+  --background-error-base: var(--red-600);
+  --background-error-bold: var(--red-700);
+}
+
+/* 1.26:1 → 4.10:1. The extracted focus ring is a grey barely distinct from the page. */
+:root { --ring-focus: var(--ring-focus-brand); }

@@ -1,0 +1,19 @@
+<!-- @dsCard group="Foundations" viewport="760x300" name="Spacing" subtitle="Eight steps, 4 → 64. A gap that is not on this list is a bug" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:24px;background:var(--background-white);font-family:var(--font-ui)}
+.row{display:flex;align-items:center;gap:16px;margin-bottom:7px}
+.lbl{flex:none;width:110px;font-family:var(--font-mono);font-size:11px;color:var(--text-neutral-secondary)}
+.bar{height:16px;background:var(--sky-900);border-radius:2px}
+.px{font-family:var(--font-mono);font-size:10px;color:var(--text-neutral-disabled)}
+.note{margin-top:16px;font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6}
+</style></head><body>
+<div class="row"><span class="lbl">--space-xs</span><div class="bar" style="width:4px"></div><span class="px">4</span></div>
+<div class="row"><span class="lbl">--space-sm</span><div class="bar" style="width:8px"></div><span class="px">8</span></div>
+<div class="row"><span class="lbl">--space-md</span><div class="bar" style="width:16px"></div><span class="px">16</span></div>
+<div class="row"><span class="lbl">--space-lg</span><div class="bar" style="width:24px"></div><span class="px">24</span></div>
+<div class="row"><span class="lbl">--space-xl</span><div class="bar" style="width:32px"></div><span class="px">32</span></div>
+<div class="row"><span class="lbl">--space-2xl</span><div class="bar" style="width:40px"></div><span class="px">40</span></div>
+<div class="row"><span class="lbl">--space-3xl</span><div class="bar" style="width:56px"></div><span class="px">56</span></div>
+<div class="row"><span class="lbl">--space-4xl</span><div class="bar" style="width:64px"></div><span class="px">64</span></div>
+<p class="note">Not a doubling scale and not a 4pt grid past 32 — 40 and 56 are hand-picked. Read it as three bands: 4–8 inside a control, 16–24 between controls, 32–64 between sections. Breakpoints live alongside these tokens: 390 / 768 / 1440.</p>
+</body></html>

@@ -1,0 +1,45 @@
+<!-- @dsCard group="Actions" viewport="820x380" name="Button" subtitle="Five variants × four sizes × four states — heights 24 / 32 / 36 / 42, read off the Figma symbols" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:24px;background:var(--background-white);font-family:var(--font-ui)}
+table{border-collapse:collapse}
+th{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-neutral-disabled);font-weight:400;text-align:left;padding:0 14px 8px 0}
+td{padding:0 14px 12px 0;vertical-align:middle}
+.rl{font-family:var(--font-mono);font-size:10px;color:var(--text-neutral-secondary);padding-right:18px}
+.note{margin-top:14px;font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:740px}
+</style></head><body>
+<table>
+<tr><th></th><th>Default</th><th>Hover</th><th>Disabled</th><th>Focus</th></tr>
+<tr><td class="rl">primary</td>
+<td><button class="mds-btn mds-btn--regular mds-btn--primary">Ders Oluştur</button></td>
+<td><button class="mds-btn mds-btn--regular mds-btn--primary" style="background:var(--background-brand-secondary)">Ders Oluştur</button></td>
+<td><button class="mds-btn mds-btn--regular mds-btn--primary is-disabled">Ders Oluştur</button></td>
+<td><button class="mds-btn mds-btn--regular mds-btn--primary" style="box-shadow:var(--ring-focus)">Ders Oluştur</button></td></tr>
+<tr><td class="rl">secondary</td>
+<td><button class="mds-btn mds-btn--regular mds-btn--secondary">Talebe Ekle</button></td>
+<td><button class="mds-btn mds-btn--regular mds-btn--secondary" style="background:var(--background-neutral-tertiary)">Talebe Ekle</button></td>
+<td><button class="mds-btn mds-btn--regular mds-btn--secondary is-disabled">Talebe Ekle</button></td>
+<td><button class="mds-btn mds-btn--regular mds-btn--secondary" style="box-shadow:var(--ring-focus)">Talebe Ekle</button></td></tr>
+<tr><td class="rl">outline</td>
+<td><button class="mds-btn mds-btn--regular mds-btn--outline">Vazgeç</button></td>
+<td><button class="mds-btn mds-btn--regular mds-btn--outline" style="background:var(--background-neutral-secondary)">Vazgeç</button></td>
+<td><button class="mds-btn mds-btn--regular mds-btn--outline is-disabled">Vazgeç</button></td>
+<td><button class="mds-btn mds-btn--regular mds-btn--outline" style="box-shadow:var(--ring-focus)">Vazgeç</button></td></tr>
+<tr><td class="rl">ghost</td>
+<td><button class="mds-btn mds-btn--regular mds-btn--ghost">Daha fazla</button></td>
+<td><button class="mds-btn mds-btn--regular mds-btn--ghost" style="background:var(--background-neutral-secondary)">Daha fazla</button></td>
+<td><button class="mds-btn mds-btn--regular mds-btn--ghost is-disabled">Daha fazla</button></td>
+<td><button class="mds-btn mds-btn--regular mds-btn--ghost" style="box-shadow:var(--ring-focus)">Daha fazla</button></td></tr>
+<tr><td class="rl">destructive</td>
+<td><button class="mds-btn mds-btn--regular mds-btn--destructive">Sil</button></td>
+<td><button class="mds-btn mds-btn--regular mds-btn--destructive" style="background:var(--background-error-bold)">Sil</button></td>
+<td><button class="mds-btn mds-btn--regular mds-btn--destructive is-disabled">Sil</button></td>
+<td><button class="mds-btn mds-btn--regular mds-btn--destructive" style="box-shadow:var(--ring-focus-error)">Sil</button></td></tr>
+</table>
+<div style="display:flex;align-items:center;gap:12px;margin-top:18px">
+<button class="mds-btn mds-btn--mini mds-btn--primary">Mini 24</button>
+<button class="mds-btn mds-btn--small mds-btn--primary">Small 32</button>
+<button class="mds-btn mds-btn--regular mds-btn--primary">Regular 36</button>
+<button class="mds-btn mds-btn--large mds-btn--primary">Large 42</button>
+</div>
+<p class="note">One primary per surface. <b>Mini</b> is the only size that drops to <code>--radius-xxs</code> and 12px text; the other three share 14px Medium and <code>--radius-s</code>, and differ only in height and horizontal padding (8 / 12 / 16 / 24). Destructive is <code>red-500</code>, not <code>red-600</code> — 600 is its hover.</p>
+</body></html>

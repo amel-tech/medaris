@@ -1,8 +1,7 @@
 // MDRS-66: the root-.env bootstrap lives in exactly one place, `@medaris/env`.
 // Next only reads .env files from the project directory, so the root file is
-// applied to process.env here — early enough for NEXT_PUBLIC_* inlining and for
-// env.ts's build-time validation, both of which happen after this module is
-// evaluated.
+// applied to process.env here — early enough for env.ts's build-time
+// validation, which happens after this module is evaluated.
 //
 // `createRequire` rather than a static `import`: @medaris/env is CommonJS and
 // needs no build step, which matters because Next evaluates this file before any

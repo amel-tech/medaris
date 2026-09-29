@@ -1,0 +1,8 @@
+/* Medaris — type faces.
+   Cairo carries the headings, IBM Plex Sans the body and every UI control.
+   Both are named in the Figma variable collection "typography"
+   (fontFamily/cairo, fontFamily/ibm plex sans).
+   IBM Plex Sans Arabic is the Arabic companion: same skeleton, same rhythm,
+   so an Arabic ayah and its Turkish gloss can sit in one paragraph.
+   IBM Plex Mono is for code, IDs and token names only. */
+@import url("https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");

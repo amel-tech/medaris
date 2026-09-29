@@ -23,7 +23,12 @@ import { UserAvatar } from "~/features/user-avatar";
 import { keycloakSignOut } from "~/lib/keycloak-logout";
 import Version from "./version";
 
-export const UserHeaderMenu = () => {
+type UserHeaderMenuProps = {
+  /** KEYCLOAK_ISSUER from the server; the avatar host check runs client-side. */
+  imageIssuer: string;
+};
+
+export const UserHeaderMenu = ({ imageIssuer }: UserHeaderMenuProps) => {
   const t = useTranslations("tedris");
   const { data: session, status } = useSession();
 
@@ -35,7 +40,7 @@ export const UserHeaderMenu = () => {
     <DropdownMenu>
       <DropdownMenuTrigger>
         <div className="flex items-center gap-2 cursor-pointer select-none hover:bg-gray-100 rounded-md">
-          <UserAvatar user={session?.user} />
+          <UserAvatar user={session?.user} imageIssuer={imageIssuer} />
           <div className="flex flex-col text-left">
             <p className="text-sm whitespace-nowrap">{session?.user?.name}</p>
             <p className="text-xs whitespace-nowrap text-neutral-tertiary">

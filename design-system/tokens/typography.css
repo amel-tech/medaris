@@ -1,0 +1,81 @@
+/* Medaris — type scale.
+   Families, weights and every size below are read verbatim from the Figma
+   variable collection "typography"; the ramp is confirmed by the matching
+   Cairo / IBM Plex Sans text styles (h1..h6, body-lg..footnote).
+
+   One number is deliberately NOT taken verbatim: line height. Every one of those
+   text styles ships at 100%, which is correct for a single-line heading and
+   unreadable for a paragraph. --lh-tight preserves the Figma value; --lh-body and
+   --lh-snug are proposals, not extracted, and are flagged as such in the type card. */
+:root {
+  /* Families */
+  --font-display: "Cairo", "Segoe UI", system-ui, sans-serif;
+  --font-ui: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-arabic: "IBM Plex Sans Arabic", "Cairo", "Noto Naskh Arabic", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Weights — the eight the Figma collection names */
+  --weight-extralight: 200;
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-extrabold: 800;
+  --weight-black: 900;
+
+  /* Size ramp — px in Figma, rem here (16px root) */
+  --fs-display: 4.5rem;   /* 72 */
+  --fs-h1: 4rem;          /* 64 */
+  --fs-h2: 3rem;          /* 48 */
+  --fs-h3: 2.5rem;        /* 40 */
+  --fs-h4: 2rem;          /* 32 */
+  --fs-h5: 1.5rem;        /* 24 */
+  --fs-h6: 1.25rem;       /* 20 */
+  --fs-body-lg: 1.125rem; /* 18 */
+  --fs-body: 1rem;        /* 16 */
+  --fs-body-sm: 0.875rem; /* 14 */
+  --fs-caption: 0.75rem;  /* 12 */
+  --fs-footnote: 0.625rem;/* 10 */
+
+  /* Leading */
+  --lh-tight: 1;     /* Figma value for every text style */
+  --lh-snug: 1.25;   /* proposed — headings that wrap */
+  --lh-body: 1.5;    /* proposed — anything longer than one line */
+
+  /* Tracking */
+  --tracking-tight: -0.02em;  /* proposed, for --fs-h1 and up */
+  --tracking-normal: 0;
+}
+
+/* Ready-made heading + body classes, so a prototype never has to
+   reassemble family + size + weight by hand. */
+.mds-display, .mds-h1, .mds-h2, .mds-h3, .mds-h4, .mds-h5, .mds-h6 {
+  font-family: var(--font-display);
+  color: var(--text-neutral-primary);
+  margin: 0;
+}
+.mds-display { font-size: var(--fs-display); font-weight: var(--weight-bold); line-height: var(--lh-tight); letter-spacing: var(--tracking-tight); }
+.mds-h1 { font-size: var(--fs-h1); font-weight: var(--weight-bold); line-height: var(--lh-tight); letter-spacing: var(--tracking-tight); }
+.mds-h2 { font-size: var(--fs-h2); font-weight: var(--weight-bold); line-height: var(--lh-tight); letter-spacing: var(--tracking-tight); }
+.mds-h3 { font-size: var(--fs-h3); font-weight: var(--weight-bold); line-height: var(--lh-snug); }
+.mds-h4 { font-size: var(--fs-h4); font-weight: var(--weight-bold); line-height: var(--lh-snug); }
+.mds-h5 { font-size: var(--fs-h5); font-weight: var(--weight-semibold); line-height: var(--lh-snug); }
+.mds-h6 { font-size: var(--fs-h6); font-weight: var(--weight-semibold); line-height: var(--lh-snug); }
+
+.mds-body-lg, .mds-body, .mds-body-sm, .mds-caption, .mds-footnote {
+  font-family: var(--font-ui);
+  color: var(--text-neutral-primary);
+  margin: 0;
+}
+.mds-body-lg { font-size: var(--fs-body-lg); font-weight: var(--weight-semibold); line-height: var(--lh-body); }
+.mds-body { font-size: var(--fs-body); font-weight: var(--weight-medium); line-height: var(--lh-body); }
+.mds-body-sm { font-size: var(--fs-body-sm); font-weight: var(--weight-medium); line-height: var(--lh-body); }
+.mds-caption { font-size: var(--fs-caption); font-weight: var(--weight-medium); line-height: var(--lh-body); color: var(--text-neutral-tertiary); }
+.mds-footnote { font-size: var(--fs-footnote); font-weight: var(--weight-semibold); line-height: var(--lh-body); color: var(--text-neutral-tertiary); }
+
+/* The -light pairs exist in Figma too: same size, Regular weight. */
+.mds-body-lg-light, .mds-body-light, .mds-body-sm-light { font-weight: var(--weight-regular); }
+
+/* Arabic runs. Always pair with dir="rtl" on the element or an ancestor. */
+.mds-arabic { font-family: var(--font-arabic); line-height: 1.9; }

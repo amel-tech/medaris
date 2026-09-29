@@ -1,0 +1,33 @@
+<!-- @dsCard group="Patterns" viewport="820x420" name="Ezber card" subtitle="The product's one native object — Arabic recto, Turkish verso, review state on the edge" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:28px;background:var(--background-neutral-primary);font-family:var(--font-ui);display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+.ez{width:340px;background:var(--background-white);border:1px solid var(--border-neutral-primary);border-radius:var(--radius-m);box-shadow:var(--shadow-xs);overflow:hidden}
+.ez-top{padding:8px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--gray-100)}
+.ez-src{font-family:var(--font-mono);font-size:11px;color:var(--text-neutral-tertiary)}
+.ez-body{padding:24px 20px;text-align:right}
+.ar{font-family:var(--font-arabic);font-size:26px;font-weight:500;line-height:1.9;color:var(--text-neutral-primary);margin:0}
+.ez-back{padding:20px;border-top:1px dashed var(--gray-200);background:var(--gray-50)}
+.tr{font-size:15px;line-height:1.6;color:var(--text-neutral-secondary);margin:0}
+.ez-foot{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--gray-100)}
+.grades{display:flex;gap:6px}
+.note{flex-basis:100%;font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:720px;margin-top:4px}
+</style></head><body>
+<div class="ez">
+  <div class="ez-top"><span class="ez-src">Bakara 2:1–2</span><span class="mds-badge mds-badge--info">Yeni</span></div>
+  <div class="ez-body"><p class="ar" dir="rtl">الم ۝ ذَٰلِكَ الْكِتَابُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًى لِّلْمُتَّقِينَ</p></div>
+  <div class="ez-foot">
+    <button class="mds-btn mds-btn--small mds-btn--ghost">Çevir</button>
+    <div class="grades"><button class="mds-btn mds-btn--mini mds-btn--outline">Zor</button><button class="mds-btn mds-btn--mini mds-btn--outline">Orta</button><button class="mds-btn mds-btn--mini mds-btn--primary">Kolay</button></div>
+  </div>
+</div>
+<div class="ez">
+  <div class="ez-top"><span class="ez-src">Bakara 2:1–2</span><span class="mds-badge mds-badge--success">3. tekrar</span></div>
+  <div class="ez-body"><p class="ar" dir="rtl">الم ۝ ذَٰلِكَ الْكِتَابُ لَا رَيْبَ ۛ فِيهِ</p></div>
+  <div class="ez-back"><p class="tr">Elif, Lâm, Mîm. İşte bu kitap, kendisinde şüphe yoktur.</p></div>
+  <div class="ez-foot">
+    <span class="mds-caption">Sonraki tekrar 4 gün sonra</span>
+    <button class="mds-btn mds-btn--mini mds-btn--ghost">Düzenle</button>
+  </div>
+</div>
+<p class="note">The card is the only place two scripts meet at full size, so it is the only place the Arabic leading (1.9) is non-negotiable. Arabic sets right-aligned with <code>dir="rtl"</code> on the paragraph itself; the chrome around it stays LTR, which is what keeps the badge and the source reference in their usual corners for a Turkish reader. The verso is separated by a dashed rule rather than a fill, so a flipped card still reads as one object.</p>
+</body></html>

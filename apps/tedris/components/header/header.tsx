@@ -1,5 +1,6 @@
 import { MadrasahLogoIcon } from "@medaris/icons/ssr";
 import { Input } from "@medaris/ui/components/input";
+import { env } from "~/env";
 import KeycloakLogin from "~/features/keycloak/login";
 import { auth } from "~/lib/auth_options";
 import LocaleSwitcher from "../i18n/locale-switcher";
@@ -23,7 +24,7 @@ export const Header = async () => {
         {session ? (
           <>
             <UserNotifications />
-            <UserHeaderMenu />
+            <UserHeaderMenu imageIssuer={env.KEYCLOAK_ISSUER} />
           </>
         ) : (
           <KeycloakLogin />

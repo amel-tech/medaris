@@ -1,0 +1,25 @@
+<!-- @dsCard group="Colors" viewport="700x160" subtitle="Paired fg/bg for every state label" name="Status" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../src/css/index.css">
+<style>
+body{padding:16px;background:var(--surface)}
+.grid{display:flex;gap:10px;flex-wrap:wrap}
+.grid span{white-space:nowrap}
+.sw{width:96px}
+.chip{height:46px;border-radius:var(--r-6);border:1px solid rgba(0,0,0,.06)}
+.nm{font:var(--fw-medium) var(--fs-11)/1.3 var(--font-ui);color:var(--ink);margin-top:6px}
+.hx{font:var(--fw-regular) 10px/1.3 var(--font-mono);color:var(--faint)}
+.row{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.tok{font:var(--fw-regular) 10.5px/1 var(--font-mono);color:var(--faint)}
+
+</style></head><body><div class="grid" style="gap:8px">
+<span style="display:inline-flex;align-items:center;font:var(--fw-semibold) var(--fs-12)/1 var(--font-ui);padding:6px 11px;border-radius:var(--r-pill);color:var(--text-inverse);background:var(--action-primary)">Yayında</span><span style="display:inline-flex;align-items:center;font:var(--fw-semibold) var(--fs-12)/1 var(--font-ui);padding:6px 11px;border-radius:var(--r-pill);color:var(--text-inverse);background:var(--slate-500)">Taslak</span><span style="display:inline-flex;align-items:center;font:var(--fw-semibold) var(--fs-12)/1 var(--font-ui);padding:6px 11px;border-radius:var(--r-pill);color:var(--success-fg);background:var(--success-bg)">Aktif</span><span style="display:inline-flex;align-items:center;font:var(--fw-semibold) var(--fs-12)/1 var(--font-ui);padding:6px 11px;border-radius:var(--r-pill);color:var(--success-fg);background:var(--success-bg)">Tamamlandı</span><span style="display:inline-flex;align-items:center;font:var(--fw-semibold) var(--fs-12)/1 var(--font-ui);padding:6px 11px;border-radius:var(--r-pill);color:var(--accent);background:var(--accent-soft)">Devam ediyor</span><span style="display:inline-flex;align-items:center;font:var(--fw-semibold) var(--fs-12)/1 var(--font-ui);padding:6px 11px;border-radius:var(--r-pill);color:var(--danger);background:var(--danger-bg)">Canlı ders</span><span style="display:inline-flex;align-items:center;font:var(--fw-semibold) var(--fs-12)/1 var(--font-ui);padding:6px 11px;border-radius:var(--r-pill);color:var(--warning);background:var(--warning-bg)">Sınav</span>
+</div>
+<div class="grid" style="margin-top:14px">
+<div class="sw"><div class="chip" style="background:var(--success)"></div><div class="nm">success</div><div class="hx">#16a34a</div></div>
+<div class="sw"><div class="chip" style="background:var(--success-bg)"></div><div class="nm">success-bg</div><div class="hx">#dcfce7</div></div>
+<div class="sw"><div class="chip" style="background:var(--warning)"></div><div class="nm">warning</div><div class="hx">#d97706</div></div>
+<div class="sw"><div class="chip" style="background:var(--warning-bg)"></div><div class="nm">warning-bg</div><div class="hx">#fffbeb</div></div>
+<div class="sw"><div class="chip" style="background:var(--danger)"></div><div class="nm">danger</div><div class="hx">#dc2626</div></div>
+<div class="sw"><div class="chip" style="background:var(--danger-bg)"></div><div class="nm">danger-bg</div><div class="hx">#fef2f2</div></div>
+</div></body></html>

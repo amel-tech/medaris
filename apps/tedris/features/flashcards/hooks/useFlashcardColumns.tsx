@@ -14,7 +14,7 @@ import {
   AlertDialogTrigger,
 } from "@medaris/ui/components/alert-dialog";
 import { Button } from "@medaris/ui/components/button";
-import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
+import type { DataTableColumnDef as ColumnDef } from "@medaris/ui/lib/data-table-features";
 import { useTranslations } from "next-intl";
 import React from "react";
 import { createInputColumn } from "~/components/data-table/editable";
@@ -85,8 +85,6 @@ export function useFlashcardColumns(canEdit = true) {
                   </AlertDialogContent>
                 </AlertDialog>
               ),
-              enableSorting: false,
-              enableColumnFilter: false,
             } as ColumnDef<FlashcardResponse>,
           ]
         : []),

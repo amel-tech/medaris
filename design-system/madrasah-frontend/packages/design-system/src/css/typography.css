@@ -1,0 +1,40 @@
+:root {
+  --fs-10: 10px;
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-15: 15px;
+  --fs-16: 16px;
+  --fs-17: 17px;
+  --fs-18: 18px;
+  --fs-19: 19px;
+  --fs-21: 21px;
+  --fs-22: 22px;
+  --fs-24: 24px;
+  --fs-26: 26px;
+  --fs-28: 28px;
+  --fs-33: 33px;
+  --fs-34: 34px;
+  --fs-11-5: 11.5px;
+  --fs-12-5: 12.5px;
+  --fs-13-5: 13.5px;
+  --fs-14-5: 14.5px;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-extrabold: 800;
+  --tracking-display: -0.8px;
+  --tracking-title: -0.5px;
+  --tracking-heading: -0.3px;
+  --tracking-subhead: -0.2px;
+  --tracking-normal: 0;
+  --tracking-eyebrow: 0.6px; /* uppercase micro-labels */
+  --lh-tight: 1.15;
+  --lh-heading: 1.3;
+  --lh-snug: 1.45;
+  --lh-body: 1.55;
+  --lh-relaxed: 1.65;
+  --lh-arabic: 2;
+}

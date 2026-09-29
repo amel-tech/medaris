@@ -28,6 +28,7 @@
       "!libs/services/src/**/generated",
       "!libs/services/swagger-docs",
       "!libs/tokens/theme/main.css",
+      "!design-system",
       "!apps/tedrisat/src/database/migrations/meta",
       "!libs/i18n/src/locales/**/*.json",
       "!**/pnpm-lock.yaml",

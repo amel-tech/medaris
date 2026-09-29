@@ -18,3 +18,6 @@
 # rather than rotated, so the same two people see every change to them.
 /.github/ @EsTharian @safakadir
 /tools/ci/ @EsTharian @safakadir
+# The AI review's configuration decides what gets reviewed and what is filtered
+# out of the reviewer's view (MDRS-90). Same owners, same reason.
+/.coderabbit.yaml @EsTharian @safakadir
