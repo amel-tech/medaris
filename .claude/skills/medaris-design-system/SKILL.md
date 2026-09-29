@@ -31,15 +31,11 @@ directory, removed when the project contains it:
   is, what was left out and where it diverges from the system. It is **not**
   part of the mirror: §1's staleness check does not cover it, and §5 keeps it
   until the canonical project has it (see §6).
-- `design-system/medaris-unified/` — the unified system proposed by MDRS-131
-  (the canonical layout + the #95 re-expression). Pull it into the canonical
-  project with design sync; after the next §5 refresh shows the project
-  contains it, remove this entry and the directory.
-- `design-system/pr95-migration/` — the #95 → unified port map, copy map and
-  value bridge, for the MDRS-127 project. Never pulled: the project will not
-  contain it, so it stays listed here, which is what keeps §5 step 3 from
-  deleting it. Delete the directory and this entry when the MDRS-127 screens
-  are ported.
+- `design-system/medaris-unified/` — a new Medaris design system, designed
+  from scratch (MDRS-131), proposed to replace the canonical project's
+  content. Pull it into the canonical project with design sync; after the next
+  §5 refresh shows the project contains it, remove this entry and the
+  directory.
 
 The mirror is read-only. Nothing in the repo builds from it, Biome is told to
 ignore it (`biome.json`, `!design-system`), CodeRabbit is told not to review
