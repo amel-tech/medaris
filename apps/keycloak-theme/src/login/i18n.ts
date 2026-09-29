@@ -20,6 +20,10 @@ import type { ThemeName } from "../kc.gen";
  * `messages_*.properties` Keycloak itself uses server-side, and silently skips
  * anything it cannot evaluate. No imports, spreads or `as const` inside it.
  *
+ * `privacyNotice*` (MDRS-102) label the "Aydınlatma Metni’ni okudum" box that
+ * `config/keycloak/user-profile.json` puts on the registration form; `{0}` in
+ * `privacyNoticeRead` is where `UserProfileFormFields` places the link.
+ *
  * A realm-level override of the four keys `vite.config.ts` lists still wins
  * over these (keycloakify resolves server messages first), so an operator can
  * change the copy without a release — but nothing depends on one existing.
@@ -103,6 +107,9 @@ const i18n = i18nBuilder
       "requiredAction.UPDATE_PASSWORD": "Choose a new password",
       "requiredAction.UPDATE_PROFILE": "Complete your profile",
       "requiredAction.TERMS_AND_CONDITIONS": "Accept the terms of use",
+      privacyNoticeTitle: "Your personal data",
+      privacyNoticeRead: "I have read the {0}.",
+      privacyNoticeLinkLabel: "Privacy Notice",
     },
     tr: {
       loginAccountTitle: "Hesabınıza giriş yapın",
@@ -178,6 +185,9 @@ const i18n = i18nBuilder
       "requiredAction.UPDATE_PASSWORD": "Yeni şifre belirle",
       "requiredAction.UPDATE_PROFILE": "Profili tamamla",
       "requiredAction.TERMS_AND_CONDITIONS": "Kullanım koşullarını kabul et",
+      privacyNoticeTitle: "Kişisel verileriniz",
+      privacyNoticeRead: "{0}’ni okudum.",
+      privacyNoticeLinkLabel: "Aydınlatma Metni",
     },
     ar: {
       loginAccountTitle: "تسجيل الدخول إلى حسابك",
@@ -249,6 +259,9 @@ const i18n = i18nBuilder
       "requiredAction.UPDATE_PASSWORD": "اختيار كلمة مرور جديدة",
       "requiredAction.UPDATE_PROFILE": "إكمال الملف الشخصي",
       "requiredAction.TERMS_AND_CONDITIONS": "الموافقة على شروط الاستخدام",
+      privacyNoticeTitle: "بياناتك الشخصية",
+      privacyNoticeRead: "لقد قرأت {0}.",
+      privacyNoticeLinkLabel: "إشعار الخصوصية",
     },
   })
   .build();

@@ -1,3 +1,5 @@
+import { PRIVACY_NOTICE_PATH } from "@medaris/utils";
+
 export const footerExploreLinks = [
   { key: "vision" as const, href: "#vision" },
   { key: "curriculum" as const, href: "#curriculum" },
@@ -11,6 +13,7 @@ export const footerSupportLinks = [
 ] as const;
 
 export const footerLegalLinks = [
+  { key: "privacyNotice" as const, href: PRIVACY_NOTICE_PATH },
   { key: "terms" as const, href: "#" },
   { key: "cookies" as const, href: "#" },
 ] as const;

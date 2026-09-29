@@ -34,6 +34,8 @@ import {
  *     difference;
  *   - a setting changed in the JSON is applied by the next run (and `dry-run`
  *     shows it without writing);
+ *   - the registration form refuses anyone who has not ticked the privacy
+ *     notice box — Keycloak itself, from the user profile (MDRS-102);
  *   - a new user registers through the registration form, receives the
  *     verification e-mail in Mailpit, follows it, and the resulting token is
  *     accepted by tedrisat — the real AuthGuard and `KeycloakPublicKeyProvider`
@@ -338,6 +340,29 @@ describe("Keycloak configuration package (e2e)", () => {
     expect(result.stdout).toContain("validate: ok");
   });
 
+  it("validate fails when the privacy notice box is no longer required (MDRS-102)", () => {
+    const dir = editedCopy((copy) =>
+      editJson(join(copy, "user-profile.json"), (profile) => {
+        const attributes = profile.attributes as {
+          name: string;
+          required?: unknown;
+        }[];
+        const box = attributes.find((a) => a.name === "privacyNoticeRead");
+        if (box) delete box.required;
+      })
+    );
+    try {
+      const result = spawnScript("validate", { KC_CONFIG_DIR: dir }, []);
+
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(
+        "user-profile.json: privacyNoticeRead must be required for users"
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("validate fails on a JSON file with a literal secret in it", () => {
     const dir = editedCopy((copy) =>
       editJson(join(copy, "clients/prod/tedris.json"), (client) => {
@@ -400,8 +425,19 @@ describe("Keycloak configuration package (e2e)", () => {
     const profile = await adminApi("GET", "/users/profile");
     expect(
       profile.attributes.map((attribute: { name: string }) => attribute.name)
-    ).toEqual(["username", "email", "firstName", "lastName"]);
-    for (const name of ["email", "firstName", "lastName"]) {
+    ).toEqual([
+      "username",
+      "email",
+      "firstName",
+      "lastName",
+      "privacyNoticeRead",
+    ]);
+    for (const name of [
+      "email",
+      "firstName",
+      "lastName",
+      "privacyNoticeRead",
+    ]) {
       expect(
         profile.attributes.find((a: { name: string }) => a.name === name)
           .required.roles
@@ -516,15 +552,14 @@ describe("Keycloak configuration package (e2e)", () => {
     expect(runScript("verify")).toContain("verify: no difference");
   });
 
-  it("lets a new user register, verify the e-mail through Mailpit, and obtain a token tedrisat accepts", async () => {
-    const email = `new-user-${run}@medaris.test`;
-    const password = `Kayit-${run}-Parola`;
+  /**
+   * The registration form, reached the way tedris-web's "Kayıt ol" does
+   * (MDRS-101): the authorization endpoint with PKCE, on the register page.
+   * Returns the PKCE verifier the code exchange needs.
+   */
+  const registrationForm = async (page: ReturnType<typeof browser>) => {
     const verifier = randomBytes(32).toString("base64url");
     const challenge = createHash("sha256").update(verifier).digest("base64url");
-    const page = browser();
-
-    // The registration form, reached the way tedris-web's "Kayıt ol" does
-    // (MDRS-101): the authorization endpoint with PKCE, on the register page.
     const form = await page.open(
       `${kcUrl}/realms/${REALM}/protocol/openid-connect/registrations?${new URLSearchParams(
         {
@@ -539,6 +574,62 @@ describe("Keycloak configuration package (e2e)", () => {
       )}`
     );
     expect(form.html).toContain("kc-register-form");
+    return { ...form, verifier };
+  };
+
+  it.each([
+    ["without the privacy notice box", undefined],
+    ["with any other value in it", "no"],
+  ])("refuses a registration %s (MDRS-102)", async (_, box) => {
+    const page = browser();
+    const form = await registrationForm(page);
+    const email = `no-notice-${box ?? "unticked"}-${run}@medaris.test`;
+    const password = `Kayit-${run}-Parola`;
+    const fields = {
+      firstName: "Yeni",
+      lastName: "Kullanıcı",
+      email,
+      username: `no-notice-${box ?? "unticked"}-${run}`,
+      password,
+      "password-confirm": password,
+    };
+
+    // Posted straight to Keycloak: no theme, no browser-side check involved.
+    const refused = await page.open(formAction(form.html), {
+      ...fields,
+      ...(box === undefined ? {} : { privacyNoticeRead: box }),
+    });
+
+    expect(refused.callback).toBeUndefined();
+    expect(refused.status).toBe(200);
+    // The form again, not the "verify your e-mail" page.
+    expect(refused.html).toContain("kc-register-form");
+    expect(
+      await adminApi(
+        "GET",
+        `/users?exact=true&email=${encodeURIComponent(email)}`
+      )
+    ).toEqual([]);
+
+    // The box was the only thing wrong: the same fields, ticked, register.
+    const accepted = await page.open(formAction(refused.html), {
+      ...fields,
+      privacyNoticeRead: "yes",
+    });
+    expect(accepted.html).not.toContain("kc-register-form");
+    const [created] = await adminApi(
+      "GET",
+      `/users?exact=true&email=${encodeURIComponent(email)}`
+    );
+    expect(created.attributes?.privacyNoticeRead).toEqual(["yes"]);
+  });
+
+  it("lets a new user register, verify the e-mail through Mailpit, and obtain a token tedrisat accepts", async () => {
+    const email = `new-user-${run}@medaris.test`;
+    const password = `Kayit-${run}-Parola`;
+    const page = browser();
+    const form = await registrationForm(page);
+    const { verifier } = form;
 
     const registered = await page.open(formAction(form.html), {
       firstName: "Yeni",
@@ -547,6 +638,8 @@ describe("Keycloak configuration package (e2e)", () => {
       username: `new-user-${run}`,
       password,
       "password-confirm": password,
+      // MDRS-102: the "Aydınlatma Metni'ni okudum" box, ticked.
+      privacyNoticeRead: "yes",
     });
     // E-mail verification is on: no code yet, the "verify your e-mail" page.
     expect(registered.callback).toBeUndefined();
@@ -555,6 +648,7 @@ describe("Keycloak configuration package (e2e)", () => {
       `/users?exact=true&email=${encodeURIComponent(email)}`
     );
     expect(pending.emailVerified).toBe(false);
+    expect(pending.attributes?.privacyNoticeRead).toEqual(["yes"]);
 
     const mail = await mailTo(email);
     expect(mail.From.Address).toBe(SENDER);

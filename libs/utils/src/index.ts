@@ -1,5 +1,6 @@
 export * from "./callback-url";
 export * from "./meeting-platform";
+export * from "./privacy-notice";
 export * from "./time-zone";
 
 export const formatDate = (date: Date): string => {

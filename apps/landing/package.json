@@ -16,6 +16,7 @@
     "@medaris/i18n": "workspace:*",
     "@medaris/icons": "workspace:*",
     "@medaris/ui": "workspace:*",
+    "@medaris/utils": "workspace:*",
     "@opentelemetry/api": "catalog:",
     "@t3-oss/env-nextjs": "catalog:",
     "@vercel/otel": "catalog:",

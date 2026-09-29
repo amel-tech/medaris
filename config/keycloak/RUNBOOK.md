@@ -10,7 +10,7 @@ overwrites it, and `verify` reports it until then.
 | `realms/<realm>.json` | Only `realm` and `displayName`; deep-merged over `_base.json` (`jq -s '.[0] * .[1]'`) |
 | `clients/_base.json` | Settings shared by every client: confidential, every flow off |
 | `clients/<env>/<client>.json` | One client of one environment; deep-merged over `clients/_base.json` |
-| `user-profile.json` | The declarative user profile: first name, last name and e-mail required, nothing else |
+| `user-profile.json` | The declarative user profile: first name, last name and e-mail required, plus the required privacy-notice box `privacyNoticeRead` (MDRS-102); nothing else |
 | `env/<env>.env.example` | The variables the scripts read for that environment — no values for secrets |
 | `scripts/` | `validate`, `dry-run`, `provision`, `verify` |
 

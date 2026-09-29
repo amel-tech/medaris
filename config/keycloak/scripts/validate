@@ -103,8 +103,11 @@ if [[ $parsed -eq 1 ]]; then
     )
   fi
 
-  # 4. The user profile: first name, last name and e-mail required, nothing
-  #    beyond the four built-in attributes.
+  # 4. The user profile: first name, last name and e-mail required, and
+  #    nothing beyond the four built-in attributes except privacyNoticeRead
+  #    (MDRS-102) — the "Aydınlatma Metni'ni okudum" box on the registration
+  #    form, which Keycloak refuses to register without: required for users,
+  #    one accepted value, and an https link to the notice.
   profile="$KC_CONFIG_DIR/user-profile.json"
   if [[ ! -f "$profile" ]]; then
     problem "user-profile.json is missing"
@@ -117,8 +120,19 @@ if [[ $parsed -eq 1 ]]; then
             elif (($attr.required.roles // []) | index("user")) == null
             then "user-profile.json: \($n) must be required for users"
             else empty end),
-        ($a[] | .name | select(IN("username", "email", "firstName", "lastName") | not)
-          | "user-profile.json: \(.) is not one of the four built-in attributes")
+        (($a | map(select(.name == "privacyNoticeRead")) | .[0]) as $p
+          | if $p == null then "user-profile.json: privacyNoticeRead is missing"
+            else
+              (if (($p.required.roles // []) | index("user")) == null
+               then "user-profile.json: privacyNoticeRead must be required for users" else empty end),
+              (if ($p.validations.options.options // []) != ["yes"]
+               then "user-profile.json: privacyNoticeRead must accept exactly [\"yes\"]" else empty end),
+              (if ($p.annotations.linkUrl // "") | test("^https://[^/]+/.") | not
+               then "user-profile.json: privacyNoticeRead needs an https linkUrl to the notice" else empty end)
+            end),
+        ($a[] | .name
+          | select(IN("username", "email", "firstName", "lastName", "privacyNoticeRead") | not)
+          | "user-profile.json: \(.) is not one of the four built-in attributes or privacyNoticeRead")
     ' "$profile")
   fi
 

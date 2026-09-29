@@ -9,6 +9,7 @@ import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { Header } from "~/components/header/header";
+import { LegalFooter } from "~/components/legal-footer";
 import { ClientProviders } from "~/components/providers/client-providers";
 import { TabView } from "~/components/tab-view";
 import { routing } from "~/lib/i18n/routing";
@@ -40,6 +41,7 @@ export default async function LocaleLayout({
           <ClientProviders>
             <Header />
             <TabView>{children}</TabView>
+            <LegalFooter />
           </ClientProviders>
         </NextIntlClientProvider>
       </body>

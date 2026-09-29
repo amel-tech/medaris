@@ -502,6 +502,9 @@ importers:
       '@medaris/ui':
         specifier: workspace:*
         version: link:../../libs/ui
+      '@medaris/utils':
+        specifier: workspace:*
+        version: link:../../libs/utils
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.1
