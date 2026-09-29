@@ -1,0 +1,5 @@
+{
+  "clientId": "tedrisat-api",
+  "name": "tedrisat API",
+  "description": "Named in the aud claim of the web clients' tokens. Nothing signs in through it, so every flow is off."
+}

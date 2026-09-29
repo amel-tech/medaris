@@ -6,6 +6,12 @@
 # (scripts/setup-keycloak.sh) and adapted to the monorepo; the differences are
 # listed in docs/migration/mdrs-42-keycloak-clients.md.
 #
+# MDRS-97: the `medaris` realm (production) is provisioned declaratively from
+# config/keycloak/ (see config/keycloak/RUNBOOK.md), not by this script. This
+# script stays for the shared `amel-tech-dev` realm, whose other clients rule
+# out a full reconfiguration, and for keycloak-audience.e2e.spec.ts. Its mail
+# sender step shares config/keycloak/scripts/lib/smtp.sh with `provision`.
+#
 # Creates, when missing:
 #   realm         amel-tech-dev (REALM)
 #   API client    tedrisat-api — confidential, every login flow disabled. It
@@ -158,44 +164,12 @@ KC_ADMIN_USER="${KC_ADMIN_USER:-admin}"
 KC_ADMIN_PASSWORD="${KC_ADMIN_PASSWORD:-admin}"
 
 # The mail sender is checked before anything is written, so a half-set
-# environment fails the run instead of leaving the realm half-configured.
-if [[ -n "${KC_SMTP_HOST:-}" ]]; then
-  KC_SMTP_SECURITY="${KC_SMTP_SECURITY:-starttls}"
-  if [[ "$KC_SMTP_SECURITY" == "ssl" ]]; then
-    KC_SMTP_PORT="${KC_SMTP_PORT:-465}"
-  else
-    KC_SMTP_PORT="${KC_SMTP_PORT:-587}"
-  fi
-  # jq reads them through $ENV below, which only sees exported variables.
-  export KC_SMTP_PORT KC_SMTP_SECURITY
-  case "$KC_SMTP_SECURITY" in
-    starttls | ssl | none) ;;
-    *)
-      echo "setup-realm: KC_SMTP_SECURITY must be starttls, ssl or none, not '$KC_SMTP_SECURITY'." >&2
-      exit 1
-      ;;
-  esac
-  [[ "$KC_SMTP_PORT" =~ ^[0-9]+$ ]] || {
-    echo "setup-realm: KC_SMTP_PORT must be a number, not '$KC_SMTP_PORT'." >&2
-    exit 1
-  }
-  [[ -n "${KC_SMTP_FROM:-}" ]] || {
-    echo "setup-realm: KC_SMTP_HOST is set but KC_SMTP_FROM is not; Keycloak needs a sender address." >&2
-    exit 1
-  }
-  if [[ -n "${KC_SMTP_USER:-}" && -z "${KC_SMTP_PASSWORD:-}" ]] ||
-    [[ -z "${KC_SMTP_USER:-}" && -n "${KC_SMTP_PASSWORD:-}" ]]; then
-    echo "setup-realm: set KC_SMTP_USER and KC_SMTP_PASSWORD together, or neither." >&2
-    exit 1
-  fi
-  # Keyed on the Keycloak -> SMTP hop, not on KC_URL: a port-forward to a
-  # production realm reads as localhost, and its mail still crosses the
-  # internet.
-  if [[ -n "${KC_SMTP_USER:-}" && "$KC_SMTP_SECURITY" == "none" && "${ALLOW_INSECURE_SMTP:-}" != "1" ]]; then
-    echo "setup-realm: KC_SMTP_SECURITY=none would send the SMTP password in cleartext. Use starttls or ssl, or set ALLOW_INSECURE_SMTP=1 for a test server on a private network." >&2
-    exit 1
-  fi
-fi
+# environment fails the run instead of leaving the realm half-configured. The
+# checks and the payload live in config/keycloak/scripts/lib/smtp.sh, shared
+# with config/keycloak/scripts/provision (MDRS-97).
+# shellcheck source=../../config/keycloak/scripts/lib/smtp.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../../config/keycloak/scripts/lib/smtp.sh"
+smtp_check setup-realm
 
 TOKEN=""
 authenticate() {
@@ -376,30 +350,11 @@ echo "[5/5] mail sender"
 if [[ -z "${KC_SMTP_HOST:-}" ]]; then
   echo "      skipped (set KC_SMTP_HOST to configure it)"
 else
-  # Built from the environment by jq itself ($ENV), so the password never
-  # appears in any argv. Keycloak stores every value as a string.
-  smtp=$(jq -n '
-    {
-      host: $ENV.KC_SMTP_HOST,
-      port: $ENV.KC_SMTP_PORT,
-      from: $ENV.KC_SMTP_FROM,
-      fromDisplayName: ($ENV.KC_SMTP_FROM_DISPLAY_NAME // ""),
-      replyTo: ($ENV.KC_SMTP_REPLY_TO // ""),
-      envelopeFrom: ($ENV.KC_SMTP_ENVELOPE_FROM // ""),
-      starttls: (if $ENV.KC_SMTP_SECURITY == "starttls" then "true" else "false" end),
-      ssl: (if $ENV.KC_SMTP_SECURITY == "ssl" then "true" else "false" end),
-      auth: (if ($ENV.KC_SMTP_USER // "") != "" then "true" else "false" end)
-    }
-    + (if ($ENV.KC_SMTP_USER // "") != ""
-       then {user: $ENV.KC_SMTP_USER, password: $ENV.KC_SMTP_PASSWORD}
-       else {} end)
-    | {smtpServer: .}')
+  # Built by jq from $ENV, so the password never appears in any argv, and
+  # sent to curl on stdin by api().
+  smtp=$(smtp_server with-password | jq '{smtpServer: .}')
   api PUT "/realms/$REALM" "$smtp" >/dev/null
-  if [[ -n "${KC_SMTP_USER:-}" ]]; then
-    echo "      configured ($KC_SMTP_FROM via $KC_SMTP_HOST:$KC_SMTP_PORT, $KC_SMTP_SECURITY, as $KC_SMTP_USER)"
-  else
-    echo "      configured ($KC_SMTP_FROM via $KC_SMTP_HOST:$KC_SMTP_PORT, $KC_SMTP_SECURITY, no login)"
-  fi
+  echo "      configured ($(smtp_describe))"
 fi
 
 if [[ $PRINT_SECRETS -eq 1 ]]; then
