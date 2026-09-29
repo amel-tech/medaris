@@ -57,6 +57,7 @@ jobs:
           HAS_USER: ${{ secrets.KC_SSH_USERNAME != '' }}
           HAS_KEY: ${{ secrets.KC_SSH_PRIVATE_KEY != '' }}
           HAS_FINGERPRINT: ${{ secrets.KC_SSH_HOST_FINGERPRINT != '' }}
+          HAS_WEBHOOK: ${{ secrets.KEYCLOAK_COOLIFY_RESTART_WEBHOOK != '' }}
         run: |
           set -euo pipefail
           missing=''
@@ -65,6 +66,7 @@ jobs:
           [ "$HAS_USER" = true ] || missing="$missing secret:KC_SSH_USERNAME"
           [ "$HAS_KEY" = true ] || missing="$missing secret:KC_SSH_PRIVATE_KEY"
           [ "$HAS_FINGERPRINT" = true ] || missing="$missing secret:KC_SSH_HOST_FINGERPRINT"
+          [ "$HAS_WEBHOOK" = true ] || missing="$missing secret:KEYCLOAK_COOLIFY_RESTART_WEBHOOK"
           if [ -n "$missing" ]; then
             echo "::error::Keycloak theme deploy is not configured; missing:${missing}. See docs/runbooks/deploy-keycloak-theme.md §0."
             exit 1
