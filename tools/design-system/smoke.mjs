@@ -130,6 +130,34 @@ const SAMPLES = {
   WeekAccordion: () => ({ week: 3, title: "Dördüncü ve Beşinci Bab" }),
 };
 
+// Further renders whose markup must hold each string in `has`: behaviour one sample does not reach.
+const CASES = [
+  {
+    name: "SessionJoin",
+    why: "an unknown host keeps its label beside the host",
+    props: {
+      startsAt: "2026-10-03T21:00:00+03:00",
+      state: "upcoming",
+      platform: "unknown",
+      host: "meet.example.org",
+      href: "https://meet.example.org/medaris-sarf",
+      now: "2026-10-03T20:55:00+03:00",
+    },
+    has: ["Bilinmeyen platform", "meet.example.org"],
+  },
+  {
+    name: "SessionJoin",
+    why: "the countdown badge starts with a capital",
+    props: {
+      startsAt: "2026-10-04T14:00:00+03:00",
+      timeZone: "Europe/Istanbul",
+      state: "upcoming",
+      now: "2026-10-03T12:00:00+03:00",
+    },
+    has: [">Yarın</time>"],
+  },
+];
+
 // Members of `export interface <name> { … }` with whether each is optional.
 function interfaceMembers(dts, name) {
   const m = dts.match(
@@ -217,7 +245,23 @@ for (const c of header.components) {
     console.log(`ERR ${c.name.padEnd(14)} ${e.message}`);
   }
 }
+for (const c of CASES) {
+  const Comp = ns[c.name];
+  let html = "";
+  try {
+    html = renderToStaticMarkup(React.createElement(Comp, c.props));
+  } catch (e) {
+    html = `(threw: ${e.message})`;
+  }
+  const lost = c.has.filter((h) => !html.includes(h));
+  if (lost.length) {
+    bad++;
+    console.log(
+      `ERR ${c.name.padEnd(14)} ${c.why}: no ${lost.join(", ")} in ${html.slice(0, 120)}`
+    );
+  } else console.log(`ok  ${c.name.padEnd(14)} ${c.why}`);
+}
 console.log(
-  `smoke: ${header.components.length} components, ${bad} failure${bad === 1 ? "" : "s"}`
+  `smoke: ${header.components.length} components and ${CASES.length} further cases, ${bad} failure${bad === 1 ? "" : "s"}`
 );
 process.exit(bad ? 1 : 0);

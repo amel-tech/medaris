@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="tr" dir="ltr" data-app="tedris">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Medaris check fixtures</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+.fx-page { max-inline-size: 960px; margin-inline: auto; padding: var(--space-10) var(--space-6); }
+.fx-stack { display: flex; flex-direction: column; gap: var(--space-6); }
+.fx-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+</style>
+</head>
+<!-- Fixtures for tools/design-system/check.mjs: states and contexts the specimens and cards do not show. Each block
+     names the check that reads it. check.mjs serves this file one level below the design system, so ../styles.css is
+     the design system's. It is rendered in every theme path like a card, so its text is contrast-checked too. -->
+<body>
+<main class="fx-page">
+<div class="fx-stack">
+
+<!-- latin-ref: the Latin values each class must keep inside an Arabic region (check: island classes) -->
+<section class="fx-stack" data-fx="latin-ref">
+  <h2 class="mds-h2" data-fx-k="h2">İsâgûcî Şerhi — İcâzet dersi</h2>
+  <p class="mds-reading" data-fx-k="reading">Esîrüddîn el-Ebherî'nin mantık metni, Hüsâmeddin Kâtî'nin şerhiyle okunur.</p>
+  <p class="mds-caption" data-fx-k="caption">Süleymaniye Medresesi · Perşembe 21:00</p>
+  <p class="mds-body-sm"><code class="mds-mono" data-fx-k="mono">meet.google.com/abc-defg-hij</code></p>
+  <p class="mds-body-sm"><span lang="tr" data-fx-k="nest">Müderris Abdülhamit Karaosmanoğlu</span></p>
+</section>
+
+<!-- ar-region: the same classes as Latin islands, a nested island, and Arabic titles (checks: island classes, Arabic leading) -->
+<section class="fx-stack" lang="ar" dir="rtl" data-fx="ar-region">
+  <h2 class="mds-h2" lang="tr" dir="ltr" data-fx-k="h2">İsâgûcî Şerhi — İcâzet dersi</h2>
+  <p class="mds-reading" lang="tr" dir="ltr" data-fx-k="reading">Esîrüddîn el-Ebherî'nin mantık metni, Hüsâmeddin Kâtî'nin şerhiyle okunur.</p>
+  <p class="mds-caption" lang="tr" dir="ltr" data-fx-k="caption">Süleymaniye Medresesi · Perşembe 21:00</p>
+  <p class="mds-body-sm">الرابط: <code class="mds-mono" lang="en" dir="ltr" data-fx-k="mono">meet.google.com/abc-defg-hij</code></p>
+  <p class="mds-body-sm">المدرس: <span lang="tr" dir="ltr">Müderris <span lang="tr" data-fx-k="nest">Abdülhamit Karaosmanoğlu</span></span></p>
+  <h1 class="mds-display" data-fx-lh>شَرْحُ إِيسَاغُوجِي فِي عِلْمِ الْمَنْطِقِ لِلْأَبْهَرِيِّ</h1>
+  <h1 class="mds-h1" data-fx-lh>شَرْحُ إِيسَاغُوجِي فِي عِلْمِ الْمَنْطِقِ</h1>
+  <h2 class="mds-h2" data-fx-lh>بَابُ الْكُلِّيَّاتِ الْخَمْسِ</h2>
+  <p class="mds-h5" data-fx-lh>الدَّرْسُ الثَّالِثُ: الْجِنْسُ وَالنَّوْعُ</p>
+  <p class="mds-body" data-fx-lh>يُقْرَأُ الْمَتْنُ مَعَ الشَّرْحِ، ثُمَّ تَكُونُ الْمُذَاكَرَةُ.</p>
+  <p class="mds-body-sm" data-fx-lh>الدرس القادم يوم الخميس الساعة ٢١:٠٠</p>
+</section>
+
+<!-- Qur'an with waqf signs, each a space plus a combining mark (check: Qur'an face only) -->
+<section class="fx-stack" data-fx="quran">
+  <p class="mds-quran" lang="ar" dir="rtl">الٓمٓ&nbsp;۝١ ذَٰلِكَ ٱلْكِتَٰبُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًى لِّلْمُتَّقِينَ&nbsp;۝٢</p>
+  <p class="mds-quran" lang="ar" dir="rtl">ٱللَّهُ لَآ إِلَٰهَ إِلَّا هُوَ ٱلْحَىُّ ٱلْقَيُّومُ ۚ لَا تَأْخُذُهُۥ سِنَةٌ وَلَا نَوْمٌ ۚ لَّهُۥ مَا فِى ٱلسَّمَٰوَٰتِ وَمَا فِى ٱلْأَرْضِ ۗ</p>
+  <p class="mds-quran" lang="ar" dir="rtl">ٱلْحَمْدُ لِلَّهِ ٱلَّذِىٓ أَنزَلَ عَلَىٰ عَبْدِهِ ٱلْكِتَٰبَ وَلَمْ يَجْعَل لَّهُۥ عِوَجَا ۜ&nbsp;۝١</p>
+</section>
+
+<!-- Author strings of unknown language carry only dir="auto" (MDS-TYPE-07). Arabic in them must still paint in Naskh
+     under every Latin class (check: every Arabic glyph in a web face) -->
+<section class="fx-stack" data-fx="author-ar">
+  <div class="mds-card"><div class="mds-card__header"><h3 class="mds-card__title" dir="auto">شرح الأجرومية</h3><span class="mds-badge mds-badge--brand">Devam ediyor</span></div><p class="mds-card__body" dir="auto">متن مختصر في النحو</p></div>
+  <ol class="mds-lesson-list"><li class="mds-lesson-row mds-lesson-row--live"><span class="mds-lesson-row__medallion" aria-hidden="true"></span><div class="mds-lesson-row__main"><span class="mds-lesson-row__title" dir="auto">باب الفاعل</span><p class="mds-lesson-row__meta"><span>Canlı ders</span></p></div></li></ol>
+  <p class="fx-row"><button type="button" class="mds-btn mds-btn--outline"><span dir="auto">حفظ الدرس</span></button><span class="mds-badge mds-badge--secondary" dir="auto">مسودة</span></p>
+</section>
+
+<!-- An inline Arabic word in a clipped single-line title (check: no vertical clip around .mds-arabic) -->
+<section data-fx="appbar">
+  <p class="mds-appbar__title">Ders: <span class="mds-arabic" lang="ar" dir="rtl">الأمثلة</span> ve <span class="mds-arabic" lang="ar" dir="rtl">إيساغوجي</span></p>
+</section>
+
+<!-- Invalid and disabled states (checks: focus ring on every focusable, disabled text ≥ 3:1) -->
+<section class="fx-stack" data-fx="states">
+  <fieldset class="mds-choice-group">
+    <legend class="mds-label">Onaylar</legend>
+    <label class="mds-choice"><input type="checkbox" class="mds-check" aria-invalid="true"><span class="mds-choice__text"><span class="mds-choice__label">Ders kurallarını okudum</span></span></label>
+    <label class="mds-choice"><input type="radio" class="mds-radio" name="fx-r" aria-invalid="true"><span class="mds-choice__text"><span class="mds-choice__label">Yalnızca kayıtlı talebeler</span></span></label>
+    <label class="mds-choice"><input type="checkbox" class="mds-check" checked disabled><span class="mds-choice__text"><span class="mds-choice__label">Kayıt açık</span><span class="mds-choice__desc">Kurs yayında olduğu için değiştirilemez.</span></span></label>
+    <label class="mds-choice"><input type="radio" class="mds-radio" name="fx-r2" checked disabled><span class="mds-choice__text"><span class="mds-choice__label">Herkese açık</span></span></label>
+    <!-- biome-ignore lint/a11y/useAriaPropsForRole: a native checkbox exposes its own checked state; ARIA in HTML forbids aria-checked on it -->
+    <label class="mds-choice"><input type="checkbox" role="switch" class="mds-switch" checked disabled><span class="mds-choice__text"><span class="mds-choice__label">Kayıt bildirimleri</span></span></label>
+  </fieldset>
+  <fieldset class="mds-chips">
+    <legend class="mds-label">Dil</legend>
+    <label class="mds-chip"><input type="radio" name="fx-c" checked disabled>Türkçe</label>
+    <label class="mds-chip"><input type="radio" name="fx-c" disabled>Arapça</label>
+  </fieldset>
+  <div class="fx-row">
+    <button type="button" class="mds-btn mds-btn--primary" disabled>Kaydet</button>
+    <button type="button" class="mds-btn mds-btn--secondary" disabled>Taslak olarak sakla</button>
+    <button type="button" class="mds-btn mds-btn--outline" disabled>Vazgeç</button>
+    <button type="button" class="mds-btn mds-btn--ghost" disabled>Düzenle</button>
+    <button type="button" class="mds-btn mds-btn--destructive" disabled>Kalıcı olarak sil</button>
+    <button type="button" class="mds-btn mds-btn--link" disabled>Tümünü gör</button>
+    <button type="button" class="mds-btn mds-btn--primary" aria-disabled="true" aria-busy="true">Kaydediliyor</button>
+  </div>
+  <button type="button" class="mds-btn mds-btn--outline" data-fx-open>Ders notunu aç</button>
+</section>
+
+</div>
+</main>
+
+<!-- A modal dialog with a focusable scrolling body (check: no ring outside a modal); check.mjs opens it -->
+<dialog class="mds-dialog mds-dialog--lg" aria-labelledby="fx-d-t">
+  <div class="mds-dialog__panel">
+    <div class="mds-dialog__header"><div class="mds-dialog__heading"><h2 class="mds-dialog__title" id="fx-d-t">İsâgûcî, giriş</h2></div></div>
+    <div class="mds-dialog__body" role="region" aria-labelledby="fx-d-t" tabindex="0">
+      <p>Mantık, doğru düşünmenin kurallarını öğreten ilimdir. İsâgûcî bu ilmin medreselerde ilk okunan metnidir; beş tümeli (külliyât-ı hams) anlatarak başlar.</p>
+      <p>Esîrüddîn el-Ebherî metni kısa tutmuştur. Şerhler, her cümlenin neyi kastettiğini ve hangi itirazlara cevap verdiğini açar.</p>
+      <p>Talebe önce metni mütalaa eder, sonra derste müderrisin takririni dinler, en sonda arkadaşlarıyla müzakere eder.</p>
+      <p>Cins, nev, fasıl, hâssa ve araz-ı âmm bu bölümün konusudur. Her biri bir örnekle verilir ve ezberlenir.</p>
+      <p>Bir sonraki derste tarifler (kavl-i şârih) başlar. Hazırlık için metnin ilk iki sayfasını okuyun.</p>
+    </div>
+    <div class="mds-dialog__footer"><button type="button" class="mds-btn mds-btn--primary" data-fx-close>Kapat</button></div>
+  </div>
+</dialog>
+</body>
+</html>

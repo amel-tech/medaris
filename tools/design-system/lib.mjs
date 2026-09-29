@@ -26,6 +26,9 @@ export const repoRoot = findRepoRoot();
 // the same from any working directory. An absolute path is kept as it is.
 export const fromRoot = (p) => resolve(repoRoot, p);
 
+// The design system a check reads when it is given no directory.
+export const DEFAULT_DIR = "design-system/medaris-unified";
+
 export function usageError(usage, message) {
   console.error(message);
   console.error(`usage: ${usage}`);
@@ -57,38 +60,41 @@ export function readJson(path) {
 
 export const stripCssComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, "");
 
-// The custom properties declared directly inside top-level `:root { … }`
-// blocks: the defaults. A contextual re-declaration (`[data-density]`,
-// `:lang(ar)`, anything under `@media`) is not a default and is skipped
-// (MDS-TOK-02).
-export function rootDeclarations(css) {
-  const src = stripCssComments(css);
-  const out = new Map();
+// Every rule of a stylesheet that holds declarations and no other rule: its
+// selector, the selector of the block around it (an `@media`, or null at the
+// top level) and its custom properties in source order.
+export function cssBlocks(css) {
+  const src = stripCssComments(css)
+    .replace(/@import\s+url\([^)]*\)[^;]*;/g, "")
+    .replace(/@import[^;]*;/g, "");
+  const out = [];
+  const selector = [];
+  const bodyStart = [];
   let depth = 0;
   let start = 0;
-  let selector = "";
-  let bodyStart = 0;
   for (let i = 0; i < src.length; i++) {
     const ch = src[i];
-    if (ch === ";" && depth === 0) start = i + 1;
-    else if (ch === "{") {
-      if (depth === 0) {
-        selector = src.slice(start, i).trim();
-        bodyStart = i + 1;
-      }
+    if (ch === "{") {
+      selector[depth] = src.slice(start, i).trim();
+      bodyStart[depth] = i + 1;
       depth++;
+      start = i + 1;
     } else if (ch === "}") {
       depth--;
-      if (depth === 0) {
-        if (selector === ":root") {
-          const body = src.slice(bodyStart, i);
-          for (const d of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+)/g)) {
-            out.set(d[1], d[2].replace(/\s+/g, " ").trim());
-          }
+      const body = src.slice(bodyStart[depth], i);
+      if (!body.includes("{")) {
+        const decls = new Map();
+        for (const d of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+)/g)) {
+          decls.set(d[1], d[2].replace(/\s+/g, " ").trim());
         }
-        start = i + 1;
+        out.push({
+          selector: selector[depth],
+          parent: depth ? selector[depth - 1] : null,
+          decls,
+        });
       }
-    }
+      start = i + 1;
+    } else if (ch === ";" && depth === 0) start = i + 1;
   }
   return out;
 }
@@ -104,21 +110,55 @@ export function importedCss(dir) {
   ].map((m) => m[1]);
 }
 
-// Token defaults of a design system, read from the CSS rather than the
-// generated manifest. With `overrides`, tokens/a11y-overrides.css (which
-// styles.css never imports) is applied on top.
-export function designTokens(dir, { overrides = false } = {}) {
-  const files = importedCss(dir).filter((p) => p.endsWith(".css"));
-  if (overrides) files.push("tokens/a11y-overrides.css");
-  const values = new Map();
-  for (const f of files) {
-    const path = join(dir, f);
-    if (!existsSync(path)) continue;
-    for (const [k, v] of rootDeclarations(readFileSync(path, "utf8"))) {
-      values.set(k, v);
+// The token files that hold colours. tokens/colors.css holds the primitives
+// and nothing else.
+export const COLOUR_FILES = ["colors", "semantic", "elevation", "domain"].map(
+  (f) => `tokens/${f}.css`
+);
+
+// The colour tokens of a design system in its two themes. `day` is every
+// top-level `:root` declaration. Each file writes its night values twice, under
+// `:root[data-theme="dark"]` and under `prefers-color-scheme: dark`; `night` is
+// `day` with the first on top, and `problems` names a file whose two differ.
+export function colourThemes(dir) {
+  const day = new Map();
+  const nightOnly = new Map();
+  const primitives = new Set();
+  const problems = [];
+  for (const f of COLOUR_FILES) {
+    const file = join(dir, f);
+    if (!existsSync(file)) {
+      problems.push(`${f} does not exist`);
+      continue;
     }
+    const blocks = cssBlocks(readFileSync(file, "utf8"));
+    for (const b of blocks.filter((b) => b.selector === ":root" && !b.parent)) {
+      for (const [k, v] of b.decls) {
+        day.set(k, v);
+        if (f === "tokens/colors.css") primitives.add(k);
+      }
+    }
+    const attr = blocks.find((b) =>
+      b.selector.startsWith(':root[data-theme="dark"]')
+    );
+    const media = blocks.find((b) =>
+      b.parent?.includes("prefers-color-scheme: dark")
+    );
+    const text = (b) => [...(b?.decls ?? [])].map((d) => d.join(":")).join(";");
+    if (text(attr) !== text(media)) {
+      problems.push(
+        `${f}: the [data-theme="dark"] block and the prefers-color-scheme block differ`
+      );
+    }
+    for (const [k, v] of attr?.decls ?? []) nightOnly.set(k, v);
   }
-  return values;
+  return {
+    day,
+    night: new Map([...day, ...nightOnly]),
+    nightOnly,
+    primitives,
+    problems,
+  };
 }
 
 // Replaces every var(--x) (and var(--x, fallback)) with its value, recursively.
@@ -134,10 +174,4 @@ export function resolver(values) {
           }
         );
   return (v) => run(v, 0);
-}
-
-export function manifestOf(dir) {
-  const path = join(dir, "_ds_manifest.json");
-  if (!existsSync(path)) throw new Error(`no _ds_manifest.json in ${dir}`);
-  return readJson(path);
 }
