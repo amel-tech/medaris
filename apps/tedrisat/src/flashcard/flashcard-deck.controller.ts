@@ -85,9 +85,9 @@ export class FlashcardDeckController {
     operationId: "getFlashcardDeckById",
   })
   @ApiOkResponse({ type: FlashcardDeckResponse })
-  @ApiNotFoundResponse()
-  @ApiForbiddenResponse({
-    description: "Deck is private and owned by another user",
+  @ApiNotFoundResponse({
+    description:
+      "No such deck, or a private deck owned by another user — deliberately the same answer",
   })
   @IncludeApiQuery(DeckIncludeEnum)
   @Authz(SCOPES.VIEW, byParam(ENTITIES.FLASHCARD_DECK))
@@ -98,12 +98,11 @@ export class FlashcardDeckController {
     @IncludeQuery() include?: string[]
   ): Promise<FlashcardDeckResponse> {
     // `@Authz(VIEW)` above is what decides: `resolveDeckRole` answers
-    // DECK_OWNER for the author, PUBLIC for a public deck and `null` — a hard
-    // deny — for somebody else's private one. `findReadable` still re-reads
-    // the rule rather than `findById`, because it is the one call that both
-    // fetches the row and 404s a deck that does not exist; the resolver
-    // deliberately answers PUBLIC for a missing id instead of leaking
-    // existence through the guard's status code.
+    // DECK_OWNER for the author and PUBLIC for a public deck, and raises the
+    // same `DeckNotFoundError` for a missing deck and for somebody else's
+    // private one (MDRS-43 AC-4). `findReadable` still re-reads the rule
+    // rather than `findById`, so the handler does not depend on the guard
+    // having run.
     return this.deckService.findReadable(deckId, request.user.sub, include);
   }
 

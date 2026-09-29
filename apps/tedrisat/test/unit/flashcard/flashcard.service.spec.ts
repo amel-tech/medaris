@@ -328,6 +328,59 @@ describe("FlashcardService", () => {
     });
   });
 
+  // The card routes' `@Authz` resolver. MDRS-43 AC-4: "no such card" and "a
+  // card in a deck you may not see" must be indistinguishable, so both are
+  // the same CardNotFoundError — unlike the progress route above, whose AC
+  // asks for the 403.
+  describe("findVisibleDeckId", () => {
+    const STRANGER = "11111111-1111-1111-1111-111111111111";
+
+    it("returns the parent deck of the caller's own card", async () => {
+      mockFlashcardRepository.findVisibilityByIds.mockResolvedValue([
+        ownVisibility,
+      ]);
+
+      await expect(service.findVisibleDeckId(USER, CARD_ID)).resolves.toBe(
+        DECK_ID
+      );
+    });
+
+    it("returns the parent deck of a card in another user's PUBLIC deck", async () => {
+      mockFlashcardRepository.findVisibilityByIds.mockResolvedValue([
+        { ...ownVisibility, authorId: STRANGER, isPublic: true },
+      ]);
+
+      await expect(service.findVisibleDeckId(USER, CARD_ID)).resolves.toBe(
+        DECK_ID
+      );
+    });
+
+    it("404s a card in another user's private deck, exactly as a missing one", async () => {
+      mockFlashcardRepository.findVisibilityByIds.mockResolvedValue([
+        { ...ownVisibility, authorId: STRANGER },
+      ]);
+      await expect(service.findVisibleDeckId(USER, CARD_ID)).rejects.toThrow(
+        CardNotFoundError
+      );
+
+      mockFlashcardRepository.findVisibilityByIds.mockResolvedValue([]);
+      await expect(service.findVisibleDeckId(USER, CARD_ID)).rejects.toThrow(
+        CardNotFoundError
+      );
+    });
+
+    it("lets SYSTEM_ADMIN through to a card in a private deck", async () => {
+      mockAuthzService.isSystemAdmin.mockReturnValue(true);
+      mockFlashcardRepository.findVisibilityByIds.mockResolvedValue([
+        { ...ownVisibility, authorId: STRANGER },
+      ]);
+
+      await expect(service.findVisibleDeckId(USER, CARD_ID)).resolves.toBe(
+        DECK_ID
+      );
+    });
+  });
+
   describe("update", () => {
     it("forwards the patch and returns the updated card", async () => {
       const updates = { contentBack: "merhaba" };

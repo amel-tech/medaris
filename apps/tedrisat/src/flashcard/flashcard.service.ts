@@ -59,6 +59,34 @@ export class FlashcardService {
     return this.cardRepo.findDeckId(cardId);
   }
 
+  /**
+   * The parent deck of a card the caller may see, for the card routes'
+   * `@Authz` resolver. A card that does not exist and a card in somebody
+   * else's private deck raise the same `CardNotFoundError`: answering 403 for
+   * the second would tell the caller the card is there (MDRS-43 AC-4, "must
+   * not distinguish private from absent"). `TedrisatRoleResolver` cannot do
+   * this for the card routes — it only ever sees the deck id, so its 404
+   * would name the deck.
+   *
+   * SYSTEM_ADMIN sees every card, as on every decorated route. The resolver
+   * runs before `AuthzService.can`, so the bypass is repeated here.
+   */
+  async findVisibleDeckId(
+    user: AuthenticatedUser,
+    cardId: string
+  ): Promise<string> {
+    const [row] = await this.cardRepo.findVisibilityByIds([cardId]);
+    if (!row) throw new CardNotFoundError(cardId);
+    if (
+      !this.authz.isSystemAdmin(user) &&
+      row.authorId !== user.sub &&
+      !row.isPublic
+    ) {
+      throw new CardNotFoundError(cardId);
+    }
+    return row.deckId;
+  }
+
   async createMany(
     deckId: string,
     authorId: string,

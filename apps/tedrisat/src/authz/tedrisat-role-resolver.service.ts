@@ -115,7 +115,12 @@ export class TedrisatRoleResolver implements RoleResolver {
    *   priority order becomes unsound with it. (Before MDRS-43 the same
    *   invariant was held up by an `assertOwner` call in the handler.)
    * - Public deck, not the author: PUBLIC (any authenticated caller may view).
-   * - Private deck, not the author: null → strict deny.
+   * - Private deck, not the author: `DeckNotFoundError`, the same 404 as a
+   *   deck that is not there — on every deck route, reads and writes alike.
+   *   A 403 here told a stranger the UUID was somebody's private deck;
+   *   MDRS-43 AC-4 requires that "private" and "absent" look the same. The
+   *   403 is kept for what the caller can already see: a public deck they
+   *   do not own, whose owner scopes the matrix denies.
    *
    * Two columns, one row, LIMIT 1 — `findVisibility`, not `findById`. This
    * runs inside the guard on every deck request, before the handler has done
@@ -126,13 +131,14 @@ export class TedrisatRoleResolver implements RoleResolver {
   private async resolveDeckRole(
     userId: string,
     resource: ResourceRef
-  ): Promise<Role | null> {
+  ): Promise<Role> {
     if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
 
     const deck = await this.deckService.findVisibility(resource.id);
     if (!deck) throw new DeckNotFoundError(resource.id);
     if (deck.authorId === userId) return ROLES.DECK_OWNER;
-    return deck.isPublic ? ROLES.PUBLIC : null;
+    if (!deck.isPublic) throw new DeckNotFoundError(resource.id);
+    return ROLES.PUBLIC;
   }
 
   /**
