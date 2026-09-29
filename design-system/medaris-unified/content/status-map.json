@@ -1,5 +1,5 @@
 {
-  "$comment": "Every domain state → label, Badge variant and icon. Labels are Turkish UI copy (drafts where marked). No default depends on an open decision: 'target' is the tone a row takes once 'inherits' is decided. Keys are descriptive where the API has no enum yet. Rules: MDS-STAT-01, MDS-COL-03, MDS-COL-08; open decisions are listed at the end of rules.md.",
+  "$comment": "Every domain state → label, Badge variant and icon. Labels are Turkish UI copy (drafts where marked). Every Badge tone passes WCAG AA in both themes (contrast.md). Keys are descriptive where the API has no enum yet. Rules: MDS-STAT-01, MDS-COL-03, MDS-COL-08.",
   "fields": {
     "state": "the API enum value, or a descriptive key where the API has none",
     "label": "the badge text; null = no badge",
@@ -9,9 +9,8 @@
     "cta": "the primary action shown in this state; an object when it depends on the course (approval required or direct)",
     "text": "a sentence shown in place of a badge",
     "shows": "what else this state puts beside the badge",
+    "count": "the counted form in a course row's enrolment column (Nizam): {n} from Intl.NumberFormat, shown only when n > 0",
     "audience": "who sees the row: 'management' = only those whose role lets them manage the thing in Nizam; absent = everyone who can see the thing",
-    "target": "the tone the row takes once 'inherits' is decided",
-    "inherits": "the open decision the target waits on",
     "provisional": "the type is not authorable yet; the row exists so it can be rendered",
     "draft": "the copy is a draft",
     "note": "why the row differs from a source",
@@ -28,25 +27,25 @@
     "course": [
       { "state": "DRAFT", "label": "Taslak", "badge": "outline" },
       { "state": "PUBLISHED", "label": "Yayında", "badge": "primary" },
-      { "state": "HIDDEN", "label": "Gizli", "badge": "ghost", "audience": "management" }
+      { "state": "HIDDEN", "label": "Gizli", "badge": "ghost", "icon": "eyeOff", "audience": "management" }
     ],
     "enrolment.talebe": [
       { "state": "SIGNED_OUT", "label": null, "cta": "Başvurmak için giriş yap", "locked": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Kursa kaydolduğunda görebilirsin." },
       { "state": "NONE", "label": null, "cta": { "approval": "Kayıt başvurusu yap", "direct": "Kursa kaydol" }, "locked": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Kursa kaydolduğunda görebilirsin.", "note": "also the state after a rejected application: the API deletes the pending enrolment, so the talebe may apply again" },
-      { "state": "PENDING", "label": "Onay bekliyor", "badge": "secondary", "icon": "clock", "cta": null, "locked": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Kursa kaydolduğunda görebilirsin." },
+      { "state": "PENDING", "label": "Onay bekliyor", "badge": "warning", "icon": "clock", "cta": null, "locked": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Kursa kaydolduğunda görebilirsin." },
       { "state": "ENROLLED", "label": "Devam ediyor", "badge": "brand", "cta": "Derse devam et", "shows": "the next session" },
       { "state": "COMPLETED", "label": "Tamamlandı", "badge": "success", "icon": "check" },
       { "state": "BANNED", "label": null, "text": "Bu kursa erişimin kaldırıldı." },
       { "state": "PREVIEW", "audience": "management", "label": "Önizleme", "badge": "outline", "text": "Kurs henüz yayında değil; bu önizlemeyi yalnızca yöneticiler görür.", "draft": true }
     ],
     "enrolment.management": [
-      { "state": "PENDING", "label": "Başvuru", "badge": "secondary", "icon": "clock", "target": "warning", "inherits": "OPEN-2" },
-      { "state": "ENROLLED", "label": "Kayıtlı", "badge": "success" },
-      { "state": "BANNED", "label": "Yasaklı", "badge": "outline", "icon": "ban", "target": "destructive", "inherits": "OPEN-2" }
+      { "state": "PENDING", "label": "Başvuru", "badge": "warning", "icon": "clock", "count": "{n} onay bekliyor" },
+      { "state": "ENROLLED", "label": "Kayıtlı", "badge": "success", "icon": "check" },
+      { "state": "BANNED", "label": "Yasaklı", "badge": "destructive", "icon": "ban", "count": "{n} yasaklı" }
     ],
     "session": [
       { "state": "PLANNED", "label": "Planlandı", "badge": "secondary" },
-      { "state": "LINK_MISSING", "label": "Bağlantı eksik", "badge": "secondary", "icon": "link", "audience": "management", "target": "warning", "inherits": "OPEN-2" },
+      { "state": "LINK_MISSING", "label": "Bağlantı eksik", "badge": "warning", "icon": "link", "audience": "management" },
       { "state": "LIVE", "label": "Şu an canlı", "badge": "live", "dot": true },
       { "state": "ENDED", "label": "Sona erdi", "badge": "ghost", "note": "the brief's C7 says 'tamamlandı'; relabelled so one label has one variant ('Tamamlandı' is success elsewhere), and Tedris already says 'Sona erdi' — the owner's copy decides" },
       { "state": "CANCELLED", "label": "İptal edildi", "badge": "outline" }
@@ -64,8 +63,8 @@
     "ezber": {
       "$comment": "Post-launch: no A–C launch screen shows ezber. States are the PRD enum (M5-2), which the API also uses: NEW, LEARNING, MASTERED.",
       "states": [
-        { "state": "NEW", "label": "Yeni", "badge": "secondary", "target": "info", "inherits": "SPEC-D3-03" },
-        { "state": "LEARNING", "label": "Öğreniliyor", "badge": "secondary", "target": "warning", "inherits": "OPEN-2", "draft": true },
+        { "state": "NEW", "label": "Yeni", "badge": "info" },
+        { "state": "LEARNING", "label": "Öğreniliyor", "badge": "warning", "draft": true },
         { "state": "MASTERED", "label": "Tamamlandı", "badge": "success" }
       ]
     },

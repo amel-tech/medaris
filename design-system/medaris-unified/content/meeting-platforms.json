@@ -15,5 +15,5 @@
     { "id": "zoom", "label": "Zoom", "hostSuffixes": ["zoom.us"], "dotToken": "--icon-platform-zoom" },
     { "id": "jitsi", "label": "Jitsi Meet", "hostSuffixes": ["jit.si", "meet.jit.si"], "dotToken": "--icon-platform-jitsi" }
   ],
-  "unknown": { "id": "unknown", "codeLabel": "", "uiLabel": "Bilinmeyen platform", "showHost": true, "dotToken": "--icon-neutral-disabled" }
+  "unknown": { "id": "unknown", "codeLabel": "", "uiLabel": "Bilinmeyen platform", "showHost": true, "dotToken": "--icon-platform-unknown" }
 }
