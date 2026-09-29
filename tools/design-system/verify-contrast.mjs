@@ -258,7 +258,8 @@ const INFO = [
   ["icon-platform-unknown", "background-neutral-surface"],
   ["icon-rating", "background-neutral-surface"],
   ["stamp-on-cover", "cover-laciverd"],
-  ["icon-logo-nokta", "text-neutral-default"],
+  ["icon-logo-arch", "icon-logo-ground"],
+  ["icon-logo-ground", "background-neutral-page"],
 ];
 
 // ------------------------------------------------------------ run
@@ -315,7 +316,7 @@ for (const c of cats) {
   summary.push({ name: c.name, need: c.need, n: c.pairs.length, min });
   md += `## ${c.name} (≥ ${c.need}:1)\n\n${c.note}.\n\n| pair | day fg / bg | day | night fg / bg | night |\n| -- | -- | --: | -- | --: |\n${rows.join("\n")}\n\n**Minimum:** day ${f2(min.day)}:1 · night ${f2(min.night)}:1\n\n`;
 }
-md += `## Not required — decorative or exempt\n\nShown so nobody mistakes them for a gap. A hairline never identifies a control on its own. The current-row tint is never the only signal (the "Sıradaki" marker and the medallion are). Platform dots and the rating star repeat printed words. The cover stamp is ornament. The nokta is part of the logo; its ground is the mark, ink by day and paper by night.\n\n| pair | day | night |\n| -- | --: | --: |\n`;
+md += `## Not required — decorative or exempt\n\nShown so nobody mistakes them for a gap. A hairline never identifies a control on its own. The current-row tint is never the only signal (the "Sıradaki" marker and the medallion are). Platform dots and the rating star repeat printed words. The cover stamp is ornament. The logo is exempt: its arch sits on its own ground by day and by night, and the ground is the mark's edge.\n\n| pair | day | night |\n| -- | --: | --: |\n`;
 for (const [fg, bg] of INFO) {
   try {
     md += `| \`${fg}\` on \`${bg}\` | ${f2(ratio("day", fg, bg))} | ${f2(ratio("night", fg, bg))} |\n`;

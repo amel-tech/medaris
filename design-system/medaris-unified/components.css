@@ -18,19 +18,17 @@
 .mds-icon--directional:dir(rtl) { scale: -1 1; }
 
 /* ---------------------------------------------------------------- Logo */
-/* The mark: an ink page with the scribe's double ruled frame (cetvel) and the qalam's rhombic nokta in
-   lâciverd. It follows the theme (ink by day, paper by night) and names no primitive. The large lockup adds
-   مدارس as outlined paths, so a Latin-only page never fetches the Naskh file. */
+/* The Medaris mark: two arch halves on a rounded ground, drawn as in libs/icons MadrasahLogoIcon. A logo
+   keeps its colours, so the ground and the arch are domain tokens, the same in both themes. The large lockup
+   adds مدارس as outlined paths, so a Latin-only page never fetches the Naskh file. */
 .mds-logo { display: inline-flex; align-items: center; gap: var(--space-3); color: var(--text-neutral-default); }
 .mds-logo__mark { flex: none; inline-size: 32px; block-size: 32px; }
 .mds-logo--sm { gap: var(--space-2); }
 .mds-logo--sm .mds-logo__mark { inline-size: 24px; block-size: 24px; }
-.mds-logo--sm .mds-logo__rule--inner { display: none; }
 .mds-logo--lg { gap: var(--space-4); }
 .mds-logo--lg .mds-logo__mark { inline-size: 48px; block-size: 48px; }
-.mds-logo__ground { fill: var(--text-neutral-default); }
-.mds-logo__rule { fill: none; stroke: var(--text-neutral-on-bold); vector-effect: non-scaling-stroke; }
-.mds-logo__nokta { fill: var(--icon-logo-nokta); }
+.mds-logo__ground { fill: var(--icon-logo-ground); }
+.mds-logo__arch { fill: var(--icon-logo-arch); }
 .mds-logo__text { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
 .mds-logo__word { font-family: var(--font-reading); font-size: var(--fs-h4); font-weight: var(--weight-semibold); line-height: 1.1; letter-spacing: -0.01em; white-space: nowrap; }
 .mds-logo--sm .mds-logo__word { font-size: var(--fs-h5); }
@@ -40,8 +38,7 @@
 .mds-logo__subtitle:is(:lang(tr), :lang(en)) { text-transform: uppercase; }
 @media (forced-colors: active) {
   .mds-logo__ground { fill: CanvasText; }
-  .mds-logo__rule { stroke: Canvas; }
-  .mds-logo__nokta { fill: Canvas; }
+  .mds-logo__arch { fill: Canvas; }
   .mds-logo__arabic { fill: CanvasText; }
 }
 

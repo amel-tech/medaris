@@ -7,8 +7,10 @@
   --icon-platform-jitsi: var(--safran-500);
   --icon-platform-unknown: var(--murekkep-400);
 
-  /* The logo's nokta: mid lâciverd, ≥ 3:1 on the ink ground of the day mark and the paper ground of the night mark. */
-  --icon-logo-nokta: var(--laciverd-500);
+  /* The Medaris mark: a lâciverd ground and a pale lâciverd arch (8.18:1 between them), the same in both
+     themes. A logo is exempt from contrast minimums; on the night page the arch carries it. */
+  --icon-logo-ground: var(--laciverd-700);
+  --icon-logo-arch: var(--laciverd-50);
 
   /* Rating star: decorative, always beside its number. */
   --icon-rating: var(--safran-500);

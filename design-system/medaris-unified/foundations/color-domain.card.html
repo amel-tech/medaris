@@ -1,4 +1,4 @@
-<!-- @dsCard group="Foundations" viewport="820x850" name="Domain colour" subtitle="Bookcloth covers, platform dots, the logo's nokta, the rating star and the media scrim. They read the same by day and by night." -->
+<!-- @dsCard group="Foundations" viewport="820x850" name="Domain colour" subtitle="Bookcloth covers, platform dots, the logo, the rating star and the media scrim. They read the same by day and by night." -->
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
 body{padding:var(--space-8)}
 .f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
@@ -25,7 +25,7 @@ code{white-space:nowrap}
 </style></head><body>
 <section class="f-sec">
 <header class="f-head"><h2 class="mds-h5">Cilt kapaklar</h2><p class="mds-caption">Bir kurs ciltli bir kitaptır. Dört bez, kör baskı çift cetvel ve şemse. Etiket ilmin Arapça adı. Kapak hiçbir durum taşımaz ve temayla değişmez <span class="f-id">(MDS-COL-07)</span>.</p></header>
-<!-- The cover and nokta ratios are copied from contrast.md; when verify-contrast.mjs --write changes it, change them here too. -->
+<!-- The cover and logo ratios are copied from contrast.md; when verify-contrast.mjs --write changes it, change them here too. -->
 <div class="f-covers">
 <div class="f-cover"><div class="mds-cover mds-cover--laciverd"><p class="mds-eyebrow mds-cover__label" lang="ar" dir="rtl">النحو</p></div><code class="f-tok">--cover-laciverd</code><span class="mds-caption">laciverd-800 · etiket 10,57:1</span></div>
 <div class="f-cover"><div class="mds-cover mds-cover--bordo"><p class="mds-eyebrow mds-cover__label" lang="ar" dir="rtl">الصرف</p></div><code class="f-tok">--cover-bordo</code><span class="mds-caption">lal-900 · etiket 11,34:1</span></div>
@@ -44,9 +44,9 @@ code{white-space:nowrap}
 <p class="mds-caption">8px nokta süstür; platformu adı söyler <span class="f-id">(MDS-COL-06)</span>. <code>--icon-platform-{id}</code>: <code>zumrut-500</code>, <code>laciverd-500</code>, <code>safran-500</code>, <code>murekkep-400</code>.</p>
 </div>
 <div class="f-box">
-<header class="f-head"><h2 class="mds-h5">Logo noktası ve yıldız</h2></header>
-<div class="f-marks"><span class="mds-logo mds-logo--lg" role="img" aria-label="Medaris"><svg class="mds-logo__mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect class="mds-logo__ground" width="48" height="48" rx="3"/><rect class="mds-logo__rule" x="5.5" y="5.5" width="37" height="37" stroke-width="1.5"/><rect class="mds-logo__rule mds-logo__rule--inner" x="9.5" y="9.5" width="29" height="29" stroke-width="1"/><path class="mds-logo__nokta" d="M24 15.5 32.5 24 24 32.5 15.5 24Z"/></svg></span><span class="f-rating"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#star-fill"/></svg>4,8 <span>(126)</span></span></div>
-<p class="mds-caption"><code>--icon-logo-nokta</code> laciverd-500: mürekkep zeminde 4,14:1, gece kâğıt zeminde 3,22:1. <code>--icon-rating</code> safran-500: süs, hep sayısının yanında.</p>
+<header class="f-head"><h2 class="mds-h5">Logo ve yıldız</h2></header>
+<div class="f-marks"><span class="mds-logo mds-logo--lg" role="img" aria-label="Medaris"><svg class="mds-logo__mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect class="mds-logo__ground" width="48" height="48" rx="12"/><g class="mds-logo__arch" filter="url(#mds-logo-arch-1)"><path d="M14.4327 24.2434V38.1C14.4327 38.9284 15.1042 39.6 15.9327 39.6H23.7173V8.4C15.0737 9.68201 14.9368 16.815 16.0327 20.4C14.0326 21.2 14.4327 23.2 14.4327 24.2434Z"/><path d="M33.3172 24.2434V38.1C33.3172 38.9284 32.6456 39.6 31.8172 39.6H24.0325V8.4C32.6762 9.68201 32.8131 16.815 31.7172 20.4C33.7172 21.2 33.3172 23.2 33.3172 24.2434Z"/></g><defs><filter id="mds-logo-arch-1" x="14.4" y="8.4" width="18.9498" height="31.2" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset/><feGaussianBlur stdDeviation="0.375"/><feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3 0"/><feBlend mode="normal" in2="shape" result="innerShadow"/></filter></defs></svg></span><span class="f-rating"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#star-fill"/></svg>4,8 <span>(126)</span></span></div>
+<p class="mds-caption"><code>--icon-logo-ground</code> laciverd-700 ve <code>--icon-logo-arch</code> laciverd-50: kemer zeminde 8,18:1, iki temada da aynı. Logo kontrast şartından muaftır. <code>--icon-rating</code> safran-500: süs, hep sayısının yanında.</p>
 </div>
 <div class="f-box">
 <header class="f-head"><h2 class="mds-h5">Görsel perdesi</h2></header>

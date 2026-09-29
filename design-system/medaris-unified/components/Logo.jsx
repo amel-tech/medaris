@@ -7,18 +7,38 @@ const ARABIC_PATH = 'M250 255Q163 255 116 204Q68 153 68 56Q68 38 70 18Q72 -2 78 
 // The subtitle an app gets when the caller passes none. The landing page has none.
 const appNames = { tedris: 'Tedris', nizam: 'Nizam', nazir: 'Nazır', giris: 'Giriş' };
 
-/* Wraps .mds-logo: the mark, the same as assets/logo-mark.svg. It follows the theme through its classes
-   (an ink page by day, a paper page by night). At lg the wordmark lockup adds مدارس, and the app's name is
-   not drawn unless the caller passes a subtitle. */
+// The arch's filter id must be unique per instance. React.useId where it exists; a module counter only for
+// a React without it.
+let seq = 0;
+const useUid = React.useId || (() => React.useState(() => `l${++seq}`)[0]);
+
+/* Wraps .mds-logo: the Medaris mark (libs/icons MadrasahLogoIcon, the same as assets/logo-mark.svg), a
+   lâciverd ground and a pale lâciverd arch, the same in both themes. At lg the wordmark lockup adds مدارس,
+   and the app's name is not drawn unless the caller passes a subtitle. */
 export function Logo({ app, size = 'md', wordmark = false, subtitle = size === 'lg' ? undefined : appNames[app], className = '', ...rest }) {
+  const filter = `mds-logo-arch-${useUid().replace(/[^\w-]/g, '')}`;
   const cls = ['mds-logo', size !== 'md' && `mds-logo--${size}`, className].filter(Boolean).join(' ');
   return (
     <span className={cls} role="img" aria-label={subtitle ? `Medaris — ${subtitle}` : 'Medaris'} {...rest}>
+      {/* never redraw the mark: its geometry is libs/icons MadrasahLogoIcon */}
       <svg className="mds-logo__mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-        <rect className="mds-logo__ground" width="48" height="48" rx="3" />
-        <rect className="mds-logo__rule" x="5.5" y="5.5" width="37" height="37" strokeWidth="1.5" />
-        <rect className="mds-logo__rule mds-logo__rule--inner" x="9.5" y="9.5" width="29" height="29" strokeWidth="1" />
-        <path className="mds-logo__nokta" d="M24 15.5 32.5 24 24 32.5 15.5 24Z" />
+        <rect className="mds-logo__ground" width="48" height="48" rx="12" />
+        <g className="mds-logo__arch" filter={`url(#${filter})`}>
+          <path d="M14.4327 24.2434V38.1C14.4327 38.9284 15.1042 39.6 15.9327 39.6H23.7173V8.4C15.0737 9.68201 14.9368 16.815 16.0327 20.4C14.0326 21.2 14.4327 23.2 14.4327 24.2434Z" />
+          <path d="M33.3172 24.2434V38.1C33.3172 38.9284 32.6456 39.6 31.8172 39.6H24.0325V8.4C32.6762 9.68201 32.8131 16.815 31.7172 20.4C33.7172 21.2 33.3172 23.2 33.3172 24.2434Z" />
+        </g>
+        <defs>
+          <filter id={filter} x="14.4" y="8.4" width="18.9498" height="31.2" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+            <feFlood floodOpacity="0" result="BackgroundImageFix" />
+            <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
+            <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+            <feOffset />
+            <feGaussianBlur stdDeviation="0.375" />
+            <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
+            <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3 0" />
+            <feBlend mode="normal" in2="shape" result="innerShadow" />
+          </filter>
+        </defs>
       </svg>
       {wordmark && (
         <span className="mds-logo__text">

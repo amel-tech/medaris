@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"MedarisDesignSystem_628e07","components":[{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AppBar","sourcePath":"components/AppBar.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"AvatarStack","sourcePath":"components/AvatarStack.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"Breadcrumb","sourcePath":"components/Breadcrumb.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"ChoiceChips","sourcePath":"components/ChoiceChips.jsx"},{"name":"CoverPattern","sourcePath":"components/CoverPattern.jsx"},{"name":"Dialog","sourcePath":"components/Dialog.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"Icon","sourcePath":"components/Icon.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"Input","sourcePath":"components/Input.jsx"},{"name":"LessonRow","sourcePath":"components/LessonRow.jsx"},{"name":"Logo","sourcePath":"components/Logo.jsx"},{"name":"NavItem","sourcePath":"components/NavItem.jsx"},{"name":"NavSection","sourcePath":"components/NavSection.jsx"},{"name":"PlatformChip","sourcePath":"components/PlatformChip.jsx"},{"name":"Progress","sourcePath":"components/Progress.jsx"},{"name":"Radio","sourcePath":"components/Radio.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SessionJoin","sourcePath":"components/SessionJoin.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"Stat","sourcePath":"components/Stat.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"SystemState","sourcePath":"components/SystemState.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"Textarea","sourcePath":"components/Textarea.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"Toaster","sourcePath":"components/Toaster.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"WeekAccordion","sourcePath":"components/WeekAccordion.jsx"}],"sourceHashes":{"components/Alert.jsx":"8633988c2e2b","components/AppBar.jsx":"712069fa6324","components/Avatar.jsx":"952016109c2f","components/AvatarStack.jsx":"60d5ce464bb2","components/Badge.jsx":"72e303c01321","components/Breadcrumb.jsx":"69b336a6d178","components/Button.jsx":"3c5e4929e2b4","components/Card.jsx":"9dd43ded8dc6","components/Checkbox.jsx":"e08fb979b6ab","components/ChoiceChips.jsx":"c9d91884c7cf","components/CoverPattern.jsx":"0bb303b137b6","components/Dialog.jsx":"3500d56e8e51","components/EmptyState.jsx":"119ed77cb382","components/Field.jsx":"d7f7542444d5","components/Icon.jsx":"c1fa9fa9eff1","components/IconButton.jsx":"eeac1138f1ce","components/Input.jsx":"5aa6af046c4a","components/LessonRow.jsx":"6d08e2580332","components/Logo.jsx":"3662b349767d","components/NavItem.jsx":"740d42c27641","components/NavSection.jsx":"5aa3ea27fab6","components/PlatformChip.jsx":"7d6d6df7f58a","components/Progress.jsx":"24163caeef31","components/Radio.jsx":"5f0e7a362b5f","components/RadioGroup.jsx":"a14f1cee645e","components/Select.jsx":"aeedfba944c6","components/SessionJoin.jsx":"9d67f6ef4961","components/Skeleton.jsx":"2deb515d2820","components/Stat.jsx":"f7017d1e3f10","components/Switch.jsx":"6bbfe151f130","components/SystemState.jsx":"7b8361263958","components/Table.jsx":"526d7de65713","components/Tabs.jsx":"45fa51d35283","components/Textarea.jsx":"83d52d6476ff","components/Toast.jsx":"283a947c0728","components/Toaster.jsx":"9c3cbe6dddee","components/Tooltip.jsx":"e00aa51b7d26","components/WeekAccordion.jsx":"8ab914b8933f"},"inlinedExternals":[],"unexposedExports":[{"name":"initials","sourcePath":"components/Avatar.jsx"},{"name":"coverTone","sourcePath":"components/CoverPattern.jsx"},{"name":"iconNames","sourcePath":"components/Icon.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"MedarisDesignSystem_628e07","components":[{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AppBar","sourcePath":"components/AppBar.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"AvatarStack","sourcePath":"components/AvatarStack.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"Breadcrumb","sourcePath":"components/Breadcrumb.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"ChoiceChips","sourcePath":"components/ChoiceChips.jsx"},{"name":"CoverPattern","sourcePath":"components/CoverPattern.jsx"},{"name":"Dialog","sourcePath":"components/Dialog.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"Icon","sourcePath":"components/Icon.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"Input","sourcePath":"components/Input.jsx"},{"name":"LessonRow","sourcePath":"components/LessonRow.jsx"},{"name":"Logo","sourcePath":"components/Logo.jsx"},{"name":"NavItem","sourcePath":"components/NavItem.jsx"},{"name":"NavSection","sourcePath":"components/NavSection.jsx"},{"name":"PlatformChip","sourcePath":"components/PlatformChip.jsx"},{"name":"Progress","sourcePath":"components/Progress.jsx"},{"name":"Radio","sourcePath":"components/Radio.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SessionJoin","sourcePath":"components/SessionJoin.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"Stat","sourcePath":"components/Stat.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"SystemState","sourcePath":"components/SystemState.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"Textarea","sourcePath":"components/Textarea.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"Toaster","sourcePath":"components/Toaster.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"WeekAccordion","sourcePath":"components/WeekAccordion.jsx"}],"sourceHashes":{"components/Alert.jsx":"8633988c2e2b","components/AppBar.jsx":"712069fa6324","components/Avatar.jsx":"952016109c2f","components/AvatarStack.jsx":"60d5ce464bb2","components/Badge.jsx":"72e303c01321","components/Breadcrumb.jsx":"69b336a6d178","components/Button.jsx":"3c5e4929e2b4","components/Card.jsx":"9dd43ded8dc6","components/Checkbox.jsx":"e08fb979b6ab","components/ChoiceChips.jsx":"c9d91884c7cf","components/CoverPattern.jsx":"0bb303b137b6","components/Dialog.jsx":"3500d56e8e51","components/EmptyState.jsx":"119ed77cb382","components/Field.jsx":"d7f7542444d5","components/Icon.jsx":"c1fa9fa9eff1","components/IconButton.jsx":"eeac1138f1ce","components/Input.jsx":"5aa6af046c4a","components/LessonRow.jsx":"6d08e2580332","components/Logo.jsx":"d1cd154f91e3","components/NavItem.jsx":"740d42c27641","components/NavSection.jsx":"5aa3ea27fab6","components/PlatformChip.jsx":"7d6d6df7f58a","components/Progress.jsx":"24163caeef31","components/Radio.jsx":"5f0e7a362b5f","components/RadioGroup.jsx":"a14f1cee645e","components/Select.jsx":"aeedfba944c6","components/SessionJoin.jsx":"9d67f6ef4961","components/Skeleton.jsx":"2deb515d2820","components/Stat.jsx":"f7017d1e3f10","components/Switch.jsx":"6bbfe151f130","components/SystemState.jsx":"7b8361263958","components/Table.jsx":"526d7de65713","components/Tabs.jsx":"45fa51d35283","components/Textarea.jsx":"83d52d6476ff","components/Toast.jsx":"283a947c0728","components/Toaster.jsx":"9c3cbe6dddee","components/Tooltip.jsx":"e00aa51b7d26","components/WeekAccordion.jsx":"8ab914b8933f"},"inlinedExternals":[],"unexposedExports":[{"name":"initials","sourcePath":"components/Avatar.jsx"},{"name":"coverTone","sourcePath":"components/CoverPattern.jsx"},{"name":"iconNames","sourcePath":"components/Icon.jsx"}]} */
 
 (() => {
 
@@ -1287,9 +1287,14 @@ const appNames = {
   giris: 'Giriş'
 };
 
-/* Wraps .mds-logo: the mark, the same as assets/logo-mark.svg. It follows the theme through its classes
-   (an ink page by day, a paper page by night). At lg the wordmark lockup adds مدارس, and the app's name is
-   not drawn unless the caller passes a subtitle. */
+// The arch's filter id must be unique per instance. React.useId where it exists; a module counter only for
+// a React without it.
+let seq = 0;
+const useUid = React.useId || (() => React.useState(() => `l${++seq}`)[0]);
+
+/* Wraps .mds-logo: the Medaris mark (libs/icons MadrasahLogoIcon, the same as assets/logo-mark.svg), a
+   lâciverd ground and a pale lâciverd arch, the same in both themes. At lg the wordmark lockup adds مدارس,
+   and the app's name is not drawn unless the caller passes a subtitle. */
 function Logo({
   app,
   size = 'md',
@@ -1298,6 +1303,7 @@ function Logo({
   className = '',
   ...rest
 }) {
+  const filter = `mds-logo-arch-${useUid().replace(/[^\w-]/g, '')}`;
   const cls = ['mds-logo', size !== 'md' && `mds-logo--${size}`, className].filter(Boolean).join(' ');
   return /*#__PURE__*/React.createElement("span", _extends({
     className: cls,
@@ -1312,25 +1318,50 @@ function Logo({
     className: "mds-logo__ground",
     width: "48",
     height: "48",
-    rx: "3"
-  }), /*#__PURE__*/React.createElement("rect", {
-    className: "mds-logo__rule",
-    x: "5.5",
-    y: "5.5",
-    width: "37",
-    height: "37",
-    strokeWidth: "1.5"
-  }), /*#__PURE__*/React.createElement("rect", {
-    className: "mds-logo__rule mds-logo__rule--inner",
-    x: "9.5",
-    y: "9.5",
-    width: "29",
-    height: "29",
-    strokeWidth: "1"
+    rx: "12"
+  }), /*#__PURE__*/React.createElement("g", {
+    className: "mds-logo__arch",
+    filter: `url(#${filter})`
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M14.4327 24.2434V38.1C14.4327 38.9284 15.1042 39.6 15.9327 39.6H23.7173V8.4C15.0737 9.68201 14.9368 16.815 16.0327 20.4C14.0326 21.2 14.4327 23.2 14.4327 24.2434Z"
   }), /*#__PURE__*/React.createElement("path", {
-    className: "mds-logo__nokta",
-    d: "M24 15.5 32.5 24 24 32.5 15.5 24Z"
-  })), wordmark && /*#__PURE__*/React.createElement("span", {
+    d: "M33.3172 24.2434V38.1C33.3172 38.9284 32.6456 39.6 31.8172 39.6H24.0325V8.4C32.6762 9.68201 32.8131 16.815 31.7172 20.4C33.7172 21.2 33.3172 23.2 33.3172 24.2434Z"
+  })), /*#__PURE__*/React.createElement("defs", null, /*#__PURE__*/React.createElement("filter", {
+    id: filter,
+    x: "14.4",
+    y: "8.4",
+    width: "18.9498",
+    height: "31.2",
+    filterUnits: "userSpaceOnUse",
+    colorInterpolationFilters: "sRGB"
+  }, /*#__PURE__*/React.createElement("feFlood", {
+    floodOpacity: "0",
+    result: "BackgroundImageFix"
+  }), /*#__PURE__*/React.createElement("feBlend", {
+    mode: "normal",
+    in: "SourceGraphic",
+    in2: "BackgroundImageFix",
+    result: "shape"
+  }), /*#__PURE__*/React.createElement("feColorMatrix", {
+    in: "SourceAlpha",
+    type: "matrix",
+    values: "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0",
+    result: "hardAlpha"
+  }), /*#__PURE__*/React.createElement("feOffset", null), /*#__PURE__*/React.createElement("feGaussianBlur", {
+    stdDeviation: "0.375"
+  }), /*#__PURE__*/React.createElement("feComposite", {
+    in2: "hardAlpha",
+    operator: "arithmetic",
+    k2: "-1",
+    k3: "1"
+  }), /*#__PURE__*/React.createElement("feColorMatrix", {
+    type: "matrix",
+    values: "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3 0"
+  }), /*#__PURE__*/React.createElement("feBlend", {
+    mode: "normal",
+    in2: "shape",
+    result: "innerShadow"
+  })))), wordmark && /*#__PURE__*/React.createElement("span", {
     className: "mds-logo__text"
   }, /*#__PURE__*/React.createElement("span", {
     className: "mds-logo__word",

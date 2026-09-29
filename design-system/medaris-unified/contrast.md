@@ -299,7 +299,7 @@ the label printed on each bookcloth (theme-independent).
 
 ## Not required — decorative or exempt
 
-Shown so nobody mistakes them for a gap. A hairline never identifies a control on its own. The current-row tint is never the only signal (the "Sıradaki" marker and the medallion are). Platform dots and the rating star repeat printed words. The cover stamp is ornament. The nokta is part of the logo; its ground is the mark, ink by day and paper by night.
+Shown so nobody mistakes them for a gap. A hairline never identifies a control on its own. The current-row tint is never the only signal (the "Sıradaki" marker and the medallion are). Platform dots and the rating star repeat printed words. The cover stamp is ornament. The logo is exempt: its arch sits on its own ground by day and by night, and the ground is the mark's edge.
 
 | pair | day | night |
 | -- | --: | --: |
@@ -312,4 +312,5 @@ Shown so nobody mistakes them for a gap. A hairline never identifies a control o
 | `icon-platform-unknown` on `background-neutral-surface` | 3.89 | 4.26 |
 | `icon-rating` on `background-neutral-surface` | 3.32 | 5.00 |
 | `stamp-on-cover` on `cover-laciverd` | 1.93 | 1.93 |
-| `icon-logo-nokta` on `text-neutral-default` | 4.14 | 3.22 |
+| `icon-logo-arch` on `icon-logo-ground` | 8.18 | 8.18 |
+| `icon-logo-ground` on `background-neutral-page` | 8.70 | 1.94 |

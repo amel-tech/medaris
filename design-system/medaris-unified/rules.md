@@ -45,7 +45,7 @@ Check: `_adherence.oxlintrc.json` flags raw px in JSX; review.
 It asked for a provenance label on every value. The system is designed from scratch, and `readme.md` says what is proposed.
 
 ### MDS-TOK-07 — The colour grammar
-Rule: a colour role is `--{property}-{tone}-{variant}`. The property is `background`, `text` or `border`; an icon takes `currentColor` or a text role. The tone is `neutral`, `action`, `brand`, `success`, `warning`, `error`, `info` or `live`. The focus ring has its own two, `--ring-focus-color` and `--ring-focus-gap`. The domain tokens (`tokens/domain.css`: platform dots, the nokta, the rating star, covers) sit outside the grammar and read the same in both themes. Three things follow:
+Rule: a colour role is `--{property}-{tone}-{variant}`. The property is `background`, `text` or `border`; an icon takes `currentColor` or a text role. The tone is `neutral`, `action`, `brand`, `success`, `warning`, `error`, `info` or `live`. The focus ring has its own two, `--ring-focus-color` and `--ring-focus-gap`. The domain tokens (`tokens/domain.css`: platform dots, the logo, the rating star, covers) sit outside the grammar and read the same in both themes. Three things follow:
 - any text or glyph on a `*-bold` fill is `--text-neutral-on-bold`, in every tone and both themes;
 - a fill behind text is a `background-*` role; a 3:1 mark (a dot, a progress fill, an active underline, a selected edge) is a `border-*-default` role;
 - "primary" is a component variant (Button, Badge), never a colour.
@@ -257,7 +257,7 @@ Why: the bundle compiles each file in its own scope, so a cross-file reference t
 Check: `smoke.mjs`.
 
 ### MDS-ICON-01 — The icon contract
-Rule: Phosphor Regular, one weight, from `assets/icons.svg` only. A 24 grid in `currentColor`; 16, 20 or 24 by context. There are no icon colour roles in the grammar: an interface icon takes the text colour of its role. The domain tokens (`--icon-rating`, `--icon-platform-*`, `--icon-logo-nokta`, MDS-TOK-07) colour a set star, a platform dot and the logo's nokta, and nothing else. A decorative icon is hidden from assistive technology. A glyph is filled only as a state (a set star, a saved bookmark), never as decoration. A glyph outside the sprite is an error.
+Rule: Phosphor Regular, one weight, from `assets/icons.svg` only. A 24 grid in `currentColor`; 16, 20 or 24 by context. There are no icon colour roles in the grammar: an interface icon takes the text colour of its role. The domain tokens (`--icon-rating`, `--icon-platform-*`, `--icon-logo-ground`, `--icon-logo-arch`, MDS-TOK-07) colour a set star, a platform dot and the logo, and nothing else. A decorative icon is hidden from assistive technology. A glyph is filled only as a state (a set star, a saved bookmark), never as decoration. A glyph outside the sprite is an error.
 Why: Regular's stroke (1px at 16) matches the text stem; Light turns grey at 16px and Bold outweighs Literata.
 Check: `check.mjs` fails a `<use>` of a name the sprite lacks (MDS-ICON-01); `icons.mjs --check` fails when a generated copy (the `Icon` union, its path table, the CSS masks) differs from the sprite.
 
