@@ -140,10 +140,12 @@ export function DeckDetailPage({
     } else {
       toastHelper.error({
         title: t("DeckDetailClient.visibilityError"),
-        // `in`, not `result.success`: tedris compiles with `strict: false`,
-        // which does not narrow the result union on its discriminant.
+        // The API's own reason only for a 400, as in create-deck-button-dialog:
+        // the same field carries "fetch failed" and token errors otherwise.
+        // `"status" in result`, not `result.success`: tedris compiles with
+        // `strict: false`, which does not narrow this union.
         description:
-          "error" in result
+          "status" in result && result.status === 400
             ? result.error
             : t("DeckDetailClient.visibilityError"),
       });
