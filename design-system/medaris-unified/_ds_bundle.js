@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"MedarisDesignSystem_628e07","components":[{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AppBar","sourcePath":"components/AppBar.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"AvatarStack","sourcePath":"components/AvatarStack.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"Breadcrumb","sourcePath":"components/Breadcrumb.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"ChoiceChips","sourcePath":"components/ChoiceChips.jsx"},{"name":"CoverPattern","sourcePath":"components/CoverPattern.jsx"},{"name":"Dialog","sourcePath":"components/Dialog.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"Icon","sourcePath":"components/Icon.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"Input","sourcePath":"components/Input.jsx"},{"name":"LessonRow","sourcePath":"components/LessonRow.jsx"},{"name":"Logo","sourcePath":"components/Logo.jsx"},{"name":"NavItem","sourcePath":"components/NavItem.jsx"},{"name":"NavSection","sourcePath":"components/NavSection.jsx"},{"name":"PlatformChip","sourcePath":"components/PlatformChip.jsx"},{"name":"Progress","sourcePath":"components/Progress.jsx"},{"name":"Radio","sourcePath":"components/Radio.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SessionJoin","sourcePath":"components/SessionJoin.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"Stat","sourcePath":"components/Stat.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"SystemState","sourcePath":"components/SystemState.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"Textarea","sourcePath":"components/Textarea.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"Toaster","sourcePath":"components/Toaster.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"WeekAccordion","sourcePath":"components/WeekAccordion.jsx"}],"sourceHashes":{"components/Alert.jsx":"8633988c2e2b","components/AppBar.jsx":"ec63cd86b81b","components/Avatar.jsx":"fe4fd27f8bd9","components/AvatarStack.jsx":"60d5ce464bb2","components/Badge.jsx":"72e303c01321","components/Breadcrumb.jsx":"69b336a6d178","components/Button.jsx":"3c5e4929e2b4","components/Card.jsx":"9dd43ded8dc6","components/Checkbox.jsx":"e08fb979b6ab","components/ChoiceChips.jsx":"c9d91884c7cf","components/CoverPattern.jsx":"60846a307742","components/Dialog.jsx":"3500d56e8e51","components/EmptyState.jsx":"119ed77cb382","components/Field.jsx":"d7f7542444d5","components/Icon.jsx":"62ed3aad832e","components/IconButton.jsx":"5747298e2ea7","components/Input.jsx":"5aa6af046c4a","components/LessonRow.jsx":"a3d58a37340f","components/Logo.jsx":"5de40cf742f6","components/NavItem.jsx":"8bba54a1cfc8","components/NavSection.jsx":"5aa3ea27fab6","components/PlatformChip.jsx":"7d6d6df7f58a","components/Progress.jsx":"24163caeef31","components/Radio.jsx":"ce3f8bc5c45a","components/RadioGroup.jsx":"ce3038f0926f","components/Select.jsx":"aeedfba944c6","components/SessionJoin.jsx":"04eacd9274f4","components/Skeleton.jsx":"2deb515d2820","components/Stat.jsx":"f7017d1e3f10","components/Switch.jsx":"6bbfe151f130","components/SystemState.jsx":"571b1a4f8be3","components/Table.jsx":"526d7de65713","components/Tabs.jsx":"45fa51d35283","components/Textarea.jsx":"83d52d6476ff","components/Toast.jsx":"283a947c0728","components/Toaster.jsx":"9c3cbe6dddee","components/Tooltip.jsx":"f058776da03c","components/WeekAccordion.jsx":"75cedb17581c"},"inlinedExternals":[],"unexposedExports":[{"name":"initials","sourcePath":"components/Avatar.jsx"},{"name":"coverTone","sourcePath":"components/CoverPattern.jsx"},{"name":"iconNames","sourcePath":"components/Icon.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"MedarisDesignSystem_628e07","components":[{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AppBar","sourcePath":"components/AppBar.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"AvatarStack","sourcePath":"components/AvatarStack.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"Breadcrumb","sourcePath":"components/Breadcrumb.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"ChoiceChips","sourcePath":"components/ChoiceChips.jsx"},{"name":"CoverPattern","sourcePath":"components/CoverPattern.jsx"},{"name":"Dialog","sourcePath":"components/Dialog.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"Icon","sourcePath":"components/Icon.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"Input","sourcePath":"components/Input.jsx"},{"name":"LessonRow","sourcePath":"components/LessonRow.jsx"},{"name":"Logo","sourcePath":"components/Logo.jsx"},{"name":"NavItem","sourcePath":"components/NavItem.jsx"},{"name":"NavSection","sourcePath":"components/NavSection.jsx"},{"name":"PlatformChip","sourcePath":"components/PlatformChip.jsx"},{"name":"Progress","sourcePath":"components/Progress.jsx"},{"name":"Radio","sourcePath":"components/Radio.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SessionJoin","sourcePath":"components/SessionJoin.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"Stat","sourcePath":"components/Stat.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"SystemState","sourcePath":"components/SystemState.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"Textarea","sourcePath":"components/Textarea.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"Toaster","sourcePath":"components/Toaster.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"WeekAccordion","sourcePath":"components/WeekAccordion.jsx"}],"sourceHashes":{"components/Alert.jsx":"8633988c2e2b","components/AppBar.jsx":"712069fa6324","components/Avatar.jsx":"952016109c2f","components/AvatarStack.jsx":"60d5ce464bb2","components/Badge.jsx":"72e303c01321","components/Breadcrumb.jsx":"69b336a6d178","components/Button.jsx":"3c5e4929e2b4","components/Card.jsx":"9dd43ded8dc6","components/Checkbox.jsx":"e08fb979b6ab","components/ChoiceChips.jsx":"c9d91884c7cf","components/CoverPattern.jsx":"0bb303b137b6","components/Dialog.jsx":"3500d56e8e51","components/EmptyState.jsx":"119ed77cb382","components/Field.jsx":"d7f7542444d5","components/Icon.jsx":"c1fa9fa9eff1","components/IconButton.jsx":"eeac1138f1ce","components/Input.jsx":"5aa6af046c4a","components/LessonRow.jsx":"6d08e2580332","components/Logo.jsx":"3662b349767d","components/NavItem.jsx":"740d42c27641","components/NavSection.jsx":"5aa3ea27fab6","components/PlatformChip.jsx":"7d6d6df7f58a","components/Progress.jsx":"24163caeef31","components/Radio.jsx":"5f0e7a362b5f","components/RadioGroup.jsx":"a14f1cee645e","components/Select.jsx":"aeedfba944c6","components/SessionJoin.jsx":"9d67f6ef4961","components/Skeleton.jsx":"2deb515d2820","components/Stat.jsx":"f7017d1e3f10","components/Switch.jsx":"6bbfe151f130","components/SystemState.jsx":"7b8361263958","components/Table.jsx":"526d7de65713","components/Tabs.jsx":"45fa51d35283","components/Textarea.jsx":"83d52d6476ff","components/Toast.jsx":"283a947c0728","components/Toaster.jsx":"9c3cbe6dddee","components/Tooltip.jsx":"e00aa51b7d26","components/WeekAccordion.jsx":"8ab914b8933f"},"inlinedExternals":[],"unexposedExports":[{"name":"initials","sourcePath":"components/Avatar.jsx"},{"name":"coverTone","sourcePath":"components/CoverPattern.jsx"},{"name":"iconNames","sourcePath":"components/Icon.jsx"}]} */
 
 (() => {
 
@@ -123,10 +123,9 @@ function AppBar({
     className: "mds-sheet__close-icon",
     "aria-hidden": "true"
   }))), /*#__PURE__*/React.createElement("nav", {
-    className: "mds-nav--light",
     "aria-label": navLabel
   }, children), footer && /*#__PURE__*/React.createElement("div", {
-    className: "mds-sheet__foot mds-nav--light"
+    className: "mds-sheet__foot"
   }, footer))));
 }
 Object.assign(__ds_scope, { AppBar });
@@ -162,6 +161,8 @@ function usePageLocale(ref, locale) {
   }, []);
   return locale || found || 'tr-TR';
 }
+const arabicScript = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/;
+const arabicPage = /^(ar|ota-arab|fa|ur)\b/i;
 function Avatar({
   name,
   src,
@@ -182,13 +183,16 @@ function Avatar({
     role: 'img',
     'aria-label': name
   };
+  // A Latin-script name on an Arabic-script page is a Latin island (MDS-TYPE-07): its initials keep the Latin face.
+  const island = name && !arabicScript.test(name) && arabicPage.test(lang) ? 'tr' : undefined;
   return /*#__PURE__*/React.createElement("span", _extends({
     ref: ref,
-    className: cls
+    className: cls,
+    lang: island
   }, a11y, rest), src ? /*#__PURE__*/React.createElement("img", {
     src: src,
     alt: ""
-  }) : initials(name, lang));
+  }) : initials(name, island || lang));
 }
 Object.assign(__ds_scope, { initials, Avatar });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/Avatar.jsx", error: String((e && e.message) || e) }); }
@@ -564,7 +568,9 @@ Object.assign(__ds_scope, { ChoiceChips });
 // components/CoverPattern.jsx
 try { (() => {
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-const tones = ['sky', 'blue', 'green', 'slate'];
+// The hash order. Changing it re-colours every course that has no chosen tone.
+const tones = ['laciverd', 'bordo', 'zumrut', 'murekkep'];
+const arabicScript = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/;
 
 /** The tone a seed hashes to: FNV-1a 32-bit over its UTF-8 bytes, mod 4. Lone surrogates count
  *  as U+FFFD, as TextEncoder encodes them, so every platform gets the same tone. */
@@ -583,16 +589,20 @@ function CoverPattern({
   seed,
   size = 'md',
   label,
+  labelLang,
   className = '',
   ...rest
 }) {
-  const t = tones.includes(tone) ? tone : seed != null && seed !== '' ? coverTone(seed) : 'slate';
+  const t = tones.includes(tone) ? tone : seed != null && seed !== '' ? coverTone(seed) : 'murekkep';
   const cls = ['mds-cover', `mds-cover--${t}`, size !== 'md' && `mds-cover--${size}`, className].filter(Boolean).join(' ');
+  // An Arabic label needs lang="ar" on itself: that sets it in Naskh (MDS-TYPE-04).
+  const lang = labelLang ?? (label && arabicScript.test(label) ? 'ar' : undefined);
   return /*#__PURE__*/React.createElement("div", _extends({
     className: cls
-  }, rest), label && /*#__PURE__*/React.createElement("p", {
+  }, rest), label && size !== 'xs' && /*#__PURE__*/React.createElement("p", {
     className: "mds-eyebrow mds-cover__label",
-    dir: "auto"
+    lang: lang,
+    dir: lang === 'ar' ? 'rtl' : 'auto'
   }, label));
 }
 Object.assign(__ds_scope, { coverTone, CoverPattern });
@@ -849,16 +859,16 @@ const glyphs = {
   plus: ['M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z'],
   trash: ['M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z'],
   eye: ['M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z'],
-  link: ['M240,88.23a54.43,54.43,0,0,1-16,37L189.25,160a54.27,54.27,0,0,1-38.63,16h-.05A54.63,54.63,0,0,1,96,119.84a8,8,0,0,1,16,.45A38.62,38.62,0,0,0,150.58,160h0a38.39,38.39,0,0,0,27.31-11.31l34.75-34.75a38.63,38.63,0,0,0-54.63-54.63l-11,11A8,8,0,0,1,135.7,59l11-11A54.65,54.65,0,0,1,224,48,54.86,54.86,0,0,1,240,88.23ZM109,185.66l-11,11A38.41,38.41,0,0,1,70.6,208h0a38.63,38.63,0,0,1-27.29-65.94L78,107.31A38.63,38.63,0,0,1,144,135.71a8,8,0,0,0,16,.45A54.86,54.86,0,0,0,144,96a54.65,54.65,0,0,0-77.27,0L32,130.75A54.62,54.62,0,0,0,70.56,224h0a54.28,54.28,0,0,0,38.64-16l11-11A8,8,0,0,0,109,185.66Z'],
+  link: ['M165.66,90.34a8,8,0,0,1,0,11.32l-64,64a8,8,0,0,1-11.32-11.32l64-64A8,8,0,0,1,165.66,90.34ZM215.6,40.4a56,56,0,0,0-79.2,0L106.34,70.45a8,8,0,0,0,11.32,11.32l30.06-30a40,40,0,0,1,56.57,56.56l-30.07,30.06a8,8,0,0,0,11.31,11.32L215.6,119.6a56,56,0,0,0,0-79.2ZM138.34,174.22l-30.06,30.06a40,40,0,1,1-56.56-56.57l30.05-30.05a8,8,0,0,0-11.32-11.32L40.4,136.4a56,56,0,0,0,79.2,79.2l30.06-30.07a8,8,0,0,0-11.32-11.31Z'],
   download: ['M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z'],
   upload: ['M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0ZM93.66,77.66,120,51.31V144a8,8,0,0,0,16,0V51.31l26.34,26.35a8,8,0,0,0,11.32-11.32l-40-40a8,8,0,0,0-11.32,0l-40,40A8,8,0,0,0,93.66,77.66Z'],
   share: ['M176,160a39.89,39.89,0,0,0-28.62,12.09l-46.1-29.63a39.8,39.8,0,0,0,0-28.92l46.1-29.63a40,40,0,1,0-8.66-13.45l-46.1,29.63a40,40,0,1,0,0,55.82l46.1,29.63A40,40,0,1,0,176,160Zm0-128a24,24,0,1,1-24,24A24,24,0,0,1,176,32ZM64,152a24,24,0,1,1,24-24A24,24,0,0,1,64,152Zm112,72a24,24,0,1,1,24-24A24,24,0,0,1,176,224Z'],
   chat: ['M128,24A104,104,0,0,0,36.18,176.88L24.83,210.93a16,16,0,0,0,20.24,20.24l34.05-11.35A104,104,0,1,0,128,24Zm0,192a87.87,87.87,0,0,1-44.06-11.81,8,8,0,0,0-6.54-.67L40,216,52.47,178.6a8,8,0,0,0-.66-6.54A88,88,0,1,1,128,216Z'],
-  filter: ['M230.6,49.53A15.81,15.81,0,0,0,216,40H40A16,16,0,0,0,28.19,66.76l.08.09L96,139.17V216a16,16,0,0,0,24.87,13.32l32-21.34A16,16,0,0,0,160,194.66V139.17l67.74-72.32.08-.09A15.8,15.8,0,0,0,230.6,49.53ZM40,56h0Zm106.18,74.58A8,8,0,0,0,144,136v58.66L112,216V136a8,8,0,0,0-2.16-5.47L40,56H216Z'],
-  settings: ['M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm88-29.84q.06-2.16,0-4.32l14.92-18.64a8,8,0,0,0,1.48-7.06,107.21,107.21,0,0,0-10.88-26.25,8,8,0,0,0-6-3.93l-23.72-2.64q-1.48-1.56-3-3L186,40.54a8,8,0,0,0-3.94-6,107.71,107.71,0,0,0-26.25-10.87,8,8,0,0,0-7.06,1.49L130.16,40Q128,40,125.84,40L107.2,25.11a8,8,0,0,0-7.06-1.48A107.6,107.6,0,0,0,73.89,34.51a8,8,0,0,0-3.93,6L67.32,64.27q-1.56,1.49-3,3L40.54,70a8,8,0,0,0-6,3.94,107.71,107.71,0,0,0-10.87,26.25,8,8,0,0,0,1.49,7.06L40,125.84Q40,128,40,130.16L25.11,148.8a8,8,0,0,0-1.48,7.06,107.21,107.21,0,0,0,10.88,26.25,8,8,0,0,0,6,3.93l23.72,2.64q1.49,1.56,3,3L70,215.46a8,8,0,0,0,3.94,6,107.71,107.71,0,0,0,26.25,10.87,8,8,0,0,0,7.06-1.49L125.84,216q2.16.06,4.32,0l18.64,14.92a8,8,0,0,0,7.06,1.48,107.21,107.21,0,0,0,26.25-10.88,8,8,0,0,0,3.93-6l2.64-23.72q1.56-1.48,3-3L215.46,186a8,8,0,0,0,6-3.94,107.71,107.71,0,0,0,10.87-26.25,8,8,0,0,0-1.49-7.06Zm-16.1-6.5a73.93,73.93,0,0,1,0,8.68,8,8,0,0,0,1.74,5.48l14.19,17.73a91.57,91.57,0,0,1-6.23,15L187,173.11a8,8,0,0,0-5.1,2.64,74.11,74.11,0,0,1-6.14,6.14,8,8,0,0,0-2.64,5.1l-2.51,22.58a91.32,91.32,0,0,1-15,6.23l-17.74-14.19a8,8,0,0,0-5-1.75h-.48a73.93,73.93,0,0,1-8.68,0,8,8,0,0,0-5.48,1.74L100.45,215.8a91.57,91.57,0,0,1-15-6.23L82.89,187a8,8,0,0,0-2.64-5.1,74.11,74.11,0,0,1-6.14-6.14,8,8,0,0,0-5.1-2.64L46.43,170.6a91.32,91.32,0,0,1-6.23-15l14.19-17.74a8,8,0,0,0,1.74-5.48,73.93,73.93,0,0,1,0-8.68,8,8,0,0,0-1.74-5.48L40.2,100.45a91.57,91.57,0,0,1,6.23-15L69,82.89a8,8,0,0,0,5.1-2.64,74.11,74.11,0,0,1,6.14-6.14A8,8,0,0,0,82.89,69L85.4,46.43a91.32,91.32,0,0,1,15-6.23l17.74,14.19a8,8,0,0,0,5.48,1.74,73.93,73.93,0,0,1,8.68,0,8,8,0,0,0,5.48-1.74L155.55,40.2a91.57,91.57,0,0,1,15,6.23L173.11,69a8,8,0,0,0,2.64,5.1,74.11,74.11,0,0,1,6.14,6.14,8,8,0,0,0,5.1,2.64l22.58,2.51a91.32,91.32,0,0,1,6.23,15l-14.19,17.74A8,8,0,0,0,199.87,123.66Z'],
+  filter: ['M200,136a8,8,0,0,1-8,8H64a8,8,0,0,1,0-16H192A8,8,0,0,1,200,136Zm32-56H24a8,8,0,0,0,0,16H232a8,8,0,0,0,0-16Zm-80,96H104a8,8,0,0,0,0,16h48a8,8,0,0,0,0-16Z'],
+  settings: ['M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm109.94-52.79a8,8,0,0,0-3.89-5.4l-29.83-17-.12-33.62a8,8,0,0,0-2.83-6.08,111.91,111.91,0,0,0-36.72-20.67,8,8,0,0,0-6.46.59L128,41.85,97.88,25a8,8,0,0,0-6.47-.6A112.1,112.1,0,0,0,54.73,45.15a8,8,0,0,0-2.83,6.07l-.15,33.65-29.83,17a8,8,0,0,0-3.89,5.4,106.47,106.47,0,0,0,0,41.56,8,8,0,0,0,3.89,5.4l29.83,17,.12,33.62a8,8,0,0,0,2.83,6.08,111.91,111.91,0,0,0,36.72,20.67,8,8,0,0,0,6.46-.59L128,214.15,158.12,231a7.91,7.91,0,0,0,3.9,1,8.09,8.09,0,0,0,2.57-.42,112.1,112.1,0,0,0,36.68-20.73,8,8,0,0,0,2.83-6.07l.15-33.65,29.83-17a8,8,0,0,0,3.89-5.4A106.47,106.47,0,0,0,237.94,107.21Zm-15,34.91-28.57,16.25a8,8,0,0,0-3,3c-.58,1-1.19,2.06-1.81,3.06a7.94,7.94,0,0,0-1.22,4.21l-.15,32.25a95.89,95.89,0,0,1-25.37,14.3L134,199.13a8,8,0,0,0-3.91-1h-.19c-1.21,0-2.43,0-3.64,0a8.08,8.08,0,0,0-4.1,1l-28.84,16.1A96,96,0,0,1,67.88,201l-.11-32.2a8,8,0,0,0-1.22-4.22c-.62-1-1.23-2-1.8-3.06a8.09,8.09,0,0,0-3-3.06l-28.6-16.29a90.49,90.49,0,0,1,0-28.26L61.67,97.63a8,8,0,0,0,3-3c.58-1,1.19-2.06,1.81-3.06a7.94,7.94,0,0,0,1.22-4.21l.15-32.25a95.89,95.89,0,0,1,25.37-14.3L122,56.87a8,8,0,0,0,4.1,1c1.21,0,2.43,0,3.64,0a8.08,8.08,0,0,0,4.1-1l28.84-16.1A96,96,0,0,1,188.12,55l.11,32.2a8,8,0,0,0,1.22,4.22c.62,1,1.23,2,1.8,3.06a8.09,8.09,0,0,0,3,3.06l28.6,16.29A90.49,90.49,0,0,1,222.9,142.12Z'],
   certificate: ['M128,136a8,8,0,0,1-8,8H72a8,8,0,0,1,0-16h48A8,8,0,0,1,128,136Zm-8-40H72a8,8,0,0,0,0,16h48a8,8,0,0,0,0-16Zm112,65.47V224A8,8,0,0,1,220,231l-24-13.74L172,231A8,8,0,0,1,160,224V200H40a16,16,0,0,1-16-16V56A16,16,0,0,1,40,40H216a16,16,0,0,1,16,16V86.53a51.88,51.88,0,0,1,0,74.94ZM160,184V161.47A52,52,0,0,1,216,76V56H40V184Zm56-12a51.88,51.88,0,0,1-40,0v38.22l16-9.16a8,8,0,0,1,7.94,0l16,9.16Zm16-48a36,36,0,1,0-36,36A36,36,0,0,0,232,124Z'],
   shield: ['M208,40H48A16,16,0,0,0,32,56v56c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.27,47,25.53a8,8,0,0,0,4.2,0c1-.26,23.91-6.67,47-25.53C198.48,196.67,224,164.72,224,112V56A16,16,0,0,0,208,40Zm0,72c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,223.62a128.25,128.25,0,0,1-38.92-21.81C61.82,179.51,48,149.3,48,112l0-56,160,0Z'],
-  lock: ['M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Zm-68-56a12,12,0,1,1-12-12A12,12,0,0,1,140,152Z'],
+  lock: ['M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Z'],
   bookmark: ['M184,32H72A16,16,0,0,0,56,48V224a8,8,0,0,0,12.24,6.78L128,193.43l59.77,37.35A8,8,0,0,0,200,224V48A16,16,0,0,0,184,32Zm0,177.57-51.77-32.35a8,8,0,0,0-8.48,0L72,209.57V48H184Z'],
   chevronDown: ['M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'],
   chevronRight: ['M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z'],
@@ -903,7 +913,20 @@ const glyphs = {
   ban: ['M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm88,104a87.56,87.56,0,0,1-20.41,56.28L71.72,60.4A88,88,0,0,1,216,128ZM40,128A87.56,87.56,0,0,1,60.41,71.72L184.28,195.6A88,88,0,0,1,40,128Z'],
   video: ['M251.77,73a8,8,0,0,0-8.21.39L208,97.05V72a16,16,0,0,0-16-16H32A16,16,0,0,0,16,72V184a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V159l35.56,23.71A8,8,0,0,0,248,184a8,8,0,0,0,8-8V80A8,8,0,0,0,251.77,73ZM192,184H32V72H192V184Zm48-22.95-32-21.33V116.28L240,95Z'],
   calendarPlus: ['M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-48-56a8,8,0,0,1-8,8H136v16a8,8,0,0,1-16,0V160H104a8,8,0,0,1,0-16h16V128a8,8,0,0,1,16,0v16h16A8,8,0,0,1,160,152Z'],
-  menu: ['M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM40,72H216a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16ZM216,184H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z']
+  menu: ['M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM40,72H216a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16ZM216,184H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z'],
+  courses: ['M231.65,194.55,198.46,36.75a16,16,0,0,0-19-12.39L132.65,34.42a16.08,16.08,0,0,0-12.3,19l33.19,157.8A16,16,0,0,0,169.16,224a16.25,16.25,0,0,0,3.38-.36l46.81-10.06A16.09,16.09,0,0,0,231.65,194.55ZM136,50.15c0-.06,0-.09,0-.09l46.8-10,3.33,15.87L139.33,66Zm6.62,31.47,46.82-10.05,3.34,15.9L146,97.53Zm6.64,31.57,46.82-10.06,13.3,63.24-46.82,10.06ZM216,197.94l-46.8,10-3.33-15.87L212.67,182,216,197.85C216,197.91,216,197.94,216,197.94ZM104,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V48A16,16,0,0,0,104,32ZM56,48h48V64H56Zm0,32h48v96H56Zm48,128H56V192h48v16Z'],
+  done: ['M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z'],
+  chats: ['M232.07,186.76a80,80,0,0,0-62.5-114.17A80,80,0,1,0,23.93,138.76l-7.27,24.71a16,16,0,0,0,19.87,19.87l24.71-7.27a80.39,80.39,0,0,0,25.18,7.35,80,80,0,0,0,108.34,40.65l24.71,7.27a16,16,0,0,0,19.87-19.86ZM62,159.5a8.28,8.28,0,0,0-2.26.32L32,168l8.17-27.76a8,8,0,0,0-.63-6,64,64,0,1,1,26.26,26.26A8,8,0,0,0,62,159.5Zm153.79,28.73L224,216l-27.76-8.17a8,8,0,0,0-6,.63,64.05,64.05,0,0,1-85.87-24.88A79.93,79.93,0,0,0,174.7,89.71a64,64,0,0,1,41.75,92.48A8,8,0,0,0,215.82,188.23Z'],
+  icazet: ['M225.86,102.82c-3.77-3.94-7.67-8-9.14-11.57-1.36-3.27-1.44-8.69-1.52-13.94-.15-9.76-.31-20.82-8-28.51s-18.75-7.85-28.51-8c-5.25-.08-10.67-.16-13.94-1.52-3.57-1.47-7.63-5.37-11.57-9.14C146.27,23.51,138.44,16,128,16s-18.27,7.51-25.18,14.14c-3.94,3.77-8,7.67-11.57,9.14C88,40.64,82.56,40.72,77.31,40.8c-9.76.15-20.82.31-28.51,8S41,67.55,40.8,77.31c-.08,5.25-.16,10.67-1.52,13.94-1.47,3.57-5.37,7.63-9.14,11.57C23.51,109.72,16,117.56,16,128s7.51,18.27,14.14,25.18c3.77,3.94,7.67,8,9.14,11.57,1.36,3.27,1.44,8.69,1.52,13.94.15,9.76.31,20.82,8,28.51s18.75,7.85,28.51,8c5.25.08,10.67.16,13.94,1.52,3.56,1.47,7.63,5.37,11.57,9.14C109.73,232.49,117.56,240,128,240s18.27-7.51,25.18-14.14c3.94-3.77,8-7.67,11.57-9.14,3.27-1.36,8.69-1.44,13.94-1.52,9.76-.15,20.82-.31,28.51-8s7.85-18.75,8-28.51c.08-5.25.16-10.67,1.52-13.94,1.47-3.56,5.37-7.63,9.14-11.57C232.49,146.28,240,138.44,240,128S232.49,109.73,225.86,102.82Zm-11.55,39.29c-4.79,5-9.75,10.17-12.38,16.52-2.52,6.1-2.63,13.07-2.73,19.82-.1,7-.21,14.33-3.32,17.43s-10.39,3.22-17.43,3.32c-6.75.1-13.72.21-19.82,2.73-6.35,2.63-11.52,7.59-16.52,12.38S132,224,128,224s-9.14-4.92-14.11-9.69-10.17-9.75-16.52-12.38c-6.1-2.52-13.07-2.63-19.82-2.73-7-.1-14.33-.21-17.43-3.32s-3.22-10.39-3.32-17.43c-.1-6.75-.21-13.72-2.73-19.82-2.63-6.35-7.59-11.52-12.38-16.52S32,132,32,128s4.92-9.14,9.69-14.11,9.75-10.17,12.38-16.52c2.52-6.1,2.63-13.07,2.73-19.82.1-7,.21-14.33,3.32-17.43S70.51,56.9,77.55,56.8c6.75-.1,13.72-.21,19.82-2.73,6.35-2.63,11.52-7.59,16.52-12.38S124,32,128,32s9.14,4.92,14.11,9.69,10.17,9.75,16.52,12.38c6.1,2.52,13.07,2.63,19.82,2.73,7,.1,14.33.21,17.43,3.32s3.22,10.39,3.32,17.43c.1,6.75.21,13.72,2.73,19.82,2.63,6.35,7.59,11.52,12.38,16.52S224,124,224,128,219.08,137.14,214.31,142.11Z'],
+  inbox: ['M208,32H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32Zm0,16V152h-28.7A15.86,15.86,0,0,0,168,156.69L148.69,176H107.31L88,156.69A15.86,15.86,0,0,0,76.69,152H48V48Zm0,160H48V168H76.69L96,187.31A15.86,15.86,0,0,0,107.31,192h41.38A15.86,15.86,0,0,0,160,187.31L179.31,168H208v40Z'],
+  kosk: ['M24,104H48v64H32a8,8,0,0,0,0,16H224a8,8,0,0,0,0-16H208V104h24a8,8,0,0,0,4.19-14.81l-104-64a8,8,0,0,0-8.38,0l-104,64A8,8,0,0,0,24,104Zm40,0H96v64H64Zm80,0v64H112V104Zm48,64H160V104h32ZM128,41.39,203.74,88H52.26ZM248,208a8,8,0,0,1-8,8H16a8,8,0,0,1,0-16H240A8,8,0,0,1,248,208Z'],
+  medrese: ['M240,208H224V96a16,16,0,0,0-16-16H144V32a16,16,0,0,0-24.88-13.32L39.12,72A16,16,0,0,0,32,85.34V208H16a8,8,0,0,0,0,16H240a8,8,0,0,0,0-16ZM208,96V208H144V96ZM48,85.34,128,32V208H48ZM112,112v16a8,8,0,0,1-16,0V112a8,8,0,1,1,16,0Zm-32,0v16a8,8,0,0,1-16,0V112a8,8,0,1,1,16,0Zm0,56v16a8,8,0,0,1-16,0V168a8,8,0,0,1,16,0Zm32,0v16a8,8,0,0,1-16,0V168a8,8,0,0,1,16,0Z'],
+  moon: ['M240,96a8,8,0,0,1-8,8H216v16a8,8,0,0,1-16,0V104H184a8,8,0,0,1,0-16h16V72a8,8,0,0,1,16,0V88h16A8,8,0,0,1,240,96ZM144,56h8v8a8,8,0,0,0,16,0V56h8a8,8,0,0,0,0-16h-8V32a8,8,0,0,0-16,0v8h-8a8,8,0,0,0,0,16Zm72.77,97a8,8,0,0,1,1.43,8A96,96,0,1,1,95.07,37.8a8,8,0,0,1,10.6,9.06A88.07,88.07,0,0,0,209.14,150.33,8,8,0,0,1,216.77,153Zm-19.39,14.88c-1.79.09-3.59.14-5.38.14A104.11,104.11,0,0,1,88,64c0-1.79,0-3.59.14-5.38A80,80,0,1,0,197.38,167.86Z'],
+  sun: ['M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm72,88a64,64,0,1,1-64-64A64.07,64.07,0,0,1,192,128Zm-16,0a48,48,0,1,0-48,48A48.05,48.05,0,0,0,176,128ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z'],
+  note: ['M229.66,58.34l-32-32a8,8,0,0,0-11.32,0l-96,96A8,8,0,0,0,88,128v32a8,8,0,0,0,8,8h32a8,8,0,0,0,5.66-2.34l96-96A8,8,0,0,0,229.66,58.34ZM124.69,152H104V131.31l64-64L188.69,88ZM200,76.69,179.31,56,192,43.31,212.69,64ZM224,128v80a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V48A16,16,0,0,1,48,32h80a8,8,0,0,1,0,16H48V208H208V128a8,8,0,0,1,16,0Z'],
+  headphones: ['M201.89,54.66A103.43,103.43,0,0,0,128.79,24H128A104,104,0,0,0,24,128v56a24,24,0,0,0,24,24H64a24,24,0,0,0,24-24V144a24,24,0,0,0-24-24H40.36A88,88,0,0,1,128,40h.67a87.71,87.71,0,0,1,87,80H192a24,24,0,0,0-24,24v40a24,24,0,0,0,24,24h16a24,24,0,0,0,24-24V128A103.41,103.41,0,0,0,201.89,54.66ZM64,136a8,8,0,0,1,8,8v40a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V136Zm152,48a8,8,0,0,1-8,8H192a8,8,0,0,1-8-8V144a8,8,0,0,1,8-8h24Z'],
+  key: ['M216.57,39.43A80,80,0,0,0,83.91,120.78L28.69,176A15.86,15.86,0,0,0,24,187.31V216a16,16,0,0,0,16,16H72a8,8,0,0,0,8-8V208H96a8,8,0,0,0,8-8V184h16a8,8,0,0,0,5.66-2.34l9.56-9.57A79.73,79.73,0,0,0,160,176h.1A80,80,0,0,0,216.57,39.43ZM224,98.1c-1.09,34.09-29.75,61.86-63.89,61.9H160a63.7,63.7,0,0,1-23.65-4.51,8,8,0,0,0-8.84,1.68L116.69,168H96a8,8,0,0,0-8,8v16H72a8,8,0,0,0-8,8v16H40V187.31l58.83-58.82a8,8,0,0,0,1.68-8.84A63.72,63.72,0,0,1,96,95.92c0-34.14,27.81-62.8,61.9-63.89A64,64,0,0,1,224,98.1ZM192,76a12,12,0,1,1-12-12A12,12,0,0,1,192,76Z'],
+  envelope: ['M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48ZM203.43,64,128,133.15,52.57,64ZM216,192H40V74.19l82.59,75.71a8,8,0,0,0,10.82,0L216,74.19V192Z']
 };
 const fillGlyphs = {
   bookmark: ['M184,32H72A16,16,0,0,0,56,48V224a8,8,0,0,0,12.24,6.78L128,193.43l59.77,37.35A8,8,0,0,0,200,224V48A16,16,0,0,0,184,32Z'],
@@ -946,22 +969,40 @@ Object.assign(__ds_scope, { iconNames, Icon });
 // components/IconButton.jsx
 try { (() => {
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-// Keeps a shown bubble inside the viewport and every clipping ancestor (a table frame, a
-// sheet): measured once it shows, the shift is written as a data variable the class layer reads.
+// Keeps a shown bubble inside the viewport and every clipping ancestor (a table frame, a dialog,
+// a scrolling body), measured once it shows. Clipped above or below, it moves to the other side
+// when it fits there (data-placement); clipped sideways, it shifts by a data variable the class
+// layer reads.
 function place(anchor) {
   const tip = anchor && anchor.querySelector(':scope > .mds-tooltip');
   if (!tip) return;
   tip.style.removeProperty('--mds-tooltip-shift');
-  const r = tip.getBoundingClientRect();
+  anchor.removeAttribute('data-placement');
+  let r = tip.getBoundingClientRect();
   if (!r.width) return;
+  const root = document.documentElement;
   let lo = 8;
-  let hi = document.documentElement.clientWidth - 8;
+  let hi = root.clientWidth - 8;
+  let top = 0;
+  let bottom = root.clientHeight;
   for (let el = anchor.parentElement; el && el !== document.body; el = el.parentElement) {
-    if (getComputedStyle(el).overflowX === 'visible') continue;
+    const s = getComputedStyle(el);
     const b = el.getBoundingClientRect();
-    lo = Math.max(lo, b.left + el.clientLeft);
-    hi = Math.min(hi, b.left + el.clientLeft + el.clientWidth);
+    if (s.overflowX !== 'visible') {
+      lo = Math.max(lo, b.left + el.clientLeft);
+      hi = Math.min(hi, b.left + el.clientLeft + el.clientWidth);
+    }
+    if (s.overflowY !== 'visible') {
+      top = Math.max(top, b.top + el.clientTop);
+      bottom = Math.min(bottom, b.top + el.clientTop + el.clientHeight);
+    }
   }
+  const a = anchor.getBoundingClientRect();
+  const gap = a.top - r.bottom >= 0 ? a.top - r.bottom : r.top - a.bottom;
+  const above = r.bottom <= a.top;
+  if (above && r.top < top && a.bottom + gap + r.height <= bottom) anchor.setAttribute('data-placement', 'bottom');
+  if (!above && r.bottom > bottom && a.top - gap - r.height >= top) anchor.setAttribute('data-placement', 'top');
+  if (anchor.hasAttribute('data-placement')) r = tip.getBoundingClientRect();
   const shift = r.left < lo ? lo - r.left : r.right > hi ? Math.max(hi - r.right, lo - r.left) : 0;
   if (shift) tip.style.setProperty('--mds-tooltip-shift', `${Math.round(shift)}px`);
 }
@@ -1072,6 +1113,27 @@ const cities = {
   'Europe/London': 'Londra',
   'America/New_York': 'New York'
 };
+
+// The page's locale (MDS-NUM-01): the locale prop, else the nearest lang once mounted, else tr-TR.
+function usePageLocale(ref, locale) {
+  const [found, setFound] = React.useState(null);
+  React.useEffect(() => {
+    const el = ref.current && ref.current.closest('[lang]');
+    setFound(el && el.lang || null);
+  }, []);
+  return locale || found || 'tr-TR';
+}
+
+// A meta run: each part but the last ends on its separator, so a wrapped line ends on the dot and
+// never starts with it.
+function joinRun(parts) {
+  return parts.map((p, i) => i < parts.length - 1 ? /*#__PURE__*/React.createElement("span", {
+    key: `run${i}`
+  }, p, /*#__PURE__*/React.createElement("span", {
+    className: "mds-sep",
+    "aria-hidden": "true"
+  }, "\xB7")) : p);
+}
 function format(locale, at, timeZone, options) {
   try {
     return new Intl.DateTimeFormat(locale, {
@@ -1148,11 +1210,13 @@ function LessonRow({
   lockedLabel = 'Kilitli',
   localTimeLabel = 'senin saatinle',
   minuteUnit = 'dk',
-  locale = 'tr-TR',
+  locale: localeProp,
   trailing,
   className = '',
   ...rest
 }) {
+  const ref = React.useRef(null);
+  const locale = usePageLocale(ref, localeProp);
   const locked = access === 'locked';
   const cls = ['mds-lesson-row', `mds-lesson-row--${type}`, state === 'done' && 'is-done', locked && 'is-locked', className].filter(Boolean).join(' ');
   const titleProps = {
@@ -1183,6 +1247,7 @@ function LessonRow({
     locale
   }));
   return /*#__PURE__*/React.createElement("li", _extends({
+    ref: ref,
     className: cls
   }, rest), /*#__PURE__*/React.createElement("span", {
     className: "mds-lesson-row__medallion",
@@ -1193,12 +1258,7 @@ function LessonRow({
     href: href
   }, titleProps), name) : /*#__PURE__*/React.createElement("span", titleProps, name), /*#__PURE__*/React.createElement("p", {
     className: "mds-lesson-row__meta"
-  }, meta.map((m, i) => i ? /*#__PURE__*/React.createElement("span", {
-    key: `run${i}`
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "mds-sep",
-    "aria-hidden": "true"
-  }, "\xB7"), m) : m))), trailing && /*#__PURE__*/React.createElement("span", {
+  }, joinRun(meta))), trailing && /*#__PURE__*/React.createElement("span", {
     className: "mds-lesson-row__trailing"
   }, trailing), locked && /*#__PURE__*/React.createElement("span", {
     className: "mds-lesson-row__lock",
@@ -1215,10 +1275,9 @@ Object.assign(__ds_scope, { LessonRow });
 // components/Logo.jsx
 try { (() => {
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-// The filter id must be unique per instance. React.useId where it exists; a
-// module counter only for a React without it.
-let seq = 0;
-const useUid = React.useId || (() => React.useState(() => `l${++seq}`)[0]);
+// assets/logo-arabic.svg: مدارس as outlined paths, so a Latin-only page never loads the Naskh file for the logo.
+const ARABIC_VIEWBOX = '68 -677 2527 932';
+const ARABIC_PATH = 'M250 255Q163 255 116 204Q68 153 68 56Q68 38 70 18Q72 -2 78 -27Q83 -52 91 -84L133 -74Q120 -27 120 3Q120 75 154 112Q187 149 253 149Q305 149 350 138Q394 126 432 104Q469 81 497 48Q464 -20 442 -68Q419 -116 419 -138Q419 -174 440 -202Q461 -231 508 -255Q510 -242 513 -223Q516 -204 521 -176Q526 -149 532 -111Q549 -108 564 -106Q579 -105 592 -105Q615 -105 630 -107Q646 -109 669 -115Q677 -129 691 -166Q700 -193 708 -214Q716 -234 722 -250Q728 -266 738 -272Q749 -279 766 -279Q785 -279 799 -270Q792 -255 781 -222Q770 -188 756 -143Q798 -123 842 -114Q885 -104 940 -100Q931 -121 920 -144Q910 -168 898 -194Q886 -218 878 -238Q870 -257 870 -273Q870 -296 894 -323Q918 -350 953 -369Q959 -338 966 -304Q973 -270 979 -240Q986 -205 990 -179Q994 -153 994 -136Q994 -122 988 -97Q982 -72 972 -46Q963 -19 953 0Q891 0 833 -12Q775 -25 723 -48L713 -28Q706 -16 669 -8Q650 -4 628 -2Q606 0 580 0Q572 0 564 -0Q555 -1 546 -2V10Q546 75 506 132Q467 189 398 222Q364 239 327 247Q290 255 250 255Z M1150 198Q1137 198 1115 188Q1093 179 1066 162Q1040 145 1016 125L1031 86Q1058 93 1083 96Q1108 99 1130 99Q1204 99 1256 60Q1308 20 1332 -55Q1325 -70 1317 -86Q1309 -101 1299 -117Q1269 -167 1248 -206Q1227 -246 1227 -276Q1227 -304 1248 -328Q1268 -352 1302 -369Q1307 -350 1316 -324Q1324 -297 1334 -271Q1343 -245 1350 -224Q1363 -188 1372 -152Q1380 -117 1380 -86Q1380 -8 1350 58Q1320 123 1268 161Q1215 198 1150 198Z M1540 -6Q1537 -104 1532 -182Q1528 -261 1524 -329Q1519 -397 1514 -460Q1509 -523 1502 -591Q1499 -616 1510 -635Q1522 -654 1544 -664Q1567 -675 1595 -677Q1602 -650 1612 -618Q1622 -587 1634 -555L1602 -530Q1605 -469 1606 -392Q1606 -315 1604 -221Q1603 -127 1598 -14Z M1858 0Q1728 0 1728 -73Q1728 -93 1735 -113Q1742 -133 1754 -145Q1779 -125 1811 -115Q1843 -105 1890 -105Q1920 -105 1952 -109Q1983 -113 2016 -121Q1990 -166 1970 -210Q1951 -254 1940 -290Q1929 -326 1929 -345Q1929 -377 1945 -400Q1961 -423 1993 -433Q2014 -350 2036 -285Q2057 -220 2084 -173Q2103 -138 2126 -124Q2148 -110 2184 -110Q2192 -110 2192 -102V-14Q2192 -6 2184 -6Q2147 -6 2118 -18Q2088 -30 2065 -54Q1961 0 1858 0Z M2539 0Q2496 0 2451 -7Q2406 -14 2365 -28Q2324 -41 2293 -57Q2269 -30 2242 -18Q2214 -6 2175 -6Q2167 -6 2167 -14V-102Q2167 -110 2175 -110Q2215 -110 2244 -128Q2273 -147 2292 -184Q2306 -211 2316 -231Q2327 -251 2336 -266Q2345 -282 2354 -295Q2379 -328 2402 -342Q2426 -357 2455 -357Q2489 -357 2522 -320Q2554 -283 2575 -223Q2595 -165 2595 -110Q2595 -82 2580 -51Q2564 -20 2539 0ZM2510 -99Q2507 -139 2494 -174Q2482 -210 2467 -231Q2452 -249 2440 -249Q2413 -249 2391 -222Q2383 -212 2371 -192Q2359 -172 2344 -142Q2377 -126 2418 -115Q2459 -104 2510 -99Z';
 
 // The subtitle an app gets when the caller passes none. The landing page has none.
 const appNames = {
@@ -1227,17 +1286,19 @@ const appNames = {
   nazir: 'Nazır',
   giris: 'Giriş'
 };
+
+/* Wraps .mds-logo: the mark, the same as assets/logo-mark.svg. It follows the theme through its classes
+   (an ink page by day, a paper page by night). At lg the wordmark lockup adds مدارس, and the app's name is
+   not drawn unless the caller passes a subtitle. */
 function Logo({
   app,
   size = 'md',
   wordmark = false,
-  subtitle = appNames[app],
-  inverse = false,
+  subtitle = size === 'lg' ? undefined : appNames[app],
   className = '',
   ...rest
 }) {
-  const filter = `mds-logo-${useUid().replace(/[^\w-]/g, '')}`;
-  const cls = ['mds-logo', size !== 'md' && `mds-logo--${size}`, inverse && 'mds-logo--inverse', className].filter(Boolean).join(' ');
+  const cls = ['mds-logo', size !== 'md' && `mds-logo--${size}`, className].filter(Boolean).join(' ');
   return /*#__PURE__*/React.createElement("span", _extends({
     className: cls,
     role: "img",
@@ -1251,54 +1312,38 @@ function Logo({
     className: "mds-logo__ground",
     width: "48",
     height: "48",
-    rx: "12"
-  }), /*#__PURE__*/React.createElement("g", {
-    className: "mds-logo__arch",
-    filter: `url(#${filter})`
-  }, /*#__PURE__*/React.createElement("path", {
-    d: "M14.4327 24.2434V38.1C14.4327 38.9284 15.1042 39.6 15.9327 39.6H23.7173V8.4C15.0737 9.68201 14.9368 16.815 16.0327 20.4C14.0326 21.2 14.4327 23.2 14.4327 24.2434Z"
+    rx: "3"
+  }), /*#__PURE__*/React.createElement("rect", {
+    className: "mds-logo__rule",
+    x: "5.5",
+    y: "5.5",
+    width: "37",
+    height: "37",
+    strokeWidth: "1.5"
+  }), /*#__PURE__*/React.createElement("rect", {
+    className: "mds-logo__rule mds-logo__rule--inner",
+    x: "9.5",
+    y: "9.5",
+    width: "29",
+    height: "29",
+    strokeWidth: "1"
   }), /*#__PURE__*/React.createElement("path", {
-    d: "M33.3172 24.2434V38.1C33.3172 38.9284 32.6456 39.6 31.8172 39.6H24.0325V8.4C32.6762 9.68201 32.8131 16.815 31.7172 20.4C33.7172 21.2 33.3172 23.2 33.3172 24.2434Z"
-  })), /*#__PURE__*/React.createElement("defs", null, /*#__PURE__*/React.createElement("filter", {
-    id: filter,
-    x: "14.4",
-    y: "8.4",
-    width: "18.9498",
-    height: "31.2",
-    filterUnits: "userSpaceOnUse",
-    colorInterpolationFilters: "sRGB"
-  }, /*#__PURE__*/React.createElement("feFlood", {
-    floodOpacity: "0",
-    result: "BackgroundImageFix"
-  }), /*#__PURE__*/React.createElement("feBlend", {
-    mode: "normal",
-    in: "SourceGraphic",
-    in2: "BackgroundImageFix",
-    result: "shape"
-  }), /*#__PURE__*/React.createElement("feColorMatrix", {
-    in: "SourceAlpha",
-    type: "matrix",
-    values: "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0",
-    result: "hardAlpha"
-  }), /*#__PURE__*/React.createElement("feOffset", null), /*#__PURE__*/React.createElement("feGaussianBlur", {
-    stdDeviation: "0.375"
-  }), /*#__PURE__*/React.createElement("feComposite", {
-    in2: "hardAlpha",
-    operator: "arithmetic",
-    k2: "-1",
-    k3: "1"
-  }), /*#__PURE__*/React.createElement("feColorMatrix", {
-    type: "matrix",
-    values: "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3 0"
-  }), /*#__PURE__*/React.createElement("feBlend", {
-    mode: "normal",
-    in2: "shape",
-    result: "effect1_innerShadow_1_2"
-  })))), wordmark && /*#__PURE__*/React.createElement("span", {
+    className: "mds-logo__nokta",
+    d: "M24 15.5 32.5 24 24 32.5 15.5 24Z"
+  })), wordmark && /*#__PURE__*/React.createElement("span", {
     className: "mds-logo__text"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "mds-logo__word"
-  }, "Medaris"), subtitle && /*#__PURE__*/React.createElement("span", {
+    className: "mds-logo__word",
+    lang: "en",
+    dir: "ltr"
+  }, "Medaris"), size === 'lg' && /*#__PURE__*/React.createElement("svg", {
+    className: "mds-logo__arabic",
+    viewBox: ARABIC_VIEWBOX,
+    "aria-hidden": "true",
+    focusable: "false"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: ARABIC_PATH
+  })), subtitle && /*#__PURE__*/React.createElement("span", {
     className: "mds-logo__subtitle",
     dir: "auto"
   }, subtitle)));
@@ -1327,7 +1372,7 @@ function formatCount(n, locale) {
 }
 
 /* Wraps .mds-nav-item. A link, never a button: routing is by URL, and aria-current
-   marks the viewer's page. Inverse surface by default; inside .mds-nav--light on white. */
+   marks the viewer's page. The same item in the sidebar and in AppBar's nav sheet. */
 function NavItem({
   href,
   icon,
@@ -1509,6 +1554,7 @@ const useUid = React.useId || (() => React.useState(() => `r${++seq}`)[0]);
 function Radio({
   label,
   description,
+  icon,
   bordered = false,
   className = '',
   ...rest
@@ -1526,7 +1572,10 @@ function Radio({
     className: "mds-radio",
     "aria-labelledby": labelledBy,
     "aria-describedby": describedBy
-  })), /*#__PURE__*/React.createElement("span", {
+  })), icon && /*#__PURE__*/React.createElement("span", {
+    className: "mds-choice__icon",
+    "aria-hidden": "true"
+  }, icon), /*#__PURE__*/React.createElement("span", {
     className: "mds-choice__text"
   }, /*#__PURE__*/React.createElement("span", {
     className: "mds-choice__label",
@@ -1585,7 +1634,10 @@ function RadioGroup({
       "aria-labelledby": labelId,
       "aria-describedby": descId,
       onChange: change
-    }, state)), /*#__PURE__*/React.createElement("span", {
+    }, state)), o.icon && /*#__PURE__*/React.createElement("span", {
+      className: "mds-choice__icon",
+      "aria-hidden": "true"
+    }, o.icon), /*#__PURE__*/React.createElement("span", {
       className: "mds-choice__text"
     }, /*#__PURE__*/React.createElement("span", {
       className: "mds-choice__label",
@@ -1647,8 +1699,8 @@ Object.assign(__ds_scope, { Select });
 // components/SessionJoin.jsx
 try { (() => {
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-// The eyebrow's id must be unique per instance. React.useId where it exists; a
-// module counter only for a React without it.
+// The ids must be unique per instance. React.useId where it exists; a module
+// counter only for a React without it.
 let seq = 0;
 const useUid = React.useId || (() => React.useState(() => `j${++seq}`)[0]);
 
@@ -1672,6 +1724,27 @@ const cities = {
 };
 const MINUTE = 60000;
 const HOUR = 60 * MINUTE;
+
+// The page's locale (MDS-NUM-01): the locale prop, else the nearest lang once mounted, else tr-TR.
+function usePageLocale(ref, locale) {
+  const [found, setFound] = React.useState(null);
+  React.useEffect(() => {
+    const el = ref.current && ref.current.closest('[lang]');
+    setFound(el && el.lang || null);
+  }, []);
+  return locale || found || 'tr-TR';
+}
+
+// A meta run: each part but the last ends on its separator, so a wrapped line ends on the dot and
+// never starts with it.
+function joinRun(parts) {
+  return parts.map((p, i) => i < parts.length - 1 ? /*#__PURE__*/React.createElement("span", {
+    key: `run${i}`
+  }, p, /*#__PURE__*/React.createElement("span", {
+    className: "mds-sep",
+    "aria-hidden": "true"
+  }, "\xB7")) : p);
+}
 function format(locale, at, timeZone, options) {
   try {
     return new Intl.DateTimeFormat(locale, {
@@ -1694,15 +1767,16 @@ function dayNumber(at, timeZone) {
   return Date.UTC(y, m - 1, d) / (24 * HOUR);
 }
 
-// "14 dakika sonra", "2 saat sonra", "yarın", "3 gün sonra"
+// "14 dakika sonra", "2 saat sonra", "Yarın", "3 gün sonra": a badge label, so its first letter is
+// upper-cased in the page's locale (MDS-VOICE-02); Intl writes "yarın" and "şimdi".
 function countdown(locale, at, now, timeZone) {
   const rtf = new Intl.RelativeTimeFormat(locale, {
     numeric: 'auto'
   });
   const ms = at - now;
-  if (Math.abs(ms) < HOUR) return rtf.format(Math.round(ms / MINUTE), 'minute');
-  if (Math.abs(ms) < 24 * HOUR) return rtf.format(Math.round(ms / HOUR), 'hour');
-  return rtf.format(dayNumber(at, timeZone) - dayNumber(now, timeZone), 'day');
+  let s;
+  if (Math.abs(ms) < HOUR) s = rtf.format(Math.round(ms / MINUTE), 'minute');else if (Math.abs(ms) < 24 * HOUR) s = rtf.format(Math.round(ms / HOUR), 'hour');else s = rtf.format(dayNumber(at, timeZone) - dayNumber(now, timeZone), 'day');
+  return s.charAt(0).toLocaleUpperCase(locale) + s.slice(1);
 }
 function SessionJoin({
   startsAt,
@@ -1711,6 +1785,8 @@ function SessionJoin({
   courseTimeZone,
   courseZoneName,
   state = 'upcoming',
+  title,
+  headingLevel = 2,
   platform,
   platformLabel,
   host,
@@ -1737,13 +1813,16 @@ function SessionJoin({
   recordingsLabel = 'Ders kayıtlarına git',
   localTimeLabel = 'senin saatinle',
   minuteUnit = 'dk',
-  locale = 'tr-TR',
+  locale: localeProp,
   className = '',
   ...rest
 }) {
-  const titleId = `mds-join-${useUid().replace(/[^\w-]/g, '')}`;
-  // named by the eyebrow and the start, so two cards on one page are two distinct regions
-  const atId = `${titleId}-at`;
+  const ref = React.useRef(null);
+  const locale = usePageLocale(ref, localeProp);
+  const eyebrowId = `mds-join-${useUid().replace(/[^\w-]/g, '')}`;
+  const headingId = `${eyebrowId}-h`;
+  const atId = `${eyebrowId}-at`;
+  const Heading = `h${[2, 3, 4].includes(headingLevel) ? headingLevel : 2}`;
   // Without a fixed `now`, re-render every 30 s: the countdown and the join window move.
   const [, setTick] = React.useState(0);
   React.useEffect(() => {
@@ -1753,6 +1832,8 @@ function SessionJoin({
   }, [now]);
   const at = new Date(startsAt);
   const valid = !Number.isNaN(at.getTime());
+  // Named by the title, or else the eyebrow, and the start: two cards on one page are two distinct regions.
+  const labelledBy = [title ? headingId : eyebrowId, valid && atId].filter(Boolean).join(' ');
   const nowAt = now ? new Date(now) : new Date();
   const locked = access === 'locked';
 
@@ -1830,7 +1911,8 @@ function SessionJoin({
   }, text);
   const open = state === 'upcoming' || state === 'live';
   const windowOpen = state === 'live' || !valid || at - nowAt <= joinWindowMinutes * MINUTE;
-  const known = platform !== 'unknown' && platformLabels[platform];
+  // An unknown host prints "Bilinmeyen platform" and the host (MDS-DOM-03).
+  const known = platform === 'unknown' ? undefined : platformLabels[platform];
   const chip = !locked && open && platform && /*#__PURE__*/React.createElement("span", {
     className: `mds-platform-chip mds-platform-chip--${platform}`
   }, /*#__PURE__*/React.createElement("span", {
@@ -1879,23 +1961,23 @@ function SessionJoin({
   }
   const cls = ['mds-join', className].filter(Boolean).join(' ');
   return /*#__PURE__*/React.createElement("section", _extends({
+    ref: ref,
     className: cls,
-    "aria-labelledby": valid ? `${titleId} ${atId}` : titleId
+    "aria-labelledby": labelledBy
   }, rest), /*#__PURE__*/React.createElement("header", {
     className: "mds-join__header"
   }, /*#__PURE__*/React.createElement("p", {
     className: "mds-eyebrow",
-    id: titleId
+    id: eyebrowId
   }, label), badge, actions && /*#__PURE__*/React.createElement("div", {
     className: "mds-join__actions"
-  }, actions)), times.length > 0 && /*#__PURE__*/React.createElement("p", {
+  }, actions)), title && /*#__PURE__*/React.createElement(Heading, {
+    className: "mds-join__title",
+    id: headingId,
+    dir: "auto"
+  }, title), times.length > 0 && /*#__PURE__*/React.createElement("p", {
     className: "mds-join__time"
-  }, times.map((t, i) => i ? /*#__PURE__*/React.createElement("span", {
-    key: `run${i}`
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "mds-sep",
-    "aria-hidden": "true"
-  }, "\xB7"), t) : t)), chip, body, notice);
+  }, valid ? /*#__PURE__*/React.createElement(React.Fragment, null, times[0], joinRun(times.slice(1))) : joinRun(times)), chip, body, notice);
 }
 Object.assign(__ds_scope, { SessionJoin });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/SessionJoin.jsx", error: String((e && e.message) || e) }); }
@@ -2042,7 +2124,7 @@ function SystemState({
     className: cls,
     "aria-labelledby": id
   }), logo, /*#__PURE__*/React.createElement(Heading, {
-    className: headingLevel === 1 ? 'mds-h4' : 'mds-h5',
+    className: headingLevel === 1 ? 'mds-h1' : 'mds-h2',
     id: id
   }, title), /*#__PURE__*/React.createElement("p", {
     className: "mds-system-state__text"
@@ -2397,22 +2479,40 @@ try { (() => {
 let seq = 0;
 const useUid = React.useId || (() => React.useState(() => `t${++seq}`)[0]);
 
-// Keeps a shown bubble inside the viewport and every clipping ancestor (a table frame, a
-// sheet): measured once it shows, the shift is written as a data variable the class layer reads.
+// Keeps a shown bubble inside the viewport and every clipping ancestor (a table frame, a dialog,
+// a scrolling body), measured once it shows. Clipped above or below, it moves to the other side
+// when it fits there (data-placement); clipped sideways, it shifts by a data variable the class
+// layer reads.
 function place(anchor) {
   const tip = anchor && anchor.querySelector(':scope > .mds-tooltip');
   if (!tip) return;
   tip.style.removeProperty('--mds-tooltip-shift');
-  const r = tip.getBoundingClientRect();
+  anchor.removeAttribute('data-placement');
+  let r = tip.getBoundingClientRect();
   if (!r.width) return;
+  const root = document.documentElement;
   let lo = 8;
-  let hi = document.documentElement.clientWidth - 8;
+  let hi = root.clientWidth - 8;
+  let top = 0;
+  let bottom = root.clientHeight;
   for (let el = anchor.parentElement; el && el !== document.body; el = el.parentElement) {
-    if (getComputedStyle(el).overflowX === 'visible') continue;
+    const s = getComputedStyle(el);
     const b = el.getBoundingClientRect();
-    lo = Math.max(lo, b.left + el.clientLeft);
-    hi = Math.min(hi, b.left + el.clientLeft + el.clientWidth);
+    if (s.overflowX !== 'visible') {
+      lo = Math.max(lo, b.left + el.clientLeft);
+      hi = Math.min(hi, b.left + el.clientLeft + el.clientWidth);
+    }
+    if (s.overflowY !== 'visible') {
+      top = Math.max(top, b.top + el.clientTop);
+      bottom = Math.min(bottom, b.top + el.clientTop + el.clientHeight);
+    }
   }
+  const a = anchor.getBoundingClientRect();
+  const gap = a.top - r.bottom >= 0 ? a.top - r.bottom : r.top - a.bottom;
+  const above = r.bottom <= a.top;
+  if (above && r.top < top && a.bottom + gap + r.height <= bottom) anchor.setAttribute('data-placement', 'bottom');
+  if (!above && r.bottom > bottom && a.top - gap - r.height >= top) anchor.setAttribute('data-placement', 'top');
+  if (anchor.hasAttribute('data-placement')) r = tip.getBoundingClientRect();
   const shift = r.left < lo ? lo - r.left : r.right > hi ? Math.max(hi - r.right, lo - r.left) : 0;
   if (shift) tip.style.setProperty('--mds-tooltip-shift', `${Math.round(shift)}px`);
 }
@@ -2476,6 +2576,27 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
 let seq = 0;
 const useUid = React.useId || (() => React.useState(() => `w${++seq}`)[0]);
 
+// The page's locale (MDS-NUM-01): the locale prop, else the nearest lang once mounted, else tr-TR.
+function usePageLocale(ref, locale) {
+  const [found, setFound] = React.useState(null);
+  React.useEffect(() => {
+    const el = ref.current && ref.current.closest('[lang]');
+    setFound(el && el.lang || null);
+  }, []);
+  return locale || found || 'tr-TR';
+}
+
+// A meta run: each part but the last ends on its separator, so a wrapped line ends on the dot and
+// never starts with it.
+function joinRun(parts) {
+  return parts.map((p, i) => i < parts.length - 1 ? /*#__PURE__*/React.createElement("span", {
+    key: `run${i}`
+  }, p, /*#__PURE__*/React.createElement("span", {
+    className: "mds-sep",
+    "aria-hidden": "true"
+  }, "\xB7")) : p);
+}
+
 // A date-only value ("2026-10-17") is that calendar day wherever the viewer is.
 function openDate(iso, locale) {
   const at = new Date(iso);
@@ -2508,11 +2629,13 @@ function WeekAccordion({
   lockedLabel = ', kilitli',
   opensOnLabel = '{date} tarihinde açılır',
   emptyLabel = 'Bu hafta için henüz ders eklenmedi.',
-  locale = 'tr-TR',
+  locale: localeProp,
   children,
   className = '',
   ...rest
 }) {
+  const ref = React.useRef(null);
+  const locale = usePageLocale(ref, localeProp);
   const [own, setOwn] = React.useState(defaultOpen);
   const isOpen = open ?? own;
   const uid = useUid().replace(/[^\w-]/g, '');
@@ -2542,6 +2665,7 @@ function WeekAccordion({
   }, meta));
   const rows = React.Children.toArray(children);
   return /*#__PURE__*/React.createElement("div", _extends({
+    ref: ref,
     className: cls
   }, rest), /*#__PURE__*/React.createElement(Heading, {
     className: "mds-week__heading"
@@ -2572,12 +2696,7 @@ function WeekAccordion({
     className: "mds-visually-hidden"
   }, lockedLabel)), metaItems.length > 0 && /*#__PURE__*/React.createElement("span", {
     className: "mds-week__meta"
-  }, metaItems.map((m, i) => i ? /*#__PURE__*/React.createElement("span", {
-    key: `run${i}`
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "mds-sep",
-    "aria-hidden": "true"
-  }, "\xB7"), m) : m)), /*#__PURE__*/React.createElement("span", {
+  }, joinRun(metaItems)), /*#__PURE__*/React.createElement("span", {
     className: "mds-week__chevron",
     "aria-hidden": "true"
   }))), /*#__PURE__*/React.createElement("div", {
