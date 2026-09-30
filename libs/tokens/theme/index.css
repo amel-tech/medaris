@@ -1,0 +1,15 @@
+/*
+ * @medaris/tokens — the file `@import "@medaris/tokens/css"` resolves to
+ * (package.json exports["./css"]).
+ *
+ * main.css is GENERATED from input/main.css by scripts/process-tokens.js
+ * and holds the colour roles background, text and border. Everything else
+ * is hand-authored beside it, one file per Figma collection, because the
+ * script rewrites main.css whole and nothing else — see README.md.
+ */
+@import "./main.css";
+@import "./icon-colors.css";
+@import "./typography.css";
+@import "./spacing.css";
+@import "./radius.css";
+@import "./elevation.css";

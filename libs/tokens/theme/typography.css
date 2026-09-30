@@ -1,0 +1,58 @@
+/*
+ * @medaris/tokens — typography. HAND-AUTHORED: scripts/process-tokens.js
+ * rewrites theme/main.css only and never touches this file.
+ *
+ * Source: Figma variable collection "typography" in `Online Medrese UI UX.fig`
+ * (export 2026-09-04), read through the committed mirror
+ * design-system/tokens/typography.css (MDRS-92). Families, weights and the
+ * twelve sizes are extracted. The size ramp is px in Figma and rem here
+ * (16px root), exactly as the mirror writes it.
+ *
+ * Every text style in the file ships at 100% line height and no letter
+ * spacing: --line-height-tight and --letter-spacing-normal are those
+ * extracted values. The three lines marked PROPOSAL are not in the .fig —
+ * they are the design system's own proposals, carried over with its label.
+ *
+ * Names stay out of Tailwind's --leading-* and --tracking-* namespaces on
+ * purpose: tight/snug/normal already exist there with other values, and
+ * redefining them would silently change every leading-tight or
+ * tracking-tight already in the apps (test/tailwind-defaults.spec.ts).
+ */
+@theme {
+  /* Families — fontFamily/cairo (headings), fontFamily/ibm plex sans (body and controls) */
+  --font-cairo: "Cairo", "Segoe UI", system-ui, sans-serif;
+  --font-ibm-plex-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+
+  /* Weights — the eight the collection names */
+  --font-weight-extralight: 200;
+  --font-weight-light: 300;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  --font-weight-black: 900;
+
+  /* Size ramp — footnote 10 to display 72 */
+  --text-display: 4.5rem; /* 72px */
+  --text-h1: 4rem; /* 64px */
+  --text-h2: 3rem; /* 48px */
+  --text-h3: 2.5rem; /* 40px */
+  --text-h4: 2rem; /* 32px */
+  --text-h5: 1.5rem; /* 24px */
+  --text-h6: 1.25rem; /* 20px */
+  --text-body-lg: 1.125rem; /* 18px */
+  --text-body: 1rem; /* 16px */
+  --text-body-sm: 0.875rem; /* 14px */
+  --text-caption: 0.75rem; /* 12px */
+  --text-footnote: 0.625rem; /* 10px */
+
+  /* Leading */
+  --line-height-tight: 1; /* extracted — every Figma text style */
+  --line-height-snug: 1.25; /* PROPOSAL — headings that wrap */
+  --line-height-body: 1.5; /* PROPOSAL — anything longer than one line */
+
+  /* Tracking */
+  --letter-spacing-normal: 0; /* extracted */
+  --letter-spacing-tight: -0.02em; /* PROPOSAL — h1 and up */
+}

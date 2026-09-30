@@ -1,0 +1,42 @@
+/*
+ * @medaris/tokens — icon colours, the fourth semantic role. HAND-AUTHORED:
+ * scripts/process-tokens.js rewrites theme/main.css only and never touches
+ * this file.
+ *
+ * Source: Figma variable collection "color", semantic/icon/*, in
+ * `Online Medrese UI UX.fig` (export 2026-09-04). The Tailwind Theme Gen
+ * export in input/main.css predates the icon role, so each value here is
+ * the primitive the mirror's design-system/tokens/semantic.css points the
+ * role at (MDRS-92), written as the same rgba() the export gives that
+ * primitive (--color-primitives-<ramp>-<step> in input/main.css). Both
+ * links are asserted in test/figma-fidelity.spec.ts.
+ *
+ * Names follow the generated file's convention (--<role>-color-<tone>,
+ * "neutralinverse" as one word) so the four roles line up. Tailwind has no
+ * icon utility; use text-(--icon-color-brand-primary) or
+ * var(--icon-color-brand-primary).
+ */
+@theme {
+  --icon-color-neutral-primary: rgba(17, 24, 39, 1); /* gray-900 */
+  --icon-color-neutral-secondary: rgba(31, 41, 55, 1); /* gray-800 */
+  --icon-color-neutral-tertiary: rgba(75, 85, 99, 1); /* gray-600 */
+  --icon-color-neutral-disabled: rgba(107, 114, 128, 1); /* gray-500 */
+  --icon-color-neutralinverse-primary: rgba(243, 244, 246, 1); /* gray-100 */
+  --icon-color-neutralinverse-secondary: rgba(229, 231, 235, 1); /* gray-200 */
+  --icon-color-neutralinverse-tertiary: rgba(209, 213, 219, 1); /* gray-300 */
+  --icon-color-brand-primary: rgba(12, 74, 110, 1); /* sky-900 */
+  --icon-color-brand-secondary: rgba(7, 89, 133, 1); /* sky-800 */
+  --icon-color-brand-inverse: rgba(224, 242, 254, 1); /* sky-100 */
+  --icon-color-success-primary: rgba(21, 128, 61, 1); /* green-700 */
+  --icon-color-success-secondary: rgba(22, 163, 74, 1); /* green-600 */
+  --icon-color-success-inverse: rgba(240, 253, 244, 1); /* green-50 */
+  --icon-color-warning-primary: rgba(234, 179, 8, 1); /* yellow-500 */
+  --icon-color-warning-secondary: rgba(250, 204, 21, 1); /* yellow-400 */
+  --icon-color-warning-inverse: rgba(254, 252, 232, 1); /* yellow-50 */
+  --icon-color-error-primary: rgba(220, 38, 38, 1); /* red-600 */
+  --icon-color-error-secondary: rgba(239, 68, 68, 1); /* red-500 */
+  --icon-color-error-inverse: rgba(254, 242, 242, 1); /* red-50 */
+  --icon-color-info-primary: rgba(37, 99, 235, 1); /* blue-600 */
+  --icon-color-info-secondary: rgba(59, 130, 246, 1); /* blue-500 */
+  --icon-color-info-inverse: rgba(239, 246, 255, 1); /* blue-50 */
+}
