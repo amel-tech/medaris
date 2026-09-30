@@ -103,6 +103,14 @@ out, replaced with their integration-branch versions (`git show
 origin/argedikas/medaris-team-wave:<path>`) or deleted, the suite run, and
 the copies restored. With the change removed 15 of 29 tests failed (the rest
 are guards and the reader's own tests); after restoring, 29/29 passed.
+The summary lines of `npx vitest run --reporter=verbose` in `libs/tokens`,
+verbatim from that run:
+
+```console
+Tests  15 failed | 14 passed (29)    # change removed
+Tests  29 passed (29)                # restored
+```
+
 Mutations, each run then reverted:
 
 | # | Mutation | Red |
@@ -120,10 +128,44 @@ Mutations, each run then reverted:
 | M12 | `--shadow-sm` in the Figma spelling | `tailwind-defaults:112`, `:124` |
 | M13 | `--shadow-md` spread changed | `figma-fidelity:80`, `tailwind-defaults:112`, `:124` |
 
-Beyond the suite, measured by hand: `pnpm nx run tokens:process` on the
-checkout leaves `git status` clean; and the four Next apps were built with
-the old entry point and with the new one — all five emitted CSS chunks are
-byte-identical (sha256).
+Beyond the suite, two measurements by hand, re-run on `98d8147f` with
+`E="env -u NODE_ENV -u DB_PORT -u POSTGRES_DB -u POSTGRES_USER -u POSTGRES_PASSWORD -u DATABASE_URL"`:
+
+**`tokens:process` on the checkout leaves the tree clean.**
+
+```console
+$ env -u NODE_ENV pnpm nx run tokens:process --skip-nx-cache
+📋 Found 611 tokens
+📋 Found 70 semantic tokens to process
+✅ Successfully processed tokens
+📝 Output written to: theme/main.css
+🎯 Generated 70 semantic tokens with direct values
+ NX   Successfully ran target process for project tokens
+$ git status --short
+$
+```
+
+**The four Next apps compile to byte-identical CSS with the old and the new
+entry point.** "After" is the branch as committed; "before" is the same
+checkout with `libs/tokens/package.json` taken from `950ffbc9` (so
+`./css` → `./theme/main.css`) and the six new `theme/*.css` files deleted,
+restored afterwards with `git checkout -- libs/tokens/package.json
+libs/tokens/theme`.
+
+```console
+$ $E pnpm nx run-many -t build -p tedris-web,nizam-web,nazir-web,landing-web --skip-nx-cache
+ NX   Successfully ran target build for 4 projects and 8 tasks they depend on
+$ sha256sum apps/{tedris,nizam,nazir,landing}/.next/static/chunks/*.css > after.sha    # branch as committed
+$ sha256sum apps/{tedris,nizam,nazir,landing}/.next/static/chunks/*.css > before.sha   # old entry point, same build command
+$ cat before.sha
+df38c094e967a2fba9ba3e4ae6e2ad9be4f744a233f5f6a7faaac8b24424b5ea  apps/tedris/.next/static/chunks/3rjamrw_riyon.css
+e4c5e79dd0190b34de30b0330d8bb820b3fb4372a55e916e38b53bcb864e4bb2  apps/nizam/.next/static/chunks/3yikju798ii2n.css
+837636774ce36de8acb7b9c73db702d6078e43fcae33573410d144aa5ef1fb39  apps/nazir/.next/static/chunks/0w_4rtm6n4wh6.css
+9523db8338444e6ac1f81fb770ea73ec6e13cfbb47e58cee3ab16048c0764885  apps/landing/.next/static/chunks/02lmvz7rslnel.css
+7ecc489692ccc79cc6ffbe145cf2e03ab5dacce7af7007541add8855f52d5ae5  apps/landing/.next/static/chunks/1u_nnvo-p7k77.css
+$ diff before.sha after.sha && echo "diff: identical"
+diff: identical
+```
 
 ## 5. Coverage
 
@@ -159,16 +201,42 @@ Node-major reasoning as `libs/env`. No existing threshold changed.
 
 ## 7. Gate
 
-Run in this worktree with `NODE_ENV` and the DB variables unset:
+Re-run on `98d8147f` with the same `$E` prefix; the summary line of each
+command, verbatim:
 
-| Target | Result |
-| -- | -- |
-| typecheck | 17 projects green |
-| test | 6 projects green: tokens 29, env 57, common 57, teskilat 25, tedrisat 396 (25 files, 9 e2e); tedris-web has no tests |
-| build | 8 projects green |
-| lint | 17 projects green |
-| module-boundaries | 17 projects green |
-| `node tools/ci/assert-release-config.mjs` | green |
+```console
+$ $E pnpm nx run-many -t typecheck --skip-nx-cache
+ NX   Successfully ran target typecheck for 17 projects and 2 tasks they depend on
+$ $E pnpm nx run-many -t lint --skip-nx-cache
+ NX   Successfully ran target lint for 17 projects
+$ $E pnpm nx run-many -t module-boundaries --skip-nx-cache
+ NX   Successfully ran target module-boundaries for 17 projects
+$ $E pnpm nx run-many -t build --skip-nx-cache
+ NX   Successfully ran target build for 8 projects and 7 tasks they depend on
+$ node tools/ci/assert-release-config.mjs
+✔ release config: 7 components, one config, one manifest, chain intact.
+$ flock ~/.cache/medaris-test.lock $E pnpm nx run-many -t test --skip-nx-cache --output-style=static \
+    | grep -E "^> nx run .*:test|Test Files|^\s+Tests |Successfully ran"
+> nx run tokens:test
+ Test Files  6 passed (6)
+      Tests  29 passed (29)
+> nx run env:test
+ Test Files  2 passed (2)
+      Tests  57 passed (57)
+> nx run tedris-web:test
+> nx run common:test
+ Test Files  6 passed (6)
+      Tests  57 passed (57)
+> nx run teskilat:test
+ Test Files  5 passed (5)
+      Tests  25 passed (25)
+> nx run tedrisat:test
+ Test Files  25 passed (25)
+      Tests  396 passed (396)
+ NX   Successfully ran target test for 6 projects and 2 tasks they depend on
+```
+
+`tedris-web:test` prints `Tests not implemented` and has no suite.
 
 ## 8. Review
 
