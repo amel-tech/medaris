@@ -2,10 +2,10 @@ One week of a programme: a heading holding a button that opens the week's lesson
 
 ```jsx
 <div className="mds-weeks">
-  <WeekAccordion week={4} title="Mezîd fiiller ve bablar" state="done" meta="2 ders" />
+  <WeekAccordion week={4} title="Mezîd fiiller ve bablar" state="done" meta="2 celse" />
   <WeekAccordion week={5} title="Mehmûz fiiller" state="active"
     summary={<>Hemzeli fiiller: <span lang="ar" dir="rtl" className="mds-arabic">قرأ</span> ve <span lang="ar" dir="rtl" className="mds-arabic">أخذ</span>; emirde hemzesi düşen üç fiil.</>}>
-    <LessonRow title="Mehmûz fiiller: kara’e ve emr-i hâzır" type="live" state="current" href="/oturum/5" />
+    <LessonRow title="Mehmûz fiiller: kara’e ve emr-i hâzır" type="live" state="current" href="/celse/5" />
   </WeekAccordion>
   <WeekAccordion week={6} title="Muzâaf fiiller" opensOn="2026-10-10" />
 </div>
@@ -23,7 +23,7 @@ One week of a programme: a heading holding a button that opens the week's lesson
           <span class="mds-week__eyebrow"><span class="mds-eyebrow">Hafta 5</span><span class="mds-badge mds-badge--brand">Devam ediyor</span></span>
           <span class="mds-week__title" dir="auto">Mehmûz fiiller</span>
         </span>
-        <span class="mds-week__meta"><span><span>2 ders</span><span class="mds-sep" aria-hidden="true">·</span></span><span>105 dk</span></span>
+        <span class="mds-week__meta"><span><span>2 celse</span><span class="mds-sep" aria-hidden="true">·</span></span><span>105 dk</span></span>
         <span class="mds-week__chevron" aria-hidden="true"></span>
       </button>
     </h3>
@@ -70,5 +70,5 @@ MDS-DOM-05, MDS-A11Y-01, MDS-A11Y-02, MDS-A11Y-03, MDS-A11Y-08, MDS-COL-03, MDS-
 
 - Never lock a week shut: `access="locked"` locks the lessons' bodies and links, not the programme.
 - "Hafta N" is an eyebrow, uppercased by CSS under `lang="tr"`.
-- `meta` joins its parts with `.mds-sep`, never a typed "·": "2 ders", "105 dk". Each part but the last shares a `<span>` with the separator after it, so a wrapped line ends on the dot and never starts with it.
+- `meta` joins its parts with `.mds-sep`, never a typed "·": "2 celse", "105 dk". Each part but the last shares a `<span>` with the separator after it, so a wrapped line ends on the dot and never starts with it.
 - The children are LessonRow markup only; the week wraps them in the `ol`.

@@ -45,5 +45,5 @@ html[data-density="compact"], [data-density="compact"] {
   --size-control-mini: 24px;     /* in-row actions, a control beside a badge */
   --size-control-small: 32px;
   --size-control-regular: 40px;  /* 32 in a compact region */
-  --size-control-large: 48px;    /* "Derse katıl", "Giriş yap", the sticky enrol card */
+  --size-control-large: 48px;    /* "Celseye katıl", "Giriş yap", the sticky enrol card */
 }

@@ -3,7 +3,7 @@ A label, one control, and one line under it: the help, or the error that replace
 ```jsx
 <p className="mds-caption">* zorunlu alan</p>
 
-<Field label="Kurs adı" required help="Talebeler bu adı görür.">
+<Field label="Ders adı" required help="Talebeler bu adı görür.">
   <Input defaultValue="Emsile ve Bina" />
 </Field>
 
@@ -20,7 +20,7 @@ A label, one control, and one line under it: the help, or the error that replace
 
 ```html
 <div class="mds-field">
-  <label class="mds-label" for="f1">Kurs adı<span class="mds-required" aria-hidden="true">*</span></label>
+  <label class="mds-label" for="f1">Ders adı<span class="mds-required" aria-hidden="true">*</span></label>
   <input class="mds-input" id="f1" required aria-required="true" aria-describedby="f1-h">
   <span class="mds-help" id="f1-h">Talebeler bu adı görür.</span>
 </div>

@@ -1,30 +1,30 @@
 Heights 24 / 32 / 40 / 48. `regular` unless there is a reason. The primary action is written in ink: an ink button by day, a paper button by night.
 
 ```jsx
-<Button>Kurs oluştur</Button>
+<Button>Ders oluştur</Button>
 <Button variant="secondary" size="small" iconLeft={<Icon name="plus" size="sm" />}>Talebe ekle</Button>
 <Button variant="ghost">Vazgeç</Button>
-<Button variant="outline" href="/kurslar/emsile">Kursu gör</Button>
+<Button variant="outline" href="/dersler/emsile">Dersi gör</Button>
 <Button type="submit" loading={saving}>Kaydet</Button>
 <Button variant="destructive">Kalıcı olarak sil</Button>
-<Button size="large" fullWidth>Kursa kaydol</Button>
+<Button size="large" fullWidth>Derse kaydol</Button>
 ```
 
 ## Anatomy (HTML)
 
 ```html
-<button type="button" class="mds-btn mds-btn--regular mds-btn--primary">Kurs oluştur</button>
+<button type="button" class="mds-btn mds-btn--regular mds-btn--primary">Ders oluştur</button>
 
 <!-- href: a real link; disabled, it drops href and keeps role="link" -->
-<a class="mds-btn mds-btn--regular mds-btn--outline" href="/kurslar/emsile">Kursu gör</a>
-<a class="mds-btn mds-btn--regular mds-btn--outline" role="link" aria-disabled="true">Kursu gör</a>
+<a class="mds-btn mds-btn--regular mds-btn--outline" href="/dersler/emsile">Dersi gör</a>
+<a class="mds-btn mds-btn--regular mds-btn--outline" role="link" aria-disabled="true">Dersi gör</a>
 
 <!-- loading: the spinner takes iconLeft's place; the status region is a sibling -->
 <button type="submit" class="mds-btn mds-btn--regular mds-btn--primary" aria-disabled="true" aria-busy="true"><span class="mds-btn__spinner" aria-hidden="true"></span>Kaydet</button>
 <span class="mds-visually-hidden" role="status">Yükleniyor</span>
 
 <!-- fullWidth -->
-<button type="button" class="mds-btn mds-btn--large mds-btn--primary mds-btn--full">Kursa kaydol</button>
+<button type="button" class="mds-btn mds-btn--large mds-btn--primary mds-btn--full">Derse kaydol</button>
 ```
 
 `.mds-btn`, one size (`--mini`, `--small`, `--regular`, `--large`), one variant (`--primary`, `--secondary`, `--outline`, `--ghost`, `--destructive`, `--link`), and `--full` for the whole inline size. `iconLeft` and `iconRight` take an `<Icon size="sm">` from the caller. The spinner is the sprite's `spinner` as a CSS mask on `.mds-btn__spinner`, turned by `mds-spin`. The status span renders whenever the caller passes `loading`, empty until the button is busy. An icon-only button is `IconButton`.
@@ -74,8 +74,8 @@ Every pair above is in `contrast.md`, in both themes: text at least 4.5:1, the o
 MDS-COL-01, MDS-COL-08, MDS-COMP-03, MDS-COMP-04, MDS-COMP-05, MDS-MOD-01, MDS-A11Y-01, MDS-A11Y-05, MDS-A11Y-07, MDS-A11Y-08, MDS-A11Y-11, MDS-VOICE-02, MDS-SHAPE-01, MDS-SHAPE-02, MDS-TYPE-02, MDS-MOT-01, MDS-ICON-01.
 
 - One `primary` per surface. It is the one ink button, so the eye finds it first.
-- `destructive` is for "Kalıcı olarak sil" alone, after a ghost "Vazgeç". "Gizle", "Yasakla" and "Kurstan çıkar" are `primary` with that verb.
-- A label starts with its verb: "Derse katıl", "Kursa kaydol", "Talebe ekle".
+- `destructive` is for "Kalıcı olarak sil" alone, after a ghost "Vazgeç". "Gizle", "Yasakla" and "Dersten çıkar" are `primary` with that verb.
+- A label starts with its verb: "Celseye katıl", "Derse kaydol", "Talebe ekle".
 - `mini` is the in-row size: table actions, a control beside a badge.
 - `link` is a text action in a card head or footer ("Tümünü gör"), never the page's main action.
 - `fullWidth` is for the phone layout and the sticky enrol card, not for a desktop form.

@@ -241,7 +241,7 @@ a.mds-lesson-row__title::after { content: ""; position: absolute; inset: 0; bord
 }
 
 /* ---------------------------------------------------------------- Session join */
-/* The talebe's card for one oturum (MDS-DOM-04). The one ink button in the column is "Derse katıl". */
+/* The talebe's card for one celse (MDS-DOM-04). The one ink button in the column is "Celseye katıl". */
 .mds-join {
   display: flex;
   flex-direction: column;

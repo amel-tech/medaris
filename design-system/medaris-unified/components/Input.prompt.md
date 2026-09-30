@@ -17,7 +17,7 @@ A 40px box (32 in a compact region) with a 6px radius and a 1px ink edge at 3:1 
   <Input type="email" readOnly value="abdulhamit@medaris.org" />
 </Field>
 
-<Input type="search" aria-label="Kurs veya müderris ara" placeholder="Kurs veya müderris ara" leading={<Icon name="search" size="sm" />} />
+<Input type="search" aria-label="Ders veya müderris ara" placeholder="Ders veya müderris ara" leading={<Icon name="search" size="sm" />} />
 ```
 
 ## Anatomy (HTML)
@@ -33,7 +33,7 @@ A 40px box (32 in a compact region) with a 6px radius and a 1px ink edge at 3:1 
 
 <span class="mds-input-group">
   <span class="mds-input-group__leading" aria-hidden="true"><svg class="mds-icon mds-icon--sm">…</svg></span>
-  <input class="mds-input" type="search" aria-label="Kurs veya müderris ara">
+  <input class="mds-input" type="search" aria-label="Ders veya müderris ara">
 </span>
 <span class="mds-input-group">
   <input class="mds-input" type="number" id="f2">

@@ -51,4 +51,4 @@ MDS-A11Y-01, MDS-A11Y-02, MDS-A11Y-05, MDS-A11Y-06, MDS-A11Y-07, MDS-A11Y-08, MD
 - A checkbox waits for a submit. A setting that applies the moment it changes is a Switch.
 - Bordered rows stack in the settings column, never inline in the main form flow.
 - The description is one neutral sentence. The icâzet row promises nothing while SPEC-D3-09 is open.
-- A choice this viewer cannot make is absent, not disabled. When a choice is disabled for everyone, its description says why ("Kurs yayında olduğu için değiştirilemez.").
+- A choice this viewer cannot make is absent, not disabled. When a choice is disabled for everyone, its description says why ("Ders yayında olduğu için değiştirilemez.").

@@ -7,13 +7,13 @@ A modal on the native `<dialog>`: a confirmation, a short form, or the full müf
   kind="alert"
   form
   eyebrow="Nûruosmaniye Köşkü"
-  title="Kursu gizle"
+  title="Dersi gizle"
   footer={<>
     <Button variant="ghost" value="cancel">Vazgeç</Button>
     <Button type="submit" value="confirm">Gizle</Button>
   </>}
 >
-  <p><strong><bdi>Bina ve İzhar Şerhi</bdi></strong> talebelerden ve köşk sayfasından gizlenecek. 35 talebe bu kursun oturumlarına ve ders kayıtlarına erişemeyecek.</p>
+  <p><strong><bdi>Bina ve İzhar Şerhi</bdi></strong> talebelerden ve köşk sayfasından gizlenecek. 35 talebe bu dersin celselerine ve ders kayıtlarına erişemeyecek.</p>
   <p>Hiçbir şey silinmez; Arşiv’den geri alabilirsiniz.</p>
 </Dialog>
 
@@ -35,7 +35,7 @@ A modal on the native `<dialog>`: a confirmation, a short form, or the full müf
     <div class="mds-dialog__header">
       <div class="mds-dialog__heading">
         <p class="mds-eyebrow" dir="auto">Nûruosmaniye Köşkü</p>
-        <h2 class="mds-dialog__title" id="d1-t" dir="auto">Kursu gizle</h2>
+        <h2 class="mds-dialog__title" id="d1-t" dir="auto">Dersi gizle</h2>
       </div>
       <div class="mds-dialog__actions">
         <!-- headerActions -->

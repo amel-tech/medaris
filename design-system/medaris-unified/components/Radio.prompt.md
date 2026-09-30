@@ -4,7 +4,7 @@ One native 18px radio inside its own label. A set of radios is a `RadioGroup`; u
 <fieldset className="mds-choice-group">
   <legend className="mds-label">Ders kaydı kimlere açık</legend>
   <Radio name="kayit" value="kayitli" label="Yalnızca kayıtlı talebeler" defaultChecked />
-  <Radio name="kayit" value="herkes" label="Herkese açık" description="Kursa kayıtlı olmayanlar da bu ders kaydını izleyebilir." />
+  <Radio name="kayit" value="herkes" label="Herkese açık" description="Derse kayıtlı olmayanlar da bu ders kaydını izleyebilir." />
 </fieldset>
 ```
 

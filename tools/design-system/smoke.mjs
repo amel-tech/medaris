@@ -48,9 +48,9 @@ const SAMPLES = {
   Dialog: () => ({
     open: true,
     onClose: () => {},
-    title: "Kursu gizle",
+    title: "Dersi gizle",
     kind: "alert",
-    children: "Kurs talebelerden gizlenecek.",
+    children: "Ders talebelerden gizlenecek.",
   }),
   Field: (ns) => ({
     label: "E-posta",
@@ -64,10 +64,10 @@ const SAMPLES = {
     legend: "Yasağın kapsamı",
     name: "kapsam",
     options: [
-      { value: "kurs", label: "Yalnızca bu kurs" },
+      { value: "ders", label: "Yalnızca bu ders" },
       { value: "kosk", label: "Köşkten de yasakla", description: "Tek cümle." },
     ],
-    defaultValue: "kurs",
+    defaultValue: "ders",
   }),
   Select: () => ({ options: ["Türkçe", { value: "en", label: "English" }] }),
   Switch: () => ({ label: "Herkese açık" }),
@@ -77,19 +77,19 @@ const SAMPLES = {
     children: "Aradığın sayfa taşınmış ya da kaldırılmış olabilir.",
   }),
   Textarea: () => ({ rows: 3 }),
-  Toast: () => ({ title: "Kurs gizlendi", onClose: () => {} }),
+  Toast: () => ({ title: "Ders gizlendi", onClose: () => {} }),
   Stat: () => ({ label: "Talebe", value: 42 }),
-  Progress: () => ({ label: "Kurs ilerlemesi", value: 72, showValue: true }),
+  Progress: () => ({ label: "Ders ilerlemesi", value: 72, showValue: true }),
   Tooltip: () => ({
     label: "Bağlantıyı kopyala",
     children: React.createElement("button", { type: "button" }, "Kopyala"),
   }),
   AppBar: (ns) => ({
-    title: "Oturumlar",
+    title: "Celseler",
     children: React.createElement(
       ns.NavItem ?? "a",
-      { href: "/oturumlar" },
-      "Oturumlar"
+      { href: "/celseler" },
+      "Celseler"
     ),
   }),
   Breadcrumb: () => ({
@@ -105,15 +105,15 @@ const SAMPLES = {
   Tabs: () => ({
     tabs: [{ value: "dersler", label: "Dersler", count: 12 }],
     value: "dersler",
-    label: "Kurs bölümleri",
-    idBase: "kurs",
+    label: "Ders bölümleri",
+    idBase: "ders",
   }),
   CoverPattern: () => ({ seed: "bina-ve-izhar-serhi", label: "Sarf" }),
   LessonRow: () => ({
     title: "Beşinci babın şerhi",
     type: "live",
     state: "current",
-    href: "/oturum/5",
+    href: "/celse/5",
     startsAt: "2026-10-03T21:00:00+03:00",
     timeZone: "Europe/Berlin",
     courseTimeZone: "Europe/Istanbul",

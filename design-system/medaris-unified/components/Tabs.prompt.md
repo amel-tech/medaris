@@ -2,34 +2,34 @@ A row of tabs over a hairline. The selected tab is ink at 600 over a 2px lâcive
 
 ```jsx
 <Tabs
-  label="Kurs bölümleri"
-  idBase="kurs"
+  label="Ders bölümleri"
+  idBase="ders"
   value={tab}
   onChange={setTab}
   tabs={[
     { value: 'genel', label: 'Genel' },
     { value: 'talebeler', label: 'Talebeler', count: 28 },
-    { value: 'oturumlar', label: 'Oturumlar', count: 12 },
+    { value: 'celseler', label: 'Celseler', count: 12 },
     { value: 'kayitlar', label: 'Ders kayıtları', count: 4 },
   ]}
 />
-<div role="tabpanel" id={`kurs-panel-${tab}`} aria-labelledby={`kurs-tab-${tab}`} tabIndex={0}>…</div>
+<div role="tabpanel" id={`ders-panel-${tab}`} aria-labelledby={`ders-tab-${tab}`} tabIndex={0}>…</div>
 ```
 
 ## Anatomy (HTML)
 
 ```html
 <!-- mode="tabs": one object cut into views -->
-<div class="mds-tabs" role="tablist" aria-label="Kurs bölümleri">
-  <button type="button" class="mds-tab" role="tab" id="kurs-tab-genel" aria-controls="kurs-panel-genel" aria-selected="true" tabindex="0">Genel</button>
-  <button type="button" class="mds-tab" role="tab" id="kurs-tab-talebeler" aria-controls="kurs-panel-talebeler" aria-selected="false" tabindex="-1">Talebeler<span class="mds-tab__count">28</span></button>
+<div class="mds-tabs" role="tablist" aria-label="Ders bölümleri">
+  <button type="button" class="mds-tab" role="tab" id="ders-tab-genel" aria-controls="ders-panel-genel" aria-selected="true" tabindex="0">Genel</button>
+  <button type="button" class="mds-tab" role="tab" id="ders-tab-talebeler" aria-controls="ders-panel-talebeler" aria-selected="false" tabindex="-1">Talebeler<span class="mds-tab__count">28</span></button>
 </div>
-<div role="tabpanel" id="kurs-panel-genel" aria-labelledby="kurs-tab-genel" tabindex="0">…</div>
+<div role="tabpanel" id="ders-panel-genel" aria-labelledby="ders-tab-genel" tabindex="0">…</div>
 
 <!-- mode="links": each tab is its own page -->
-<nav class="mds-tabs" aria-label="Kurs bölümleri">
-  <a class="mds-tab" href="/kurslar/emsile" aria-current="page">Genel</a>
-  <a class="mds-tab" href="/kurslar/emsile/talebeler">Talebeler<span class="mds-tab__count">28</span></a>
+<nav class="mds-tabs" aria-label="Ders bölümleri">
+  <a class="mds-tab" href="/dersler/emsile" aria-current="page">Genel</a>
+  <a class="mds-tab" href="/dersler/emsile/talebeler">Talebeler<span class="mds-tab__count">28</span></a>
 </nav>
 ```
 
@@ -62,5 +62,5 @@ MDS-A11Y-01, MDS-A11Y-02, MDS-A11Y-03, MDS-A11Y-04, MDS-A11Y-08, MDS-COL-01, MDS
 
 - Tabs cut one object into views. If the panels are different pages, use `mode="links"`; if they are different objects, they belong in the sidebar.
 - Four tabs is the practical ceiling at 390. Beyond that the row scrolls, and a scrolling row hides its own options.
-- A breadcrumb and tabs on one screen is normal: the breadcrumb says which kurs, and the tabs say which part of it.
+- A breadcrumb and tabs on one screen is normal: the breadcrumb says which ders, and the tabs say which part of it.
 - Nizam's lists filter by state with tabs and counts ("Yayında 4", "Taslak 2"). Choice chips filter by subject; they never stand in for tabs.

@@ -30,13 +30,13 @@
       { "state": "HIDDEN", "label": "Gizli", "badge": "ghost", "icon": "eyeOff", "audience": "management" }
     ],
     "enrolment.talebe": [
-      { "state": "SIGNED_OUT", "label": null, "cta": "Başvurmak için giriş yap", "locked": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Kursa kaydolduğunda görebilirsin." },
-      { "state": "NONE", "label": null, "cta": { "approval": "Kayıt başvurusu yap", "direct": "Kursa kaydol" }, "locked": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Kursa kaydolduğunda görebilirsin.", "note": "also the state after a rejected application: the API deletes the pending enrolment, so the talebe may apply again" },
-      { "state": "PENDING", "label": "Onay bekliyor", "badge": "warning", "icon": "clock", "cta": null, "locked": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Kursa kaydolduğunda görebilirsin." },
+      { "state": "SIGNED_OUT", "label": null, "cta": "Başvurmak için giriş yap", "locked": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Derse kaydolduğunda görebilirsin." },
+      { "state": "NONE", "label": null, "cta": { "approval": "Kayıt başvurusu yap", "direct": "Derse kaydol" }, "locked": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Derse kaydolduğunda görebilirsin.", "note": "also the state after a rejected application: the API deletes the pending enrolment, so the talebe may apply again" },
+      { "state": "PENDING", "label": "Onay bekliyor", "badge": "warning", "icon": "clock", "cta": null, "locked": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Derse kaydolduğunda görebilirsin." },
       { "state": "ENROLLED", "label": "Devam ediyor", "badge": "brand", "cta": "Derse devam et", "shows": "the next session" },
       { "state": "COMPLETED", "label": "Tamamlandı", "badge": "success", "icon": "check" },
-      { "state": "BANNED", "label": null, "text": "Bu kursa erişimin kaldırıldı." },
-      { "state": "PREVIEW", "audience": "management", "label": "Önizleme", "badge": "outline", "text": "Kurs henüz yayında değil; bu önizlemeyi yalnızca yöneticiler görür.", "draft": true }
+      { "state": "BANNED", "label": null, "text": "Bu derse erişimin kaldırıldı." },
+      { "state": "PREVIEW", "audience": "management", "label": "Önizleme", "badge": "outline", "text": "Ders henüz yayında değil; bu önizlemeyi yalnızca yöneticiler görür.", "draft": true }
     ],
     "enrolment.management": [
       { "state": "PENDING", "label": "Başvuru", "badge": "warning", "icon": "clock", "count": "{n} onay bekliyor" },

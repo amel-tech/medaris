@@ -34,10 +34,10 @@ body{padding:var(--space-8)}
 <thead><tr><td></td><th scope="col" class="mds-eyebrow">Olağan</th><th scope="col" class="mds-eyebrow">Üzerinde</th><th scope="col" class="mds-eyebrow">Odakta</th><th scope="col" class="mds-eyebrow">Pasif</th></tr></thead>
 <tbody>
 <tr><th scope="row" class="k" lang="en">primary</th>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--primary">Oturumu kaydet</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--primary is-hover">Oturumu kaydet</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--primary is-focus">Oturumu kaydet</button></td>
-<td><button type="button" class="mds-btn mds-btn--regular mds-btn--primary" disabled>Oturumu kaydet</button></td></tr>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--primary">Celseyi kaydet</button></td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--primary is-hover">Celseyi kaydet</button></td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--primary is-focus">Celseyi kaydet</button></td>
+<td><button type="button" class="mds-btn mds-btn--regular mds-btn--primary" disabled>Celseyi kaydet</button></td></tr>
 <tr><th scope="row" class="k" lang="en">secondary</th>
 <td><button type="button" class="mds-btn mds-btn--regular mds-btn--secondary">Talebe ekle</button></td>
 <td><button type="button" class="mds-btn mds-btn--regular mds-btn--secondary is-hover">Talebe ekle</button></td>
@@ -72,16 +72,16 @@ body{padding:var(--space-8)}
 <div class="row">
 <figure class="fig"><button type="button" class="mds-btn mds-btn--mini mds-btn--outline">Onayla</button><figcaption class="mds-caption k" lang="en">mini · 24</figcaption></figure>
 <figure class="fig"><button type="button" class="mds-btn mds-btn--small mds-btn--secondary"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#plus"/></svg>Talebe ekle</button><figcaption class="mds-caption k" lang="en">small · 32</figcaption></figure>
-<figure class="fig"><button type="button" class="mds-btn mds-btn--regular mds-btn--primary"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#plus"/></svg>Kurs oluştur</button><figcaption class="mds-caption k" lang="en">regular · 40</figcaption></figure>
-<figure class="fig"><button type="button" class="mds-btn mds-btn--large mds-btn--primary">Derse katıl</button><figcaption class="mds-caption k" lang="en">large · 48</figcaption></figure>
+<figure class="fig"><button type="button" class="mds-btn mds-btn--regular mds-btn--primary"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#plus"/></svg>Ders oluştur</button><figcaption class="mds-caption k" lang="en">regular · 40</figcaption></figure>
+<figure class="fig"><button type="button" class="mds-btn mds-btn--large mds-btn--primary">Celseye katıl</button><figcaption class="mds-caption k" lang="en">large · 48</figcaption></figure>
 </div>
 </section>
 
 <section class="sec">
 <div class="head"><p class="mds-eyebrow">Bağlantı, meşgul, simge</p><p class="mds-caption">Meşgul düğme odağını ve adını korur. Yanındaki durum bölgesi “Yükleniyor” der.</p></div>
 <div class="row">
-<figure class="fig"><a class="mds-btn mds-btn--regular mds-btn--outline" href="#kurs">Kursu gör</a><figcaption class="mds-caption">Bağlantı</figcaption></figure>
-<figure class="fig"><a class="mds-btn mds-btn--regular mds-btn--outline" role="link" aria-disabled="true">Kursu gör</a><figcaption class="mds-caption">Pasif bağlantı</figcaption></figure>
+<figure class="fig"><a class="mds-btn mds-btn--regular mds-btn--outline" href="#ders">Dersi gör</a><figcaption class="mds-caption">Bağlantı</figcaption></figure>
+<figure class="fig"><a class="mds-btn mds-btn--regular mds-btn--outline" role="link" aria-disabled="true">Dersi gör</a><figcaption class="mds-caption">Pasif bağlantı</figcaption></figure>
 <figure class="fig"><span><button type="submit" class="mds-btn mds-btn--regular mds-btn--primary" aria-disabled="true" aria-busy="true"><span class="mds-btn__spinner" aria-hidden="true"></span>Kaydet</button><span class="mds-visually-hidden" role="status">Yükleniyor</span></span><figcaption class="mds-caption">Meşgul</figcaption></figure>
 <figure class="fig"><button type="button" class="mds-btn mds-btn--regular mds-btn--outline"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#download"/></svg>Listeyi indir</button><figcaption class="mds-caption">Simge başta</figcaption></figure>
 <figure class="fig"><a class="mds-btn mds-btn--regular mds-btn--secondary" href="#ders">Derse devam et<svg class="mds-icon mds-icon--sm mds-icon--directional" aria-hidden="true"><use href="../assets/icons.svg#arrowRight"/></svg></a><figcaption class="mds-caption">Simge sonda</figcaption></figure>
@@ -106,15 +106,15 @@ body{padding:var(--space-8)}
 <div class="col">
 <div class="head"><p class="mds-eyebrow">Onay altlığı</p><p class="mds-caption">Geri alınabilen işlem birincil düğmeyle onaylanır. Kırmızı yalnızca kalıcı silmedir.</p></div>
 <div class="foot">
-<div><p class="mds-caption">Kursu gizle</p><button type="button" class="mds-btn mds-btn--regular mds-btn--ghost">Vazgeç</button><button type="button" class="mds-btn mds-btn--regular mds-btn--primary">Gizle</button></div>
-<div><p class="mds-caption">Kursu kalıcı olarak sil</p><button type="button" class="mds-btn mds-btn--regular mds-btn--ghost">Vazgeç</button><button type="button" class="mds-btn mds-btn--regular mds-btn--destructive">Kalıcı olarak sil</button></div>
+<div><p class="mds-caption">Dersi gizle</p><button type="button" class="mds-btn mds-btn--regular mds-btn--ghost">Vazgeç</button><button type="button" class="mds-btn mds-btn--regular mds-btn--primary">Gizle</button></div>
+<div><p class="mds-caption">Dersi kalıcı olarak sil</p><button type="button" class="mds-btn mds-btn--regular mds-btn--ghost">Vazgeç</button><button type="button" class="mds-btn mds-btn--regular mds-btn--destructive">Kalıcı olarak sil</button></div>
 </div>
 </div>
 <div class="col">
 <div class="head"><p class="mds-eyebrow">Tam genişlik</p><p class="mds-caption">Telefondaki kayıt kartı, 390 genişlikte.</p></div>
 <div class="enrol">
 <div><h2 class="mds-h5">Emsile ve Bina</h2><p class="mds-caption">Sarf · 12 hafta · Cmt 21:00</p></div>
-<button type="button" class="mds-btn mds-btn--large mds-btn--primary mds-btn--full">Kursa kaydol</button>
+<button type="button" class="mds-btn mds-btn--large mds-btn--primary mds-btn--full">Derse kaydol</button>
 </div>
 </div>
 </div>

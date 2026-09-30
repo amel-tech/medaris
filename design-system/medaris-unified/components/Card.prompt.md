@@ -2,11 +2,11 @@ A sheet of paper on the page: the surface fill, a `--border-neutral-subtle` hair
 
 ```jsx
 <Card title="İsâgûcî Şerhi" action={<Badge variant="outline">Taslak</Badge>} density="compact">
-  <p className="mds-card__body">Mantık · 14 hafta · oturum yok</p>
+  <p className="mds-card__body">Mantık · 14 hafta · celse yok</p>
 </Card>
 
 <Card
-  href="/kurslar/emsile-ve-bina"
+  href="/dersler/emsile-ve-bina"
   title="Emsile ve Bina"
   action={<Badge variant="brand">Devam ediyor</Badge>}
   media={<CoverPattern seed={course.id} size="sm" label="الصرف" />}
@@ -24,7 +24,7 @@ A sheet of paper on the page: the surface fill, a `--border-neutral-subtle` hair
     <div class="mds-cover mds-cover--bordo mds-cover--sm"><p class="mds-eyebrow mds-cover__label" lang="ar" dir="rtl">الصرف</p></div>
   </div>
   <div class="mds-card__header">
-    <h3 class="mds-card__title" dir="auto"><a class="mds-card__link" href="/kurslar/emsile-ve-bina">Emsile ve Bina</a></h3>
+    <h3 class="mds-card__title" dir="auto"><a class="mds-card__link" href="/dersler/emsile-ve-bina">Emsile ve Bina</a></h3>
     <span class="mds-badge mds-badge--brand">Devam ediyor</span>
   </div>
   <p class="mds-card__body" dir="auto">Müderris Abdülhamit Karaosmanoğlu</p>

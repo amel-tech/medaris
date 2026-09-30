@@ -5,10 +5,10 @@ A fieldset of radios under a visible legend, every option on screen. A list long
   legend="Yasağın kapsamı"
   name="kapsam"
   bordered
-  defaultValue="kurs"
+  defaultValue="ders"
   options={[
-    { value: 'kurs', label: 'Yalnızca bu kurs', description: 'Talebe bu kursa erişemez.' },
-    { value: 'kosk', label: 'Köşkten de yasakla', description: 'Köşkün bütün kurslarına erişemez.' },
+    { value: 'ders', label: 'Yalnızca bu ders', description: 'Talebe bu derse erişemez.' },
+    { value: 'kosk', label: 'Köşkten de yasakla', description: 'Köşkün bütün derslerine erişemez.' },
     { value: 'medrese', label: 'Medreseden de yasakla', description: 'Medresenin bütün köşklerine erişemez.' },
   ]}
 />
@@ -33,10 +33,10 @@ A fieldset of radios under a visible legend, every option on screen. A list long
 <fieldset class="mds-choice-group">
   <legend class="mds-label">Yasağın kapsamı</legend>
   <label class="mds-choice mds-choice--bordered">
-    <input type="radio" class="mds-radio" name="kapsam" value="kurs" checked aria-labelledby="g1-0-l" aria-describedby="g1-0-d">
+    <input type="radio" class="mds-radio" name="kapsam" value="ders" checked aria-labelledby="g1-0-l" aria-describedby="g1-0-d">
     <span class="mds-choice__text">
-      <span class="mds-choice__label" id="g1-0-l">Yalnızca bu kurs</span>
-      <span class="mds-choice__desc" id="g1-0-d">Talebe bu kursa erişemez.</span>
+      <span class="mds-choice__label" id="g1-0-l">Yalnızca bu ders</span>
+      <span class="mds-choice__desc" id="g1-0-d">Talebe bu derse erişemez.</span>
     </span>
   </label>
   …

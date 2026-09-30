@@ -2,7 +2,7 @@ A 6px track that only ever moves forward, with its name above it. Ezber completi
 
 ```jsx
 <Progress label="Bakara Sûresi" value={72} showValue />
-<Progress label="Kurs ilerlemesi" value={100} showValue />
+<Progress label="Ders ilerlemesi" value={100} showValue />
 <Progress label="Ders kaydı yükleniyor" value={uploaded} showValue />
 ```
 

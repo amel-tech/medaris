@@ -1,6 +1,6 @@
 ---
 name: medaris-design
-description: Use this skill to design or build interfaces for Medaris, the online medrese platform (müderris and talebe, kurslar, dersler, ezber kartları). It holds the tokens, the components, the rules and the Turkish product words of "Mürekkep ve kâğıt" (ink on paper), in a day and a night theme.
+description: Use this skill to design or build interfaces for Medaris, the online medrese platform (müderris and talebe, dersler, haftalar and celseler, ezber kartları). It holds the tokens, the components, the rules and the Turkish product words of "Mürekkep ve kâğıt" (ink on paper), in a day and a night theme.
 user-invocable: true
 ---
 

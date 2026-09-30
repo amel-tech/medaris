@@ -33,7 +33,7 @@ export interface SessionJoinProps extends Omit<React.HTMLAttributes<HTMLElement>
   actions?: React.ReactNode;
   /** locked: lockedReason and the action slot; no link, platform or host */
   access?: 'enrolled' | 'locked';
-  /** default "Bu oturumun bağlantısı kayıtlı talebelere açıktır." */
+  /** default "Bu celsenin bağlantısı kayıtlı talebelere açıktır." */
   lockedReason?: string;
   /** locked: the viewer's one action, from content/status-map.json enrolment.talebe cta; none while pending */
   action?: React.ReactNode;
@@ -49,13 +49,13 @@ export interface SessionJoinProps extends Omit<React.HTMLAttributes<HTMLElement>
   endedLabel?: string;
   /** default "İptal edildi" */
   cancelledLabel?: string;
-  /** default "Bu oturum iptal edildi." */
+  /** default "Bu celse iptal edildi." */
   cancelledText?: string;
   /** default "Bağlantı henüz eklenmedi." */
   noLinkText?: string;
-  /** before the join window; {minutes} is joinWindowMinutes. Default "Katılım, ders başlamadan {minutes} dakika önce açılır." */
+  /** before the join window; {minutes} is joinWindowMinutes. Default "Katılım, celse başlamadan {minutes} dakika önce açılır." */
   joinOpensText?: string;
-  /** default "Derse katıl" */
+  /** default "Celseye katıl" */
   joinLabel?: string;
   /** visually hidden after joinLabel; default " (yeni sekmede açılır)" */
   newTabLabel?: string;

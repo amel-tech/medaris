@@ -2,7 +2,7 @@ The input box grown to rows: at least 96px tall, 1.5 leading, resized only in th
 
 ```jsx
 <Field label="Müderrisin notu">
-  <Textarea rows={4} dir="auto" placeholder="Talebelere derse gelmeden önce ne okumaları gerektiğini yazın." />
+  <Textarea rows={4} dir="auto" placeholder="Talebelere celseye gelmeden önce ne okumaları gerektiğini yazın." />
 </Field>
 
 <Field label="Yasaklama gerekçesi" required error="Bir gerekçe yazın.">

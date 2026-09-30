@@ -2,7 +2,7 @@ Confirms, in one line, something the user just did. It renders inside the app's 
 
 ```jsx
 <Toast
-  title="Kurs gizlendi"
+  title="Ders gizlendi"
   description="Arşiv’den geri alabilirsiniz."
   action={<Button variant="ghost" size="mini" onClick={undo}>Geri al</Button>}
   onClose={() => dismiss(id)}
@@ -21,7 +21,7 @@ Confirms, in one line, something the user just did. It renders inside the app's 
 <div class="mds-toast mds-toast--success">
   <span class="mds-toast__icon" aria-hidden="true"></span>
   <div class="mds-toast__body">
-    <p class="mds-toast__title">Kurs gizlendi</p>
+    <p class="mds-toast__title">Ders gizlendi</p>
     <p class="mds-toast__desc">Arşiv’den geri alabilirsiniz.</p> <!-- description -->
     <div class="mds-toast__action"><button type="button" class="mds-btn mds-btn--mini mds-btn--ghost">Geri al</button></div>
   </div>

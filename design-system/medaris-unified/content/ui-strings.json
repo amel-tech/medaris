@@ -34,15 +34,15 @@
     { "component": "SessionJoin", "prop": "liveLabel", "default": "Şu an canlı", "note": "the live badge (content/status-map.json session LIVE)" },
     { "component": "SessionJoin", "prop": "endedLabel", "default": "Sona erdi", "note": "the ghost badge (session ENDED)" },
     { "component": "SessionJoin", "prop": "cancelledLabel", "default": "İptal edildi", "note": "the outline badge (session CANCELLED)" },
-    { "component": "SessionJoin", "prop": "cancelledText", "default": "Bu oturum iptal edildi.", "note": "the neutral line where the button would be" },
+    { "component": "SessionJoin", "prop": "cancelledText", "default": "Bu celse iptal edildi.", "note": "the neutral line where the button would be" },
     { "component": "SessionJoin", "prop": "noLinkText", "default": "Bağlantı henüz eklenmedi.", "note": "upcoming or live with no meeting link" },
-    { "component": "SessionJoin", "prop": "joinOpensText", "default": "Katılım, ders başlamadan {minutes} dakika önce açılır.", "note": "upcoming, before the join window; {minutes} is joinWindowMinutes (10, a draft rule)" },
-    { "component": "SessionJoin", "prop": "joinLabel", "default": "Derse katıl", "note": "the primary join link (MDS-DOM-04); named, \"{Platform} ile katıl\"" },
+    { "component": "SessionJoin", "prop": "joinOpensText", "default": "Katılım, celse başlamadan {minutes} dakika önce açılır.", "note": "upcoming, before the join window; {minutes} is joinWindowMinutes (10, a draft rule)" },
+    { "component": "SessionJoin", "prop": "joinLabel", "default": "Celseye katıl", "note": "the primary join link (MDS-DOM-04); named, \"{Platform} ile katıl\"" },
     { "component": "SessionJoin", "prop": "newTabLabel", "default": " (yeni sekmede açılır)", "note": "visually hidden after joinLabel: the link opens a new tab" },
     { "component": "SessionJoin", "prop": "revealLabel", "default": "Bağlantıyı göster", "note": "the summary of the disclosure that holds the meeting link" },
     { "component": "SessionJoin", "prop": "linkUpdatedText", "default": "Bağlantı {when} güncellendi.", "note": "within 24 hours of linkUpdatedAt; {when} is \"dün\" or \"bugün\" from Intl.RelativeTimeFormat numeric:'auto'" },
     { "component": "SessionJoin", "prop": "recordingsLabel", "default": "Ders kayıtlarına git", "note": "ended, with recordingsHref" },
-    { "component": "SessionJoin", "prop": "lockedReason", "default": "Bu oturumun bağlantısı kayıtlı talebelere açıktır.", "note": "locked; followed by the action slot from content/status-map.json enrolment.talebe cta" },
+    { "component": "SessionJoin", "prop": "lockedReason", "default": "Bu celsenin bağlantısı kayıtlı talebelere açıktır.", "note": "locked; followed by the action slot from content/status-map.json enrolment.talebe cta" },
     { "component": "SessionJoin", "prop": "platformLabel", "default": "google-meet: Google Meet · zoom: Zoom · jitsi: Jitsi Meet · unknown: Bilinmeyen platform", "note": "the chip's text, from content/meeting-platforms.json" },
     { "component": "SessionJoin", "prop": "localTimeLabel", "default": "senin saatinle", "note": "as LessonRow; Nizam \"sizin saatinizle\"" },
     { "component": "SessionJoin", "prop": "minuteUnit", "default": "dk", "note": "after the duration: \"60 dk\"" },
@@ -55,6 +55,6 @@
     { "component": "WeekAccordion", "prop": "doneLabel", "default": "Tamamlandı", "note": "the success badge of a done week" },
     { "component": "WeekAccordion", "prop": "lockedLabel", "default": ", kilitli", "note": "visually hidden after a locked week's title, inside its button" },
     { "component": "WeekAccordion", "prop": "opensOnLabel", "default": "{date} tarihinde açılır", "note": "a week not open yet; {date} is a <time> from Intl (\"17 Ekim\"). \"tarihinde\" avoids the suffix harmony a bare \"Ekim'de\" would need per month" },
-    { "component": "WeekAccordion", "prop": "emptyLabel", "default": "Bu hafta için henüz ders eklenmedi.", "note": "the panel of a week with no lessons (MDS-VOICE-04)" }
+    { "component": "WeekAccordion", "prop": "emptyLabel", "default": "Bu hafta için henüz celse eklenmedi.", "note": "the panel of a week with no lessons (MDS-VOICE-04)" }
   ]
 }

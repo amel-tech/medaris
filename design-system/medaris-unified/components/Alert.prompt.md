@@ -2,10 +2,10 @@ States what happened, then what to do about it. Two lines. A third line means it
 
 ```jsx
 <Alert>
-  Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Kursa kaydolduğunda görebilirsin.
+  Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Derse kaydolduğunda görebilirsin.
 </Alert>
-<Alert tone="warning" title="Cumartesi oturumunun toplantı bağlantısı eksik">
-  Talebeler bağlantı olmadan derse katılamaz. Oturum başlamadan ekleyin.
+<Alert tone="warning" title="Cumartesi celsesinin toplantı bağlantısı eksik">
+  Talebeler bağlantı olmadan celseye katılamaz. Celse başlamadan ekleyin.
 </Alert>
 <Alert tone="error" title="Değişiklikler kaydedilemedi">
   İnternet bağlantısı kesildi. Yeniden bağlandığınızda tekrar deneyin.

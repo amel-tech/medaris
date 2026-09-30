@@ -2,7 +2,7 @@ A number on a card: its label, the number, then any context. A row of four has o
 
 ```jsx
 <Stat label="Kayıtlı talebe" value={1248} />
-<Stat label="Kursu tamamlayan" value={38} tone="success" cue="+6 bu hafta" />
+<Stat label="Dersi tamamlayan" value={38} tone="success" cue="+6 bu hafta" />
 <Stat label="Yüklenemeyen ders kaydı" value={2} tone="error" cue={<Icon name="warning" size="sm" />} />
 <Stat label="Bu hafta ezber" value={38}>
   <Progress label="Haftalık hedef" value={72} showValue />
@@ -13,7 +13,7 @@ A number on a card: its label, the number, then any context. A row of four has o
 
 ```html
 <div class="mds-card mds-stat mds-stat--success">
-  <span class="mds-caption">Kursu tamamlayan</span>
+  <span class="mds-caption">Dersi tamamlayan</span>
   <span class="mds-stat__value"><span class="mds-stat__cue">+6 bu hafta</span>38</span>
 </div>
 ```

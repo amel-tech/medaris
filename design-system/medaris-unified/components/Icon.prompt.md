@@ -2,7 +2,7 @@ One glyph from the system's single icon source, `assets/icons.svg` (Phosphor Reg
 
 ```jsx
 <Icon name="calendar" size="sm" />
-<Icon name="star" filled label="Kaydedilen kurs" />
+<Icon name="star" filled label="Kaydedilen ders" />
 <Button variant="ghost" iconLeft={<Icon name="arrowLeft" size="sm" />}>Derslere dön</Button>
 ```
 
@@ -12,7 +12,7 @@ One glyph from the system's single icon source, `assets/icons.svg` (Phosphor Reg
 <!-- decorative, the default -->
 <svg class="mds-icon mds-icon--sm" viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="…"/></svg>
 <!-- standalone, with label -->
-<svg class="mds-icon" viewBox="0 0 256 256" role="img" aria-label="Kaydedilen kurs"><path d="…"/></svg>
+<svg class="mds-icon" viewBox="0 0 256 256" role="img" aria-label="Kaydedilen ders"><path d="…"/></svg>
 <!-- a name that points along the reading direction -->
 <svg class="mds-icon mds-icon--directional" viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="…"/></svg>
 <!-- a card or static page: the same class markup, the glyph by reference -->

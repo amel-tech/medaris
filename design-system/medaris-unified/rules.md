@@ -249,7 +249,7 @@ Rule: every interactive element has hover, focus, disabled and loading; every li
 Source: brief.
 
 ### MDS-COMP-05 — Confirmation footers
-Rule: "Kalıcı olarak sil" — ghost "Vazgeç" + destructive, and the body names what is lost. A consequential but reversible or non-destructive action ("Yasakla", "Kurstan çıkar", "Oturumu iptal et", "Bağlantıyı yenile", "Gizle") — ghost "Vazgeç" + primary with the exact verb, the consequence in the body, initial focus on "Vazgeç".
+Rule: "Kalıcı olarak sil" — ghost "Vazgeç" + destructive, and the body names what is lost. A consequential but reversible or non-destructive action ("Yasakla", "Dersten çıkar", "Celseyi iptal et", "Bağlantıyı yenile", "Gizle") — ghost "Vazgeç" + primary with the exact verb, the consequence in the body, initial focus on "Vazgeç".
 
 ### MDS-COMP-06 — A component file stands alone
 Rule: a `.jsx` never references another component; it renders that component's class markup, and a caller passes components into slots.
@@ -276,7 +276,7 @@ Rule: no emoji, no exclamation marks; a number is stated, not celebrated. The gr
 Rule: empty is one sentence about what is missing plus at most one action this viewer can take. Locked says, visibly, why and what unlocks it — once per page, not once per row. An error says what happened and what to do, in two lines at most; "Bir hata oluştu" alone is not allowed.
 
 ### MDS-VOICE-05 — Sanctions
-Rule: the person a sanction affects reads what changed ("Bu kursa erişimin kaldırıldı."), never "yasak". "Yasak" is management vocabulary.
+Rule: the person a sanction affects reads what changed ("Bu derse erişimin kaldırıldı."), never "yasak". "Yasak" is management vocabulary.
 
 ### MDS-VOICE-06 — Real samples
 Rule: sample content uses long, real Turkish names and course titles ("Süleymaniye Medresesi", "Nûruosmaniye Köşkü", "Müderris Abdülhamit Karaosmanoğlu"), with Arabic where natural; never "test" or lorem ipsum.
@@ -288,7 +288,7 @@ Rule: a neutral Alert explains or restricts; an error Alert reports a failed act
 ## Words
 
 ### MDS-WORD-01 — The vocabulary file
-Rule: `content/vocabulary.json` is the list. It is advisory for code strings, and where it and the PRD disagree, the PRD wins. In design artifacts its `forbid` entries are errors; entries carrying `openDecision` are non-binding until decided. The ones most often wrong: a köşk is a subject lodge, not a school or a publisher; medrese is the institution; kurs holds the weeks, ders is what is taught, oturum is one dated live meeting and never a sign-in (that is *giriş*); "Canlı ders" is the live lesson type's only label (never "Canlı halka"), and "Şu an canlı" is its live-now state; the agenda is "Ders akışı"; a recording is a *ders kaydı*, and bare *kayıt* is enrolment or sign-up; *bağlantı* is qualified wherever two kinds can meet on one screen (toplantı bağlantısı, takvim bağlantısı, ders kaydı bağlantısı) and never means affiliation; a deck is a *deste* of *ezber kartları*; icâzet is a chain-authorised licence, never automatic; the product is Medaris.
+Rule: `content/vocabulary.json` is the list. It is advisory for code strings, and where it and the PRD disagree, the PRD wins. In design artifacts its `forbid` entries are errors; entries carrying `openDecision` are non-binding until decided. The ones most often wrong: a köşk is a subject lodge, not a school or a publisher; medrese is the institution; ders is the course and holds the weeks; hafta is the week, the unit of the mütalaa and müzakere cycle; celse is one dated live meeting, and a week holds one or several; a week's item has no noun of its own; *oturum* is not used, and signing in is *giriş*; "Canlı ders" is the live lesson type's only label (never "Canlı halka"), and "Şu an canlı" is its live-now state; the agenda is "Celse akışı"; a recording is a *ders kaydı*, and bare *kayıt* is enrolment or sign-up; *bağlantı* is qualified wherever two kinds can meet on one screen (toplantı bağlantısı, takvim bağlantısı, ders kaydı bağlantısı) and never means affiliation; a deck is a *deste* of *ezber kartları*; icâzet is a chain-authorised licence, never automatic; the product is Medaris.
 Check: manual; a copy lint is a later issue.
 Source: PRD §4.2, the owner's decisions, brief.
 
@@ -303,8 +303,8 @@ Rule: format through `Intl` with the page's `lang` (tr-TR at launch): `%35`, `4,
 Rule: only live lessons are authored; Nizam has no video, document or quiz editor. The other three types exist to be rendered.
 Source: brief.
 
-### MDS-DOM-02 — The link belongs to the oturum
-Rule: one meeting link per oturum, changed weekly; no course-level link; calendar entries link to the session page, never to the meeting.
+### MDS-DOM-02 — The link belongs to the celse
+Rule: one meeting link per celse, so a week with three celseler has three; no course-level link; calendar entries link to the session page, never to the meeting.
 Why: a banned talebe must not reach the next session.
 Source: brief.
 
@@ -313,10 +313,10 @@ Rule: the platform is resolved from the link's hostname by `resolveMeetingPlatfo
 Why: a substring match lets any URL wear a platform's chip.
 
 ### MDS-DOM-04 — Joining
-Rule: the talebe joins with the primary "Derse katıl"; the platform is a chip; the meeting URL stays behind "Bağlantıyı göster"; no copy button for the meeting link on the talebe side (the personal calendar link in the settings, B11, has one).
+Rule: the talebe joins with the primary "Celseye katıl"; the platform is a chip; the meeting URL stays behind "Bağlantıyı göster"; no copy button for the meeting link on the talebe side (the personal calendar link in the settings, B11, has one).
 
 ### MDS-DOM-05 — Public course, locked lessons
-Rule: a course page is public: every week expands, and week titles, lesson titles and session dates are visible to everyone. Bodies, meeting links and recordings are locked for anyone not enrolled, and the page says why once. A recording belongs to an oturum and is not a video lesson; "Herkese açık" marks one that everyone may watch.
+Rule: a course page is public: every week expands, and week titles, lesson titles and session dates are visible to everyone. Bodies, meeting links and recordings are locked for anyone not enrolled, and the page says why once. A recording belongs to a celse and is not a video lesson; "Herkese açık" marks one that everyone may watch.
 Source: brief, PRD M3-3.
 
 ## Status
@@ -357,10 +357,10 @@ column is what the system does: build on it, and name the decision where a desig
 | -- | -- | -- |
 | SPEC-D3-08 | Who holds the system: the claude.ai/design project, which the repo mirrors and contributes to through directories like this one, or the repo, from which the project is built | the claude.ai/design project holds it; this directory reaches it when the owner pulls it with design sync (the Medaris repo's `.claude/skills/medaris-design-system/SKILL.md`, §6) |
 | SPEC-D3-09 | İcâzet at launch: no control or claim, copy that promises nothing, or "katılım belgesi" | the Nizam course form keeps its icâzet control with copy that promises nothing; no public page claims icâzet |
-| SPEC-D3-11 | The container word: kurs / ders / oturum, or ders / ders / oturum as the PRD's glossary has it | kurs / ders / oturum, non-binding |
 | SPEC-D3-22 | When the landing page moves onto this system | the landing page keeps its own palette and faces |
 | SPEC-D3-23 | When nizam, nazir and tedris set `<html lang>` from the active locale (today nazir and nizam hard-code "en" and tedris hard-codes "tr") | the apps are unchanged; MDS-LAY-03 is the target |
 
 The owner chose the two Arabic faces. Everything else about the look is this system's proposal
 (`readme.md`), and `contrast.md` proves every colour pair in it. SPEC-D3-10, -12 and -20 are stated by
-`content/vocabulary.json` and MDS-WORD-01.
+`content/vocabulary.json` and MDS-WORD-01. The owner decided SPEC-D3-11 on 2026-09-30: ders, hafta,
+celse, in MDS-WORD-01 and `content/vocabulary.json`.

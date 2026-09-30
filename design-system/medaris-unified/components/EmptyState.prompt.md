@@ -5,17 +5,17 @@ A list or region with nothing in it: one sentence about what is missing, and at 
   icon={<Icon name="courses" size="lg" />}
   action={<Button href="/koskler" variant="secondary">Köşkleri keşfet</Button>}
 >
-  Henüz bir kursa kaydolmadın.
+  Henüz bir derse kaydolmadın.
 </EmptyState>
 
 <EmptyState
   icon={<Icon name="calendar" size="lg" />}
-  action={<Button iconLeft={<Icon name="plus" size="sm" />}>Oturum planla</Button>}
+  action={<Button iconLeft={<Icon name="plus" size="sm" />}>Celse planla</Button>}
 >
-  Bu kursa henüz oturum planlamadınız.
+  Bu derse henüz celse planlamadınız.
 </EmptyState>
 
-<EmptyState icon={<Icon name="video" size="lg" />}>Bu dersin kaydı henüz eklenmedi.</EmptyState>
+<EmptyState icon={<Icon name="video" size="lg" />}>Bu celsenin ders kaydı henüz eklenmedi.</EmptyState>
 ```
 
 ## Anatomy (HTML)
@@ -23,7 +23,7 @@ A list or region with nothing in it: one sentence about what is missing, and at 
 ```html
 <div class="mds-empty">
   <span class="mds-empty__icon"><svg class="mds-icon mds-icon--lg" aria-hidden="true">…</svg></span>
-  <p class="mds-empty__text">Henüz bir kursa kaydolmadın.</p>
+  <p class="mds-empty__text">Henüz bir derse kaydolmadın.</p>
   <a class="mds-btn mds-btn--regular mds-btn--secondary" href="/koskler">Köşkleri keşfet</a>
 </div>
 ```
@@ -48,6 +48,6 @@ Empty is one of the three states every list draws, with loading (`Skeleton`) and
 
 MDS-VOICE-04, MDS-VOICE-01, MDS-VOICE-03, MDS-A11Y-07, MDS-COMP-03, MDS-COMP-04, MDS-ICON-01, MDS-TYPE-06, MDS-COL-09.
 
-- One sentence in the surface's register: "Henüz bir kursa kaydolmadın." in Tedris, "Bu kursa henüz oturum planlamadınız." in Nizam.
+- One sentence in the surface's register: "Henüz bir derse kaydolmadın." in Tedris, "Bu derse henüz celse planlamadınız." in Nizam.
 - No illustration, no encouragement, no exclamation mark. A hidden record is not an empty state: it is in Arşiv.
-- The action is `primary` only when creating something is what the surface is for ("Oturum planla"); otherwise `secondary`.
+- The action is `primary` only when creating something is what the surface is for ("Celse planla"); otherwise `secondary`.

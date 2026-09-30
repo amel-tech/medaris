@@ -3,21 +3,21 @@ A named table in a paper frame: hairline rows, 14px cells, small grey headers an
 ```jsx
 <div data-density="compact">
   <Table
-    caption="Nûruosmaniye Köşkü kursları"
+    caption="Nûruosmaniye Köşkü dersleri"
     sort={sort}
     onSortChange={setSort}
     columns={[
-      { key: 'title', header: 'Kurs', rowHeader: true, sortable: true, render: (r) => <bdi>{r.title}</bdi> },
+      { key: 'title', header: 'Ders', rowHeader: true, sortable: true, render: (r) => <bdi>{r.title}</bdi> },
       { key: 'muderris', header: 'Müderris', render: (r) => <bdi>{r.muderris}</bdi> },
       { key: 'talebe', header: 'Talebe', align: 'right', sortable: true },
-      { key: 'next', header: 'Sıradaki oturum', render: (r) => <time dateTime={r.nextIso}>{r.next}</time> },
+      { key: 'next', header: 'Sıradaki celse', render: (r) => <time dateTime={r.nextIso}>{r.next}</time> },
       { key: 'state', header: 'Durum', render: (r) => <Badge variant={r.badge}>{r.label}</Badge> },
       { key: 'actions', header: <span className="mds-visually-hidden">İşlemler</span>, align: 'right',
         render: (r) => <><Button variant="ghost" size="mini">Düzenle</Button><Button variant="ghost" size="mini">Gizle</Button></> },
     ]}
-    rows={kurslar}
+    rows={dersler}
     rowKey={(r) => r.id}
-    empty="Bu köşkte henüz kurs yok."
+    empty="Bu köşkte henüz ders yok."
   />
 </div>
 ```
@@ -27,11 +27,11 @@ A named table in a paper frame: hairline rows, 14px cells, small grey headers an
 ```html
 <div class="mds-table-wrap" tabindex="0" role="region" aria-labelledby="t1">  <!-- the three attributes only while it scrolls -->
   <table class="mds-table">
-    <caption class="mds-table__caption mds-visually-hidden" id="t1">Nûruosmaniye Köşkü kursları</caption>
+    <caption class="mds-table__caption mds-visually-hidden" id="t1">Nûruosmaniye Köşkü dersleri</caption>
     <colgroup><col><col><col style="--mds-col-w: 20%"></colgroup>  <!-- only when a column has a width -->
     <thead><tr>
-      <th scope="col" aria-sort="ascending"><button type="button" class="mds-table__sort">Kurs<span class="mds-table__sort-icon" aria-hidden="true"></span></button></th>
-      <th scope="col">Sıradaki oturum</th>
+      <th scope="col" aria-sort="ascending"><button type="button" class="mds-table__sort">Ders<span class="mds-table__sort-icon" aria-hidden="true"></span></button></th>
+      <th scope="col">Sıradaki celse</th>
       <th scope="col" class="is-end"><button type="button" class="mds-table__sort">Talebe<span class="mds-table__sort-icon" aria-hidden="true"></span></button></th>
     </tr></thead>
     <tbody>
@@ -41,12 +41,12 @@ A named table in a paper frame: hairline rows, 14px cells, small grey headers an
 </div>
 
 <!-- rows is empty -->
-<tbody><tr><td class="mds-table__empty" colspan="3">Bu köşkte henüz kurs yok.</td></tr></tbody>
+<tbody><tr><td class="mds-table__empty" colspan="3">Bu köşkte henüz ders yok.</td></tr></tbody>
 
 <!-- responsive="stack": explicit roles, the caption names the table, data-label from string headers -->
 <table class="mds-table mds-table--stack" role="table" aria-labelledby="t2">
   … <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">…</th>…
-  … <tr role="row"><th scope="row" role="rowheader">…</th><td role="cell" data-label="Kurs">…</td><td role="cell" class="mds-table__primary-action">…</td></tr>
+  … <tr role="row"><th scope="row" role="rowheader">…</th><td role="cell" data-label="Ders">…</td><td role="cell" class="mds-table__primary-action">…</td></tr>
 </table>
 ```
 
@@ -70,7 +70,7 @@ The look: the frame is `--background-neutral-surface` with a `--border-neutral-s
 ## A11y contract
 
 - `caption` is required, and it names the table. It is visually hidden unless `captionVisible`, and it names the scrolling region too.
-- The column that names a row (the talebe, the kurs) is `rowHeader`, so it renders as `<th scope="row">`.
+- The column that names a row (the talebe, the ders) is `rowHeader`, so it renders as `<th scope="row">`.
 - A sortable header is a real button inside the `<th>`, and `aria-sort` is on the `<th>` of the sorted column only.
 - An actions column still has a header, visually hidden ("İşlemler"). Empty header cells are an error.
 - `stack` adds `role="table"`, `rowgroup`, `row`, `columnheader`, `rowheader` and `cell`, because `display: block` can drop the table semantics. The `data-label` text is drawn with empty alternative text, so it is not read twice.

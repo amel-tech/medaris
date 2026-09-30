@@ -6,7 +6,7 @@ A link in the sidebar or the nav sheet: 36px, 14 medium, on the paper surface. T
   <NavItem href="/" icon={<Icon name="home" size="sm" />}>Ana sayfa</NavItem>
   <NavItem href="/bildirimler" icon={<Icon name="bell" size="sm" />} count={3} countLabel="okunmamış">Bildirimler</NavItem>
   <NavSection>Köşk</NavSection>
-  <NavItem href="/kurslar" icon={<Icon name="courses" size="sm" />} count={7} active>Kurslar</NavItem>
+  <NavItem href="/dersler" icon={<Icon name="courses" size="sm" />} count={7} active>Dersler</NavItem>
   <NavItem href="/basvurular" icon={<Icon name="inbox" size="sm" />} count={5} countLabel="bekleyen">Başvurular</NavItem>
   <NavItem href="/raporlar" icon={<Icon name="chart" size="sm" />} trailing={<Icon name="lock" size="sm" label="Kilitli" />}>Raporlar</NavItem>
 </nav>
@@ -16,9 +16,9 @@ A link in the sidebar or the nav sheet: 36px, 14 medium, on the paper surface. T
 
 ```html
 <nav aria-label="Ana menü">
-  <a class="mds-nav-item" href="/kurslar" aria-current="page">
+  <a class="mds-nav-item" href="/dersler" aria-current="page">
     <svg class="mds-icon mds-icon--sm" aria-hidden="true">…</svg>
-    Kurslar
+    Dersler
     <span class="mds-nav-item__count">7</span>
   </a>
   <a class="mds-nav-item" href="/basvurular">

@@ -3,7 +3,7 @@ A native checkbox with `role="switch"`, 36×20, inside its own label. It commits
 ```jsx
 <Switch
   label="Takvimde görünsün"
-  description="Kayıtlı talebelerin takviminde oturumun sayfasına bağlanır."
+  description="Kayıtlı talebelerin takviminde celsenin sayfasına bağlanır."
   checked={takvimde}
   onChange={(e) => kaydet({ takvimde: e.target.checked })}
 />
@@ -18,7 +18,7 @@ A native checkbox with `role="switch"`, 36×20, inside its own label. It commits
   <input type="checkbox" role="switch" class="mds-switch" checked aria-labelledby="s1-l" aria-describedby="s1-d">
   <span class="mds-choice__text">
     <span class="mds-choice__label" id="s1-l">Takvimde görünsün</span>
-    <span class="mds-choice__desc" id="s1-d">Kayıtlı talebelerin takviminde oturumun sayfasına bağlanır.</span>
+    <span class="mds-choice__desc" id="s1-d">Kayıtlı talebelerin takviminde celsenin sayfasına bağlanır.</span>
   </span>
 </label>
 ```

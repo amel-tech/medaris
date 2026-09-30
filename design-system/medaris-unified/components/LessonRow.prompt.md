@@ -2,9 +2,9 @@ One lesson of a programme: its type as a glyph and a label, its state, its time 
 
 ```jsx
 <ol className="mds-lesson-list">
-  <LessonRow title="Mezîd fiiller ve bablar" type="live" state="done" href="/oturum/4"
+  <LessonRow title="Mezîd fiiller ve bablar" type="live" state="done" href="/celse/4"
     startsAt="2026-09-26T21:00:00+03:00" durationMinutes={60} />
-  <LessonRow title="Mehmûz fiiller: kara’e ve emr-i hâzır" type="live" state="current" href="/oturum/5"
+  <LessonRow title="Mehmûz fiiller: kara’e ve emr-i hâzır" type="live" state="current" href="/celse/5"
     source="Bina, s. 20–24" startsAt="2026-10-03T21:00:00+03:00" courseTimeZone="Europe/Istanbul"
     durationMinutes={60} trailing={<Badge variant="live">Şu an canlı</Badge>} />
   <LessonRow title="Muzâaf fiiller" type="live" access="locked" startsAt="2026-10-10T21:00:00+03:00" />
@@ -19,7 +19,7 @@ One lesson of a programme: its type as a glyph and a label, its state, its time 
   <li class="mds-lesson-row mds-lesson-row--live">
     <span class="mds-lesson-row__medallion" aria-hidden="true"></span>
     <div class="mds-lesson-row__main">
-      <a class="mds-lesson-row__title" href="/oturum/5" dir="auto" aria-current="step">Mehmûz fiiller: kara’e ve emr-i hâzır</a>
+      <a class="mds-lesson-row__title" href="/celse/5" dir="auto" aria-current="step">Mehmûz fiiller: kara’e ve emr-i hâzır</a>
       <p class="mds-lesson-row__meta"><span><span class="mds-lesson-row__marker">Sıradaki</span><span class="mds-sep" aria-hidden="true">·</span></span><span><span>Canlı ders</span><span class="mds-sep" aria-hidden="true">·</span></span><span><bdi class="mds-lesson-row__source">Bina, s. 20–24</bdi><span class="mds-sep" aria-hidden="true">·</span></span><span><time datetime="2026-10-03T21:00:00+03:00">3 Eki Cmt 21:00 İstanbul</time><span class="mds-sep" aria-hidden="true">·</span></span><span>20:00 senin saatinle</span></p>
     </div>
     <span class="mds-lesson-row__trailing"><span class="mds-badge mds-badge--live"><span class="mds-badge__dot" aria-hidden="true"></span>Şu an canlı</span></span>
@@ -29,7 +29,7 @@ One lesson of a programme: its type as a glyph and a label, its state, its time 
   <li class="mds-lesson-row mds-lesson-row--live is-done">
     <span class="mds-lesson-row__medallion" aria-hidden="true"></span>
     <div class="mds-lesson-row__main">
-      <a class="mds-lesson-row__title" href="/oturum/4" dir="auto">Mezîd fiiller ve bablar<span class="mds-visually-hidden">, tamamlandı</span></a>
+      <a class="mds-lesson-row__title" href="/celse/4" dir="auto">Mezîd fiiller ve bablar<span class="mds-visually-hidden">, tamamlandı</span></a>
       <p class="mds-lesson-row__meta"><span>Canlı ders</span></p>
     </div>
   </li>

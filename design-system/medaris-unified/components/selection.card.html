@@ -75,15 +75,15 @@ body{display:flex;flex-direction:column;gap:var(--space-6);margin:0;padding:var(
 <p class="mds-eyebrow">Ayar satırları · <code lang="en">bordered</code></p>
 <div class="stack">
 <label class="mds-choice mds-choice--bordered"><input type="checkbox" class="mds-check" name="icazet" checked aria-labelledby="b1-l" aria-describedby="b1-d"><span class="mds-choice__icon" aria-hidden="true"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#icazet"/></svg></span><span class="mds-choice__text"><span class="mds-choice__label" id="b1-l">İcâzet verilebilir</span><span class="mds-choice__desc" id="b1-d">Müfredatı tamamlayan talebeler, müderrisin değerlendirmesiyle icâzete aday olur.</span></span></label>
-<label class="mds-choice mds-choice--bordered"><input type="checkbox" class="mds-check" name="onay" aria-labelledby="b2-l" aria-describedby="b2-d"><span class="mds-choice__icon" aria-hidden="true"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#shieldCheck"/></svg></span><span class="mds-choice__text"><span class="mds-choice__label" id="b2-l">Kayıt başvurusu onaylansın</span><span class="mds-choice__desc" id="b2-d">Talebeler kursa ancak siz onayladıktan sonra katılır.</span></span></label>
-<label class="mds-choice mds-choice--bordered"><input type="checkbox" class="mds-check" name="acik" checked disabled aria-labelledby="b3-l" aria-describedby="b3-d"><span class="mds-choice__icon" aria-hidden="true"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#lock"/></svg></span><span class="mds-choice__text"><span class="mds-choice__label" id="b3-l">Kayıt açık</span><span class="mds-choice__desc" id="b3-d">Kurs yayında olduğu için değiştirilemez.</span></span></label>
+<label class="mds-choice mds-choice--bordered"><input type="checkbox" class="mds-check" name="onay" aria-labelledby="b2-l" aria-describedby="b2-d"><span class="mds-choice__icon" aria-hidden="true"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#shieldCheck"/></svg></span><span class="mds-choice__text"><span class="mds-choice__label" id="b2-l">Kayıt başvurusu onaylansın</span><span class="mds-choice__desc" id="b2-d">Talebeler derse ancak siz onayladıktan sonra katılır.</span></span></label>
+<label class="mds-choice mds-choice--bordered"><input type="checkbox" class="mds-check" name="acik" checked disabled aria-labelledby="b3-l" aria-describedby="b3-d"><span class="mds-choice__icon" aria-hidden="true"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#lock"/></svg></span><span class="mds-choice__text"><span class="mds-choice__label" id="b3-l">Kayıt açık</span><span class="mds-choice__desc" id="b3-d">Ders yayında olduğu için değiştirilemez.</span></span></label>
 </div>
 </div>
 <div class="col">
 <fieldset class="mds-choice-group">
 <legend class="mds-label">Yasağın kapsamı</legend>
-<label class="mds-choice mds-choice--bordered"><input type="radio" class="mds-radio" name="kapsam" checked aria-labelledby="k1-l" aria-describedby="k1-d"><span class="mds-choice__text"><span class="mds-choice__label" id="k1-l">Yalnızca bu kurs</span><span class="mds-choice__desc" id="k1-d">Talebe bu kursa erişemez.</span></span></label>
-<label class="mds-choice mds-choice--bordered"><input type="radio" class="mds-radio" name="kapsam" aria-labelledby="k2-l" aria-describedby="k2-d"><span class="mds-choice__text"><span class="mds-choice__label" id="k2-l">Köşkten de yasakla</span><span class="mds-choice__desc" id="k2-d">Köşkün bütün kurslarına erişemez.</span></span></label>
+<label class="mds-choice mds-choice--bordered"><input type="radio" class="mds-radio" name="kapsam" checked aria-labelledby="k1-l" aria-describedby="k1-d"><span class="mds-choice__text"><span class="mds-choice__label" id="k1-l">Yalnızca bu ders</span><span class="mds-choice__desc" id="k1-d">Talebe bu derse erişemez.</span></span></label>
+<label class="mds-choice mds-choice--bordered"><input type="radio" class="mds-radio" name="kapsam" aria-labelledby="k2-l" aria-describedby="k2-d"><span class="mds-choice__text"><span class="mds-choice__label" id="k2-l">Köşkten de yasakla</span><span class="mds-choice__desc" id="k2-d">Köşkün bütün derslerine erişemez.</span></span></label>
 <label class="mds-choice mds-choice--bordered"><input type="radio" class="mds-radio" name="kapsam" aria-labelledby="k3-l" aria-describedby="k3-d"><span class="mds-choice__text"><span class="mds-choice__label" id="k3-l">Medreseden de yasakla</span><span class="mds-choice__desc" id="k3-d">Medresenin bütün köşklerine erişemez.</span></span></label>
 </fieldset>
 </div>
@@ -93,16 +93,16 @@ body{display:flex;flex-direction:column;gap:var(--space-6);margin:0;padding:var(
 <section class="sec">
 <div class="cols">
 <div class="col">
-<p class="mds-eyebrow">Form içinde · yeni oturum</p>
+<p class="mds-eyebrow">Form içinde · yeni celse</p>
 <fieldset class="mds-choice-group">
 <legend class="mds-label">Ders kaydı kimlere açık</legend>
 <label class="mds-choice"><input type="radio" class="mds-radio" name="kayit" checked><span class="mds-choice__text"><span class="mds-choice__label">Yalnızca kayıtlı talebeler</span></span></label>
-<label class="mds-choice"><input type="radio" class="mds-radio" name="kayit" aria-labelledby="r2-l" aria-describedby="r2-d"><span class="mds-choice__text"><span class="mds-choice__label" id="r2-l">Herkese açık</span><span class="mds-choice__desc" id="r2-d">Kursa kayıtlı olmayanlar da bu ders kaydını izleyebilir.</span></span></label>
+<label class="mds-choice"><input type="radio" class="mds-radio" name="kayit" aria-labelledby="r2-l" aria-describedby="r2-d"><span class="mds-choice__text"><span class="mds-choice__label" id="r2-l">Herkese açık</span><span class="mds-choice__desc" id="r2-d">Derse kayıtlı olmayanlar da bu ders kaydını izleyebilir.</span></span></label>
 </fieldset>
 <div class="stack">
 <label class="mds-choice"><input type="checkbox" class="mds-check" checked><span class="mds-choice__text"><span class="mds-choice__label">10 dk önce hatırlat</span></span></label>
 <label class="mds-choice"><input type="checkbox" class="mds-check"><span class="mds-choice__text"><span class="mds-choice__label">Müzakere odasını da aç</span></span></label>
-<label class="mds-choice"><input type="checkbox" role="switch" class="mds-switch" checked aria-labelledby="w1-l" aria-describedby="w1-d"><span class="mds-choice__text"><span class="mds-choice__label" id="w1-l">Takvimde görünsün</span><span class="mds-choice__desc" id="w1-d">Kayıtlı talebelerin takviminde oturumun sayfasına bağlanır.</span></span></label>
+<label class="mds-choice"><input type="checkbox" role="switch" class="mds-switch" checked aria-labelledby="w1-l" aria-describedby="w1-d"><span class="mds-choice__text"><span class="mds-choice__label" id="w1-l">Takvimde görünsün</span><span class="mds-choice__desc" id="w1-d">Kayıtlı talebelerin takviminde celsenin sayfasına bağlanır.</span></span></label>
 </div>
 <div class="mds-field">
 <label class="mds-choice"><input type="checkbox" class="mds-check" required aria-required="true" aria-invalid="true" aria-labelledby="e1-l" aria-describedby="e1-e"><span class="mds-choice__text"><span class="mds-choice__label" id="e1-l">Aydınlatma Metni’ni okudum</span></span></label>

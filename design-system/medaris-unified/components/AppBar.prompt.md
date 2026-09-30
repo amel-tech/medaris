@@ -2,7 +2,7 @@ The compact chrome below 768: a 56px paper bar with the menu button, the mark, t
 
 ```jsx
 <AppBar
-  title="Kurslar"
+  title="Dersler"
   logo={<Logo app="nizam" size="sm" />}
   actions={<IconButton icon={<Icon name="bell" />} label="Bildirimler" size="large" variant="ghost" />}
   footer={
@@ -17,8 +17,8 @@ The compact chrome below 768: a 56px paper bar with the menu button, the mark, t
   }
 >
   <NavSection>Köşk</NavSection>
-  <NavItem href="/kurslar" count={7} active>Kurslar</NavItem>
-  <NavItem href="/oturumlar" count={2} countLabel="bağlantısı eksik">Oturumlar</NavItem>
+  <NavItem href="/dersler" count={7} active>Dersler</NavItem>
+  <NavItem href="/celseler" count={2} countLabel="bağlantısı eksik">Celseler</NavItem>
 </AppBar>
 ```
 
@@ -31,7 +31,7 @@ The compact chrome below 768: a 56px paper bar with the menu button, the mark, t
     <span class="mds-appbar__menu-icon" aria-hidden="true"></span>
   </button>
   <span class="mds-logo mds-logo--sm" role="img" aria-label="Medaris — Nizam">…</span>
-  <p class="mds-appbar__title" dir="auto">Kurslar</p>
+  <p class="mds-appbar__title" dir="auto">Dersler</p>
   <div class="mds-appbar__actions">…</div>
 </header>
 <dialog class="mds-sheet" id="nav-sheet" aria-label="Ana menü">

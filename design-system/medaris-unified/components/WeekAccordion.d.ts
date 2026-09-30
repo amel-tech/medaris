@@ -13,7 +13,7 @@ export interface WeekAccordionProps extends Omit<React.HTMLAttributes<HTMLDivEle
   opensOn?: string;
   /** one line above the lessons, dir="auto"; an Arabic run in it gets className="mds-arabic", without harakat */
   summary?: React.ReactNode;
-  /** at the header's end, after the opening date: "4 ders · 135 dk" */
+  /** at the header's end, after the opening date: "4 celse · 135 dk" */
   meta?: React.ReactNode;
   /** controlled open state; leave it out and the week keeps its own */
   open?: boolean;
@@ -34,7 +34,7 @@ export interface WeekAccordionProps extends Omit<React.HTMLAttributes<HTMLDivEle
   lockedLabel?: string;
   /** {date} is the opening date. Default "{date} tarihinde açılır" */
   opensOnLabel?: string;
-  /** in the panel of a week with no lessons; default "Bu hafta için henüz ders eklenmedi." */
+  /** in the panel of a week with no lessons; default "Bu hafta için henüz celse eklenmedi." */
   emptyLabel?: string;
   /** dates and numbers; default the nearest lang attribute, else tr-TR */
   locale?: string;

@@ -47,7 +47,7 @@ export function WeekAccordion({
   doneLabel = 'Tamamlandı',
   lockedLabel = ', kilitli',
   opensOnLabel = '{date} tarihinde açılır',
-  emptyLabel = 'Bu hafta için henüz ders eklenmedi.',
+  emptyLabel = 'Bu hafta için henüz celse eklenmedi.',
   locale: localeProp,
   children,
   className = '',

@@ -1,6 +1,6 @@
 # Medaris design system
 
-Medaris is an online medrese: müderris and talebe, kurslar and dersler, live oturumlar, ezber
+Medaris is an online medrese: müderris and talebe, dersler, haftalar and live celseler, ezber
 kartları. This is its design system: the tokens, the classes, the components, the rules and the
 words.
 
@@ -48,9 +48,10 @@ then it is a proposal.
 
 **Still the owner's, and not about the look**
 
-Five decisions, in the table at the end of `rules.md`: who holds the system (SPEC-D3-08), icâzet at
-launch (SPEC-D3-09), the container word (SPEC-D3-11), when the landing page moves onto this system
-(SPEC-D3-22), and when the apps set `<html lang>` from the locale (SPEC-D3-23).
+Four decisions, in the table at the end of `rules.md`: who holds the system (SPEC-D3-08), icâzet at
+launch (SPEC-D3-09), when the landing page moves onto this system (SPEC-D3-22), and when the apps
+set `<html lang>` from the locale (SPEC-D3-23). The container words (SPEC-D3-11) were decided on
+2026-09-30: ders, hafta, celse (MDS-WORD-01).
 
 **Not verified**
 
@@ -179,8 +180,9 @@ No app gets a colour of its own (MDS-COL-01).
 
 ## The domain, briefly
 
-Medrese (optional) → köşk → kurs → hafta → ders. A canlı ders meets in dated oturumlar. Each oturum
-has its own meeting link, which changes every week. Only live lessons are authored for now.
+Medrese (optional) → köşk → ders → hafta → celse. A ders is the course; a hafta holds the week's
+celseler, one or several; a celse is one dated live meeting and has its own meeting link. Only
+live lessons are authored for now.
 Managers hide; they do not delete.
 
 The words and states are data: `content/vocabulary.json`, `content/status-map.json`, and beside
