@@ -32,6 +32,67 @@ Auto-merged but checked: `libs/services/swagger-docs/tedrisat.json` —
 `node tools/ci/assert-openapi-spec-fresh.mjs` reports the spec identical to
 what the exporter writes from the merged controllers (50 paths).
 
+## Authorization parity: every tedrisat route on both sides
+
+Every `*.controller.ts` under `apps/tedrisat/src` was read at three commits:
+PR #101 (`8209415e`), wave B (`4f53cafd`) and the merge (`5eaa2581`). For each
+route (method + path) the script recorded the class-level and method-level
+`@UseGuards` and every `@Authz`/`@AuthzExempt`. The script and its output are
+kept in the job's tmp directory (`wavec-authz-inventory.py` and `.txt`). The
+number of `@Get/@Post/@Put/@Patch/@Delete` decorators found by `grep` matches
+the number of routes parsed on every commit: 51, 74, 74.
+
+- **#101 → merge:** all 51 of #101's routes are present. 48 are identical:
+  same guard, same `@Authz` scope and resolver, or the same `@AuthzExempt`.
+  The other 3 keep the same guard, entity and scope, and change only the
+  resolver from `byParam` to wave B's `byExisting…`: `PATCH /kosks/:id`
+  (`EDIT`), `DELETE /kosks/:id` (`DELETE`) and `DELETE /courses/:id`
+  (`DELETE`). `byExisting…` adds a 404 for a missing or malformed id in
+  front of the same scope check, so it only adds a check.
+- **Wave B → merge:** all 74 routes are present. The 23 routes #101 does not
+  have (madrasah, calendar feed, me, users, the köşk manager routes, course
+  archive/restore) are identical. Of the 51 shared routes, the merge adds
+  #101's guard and `@Authz`/`@AuthzExempt` to 36. None of these routes had an
+  `@Authz` on wave B, so they have gone from none to one.
+- **Findings:** no route lost a guard or a scope compared with either
+  parent, and no route has more than one `@Authz`. 18 routes have no
+  `AuthzGuard` in the merge: health and root, the calendar feed, the label
+  controllers, `me` and `users`. They have none on either parent, and neither
+  PR moved them.
+
+## Red proofs
+
+No `git stash` was used. Each implementation file was copied to the job's tmp
+directory (`wavec-*.ts`), then the one piece named below was reverted, the
+test was run under the test lock, and the file was copied back. After that
+the resolver spec was green (24/24) and `course.e2e.spec.ts` was green (45/45).
+
+| Test | What was reverted | Result |
+| -- | -- | -- |
+| `course.e2e.spec.ts:855`, müderris refused (adapted) | the `assertCourseOwner` call in `CourseService.update` | red: `expected 403 "Forbidden", got 200 "OK"` |
+| same test | `CourseRepository.isMuderris` made to answer `false` (the resolver no longer sees the `role_assignments` MUDERRIS row) | red: `expected 'PUBLIC' to be 'MUDERRIS'` |
+| `tedrisat-role-resolver.spec.ts`, whole file | the resolver replaced with wave B's version (`4f53cafd`) | red: 4 of 24 fail — the 404 tests for a stranger's private deck, a missing deck, köşk and course |
+| same file | the resolver replaced with #101's version (`findOwnerId`/`isOwner`) | red: 13 of 24 fail. These are every köşk and course test that reaches the köşk lookup, plus the medrese test, because #101 has no medrese branch |
+| `tedrisat-role-resolver.spec.ts:177`, missing köşk → 404 | only the `if (!exists) throw new KoskNotFoundError(…)` line removed | red: 1 of 24 fails (`resolved 'PUBLIC' instead of rejecting`) |
+| `course.e2e.spec.ts:128`, course create under a missing köşk → 404 | the same line removed | red: `expected 404 "Not Found", got 403 "Forbidden"` |
+
+The same one-line revert left the 404 tests in `kosk.e2e.spec.ts` green. Those
+routes do not depend on the resolver's 404: `GET` and `follow` pass the guard
+through PUBLIC's `VIEW` and then 404 in the service, and `PATCH`/`DELETE`
+404 in `byExistingKosk`. The resolver's köşk 404 only matters on
+`byParam(KOSK)` routes whose scope PUBLIC does not hold, and the course-create
+row above covers exactly that case.
+
+## Review (code-review skill, medium, on the conflict resolutions)
+
+0 findings. The reviewer found that no route lost authorization. It also
+confirmed that `byExisting…` is the right choice on the write routes, and
+that the `exists` + `isManager` pair keeps "no köşk" (404) apart from "not
+yours" (403). It noticed uncommitted edits to `course.service.ts` and
+`course.repository.ts` in the worktree. Those were the red-proof reverts
+above, running at the same time as the review. Both files were restored
+before anything was committed, and the tree was clean.
+
 ## Cost noted, not changed
 
 A write route on a köşk now asks "does it exist" twice (`byExistingKosk`, then
