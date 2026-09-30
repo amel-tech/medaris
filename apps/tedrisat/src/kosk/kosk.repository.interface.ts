@@ -3,7 +3,6 @@ import type { IPurgeCounts } from "../course/course-purge";
 export interface IKosk {
   id: string;
   ownerId: string;
-  madrasahId: string | null;
   name: string;
   handle: string | null;
   description: string | null;
@@ -16,19 +15,13 @@ export interface IKosk {
   featured: boolean;
   rating: number;
   ratingCount: number;
+  passiveSince: Date | null;
+  passiveReason: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
-/** The medrese a köşk is affiliated with, as köşk responses carry it. */
-export interface IKoskMadrasahRef {
-  id: string;
-  name: string;
-  handle: string;
-}
-
 export interface IKoskWithStats extends IKosk {
-  madrasah: IKoskMadrasahRef | null;
   /** Who manages the köşk (MDRS-126), oldest first; never empty. */
   managerIds: string[];
   courseCount: number;
@@ -144,9 +137,6 @@ export interface IKoskRepository {
     id: string,
     actorId: string
   ): Promise<(IPurgeCounts & { followers: number }) | null>;
-  affiliate(koskId: string, madrasahId: string): Promise<boolean>;
-  detach(koskId: string, madrasahId: string): Promise<boolean>;
-  leaveMadrasah(koskId: string): Promise<boolean>;
   follow(userId: string, koskId: string): Promise<boolean>;
   unfollow(userId: string, koskId: string): Promise<boolean>;
 }

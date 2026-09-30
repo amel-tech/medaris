@@ -138,9 +138,7 @@ export class KoskController {
   @ApiNotFoundResponse()
   @Patch(":id")
   // Method-level, not class-level: most handlers here still check ownership
-  // in `KoskService` and have not moved to `@Authz`. This one and
-  // `leaveMadrasah` have, so that a nazır of the köşk's medrese gets `EDIT`
-  // from the matrix (MDRS-106).
+  // in `KoskService` and have not moved to `@Authz`. This one has (MDRS-106).
   @UseGuards(AuthzGuard)
   @Authz(SCOPES.EDIT, byExistingKosk)
   async update(
@@ -149,26 +147,6 @@ export class KoskController {
     @Body() koskDto: UpdateKoskDto
   ): Promise<KoskResponse> {
     await this.koskService.update(id, koskDto);
-    return this.koskService.findById(id, request.user.sub);
-  }
-
-  @ApiOperation({
-    summary: "Detach a köşk from its medrese",
-    description:
-      "The köşk's own way out of a medrese: its manager (or a nazır of that medrese) makes it standalone again.",
-    operationId: "leaveMadrasah",
-  })
-  @ApiOkResponse({ type: KoskResponse })
-  @ApiForbiddenResponse()
-  @ApiNotFoundResponse()
-  @Delete(":id/madrasah")
-  @UseGuards(AuthzGuard)
-  @Authz(SCOPES.EDIT, byExistingKosk)
-  async leaveMadrasah(
-    @Req() request: AuthorizedRequest,
-    @Param("id", ParseUUIDPipe) id: string
-  ): Promise<KoskResponse> {
-    await this.koskService.leaveMadrasah(id);
     return this.koskService.findById(id, request.user.sub);
   }
 
@@ -194,7 +172,7 @@ export class KoskController {
   @ApiOperation({
     summary: "Make a user a manager of the köşk",
     description:
-      "Idempotent. Open to the köşk's managers and SYSTEM_ADMIN — not to a nazır of its medrese (MDRS-126).",
+      "Idempotent. Open to the köşk's managers and SYSTEM_ADMIN (MDRS-126).",
     operationId: "addKoskManager",
   })
   @ApiCreatedResponse({ type: KoskResponse })

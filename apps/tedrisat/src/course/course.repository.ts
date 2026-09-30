@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { and, eq, inArray, isNotNull, isNull, max, ne, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
+import { holdsIn, syncMuderrisAssignments } from "../database/role-assignments";
 import {
   courseMuderris,
   courseResources,
@@ -9,6 +10,10 @@ import {
   enrollments,
   lessons,
 } from "../database/schema/course.schema";
+import {
+  ASSIGNED_ROLES,
+  roleAssignments,
+} from "../database/schema/role-assignment.schema";
 import {
   ICourse,
   ICourseDetail,
@@ -197,6 +202,7 @@ export class CourseRepository implements ICourseRepository {
             orderIndex: i,
           }))
         );
+        await syncMuderrisAssignments(tx, createdCourse.id, course.authorId);
       }
 
       if (resources?.length) {
@@ -307,6 +313,7 @@ export class CourseRepository implements ICourseRepository {
           await tx.insert(courseMuderris).values(values);
         }
       }
+      await syncMuderrisAssignments(tx, id, userId);
 
       // ---- resources: upsert by id, delete the rest ----
       const existingResources = await tx
@@ -963,14 +970,15 @@ export class CourseRepository implements ICourseRepository {
     return deleted.length > 0;
   }
 
+  /** True if `userId` holds MUDERRIS on the course (MDRS-134). */
   async isMuderris(courseId: string, userId: string): Promise<boolean> {
     const rows = await this.db
-      .select({ id: courseMuderris.id })
-      .from(courseMuderris)
+      .select({ id: roleAssignments.id })
+      .from(roleAssignments)
       .where(
         and(
-          eq(courseMuderris.courseId, courseId),
-          eq(courseMuderris.userId, userId)
+          eq(roleAssignments.userId, userId),
+          holdsIn(ASSIGNED_ROLES.MUDERRIS, courseId)
         )
       )
       .limit(1);
@@ -978,22 +986,22 @@ export class CourseRepository implements ICourseRepository {
   }
 
   /**
-   * The courses `userId` is listed on as müderris, by title. `selectDistinct`
-   * because nothing stops the same account being listed twice on one course.
+   * The courses `userId` holds MUDERRIS on (MDRS-134), by title. One row per
+   * course: a person holds a role in a scope once at a time.
    */
   async findTaughtBy(userId: string): Promise<ICourseRef[]> {
     return (
       this.db
-        .selectDistinct({
+        .select({
           id: courses.id,
           title: courses.title,
           koskId: courses.koskId,
         })
-        .from(courseMuderris)
-        .innerJoin(courses, eq(courses.id, courseMuderris.courseId))
+        .from(roleAssignments)
+        .innerJoin(courses, holdsIn(ASSIGNED_ROLES.MUDERRIS, courses.id))
         // A hidden course is not in anyone's `GET /me` either (MDRS-124).
         .where(
-          and(eq(courseMuderris.userId, userId), isNull(courses.archivedAt))
+          and(eq(roleAssignments.userId, userId), isNull(courses.archivedAt))
         )
         .orderBy(courses.title, courses.id)
     );

@@ -57,10 +57,6 @@ export interface GetKoskByIdRequest {
     id: string;
 }
 
-export interface LeaveMadrasahRequest {
-    id: string;
-}
-
 export interface RemoveKoskManagerRequest {
     id: string;
     userId: string;
@@ -81,7 +77,7 @@ export interface UpdateKoskRequest {
 export class KosksApi extends runtime.BaseAPI {
 
     /**
-     * Idempotent. Open to the köşk\'s managers and SYSTEM_ADMIN — not to a nazır of its medrese (MDRS-126).
+     * Idempotent. Open to the köşk\'s managers and SYSTEM_ADMIN (MDRS-126).
      * Make a user a manager of the köşk
      */
     async addKoskManagerRaw(requestParameters: AddKoskManagerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskResponse>> {
@@ -124,7 +120,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * Idempotent. Open to the köşk\'s managers and SYSTEM_ADMIN — not to a nazır of its medrese (MDRS-126).
+     * Idempotent. Open to the köşk\'s managers and SYSTEM_ADMIN (MDRS-126).
      * Make a user a manager of the köşk
      */
     async addKoskManager(requestParameters: AddKoskManagerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
@@ -351,50 +347,6 @@ export class KosksApi extends runtime.BaseAPI {
      */
     async getKoskById(requestParameters: GetKoskByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
         const response = await this.getKoskByIdRaw(requestParameters, initOverrides);
-        return await response.value();
-    }
-
-    /**
-     * The köşk\'s own way out of a medrese: its manager (or a nazır of that medrese) makes it standalone again.
-     * Detach a köşk from its medrese
-     */
-    async leaveMadrasahRaw(requestParameters: LeaveMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskResponse>> {
-        if (requestParameters['id'] == null) {
-            throw new runtime.RequiredError(
-                'id',
-                'Required parameter "id" was null or undefined when calling leaveMadrasah().'
-            );
-        }
-
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        if (this.configuration && this.configuration.accessToken) {
-            // oauth required
-            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
-        }
-
-
-        let urlPath = `/kosks/{id}/madrasah`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
-
-        const response = await this.request({
-            path: urlPath,
-            method: 'DELETE',
-            headers: headerParameters,
-            query: queryParameters,
-        }, initOverrides);
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => KoskResponseFromJSON(jsonValue));
-    }
-
-    /**
-     * The köşk\'s own way out of a medrese: its manager (or a nazır of that medrese) makes it standalone again.
-     * Detach a köşk from its medrese
-     */
-    async leaveMadrasah(requestParameters: LeaveMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
-        const response = await this.leaveMadrasahRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

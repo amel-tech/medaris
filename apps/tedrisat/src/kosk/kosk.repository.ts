@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { and, desc, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import {
   courseIdsOfKosk,
   IPurgeCounts,
@@ -9,16 +9,24 @@ import {
 } from "../course/course-purge";
 import { DatabaseService } from "../database/database.service";
 import {
+  deleteAssignmentsIn,
+  grantRole,
+  holderIdsOf,
+  holdsIn,
+  isHeld,
+  revokeRole,
+} from "../database/role-assignments";
+import {
   courseMuderris,
   courses,
   enrollments,
 } from "../database/schema/course.schema";
+import { koskFollowers, kosks } from "../database/schema/kosk.schema";
 import {
-  koskFollowers,
-  koskManagers,
-  kosks,
-} from "../database/schema/kosk.schema";
-import { madrasahs } from "../database/schema/madrasah.schema";
+  ASSIGNED_ROLES,
+  roleAssignments,
+  SCOPE_TYPES,
+} from "../database/schema/role-assignment.schema";
 import { users } from "../database/schema/user.schema";
 import {
   AddManagerOutcome,
@@ -46,13 +54,8 @@ export class KoskRepository implements IKoskRepository {
   private statsSelect(userId: string) {
     return {
       kosk: kosks,
-      // Left-joined (see `withMadrasah`); all three are null for a köşk that
-      // stands alone.
-      madrasahName: madrasahs.name,
-      madrasahHandle: madrasahs.handle,
-      managerIds: sql<
-        string[]
-      >`coalesce((select array_agg(m.user_id::text order by m.created_at, m.user_id) from ${koskManagers} m where m.kosk_id = "kosks"."id"), '{}')`,
+      // Its KOSK_NAZIM holders (MDRS-134), oldest grant first.
+      managerIds: holderIdsOf(ASSIGNED_ROLES.KOSK_NAZIM, sql`"kosks"."id"`),
       // The three course-derived counts leave hidden courses out (MDRS-124):
       // a hidden course is in no list, so it is in no total either.
       courseCount:
@@ -78,18 +81,12 @@ export class KoskRepository implements IKoskRepository {
     };
   }
 
-  /** Every köşk read carries its medrese (MDRS-106), so every read joins. */
   private selectWithStats(userId: string) {
-    return this.db
-      .select(this.statsSelect(userId))
-      .from(kosks)
-      .leftJoin(madrasahs, eq(kosks.madrasahId, madrasahs.id));
+    return this.db.select(this.statsSelect(userId)).from(kosks);
   }
 
   private toStats(row: {
     kosk: IKosk;
-    madrasahName: string | null;
-    madrasahHandle: string | null;
     managerIds: string[];
     courseCount: number;
     studentCount: number;
@@ -97,19 +94,8 @@ export class KoskRepository implements IKoskRepository {
     followerCount: number;
     isFollowing: boolean;
   }): IKoskWithStats {
-    const { madrasahId } = row.kosk;
     return {
       ...row.kosk,
-      madrasah:
-        madrasahId !== null &&
-        row.madrasahName !== null &&
-        row.madrasahHandle !== null
-          ? {
-              id: madrasahId,
-              name: row.madrasahName,
-              handle: row.madrasahHandle,
-            }
-          : null,
       managerIds: row.managerIds,
       courseCount: row.courseCount,
       studentCount: row.studentCount,
@@ -153,7 +139,8 @@ export class KoskRepository implements IKoskRepository {
   }
 
   /**
-   * `kosk_managers.user_id` is a `uuid`, and `userId` is a token's `sub`: a
+   * A köşk's managers are its KOSK_NAZIM holders (MDRS-134).
+   * `role_assignments.user_id` is a `uuid`, and `userId` is a token's `sub`: a
    * realm that mints a non-UUID `sub` (see `identityFromClaims`) manages
    * nothing, rather than failing the guard with a Postgres 22P02. The old
    * owner check compared in JavaScript and never reached that error.
@@ -161,10 +148,13 @@ export class KoskRepository implements IKoskRepository {
   async isManager(koskId: string, userId: string): Promise<boolean> {
     if (!UUID_REGEX.test(koskId) || !UUID_REGEX.test(userId)) return false;
     const rows = await this.db
-      .select({ userId: koskManagers.userId })
-      .from(koskManagers)
+      .select({ id: roleAssignments.id })
+      .from(roleAssignments)
       .where(
-        and(eq(koskManagers.koskId, koskId), eq(koskManagers.userId, userId))
+        and(
+          eq(roleAssignments.userId, userId),
+          holdsIn(ASSIGNED_ROLES.KOSK_NAZIM, koskId)
+        )
       )
       .limit(1);
     return rows.length > 0;
@@ -174,16 +164,22 @@ export class KoskRepository implements IKoskRepository {
     return this.db
       .select({ id: kosks.id, name: kosks.name })
       .from(kosks)
-      .innerJoin(koskManagers, eq(koskManagers.koskId, kosks.id))
-      .where(eq(koskManagers.userId, userId))
+      .innerJoin(roleAssignments, holdsIn(ASSIGNED_ROLES.KOSK_NAZIM, kosks.id))
+      .where(eq(roleAssignments.userId, userId))
       .orderBy(kosks.name);
   }
 
   async managesAny(userId: string): Promise<boolean> {
     const rows = await this.db
-      .select({ koskId: koskManagers.koskId })
-      .from(koskManagers)
-      .where(eq(koskManagers.userId, userId))
+      .select({ id: roleAssignments.id })
+      .from(roleAssignments)
+      .where(
+        and(
+          eq(roleAssignments.userId, userId),
+          eq(roleAssignments.role, ASSIGNED_ROLES.KOSK_NAZIM),
+          isHeld()
+        )
+      )
       .limit(1);
     return rows.length > 0;
   }
@@ -192,10 +188,11 @@ export class KoskRepository implements IKoskRepository {
   async create(kosk: ICreateKosk): Promise<IKosk> {
     return this.db.transaction(async (tx) => {
       const [created] = await tx.insert(kosks).values(kosk).returning();
-      await tx.insert(koskManagers).values({
-        koskId: created.id,
+      await grantRole(tx, {
         userId: kosk.ownerId,
-        addedBy: kosk.ownerId,
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        scopeId: created.id,
+        grantedBy: kosk.ownerId,
       });
       return created;
     });
@@ -217,9 +214,9 @@ export class KoskRepository implements IKoskRepository {
       .for("no key update");
     if (!kosk) return null;
     const rows = await tx
-      .select({ userId: koskManagers.userId })
-      .from(koskManagers)
-      .where(eq(koskManagers.koskId, koskId));
+      .select({ userId: roleAssignments.userId })
+      .from(roleAssignments)
+      .where(holdsIn(ASSIGNED_ROLES.KOSK_NAZIM, koskId));
     return rows.map((r) => r.userId);
   }
 
@@ -250,16 +247,20 @@ export class KoskRepository implements IKoskRepository {
         .where(eq(users.id, target))
         .limit(1);
       if (!known) return "unknown-user";
-      await tx
-        .insert(koskManagers)
-        .values({ koskId, userId: target, addedBy: actor.id })
-        .onConflictDoNothing();
+      await grantRole(tx, {
+        userId: target,
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        scopeId: koskId,
+        grantedBy: actor.id,
+      });
       return "added";
     });
   }
 
   /**
-   * Removes a manager unless they are the last one. Under the köşk lock (see
+   * Removes a manager unless they are the last one. The row is revoked in the
+   * actor's name, not deleted (MDRS-134), so who took the role away stays on
+   * record. Under the köşk lock (see
    * `lockManagers`), so two removals racing for the last two managers run one
    * after the other: the second sees a single manager left and is refused,
    * instead of both deleting and leaving the köşk with none. The actor's right
@@ -279,11 +280,12 @@ export class KoskRepository implements IKoskRepository {
       }
       if (!managers.includes(target)) return "not-manager";
       if (managers.length === 1) return "last";
-      await tx
-        .delete(koskManagers)
-        .where(
-          and(eq(koskManagers.koskId, koskId), eq(koskManagers.userId, target))
-        );
+      await revokeRole(tx, {
+        userId: target,
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        scopeId: koskId,
+        revokedBy: actor.id,
+      });
       return "removed";
     });
   }
@@ -323,14 +325,11 @@ export class KoskRepository implements IKoskRepository {
           .where(eq(koskFollowers.koskId, id))
           .returning({ userId: koskFollowers.userId })
       ).length;
-      // Explicit, though the foreign key cascades: the audit entry names who
-      // managed the köşk (MDRS-126), which is otherwise lost with it.
-      const managers = (
-        await tx
-          .delete(koskManagers)
-          .where(eq(koskManagers.koskId, id))
-          .returning({ userId: koskManagers.userId })
-      ).map((m) => m.userId);
+      // `scope_id` is no foreign key, so nothing cascades: the köşk's role
+      // rows go explicitly, and the audit entry names who managed it
+      // (MDRS-126), which is otherwise lost with it. Its hosting rights
+      // cascade with the köşk row.
+      const managers = await deleteAssignmentsIn(tx, SCOPE_TYPES.KOSK, [id]);
       await tx.delete(kosks).where(eq(kosks.id, id));
       await recordDeletion(tx, {
         actorId,
@@ -344,46 +343,6 @@ export class KoskRepository implements IKoskRepository {
       });
       return { ...removed, followers };
     });
-  }
-
-  /**
-   * Binds the köşk to `madrasahId` unless it already belongs to another
-   * medrese. False when nothing matched — the köşk is missing or taken; the
-   * service tells the two apart. Re-affiliating with the same medrese
-   * matches, so the call is idempotent.
-   */
-  async affiliate(koskId: string, madrasahId: string): Promise<boolean> {
-    const updated = await this.db
-      .update(kosks)
-      .set({ madrasahId, updatedAt: new Date() })
-      .where(
-        and(
-          eq(kosks.id, koskId),
-          or(isNull(kosks.madrasahId), eq(kosks.madrasahId, madrasahId))
-        )
-      )
-      .returning({ id: kosks.id });
-    return updated.length > 0;
-  }
-
-  /** Unbinds the köşk from whichever medrese it belongs to, if any. */
-  async leaveMadrasah(koskId: string): Promise<boolean> {
-    const updated = await this.db
-      .update(kosks)
-      .set({ madrasahId: null, updatedAt: new Date() })
-      .where(and(eq(kosks.id, koskId), isNotNull(kosks.madrasahId)))
-      .returning({ id: kosks.id });
-    return updated.length > 0;
-  }
-
-  /** Unbinds the köşk, only if it belongs to `madrasahId`. */
-  async detach(koskId: string, madrasahId: string): Promise<boolean> {
-    const updated = await this.db
-      .update(kosks)
-      .set({ madrasahId: null, updatedAt: new Date() })
-      .where(and(eq(kosks.id, koskId), eq(kosks.madrasahId, madrasahId)))
-      .returning({ id: kosks.id });
-    return updated.length > 0;
   }
 
   async follow(userId: string, koskId: string): Promise<boolean> {

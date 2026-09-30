@@ -5,6 +5,8 @@ export interface IMadrasah {
   description: string | null;
   coverHue: number;
   createdBy: string;
+  passiveSince: Date | null;
+  passiveReason: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

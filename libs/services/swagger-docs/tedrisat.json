@@ -256,52 +256,9 @@
         ]
       }
     },
-    "/kosks/{id}/madrasah": {
-      "delete": {
-        "description": "The köşk's own way out of a medrese: its manager (or a nazır of that medrese) makes it standalone again.",
-        "operationId": "leaveMadrasah",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KoskResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": ""
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Detach a köşk from its medrese",
-        "tags": [
-          "kosks"
-        ]
-      }
-    },
     "/kosks/{id}/managers/{userId}": {
       "post": {
-        "description": "Idempotent. Open to the köşk's managers and SYSTEM_ADMIN — not to a nazır of its medrese (MDRS-126).",
+        "description": "Idempotent. Open to the köşk's managers and SYSTEM_ADMIN (MDRS-126).",
         "operationId": "addKoskManager",
         "parameters": [
           {
@@ -652,7 +609,7 @@
         ]
       },
       "delete": {
-        "description": "Its nazır list goes with it; its köşks become standalone. Nazırs cannot delete (MDRS-124).",
+        "description": "Its nazır list and hosting rights go with it; its courses stay in their köşks with no medrese. Nazırs cannot delete (MDRS-124).",
         "operationId": "deleteMadrasah",
         "parameters": [
           {
@@ -786,107 +743,6 @@
           }
         ],
         "summary": "Remove a nazır from the medrese",
-        "tags": [
-          "madrasahs"
-        ]
-      }
-    },
-    "/madrasahs/{id}/kosks/{koskId}": {
-      "post": {
-        "operationId": "affiliateMadrasahKosk",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "koskId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KoskResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": ""
-          },
-          "404": {
-            "description": ""
-          },
-          "409": {
-            "description": "The köşk belongs to another medrese (KOSK_ALREADY_AFFILIATED)"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Affiliate a köşk with the medrese",
-        "tags": [
-          "madrasahs"
-        ]
-      },
-      "delete": {
-        "operationId": "detachMadrasahKosk",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "koskId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KoskResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": ""
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Detach a köşk from the medrese",
         "tags": [
           "madrasahs"
         ]
@@ -3511,27 +3367,6 @@
           "service"
         ]
       },
-      "KoskMadrasahRef": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string",
-            "example": "Hadis ve Siyer Medresesi"
-          },
-          "handle": {
-            "type": "string",
-            "example": "hadis-ve-siyer"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "handle"
-        ]
-      },
       "KoskResponse": {
         "type": "object",
         "properties": {
@@ -3548,21 +3383,6 @@
             "items": {
               "type": "string"
             }
-          },
-          "madrasahId": {
-            "type": "string",
-            "nullable": true,
-            "description": "The affiliated medrese's id; null for a standalone köşk"
-          },
-          "madrasah": {
-            "nullable": true,
-            "description": "The affiliated medrese; null for a standalone köşk",
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/KoskMadrasahRef"
-              }
-            ]
           },
           "name": {
             "type": "string",

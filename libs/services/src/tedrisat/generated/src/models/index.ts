@@ -40,7 +40,6 @@ export * from './FlashcardLabelingResponse';
 export * from './FlashcardProgressResponse';
 export * from './FlashcardResponse';
 export * from './HealthCheckDto';
-export * from './KoskMadrasahRef';
 export * from './KoskResponse';
 export * from './LabelStatsResponse';
 export * from './LessonMutationResponse';

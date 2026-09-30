@@ -32,7 +32,6 @@ import {
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
-import { KoskResponse } from "../kosk/dto/kosk-response.dto";
 import { AuthorizedRequest } from "../kosk/interfaces/authorized-request.interface";
 import { CreateMadrasahDto } from "./dto/create-madrasah.dto";
 import { MadrasahResponse } from "./dto/madrasah-response.dto";
@@ -157,7 +156,7 @@ export class MadrasahController {
   @ApiOperation({
     summary: "Delete a medrese (SYSTEM_ADMIN only)",
     description:
-      "Its nazır list goes with it; its köşks become standalone. Nazırs cannot delete (MDRS-124).",
+      "Its nazır list and hosting rights go with it; its courses stay in their köşks with no medrese. Nazırs cannot delete (MDRS-124).",
     operationId: "deleteMadrasah",
   })
   @ApiOkResponse({ type: Boolean })
@@ -179,10 +178,11 @@ export class MadrasahController {
   @Post(":id/nazirs/:userId")
   @Authz(SCOPES.INVITE_NAZIR, byExistingMadrasah)
   async addNazir(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("userId", ParseUUIDPipe) userId: string
   ): Promise<MadrasahResponse> {
-    return this.madrasahService.addNazir(id, userId);
+    return this.madrasahService.addNazir(id, userId, request.user.sub);
   }
 
   @ApiOperation({
@@ -195,47 +195,10 @@ export class MadrasahController {
   @Delete(":id/nazirs/:userId")
   @Authz(SCOPES.REMOVE_NAZIR, byExistingMadrasah)
   async removeNazir(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("userId", ParseUUIDPipe) userId: string
   ): Promise<MadrasahResponse> {
-    return this.madrasahService.removeNazir(id, userId);
-  }
-
-  @ApiOperation({
-    summary: "Affiliate a köşk with the medrese",
-    operationId: "affiliateMadrasahKosk",
-  })
-  @ApiCreatedResponse({ type: KoskResponse })
-  @ApiForbiddenResponse()
-  @ApiNotFoundResponse()
-  @ApiConflictResponse({
-    description:
-      "The köşk belongs to another medrese (KOSK_ALREADY_AFFILIATED)",
-  })
-  @Post(":id/kosks/:koskId")
-  @Authz(SCOPES.MANAGE_KOSK, byExistingMadrasah)
-  async affiliateKosk(
-    @Req() request: AuthorizedRequest,
-    @Param("id", ParseUUIDPipe) id: string,
-    @Param("koskId", ParseUUIDPipe) koskId: string
-  ): Promise<KoskResponse> {
-    return this.madrasahService.affiliateKosk(id, koskId, request.user.sub);
-  }
-
-  @ApiOperation({
-    summary: "Detach a köşk from the medrese",
-    operationId: "detachMadrasahKosk",
-  })
-  @ApiOkResponse({ type: KoskResponse })
-  @ApiForbiddenResponse()
-  @ApiNotFoundResponse()
-  @Delete(":id/kosks/:koskId")
-  @Authz(SCOPES.MANAGE_KOSK, byExistingMadrasah)
-  async detachKosk(
-    @Req() request: AuthorizedRequest,
-    @Param("id", ParseUUIDPipe) id: string,
-    @Param("koskId", ParseUUIDPipe) koskId: string
-  ): Promise<KoskResponse> {
-    return this.madrasahService.detachKosk(id, koskId, request.user.sub);
+    return this.madrasahService.removeNazir(id, userId, request.user.sub);
   }
 }
