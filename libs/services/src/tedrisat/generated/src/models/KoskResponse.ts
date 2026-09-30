@@ -13,14 +13,6 @@
  */
 
 import { mapValues } from '../runtime';
-import type { KoskMadrasahRef } from './KoskMadrasahRef';
-import {
-    KoskMadrasahRefFromJSON,
-    KoskMadrasahRefFromJSONTyped,
-    KoskMadrasahRefToJSON,
-    KoskMadrasahRefToJSONTyped,
-} from './KoskMadrasahRef';
-
 /**
  * 
  * @export
@@ -45,18 +37,6 @@ export interface KoskResponse {
      * @memberof KoskResponse
      */
     managerIds: Array<string>;
-    /**
-     * The affiliated medrese's id; null for a standalone köşk
-     * @type {string}
-     * @memberof KoskResponse
-     */
-    madrasahId?: string | null;
-    /**
-     * The affiliated medrese; null for a standalone köşk
-     * @type {KoskMadrasahRef}
-     * @memberof KoskResponse
-     */
-    madrasah?: KoskMadrasahRef | null;
     /**
      * 
      * @type {string}
@@ -211,8 +191,6 @@ export function KoskResponseFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'id': json['id'],
         'ownerId': json['ownerId'],
         'managerIds': json['managerIds'],
-        'madrasahId': json['madrasahId'] == null ? undefined : json['madrasahId'],
-        'madrasah': json['madrasah'] == null ? undefined : KoskMadrasahRefFromJSON(json['madrasah']),
         'name': json['name'],
         'handle': json['handle'] == null ? undefined : json['handle'],
         'description': json['description'] == null ? undefined : json['description'],
@@ -249,8 +227,6 @@ export function KoskResponseToJSONTyped(value?: KoskResponse | null, ignoreDiscr
         'id': value['id'],
         'ownerId': value['ownerId'],
         'managerIds': value['managerIds'],
-        'madrasahId': value['madrasahId'],
-        'madrasah': KoskMadrasahRefToJSON(value['madrasah']),
         'name': value['name'],
         'handle': value['handle'],
         'description': value['description'],

@@ -86,7 +86,7 @@ export class UserService {
   private async mayLookUpUsers(claims: TokenClaims): Promise<boolean> {
     if (this.authz.isSystemAdmin(claims)) return true;
     // A non-UUID `sub` manages nothing, and would be a 22P02 against
-    // `kosk_managers.user_id`.
+    // `role_assignments.user_id`.
     const identity = identityFromClaims(claims);
     if (!identity) return false;
     return this.koskService.managesAny(identity.id);

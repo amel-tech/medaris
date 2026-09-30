@@ -155,6 +155,27 @@
       "when": 1790621287827,
       "tag": "0021_kosk_managers",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790725850499,
+      "tag": "0022_role_assignments",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790725858709,
+      "tag": "0023_role_assignments_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790725948850,
+      "tag": "0024_drop_superseded_role_tables",
+      "breakpoints": true
     }
   ]
 }

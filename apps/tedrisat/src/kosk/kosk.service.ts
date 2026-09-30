@@ -1,10 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { KoskAlreadyAffiliatedError } from "./errors/kosk-already-affiliated.error";
 import { KoskForbiddenError } from "./errors/kosk-forbidden.error";
 import { KoskLastManagerError } from "./errors/kosk-last-manager.error";
 import { KoskManagerNotFoundError } from "./errors/kosk-manager-not-found.error";
 import { KoskManagerUnknownUserError } from "./errors/kosk-manager-unknown-user.error";
-import { KoskNotAffiliatedError } from "./errors/kosk-not-affiliated.error";
 import { KoskNotFoundError } from "./errors/kosk-not-found.error";
 import { KoskRepository } from "./kosk.repository";
 import {
@@ -43,8 +41,8 @@ export class KoskService {
   }
 
   /**
-   * True if `userId` is one of the köşk's managers (`kosk_managers`,
-   * MDRS-126); false if not, including for a missing köşk. The one predicate
+   * True if `userId` is one of the köşk's managers (MDRS-126) — holds
+   * KOSK_NAZIM there (MDRS-134); false if not, including for a missing köşk. The one predicate
    * authorization and the domain code both read.
    */
   async isManager(koskId: string, userId: string): Promise<boolean> {
@@ -124,9 +122,8 @@ export class KoskService {
   }
 
   /**
-   * Authorization is `@Authz(SCOPES.EDIT, …)` on `KoskController.update`
-   * (MDRS-106): the köşk's manager, or a nazır of its medrese. No ownership
-   * assertion is repeated here, because it would refuse the nazır.
+   * Authorization is `@Authz(SCOPES.EDIT, …)` on `KoskController.update`: the
+   * köşk's managers. A medrese has no say over a köşk since MDRS-134.
    */
   async update(id: string, updates: IUpdateKosk): Promise<IKosk> {
     const updated = await this.koskRepo.update(id, updates);
@@ -146,34 +143,6 @@ export class KoskService {
     const removed = await this.koskRepo.purge(id, actorId);
     if (!removed) throw new KoskNotFoundError(id);
     return true;
-  }
-
-  /**
-   * Affiliates the köşk with a medrese (MDRS-106). Idempotent for the same
-   * medrese; a köşk that already belongs to another one is a 409 — it has to
-   * be detached from there first.
-   */
-  async affiliate(koskId: string, madrasahId: string): Promise<void> {
-    if (await this.koskRepo.affiliate(koskId, madrasahId)) return;
-    if (!(await this.exists(koskId))) throw new KoskNotFoundError(koskId);
-    throw new KoskAlreadyAffiliatedError(koskId, { madrasahId });
-  }
-
-  /** Detaches the köşk from `madrasahId`; 404 unless it belongs to it. */
-  async detach(koskId: string, madrasahId: string): Promise<void> {
-    if (await this.koskRepo.detach(koskId, madrasahId)) return;
-    if (!(await this.exists(koskId))) throw new KoskNotFoundError(koskId);
-    throw new KoskNotAffiliatedError(koskId, madrasahId);
-  }
-
-  /**
-   * The köşk's own way out of a medrese: without it, a köşk a nazır had
-   * affiliated could only be released by that medrese's nazırs.
-   */
-  async leaveMadrasah(koskId: string): Promise<void> {
-    if (await this.koskRepo.leaveMadrasah(koskId)) return;
-    if (!(await this.exists(koskId))) throw new KoskNotFoundError(koskId);
-    throw new KoskNotAffiliatedError(koskId);
   }
 
   async follow(userId: string, koskId: string): Promise<boolean> {

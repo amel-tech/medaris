@@ -30,8 +30,6 @@ interface Stubs {
   enrollment?: EnrollmentRow | null;
   /** Nazırs of the medrese under test (`isNazir`). */
   madrasahNazirs?: string[];
-  /** Nazırs of the medrese the köşk under test is affiliated with. */
-  koskNazirs?: string[];
 }
 
 const build = (s: Stubs = {}) => {
@@ -58,11 +56,6 @@ const build = (s: Stubs = {}) => {
       .fn()
       .mockImplementation(async (_madrasahId: string, userId: string) =>
         (s.madrasahNazirs ?? []).includes(userId)
-      ),
-    isNazirOfKosk: vi
-      .fn()
-      .mockImplementation(async (_koskId: string, userId: string) =>
-        (s.koskNazirs ?? []).includes(userId)
       ),
   } as unknown as MadrasahService;
   return {
@@ -178,36 +171,27 @@ describe("TedrisatRoleResolver", () => {
         resolver.resolve("u", { entity: ENTITIES.KOSK, id: "new" })
       ).resolves.toBe(ROLES.PUBLIC);
       expect(kosk.isManager).not.toHaveBeenCalled();
-      expect(madrasah.isNazirOfKosk).not.toHaveBeenCalled();
+      expect(madrasah.isNazir).not.toHaveBeenCalled();
     });
 
-    // MDRS-106. Fails if the nazır branch in `resolveKoskRole` is removed:
-    // the caller then falls through to PUBLIC.
-    it("returns MADRASAH_NAZIR for a nazır of the köşk's medrese", async () => {
+    // MDRS-134 removed the MADRASAH_NAZIR path MDRS-106 added: a medrese's
+    // only link to a köşk is a hosting right, which gives it no power there.
+    // Fails if the resolver consults the medrese again.
+    it("gives a medrese's nazır nothing but PUBLIC on a köşk", async () => {
       const { resolver, madrasah } = build({
         koskManagerId: "manager-1",
-        koskNazirs: ["nazir-1"],
+        madrasahNazirs: ["nazir-1"],
       });
       await expect(
         resolver.resolve("nazir-1", { entity: ENTITIES.KOSK, id: REAL_UUID })
-      ).resolves.toBe(ROLES.MADRASAH_NAZIR);
-      expect(madrasah.isNazirOfKosk).toHaveBeenCalledWith(REAL_UUID, "nazir-1");
-    });
-
-    it("prefers KOSK_MANAGER for an owner who is also a nazır of its medrese", async () => {
-      const { resolver } = build({
-        koskManagerId: "both-1",
-        koskNazirs: ["both-1"],
-      });
-      await expect(
-        resolver.resolve("both-1", { entity: ENTITIES.KOSK, id: REAL_UUID })
-      ).resolves.toBe(ROLES.KOSK_MANAGER);
+      ).resolves.toBe(ROLES.PUBLIC);
+      expect(madrasah.isNazir).not.toHaveBeenCalled();
     });
   });
 
   describe("madrasah dispatch (MDRS-106)", () => {
     // Fails if the nazır branch in `resolveMadrasahRole` is removed.
-    it("returns MADRASAH_NAZIR for a user listed in madrasah_nazirs", async () => {
+    it("returns MADRASAH_NAZIR for a user who holds MEDRESE_BASMUDERRIS there", async () => {
       const { resolver, madrasah } = build({ madrasahNazirs: ["nazir-1"] });
       await expect(
         resolver.resolve("nazir-1", {
@@ -341,7 +325,7 @@ describe("TedrisatRoleResolver", () => {
       const { resolver, madrasah } = build({
         courseKoskId: KOSK_UUID,
         koskManagerId: "someone-else",
-        koskNazirs: ["nazir-1"],
+        madrasahNazirs: ["nazir-1"],
       });
       await expect(
         resolver.resolve("nazir-1", {
@@ -349,7 +333,7 @@ describe("TedrisatRoleResolver", () => {
           id: REAL_UUID,
         })
       ).resolves.toBe(ROLES.PUBLIC);
-      expect(madrasah.isNazirOfKosk).not.toHaveBeenCalled();
+      expect(madrasah.isNazir).not.toHaveBeenCalled();
     });
 
     it("returns PUBLIC when the course does not exist, without the dependent lookups", async () => {
