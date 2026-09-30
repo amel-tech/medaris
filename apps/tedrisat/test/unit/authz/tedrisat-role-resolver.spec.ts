@@ -2,7 +2,10 @@ import { ENTITIES, ROLES } from "@medaris/common";
 import { TedrisatRoleResolver } from "../../../src/authz/tedrisat-role-resolver.service";
 import { CourseRepository } from "../../../src/course/course.repository";
 import { EnrollmentStatus } from "../../../src/course/domain/enrollment-status.enum";
+import { CourseNotFoundError } from "../../../src/course/errors/course-not-found.error";
+import { DeckNotFoundError } from "../../../src/flashcard/errors/deck-not-found.error";
 import { FlashcardDeckService } from "../../../src/flashcard/flashcard-deck.service";
+import { KoskNotFoundError } from "../../../src/kosk/errors/kosk-not-found.error";
 import { KoskService } from "../../../src/kosk/kosk.service";
 import { MadrasahService } from "../../../src/madrasah/madrasah.service";
 
@@ -16,15 +19,20 @@ interface EnrollmentRow {
 }
 
 /**
- * The resolver reads through `KoskService.isManager`, `FlashcardDeckService`
- * and `CourseRepository` (never through `DatabaseService`), so the stubs are
+ * The resolver reads through `KoskService`, `FlashcardDeckService` and
+ * `CourseRepository` (never through `DatabaseService`), so the stubs are
  * those methods. `koskManagerId` drives `isManager` for both the direct köşk
- * lookup and the parent köşk lookup on the course path — each resolution
- * makes exactly one.
+ * lookup and the parent köşk lookup on the course path. `koskExists` drives
+ * `exists`, which only the direct köşk path reads: it has to tell "no such
+ * köşk" (404) from "not your köşk" (403, MDRS-43), and since köşks have many
+ * managers (MDRS-126/134) `isManager` cannot carry that third state. The
+ * course path needs no such check — the course's FK guarantees its köşk.
  */
 interface Stubs {
   deck?: DeckRow | null;
   koskManagerId?: string | null;
+  /** Whether the köşk under test exists (`exists`); default true. */
+  koskExists?: boolean;
   courseKoskId?: string | null;
   muderris?: boolean;
   enrollment?: EnrollmentRow | null;
@@ -34,6 +42,7 @@ interface Stubs {
 
 const build = (s: Stubs = {}) => {
   const kosk = {
+    exists: vi.fn().mockResolvedValue(s.koskExists ?? true),
     isManager: vi
       .fn()
       .mockImplementation(
@@ -100,7 +109,10 @@ describe("TedrisatRoleResolver", () => {
       ).resolves.toBe(ROLES.DECK_OWNER);
     });
 
-    it("returns null (strict deny) for a stranger on a private deck", async () => {
+    // MDRS-43 AC-4: a stranger must not be able to tell somebody else's
+    // private deck from a deck that is not there, so this is the SAME
+    // `DeckNotFoundError` as the missing-deck case below, not a deny (403).
+    it("404s a stranger on a private deck, exactly as for a missing one", async () => {
       const { resolver } = build({
         deck: { id: REAL_UUID, isPublic: false, authorId: "owner-1" },
       });
@@ -109,7 +121,7 @@ describe("TedrisatRoleResolver", () => {
           entity: ENTITIES.FLASHCARD_DECK,
           id: REAL_UUID,
         })
-      ).resolves.toBeNull();
+      ).rejects.toThrow(DeckNotFoundError);
     });
 
     it("returns PUBLIC for a stranger on a public deck", async () => {
@@ -124,14 +136,18 @@ describe("TedrisatRoleResolver", () => {
       ).resolves.toBe(ROLES.PUBLIC);
     });
 
-    it("returns PUBLIC when the deck does not exist", async () => {
+    // MDRS-43. This branch used to answer PUBLIC and leave the 404 to the
+    // handler. With `@Authz` the guard decides FIRST, so on a write route the
+    // handler that would have 404'd is never reached and "absent" came back as
+    // a 403. The 404 moved into the resolver with the decision.
+    it("404s when the deck does not exist, rather than denying", async () => {
       const { resolver } = build({ deck: null });
       await expect(
         resolver.resolve("u", {
           entity: ENTITIES.FLASHCARD_DECK,
           id: OTHER_UUID,
         })
-      ).resolves.toBe(ROLES.PUBLIC);
+      ).rejects.toThrow(DeckNotFoundError);
     });
 
     it("returns PUBLIC for non-UUID deck ids without touching the repository", async () => {
@@ -158,11 +174,11 @@ describe("TedrisatRoleResolver", () => {
       ).resolves.toBe(ROLES.PUBLIC);
     });
 
-    it("returns PUBLIC when the köşk does not exist", async () => {
-      const { resolver } = build({ koskManagerId: null });
+    it("404s when the köşk does not exist, rather than denying", async () => {
+      const { resolver } = build({ koskExists: false });
       await expect(
         resolver.resolve("u", { entity: ENTITIES.KOSK, id: OTHER_UUID })
-      ).resolves.toBe(ROLES.PUBLIC);
+      ).rejects.toThrow(KoskNotFoundError);
     });
 
     it("returns PUBLIC for non-UUID köşk ids", async () => {
@@ -170,6 +186,7 @@ describe("TedrisatRoleResolver", () => {
       await expect(
         resolver.resolve("u", { entity: ENTITIES.KOSK, id: "new" })
       ).resolves.toBe(ROLES.PUBLIC);
+      expect(kosk.exists).not.toHaveBeenCalled();
       expect(kosk.isManager).not.toHaveBeenCalled();
       expect(madrasah.isNazir).not.toHaveBeenCalled();
     });
@@ -336,11 +353,11 @@ describe("TedrisatRoleResolver", () => {
       expect(madrasah.isNazir).not.toHaveBeenCalled();
     });
 
-    it("returns PUBLIC when the course does not exist, without the dependent lookups", async () => {
+    it("404s when the course does not exist, without the dependent lookups", async () => {
       const { resolver, kosk, course } = build({ courseKoskId: null });
       await expect(
         resolver.resolve("u", { entity: ENTITIES.COURSE, id: OTHER_UUID })
-      ).resolves.toBe(ROLES.PUBLIC);
+      ).rejects.toThrow(CourseNotFoundError);
       expect(kosk.isManager).not.toHaveBeenCalled();
       expect(course.isMuderris).not.toHaveBeenCalled();
       expect(course.findEnrollment).not.toHaveBeenCalled();

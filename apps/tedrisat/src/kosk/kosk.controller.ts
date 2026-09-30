@@ -1,9 +1,11 @@
 import {
   AuthGuard,
   Authz,
+  AuthzExempt,
   AuthzGuard,
   type AuthzResolve,
   AuthzService,
+  byParam,
   ENTITIES,
   SCOPES,
 } from "@medaris/common";
@@ -47,11 +49,14 @@ const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Authorizes a `/kosks/:id` route against that köşk, answering a missing or
- * malformed id as not-found first. Guards run before pipes, and the role
- * resolver reads a missing köşk as PUBLIC, so without this a PATCH to a köşk
- * that does not exist would be a 403 instead of the 404 it was before the
- * route moved to `@Authz`.
+ * Authorizes a `/kosks/:id` write route against that köşk, answering a
+ * missing or malformed id as not-found first. Guards run before pipes, so a
+ * malformed id on a write route would otherwise reach the role resolver,
+ * which reads a non-UUID as PUBLIC, and come back as a 403 instead of a 404.
+ * (A missing köşk with a well-formed id is 404 either way: since MDRS-43 the
+ * resolver itself throws `KoskNotFoundError`.) The read routes use
+ * `byParam`: PUBLIC holds VIEW, so a malformed id there falls through to
+ * `ParseUUIDPipe` and its 400.
  */
 const byExistingKosk: AuthzResolve = async (req, moduleRef) => {
   const koskId = typeof req.params.id === "string" ? req.params.id : "";
@@ -66,7 +71,7 @@ const byExistingKosk: AuthzResolve = async (req, moduleRef) => {
 
 @ApiTags("kosks")
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, AuthzGuard)
 @Controller("kosks")
 export class KoskController {
   constructor(
@@ -89,6 +94,12 @@ export class KoskController {
   @ApiQuery({ name: "page", required: false, type: Number })
   @ApiQuery({ name: "limit", required: false, type: Number })
   @ApiOkResponse({ type: PaginatedKoskResponse })
+  // Exempt: a paginated list has no single resource to authorize. Note what
+  // this does NOT do — `kosks.is_private` is still not applied to the listing,
+  // and the matrix cannot apply it either, because the KOSK PUBLIC row grants
+  // `VIEW` unconditionally. Enforcing that column is its own change; the
+  // MDRS-43 brief supersedes it and this task does not smuggle it in.
+  @AuthzExempt()
   @Get()
   async findAll(
     @Req() request: AuthorizedRequest,
@@ -106,6 +117,7 @@ export class KoskController {
   })
   @ApiOkResponse({ type: KoskResponse })
   @ApiNotFoundResponse()
+  @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK))
   @Get(":id")
   async findById(
     @Req() request: AuthorizedRequest,
@@ -119,6 +131,17 @@ export class KoskController {
     operationId: "createKosk",
   })
   @ApiCreatedResponse({ type: KoskResponse })
+  // Exempt by product decision (MDRS-43, 2026-09-23): any authenticated user
+  // may open a köşk and becomes its KOSK_MANAGER; opening dersler inside it
+  // stays with that owner (`MANAGE_COURSES`). Self-service is kept on purpose
+  // for now and may be narrowed later.
+  //
+  // The matrix still says otherwise: `CREATE_KOSK` is on NO kosk row, so
+  // köşk creation there is SYSTEM_ADMIN only, through the realm bypass. That
+  // is why this route is exempt rather than `@Authz(CREATE_KOSK, forNew(KOSK))`
+  // — the decorator would 403 every ordinary caller. Narrowing later means
+  // swapping in that decorator and hiding nizam's "Yeni Köşk" from non-admins.
+  @AuthzExempt()
   @Post()
   async create(
     @Req() request: AuthorizedRequest,
@@ -136,11 +159,8 @@ export class KoskController {
   @ApiOkResponse({ type: KoskResponse })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
-  @Patch(":id")
-  // Method-level, not class-level: most handlers here still check ownership
-  // in `KoskService` and have not moved to `@Authz`. This one has (MDRS-106).
-  @UseGuards(AuthzGuard)
   @Authz(SCOPES.EDIT, byExistingKosk)
+  @Patch(":id")
   async update(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -159,9 +179,8 @@ export class KoskController {
   @ApiOkResponse({ type: Boolean })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
-  @Delete(":id")
-  @UseGuards(AuthzGuard)
   @Authz(SCOPES.DELETE, byExistingKosk)
+  @Delete(":id")
   async delete(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
@@ -182,7 +201,6 @@ export class KoskController {
       "No such köşk, or the user has never signed in (KOSK_MANAGER_UNKNOWN_USER)",
   })
   @Post(":id/managers/:userId")
-  @UseGuards(AuthzGuard)
   @Authz(SCOPES.MANAGE_KOSK_MANAGERS, byExistingKosk)
   async addManager(
     @Req() request: AuthorizedRequest,
@@ -208,7 +226,6 @@ export class KoskController {
     description: "The user is the köşk's last manager (KOSK_LAST_MANAGER)",
   })
   @Delete(":id/managers/:userId")
-  @UseGuards(AuthzGuard)
   @Authz(SCOPES.MANAGE_KOSK_MANAGERS, byExistingKosk)
   async removeManager(
     @Req() request: AuthorizedRequest,
@@ -229,6 +246,8 @@ export class KoskController {
   })
   @ApiCreatedResponse({ type: Boolean })
   @ApiNotFoundResponse()
+  // Following is a read affordance: you may subscribe to a köşk you may see.
+  @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK))
   @Post(":id/follow")
   async follow(
     @Req() request: AuthorizedRequest,
@@ -242,6 +261,10 @@ export class KoskController {
     operationId: "unfollowKosk",
   })
   @ApiOkResponse({ type: Boolean })
+  // Exempt, unlike `follow`: this deletes the caller's own `kosk_followers`
+  // row, and leaving must not depend on still being allowed in. Same reasoning
+  // as `FlashcardDeckController.removeFromUserCollection`.
+  @AuthzExempt()
   @Delete(":id/follow")
   async unfollow(
     @Req() request: AuthorizedRequest,

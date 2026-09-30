@@ -118,6 +118,10 @@
     "addToMyCollection": "Add to my collection",
     "by": "by",
     "cards": "cards",
+    "madePrivate": "The deck is now visible only to you.",
+    "madePublic": "The deck is now visible to everyone.",
+    "makePrivate": "Make private",
+    "makePublic": "Make public",
     "noCardsDescription": "This deck doesn't have any flashcards yet. Add some cards to start practicing.",
     "noCardsInDeck": "No cards in this deck",
     "practiceNow": "Practice Now",
@@ -125,7 +129,9 @@
     "removeFromCollection": "Remove from collection",
     "removing": "Removing...",
     "sampleCards": "Sample Cards",
-    "students": "students"
+    "students": "students",
+    "visibilityChanged": "Visibility changed",
+    "visibilityError": "Could not change visibility"
   },
   "DeckForm": {
     "addCard": "Add Card",
@@ -379,5 +385,10 @@
       "decks": "Study with flashcards"
     },
     "start": "Start learning"
+  },
+  "DeckUnavailable": {
+    "title": "This deck isn't available",
+    "description": "It may have been deleted, or its owner keeps it private.",
+    "backToDecks": "Back to decks"
   }
 }

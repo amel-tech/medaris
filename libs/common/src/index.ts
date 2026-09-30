@@ -33,6 +33,7 @@ export {
   byParam,
   byQuery,
   ENTITIES,
+  forNew,
   MATRIX,
   ROLE_RESOLVER,
   ROLES,

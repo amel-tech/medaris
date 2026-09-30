@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
-import { flashcardProgress, flashcards } from "../database/schema";
+import { decks, flashcardProgress, flashcards } from "../database/schema";
 import { CardIncludeEnum } from "./domain/card-include.enum";
 import {
   ICreateFlashcard,
@@ -9,6 +9,7 @@ import {
   IFlashcard,
   IFlashcardProgress,
   IFlashcardRepository,
+  IFlashcardVisibility,
   IUpdateFlashcard,
 } from "./flashcard.repository.interface";
 
@@ -68,6 +69,31 @@ export class FlashcardRepository implements IFlashcardRepository {
       .where(eq(flashcards.id, id))
       .limit(1);
     return rows[0]?.deckId ?? null;
+  }
+
+  async findVisibilityByIds(
+    cardIds: string[]
+  ): Promise<IFlashcardVisibility[]> {
+    // `inArray` with an empty list compiles to `in ()`, which Postgres
+    // rejects — and there is nothing to ask about anyway.
+    if (cardIds.length === 0) return [];
+
+    // Four columns over a `flashcards ⋈ decks` join on the FK: the caller
+    // needs the deck each card belongs to AND that deck's visibility, and
+    // fetching them apart means one query for the deck ids and a second for
+    // the decks. Duplicate deck rows are cheap — a study session's cards
+    // share a handful of decks — and de-duplicating in SQL would cost a
+    // GROUP BY to save the caller a `Map`.
+    return this.databaseService.db
+      .select({
+        cardId: flashcards.id,
+        deckId: flashcards.deckId,
+        authorId: decks.authorId,
+        isPublic: decks.isPublic,
+      })
+      .from(flashcards)
+      .innerJoin(decks, eq(flashcards.deckId, decks.id))
+      .where(inArray(flashcards.id, cardIds));
   }
 
   async createMany(cards: ICreateFlashcard[]): Promise<IFlashcard[]> {

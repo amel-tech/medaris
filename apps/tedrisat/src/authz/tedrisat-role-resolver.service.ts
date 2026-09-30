@@ -8,7 +8,10 @@ import {
 import { Injectable } from "@nestjs/common";
 import { CourseRepository } from "../course/course.repository";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
+import { CourseNotFoundError } from "../course/errors/course-not-found.error";
+import { DeckNotFoundError } from "../flashcard/errors/deck-not-found.error";
 import { FlashcardDeckService } from "../flashcard/flashcard-deck.service";
+import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
 import { KoskService } from "../kosk/kosk.service";
 import { MadrasahService } from "../madrasah/madrasah.service";
 
@@ -25,6 +28,19 @@ const UUID_REGEX =
  * one code path: when the rule or the storage shape changes (a membership
  * table for köşk ownership, say), the one owner changes and both readers
  * follow.
+ *
+ * A resource that is **not there** raises the module's own 404 from inside
+ * the resolver (`DeckNotFoundError`, `KoskNotFoundError`,
+ * `CourseNotFoundError`), which `AuthzGuard.resolveResource` propagates
+ * untouched. Before MDRS-43 these branches answered `ROLES.PUBLIC` and left
+ * the 404 to the handler, on the grounds that the resolver should not leak
+ * existence — but once the guard decides in FRONT of the handler, a missing
+ * resource on a write route never reaches the code that would 404 it, and
+ * "absent" collapsed into the same 403 as "forbidden". MDRS-56 and MDRS-63
+ * decided the opposite on purpose, and `flashcard-bulk.e2e.spec.ts` pins it:
+ * ids here are v4 UUIDs, so 404 leaks nothing anyone could enumerate, while
+ * folding it into 403 makes a mistyped id indistinguishable from a real
+ * permission problem. So the 404 moves forward with the decision.
  *
  * Returning `null` means **deny** — the caller has no role on this
  * resource and no public access is intended either. `AuthzService.can`
@@ -81,11 +97,12 @@ export class TedrisatRoleResolver implements RoleResolver {
    * (private) and `isPublic = true` (global). Other variants from plan
    * §4.2 will land with their foreign keys.
    *
-   * - Non-UUID id ("new" used by the POST endpoint, malformed input):
-   *   return PUBLIC so `CREATE_PRIVATE_DECK` on the matrix's PUBLIC row
-   *   applies. Defends against Postgres 22P02.
-   * - Deck missing: return PUBLIC. The handler will 404 separately;
-   *   the resolver shouldn't leak existence by switching outcomes here.
+   * - Non-UUID id (the `forNew` sentinel, malformed input): return PUBLIC so
+   *   `CREATE_PRIVATE_DECK` on the matrix's PUBLIC row applies. Defends
+   *   against Postgres 22P02. This branch must stay AHEAD of the existence
+   *   check — a create endpoint names no deck and must not 404.
+   * - Deck missing: `DeckNotFoundError`. See the class comment: the guard
+   *   now runs in front of the handler that used to raise this.
    * - Caller authored the deck: DECK_OWNER — checked BEFORE `isPublic`.
    *   `isPublic` is a user-settable visibility flag on a user-authored
    *   row, not an admin flag; testing it first turned the author of a
@@ -93,13 +110,20 @@ export class TedrisatRoleResolver implements RoleResolver {
    *   their own deck, with no way back since flipping the flag is itself
    *   owner-scoped (review finding on MDRS-41). That last clause is an
    *   invariant of `FlashcardDeckController`, not of the schema: `PATCH`
-   *   and `PUT /flashcard/decks/:id` both call `assertOwner` before
-   *   `update`, so nobody but the author can flip the flag — which is also
-   *   what stops an attacker from turning this resolver's answer for every
-   *   other caller from `null` (deny) into `ROLES.PUBLIC`. Remove that
-   *   assertion and this priority order becomes unsound with it.
+   *   and `PUT /flashcard/decks/:id` are both
+   *   `@Authz(MANAGE_PRIVATE_DECK)`, a scope only DECK_OWNER carries, so
+   *   nobody but the author can flip the flag — which is also what stops an
+   *   attacker from turning this resolver's answer for every other caller
+   *   from `null` (deny) into `ROLES.PUBLIC`. Weaken that scope and this
+   *   priority order becomes unsound with it. (Before MDRS-43 the same
+   *   invariant was held up by an `assertOwner` call in the handler.)
    * - Public deck, not the author: PUBLIC (any authenticated caller may view).
-   * - Private deck, not the author: null → strict deny.
+   * - Private deck, not the author: `DeckNotFoundError`, the same 404 as a
+   *   deck that is not there — on every deck route, reads and writes alike.
+   *   A 403 here told a stranger the UUID was somebody's private deck;
+   *   MDRS-43 AC-4 requires that "private" and "absent" look the same. The
+   *   403 is kept for what the caller can already see: a public deck they
+   *   do not own, whose owner scopes the matrix denies.
    *
    * Two columns, one row, LIMIT 1 — `findVisibility`, not `findById`. This
    * runs inside the guard on every deck request, before the handler has done
@@ -110,13 +134,14 @@ export class TedrisatRoleResolver implements RoleResolver {
   private async resolveDeckRole(
     userId: string,
     resource: ResourceRef
-  ): Promise<Role | null> {
+  ): Promise<Role> {
     if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
 
     const deck = await this.deckService.findVisibility(resource.id);
-    if (!deck) return ROLES.PUBLIC;
+    if (!deck) throw new DeckNotFoundError(resource.id);
     if (deck.authorId === userId) return ROLES.DECK_OWNER;
-    return deck.isPublic ? ROLES.PUBLIC : null;
+    if (!deck.isPublic) throw new DeckNotFoundError(resource.id);
+    return ROLES.PUBLIC;
   }
 
   /**
@@ -128,8 +153,7 @@ export class TedrisatRoleResolver implements RoleResolver {
    *   creation is SYSTEM_ADMIN-only through the realm bypass. Do NOT add
    *   `CREATE_KOSK` to the PUBLIC row to make a create endpoint pass —
    *   that hands köşk creation to every authenticated user.
-   * - Köşk missing: PUBLIC. Mirrors the deck pattern — the controller
-   *   surfaces 404 later when its own query returns nothing.
+   * - Köşk missing: `KoskNotFoundError`. Mirrors the deck branch above.
    * - Caller is one of the köşk's managers: KOSK_MANAGER.
    * - Otherwise: PUBLIC. Anyone authenticated may VIEW; EDIT/DELETE
    *   are not on the PUBLIC row so non-owners are denied.
@@ -144,12 +168,18 @@ export class TedrisatRoleResolver implements RoleResolver {
   ): Promise<Role | null> {
     if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
 
-    // `KoskService.isManager` is the module's one management predicate
-    // (KOSK_NAZIM, MDRS-134); a missing köşk is simply "not a manager",
-    // which is PUBLIC here too.
-    return (await this.koskService.isManager(resource.id, userId))
-      ? ROLES.KOSK_MANAGER
-      : ROLES.PUBLIC;
+    // Two reads, not one: since MDRS-126/134 a köşk has many managers held
+    // in `role_assignments` (KOSK_NAZIM), so no single-column read of the
+    // köşk row answers "yours?" the way MDRS-43's `findOwnerId` did.
+    // `isManager` alone collapses "no such köşk" into `false`, and those are
+    // a 404 and a 403 respectively — so existence is asked separately, in
+    // parallel.
+    const [exists, isManager] = await Promise.all([
+      this.koskService.exists(resource.id),
+      this.koskService.isManager(resource.id, userId),
+    ]);
+    if (!exists) throw new KoskNotFoundError(resource.id);
+    return isManager ? ROLES.KOSK_MANAGER : ROLES.PUBLIC;
   }
 
   /**
@@ -208,8 +238,10 @@ export class TedrisatRoleResolver implements RoleResolver {
   ): Promise<Role | null> {
     if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
 
+    // `findKoskId` is null only when the course row is absent — the FK to
+    // `kosks` is not nullable — so this doubles as the existence check.
     const koskId = await this.courseRepo.findKoskId(resource.id);
-    if (koskId === null) return ROLES.PUBLIC;
+    if (koskId === null) throw new CourseNotFoundError(resource.id);
 
     const [ownsParentKosk, isMuderris, enrollment] = await Promise.all([
       this.koskService.isManager(koskId, userId),

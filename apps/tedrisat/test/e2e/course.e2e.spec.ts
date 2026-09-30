@@ -1,9 +1,16 @@
+import {
+  ENTITIES,
+  ROLE_RESOLVER,
+  ROLES,
+  type RoleResolver,
+} from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { eq } from "drizzle-orm";
 import request from "supertest";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { DatabaseService } from "../../src/database/database.service";
 import {
+  courseMuderris,
   courses,
   courseWeeks,
   enrollments,
@@ -818,6 +825,85 @@ describe("CourseController (e2e)", () => {
       await request(app.getHttpServer())
         .delete(`/courses/${otherCourse.id}`)
         .expect(403);
+    });
+
+    /**
+     * MDRS-43 AC-6, the müderris scenario. It resolves to a NEGATIVE in our
+     * schema, and the divergence is worth pinning rather than papering over:
+     *
+     *   - plan §4.1, transcribed into `MATRIX.course`, gives MUDERRIS `EDIT`,
+     *     so `@Authz(SCOPES.EDIT)` on `PATCH /courses/:id` lets a müderris
+     *     through the guard;
+     *   - `CourseService.assertCourseOwner` then narrows to the parent köşk's
+     *     managers, and a müderris who does not manage the köşk is refused
+     *     there.
+     *
+     * The guard is the outer fence and the service is the inner one, so the
+     * effective rule is the stricter of the two and nothing is open that was
+     * closed before. What this test records is that the two layers do not yet
+     * agree — closing that gap means either widening the service to the matrix
+     * or narrowing the matrix, and both are product decisions outside this
+     * task. Note also HOW the müderris has to be made: since MDRS-134 the
+     * role is a `role_assignments` MUDERRIS row, not `course_muderris.userId`
+     * (which stays as what the course page shows). The create DTO never binds
+     * an account, and there is no assignment endpoint yet (MDRS-136) — so
+     * MUDERRIS is unreachable through the API today and direct inserts are the
+     * only way to reach it. The resolver is asked directly first, so the 403
+     * below is proven to come from the service's inner fence and not from a
+     * müderris the guard failed to recognise.
+     */
+    it("refuses a müderris who does not own the köşk, though the matrix grants EDIT", async () => {
+      const [otherKosk] = await databaseService.db
+        .insert(kosks)
+        .values({ ownerId: OTHER_USER_ID, name: "Müderris Köşkü" })
+        .returning();
+      await assignRole(databaseService.db, {
+        userId: OTHER_USER_ID,
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        scopeId: otherKosk.id,
+        grantedBy: OTHER_USER_ID,
+      });
+      const [course] = await databaseService.db
+        .insert(courses)
+        .values({
+          koskId: otherKosk.id,
+          authorId: OTHER_USER_ID,
+          title: "Sarf Dersi",
+          status: CourseStatus.PUBLISHED,
+        })
+        .returning();
+      await databaseService.db.insert(courseMuderris).values({
+        courseId: course.id,
+        userId: TEST_USER_ID,
+        name: "Müderris Ahmed Hilmi",
+      });
+      await assignRole(databaseService.db, {
+        userId: TEST_USER_ID,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeId: course.id,
+        grantedBy: OTHER_USER_ID,
+        isImam: true,
+      });
+
+      await expect(
+        app.get<RoleResolver>(ROLE_RESOLVER).resolve(TEST_USER_ID, {
+          entity: ENTITIES.COURSE,
+          id: course.id,
+        })
+      ).resolves.toBe(ROLES.MUDERRIS);
+
+      await request(app.getHttpServer())
+        .patch(`/courses/${course.id}`)
+        .send({ title: "Müderris düzeltti" })
+        .expect(403);
+
+      // and the title really did not move
+      await request(app.getHttpServer())
+        .get(`/courses/${course.id}`)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.title).toBe("Sarf Dersi");
+        });
     });
 
     it("hides DRAFT courses from non-owners", async () => {

@@ -1,7 +1,15 @@
+import {
+  type AuthenticatedUser,
+  AuthzForbiddenError,
+  AuthzService,
+  ENTITIES,
+  SCOPES,
+} from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { CardIncludeEnum } from "./domain/card-include.enum";
 import { CreateFlashcardDto } from "./dto/create-flashcard.dto";
 import { CreateFlashcardProgressDto } from "./dto/create-flashcard-progress.dto";
+import { CardNotFoundError } from "./errors/card-not-found.error";
 import { FlashcardRepository } from "./flashcard.repository";
 import {
   ICreateFlashcard,
@@ -21,7 +29,10 @@ function toIncludeSet(include?: string[]): Set<CardIncludeEnum> {
 
 @Injectable()
 export class FlashcardService {
-  constructor(private readonly cardRepo: FlashcardRepository) {}
+  constructor(
+    private readonly cardRepo: FlashcardRepository,
+    private readonly authz: AuthzService
+  ) {}
 
   async findById(
     id: string,
@@ -48,6 +59,34 @@ export class FlashcardService {
     return this.cardRepo.findDeckId(cardId);
   }
 
+  /**
+   * The parent deck of a card the caller may see, for the card routes'
+   * `@Authz` resolver. A card that does not exist and a card in somebody
+   * else's private deck raise the same `CardNotFoundError`: answering 403 for
+   * the second would tell the caller the card is there (MDRS-43 AC-4, "must
+   * not distinguish private from absent"). `TedrisatRoleResolver` cannot do
+   * this for the card routes — it only ever sees the deck id, so its 404
+   * would name the deck.
+   *
+   * SYSTEM_ADMIN sees every card, as on every decorated route. The resolver
+   * runs before `AuthzService.can`, so the bypass is repeated here.
+   */
+  async findVisibleDeckId(
+    user: AuthenticatedUser,
+    cardId: string
+  ): Promise<string> {
+    const [row] = await this.cardRepo.findVisibilityByIds([cardId]);
+    if (!row) throw new CardNotFoundError(cardId);
+    if (
+      !this.authz.isSystemAdmin(user) &&
+      row.authorId !== user.sub &&
+      !row.isPublic
+    ) {
+      throw new CardNotFoundError(cardId);
+    }
+    return row.deckId;
+  }
+
   async createMany(
     deckId: string,
     authorId: string,
@@ -61,10 +100,36 @@ export class FlashcardService {
     return this.cardRepo.createMany(newCards);
   }
 
+  /**
+   * Record the caller's progress against a list of cards.
+   *
+   * The one route in the flashcard module whose authorization cannot be a
+   * `@Authz` decorator: the body names N cards in any number of decks, and
+   * `@Authz` names one resource, so a decorator would check the first id and
+   * wave the rest through. The check therefore lives here, and it is a batch:
+   * one `findVisibilityByIds` for every distinct id, against the two queries
+   * per card the controller's stopgap was paying.
+   *
+   * Two outcomes, deliberately different — and this is the pair MDRS-43's
+   * AC-5 pins down:
+   *   - an id with no card behind it is a 404, not a deny. It used to reach
+   *     the UPSERT and trip the `flashcardId` FK as a 500, which leaked
+   *     "no such card" through a server error.
+   *   - an id whose deck the caller cannot read is `AuthzForbiddenError`.
+   *     Any real card id used to answer 200 here, including one inside
+   *     somebody else's private deck.
+   *
+   * SYSTEM_ADMIN bypasses both, the same way `AuthzService.can` does for the
+   * decorator path — otherwise this route would be the one place in the
+   * module where the realm role does not hold.
+   */
   async replaceManyProgress(
-    userId: string,
+    user: AuthenticatedUser,
     progress: CreateFlashcardProgressDto[]
   ): Promise<IFlashcardProgress[]> {
+    const userId = user.sub;
+    await this.assertProgressTargetsVisible(user, progress);
+
     // `userId` last, not first: it is the authenticated caller's id and must
     // win over anything the request body carries. This order is the only thing
     // enforcing that. `CreateFlashcardProgressDto` declaring no `userId` means
@@ -82,6 +147,39 @@ export class FlashcardService {
     }));
 
     return this.cardRepo.replaceManyProgress(progressWithUser);
+  }
+
+  /**
+   * Every card named in the body must exist and sit in a deck the caller may
+   * read. De-duplicated first: a study session posts many cards from one
+   * deck, and the ids repeat.
+   *
+   * The visibility rule is `FlashcardDeckService.assertVisibleTo`'s — author
+   * always, anybody else only when the deck is public — applied to the
+   * columns the join already carried back rather than re-read per deck.
+   */
+  private async assertProgressTargetsVisible(
+    user: AuthenticatedUser,
+    progress: CreateFlashcardProgressDto[]
+  ): Promise<void> {
+    if (this.authz.isSystemAdmin(user)) return;
+
+    const cardIds = [...new Set(progress.map((p) => p.flashcardId))];
+    const rows = await this.cardRepo.findVisibilityByIds(cardIds);
+    const byCard = new Map(rows.map((r) => [r.cardId, r]));
+
+    for (const cardId of cardIds) {
+      const row = byCard.get(cardId);
+      if (!row) throw new CardNotFoundError(cardId);
+      if (row.authorId !== user.sub && !row.isPublic) {
+        throw new AuthzForbiddenError(undefined, {
+          userId: user.sub,
+          entity: ENTITIES.FLASHCARD_DECK,
+          resourceId: row.deckId,
+          scope: SCOPES.VIEW,
+        });
+      }
+    }
   }
 
   async update(
