@@ -1,0 +1,42 @@
+<!-- @dsCard group="Foundations" viewport="820x640" name="Shape" subtitle="Books are nearly square: five radii by role, and nothing is a pill unless it is round by nature. Every edge is 1px; 2px marks only the active tab and a selected choice (MDS-SHAPE-01)." -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.f-tok{font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--text-neutral-muted);overflow-wrap:anywhere}
+.f-radii{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--space-5)}
+.f-radius{display:flex;flex-direction:column;gap:var(--space-3);min-inline-size:0}
+.f-radius__sq{inline-size:72px;block-size:72px;border:var(--border-width-thin) solid var(--border-neutral-control);border-radius:var(--f-r);background:var(--background-neutral-sunken)}
+.f-radius__name{display:flex;flex-direction:column;gap:2px}
+.f-radius__v{font-size:var(--fs-body-sm);font-weight:var(--weight-semibold)}
+.f-radius__use{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-2);padding-block-start:var(--space-3);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+.f-radius .mds-input{inline-size:100%}
+.f-radius .mds-progress{inline-size:100%}
+.f-inline{display:inline-flex;align-items:center;gap:var(--space-2)}
+.f-mini{padding:var(--space-3);inline-size:100%}
+.f-mini__t{font-family:var(--font-reading);font-size:var(--fs-body-sm);font-weight:var(--weight-semibold)}
+.f-widths{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-6);align-items:start}
+.f-widths > div{display:flex;flex-direction:column;gap:var(--space-3)}
+</style></head><body>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Köşeler, role göre</h2></header>
+<div class="f-radii">
+<div class="f-radius"><span class="f-radius__sq" style="--f-r: var(--radius-mark)"></span><span class="f-radius__name"><code class="f-tok">--radius-mark</code><span class="f-radius__v">2px</span></span><span class="mds-caption">Onay kutusu, iskelet, kapak, mütalaa yaprağı</span><div class="f-radius__use"><label class="mds-choice"><input type="checkbox" class="mds-check" checked><span class="mds-choice__text"><span class="mds-choice__label">Harekeler</span></span></label><span class="f-inline"><span class="mds-cover mds-cover--bordo mds-cover--xs" aria-hidden="true"></span><span class="mds-skeleton" style="--mds-skeleton-w: 72px" aria-hidden="true"></span></span></div></div>
+<div class="f-radius"><span class="f-radius__sq" style="--f-r: var(--radius-tag)"></span><span class="f-radius__name"><code class="f-tok">--radius-tag</code><span class="f-radius__v">4px</span></span><span class="mds-caption">Rozet, platform çipi, ipucu, bağlantı kutusu, kurum kutucuğu, mini düğme</span><div class="f-radius__use"><span class="mds-badge mds-badge--outline">Taslak</span><span class="mds-platform-chip mds-platform-chip--zoom"><span class="mds-platform-chip__dot" aria-hidden="true"></span>Zoom</span><button type="button" class="mds-btn mds-btn--mini mds-btn--outline">Düzenle</button></div></div>
+<div class="f-radius"><span class="f-radius__sq" style="--f-r: var(--radius-control)"></span><span class="f-radius__name"><code class="f-tok">--radius-control</code><span class="f-radius__v">6px</span></span><span class="mds-caption">Düğme, alan, seçim, metin kutusu, gezinme öğesi</span><div class="f-radius__use"><button type="button" class="mds-btn mds-btn--small mds-btn--outline">Kaydet</button><input class="mds-input mds-input--small" aria-label="Ad soyad" placeholder="Ad soyad"></div></div>
+<div class="f-radius"><span class="f-radius__sq" style="--f-r: var(--radius-surface)"></span><span class="f-radius__name"><code class="f-tok">--radius-surface</code><span class="f-radius__v">10px</span></span><span class="mds-caption">Kart, iletişim kutusu, tablo çerçevesi, uyarı, bildirim, hafta, katılma kartı</span><div class="f-radius__use"><div class="mds-card f-mini"><p class="f-mini__t">Kâfiye</p><p class="mds-caption">16 hafta</p></div></div></div>
+<div class="f-radius"><span class="f-radius__sq" style="--f-r: var(--radius-full)"></span><span class="f-radius__name"><code class="f-tok">--radius-full</code><span class="f-radius__v">yuvarlak</span></span><span class="mds-caption">Kişi, radyo, anahtar, ilerleme, sayı, seçim çipi</span><div class="f-radius__use"><span class="f-inline"><span class="mds-avatar mds-avatar--sm" aria-hidden="true">AK</span><label class="mds-chip"><input type="checkbox" checked>Pzt</label></span><label class="mds-choice"><input type="checkbox" role="switch" class="mds-switch" checked><span class="mds-choice__text"><span class="mds-choice__label">Meâl</span></span></label><div class="mds-progress" role="progressbar" aria-label="Ders ilerlemesi" aria-valuenow="35" aria-valuemin="0" aria-valuemax="100" aria-valuetext="%35"><div class="mds-progress__bar" style="--mds-progress: 35%"></div></div></div></div>
+</div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">İki kenar kalınlığı</h2></header>
+<div class="f-widths">
+<div><code class="f-tok">--border-width-thin · 1px</code><p class="mds-caption">Her kenar: kıl çizgi, denetim, rozet, kart. Durağan yüzey gölge değil kıl çizgi taşır.</p></div>
+<div><code class="f-tok">--border-width-thick · 2px</code>
+<div class="mds-tabs" role="tablist" aria-label="Ders durumları"><button type="button" class="mds-tab" role="tab" aria-selected="true">Yayında<span class="mds-tab__count">4</span></button><button type="button" class="mds-tab" role="tab" aria-selected="false" tabindex="-1">Taslak<span class="mds-tab__count">2</span></button></div>
+<p class="mds-caption">Yalnızca etkin sekmenin alt çizgisi.</p></div>
+</div>
+</section>
+</body></html>

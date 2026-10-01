@@ -1,0 +1,20 @@
+/* Medaris — which theme is on.
+   A page follows the system preference. data-theme on <html> forces one theme: "dark" is written in
+   semantic.css and elevation.css, and "light" here, so a light page holds on a dark system too.
+   Each theme is an html[data-theme="…"] rule, the form a theme switcher (Claude Design's among them)
+   lists and applies. --theme names the theme that is on, for a script or a drawing that needs it. */
+html[data-theme="light"] {
+  color-scheme: light;
+  --theme: light;
+}
+html[data-theme="dark"], [data-theme="dark"] {
+  --theme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --theme: dark;
+  }
+}
+:root {
+  --theme: light;
+}

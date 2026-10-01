@@ -1,0 +1,89 @@
+<!-- @dsCard group="Foundations" viewport="820x1430" name="Contrast" subtitle="Every colour pair the system promises passes in both themes. There are no open accessibility decisions. The full table is contrast.md." -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.f-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-4)}
+.f-stats .mds-stat__value{font-variant-numeric:lining-nums tabular-nums}
+.mds-table .is-end{text-align:end}
+.mds-table td.is-end,.mds-table th.is-end{font-variant-numeric:lining-nums tabular-nums;white-space:nowrap}
+.f-pass{display:inline-flex;align-items:center;gap:var(--space-1);color:var(--text-success-default);font-weight:var(--weight-medium)}
+.f-tight{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-4)}
+.f-tight > div{display:flex;flex-direction:column;gap:var(--space-2)}
+.f-t{display:flex;align-items:center;justify-content:center;block-size:72px;padding-inline:var(--space-3);border-radius:var(--radius-control);background:var(--background-neutral-hover)}
+.f-t--text{font-size:var(--fs-caption);color:var(--text-neutral-subtle)}
+.f-t__field{display:flex;align-items:center;inline-size:100%;block-size:32px;padding-inline:var(--space-3);border:var(--border-width-thin) solid var(--border-neutral-control);border-radius:var(--radius-control);font-size:var(--fs-body-sm);color:var(--text-neutral-subtle)}
+.f-t__ring{display:inline-flex;align-items:center;block-size:32px;padding-inline:var(--space-3);border-radius:var(--radius-control);font-size:var(--fs-body-sm);font-weight:var(--weight-semibold);box-shadow:var(--ring-focus)}
+.f-both{display:flex;align-items:center;gap:var(--space-1);font-size:var(--fs-body-sm);font-weight:var(--weight-semibold);font-variant-numeric:lining-nums tabular-nums}
+.f-both .mds-icon{inline-size:14px;block-size:14px;color:var(--text-neutral-subtle)}
+.f-both .mds-icon:not(:first-child){margin-inline-start:var(--space-2)}
+.f-exempt{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-2) var(--space-6);font-size:var(--fs-caption);line-height:1.45;color:var(--text-neutral-subtle)}
+.f-exempt b{font-weight:var(--weight-medium);color:var(--text-neutral-default)}
+.f-cmds{display:flex;flex-direction:column;gap:var(--space-3);margin:0;padding:0;list-style:none}
+.f-cmds li{display:flex;flex-direction:column;gap:var(--space-1);font-size:var(--fs-body-sm);line-height:var(--lh-body)}
+.f-cmds li > code{font-size:var(--fs-body-sm);color:var(--text-neutral-default)}
+</style></head><body>
+<!-- The two verify-contrast blocks are written by tools/design-system/verify-contrast.mjs --write; never edit them by hand. -->
+<section class="f-sec">
+<div class="f-stats">
+<!-- verify-contrast: stats -->
+<div class="mds-card mds-stat mds-stat--success"><span class="mds-caption">Denetim, iki temada</span><span class="mds-stat__value">336</span><span class="mds-stat__cue"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Hepsi geçiyor</span></div>
+<div class="mds-card mds-stat"><span class="mds-caption">Renk rolü</span><span class="mds-stat__value">42</span><span class="mds-caption">Tavan 42: yalnızca kararla büyür</span></div>
+<div class="mds-card mds-stat"><span class="mds-caption">İlkel adım</span><span class="mds-stat__value">46</span><span class="mds-caption">Her biri bir rol tarafından okunur</span></div>
+<!-- /verify-contrast -->
+</div>
+<p class="mds-body-sm">Açık erişilebilirlik kararı yok. Palet, her çift iki temada da geçecek biçimde kuruldu; WCAG 2.2 AA eşikleri aşağıda.</p>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Geçiş tablosu</h2><p class="mds-caption">contrast.md ile aynı sıra. Sayılar iki basamağa kesilir, asla yukarı yuvarlanmaz.</p></header>
+<div class="mds-table-wrap" data-density="compact">
+<table class="mds-table">
+<caption class="mds-visually-hidden">Karşıtlık denetimleri, gündüz ve gece</caption>
+<thead><tr><th scope="col">Denetim</th><th scope="col" class="is-end">Eşik</th><th scope="col" class="is-end">Çift × tema</th><th scope="col" class="is-end">Gündüz en az</th><th scope="col" class="is-end">Gece en az</th><th scope="col">Sonuç</th></tr></thead>
+<tbody>
+<!-- verify-contrast: summary -->
+<tr><th scope="row">Nötr metin, her zeminde</th><td class="is-end">4,5:1</td><td class="is-end">24 × 2</td><td class="is-end">5,47:1</td><td class="is-end">4,63:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Ton metni, her zeminde</th><td class="is-end">4,5:1</td><td class="is-end">36 × 2</td><td class="is-end">5,90:1</td><td class="is-end">7,07:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Tonlu zeminde metin</th><td class="is-end">4,5:1</td><td class="is-end">18 × 2</td><td class="is-end">6,68:1</td><td class="is-end">7,38:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Dolgu üstünde metin</th><td class="is-end">4,5:1</td><td class="is-end">8 × 2</td><td class="is-end">6,01:1</td><td class="is-end">5,97:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Denetim kenarları</th><td class="is-end">3:1</td><td class="is-end">15 × 2</td><td class="is-end">3,12:1</td><td class="is-end">3,87:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">İşaretli ve açık durumlar</th><td class="is-end">3:1</td><td class="is-end">6 × 2</td><td class="is-end">3,89:1</td><td class="is-end">4,61:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Odak halkası, zemine karşı</th><td class="is-end">3:1</td><td class="is-end">7 × 2</td><td class="is-end">5,38:1</td><td class="is-end">7,07:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Odak halkası, bileşene karşı</th><td class="is-end">3:1</td><td class="is-end">8 × 2</td><td class="is-end">5,38:1</td><td class="is-end">7,07:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Durum işaretleri</th><td class="is-end">3:1</td><td class="is-end">36 × 2</td><td class="is-end">4,70:1</td><td class="is-end">5,51:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Kapak etiketleri</th><td class="is-end">4,5:1</td><td class="is-end">4 × 2</td><td class="is-end">8,69:1</td><td class="is-end">8,69:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Görsel üstünde metin</th><td class="is-end">4,5:1</td><td class="is-end">1 × 2</td><td class="is-end">9,86:1</td><td class="is-end">9,86:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<tr><th scope="row">Devre dışı metin (politika)</th><td class="is-end">3:1</td><td class="is-end">5 × 2</td><td class="is-end">3,12:1</td><td class="is-end">3,87:1</td><td><span class="f-pass"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#check"/></svg>Geçti</span></td></tr>
+<!-- /verify-contrast -->
+</tbody>
+</table>
+</div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Sınıra en yakın dört çift</h2><p class="mds-caption">Hepsi üzerine gelme zemininde, en açık zemin. Örnekler bu kartın temasında çizilir.</p></header>
+<div class="f-tight">
+<div><span class="f-t f-t--text">3. hafta · 19 Eyl Cmt 21:00</span><span class="mds-caption">Silik metin, üzerine gelme zemininde; eşik 4,5:1</span><span class="f-both"><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><span class="mds-visually-hidden">Gündüz </span>5,47:1 <svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><span class="mds-visually-hidden">Gece </span>4,63:1</span></div>
+<div><span class="f-t"><span class="f-t__field">Ad soyad</span></span><span class="mds-caption">Denetim kenarı, üzerine gelme zemininde; eşik 3:1</span><span class="f-both"><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><span class="mds-visually-hidden">Gündüz </span>3,12:1 <svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><span class="mds-visually-hidden">Gece </span>3,87:1</span></div>
+<div><span class="f-t"><span class="f-t__ring">Düzenle</span></span><span class="mds-caption">Odak halkası, üzerine gelme zemininde; eşik 3:1</span><span class="f-both"><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><span class="mds-visually-hidden">Gündüz </span>5,38:1 <svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><span class="mds-visually-hidden">Gece </span>7,07:1</span></div>
+<div><span class="f-t f-t--text is-disabled" style="color: var(--text-neutral-disabled)">Kaydet</span><span class="mds-caption">Devre dışı metin, üzerine gelme zemininde; eşik 3:1</span><span class="f-both"><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#sun"/></svg><span class="mds-visually-hidden">Gündüz </span>3,12:1 <svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#moon"/></svg><span class="mds-visually-hidden">Gece </span>3,87:1</span></div>
+</div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Gerekmeyenler</h2><p class="mds-caption">Süs ya da tek başına bilgi taşımayan işaretler. Yanlışlıkla eksik sanılmasın diye ölçülür.</p></header>
+<ul class="f-exempt">
+<li><b>Kıl çizgi</b> · 1,32 / 1,39:1. Süs; hiçbir denetimi tek başına tanıtmaz.</li>
+<li><b>Şu anki satırın tonu</b> · 1,12 / 1,05:1. Tek işaret değil; Sıradaki yazısı ve madalyon taşır.</li>
+<li><b>Platform noktaları ve yıldız</b> · yanlarında her zaman yazı ya da sayı var.</li>
+<li><b>Kapağın kör baskısı</b> · 1,93:1. Süs.</li>
+</ul>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Nasıl doğrulanır</h2></header>
+<ul class="f-cmds">
+<li><code>node tools/design-system/verify-contrast.mjs</code><span>Her çifti <code>tokens/*.css</code>'ten iki temada yeniden hesaplar; <code>contrast.md</code> güncel değilse düşer.</span></li>
+<li><code>node tools/design-system/check.mjs</code><span>Her kartı dört tema yolunda açar, boyanmış her metni kendi zeminine karşı ölçer, Tab ile her odak halkasını dener.</span></li>
+</ul>
+</section>
+</body></html>

@@ -338,6 +338,13 @@ catalog:
   '@openapitools/openapi-generator-cli': ^2.24.0
   '@tolgee/cli': ^2.10.2
 
+  # ═══ Design-system tooling — tools/design-system/ ═══
+  # Root devDependencies: the scripts have no package.json, because a
+  # workspace package would need a COPY line in all six Dockerfiles.
+  # Exact: regen.mjs reproduces the claude.ai/design app's _ds_bundle.js
+  # byte-for-byte with this Babel, and another version may emit other bytes.
+  '@babel/standalone': 7.29.9
+
   # ═══ keycloak-theme island — unfrozen at MDRS-21 (ADR §D8 exception #1) ═══
   # ADR-001 §D8 named "keycloakify 11.15 / vite 7" as the proven MDRS-21
   # destination; keycloakify 11.16.0 and vite 7.3.6 satisfy that (both are

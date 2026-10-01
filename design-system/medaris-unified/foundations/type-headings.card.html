@@ -1,0 +1,33 @@
+<!-- @dsCard group="Foundations" viewport="820x790" name="Titles — Literata" subtitle="Every title is Literata: display and h1 at 500, h2 to h6 at 600. Controls, labels, meta and tables stay in Instrument Sans (MDS-TYPE-03)." -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.f-tok{font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--text-neutral-muted);overflow-wrap:anywhere}
+.f-titles{display:flex;flex-direction:column;margin:0;padding:0;list-style:none}
+.f-title{display:grid;grid-template-columns:150px minmax(0,1fr) 200px;gap:var(--space-5);align-items:baseline;padding-block:var(--space-3);border-block-end:var(--border-width-thin) solid var(--border-neutral-subtle)}
+.f-title:last-child{border-block-end:0}
+.f-title__tok{display:flex;flex-direction:column;gap:2px}
+.f-more{display:grid;grid-template-columns:200px minmax(0,1fr);gap:var(--space-6);align-items:center}
+</style></head><body>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Başlıklar</h2><p class="mds-caption">text-wrap: balance; h1 ve vitrin harf aralığında -0,012em.</p></header>
+<ul class="f-titles">
+<li class="f-title"><span class="f-title__tok"><code class="f-tok">.mds-display</code><span class="mds-caption">40/1,15 · 500</span></span><p class="mds-display">Emsile ve Bina</p><span class="mds-caption">Ders vitrini, tanıtım, giriş</span></li>
+<li class="f-title"><span class="f-title__tok"><code class="f-tok">.mds-h1</code><span class="mds-caption">30/1,25 · 500</span></span><p class="mds-h1">İsâgûcî Şerhi</p><span class="mds-caption">Sayfa başlığı; sayfada bir tane</span></li>
+<li class="f-title"><span class="f-title__tok"><code class="f-tok">.mds-h2</code><span class="mds-caption">24/1,25 · 600</span></span><p class="mds-h2">Müfredat</p><span class="mds-caption">Bölüm başlığı</span></li>
+<li class="f-title"><span class="f-title__tok"><code class="f-tok">.mds-h3</code><span class="mds-caption">20/1,25 · 600</span></span><p class="mds-h3">Dersi yayından kaldır?</p><span class="mds-caption">Kart ve iletişim kutusu başlığı</span></li>
+<li class="f-title"><span class="f-title__tok"><code class="f-tok">.mds-h4</code><span class="mds-caption">18/1,35 · 600</span></span><p class="mds-h4">Bu haftaki celseler</p><span class="mds-caption">Karttaki küçük bölüm</span></li>
+<li class="f-title"><span class="f-title__tok"><code class="f-tok">.mds-h5</code><span class="mds-caption">16/1,35 · 600</span></span><p class="mds-h5">Mehmûz fiiller: üçüncü bab</p><span class="mds-caption">Celse ve hafta başlığı</span></li>
+<li class="f-title"><span class="f-title__tok"><code class="f-tok">.mds-h6</code><span class="mds-caption">14/1,35 · 600</span></span><p class="mds-h6">Katılım</p><span class="mds-caption">Sık panelde blok etiketi</span></li>
+</ul>
+</section>
+<section class="f-sec">
+<div class="f-more">
+<div class="mds-card mds-stat"><span class="mds-caption">Talebe</span><span class="mds-stat__value">28</span></div>
+<p class="mds-caption">Sayı da başlık gibi okunur: istatistik değeri Literata 30/500, eşit genişlikte rakamlarla (<code>.mds-num</code>). Uygulama çubuğunun başlığı Literata 16/600, tek satır.</p>
+</div>
+</section>
+</body></html>

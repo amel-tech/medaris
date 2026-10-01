@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   default:
+    '@babel/standalone':
+      specifier: 7.29.9
+      version: 7.29.9
     '@biomejs/biome':
       specifier: 2.4.4
       version: 2.4.4
@@ -374,6 +377,9 @@ importers:
 
   .:
     devDependencies:
+      '@babel/standalone':
+        specifier: 'catalog:'
+        version: 7.29.9
       '@biomejs/biome':
         specifier: 'catalog:'
         version: 2.4.4
@@ -410,6 +416,12 @@ importers:
       nx:
         specifier: 'catalog:'
         version: 23.2.0(@swc/core@1.15.46(@swc/helpers@0.5.23))
+      react:
+        specifier: 'catalog:'
+        version: 19.2.8
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.2.8(react@19.2.8)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1840,6 +1852,10 @@ packages:
 
   '@babel/runtime@7.29.7':
     resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
+    engines: {node: '>=6.9.0'}
+
+  '@babel/standalone@7.29.9':
+    resolution: {integrity: sha512-Oztlw9huD3bdgX6HmYqCSBamOtH05qbbF5TGfD2cbetKsqMo/2U9WB24U02qGDqMzmY0wY2bnLhbFAjXW3dWYg==}
     engines: {node: '>=6.9.0'}
 
   '@babel/template@7.29.7':
@@ -10712,6 +10728,8 @@ snapshots:
       - supports-color
 
   '@babel/runtime@7.29.7': {}
+
+  '@babel/standalone@7.29.9': {}
 
   '@babel/template@7.29.7':
     dependencies:

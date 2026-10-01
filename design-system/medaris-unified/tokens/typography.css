@@ -1,0 +1,165 @@
+/* Medaris — type. Five families, one job each (the files are loaded by tokens/fonts.css):
+     --font-ui       Instrument Sans      every control, table, nav, label, meta
+     --font-reading  Literata             reading text (şerh, description, meâl) and every title
+     --font-arabic   Noto Naskh Arabic    classical Arabic text AND the Arabic interface (owner's choice)
+     --font-quran    Scheherazade New     Qur'anic text only (owner's choice)
+     --font-mono     Atkinson Hyperlegible Mono   meeting links, IDs, handles (I, l and 1 never collide)
+   Leading for Arabic is measured, not guessed: the ink of Qur'an 96:1–5 with full
+   harakat reaches 1.27 em above and 0.69 em below the baseline in Scheherazade New; the worst Naskh word
+   (أَمَّا) 1.07 / 0.46 em. Contextual blocks (an Arabic-script region, a Latin island inside it) come before
+   the default :root, so the last declaration of every name is its default (MDS-TOK-02). */
+
+/* ------------------------------------------------------------------ an Arabic-script page or region
+   The interface itself switches to Naskh: bigger steps (Naskh's bowl is small for its size), no tracking,
+   the Arabic leading, and one weight heavier so 15–16px labels hold on the night page.
+   ota-Arab: Ottoman in Arabic script. Latin-script Ottoman terms (müderris, icâzet) are lang="tr". */
+html:lang(ar), :lang(ar), :lang(ota-Arab) {
+  --font-ui: var(--font-arabic);
+  --font-reading: var(--font-arabic);
+  --fs-eyebrow: 14px;
+  --fs-caption: 15px;
+  --fs-body-sm: 16px;
+  --fs-body: 18px;
+  --fs-reading: 20px;
+  --fs-h6: 16px;
+  --fs-h5: 18px;
+  --fs-h4: 20px;
+  --fs-h3: 23px;
+  --fs-h2: 28px;
+  --fs-h1: 34px;
+  --fs-display: 44px;
+  --lh-tight: var(--lh-arabic);
+  --lh-snug: var(--lh-arabic);
+  --lh-ui: var(--lh-arabic);
+  --lh-body: var(--lh-arabic);
+  --lh-reading: var(--lh-arabic-text);
+  --lh-display: var(--lh-arabic);
+  --tracking-tight: 0;
+  --tracking-wide: 0;
+  --weight-regular: 500;
+  --weight-medium: 600;
+  --weight-semibold: 700;
+}
+/* A Latin island inside an Arabic region (a Turkish name, a URL, an English term) returns to the Latin
+   defaults. Every value here equals its :root value below; check.mjs fails if one drifts. */
+:is(:lang(ar), :lang(ota-Arab)) [lang]:not(:lang(ar), :lang(ota-Arab)) {
+  --font-ui: "Instrument Sans", "Noto Naskh Arabic", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-reading: "Literata", "Noto Naskh Arabic", Georgia, "Times New Roman", serif;
+  --fs-eyebrow: 12px;
+  --fs-caption: 13px;
+  --fs-body-sm: 14px;
+  --fs-body: 16px;
+  --fs-reading: 18px;
+  --fs-h6: 14px;
+  --fs-h5: 16px;
+  --fs-h4: 18px;
+  --fs-h3: 20px;
+  --fs-h2: 24px;
+  --fs-h1: 30px;
+  --fs-display: 40px;
+  --lh-tight: 1.25;
+  --lh-snug: 1.35;
+  --lh-ui: 1.43;
+  --lh-body: 1.5;
+  --lh-reading: 1.7;
+  --lh-display: 1.15;
+  --tracking-tight: -0.012em;
+  --tracking-wide: 0.07em;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+}
+
+/* The phone: the Qur'an steps down so a line still holds three to four words at 390px. */
+@media (max-width: 767.98px) { html:root { --fs-quran: 28px; } }
+
+:root {
+  /* families. The Latin stacks list Naskh second, so an Arabic title or label that only has dir="auto" still
+     gets Naskh and never a system face. Google Fonts splits Naskh by unicode-range: a Latin page never loads it. */
+  --font-ui: "Instrument Sans", "Noto Naskh Arabic", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-reading: "Literata", "Noto Naskh Arabic", Georgia, "Times New Roman", serif;
+  --font-arabic: "Noto Naskh Arabic", "Geeza Pro", "Traditional Arabic", serif;
+  --font-quran: "Scheherazade New", "Noto Naskh Arabic", serif;
+  --font-mono: "Atkinson Hyperlegible Mono", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  /* size — Latin. Controls are 14 (--fs-body-sm), sans text 16, reading 18 (Literata). */
+  --fs-eyebrow: 12px;   /* the uppercase, tracked running head only: capitals are tall enough at 12 */
+  --fs-caption: 13px;   /* meta, help, badge, table header, time zone — the smallest mixed-case text */
+  --fs-body-sm: 14px;   /* every control: button, input, nav, tab, table cell */
+  --fs-body: 16px;      /* sans running text in management screens and dialogs; every input on a phone */
+  --fs-reading: 18px;   /* Literata reading text: şerh, course description, lesson notes */
+  --fs-h6: 14px;        /* block label in a dense panel (Literata 600) */
+  --fs-h5: 16px;        /* lesson title, week title (Literata 600) */
+  --fs-h4: 18px;        /* small section in a card (Literata 600) */
+  --fs-h3: 20px;        /* card and dialog title (Literata 600) */
+  --fs-h2: 24px;        /* section heading (Literata 600) */
+  --fs-h1: 30px;        /* page title, one per page (Literata 500) */
+  --fs-display: 40px;   /* course hero, landing, sign-in (Literata 500) */
+
+  /* size — Arabic. Never scaled by the region block above: a matn is the same size in every locale. */
+  --fs-arabic: 26px;          /* classical block: matn, Emsile, İsâgûcî — Naskh bowl 9.8px beside Literata's 9.1px x-height */
+  --fs-quran: 34px;           /* Qur'anic text with full harakat; 28px below 768px */
+  --fs-arabic-inline: 1.2em;  /* an Arabic word inside Latin text; 1.25em touches the line above at 18/1.7 (measured) */
+  --fs-arabic-min: 16px;      /* vocalised Arabic is never smaller than this */
+
+  /* weight — 400–600 in every family; Naskh also 700 for the Arabic interface's semibold */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-book: 400;   /* the text registers (Qur'an, matn, reading prose): never re-pointed by the Arabic region */
+
+  /* leading */
+  --lh-display: 1.15;     /* the display title (Latin); 1.8 in an Arabic region, where 1.15 lets harakat collide */
+  --lh-tight: 1.25;       /* multi-line titles */
+  --lh-snug: 1.35;        /* single-line titles and labels: Literata's tall Î Â Û İ need 1.33 not to clip */
+  --lh-ui: 1.43;          /* controls and table cells: 14 → 20 */
+  --lh-body: 1.5;         /* sans running text */
+  --lh-reading: 1.7;      /* Literata reading: 18 → 30.6. The only text that may carry vocalised inline Arabic */
+  --lh-arabic: 1.8;       /* Naskh UI and short runs; measured clip-safe minimum 1.70 */
+  --lh-arabic-text: 2;    /* Naskh with full harakat (matn); measured stack minimum 1.53, clip-safe 1.70 */
+  --lh-quran: 2.25;       /* Scheherazade New, full harakat and ayah marks; measured clip-safe minimum 2.03 */
+
+  /* tracking — Arabic is always 0 */
+  --tracking-tight: -0.012em; /* Literata at --fs-h1 and above */
+  --tracking-wide: 0.07em;    /* the uppercase eyebrow and nav section, under lang="tr" only */
+}
+
+/* ------------------------------------------------------------------ ready-made classes
+   A prototype never reassembles family + size + weight + leading by hand. */
+.mds-display, .mds-h1, .mds-h2, .mds-h3, .mds-h4, .mds-h5, .mds-h6 {
+  margin: 0;
+  font-family: var(--font-reading);
+  color: var(--text-neutral-default);
+  text-wrap: balance;
+}
+.mds-display { font-size: var(--fs-display); font-weight: var(--weight-medium); line-height: var(--lh-display); letter-spacing: var(--tracking-tight); }
+.mds-h1 { font-size: var(--fs-h1); font-weight: var(--weight-medium); line-height: var(--lh-tight); letter-spacing: var(--tracking-tight); }
+.mds-h2 { font-size: var(--fs-h2); font-weight: var(--weight-semibold); line-height: var(--lh-tight); }
+.mds-h3 { font-size: var(--fs-h3); font-weight: var(--weight-semibold); line-height: var(--lh-tight); }
+.mds-h4 { font-size: var(--fs-h4); font-weight: var(--weight-semibold); line-height: var(--lh-snug); }
+.mds-h5 { font-size: var(--fs-h5); font-weight: var(--weight-semibold); line-height: var(--lh-snug); }
+.mds-h6 { font-size: var(--fs-h6); font-weight: var(--weight-semibold); line-height: var(--lh-snug); }
+
+.mds-body, .mds-body-sm, .mds-caption, .mds-eyebrow { margin: 0; font-family: var(--font-ui); }
+.mds-body { font-size: var(--fs-body); font-weight: var(--weight-regular); line-height: var(--lh-body); color: var(--text-neutral-default); }
+.mds-body-sm { font-size: var(--fs-body-sm); font-weight: var(--weight-regular); line-height: var(--lh-ui); color: var(--text-neutral-default); }
+.mds-caption { font-size: var(--fs-caption); font-weight: var(--weight-regular); line-height: 1.45; color: var(--text-neutral-subtle); }
+/* Turkish is uppercased only through CSS under lang="tr" (i → İ, MDS-TYPE-05); other languages keep their case. */
+.mds-eyebrow { font-size: var(--fs-eyebrow); font-weight: var(--weight-semibold); line-height: 1.4; letter-spacing: var(--tracking-wide); color: var(--text-neutral-subtle); }
+.mds-eyebrow:is(:lang(tr), :lang(en)) { text-transform: uppercase; }
+
+/* Reading prose: Literata at the reading size and measure. Italic is for transliteration and book titles. */
+.mds-reading { margin: 0; font-family: var(--font-reading); font-size: var(--fs-reading); font-weight: var(--weight-book); line-height: var(--lh-reading); color: var(--text-neutral-default); max-inline-size: var(--layout-measure-prose); hyphens: auto; }
+.mds-reading > * + * { margin-block-start: 0.9em; }
+
+/* Arabic. Always lang="ar" dir="rtl" on the element itself (MDS-TYPE-04).
+   .mds-arabic — a run inside Latin text: it never widens its line (line-height 1), never breaks a verb pair
+     (nowrap; a run longer than three words is a block) and is isolated for bidi.
+     Vocalised runs only inside --lh-reading text; in UI text an inline Arabic word is unvocalised.
+   .mds-arabic-text — a classical block (matn). .mds-quran — Qur'anic text, nothing else. */
+.mds-arabic { font-family: var(--font-arabic); font-size: max(var(--fs-arabic-min), var(--fs-arabic-inline)); font-weight: var(--weight-book); line-height: 1; letter-spacing: 0; white-space: nowrap; unicode-bidi: isolate; }
+.mds-arabic-text, .mds-arabic-text[dir] { margin: 0; font-family: var(--font-arabic); font-size: var(--fs-arabic); font-weight: var(--weight-book); line-height: var(--lh-arabic-text); letter-spacing: 0; color: var(--text-neutral-default); text-wrap: balance; }
+.mds-quran, .mds-quran[dir] { margin: 0; font-family: var(--font-quran); font-size: var(--fs-quran); font-weight: var(--weight-book); line-height: var(--lh-quran); letter-spacing: 0; color: var(--text-neutral-default); text-wrap: balance; }
+.mds-mono { font-family: var(--font-mono); font-size: 0.93em; letter-spacing: 0; }
+/* Figures in tables, times and counts line up. */
+.mds-num { font-variant-numeric: lining-nums tabular-nums; }

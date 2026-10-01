@@ -1,0 +1,13 @@
+/* Medaris — radii and border widths, by role.
+   Books are nearly square, so nothing is pill-shaped except what is round by nature (people, radios,
+   switches, progress, counts, choice chips). */
+:root {
+  --radius-mark: 2px;       /* checkbox, skeleton, course cover (a book's corner), the mütalaa folio */
+  --radius-tag: 4px;        /* badge, platform chip, tooltip, link box, entity tile, mini button */
+  --radius-control: 6px;    /* button, input, select, textarea, nav item, tab focus */
+  --radius-surface: 10px;   /* card, dialog, table frame, alert, toast, week, join card */
+  --radius-full: 999px;     /* avatar, radio, switch, progress, count, choice chip */
+
+  --border-width-thin: 1px;   /* every edge: hairline, control, badge */
+  --border-width-thick: 2px;  /* the active tab underline */
+}

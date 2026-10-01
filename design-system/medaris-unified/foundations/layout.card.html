@@ -1,0 +1,55 @@
+<!-- @dsCard group="Foundations" viewport="820x980" name="Layout" subtitle="Tedris reads in a 1200px column with a 344px aside under a 64px top bar; Nizam runs full width beside a 256px sidebar. Three breakpoints, one prose measure." -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.f-id{white-space:nowrap}
+.f-plan{position:relative;display:grid;inline-size:720px;max-inline-size:100%;block-size:200px;border:var(--border-width-thin) solid var(--border-neutral-subtle);border-radius:var(--radius-control);background:var(--background-neutral-page);overflow:hidden}
+.f-plan--tedris{grid-template-rows:32px minmax(0,1fr)}
+.f-plan--nizam{grid-template-columns:128px minmax(0,1fr)}
+.f-box{display:flex;flex-direction:column;justify-content:flex-start;gap:2px;min-inline-size:0;padding:var(--space-2);border:var(--border-width-thin) solid var(--border-neutral-subtle);background:var(--background-neutral-surface);font-size:var(--fs-caption);line-height:1.35;color:var(--text-neutral-subtle)}
+.f-box b{font-weight:var(--weight-semibold);color:var(--text-neutral-default)}
+.f-top{flex-direction:row;align-items:center;gap:var(--space-2);border-width:0 0 1px}
+.f-top .mds-logo__mark{inline-size:16px;block-size:16px}
+.f-body{display:grid;grid-template-columns:minmax(0,1fr) 172px;gap:10px;inline-size:600px;max-inline-size:calc(100% - 40px);margin-inline:auto;padding-block:var(--space-3)}
+.f-side{border-width:0;border-inline-end-width:1px}
+.f-main{display:grid;grid-template-columns:150px minmax(0,1fr);gap:10px;padding:var(--space-3) 20px}
+.f-ruler{position:relative;inline-size:720px;max-inline-size:100%;block-size:56px;border-block-start:var(--border-width-thin) solid var(--border-neutral-strong);margin-block-start:var(--space-2)}
+.f-tick{position:absolute;inset-block-start:-5px;inset-inline-start:var(--f-at);display:flex;flex-direction:column;align-items:flex-end;gap:var(--space-1);translate:-100% 0;white-space:nowrap}
+.f-tick::before{content:"";align-self:flex-end;inline-size:1px;block-size:9px;background:var(--border-neutral-strong)}
+.f-tick code{font-size:var(--fs-caption)}
+.f-measure{display:flex;flex-direction:column;gap:var(--space-2)}
+.f-measure .mds-reading{padding-block-end:var(--space-2);border-block-end:var(--border-width-thick) solid var(--border-brand-default)}
+</style></head><body>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Tedris · okuma sayfası</h2><p class="mds-caption">Yarım ölçek. İçerik en çok 1200px; kenar sütunu katılma kartını ve ezber destesini taşır.</p></header>
+<div class="f-plan f-plan--tedris" role="img" aria-label="Tedris sayfa planı">
+<div class="f-box f-top"><svg class="mds-logo__mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect class="mds-logo__ground" width="48" height="48" rx="12"/><g class="mds-logo__arch" filter="url(#mds-logo-arch-1)"><path d="M14.4327 24.2434V38.1C14.4327 38.9284 15.1042 39.6 15.9327 39.6H23.7173V8.4C15.0737 9.68201 14.9368 16.815 16.0327 20.4C14.0326 21.2 14.4327 23.2 14.4327 24.2434Z"/><path d="M33.3172 24.2434V38.1C33.3172 38.9284 32.6456 39.6 31.8172 39.6H24.0325V8.4C32.6762 9.68201 32.8131 16.815 31.7172 20.4C33.7172 21.2 33.3172 23.2 33.3172 24.2434Z"/></g><defs><filter id="mds-logo-arch-1" x="14.4" y="8.4" width="18.9498" height="31.2" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset/><feGaussianBlur stdDeviation="0.375"/><feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3 0"/><feBlend mode="normal" in2="shape" result="innerShadow"/></filter></defs></svg><b>--layout-topbar 64</b><span>telefonda 56</span></div>
+<div class="f-body"><div class="f-box"><b>--layout-content-max 1200</b><span>ders, program, mütalaa</span></div><div class="f-box"><b>--layout-aside 344</b><span>katılma kartı</span></div></div>
+</div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Nizam · yönetim ekranı</h2><p class="mds-caption">Yarım ölçek. Kenar çubuğunun yanında tam genişlik; ana-ayrıntı listesi bir bölmede.</p></header>
+<div class="f-plan f-plan--nizam" role="img" aria-label="Nizam sayfa planı">
+<div class="f-box f-side"><b>--layout-sidebar 256</b><span>tek yüzey, kıl çizgi</span></div>
+<div class="f-main"><div class="f-box"><b>--layout-pane 300</b><span>liste bölmesi</span></div><div class="f-box"><b>tam genişlik</b><span>tablo, form; data-density="compact"</span></div></div>
+</div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Kırılma noktaları</h2><p class="mds-caption">0'dan 1440'a. var() bir @media koşulunda kullanılamaz: “tabletin altı” için 767.98px yazılır.</p></header>
+<div class="f-ruler" role="img" aria-label="Kırılma noktaları: 390, 768, 1440">
+<span class="f-tick" style="--f-at: calc(390 / 1440 * 100%)"><code>--bp-mobile 390</code></span>
+<span class="f-tick" style="--f-at: calc(768 / 1440 * 100%)"><code>--bp-tablet 768</code></span>
+<span class="f-tick" style="--f-at: 100%"><code>--bp-desktop 1440</code></span>
+</div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Okuma ölçüsü</h2><p class="mds-caption">--layout-measure-prose 58ch. ch, öğenin kendi yüzünü izler: Literata 18'de yaklaşık 604px, satırda yaklaşık 70 harf.</p></header>
+<div class="f-measure">
+<p class="mds-reading">Bir ders haftalara, her hafta da tarihli celselere ayrılır. Talebe sıradaki celseyi, celse akışını ve geçmiş ders kayıtlarını aynı sayfada bulur. Uzun bir açıklama bu ölçüyü aşmaz.</p>
+<p class="mds-caption">Yön için yalnızca mantıksal özellikler: <code>margin-inline</code>, <code>padding-block</code>, <code>inset-inline-start</code>. Arapçada sayfa kendiliğinden aynalanır <span class="f-id">(MDS-LAY-05)</span>.</p>
+</div>
+</section>
+</body></html>

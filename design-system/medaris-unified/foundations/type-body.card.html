@@ -1,0 +1,46 @@
+<!-- @dsCard group="Foundations" viewport="820x820" name="Interface and reading text" subtitle="Instrument Sans at 14 for every control and 16 for running text; Literata 18/1.7 for reading; Atkinson Hyperlegible Mono for links and IDs (MDS-TYPE-02)." -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.f-tok{font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--text-neutral-muted);overflow-wrap:anywhere}
+.f-rows{display:flex;flex-direction:column;margin:0;padding:0;list-style:none}
+.f-row{display:grid;grid-template-columns:190px minmax(0,1fr);gap:var(--space-5);align-items:baseline;padding-block:var(--space-3);border-block-end:var(--border-width-thin) solid var(--border-neutral-subtle)}
+.f-row:last-child{border-block-end:0}
+.f-row__tok{display:flex;flex-direction:column;gap:2px}
+.f-read{display:grid;grid-template-columns:minmax(0,1fr) 176px;gap:var(--space-8);align-items:start}
+.f-lit{font-family:var(--font-reading)}
+.f-notes{display:flex;flex-direction:column;gap:var(--space-2);margin:0;padding:0;list-style:none;font-size:var(--fs-caption);line-height:1.45;color:var(--text-neutral-muted)}
+</style></head><body>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Arayüz · Instrument Sans</h2></header>
+<ul class="f-rows">
+<li class="f-row"><span class="f-row__tok"><code class="f-tok">.mds-body</code><span class="mds-caption">16/1,5</span></span><p class="mds-body">Köşkünüzdeki dersleri, müderrislerini ve bu haftaki celselerini buradan yönetin.</p></li>
+<li class="f-row"><span class="f-row__tok"><code class="f-tok">.mds-body-sm</code><span class="mds-caption">14/1,43 · denetimler</span></span><p class="mds-body-sm">Işıl Ilgaz · İlim Irmak · çğıİöşü âîû · 21:00 · %35</p></li>
+<li class="f-row"><span class="f-row__tok"><code class="f-tok">.mds-caption</code><span class="mds-caption">13 · en küçük karışık harf</span></span><p class="mds-caption">3. hafta · Canlı ders · 19 Eyl Cmt 21:00 · 20:00 senin saatinle</p></li>
+<li class="f-row"><span class="f-row__tok"><code class="f-tok">.mds-eyebrow</code><span class="mds-caption">12 · büyük harf, tr ve en</span></span><p class="mds-eyebrow">Nûruosmaniye köşkü · mütalaa</p></li>
+<li class="f-row"><span class="f-row__tok"><code class="f-tok">.mds-mono</code><span class="mds-caption">0,93em · bağlantı, kimlik</span></span><p class="mds-body-sm"><span class="mds-mono">meet.google.com/abc-defg-hij · Il1 O0</span></p></li>
+<li class="f-row"><span class="f-row__tok"><code class="f-tok">.mds-num</code><span class="mds-caption">eşit genişlikte rakam</span></span><p class="mds-body-sm mds-num">21:00 · 1:12:40 · 128 talebe · %35</p></li>
+</ul>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Okuma · Literata 18/1,7</h2><p class="mds-caption">.mds-reading: 58ch ölçü. Harekeli satır içi Arapça yalnızca burada.</p></header>
+<div class="f-read">
+<div class="mds-reading">
+<p>İlk inen âyetler «oku» emriyle başlar. «<span class="mds-arabic" lang="ar" dir="rtl">اِقْرَأْ</span>», «<span class="mds-arabic" lang="ar" dir="rtl">قَرَأَ يَقْرَأُ</span>» fiilinden emr-i hâzırdır. Lâm-ı fiili hemze olduğu için mehmûz<a class="mds-hasiye-ref" href="#f-h1" aria-describedby="f-h1">1</a> bir fiildir; üçüncü babdan, yani <i>fetaha–yeftahu</i> kalıbından gelmesi de lâm-ı fiilin bir boğaz harfi olmasındandır.</p>
+</div>
+<aside class="mds-hasiye" id="f-h1" aria-label="Haşiye 1">
+<p class="mds-eyebrow">Haşiye 1</p>
+<p><b>Mehmûz:</b> kök harflerinden biri hemze olan fiil.</p>
+<p class="mds-source">Abdülhamit Karaosmanoğlu · 5. hafta notu</p>
+</aside>
+</div>
+<ul class="f-notes">
+<li>Kitap adı ve çeviri yazı italiktir: <i>İsâgûcî</i>. DİA harfleri (<span class="f-lit">ḥ ṣ ṭ ẓ ʿ ʾ</span>) yalnızca Literata ile yazılır.</li>
+<li>Kimlikler mono yazılır: Instrument Sans'ta I ile l neredeyse aynıdır.</li>
+<li>Büyük harf yalnızca CSS ile ve lang="tr" altında yapılır, böylece i → İ olur (MDS-TYPE-05). <code>check.mjs</code>, i ı İ I â î û harflerini her yüz, boyut ve kalınlıkta çizer.</li>
+</ul>
+</section>
+</body></html>

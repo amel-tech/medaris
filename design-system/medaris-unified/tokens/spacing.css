@@ -1,0 +1,49 @@
+/* Medaris — space and density.
+   The scale is --space-N = N × 4px, so an agent derives the name from the pixel value. There are no
+   in-between values: 2px and 6px appear only inside components as hairline offsets and icon gaps.
+   Density is a region, not an app (MDS-LAY-02): data-density="compact" re-points the roles below.
+   Tedris is comfortable by default; Nizam puts data-density="compact" on its main region. */
+
+/* compact: Nizam tables, filters, dense forms. Before :root so the manifest records the defaults. */
+html[data-density="compact"], [data-density="compact"] {
+  --space-inset-card: var(--space-4);   /* 16 */
+  --space-gap-stack: var(--space-3);    /* 12 */
+  --space-cell-block: var(--space-2);   /* 8 */
+  --space-cell-inline: var(--space-3);  /* 12 */
+  --size-control-regular: 32px;
+}
+/* The phone. var() is not allowed in a media condition: 767.98px is --bp-tablet written out.
+   :root [data-density] outranks [data-density], so a compact region below 768 gets 16 too. */
+@media (max-width: 767.98px) {
+  html:root, :root [data-density="compact"] { --space-gutter-page: var(--space-4); --space-inset-card: var(--space-4); }
+}
+
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* roles — comfortable (Tedris) values; [data-density="compact"] re-points them */
+  --space-inset-card: var(--space-6);    /* card, panel and dialog padding */
+  --space-gap-stack: var(--space-4);     /* between stacked blocks inside a card or form */
+  --space-gap-section: var(--space-10);  /* between page sections */
+  --space-gap-grid: var(--space-5);      /* card grids */
+  --space-gutter-page: var(--space-10);  /* page side gutter */
+  --space-cell-block: var(--space-3);    /* table cell, block axis */
+  --space-cell-inline: var(--space-4);   /* table cell, inline axis */
+
+  /* control heights — every target ≥ 24px (WCAG 2.5.8) */
+  --size-control-mini: 24px;     /* in-row actions, a control beside a badge */
+  --size-control-small: 32px;
+  --size-control-regular: 40px;  /* 32 in a compact region */
+  --size-control-large: 48px;    /* "Celseye katıl", "Giriş yap", the sticky enrol card */
+}

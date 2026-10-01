@@ -1,0 +1,22 @@
+{
+  "$comment": "Recording link providers (brief B9, C9). Same matching rule as meeting-platforms.json; libs/utils has no resolver for recordings yet. No dot: a recording is not a live meeting. An unknown host shows the host alone, never 'Bilinmeyen platform'. DRAFT host lists, not verified against real recording links. Rules: MDS-COL-06, MDS-DOM-05.",
+  "fields": {
+    "id": "stable key, lower-case",
+    "label": "the chip's text",
+    "hostSuffixes": "the hosts matched, with every subdomain",
+    "embed": "true: plays in an embedded player on the page; otherwise the card links out",
+    "embedHost": "the host the embedded player loads from",
+    "note": "what to know before relying on the row",
+    "uiLabel": "what the UI shows for an unknown host; null = the host alone",
+    "showHost": "true: the link's host is shown, in dir=\"ltr\"",
+    "hosted": "true: Medaris's own host; the recording plays in the page and shows no chip"
+  },
+  "providers": [
+    { "id": "youtube", "label": "YouTube", "hostSuffixes": ["youtube.com", "youtu.be", "youtube-nocookie.com"], "embed": true, "embedHost": "www.youtube-nocookie.com", "note": "public recordings only: a recording on YouTube is always public, and Medaris uploads go up public as joint videos of Medaris and the müderris's channel; the brief asks for the privacy-enhanced embed" },
+    { "id": "bunny", "label": null, "hosted": true, "hostSuffixes": ["mediadelivery.net"], "embed": true, "embedHost": "iframe.mediadelivery.net", "note": "Medaris's own recording host: every recording Medaris hosts, whatever its visibility. tedrisat signs the player URL per request and it expires, so only a viewer allowed to watch gets a working link. It plays in the page, so no chip is shown. Embed host not verified against a live library" },
+    { "id": "google-drive", "label": "Google Drive", "hostSuffixes": ["drive.google.com"], "note": "Google Meet saves its recordings to Drive, so a Meet recording usually arrives as a Drive link" },
+    { "id": "zoom", "label": "Zoom", "hostSuffixes": ["zoom.us"] },
+    { "id": "google-meet", "label": "Google Meet", "hostSuffixes": ["meet.google.com"], "note": "a meet.google.com link is normally a meeting room, not a recording; whether a recording can live on this host is not verified" }
+  ],
+  "unknown": { "id": "unknown", "uiLabel": null, "showHost": true }
+}
