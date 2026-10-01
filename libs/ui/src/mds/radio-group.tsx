@@ -16,7 +16,8 @@ export interface RadioGroupProps {
   legend: ReactNode;
   name?: string;
   options: RadioOption[];
-  value?: string;
+  /** `null` is a controlled "nothing selected" */
+  value?: string | null;
   defaultValue?: string;
   onChange?: (value: string) => void;
   bordered?: boolean;

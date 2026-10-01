@@ -9,7 +9,7 @@
 
 /* The mark, the switch and the chip are not <input>s any more. */
 :is(.mds-check, .mds-radio, .mds-switch):is(span, button) { display: inline-block; padding: 0; }
-.mds-chip:is(button) { appearance: none; font: inherit; cursor: pointer; }
+.mds-chip:is(button) { appearance: none; margin: 0; cursor: pointer; }
 .mds-chips-field { display: flex; flex-direction: column; gap: var(--space-2); min-inline-size: 0; }
 .mds-choice-group > .mds-label { padding-block-end: var(--space-2); }
 
