@@ -14,10 +14,12 @@ import {
   enrollments,
   lessons,
 } from "../../src/database/schema/course.schema";
-import { koskManagers, kosks } from "../../src/database/schema/kosk.schema";
+import { kosks } from "../../src/database/schema/kosk.schema";
+import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
+  assignRole,
   COURSE_TREE_TABLES,
   TestDatabaseUtils,
 } from "../helpers/test-database.helper";
@@ -172,9 +174,12 @@ describe("Course team (MDRS-105, e2e)", () => {
       .values({ ownerId: MANAGER_ID, name: "Süleymaniye Köşkü" })
       .returning();
     koskId = kosk.id;
-    await db()
-      .insert(koskManagers)
-      .values({ koskId, userId: MANAGER_ID, addedBy: MANAGER_ID });
+    await assignRole(db(), {
+      userId: MANAGER_ID,
+      role: ASSIGNED_ROLES.KOSK_NAZIM,
+      scopeId: koskId,
+      grantedBy: MANAGER_ID,
+    });
     const [course] = await db()
       .insert(courses)
       .values({
@@ -208,6 +213,11 @@ describe("Course team (MDRS-105, e2e)", () => {
         // Typed in before MDRS-105: a name, no account.
         { courseId, userId: null, name: "Ahmed Hilmi", orderIndex: 1 },
       ]);
+    await assignRole(db(), {
+      userId: MUDERRIS_ID,
+      role: ASSIGNED_ROLES.MUDERRIS,
+      scopeId: courseId,
+    });
     await db()
       .insert(enrollments)
       .values([

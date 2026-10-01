@@ -190,11 +190,7 @@ describe("auth-matrix structural invariants", () => {
     expect(granting).toEqual([`${ENTITIES.KOSK}:${ROLES.KOSK_MANAGER}`]);
   });
 
-  it("a nazır's köşk scopes are a subset of the köşk manager's, without DELETE", () => {
-    const nazir = MATRIX[ENTITIES.KOSK][ROLES.MADRASAH_NAZIR] ?? [];
-    const manager = MATRIX[ENTITIES.KOSK][ROLES.KOSK_MANAGER] ?? [];
-    expect(nazir).toContain(SCOPES.EDIT);
-    expect(nazir).not.toContain(SCOPES.DELETE);
-    expect(nazir.every((scope) => manager.includes(scope))).toBe(true);
+  it("a medrese's nazır holds nothing on a köşk (MDRS-134)", () => {
+    expect(MATRIX[ENTITIES.KOSK][ROLES.MADRASAH_NAZIR]).toBeUndefined();
   });
 });
