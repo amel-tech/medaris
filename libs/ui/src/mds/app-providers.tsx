@@ -1,0 +1,42 @@
+import { DirectionProvider } from "@base-ui/react/direction-provider";
+import type { ReactNode } from "react";
+import { cx } from "./cx";
+import { Toaster, ToastProvider } from "./toast";
+import { TooltipProvider } from "./tooltip";
+
+export interface AppProvidersProps {
+  children: ReactNode;
+  /** a launch is Turkish only: `ltr`; the Arabic interface is a later phase */
+  direction?: "ltr" | "rtl";
+  tooltipDelay?: number;
+  /** render the one `Toaster` here; an app that places it elsewhere passes false */
+  toaster?: boolean;
+  className?: string;
+}
+
+/**
+ * The app root's providers (canvas rule 3): `className="isolate"` so the overlays
+ * stack inside it, `DirectionProvider`, `Tooltip.Provider delay={600}` and
+ * `Toast.Provider limit={3}` with the one `Toaster`. Wrap the app once, below
+ * `<html lang="tr" dir="ltr" data-app>`.
+ */
+export function AppProviders({
+  children,
+  direction = "ltr",
+  tooltipDelay = 600,
+  toaster = true,
+  className,
+}: AppProvidersProps) {
+  return (
+    <div className={cx("isolate", className)}>
+      <DirectionProvider direction={direction}>
+        <TooltipProvider delay={tooltipDelay}>
+          <ToastProvider>
+            {children}
+            {toaster ? <Toaster /> : null}
+          </ToastProvider>
+        </TooltipProvider>
+      </DirectionProvider>
+    </div>
+  );
+}
