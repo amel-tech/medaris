@@ -80,9 +80,16 @@ describe("AuthzService.can", () => {
       await expect(
         svc.can(user(), { entity: ENTITIES.COURSE, id: "c-1" }, SCOPES.ENROLL)
       ).resolves.toBe(true);
-      // VIEW is not granted to PUBLIC on course
+      // VIEW (the course page) is PUBLIC since MDRS-103; the content is not
       await expect(
         svc.can(user(), { entity: ENTITIES.COURSE, id: "c-1" }, SCOPES.VIEW)
+      ).resolves.toBe(true);
+      await expect(
+        svc.can(
+          user(),
+          { entity: ENTITIES.COURSE, id: "c-1" },
+          SCOPES.VIEW_DETAILS
+        )
       ).resolves.toBe(false);
     });
 

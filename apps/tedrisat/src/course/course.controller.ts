@@ -136,7 +136,7 @@ export class CourseController {
     @Param("koskId", ParseUUIDPipe) koskId: string,
     @Body() courseDto: CreateCourseDto
   ): Promise<CourseDetailResponse> {
-    return this.courseService.create(koskId, request.user.sub, courseDto);
+    return this.courseService.create(koskId, request.user, courseDto);
   }
 
   @ApiOperation({
@@ -155,26 +155,25 @@ export class CourseController {
   }
 
   @ApiOperation({
-    summary: "Get a course with its full syllabus, müderris and resources",
+    summary: "Get a course with its syllabus, müderris and resources",
+    description:
+      "Any signed-in caller may read the course page: its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak` and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103).",
     operationId: "getCourseById",
   })
   @ApiOkResponse({ type: CourseDetailResponse })
   @ApiNotFoundResponse()
-  // Exempt by product decision (MDRS-43, 2026-09-23): a caller with no
-  // relationship to the course may open its page, because that page carries
-  // the "Kayıt ol" button and the PRD lets even guests see a course teaser.
-  // DRAFT courses stay hidden from non-owners inside the service.
-  //
-  // The matrix reads stricter: the COURSE PUBLIC row holds only `[ENROLL]`,
-  // VIEW starts at PENDING, so `@Authz(VIEW, byParam(COURSE))` here would 403
-  // exactly the visitor this page is built for.
-  @AuthzExempt()
+  // The page is public, the lessons are not (the owner's decision of 26
+  // September, recorded on MDRS-43; MDRS-103). `VIEW` is on the COURSE
+  // PUBLIC row since MDRS-103, so this no longer needs an exemption, and the
+  // content is filtered by `VIEW_DETAILS` inside `viewDetail`. DRAFT and
+  // hidden courses stay not-found to non-managers inside `getDetail`.
+  @Authz(SCOPES.VIEW, byParam(ENTITIES.COURSE))
   @Get("courses/:id")
   async findById(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseDetailResponse> {
-    return this.courseService.getDetail(id, request.user);
+    return this.courseService.viewDetail(id, request.user);
   }
 
   @ApiOperation({
@@ -191,7 +190,7 @@ export class CourseController {
     @Body() courseDto: UpdateCourseDto
   ): Promise<CourseDetailResponse> {
     await this.courseService.update(id, request.user.sub, courseDto);
-    return this.courseService.getDetail(id, request.user);
+    return this.courseService.viewDetail(id, request.user, { audit: false });
   }
 
   @ApiOperation({
@@ -213,7 +212,7 @@ export class CourseController {
     @Param("id", ParseUUIDPipe) id: string,
     @Body() courseDto: ReplaceCourseDto
   ): Promise<CourseDetailResponse> {
-    return this.courseService.replace(id, request.user.sub, courseDto);
+    return this.courseService.replace(id, request.user, courseDto);
   }
 
   @ApiOperation({
@@ -233,7 +232,7 @@ export class CourseController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseDetailResponse> {
     await this.courseService.archive(id, request.user.sub);
-    return this.courseService.getDetail(id, request.user);
+    return this.courseService.viewDetail(id, request.user, { audit: false });
   }
 
   @ApiOperation({
@@ -251,7 +250,7 @@ export class CourseController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseDetailResponse> {
     await this.courseService.restore(id);
-    return this.courseService.getDetail(id, request.user);
+    return this.courseService.viewDetail(id, request.user, { audit: false });
   }
 
   @ApiOperation({

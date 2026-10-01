@@ -11,6 +11,7 @@ import { CourseRepository } from "./course.repository";
 import {
   ICourse,
   ICourseDetail,
+  ICourseDetailView,
   ICourseSummary,
   ICreateCourse,
   ICreateLesson,
@@ -24,6 +25,11 @@ import {
   IUpdateCourse,
   IUpdateLesson,
 } from "./course.repository.interface";
+import {
+  isCourseParticipant,
+  withContent,
+  withoutContent,
+} from "./domain/course-content";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import { withCanonicalTimeZone } from "./domain/time-zone";
@@ -122,6 +128,54 @@ export class CourseService {
   }
 
   /**
+   * The course as a caller may see it (MDRS-103): `getDetail`'s visibility
+   * rules, then the content rule. This — not `getDetail` — is what a route
+   * returns.
+   *
+   * `audit` is for reads. A content read by anyone who is neither an enrolled
+   * talebe nor one of the course's müderrisler is written to `audit_log`
+   * before the body is returned, so a failed write fails the read rather than
+   * leaving it unrecorded. The write routes echo the course back with
+   * `audit: false`: the caller has just written it, and the write is the
+   * event.
+   */
+  async viewDetail(
+    id: string,
+    user: AuthenticatedUser,
+    options: { audit: boolean } = { audit: true }
+  ): Promise<ICourseDetailView> {
+    return this.present(await this.getDetail(id, user), user, options);
+  }
+
+  /** The content rule alone, for a detail the caller is already allowed. */
+  async present(
+    course: ICourseDetail,
+    user: AuthenticatedUser,
+    { audit }: { audit: boolean }
+  ): Promise<ICourseDetailView> {
+    const mayReadContent = await this.authz.can(
+      user,
+      { entity: ENTITIES.COURSE, id: course.id },
+      SCOPES.VIEW_DETAILS
+    );
+    if (!mayReadContent) return withoutContent(course);
+
+    if (audit && !isCourseParticipant(course, user.sub)) {
+      await this.courseRepo.recordContentRead({
+        actorId: user.sub,
+        courseId: course.id,
+        details: {
+          title: course.title,
+          // Who read it, as far as today's model can say. Role model v2
+          // (MDRS-135) will name the permission the read went through.
+          systemAdmin: this.authz.isSystemAdmin(user),
+        },
+      });
+    }
+    return withContent(course);
+  }
+
+  /**
    * A scheduled session and its course, for a calendar entry (MDRS-117).
    *
    * Authorized exactly like the session page, which is rendered from
@@ -171,15 +225,17 @@ export class CourseService {
 
   async create(
     koskId: string,
-    authorId: string,
+    author: AuthenticatedUser,
     course: Omit<ICreateCourse, "koskId" | "authorId">
-  ): Promise<ICourseDetail> {
+  ): Promise<ICourseDetailView> {
+    const authorId = author.sub;
     await this.koskService.assertManager(koskId, authorId); // köşk managers only
-    return this.courseRepo.create({
+    const created = await this.courseRepo.create({
       ...withCanonicalTimeZone(course),
       koskId,
       authorId,
     });
+    return this.present(created, author, { audit: false });
   }
 
   async update(
@@ -200,11 +256,16 @@ export class CourseService {
 
   async replace(
     id: string,
-    userId: string,
+    user: AuthenticatedUser,
     data: IReplaceCourse
-  ): Promise<ICourseDetail> {
-    await this.assertCourseOwner(id, userId);
-    return this.courseRepo.replace(id, userId, withCanonicalTimeZone(data));
+  ): Promise<ICourseDetailView> {
+    await this.assertCourseOwner(id, user.sub);
+    const replaced = await this.courseRepo.replace(
+      id,
+      user.sub,
+      withCanonicalTimeZone(data)
+    );
+    return this.present(replaced, user, { audit: false });
   }
 
   // ---- session-level writes (MDRS-95) ----

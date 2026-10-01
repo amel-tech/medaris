@@ -347,7 +347,8 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Get a course with its full syllabus, müderris and resources
+     * Any signed-in caller may read the course page: its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak` and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103).
+     * Get a course with its syllabus, müderris and resources
      */
     async getCourseByIdRaw(requestParameters: GetCourseByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseDetailResponse>> {
         if (requestParameters['id'] == null) {
@@ -381,7 +382,8 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Get a course with its full syllabus, müderris and resources
+     * Any signed-in caller may read the course page: its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak` and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103).
+     * Get a course with its syllabus, müderris and resources
      */
     async getCourseById(requestParameters: GetCourseByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDetailResponse> {
         const response = await this.getCourseByIdRaw(requestParameters, initOverrides);

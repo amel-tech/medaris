@@ -133,9 +133,10 @@ export class LessonController {
   })
   @Get("lessons/:id/calendar.ics")
   // No `@Authz` scope on purpose: the rule is the session page's, which is
-  // `getDetail`'s (`GET /courses/:id` carries no scope either), and
-  // `getScheduledLesson` applies it. A scope here would be a second,
-  // different rule for the same page.
+  // `getDetail`'s, and `getScheduledLesson` applies it. `GET /courses/:id`
+  // carries `@Authz(VIEW)` since MDRS-103, but VIEW is on the COURSE PUBLIC
+  // row, so it adds nothing `getDetail` does not already decide. The file
+  // carries no content field (see below), so there is nothing to filter.
   @AuthzExempt()
   // Per-user authorization decided this answer; no shared cache may keep it.
   @Header("Cache-Control", "private, no-store")

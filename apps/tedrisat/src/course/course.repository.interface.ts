@@ -90,6 +90,36 @@ export interface ICourseDetail extends ICourse {
   enrollment: IEnrollment | null;
 }
 
+/**
+ * The lesson fields that are course content rather than programme (MDRS-103):
+ * only a caller holding `VIEW_DETAILS` on the course receives them. Everyone
+ * else gets the lesson without these keys — absent, not null, so no body
+ * sent to a non-enrolled caller names them at all.
+ */
+export type LessonContentField = "kaynak" | "meetingUrl" | "agenda";
+
+/** A lesson as a response carries it: the content fields may be absent. */
+export type ILessonView = Omit<ILesson, LessonContentField> &
+  Partial<Pick<ILesson, LessonContentField>>;
+
+/** A resource as a response carries it: `url` is content (MDRS-103). */
+export type IResourceView = Omit<IResource, "url"> &
+  Partial<Pick<IResource, "url">>;
+
+export type IWeekView = Omit<IWeek, "lessons"> & { lessons: ILessonView[] };
+
+/**
+ * A course detail as it leaves the API (MDRS-103). `contentLocked` is true
+ * when the caller lacks `VIEW_DETAILS` and the content fields were removed;
+ * a client renders the locked state (tedris B8) from it rather than guessing
+ * from the enrollment.
+ */
+export type ICourseDetailView = Omit<ICourseDetail, "weeks" | "resources"> & {
+  weeks: IWeekView[];
+  resources: IResourceView[];
+  contentLocked: boolean;
+};
+
 export interface ICourseSummary extends ICourse {
   weekCount: number;
   lessonCount: number;
@@ -320,6 +350,12 @@ export interface ICourseRepository {
   /** Whether `userId` is listed in `course_muderris` for `courseId`. */
   isMuderris(courseId: string, userId: string): Promise<boolean>;
   findTaughtBy(userId: string): Promise<ICourseRef[]>;
+  /** One `audit_log` row for a content read by a non-participant (MDRS-103). */
+  recordContentRead(entry: {
+    actorId: string;
+    courseId: string;
+    details: Record<string, unknown>;
+  }): Promise<void>;
   findPendingByKosk(koskId: string): Promise<IPendingEnrollment[]>;
   setEnrollmentStatus(
     userId: string,
