@@ -1,3 +1,4 @@
+import { CalendarDotsIcon as CalendarDots } from "@medaris/icons/ssr";
 import { Breadcrumbs } from "@medaris/ui/components/breadcrumb";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
@@ -21,13 +22,22 @@ export default async function MyCourses() {
         ]}
       />
 
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">
-          {t("MyCoursesPage.title")}
-        </h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          {t("MyCoursesPage.subtitle")}
-        </p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {t("MyCoursesPage.title")}
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            {t("MyCoursesPage.subtitle")}
+          </p>
+        </div>
+        {/* B11 (MDRS-120). */}
+        <Link
+          href="/learning/calendar"
+          className="inline-flex items-center gap-1.5 rounded-lg border bg-white px-3.5 py-2 text-[13px] font-medium"
+        >
+          <CalendarDots size={14} /> {t("CalendarSubscription.link")}
+        </Link>
       </div>
 
       {continuing.length === 0 ? (
