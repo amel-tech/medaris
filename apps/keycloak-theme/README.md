@@ -129,24 +129,21 @@ This theme leverages the monorepo's shared packages:
 
 ## Translations
 
-Translations are now made from admin panel, but overridden keys should be added to viteconfig.
+The theme's copy lives **in code**, in `src/login/i18n.ts`, for `tr`, `en` and `ar` (MDRS-100). Every key is listed for all three languages; `keycloakify build` reads that object statically to write the `messages_*.properties` Keycloak uses server-side, so it must stay an inline object literal.
 
-```js
-  kcContextExclusionsFtl: `
-            <@addToXKeycloakifyMessagesIfMessageKey str="loginAccountSubtitle" />
-            ... add here
-        `,
-```
-
-and when being called from the code you should use advancedMsg function.
+A realm-level override of the keys listed in `vite.config.ts` (`kcContextExclusionsFtl`) still wins over the in-code copy, which lets an operator change it without a release. Nothing depends on such an override existing. Read those keys with `advancedMsg`:
 
 ```ts
-  const { msg, msgStr, advancedMsg } = i18n;
-
-  ...
-
-  headerNode={advancedMsg("loginAccountTitle")}
+headerNode={advancedMsg("loginAccountTitle")}
 ```
+
+## E-mail theme
+
+`src/email` is a native (FreeMarker) e-mail theme: `theme.properties`, a shared HTML layout (`html/medaris-layout.ftl` — not `template.ftl`, which the inherited base e-mails import), the verification and password-reset e-mails in HTML and text, and their copy in `messages/messages_{en,tr,ar}.properties`. keycloakify packs it into the same JAR. A realm uses it once its **Email theme** is set to `medaris-keycloak-theme` and SMTP is configured; Keycloak picks the language from the user's `locale`.
+
+## Tests
+
+`pnpm nx test keycloak-theme` renders every page a registrant can reach in all three languages (happy-dom), checks the copy and the e-mail theme statically, and sends real verification and password-reset e-mails through Keycloak 26.3.2 and Mailpit — so it needs Docker.
 
 ## Troubleshooting
 
