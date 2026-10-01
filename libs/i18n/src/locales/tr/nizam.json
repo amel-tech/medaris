@@ -178,6 +178,8 @@
     "editTitle": "Kursu Düzenle",
     "breadcrumbEdit": "Düzenle",
     "updated": "Kurs güncellendi.",
+    "conflict": "Bu kurs, siz formu açtıktan sonra başka biri tarafından kaydedildi. Değişiklikleriniz kaydedilmedi; güncel hâlini görmek için sayfayı yenileyin.",
+    "conflictReload": "Yenile",
     "requiresApproval": "Kayıt onayı gereksin",
     "requiresApprovalHint": "Açık olduğunda talebelerin kaydı, siz onaylayana kadar beklemede kalır."
   },

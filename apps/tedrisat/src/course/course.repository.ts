@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, max, ne, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import {
   courseMuderris,
@@ -15,15 +15,24 @@ import {
   ICourseRepository,
   ICourseSummary,
   ICreateCourse,
+  ICreateLesson,
   IEnrolledCourse,
   IEnrollment,
   IEnrollOptions,
+  ILessonMutation,
   IPendingEnrollment,
   IReplaceCourse,
   IUpdateCourse,
+  IUpdateLesson,
 } from "./course.repository.interface";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
+import { CourseNotFoundError } from "./errors/course-not-found.error";
+import { CourseVersionConflictError } from "./errors/course-version-conflict.error";
+import { LessonNotFoundError } from "./errors/lesson-not-found.error";
+import { WeekNotFoundError } from "./errors/week-not-found.error";
+
+type Tx = Parameters<Parameters<DatabaseService["db"]["transaction"]>[0]>[0];
 
 @Injectable()
 export class CourseRepository implements ICourseRepository {
@@ -47,7 +56,10 @@ export class CourseRepository implements ICourseRepository {
             eq(courses.status, CourseStatus.PUBLISHED)
           ),
       with: {
-        weeks: { with: { lessons: true } },
+        weeks: {
+          where: (w, { isNull }) => isNull(w.archivedAt),
+          with: { lessons: { where: (l, { isNull }) => isNull(l.archivedAt) } },
+        },
         muderris: { orderBy: (m, { asc }) => [asc(m.orderIndex)] },
         resources: true,
         enrollments: { where: (e, { eq }) => eq(e.userId, userId) },
@@ -75,9 +87,15 @@ export class CourseRepository implements ICourseRepository {
       where: eq(courses.id, id),
       with: {
         weeks: {
+          columns: { archivedAt: false },
+          where: (w, { isNull }) => isNull(w.archivedAt),
           orderBy: (w, { asc }) => [asc(w.weekNumber)],
           with: {
-            lessons: { orderBy: (l, { asc }) => [asc(l.orderIndex)] },
+            lessons: {
+              columns: { archivedAt: false },
+              where: (l, { isNull }) => isNull(l.archivedAt),
+              orderBy: (l, { asc }) => [asc(l.orderIndex)],
+            },
           },
         },
         muderris: { orderBy: (m, { asc }) => [asc(m.orderIndex)] },
@@ -101,7 +119,15 @@ export class CourseRepository implements ICourseRepository {
         course: {
           with: {
             kosk: { columns: { name: true } },
-            weeks: { with: { lessons: { columns: { id: true } } } },
+            weeks: {
+              where: (w, { isNull }) => isNull(w.archivedAt),
+              with: {
+                lessons: {
+                  columns: { id: true },
+                  where: (l, { isNull }) => isNull(l.archivedAt),
+                },
+              },
+            },
             muderris: { orderBy: (m, { asc }) => [asc(m.orderIndex)] },
           },
         },
@@ -209,13 +235,20 @@ export class CourseRepository implements ICourseRepository {
     userId: string,
     data: IReplaceCourse
   ): Promise<ICourseDetail> {
-    const { weeks = [], muderris = [], resources = [], ...courseData } = data;
+    const {
+      weeks = [],
+      muderris = [],
+      resources = [],
+      version: expectedVersion,
+      ...courseData
+    } = data;
 
     await this.db.transaction(async (tx) => {
-      await tx
-        .update(courses)
-        .set({ ...courseData, updatedAt: new Date() })
-        .where(eq(courses.id, id));
+      // The version check and the bump are one conditional UPDATE, so the
+      // row lock it takes serialises concurrent saves: of two PUTs carrying
+      // the same version, the second re-evaluates its WHERE after the first
+      // commits, matches nothing, and is refused before it writes anything.
+      await this.bumpVersion(tx, id, expectedVersion, courseData);
 
       // ---- müderris: upsert by id, delete the rest ----
       const existingMuderris = await tx
@@ -290,27 +323,33 @@ export class CourseRepository implements ICourseRepository {
         }
       }
 
-      // ---- weeks + lessons: upsert by id, delete the rest ----
+      // ---- weeks + lessons (MDRS-95) ----
+      // Nothing below deletes a week or a lesson. A lesson's id must survive
+      // every edit that keeps the lesson — recordings and calendar events
+      // point at it and the foreign keys under a lesson cascade — so:
+      //   * existing lessons are matched against the whole course, not per
+      //     week, and a lesson that moves weeks is UPDATEd with a new weekId;
+      //   * a lesson missing from the payload is archived, not deleted;
+      //   * a week missing from the payload is archived after its lessons
+      //     have been moved out, so the cascade from `course_weeks` never
+      //     fires either.
+      const now = new Date();
       const existingWeeks = await tx
         .select({ id: courseWeeks.id })
         .from(courseWeeks)
-        .where(eq(courseWeeks.courseId, id));
+        .where(
+          and(eq(courseWeeks.courseId, id), isNull(courseWeeks.archivedAt))
+        );
       const existingWeekIds = new Set(existingWeeks.map((w) => w.id));
-      const weeksKeep = new Set(
-        weeks
-          .map((w) => w.id)
-          .filter((x): x is string => Boolean(x) && existingWeekIds.has(x!))
-      );
-      const weeksToDelete = existingWeeks
-        .filter((w) => !weeksKeep.has(w.id))
-        .map((w) => w.id);
-      if (weeksToDelete.length) {
-        // cascades to the deleted weeks' lessons
-        await tx
-          .delete(courseWeeks)
-          .where(inArray(courseWeeks.id, weeksToDelete));
-      }
 
+      const existingLessons = await tx
+        .select({ id: lessons.id })
+        .from(lessons)
+        .innerJoin(courseWeeks, eq(lessons.weekId, courseWeeks.id))
+        .where(and(eq(courseWeeks.courseId, id), isNull(lessons.archivedAt)));
+      const unclaimedLessonIds = new Set(existingLessons.map((l) => l.id));
+
+      const keptWeekIds = new Set<string>();
       for (const [wi, week] of weeks.entries()) {
         const weekValues = {
           courseId: id,
@@ -321,82 +360,276 @@ export class CourseRepository implements ICourseRepository {
         };
 
         let weekId: string;
-        if (week.id && existingWeekIds.has(week.id)) {
+        // `keptWeekIds` guards against the same week id appearing twice in
+        // one payload: the second occurrence becomes a new week.
+        if (
+          week.id &&
+          existingWeekIds.has(week.id) &&
+          !keptWeekIds.has(week.id)
+        ) {
           await tx
             .update(courseWeeks)
-            .set(weekValues)
+            .set({ ...weekValues, updatedAt: now })
             .where(eq(courseWeeks.id, week.id));
           weekId = week.id;
-
-          const existingLessons = await tx
-            .select({ id: lessons.id })
-            .from(lessons)
-            .where(eq(lessons.weekId, weekId));
-          const existingLessonIds = new Set(existingLessons.map((l) => l.id));
-          const lessonsKeep = new Set(
-            (week.lessons ?? [])
-              .map((l) => l.id)
-              .filter(
-                (x): x is string => Boolean(x) && existingLessonIds.has(x!)
-              )
-          );
-          const lessonsToDelete = existingLessons
-            .filter((l) => !lessonsKeep.has(l.id))
-            .map((l) => l.id);
-          if (lessonsToDelete.length) {
-            await tx
-              .delete(lessons)
-              .where(inArray(lessons.id, lessonsToDelete));
-          }
-          for (const [li, l] of (week.lessons ?? []).entries()) {
-            const lessonValues = {
-              weekId,
-              title: l.title,
-              type: l.type,
-              duration: l.duration,
-              kaynak: l.kaynak,
-              scheduledAt: l.scheduledAt,
-              meetingUrl: l.meetingUrl,
-              agenda: l.agenda,
-              isPreview: l.isPreview ?? false,
-              orderIndex: li,
-            };
-            if (l.id && existingLessonIds.has(l.id)) {
-              await tx
-                .update(lessons)
-                .set(lessonValues)
-                .where(eq(lessons.id, l.id));
-            } else {
-              await tx.insert(lessons).values(lessonValues);
-            }
-          }
         } else {
           const [createdWeek] = await tx
             .insert(courseWeeks)
             .values(weekValues)
-            .returning();
+            .returning({ id: courseWeeks.id });
           weekId = createdWeek.id;
-          if (week.lessons?.length) {
-            await tx.insert(lessons).values(
-              week.lessons.map((l, li) => ({
-                weekId,
-                title: l.title,
-                type: l.type,
-                duration: l.duration,
-                kaynak: l.kaynak,
-                scheduledAt: l.scheduledAt,
-                meetingUrl: l.meetingUrl,
-                agenda: l.agenda,
-                isPreview: l.isPreview ?? false,
-                orderIndex: li,
-              }))
-            );
+        }
+        keptWeekIds.add(weekId);
+
+        for (const [li, l] of (week.lessons ?? []).entries()) {
+          const lessonValues = {
+            weekId,
+            title: l.title,
+            type: l.type,
+            duration: l.duration,
+            kaynak: l.kaynak,
+            scheduledAt: l.scheduledAt,
+            meetingUrl: l.meetingUrl,
+            agenda: l.agenda,
+            isPreview: l.isPreview ?? false,
+            orderIndex: li,
+          };
+          // Deleting from the set as ids are claimed does two jobs: what is
+          // left afterwards is exactly the set to archive, and a lesson id
+          // repeated within the payload is only reused once.
+          if (l.id && unclaimedLessonIds.delete(l.id)) {
+            await tx
+              .update(lessons)
+              .set({ ...lessonValues, updatedAt: now })
+              .where(eq(lessons.id, l.id));
+          } else {
+            await tx.insert(lessons).values(lessonValues);
           }
         }
+      }
+
+      if (unclaimedLessonIds.size) {
+        await tx
+          .update(lessons)
+          .set({ archivedAt: now, updatedAt: now })
+          .where(inArray(lessons.id, [...unclaimedLessonIds]));
+      }
+
+      const weeksToArchive = [...existingWeekIds].filter(
+        (weekId) => !keptWeekIds.has(weekId)
+      );
+      if (weeksToArchive.length) {
+        await tx
+          .update(courseWeeks)
+          .set({ archivedAt: now, updatedAt: now })
+          .where(inArray(courseWeeks.id, weeksToArchive));
       }
     });
 
     return (await this.findDetailById(id, userId)) as ICourseDetail;
+  }
+
+  /**
+   * Bumps the course's `version` (and applies `set`, if any) and returns the
+   * new value. With `expectedVersion`, only a course still at that version is
+   * written; anything else is a conflict. Without it the bump is
+   * unconditional — used by the session-level writes that take no token, so
+   * that a whole-course PUT loaded before them is still refused afterwards.
+   *
+   * Callers run this FIRST in their transaction: it takes the course row's
+   * lock, which is what serialises every syllabus write against every other.
+   */
+  private async bumpVersion(
+    tx: Tx,
+    courseId: string,
+    expectedVersion: number | undefined,
+    set: Partial<typeof courses.$inferInsert> = {}
+  ): Promise<number> {
+    const [row] = await tx
+      .update(courses)
+      .set({
+        ...set,
+        version: sql`${courses.version} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(
+        expectedVersion === undefined
+          ? eq(courses.id, courseId)
+          : and(eq(courses.id, courseId), eq(courses.version, expectedVersion))
+      )
+      .returning({ version: courses.version });
+    if (row) return row.version;
+
+    if (expectedVersion !== undefined) {
+      const [exists] = await tx
+        .select({ id: courses.id })
+        .from(courses)
+        .where(eq(courses.id, courseId))
+        .limit(1);
+      if (exists) {
+        throw new CourseVersionConflictError(courseId, expectedVersion);
+      }
+    }
+    throw new CourseNotFoundError(courseId);
+  }
+
+  /** Throws unless `weekId` is a live (unarchived) week of `courseId`. */
+  private async assertLiveWeek(
+    tx: Tx,
+    courseId: string,
+    weekId: string
+  ): Promise<void> {
+    const [week] = await tx
+      .select({ id: courseWeeks.id })
+      .from(courseWeeks)
+      .where(
+        and(
+          eq(courseWeeks.id, weekId),
+          eq(courseWeeks.courseId, courseId),
+          isNull(courseWeeks.archivedAt)
+        )
+      )
+      .limit(1);
+    if (!week) throw new WeekNotFoundError(weekId, courseId);
+  }
+
+  /** The order index that places a lesson after every live one in the week. */
+  private async nextOrderIndex(tx: Tx, weekId: string): Promise<number> {
+    const [row] = await tx
+      .select({ last: max(lessons.orderIndex) })
+      .from(lessons)
+      .where(and(eq(lessons.weekId, weekId), isNull(lessons.archivedAt)));
+    return (row?.last ?? -1) + 1;
+  }
+
+  /** The course of a live (unarchived) lesson; throws if there is none. */
+  private async findLiveLessonCourseId(
+    tx: Tx,
+    lessonId: string
+  ): Promise<string> {
+    const [row] = await tx
+      .select({ courseId: courseWeeks.courseId })
+      .from(lessons)
+      .innerJoin(courseWeeks, eq(lessons.weekId, courseWeeks.id))
+      .where(and(eq(lessons.id, lessonId), isNull(lessons.archivedAt)))
+      .limit(1);
+    if (!row) throw new LessonNotFoundError(lessonId);
+    return row.courseId;
+  }
+
+  private toLessonMutation(
+    row: typeof lessons.$inferSelect,
+    courseVersion: number
+  ): ILessonMutation {
+    return {
+      id: row.id,
+      weekId: row.weekId,
+      title: row.title,
+      type: row.type,
+      duration: row.duration,
+      kaynak: row.kaynak,
+      scheduledAt: row.scheduledAt,
+      meetingUrl: row.meetingUrl,
+      agenda: row.agenda,
+      isPreview: row.isPreview,
+      orderIndex: row.orderIndex,
+      courseVersion,
+    };
+  }
+
+  async findLessonCourseId(lessonId: string): Promise<string | null> {
+    const rows = await this.db
+      .select({ courseId: courseWeeks.courseId })
+      .from(lessons)
+      .innerJoin(courseWeeks, eq(lessons.weekId, courseWeeks.id))
+      .where(eq(lessons.id, lessonId))
+      .limit(1);
+    return rows[0]?.courseId ?? null;
+  }
+
+  async createLesson(
+    courseId: string,
+    weekId: string,
+    data: ICreateLesson
+  ): Promise<ILessonMutation> {
+    return this.db.transaction(async (tx) => {
+      const courseVersion = await this.bumpVersion(tx, courseId, undefined);
+      await this.assertLiveWeek(tx, courseId, weekId);
+      const [row] = await tx
+        .insert(lessons)
+        .values({
+          weekId,
+          title: data.title,
+          type: data.type,
+          duration: data.duration,
+          kaynak: data.kaynak,
+          scheduledAt: data.scheduledAt,
+          meetingUrl: data.meetingUrl,
+          agenda: data.agenda,
+          isPreview: data.isPreview ?? false,
+          orderIndex: await this.nextOrderIndex(tx, weekId),
+        })
+        .returning();
+      return this.toLessonMutation(row, courseVersion);
+    });
+  }
+
+  async updateLesson(
+    lessonId: string,
+    expectedVersion: number,
+    data: IUpdateLesson
+  ): Promise<ILessonMutation> {
+    return this.db.transaction(async (tx) => {
+      const courseId = await this.findLiveLessonCourseId(tx, lessonId);
+      // Every write that could archive or move this lesson bumps the version
+      // under the same row lock, so once this succeeds the lesson read above
+      // is still live and still in `courseId`.
+      const courseVersion = await this.bumpVersion(
+        tx,
+        courseId,
+        expectedVersion
+      );
+      const { weekId, orderIndex, ...fields } = data;
+      const set: Partial<typeof lessons.$inferInsert> = {
+        ...fields,
+        updatedAt: new Date(),
+      };
+      const [current] = await tx
+        .select({ weekId: lessons.weekId })
+        .from(lessons)
+        .where(eq(lessons.id, lessonId));
+      if (weekId !== undefined && weekId !== current.weekId) {
+        // A move is an UPDATE of weekId — never a delete plus insert — so the
+        // lesson keeps its id and everything that points at it.
+        await this.assertLiveWeek(tx, courseId, weekId);
+        set.weekId = weekId;
+        set.orderIndex = orderIndex ?? (await this.nextOrderIndex(tx, weekId));
+      } else if (orderIndex !== undefined) {
+        set.orderIndex = orderIndex;
+      }
+      const [row] = await tx
+        .update(lessons)
+        .set(set)
+        .where(eq(lessons.id, lessonId))
+        .returning();
+      return this.toLessonMutation(row, courseVersion);
+    });
+  }
+
+  async archiveLesson(lessonId: string): Promise<ILessonMutation> {
+    return this.db.transaction(async (tx) => {
+      const courseId = await this.findLiveLessonCourseId(tx, lessonId);
+      const courseVersion = await this.bumpVersion(tx, courseId, undefined);
+      const now = new Date();
+      const [row] = await tx
+        .update(lessons)
+        .set({ archivedAt: now, updatedAt: now })
+        .where(and(eq(lessons.id, lessonId), isNull(lessons.archivedAt)))
+        .returning();
+      // Archived by a concurrent request between the read and the lock.
+      if (!row) throw new LessonNotFoundError(lessonId);
+      return this.toLessonMutation(row, courseVersion);
+    });
   }
 
   async findKoskId(id: string): Promise<string | null> {
@@ -411,7 +644,11 @@ export class CourseRepository implements ICourseRepository {
   async update(id: string, updates: IUpdateCourse): Promise<ICourse | null> {
     return this.db
       .update(courses)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({
+        ...updates,
+        version: sql`${courses.version} + 1`,
+        updatedAt: new Date(),
+      })
       .where(eq(courses.id, id))
       .returning()
       .then((result) => result[0] || null);

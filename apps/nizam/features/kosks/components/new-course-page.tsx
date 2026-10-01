@@ -67,6 +67,12 @@ type ResourceDraft = { id?: string; name: string; meta: string };
 
 const newWeek = (): WeekDraft => ({ title: "", summary: "", lessons: [] });
 
+/** tedrisat's answer to a save made from a stale copy of the course. */
+const isVersionConflict = (errorBody: unknown): boolean =>
+  typeof errorBody === "object" &&
+  errorBody !== null &&
+  (errorBody as { code?: unknown }).code === "COURSE_VERSION_CONFLICT";
+
 /** Convert an API Date to the value of an <input type="datetime-local">
  *  in the editor's local zone. */
 const toDatetimeLocal = (date: Date): string => {
@@ -311,9 +317,26 @@ export const NewCoursePage = ({
     startTransition(async () => {
       const dto = buildDto(status);
       const res = course
-        ? await updateKoskCourse(kosk.id, course.id, dto)
+        ? await updateKoskCourse(kosk.id, course.id, {
+            ...dto,
+            // The version this form was loaded with — tedrisat refuses the
+            // save with 409 if someone else has saved the course since.
+            version: course.version,
+          })
         : await createKoskCourse(kosk.id, dto);
       if (res.success === false) {
+        if (isVersionConflict(res.errorBody)) {
+          // Never retry or overwrite: the other save wins, and the editor
+          // reloads to see it (MDRS-95).
+          toast.error(t("NewCoursePage.conflict"), {
+            duration: Number.POSITIVE_INFINITY,
+            action: {
+              label: t("NewCoursePage.conflictReload"),
+              onClick: () => window.location.reload(),
+            },
+          });
+          return;
+        }
         toast.error(res.error);
         return;
       }

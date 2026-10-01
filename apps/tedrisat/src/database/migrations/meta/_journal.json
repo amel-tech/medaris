@@ -106,6 +106,13 @@
       "when": 1790600353671,
       "tag": "0014_drop_orphan_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790600862460,
+      "tag": "0015_lesson_archive_course_version",
+      "breakpoints": true
     }
   ]
 }
