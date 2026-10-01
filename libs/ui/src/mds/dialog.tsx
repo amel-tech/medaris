@@ -1,6 +1,12 @@
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { Form } from "@base-ui/react/form";
-import type { FormEvent, ReactNode, RefObject } from "react";
+import {
+  type FormEvent,
+  type ReactNode,
+  type RefObject,
+  useId,
+  useRef,
+} from "react";
 import { cx } from "./cx";
 
 export type DialogSize = "sm" | "md" | "lg";
@@ -63,6 +69,11 @@ export function Dialog({
 }: DialogProps) {
   const pointerDismiss = dismissible ?? !form;
   const panelClass = "mds-dialog__panel";
+  const titleId = useId();
+  const bodyRef = useRef<HTMLDivElement>(null);
+  // A reading window (lg, not a form) has no field: the scrollable body is the
+  // focus stop, so the keyboard can scroll the text.
+  const reader = size === "lg" && !form;
   const inner = (
     <>
       <div className="mds-dialog__header">
@@ -72,7 +83,11 @@ export function Dialog({
               {eyebrow}
             </p>
           ) : null}
-          <BaseDialog.Title className="mds-dialog__title" dir="auto">
+          <BaseDialog.Title
+            id={titleId}
+            className="mds-dialog__title"
+            dir="auto"
+          >
             {title}
           </BaseDialog.Title>
         </div>
@@ -84,7 +99,14 @@ export function Dialog({
           />
         </div>
       </div>
-      <BaseDialog.Description className="mds-dialog__body" render={<div />}>
+      <BaseDialog.Description
+        ref={bodyRef}
+        className="mds-dialog__body"
+        render={<div />}
+        {...(reader
+          ? { role: "region", tabIndex: 0, "aria-labelledby": titleId }
+          : {})}
+      >
         {children}
       </BaseDialog.Description>
       {footer || footerMeta ? (
@@ -112,7 +134,7 @@ export function Dialog({
               size !== "sm" && `mds-dialog--${size}`,
               className
             )}
-            initialFocus={initialFocus}
+            initialFocus={initialFocus ?? (reader ? bodyRef : undefined)}
           >
             {form ? (
               <Form className={panelClass} onSubmit={onSubmit}>
