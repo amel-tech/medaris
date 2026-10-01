@@ -1,4 +1,11 @@
+import {
+  AuthenticatedUser,
+  AuthzService,
+  ENTITIES,
+  SCOPES,
+} from "@medaris/common";
 import { Injectable } from "@nestjs/common";
+import { KoskForbiddenError } from "../kosk/errors/kosk-forbidden.error";
 import { KoskService } from "../kosk/kosk.service";
 import { CourseRepository } from "./course.repository";
 import {
@@ -29,26 +36,53 @@ export interface StudentIdentity {
 export class CourseService {
   constructor(
     private readonly courseRepo: CourseRepository,
-    private readonly koskService: KoskService
+    private readonly koskService: KoskService,
+    private readonly authz: AuthzService
   ) {}
 
+  /**
+   * The köşk's courses. With `archived`, its hidden ones instead — the
+   * "Arşiv" view (MDRS-124), for the köşk manager and SYSTEM_ADMIN only;
+   * anyone else asking for it gets 403.
+   */
   async findSummariesByKosk(
     koskId: string,
-    userId: string
+    user: AuthenticatedUser,
+    archived = false
   ): Promise<ICourseSummary[]> {
-    const kosk = await this.koskService.findById(koskId, userId); // throws if köşk is missing
+    const kosk = await this.koskService.findById(koskId, user.sub); // throws if köşk is missing
+    const isOwner = kosk.ownerId === user.sub;
+    if (archived) {
+      if (!isOwner && !this.authz.isSystemAdmin(user)) {
+        throw new KoskForbiddenError();
+      }
+      return this.courseRepo.findSummariesByKosk(koskId, user.sub, true, true);
+    }
     // Only the köşk owner sees DRAFT courses; everyone else gets PUBLISHED only.
-    const includeDrafts = kosk.ownerId === userId;
-    return this.courseRepo.findSummariesByKosk(koskId, userId, includeDrafts);
+    return this.courseRepo.findSummariesByKosk(koskId, user.sub, isOwner);
   }
 
   async findEnrolledCourses(userId: string): Promise<IEnrolledCourse[]> {
     return this.courseRepo.findEnrolledByUser(userId);
   }
 
-  async getDetail(id: string, userId: string): Promise<ICourseDetail> {
+  async getDetail(id: string, user: AuthenticatedUser): Promise<ICourseDetail> {
+    const userId = user.sub;
     const course = await this.courseRepo.findDetailById(id, userId);
     if (!course) {
+      throw new CourseNotFoundError(id);
+    }
+    // A hidden course (MDRS-124) is not-found, exactly like a draft, to all
+    // but the people who may restore it: the köşk manager and SYSTEM_ADMIN,
+    // which is what the `ARCHIVE` scope says.
+    if (
+      course.archivedAt !== null &&
+      !(await this.authz.can(
+        user,
+        { entity: ENTITIES.COURSE, id },
+        SCOPES.ARCHIVE
+      ))
+    ) {
       throw new CourseNotFoundError(id);
     }
     // A DRAFT course is invisible to anyone but its köşk owner — surface it as
@@ -128,17 +162,36 @@ export class CourseService {
     return this.courseRepo.archiveLesson(lessonId);
   }
 
-  async delete(id: string, userId: string): Promise<boolean> {
-    await this.assertCourseOwner(id, userId);
-    return this.courseRepo.delete(id);
+  // ---- hide / restore / delete (MDRS-124) ----
+  // Authorization is `@Authz` on CourseController: `ARCHIVE` (the köşk
+  // manager) for hide and restore, `DELETE` (SYSTEM_ADMIN only — it is on no
+  // role row) for the real delete. Nothing is re-checked here.
+
+  async archive(id: string, userId: string): Promise<void> {
+    if (!(await this.courseRepo.archive(id, userId))) {
+      throw new CourseNotFoundError(id);
+    }
+  }
+
+  async restore(id: string): Promise<void> {
+    if (!(await this.courseRepo.restore(id))) {
+      throw new CourseNotFoundError(id);
+    }
+  }
+
+  async delete(id: string, actorId: string): Promise<boolean> {
+    const removed = await this.courseRepo.purge(id, actorId);
+    if (!removed) throw new CourseNotFoundError(id);
+    return true;
   }
 
   async enroll(
-    userId: string,
+    user: AuthenticatedUser,
     courseId: string,
     student: StudentIdentity = {}
   ): Promise<IEnrollment> {
-    const course = await this.getDetail(courseId, userId); // throws if missing
+    const userId = user.sub;
+    const course = await this.getDetail(courseId, user); // throws if missing
     const status = course.requiresApproval
       ? EnrollmentStatus.PENDING
       : EnrollmentStatus.ENROLLED;

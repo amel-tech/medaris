@@ -1,5 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { and, desc, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
+import {
+  courseIdsOfKosk,
+  IPurgeCounts,
+  purgeCourses,
+  recordDeletion,
+} from "../course/course-purge";
 import { DatabaseService } from "../database/database.service";
 import {
   courseMuderris,
@@ -32,16 +38,18 @@ export class KoskRepository implements IKoskRepository {
       // stands alone.
       madrasahName: madrasahs.name,
       madrasahHandle: madrasahs.handle,
+      // The three course-derived counts leave hidden courses out (MDRS-124):
+      // a hidden course is in no list, so it is in no total either.
       courseCount:
-        sql<number>`(select count(*) from ${courses} c where c.kosk_id = "kosks"."id")`.mapWith(
+        sql<number>`(select count(*) from ${courses} c where c.kosk_id = "kosks"."id" and c.archived_at is null)`.mapWith(
           Number
         ),
       studentCount:
-        sql<number>`(select count(distinct e.user_id) from ${enrollments} e join ${courses} c on e.course_id = c.id where c.kosk_id = "kosks"."id")`.mapWith(
+        sql<number>`(select count(distinct e.user_id) from ${enrollments} e join ${courses} c on e.course_id = c.id where c.kosk_id = "kosks"."id" and c.archived_at is null)`.mapWith(
           Number
         ),
       muderrisCount:
-        sql<number>`(select count(distinct cm.id) from ${courseMuderris} cm join ${courses} c on cm.course_id = c.id where c.kosk_id = "kosks"."id")`.mapWith(
+        sql<number>`(select count(distinct cm.id) from ${courseMuderris} cm join ${courses} c on cm.course_id = c.id where c.kosk_id = "kosks"."id" and c.archived_at is null)`.mapWith(
           Number
         ),
       followerCount:
@@ -158,12 +166,41 @@ export class KoskRepository implements IKoskRepository {
       .then((result) => result[0] || null);
   }
 
-  async delete(id: string): Promise<boolean> {
-    const deleted = await this.db
-      .delete(kosks)
-      .where(eq(kosks.id, id))
-      .returning();
-    return deleted.length > 0;
+  /**
+   * SYSTEM_ADMIN's real delete (MDRS-124): every course of the köşk with
+   * everything under it, its followers, the köşk, and one `audit_log` entry
+   * naming what went — in one transaction. `courses.kosk_id` is
+   * `ON DELETE RESTRICT`, so the courses have to go first and explicitly.
+   * Null when there is no such köşk.
+   */
+  async purge(
+    id: string,
+    actorId: string
+  ): Promise<(IPurgeCounts & { followers: number }) | null> {
+    return this.db.transaction(async (tx) => {
+      const [kosk] = await tx
+        .select({ name: kosks.name })
+        .from(kosks)
+        .where(eq(kosks.id, id))
+        .for("update");
+      if (!kosk) return null;
+
+      const removed = await purgeCourses(tx, await courseIdsOfKosk(tx, id));
+      const followers = (
+        await tx
+          .delete(koskFollowers)
+          .where(eq(koskFollowers.koskId, id))
+          .returning({ userId: koskFollowers.userId })
+      ).length;
+      await tx.delete(kosks).where(eq(kosks.id, id));
+      await recordDeletion(tx, {
+        actorId,
+        entity: "kosk",
+        entityId: id,
+        details: { name: kosk.name, removed: { ...removed, followers } },
+      });
+      return { ...removed, followers };
+    });
   }
 
   /**

@@ -1,6 +1,23 @@
 import { DatabaseService } from "../../src/database/database.service";
 
 /**
+ * Every table under a köşk, children first, then `kosks` itself. Pass it to
+ * `cleanTables` instead of plain `"kosks"`: since MDRS-124 the foreign keys
+ * under a köşk are `ON DELETE RESTRICT`, so `DELETE FROM kosks` fails while a
+ * course remains — and `cleanTables` only warns on failure, which would leave
+ * one test's rows in the next.
+ */
+export const COURSE_TREE_TABLES = [
+  "enrollments",
+  "course_resources",
+  "course_muderris",
+  "lessons",
+  "course_weeks",
+  "courses",
+  "kosks",
+] as const;
+
+/**
  * Utility class for managing test database operations
  */
 export class TestDatabaseUtils {

@@ -112,6 +112,19 @@ class CourseBase {
       "PATCH /lessons/:id; a stale value is refused with 409.",
   })
   version!: number;
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+    description:
+      "When the köşk manager hid the course (MDRS-124); null while it is live. Only the köşk manager and SYSTEM_ADMIN ever see a non-null value.",
+  })
+  archivedAt!: Date | null;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: "Who hid the course; null while it is live.",
+  })
+  archivedBy!: string | null;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
 }

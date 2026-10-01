@@ -1,3 +1,5 @@
+import type { IPurgeCounts } from "../course/course-purge";
+
 export interface IKosk {
   id: string;
   ownerId: string;
@@ -91,7 +93,11 @@ export interface IKoskRepository {
   ownsAny(ownerId: string): Promise<boolean>;
   create(kosk: ICreateKosk): Promise<IKosk>;
   update(id: string, updates: IUpdateKosk): Promise<IKosk | null>;
-  delete(id: string): Promise<boolean>;
+  /** SYSTEM_ADMIN's delete: the köşk, its courses, their children, an audit entry. */
+  purge(
+    id: string,
+    actorId: string
+  ): Promise<(IPurgeCounts & { followers: number }) | null>;
   affiliate(koskId: string, madrasahId: string): Promise<boolean>;
   detach(koskId: string, madrasahId: string): Promise<boolean>;
   leaveMadrasah(koskId: string): Promise<boolean>;

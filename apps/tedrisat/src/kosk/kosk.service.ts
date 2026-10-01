@@ -87,9 +87,16 @@ export class KoskService {
     return updated;
   }
 
-  async delete(id: string, userId: string): Promise<boolean> {
-    await this.assertOwner(id, userId);
-    return this.koskRepo.delete(id);
+  /**
+   * SYSTEM_ADMIN's delete (MDRS-124) — `@Authz(SCOPES.DELETE, …)` on the
+   * controller, and DELETE is on no role row, so nobody else reaches this.
+   * Removes the köşk's courses and everything under them explicitly and
+   * writes an audit entry; see `KoskRepository.purge`.
+   */
+  async delete(id: string, actorId: string): Promise<boolean> {
+    const removed = await this.koskRepo.purge(id, actorId);
+    if (!removed) throw new KoskNotFoundError(id);
+    return true;
   }
 
   /**
