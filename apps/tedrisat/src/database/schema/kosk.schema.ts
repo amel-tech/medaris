@@ -28,7 +28,10 @@ export const kosks = table("kosks", {
   handle: text("handle"),
   description: text("description"),
   coverHue: integer("cover_hue").default(215).notNull(),
-  isPrivate: boolean("is_private").default(true).notNull(),
+  // Unlisted (MDRS-122): in no list or search, opened by its link to signed-in
+  // callers only, every enrollment waits for approval. New köşks default to
+  // listed since migration 0022; the rows that existed then kept their value.
+  isPrivate: boolean("is_private").default(false).notNull(),
   // Discovery metadata (surfaced on the köşk list / detail).
   field: text("field"), // ilim alanı, e.g. "Tefsir & Hadis"
   level: text("level"), // 'ALL' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'

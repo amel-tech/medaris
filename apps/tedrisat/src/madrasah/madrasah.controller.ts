@@ -2,6 +2,7 @@ import {
   AuthGuard,
   Authz,
   AuthzGuard,
+  AuthzPublic,
   type AuthzResolve,
   ENTITIES,
   SCOPES,
@@ -76,7 +77,7 @@ const anyMadrasah: AuthzResolve = () => ({
 
 /**
  * The medrese layer (MDRS-106, ADR-003). Every handler carries `@Authz`:
- * reading is open to anyone signed in, creating and deleting are
+ * reading is open to anyone, with or without a token (MDRS-122), creating and deleting are
  * SYSTEM_ADMIN's, the rest belongs to the medrese's nazırs.
  */
 @ApiTags("madrasahs")
@@ -88,6 +89,7 @@ export class MadrasahController {
 
   @ApiOperation({
     summary: "Get a paginated list of medreses",
+    description: "Open to callers with no token (MDRS-122).",
     operationId: "getAllMadrasahs",
   })
   @ApiQuery({ name: "page", required: false, type: Number })
@@ -95,6 +97,7 @@ export class MadrasahController {
   @ApiOkResponse({ type: PaginatedMadrasahResponse })
   @Get()
   @Authz(SCOPES.VIEW, anyMadrasah)
+  @AuthzPublic()
   async findAll(
     @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query("limit", new DefaultValuePipe(12), ParseIntPipe) limit: number
@@ -106,12 +109,14 @@ export class MadrasahController {
 
   @ApiOperation({
     summary: "Get a medrese by ID",
+    description: "Open to callers with no token (MDRS-122).",
     operationId: "getMadrasahById",
   })
   @ApiOkResponse({ type: MadrasahResponse })
   @ApiNotFoundResponse()
   @Get(":id")
   @Authz(SCOPES.VIEW, byExistingMadrasah)
+  @AuthzPublic()
   async findById(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahResponse> {

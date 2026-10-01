@@ -1,6 +1,7 @@
 import {
   AUTHZ_EXEMPT_KEY,
   AUTHZ_KEY,
+  AUTHZ_PUBLIC_KEY,
   type AuthzMeta,
   ENTITIES,
   type Entity,
@@ -177,8 +178,11 @@ describe("nizam köşk buttons ↔ the matrix (MDRS-108)", () => {
     expect(Reflect.getMetadata(AUTHZ_KEY, handler)).toBeUndefined();
   });
 
-  it("the köşk list itself is exempt, with or without managedBy=me", () => {
+  // The list needs no role: since MDRS-122 it is `@AuthzPublic()`, open even
+  // without a token, and `managedBy=me` narrows it to the caller's own köşks.
+  it("the köşk list needs no role, with or without managedBy=me", () => {
     const handler = KoskController.prototype.findAll;
-    expect(Reflect.getMetadata(AUTHZ_EXEMPT_KEY, handler)).toBe(true);
+    expect(Reflect.getMetadata(AUTHZ_PUBLIC_KEY, handler)).toBe(true);
+    expect(Reflect.getMetadata(AUTHZ_KEY, handler)).toBeUndefined();
   });
 });
