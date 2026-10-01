@@ -44,7 +44,15 @@
     "icazetDescription": "Müfredatı tamamlayan talebelere müderris onaylı icâzet verilir.",
     "requestEnroll": "Kayıt iste",
     "requestSent": "Kayıt talebiniz gönderildi, onay bekleniyor.",
-    "pendingApproval": "Onay bekleniyor"
+    "pendingApproval": "Onay bekleniyor",
+    "withdrawRequest": "Başvuruyu geri çek",
+    "withdrawn": "Başvurunuz geri çekildi.",
+    "leaveCourse": "Dersten ayrıl",
+    "leaveTitle": "Dersten ayrılmak istiyor musunuz?",
+    "leaveDescription": "Kaydınız ve ilerlemeniz silinir. İsterseniz daha sonra yeniden kayıt olabilirsiniz.",
+    "leaveConfirm": "Ayrıl",
+    "leaveCancel": "Vazgeç",
+    "left": "Dersten ayrıldınız."
   },
   "CreateDeckButtonDialog": {
     "cancel": "İptal etmek",

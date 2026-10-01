@@ -26,6 +26,7 @@ import { enrollInCourse } from "../actions";
 import { AddToCalendarMenu } from "./add-to-calendar";
 import { CoverPlaceholder, HueAvatar } from "./cover";
 import { levelLabel } from "./labels";
+import { LeaveCourse } from "./leave-course";
 import { nextLiveLesson, upcomingLiveLesson } from "./lesson-page";
 import { SyllabusModal, WeekModule } from "./syllabus";
 
@@ -62,6 +63,8 @@ export const CoursePage = ({
 
   const isPending = course.enrollment?.status === "PENDING";
   const enrolled = Boolean(course.enrollment) && !isPending;
+  // A completion is the talebe's record and cannot be left (MDRS-105).
+  const completed = course.enrollment?.status === "COMPLETED";
   const progress = course.enrollment?.progress ?? 0;
   const lessonCount = course.weeks.reduce((s, w) => s + w.lessons.length, 0);
   const previewWeeks = course.weeks.slice(0, 5);
@@ -244,6 +247,10 @@ export const CoursePage = ({
                 </button>
               )}
 
+              {isPending && (
+                <LeaveCourse courseId={course.id} mode="withdraw" />
+              )}
+
               {upcomingLesson && (
                 <AddToCalendarMenu
                   className="mt-2.5 w-full"
@@ -256,6 +263,10 @@ export const CoursePage = ({
                     durationMinutes: upcomingLesson.durationMinutes ?? null,
                   }}
                 />
+              )}
+
+              {enrolled && !completed && (
+                <LeaveCourse courseId={course.id} mode="leave" />
               )}
 
               <div className="mt-2.5 flex gap-2">
