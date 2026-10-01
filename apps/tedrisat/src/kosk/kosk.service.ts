@@ -10,6 +10,7 @@ import { KoskRepository } from "./kosk.repository";
 import {
   ICreateKosk,
   IKosk,
+  IKoskListFilter,
   IKoskRef,
   IKoskWithStats,
   IManagerActor,
@@ -21,15 +22,24 @@ import {
 export class KoskService {
   constructor(private readonly koskRepo: KoskRepository) {}
 
+  /**
+   * A page of köşks. `managedByCaller` (`GET /kosks?managedBy=me`, MDRS-108)
+   * narrows both the page and `total` to the köşks `userId` manages, so the
+   * page count nizam derives from `total` matches what it lists.
+   */
   async findAll(
     userId: string,
     page: number,
-    limit: number
+    limit: number,
+    { managedByCaller = false }: { managedByCaller?: boolean } = {}
   ): Promise<IPaginatedKosks> {
     const offset = (page - 1) * limit;
+    const filter: IKoskListFilter = managedByCaller
+      ? { managerId: userId }
+      : {};
     const [items, total] = await Promise.all([
-      this.koskRepo.findAll(userId, limit, offset),
-      this.koskRepo.count(),
+      this.koskRepo.findAll(userId, limit, offset, filter),
+      this.koskRepo.count(filter),
     ]);
     return { items, total, page, limit };
   }

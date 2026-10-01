@@ -84,12 +84,19 @@
     "signIn": "Giriş Yap"
   },
   "KosksPage": {
-    "courseCreatedAt": "Oluşturulma Tarihi",
-    "createNewCourse": "Yeni Kurs Oluştur",
-    "description": "Yönetiminiz altındaki görevleri ve kursları buradan görüntüleyebilirsiniz.",
-    "noCoursesAvailable": "Mevcut Kurs Yok",
-    "noCoursesAvailableDescription": "Başlamak için ilk kursunuzu oluşturun.",
-    "title": "Kosks"
+    "title": "Köşklerim",
+    "description": "Yönettiğiniz köşkler ve dersleri.",
+    "newKosk": "Yeni Köşk",
+    "courseCount": "{count} ders",
+    "emptyTitle": "Henüz yönettiğiniz bir köşk yok",
+    "emptyDescription": "Yeni bir köşk açarak başlayabilirsiniz.",
+    "nazirTitle": "Bu işler nazir'de",
+    "nazirDescription": "Medrese yönetimi nazir uygulamasında yapılır. Burada yalnız yönettiğiniz köşkler listelenir.",
+    "taughtTitle": "Verdiğiniz dersler",
+    "taughtDescription": "Müderrisi olduğunuz, ama yönetmediğiniz köşklerdeki dersler.",
+    "previous": "Önceki",
+    "next": "Sonraki",
+    "pageOf": "{page} / {total}"
   },
   "LessonTypes": {
     "VIDEO": "Video",
@@ -98,6 +105,7 @@
     "QUIZ": "Sınav"
   },
   "Levels": {
+    "ALL": "Tüm seviyeler",
     "BEGINNER": "Başlangıç",
     "INTERMEDIATE": "Orta",
     "ADVANCED": "İleri"
@@ -405,5 +413,50 @@
     "reasonRequired": "Bir gerekçe yazın.",
     "cancel": "Vazgeç",
     "confirmRemove": "Dersten çıkar"
+  },
+  "KoskDetail": {
+    "subtitle": "Bu köşkte yer alan dersler ve müfredat yönetimi.",
+    "editKosk": "Köşkü Düzenle",
+    "newCourse": "Yeni Ders Aç",
+    "published": "Yayında",
+    "draft": "Taslak",
+    "weeks": "{count} hafta",
+    "lessons": "{count} ders",
+    "resources": "{count} kaynak",
+    "noCoursesTitle": "Henüz ders oluşturulmamış",
+    "noCoursesDescription": "Yeni bir ders oluşturarak başlayın.",
+    "noCoursesReadOnly": "Bu köşkte size açık bir ders yok."
+  },
+  "KoskForm": {
+    "createTitle": "Yeni Köşk Oluştur",
+    "editTitle": "Köşkü Düzenle",
+    "name": "Köşk adı",
+    "namePlaceholder": "Örn. Süleymaniye Köşkü",
+    "nameTooShort": "Köşk adı en az 2 karakter olmalıdır.",
+    "handle": "Kullanıcı adı",
+    "handlePlaceholder": "@suleymaniye",
+    "description": "Açıklama",
+    "descriptionPlaceholder": "Köşkün sunduğu dersler ve odak alanları.",
+    "field": "İlim alanı",
+    "fieldPlaceholder": "Örn. Tefsir & Hadis",
+    "level": "Seviye",
+    "levelUnset": "Belirtilmemiş",
+    "tags": "Etiketler",
+    "tagsPlaceholder": "Etiket yazıp Enter'a basın",
+    "tagsHelp": "En fazla {max} etiket, her biri en fazla {length} karakter.",
+    "tagsFull": "En fazla {max} etiket eklenebilir.",
+    "tagTooLong": "Bir etiket en fazla {length} karakter olabilir.",
+    "removeTag": "{tag} etiketini kaldır",
+    "coverHue": "Kapak rengi",
+    "coverHueValue": "Ton {hue}°",
+    "private": "Özel köşk",
+    "privateHint": "Yalnızca davet edilen talebeler görebilir.",
+    "cancel": "İptal",
+    "create": "Oluştur",
+    "creating": "Oluşturuluyor...",
+    "save": "Kaydet",
+    "saving": "Kaydediliyor...",
+    "created": "Köşk oluşturuldu.",
+    "updated": "Köşk güncellendi."
   }
 }

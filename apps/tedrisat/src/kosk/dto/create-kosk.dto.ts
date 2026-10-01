@@ -1,68 +1,101 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsOptional } from "class-validator";
 import {
-  IsArray,
-  IsBoolean,
-  IsInt,
-  IsOptional,
-  IsString,
-  Max,
-  MaxLength,
-  Min,
-  MinLength,
-} from "class-validator";
+  KOSK_DESCRIPTION_MAX,
+  KOSK_FIELD_MAX,
+  KOSK_HANDLE_MAX,
+  KOSK_HUE_MAX,
+  KOSK_LEVELS,
+  KOSK_NAME_MAX,
+  KOSK_NAME_MIN,
+  KOSK_TAG_MAX,
+  KOSK_TAGS_MAX,
+  KoskCoverHueRules,
+  KoskDescriptionRules,
+  KoskFieldRules,
+  KoskHandleRules,
+  KoskIsPrivateRules,
+  type KoskLevel,
+  KoskLevelRules,
+  KoskNameRules,
+  KoskTagsRules,
+  OmittedButNotNull,
+} from "./kosk-field-rules";
 
 export class CreateKoskDto {
-  @ApiProperty({ example: "Süleymaniye Köşkü" })
-  @IsString()
-  @MinLength(2)
-  @MaxLength(120)
+  @ApiProperty({
+    example: "Süleymaniye Köşkü",
+    minLength: KOSK_NAME_MIN,
+    maxLength: KOSK_NAME_MAX,
+  })
+  @KoskNameRules()
   name!: string;
 
-  @ApiPropertyOptional({ example: "@suleymaniye" })
-  @IsOptional()
-  @IsString()
-  @MaxLength(60)
-  handle?: string;
-
   @ApiPropertyOptional({
-    example:
-      "Klasik medrese müfredatına dayalı; sarf, nahiv ve usûl-i fıkıh dersleri sunan köşk.",
+    type: String,
+    nullable: true,
+    example: "@suleymaniye",
+    maxLength: KOSK_HANDLE_MAX,
   })
   @IsOptional()
-  @IsString()
-  @MaxLength(1000)
-  description?: string;
+  @KoskHandleRules()
+  handle?: string | null;
 
-  @ApiPropertyOptional({ example: 215, minimum: 0, maximum: 360 })
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    example:
+      "Klasik medrese müfredatına dayalı; sarf, nahiv ve usûl-i fıkıh dersleri sunan köşk.",
+    maxLength: KOSK_DESCRIPTION_MAX,
+  })
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  @Max(360)
+  @KoskDescriptionRules()
+  description?: string | null;
+
+  @ApiPropertyOptional({
+    example: 215,
+    minimum: 0,
+    maximum: KOSK_HUE_MAX,
+    description: "Hue of the köşk's cover gradient, in degrees",
+  })
+  @OmittedButNotNull()
+  @KoskCoverHueRules()
   coverHue?: number;
 
   @ApiPropertyOptional({ example: true })
-  @IsOptional()
-  @IsBoolean()
+  @OmittedButNotNull()
+  @KoskIsPrivateRules()
   isPrivate?: boolean;
 
-  @ApiPropertyOptional({ example: "Tefsir & Hadis", description: "İlim alanı" })
-  @IsOptional()
-  @IsString()
-  @MaxLength(60)
-  field?: string;
-
   @ApiPropertyOptional({
-    example: "ALL",
-    description: "'ALL' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'",
+    type: String,
+    nullable: true,
+    example: "Tefsir & Hadis",
+    description: "İlim alanı; null clears it",
+    maxLength: KOSK_FIELD_MAX,
   })
   @IsOptional()
-  @IsString()
-  @MaxLength(20)
-  level?: string;
+  @KoskFieldRules()
+  field?: string | null;
 
-  @ApiPropertyOptional({ type: [String], example: ["Tefsir", "Hadis"] })
+  @ApiPropertyOptional({
+    enum: KOSK_LEVELS,
+    enumName: "KoskLevel",
+    nullable: true,
+    example: "ALL",
+    description: "Who the köşk is for; null clears it",
+  })
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
+  @KoskLevelRules()
+  level?: KoskLevel | null;
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ["Tefsir", "Hadis"],
+    maxItems: KOSK_TAGS_MAX,
+    description: `At most ${KOSK_TAGS_MAX} distinct, non-blank tags of up to ${KOSK_TAG_MAX} characters`,
+  })
+  @OmittedButNotNull()
+  @KoskTagsRules()
   tags?: string[];
 }
