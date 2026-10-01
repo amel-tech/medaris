@@ -48,12 +48,12 @@ export interface IPaginatedKosks {
 export interface ICreateKosk {
   ownerId: string;
   name: string;
-  handle?: string;
-  description?: string;
+  handle?: string | null;
+  description?: string | null;
   coverHue?: number;
   isPrivate?: boolean;
-  field?: string;
-  level?: string;
+  field?: string | null;
+  level?: string | null;
   tags?: string[];
   verified?: boolean;
   featured?: boolean;
@@ -63,12 +63,12 @@ export interface ICreateKosk {
 
 export interface IUpdateKosk {
   name?: string;
-  handle?: string;
-  description?: string;
+  handle?: string | null;
+  description?: string | null;
   coverHue?: number;
   isPrivate?: boolean;
-  field?: string;
-  level?: string;
+  field?: string | null;
+  level?: string | null;
   tags?: string[];
   verified?: boolean;
   featured?: boolean;
@@ -113,13 +113,22 @@ export interface IKoskRef {
   name: string;
 }
 
+/**
+ * Narrows a köşk listing (MDRS-108). `managerId` keeps only the köşks that
+ * user manages; absent, every köşk is listed.
+ */
+export interface IKoskListFilter {
+  managerId?: string;
+}
+
 export interface IKoskRepository {
   findAll(
     userId: string,
     limit: number,
-    offset: number
+    offset: number,
+    filter?: IKoskListFilter
   ): Promise<IKoskWithStats[]>;
-  count(): Promise<number>;
+  count(filter?: IKoskListFilter): Promise<number>;
   findById(id: string, userId: string): Promise<IKoskWithStats | null>;
   exists(id: string): Promise<boolean>;
   isManager(koskId: string, userId: string): Promise<boolean>;

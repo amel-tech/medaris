@@ -49,6 +49,7 @@
     },
     "/kosks": {
       "get": {
+        "description": "`managedBy=me` narrows the list, and its `total`, to the köşks the caller manages (`kosk_managers`, MDRS-108) — nizam's köşk list. Without it every köşk is listed.",
         "operationId": "getAllKosks",
         "parameters": [
           {
@@ -65,6 +66,15 @@
             "in": "query",
             "schema": {
               "type": "number"
+            }
+          },
+          {
+            "name": "managedBy",
+            "required": false,
+            "in": "query",
+            "description": "Only the köşks the caller manages (MDRS-108)",
+            "schema": {
+              "$ref": "#/components/schemas/KoskManagedBy"
             }
           }
         ],
@@ -3734,6 +3744,12 @@
           "service"
         ]
       },
+      "KoskManagedBy": {
+        "type": "string",
+        "enum": [
+          "me"
+        ]
+      },
       "KoskMadrasahRef": {
         "type": "object",
         "properties": {
@@ -3925,26 +3941,43 @@
           "limit"
         ]
       },
+      "KoskLevel": {
+        "type": "string",
+        "enum": [
+          "ALL",
+          "BEGINNER",
+          "INTERMEDIATE",
+          "ADVANCED"
+        ],
+        "description": "Who the köşk is for; null clears it"
+      },
       "CreateKoskDto": {
         "type": "object",
         "properties": {
           "name": {
             "type": "string",
-            "example": "Süleymaniye Köşkü"
+            "example": "Süleymaniye Köşkü",
+            "minLength": 2,
+            "maxLength": 120
           },
           "handle": {
             "type": "string",
-            "example": "@suleymaniye"
+            "nullable": true,
+            "example": "@suleymaniye",
+            "maxLength": 60
           },
           "description": {
             "type": "string",
-            "example": "Klasik medrese müfredatına dayalı; sarf, nahiv ve usûl-i fıkıh dersleri sunan köşk."
+            "nullable": true,
+            "example": "Klasik medrese müfredatına dayalı; sarf, nahiv ve usûl-i fıkıh dersleri sunan köşk.",
+            "maxLength": 1000
           },
           "coverHue": {
             "type": "number",
             "example": 215,
             "minimum": 0,
-            "maximum": 360
+            "maximum": 360,
+            "description": "Hue of the köşk's cover gradient, in degrees"
           },
           "isPrivate": {
             "type": "boolean",
@@ -3952,19 +3985,28 @@
           },
           "field": {
             "type": "string",
+            "nullable": true,
             "example": "Tefsir & Hadis",
-            "description": "İlim alanı"
+            "description": "İlim alanı; null clears it",
+            "maxLength": 60
           },
           "level": {
-            "type": "string",
+            "nullable": true,
             "example": "ALL",
-            "description": "'ALL' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'"
+            "description": "Who the köşk is for; null clears it",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskLevel"
+              }
+            ]
           },
           "tags": {
             "example": [
               "Tefsir",
               "Hadis"
             ],
+            "maxItems": 10,
+            "description": "At most 10 distinct, non-blank tags of up to 40 characters",
             "type": "array",
             "items": {
               "type": "string"
@@ -3980,21 +4022,28 @@
         "properties": {
           "name": {
             "type": "string",
-            "example": "Süleymaniye Köşkü"
+            "example": "Süleymaniye Köşkü",
+            "minLength": 2,
+            "maxLength": 120
           },
           "handle": {
             "type": "string",
-            "example": "@suleymaniye"
+            "nullable": true,
+            "example": "@suleymaniye",
+            "maxLength": 60
           },
           "description": {
             "type": "string",
-            "example": "Klasik medrese müfredatına dayalı; sarf, nahiv ve usûl-i fıkıh dersleri sunan köşk."
+            "nullable": true,
+            "example": "Klasik medrese müfredatına dayalı; sarf, nahiv ve usûl-i fıkıh dersleri sunan köşk.",
+            "maxLength": 1000
           },
           "coverHue": {
             "type": "number",
             "example": 215,
             "minimum": 0,
-            "maximum": 360
+            "maximum": 360,
+            "description": "Hue of the köşk's cover gradient, in degrees"
           },
           "isPrivate": {
             "type": "boolean",
@@ -4002,19 +4051,28 @@
           },
           "field": {
             "type": "string",
+            "nullable": true,
             "example": "Tefsir & Hadis",
-            "description": "İlim alanı"
+            "description": "İlim alanı; null clears it",
+            "maxLength": 60
           },
           "level": {
-            "type": "string",
+            "nullable": true,
             "example": "ALL",
-            "description": "'ALL' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'"
+            "description": "Who the köşk is for; null clears it",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskLevel"
+              }
+            ]
           },
           "tags": {
             "example": [
               "Tefsir",
               "Hadis"
             ],
+            "maxItems": 10,
+            "description": "At most 10 distinct, non-blank tags of up to 40 characters",
             "type": "array",
             "items": {
               "type": "string"
