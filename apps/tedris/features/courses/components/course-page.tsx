@@ -22,10 +22,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
+import { authPages } from "~/lib/auth_pages";
 import { enrollInCourse } from "../actions";
 import { AddToCalendarMenu } from "./add-to-calendar";
 import { CoverPlaceholder, HueAvatar } from "./cover";
 import { levelLabel } from "./labels";
+import { LeaveCourse } from "./leave-course";
 import { nextLiveLesson, upcomingLiveLesson } from "./lesson-page";
 import { SyllabusModal, WeekModule } from "./syllabus";
 
@@ -47,9 +49,18 @@ const ResourceIcon = ({ type }: { type: string | null }) => {
 export const CoursePage = ({
   course,
   koskName,
+  approvalRequired = course.requiresApproval,
+  signedIn = true,
 }: {
   course: CourseDetailResponse;
   koskName?: string | null;
+  /**
+   * Whether joining waits for approval: the course's own setting, or always
+   * in an unlisted köşk (MDRS-122). The API decides; this only picks the label.
+   */
+  approvalRequired?: boolean;
+  /** False for a signed-out visitor (MDRS-122): the card asks them to sign in. */
+  signedIn?: boolean;
 }) => {
   const t = useTranslations("tedris");
   const router = useRouter();
@@ -62,6 +73,8 @@ export const CoursePage = ({
 
   const isPending = course.enrollment?.status === "PENDING";
   const enrolled = Boolean(course.enrollment) && !isPending;
+  // A completion is the talebe's record and cannot be left (MDRS-105).
+  const completed = course.enrollment?.status === "COMPLETED";
   const progress = course.enrollment?.progress ?? 0;
   const lessonCount = course.weeks.reduce((s, w) => s + w.lessons.length, 0);
   const previewWeeks = course.weeks.slice(0, 5);
@@ -77,7 +90,7 @@ export const CoursePage = ({
         return;
       }
       toast.success(
-        course.requiresApproval
+        approvalRequired
           ? t("CoursePage.requestSent")
           : t("CoursePage.enrolled")
       );
@@ -204,7 +217,18 @@ export const CoursePage = ({
                 </>
               )}
 
-              {isPending ? (
+              {!signedIn ? (
+                // MDRS-122: the page is open, applying needs an account. Back
+                // to this course once the sign-in completes.
+                <Link
+                  href={`${authPages.signIn}?callbackUrl=${encodeURIComponent(
+                    `/courses/${course.id}`
+                  )}`}
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white no-underline"
+                >
+                  {t("CoursePage.signInToApply")}
+                </Link>
+              ) : isPending ? (
                 <button
                   type="button"
                   disabled
@@ -238,10 +262,14 @@ export const CoursePage = ({
                 >
                   {pending
                     ? t("CoursePage.enrolling")
-                    : course.requiresApproval
+                    : approvalRequired
                       ? t("CoursePage.requestEnroll")
                       : t("CoursePage.enroll")}
                 </button>
+              )}
+
+              {isPending && (
+                <LeaveCourse courseId={course.id} mode="withdraw" />
               )}
 
               {upcomingLesson && (
@@ -256,6 +284,10 @@ export const CoursePage = ({
                     durationMinutes: upcomingLesson.durationMinutes ?? null,
                   }}
                 />
+              )}
+
+              {enrolled && !completed && (
+                <LeaveCourse courseId={course.id} mode="leave" />
               )}
 
               <div className="mt-2.5 flex gap-2">

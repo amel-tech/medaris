@@ -55,7 +55,9 @@ src/models/FlashcardLabelingResponse.ts
 src/models/FlashcardProgressResponse.ts
 src/models/FlashcardResponse.ts
 src/models/HealthCheckDto.ts
+src/models/KoskLevel.ts
 src/models/KoskMadrasahRef.ts
+src/models/KoskManagedBy.ts
 src/models/KoskResponse.ts
 src/models/LabelStatsResponse.ts
 src/models/LessonMutationResponse.ts
@@ -70,6 +72,7 @@ src/models/PaginatedKoskResponse.ts
 src/models/PaginatedMadrasahResponse.ts
 src/models/PendingEnrollmentResponse.ts
 src/models/PlannedSessionResponse.ts
+src/models/RemoveEnrollmentDto.ts
 src/models/ReplaceCourseDto.ts
 src/models/ResourceResponse.ts
 src/models/RowError.ts
@@ -77,7 +80,9 @@ src/models/SessionBatchLessonResponse.ts
 src/models/SessionBatchPreviewResponse.ts
 src/models/SessionBatchResponse.ts
 src/models/SessionBatchWeekResponse.ts
+src/models/SetEnrollmentStatusDto.ts
 src/models/TaughtCourseRef.ts
+src/models/TeamSettableEnrollmentStatus.ts
 src/models/UpdateCourseDto.ts
 src/models/UpdateFlashcardDeckDto.ts
 src/models/UpdateFlashcardDto.ts

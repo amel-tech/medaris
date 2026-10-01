@@ -21,7 +21,9 @@ import type {
   EnrolledCourseResponse,
   EnrollmentResponse,
   PendingEnrollmentResponse,
+  RemoveEnrollmentDto,
   ReplaceCourseDto,
+  SetEnrollmentStatusDto,
   UpdateCourseDto,
   UpdateProgressDto,
 } from '../models/index';
@@ -38,8 +40,12 @@ import {
     EnrollmentResponseToJSON,
     PendingEnrollmentResponseFromJSON,
     PendingEnrollmentResponseToJSON,
+    RemoveEnrollmentDtoFromJSON,
+    RemoveEnrollmentDtoToJSON,
     ReplaceCourseDtoFromJSON,
     ReplaceCourseDtoToJSON,
+    SetEnrollmentStatusDtoFromJSON,
+    SetEnrollmentStatusDtoToJSON,
     UpdateCourseDtoFromJSON,
     UpdateCourseDtoToJSON,
     UpdateProgressDtoFromJSON,
@@ -72,6 +78,10 @@ export interface GetCourseByIdRequest {
     id: string;
 }
 
+export interface GetCourseEnrollmentsRequest {
+    id: string;
+}
+
 export interface GetCoursesByKoskRequest {
     koskId: string;
     archived?: boolean;
@@ -81,9 +91,19 @@ export interface GetPendingEnrollmentsRequest {
     koskId: string;
 }
 
+export interface LeaveCourseRequest {
+    id: string;
+}
+
 export interface RejectEnrollmentRequest {
     id: string;
     userId: string;
+}
+
+export interface RemoveEnrollmentRequest {
+    id: string;
+    userId: string;
+    removeEnrollmentDto: RemoveEnrollmentDto;
 }
 
 export interface ReplaceCourseRequest {
@@ -93,6 +113,12 @@ export interface ReplaceCourseRequest {
 
 export interface RestoreCourseRequest {
     id: string;
+}
+
+export interface SetEnrollmentStatusRequest {
+    id: string;
+    userId: string;
+    setEnrollmentStatusDto: SetEnrollmentStatusDto;
 }
 
 export interface UpdateCourseRequest {
@@ -111,7 +137,7 @@ export interface UpdateCourseProgressRequest {
 export class CoursesApi extends runtime.BaseAPI {
 
     /**
-     * Approve a pending enrollment (köşk owner only)
+     * Approve a pending enrollment (course team)
      */
     async approveEnrollmentRaw(requestParameters: ApproveEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EnrollmentResponse>> {
         if (requestParameters['id'] == null) {
@@ -153,7 +179,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Approve a pending enrollment (köşk owner only)
+     * Approve a pending enrollment (course team)
      */
     async approveEnrollment(requestParameters: ApproveEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EnrollmentResponse> {
         const response = await this.approveEnrollmentRaw(requestParameters, initOverrides);
@@ -347,7 +373,8 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Get a course with its full syllabus, müderris and resources
+     * Anyone may read the course page, with or without a token (MDRS-122): its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak` and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103). A caller with no token gets the same filtered body, and 404 for a draft, a hidden course, or any course of an unlisted köşk.
+     * Get a course with its syllabus, müderris and resources
      */
     async getCourseByIdRaw(requestParameters: GetCourseByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseDetailResponse>> {
         if (requestParameters['id'] == null) {
@@ -381,7 +408,8 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Get a course with its full syllabus, müderris and resources
+     * Anyone may read the course page, with or without a token (MDRS-122): its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak` and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103). A caller with no token gets the same filtered body, and 404 for a draft, a hidden course, or any course of an unlisted köşk.
+     * Get a course with its syllabus, müderris and resources
      */
     async getCourseById(requestParameters: GetCourseByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDetailResponse> {
         const response = await this.getCourseByIdRaw(requestParameters, initOverrides);
@@ -389,6 +417,51 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * For the course team: the köşk manager and the course\'s müderrisler (MDRS-105). Requests first, then active seats, then completions.
+     * List a course\'s enrollments — requests, talebe and completions
+     */
+    async getCourseEnrollmentsRaw(requestParameters: GetCourseEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<EnrollmentResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getCourseEnrollments().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/enrollments`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(EnrollmentResponseFromJSON));
+    }
+
+    /**
+     * For the course team: the köşk manager and the course\'s müderrisler (MDRS-105). Requests first, then active seats, then completions.
+     * List a course\'s enrollments — requests, talebe and completions
+     */
+    async getCourseEnrollments(requestParameters: GetCourseEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<EnrollmentResponse>> {
+        const response = await this.getCourseEnrollmentsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Open to callers with no token (MDRS-122): the köşk\'s published courses, with no enrollment. An unlisted köşk answers them 404, as `GET /kosks/:id` does. `archived=true` needs a token.
      * List the courses that belong to a köşk
      */
     async getCoursesByKoskRaw(requestParameters: GetCoursesByKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CourseSummaryResponse>>> {
@@ -427,6 +500,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * Open to callers with no token (MDRS-122): the köşk\'s published courses, with no enrollment. An unlisted köşk answers them 404, as `GET /kosks/:id` does. `archived=true` needs a token.
      * List the courses that belong to a köşk
      */
     async getCoursesByKosk(requestParameters: GetCoursesByKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CourseSummaryResponse>> {
@@ -511,7 +585,55 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Reject a pending enrollment, deleting it (köşk owner only)
+     * Deletes the caller\'s own enrollment; they may apply again (MDRS-105). A completed course is not left (ENROLLMENT_STATE_CONFLICT).
+     * Leave a course, or withdraw a request still awaiting approval (the current talebe)
+     */
+    async leaveCourseRaw(requestParameters: LeaveCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<boolean>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling leaveCourse().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/enrollment`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<boolean>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Deletes the caller\'s own enrollment; they may apply again (MDRS-105). A completed course is not left (ENROLLMENT_STATE_CONFLICT).
+     * Leave a course, or withdraw a request still awaiting approval (the current talebe)
+     */
+    async leaveCourse(requestParameters: LeaveCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
+        const response = await this.leaveCourseRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Reject a pending enrollment, deleting it (course team)
      */
     async rejectEnrollmentRaw(requestParameters: RejectEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<boolean>> {
         if (requestParameters['id'] == null) {
@@ -557,10 +679,76 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Reject a pending enrollment, deleting it (köşk owner only)
+     * Reject a pending enrollment, deleting it (course team)
      */
     async rejectEnrollment(requestParameters: RejectEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
         const response = await this.rejectEnrollmentRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Deletes the enrollment and keeps the reason in the audit log (MDRS-105). It is not a ban: the talebe may apply again. Only an active seat — reject a request, reopen a completion first.
+     * Take a talebe out of a course, with a reason (course team)
+     */
+    async removeEnrollmentRaw(requestParameters: RemoveEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<boolean>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling removeEnrollment().'
+            );
+        }
+
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling removeEnrollment().'
+            );
+        }
+
+        if (requestParameters['removeEnrollmentDto'] == null) {
+            throw new runtime.RequiredError(
+                'removeEnrollmentDto',
+                'Required parameter "removeEnrollmentDto" was null or undefined when calling removeEnrollment().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/enrollments/{userId}/remove`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"userId"}}`, encodeURIComponent(String(requestParameters['userId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RemoveEnrollmentDtoToJSON(requestParameters['removeEnrollmentDto']),
+        }, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<boolean>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Deletes the enrollment and keeps the reason in the audit log (MDRS-105). It is not a ban: the talebe may apply again. Only an active seat — reject a request, reopen a completion first.
+     * Take a talebe out of a course, with a reason (course team)
+     */
+    async removeEnrollment(requestParameters: RemoveEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
+        const response = await this.removeEnrollmentRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -659,6 +847,68 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * Only the course team completes a course for a talebe (MDRS-105, decision of 1 October); `PUT /courses/:id/progress` no longer can.
+     * Complete a talebe\'s enrollment, or reopen it (course team)
+     */
+    async setEnrollmentStatusRaw(requestParameters: SetEnrollmentStatusRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EnrollmentResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling setEnrollmentStatus().'
+            );
+        }
+
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling setEnrollmentStatus().'
+            );
+        }
+
+        if (requestParameters['setEnrollmentStatusDto'] == null) {
+            throw new runtime.RequiredError(
+                'setEnrollmentStatusDto',
+                'Required parameter "setEnrollmentStatusDto" was null or undefined when calling setEnrollmentStatus().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/enrollments/{userId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"userId"}}`, encodeURIComponent(String(requestParameters['userId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetEnrollmentStatusDtoToJSON(requestParameters['setEnrollmentStatusDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => EnrollmentResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Only the course team completes a course for a talebe (MDRS-105, decision of 1 October); `PUT /courses/:id/progress` no longer can.
+     * Complete a talebe\'s enrollment, or reopen it (course team)
+     */
+    async setEnrollmentStatus(requestParameters: SetEnrollmentStatusRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EnrollmentResponse> {
+        const response = await this.setEnrollmentStatusRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Update a course
      */
     async updateCourseRaw(requestParameters: UpdateCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseDetailResponse>> {
@@ -711,6 +961,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * Records progress only. Reaching 100 does not complete the course, and `status` is refused unless it is the current one (MDRS-105): the course team completes a course.
      * Update the current talebe\'s progress in a course
      */
     async updateCourseProgressRaw(requestParameters: UpdateCourseProgressRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EnrollmentResponse>> {
@@ -755,6 +1006,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * Records progress only. Reaching 100 does not complete the course, and `status` is refused unless it is the current one (MDRS-105): the course team completes a course.
      * Update the current talebe\'s progress in a course
      */
     async updateCourseProgress(requestParameters: UpdateCourseProgressRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EnrollmentResponse> {

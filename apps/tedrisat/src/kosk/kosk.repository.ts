@@ -1,5 +1,15 @@
 import { Injectable } from "@nestjs/common";
-import { and, desc, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  exists as existsSql,
+  isNotNull,
+  isNull,
+  or,
+  SQL,
+  sql,
+} from "drizzle-orm";
 import {
   courseIdsOfKosk,
   IPurgeCounts,
@@ -24,6 +34,7 @@ import {
   AddManagerOutcome,
   ICreateKosk,
   IKosk,
+  IKoskListFilter,
   IKoskRef,
   IKoskRepository,
   IKoskWithStats,
@@ -43,7 +54,7 @@ export class KoskRepository implements IKoskRepository {
     return this.databaseService.db;
   }
 
-  private statsSelect(userId: string) {
+  private statsSelect(userId: string | null) {
     return {
       kosk: kosks,
       // Left-joined (see `withMadrasah`); all three are null for a köşk that
@@ -71,15 +82,19 @@ export class KoskRepository implements IKoskRepository {
         sql<number>`(select count(*) from ${koskFollowers} kf where kf.kosk_id = "kosks"."id")`.mapWith(
           Number
         ),
+      // A caller with no token (MDRS-122) follows nothing — said here rather
+      // than left to how `user_id = NULL` compares.
       isFollowing:
-        sql<boolean>`exists(select 1 from ${koskFollowers} kf where kf.kosk_id = "kosks"."id" and kf.user_id = ${userId})`.mapWith(
-          Boolean
-        ),
+        userId === null
+          ? sql<boolean>`false`.mapWith(Boolean)
+          : sql<boolean>`exists(select 1 from ${koskFollowers} kf where kf.kosk_id = "kosks"."id" and kf.user_id = ${userId})`.mapWith(
+              Boolean
+            ),
     };
   }
 
   /** Every köşk read carries its medrese (MDRS-106), so every read joins. */
-  private selectWithStats(userId: string) {
+  private selectWithStats(userId: string | null) {
     return this.db
       .select(this.statsSelect(userId))
       .from(kosks)
@@ -119,28 +134,87 @@ export class KoskRepository implements IKoskRepository {
     };
   }
 
+  /**
+   * The listing's WHERE clause. A `managerId` that is not a UUID (a realm
+   * minting a non-UUID `sub`, see `isManager`) manages nothing, so it matches
+   * no row instead of failing in Postgres with 22P02 — `sql\`false\`` rather
+   * than an early return, so `findAll` and `count` stay one query each and
+   * cannot disagree.
+   *
+   * Without `managerId` this is the public listing, and an unlisted köşk
+   * (`is_private`, MDRS-122) is not in it — for anyone, signed in or not,
+   * SYSTEM_ADMIN included. It is reached by its link only. The manager's own
+   * list (`managedBy=me`) is where they find it again.
+   */
+  private listWhere({
+    managerId,
+    madrasahId,
+  }: IKoskListFilter = {}): SQL | undefined {
+    const conditions: (SQL | undefined)[] = [];
+    if (managerId === undefined) {
+      conditions.push(eq(kosks.isPrivate, false));
+    } else if (!UUID_REGEX.test(managerId)) {
+      return sql`false`;
+    } else {
+      conditions.push(
+        existsSql(
+          this.db
+            .select({ one: sql`1` })
+            .from(koskManagers)
+            .where(
+              and(
+                eq(koskManagers.koskId, kosks.id),
+                eq(koskManagers.userId, managerId)
+              )
+            )
+        )
+      );
+    }
+    if (madrasahId !== undefined) {
+      conditions.push(eq(kosks.madrasahId, madrasahId));
+    }
+    return and(...conditions);
+  }
+
   async findAll(
-    userId: string,
+    userId: string | null,
     limit: number,
-    offset: number
+    offset: number,
+    filter: IKoskListFilter = {}
   ): Promise<IKoskWithStats[]> {
     const rows = await this.selectWithStats(userId)
-      .orderBy(desc(kosks.featured), desc(kosks.createdAt))
+      .where(this.listWhere(filter))
+      // `id` last: two köşks created in the same instant would otherwise
+      // swap places between pages.
+      .orderBy(desc(kosks.featured), desc(kosks.createdAt), desc(kosks.id))
       .limit(limit)
       .offset(offset);
     return rows.map((r) => this.toStats(r));
   }
 
-  async count(): Promise<number> {
+  async count(filter: IKoskListFilter = {}): Promise<number> {
     const [row] = await this.db
       .select({ value: sql<number>`count(*)`.mapWith(Number) })
-      .from(kosks);
+      .from(kosks)
+      .where(this.listWhere(filter));
     return row?.value ?? 0;
   }
 
-  async findById(id: string, userId: string): Promise<IKoskWithStats | null> {
+  async findById(
+    id: string,
+    userId: string | null
+  ): Promise<IKoskWithStats | null> {
     const rows = await this.selectWithStats(userId).where(eq(kosks.id, id));
     return rows[0] ? this.toStats(rows[0]) : null;
+  }
+
+  async findVisibility(id: string): Promise<{ isPrivate: boolean } | null> {
+    const rows = await this.db
+      .select({ isPrivate: kosks.isPrivate })
+      .from(kosks)
+      .where(eq(kosks.id, id))
+      .limit(1);
+    return rows[0] ?? null;
   }
 
   async exists(id: string): Promise<boolean> {

@@ -49,6 +49,7 @@
     },
     "/kosks": {
       "get": {
+        "description": "Open to callers with no token (MDRS-122). Lists every köşk except the unlisted ones (`isPrivate`): an unlisted köşk is in no list, for anyone — it is reached by its link. `managedBy=me` narrows the list, and its `total`, to the köşks the caller manages (`kosk_managers`, MDRS-108), unlisted ones included — nizam's köşk list; it needs a token. `madrasahId` narrows it to the köşks affiliated with that medrese.",
         "operationId": "getAllKosks",
         "parameters": [
           {
@@ -65,6 +66,25 @@
             "in": "query",
             "schema": {
               "type": "number"
+            }
+          },
+          {
+            "name": "managedBy",
+            "required": false,
+            "in": "query",
+            "description": "Only the köşks the caller manages (MDRS-108)",
+            "schema": {
+              "$ref": "#/components/schemas/KoskManagedBy"
+            }
+          },
+          {
+            "name": "madrasahId",
+            "required": false,
+            "in": "query",
+            "description": "Only the köşks affiliated with this medrese (MDRS-122)",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
             }
           }
         ],
@@ -128,6 +148,7 @@
     },
     "/kosks/{id}": {
       "get": {
+        "description": "Open to callers with no token (MDRS-122), except for an unlisted köşk (`isPrivate`), which answers them with the same 404 as a köşk that does not exist. A signed-in caller opens an unlisted köşk by its link.",
         "operationId": "getKoskById",
         "parameters": [
           {
@@ -477,6 +498,7 @@
     },
     "/madrasahs": {
       "get": {
+        "description": "Open to callers with no token (MDRS-122).",
         "operationId": "getAllMadrasahs",
         "parameters": [
           {
@@ -562,6 +584,7 @@
     },
     "/madrasahs/{id}": {
       "get": {
+        "description": "Open to callers with no token (MDRS-122).",
         "operationId": "getMadrasahById",
         "parameters": [
           {
@@ -894,6 +917,7 @@
     },
     "/kosks/{koskId}/courses": {
       "get": {
+        "description": "Open to callers with no token (MDRS-122): the köşk's published courses, with no enrollment. An unlisted köşk answers them 404, as `GET /kosks/:id` does. `archived=true` needs a token.",
         "operationId": "getCoursesByKosk",
         "parameters": [
           {
@@ -1025,6 +1049,7 @@
     },
     "/courses/{id}": {
       "get": {
+        "description": "Anyone may read the course page, with or without a token (MDRS-122): its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak` and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103). A caller with no token gets the same filtered body, and 404 for a draft, a hidden course, or any course of an unlisted köşk.",
         "operationId": "getCourseById",
         "parameters": [
           {
@@ -1056,7 +1081,7 @@
             "bearer": []
           }
         ],
-        "summary": "Get a course with its full syllabus, müderris and resources",
+        "summary": "Get a course with its syllabus, müderris and resources",
         "tags": [
           "courses"
         ]
@@ -1141,8 +1166,11 @@
               }
             }
           },
+          "403": {
+            "description": "No `edit` on the course, or the save changes the müderris list without `assign_muderris` — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN)."
+          },
           "404": {
-            "description": ""
+            "description": "No such course, or a müderris row links an account that has never signed in (MUDERRIS_UNKNOWN_USER)."
           },
           "409": {
             "description": "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT)."
@@ -1366,6 +1394,52 @@
         ]
       }
     },
+    "/courses/{id}/enrollments": {
+      "get": {
+        "description": "For the course team: the köşk manager and the course's müderrisler (MDRS-105). Requests first, then active seats, then completions.",
+        "operationId": "getCourseEnrollments",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EnrollmentResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List a course's enrollments — requests, talebe and completions",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
     "/courses/{id}/enrollments/{userId}/approve": {
       "post": {
         "operationId": "approveEnrollment",
@@ -1400,6 +1474,9 @@
           },
           "404": {
             "description": ""
+          },
+          "409": {
+            "description": "The enrollment is completed; reopen it instead (ENROLLMENT_STATE_CONFLICT)."
           }
         },
         "security": [
@@ -1407,7 +1484,7 @@
             "bearer": []
           }
         ],
-        "summary": "Approve a pending enrollment (köşk owner only)",
+        "summary": "Approve a pending enrollment (course team)",
         "tags": [
           "courses"
         ]
@@ -1454,7 +1531,176 @@
             "bearer": []
           }
         ],
-        "summary": "Reject a pending enrollment, deleting it (köşk owner only)",
+        "summary": "Reject a pending enrollment, deleting it (course team)",
+        "tags": [
+          "courses"
+        ]
+      },
+      "patch": {
+        "description": "Only the course team completes a course for a talebe (MDRS-105, decision of 1 October); `PUT /courses/:id/progress` no longer can.",
+        "operationId": "setEnrollmentStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEnrollmentStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "The enrollment is still a pending request; approve it first (ENROLLMENT_STATE_CONFLICT)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Complete a talebe's enrollment, or reopen it (course team)",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/enrollments/{userId}/remove": {
+      "post": {
+        "description": "Deletes the enrollment and keeps the reason in the audit log (MDRS-105). It is not a ban: the talebe may apply again. Only an active seat — reject a request, reopen a completion first.",
+        "operationId": "removeEnrollment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveEnrollmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "The enrollment is a pending request or a completion (ENROLLMENT_STATE_CONFLICT)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a talebe out of a course, with a reason (course team)",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/enrollment": {
+      "delete": {
+        "description": "Deletes the caller's own enrollment; they may apply again (MDRS-105). A completed course is not left (ENROLLMENT_STATE_CONFLICT).",
+        "operationId": "leaveCourse",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "The enrollment is completed (ENROLLMENT_STATE_CONFLICT)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Leave a course, or withdraw a request still awaiting approval (the current talebe)",
         "tags": [
           "courses"
         ]
@@ -1462,6 +1708,7 @@
     },
     "/courses/{id}/progress": {
       "put": {
+        "description": "Records progress only. Reaching 100 does not complete the course, and `status` is refused unless it is the current one (MDRS-105): the course team completes a course.",
         "operationId": "updateCourseProgress",
         "parameters": [
           {
@@ -1493,6 +1740,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "`status` would change the enrollment's status (ENROLLMENT_STATUS_FORBIDDEN)."
           }
         },
         "security": [
@@ -2504,11 +2754,8 @@
               }
             }
           },
-          "403": {
-            "description": "Deck is private and owned by another user"
-          },
           "404": {
-            "description": ""
+            "description": "No such deck, or a private deck owned by another user — deliberately the same answer"
           }
         },
         "security": [
@@ -3511,6 +3758,12 @@
           "service"
         ]
       },
+      "KoskManagedBy": {
+        "type": "string",
+        "enum": [
+          "me"
+        ]
+      },
       "KoskMadrasahRef": {
         "type": "object",
         "properties": {
@@ -3581,7 +3834,8 @@
           },
           "isPrivate": {
             "type": "boolean",
-            "example": true
+            "example": false,
+            "description": "Unlisted (MDRS-122): in no list or search, opened by its link to signed-in callers only, and every enrollment in its courses waits for approval."
           },
           "field": {
             "type": "string",
@@ -3702,46 +3956,74 @@
           "limit"
         ]
       },
+      "KoskLevel": {
+        "type": "string",
+        "enum": [
+          "ALL",
+          "BEGINNER",
+          "INTERMEDIATE",
+          "ADVANCED"
+        ],
+        "description": "Who the köşk is for; null clears it"
+      },
       "CreateKoskDto": {
         "type": "object",
         "properties": {
           "name": {
             "type": "string",
-            "example": "Süleymaniye Köşkü"
+            "example": "Süleymaniye Köşkü",
+            "minLength": 2,
+            "maxLength": 120
           },
           "handle": {
             "type": "string",
-            "example": "@suleymaniye"
+            "nullable": true,
+            "example": "@suleymaniye",
+            "maxLength": 60
           },
           "description": {
             "type": "string",
-            "example": "Klasik medrese müfredatına dayalı; sarf, nahiv ve usûl-i fıkıh dersleri sunan köşk."
+            "nullable": true,
+            "example": "Klasik medrese müfredatına dayalı; sarf, nahiv ve usûl-i fıkıh dersleri sunan köşk.",
+            "maxLength": 1000
           },
           "coverHue": {
             "type": "number",
             "example": 215,
             "minimum": 0,
-            "maximum": 360
+            "maximum": 360,
+            "description": "Hue of the köşk's cover gradient, in degrees"
           },
           "isPrivate": {
             "type": "boolean",
-            "example": true
+            "example": false,
+            "default": false,
+            "description": "Unlisted (MDRS-122): in no list or search, opened by its link to signed-in callers only (404 without a token), and every enrollment in its courses waits for approval. New köşks are listed unless this says otherwise."
           },
           "field": {
             "type": "string",
+            "nullable": true,
             "example": "Tefsir & Hadis",
-            "description": "İlim alanı"
+            "description": "İlim alanı; null clears it",
+            "maxLength": 60
           },
           "level": {
-            "type": "string",
+            "nullable": true,
             "example": "ALL",
-            "description": "'ALL' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'"
+            "description": "Who the köşk is for; null clears it",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskLevel"
+              }
+            ]
           },
           "tags": {
             "example": [
               "Tefsir",
               "Hadis"
             ],
+            "maxItems": 10,
+            "description": "At most 10 distinct, non-blank tags of up to 40 characters",
             "type": "array",
             "items": {
               "type": "string"
@@ -3757,41 +4039,59 @@
         "properties": {
           "name": {
             "type": "string",
-            "example": "Süleymaniye Köşkü"
+            "example": "Süleymaniye Köşkü",
+            "minLength": 2,
+            "maxLength": 120
           },
           "handle": {
             "type": "string",
-            "example": "@suleymaniye"
+            "nullable": true,
+            "example": "@suleymaniye",
+            "maxLength": 60
           },
           "description": {
             "type": "string",
-            "example": "Klasik medrese müfredatına dayalı; sarf, nahiv ve usûl-i fıkıh dersleri sunan köşk."
+            "nullable": true,
+            "example": "Klasik medrese müfredatına dayalı; sarf, nahiv ve usûl-i fıkıh dersleri sunan köşk.",
+            "maxLength": 1000
           },
           "coverHue": {
             "type": "number",
             "example": 215,
             "minimum": 0,
-            "maximum": 360
+            "maximum": 360,
+            "description": "Hue of the köşk's cover gradient, in degrees"
           },
           "isPrivate": {
             "type": "boolean",
-            "example": true
+            "example": false,
+            "default": false,
+            "description": "Unlisted (MDRS-122): in no list or search, opened by its link to signed-in callers only (404 without a token), and every enrollment in its courses waits for approval. New köşks are listed unless this says otherwise."
           },
           "field": {
             "type": "string",
+            "nullable": true,
             "example": "Tefsir & Hadis",
-            "description": "İlim alanı"
+            "description": "İlim alanı; null clears it",
+            "maxLength": 60
           },
           "level": {
-            "type": "string",
+            "nullable": true,
             "example": "ALL",
-            "description": "'ALL' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'"
+            "description": "Who the köşk is for; null clears it",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskLevel"
+              }
+            ]
           },
           "tags": {
             "example": [
               "Tefsir",
               "Hadis"
             ],
+            "maxItems": 10,
+            "description": "At most 10 distinct, non-blank tags of up to 40 characters",
             "type": "array",
             "items": {
               "type": "string"
@@ -4440,16 +4740,19 @@
             "description": "Length of the lesson in minutes; null when not set."
           },
           "kaynak": {
-            "type": "string"
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
           },
           "scheduledAt": {
             "format": "date-time",
             "type": "string"
           },
           "meetingUrl": {
-            "type": "string"
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
           },
           "agenda": {
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AgendaStepResponse"
@@ -4527,7 +4830,8 @@
             "type": "string"
           },
           "url": {
-            "type": "string"
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
           },
           "orderIndex": {
             "type": "number"
@@ -4642,6 +4946,10 @@
           },
           "enrollment": {
             "$ref": "#/components/schemas/EnrollmentResponse"
+          },
+          "contentLocked": {
+            "type": "boolean",
+            "description": "True when the caller may not read the course's content and every content field was left out — the client shows the locked state (MDRS-103)."
           }
         },
         "required": [
@@ -4661,7 +4969,8 @@
           "updatedAt",
           "weeks",
           "muderris",
-          "resources"
+          "resources",
+          "contentLocked"
         ]
       },
       "EnrolledCourseResponse": {
@@ -4995,6 +5304,44 @@
           "courseTitle"
         ]
       },
+      "TeamSettableEnrollmentStatus": {
+        "type": "string",
+        "enum": [
+          "ENROLLED",
+          "COMPLETED"
+        ],
+        "description": "COMPLETED marks the course completed for the talebe; ENROLLED reopens it. A pending request is approved instead (MDRS-105)."
+      },
+      "SetEnrollmentStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "description": "COMPLETED marks the course completed for the talebe; ENROLLED reopens it. A pending request is approved instead (MDRS-105).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TeamSettableEnrollmentStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "RemoveEnrollmentDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Üç haftadır derslere katılmıyor.",
+            "maxLength": 500,
+            "description": "Why the talebe is taken out of the course. Kept in the audit log; required, and not blank."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
       "UpdateProgressDto": {
         "type": "object",
         "properties": {
@@ -5010,7 +5357,9 @@
               "PENDING",
               "ENROLLED",
               "COMPLETED"
-            ]
+            ],
+            "deprecated": true,
+            "description": "Not the talebe's to set (MDRS-105): a value other than the enrollment's current status is refused with 403 ENROLLMENT_STATUS_FORBIDDEN. Completion is set by the course team."
           }
         },
         "required": [
@@ -5100,16 +5449,19 @@
             "description": "Length of the lesson in minutes; null when not set."
           },
           "kaynak": {
-            "type": "string"
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
           },
           "scheduledAt": {
             "format": "date-time",
             "type": "string"
           },
           "meetingUrl": {
-            "type": "string"
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
           },
           "agenda": {
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AgendaStepResponse"
@@ -5344,16 +5696,19 @@
             "description": "Length of the lesson in minutes; null when not set."
           },
           "kaynak": {
-            "type": "string"
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
           },
           "scheduledAt": {
             "format": "date-time",
             "type": "string"
           },
           "meetingUrl": {
-            "type": "string"
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
           },
           "agenda": {
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AgendaStepResponse"

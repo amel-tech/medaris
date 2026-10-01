@@ -48,12 +48,12 @@ export interface IPaginatedKosks {
 export interface ICreateKosk {
   ownerId: string;
   name: string;
-  handle?: string;
-  description?: string;
+  handle?: string | null;
+  description?: string | null;
   coverHue?: number;
   isPrivate?: boolean;
-  field?: string;
-  level?: string;
+  field?: string | null;
+  level?: string | null;
   tags?: string[];
   verified?: boolean;
   featured?: boolean;
@@ -63,12 +63,12 @@ export interface ICreateKosk {
 
 export interface IUpdateKosk {
   name?: string;
-  handle?: string;
-  description?: string;
+  handle?: string | null;
+  description?: string | null;
   coverHue?: number;
   isPrivate?: boolean;
-  field?: string;
-  level?: string;
+  field?: string | null;
+  level?: string | null;
   tags?: string[];
   verified?: boolean;
   featured?: boolean;
@@ -113,15 +113,31 @@ export interface IKoskRef {
   name: string;
 }
 
+/**
+ * Narrows a köşk listing. `managerId` (MDRS-108) keeps only the köşks that
+ * user manages, unlisted ones included — it is the manager's own list.
+ * Without it the listing is the public one, and an unlisted (`is_private`)
+ * köşk is never in it (MDRS-122). `madrasahId` keeps the köşks affiliated with
+ * that medrese — the medrese page's shelf (MDRS-122).
+ */
+export interface IKoskListFilter {
+  managerId?: string;
+  madrasahId?: string;
+}
+
 export interface IKoskRepository {
   findAll(
-    userId: string,
+    userId: string | null,
     limit: number,
-    offset: number
+    offset: number,
+    filter?: IKoskListFilter
   ): Promise<IKoskWithStats[]>;
-  count(): Promise<number>;
-  findById(id: string, userId: string): Promise<IKoskWithStats | null>;
+  count(filter?: IKoskListFilter): Promise<number>;
+  /** `userId` null is a caller with no token (MDRS-122): following nothing. */
+  findById(id: string, userId: string | null): Promise<IKoskWithStats | null>;
   exists(id: string): Promise<boolean>;
+  /** Whether the köşk is unlisted, or null when there is no such köşk. */
+  findVisibility(id: string): Promise<{ isPrivate: boolean } | null>;
   isManager(koskId: string, userId: string): Promise<boolean>;
   findManagedBy(userId: string): Promise<IKoskRef[]>;
   managesAny(userId: string): Promise<boolean>;

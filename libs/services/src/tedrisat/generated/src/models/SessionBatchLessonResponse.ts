@@ -58,7 +58,7 @@ export interface SessionBatchLessonResponse {
      */
     durationMinutes?: number | null;
     /**
-     * 
+     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103).
      * @type {string}
      * @memberof SessionBatchLessonResponse
      */
@@ -70,13 +70,13 @@ export interface SessionBatchLessonResponse {
      */
     scheduledAt?: Date;
     /**
-     * 
+     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103).
      * @type {string}
      * @memberof SessionBatchLessonResponse
      */
     meetingUrl?: string;
     /**
-     * 
+     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103).
      * @type {Array<AgendaStepResponse>}
      * @memberof SessionBatchLessonResponse
      */

@@ -44,7 +44,16 @@
     "icazetDescription": "Müfredatı tamamlayan talebelere müderris onaylı icâzet verilir.",
     "requestEnroll": "Kayıt iste",
     "requestSent": "Kayıt talebiniz gönderildi, onay bekleniyor.",
-    "pendingApproval": "Onay bekleniyor"
+    "pendingApproval": "Onay bekleniyor",
+    "withdrawRequest": "Başvuruyu geri çek",
+    "withdrawn": "Başvurunuz geri çekildi.",
+    "leaveCourse": "Dersten ayrıl",
+    "leaveTitle": "Dersten ayrılmak istiyor musunuz?",
+    "leaveDescription": "Kaydınız ve ilerlemeniz silinir. İsterseniz daha sonra yeniden kayıt olabilirsiniz.",
+    "leaveConfirm": "Ayrıl",
+    "leaveCancel": "Vazgeç",
+    "left": "Dersten ayrıldınız.",
+    "signInToApply": "Başvurmak için giriş yap"
   },
   "CreateDeckButtonDialog": {
     "cancel": "İptal etmek",
@@ -118,6 +127,10 @@
     "addToMyCollection": "Koleksiyonuma ekle",
     "by": "ile",
     "cards": "kartlar",
+    "madePrivate": "Deste artık yalnız sana açık.",
+    "madePublic": "Deste artık herkese açık.",
+    "makePrivate": "Özel yap",
+    "makePublic": "Halka aç",
     "noCardsDescription": "Bu destede henüz hiç bilgi kartı yok. Pratik yapmaya başlamak için birkaç kart ekleyin.",
     "noCardsInDeck": "Bu destede hiç kart yok.",
     "practiceNow": "Şimdi Pratik Yapın",
@@ -125,7 +138,9 @@
     "removeFromCollection": "Koleksiyondan kaldır",
     "removing": "Kaldırılıyor...",
     "sampleCards": "Örnek Kartlar",
-    "students": "öğrenciler"
+    "students": "öğrenciler",
+    "visibilityChanged": "Görünürlük değişti",
+    "visibilityError": "Görünürlük değiştirilemedi"
   },
   "DeckForm": {
     "addCard": "Kart Ekle",
@@ -228,7 +243,7 @@
   "KoskPage": {
     "kosks": "Köşkler",
     "uncategorized": "Diğer",
-    "private": "Özel",
+    "private": "Liste dışı",
     "courses": "Ders",
     "students": "Talebe",
     "filterAll": "Tümü",
@@ -242,7 +257,8 @@
     "coursesCount": "{count} ders",
     "completed": "Tamamlandı",
     "percentComplete": "%{percent} tamamlandı",
-    "enroll": "Kayıt ol"
+    "enroll": "Kayıt ol",
+    "madrasah": "Medrese"
   },
   "LearningPage": {
     "title": "Öğrenme",
@@ -379,5 +395,27 @@
       "decks": "Ezber kartlarıyla çalış"
     },
     "start": "Öğrenmeye başla"
+  },
+  "DeckUnavailable": {
+    "title": "Bu desteye ulaşılamıyor",
+    "description": "Deste silinmiş olabilir ya da sahibi onu yalnızca kendine açık tutuyor.",
+    "backToDecks": "Destelere dön"
+  },
+  "LessonLocked": {
+    "title": "Bu ders kayıtlı talebelere açık",
+    "description": {
+      "signIn": "Dersin içeriğini, toplantı bağlantısını ve kaynaklarını görmek için giriş yapın.",
+      "apply": "Dersin içeriği, toplantı bağlantısı ve kaynakları kursa kayıtlı talebelere açılır. Kursun programını kurs sayfasında görebilirsiniz.",
+      "pending": "Başvurunuz köşk yöneticisine iletildi. Onaylandığında dersin içeriği burada açılır."
+    },
+    "signIn": "Giriş yap",
+    "apply": "Başvur",
+    "applying": "Gönderiliyor...",
+    "pending": "Başvurun onay bekliyor",
+    "backToCourse": "Kurs sayfasına dön"
+  },
+  "MadrasahPage": {
+    "kosks": "Köşkler",
+    "noKosks": "Bu medresede listelenen köşk yok."
   }
 }

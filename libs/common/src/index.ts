@@ -1,5 +1,6 @@
 export * from "./auth-guard";
 export type {
+  AnonymousRole,
   AuthenticatedUser,
   AuthzMeta,
   AuthzRequest,
@@ -20,12 +21,14 @@ export type {
 export {
   AUTHZ_EXEMPT_KEY,
   AUTHZ_KEY,
+  AUTHZ_PUBLIC_KEY,
   Authz,
   AuthzExempt,
   AuthzForbiddenError,
   AuthzGuard,
   AuthzMissingUserError,
   AuthzModule,
+  AuthzPublic,
   AuthzResolverError,
   AuthzService,
   AuthzWiringAssertion,
@@ -33,6 +36,7 @@ export {
   byParam,
   byQuery,
   ENTITIES,
+  forNew,
   MATRIX,
   ROLE_RESOLVER,
   ROLES,
