@@ -97,4 +97,53 @@ describe("no English NextAuth page on the way in or out (MDRS-101)", () => {
       expect(isPublicPath(path)).toBe(false);
     }
   });
+
+  // MDRS-122: the köşk, medrese and course pages are open to a signed-out
+  // visitor; a lesson page is not, nor the köşk list.
+  it("opens the köşk, medrese and course pages, and keeps lessons behind sign-in", () => {
+    const id = "6f1c2a9e-0000-4000-8000-000000000001";
+    for (const path of [
+      `/kosks/${id}`,
+      `/madrasahs/${id}`,
+      `/courses/${id}`,
+      `/courses/${id}/`,
+    ]) {
+      expect(isPublicPath(path)).toBe(true);
+      for (const locale of ["en", "tr", "ar"]) {
+        expect(isPublicPath(`/${locale}${path}`)).toBe(true);
+      }
+    }
+    for (const path of [
+      `/tr/courses/${id}/lessons/${id}`,
+      `/courses/${id}/lessons/${id}`,
+      "/tr/kosks",
+      "/tr/courses",
+      `/tr/kosks/${id}/edit`,
+      "/tr/learning/my-courses",
+    ]) {
+      expect(isPublicPath(path)).toBe(false);
+    }
+  });
+
+  it("sends a signed-out visitor of a lesson page to sign in, and lets the course page through", async () => {
+    const lesson = await middleware(
+      new NextRequest(
+        "http://localhost:4000/tr/courses/6f1c2a9e-0000-4000-8000-000000000001/lessons/6f1c2a9e-0000-4000-8000-000000000002"
+      )
+    );
+    expect(lesson.status).toBe(307);
+    expect(new URL(lesson.headers.get("location") as string).pathname).toBe(
+      "/auth/signin"
+    );
+
+    const course = await middleware(
+      new NextRequest(
+        "http://localhost:4000/tr/courses/6f1c2a9e-0000-4000-8000-000000000001"
+      )
+    );
+    const location = course.headers.get("location");
+    expect(
+      location === null || !new URL(location).pathname.includes("/auth/signin")
+    ).toBe(true);
+  });
 });

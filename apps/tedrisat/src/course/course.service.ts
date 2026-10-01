@@ -87,12 +87,20 @@ export class CourseService {
    * The köşk's courses. With `archived`, its hidden ones instead — the
    * "Arşiv" view (MDRS-124), for the köşk manager and SYSTEM_ADMIN only;
    * anyone else asking for it gets 403.
+   *
+   * `user` null is a caller with no token (MDRS-122): the published shelf,
+   * with no enrollment. The controller refuses them `archived` before this.
    */
   async findSummariesByKosk(
     koskId: string,
-    user: AuthenticatedUser,
+    user: AuthenticatedUser | null,
     archived = false
   ): Promise<ICourseSummary[]> {
+    if (user === null) {
+      if (archived) throw new KoskForbiddenError();
+      await this.koskService.findById(koskId, null); // throws if köşk is missing
+      return this.courseRepo.findSummariesByKosk(koskId, null, false);
+    }
     await this.koskService.findById(koskId, user.sub); // throws if köşk is missing
     const isManager = await this.koskService.isManager(koskId, user.sub);
     if (archived) {
@@ -109,11 +117,25 @@ export class CourseService {
     return this.courseRepo.findEnrolledByUser(userId);
   }
 
-  async getDetail(id: string, user: AuthenticatedUser): Promise<ICourseDetail> {
-    const userId = user.sub;
-    const course = await this.courseRepo.findDetailById(id, userId);
+  async getDetail(
+    id: string,
+    user: AuthenticatedUser | null
+  ): Promise<ICourseDetail> {
+    const course = await this.courseRepo.findDetailById(id, user?.sub ?? null);
     if (!course) {
       throw new CourseNotFoundError(id);
+    }
+    // A caller with no token (MDRS-122) holds neither `ARCHIVE` nor `EDIT`,
+    // so a hidden course and a draft are both not-found to them, as below.
+    // `resolveAnonymous` has already said so in front of the handler, and
+    // also refused every course of an unlisted köşk; this repeats the two
+    // rules a detail read can see for itself, so the answer does not rest on
+    // the guard alone.
+    if (user === null) {
+      if (course.archivedAt !== null || course.status === CourseStatus.DRAFT) {
+        throw new CourseNotFoundError(id);
+      }
+      return course;
     }
     // A hidden course (MDRS-124) is not-found, exactly like a draft, to all
     // but the people who may restore it: the köşk manager and SYSTEM_ADMIN,
@@ -160,18 +182,24 @@ export class CourseService {
    */
   async viewDetail(
     id: string,
-    user: AuthenticatedUser,
+    user: AuthenticatedUser | null,
     options: { audit: boolean } = { audit: true }
   ): Promise<ICourseDetailView> {
     return this.present(await this.getDetail(id, user), user, options);
   }
 
-  /** The content rule alone, for a detail the caller is already allowed. */
+  /**
+   * The content rule alone, for a detail the caller is already allowed. A
+   * caller with no token (MDRS-122) never reads content: the ANONYMOUS row
+   * holds no `VIEW_DETAILS`, so they get exactly the body a signed-in
+   * stranger gets.
+   */
   async present(
     course: ICourseDetail,
-    user: AuthenticatedUser,
+    user: AuthenticatedUser | null,
     { audit }: { audit: boolean }
   ): Promise<ICourseDetailView> {
+    if (user === null) return withoutContent(course);
     const mayReadContent = await this.authz.can(
       user,
       { entity: ENTITIES.COURSE, id: course.id },
@@ -452,9 +480,16 @@ export class CourseService {
   ): Promise<IEnrollment> {
     const userId = user.sub;
     const course = await this.getDetail(courseId, user); // throws if missing
-    const status = course.requiresApproval
-      ? EnrollmentStatus.PENDING
-      : EnrollmentStatus.ENROLLED;
+    // A course of an unlisted köşk always waits for approval (MDRS-122),
+    // whatever its own `requires_approval` says: the link is how the köşk is
+    // found, and passing a link on must not hand out seats.
+    const unlisted =
+      (await this.koskService.findVisibility(course.koskId))?.isPrivate ??
+      false;
+    const status =
+      course.requiresApproval || unlisted
+        ? EnrollmentStatus.PENDING
+        : EnrollmentStatus.ENROLLED;
     return this.courseRepo.enroll(userId, courseId, {
       status,
       studentName: student.name ?? null,

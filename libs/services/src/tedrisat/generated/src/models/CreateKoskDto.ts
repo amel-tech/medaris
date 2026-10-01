@@ -52,7 +52,7 @@ export interface CreateKoskDto {
      */
     coverHue?: number;
     /**
-     * 
+     * Unlisted (MDRS-122): in no list or search, opened by its link to signed-in callers only (404 without a token), and every enrollment in its courses waits for approval. New köşks are listed unless this says otherwise.
      * @type {boolean}
      * @memberof CreateKoskDto
      */

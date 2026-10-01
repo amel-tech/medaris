@@ -10,6 +10,7 @@ import {
   enrollments,
   lessons,
 } from "../database/schema/course.schema";
+import { kosks } from "../database/schema/kosk.schema";
 import { users } from "../database/schema/user.schema";
 import {
   ICourse,
@@ -51,6 +52,16 @@ const legacyDuration = (
   minutes: number | null | undefined
 ): string | null | undefined => (minutes == null ? minutes : `${minutes} dk`);
 
+/**
+ * The caller's own enrollment row, or none for a caller with no token
+ * (MDRS-122) — said as `false` rather than left to how `user_id = NULL`
+ * compares.
+ */
+const enrollmentOf = (
+  column: typeof enrollments.userId,
+  userId: string | null
+) => (userId === null ? sql`false` : eq(column, userId));
+
 @Injectable()
 export class CourseRepository implements ICourseRepository {
   constructor(private readonly databaseService: DatabaseService) {}
@@ -61,7 +72,7 @@ export class CourseRepository implements ICourseRepository {
 
   async findSummariesByKosk(
     koskId: string,
-    userId: string,
+    userId: string | null,
     includeDrafts: boolean,
     archived = false
   ): Promise<ICourseSummary[]> {
@@ -81,7 +92,7 @@ export class CourseRepository implements ICourseRepository {
         },
         muderris: { orderBy: (m, { asc }) => [asc(m.orderIndex), asc(m.id)] },
         resources: true,
-        enrollments: { where: (e, { eq }) => eq(e.userId, userId) },
+        enrollments: { where: (e) => enrollmentOf(e.userId, userId) },
       },
     });
 
@@ -100,7 +111,7 @@ export class CourseRepository implements ICourseRepository {
 
   async findDetailById(
     id: string,
-    userId: string
+    userId: string | null
   ): Promise<ICourseDetail | null> {
     const row = await this.db.query.courses.findFirst({
       where: eq(courses.id, id),
@@ -120,7 +131,7 @@ export class CourseRepository implements ICourseRepository {
         },
         muderris: { orderBy: (m, { asc }) => [asc(m.orderIndex), asc(m.id)] },
         resources: { orderBy: (r, { asc }) => [asc(r.orderIndex)] },
-        enrollments: { where: (e, { eq }) => eq(e.userId, userId) },
+        enrollments: { where: (e) => enrollmentOf(e.userId, userId) },
       },
     });
 
@@ -815,6 +826,35 @@ export class CourseRepository implements ICourseRepository {
       .where(eq(courses.id, id))
       .limit(1);
     return rows[0]?.koskId ?? null;
+  }
+
+  /**
+   * What decides whether a caller with no token may see the course
+   * (MDRS-122): its status, whether it is hidden, and whether its köşk is
+   * unlisted. One row, one join; null when the course is not there.
+   */
+  async findPublicVisibility(id: string): Promise<{
+    status: CourseStatus;
+    archived: boolean;
+    koskIsPrivate: boolean;
+  } | null> {
+    const rows = await this.db
+      .select({
+        status: courses.status,
+        archivedAt: courses.archivedAt,
+        koskIsPrivate: kosks.isPrivate,
+      })
+      .from(courses)
+      .innerJoin(kosks, eq(kosks.id, courses.koskId))
+      .where(eq(courses.id, id))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      status: row.status,
+      archived: row.archivedAt !== null,
+      koskIsPrivate: row.koskIsPrivate,
+    };
   }
 
   async update(id: string, updates: IUpdateCourse): Promise<ICourse | null> {

@@ -21,9 +21,10 @@ export default async function Page({
 
   // MDRS-103: the API leaves the content out for anyone who may not read it
   // and says so with `contentLocked`, so this page decides nothing about
-  // access — it only picks B8's call to action. A signed-out visitor cannot
-  // reach here yet (the route is behind the auth middleware and the API wants
-  // a token); MDRS-122 opens course pages to guests, and "signIn" is theirs.
+  // access — it only picks B8's call to action. A signed-out visitor does not
+  // reach here: MDRS-122 opened the course page to guests but kept its lessons
+  // behind the auth middleware, so "signIn" stays for a session whose token
+  // could not be refreshed.
   const reason = lessonLockReason(course, Boolean(await auth()));
   if (reason) {
     return (
