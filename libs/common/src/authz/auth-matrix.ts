@@ -99,8 +99,15 @@ export const MATRIX: Record<Entity, Partial<Record<Role, Scope[]>>> = {
       SCOPES.REQUEST_MUTALA_CHECK,
     ],
     [ROLES.PENDING]: [SCOPES.VIEW],
-    // Anyone authenticated can request enrollment in a course that exists.
-    [ROLES.PUBLIC]: [SCOPES.ENROLL],
+    // Anyone authenticated may open a course's page — its description and
+    // programme — and request enrollment (MDRS-103, following the owner's
+    // 26 September decision recorded on MDRS-43: the course page is public,
+    // the lessons are not). `VIEW` is the page; the content (meeting links,
+    // agendas, kaynak, resource URLs) is `VIEW_DETAILS`, which starts at
+    // ENROLLED. `CourseService.present` strips it for everyone below that
+    // line. Pending the matrix discussion; role model v2 (MDRS-135) replaces
+    // this row with a permission catalogue.
+    [ROLES.PUBLIC]: [SCOPES.VIEW, SCOPES.ENROLL],
   },
 
   // Plan §4.3 — Kosk
