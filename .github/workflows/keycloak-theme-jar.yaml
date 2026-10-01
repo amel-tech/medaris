@@ -118,4 +118,5 @@ jobs:
           name: ${{ env.ARTIFACT_NAME }}
           path: apps/keycloak-theme/dist_keycloak/keycloak-theme-for-kc-all-other-versions.jar
           if-no-files-found: error
+          overwrite: true
           retention-days: 90
