@@ -12,3 +12,11 @@ export interface UserPayload {
 export interface AuthorizedRequest extends Request {
   user: UserPayload;
 }
+
+/**
+ * The request an `@AuthzPublic()` handler receives (MDRS-122): `AuthGuard`
+ * leaves `user` unset for a caller with no token.
+ */
+export interface PublicRequest extends Request {
+  user?: UserPayload;
+}

@@ -126,6 +126,24 @@ export const enrollInCourse = async (
   return result;
 };
 
+/**
+ * Leaves the course, or withdraws a request still awaiting approval
+ * (MDRS-105). The enrollment is deleted; the talebe may apply again. A
+ * completed course cannot be left.
+ */
+export const leaveCourse = async (
+  courseId: string
+): Promise<AuthenticatedActionResult<boolean>> => {
+  const result = await authenticatedAction((api) =>
+    api.courses.leaveCourse({ id: courseId })
+  );
+  if (result.success) {
+    revalidatePath(`/courses/${courseId}`);
+    revalidatePath("/learning");
+  }
+  return result;
+};
+
 export const updateCourseProgress = async (
   courseId: string,
   progress: number

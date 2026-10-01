@@ -16,6 +16,7 @@
 import * as runtime from '../runtime';
 import type {
   CreateKoskDto,
+  KoskManagedBy,
   KoskResponse,
   PaginatedKoskResponse,
   UpdateKoskDto,
@@ -23,6 +24,8 @@ import type {
 import {
     CreateKoskDtoFromJSON,
     CreateKoskDtoToJSON,
+    KoskManagedByFromJSON,
+    KoskManagedByToJSON,
     KoskResponseFromJSON,
     KoskResponseToJSON,
     PaginatedKoskResponseFromJSON,
@@ -51,6 +54,8 @@ export interface FollowKoskRequest {
 export interface GetAllKosksRequest {
     page?: number;
     limit?: number;
+    managedBy?: KoskManagedBy;
+    madrasahId?: string;
 }
 
 export interface GetKoskByIdRequest {
@@ -271,6 +276,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
+     * Open to callers with no token (MDRS-122). Lists every köşk except the unlisted ones (`isPrivate`): an unlisted köşk is in no list, for anyone — it is reached by its link. `managedBy=me` narrows the list, and its `total`, to the köşks the caller manages (`kosk_managers`, MDRS-108), unlisted ones included — nizam\'s köşk list; it needs a token. `madrasahId` narrows it to the köşks affiliated with that medrese.
      * Get a paginated list of köşks
      */
     async getAllKosksRaw(requestParameters: GetAllKosksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PaginatedKoskResponse>> {
@@ -282,6 +288,14 @@ export class KosksApi extends runtime.BaseAPI {
 
         if (requestParameters['limit'] != null) {
             queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['managedBy'] != null) {
+            queryParameters['managedBy'] = requestParameters['managedBy'];
+        }
+
+        if (requestParameters['madrasahId'] != null) {
+            queryParameters['madrasahId'] = requestParameters['madrasahId'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -305,6 +319,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
+     * Open to callers with no token (MDRS-122). Lists every köşk except the unlisted ones (`isPrivate`): an unlisted köşk is in no list, for anyone — it is reached by its link. `managedBy=me` narrows the list, and its `total`, to the köşks the caller manages (`kosk_managers`, MDRS-108), unlisted ones included — nizam\'s köşk list; it needs a token. `madrasahId` narrows it to the köşks affiliated with that medrese.
      * Get a paginated list of köşks
      */
     async getAllKosks(requestParameters: GetAllKosksRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PaginatedKoskResponse> {
@@ -313,6 +328,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
+     * Open to callers with no token (MDRS-122), except for an unlisted köşk (`isPrivate`), which answers them with the same 404 as a köşk that does not exist. A signed-in caller opens an unlisted köşk by its link.
      * Get a köşk by ID
      */
     async getKoskByIdRaw(requestParameters: GetKoskByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskResponse>> {
@@ -347,6 +363,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
+     * Open to callers with no token (MDRS-122), except for an unlisted köşk (`isPrivate`), which answers them with the same 404 as a köşk that does not exist. A signed-in caller opens an unlisted köşk by its link.
      * Get a köşk by ID
      */
     async getKoskById(requestParameters: GetKoskByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {

@@ -90,6 +90,36 @@ export interface ICourseDetail extends ICourse {
   enrollment: IEnrollment | null;
 }
 
+/**
+ * The lesson fields that are course content rather than programme (MDRS-103):
+ * only a caller holding `VIEW_DETAILS` on the course receives them. Everyone
+ * else gets the lesson without these keys — absent, not null, so no body
+ * sent to a non-enrolled caller names them at all.
+ */
+export type LessonContentField = "kaynak" | "meetingUrl" | "agenda";
+
+/** A lesson as a response carries it: the content fields may be absent. */
+export type ILessonView = Omit<ILesson, LessonContentField> &
+  Partial<Pick<ILesson, LessonContentField>>;
+
+/** A resource as a response carries it: `url` is content (MDRS-103). */
+export type IResourceView = Omit<IResource, "url"> &
+  Partial<Pick<IResource, "url">>;
+
+export type IWeekView = Omit<IWeek, "lessons"> & { lessons: ILessonView[] };
+
+/**
+ * A course detail as it leaves the API (MDRS-103). `contentLocked` is true
+ * when the caller lacks `VIEW_DETAILS` and the content fields were removed;
+ * a client renders the locked state (tedris B8) from it rather than guessing
+ * from the enrollment.
+ */
+export type ICourseDetailView = Omit<ICourseDetail, "weeks" | "resources"> & {
+  weeks: IWeekView[];
+  resources: IResourceView[];
+  contentLocked: boolean;
+};
+
 export interface ICourseSummary extends ICourse {
   weekCount: number;
   lessonCount: number;
@@ -119,6 +149,18 @@ export interface IEnrollment {
 
 export interface IPendingEnrollment extends IEnrollment {
   courseTitle: string;
+}
+
+/** A talebe taken out of a course by its team (MDRS-105). */
+export interface IRemoveEnrollment {
+  userId: string;
+  courseId: string;
+  /** Who removed them — a köşk manager, a müderris or SYSTEM_ADMIN. */
+  actorId: string;
+  /** The team's reason, as typed; kept in `audit_log`. */
+  reason: string;
+  /** Only an enrollment still in this state is removed. */
+  expectedStatus: EnrollmentStatus;
 }
 
 export interface IEnrollOptions {
@@ -271,16 +313,27 @@ export interface ICourseRef {
 }
 
 export interface ICourseRepository {
+  /** `userId` null is a caller with no token (MDRS-122): no enrollment. */
   findSummariesByKosk(
     koskId: string,
-    userId: string,
+    userId: string | null,
     includeDrafts: boolean,
     archived?: boolean
   ): Promise<ICourseSummary[]>;
-  findDetailById(id: string, userId: string): Promise<ICourseDetail | null>;
+  /** `userId` null is a caller with no token (MDRS-122): no enrollment. */
+  findDetailById(
+    id: string,
+    userId: string | null
+  ): Promise<ICourseDetail | null>;
   findEnrolledByUser(userId: string): Promise<IEnrolledCourse[]>;
   create(course: ICreateCourse): Promise<ICourseDetail>;
   findKoskId(id: string): Promise<string | null>;
+  /** Status, hidden, and the köşk's `is_private`; null for no course (MDRS-122). */
+  findPublicVisibility(id: string): Promise<{
+    status: CourseStatus;
+    archived: boolean;
+    koskIsPrivate: boolean;
+  } | null>;
   update(id: string, updates: IUpdateCourse): Promise<ICourse | null>;
   replace(
     id: string,
@@ -320,7 +373,21 @@ export interface ICourseRepository {
   /** Whether `userId` is listed in `course_muderris` for `courseId`. */
   isMuderris(courseId: string, userId: string): Promise<boolean>;
   findTaughtBy(userId: string): Promise<ICourseRef[]>;
+  /** One `audit_log` row for a content read by a non-participant (MDRS-103). */
+  recordContentRead(entry: {
+    actorId: string;
+    courseId: string;
+    details: Record<string, unknown>;
+  }): Promise<void>;
   findPendingByKosk(koskId: string): Promise<IPendingEnrollment[]>;
+  /** The course's müderris rows in display order (MDRS-105). */
+  findMuderris(courseId: string): Promise<IMuderris[]>;
+  /** Which of `ids` have signed in at least once (have a `users` row). */
+  findKnownUserIds(ids: readonly string[]): Promise<string[]>;
+  /** Every enrollment in the course, for its team's roster (MDRS-105). */
+  findEnrollmentsByCourse(courseId: string): Promise<IEnrollment[]>;
+  /** Deletes the enrollment and audits the reason, in one transaction. */
+  removeEnrollment(entry: IRemoveEnrollment): Promise<boolean>;
   setEnrollmentStatus(
     userId: string,
     courseId: string,

@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { and, eq, inArray, isNotNull, isNull, max, ne, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
+import { auditLog } from "../database/schema/audit.schema";
 import {
   courseMuderris,
   courseResources,
@@ -9,6 +10,8 @@ import {
   enrollments,
   lessons,
 } from "../database/schema/course.schema";
+import { kosks } from "../database/schema/kosk.schema";
+import { users } from "../database/schema/user.schema";
 import {
   ICourse,
   ICourseDetail,
@@ -22,7 +25,9 @@ import {
   IEnrollment,
   IEnrollOptions,
   ILessonMutation,
+  IMuderris,
   IPendingEnrollment,
+  IRemoveEnrollment,
   IReplaceCourse,
   ISessionBatchResult,
   ISessionBatchWeek,
@@ -47,6 +52,16 @@ const legacyDuration = (
   minutes: number | null | undefined
 ): string | null | undefined => (minutes == null ? minutes : `${minutes} dk`);
 
+/**
+ * The caller's own enrollment row, or none for a caller with no token
+ * (MDRS-122) — said as `false` rather than left to how `user_id = NULL`
+ * compares.
+ */
+const enrollmentOf = (
+  column: typeof enrollments.userId,
+  userId: string | null
+) => (userId === null ? sql`false` : eq(column, userId));
+
 @Injectable()
 export class CourseRepository implements ICourseRepository {
   constructor(private readonly databaseService: DatabaseService) {}
@@ -57,7 +72,7 @@ export class CourseRepository implements ICourseRepository {
 
   async findSummariesByKosk(
     koskId: string,
-    userId: string,
+    userId: string | null,
     includeDrafts: boolean,
     archived = false
   ): Promise<ICourseSummary[]> {
@@ -75,9 +90,9 @@ export class CourseRepository implements ICourseRepository {
           where: (w, { isNull }) => isNull(w.archivedAt),
           with: { lessons: { where: (l, { isNull }) => isNull(l.archivedAt) } },
         },
-        muderris: { orderBy: (m, { asc }) => [asc(m.orderIndex)] },
+        muderris: { orderBy: (m, { asc }) => [asc(m.orderIndex), asc(m.id)] },
         resources: true,
-        enrollments: { where: (e, { eq }) => eq(e.userId, userId) },
+        enrollments: { where: (e) => enrollmentOf(e.userId, userId) },
       },
     });
 
@@ -96,7 +111,7 @@ export class CourseRepository implements ICourseRepository {
 
   async findDetailById(
     id: string,
-    userId: string
+    userId: string | null
   ): Promise<ICourseDetail | null> {
     const row = await this.db.query.courses.findFirst({
       where: eq(courses.id, id),
@@ -114,9 +129,9 @@ export class CourseRepository implements ICourseRepository {
             },
           },
         },
-        muderris: { orderBy: (m, { asc }) => [asc(m.orderIndex)] },
+        muderris: { orderBy: (m, { asc }) => [asc(m.orderIndex), asc(m.id)] },
         resources: { orderBy: (r, { asc }) => [asc(r.orderIndex)] },
-        enrollments: { where: (e, { eq }) => eq(e.userId, userId) },
+        enrollments: { where: (e) => enrollmentOf(e.userId, userId) },
       },
     });
 
@@ -144,7 +159,9 @@ export class CourseRepository implements ICourseRepository {
                 },
               },
             },
-            muderris: { orderBy: (m, { asc }) => [asc(m.orderIndex)] },
+            muderris: {
+              orderBy: (m, { asc }) => [asc(m.orderIndex), asc(m.id)],
+            },
           },
         },
       },
@@ -803,6 +820,35 @@ export class CourseRepository implements ICourseRepository {
     return rows[0]?.koskId ?? null;
   }
 
+  /**
+   * What decides whether a caller with no token may see the course
+   * (MDRS-122): its status, whether it is hidden, and whether its köşk is
+   * unlisted. One row, one join; null when the course is not there.
+   */
+  async findPublicVisibility(id: string): Promise<{
+    status: CourseStatus;
+    archived: boolean;
+    koskIsPrivate: boolean;
+  } | null> {
+    const rows = await this.db
+      .select({
+        status: courses.status,
+        archivedAt: courses.archivedAt,
+        koskIsPrivate: kosks.isPrivate,
+      })
+      .from(courses)
+      .innerJoin(kosks, eq(kosks.id, courses.koskId))
+      .where(eq(courses.id, id))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      status: row.status,
+      archived: row.archivedAt !== null,
+      koskIsPrivate: row.koskIsPrivate,
+    };
+  }
+
   async update(id: string, updates: IUpdateCourse): Promise<ICourse | null> {
     return this.db
       .update(courses)
@@ -999,6 +1045,26 @@ export class CourseRepository implements ICourseRepository {
     );
   }
 
+  /**
+   * A read of a course's content by someone who is neither its enrolled
+   * talebe nor one of its müderrisler (MDRS-103) — the köşk manager, or
+   * SYSTEM_ADMIN through the realm bypass. Same table as the deletions
+   * (MDRS-124); `action` tells the two apart.
+   */
+  async recordContentRead(entry: {
+    actorId: string;
+    courseId: string;
+    details: Record<string, unknown>;
+  }): Promise<void> {
+    await this.db.insert(auditLog).values({
+      actorId: entry.actorId,
+      action: "course.content_read",
+      entity: "course",
+      entityId: entry.courseId,
+      details: entry.details,
+    });
+  }
+
   async findEnrollment(
     userId: string,
     courseId: string
@@ -1011,6 +1077,83 @@ export class CourseRepository implements ICourseRepository {
       )
       .limit(1)
       .then((result) => result[0] || null);
+  }
+
+  /** The course's müderris rows in display order (MDRS-105). */
+  async findMuderris(courseId: string): Promise<IMuderris[]> {
+    return this.db
+      .select()
+      .from(courseMuderris)
+      .where(eq(courseMuderris.courseId, courseId))
+      .orderBy(courseMuderris.orderIndex, courseMuderris.id);
+  }
+
+  /**
+   * Which of `ids` have a `users` row, i.e. have signed in at least once
+   * (MDRS-104). Lowercased, like the ids Postgres returns for a `uuid`.
+   */
+  async findKnownUserIds(ids: readonly string[]): Promise<string[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db
+      .select({ id: users.id })
+      .from(users)
+      .where(inArray(users.id, [...ids]));
+    return rows.map((r) => r.id.toLowerCase());
+  }
+
+  /**
+   * Every enrollment in the course — requests, active seats and completions
+   * — for the course team's roster (MDRS-105). Requests first, then active
+   * seats, then completions, each by when they joined.
+   */
+  async findEnrollmentsByCourse(courseId: string): Promise<IEnrollment[]> {
+    return (
+      this.db
+        .select()
+        .from(enrollments)
+        .where(eq(enrollments.courseId, courseId))
+        // A Postgres enum sorts in declaration order: PENDING, ENROLLED,
+        // COMPLETED (migrations 0008 and 0010).
+        .orderBy(enrollments.status, enrollments.createdAt, enrollments.userId)
+    );
+  }
+
+  /**
+   * Takes a talebe out of a course with the team's reason (MDRS-105): the
+   * enrollment row goes and one `enrollment.remove` row lands in
+   * `audit_log`, in one transaction, so the reason cannot be lost while the
+   * seat is. Not a ban — nothing stops the talebe from applying again.
+   * Only an enrollment still in `expectedStatus` is removed; false when there
+   * was none (a concurrent leave, reject or completion got there first).
+   */
+  async removeEnrollment(entry: IRemoveEnrollment): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const [removed] = await tx
+        .delete(enrollments)
+        .where(
+          and(
+            eq(enrollments.userId, entry.userId),
+            eq(enrollments.courseId, entry.courseId),
+            eq(enrollments.status, entry.expectedStatus)
+          )
+        )
+        .returning();
+      if (!removed) return false;
+      await tx.insert(auditLog).values({
+        actorId: entry.actorId,
+        action: "enrollment.remove",
+        entity: "course",
+        entityId: entry.courseId,
+        details: {
+          userId: removed.userId,
+          reason: entry.reason,
+          status: removed.status,
+          progress: removed.progress,
+          enrolledAt: removed.createdAt.toISOString(),
+        },
+      });
+      return true;
+    });
   }
 
   async updateProgress(

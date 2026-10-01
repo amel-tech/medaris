@@ -44,7 +44,16 @@
     "icazetDescription": "Müfredatı tamamlayan talebelere müderris onaylı icâzet verilir.",
     "requestEnroll": "Request enrollment",
     "requestSent": "Your enrollment request was sent and is awaiting approval.",
-    "pendingApproval": "Awaiting approval"
+    "pendingApproval": "Awaiting approval",
+    "withdrawRequest": "Withdraw request",
+    "withdrawn": "Your request was withdrawn.",
+    "leaveCourse": "Leave course",
+    "leaveTitle": "Leave this course?",
+    "leaveDescription": "Your enrollment and progress are deleted. You can enroll again later.",
+    "leaveConfirm": "Leave",
+    "leaveCancel": "Cancel",
+    "left": "You left the course.",
+    "signInToApply": "Sign in to apply"
   },
   "CreateDeckButtonDialog": {
     "cancel": "Cancel",
@@ -118,6 +127,10 @@
     "addToMyCollection": "Add to my collection",
     "by": "by",
     "cards": "cards",
+    "madePrivate": "The deck is now visible only to you.",
+    "madePublic": "The deck is now visible to everyone.",
+    "makePrivate": "Make private",
+    "makePublic": "Make public",
     "noCardsDescription": "This deck doesn't have any flashcards yet. Add some cards to start practicing.",
     "noCardsInDeck": "No cards in this deck",
     "practiceNow": "Practice Now",
@@ -125,7 +138,9 @@
     "removeFromCollection": "Remove from collection",
     "removing": "Removing...",
     "sampleCards": "Sample Cards",
-    "students": "students"
+    "students": "students",
+    "visibilityChanged": "Visibility changed",
+    "visibilityError": "Could not change visibility"
   },
   "DeckForm": {
     "addCard": "Add Card",
@@ -228,7 +243,7 @@
   "KoskPage": {
     "kosks": "Köşkler",
     "uncategorized": "Diğer",
-    "private": "Özel",
+    "private": "Unlisted",
     "courses": "Ders",
     "students": "Talebe",
     "filterAll": "Tümü",
@@ -242,7 +257,8 @@
     "coursesCount": "{count} ders",
     "completed": "Tamamlandı",
     "percentComplete": "%{percent} tamamlandı",
-    "enroll": "Kayıt ol"
+    "enroll": "Kayıt ol",
+    "madrasah": "Medrese"
   },
   "LearningPage": {
     "title": "Öğrenme",
@@ -379,5 +395,27 @@
       "decks": "Study with flashcards"
     },
     "start": "Start learning"
+  },
+  "DeckUnavailable": {
+    "title": "This deck isn't available",
+    "description": "It may have been deleted, or its owner keeps it private.",
+    "backToDecks": "Back to decks"
+  },
+  "LessonLocked": {
+    "title": "This lesson is for enrolled students",
+    "description": {
+      "signIn": "Sign in to see the lesson's content, meeting link and resources.",
+      "apply": "A lesson's content, meeting link and resources are open to the course's enrolled students. The course page shows its programme.",
+      "pending": "Your application has been sent to the köşk manager. Once it is approved, the lesson opens here."
+    },
+    "signIn": "Sign in",
+    "apply": "Apply",
+    "applying": "Sending...",
+    "pending": "Your application is awaiting approval",
+    "backToCourse": "Back to the course"
+  },
+  "MadrasahPage": {
+    "kosks": "Köşks",
+    "noKosks": "This medrese has no listed köşks."
   }
 }

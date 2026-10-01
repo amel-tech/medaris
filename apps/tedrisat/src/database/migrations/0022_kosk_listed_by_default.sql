@@ -1,0 +1,1 @@
+ALTER TABLE "kosks" ALTER COLUMN "is_private" SET DEFAULT false;
