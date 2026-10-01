@@ -91,4 +91,25 @@ describe("auth-matrix structural invariants", () => {
       SCOPES.DONATE,
     ]);
   });
+
+  // MDRS-106 / MDRS-124: only SYSTEM_ADMIN deletes a medrese or creates one.
+  it("no madrasah row grants DELETE or CREATE_MADRASAH", () => {
+    const rows = Object.entries(MATRIX[ENTITIES.MADRASAH] ?? {});
+    const granting = rows
+      .filter(
+        ([, scopes]) =>
+          scopes?.includes(SCOPES.DELETE) ||
+          scopes?.includes(SCOPES.CREATE_MADRASAH)
+      )
+      .map(([role]) => role);
+    expect(granting).toEqual([]);
+  });
+
+  it("a nazır's köşk scopes are a subset of the köşk manager's, without DELETE", () => {
+    const nazir = MATRIX[ENTITIES.KOSK][ROLES.MADRASAH_NAZIR] ?? [];
+    const manager = MATRIX[ENTITIES.KOSK][ROLES.KOSK_MANAGER] ?? [];
+    expect(nazir).toContain(SCOPES.EDIT);
+    expect(nazir).not.toContain(SCOPES.DELETE);
+    expect(nazir.every((scope) => manager.includes(scope))).toBe(true);
+  });
 });

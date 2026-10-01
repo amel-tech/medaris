@@ -197,6 +197,9 @@
               }
             }
           },
+          "403": {
+            "description": ""
+          },
           "404": {
             "description": ""
           }
@@ -244,6 +247,49 @@
           }
         ],
         "summary": "Delete a köşk",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/madrasah": {
+      "delete": {
+        "description": "The köşk's own way out of a medrese: its manager (or a nazır of that medrese) makes it standalone again.",
+        "operationId": "leaveMadrasah",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Detach a köşk from its medrese",
         "tags": [
           "kosks"
         ]
@@ -319,6 +365,423 @@
         "summary": "Unfollow a köşk",
         "tags": [
           "kosks"
+        ]
+      }
+    },
+    "/madrasahs": {
+      "get": {
+        "operationId": "getAllMadrasahs",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedMadrasahResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a paginated list of medreses",
+        "tags": [
+          "madrasahs"
+        ]
+      },
+      "post": {
+        "operationId": "createMadrasah",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMadrasahDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "409": {
+            "description": "The handle is taken"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a medrese (SYSTEM_ADMIN only)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}": {
+      "get": {
+        "operationId": "getMadrasahById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a medrese by ID",
+        "tags": [
+          "madrasahs"
+        ]
+      },
+      "patch": {
+        "operationId": "updateMadrasah",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMadrasahDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "The handle is taken"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a medrese (its nazırs)",
+        "tags": [
+          "madrasahs"
+        ]
+      },
+      "delete": {
+        "description": "Its nazır list goes with it; its köşks become standalone. Nazırs cannot delete (MDRS-124).",
+        "operationId": "deleteMadrasah",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a medrese (SYSTEM_ADMIN only)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/nazirs/{userId}": {
+      "post": {
+        "operationId": "addMadrasahNazir",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Make a user a nazır of the medrese",
+        "tags": [
+          "madrasahs"
+        ]
+      },
+      "delete": {
+        "operationId": "removeMadrasahNazir",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a nazır from the medrese",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/kosks/{koskId}": {
+      "post": {
+        "operationId": "affiliateMadrasahKosk",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "koskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "The köşk belongs to another medrese (KOSK_ALREADY_AFFILIATED)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Affiliate a köşk with the medrese",
+        "tags": [
+          "madrasahs"
+        ]
+      },
+      "delete": {
+        "operationId": "detachMadrasahKosk",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "koskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Detach a köşk from the medrese",
+        "tags": [
+          "madrasahs"
         ]
       }
     },
@@ -2571,6 +3034,27 @@
           "service"
         ]
       },
+      "KoskMadrasahRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "Hadis ve Siyer Medresesi"
+          },
+          "handle": {
+            "type": "string",
+            "example": "hadis-ve-siyer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "handle"
+        ]
+      },
       "KoskResponse": {
         "type": "object",
         "properties": {
@@ -2579,6 +3063,21 @@
           },
           "ownerId": {
             "type": "string"
+          },
+          "madrasahId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The affiliated medrese's id; null for a standalone köşk"
+          },
+          "madrasah": {
+            "nullable": true,
+            "description": "The affiliated medrese; null for a standalone köşk",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskMadrasahRef"
+              }
+            ]
           },
           "name": {
             "type": "string",
@@ -2811,6 +3310,143 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "MadrasahResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string",
+            "example": "hadis-ve-siyer"
+          },
+          "name": {
+            "type": "string",
+            "example": "Hadis ve Siyer Araştırmaları Medresesi"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "coverHue": {
+            "type": "number",
+            "example": 215
+          },
+          "createdBy": {
+            "type": "string",
+            "description": "The SYSTEM_ADMIN who created it"
+          },
+          "nazirIds": {
+            "description": "User ids of the medrese's nazırs, oldest first",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "handle",
+          "name",
+          "coverHue",
+          "createdBy",
+          "nazirIds",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "PaginatedMadrasahResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahResponse"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Total number of medreses",
+            "example": 3
+          },
+          "page": {
+            "type": "number",
+            "description": "Current page (1-based)",
+            "example": 1
+          },
+          "limit": {
+            "type": "number",
+            "description": "Items per page",
+            "example": 12
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit"
+        ]
+      },
+      "CreateMadrasahDto": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "string",
+            "example": "hadis-ve-siyer",
+            "description": "Unique, URL-safe: lower-case letters, digits and inner hyphens, 2–60 characters"
+          },
+          "name": {
+            "type": "string",
+            "example": "Hadis ve Siyer Araştırmaları Medresesi"
+          },
+          "description": {
+            "type": "string",
+            "example": "Hadis ve siyer alanında klasik medrese usulüyle eğitim veren kurum."
+          },
+          "coverHue": {
+            "type": "number",
+            "example": 215,
+            "minimum": 0,
+            "maximum": 360
+          }
+        },
+        "required": [
+          "handle",
+          "name"
+        ]
+      },
+      "UpdateMadrasahDto": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "string",
+            "example": "hadis-ve-siyer",
+            "description": "Unique, URL-safe: lower-case letters, digits and inner hyphens, 2–60 characters"
+          },
+          "name": {
+            "type": "string",
+            "example": "Hadis ve Siyer Araştırmaları Medresesi"
+          },
+          "description": {
+            "type": "string",
+            "example": "Hadis ve siyer alanında klasik medrese usulüyle eğitim veren kurum."
+          },
+          "coverHue": {
+            "type": "number",
+            "example": 215,
+            "minimum": 0,
+            "maximum": 360
           }
         }
       },

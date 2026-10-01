@@ -8,6 +8,7 @@ src/apis/FlashcardDecksApi.ts
 src/apis/FlashcardlabelApi.ts
 src/apis/KosksApi.ts
 src/apis/LessonsApi.ts
+src/apis/MadrasahsApi.ts
 src/apis/MeApi.ts
 src/apis/TedrisatServiceApi.ts
 src/apis/UsersApi.ts
@@ -30,6 +31,7 @@ src/models/CreateFlashcardLabelingDto.ts
 src/models/CreateFlashcardProgressDto.ts
 src/models/CreateKoskDto.ts
 src/models/CreateLessonDto.ts
+src/models/CreateMadrasahDto.ts
 src/models/CreateMuderrisDto.ts
 src/models/CreateResourceDto.ts
 src/models/CreateWeekDto.ts
@@ -49,16 +51,19 @@ src/models/FlashcardLabelingResponse.ts
 src/models/FlashcardProgressResponse.ts
 src/models/FlashcardResponse.ts
 src/models/HealthCheckDto.ts
+src/models/KoskMadrasahRef.ts
 src/models/KoskResponse.ts
 src/models/LabelStatsResponse.ts
 src/models/LessonMutationResponse.ts
 src/models/LessonResponse.ts
+src/models/MadrasahResponse.ts
 src/models/ManagedKoskRef.ts
 src/models/MeResponse.ts
 src/models/MeRolesResponse.ts
 src/models/MuderrisResponse.ts
 src/models/NazirMadrasahRef.ts
 src/models/PaginatedKoskResponse.ts
+src/models/PaginatedMadrasahResponse.ts
 src/models/PendingEnrollmentResponse.ts
 src/models/ReplaceCourseDto.ts
 src/models/ResourceResponse.ts
@@ -69,6 +74,7 @@ src/models/UpdateFlashcardDeckDto.ts
 src/models/UpdateFlashcardDto.ts
 src/models/UpdateKoskDto.ts
 src/models/UpdateLessonDto.ts
+src/models/UpdateMadrasahDto.ts
 src/models/UpdateMeDto.ts
 src/models/UpdateProgressDto.ts
 src/models/UserSummaryResponse.ts
