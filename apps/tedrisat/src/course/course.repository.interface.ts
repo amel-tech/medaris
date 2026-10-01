@@ -151,6 +151,18 @@ export interface IPendingEnrollment extends IEnrollment {
   courseTitle: string;
 }
 
+/** A talebe taken out of a course by its team (MDRS-105). */
+export interface IRemoveEnrollment {
+  userId: string;
+  courseId: string;
+  /** Who removed them — a köşk manager, a müderris or SYSTEM_ADMIN. */
+  actorId: string;
+  /** The team's reason, as typed; kept in `audit_log`. */
+  reason: string;
+  /** Only an enrollment still in this state is removed. */
+  expectedStatus: EnrollmentStatus;
+}
+
 export interface IEnrollOptions {
   status?: EnrollmentStatus;
   studentName?: string | null;
@@ -357,6 +369,14 @@ export interface ICourseRepository {
     details: Record<string, unknown>;
   }): Promise<void>;
   findPendingByKosk(koskId: string): Promise<IPendingEnrollment[]>;
+  /** The course's müderris rows in display order (MDRS-105). */
+  findMuderris(courseId: string): Promise<IMuderris[]>;
+  /** Which of `ids` have signed in at least once (have a `users` row). */
+  findKnownUserIds(ids: readonly string[]): Promise<string[]>;
+  /** Every enrollment in the course, for its team's roster (MDRS-105). */
+  findEnrollmentsByCourse(courseId: string): Promise<IEnrollment[]>;
+  /** Deletes the enrollment and audits the reason, in one transaction. */
+  removeEnrollment(entry: IRemoveEnrollment): Promise<boolean>;
   setEnrollmentStatus(
     userId: string,
     courseId: string,
