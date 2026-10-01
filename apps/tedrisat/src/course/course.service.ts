@@ -15,10 +15,12 @@ import {
   ICourseSummary,
   ICreateCourse,
   ICreateLesson,
+  ICreateMuderris,
   IEnrolledCourse,
   IEnrollment,
   ILesson,
   ILessonMutation,
+  IMuderris,
   IPendingEnrollment,
   IReplaceCourse,
   ISessionBatchResult,
@@ -32,6 +34,11 @@ import {
 } from "./domain/course-content";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
+import {
+  duplicateUserId,
+  muderrisListChanged,
+  newlyLinkedUserIds,
+} from "./domain/muderris-list";
 import { withCanonicalTimeZone } from "./domain/time-zone";
 import {
   expandWeeklyPattern,
@@ -42,9 +49,14 @@ import {
 } from "./domain/weekly-pattern";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { EnrollmentNotFoundError } from "./errors/enrollment-not-found.error";
+import { EnrollmentStateError } from "./errors/enrollment-state.error";
+import { EnrollmentStatusForbiddenError } from "./errors/enrollment-status-forbidden.error";
 import { InvalidSessionPatternError } from "./errors/invalid-session-pattern.error";
 import { LessonNotFoundError } from "./errors/lesson-not-found.error";
 import { LessonNotScheduledError } from "./errors/lesson-not-scheduled.error";
+import { MuderrisAssignmentForbiddenError } from "./errors/muderris-assignment-forbidden.error";
+import { MuderrisDuplicateUserError } from "./errors/muderris-duplicate-user.error";
+import { MuderrisUnknownUserError } from "./errors/muderris-unknown-user.error";
 
 /** A weekly pattern as the API takes it; `timeZone` defaults to the course's. */
 export type SessionPatternInput = Omit<
@@ -116,13 +128,20 @@ export class CourseService {
     ) {
       throw new CourseNotFoundError(id);
     }
-    // A DRAFT course is invisible to anyone but its köşk owner — surface it as
-    // not-found rather than forbidden so its existence isn't leaked.
-    if (course.status === CourseStatus.DRAFT) {
-      const isManager = await this.koskService.isManager(course.koskId, userId);
-      if (!isManager) {
-        throw new CourseNotFoundError(id);
-      }
+    // A DRAFT course is invisible to anyone who may not edit it — surface it
+    // as not-found rather than forbidden so its existence isn't leaked. Since
+    // MDRS-105 that is the köşk manager, the course's müderrisler (who edit
+    // it through `EDIT`, and could not open the draft they were editing
+    // while this read "köşk manager only") and SYSTEM_ADMIN.
+    if (
+      course.status === CourseStatus.DRAFT &&
+      !(await this.authz.can(
+        user,
+        { entity: ENTITIES.COURSE, id },
+        SCOPES.EDIT
+      ))
+    ) {
+      throw new CourseNotFoundError(id);
     }
     return course;
   }
@@ -214,14 +233,12 @@ export class CourseService {
     return { course, lesson: { ...lesson, scheduledAt: lesson.scheduledAt } };
   }
 
-  /** Ensures the course exists and its köşk is owned by `userId`, else throws. */
-  async assertCourseOwner(courseId: string, userId: string): Promise<void> {
-    const koskId = await this.courseRepo.findKoskId(courseId);
-    if (koskId === null) {
-      throw new CourseNotFoundError(courseId);
-    }
-    await this.koskService.assertManager(koskId, userId);
-  }
+  // ---- course writes (MDRS-105) ----
+  // Authorization is the matrix's, on CourseController: `EDIT` for the
+  // course's fields and syllabus — the köşk manager and the course's
+  // müderrisler — and, inside a whole-course save, `ASSIGN_MUDERRIS` for the
+  // müderris list, which only the köşk manager holds. The `assertCourseOwner`
+  // that narrowed every write to the köşk manager is gone.
 
   async create(
     koskId: string,
@@ -230,6 +247,7 @@ export class CourseService {
   ): Promise<ICourseDetailView> {
     const authorId = author.sub;
     await this.koskService.assertManager(koskId, authorId); // köşk managers only
+    await this.assertMuderrisLinks([], course.muderris ?? []);
     const created = await this.courseRepo.create({
       ...withCanonicalTimeZone(course),
       koskId,
@@ -238,12 +256,17 @@ export class CourseService {
     return this.present(created, author, { audit: false });
   }
 
+  /**
+   * Course-level fields. The course must be visible to the caller first, so
+   * that a müderris — who holds `EDIT` but not `ARCHIVE` — cannot write to a
+   * course the köşk manager has hidden and then be told it does not exist.
+   */
   async update(
     id: string,
-    userId: string,
+    user: AuthenticatedUser,
     updates: IUpdateCourse
   ): Promise<ICourse> {
-    await this.assertCourseOwner(id, userId);
+    await this.getDetail(id, user);
     const updated = await this.courseRepo.update(
       id,
       withCanonicalTimeZone(updates)
@@ -254,18 +277,61 @@ export class CourseService {
     return updated;
   }
 
+  /**
+   * The whole-course save. A caller with `EDIT` but not `ASSIGN_MUDERRIS` —
+   * a müderris — may save everything but the müderris list: if the list in
+   * the payload differs from the stored one in any way the save would write,
+   * the save is refused whole with 403 before anything is written.
+   *
+   * The comparison reads the list outside the save's transaction. A list
+   * changed by the köşk manager in between is caught by `version` when the
+   * editor sends it (409, MDRS-95); without it the müderris' save would put
+   * the old list back, which is the lost update `version` exists to stop.
+   */
   async replace(
     id: string,
     user: AuthenticatedUser,
     data: IReplaceCourse
   ): Promise<ICourseDetailView> {
-    await this.assertCourseOwner(id, user.sub);
+    await this.getDetail(id, user); // a hidden course is not saved by a müderris
+    const next = data.muderris ?? [];
+    const current = await this.courseRepo.findMuderris(id);
+    if (
+      muderrisListChanged(current, next) &&
+      !(await this.authz.can(
+        user,
+        { entity: ENTITIES.COURSE, id },
+        SCOPES.ASSIGN_MUDERRIS
+      ))
+    ) {
+      throw new MuderrisAssignmentForbiddenError(id);
+    }
+    await this.assertMuderrisLinks(current, next);
     const replaced = await this.courseRepo.replace(
       id,
       user.sub,
       withCanonicalTimeZone(data)
     );
     return this.present(replaced, user, { audit: false });
+  }
+
+  /**
+   * A müderris row links an account (MDRS-105) — that link is what makes the
+   * person MUDERRIS on the course. Each account at most once, and every
+   * account this save links anew must have signed in at least once, so that
+   * a mistyped id cannot hand the role to whoever signs in under it later.
+   */
+  private async assertMuderrisLinks(
+    current: readonly IMuderris[],
+    next: readonly ICreateMuderris[]
+  ): Promise<void> {
+    const duplicate = duplicateUserId(next);
+    if (duplicate) throw new MuderrisDuplicateUserError(duplicate);
+    const linking = newlyLinkedUserIds(current, next);
+    if (linking.length === 0) return;
+    const known = new Set(await this.courseRepo.findKnownUserIds(linking));
+    const unknown = linking.find((userId) => !known.has(userId));
+    if (unknown) throw new MuderrisUnknownUserError(unknown);
   }
 
   // ---- session-level writes (MDRS-95) ----
@@ -404,12 +470,31 @@ export class CourseService {
     return this.courseRepo.findPendingByKosk(koskId);
   }
 
+  // ---- the course team's enrollment actions (MDRS-105) ----
+  // Authorization is `@Authz(SCOPES.MANAGE_ENROLLMENTS, …)` on
+  // CourseController: the köşk manager and the course's müderrisler. Nothing
+  // narrows it further here.
+
+  /** Requests, active seats and completions, for the team's roster. */
+  async findEnrollments(courseId: string): Promise<IEnrollment[]> {
+    return this.courseRepo.findEnrollmentsByCourse(courseId);
+  }
+
+  /**
+   * Approves a request. Approving an active seat again changes nothing; a
+   * completion is not turned back into a seat this way (that is
+   * `setEnrollmentStatus`), since the team now includes every müderris.
+   */
   async approveEnrollment(
     courseId: string,
-    ownerId: string,
     studentId: string
   ): Promise<IEnrollment> {
-    await this.assertCourseOwner(courseId, ownerId);
+    const existing = await this.courseRepo.findEnrollment(studentId, courseId);
+    if (!existing) throw new EnrollmentNotFoundError(courseId);
+    if (existing.status === EnrollmentStatus.ENROLLED) return existing;
+    if (existing.status === EnrollmentStatus.COMPLETED) {
+      throw new EnrollmentStateError(courseId, existing.status);
+    }
     const updated = await this.courseRepo.setEnrollmentStatus(
       studentId,
       courseId,
@@ -423,12 +508,10 @@ export class CourseService {
 
   async rejectEnrollment(
     courseId: string,
-    ownerId: string,
     studentId: string
   ): Promise<boolean> {
-    await this.assertCourseOwner(courseId, ownerId);
-    // Only pending requests can be rejected; deleting an active or completed
-    // enrollment must go through a deliberate unenroll flow, not "reject".
+    // Only pending requests can be rejected; an active seat is taken away
+    // with `removeEnrollment`, which needs a reason.
     const existing = await this.courseRepo.findEnrollment(studentId, courseId);
     if (!existing || existing.status !== EnrollmentStatus.PENDING) {
       throw new EnrollmentNotFoundError(courseId);
@@ -436,6 +519,81 @@ export class CourseService {
     return this.courseRepo.deleteEnrollment(studentId, courseId);
   }
 
+  /**
+   * Marks a talebe's enrollment completed, or reopens a completed one
+   * (MDRS-105, the owner's decision of 1 October: only the course team
+   * completes a course). A request that is still pending is approved first.
+   */
+  async setEnrollmentStatus(
+    courseId: string,
+    studentId: string,
+    status: EnrollmentStatus.ENROLLED | EnrollmentStatus.COMPLETED
+  ): Promise<IEnrollment> {
+    const existing = await this.courseRepo.findEnrollment(studentId, courseId);
+    if (!existing) throw new EnrollmentNotFoundError(courseId);
+    if (existing.status === EnrollmentStatus.PENDING) {
+      throw new EnrollmentStateError(courseId, existing.status);
+    }
+    if (existing.status === status) return existing;
+    return (await this.courseRepo.setEnrollmentStatus(
+      studentId,
+      courseId,
+      status
+    )) as IEnrollment;
+  }
+
+  /**
+   * Takes an enrolled talebe out of the course, with the team's reason
+   * (MDRS-105). The seat goes and the reason is kept in `audit_log`. It is
+   * not a ban: the talebe may apply again, and a ban is MDRS-113's.
+   *
+   * Only an active seat: a request is rejected instead, and a completed
+   * course is reopened first, so a completion is never removed by accident.
+   */
+  async removeEnrollment(
+    courseId: string,
+    actorId: string,
+    studentId: string,
+    reason: string
+  ): Promise<boolean> {
+    const existing = await this.courseRepo.findEnrollment(studentId, courseId);
+    if (!existing) throw new EnrollmentNotFoundError(courseId);
+    if (existing.status !== EnrollmentStatus.ENROLLED) {
+      throw new EnrollmentStateError(courseId, existing.status);
+    }
+    const removed = await this.courseRepo.removeEnrollment({
+      userId: studentId,
+      courseId,
+      actorId,
+      reason: reason.trim(),
+      expectedStatus: EnrollmentStatus.ENROLLED,
+    });
+    if (!removed) throw new EnrollmentNotFoundError(courseId);
+    return true;
+  }
+
+  // ---- the talebe's own enrollment ----
+
+  /**
+   * The caller leaves the course, or withdraws a request still awaiting
+   * approval (MDRS-105). Either way the row goes and they may apply again.
+   * A completed course is not left: the completion is the talebe's record.
+   */
+  async leave(userId: string, courseId: string): Promise<boolean> {
+    const existing = await this.courseRepo.findEnrollment(userId, courseId);
+    if (!existing) throw new EnrollmentNotFoundError(courseId);
+    if (existing.status === EnrollmentStatus.COMPLETED) {
+      throw new EnrollmentStateError(courseId, existing.status);
+    }
+    return this.courseRepo.deleteEnrollment(userId, courseId);
+  }
+
+  /**
+   * Records the talebe's own progress. The status is not theirs to set
+   * (MDRS-105): reaching 100% no longer completes the course, a completion
+   * set by the team survives later progress writes, and a `status` that
+   * would change the enrollment's is refused with 403.
+   */
   async updateProgress(
     userId: string,
     courseId: string,
@@ -444,21 +602,19 @@ export class CourseService {
   ): Promise<IEnrollment> {
     // Progress can only be recorded against an active enrollment. A pending
     // (awaiting-approval) or missing enrollment must not be silently promoted,
-    // otherwise this endpoint would bypass the köşk owner's approval.
+    // otherwise this endpoint would bypass the course team's approval.
     const existing = await this.courseRepo.findEnrollment(userId, courseId);
     if (!existing || existing.status === EnrollmentStatus.PENDING) {
       throw new EnrollmentNotFoundError(courseId);
     }
-    const resolvedStatus =
-      status ??
-      (progress >= 100
-        ? EnrollmentStatus.COMPLETED
-        : EnrollmentStatus.ENROLLED);
+    if (status !== undefined && status !== existing.status) {
+      throw new EnrollmentStatusForbiddenError(courseId);
+    }
     const updated = await this.courseRepo.updateProgress(
       userId,
       courseId,
       progress,
-      resolvedStatus
+      existing.status
     );
     return updated as IEnrollment;
   }

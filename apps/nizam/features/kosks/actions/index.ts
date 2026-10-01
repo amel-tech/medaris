@@ -5,7 +5,9 @@ import {
   type CourseSummaryResponse,
   type CreateKoskDto,
   createServerTedrisatAPIs,
+  type EnrollmentResponse,
   type KoskResponse,
+  type MeResponse,
   type PaginatedKoskResponse,
   type PendingEnrollmentResponse,
   type UpdateKoskDto,
@@ -120,5 +122,40 @@ export const getPendingEnrollments = async (
   } catch (error) {
     console.error("Error fetching pending enrollments:", error);
     return [];
+  }
+};
+
+/**
+ * A course's roster for its team (MDRS-105). Null when tedrisat refused or
+ * could not answer — a caller who is not on the course team gets 403.
+ */
+export const getCourseEnrollments = async (
+  courseId: string
+): Promise<EnrollmentResponse[] | null> => {
+  try {
+    const accessToken = await getAccessToken();
+    const { courses } = await createServerTedrisatAPIs(
+      accessToken,
+      env.TEDRISAT_API_BASE_URL
+    );
+    return await courses.getCourseEnrollments({ id: courseId });
+  } catch (error) {
+    console.error("Error fetching course enrollments:", error);
+    return null;
+  }
+};
+
+/** The signed-in caller with their roles (MDRS-104); null on failure. */
+export const getMe = async (): Promise<MeResponse | null> => {
+  try {
+    const accessToken = await getAccessToken();
+    const { me } = await createServerTedrisatAPIs(
+      accessToken,
+      env.TEDRISAT_API_BASE_URL
+    );
+    return await me.getMe();
+  } catch (error) {
+    console.error("Error fetching the current user:", error);
+    return null;
   }
 };

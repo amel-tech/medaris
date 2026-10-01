@@ -1142,8 +1142,11 @@
               }
             }
           },
+          "403": {
+            "description": "No `edit` on the course, or the save changes the müderris list without `assign_muderris` — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN)."
+          },
           "404": {
-            "description": ""
+            "description": "No such course, or a müderris row links an account that has never signed in (MUDERRIS_UNKNOWN_USER)."
           },
           "409": {
             "description": "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT)."
@@ -1367,6 +1370,52 @@
         ]
       }
     },
+    "/courses/{id}/enrollments": {
+      "get": {
+        "description": "For the course team: the köşk manager and the course's müderrisler (MDRS-105). Requests first, then active seats, then completions.",
+        "operationId": "getCourseEnrollments",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EnrollmentResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List a course's enrollments — requests, talebe and completions",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
     "/courses/{id}/enrollments/{userId}/approve": {
       "post": {
         "operationId": "approveEnrollment",
@@ -1401,6 +1450,9 @@
           },
           "404": {
             "description": ""
+          },
+          "409": {
+            "description": "The enrollment is completed; reopen it instead (ENROLLMENT_STATE_CONFLICT)."
           }
         },
         "security": [
@@ -1408,7 +1460,7 @@
             "bearer": []
           }
         ],
-        "summary": "Approve a pending enrollment (köşk owner only)",
+        "summary": "Approve a pending enrollment (course team)",
         "tags": [
           "courses"
         ]
@@ -1455,7 +1507,176 @@
             "bearer": []
           }
         ],
-        "summary": "Reject a pending enrollment, deleting it (köşk owner only)",
+        "summary": "Reject a pending enrollment, deleting it (course team)",
+        "tags": [
+          "courses"
+        ]
+      },
+      "patch": {
+        "description": "Only the course team completes a course for a talebe (MDRS-105, decision of 1 October); `PUT /courses/:id/progress` no longer can.",
+        "operationId": "setEnrollmentStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEnrollmentStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "The enrollment is still a pending request; approve it first (ENROLLMENT_STATE_CONFLICT)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Complete a talebe's enrollment, or reopen it (course team)",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/enrollments/{userId}/remove": {
+      "post": {
+        "description": "Deletes the enrollment and keeps the reason in the audit log (MDRS-105). It is not a ban: the talebe may apply again. Only an active seat — reject a request, reopen a completion first.",
+        "operationId": "removeEnrollment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveEnrollmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "The enrollment is a pending request or a completion (ENROLLMENT_STATE_CONFLICT)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a talebe out of a course, with a reason (course team)",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/enrollment": {
+      "delete": {
+        "description": "Deletes the caller's own enrollment; they may apply again (MDRS-105). A completed course is not left (ENROLLMENT_STATE_CONFLICT).",
+        "operationId": "leaveCourse",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "The enrollment is completed (ENROLLMENT_STATE_CONFLICT)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Leave a course, or withdraw a request still awaiting approval (the current talebe)",
         "tags": [
           "courses"
         ]
@@ -1463,6 +1684,7 @@
     },
     "/courses/{id}/progress": {
       "put": {
+        "description": "Records progress only. Reaching 100 does not complete the course, and `status` is refused unless it is the current one (MDRS-105): the course team completes a course.",
         "operationId": "updateCourseProgress",
         "parameters": [
           {
@@ -1494,6 +1716,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "`status` would change the enrollment's status (ENROLLMENT_STATUS_FORBIDDEN)."
           }
         },
         "security": [
@@ -5002,6 +5227,44 @@
           "courseTitle"
         ]
       },
+      "TeamSettableEnrollmentStatus": {
+        "type": "string",
+        "enum": [
+          "ENROLLED",
+          "COMPLETED"
+        ],
+        "description": "COMPLETED marks the course completed for the talebe; ENROLLED reopens it. A pending request is approved instead (MDRS-105)."
+      },
+      "SetEnrollmentStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "description": "COMPLETED marks the course completed for the talebe; ENROLLED reopens it. A pending request is approved instead (MDRS-105).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TeamSettableEnrollmentStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "RemoveEnrollmentDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Üç haftadır derslere katılmıyor.",
+            "maxLength": 500,
+            "description": "Why the talebe is taken out of the course. Kept in the audit log; required, and not blank."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
       "UpdateProgressDto": {
         "type": "object",
         "properties": {
@@ -5017,7 +5280,9 @@
               "PENDING",
               "ENROLLED",
               "COMPLETED"
-            ]
+            ],
+            "deprecated": true,
+            "description": "Not the talebe's to set (MDRS-105): a value other than the enrollment's current status is refused with 403 ENROLLMENT_STATUS_FORBIDDEN. Completion is set by the course team."
           }
         },
         "required": [
