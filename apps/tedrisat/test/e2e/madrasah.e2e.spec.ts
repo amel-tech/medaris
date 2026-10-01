@@ -15,7 +15,10 @@ import {
   madrasahs,
 } from "../../src/database/schema/madrasah.schema";
 import { createTestApp } from "../helpers/test-app.helper";
-import { TestDatabaseUtils } from "../helpers/test-database.helper";
+import {
+  COURSE_TREE_TABLES,
+  TestDatabaseUtils,
+} from "../helpers/test-database.helper";
 import { bearerFor } from "../helpers/test-keycloak.helper";
 
 /**
@@ -59,7 +62,7 @@ describe("Madrasahs (e2e)", () => {
   });
 
   beforeEach(async () => {
-    await dbUtils.cleanTables("madrasahs", "kosks", "users");
+    await dbUtils.cleanTables(...COURSE_TREE_TABLES, "madrasahs", "users");
     const [madrasah] = await databaseService.db
       .insert(madrasahs)
       .values({
@@ -96,7 +99,7 @@ describe("Madrasahs (e2e)", () => {
   });
 
   afterAll(async () => {
-    await dbUtils.cleanTables("madrasahs", "kosks", "users");
+    await dbUtils.cleanTables(...COURSE_TREE_TABLES, "madrasahs", "users");
     await app.close();
   });
 

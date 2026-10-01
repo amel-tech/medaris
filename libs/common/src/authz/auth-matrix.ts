@@ -43,12 +43,17 @@ import { ENTITIES, Entity, ROLES, Role, SCOPES, Scope } from "./scopes";
 export const MATRIX: Record<Entity, Partial<Record<Role, Scope[]>>> = {
   // Plan §4.1 — Course. All five rows are reachable: `resolveCourseRole`
   // returns KOSK_MANAGER, MUDERRIS, ENROLLED, PENDING or PUBLIC.
+  //
+  // `DELETE` is on no row (MDRS-124): the owner decided on 26 September that
+  // nobody who runs a köşk or teaches a course deletes anything — they hide
+  // it (`ARCHIVE`), and only SYSTEM_ADMIN deletes, through the realm bypass.
+  // Plan §4.1 granted DELETE to KOSK_MANAGER and MUDERRIS; that is withdrawn.
   [ENTITIES.COURSE]: {
     [ROLES.KOSK_MANAGER]: [
       SCOPES.VIEW,
       SCOPES.VIEW_DETAILS,
       SCOPES.EDIT,
-      SCOPES.DELETE,
+      SCOPES.ARCHIVE,
       SCOPES.MANAGE_ENROLLMENTS,
       SCOPES.ASSIGN_MUDERRIS,
       SCOPES.ASSIGN_HOMEWORK,
@@ -69,7 +74,6 @@ export const MATRIX: Record<Entity, Partial<Record<Role, Scope[]>>> = {
       SCOPES.VIEW,
       SCOPES.VIEW_DETAILS,
       SCOPES.EDIT,
-      SCOPES.DELETE,
       SCOPES.MANAGE_ENROLLMENTS,
       SCOPES.ASSIGN_HOMEWORK,
       SCOPES.GRADE_HOMEWORK,
@@ -106,12 +110,8 @@ export const MATRIX: Record<Entity, Partial<Record<Role, Scope[]>>> = {
     // strict subset of KOSK_MANAGER, so an owner who is also a nazır loses
     // nothing by being resolved as the manager.
     [ROLES.MADRASAH_NAZIR]: [SCOPES.VIEW, SCOPES.EDIT, SCOPES.MANAGE_COURSES],
-    [ROLES.KOSK_MANAGER]: [
-      SCOPES.VIEW,
-      SCOPES.EDIT,
-      SCOPES.DELETE,
-      SCOPES.MANAGE_COURSES,
-    ],
+    // No `DELETE` (MDRS-124): deleting a köşk is SYSTEM_ADMIN's alone.
+    [ROLES.KOSK_MANAGER]: [SCOPES.VIEW, SCOPES.EDIT, SCOPES.MANAGE_COURSES],
     // Anyone authenticated may view a köşk. `CREATE_KOSK` is
     // intentionally absent from every role except the SYSTEM_ADMIN
     // realm bypass: only platform admins may open new köşks and assign

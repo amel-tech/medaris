@@ -1,3 +1,4 @@
+export * from "./audit.schema";
 export * from "./course.schema";
 export * from "./flashcard.schema";
 export * from "./flashcard-deck.schema";

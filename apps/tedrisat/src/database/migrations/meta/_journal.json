@@ -127,6 +127,13 @@
       "when": 1790602509202,
       "tag": "0017_madrasahs",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790603700261,
+      "tag": "0018_hide_instead_of_delete",
+      "breakpoints": true
     }
   ]
 }

@@ -29,6 +29,10 @@ export const SCOPES = {
   VIEW_DETAILS: "view_details",
   EDIT: "edit",
   DELETE: "delete",
+  // Hide / restore (MDRS-124). What the people who run things have instead of
+  // DELETE: the row stays, reads stop returning it, and the same people can
+  // bring it back. `DELETE` itself is on no role row — SYSTEM_ADMIN only.
+  ARCHIVE: "archive",
   ENROLL: "enroll",
   // Öğrenci & kayıt
   MANAGE_ENROLLMENTS: "manage_enrollments",

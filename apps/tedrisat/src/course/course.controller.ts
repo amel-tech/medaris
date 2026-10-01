@@ -1,14 +1,27 @@
-import { AuthGuard, MedarisValidationPipe } from "@medaris/common";
+import {
+  AuthGuard,
+  Authz,
+  AuthzGuard,
+  type AuthzResolve,
+  ENTITIES,
+  MedarisValidationPipe,
+  SCOPES,
+} from "@medaris/common";
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
+  ParseBoolPipe,
   ParseUUIDPipe,
   Patch,
   Post,
   Put,
+  Query,
   Req,
   UseGuards,
   UsePipes,
@@ -17,11 +30,14 @@ import {
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
+import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
 import {
   CourseDetailResponse,
@@ -34,7 +50,32 @@ import { CreateCourseDto } from "./dto/create-course.dto";
 import { ReplaceCourseDto } from "./dto/replace-course.dto";
 import { UpdateCourseDto } from "./dto/update-course.dto";
 import { UpdateProgressDto } from "./dto/update-progress.dto";
+import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Authorizes a `/courses/:id` route against that course, answering a missing
+ * or malformed id as not-found first. Guards run before pipes, and the role
+ * resolver reads a missing course as PUBLIC, so without this an admin-only
+ * route would answer 403 for a course that does not exist (the same reason as
+ * `byExistingKosk`). Hidden courses count as existing: restoring one is the
+ * point.
+ */
+const byExistingCourse: AuthzResolve = async (req, moduleRef) => {
+  const courseId = typeof req.params.id === "string" ? req.params.id : "";
+  if (
+    !UUID_REGEX.test(courseId) ||
+    (await moduleRef
+      .get(CourseRepository, { strict: false })
+      .findKoskId(courseId)) === null
+  ) {
+    throw new CourseNotFoundError(courseId);
+  }
+  return { entity: ENTITIES.COURSE, id: courseId };
+};
 
 @ApiTags("courses")
 @ApiBearerAuth()
@@ -47,14 +88,28 @@ export class CourseController {
     summary: "List the courses that belong to a köşk",
     operationId: "getCoursesByKosk",
   })
+  @ApiQuery({
+    name: "archived",
+    required: false,
+    type: Boolean,
+    description:
+      "true lists the köşk's hidden courses instead (the Arşiv view) — köşk manager and SYSTEM_ADMIN only.",
+  })
   @ApiOkResponse({ type: CourseSummaryResponse, isArray: true })
+  @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get("kosks/:koskId/courses")
   async findByKosk(
     @Req() request: AuthorizedRequest,
-    @Param("koskId", ParseUUIDPipe) koskId: string
+    @Param("koskId", ParseUUIDPipe) koskId: string,
+    @Query("archived", new DefaultValuePipe(false), ParseBoolPipe)
+    archived: boolean
   ): Promise<CourseSummaryResponse[]> {
-    return this.courseService.findSummariesByKosk(koskId, request.user.sub);
+    return this.courseService.findSummariesByKosk(
+      koskId,
+      request.user,
+      archived
+    );
   }
 
   @ApiOperation({
@@ -96,7 +151,7 @@ export class CourseController {
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseDetailResponse> {
-    return this.courseService.getDetail(id, request.user.sub);
+    return this.courseService.getDetail(id, request.user);
   }
 
   @ApiOperation({
@@ -112,7 +167,7 @@ export class CourseController {
     @Body() courseDto: UpdateCourseDto
   ): Promise<CourseDetailResponse> {
     await this.courseService.update(id, request.user.sub, courseDto);
-    return this.courseService.getDetail(id, request.user.sub);
+    return this.courseService.getDetail(id, request.user);
   }
 
   @ApiOperation({
@@ -137,12 +192,59 @@ export class CourseController {
   }
 
   @ApiOperation({
-    summary: "Delete a course",
+    summary: "Hide a course (Gizle)",
+    description:
+      "The köşk manager's way to take a course down: nothing is deleted, every list leaves it out, and it answers 404 to everyone but the köşk manager and SYSTEM_ADMIN until it is restored (MDRS-124).",
+    operationId: "archiveCourse",
+  })
+  @ApiOkResponse({ type: CourseDetailResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Post("courses/:id/archive")
+  @HttpCode(HttpStatus.OK)
+  // Method-level, like `KoskController`: most handlers here still check
+  // ownership in `CourseService` and have not moved to `@Authz`.
+  @UseGuards(AuthzGuard)
+  @Authz(SCOPES.ARCHIVE, byExistingCourse)
+  async archive(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<CourseDetailResponse> {
+    await this.courseService.archive(id, request.user.sub);
+    return this.courseService.getDetail(id, request.user);
+  }
+
+  @ApiOperation({
+    summary: "Restore a hidden course (Geri al)",
+    operationId: "restoreCourse",
+  })
+  @ApiOkResponse({ type: CourseDetailResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Post("courses/:id/restore")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthzGuard)
+  @Authz(SCOPES.ARCHIVE, byExistingCourse)
+  async restore(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<CourseDetailResponse> {
+    await this.courseService.restore(id);
+    return this.courseService.getDetail(id, request.user);
+  }
+
+  @ApiOperation({
+    summary: "Delete a course for real (SYSTEM_ADMIN only)",
+    description:
+      "Removes the course and its weeks, lessons, müderris, resources and enrollments in one transaction and records an audit entry. Everyone else hides instead (MDRS-124).",
     operationId: "deleteCourse",
   })
   @ApiOkResponse({ type: Boolean })
+  @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Delete("courses/:id")
+  @UseGuards(AuthzGuard)
+  @Authz(SCOPES.DELETE, byExistingCourse)
   async delete(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
@@ -166,7 +268,7 @@ export class CourseController {
       user.name ??
       [user.given_name, user.family_name].filter(Boolean).join(" ").trim() ??
       user.preferred_username;
-    return this.courseService.enroll(user.sub, id, {
+    return this.courseService.enroll(user, id, {
       name: name || user.preferred_username || null,
       email: user.email ?? null,
     });
