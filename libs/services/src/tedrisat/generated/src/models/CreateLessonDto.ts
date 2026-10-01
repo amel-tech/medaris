@@ -64,7 +64,7 @@ export interface CreateLessonDto {
      */
     scheduledAt?: Date;
     /**
-     * External meeting link (Meet/Zoom/Jitsi…). The platform is resolved from the URL on the client.
+     * External meeting link (Meet/Zoom/Jitsi…), https only (MDRS-111). The platform is resolved from the URL on the client.
      * @type {string}
      * @memberof CreateLessonDto
      */
