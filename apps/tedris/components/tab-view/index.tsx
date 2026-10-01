@@ -5,6 +5,12 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { usePathname } from "~/lib/i18n/navigation";
 
+/**
+ * Routes already on the unified design system (MDRS-157). They bring their own
+ * `<main>` and page width, so the shell's wrapper is left off them.
+ */
+const ownsItsMain = (pathname: string) => pathname.startsWith("/madrasahs");
+
 export const TabView = ({ children }: { children: React.ReactNode }) => {
   const t = useTranslations("tedris");
   const pathname = usePathname();
@@ -12,7 +18,7 @@ export const TabView = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       <div className="border-b border-b-gray-300 mb-8">
-        <div className="flex gap-4 container mx-auto">
+        <div className="flex gap-4 mx-auto w-full max-w-[80rem]">
           <Link
             href="/home"
             className={cn(
@@ -47,7 +53,13 @@ export const TabView = ({ children }: { children: React.ReactNode }) => {
           </Link>
         </div>
       </div>
-      <main className="container mx-auto py-2 grow-1 h-full">{children}</main>
+      {ownsItsMain(pathname) ? (
+        children
+      ) : (
+        <main className="mx-auto w-full max-w-[80rem] py-2 grow-1 h-full">
+          {children}
+        </main>
+      )}
     </>
   );
 };

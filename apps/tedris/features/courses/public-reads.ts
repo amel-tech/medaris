@@ -2,8 +2,8 @@ import {
   type CourseDetailResponse,
   createServerTedrisatAPIs,
   type KoskResponse,
+  type MadrasahOverviewResponse,
   type MadrasahResponse,
-  type PaginatedKoskResponse,
 } from "@medaris/services/tedrisat";
 import { env } from "~/env";
 import { getAccessToken } from "~/lib/auth_options";
@@ -57,14 +57,15 @@ export const getMadrasahForMetadata = (
 export const getMadrasah = (id: string): Promise<MadrasahResponse | null> =>
   orNull(async () => (await viewerApi()).madrasahs.getMadrasahById({ id }));
 
-/** The medrese's listed köşks; an unlisted one is in no list (MDRS-122). */
-export const getMadrasahKosks = async (
-  madrasahId: string,
-  limit = 50
-): Promise<PaginatedKoskResponse> =>
-  (await orNull(async () =>
-    (await viewerApi()).kosks.getAllKosks({ madrasahId, page: 1, limit })
-  )) ?? { items: [], total: 0, page: 1, limit };
+/**
+ * What the medrese page shows (MDRS-157): its courses with the caller's own
+ * enrollment, the köşks they are in, and the başmüderris. Null on any failure;
+ * the page treats that like a missing medrese.
+ */
+export const getMadrasahOverview = (
+  id: string
+): Promise<MadrasahOverviewResponse | null> =>
+  orNull(async () => (await viewerApi()).madrasahs.getMadrasahOverview({ id }));
 
 /** Whether the visitor has a usable token — what tedrisat will see. */
 export const isSignedIn = async (): Promise<boolean> =>
