@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { ModuleRef, Reflector } from "@nestjs/core";
 import { MedarisError } from "../error/errors/base/medaris.error";
-import { AUTHZ_KEY, AuthzMeta } from "./authz.decorator";
+import { AUTHZ_KEY, AUTHZ_PUBLIC_KEY, AuthzMeta } from "./authz.decorator";
 import { AuthzService } from "./authz.service";
 import {
   AuthzForbiddenError,
@@ -28,10 +28,18 @@ import { ResourceRef } from "./scopes";
  * AuthGuard runs first, populates `request.user`, then AuthzGuard reads
  * the metadata and decides allow/deny.
  *
+ * **Anonymous callers (MDRS-45).** On a handler marked `@AuthzPublic()`,
+ * `AuthGuard` lets a request with no token through with `request.user`
+ * unset. Without `@Authz` such a handler is open and passes here; with it,
+ * the anonymous caller is decided by `AuthzService.canAnonymous` and refused
+ * with a 401 — signing in is what would change the answer. On every other
+ * handler a missing user is still `AuthzMissingUserError`.
+ *
  * **Permissive fall-through (deliberate, transitional).** Routes
  * without `@Authz` metadata pass through unchanged. Once all in-scope
- * endpoints are annotated, flip this to deny-by-default with an
- * explicit `@AuthzPublic` opt-out.
+ * endpoints are annotated, MDRS-44 flips this to deny-by-default. The
+ * `@AuthzPublic` pass is its own branch, ahead of that one, so the flip
+ * does not close it.
  */
 @Injectable()
 export class AuthzGuard implements CanActivate {
@@ -42,16 +50,35 @@ export class AuthzGuard implements CanActivate {
   ) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
-    const meta = this.reflector.get<AuthzMeta | undefined>(
-      AUTHZ_KEY,
-      ctx.getHandler()
-    );
+    const handler = ctx.getHandler();
+    const meta = this.reflector.get<AuthzMeta | undefined>(AUTHZ_KEY, handler);
+    const isPublic =
+      this.reflector.get<true | undefined>(AUTHZ_PUBLIC_KEY, handler) === true;
+
+    // Two branches that answer the same today, kept apart on purpose: the
+    // first is the `@AuthzPublic` decision and stays; the second is the
+    // transitional pass-through MDRS-44 turns into a deny.
+    if (!meta && isPublic) return true;
     if (!meta) return true;
 
     const request = ctx.switchToHttp().getRequest<AuthzRequest>();
     const user = request.user;
     if (!user) {
-      throw new AuthzMissingUserError();
+      if (!isPublic) {
+        throw new AuthzMissingUserError();
+      }
+      const resource = await this.resolveResource(meta, request);
+      if (!(await this.authz.canAnonymous(resource, meta.scope))) {
+        throw new AuthzMissingUserError(
+          "Sign in to perform this action on this resource",
+          {
+            entity: resource.entity,
+            resourceId: resource.id,
+            scope: meta.scope,
+          }
+        );
+      }
+      return true;
     }
 
     const resource = await this.resolveResource(meta, request);
