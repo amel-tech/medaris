@@ -22,6 +22,9 @@ export default mergeConfig(
       root: __dirname,
       include: ["test/**/*.spec.ts"],
       exclude: ["node_modules/**", ".next/**"],
+      // The render specs import their component on first use; on a cold CI
+      // runner that transform alone ran past Vitest's 5 s default.
+      testTimeout: 30_000,
       // next-intl's ESM build imports `next/server` without an extension,
       // which Node's own resolver refuses; inlined, Vite resolves it.
       server: { deps: { inline: ["next-intl"] } },
