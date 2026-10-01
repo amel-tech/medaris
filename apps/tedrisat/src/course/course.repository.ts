@@ -12,6 +12,7 @@ import {
 import {
   ICourse,
   ICourseDetail,
+  ICourseRef,
   ICourseRepository,
   ICourseSummary,
   ICreateCourse,
@@ -747,6 +748,23 @@ export class CourseRepository implements ICourseRepository {
       )
       .limit(1);
     return rows.length > 0;
+  }
+
+  /**
+   * The courses `userId` is listed on as müderris, by title. `selectDistinct`
+   * because nothing stops the same account being listed twice on one course.
+   */
+  async findTaughtBy(userId: string): Promise<ICourseRef[]> {
+    return this.db
+      .selectDistinct({
+        id: courses.id,
+        title: courses.title,
+        koskId: courses.koskId,
+      })
+      .from(courseMuderris)
+      .innerJoin(courses, eq(courses.id, courseMuderris.courseId))
+      .where(eq(courseMuderris.userId, userId))
+      .orderBy(courses.title, courses.id);
   }
 
   async findEnrollment(

@@ -63,6 +63,12 @@ export interface IUpdateKosk {
   ratingCount?: number;
 }
 
+/** A köşk as it appears in a caller's role summary (`GET /me`, MDRS-104). */
+export interface IKoskRef {
+  id: string;
+  name: string;
+}
+
 export interface IKoskRepository {
   findAll(
     userId: string,
@@ -72,6 +78,8 @@ export interface IKoskRepository {
   count(): Promise<number>;
   findById(id: string, userId: string): Promise<IKoskWithStats | null>;
   findOwnerId(id: string): Promise<string | null>;
+  findOwnedBy(ownerId: string): Promise<IKoskRef[]>;
+  ownsAny(ownerId: string): Promise<boolean>;
   create(kosk: ICreateKosk): Promise<IKosk>;
   update(id: string, updates: IUpdateKosk): Promise<IKosk | null>;
   delete(id: string): Promise<boolean>;

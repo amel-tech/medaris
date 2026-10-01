@@ -10,6 +10,7 @@ import { koskFollowers, kosks } from "../database/schema/kosk.schema";
 import {
   ICreateKosk,
   IKosk,
+  IKoskRef,
   IKoskRepository,
   IKoskWithStats,
   IUpdateKosk,
@@ -103,6 +104,23 @@ export class KoskRepository implements IKoskRepository {
       .where(eq(kosks.id, id))
       .limit(1);
     return rows[0]?.ownerId ?? null;
+  }
+
+  async findOwnedBy(ownerId: string): Promise<IKoskRef[]> {
+    return this.db
+      .select({ id: kosks.id, name: kosks.name })
+      .from(kosks)
+      .where(eq(kosks.ownerId, ownerId))
+      .orderBy(kosks.name);
+  }
+
+  async ownsAny(ownerId: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: kosks.id })
+      .from(kosks)
+      .where(eq(kosks.ownerId, ownerId))
+      .limit(1);
+    return rows.length > 0;
   }
 
   async create(kosk: ICreateKosk): Promise<IKosk> {

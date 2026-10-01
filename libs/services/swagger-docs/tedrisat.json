@@ -2395,6 +2395,113 @@
           "FlashcardDeckLabel"
         ]
       }
+    },
+    "/me": {
+      "get": {
+        "operationId": "getMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the caller's profile and a summary of their roles",
+        "tags": [
+          "me"
+        ]
+      },
+      "patch": {
+        "operationId": "updateMe",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set the caller's time zone and locale",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/users": {
+      "get": {
+        "description": "Returns zero or one user. Callable by SYSTEM_ADMIN and köşk managers.",
+        "operationId": "findUserByEmail",
+        "parameters": [
+          {
+            "name": "email",
+            "required": true,
+            "in": "query",
+            "description": "Matched exactly (case-insensitively), never as a prefix",
+            "schema": {
+              "example": "muderris@example.com",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserSummaryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Find a user by exact e-mail address",
+        "tags": [
+          "users"
+        ]
+      }
     }
   },
   "info": {
@@ -4528,6 +4635,177 @@
         "required": [
           "labelId",
           "usageCount"
+        ]
+      },
+      "NazirMadrasahRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "ManagedKoskRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "Süleymaniye Köşkü"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "TaughtCourseRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "example": "Usûl-i Fıkıh'a Giriş"
+          },
+          "koskId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "koskId"
+        ]
+      },
+      "MeRolesResponse": {
+        "type": "object",
+        "properties": {
+          "systemAdmin": {
+            "type": "boolean",
+            "description": "Holds the SYSTEM_ADMIN realm role"
+          },
+          "nazirOf": {
+            "description": "Medreses the caller is nazır of. Always empty until tedrisat stores medrese nazırs.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NazirMadrasahRef"
+            }
+          },
+          "manages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagedKoskRef"
+            }
+          },
+          "teaches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaughtCourseRef"
+            }
+          }
+        },
+        "required": [
+          "systemAdmin",
+          "nazirOf",
+          "manages",
+          "teaches"
+        ]
+      },
+      "MeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The Keycloak subject id"
+          },
+          "email": {
+            "type": "string",
+            "example": "talebe@example.com"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "givenName": {
+            "type": "string"
+          },
+          "familyName": {
+            "type": "string"
+          },
+          "timeZone": {
+            "type": "string",
+            "example": "Europe/Istanbul"
+          },
+          "locale": {
+            "type": "string",
+            "example": "tr"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "roles": {
+            "$ref": "#/components/schemas/MeRolesResponse"
+          }
+        },
+        "required": [
+          "id",
+          "emailVerified",
+          "createdAt",
+          "lastSeenAt",
+          "roles"
+        ]
+      },
+      "UpdateMeDto": {
+        "type": "object",
+        "properties": {
+          "timeZone": {
+            "type": "string",
+            "nullable": true,
+            "example": "Europe/Istanbul",
+            "description": "IANA time zone"
+          },
+          "locale": {
+            "type": "string",
+            "nullable": true,
+            "example": "tr",
+            "description": "BCP 47 language tag"
+          }
+        }
+      },
+      "UserSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The Keycloak subject id"
+          },
+          "givenName": {
+            "type": "string"
+          },
+          "familyName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
         ]
       }
     }
