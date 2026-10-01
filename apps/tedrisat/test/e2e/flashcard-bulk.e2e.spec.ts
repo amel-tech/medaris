@@ -800,6 +800,7 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
 
     expect(response.status).toBe(403);
     expect(response.body.code).toBe(AUTHZ_FORBIDDEN);
+    expect(JSON.stringify(response.body)).not.toContain(deckId);
   });
 
   it("answers 404, not 500, for progress against a card that does not exist", async () => {
