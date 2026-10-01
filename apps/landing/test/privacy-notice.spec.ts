@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import PrivacyNoticeLayout from "../app/aydinlatma-metni/layout";
 import PrivacyNoticePage from "../app/aydinlatma-metni/page";
+import { footerLinks } from "../components/site-footer";
 import {
   ACCOUNT_RECORD_FIELDS,
   CONTROLLER,
@@ -14,7 +15,6 @@ import {
   TITLE,
 } from "../content/aydinlatma-metni";
 import { config } from "../middleware";
-import { footerLegalLinks } from "../sections/footer/data";
 
 // next/font is compiled by Next; outside it, the layout only needs names.
 vi.mock("next/font/google", () => {
@@ -173,10 +173,7 @@ describe("the controller placeholders (MDRS-102)", () => {
 
 describe("landing's footer (MDRS-102)", () => {
   it("links to the notice", () => {
-    expect(footerLegalLinks).toContainEqual({
-      key: "privacyNotice",
-      href: PRIVACY_NOTICE_PATH,
-    });
+    expect(footerLinks.map((link) => link.href)).toContain(PRIVACY_NOTICE_PATH);
   });
 
   it.each(["tr", "en", "ar"] as const)("labels the link in %s", (lang) => {
