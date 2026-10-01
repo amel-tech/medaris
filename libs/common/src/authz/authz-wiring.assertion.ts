@@ -1,7 +1,11 @@
 import { Injectable, OnModuleInit, Type } from "@nestjs/common";
 import { GUARDS_METADATA, PATH_METADATA } from "@nestjs/common/constants";
 import { DiscoveryService, MetadataScanner, Reflector } from "@nestjs/core";
-import { AUTHZ_EXEMPT_KEY, AUTHZ_KEY } from "./authz.decorator";
+import {
+  AUTHZ_EXEMPT_KEY,
+  AUTHZ_KEY,
+  AUTHZ_PUBLIC_KEY,
+} from "./authz.decorator";
 import { AuthzGuard } from "./authz.guard";
 
 /**
@@ -25,7 +29,9 @@ import { AuthzGuard } from "./authz.guard";
  *
  * Both directions fail here, at startup, where they are loud, instead of at
  * request time, where they are silent. A handler that genuinely needs no
- * scope on a guarded controller says so with `@AuthzExempt()`. Controllers
+ * scope on a guarded controller says so with `@AuthzExempt()` — or with
+ * `@AuthzPublic()` (MDRS-45) when it is open to anonymous callers too, which
+ * is the same deliberate, visible decision one step wider. Controllers
  * without `AuthzGuard` are not inspected in the second direction — the
  * guard's permissive fall-through for them is a separate, documented,
  * transitional decision.
@@ -70,7 +76,7 @@ export class AuthzWiringAssertion implements OnModuleInit {
     return this.inspect().unguarded;
   }
 
-  /** `Controller.method` for every route handler behind `AuthzGuard` that carries neither `@Authz` nor `@AuthzExempt()`. */
+  /** `Controller.method` for every route handler behind `AuthzGuard` that carries none of `@Authz`, `@AuthzExempt()` or `@AuthzPublic()`. */
   findUnannotatedHandlers(): string[] {
     return this.inspect().unannotated;
   }
@@ -91,7 +97,8 @@ export class AuthzWiringAssertion implements OnModuleInit {
         if (typeof handler !== "function") continue;
         const annotated = this.reflector.get(AUTHZ_KEY, handler) !== undefined;
         const exempt =
-          this.reflector.get(AUTHZ_EXEMPT_KEY, handler) !== undefined;
+          this.reflector.get(AUTHZ_EXEMPT_KEY, handler) !== undefined ||
+          this.reflector.get(AUTHZ_PUBLIC_KEY, handler) !== undefined;
         const guarded =
           guardedAtClass || this.guardsOn(handler).some(isAuthzGuard);
 

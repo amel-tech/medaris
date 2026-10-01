@@ -50,6 +50,25 @@ export class AuthzService {
   }
 
   /**
+   * Decide whether a caller with NO token may invoke `scope` on `resource`
+   * (MDRS-45). `AuthzGuard` calls this only for an `@AuthzPublic()` handler.
+   *
+   * No realm-role bypass — there is no token to carry one. The resolver's
+   * optional `resolveAnonymous` must answer `ROLES.ANONYMOUS`; a resolver
+   * without it refuses every anonymous caller. The ANONYMOUS row is read on
+   * its own, with no PUBLIC inheritance: PUBLIC means "authenticated", and
+   * its scopes assume an identity to act as.
+   */
+  async canAnonymous(resource: ResourceRef, scope: Scope): Promise<boolean> {
+    const role = await this.roles.resolveAnonymous?.(resource);
+    // Checked at runtime as well as in the type: a resolver written in plain
+    // JS, or cast past the narrowing, must not hand an anonymous caller the
+    // PUBLIC row.
+    if (role !== ROLES.ANONYMOUS) return false;
+    return (MATRIX[resource.entity]?.[ROLES.ANONYMOUS] ?? []).includes(scope);
+  }
+
+  /**
    * Matrix lookup with PUBLIC inheritance.
    *
    * Every role implicitly inherits the entity's `PUBLIC` scopes —

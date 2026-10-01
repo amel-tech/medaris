@@ -23,9 +23,10 @@ export default mergeConfig(
       exclude: ["node_modules/**", "dist/**"],
       coverage: {
         // Only what these suites are about. The rest of the library (logger,
-        // excel, pipes, throttler, auth-guard) has no unit suite yet; listing
-        // it here would report it at 0% without saying anything new.
-        include: ["src/authz/**/*.ts"],
+        // excel, pipes, throttler, the rest of auth-guard) has no unit suite
+        // yet; listing it here would report it at 0% without saying anything
+        // new. `auth-guard.ts` itself has one since MDRS-45.
+        include: ["src/authz/**/*.ts", "src/auth-guard/auth-guard.ts"],
         exclude: ["src/**/index.ts"],
       },
     },
