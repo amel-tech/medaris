@@ -9,6 +9,17 @@
     },
     "process": {
       "outputs": ["{projectRoot}/theme/main.css"]
+    },
+    "test": {
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/libs/ui/styles/theme.css",
+        "{workspaceRoot}/libs/ui/package.json",
+        {
+          "runtime": "cat design-system/tokens/*.css"
+        }
+      ]
     }
   }
 }
