@@ -9,8 +9,14 @@ import {
 } from "@medaris/icons";
 import { Input } from "@medaris/ui/components/input";
 import { Label } from "@medaris/ui/components/label";
-import { resolveMeetingPlatform } from "@medaris/utils";
+import {
+  type MeetingUrlProblem,
+  meetingUrlProblem,
+  normalizeMeetingUrl,
+  resolveMeetingPlatform,
+} from "@medaris/utils";
 import { useTranslations } from "next-intl";
+import { useId, useState } from "react";
 
 export type AgendaStepDraft = { time: string; title: string };
 
@@ -35,6 +41,13 @@ export const toMinutes = (value: string): number | undefined => {
     ? minutes
     : undefined;
 };
+
+/** The inline explanation for each `meetingUrlProblem` result. */
+export const MEETING_URL_PROBLEM_KEY = {
+  "not-https": "NewCoursePage.meetingUrlNotHttps",
+  "too-long": "NewCoursePage.meetingUrlTooLong",
+  invalid: "NewCoursePage.meetingUrlInvalid",
+} as const satisfies Record<MeetingUrlProblem, string>;
 
 export const emptyLiveLesson = (): LiveLessonDraft => ({
   title: "",
@@ -65,13 +78,25 @@ export const LiveLessonEditor = ({
 }) => {
   const t = useTranslations("nizam");
   const platform = resolveMeetingPlatform(draft.meetingUrl);
+  // Said inline while the link is still being fixed, rather than as a toast
+  // when the course is published (MDRS-111). A wrong scheme or length shows
+  // at once; "not a link" waits until the field is left (or shows straight
+  // away for a stored link), so the first characters typed are not flagged.
+  const urlProblem = meetingUrlProblem(draft.meetingUrl);
+  const [urlTouched, setUrlTouched] = useState(Boolean(draft.meetingUrl));
+  const showUrlProblem =
+    urlProblem !== null && (urlTouched || urlProblem !== "invalid");
+  const urlProblemId = useId();
   // An empty length is allowed (no duration); anything else must be a
   // length tedrisat accepts, or the save would silently drop it.
   const durationValid =
     !draft.durationMinutes.trim() ||
     toMinutes(draft.durationMinutes) !== undefined;
   const canSave = Boolean(
-    draft.title.trim() && draft.meetingUrl.trim() && durationValid
+    draft.title.trim() &&
+      draft.meetingUrl.trim() &&
+      !urlProblem &&
+      durationValid
   );
 
   const patch = (p: Partial<LiveLessonDraft>) => onChange({ ...draft, ...p });
@@ -156,7 +181,15 @@ export const LiveLessonEditor = ({
           className="font-mono text-[13px]"
           placeholder="https://meet.google.com/…"
           value={draft.meetingUrl}
+          aria-invalid={showUrlProblem || undefined}
+          aria-describedby={showUrlProblem ? urlProblemId : undefined}
           onChange={(e) => patch({ meetingUrl: e.target.value })}
+          // Trimmed and given `https://` when the pasted link has no scheme,
+          // so what the müderris sees is what is saved.
+          onBlur={(e) => {
+            setUrlTouched(true);
+            patch({ meetingUrl: normalizeMeetingUrl(e.target.value) });
+          }}
         />
         {draft.meetingUrl.trim() && (
           <div className="mt-2 flex items-center gap-2">
@@ -176,6 +209,15 @@ export const LiveLessonEditor = ({
               {t("NewCoursePage.platformDetected")}
             </span>
           </div>
+        )}
+        {showUrlProblem && (
+          <p
+            id={urlProblemId}
+            role="alert"
+            className="mt-1.5 text-xs text-destructive"
+          >
+            {t(MEETING_URL_PROBLEM_KEY[urlProblem])}
+          </p>
         )}
       </div>
 
