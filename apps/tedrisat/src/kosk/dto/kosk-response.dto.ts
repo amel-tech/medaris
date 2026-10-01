@@ -1,17 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
-/** The medrese a köşk is affiliated with (MDRS-106). */
-export class KoskMadrasahRef {
-  @ApiProperty()
-  id!: string;
-
-  @ApiProperty({ example: "Hadis ve Siyer Medresesi" })
-  name!: string;
-
-  @ApiProperty({ example: "hadis-ve-siyer" })
-  handle!: string;
-}
-
 export class KoskResponse {
   @ApiProperty()
   id!: string;
@@ -27,20 +15,6 @@ export class KoskResponse {
     description: "Who manages the köşk, oldest first; never empty (MDRS-126)",
   })
   managerIds!: string[];
-
-  @ApiPropertyOptional({
-    type: String,
-    nullable: true,
-    description: "The affiliated medrese's id; null for a standalone köşk",
-  })
-  madrasahId!: string | null;
-
-  @ApiPropertyOptional({
-    type: KoskMadrasahRef,
-    nullable: true,
-    description: "The affiliated medrese; null for a standalone köşk",
-  })
-  madrasah!: KoskMadrasahRef | null;
 
   @ApiProperty({ example: "Süleymaniye Köşkü" })
   name!: string;

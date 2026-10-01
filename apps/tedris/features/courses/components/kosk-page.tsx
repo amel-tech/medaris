@@ -72,17 +72,6 @@ export const KoskPage = async ({
               </span>
             )}
           </div>
-          {kosk.madrasah && (
-            <div className="mb-1.5 text-xs text-muted-foreground">
-              {t("KoskPage.madrasah")}:{" "}
-              <Link
-                href={`/madrasahs/${kosk.madrasah.id}`}
-                className="font-medium text-foreground hover:underline"
-              >
-                {kosk.madrasah.name}
-              </Link>
-            </div>
-          )}
           {kosk.description && (
             <p className="mb-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
               {kosk.description}

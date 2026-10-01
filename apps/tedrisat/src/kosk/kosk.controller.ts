@@ -95,7 +95,7 @@ export class KoskController {
   @ApiOperation({
     summary: "Get a paginated list of köşks",
     description:
-      "Open to callers with no token (MDRS-122). Lists every köşk except the unlisted ones (`isPrivate`): an unlisted köşk is in no list, for anyone — it is reached by its link. `managedBy=me` narrows the list, and its `total`, to the köşks the caller manages (`kosk_managers`, MDRS-108), unlisted ones included — nizam's köşk list; it needs a token. `madrasahId` narrows it to the köşks affiliated with that medrese.",
+      "Open to callers with no token (MDRS-122). Lists every köşk except the unlisted ones (`isPrivate`): an unlisted köşk is in no list, for anyone — it is reached by its link. `managedBy=me` narrows the list, and its `total`, to the köşks the caller manages (KOSK_NAZIM, MDRS-108, MDRS-134), unlisted ones included — nizam's köşk list; it needs a token. `madrasahId` narrows it to the köşks that medrese holds a hosting right in (MDRS-134).",
     operationId: "getAllKosks",
   })
   @ApiQuery({ name: "page", required: false, type: Number })
@@ -197,8 +197,7 @@ export class KoskController {
   @ApiNotFoundResponse()
   @Patch(":id")
   // `byExistingKosk`, not `byParam`: a malformed or unknown id is a 404 on
-  // the routes MDRS-106/124/126 moved to `@Authz`; a nazır of the köşk's
-  // medrese gets `EDIT` from the matrix (MDRS-106).
+  // the routes MDRS-106/124/126 moved to `@Authz`.
   @Authz(SCOPES.EDIT, byExistingKosk)
   async update(
     @Req() request: AuthorizedRequest,
@@ -206,25 +205,6 @@ export class KoskController {
     @Body() koskDto: UpdateKoskDto
   ): Promise<KoskResponse> {
     await this.koskService.update(id, koskDto);
-    return this.koskService.findById(id, request.user.sub);
-  }
-
-  @ApiOperation({
-    summary: "Detach a köşk from its medrese",
-    description:
-      "The köşk's own way out of a medrese: its manager (or a nazır of that medrese) makes it standalone again.",
-    operationId: "leaveMadrasah",
-  })
-  @ApiOkResponse({ type: KoskResponse })
-  @ApiForbiddenResponse()
-  @ApiNotFoundResponse()
-  @Delete(":id/madrasah")
-  @Authz(SCOPES.EDIT, byExistingKosk)
-  async leaveMadrasah(
-    @Req() request: AuthorizedRequest,
-    @Param("id", ParseUUIDPipe) id: string
-  ): Promise<KoskResponse> {
-    await this.koskService.leaveMadrasah(id);
     return this.koskService.findById(id, request.user.sub);
   }
 
@@ -249,7 +229,7 @@ export class KoskController {
   @ApiOperation({
     summary: "Make a user a manager of the köşk",
     description:
-      "Idempotent. Open to the köşk's managers and SYSTEM_ADMIN — not to a nazır of its medrese (MDRS-126).",
+      "Idempotent. Open to the köşk's managers and SYSTEM_ADMIN (MDRS-126).",
     operationId: "addKoskManager",
   })
   @ApiCreatedResponse({ type: KoskResponse })

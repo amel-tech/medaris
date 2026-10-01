@@ -9,13 +9,15 @@ import {
   enrollments,
   lessons,
 } from "../../src/database/schema/course.schema";
-import { koskManagers, kosks } from "../../src/database/schema/kosk.schema";
+import { kosks } from "../../src/database/schema/kosk.schema";
+import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
 import {
   createTestApp,
   OTHER_USER_ID,
   TEST_USER_ID,
 } from "../helpers/test-app.helper";
 import {
+  assignRole,
   COURSE_TREE_TABLES,
   TestDatabaseUtils,
 } from "../helpers/test-database.helper";
@@ -357,10 +359,11 @@ describe("POST /courses/:courseId/sessions/batch (MDRS-109)", () => {
       .insert(kosks)
       .values({ ownerId: OTHER_USER_ID, name: "Başka Köşk" })
       .returning();
-    await databaseService.db.insert(koskManagers).values({
-      koskId: otherKosk.id,
+    await assignRole(databaseService.db, {
       userId: OTHER_USER_ID,
-      addedBy: OTHER_USER_ID,
+      role: ASSIGNED_ROLES.KOSK_NAZIM,
+      scopeId: otherKosk.id,
+      grantedBy: OTHER_USER_ID,
     });
     const [otherCourse] = await databaseService.db
       .insert(courses)

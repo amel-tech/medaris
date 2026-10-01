@@ -1,6 +1,4 @@
 import { Injectable } from "@nestjs/common";
-import { IKoskWithStats } from "../kosk/kosk.repository.interface";
-import { KoskService } from "../kosk/kosk.service";
 import { MadrasahHandleTakenError } from "./errors/madrasah-handle-taken.error";
 import { MadrasahNotFoundError } from "./errors/madrasah-not-found.error";
 import { NazirNotFoundError } from "./errors/nazir-not-found.error";
@@ -36,10 +34,7 @@ function isUniqueViolation(error: unknown): boolean {
  */
 @Injectable()
 export class MadrasahService {
-  constructor(
-    private readonly madrasahRepo: MadrasahRepository,
-    private readonly koskService: KoskService
-  ) {}
+  constructor(private readonly madrasahRepo: MadrasahRepository) {}
 
   async findAll(page: number, limit: number): Promise<IPaginatedMadrasahs> {
     const offset = (page - 1) * limit;
@@ -60,14 +55,9 @@ export class MadrasahService {
     return this.madrasahRepo.exists(id);
   }
 
-  /** True if `userId` is listed as a nazır of the medrese. */
+  /** True if `userId` is a nazır (MEDRESE_BASMUDERRIS) of the medrese. */
   async isNazir(madrasahId: string, userId: string): Promise<boolean> {
     return this.madrasahRepo.isNazir(madrasahId, userId);
-  }
-
-  /** True if `userId` is a nazır of the medrese the köşk is affiliated with. */
-  async isNazirOfKosk(koskId: string, userId: string): Promise<boolean> {
-    return this.madrasahRepo.isNazirOfKosk(koskId, userId);
   }
 
   async create(input: ICreateMadrasah): Promise<IMadrasahWithNazirs> {
@@ -116,41 +106,29 @@ export class MadrasahService {
     return true;
   }
 
-  /** Idempotent: inviting an existing nazır again changes nothing. */
+  /**
+   * Idempotent: inviting an existing nazır again changes nothing. `actorId`
+   * is recorded as the granter.
+   */
   async addNazir(
     madrasahId: string,
-    userId: string
+    userId: string,
+    actorId: string
   ): Promise<IMadrasahWithNazirs> {
-    await this.madrasahRepo.addNazir(madrasahId, userId);
+    if (!(await this.madrasahRepo.addNazir(madrasahId, userId, actorId))) {
+      throw new MadrasahNotFoundError(madrasahId);
+    }
     return this.findById(madrasahId);
   }
 
   async removeNazir(
     madrasahId: string,
-    userId: string
+    userId: string,
+    actorId: string
   ): Promise<IMadrasahWithNazirs> {
-    if (!(await this.madrasahRepo.removeNazir(madrasahId, userId))) {
+    if (!(await this.madrasahRepo.removeNazir(madrasahId, userId, actorId))) {
       throw new NazirNotFoundError(madrasahId, userId);
     }
     return this.findById(madrasahId);
-  }
-
-  /** Returns the köşk as `userId` now sees it, medrese included. */
-  async affiliateKosk(
-    madrasahId: string,
-    koskId: string,
-    userId: string
-  ): Promise<IKoskWithStats> {
-    await this.koskService.affiliate(koskId, madrasahId);
-    return this.koskService.findById(koskId, userId);
-  }
-
-  async detachKosk(
-    madrasahId: string,
-    koskId: string,
-    userId: string
-  ): Promise<IKoskWithStats> {
-    await this.koskService.detach(koskId, madrasahId);
-    return this.koskService.findById(koskId, userId);
   }
 }

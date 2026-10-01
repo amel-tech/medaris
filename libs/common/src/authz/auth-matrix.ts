@@ -32,7 +32,8 @@ import { ENTITIES, Entity, ROLES, Role, SCOPES, Scope } from "./scopes";
  * port, 9 of the 19 rows below were unreachable because no `RoleResolver`
  * implementation could produce that role for that entity yet; MDRS-106 made
  * the two MADRASAH_NAZIR rows on `kosk` and `madrasah` reachable, leaving 7,
- * each marked `// UNREACHABLE` with the reason. An unreachable row denies
+ * each marked `// UNREACHABLE` with the reason. MDRS-134 removed the `kosk`
+ * one with the köşk affiliation it depended on, leaving 18 rows. An unreachable row denies
  * everyone but SYSTEM_ADMIN today — it grants nothing until its resolver
  * exists, so keeping it here is behaviour-neutral. `MATRIX.ijazah` is the
  * one to read carefully: it has no `PUBLIC` row at all, and
@@ -118,11 +119,10 @@ export const MATRIX: Record<Entity, Partial<Record<Role, Scope[]>>> = {
 
   // Plan §4.3 — Kosk
   [ENTITIES.KOSK]: {
-    // Reachable since MDRS-106: `resolveKoskRole` returns it to a nazır of
-    // the medrese the köşk is affiliated with (`kosks.madrasah_id`). A
-    // strict subset of KOSK_MANAGER, so an owner who is also a nazır loses
-    // nothing by being resolved as the manager.
-    [ROLES.MADRASAH_NAZIR]: [SCOPES.VIEW, SCOPES.EDIT, SCOPES.MANAGE_COURSES],
+    // No MADRASAH_NAZIR row (MDRS-134). MDRS-106 gave a nazır of the köşk's
+    // medrese VIEW, EDIT and MANAGE_COURSES here through `kosks.madrasah_id`;
+    // role model v2 (MDRS-133) links a medrese to a köşk only by a hosting
+    // right, which gives the medrese no power over the köşk.
     // No `DELETE` (MDRS-124): deleting a köşk is SYSTEM_ADMIN's alone.
     // `MANAGE_KOSK_MANAGERS` (MDRS-126) is on this row only — see scopes.ts.
     [ROLES.KOSK_MANAGER]: [
