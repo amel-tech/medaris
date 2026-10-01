@@ -49,7 +49,8 @@ describe("KoskController (e2e)", () => {
           expect(res.body).toHaveProperty("name", "Süleymaniye Köşkü");
           expect(res.body).toHaveProperty("ownerId", TEST_USER_ID);
           expect(res.body).toHaveProperty("coverHue", 215);
-          expect(res.body).toHaveProperty("isPrivate", true);
+          // Listed unless asked otherwise (MDRS-122, migration 0022).
+          expect(res.body).toHaveProperty("isPrivate", false);
           // discovery defaults + derived stats
           expect(res.body).toHaveProperty("tags", []);
           expect(res.body).toHaveProperty("verified", false);

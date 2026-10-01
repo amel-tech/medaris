@@ -1580,7 +1580,17 @@ describe("Course content access (MDRS-103, e2e)", () => {
     await getCourse(STRANGER_ID, "not-a-uuid").expect(400);
   });
 
-  it("still requires a token", async () => {
-    await http().get(`/courses/${courseId}`).expect(401);
+  // MDRS-122 opened the page to callers with no token: they get the same
+  // filtered body as a signed-in stranger, and a token that is present but
+  // broken is still a 401, never read as anonymous.
+  it("gives a caller with no token the filtered body, and a broken token a 401", async () => {
+    const res = await http().get(`/courses/${courseId}`).expect(200);
+    expectLocked(res.body);
+    expect(res.body.enrollment).toBeNull();
+    expect(await auditRows()).toEqual([]);
+    await http()
+      .get(`/courses/${courseId}`)
+      .set("Authorization", "Bearer not-a-jwt")
+      .expect(401);
   });
 });

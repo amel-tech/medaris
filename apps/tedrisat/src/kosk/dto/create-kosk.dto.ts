@@ -62,7 +62,12 @@ export class CreateKoskDto {
   @KoskCoverHueRules()
   coverHue?: number;
 
-  @ApiPropertyOptional({ example: true })
+  @ApiPropertyOptional({
+    example: false,
+    default: false,
+    description:
+      "Unlisted (MDRS-122): in no list or search, opened by its link to signed-in callers only (404 without a token), and every enrollment in its courses waits for approval. New köşks are listed unless this says otherwise.",
+  })
   @OmittedButNotNull()
   @KoskIsPrivateRules()
   isPrivate?: boolean;

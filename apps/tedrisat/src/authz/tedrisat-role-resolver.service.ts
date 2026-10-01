@@ -8,12 +8,14 @@ import {
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { CourseRepository } from "../course/course.repository";
+import { CourseStatus } from "../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { CourseNotFoundError } from "../course/errors/course-not-found.error";
 import { DeckNotFoundError } from "../flashcard/errors/deck-not-found.error";
 import { FlashcardDeckService } from "../flashcard/flashcard-deck.service";
 import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
 import { KoskService } from "../kosk/kosk.service";
+import { MadrasahNotFoundError } from "../madrasah/errors/madrasah-not-found.error";
 import { MadrasahService } from "../madrasah/madrasah.service";
 
 const UUID_REGEX =
@@ -96,17 +98,98 @@ export class TedrisatRoleResolver implements RoleResolver {
 
   /**
    * The caller with no token (MDRS-45). Only reached for an `@AuthzPublic()`
-   * handler. Decks are the one entity opened so far; köşk, medrese and course
-   * pages are MDRS-122's, which reuses this hook rather than a second
-   * mechanism. Every other entity answers `null` and the guard refuses.
+   * handler. Decks (MDRS-45) and the köşk, medrese and course pages
+   * (MDRS-122) are opened here; ijazah and anything else answer `null` and
+   * the guard refuses.
+   *
+   * Every branch answers a resource the anonymous caller may not see with the
+   * module's own 404 — the same code and message as a resource that is not
+   * there — so a guessed id tells them nothing about what exists.
    */
   async resolveAnonymous(resource: ResourceRef): Promise<AnonymousRole | null> {
     switch (resource.entity) {
       case ENTITIES.FLASHCARD_DECK:
         return this.resolveAnonymousDeckRole(resource);
+      case ENTITIES.KOSK:
+        return this.resolveAnonymousKoskRole(resource);
+      case ENTITIES.COURSE:
+        return this.resolveAnonymousCourseRole(resource);
+      case ENTITIES.MADRASAH:
+        return this.resolveAnonymousMadrasahRole(resource);
       default:
         return null;
     }
+  }
+
+  /**
+   * Köşk, for a caller with no token (MDRS-122).
+   *
+   * - Non-UUID id: ANONYMOUS, so `ParseUUIDPipe` gives everyone the same 400.
+   *   Safe: the ANONYMOUS row holds VIEW alone.
+   * - Köşk missing, or unlisted (`is_private`): `KoskNotFoundError`. An
+   *   unlisted köşk opens by its link to a signed-in caller only; without a
+   *   token it is indistinguishable from one that does not exist.
+   * - Otherwise: ANONYMOUS.
+   */
+  private async resolveAnonymousKoskRole(
+    resource: ResourceRef
+  ): Promise<AnonymousRole> {
+    if (!UUID_REGEX.test(resource.id)) return ROLES.ANONYMOUS;
+
+    const kosk = await this.koskService.findVisibility(resource.id);
+    if (!kosk || kosk.isPrivate) throw new KoskNotFoundError(resource.id);
+    return ROLES.ANONYMOUS;
+  }
+
+  /**
+   * Course, for a caller with no token (MDRS-122). The body they then get is
+   * `CourseService.present`'s filtered one (MDRS-103's `withoutContent`):
+   * ANONYMOUS holds no `VIEW_DETAILS`.
+   *
+   * - Non-UUID id: ANONYMOUS, for the pipe's 400.
+   * - `CourseNotFoundError`, one answer for all of: no such course; a DRAFT;
+   *   a hidden (archived) course; any course of an unlisted köşk. A signed-in
+   *   stranger already gets 404 for the first three (`getDetail`); the
+   *   fourth is the köşk's own rule carried down to its courses, so a course
+   *   link does not open what the köşk link would not.
+   * - Otherwise: ANONYMOUS.
+   */
+  private async resolveAnonymousCourseRole(
+    resource: ResourceRef
+  ): Promise<AnonymousRole> {
+    if (!UUID_REGEX.test(resource.id)) return ROLES.ANONYMOUS;
+
+    const course = await this.courseRepo.findPublicVisibility(resource.id);
+    if (
+      !course ||
+      course.status !== CourseStatus.PUBLISHED ||
+      course.archived ||
+      course.koskIsPrivate
+    ) {
+      throw new CourseNotFoundError(resource.id);
+    }
+    return ROLES.ANONYMOUS;
+  }
+
+  /**
+   * Medrese, for a caller with no token (MDRS-122). A medrese has no
+   * unlisted or passive state, so it is open once it exists.
+   *
+   * - Non-UUID id: ANONYMOUS — the list route's `any` sentinel, and the
+   *   pipe's 400 for a malformed id.
+   * - Medrese missing: `MadrasahNotFoundError`. The controller's
+   *   `byExistingMadrasah` answers that first; this keeps the resolver from
+   *   depending on it.
+   */
+  private async resolveAnonymousMadrasahRole(
+    resource: ResourceRef
+  ): Promise<AnonymousRole> {
+    if (!UUID_REGEX.test(resource.id)) return ROLES.ANONYMOUS;
+
+    if (!(await this.madrasahService.exists(resource.id))) {
+      throw new MadrasahNotFoundError(resource.id);
+    }
+    return ROLES.ANONYMOUS;
   }
 
   /**

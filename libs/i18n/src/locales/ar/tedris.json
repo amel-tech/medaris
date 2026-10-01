@@ -52,7 +52,8 @@
     "leaveDescription": "يُحذف تسجيلك وتقدّمك. يمكنك التسجيل مجددًا لاحقًا.",
     "leaveConfirm": "مغادرة",
     "leaveCancel": "إلغاء",
-    "left": "لقد غادرت الدرس."
+    "left": "لقد غادرت الدرس.",
+    "signInToApply": "سجّل الدخول للتقديم"
   },
   "CreateDeckButtonDialog": {
     "cancel": "يلغي",
@@ -217,7 +218,7 @@
   "KoskPage": {
     "kosks": "Köşkler",
     "uncategorized": "Diğer",
-    "private": "Özel",
+    "private": "غير مُدرَج",
     "courses": "Ders",
     "students": "Talebe",
     "filterAll": "Tümü",
@@ -231,7 +232,8 @@
     "coursesCount": "{count} ders",
     "completed": "Tamamlandı",
     "percentComplete": "%{percent} tamamlandı",
-    "enroll": "Kayıt ol"
+    "enroll": "Kayıt ol",
+    "madrasah": "المدرسة"
   },
   "LearningPage": {
     "title": "Öğrenme",
@@ -386,5 +388,9 @@
     "applying": "جارٍ الإرسال...",
     "pending": "طلبك بانتظار الموافقة",
     "backToCourse": "العودة إلى صفحة الدورة"
+  },
+  "MadrasahPage": {
+    "kosks": "الأكشاك",
+    "noKosks": "لا توجد أكشاك مُدرَجة في هذه المدرسة."
   }
 }

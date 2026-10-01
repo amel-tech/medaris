@@ -54,7 +54,11 @@ export class KoskResponse {
   @ApiProperty({ example: 215 })
   coverHue!: number;
 
-  @ApiProperty({ example: true })
+  @ApiProperty({
+    example: false,
+    description:
+      "Unlisted (MDRS-122): in no list or search, opened by its link to signed-in callers only, and every enrollment in its courses waits for approval.",
+  })
   isPrivate!: boolean;
 
   @ApiPropertyOptional({ type: String, example: "Tefsir & Hadis" })

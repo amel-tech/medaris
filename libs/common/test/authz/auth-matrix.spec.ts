@@ -75,11 +75,23 @@ describe("auth-matrix structural invariants", () => {
     ]);
   });
 
-  it("flashcard-deck is the only entity with an ANONYMOUS row — MDRS-122 opens the rest", () => {
+  // MDRS-122 opened köşk, medrese and course pages to callers with no token.
+  // Reading is all any of them may do: no ENROLL, no DONATE, no create scope,
+  // and nothing from the PUBLIC row is inherited (see `canAnonymous`).
+  it("ANONYMOUS rows: deck, köşk, medrese and course, each VIEW and nothing else (MDRS-45, MDRS-122)", () => {
     const withAnonymous = Object.entries(MATRIX)
       .filter(([, rows]) => rows[ROLES.ANONYMOUS] !== undefined)
-      .map(([entity]) => entity);
-    expect(withAnonymous).toEqual([ENTITIES.FLASHCARD_DECK]);
+      .map(([entity, rows]) => [entity, rows[ROLES.ANONYMOUS]]);
+    expect(Object.fromEntries(withAnonymous)).toEqual({
+      [ENTITIES.COURSE]: [SCOPES.VIEW],
+      [ENTITIES.KOSK]: [SCOPES.VIEW],
+      [ENTITIES.MADRASAH]: [SCOPES.VIEW],
+      [ENTITIES.FLASHCARD_DECK]: [SCOPES.VIEW],
+    });
+  });
+
+  it("ijazah has no ANONYMOUS row (MDRS-122 opened intro pages only)", () => {
+    expect(MATRIX[ENTITIES.IJAZAH][ROLES.ANONYMOUS]).toBeUndefined();
   });
 
   it("course PUBLIC grants view and enroll — the page is public, the content is not (MDRS-103)", () => {

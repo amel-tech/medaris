@@ -52,7 +52,8 @@
     "leaveDescription": "Your enrollment and progress are deleted. You can enroll again later.",
     "leaveConfirm": "Leave",
     "leaveCancel": "Cancel",
-    "left": "You left the course."
+    "left": "You left the course.",
+    "signInToApply": "Sign in to apply"
   },
   "CreateDeckButtonDialog": {
     "cancel": "Cancel",
@@ -242,7 +243,7 @@
   "KoskPage": {
     "kosks": "Köşkler",
     "uncategorized": "Diğer",
-    "private": "Özel",
+    "private": "Unlisted",
     "courses": "Ders",
     "students": "Talebe",
     "filterAll": "Tümü",
@@ -256,7 +257,8 @@
     "coursesCount": "{count} ders",
     "completed": "Tamamlandı",
     "percentComplete": "%{percent} tamamlandı",
-    "enroll": "Kayıt ol"
+    "enroll": "Kayıt ol",
+    "madrasah": "Medrese"
   },
   "LearningPage": {
     "title": "Öğrenme",
@@ -411,5 +413,9 @@
     "applying": "Sending...",
     "pending": "Your application is awaiting approval",
     "backToCourse": "Back to the course"
+  },
+  "MadrasahPage": {
+    "kosks": "Köşks",
+    "noKosks": "This medrese has no listed köşks."
   }
 }

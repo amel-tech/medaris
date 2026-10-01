@@ -197,8 +197,23 @@ describe("AuthzService.can", () => {
         resolveAnonymous: vi.fn().mockResolvedValue(ROLES.ANONYMOUS),
       });
       await expect(
-        svc.canAnonymous({ entity: ENTITIES.COURSE, id: "c-1" }, SCOPES.VIEW)
+        svc.canAnonymous({ entity: ENTITIES.IJAZAH, id: "i-1" }, SCOPES.VIEW)
       ).resolves.toBe(false);
+    });
+
+    it("grants an opened course VIEW but not ENROLL — applying needs an account (MDRS-122)", async () => {
+      const svc = new AuthzService({
+        resolve: vi.fn(),
+        resolveAnonymous: vi.fn().mockResolvedValue(ROLES.ANONYMOUS),
+      });
+      const course = { entity: ENTITIES.COURSE, id: "c-1" };
+      await expect(svc.canAnonymous(course, SCOPES.VIEW)).resolves.toBe(true);
+      await expect(svc.canAnonymous(course, SCOPES.ENROLL)).resolves.toBe(
+        false
+      );
+      await expect(svc.canAnonymous(course, SCOPES.VIEW_DETAILS)).resolves.toBe(
+        false
+      );
     });
   });
 

@@ -313,16 +313,27 @@ export interface ICourseRef {
 }
 
 export interface ICourseRepository {
+  /** `userId` null is a caller with no token (MDRS-122): no enrollment. */
   findSummariesByKosk(
     koskId: string,
-    userId: string,
+    userId: string | null,
     includeDrafts: boolean,
     archived?: boolean
   ): Promise<ICourseSummary[]>;
-  findDetailById(id: string, userId: string): Promise<ICourseDetail | null>;
+  /** `userId` null is a caller with no token (MDRS-122): no enrollment. */
+  findDetailById(
+    id: string,
+    userId: string | null
+  ): Promise<ICourseDetail | null>;
   findEnrolledByUser(userId: string): Promise<IEnrolledCourse[]>;
   create(course: ICreateCourse): Promise<ICourseDetail>;
   findKoskId(id: string): Promise<string | null>;
+  /** Status, hidden, and the köşk's `is_private`; null for no course (MDRS-122). */
+  findPublicVisibility(id: string): Promise<{
+    status: CourseStatus;
+    archived: boolean;
+    koskIsPrivate: boolean;
+  } | null>;
   update(id: string, updates: IUpdateCourse): Promise<ICourse | null>;
   replace(
     id: string,
