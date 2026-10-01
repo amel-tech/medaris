@@ -390,5 +390,18 @@
     "title": "This deck isn't available",
     "description": "It may have been deleted, or its owner keeps it private.",
     "backToDecks": "Back to decks"
+  },
+  "LessonLocked": {
+    "title": "This lesson is for enrolled students",
+    "description": {
+      "signIn": "Sign in to see the lesson's content, meeting link and resources.",
+      "apply": "A lesson's content, meeting link and resources are open to the course's enrolled students. The course page shows its programme.",
+      "pending": "Your application has been sent to the köşk manager. Once it is approved, the lesson opens here."
+    },
+    "signIn": "Sign in",
+    "apply": "Apply",
+    "applying": "Sending...",
+    "pending": "Your application is awaiting approval",
+    "backToCourse": "Back to the course"
   }
 }

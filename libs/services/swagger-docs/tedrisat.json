@@ -1025,6 +1025,7 @@
     },
     "/courses/{id}": {
       "get": {
+        "description": "Any signed-in caller may read the course page: its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak` and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103).",
         "operationId": "getCourseById",
         "parameters": [
           {
@@ -1056,7 +1057,7 @@
             "bearer": []
           }
         ],
-        "summary": "Get a course with its full syllabus, müderris and resources",
+        "summary": "Get a course with its syllabus, müderris and resources",
         "tags": [
           "courses"
         ]
@@ -4437,16 +4438,19 @@
             "description": "Length of the lesson in minutes; null when not set."
           },
           "kaynak": {
-            "type": "string"
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
           },
           "scheduledAt": {
             "format": "date-time",
             "type": "string"
           },
           "meetingUrl": {
-            "type": "string"
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
           },
           "agenda": {
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AgendaStepResponse"
@@ -4524,7 +4528,8 @@
             "type": "string"
           },
           "url": {
-            "type": "string"
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
           },
           "orderIndex": {
             "type": "number"
@@ -4639,6 +4644,10 @@
           },
           "enrollment": {
             "$ref": "#/components/schemas/EnrollmentResponse"
+          },
+          "contentLocked": {
+            "type": "boolean",
+            "description": "True when the caller may not read the course's content and every content field was left out — the client shows the locked state (MDRS-103)."
           }
         },
         "required": [
@@ -4658,7 +4667,8 @@
           "updatedAt",
           "weeks",
           "muderris",
-          "resources"
+          "resources",
+          "contentLocked"
         ]
       },
       "EnrolledCourseResponse": {
@@ -5097,16 +5107,19 @@
             "description": "Length of the lesson in minutes; null when not set."
           },
           "kaynak": {
-            "type": "string"
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
           },
           "scheduledAt": {
             "format": "date-time",
             "type": "string"
           },
           "meetingUrl": {
-            "type": "string"
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
           },
           "agenda": {
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AgendaStepResponse"
@@ -5341,16 +5354,19 @@
             "description": "Length of the lesson in minutes; null when not set."
           },
           "kaynak": {
-            "type": "string"
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
           },
           "scheduledAt": {
             "format": "date-time",
             "type": "string"
           },
           "meetingUrl": {
-            "type": "string"
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
           },
           "agenda": {
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AgendaStepResponse"
