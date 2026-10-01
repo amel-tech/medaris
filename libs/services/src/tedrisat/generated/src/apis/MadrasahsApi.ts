@@ -16,6 +16,7 @@
 import * as runtime from '../runtime';
 import type {
   CreateMadrasahDto,
+  MadrasahOverviewResponse,
   MadrasahResponse,
   PaginatedMadrasahResponse,
   UpdateMadrasahDto,
@@ -23,6 +24,8 @@ import type {
 import {
     CreateMadrasahDtoFromJSON,
     CreateMadrasahDtoToJSON,
+    MadrasahOverviewResponseFromJSON,
+    MadrasahOverviewResponseToJSON,
     MadrasahResponseFromJSON,
     MadrasahResponseToJSON,
     PaginatedMadrasahResponseFromJSON,
@@ -50,6 +53,10 @@ export interface GetAllMadrasahsRequest {
 }
 
 export interface GetMadrasahByIdRequest {
+    id: string;
+}
+
+export interface GetMadrasahOverviewRequest {
     id: string;
 }
 
@@ -295,6 +302,50 @@ export class MadrasahsApi extends runtime.BaseAPI {
      */
     async getMadrasahById(requestParameters: GetMadrasahByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahResponse> {
         const response = await this.getMadrasahByIdRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Open to callers with no token (MDRS-122). The medrese\'s published courses in listed köşks, each with its müderrisler, the caller\'s own enrollment state and the next session (never the meeting link); the köşks those courses are in; and the başmüderris.
+     * Get what a medrese\'s page shows
+     */
+    async getMadrasahOverviewRaw(requestParameters: GetMadrasahOverviewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahOverviewResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getMadrasahOverview().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/overview`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahOverviewResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Open to callers with no token (MDRS-122). The medrese\'s published courses in listed köşks, each with its müderrisler, the caller\'s own enrollment state and the next session (never the meeting link); the köşks those courses are in; and the başmüderris.
+     * Get what a medrese\'s page shows
+     */
+    async getMadrasahOverview(requestParameters: GetMadrasahOverviewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahOverviewResponse> {
+        const response = await this.getMadrasahOverviewRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

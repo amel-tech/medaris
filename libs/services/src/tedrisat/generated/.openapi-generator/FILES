@@ -61,6 +61,11 @@ src/models/KoskResponse.ts
 src/models/LabelStatsResponse.ts
 src/models/LessonMutationResponse.ts
 src/models/LessonResponse.ts
+src/models/MadrasahCourseMuderrisResponse.ts
+src/models/MadrasahCourseResponse.ts
+src/models/MadrasahHeadMuderrisResponse.ts
+src/models/MadrasahKoskRefResponse.ts
+src/models/MadrasahOverviewResponse.ts
 src/models/MadrasahResponse.ts
 src/models/ManagedKoskRef.ts
 src/models/MeResponse.ts

@@ -33,8 +33,10 @@ import {
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
+import { PublicRequest } from "../course/interfaces/authorized-request.interface";
 import { AuthorizedRequest } from "../kosk/interfaces/authorized-request.interface";
 import { CreateMadrasahDto } from "./dto/create-madrasah.dto";
+import { MadrasahOverviewResponse } from "./dto/madrasah-overview-response.dto";
 import { MadrasahResponse } from "./dto/madrasah-response.dto";
 import { PaginatedMadrasahResponse } from "./dto/paginated-madrasah-response.dto";
 import { UpdateMadrasahDto } from "./dto/update-madrasah.dto";
@@ -120,6 +122,24 @@ export class MadrasahController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahResponse> {
     return this.madrasahService.findById(id);
+  }
+
+  @ApiOperation({
+    summary: "Get what a medrese's page shows",
+    description:
+      "Open to callers with no token (MDRS-122). The medrese's published courses in listed köşks, each with its müderrisler, the caller's own enrollment state and the next session (never the meeting link); the köşks those courses are in; and the başmüderris.",
+    operationId: "getMadrasahOverview",
+  })
+  @ApiOkResponse({ type: MadrasahOverviewResponse })
+  @ApiNotFoundResponse()
+  @Get(":id/overview")
+  @Authz(SCOPES.VIEW, byExistingMadrasah)
+  @AuthzPublic()
+  async findOverview(
+    @Req() request: PublicRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<MadrasahOverviewResponse> {
+    return this.madrasahService.findOverview(id, request.user?.sub ?? null);
   }
 
   @ApiOperation({
