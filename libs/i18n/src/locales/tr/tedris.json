@@ -323,5 +323,61 @@
     "istanbul": "İstanbul",
     "yourTime": "{time} senin saatinle",
     "minutes": "{minutes} dk"
+  },
+  "AddToCalendar": {
+    "button": "Takvime ekle",
+    "google": "Google Takvim",
+    "apple": "Apple Takvim / Outlook (.ics)",
+    "linkIsOnPage": "Toplantı bağlantısı oturum sayfasındadır:"
+  },
+  "CalendarSubscription": {
+    "link": "Takvim aboneliği",
+    "breadcrumb": "Takvim aboneliği",
+    "title": "Takvim aboneliği",
+    "subtitle": "Derslerinin oturumları Google Takvim'de ya da Apple Takvim'de kendiliğinden görünsün. Bir oturum taşınır ya da iptal edilirse takvimin de güncellenir.",
+    "none": "Henüz bir takvim bağlantın yok.",
+    "unknown": "Bağlantı durumun şu an okunamadı.",
+    "active": "Bir takvim bağlantın var ({date} tarihinde oluşturuldu). Güvenliğin için bağlantı yalnızca oluşturulduğu anda gösterilir; yeniden görmek için yenile.",
+    "create": "Bağlantı oluştur",
+    "regenerate": "Bağlantıyı yenile",
+    "confirmRegenerate": "Yeni bağlantı oluşturulunca, varsa eski bağlantın çalışmayı bırakır ve ona abone olan takvimler güncellenmez. Devam edilsin mi?",
+    "failed": "Bağlantı oluşturulamadı. Lütfen tekrar dene.",
+    "newLink": "Yeni bağlantın hazır. Bu sayfadan ayrıldıktan sonra bir daha gösterilmez.",
+    "appleTitle": "Apple Takvim (macOS, iOS)",
+    "appleOpen": "Apple Takvim'de aç",
+    "googleTitle": "Google Takvim",
+    "googleSteps": "Google Takvim'de Ayarlar → Takvim ekle → URL ile seçeneğini aç ve bu bağlantıyı yapıştır.",
+    "googleOpen": "Google Takvim'de URL ile ekle",
+    "googleDelay": "Google, abone olunan takvimleri kendi zamanlamasıyla yeniler; bu birkaç saat sürebilir. Son dakikada yapılan bir değişiklik takviminde zamanında görünmeyebilir — oturum sayfası her zaman günceldir.",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı",
+    "private": "Bu bağlantı sana özeldir: sahip olan herkes ders başlıklarını ve saatlerini görebilir. Toplantı bağlantıları takvimde yer almaz. Birisiyle paylaştıysan bağlantıyı yenile."
+  },
+  "Auth": {
+    "signIn": "Giriş yap",
+    "register": "Kayıt ol",
+    "redirectingSignIn": "Giriş sayfasına yönlendiriliyorsunuz…",
+    "redirectingRegister": "Kayıt sayfasına yönlendiriliyorsunuz…",
+    "continue": "Devam et",
+    "errorTitle": "Giriş yapılamadı",
+    "errorDescription": "Giriş sırasında bir sorun oluştu. Lütfen tekrar deneyin.",
+    "accessDenied": "Bu hesabın giriş izni yok.",
+    "configurationError": "Giriş hizmeti şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
+    "retry": "Tekrar dene",
+    "backHome": "Ana sayfaya dön",
+    "signOutTitle": "Çıkış yap",
+    "signOutDescription": "Oturumunuzu kapatmak istediğinize emin misiniz?",
+    "signOutConfirm": "Çıkış yap"
+  },
+  "WelcomePage": {
+    "title": "Hoş geldin!",
+    "titleWithName": "Hoş geldin, {name}!",
+    "description": "Hesabın hazır. İlk adımların:",
+    "steps": {
+      "kosk": "Bir köşk seç ve takip et",
+      "course": "Bir derse kaydol",
+      "decks": "Ezber kartlarıyla çalış"
+    },
+    "start": "Öğrenmeye başla"
   }
 }
