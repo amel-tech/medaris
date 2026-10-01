@@ -15,9 +15,11 @@ import {
   enrollments,
   lessons,
 } from "../../src/database/schema/course.schema";
-import { koskManagers, kosks } from "../../src/database/schema/kosk.schema";
+import { kosks } from "../../src/database/schema/kosk.schema";
+import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
 import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
 import {
+  assignRole,
   COURSE_TREE_TABLES,
   TestDatabaseUtils,
 } from "../helpers/test-database.helper";
@@ -772,10 +774,11 @@ describe("CourseController (e2e)", () => {
         .insert(kosks)
         .values({ ownerId: OTHER_USER_ID, name: "Başka Köşk" })
         .returning();
-      await databaseService.db.insert(koskManagers).values({
-        koskId: otherKosk.id,
+      await assignRole(databaseService.db, {
         userId: OTHER_USER_ID,
-        addedBy: OTHER_USER_ID,
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        scopeId: otherKosk.id,
+        grantedBy: OTHER_USER_ID,
       });
       return request(app.getHttpServer())
         .get(`/kosks/${otherKosk.id}/enrollments/pending`)
@@ -790,10 +793,11 @@ describe("CourseController (e2e)", () => {
         .insert(kosks)
         .values({ ownerId: OTHER_USER_ID, name: "Başka Köşk" })
         .returning();
-      await databaseService.db.insert(koskManagers).values({
-        koskId: otherKosk.id,
+      await assignRole(databaseService.db, {
         userId: OTHER_USER_ID,
-        addedBy: OTHER_USER_ID,
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        scopeId: otherKosk.id,
+        grantedBy: OTHER_USER_ID,
       });
       const [otherCourse] = await databaseService.db
         .insert(courses)
@@ -839,10 +843,11 @@ describe("CourseController (e2e)", () => {
         .insert(kosks)
         .values({ ownerId: OTHER_USER_ID, name: "Müderris Köşkü" })
         .returning();
-      await databaseService.db.insert(koskManagers).values({
-        koskId: otherKosk.id,
+      await assignRole(databaseService.db, {
         userId: OTHER_USER_ID,
-        addedBy: OTHER_USER_ID,
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        scopeId: otherKosk.id,
+        grantedBy: OTHER_USER_ID,
       });
       const [course] = await databaseService.db
         .insert(courses)
@@ -857,6 +862,11 @@ describe("CourseController (e2e)", () => {
         courseId: course.id,
         userId: TEST_USER_ID,
         name: "Müderris Ahmed Hilmi",
+      });
+      await assignRole(databaseService.db, {
+        userId: TEST_USER_ID,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeId: course.id,
       });
 
       await request(app.getHttpServer())
@@ -873,10 +883,11 @@ describe("CourseController (e2e)", () => {
         .insert(kosks)
         .values({ ownerId: OTHER_USER_ID, name: "Başka Köşk" })
         .returning();
-      await databaseService.db.insert(koskManagers).values({
-        koskId: otherKosk.id,
+      await assignRole(databaseService.db, {
         userId: OTHER_USER_ID,
-        addedBy: OTHER_USER_ID,
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        scopeId: otherKosk.id,
+        grantedBy: OTHER_USER_ID,
       });
       const [draft] = await databaseService.db
         .insert(courses)
@@ -1279,10 +1290,11 @@ describe("CourseController (e2e)", () => {
         .insert(kosks)
         .values({ ownerId: OTHER_USER_ID, name: "Başka Köşk" })
         .returning();
-      await databaseService.db.insert(koskManagers).values({
-        koskId: otherKosk.id,
+      await assignRole(databaseService.db, {
         userId: OTHER_USER_ID,
-        addedBy: OTHER_USER_ID,
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        scopeId: otherKosk.id,
+        grantedBy: OTHER_USER_ID,
       });
       const [otherCourse] = await databaseService.db
         .insert(courses)
@@ -1439,9 +1451,12 @@ describe("Course content access (MDRS-103, e2e)", () => {
       .values({ ownerId: MANAGER_ID, name: "Süleymaniye Köşkü" })
       .returning();
     koskId = kosk.id;
-    await db()
-      .insert(koskManagers)
-      .values({ koskId, userId: MANAGER_ID, addedBy: MANAGER_ID });
+    await assignRole(db(), {
+      userId: MANAGER_ID,
+      role: ASSIGNED_ROLES.KOSK_NAZIM,
+      scopeId: koskId,
+      grantedBy: MANAGER_ID,
+    });
     const [course] = await db()
       .insert(courses)
       .values({
@@ -1484,6 +1499,11 @@ describe("Course content access (MDRS-103, e2e)", () => {
     await db()
       .insert(courseMuderris)
       .values({ courseId, userId: MUDERRIS_ID, name: "Musa Müderris" });
+    await assignRole(db(), {
+      userId: MUDERRIS_ID,
+      role: ASSIGNED_ROLES.MUDERRIS,
+      scopeId: courseId,
+    });
     await db().insert(courseResources).values({
       courseId,
       name: "Bina ve İzhar",

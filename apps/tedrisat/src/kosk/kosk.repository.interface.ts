@@ -3,7 +3,6 @@ import type { IPurgeCounts } from "../course/course-purge";
 export interface IKosk {
   id: string;
   ownerId: string;
-  madrasahId: string | null;
   name: string;
   handle: string | null;
   description: string | null;
@@ -16,19 +15,13 @@ export interface IKosk {
   featured: boolean;
   rating: number;
   ratingCount: number;
+  passiveSince: Date | null;
+  passiveReason: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
-/** The medrese a köşk is affiliated with, as köşk responses carry it. */
-export interface IKoskMadrasahRef {
-  id: string;
-  name: string;
-  handle: string;
-}
-
 export interface IKoskWithStats extends IKosk {
-  madrasah: IKoskMadrasahRef | null;
   /** Who manages the köşk (MDRS-126), oldest first; never empty. */
   managerIds: string[];
   courseCount: number;
@@ -117,8 +110,8 @@ export interface IKoskRef {
  * Narrows a köşk listing. `managerId` (MDRS-108) keeps only the köşks that
  * user manages, unlisted ones included — it is the manager's own list.
  * Without it the listing is the public one, and an unlisted (`is_private`)
- * köşk is never in it (MDRS-122). `madrasahId` keeps the köşks affiliated with
- * that medrese — the medrese page's shelf (MDRS-122).
+ * köşk is never in it (MDRS-122). `madrasahId` keeps the köşks that medrese
+ * holds a hosting right in (MDRS-134) — the medrese page's shelf (MDRS-122).
  */
 export interface IKoskListFilter {
   managerId?: string;
@@ -160,9 +153,6 @@ export interface IKoskRepository {
     id: string,
     actorId: string
   ): Promise<(IPurgeCounts & { followers: number }) | null>;
-  affiliate(koskId: string, madrasahId: string): Promise<boolean>;
-  detach(koskId: string, madrasahId: string): Promise<boolean>;
-  leaveMadrasah(koskId: string): Promise<boolean>;
   follow(userId: string, koskId: string): Promise<boolean>;
   unfollow(userId: string, koskId: string): Promise<boolean>;
 }

@@ -34,6 +34,20 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       ssl: this.configService.get("database.ssl"),
     });
 
+    // A migration that leaves a decision to a person says so in a NOTICE —
+    // 0023 lists the courses it did not move into a medrese (MDRS-134).
+    // node-postgres drops notices nobody listens for, so every connection
+    // the pool opens hands them to the log. Only a plain `RAISE NOTICE`
+    // (SQLSTATE 00000): the migrator's own "already exists, skipping" on
+    // every boot carries a 42Pxx code and would bury the ones that matter.
+    this.pool.on("connect", (client) => {
+      client.on("notice", (notice) => {
+        if (notice.code === "00000") {
+          this.logger.warn(`Database notice: ${notice.message}`);
+        }
+      });
+    });
+
     this.db = drizzle(this.pool, { schema });
 
     await this.migrateDatabase();

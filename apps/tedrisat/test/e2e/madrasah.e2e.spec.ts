@@ -1,31 +1,43 @@
 import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import request from "supertest";
+import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { LessonType } from "../../src/course/domain/lesson-type.enum";
 import { DatabaseService } from "../../src/database/database.service";
 import {
   courses,
   courseWeeks,
+  enrollments,
   lessons,
 } from "../../src/database/schema/course.schema";
-import { koskManagers, kosks } from "../../src/database/schema/kosk.schema";
+import { kosks } from "../../src/database/schema/kosk.schema";
+import { madrasahs } from "../../src/database/schema/madrasah.schema";
 import {
-  madrasahNazirs,
-  madrasahs,
-} from "../../src/database/schema/madrasah.schema";
+  ASSIGNED_ROLES,
+  madrasahKoskHosting,
+  roleAssignments,
+} from "../../src/database/schema/role-assignment.schema";
+import { MadrasahNotFoundError } from "../../src/madrasah/errors/madrasah-not-found.error";
+import { MadrasahRepository } from "../../src/madrasah/madrasah.repository";
+import { MadrasahService } from "../../src/madrasah/madrasah.service";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
+  assignRole,
   COURSE_TREE_TABLES,
   TestDatabaseUtils,
 } from "../helpers/test-database.helper";
 import { bearerFor } from "../helpers/test-keycloak.helper";
 
 /**
- * MDRS-106. Built with `createTestApp()` and no `authUserId`, so the REAL
- * AuthGuard verifies a minted token: the stubbed guard only ever sets `sub`,
- * and creating a medrese hinges on the `realm_access` claim, which is what
- * `AuthzService` reads for the SYSTEM_ADMIN bypass.
+ * MDRS-106, reshaped by MDRS-134. Built with `createTestApp()` and no
+ * `authUserId`, so the REAL AuthGuard verifies a minted token: the stubbed
+ * guard only ever sets `sub`, and creating a medrese hinges on the
+ * `realm_access` claim, which is what `AuthzService` reads for the
+ * SYSTEM_ADMIN bypass.
+ *
+ * The API still says "nazır"; since MDRS-134 that is a MEDRESE_BASMUDERRIS
+ * row in `role_assignments` (MDRS-144 renames the API).
  */
 const ADMIN_ID = "b0000000-0000-4000-8000-000000000001";
 const NAZIR_ID = "b0000000-0000-4000-8000-000000000002";
@@ -55,6 +67,18 @@ describe("Madrasahs (e2e)", () => {
   const koskRow = async (id: string) =>
     (await databaseService.db.select().from(kosks).where(eq(kosks.id, id)))[0];
 
+  const nazirRows = () =>
+    databaseService.db
+      .select()
+      .from(roleAssignments)
+      .where(
+        and(
+          eq(roleAssignments.scopeId, madrasahId),
+          eq(roleAssignments.role, ASSIGNED_ROLES.MEDRESE_BASMUDERRIS)
+        )
+      )
+      .orderBy(roleAssignments.createdAt, roleAssignments.id);
+
   beforeAll(async () => {
     app = await createTestApp();
     databaseService = app.get<DatabaseService>(DatabaseService);
@@ -72,20 +96,25 @@ describe("Madrasahs (e2e)", () => {
       })
       .returning();
     madrasahId = madrasah.id;
-    await databaseService.db
-      .insert(madrasahNazirs)
-      .values({ madrasahId, userId: NAZIR_ID });
+    await assignRole(databaseService.db, {
+      userId: NAZIR_ID,
+      role: ASSIGNED_ROLES.MEDRESE_BASMUDERRIS,
+      scopeId: madrasahId,
+      grantedBy: ADMIN_ID,
+    });
 
     const [kosk] = await databaseService.db
       .insert(kosks)
       .values({ ownerId: MANAGER_ID, name: "Hadis Köşkü" })
       .returning();
     koskId = kosk.id;
-    // Managing is `kosk_managers` since MDRS-126, which `POST /kosks` fills
-    // and a direct insert does not.
-    await databaseService.db
-      .insert(koskManagers)
-      .values({ koskId, userId: MANAGER_ID, addedBy: MANAGER_ID });
+    // Managing is a KOSK_NAZIM role since MDRS-134, which `POST /kosks`
+    // grants and a direct insert does not.
+    await assignRole(databaseService.db, {
+      userId: MANAGER_ID,
+      role: ASSIGNED_ROLES.KOSK_NAZIM,
+      scopeId: koskId,
+    });
     const [course] = await databaseService.db
       .insert(courses)
       .values({ koskId, authorId: MANAGER_ID, title: "Usûl-i Hadis" })
@@ -206,64 +235,6 @@ describe("Madrasahs (e2e)", () => {
       expect(res.body.name).toBe("Hadis ve Siyer Araştırmaları Medresesi");
     });
 
-    it("lets the nazır affiliate and detach a köşk; a non-nazır gets 403", async () => {
-      await http()
-        .post(`/madrasahs/${madrasahId}/kosks/${koskId}`)
-        .set("Authorization", auth(STRANGER_ID))
-        .expect(403);
-      // The köşk's own manager is not a nazır either.
-      await http()
-        .post(`/madrasahs/${madrasahId}/kosks/${koskId}`)
-        .set("Authorization", auth(MANAGER_ID))
-        .expect(403);
-      expect((await koskRow(koskId)).madrasahId).toBeNull();
-
-      const affiliated = await http()
-        .post(`/madrasahs/${madrasahId}/kosks/${koskId}`)
-        .set("Authorization", auth(NAZIR_ID))
-        .expect(201);
-      expect(affiliated.body.madrasah).toEqual({
-        id: madrasahId,
-        name: "Hadis ve Siyer Medresesi",
-        handle: "hadis-ve-siyer",
-      });
-
-      // Köşk reads carry the medrese too.
-      const shown = await http()
-        .get(`/kosks/${koskId}`)
-        .set("Authorization", auth(STRANGER_ID))
-        .expect(200);
-      expect(shown.body.madrasah).toMatchObject({ id: madrasahId });
-
-      await http()
-        .delete(`/madrasahs/${madrasahId}/kosks/${koskId}`)
-        .set("Authorization", auth(NAZIR_ID))
-        .expect(200);
-      expect((await koskRow(koskId)).madrasahId).toBeNull();
-    });
-
-    it("refuses to take a köşk that belongs to another medrese (409)", async () => {
-      const [other] = await databaseService.db
-        .insert(madrasahs)
-        .values({ handle: "diger", name: "Diğer", createdBy: ADMIN_ID })
-        .returning();
-      await databaseService.db
-        .update(kosks)
-        .set({ madrasahId: other.id })
-        .where(eq(kosks.id, koskId));
-
-      const res = await http()
-        .post(`/madrasahs/${madrasahId}/kosks/${koskId}`)
-        .set("Authorization", auth(NAZIR_ID))
-        .expect(409);
-      expect(res.body.code).toBe("KOSK_ALREADY_AFFILIATED");
-      await http()
-        .delete(`/madrasahs/${madrasahId}/kosks/${koskId}`)
-        .set("Authorization", auth(NAZIR_ID))
-        .expect(404);
-      expect((await koskRow(koskId)).madrasahId).toBe(other.id);
-    });
-
     it("lets the nazır invite and remove nazırs; a non-nazır gets 403", async () => {
       await http()
         .post(`/madrasahs/${madrasahId}/nazirs/${STRANGER_ID}`)
@@ -293,13 +264,24 @@ describe("Madrasahs (e2e)", () => {
         .delete(`/madrasahs/${madrasahId}/nazirs/${OTHER_NAZIR_ID}`)
         .set("Authorization", auth(NAZIR_ID))
         .expect(404);
+
+      // MDRS-134: the grant and the revocation are both on record, in the
+      // name of the nazır who made them.
+      const rows = await nazirRows();
+      expect(rows.map((r) => [r.userId, r.grantedBy, r.revokedBy])).toEqual([
+        [NAZIR_ID, ADMIN_ID, null],
+        [OTHER_NAZIR_ID, NAZIR_ID, NAZIR_ID],
+      ]);
     });
 
-    it("does not let a nazır delete the medrese; SYSTEM_ADMIN can, and its köşks stand alone", async () => {
+    it("does not let a nazır delete the medrese; SYSTEM_ADMIN can, and its courses stay in their köşks", async () => {
       await databaseService.db
-        .update(kosks)
+        .update(courses)
         .set({ madrasahId })
-        .where(eq(kosks.id, koskId));
+        .where(eq(courses.id, courseId));
+      await databaseService.db
+        .insert(madrasahKoskHosting)
+        .values({ madrasahId, koskId, grantedBy: ADMIN_ID });
 
       await http()
         .delete(`/madrasahs/${madrasahId}`)
@@ -311,44 +293,59 @@ describe("Madrasahs (e2e)", () => {
         .set("Authorization", auth(ADMIN_ID))
         .expect(200);
 
-      const kosk = await koskRow(koskId);
-      expect(kosk).toBeDefined();
-      expect(kosk.madrasahId).toBeNull();
-      const nazirs = await databaseService.db
+      expect(await koskRow(koskId)).toBeDefined();
+      const [course] = await databaseService.db
         .select()
-        .from(madrasahNazirs)
-        .where(eq(madrasahNazirs.madrasahId, madrasahId));
-      expect(nazirs).toHaveLength(0);
+        .from(courses)
+        .where(eq(courses.id, courseId));
+      expect(course.madrasahId).toBeNull();
+      expect(await nazirRows()).toHaveLength(0);
+      const hosting = await databaseService.db
+        .select()
+        .from(madrasahKoskHosting)
+        .where(eq(madrasahKoskHosting.koskId, koskId));
+      expect(hosting).toHaveLength(0);
+    });
+
+    it("answers 404 when SYSTEM_ADMIN deletes a medrese that does not exist, and removes no role row", async () => {
+      const missing = "b0000000-0000-4000-8000-00000000ffff";
+      await http()
+        .delete(`/madrasahs/${missing}`)
+        .set("Authorization", auth(ADMIN_ID))
+        .expect(404);
+      // The route's resolver answers first; the repository's own answer is
+      // what a delete racing another delete gets.
+      expect(await app.get(MadrasahRepository).delete(missing)).toBe(false);
+      // Nor does a grant land in a medrese that is gone: the row is locked
+      // and read first, so nothing is written.
+      await expect(
+        app.get(MadrasahService).addNazir(missing, STRANGER_ID, ADMIN_ID)
+      ).rejects.toBeInstanceOf(MadrasahNotFoundError);
+      const orphans = await databaseService.db
+        .select()
+        .from(roleAssignments)
+        .where(eq(roleAssignments.scopeId, missing));
+      expect(orphans).toEqual([]);
+      expect(await nazirRows()).toHaveLength(1);
     });
   });
 
-  describe("a nazır over an affiliated köşk", () => {
+  // MDRS-134 replaced MDRS-106's köşk affiliation with a hosting right,
+  // which gives the medrese no power over the köşk (MDRS-133).
+  describe("a nazır of a medrese hosted in a köşk", () => {
     beforeEach(async () => {
       await databaseService.db
-        .update(kosks)
-        .set({ madrasahId })
-        .where(eq(kosks.id, koskId));
+        .insert(madrasahKoskHosting)
+        .values({ madrasahId, koskId, grantedBy: ADMIN_ID });
     });
 
-    it("gets EDIT on the köşk", async () => {
-      const res = await http()
-        .patch(`/kosks/${koskId}`)
-        .set("Authorization", auth(NAZIR_ID))
-        .send({ name: "Hadis Köşkü (yeni)" })
-        .expect(200);
-      expect(res.body.name).toBe("Hadis Köşkü (yeni)");
-    });
-
-    it("gets no EDIT on a köşk outside their medrese", async () => {
-      const [standalone] = await databaseService.db
-        .insert(kosks)
-        .values({ ownerId: MANAGER_ID, name: "Bağımsız Köşk" })
-        .returning();
+    it("gets no EDIT on the köşk", async () => {
       await http()
-        .patch(`/kosks/${standalone.id}`)
+        .patch(`/kosks/${koskId}`)
         .set("Authorization", auth(NAZIR_ID))
         .send({ name: "Ele geçirildi" })
         .expect(403);
+      expect((await koskRow(koskId)).name).toBe("Hadis Köşkü");
     });
 
     it("gets nothing on its courses' content", async () => {
@@ -379,33 +376,12 @@ describe("Madrasahs (e2e)", () => {
       expect(course.title).toBe("Usûl-i Hadis");
     });
 
-    it("still does not get DELETE on the köşk", async () => {
+    it("does not get DELETE on the köşk", async () => {
       await http()
         .delete(`/kosks/${koskId}`)
         .set("Authorization", auth(NAZIR_ID))
         .expect(403);
       expect(await koskRow(koskId)).toBeDefined();
-    });
-
-    it("lets the köşk's own manager take it out of the medrese; a stranger gets 403", async () => {
-      await http()
-        .delete(`/kosks/${koskId}/madrasah`)
-        .set("Authorization", auth(STRANGER_ID))
-        .expect(403);
-      expect((await koskRow(koskId)).madrasahId).toBe(madrasahId);
-
-      const res = await http()
-        .delete(`/kosks/${koskId}/madrasah`)
-        .set("Authorization", auth(MANAGER_ID))
-        .expect(200);
-      expect(res.body.madrasah).toBeNull();
-      expect((await koskRow(koskId)).madrasahId).toBeNull();
-
-      const again = await http()
-        .delete(`/kosks/${koskId}/madrasah`)
-        .set("Authorization", auth(MANAGER_ID))
-        .expect(404);
-      expect(again.body.code).toBe("KOSK_NOT_AFFILIATED");
     });
 
     it("leaves the köşk manager's own EDIT alone", () =>
@@ -414,5 +390,72 @@ describe("Madrasahs (e2e)", () => {
         .set("Authorization", auth(MANAGER_ID))
         .send({ name: "Yöneticinin adı" })
         .expect(200));
+
+    it("no longer offers the affiliation routes, and köşk reads carry no medrese", async () => {
+      await http()
+        .post(`/madrasahs/${madrasahId}/kosks/${koskId}`)
+        .set("Authorization", auth(ADMIN_ID))
+        .expect(404);
+      await http()
+        .delete(`/kosks/${koskId}/madrasah`)
+        .set("Authorization", auth(ADMIN_ID))
+        .expect(404);
+      const shown = await http()
+        .get(`/kosks/${koskId}`)
+        .set("Authorization", auth(STRANGER_ID))
+        .expect(200);
+      expect(shown.body).not.toHaveProperty("madrasah");
+      expect(shown.body).not.toHaveProperty("madrasahId");
+    });
+  });
+
+  // MDRS-134 §7: a medrese's talebe are derived from enrollments in its
+  // courses, never stored.
+  describe("a medrese's talebe", () => {
+    const ENROLLED = "b0000000-0000-4000-8000-0000000000e1";
+    const COMPLETED = "b0000000-0000-4000-8000-0000000000e2";
+    const PENDING = "b0000000-0000-4000-8000-0000000000e3";
+    const ELSEWHERE = "b0000000-0000-4000-8000-0000000000e4";
+
+    it("are everyone ENROLLED or COMPLETED in one of its courses", async () => {
+      await databaseService.db
+        .update(courses)
+        .set({ madrasahId })
+        .where(eq(courses.id, courseId));
+      const [second] = await databaseService.db
+        .insert(courses)
+        .values({ koskId, authorId: MANAGER_ID, title: "Siyer", madrasahId })
+        .returning();
+      const [plain] = await databaseService.db
+        .insert(courses)
+        .values({ koskId, authorId: MANAGER_ID, title: "Köşk dersi" })
+        .returning();
+      await databaseService.db.insert(enrollments).values([
+        { userId: ENROLLED, courseId, status: EnrollmentStatus.ENROLLED },
+        // Enrolled in both medrese courses: counted once.
+        {
+          userId: ENROLLED,
+          courseId: second.id,
+          status: EnrollmentStatus.ENROLLED,
+        },
+        {
+          userId: COMPLETED,
+          courseId: second.id,
+          status: EnrollmentStatus.COMPLETED,
+        },
+        { userId: PENDING, courseId, status: EnrollmentStatus.PENDING },
+        {
+          userId: ELSEWHERE,
+          courseId: plain.id,
+          status: EnrollmentStatus.ENROLLED,
+        },
+      ]);
+
+      const repo = app.get(MadrasahRepository);
+      expect(await repo.findTalebeIds(madrasahId)).toEqual([
+        ENROLLED,
+        COMPLETED,
+      ]);
+    });
   });
 });
