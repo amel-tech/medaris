@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { and, eq, inArray, isNotNull, isNull, max, ne, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
+import { auditLog } from "../database/schema/audit.schema";
 import {
   courseMuderris,
   courseResources,
@@ -997,6 +998,26 @@ export class CourseRepository implements ICourseRepository {
         )
         .orderBy(courses.title, courses.id)
     );
+  }
+
+  /**
+   * A read of a course's content by someone who is neither its enrolled
+   * talebe nor one of its müderrisler (MDRS-103) — the köşk manager, or
+   * SYSTEM_ADMIN through the realm bypass. Same table as the deletions
+   * (MDRS-124); `action` tells the two apart.
+   */
+  async recordContentRead(entry: {
+    actorId: string;
+    courseId: string;
+    details: Record<string, unknown>;
+  }): Promise<void> {
+    await this.db.insert(auditLog).values({
+      actorId: entry.actorId,
+      action: "course.content_read",
+      entity: "course",
+      entityId: entry.courseId,
+      details: entry.details,
+    });
   }
 
   async findEnrollment(

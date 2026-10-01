@@ -9,6 +9,9 @@ export class AgendaStepResponse {
   @ApiProperty({ example: "Açılış ve geçen haftanın özeti" }) title!: string;
 }
 
+const CONTENT_FIELD =
+  "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).";
+
 export class LessonResponse {
   @ApiProperty() id!: string;
   @ApiProperty() weekId!: string;
@@ -20,11 +23,18 @@ export class LessonResponse {
     description: "Length of the lesson in minutes; null when not set.",
   })
   durationMinutes!: number | null;
-  @ApiPropertyOptional({ type: String }) kaynak!: string | null;
+  // `kaynak`, `meetingUrl` and `agenda` are course content (MDRS-103): a
+  // course response leaves the keys out for a caller without `view_details`.
+  @ApiPropertyOptional({ type: String, description: CONTENT_FIELD })
+  kaynak?: string | null;
   @ApiPropertyOptional({ type: Date }) scheduledAt!: Date | null;
-  @ApiPropertyOptional({ type: String }) meetingUrl!: string | null;
-  @ApiPropertyOptional({ type: [AgendaStepResponse] })
-  agenda!: AgendaStepResponse[] | null;
+  @ApiPropertyOptional({ type: String, description: CONTENT_FIELD })
+  meetingUrl?: string | null;
+  @ApiPropertyOptional({
+    type: [AgendaStepResponse],
+    description: CONTENT_FIELD,
+  })
+  agenda?: AgendaStepResponse[] | null;
   @ApiProperty() isPreview!: boolean;
   @ApiProperty() orderIndex!: number;
 }
@@ -66,7 +76,8 @@ export class ResourceResponse {
   @ApiProperty() name!: string;
   @ApiPropertyOptional({ type: String }) meta!: string | null;
   @ApiPropertyOptional({ type: String }) type!: string | null;
-  @ApiPropertyOptional({ type: String }) url!: string | null;
+  @ApiPropertyOptional({ type: String, description: CONTENT_FIELD })
+  url?: string | null;
   @ApiProperty() orderIndex!: number;
 }
 
@@ -146,6 +157,11 @@ export class CourseDetailResponse extends CourseBase {
   @ApiProperty({ type: [ResourceResponse] }) resources!: ResourceResponse[];
   @ApiPropertyOptional({ type: EnrollmentResponse })
   enrollment!: EnrollmentResponse | null;
+  @ApiProperty({
+    description:
+      "True when the caller may not read the course's content and every content field was left out — the client shows the locked state (MDRS-103).",
+  })
+  contentLocked!: boolean;
 }
 
 export class CourseSummaryResponse extends CourseBase {
