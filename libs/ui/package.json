@@ -47,10 +47,12 @@
   },
   "exports": {
     "./globals.css": "./src/styles/globals.css",
+    "./medaris.css": "./src/styles/medaris.css",
     "./postcss.config": "./postcss.config.js",
     "./lib/*": "./src/lib/*.ts",
     "./components/*": "./src/components/*.tsx",
     "./custom/*": "./src/custom/*.tsx",
-    "./hooks/*": "./src/hooks/*.ts"
+    "./hooks/*": "./src/hooks/*.ts",
+    "./mds/*": "./src/mds/*.tsx"
   }
 }

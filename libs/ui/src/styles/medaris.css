@@ -1,0 +1,34 @@
+/* @medaris/ui/medaris.css: the one CSS entry of an app on the unified design
+   system (MDRS-151). From the canvas note "Tailwind ve paylaşılan kit",
+   section 2. The apps still on the shadcn kit keep ./globals.css.
+
+   The faces are not imported here: a <link> with preconnect in the document
+   head loads them (@medaris/tokens/medaris-fonts). */
+
+/* Tailwind without its preflight. The system's tokens/base.css is the reset
+   (box-sizing, margins, element faces); preflight would undo the browser
+   defaults the system builds on. Measured on the landing pages, with it:
+   `a { text-decoration: inherit }` took the underline off every link in
+   running text, and `ol, ul { list-style: none }` took the markers off every
+   list in .mds-reading. The canvas renders without it. Border utilities need
+   no preflight in v4: each sets its own style through --tw-border-style. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* Tokens, element defaults and the type classes (.mds-h1, .mds-reading…) in
+   the base layer. Left unlayered they would beat every utility and the
+   components layer, reversing the system's order. */
+@import "@medaris/tokens/medaris.css" layer(base);
+
+/* The class layer, unchanged from the system. In the components layer, so a
+   utility can place a component (ms-auto, max-md:hidden on a .mds-card) but
+   never restyle it. */
+@import "./mds/components.css" layer(components);
+@import "./mds/medrese.css" layer(components);
+
+/* Utilities read the tokens; nothing is written to :root. */
+@import "@medaris/tokens/tailwind.css";
+
+/* libs/ui's own sources. Tailwind finds the app's files by itself. */
+@source "../**/*.{ts,tsx}";
