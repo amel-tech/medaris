@@ -82,8 +82,38 @@ describe("auth-matrix structural invariants", () => {
     expect(withAnonymous).toEqual([ENTITIES.FLASHCARD_DECK]);
   });
 
-  it("course PUBLIC grants enroll (anyone authenticated may request enrollment)", () => {
-    expect(MATRIX[ENTITIES.COURSE][ROLES.PUBLIC]).toEqual([SCOPES.ENROLL]);
+  it("course PUBLIC grants view and enroll — the page is public, the content is not (MDRS-103)", () => {
+    expect(MATRIX[ENTITIES.COURSE][ROLES.PUBLIC]).toEqual([
+      SCOPES.VIEW,
+      SCOPES.ENROLL,
+    ]);
+  });
+
+  // MDRS-103: lesson content is VIEW_DETAILS. PENDING and PUBLIC must not
+  // reach it, whatever else they are given.
+  it("course content (VIEW_DETAILS, JOIN_LIVE_LESSON) is for enrolled, müderris and köşk manager only", () => {
+    for (const scope of [SCOPES.VIEW_DETAILS, SCOPES.JOIN_LIVE_LESSON]) {
+      const granting = Object.entries(MATRIX[ENTITIES.COURSE] ?? {})
+        .filter(([, scopes]) => scopes?.includes(scope))
+        .map(([role]) => role)
+        .sort();
+      expect(granting).toEqual(
+        [ROLES.ENROLLED, ROLES.KOSK_MANAGER, ROLES.MUDERRIS].sort()
+      );
+    }
+  });
+
+  // MDRS-103: the session-level write responses (`LessonMutationResponse`,
+  // the batch result) carry full lessons without a content filter, which is
+  // sound only while everyone who may write a course may also read it.
+  it("every course role that may EDIT may also VIEW_DETAILS", () => {
+    const editorsWithoutContent = Object.entries(MATRIX[ENTITIES.COURSE] ?? {})
+      .filter(
+        ([, scopes]) =>
+          scopes?.includes(SCOPES.EDIT) && !scopes.includes(SCOPES.VIEW_DETAILS)
+      )
+      .map(([role]) => role);
+    expect(editorsWithoutContent).toEqual([]);
   });
 
   it("kosk PUBLIC grants view only — CREATE_KOSK is SYSTEM_ADMIN-only", () => {

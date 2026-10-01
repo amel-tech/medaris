@@ -192,6 +192,12 @@ export interface CourseDetailResponse {
      * @memberof CourseDetailResponse
      */
     enrollment?: EnrollmentResponse;
+    /**
+     * True when the caller may not read the course's content and every content field was left out — the client shows the locked state (MDRS-103).
+     * @type {boolean}
+     * @memberof CourseDetailResponse
+     */
+    contentLocked: boolean;
 }
 
 
@@ -236,6 +242,7 @@ export function instanceOfCourseDetailResponse(value: object): value is CourseDe
     if (!('weeks' in value) || value['weeks'] === undefined) return false;
     if (!('muderris' in value) || value['muderris'] === undefined) return false;
     if (!('resources' in value) || value['resources'] === undefined) return false;
+    if (!('contentLocked' in value) || value['contentLocked'] === undefined) return false;
     return true;
 }
 
@@ -273,6 +280,7 @@ export function CourseDetailResponseFromJSONTyped(json: any, ignoreDiscriminator
         'muderris': ((json['muderris'] as Array<any>).map(MuderrisResponseFromJSON)),
         'resources': ((json['resources'] as Array<any>).map(ResourceResponseFromJSON)),
         'enrollment': json['enrollment'] == null ? undefined : EnrollmentResponseFromJSON(json['enrollment']),
+        'contentLocked': json['contentLocked'],
     };
 }
 
@@ -311,6 +319,7 @@ export function CourseDetailResponseToJSONTyped(value?: CourseDetailResponse | n
         'muderris': ((value['muderris'] as Array<any>).map(MuderrisResponseToJSON)),
         'resources': ((value['resources'] as Array<any>).map(ResourceResponseToJSON)),
         'enrollment': EnrollmentResponseToJSON(value['enrollment']),
+        'contentLocked': value['contentLocked'],
     };
 }
 
