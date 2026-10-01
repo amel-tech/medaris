@@ -17,12 +17,23 @@ export type AgendaStepDraft = { time: string; title: string };
 export type LiveLessonDraft = {
   id?: string;
   title: string;
-  /** datetime-local input value; '' = unset */
+  /** datetime-local input value, in the course's zone; '' = unset */
   scheduledAt: string;
   /** minutes as string; '' = unset */
   durationMinutes: string;
   meetingUrl: string;
   agenda: AgendaStepDraft[];
+};
+
+/** The minutes field as tedrisat takes it: a whole number, 1–1440. */
+export const toMinutes = (value: string): number | undefined => {
+  const minutes = Number(value.trim());
+  return value.trim() &&
+    Number.isInteger(minutes) &&
+    minutes >= 1 &&
+    minutes <= 1440
+    ? minutes
+    : undefined;
 };
 
 export const emptyLiveLesson = (): LiveLessonDraft => ({
@@ -39,11 +50,14 @@ export const emptyLiveLesson = (): LiveLessonDraft => ({
  * resolved from the URL and shown as a confirmation chip.
  */
 export const LiveLessonEditor = ({
+  zoneLabel,
   draft,
   onChange,
   onSave,
   onCancel,
 }: {
+  /** The course's zone, as a place name — the zone the time is typed in. */
+  zoneLabel: string;
   draft: LiveLessonDraft;
   onChange: (draft: LiveLessonDraft) => void;
   onSave: () => void;
@@ -51,7 +65,14 @@ export const LiveLessonEditor = ({
 }) => {
   const t = useTranslations("nizam");
   const platform = resolveMeetingPlatform(draft.meetingUrl);
-  const canSave = Boolean(draft.title.trim() && draft.meetingUrl.trim());
+  // An empty length is allowed (no duration); anything else must be a
+  // length tedrisat accepts, or the save would silently drop it.
+  const durationValid =
+    !draft.durationMinutes.trim() ||
+    toMinutes(draft.durationMinutes) !== undefined;
+  const canSave = Boolean(
+    draft.title.trim() && draft.meetingUrl.trim() && durationValid
+  );
 
   const patch = (p: Partial<LiveLessonDraft>) => onChange({ ...draft, ...p });
   const patchStep = (i: number, p: Partial<AgendaStepDraft>) =>
@@ -99,6 +120,10 @@ export const LiveLessonEditor = ({
         <div>
           <Label className="mb-1.5 text-xs font-medium">
             {t("NewCoursePage.liveLessonWhen")}
+            <span className="font-normal text-muted-foreground">
+              {" · "}
+              {t("NewCoursePage.liveLessonWhenZone", { zone: zoneLabel })}
+            </span>
           </Label>
           <Input
             type="datetime-local"
@@ -113,6 +138,7 @@ export const LiveLessonEditor = ({
           <Input
             type="number"
             min={5}
+            max={1440}
             step={5}
             value={draft.durationMinutes}
             onChange={(e) => patch({ durationMinutes: e.target.value })}

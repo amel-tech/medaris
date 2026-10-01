@@ -34,6 +34,15 @@ import { CourseVersionConflictError } from "./errors/course-version-conflict.err
 import { LessonNotFoundError } from "./errors/lesson-not-found.error";
 import { WeekNotFoundError } from "./errors/week-not-found.error";
 
+/**
+ * The deprecated free-text `duration`, kept in step with `durationMinutes`
+ * (MDRS-110) so that rolling back past migration 0019 shows every lesson's
+ * current length. Goes away with the migration that drops the column.
+ */
+const legacyDuration = (
+  minutes: number | null | undefined
+): string | null | undefined => (minutes == null ? minutes : `${minutes} dk`);
+
 @Injectable()
 export class CourseRepository implements ICourseRepository {
   constructor(private readonly databaseService: DatabaseService) {}
@@ -94,7 +103,8 @@ export class CourseRepository implements ICourseRepository {
           orderBy: (w, { asc }) => [asc(w.weekNumber)],
           with: {
             lessons: {
-              columns: { archivedAt: false },
+              // `duration` is the deprecated free text (MDRS-110).
+              columns: { archivedAt: false, duration: false },
               where: (l, { isNull }) => isNull(l.archivedAt),
               orderBy: (l, { asc }) => [asc(l.orderIndex)],
             },
@@ -216,7 +226,8 @@ export class CourseRepository implements ICourseRepository {
               weekId: createdWeek.id,
               title: l.title,
               type: l.type,
-              duration: l.duration,
+              durationMinutes: l.durationMinutes,
+              duration: legacyDuration(l.durationMinutes),
               kaynak: l.kaynak,
               scheduledAt: l.scheduledAt,
               meetingUrl: l.meetingUrl,
@@ -392,7 +403,10 @@ export class CourseRepository implements ICourseRepository {
             weekId,
             title: l.title,
             type: l.type,
-            duration: l.duration,
+            // A full replace: a lesson sent without a length has none, rather
+            // than keeping the one it had (an undefined key is not SET).
+            durationMinutes: l.durationMinutes ?? null,
+            duration: legacyDuration(l.durationMinutes ?? null),
             kaynak: l.kaynak,
             scheduledAt: l.scheduledAt,
             meetingUrl: l.meetingUrl,
@@ -532,7 +546,7 @@ export class CourseRepository implements ICourseRepository {
       weekId: row.weekId,
       title: row.title,
       type: row.type,
-      duration: row.duration,
+      durationMinutes: row.durationMinutes,
       kaynak: row.kaynak,
       scheduledAt: row.scheduledAt,
       meetingUrl: row.meetingUrl,
@@ -567,7 +581,8 @@ export class CourseRepository implements ICourseRepository {
           weekId,
           title: data.title,
           type: data.type,
-          duration: data.duration,
+          durationMinutes: data.durationMinutes,
+          duration: legacyDuration(data.durationMinutes),
           kaynak: data.kaynak,
           scheduledAt: data.scheduledAt,
           meetingUrl: data.meetingUrl,
@@ -600,6 +615,9 @@ export class CourseRepository implements ICourseRepository {
         ...fields,
         updatedAt: new Date(),
       };
+      if (fields.durationMinutes !== undefined) {
+        set.duration = legacyDuration(fields.durationMinutes);
+      }
       const [current] = await tx
         .select({ weekId: lessons.weekId })
         .from(lessons)

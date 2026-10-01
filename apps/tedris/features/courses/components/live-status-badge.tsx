@@ -3,10 +3,8 @@
 import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
-/** Tolerant "60 dk" → 60; falls back to 60 when the text has no number. */
-export const parseDurationMinutes = (
-  duration: string | null | undefined
-): number => Number(/(\d+)/.exec(duration ?? "")?.[1] ?? 60);
+/** How long a session with no recorded length is assumed to last. */
+const DEFAULT_SESSION_MINUTES = 60;
 
 export type LiveStatus = "upcoming" | "soon" | "live" | "ended";
 
@@ -30,10 +28,11 @@ export const liveStatusOf = (
  */
 export const LiveStatusBadge = ({
   scheduledAt,
-  duration,
+  durationMinutes,
 }: {
   scheduledAt: Date | null | undefined;
-  duration: string | null | undefined;
+  /** Length in minutes (MDRS-110); null when the müderris set none. */
+  durationMinutes: number | null | undefined;
 }) => {
   const t = useTranslations("tedris");
   const format = useFormatter();
@@ -54,7 +53,7 @@ export const LiveStatusBadge = ({
   }
 
   const status = now
-    ? liveStatusOf(scheduledAt, parseDurationMinutes(duration), now)
+    ? liveStatusOf(scheduledAt, durationMinutes ?? DEFAULT_SESSION_MINUTES, now)
     : "upcoming";
 
   if (status === "live") {

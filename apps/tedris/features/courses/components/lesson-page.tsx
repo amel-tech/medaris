@@ -20,6 +20,7 @@ import { resolveMeetingPlatform } from "@medaris/utils";
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo } from "react";
+import { SessionTime } from "~/components/session-time";
 import { HueAvatar } from "./cover";
 import { LiveStatusBadge } from "./live-status-badge";
 import { LessonTypeIcon } from "./syllabus";
@@ -178,7 +179,7 @@ export const LessonPage = ({
               </div>
               <LiveStatusBadge
                 scheduledAt={scheduledAt}
-                duration={lesson.duration}
+                durationMinutes={lesson.durationMinutes}
               />
             </div>
 
@@ -189,14 +190,20 @@ export const LessonPage = ({
                 </span>
                 {scheduledAt && (
                   <span className="text-xs text-muted-foreground">
-                    {format.dateTime(scheduledAt, {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "long",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                    {lesson.duration ? ` · ${lesson.duration}` : ""}
+                    <SessionTime
+                      at={scheduledAt}
+                      courseTimeZone={course.timeZone}
+                      options={{
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }}
+                    />
+                    {lesson.durationMinutes != null
+                      ? ` · ${t("SessionTime.minutes", { minutes: lesson.durationMinutes })}`
+                      : ""}
                   </span>
                 )}
               </div>

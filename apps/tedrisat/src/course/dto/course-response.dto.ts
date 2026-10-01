@@ -14,7 +14,12 @@ export class LessonResponse {
   @ApiProperty() weekId!: string;
   @ApiProperty() title!: string;
   @ApiProperty({ enum: LessonType }) type!: LessonType;
-  @ApiPropertyOptional({ type: String }) duration!: string | null;
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description: "Length of the lesson in minutes; null when not set.",
+  })
+  durationMinutes!: number | null;
   @ApiPropertyOptional({ type: String }) kaynak!: string | null;
   @ApiPropertyOptional({ type: Date }) scheduledAt!: Date | null;
   @ApiPropertyOptional({ type: String }) meetingUrl!: string | null;
@@ -106,6 +111,12 @@ class CourseBase {
   @ApiProperty({ enum: CourseStatus }) status!: CourseStatus;
   @ApiProperty() grantsCertificate!: boolean;
   @ApiProperty() requiresApproval!: boolean;
+  @ApiProperty({
+    example: "Europe/Istanbul",
+    description:
+      "IANA time zone the course's sessions are authored in (MDRS-110).",
+  })
+  timeZone!: string;
   @ApiProperty({
     description:
       "Optimistic-concurrency token. Send it back with PUT /courses/:id and " +

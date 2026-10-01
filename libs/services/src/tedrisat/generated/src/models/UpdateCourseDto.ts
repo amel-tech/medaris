@@ -68,6 +68,12 @@ export interface UpdateCourseDto {
      */
     durationWeeks?: number;
     /**
+     * IANA time zone the course's sessions are authored in.
+     * @type {string}
+     * @memberof UpdateCourseDto
+     */
+    timeZone?: string;
+    /**
      * 
      * @type {string}
      * @memberof UpdateCourseDto
@@ -133,6 +139,7 @@ export function UpdateCourseDtoFromJSONTyped(json: any, ignoreDiscriminator: boo
         'language': json['language'] == null ? undefined : json['language'],
         'coverHue': json['coverHue'] == null ? undefined : json['coverHue'],
         'durationWeeks': json['durationWeeks'] == null ? undefined : json['durationWeeks'],
+        'timeZone': json['timeZone'] == null ? undefined : json['timeZone'],
         'status': json['status'] == null ? undefined : json['status'],
         'grantsCertificate': json['grantsCertificate'] == null ? undefined : json['grantsCertificate'],
         'requiresApproval': json['requiresApproval'] == null ? undefined : json['requiresApproval'],
@@ -158,6 +165,7 @@ export function UpdateCourseDtoToJSONTyped(value?: UpdateCourseDto | null, ignor
         'language': value['language'],
         'coverHue': value['coverHue'],
         'durationWeeks': value['durationWeeks'],
+        'timeZone': value['timeZone'],
         'status': value['status'],
         'grantsCertificate': value['grantsCertificate'],
         'requiresApproval': value['requiresApproval'],
