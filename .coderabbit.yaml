@@ -281,16 +281,16 @@ reviews:
 
         CHAIN 1 — Drizzle schema → SQL migration. NO CI check covers this chain;
         you are the only one. The schema of record is apps/tedrisat/src/database/
-        schema/ — seven files (course, flashcard, flashcard-deck,
-        flashcard-deck-label, flashcard-label, kosk, user) declaring 19 tables and 6
+        schema/ — eight files (course, flashcard, flashcard-deck,
+        flashcard-deck-label, flashcard-label, kosk, madrasah, user) declaring 21 tables and 6
         pgEnums — and the migrations under apps/tedrisat/src/database/migrations/
-        (0000_chunky_viper.sql … 0016_users.sql). drizzle.config.ts
+        (0000_chunky_viper.sql … 0017_madrasahs.sql). drizzle.config.ts
         wires schema `./src/database/schema/*` to out `./src/database/migrations`.
 
-        WATCH THE IMPORT ALIAS. Six of the seven schema files import `pgTable as
+        WATCH THE IMPORT ALIAS. Seven of the eight schema files import `pgTable as
         table` and declare `export const kosks = table("kosks", …)`; only
         flashcard-label.schema.ts calls `pgTable(` directly. A grep for `pgTable(`
-        finds 3 of 19 tables. Match `= table(` and
+        finds 3 of 21 tables. Match `= table(` and
         `= pgTable(` together, or read the files.
 
         - A pgTable/pgEnum change — new table, added/removed column, changed type,
@@ -506,7 +506,7 @@ reviews:
         LENS: performance and scale — the shape of the code and how it degrades,
         never an invented latency number.
 
-        1. MISSING INDEXES. apps/tedrisat/src/database/schema declares 15
+        1. MISSING INDEXES. apps/tedrisat/src/database/schema declares 17
            `references()` foreign keys and 4 indexes: `course_muderris_course_id_user_id_idx`
            (course.schema.ts:116), `users_email_lower_idx` (user.schema.ts:43,
            on `lower(email)`) and two `uniqueIndex` on the label stats tables

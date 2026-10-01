@@ -3,6 +3,7 @@ import { Global, Module } from "@nestjs/common";
 import { CourseModule } from "../course/course.module";
 import { FlashcardModule } from "../flashcard/flashcard.module";
 import { KoskModule } from "../kosk/kosk.module";
+import { MadrasahModule } from "../madrasah/madrasah.module";
 import { TedrisatRoleResolver } from "./tedrisat-role-resolver.service";
 
 /**
@@ -19,11 +20,11 @@ import { TedrisatRoleResolver } from "./tedrisat-role-resolver.service";
  * and `CourseRepository` for the course lookups no service exposes — rather
  * than through `DatabaseService` directly, so the authorization decision and
  * the domain code share one code path over each table (review findings on
- * MDRS-41). The three modules export exactly what this needs.
+ * MDRS-41). The four modules export exactly what this needs.
  */
 @Global()
 @Module({
-  imports: [KoskModule, CourseModule, FlashcardModule],
+  imports: [KoskModule, MadrasahModule, CourseModule, FlashcardModule],
   providers: [
     {
       provide: ROLE_RESOLVER,

@@ -10,6 +10,7 @@ import { CourseRepository } from "../course/course.repository";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { FlashcardDeckService } from "../flashcard/flashcard-deck.service";
 import { KoskService } from "../kosk/kosk.service";
+import { MadrasahService } from "../madrasah/madrasah.service";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -21,9 +22,9 @@ const UUID_REGEX =
  * `FlashcardDeckService.findVisibility`) and through `CourseRepository` for
  * the course lookups no service exposes, never through `DatabaseService`
  * directly. Authorization and the domain code therefore read ownership from
- * one code path: when the rule or the storage shape changes (the
- * kosk→madrasah FK, a membership table for köşk ownership), the one owner
- * changes and both readers follow.
+ * one code path: when the rule or the storage shape changes (a membership
+ * table for köşk ownership, say), the one owner changes and both readers
+ * follow.
  *
  * Returning `null` means **deny** — the caller has no role on this
  * resource and no public access is intended either. `AuthzService.can`
@@ -32,16 +33,19 @@ const UUID_REGEX =
  * non-existent ID on a create endpoint, the donate scope on a
  * madrasah), the resolver must explicitly return `ROLES.PUBLIC`.
  *
- * Wired entities so far: `flashcard-deck` (owner), `kosk` (manager),
- * `course` (manager / muderris / enrolled / pending). `madrasah` and
- * `ijazah` return `PUBLIC` provisionally so the open scopes documented in
- * plan §4 (view, donate) work. Restricted scopes (`MANAGE_*`, `EDIT`,
- * `DELETE`) deny because PUBLIC does not list them — they will become
- * role-based once each entity's resolver lands.
+ * Wired entities so far: `flashcard-deck` (owner), `kosk` (manager /
+ * nazır), `course` (manager / muderris / enrolled / pending), `madrasah`
+ * (nazır, MDRS-106). `ijazah` returns `PUBLIC` provisionally; its
+ * restricted scopes deny because PUBLIC does not list them.
  *
  * Priority rules for multi-role situations:
  *   - KOSK_MANAGER > MUDERRIS > ENROLLED > PENDING
- *   - MADRASAH_NAZIR > KOSK_MANAGER (when the kosk belongs to the nazır's medrese)
+ *   - KOSK_MANAGER > MADRASAH_NAZIR on a köşk. The nazır row is a strict
+ *     subset of the manager row there, so preferring the manager never
+ *     takes a scope away from someone who holds both.
+ *   - A nazır gets nothing on a course from being a nazır: the course path
+ *     does not consult the medrese at all (PRD §4.1 — no direct authority
+ *     over individual courses).
  *   - SYSTEM_ADMIN bypass is handled upstream in `AuthzService.isSystemAdmin`,
  *     not here.
  */
@@ -50,7 +54,8 @@ export class TedrisatRoleResolver implements RoleResolver {
   constructor(
     private readonly koskService: KoskService,
     private readonly courseRepo: CourseRepository,
-    private readonly deckService: FlashcardDeckService
+    private readonly deckService: FlashcardDeckService,
+    private readonly madrasahService: MadrasahService
   ) {}
 
   async resolve(userId: string, resource: ResourceRef): Promise<Role | null> {
@@ -62,11 +67,10 @@ export class TedrisatRoleResolver implements RoleResolver {
       case ENTITIES.COURSE:
         return this.resolveCourseRole(userId, resource);
       case ENTITIES.MADRASAH:
+        return this.resolveMadrasahRole(userId, resource);
       case ENTITIES.IJAZAH:
-        // TODO(authz): wire nazır / ijazah tables as they land. Until
-        // then, PUBLIC keeps the entity's PUBLIC matrix row working
-        // (e.g. madrasah donate). Restricted scopes are denied because
-        // PUBLIC does not list them.
+        // TODO(authz): wire the ijazah tables as they land. Until then,
+        // restricted scopes are denied because PUBLIC does not list them.
         return ROLES.PUBLIC;
       default:
         return null;
@@ -128,10 +132,13 @@ export class TedrisatRoleResolver implements RoleResolver {
    * - Köşk missing: PUBLIC. Mirrors the deck pattern — the controller
    *   surfaces 404 later when its own query returns nothing.
    * - Caller owns the köşk: KOSK_MANAGER.
+   * - Caller is a nazır of the medrese the köşk is affiliated with:
+   *   MADRASAH_NAZIR (MDRS-106) — VIEW, EDIT, MANAGE_COURSES; no DELETE.
    * - Otherwise: PUBLIC. Anyone authenticated may VIEW; EDIT/DELETE
    *   are not on the PUBLIC row so non-owners are denied.
    *
-   * MADRASAH_NAZIR path is deferred until kosk→madrasah FK lands.
+   * The two lookups are independent, so they run together; the manager
+   * wins when both hold (see the priority rules on the class).
    */
   private async resolveKoskRole(
     userId: string,
@@ -141,8 +148,32 @@ export class TedrisatRoleResolver implements RoleResolver {
 
     // `KoskService.isOwner` is the module's one ownership predicate; a
     // missing köşk is simply "not the owner", which is PUBLIC here too.
-    return (await this.koskService.isOwner(resource.id, userId))
-      ? ROLES.KOSK_MANAGER
+    const [isOwner, isNazir] = await Promise.all([
+      this.koskService.isOwner(resource.id, userId),
+      this.madrasahService.isNazirOfKosk(resource.id, userId),
+    ]);
+    if (isOwner) return ROLES.KOSK_MANAGER;
+    if (isNazir) return ROLES.MADRASAH_NAZIR;
+    return ROLES.PUBLIC;
+  }
+
+  /**
+   * Medrese role dispatch (MDRS-106).
+   *
+   * - Non-UUID id (the list and create routes): PUBLIC — VIEW and DONATE.
+   *   `CREATE_MADRASAH` is on no row, so creating stays SYSTEM_ADMIN's.
+   * - Caller is listed in `madrasah_nazirs`: MADRASAH_NAZIR.
+   * - Otherwise, including a medrese that does not exist: PUBLIC. The
+   *   controller's resolver answers a missing medrese with 404 first.
+   */
+  private async resolveMadrasahRole(
+    userId: string,
+    resource: ResourceRef
+  ): Promise<Role | null> {
+    if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
+
+    return (await this.madrasahService.isNazir(resource.id, userId))
+      ? ROLES.MADRASAH_NAZIR
       : ROLES.PUBLIC;
   }
 
@@ -171,7 +202,8 @@ export class TedrisatRoleResolver implements RoleResolver {
    * it would have skipped; they run in parallel on the pool, which is the
    * cheaper trade.
    *
-   * The MADRASAH_NAZIR path lands once the kosk→madrasah FK exists.
+   * There is deliberately no MADRASAH_NAZIR path: a nazır governs a
+   * course's köşk, not the course (PRD §4.1, MDRS-106).
    */
   private async resolveCourseRole(
     userId: string,

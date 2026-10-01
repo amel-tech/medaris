@@ -15,6 +15,7 @@ import { DatabaseModule } from "./database/database.module";
 import { FlashcardModule } from "./flashcard/flashcard.module";
 import { FlashcardLabelModule } from "./flashcard/flashcard-label.module";
 import { KoskModule } from "./kosk/kosk.module";
+import { MadrasahModule } from "./madrasah/madrasah.module";
 import { UserModule } from "./user/user.module";
 
 @Module({
@@ -36,6 +37,7 @@ import { UserModule } from "./user/user.module";
     FlashcardModule,
     FlashcardLabelModule,
     KoskModule,
+    MadrasahModule,
     CourseModule,
     UserModule,
   ],

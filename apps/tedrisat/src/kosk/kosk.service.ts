@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
+import { KoskAlreadyAffiliatedError } from "./errors/kosk-already-affiliated.error";
 import { KoskForbiddenError } from "./errors/kosk-forbidden.error";
+import { KoskNotAffiliatedError } from "./errors/kosk-not-affiliated.error";
 import { KoskNotFoundError } from "./errors/kosk-not-found.error";
 import { KoskRepository } from "./kosk.repository";
 import {
@@ -67,12 +69,17 @@ export class KoskService {
     return this.koskRepo.create(newKosk);
   }
 
-  async update(
-    id: string,
-    userId: string,
-    updates: IUpdateKosk
-  ): Promise<IKosk> {
-    await this.assertOwner(id, userId);
+  /** True if a köşk with this id exists. */
+  async exists(koskId: string): Promise<boolean> {
+    return (await this.koskRepo.findOwnerId(koskId)) !== null;
+  }
+
+  /**
+   * Authorization is `@Authz(SCOPES.EDIT, …)` on `KoskController.update`
+   * (MDRS-106): the köşk's manager, or a nazır of its medrese. No ownership
+   * assertion is repeated here, because it would refuse the nazır.
+   */
+  async update(id: string, updates: IUpdateKosk): Promise<IKosk> {
     const updated = await this.koskRepo.update(id, updates);
     if (!updated) {
       throw new KoskNotFoundError(id);
@@ -83,6 +90,34 @@ export class KoskService {
   async delete(id: string, userId: string): Promise<boolean> {
     await this.assertOwner(id, userId);
     return this.koskRepo.delete(id);
+  }
+
+  /**
+   * Affiliates the köşk with a medrese (MDRS-106). Idempotent for the same
+   * medrese; a köşk that already belongs to another one is a 409 — it has to
+   * be detached from there first.
+   */
+  async affiliate(koskId: string, madrasahId: string): Promise<void> {
+    if (await this.koskRepo.affiliate(koskId, madrasahId)) return;
+    if (!(await this.exists(koskId))) throw new KoskNotFoundError(koskId);
+    throw new KoskAlreadyAffiliatedError(koskId, { madrasahId });
+  }
+
+  /** Detaches the köşk from `madrasahId`; 404 unless it belongs to it. */
+  async detach(koskId: string, madrasahId: string): Promise<void> {
+    if (await this.koskRepo.detach(koskId, madrasahId)) return;
+    if (!(await this.exists(koskId))) throw new KoskNotFoundError(koskId);
+    throw new KoskNotAffiliatedError(koskId, madrasahId);
+  }
+
+  /**
+   * The köşk's own way out of a medrese: without it, a köşk a nazır had
+   * affiliated could only be released by that medrese's nazırs.
+   */
+  async leaveMadrasah(koskId: string): Promise<void> {
+    if (await this.koskRepo.leaveMadrasah(koskId)) return;
+    if (!(await this.exists(koskId))) throw new KoskNotFoundError(koskId);
+    throw new KoskNotAffiliatedError(koskId);
   }
 
   async follow(userId: string, koskId: string): Promise<boolean> {
