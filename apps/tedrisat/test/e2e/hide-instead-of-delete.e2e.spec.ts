@@ -14,13 +14,11 @@ import {
   enrollments,
   lessons,
 } from "../../src/database/schema/course.schema";
-import {
-  koskFollowers,
-  koskManagers,
-  kosks,
-} from "../../src/database/schema/kosk.schema";
+import { koskFollowers, kosks } from "../../src/database/schema/kosk.schema";
+import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
+  assignRole,
   COURSE_TREE_TABLES,
   TestDatabaseUtils,
 } from "../helpers/test-database.helper";
@@ -70,11 +68,14 @@ describe("Hide instead of delete (e2e)", () => {
       .values({ ownerId: MANAGER_ID, name: "Süleymaniye Köşkü" })
       .returning();
     koskId = kosk.id;
-    // Managing is `kosk_managers` since MDRS-126, which `POST /kosks` fills
-    // and a direct insert does not.
-    await db()
-      .insert(koskManagers)
-      .values({ koskId, userId: MANAGER_ID, addedBy: MANAGER_ID });
+    // Managing is a KOSK_NAZIM role since MDRS-134, which `POST /kosks`
+    // grants and a direct insert does not.
+    await assignRole(db(), {
+      userId: MANAGER_ID,
+      role: ASSIGNED_ROLES.KOSK_NAZIM,
+      scopeId: koskId,
+      grantedBy: MANAGER_ID,
+    });
     const [course] = await db()
       .insert(courses)
       .values({
@@ -99,6 +100,13 @@ describe("Hide instead of delete (e2e)", () => {
     await db()
       .insert(courseMuderris)
       .values({ courseId, userId: MUDERRIS_ID, name: "Musa Müderris" });
+    await assignRole(db(), {
+      userId: MUDERRIS_ID,
+      role: ASSIGNED_ROLES.MUDERRIS,
+      scopeId: courseId,
+      grantedBy: MANAGER_ID,
+      isImam: true,
+    });
     await db()
       .insert(courseResources)
       .values({ courseId, name: "Metin", type: "pdf" });

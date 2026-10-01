@@ -20,21 +20,17 @@ import type {
  * where nizam switches to them.
  */
 type Me = Pick<MeResponse, "roles"> | null;
-type KoskRef = Pick<KoskResponse, "id" | "madrasah">;
+type KoskRef = Pick<KoskResponse, "id">;
 
 const managesKosk = (me: NonNullable<Me>, koskId: string): boolean =>
   me.roles.manages.some((k) => k.id === koskId);
 
-/**
- * A nazır of the medrese the köşk is affiliated with. `nazirOf` is always
- * empty until role model v2, so this is false for everyone today.
- */
-const isNazirOf = (me: NonNullable<Me>, kosk: KoskRef): boolean =>
-  kosk.madrasah != null &&
-  me.roles.nazirOf.some((m) => m.id === kosk.madrasah?.id);
-
 export interface KoskAbilities {
-  /** "Köşkü Düzenle" — kosk EDIT: the manager or a nazır of its medrese. */
+  /**
+   * "Köşkü Düzenle" — kosk EDIT: the manager's alone. A medrese holds only a
+   * hosting right in a köşk, which gives its nazırs no power over it
+   * (MDRS-134).
+   */
   edit: boolean;
   /**
    * "Yeni Ders Aç" — kosk MANAGE_COURSES to create, then course EDIT to plan
@@ -60,7 +56,7 @@ export const koskAbilities = (me: Me, kosk: KoskRef): KoskAbilities => {
   if (!me) return NOTHING;
   const manager = me.roles.systemAdmin || managesKosk(me, kosk.id);
   return {
-    edit: manager || isNazirOf(me, kosk),
+    edit: manager,
     openCourse: manager,
     reviewRequests: manager,
   };

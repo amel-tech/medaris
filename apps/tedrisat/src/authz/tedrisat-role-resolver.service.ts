@@ -52,19 +52,18 @@ const UUID_REGEX =
  * non-existent ID on a create endpoint, the donate scope on a
  * madrasah), the resolver must explicitly return `ROLES.PUBLIC`.
  *
- * Wired entities so far: `flashcard-deck` (owner), `kosk` (manager /
- * nazır), `course` (manager / muderris / enrolled / pending), `madrasah`
- * (nazır, MDRS-106). `ijazah` returns `PUBLIC` provisionally; its
+ * Wired entities so far: `flashcard-deck` (owner), `kosk` (manager),
+ * `course` (manager / muderris / enrolled / pending), `madrasah` (nazır,
+ * MDRS-106). Since MDRS-134 the manager, müderris and nazır answers come
+ * from `role_assignments` (KOSK_NAZIM, MUDERRIS, MEDRESE_BASMUDERRIS), read
+ * through the same services. `ijazah` returns `PUBLIC` provisionally; its
  * restricted scopes deny because PUBLIC does not list them.
  *
  * Priority rules for multi-role situations:
  *   - KOSK_MANAGER > MUDERRIS > ENROLLED > PENDING
- *   - KOSK_MANAGER > MADRASAH_NAZIR on a köşk. The nazır row is a strict
- *     subset of the manager row there, so preferring the manager never
- *     takes a scope away from someone who holds both.
- *   - A nazır gets nothing on a course from being a nazır: the course path
- *     does not consult the medrese at all (PRD §4.1 — no direct authority
- *     over individual courses).
+ *   - A medrese's nazır gets nothing on a köşk or a course from being one:
+ *     neither path consults the medrese (MDRS-133 — medreses never moderate
+ *     köşks; MDRS-134 removed the köşk affiliation that once did).
  *   - SYSTEM_ADMIN bypass is handled upstream in `AuthzService.isSystemAdmin`,
  *     not here.
  */
@@ -280,13 +279,12 @@ export class TedrisatRoleResolver implements RoleResolver {
    * - Köşk missing: `KoskNotFoundError` (MDRS-43). Mirrors the deck branch
    *   above.
    * - Caller is one of the köşk's managers: KOSK_MANAGER.
-   * - Caller is a nazır of the medrese the köşk is affiliated with:
-   *   MADRASAH_NAZIR (MDRS-106) — VIEW, EDIT, MANAGE_COURSES; no DELETE.
    * - Otherwise: PUBLIC. Anyone authenticated may VIEW; EDIT/DELETE
    *   are not on the PUBLIC row so non-owners are denied.
    *
-   * The two lookups are independent, so they run together; the manager
-   * wins when both hold (see the priority rules on the class).
+   * There is no MADRASAH_NAZIR path any more (MDRS-134): a medrese's only
+   * link to a köşk is a hosting right, which gives it no power over the
+   * köşk (MDRS-133).
    */
   private async resolveKoskRole(
     userId: string,
@@ -295,18 +293,15 @@ export class TedrisatRoleResolver implements RoleResolver {
     if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
 
     // `KoskService.isManager` is the module's one management predicate
-    // (`kosk_managers`, MDRS-126), and it answers `false` for a missing köşk
+    // (KOSK_NAZIM, MDRS-134), and it answers `false` for a missing köşk
     // as well as for a non-manager. Those are a 404 and a 403 respectively
     // (MDRS-43), so existence is read alongside it rather than folded in.
-    const [exists, isManager, isNazir] = await Promise.all([
+    const [exists, isManager] = await Promise.all([
       this.koskService.exists(resource.id),
       this.koskService.isManager(resource.id, userId),
-      this.madrasahService.isNazirOfKosk(resource.id, userId),
     ]);
     if (!exists) throw new KoskNotFoundError(resource.id);
-    if (isManager) return ROLES.KOSK_MANAGER;
-    if (isNazir) return ROLES.MADRASAH_NAZIR;
-    return ROLES.PUBLIC;
+    return isManager ? ROLES.KOSK_MANAGER : ROLES.PUBLIC;
   }
 
   /**
@@ -314,7 +309,7 @@ export class TedrisatRoleResolver implements RoleResolver {
    *
    * - Non-UUID id (the list and create routes): PUBLIC — VIEW and DONATE.
    *   `CREATE_MADRASAH` is on no row, so creating stays SYSTEM_ADMIN's.
-   * - Caller is listed in `madrasah_nazirs`: MADRASAH_NAZIR.
+   * - Caller holds MEDRESE_BASMUDERRIS there (MDRS-134): MADRASAH_NAZIR.
    * - Otherwise, including a medrese that does not exist: PUBLIC. The
    *   controller's resolver answers a missing medrese with 404 first.
    */
@@ -334,7 +329,7 @@ export class TedrisatRoleResolver implements RoleResolver {
    *
    * Priority (highest first):
    *   1. KOSK_MANAGER — caller manages the course's parent köşk
-   *   2. MUDERRIS     — caller is listed in `course_muderris` for this course
+   *   2. MUDERRIS     — caller holds MUDERRIS on this course (MDRS-134)
    *   3. ENROLLED     — caller has an `ENROLLED` (or `COMPLETED`) enrollment
    *   4. PENDING      — caller has a `PENDING` enrollment awaiting approval
    *   5. PUBLIC       — any authenticated caller (covers ENROLL on a course
@@ -354,8 +349,10 @@ export class TedrisatRoleResolver implements RoleResolver {
    * it would have skipped; they run in parallel on the pool, which is the
    * cheaper trade.
    *
-   * There is deliberately no MADRASAH_NAZIR path: a nazır governs a
-   * course's köşk, not the course (PRD §4.1, MDRS-106).
+   * There is deliberately no MADRASAH_NAZIR path: a medrese's nazır has no
+   * direct authority over a course (PRD §4.1). MDRS-135 replaces this with
+   * the permission catalogue, where a başmüderris reaches the medrese's
+   * courses through `courses.madrasah_id`.
    */
   private async resolveCourseRole(
     userId: string,

@@ -1,13 +1,47 @@
 import { DatabaseService } from "../../src/database/database.service";
+import {
+  AssignedRole,
+  ROLE_SCOPE_TYPES,
+  roleAssignments,
+} from "../../src/database/schema/role-assignment.schema";
 
 /**
- * Every table under a köşk, children first, then `kosks` itself. Pass it to
+ * Gives `userId` a role in a scope with a direct insert (MDRS-134) — what a
+ * test that inserts a köşk or a course row directly, instead of through the
+ * API, needs so that its manager or müderris is one. `POST /kosks` and the
+ * course writes grant these themselves.
+ */
+export async function assignRole(
+  db: DatabaseService["db"],
+  grant: {
+    userId: string;
+    role: AssignedRole;
+    scopeId: string;
+    grantedBy?: string;
+    isImam?: boolean;
+  }
+): Promise<void> {
+  await db.insert(roleAssignments).values({
+    userId: grant.userId,
+    role: grant.role,
+    scopeType: ROLE_SCOPE_TYPES[grant.role],
+    scopeId: grant.scopeId,
+    grantedBy: grant.grantedBy ?? grant.userId,
+    isImam: grant.isImam ?? false,
+  });
+}
+
+/**
+ * Every table under a köşk, children first, then `kosks` itself, led by
+ * `role_assignments` (MDRS-134): its `scope_id` is no foreign key, so a
+ * köşk's or course's roles would otherwise outlive the rows they name. Pass it to
  * `cleanTables` instead of plain `"kosks"`: since MDRS-124 the foreign keys
  * under a köşk are `ON DELETE RESTRICT`, so `DELETE FROM kosks` fails while a
  * course remains — and `cleanTables` only warns on failure, which would leave
  * one test's rows in the next.
  */
 export const COURSE_TREE_TABLES = [
+  "role_assignments",
   "enrollments",
   "course_resources",
   "course_muderris",

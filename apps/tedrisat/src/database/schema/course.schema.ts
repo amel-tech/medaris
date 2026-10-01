@@ -16,6 +16,7 @@ import { CourseStatus } from "../../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../course/domain/enrollment-status.enum";
 import { LessonType } from "../../course/domain/lesson-type.enum";
 import { kosks } from "./kosk.schema";
+import { madrasahs } from "./madrasah.schema";
 
 // Enums
 export const courseLevel = pgEnum("course_level", CourseLevel);
@@ -36,6 +37,16 @@ export const courses = table("courses", {
   koskId: uuid("kosk_id")
     .references(() => kosks.id, { onDelete: "restrict" })
     .notNull(),
+  // The medrese the course belongs to, if any (MDRS-134). A course belongs to
+  // exactly one köşk and optionally to one medrese, which may open courses in
+  // that köşk only while it holds a hosting right there (MDRS-137). Its
+  // enrolled talebe are that medrese's talebe — derived, never stored
+  // (`MadrasahRepository.findTalebeIds`). SET NULL, not RESTRICT like the
+  // keys below: deleting a medrese (SYSTEM_ADMIN only) leaves its courses
+  // standing as köşk courses, as it used to leave its köşks standing alone.
+  madrasahId: uuid("madrasah_id").references(() => madrasahs.id, {
+    onDelete: "set null",
+  }),
   authorId: uuid("author_id").notNull(),
   title: text("title").notNull(),
   subtitle: text("subtitle"),
@@ -63,6 +74,12 @@ export const courses = table("courses", {
   // account that hid it — not a foreign key, like every other user column.
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   archivedBy: uuid("archived_by"),
+  // Passive (MDRS-134): the course lost its last admin and nobody above took
+  // it over (MDRS-133, MDRS-136). Separate from `archived_at`, which is
+  // hiding (MDRS-124): nobody hid a passive course, it is unattended. Null
+  // while active.
+  passiveSince: timestamp("passive_since", { withTimezone: true }),
+  passiveReason: text("passive_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

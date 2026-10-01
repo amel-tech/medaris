@@ -7,10 +7,12 @@ import {
   courseMuderris,
   courses,
 } from "../../src/database/schema/course.schema";
-import { koskManagers, kosks } from "../../src/database/schema/kosk.schema";
+import { kosks } from "../../src/database/schema/kosk.schema";
+import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
+  assignRole,
   COURSE_TREE_TABLES,
   TestDatabaseUtils,
 } from "../helpers/test-database.helper";
@@ -87,11 +89,14 @@ describe("Users (e2e)", () => {
       .values({ ownerId: MANAGER_ID, name: "Süleymaniye Köşkü" })
       .returning();
     koskId = kosk.id;
-    // Managing is `kosk_managers` since MDRS-126, which `POST /kosks` fills
-    // and a direct insert does not.
-    await databaseService.db
-      .insert(koskManagers)
-      .values({ koskId, userId: MANAGER_ID, addedBy: MANAGER_ID });
+    // Managing is a KOSK_NAZIM role since MDRS-134, which `POST /kosks`
+    // grants and a direct insert does not.
+    await assignRole(databaseService.db, {
+      userId: MANAGER_ID,
+      role: ASSIGNED_ROLES.KOSK_NAZIM,
+      scopeId: koskId,
+      grantedBy: MANAGER_ID,
+    });
     const [course] = await databaseService.db
       .insert(courses)
       .values({ koskId, authorId: MANAGER_ID, title: "Usûl-i Fıkıh" })
@@ -100,6 +105,13 @@ describe("Users (e2e)", () => {
     await databaseService.db
       .insert(courseMuderris)
       .values({ courseId, userId: MUDERRIS_ID, name: "Musa Müderris" });
+    await assignRole(databaseService.db, {
+      userId: MUDERRIS_ID,
+      role: ASSIGNED_ROLES.MUDERRIS,
+      scopeId: courseId,
+      grantedBy: MANAGER_ID,
+      isImam: true,
+    });
   });
 
   afterAll(async () => {

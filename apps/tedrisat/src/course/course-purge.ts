@@ -1,5 +1,6 @@
 import { eq, inArray } from "drizzle-orm";
 import type { DatabaseService } from "../database/database.service";
+import { deleteAssignmentsIn } from "../database/role-assignments";
 import { auditLog } from "../database/schema/audit.schema";
 import {
   courseMuderris,
@@ -9,6 +10,7 @@ import {
   enrollments,
   lessons,
 } from "../database/schema/course.schema";
+import { SCOPE_TYPES } from "../database/schema/role-assignment.schema";
 
 export type Tx = Parameters<
   Parameters<DatabaseService["db"]["transaction"]>[0]
@@ -71,6 +73,11 @@ export async function purgeCourses(
         .returning({ id: courseWeeks.id })
     ).length;
   }
+  // The courses' role rows (MUDERRIS, DERS_NAZIR) are no foreign-key
+  // children — `scope_id` points at any kind of scope — so they are named
+  // here too (MDRS-134). Not counted: `muderris` below already counts who
+  // taught there.
+  await deleteAssignmentsIn(tx, SCOPE_TYPES.COURSE, courseIds);
   counts.muderris = (
     await tx
       .delete(courseMuderris)

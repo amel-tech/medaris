@@ -3,15 +3,18 @@ import { and, asc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import { CourseStatus } from "../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { DatabaseService } from "../database/database.service";
+import { isHeld } from "../database/role-assignments";
 import { calendarFeedTokens } from "../database/schema/calendar-feed.schema";
 import {
-  courseMuderris,
   courses,
   courseWeeks,
   enrollments,
   lessons,
 } from "../database/schema/course.schema";
-import { koskManagers } from "../database/schema/kosk.schema";
+import {
+  ASSIGNED_ROLES,
+  roleAssignments,
+} from "../database/schema/role-assignment.schema";
 import { users } from "../database/schema/user.schema";
 
 /** One session as the feed needs it — and nothing else (no meeting link). */
@@ -109,15 +112,23 @@ export class CalendarFeedRepository {
           inArray(enrollments.status, FEED_ENROLLMENT_STATES)
         )
       );
-    const teaches = this.db
-      .select({ id: courseMuderris.courseId })
-      .from(courseMuderris)
-      .where(eq(courseMuderris.userId, userId));
-    // The köşks the user is one of the managers of (MDRS-126).
-    const manages = this.db
-      .select({ id: koskManagers.koskId })
-      .from(koskManagers)
-      .where(eq(koskManagers.userId, userId));
+    // The courses the user holds MUDERRIS on, and the köşks they hold
+    // KOSK_NAZIM in (MDRS-126, MDRS-134).
+    const heldBy = (
+      role: typeof ASSIGNED_ROLES.MUDERRIS | typeof ASSIGNED_ROLES.KOSK_NAZIM
+    ) =>
+      this.db
+        .select({ id: roleAssignments.scopeId })
+        .from(roleAssignments)
+        .where(
+          and(
+            eq(roleAssignments.userId, userId),
+            eq(roleAssignments.role, role),
+            isHeld()
+          )
+        );
+    const teaches = heldBy(ASSIGNED_ROLES.MUDERRIS);
+    const manages = heldBy(ASSIGNED_ROLES.KOSK_NAZIM);
 
     const rows = await this.db
       .select({

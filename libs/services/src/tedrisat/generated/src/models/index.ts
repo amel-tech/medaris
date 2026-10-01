@@ -41,7 +41,6 @@ export * from './FlashcardProgressResponse';
 export * from './FlashcardResponse';
 export * from './HealthCheckDto';
 export * from './KoskLevel';
-export * from './KoskMadrasahRef';
 export * from './KoskManagedBy';
 export * from './KoskResponse';
 export * from './LabelStatsResponse';

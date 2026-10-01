@@ -162,6 +162,27 @@
       "when": 1790866643841,
       "tag": "0022_kosk_listed_by_default",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790866643864,
+      "tag": "0023_role_assignments",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790866643865,
+      "tag": "0024_role_assignments_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790866643866,
+      "tag": "0025_drop_superseded_role_tables",
+      "breakpoints": true
     }
   ]
 }
