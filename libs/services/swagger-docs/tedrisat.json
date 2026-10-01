@@ -2504,11 +2504,8 @@
               }
             }
           },
-          "403": {
-            "description": "Deck is private and owned by another user"
-          },
           "404": {
-            "description": ""
+            "description": "No such deck, or a private deck owned by another user — deliberately the same answer"
           }
         },
         "security": [

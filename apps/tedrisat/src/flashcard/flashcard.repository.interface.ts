@@ -44,6 +44,18 @@ export interface ICreateFlashcardProgress {
   status: FlashcardProgressStatus;
 }
 
+/**
+ * One card's access facts: its parent deck and the two columns that deck's
+ * visibility rule reads. Shaped for a batch check, so it carries `cardId`
+ * — the caller has to map an answer back to the id it asked about.
+ */
+export interface IFlashcardVisibility {
+  cardId: string;
+  deckId: string;
+  authorId: string;
+  isPublic: boolean;
+}
+
 export interface IFlashcardRepository {
   findById(
     id: string,
@@ -62,6 +74,17 @@ export interface IFlashcardRepository {
    * back just to reach one foreign key.
    */
   findDeckId(id: string): Promise<string | null>;
+  /**
+   * The access columns for MANY cards at once: each card's parent deck plus
+   * that deck's `authorId`/`isPublic`, in ONE round trip.
+   *
+   * `findDeckId` answers the same question for a single card, and a caller
+   * with a list of ids can loop it — `PUT /flashcard/cards/progress` did,
+   * two queries per distinct card in a study session. Rows missing from the
+   * result are cards that do not exist; the caller decides whether that is a
+   * 404 or a deny, because this projection deliberately does not.
+   */
+  findVisibilityByIds(cardIds: string[]): Promise<IFlashcardVisibility[]>;
   createMany(cards: ICreateFlashcard[]): Promise<IFlashcard[]>;
   update(id: string, updates: IUpdateFlashcard): Promise<IFlashcard | null>;
   delete(id: string): Promise<boolean>;

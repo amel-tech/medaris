@@ -93,6 +93,10 @@
     "addToMyCollection": "أضف إلى مجموعتي",
     "by": "بواسطة",
     "cards": "بطاقات",
+    "madePrivate": "أصبحت المجموعة مرئية لك وحدك.",
+    "madePublic": "أصبحت المجموعة مرئية للجميع.",
+    "makePrivate": "اجعلها خاصة",
+    "makePublic": "اجعلها عامة",
     "noCardsDescription": "لا تحتوي هذه المجموعة على أي بطاقات تعليمية حتى الآن. أضف بعض البطاقات للبدء في التدريب.",
     "noCardsInDeck": "لا توجد بطاقات في هذه المجموعة",
     "practiceNow": "تدرب الآن",
@@ -100,7 +104,9 @@
     "removeFromCollection": "إزالة من المجموعة",
     "removing": "إزالة...",
     "sampleCards": "بطاقات العينات",
-    "students": "طلاب"
+    "students": "طلاب",
+    "visibilityChanged": "تغيّر الظهور",
+    "visibilityError": "تعذّر تغيير الظهور"
   },
   "DeckForm": {
     "addCard": "أضف البطاقة",
@@ -354,5 +360,10 @@
       "decks": "ادرس بالبطاقات التعليمية"
     },
     "start": "ابدأ التعلّم"
+  },
+  "DeckUnavailable": {
+    "title": "هذه المجموعة غير متاحة",
+    "description": "ربما حُذفت، أو أن صاحبها يبقيها خاصة به.",
+    "backToDecks": "العودة إلى المجموعات"
   }
 }
