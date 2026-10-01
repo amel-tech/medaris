@@ -3692,6 +3692,11 @@
           "requiresApproval": {
             "type": "boolean"
           },
+          "timeZone": {
+            "type": "string",
+            "example": "Europe/Istanbul",
+            "description": "IANA time zone the course's sessions are authored in (MDRS-110)."
+          },
           "version": {
             "type": "number",
             "description": "Optimistic-concurrency token. Send it back with PUT /courses/:id and PATCH /lessons/:id; a stale value is refused with 409."
@@ -3745,6 +3750,7 @@
           "status",
           "grantsCertificate",
           "requiresApproval",
+          "timeZone",
           "version",
           "createdAt",
           "updatedAt",
@@ -3792,9 +3798,12 @@
             ],
             "example": "VIDEO"
           },
-          "duration": {
-            "type": "string",
-            "example": "28 dk"
+          "durationMinutes": {
+            "type": "number",
+            "example": 60,
+            "minimum": 1,
+            "maximum": 1440,
+            "description": "Length of the lesson in whole minutes (MDRS-110). Replaces the free-text `duration`, from which no end time could be computed."
           },
           "kaynak": {
             "type": "string",
@@ -3961,6 +3970,11 @@
             "type": "number",
             "example": 10
           },
+          "timeZone": {
+            "type": "string",
+            "example": "Europe/Istanbul",
+            "description": "IANA time zone the course's sessions are authored in (MDRS-110). Defaults to Europe/Istanbul. Never null."
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -4039,8 +4053,10 @@
               "QUIZ"
             ]
           },
-          "duration": {
-            "type": "string"
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "Length of the lesson in minutes; null when not set."
           },
           "kaynak": {
             "type": "string"
@@ -4197,6 +4213,11 @@
           "requiresApproval": {
             "type": "boolean"
           },
+          "timeZone": {
+            "type": "string",
+            "example": "Europe/Istanbul",
+            "description": "IANA time zone the course's sessions are authored in (MDRS-110)."
+          },
           "version": {
             "type": "number",
             "description": "Optimistic-concurrency token. Send it back with PUT /courses/:id and PATCH /lessons/:id; a stale value is refused with 409."
@@ -4253,6 +4274,7 @@
           "status",
           "grantsCertificate",
           "requiresApproval",
+          "timeZone",
           "version",
           "createdAt",
           "updatedAt",
@@ -4315,6 +4337,11 @@
           "requiresApproval": {
             "type": "boolean"
           },
+          "timeZone": {
+            "type": "string",
+            "example": "Europe/Istanbul",
+            "description": "IANA time zone the course's sessions are authored in (MDRS-110)."
+          },
           "version": {
             "type": "number",
             "description": "Optimistic-concurrency token. Send it back with PUT /courses/:id and PATCH /lessons/:id; a stale value is refused with 409."
@@ -4368,6 +4395,7 @@
           "status",
           "grantsCertificate",
           "requiresApproval",
+          "timeZone",
           "version",
           "createdAt",
           "updatedAt",
@@ -4418,6 +4446,11 @@
           "durationWeeks": {
             "type": "number",
             "example": 10
+          },
+          "timeZone": {
+            "type": "string",
+            "example": "Europe/Istanbul",
+            "description": "IANA time zone the course's sessions are authored in."
           },
           "status": {
             "type": "string",
@@ -4478,6 +4511,11 @@
           "durationWeeks": {
             "type": "number",
             "example": 10
+          },
+          "timeZone": {
+            "type": "string",
+            "example": "Europe/Istanbul",
+            "description": "IANA time zone the course's sessions are authored in (MDRS-110). Defaults to Europe/Istanbul. Never null."
           },
           "status": {
             "type": "string",
@@ -4615,9 +4653,12 @@
             ],
             "example": "VIDEO"
           },
-          "duration": {
-            "type": "string",
-            "example": "28 dk"
+          "durationMinutes": {
+            "type": "number",
+            "example": 60,
+            "minimum": 1,
+            "maximum": 1440,
+            "description": "Length of the lesson in whole minutes (MDRS-110). Replaces the free-text `duration`, from which no end time could be computed."
           },
           "kaynak": {
             "type": "string",
@@ -4672,8 +4713,10 @@
               "QUIZ"
             ]
           },
-          "duration": {
-            "type": "string"
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "Length of the lesson in minutes; null when not set."
           },
           "kaynak": {
             "type": "string"
@@ -4715,9 +4758,12 @@
       "UpdateLessonDto": {
         "type": "object",
         "properties": {
-          "duration": {
-            "type": "string",
-            "example": "28 dk"
+          "durationMinutes": {
+            "type": "number",
+            "example": 60,
+            "minimum": 1,
+            "maximum": 1440,
+            "description": "Length of the lesson in whole minutes (MDRS-110). Replaces the free-text `duration`, from which no end time could be computed."
           },
           "kaynak": {
             "type": "string",

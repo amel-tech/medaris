@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
@@ -8,17 +8,34 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsTimeZone,
   IsUrl,
   IsUUID,
   Max,
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from "class-validator";
 import { CourseLevel } from "../domain/course-level.enum";
 import { CourseStatus } from "../domain/course-status.enum";
 import { LessonType } from "../domain/lesson-type.enum";
+import { canonicalTimeZone } from "../domain/time-zone";
+
+/**
+ * `@IsTimeZone()` accepts whatever `Intl` accepts — "europe/istanbul",
+ * "Turkey", "+03:00" (MDRS-110). A name is validated in its canonical IANA
+ * form, which `CourseService` also stores; a fixed UTC offset is not a zone a
+ * course can be authored in and is turned into "", which the validator
+ * refuses.
+ */
+export const toCanonicalTimeZone = ({ value }: { value: unknown }): unknown =>
+  typeof value !== "string"
+    ? value
+    : /^[+-]/.test(value.trim())
+      ? ""
+      : canonicalTimeZone(value);
 
 export class AgendaStepDto {
   @ApiProperty({ example: "21:00" })
@@ -51,11 +68,19 @@ export class CreateLessonDto {
   @IsEnum(LessonType)
   type!: LessonType;
 
-  @ApiPropertyOptional({ example: "28 dk" })
+  @ApiPropertyOptional({
+    example: 60,
+    minimum: 1,
+    maximum: 1440,
+    description:
+      "Length of the lesson in whole minutes (MDRS-110). Replaces the " +
+      "free-text `duration`, from which no end time could be computed.",
+  })
   @IsOptional()
-  @IsString()
-  @MaxLength(40)
-  duration?: string;
+  @IsInt()
+  @Min(1)
+  @Max(1440)
+  durationMinutes?: number;
 
   @ApiPropertyOptional({ example: "Bina · s. 4-9" })
   @IsOptional()
@@ -254,6 +279,20 @@ export class CreateCourseDto {
   @IsInt()
   @Min(0)
   durationWeeks?: number;
+
+  @ApiPropertyOptional({
+    example: "Europe/Istanbul",
+    description:
+      "IANA time zone the course's sessions are authored in (MDRS-110). " +
+      "Defaults to Europe/Istanbul. Never null.",
+  })
+  // Not `@IsOptional()`: that skips validation for null too, and null would
+  // reach a NOT NULL column as a 500 instead of a 400.
+  @Transform(toCanonicalTimeZone)
+  @ValidateIf((_: unknown, value: unknown) => value !== undefined)
+  @IsTimeZone()
+  @MaxLength(64)
+  timeZone?: string;
 
   @ApiPropertyOptional({ enum: CourseStatus, example: CourseStatus.DRAFT })
   @IsOptional()

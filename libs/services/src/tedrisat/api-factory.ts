@@ -7,6 +7,7 @@ import {
   FlashcardlabelApi,
   KosksApi,
   LessonsApi,
+  MeApi,
   TedrisatServiceApi,
 } from "./generated/src";
 
@@ -102,6 +103,9 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     courses: new CoursesApi(configuration),
     // Session-level lesson writes (MDRS-95).
     lessons: new LessonsApi(configuration),
+    // The caller's own profile and settings (MDRS-104); the web apps read
+    // `timeZone` from it to pick the zone dates are shown in (MDRS-110).
+    me: new MeApi(configuration),
     // The two label controllers MDRS-58 published for the first time. Generated
     // classes that only `./generated/src` exported were reachable by no app —
     // this factory is what `@medaris/services/tedrisat` hands out.

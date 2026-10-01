@@ -18,7 +18,8 @@ import type {
 import { Dialog, DialogContent } from "@medaris/ui/components/dialog";
 import { cn } from "@medaris/ui/lib/utils";
 import Link from "next/link";
-import { useFormatter, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
+import { SessionTime } from "~/components/session-time";
 import { lessonTypeLabel } from "./labels";
 
 export const LessonTypeIcon = ({
@@ -45,12 +46,14 @@ export const LessonTypeIcon = ({
 export const LessonRow = ({
   lesson,
   courseId,
+  timeZone,
 }: {
   lesson: LessonResponse;
   courseId?: string;
+  /** The zone the course's sessions are authored in (MDRS-110). */
+  timeZone?: string;
 }) => {
   const t = useTranslations("tedris");
-  const format = useFormatter();
   const inner = (
     <>
       <div className="grid size-6 place-items-center rounded-full bg-slate-100 text-muted-foreground">
@@ -63,14 +66,17 @@ export const LessonRow = ({
           {lesson.scheduledAt && (
             <>
               <span className="size-[2px] rounded-full bg-slate-300" />
-              <span className="tabular-nums">
-                {format.dateTime(new Date(lesson.scheduledAt), {
+              <SessionTime
+                className="tabular-nums"
+                at={new Date(lesson.scheduledAt)}
+                courseTimeZone={timeZone}
+                options={{
                   day: "numeric",
                   month: "short",
                   hour: "2-digit",
                   minute: "2-digit",
-                })}
-              </span>
+                }}
+              />
             </>
           )}
           {lesson.kaynak && (
@@ -89,9 +95,9 @@ export const LessonRow = ({
           )}
         </div>
       </div>
-      {lesson.duration && (
+      {lesson.durationMinutes != null && (
         <span className="min-w-14 text-right text-xs text-muted-foreground">
-          {lesson.duration}
+          {t("SessionTime.minutes", { minutes: lesson.durationMinutes })}
         </span>
       )}
     </>
@@ -118,12 +124,14 @@ export const WeekModule = ({
   onToggle,
   collapsible = true,
   courseId,
+  timeZone,
 }: {
   week: WeekResponse;
   open?: boolean;
   onToggle?: () => void;
   collapsible?: boolean;
   courseId?: string;
+  timeZone?: string;
 }) => {
   const t = useTranslations("tedris");
   const expanded = collapsible ? Boolean(open) : true;
@@ -176,7 +184,12 @@ export const WeekModule = ({
             </div>
           )}
           {week.lessons.map((lesson) => (
-            <LessonRow key={lesson.id} lesson={lesson} courseId={courseId} />
+            <LessonRow
+              key={lesson.id}
+              lesson={lesson}
+              courseId={courseId}
+              timeZone={timeZone}
+            />
           ))}
         </div>
       )}
@@ -272,6 +285,7 @@ export const SyllabusModal = ({
               key={week.id}
               week={week}
               collapsible={false}
+              timeZone={course.timeZone}
               // Lesson deep-links only for enrolled students (PENDING not enough).
               courseId={
                 course.enrollment && course.enrollment.status !== "PENDING"

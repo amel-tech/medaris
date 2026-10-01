@@ -15,7 +15,8 @@ export interface ILesson {
   weekId: string;
   title: string;
   type: LessonType;
-  duration: string | null;
+  /** Length in minutes (MDRS-110); null when not set. */
+  durationMinutes: number | null;
   kaynak: string | null;
   scheduledAt: Date | null;
   meetingUrl: string | null;
@@ -70,6 +71,8 @@ export interface ICourse {
   status: CourseStatus;
   grantsCertificate: boolean;
   requiresApproval: boolean;
+  /** IANA zone the sessions are authored in (MDRS-110). */
+  timeZone: string;
   /** Optimistic-concurrency token; bumped by every course or syllabus write. */
   version: number;
   /** When the köşk manager hid the course (MDRS-124); null while live. */
@@ -128,7 +131,7 @@ export interface ICreateLesson {
   id?: string;
   title: string;
   type: LessonType;
-  duration?: string;
+  durationMinutes?: number;
   kaynak?: string;
   scheduledAt?: Date;
   meetingUrl?: string;
@@ -175,6 +178,7 @@ export interface ICreateCourse {
   status?: CourseStatus;
   grantsCertificate?: boolean;
   requiresApproval?: boolean;
+  timeZone?: string;
   weeks?: ICreateWeek[];
   muderris?: ICreateMuderris[];
   resources?: ICreateResource[];
@@ -192,6 +196,7 @@ export interface IUpdateCourse {
   status?: CourseStatus;
   grantsCertificate?: boolean;
   requiresApproval?: boolean;
+  timeZone?: string;
 }
 
 export type IReplaceCourse = Omit<ICreateCourse, "koskId" | "authorId"> & {
@@ -207,7 +212,8 @@ export interface IUpdateLesson {
   weekId?: string;
   title?: string;
   type?: LessonType;
-  duration?: string;
+  /** null clears it. */
+  durationMinutes?: number | null;
   kaynak?: string;
   scheduledAt?: Date;
   meetingUrl?: string;

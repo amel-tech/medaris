@@ -119,6 +119,12 @@ export interface EnrolledCourseResponse {
      */
     requiresApproval: boolean;
     /**
+     * IANA time zone the course's sessions are authored in (MDRS-110).
+     * @type {string}
+     * @memberof EnrolledCourseResponse
+     */
+    timeZone: string;
+    /**
      * Optimistic-concurrency token. Send it back with PUT /courses/:id and PATCH /lessons/:id; a stale value is refused with 409.
      * @type {number}
      * @memberof EnrolledCourseResponse
@@ -215,6 +221,7 @@ export function instanceOfEnrolledCourseResponse(value: object): value is Enroll
     if (!('status' in value) || value['status'] === undefined) return false;
     if (!('grantsCertificate' in value) || value['grantsCertificate'] === undefined) return false;
     if (!('requiresApproval' in value) || value['requiresApproval'] === undefined) return false;
+    if (!('timeZone' in value) || value['timeZone'] === undefined) return false;
     if (!('version' in value) || value['version'] === undefined) return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('updatedAt' in value) || value['updatedAt'] === undefined) return false;
@@ -250,6 +257,7 @@ export function EnrolledCourseResponseFromJSONTyped(json: any, ignoreDiscriminat
         'status': json['status'],
         'grantsCertificate': json['grantsCertificate'],
         'requiresApproval': json['requiresApproval'],
+        'timeZone': json['timeZone'],
         'version': json['version'],
         'archivedAt': json['archivedAt'] == null ? undefined : (new Date(json['archivedAt'])),
         'archivedBy': json['archivedBy'] == null ? undefined : json['archivedBy'],
@@ -288,6 +296,7 @@ export function EnrolledCourseResponseToJSONTyped(value?: EnrolledCourseResponse
         'status': value['status'],
         'grantsCertificate': value['grantsCertificate'],
         'requiresApproval': value['requiresApproval'],
+        'timeZone': value['timeZone'],
         'version': value['version'],
         'archivedAt': value['archivedAt'] === null ? null : ((value['archivedAt'] as any)?.toISOString()),
         'archivedBy': value['archivedBy'],

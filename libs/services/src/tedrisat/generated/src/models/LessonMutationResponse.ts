@@ -52,11 +52,11 @@ export interface LessonMutationResponse {
      */
     type: LessonMutationResponseTypeEnum;
     /**
-     * 
-     * @type {string}
+     * Length of the lesson in minutes; null when not set.
+     * @type {number}
      * @memberof LessonMutationResponse
      */
-    duration?: string;
+    durationMinutes?: number | null;
     /**
      * 
      * @type {string}
@@ -142,7 +142,7 @@ export function LessonMutationResponseFromJSONTyped(json: any, ignoreDiscriminat
         'weekId': json['weekId'],
         'title': json['title'],
         'type': json['type'],
-        'duration': json['duration'] == null ? undefined : json['duration'],
+        'durationMinutes': json['durationMinutes'] == null ? undefined : json['durationMinutes'],
         'kaynak': json['kaynak'] == null ? undefined : json['kaynak'],
         'scheduledAt': json['scheduledAt'] == null ? undefined : (new Date(json['scheduledAt'])),
         'meetingUrl': json['meetingUrl'] == null ? undefined : json['meetingUrl'],
@@ -168,7 +168,7 @@ export function LessonMutationResponseToJSONTyped(value?: LessonMutationResponse
         'weekId': value['weekId'],
         'title': value['title'],
         'type': value['type'],
-        'duration': value['duration'],
+        'durationMinutes': value['durationMinutes'],
         'kaynak': value['kaynak'],
         'scheduledAt': value['scheduledAt'] == null ? undefined : ((value['scheduledAt']).toISOString()),
         'meetingUrl': value['meetingUrl'],

@@ -318,5 +318,10 @@
   "Validation": {
     "minChars": "En az {count} karakter girin.",
     "maxChars": "En fazla {count} karakter girebilirsiniz."
+  },
+  "SessionTime": {
+    "istanbul": "İstanbul",
+    "yourTime": "{time} senin saatinle",
+    "minutes": "{minutes} dk"
   }
 }

@@ -318,5 +318,10 @@
   "Validation": {
     "minChars": "Enter at least {count} characters.",
     "maxChars": "Enter at most {count} characters."
+  },
+  "SessionTime": {
+    "istanbul": "Istanbul",
+    "yourTime": "{time} your time",
+    "minutes": "{minutes} min"
   }
 }
