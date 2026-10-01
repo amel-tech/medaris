@@ -4,6 +4,7 @@ import {
   Authz,
   AuthzExempt,
   AuthzGuard,
+  AuthzPublic,
   AuthzWiringAssertion,
   byParam,
   ENTITIES,
@@ -67,6 +68,20 @@ class ExemptController {
   @Get("health")
   @AuthzExempt()
   health(): void {}
+}
+
+@Controller("guarded-on-class-with-a-public-handler")
+@UseGuards(SomeOtherGuard, AuthzGuard)
+class PublicListController {
+  @Get(":id")
+  @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK))
+  @AuthzPublic()
+  read(): void {}
+
+  // MDRS-45: open to anonymous callers, scoped inside the handler.
+  @Get()
+  @AuthzPublic()
+  list(): void {}
 }
 
 @Controller("annotated-but-unguarded")
@@ -146,6 +161,12 @@ describe("AuthzWiringAssertion", () => {
 
   it("accepts an unannotated route behind the guard when it is marked @AuthzExempt()", () => {
     const assertion = assertionFor(ExemptController);
+    expect(assertion.findUnannotatedHandlers()).toEqual([]);
+    expect(() => assertion.onModuleInit()).not.toThrow();
+  });
+
+  it("accepts an unannotated route behind the guard when it is marked @AuthzPublic()", () => {
+    const assertion = assertionFor(PublicListController);
     expect(assertion.findUnannotatedHandlers()).toEqual([]);
     expect(() => assertion.onModuleInit()).not.toThrow();
   });

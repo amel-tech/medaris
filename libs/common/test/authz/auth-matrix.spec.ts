@@ -69,6 +69,19 @@ describe("auth-matrix structural invariants", () => {
     expect(pubScopes).not.toContain(SCOPES.MANAGE_FLASHCARDS);
   });
 
+  it("flashcard-deck ANONYMOUS grants view and nothing else (MDRS-45)", () => {
+    expect(MATRIX[ENTITIES.FLASHCARD_DECK][ROLES.ANONYMOUS]).toEqual([
+      SCOPES.VIEW,
+    ]);
+  });
+
+  it("flashcard-deck is the only entity with an ANONYMOUS row — MDRS-122 opens the rest", () => {
+    const withAnonymous = Object.entries(MATRIX)
+      .filter(([, rows]) => rows[ROLES.ANONYMOUS] !== undefined)
+      .map(([entity]) => entity);
+    expect(withAnonymous).toEqual([ENTITIES.FLASHCARD_DECK]);
+  });
+
   it("course PUBLIC grants enroll (anyone authenticated may request enrollment)", () => {
     expect(MATRIX[ENTITIES.COURSE][ROLES.PUBLIC]).toEqual([SCOPES.ENROLL]);
   });
