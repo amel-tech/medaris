@@ -1,0 +1,77 @@
+/* Base UI state mirrors (MDRS-153, canvas rule 19).
+
+   components.css, copied unchanged from the design system, draws state from
+   native selectors (:checked, :disabled, [aria-invalid], [aria-selected]).
+   Base UI renders a span or a button and states itself with data-* attributes,
+   so each native selector gets its data-* twin here, in the class layer: an
+   app never patches the kit in its own CSS. Also the two parts the system does
+   not have yet (canvas rule 22): the open list of a Select. */
+
+/* The mark, the switch and the chip are not <input>s any more. */
+:is(.mds-check, .mds-radio, .mds-switch):is(span, button) { display: inline-block; padding: 0; }
+.mds-chip:is(button) { appearance: none; font: inherit; cursor: pointer; }
+.mds-chips-field { display: flex; flex-direction: column; gap: var(--space-2); min-inline-size: 0; }
+.mds-choice-group > .mds-label { padding-block-end: var(--space-2); }
+
+/* Checkbox and Radio */
+.mds-check[data-checked] { background: var(--background-action-bold); border-color: var(--background-action-bold); }
+.mds-check[data-checked]::after { background-color: var(--text-neutral-on-bold); }
+.mds-radio[data-checked] { background: var(--background-action-bold); border-color: var(--background-action-bold); box-shadow: inset 0 0 0 4px var(--background-neutral-field); }
+.mds-radio[data-checked]:focus-visible { box-shadow: inset 0 0 0 4px var(--background-neutral-field), var(--ring-focus); }
+:is(.mds-check, .mds-radio)[data-unchecked]:hover:not([data-disabled], [data-invalid]),
+.mds-choice:hover > :is(.mds-check, .mds-radio)[data-unchecked]:not([data-disabled], [data-invalid]) { border-color: var(--border-neutral-strong); }
+:is(.mds-check, .mds-radio)[data-checked]:hover:not([data-disabled]),
+.mds-choice:hover > :is(.mds-check, .mds-radio)[data-checked]:not([data-disabled]) { background-color: var(--background-action-bold-hover); border-color: var(--background-action-bold-hover); }
+:is(.mds-check, .mds-radio)[data-invalid][data-unchecked] { border-color: var(--border-error-default); box-shadow: inset 0 0 0 1px var(--border-error-default); }
+:is(.mds-check, .mds-radio)[data-invalid][data-unchecked]:focus-visible { box-shadow: inset 0 0 0 1px var(--border-error-default), var(--ring-focus); }
+
+/* Switch */
+.mds-switch[data-unchecked]:hover:not([data-disabled]), .mds-choice:hover > .mds-switch[data-unchecked]:not([data-disabled]) { border-color: var(--border-neutral-strong); }
+.mds-switch[data-checked] { background: var(--background-action-bold); border-color: var(--background-action-bold); }
+.mds-switch[data-checked]:hover:not([data-disabled]), .mds-choice:hover > .mds-switch[data-checked]:not([data-disabled]) { background: var(--background-action-bold-hover); border-color: var(--background-action-bold-hover); }
+.mds-switch[data-checked]::after { translate: 16px 0; background: var(--text-neutral-on-bold); }
+.mds-switch:dir(rtl)[data-checked]::after { translate: -16px 0; }
+
+/* Disabled, for all three */
+:is(.mds-check, .mds-radio, .mds-switch)[data-disabled] { background-color: var(--background-neutral-sunken); border-color: var(--border-neutral-subtle); cursor: not-allowed; }
+.mds-check[data-disabled][data-checked]::after { background-color: var(--text-neutral-disabled); }
+.mds-radio[data-disabled][data-checked] { background-color: var(--text-neutral-disabled); box-shadow: inset 0 0 0 4px var(--background-neutral-sunken); }
+.mds-switch[data-disabled]::after, .mds-switch[data-disabled][data-checked]::after { background: var(--text-neutral-disabled); }
+.mds-choice:has(> [data-disabled]), .mds-choice:has(> [data-disabled]) :is(.mds-choice__icon, .mds-choice__desc) { color: var(--text-neutral-disabled); cursor: not-allowed; }
+.mds-choice--bordered:has(> [data-checked]) { border-color: var(--border-brand-default); box-shadow: inset 0 0 0 1px var(--border-brand-default); }
+.mds-choice--bordered:has(> [data-disabled]) { border-color: var(--border-neutral-subtle); box-shadow: none; }
+
+/* Chips: a Toggle is a button with aria-pressed / data-pressed */
+.mds-chip[data-pressed] { background: var(--background-action-bold); border-color: var(--background-action-bold); color: var(--text-neutral-on-bold); }
+.mds-chip[data-pressed]:not([data-disabled]):hover { background: var(--background-action-bold-hover); color: var(--text-neutral-on-bold); }
+.mds-chip:not([data-pressed], [data-disabled]):hover { background: var(--background-neutral-hover); color: var(--text-neutral-default); }
+.mds-chip:focus-visible { outline: var(--ring-focus-outline); outline-offset: var(--ring-focus-offset); box-shadow: var(--ring-focus); }
+.mds-chip[data-disabled] { background: var(--background-neutral-sunken); border-color: var(--border-neutral-subtle); color: var(--text-neutral-disabled); cursor: not-allowed; }
+.mds-chip[data-disabled][data-pressed] { background: var(--background-neutral-hover); border-color: var(--border-neutral-control); box-shadow: inset 0 0 0 1px var(--border-neutral-control); }
+
+/* Tabs: Base UI marks the selected tab data-active (and aria-selected) */
+.mds-tab[data-active] { color: var(--text-neutral-default); font-weight: var(--weight-semibold); border-block-end-color: var(--border-brand-default); }
+.mds-tab[data-active] .mds-tab__count { background: var(--background-brand-subtle); color: var(--text-brand-default); }
+@media (forced-colors: active) {
+  .mds-tab[data-active] { border-block-end-color: Highlight; }
+}
+
+/* Input and Select trigger */
+.mds-input[data-invalid] { border-color: var(--border-error-default); box-shadow: inset 0 0 0 1px var(--border-error-default); }
+.mds-input[data-invalid]:focus { box-shadow: inset 0 0 0 1px var(--border-error-default), var(--ring-focus); }
+.mds-select > button.mds-input { appearance: none; text-align: start; padding-inline-end: calc(var(--space-3) + 16px + var(--space-2)); cursor: pointer; }
+.mds-select > button.mds-input[data-placeholder] { color: var(--text-neutral-subtle); }
+.mds-select > button.mds-input[data-popup-open] { border-color: var(--border-neutral-strong); }
+.mds-select > button.mds-input[data-disabled] { background: var(--background-neutral-sunken); border-style: dashed; color: var(--text-neutral-disabled); cursor: not-allowed; }
+.mds-select:has(> [data-disabled])::after { background-color: var(--text-neutral-disabled); }
+
+/* The open list (Select; Menu and Combobox reuse it, canvas rule 22) */
+.mds-popup { box-sizing: border-box; min-inline-size: var(--anchor-width, 0px); max-block-size: min(var(--available-height, 320px), 320px); overflow: auto; padding: var(--space-1); border: var(--border-width-thin) solid var(--border-neutral-subtle); border-radius: var(--radius-control); background: var(--background-neutral-surface); color: var(--text-neutral-default); font-family: var(--font-ui); font-size: var(--fs-body-sm); box-shadow: var(--elevation-overlay); z-index: 50; outline: 0; }
+.mds-option { display: flex; align-items: center; gap: var(--space-2); min-block-size: var(--size-control-small); padding-inline: var(--space-3); border-radius: var(--radius-tag); cursor: default; user-select: none; outline: 0; }
+.mds-option[data-highlighted] { background: var(--background-neutral-hover); }
+.mds-option[data-selected] { font-weight: var(--weight-semibold); }
+.mds-option[data-disabled] { color: var(--text-neutral-disabled); cursor: not-allowed; }
+@media (forced-colors: active) {
+  .mds-popup { outline: var(--border-width-thin) solid CanvasText; }
+  .mds-option[data-highlighted] { background: Highlight; color: HighlightText; }
+}
