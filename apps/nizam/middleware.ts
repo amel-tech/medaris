@@ -2,7 +2,9 @@ import type { NextRequest } from "next/server";
 import { withAuth } from "next-auth/middleware";
 import createIntlMiddleware from "next-intl/middleware";
 import { authCookies } from "~/lib/auth_cookies";
+import { authPages } from "~/lib/auth_pages";
 import { routing } from "~/lib/i18n/routing";
+import { isPublicPath } from "~/lib/public-paths";
 
 const intlMiddleware = createIntlMiddleware(routing);
 
@@ -18,6 +20,9 @@ const authMiddleware = withAuth(
     // from `authOptions` — import cookies from a Keycloak-free module so
     // Edge middleware never loads openid-client. See auth_cookies.ts.
     cookies: authCookies,
+    // Same reason: without `pages` here a signed-out visitor is sent to
+    // NextAuth's built-in English chooser, whatever `authOptions` says.
+    pages: authPages,
     callbacks: {
       authorized: ({ token }) => {
         // console.log('Auth middleware - authorized callback:', data)
@@ -28,16 +33,7 @@ const authMiddleware = withAuth(
 );
 
 export default function middleware(req: NextRequest) {
-  const publicPages = ["/", "/api/auth/signin"];
-  const locales = routing.locales;
-
-  const publicPathnameRegex = new RegExp(
-    `^(/(${locales.join("|")}))?(${publicPages.join("|")})?$`,
-    "i"
-  );
-  const isPublicPage = publicPathnameRegex.test(req.nextUrl.pathname);
-
-  if (isPublicPage) {
+  if (isPublicPath(req.nextUrl.pathname)) {
     return intlMiddleware(req as any);
   } else {
     return (authMiddleware as any)(req);

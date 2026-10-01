@@ -294,5 +294,62 @@
     "istanbul": "İstanbul",
     "yourTime": "{time} senin saatinle",
     "minutes": "{minutes} dk"
+  },
+  "WeeklySessions": {
+    "title": "Haftalık tekrar",
+    "hint": "Her hafta aynı gün ve saatteki canlı dersleri tek seferde oluşturun.",
+    "open": "Haftalık tekrar ekle",
+    "close": "Kapat",
+    "saveCourseFirst": "Haftalık tekrar, kurs bir kez kaydedildikten sonra kullanılabilir.",
+    "sessionTitle": "Ders başlığı",
+    "sessionTitlePlaceholder": "örn. Haftalık müzakere",
+    "weekdays": "Günler",
+    "weekday": {
+      "1": "Pzt",
+      "2": "Sal",
+      "3": "Çar",
+      "4": "Per",
+      "5": "Cum",
+      "6": "Cmt",
+      "7": "Paz"
+    },
+    "startTime": "Başlangıç saati",
+    "duration": "Süre (dk)",
+    "timeZone": "Saat dilimi",
+    "startDate": "Başlangıç tarihi",
+    "endMode": "Bitiş",
+    "endByCount": "Oturum sayısı",
+    "endByDate": "Bitiş tarihi",
+    "meetingUrl": "Toplantı bağlantısı (yalnızca ilk oturum)",
+    "meetingUrlHint": "Bağlantılar her hafta değişir; diğer oturumlar bağlantısız oluşturulur.",
+    "previewButton": "Önizle",
+    "previewTitle": "{count} oturum oluşturulacak",
+    "create": "Oturumları oluştur",
+    "creating": "Oluşturuluyor...",
+    "created": "{count} oturum oluşturuldu.",
+    "reloadNote": "Oturumlar hemen kaydedilir ve sayfa yenilenir; formdaki kaydedilmemiş değişiklikleri önce kaydedin.",
+    "validation": "Başlık, en az bir gün, saat, süre, başlangıç tarihi ve bitiş gerekli.",
+    "problem": {
+      "INVALID_DATE": "Tarih geçersiz.",
+      "END_OR_COUNT_REQUIRED": "Bitiş tarihi ya da oturum sayısından birini girin.",
+      "END_BEFORE_START": "Bitiş tarihi başlangıçtan önce olamaz.",
+      "RANGE_TOO_LONG": "Tekrar en fazla bir yıl sürebilir.",
+      "TOO_MANY_SESSIONS": "Tek seferde en fazla 200 oturum oluşturulabilir.",
+      "NO_SESSIONS": "Seçilen aralıkta seçilen günlerden hiçbiri yok."
+    }
+  },
+  "Auth": {
+    "signIn": "Giriş yap",
+    "redirectingSignIn": "Giriş sayfasına yönlendiriliyorsunuz…",
+    "continue": "Devam et",
+    "errorTitle": "Giriş yapılamadı",
+    "errorDescription": "Giriş sırasında bir sorun oluştu. Lütfen tekrar deneyin.",
+    "accessDenied": "Bu hesabın giriş izni yok.",
+    "configurationError": "Giriş hizmeti şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
+    "retry": "Tekrar dene",
+    "backHome": "Ana sayfaya dön",
+    "signOutTitle": "Çıkış yap",
+    "signOutDescription": "Oturumunuzu kapatmak istediğinize emin misiniz?",
+    "signOutConfirm": "Çıkış yap"
   }
 }
