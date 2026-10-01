@@ -245,3 +245,7 @@ firestore-debug.log
 # TypeScript project-reference declaration output (MDRS-11) — never shipped,
 # consumers resolve packages to src/ via pnpm workspace links.
 .tsbuild/
+
+# Playwright output (MDRS-157)
+test-results/
+playwright-report/

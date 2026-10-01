@@ -274,6 +274,7 @@ catalog:
   drizzle-orm: ^0.45.2
   drizzle-kit: ^0.31.4
   pg: ^8.23.0 # MDRS-21
+  '@playwright/test': 1.63.0 # MDRS-157: tedris-web's browser e2e (nx test:e2e), same version as the browsers cached on the dev machines
   '@types/pg': ^8.23.1 # MDRS-21
   cache-manager: ^7.1.1
   compression: ^1.8.1
