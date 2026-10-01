@@ -3,13 +3,17 @@
 // supplies the values; until then the pages show the bracketed placeholder
 // and each page's "Taslak metin" notice says the text is a draft.
 //
-// `grep -n '\[' apps/landing/content/legal.ts` lists what is still open.
+// `grep -n '\[' apps/landing/content/legal.ts` lists what is still open. The
+// controller's own details are written once, in content/aydinlatma-metni.ts
+// (MDRS-102), and reused here by reference.
+import { CONTROLLER } from "./aydinlatma-metni";
+
 export const legal = {
-  controllerTitle: "[Veri sorumlusunun unvanı]",
-  address: "[Adres]",
+  controllerTitle: CONTROLLER.title,
+  address: CONTROLLER.address,
   supportEmail: "[Destek e-posta adresi]",
-  kepAddress: "[KEP adresi]",
-  mersisNo: "[Mersis no]",
+  kepAddress: CONTROLLER.kep,
+  mersisNo: CONTROLLER.mersis,
   hostingProvider: "[Barındırma sağlayıcısı ve ülkesi]",
   transferAbroadBasis: "[Yurt dışına aktarımın dayanağı]",
   deviceCookieLifetime: "[Çerezin geçerlilik süresi]",
