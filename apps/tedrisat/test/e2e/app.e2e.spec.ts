@@ -1,5 +1,8 @@
 import { INestApplication } from "@nestjs/common";
+import { getTableConfig, PgTable } from "drizzle-orm/pg-core";
 import request from "supertest";
+import { DatabaseService } from "../../src/database/database.service";
+import * as schema from "../../src/database/schema";
 import { createTestApp } from "../helpers/test-app.helper";
 
 describe("AppController (e2e)", () => {
@@ -59,6 +62,36 @@ describe("AppController (e2e)", () => {
 
     it("/examples/:id (DELETE) is not routed", () => {
       return request(app.getHttpServer()).delete("/examples/1").expect(404);
+    });
+  });
+
+  // MDRS-78: the migration history and `src/database/schema` had drifted apart
+  // at table level — `examples` and `deck_labels_decks` existed in every
+  // migrated database while the ORM modelled neither, so the next unrelated
+  // `drizzle-kit generate` would have folded their `DROP TABLE` into its own
+  // migration. `0014_drop_orphan_tables` closes that. This pins the result
+  // against a database the migrations actually built: a table created by a
+  // migration but declared nowhere, or declared but never created, fails here
+  // instead of in a later, unrelated pull request.
+  describe("migrated database matches the schema of record", () => {
+    it("holds exactly the tables src/database/schema declares", async () => {
+      const declared = Object.values(schema)
+        .filter((value): value is PgTable => value instanceof PgTable)
+        .map((table) => getTableConfig(table).name)
+        .sort();
+
+      const result = await app
+        .get<DatabaseService>(DatabaseService)
+        .db.execute(
+          "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename"
+        );
+      const migrated = (result.rows as { tablename: string }[])
+        .map((row) => row.tablename)
+        .sort();
+
+      expect(migrated).not.toContain("examples");
+      expect(migrated).not.toContain("deck_labels_decks");
+      expect(migrated).toEqual(declared);
     });
   });
 
