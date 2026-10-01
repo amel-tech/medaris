@@ -84,12 +84,19 @@
     "signIn": "Sign In"
   },
   "KosksPage": {
-    "courseCreatedAt": "Created At",
-    "createNewCourse": "Create New Course",
-    "description": "You can view the kosks and courses under your management here.",
-    "noCoursesAvailable": "No Courses Available",
-    "noCoursesAvailableDescription": "Create your first course to get started.",
-    "title": "Kosks"
+    "title": "My köşks",
+    "description": "The köşks you manage and their courses.",
+    "newKosk": "New köşk",
+    "courseCount": "{count, plural, one {# course} other {# courses}}",
+    "emptyTitle": "You do not manage a köşk yet",
+    "emptyDescription": "Open a new köşk to get started.",
+    "nazirTitle": "This work is in nazir",
+    "nazirDescription": "Medrese management happens in the nazir app. Only the köşks you manage are listed here.",
+    "taughtTitle": "Courses you teach",
+    "taughtDescription": "Courses you are a müderris of, in köşks you do not manage.",
+    "previous": "Previous",
+    "next": "Next",
+    "pageOf": "{page} / {total}"
   },
   "LessonTypes": {
     "VIDEO": "Video",
@@ -98,9 +105,10 @@
     "QUIZ": "Sınav"
   },
   "Levels": {
-    "BEGINNER": "Başlangıç",
-    "INTERMEDIATE": "Orta",
-    "ADVANCED": "İleri"
+    "ALL": "All levels",
+    "BEGINNER": "Beginner",
+    "INTERMEDIATE": "Intermediate",
+    "ADVANCED": "Advanced"
   },
   "NavMain": {
     "content": "Content"
@@ -405,5 +413,50 @@
     "reasonRequired": "Write a reason.",
     "cancel": "Cancel",
     "confirmRemove": "Remove"
+  },
+  "KoskDetail": {
+    "subtitle": "The courses in this köşk and their curriculum.",
+    "editKosk": "Edit köşk",
+    "newCourse": "New course",
+    "published": "Published",
+    "draft": "Draft",
+    "weeks": "{count, plural, one {# week} other {# weeks}}",
+    "lessons": "{count, plural, one {# lesson} other {# lessons}}",
+    "resources": "{count, plural, one {# resource} other {# resources}}",
+    "noCoursesTitle": "No courses yet",
+    "noCoursesDescription": "Create a new course to get started.",
+    "noCoursesReadOnly": "There is no course in this köşk open to you."
+  },
+  "KoskForm": {
+    "createTitle": "Create a new köşk",
+    "editTitle": "Edit köşk",
+    "name": "Köşk name",
+    "namePlaceholder": "e.g. Süleymaniye Köşkü",
+    "nameTooShort": "The köşk name must be at least 2 characters.",
+    "handle": "Handle",
+    "handlePlaceholder": "@suleymaniye",
+    "description": "Description",
+    "descriptionPlaceholder": "The courses the köşk offers and what it focuses on.",
+    "field": "Field of study",
+    "fieldPlaceholder": "e.g. Tafsir & Hadith",
+    "level": "Level",
+    "levelUnset": "Not set",
+    "tags": "Tags",
+    "tagsPlaceholder": "Type a tag and press Enter",
+    "tagsHelp": "Up to {max} tags, each at most {length} characters.",
+    "tagsFull": "At most {max} tags can be added.",
+    "tagTooLong": "A tag can be at most {length} characters.",
+    "removeTag": "Remove the tag {tag}",
+    "coverHue": "Cover colour",
+    "coverHueValue": "Hue {hue}°",
+    "private": "Private köşk",
+    "privateHint": "Only invited talebe can see it.",
+    "cancel": "Cancel",
+    "create": "Create",
+    "creating": "Creating...",
+    "save": "Save",
+    "saving": "Saving...",
+    "created": "Köşk created.",
+    "updated": "Köşk updated."
   }
 }

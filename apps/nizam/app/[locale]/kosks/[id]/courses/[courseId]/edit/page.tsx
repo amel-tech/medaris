@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getCourse, getKoskById, getMe } from "~/features/kosks/actions";
 import { NewCoursePage } from "~/features/kosks/components/new-course-page";
 import { mayAssignMuderris } from "~/features/kosks/course-team";
+import { mayEditCourse } from "~/features/kosks/kosk-abilities";
 
 export default async function Page({
   params,
@@ -14,7 +15,16 @@ export default async function Page({
     getCourse(courseId),
     getMe(),
   ]);
-  if (!kosk || !course) notFound();
+  // Nothing links here for a caller who may not edit the course (MDRS-108);
+  // typed in by hand, every save on the page would end in a 403.
+  if (
+    !kosk ||
+    !course ||
+    course.koskId !== kosk.id ||
+    !mayEditCourse(me, kosk.id, course.id)
+  ) {
+    notFound();
+  }
 
   return (
     <NewCoursePage
