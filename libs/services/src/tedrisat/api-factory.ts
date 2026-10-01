@@ -9,6 +9,7 @@ import {
   LessonsApi,
   MeApi,
   TedrisatServiceApi,
+  UsersApi,
 } from "./generated/src";
 
 // Re-export types that are used in other apps
@@ -43,17 +44,21 @@ export type {
   LabelStatsResponse,
   LessonMutationResponse,
   LessonResponse,
+  MeResponse,
   MuderrisResponse,
   PaginatedKoskResponse,
   PendingEnrollmentResponse,
+  RemoveEnrollmentDto,
   ReplaceCourseDto,
   ResourceResponse,
+  SetEnrollmentStatusDto,
   UpdateCourseDto,
   UpdateFlashcardDeckDto,
   UpdateFlashcardDto,
   UpdateKoskDto,
   UpdateLessonDto,
   UpdateProgressDto,
+  UserSummaryResponse,
   WeekResponse,
 } from "./generated/src";
 
@@ -66,6 +71,7 @@ import { CreateLessonDtoTypeEnum } from "./generated/src/models/CreateLessonDto"
 import { EnrollmentResponseStatusEnum } from "./generated/src/models/EnrollmentResponse";
 // Re-export enum constants (they are used at runtime as values)
 import { FlashcardResponseTypeEnum } from "./generated/src/models/FlashcardResponse";
+import { TeamSettableEnrollmentStatus } from "./generated/src/models/TeamSettableEnrollmentStatus";
 
 export {
   FlashcardResponseTypeEnum,
@@ -74,6 +80,7 @@ export {
   CreateCourseDtoLevelEnum,
   CreateCourseDtoStatusEnum,
   EnrollmentResponseStatusEnum,
+  TeamSettableEnrollmentStatus,
 };
 
 export interface TedrisatAPIConfig {
@@ -106,6 +113,8 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     // The caller's own profile and settings (MDRS-104); the web apps read
     // `timeZone` from it to pick the zone dates are shown in (MDRS-110).
     me: new MeApi(configuration),
+    // Exact e-mail lookup (MDRS-104) — nizam's müderris picker (MDRS-105).
+    users: new UsersApi(configuration),
     // The two label controllers MDRS-58 published for the first time. Generated
     // classes that only `./generated/src` exported were reachable by no app —
     // this factory is what `@medaris/services/tedrisat` hands out.

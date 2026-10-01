@@ -190,7 +190,7 @@ describe("CourseController (e2e)", () => {
   });
 
   describe("enrollment + progress", () => {
-    it("enrolls the talebe and tracks progress, completing at 100%", async () => {
+    it("enrolls the talebe and tracks progress; 100% does not complete the course (MDRS-105)", async () => {
       const created = await createCourse().expect(201);
       const id = created.body.id;
 
@@ -212,12 +212,14 @@ describe("CourseController (e2e)", () => {
           expect(res.body).toHaveProperty("status", "ENROLLED");
         });
 
+      // Only the course team completes a course (the owner's decision of 1
+      // October, MDRS-105): progress alone stays a seat.
       await request(app.getHttpServer())
         .put(`/courses/${id}/progress`)
         .send({ progress: 100 })
         .expect(200)
         .expect((res) => {
-          expect(res.body).toHaveProperty("status", "COMPLETED");
+          expect(res.body).toHaveProperty("status", "ENROLLED");
         });
 
       // detail reflects the current user's enrollment
@@ -226,7 +228,7 @@ describe("CourseController (e2e)", () => {
         .expect(200)
         .expect((res) => {
           expect(res.body.enrollment).toHaveProperty("progress", 100);
-          expect(res.body.enrollment).toHaveProperty("status", "COMPLETED");
+          expect(res.body.enrollment).toHaveProperty("status", "ENROLLED");
         });
     });
 
@@ -824,26 +826,15 @@ describe("CourseController (e2e)", () => {
     });
 
     /**
-     * MDRS-43 AC-6, the müderris scenario. It resolves to a NEGATIVE in our
-     * schema, and the divergence is worth pinning rather than papering over:
-     *
-     *   - plan §4.1, transcribed into `MATRIX.course`, gives MUDERRIS `EDIT`,
-     *     so `@Authz(SCOPES.EDIT)` on `PATCH /courses/:id` lets a müderris
-     *     through the guard;
-     *   - `CourseService.assertCourseOwner` then narrows to the parent köşk's
-     *     owner, and a müderris who does not own the köşk is refused there.
-     *
-     * The guard is the outer fence and the service is the inner one, so the
-     * effective rule is the stricter of the two and nothing is open that was
-     * closed before. What this test records is that the two layers do not yet
-     * agree — closing that gap means either widening the service to the matrix
-     * or narrowing the matrix, and both are product decisions outside this
-     * task. Note also HOW the müderris has to be made: `course_muderris.userId`
-     * is nullable, the create DTO never sets it, and there is no assignment
-     * endpoint — so MUDERRIS is unreachable through the API today and a direct
-     * insert is the only way to reach the row at all.
+     * MDRS-43 AC-6, the müderris scenario. Until MDRS-105 this pinned a
+     * NEGATIVE: the matrix gave MUDERRIS `EDIT`, but
+     * `CourseService.assertCourseOwner` narrowed every write to the köşk's
+     * owner. MDRS-105 removed that check, so the matrix is the rule: a
+     * müderris who does not own the köşk edits the course. Who teaches it
+     * is still the köşk manager's (`ASSIGN_MUDERRIS`); that half is in
+     * `course-team.e2e.spec.ts`.
      */
-    it("refuses a müderris who does not own the köşk, though the matrix grants EDIT", async () => {
+    it("lets a müderris who does not own the köşk edit the course (MDRS-105)", async () => {
       const [otherKosk] = await databaseService.db
         .insert(kosks)
         .values({ ownerId: OTHER_USER_ID, name: "Müderris Köşkü" })
@@ -871,14 +862,9 @@ describe("CourseController (e2e)", () => {
       await request(app.getHttpServer())
         .patch(`/courses/${course.id}`)
         .send({ title: "Müderris düzeltti" })
-        .expect(403);
-
-      // and the title really did not move
-      await request(app.getHttpServer())
-        .get(`/courses/${course.id}`)
         .expect(200)
         .expect((res) => {
-          expect(res.body.title).toBe("Sarf Dersi");
+          expect(res.body.title).toBe("Müderris düzeltti");
         });
     });
 
@@ -1570,17 +1556,21 @@ describe("Course content access (MDRS-103, e2e)", () => {
     expect(await auditRows()).toEqual([]);
   });
 
-  it("keeps a DRAFT course a 404 for everyone but its managers", async () => {
+  // Since MDRS-105 the course's müderrisler edit it (`EDIT`), so they open
+  // its draft too; before, a DRAFT was the köşk manager's alone.
+  it("keeps a DRAFT course a 404 for everyone but the people who edit it", async () => {
     await db()
       .update(courses)
       .set({ status: CourseStatus.DRAFT })
       .where(eq(courses.id, courseId));
 
-    for (const sub of [STRANGER_ID, PENDING_ID, TALEBE_ID, MUDERRIS_ID]) {
+    for (const sub of [STRANGER_ID, PENDING_ID, TALEBE_ID]) {
       await getCourse(sub).expect(404);
     }
-    const res = await getCourse(MANAGER_ID).expect(200);
-    expectFull(res.body);
+    for (const sub of [MANAGER_ID, MUDERRIS_ID]) {
+      const res = await getCourse(sub).expect(200);
+      expectFull(res.body);
+    }
   });
 
   it("answers 404 for a course that does not exist, and 400 for a malformed id", async () => {
