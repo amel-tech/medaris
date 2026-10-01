@@ -8,6 +8,5 @@ export const routing = defineRouting({
   defaultLocale: "en",
   pathnames: {
     "/": "/",
-    "/home": "/home",
   },
 });

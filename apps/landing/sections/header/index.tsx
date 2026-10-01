@@ -7,7 +7,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "~/lib/i18n/navigation";
 import { locales } from "~/lib/i18n/routing";
-import { headerCtaHref, headerNavLinks } from "./data";
+import { landingEntryHref } from "~/lib/tedris-entry";
+import { headerCtaIntent, headerNavLinks, headerSignInIntent } from "./data";
 
 const FALLBACK_HEADER_HEIGHT = 80;
 
@@ -127,6 +128,7 @@ function LanguageSelector() {
 
 export function HeaderSection() {
   const t = useTranslations("landing.header");
+  const locale = useLocale();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -205,13 +207,18 @@ export function HeaderSection() {
 
           <div className="flex items-center gap-3">
             <LanguageSelector />
-            <Link
-              href={headerCtaHref}
-              onClick={(e) => handleLinkClick(e, headerCtaHref)}
+            <a
+              href={landingEntryHref(headerSignInIntent, locale)}
+              className="hidden sm:inline text-gray-500 hover:text-primary transition-colors font-medium text-sm"
+            >
+              {t("signIn")}
+            </a>
+            <a
+              href={landingEntryHref(headerCtaIntent, locale)}
               className="bg-primary hover:bg-primary/95 text-white px-7 py-2.5 rounded-full font-medium transition-all shadow-sm"
             >
               {t("cta")}
-            </Link>
+            </a>
             <button
               type="button"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -242,6 +249,12 @@ export function HeaderSection() {
                   {t(`nav.${link.key}`)}
                 </Link>
               ))}
+              <a
+                href={landingEntryHref(headerSignInIntent, locale)}
+                className="sm:hidden text-gray-500 hover:text-primary transition-colors font-medium text-sm tracking-wide py-2"
+              >
+                {t("signIn")}
+              </a>
             </div>
           </div>
         </div>

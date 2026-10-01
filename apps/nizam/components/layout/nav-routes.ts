@@ -1,5 +1,12 @@
 import { House, type Icon, TableIcon } from "@medaris/icons";
 
+/**
+ * Where the sidebar logo goes (MDRS-101). It pointed at `/home`, a page that
+ * lived outside `[locale]` and so never resolved; the locale root is the
+ * page every visitor can open, signed in or not.
+ */
+export const homeHref = "/";
+
 export type NavigationRouteType = {
   title: string;
   url: string;

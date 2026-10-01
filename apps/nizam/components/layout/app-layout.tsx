@@ -11,7 +11,14 @@ import { Breadcrumbs } from "./breadcrumbs";
 
 import { routes } from "./nav-routes";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default function AppLayout({
+  children,
+  footer,
+}: {
+  children: React.ReactNode;
+  /** Server-rendered by the layout (MDRS-102); this component is a client one. */
+  footer?: React.ReactNode;
+}) {
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -27,6 +34,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <main className="relative block mt-4">{children}</main>
+        {footer}
       </SidebarInset>
     </SidebarProvider>
   );
