@@ -413,3 +413,36 @@ describe("AppShell, Sidebar and TopBar", () => {
     ).toContain("ms-auto");
   });
 });
+
+describe("stack-24 round 1 fixes", () => {
+  it("closes the AppBar sheet when a nav link is followed", async () => {
+    const host = await render(
+      <AppBar title="Dersler" logo={<Logo app="nizam" size="sm" />}>
+        <a href="#x">Diger</a>
+      </AppBar>
+    );
+    await click(host.querySelector("button.mds-appbar__menu") as HTMLElement);
+    await settle();
+    expect(body().querySelector(".mds-sheet")).not.toBeNull();
+    await click(
+      body().querySelector(".mds-sheet nav a[href='#x']") as HTMLElement
+    );
+    await settle();
+    expect(body().querySelector(".mds-sheet")).toBeNull();
+  });
+
+  it("makes the lg reading body a named, focusable region and starts focus there", async () => {
+    await render(
+      <Dialog open size="lg" title="Okuma" footer={<DialogClose />}>
+        <p>Uzun metin.</p>
+      </Dialog>
+    );
+    await settle();
+    const bodyEl = body().querySelector(".mds-dialog__body") as HTMLElement;
+    expect(bodyEl.getAttribute("role")).toBe("region");
+    expect(bodyEl.getAttribute("tabindex")).toBe("0");
+    const title = body().querySelector(".mds-dialog__title") as HTMLElement;
+    expect(bodyEl.getAttribute("aria-labelledby")).toBe(title.id);
+    expect(document.activeElement).toBe(bodyEl);
+  });
+});

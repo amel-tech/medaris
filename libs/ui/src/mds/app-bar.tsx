@@ -85,7 +85,20 @@ export function AppBar({
               </Dialog.Close>
             </div>
             {scope}
-            <nav aria-label={navLabel}>{children}</nav>
+            {/* biome-ignore lint/a11y/useKeyWithClickEvents: delegated; a link followed by key or mouse bubbles a click, and the nav is a landmark, not a control */}
+            <nav
+              aria-label={navLabel}
+              onClick={(event) => {
+                // A followed link closes the sheet: the next page opens beneath it.
+                if (
+                  !event.defaultPrevented &&
+                  (event.target as Element).closest("a[href]")
+                )
+                  setOpen(false);
+              }}
+            >
+              {children}
+            </nav>
             {footer ? <div className="mds-sheet__foot">{footer}</div> : null}
           </div>
         </Dialog.Popup>
