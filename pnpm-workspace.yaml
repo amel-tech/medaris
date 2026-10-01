@@ -106,8 +106,12 @@ overrides:
   # function" and took the Verify job's affected-isolation gate with it. The
   # `@1` / `@2` selectors apply each floor only to consumers whose declared
   # range falls on that line, so nx's 5.x is never touched.
-  brace-expansion@1: ^1.1.18
-  brace-expansion@2: ^2.1.4
+  brace-expansion@1: ^1.1.20
+  brace-expansion@2: ^2.1.6
+  # 2026-10-01 security pass: GHSA-6j4f-fj2g-mc7p and GHSA-qhr7-859c-m2p7 also
+  # reach the 5.x line. nx pins the exact string "5.0.9", so only an override
+  # moves it; the `@5` selector keeps it on the major nx imports `expand` from.
+  brace-expansion@5: ^5.0.11
 
   # MDRS-76. multer 2.2.0 carries three high DoS advisories — GHSA-535w-7cp7-47q4
   # (oversized array), GHSA-qfvm-cv95-jqjf (fd leak), GHSA-wc9g-mqfw-jrwm
@@ -178,6 +182,34 @@ overrides:
   # Removal condition: drop this the moment nx ships a release whose smol-toml
   # dependency admits >= 1.7.1.
   smol-toml: ^1.7.1
+
+  # 2026-10-01 security pass. Advisories published after MDRS-21
+  # turned audit-ci red on main; each entry below is a floor with a published
+  # fix, which audit-ci.json says is not allowlist material.
+  #
+  # axios < 1.20.0 carries seven highs (GHSA-3pq3-5fj3-cg6v, -542g-h47m-68v8,
+  # -c29m-xwm3-cm6r, -m8m8-qj5v-23w3, -mghh-pgcx-3jjj, -r4gj-5m52-g5wh,
+  # -x97p-jq2g-jp4f). nx 23.2.0 (still `latest`) pins the exact string
+  # "1.18.1", so nothing re-resolves. The caret stays inside 1.x.
+  # Removal condition: nx ships a release whose axios admits >= 1.20.0.
+  axios: ^1.20.0
+  # @grpc/grpc-js < 1.14.5, GHSA-m9gg-hp2v-232j (high); @opentelemetry's
+  # otlp-grpc-exporter-base declares ^1.14.3, so this only forces the
+  # re-resolve the caret already allows. Runtime dependency of both Nest apps.
+  '@grpc/grpc-js': ^1.14.5
+  # Dev-only, all three via @swc/cli (Nest's builder):
+  # piscina < 4.9.4, GHSA-67c8-pqhq-4rmx (critical); @swc/cli declares ^4.3.1.
+  piscina@4: ^4.9.4
+  # @xhmikosr/decompress <= 10.2.1, GHSA-hrh2-vp3x-79xf (critical); pulled by
+  # @swc/cli's bin-wrapper downloader, which declares the 10.x line.
+  '@xhmikosr/decompress@10': ^10.2.2
+  # basic-ftp <= 6.2.0, GHSA-c475-qrg2-pj4r (high). The only fix is 6.2.1, one
+  # major above what get-uri (proxy-agent, under openapi-generator-cli)
+  # declares. 6.0.0's one breaking change refuses a separate FTP transfer host
+  # by default; openapi-generator-cli downloads its JAR over HTTPS and never
+  # opens an FTP connection, so nothing here exercises it.
+  # Removal condition: get-uri ships a release whose basic-ftp admits >= 6.2.1.
+  basic-ftp: ^6.2.1
 # xlsx@0.18.5 stays un-overridden and unfloored: no patched npm version
 # exists (FU-5, tracked as a replace-SheetJS follow-up, not an override).
 
@@ -283,7 +315,8 @@ catalog:
   depcheck: ^1.4.7
 
   # ═══ Frontend runtime & framework ═══
-  next: ~16.3.4 # MDRS-21: closes ~15 high/moderate Next.js advisories (<16.2.11)
+  next: ~16.3.6 # MDRS-21: closes ~15 high/moderate Next.js advisories (<16.2.11);
+  #               16.3.6 closes GHSA-vcvr-r3jv-pc5j (critical, next/og RCE)
   react: ~19.2.8 # MDRS-21: ADR-001 §D8 named this "a one-line MDRS-21 bump"
   react-dom: ~19.2.8
   '@types/react': ^19
