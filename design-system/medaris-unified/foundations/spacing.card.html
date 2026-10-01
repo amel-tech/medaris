@@ -1,0 +1,63 @@
+<!-- @dsCard group="Foundations" viewport="820x1090" name="Space and density" subtitle="--space-N is N × 4px. Density is a region, not an app: data-density=compact re-points the roles, from card padding down to table cells (MDS-LAY-02)." -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.f-tok{font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--text-neutral-muted);overflow-wrap:anywhere}
+.f-ladder{display:flex;align-items:flex-end;gap:var(--space-3);margin:0;padding:0;list-style:none}
+.f-ladder li{display:flex;flex-direction:column;align-items:center;gap:var(--space-1);flex:1;min-inline-size:0}
+.f-ladder i{display:block;inline-size:100%;max-inline-size:32px;block-size:var(--f-h);border-radius:var(--radius-mark);background:var(--border-brand-default)}
+.f-ladder b{font-size:var(--fs-caption);font-weight:var(--weight-semibold)}
+.f-ladder span{font-size:var(--fs-caption);color:var(--text-neutral-subtle);font-variant-numeric:lining-nums tabular-nums}
+.mds-table :is(th,td){vertical-align:middle}
+.f-end{text-align:end;font-variant-numeric:lining-nums tabular-nums}
+.f-bar{display:inline-flex;align-items:center;gap:var(--space-2)}
+.f-bar i{display:block;inline-size:var(--f-w);block-size:10px;border-radius:var(--radius-mark);background:var(--border-brand-default)}
+.f-heights{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-6)}
+.f-heights > div{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-2)}
+.f-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-5);align-items:start}
+.f-pair > div{display:flex;flex-direction:column;gap:var(--space-2)}
+</style></head><body>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Ölçek</h2><p class="mds-caption">Adı pikselden türet: 12px → --space-3. Ara değer yok; 2 ve 6px yalnızca bileşen içinde, kıl çizgi ve ikon boşluğu olarak.</p></header>
+<ol class="f-ladder"><li><i style="--f-h: var(--space-1)"></i><b>1</b><span>4</span></li><li><i style="--f-h: var(--space-2)"></i><b>2</b><span>8</span></li><li><i style="--f-h: var(--space-3)"></i><b>3</b><span>12</span></li><li><i style="--f-h: var(--space-4)"></i><b>4</b><span>16</span></li><li><i style="--f-h: var(--space-5)"></i><b>5</b><span>20</span></li><li><i style="--f-h: var(--space-6)"></i><b>6</b><span>24</span></li><li><i style="--f-h: var(--space-8)"></i><b>8</b><span>32</span></li><li><i style="--f-h: var(--space-10)"></i><b>10</b><span>40</span></li><li><i style="--f-h: var(--space-12)"></i><b>12</b><span>48</span></li><li><i style="--f-h: var(--space-14)"></i><b>14</b><span>56</span></li><li><i style="--f-h: var(--space-16)"></i><b>16</b><span>64</span></li><li><i style="--f-h: var(--space-20)"></i><b>20</b><span>80</span></li></ol>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Roller ve yoğunluk</h2><p class="mds-caption">Tedris rahattır. Nizam ana bölgesine data-density="compact" koyar. Telefonda sayfa boşluğu ve kart dolgusu 16'dır.</p></header>
+<div class="mds-table-wrap" data-density="compact">
+<table class="mds-table">
+<caption class="mds-visually-hidden">Boşluk rolleri, üç yoğunlukta</caption>
+<thead><tr><th scope="col">Rol</th><th scope="col">Kullanım</th><th scope="col">Rahat · Tedris</th><th scope="col">Sık · Nizam</th><th scope="col" class="f-end">Telefon</th></tr></thead>
+<tbody>
+<tr><th scope="row"><code>--space-inset-card</code></th><td>Kart, panel ve iletişim kutusu dolgusu</td><td><span class="f-bar" style="--f-w: var(--space-inset-card)"><i></i>24</span></td><td data-density="compact"><span class="f-bar" style="--f-w: var(--space-inset-card)"><i></i>16</span></td><td class="f-end">16</td></tr>
+<tr><th scope="row"><code>--space-gap-stack</code></th><td>Kart ya da form içinde üst üste bloklar</td><td><span class="f-bar" style="--f-w: var(--space-gap-stack)"><i></i>16</span></td><td data-density="compact"><span class="f-bar" style="--f-w: var(--space-gap-stack)"><i></i>12</span></td><td class="f-end">aynı</td></tr>
+<tr><th scope="row"><code>--space-gap-section</code></th><td>Sayfa bölümleri arası</td><td><span class="f-bar" style="--f-w: var(--space-gap-section)"><i></i>40</span></td><td data-density="compact"><span class="f-bar" style="--f-w: var(--space-gap-section)"><i></i>40</span></td><td class="f-end">aynı</td></tr>
+<tr><th scope="row"><code>--space-gap-grid</code></th><td>Kart ızgarası</td><td><span class="f-bar" style="--f-w: var(--space-gap-grid)"><i></i>20</span></td><td data-density="compact"><span class="f-bar" style="--f-w: var(--space-gap-grid)"><i></i>20</span></td><td class="f-end">aynı</td></tr>
+<tr><th scope="row"><code>--space-gutter-page</code></th><td>Sayfanın yan boşluğu</td><td><span class="f-bar" style="--f-w: var(--space-gutter-page)"><i></i>40</span></td><td data-density="compact"><span class="f-bar" style="--f-w: var(--space-gutter-page)"><i></i>40</span></td><td class="f-end">16</td></tr>
+<tr><th scope="row"><code>--space-cell-block</code></th><td>Tablo hücresi, dikey</td><td><span class="f-bar" style="--f-w: var(--space-cell-block)"><i></i>12</span></td><td data-density="compact"><span class="f-bar" style="--f-w: var(--space-cell-block)"><i></i>8</span></td><td class="f-end">aynı</td></tr>
+<tr><th scope="row"><code>--space-cell-inline</code></th><td>Tablo hücresi, yatay</td><td><span class="f-bar" style="--f-w: var(--space-cell-inline)"><i></i>16</span></td><td data-density="compact"><span class="f-bar" style="--f-w: var(--space-cell-inline)"><i></i>12</span></td><td class="f-end">aynı</td></tr>
+<tr><th scope="row"><code>--size-control-regular</code></th><td>Varsayılan denetim yüksekliği</td><td><span class="f-bar" style="--f-w: var(--size-control-regular)"><i></i>40</span></td><td data-density="compact"><span class="f-bar" style="--f-w: var(--size-control-regular)"><i></i>32</span></td><td class="f-end">aynı</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Denetim yükseklikleri</h2><p class="mds-caption">Her hedef en az 24px (WCAG 2.5.8).</p></header>
+<div class="f-heights">
+<div><button type="button" class="mds-btn mds-btn--mini mds-btn--outline">Düzenle</button><code class="f-tok">mini · 24</code></div>
+<div><button type="button" class="mds-btn mds-btn--small mds-btn--outline">Filtrele</button><code class="f-tok">small · 32</code></div>
+<div><button type="button" class="mds-btn mds-btn--outline">Kaydet</button><code class="f-tok">regular · 40</code></div>
+<div data-density="compact"><button type="button" class="mds-btn mds-btn--outline">Kaydet</button><code class="f-tok">regular, sık · 32</code></div>
+<div><button type="button" class="mds-btn mds-btn--large mds-btn--primary">Celseye katıl</button><code class="f-tok">large · 48</code></div>
+</div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Aynı tablo, iki yoğunlukta</h2></header>
+<div class="f-pair">
+<div><span class="mds-caption">Rahat</span><div class="mds-table-wrap"><table class="mds-table"><caption class="mds-visually-hidden">Rahat tablo</caption><thead><tr><th scope="col">Talebe</th><th scope="col" class="f-end">Hafta</th><th scope="col">Durum</th></tr></thead><tbody><tr><td>Ahmed Hüsrev</td><td class="f-end">5</td><td><span class="mds-badge mds-badge--success">Kayıtlı</span></td></tr><tr><td>Zeynep Kübra</td><td class="f-end">3</td><td><span class="mds-badge mds-badge--warning"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#clock"/></svg>Onay bekliyor</span></td></tr></tbody></table></div></div>
+<div><span class="mds-caption">data-density="compact"</span><div class="mds-table-wrap" data-density="compact"><table class="mds-table"><caption class="mds-visually-hidden">Sık tablo</caption><thead><tr><th scope="col">Talebe</th><th scope="col" class="f-end">Hafta</th><th scope="col">Durum</th></tr></thead><tbody><tr><td>Ahmed Hüsrev</td><td class="f-end">5</td><td><span class="mds-badge mds-badge--success">Kayıtlı</span></td></tr><tr><td>Zeynep Kübra</td><td class="f-end">3</td><td><span class="mds-badge mds-badge--warning"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#clock"/></svg>Onay bekliyor</span></td></tr></tbody></table></div></div>
+</div>
+</section>
+</body></html>

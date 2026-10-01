@@ -31,6 +31,11 @@ directory, removed when the project contains it:
   is, what was left out and where it diverges from the system. It is **not**
   part of the mirror: §1's staleness check does not cover it, and §5 keeps it
   until the canonical project has it (see §6).
+- `design-system/medaris-unified/` — a new Medaris design system, designed
+  from scratch (MDRS-131), proposed to replace the canonical project's
+  content. Pull it into the canonical project with design sync; after the next
+  §5 refresh shows the project contains it, remove this entry and the
+  directory.
 
 The mirror is read-only. Nothing in the repo builds from it, Biome is told to
 ignore it (`biome.json`, `!design-system`), CodeRabbit is told not to review

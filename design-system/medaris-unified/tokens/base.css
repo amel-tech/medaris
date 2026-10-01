@@ -1,0 +1,60 @@
+/* Medaris — element defaults. Anything a prototype gets for free by linking styles.css. */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--background-neutral-page);
+  color: var(--text-neutral-default);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body-sm);
+  font-weight: var(--weight-regular);
+  line-height: var(--lh-ui);
+  font-kerning: normal;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 { margin: 0; font-family: var(--font-reading); font-weight: var(--weight-semibold); line-height: var(--lh-tight); }
+p, figure, blockquote, dl, dd { margin: 0; }
+a { color: var(--text-brand-default); text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
+a:hover { text-decoration-thickness: 2px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+code, kbd, samp { font-family: var(--font-mono); font-size: 0.93em; }
+hr { border: 0; border-block-start: var(--border-width-thin) solid var(--border-neutral-subtle); margin: var(--space-6) 0; }
+::selection { background: var(--background-brand-subtle); color: var(--text-neutral-default); }
+
+/* Focus: the two-band ring on every element (MDS-A11Y-01). A class that removes it draws it again. */
+:focus-visible { outline: var(--ring-focus-outline); outline-offset: var(--ring-focus-offset); box-shadow: var(--ring-focus); }
+
+/* A night island: [data-theme="dark"] on any element below <html>. semantic.css re-points the roles there, but
+   `color` was already computed on <body> with the day ink and is inherited as that value, so the island resolves
+   its own ground and ink. Zero specificity: a class on the same element (a night .mds-card) keeps its own ground.
+   A light island inside a night page is not supported. */
+:where([data-theme="dark"]:not(:root)) { background-color: var(--background-neutral-page); color: var(--text-neutral-default); }
+
+/* Right-to-left text, marked or detected, gets the Arabic face. :where() keeps it at zero specificity,
+   so a class that sets a face (.mds-quran, .mds-mono) still wins. */
+:where([dir="rtl"], [dir="auto"]:dir(rtl)) { font-family: var(--font-arabic); }
+/* A Latin island inside an Arabic region (a Turkish name, a URL): the Latin face, one Arabic step smaller so it
+   sits at its Latin size (16 → 14). Zero specificity, so every class wins (.mds-h2, .mds-reading, .mds-mono);
+   the child combinator matches only the outermost island, so a nested one does not shrink again (its parent is
+   Latin, not Arabic). typography.css re-points the tokens for the island; this rule covers text that only inherits.
+   A class-less island keeps the weight of its context (bold stays bold). */
+:where(:lang(ar), :lang(ota-Arab)) > :where([lang]:not(:lang(ar), :lang(ota-Arab))) { font-family: var(--font-ui); font-size: 0.875em; letter-spacing: normal; }
+/* Mono in such an island (a meeting link, an ID) is 0.93 of its Latin context, not of the larger Arabic step. */
+:where(:lang(ar), :lang(ota-Arab)) > :is(code, kbd, samp, .mds-mono):not(:lang(ar), :lang(ota-Arab)) { font-size: calc(0.93em * 0.875); }
+/* Literal letter-spacing never reaches Arabic script (the token tracking is re-pointed in typography.css). */
+:lang(ar), :lang(ota-Arab) { letter-spacing: 0; }
+
+/* Fixed layers (the toaster, a sticky enrol card) report their height on <html>, so focus is never hidden
+   under them (WCAG 2.4.11, MDS-A11Y-09). */
+html { scroll-padding-block-start: var(--mds-fixed-start, 0px); scroll-padding-block-end: var(--mds-fixed-end, 0px); }
+
+/* Reduced motion, once, for everything — literal animations included (MDS-MOT-01). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+/* Forced colours: box-shadow is not painted, so the transparent outline becomes the ring. */
+@media (forced-colors: active) {
+  :focus-visible { outline: 2px solid CanvasText; outline-offset: 2px; }
+}

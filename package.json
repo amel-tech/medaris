@@ -39,6 +39,7 @@
     ]
   },
   "devDependencies": {
+    "@babel/standalone": "catalog:",
     "@biomejs/biome": "catalog:",
     "@commitlint/cli": "catalog:",
     "@commitlint/config-conventional": "catalog:",
@@ -51,6 +52,8 @@
     "husky": "catalog:",
     "lint-staged": "catalog:",
     "nx": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
     "unplugin-swc": "catalog:"

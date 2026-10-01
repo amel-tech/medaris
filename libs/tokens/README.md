@@ -122,11 +122,57 @@ With Tailwind v4, semantic tokens work seamlessly with utilities:
 }
 ```
 
+## Generated and hand-authored files (MDRS-73)
+
+`@import "@medaris/tokens/css"` resolves to `theme/index.css`, which imports
+six files. Only one of them is generated:
+
+| File | Made by | Holds | Figma source |
+| -- | -- | -- | -- |
+| `theme/main.css` | **generated** by `scripts/process-tokens.js` from `input/main.css` | `--background-color-*`, `--text-color-*`, `--border-color-*` (70) | collection `color`, semantic layer, via the Tailwind Theme Gen export |
+| `theme/icon-colors.css` | hand | `--icon-color-*` (22) | collection `color`, semantic `icon` role |
+| `theme/typography.css` | hand | `--font-cairo`, `--font-ibm-plex-sans`, `--font-weight-*`, `--text-<display…footnote>`, `--line-height-*`, `--letter-spacing-*` | collection `typography` |
+| `theme/spacing.css` | hand | `--space-xs … --space-4xl`, `--bp-mobile/tablet/desktop` (values only, not Tailwind breakpoints) | collection `typography` (spacing), Design System page frames |
+| `theme/radius.css` | hand | `--corner-radius-xxs … -full`, `--border-weight-xs … -l` | collection `size` |
+| `theme/elevation.css` | hand | `--shadow-2xs … --shadow-2xl`, `--shadow-focus`, `--shadow-focus-error` | effect styles |
+
+**Why the split.** `process-tokens.js` rewrites `theme/main.css` whole every
+time it runs and touches nothing else, and the Tailwind Theme Gen export it
+reads has no icon role and drops every non-colour variable. Everything the
+export cannot carry therefore lives in a sibling file the script never
+opens. Edit `input/main.css` and re-run `pnpm nx run tokens:process` for the
+three colour roles; edit the sibling directly for everything else. Each
+sibling's header names the Figma collection its values were read from and
+the mirror file in `design-system/tokens/` they match — the test suite
+checks both, and a value marked `PROPOSAL` is one the design system proposes
+rather than one the `.fig` contains.
+
+**Why some names are not the Figma names.** These files sit in `@theme`
+next to Tailwind's defaults, and several Figma names already mean something
+there: `--spacing-md` would turn every `max-w-md` into 16px, `--radius-xl`
+and `--radius-full` would restyle `rounded-xl` and `rounded-full`,
+`--border-width-s` and `-l` would collide with `border-s` and `border-l`,
+`--leading-tight` / `--tracking-tight` have other values, and
+`--breakpoint-*` would add `container` steps in every app. The families
+that would collide use their own names (`--space-*`, `--bp-*`,
+`--corner-radius-*`, `--border-weight-*`, `--line-height-*`,
+`--letter-spacing-*`) and are used as `p-(--space-md)`,
+`rounded-(--corner-radius-m)` or `var(--space-md)`. The seven shadows keep
+Tailwind's names and Tailwind's notation because they are the same shadows
+(the Figma file lists each pair of layers in the opposite order).
+`test/tailwind-defaults.spec.ts` compiles the existing utilities with the old
+and the new entry point and requires identical output; the compiled CSS of
+the four Next apps was also compared before and after and is byte-identical.
+
+Tailwind emits a theme variable only when something uses it, so importing
+the package adds no CSS until a token is referenced.
+
 ## Development
 
 ```bash
 npm run process  # Process input/main.css → theme/main.css
 npm run build    # Validate package structure
+pnpm nx test tokens  # the MDRS-73 suite (Vitest, no network, no Docker)
 ```
 
 ### Workflow

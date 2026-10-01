@@ -1,0 +1,39 @@
+/*
+ * @medaris/tokens — elevation and focus. HAND-AUTHORED:
+ * scripts/process-tokens.js rewrites theme/main.css only and never touches
+ * this file.
+ *
+ * Source: Figma effect styles shadow-2xs .. shadow-2xl, "focus" and
+ * "focus error" in `Online Medrese UI UX.fig` (export 2026-09-04), read
+ * through the committed mirror design-system/tokens/elevation.css
+ * (MDRS-92).
+ *
+ * The seven shadows keep Tailwind's --shadow-* names and are written in
+ * Tailwind's own notation, because the Figma kit is shadcn-shaped and its
+ * effect styles ARE Tailwind's default shadows: same layers, same offsets,
+ * alpha equal at 8 bits (#0000001A is rgb(0 0 0 / 0.1)). The file lists the
+ * two layers in the opposite order, and 2xs spells out "0 0"; neither
+ * changes a pixel, but copying that spelling would change the bytes of
+ * every shadow-* rule in the apps' compiled CSS. Written this way the
+ * redeclaration is a no-op, and test/figma-fidelity.spec.ts checks each one
+ * against the Figma value layer by layer.
+ *
+ * The two focus rings are verbatim (hex lower-cased by the Biome
+ * formatter). #E5E5E5 is 1.26:1 against the page: that fails WCAG 2.2 and
+ * is an open design decision (the contrast audit in design-system/
+ * readme.md), not something this package fixes by picking another colour.
+ */
+@theme {
+  --shadow-2xs: 0 1px rgb(0 0 0 / 0.05);
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl:
+    0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+
+  --shadow-focus: 0 0 0 3px #e5e5e5;
+  --shadow-focus-error: 0 0 0 3px #fecaca;
+}

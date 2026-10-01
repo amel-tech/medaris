@@ -1,0 +1,26 @@
+<!-- @dsCard group="Foundations" viewport="820x570" name="Elevation" subtitle="Nothing at rest casts a shadow: a resting surface is a hairline. Only floating layers lift. Shadows are ink-tinted by day, black with a 1px ring by night." -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-tok{font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--text-neutral-muted);white-space:normal;overflow-wrap:anywhere}
+.f-id{white-space:nowrap}
+.f-desk{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-5)}
+.f-slot{display:flex;flex-direction:column;gap:var(--space-2)}
+.f-stage{display:flex;align-items:center;justify-content:center;block-size:176px;padding:var(--space-5);border-radius:var(--radius-surface);background:var(--background-neutral-page);box-shadow:inset 0 0 0 1px var(--border-neutral-subtle)}
+.f-stage--scrim{overflow:clip;background:var(--background-neutral-scrim)}
+.f-stage .mds-card{inline-size:100%}
+.f-stage .mds-toast{inline-size:320px;max-inline-size:100%}
+.f-modal{display:flex;flex-direction:column;gap:var(--space-2);inline-size:100%;padding:var(--space-5);border-radius:var(--radius-surface);background:var(--background-neutral-surface);box-shadow:var(--elevation-modal)}
+.f-modal p:last-child{font-size:var(--fs-body-sm);color:var(--text-neutral-muted)}
+</style></head><body>
+<section class="f-sec">
+<div class="f-desk">
+<div class="f-slot"><div class="f-stage"><div class="mds-card"><h3 class="mds-card__title">Kâfiye: nahve giriş</h3><p class="mds-card__body">Müderris Mehmet Emin Işıkoğlu</p></div></div><code class="f-tok">durağan · kıl çizgi, gölge yok</code><span class="mds-caption">Kart, tablo, kenar çubuğu, katılma kartı <span class="f-id">(MDS-SHAPE-02)</span></span></div>
+<div class="f-slot"><div class="f-stage"><span class="mds-tooltip" role="tooltip">Bağlantıyı kopyala</span></div><code class="f-tok">--elevation-overlay</code><span class="mds-caption">Menü, açılır kutu, ipucu</span></div>
+<div class="f-slot"><div class="f-stage"><div class="mds-toast mds-toast--success" role="status"><span class="mds-toast__icon" aria-hidden="true"></span><div class="mds-toast__body"><p class="mds-toast__title">Ders gizlendi</p><p class="mds-toast__desc">Arşiv’den geri alabilirsiniz.</p></div></div></div><code class="f-tok">--elevation-raised</code><span class="mds-caption">Bildirim, yapışkan kayıt kartı</span></div>
+<div class="f-slot"><div class="f-stage f-stage--scrim"><div class="f-modal" role="img" aria-label="İletişim kutusu örneği"><p class="mds-h3">Dersi yayından kaldır?</p><p>Talebeler dersi artık göremez.</p></div></div><code class="f-tok">--elevation-modal ·<br>--background-neutral-scrim</code><span class="mds-caption">İletişim kutusu, gezinme çekmecesi; arkasında perde</span></div>
+</div>
+</section>
+</body></html>

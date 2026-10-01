@@ -1,0 +1,115 @@
+<!-- @dsCard group="Forms" viewport="820x1100" name="Select" subtitle="The native select in a field box: a time zone, a medrese, a filter. Four to fifteen options; every state, four sizes and the Arabic interface." -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{display:flex;flex-direction:column;gap:var(--space-6);margin:0;padding:var(--space-6);background:var(--background-neutral-surface)}
+.sec{display:flex;flex-direction:column;gap:var(--space-4)}
+.sec + .sec{padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-5) var(--space-4)}
+.grid--3{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-5) var(--space-6)}
+.grid--5{grid-template-columns:repeat(5,minmax(0,1fr));align-items:end}
+.cell{display:flex;flex-direction:column;gap:var(--space-2);min-inline-size:0}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3)}
+.bar > .mds-input-group{flex:1 1 240px}
+.bar > .mds-select{flex:0 1 184px}
+.bar > .mds-caption{margin-inline-start:auto}
+.rtl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-6);padding:var(--space-5);border:var(--border-width-thin) dashed var(--border-neutral-control);border-radius:var(--radius-surface)}
+.notes{display:flex;flex-direction:column;gap:var(--space-1);margin:0;padding-inline-start:var(--space-5);max-inline-size:var(--layout-measure-prose)}
+</style></head><body>
+
+<section class="sec">
+<p class="mds-eyebrow">Durumlar</p>
+<div class="grid">
+<div class="cell"><span class="mds-caption">Seçilmemiş · “Seçin”</span><span class="mds-select"><select class="mds-input" aria-label="Medrese"><option value="" disabled selected hidden>Seçin</option><option>Süleymaniye Medresesi</option><option>Fâtih Medresesi</option></select></span></div>
+<div class="cell"><span class="mds-caption">Seçili</span><span class="mds-select"><select class="mds-input" aria-label="Saat dilimi"><option selected>İstanbul</option><option>Berlin</option></select></span></div>
+<div class="cell"><span class="mds-caption">Üzerinde</span><span class="mds-select"><select class="mds-input" aria-label="Saat dilimi" style="border-color:var(--border-neutral-strong)"><option selected>İstanbul</option><option>Berlin</option></select></span></div>
+<div class="cell"><span class="mds-caption">Odakta</span><span class="mds-select"><select class="mds-input is-focus" aria-label="Saat dilimi"><option selected>İstanbul</option><option>Berlin</option></select></span></div>
+<div class="cell"><span class="mds-caption">Hatalı</span><span class="mds-select"><select class="mds-input" aria-label="Medrese" aria-invalid="true"><option value="" disabled selected hidden>Seçin</option><option>Süleymaniye Medresesi</option></select></span></div>
+<div class="cell"><span class="mds-caption">Hatalı ve odakta</span><span class="mds-select"><select class="mds-input is-error is-focus" aria-label="Medrese" aria-invalid="true"><option value="" disabled selected hidden>Seçin</option><option>Süleymaniye Medresesi</option></select></span></div>
+<div class="cell"><span class="mds-caption">Devre dışı</span><span class="mds-select"><select class="mds-input" aria-label="Dil" disabled><option selected>Türkçe</option></select></span></div>
+<div class="cell"><span class="mds-caption">Devre dışı, seçilmemiş</span><span class="mds-select"><select class="mds-input" aria-label="Müderris" disabled><option value="" disabled selected hidden>Seçin</option><option>Abdülhamit Karaosmanoğlu</option></select></span></div>
+</div>
+</section>
+
+<section class="sec">
+<p class="mds-eyebrow">Alan içinde</p>
+<div class="grid grid--3">
+<div class="mds-field">
+  <label class="mds-label" for="s1">Saat dilimi</label>
+  <span class="mds-select"><select class="mds-input" id="s1" aria-describedby="s1-h">
+    <option value="Europe/Istanbul" selected>İstanbul</option>
+    <option value="Europe/Berlin">Berlin</option>
+    <option value="Europe/Amsterdam">Amsterdam</option>
+    <option value="Europe/Brussels">Brüksel</option>
+    <option value="Europe/Paris">Paris</option>
+    <option value="Europe/Vienna">Viyana</option>
+    <option value="Europe/London">Londra</option>
+    <option value="America/New_York">New York</option>
+    <option value="other">Diğer…</option>
+  </select></span>
+  <span class="mds-help" id="s1-h">Ders saatleri bu saat diliminde gösterilir.</span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="s2">Medrese<span class="mds-required" aria-hidden="true">*</span></label>
+  <span class="mds-select"><select class="mds-input" id="s2" required aria-required="true">
+    <option value="" disabled selected hidden>Seçin</option>
+    <option>Süleymaniye Medresesi</option>
+    <option>Fâtih Medresesi</option>
+    <option>Nûruosmaniye Medresesi</option>
+  </select></span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="s3">Köşk<span class="mds-required" aria-hidden="true">*</span></label>
+  <span class="mds-select"><select class="mds-input" id="s3" required aria-required="true" aria-invalid="true" aria-describedby="s3-e">
+    <option value="" disabled selected hidden>Seçin</option>
+    <option>Nûruosmaniye Köşkü</option>
+    <option>Süleymaniye Köşkü</option>
+  </select></span>
+  <span class="mds-error" id="s3-e">Dersin açılacağı köşkü seçin.</span>
+</div>
+</div>
+</section>
+
+<section class="sec">
+<p class="mds-eyebrow">Süzgeç çubuğu · sıkı bölge</p>
+<div class="bar" data-density="compact">
+  <span class="mds-input-group"><span class="mds-input-group__leading" aria-hidden="true"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#search"/></svg></span><input class="mds-input" type="search" aria-label="Ders veya müderris ara" placeholder="Ders veya müderris ara"></span>
+  <span class="mds-select"><select class="mds-input" aria-label="Durum"><option>Durum: tümü</option><option>Yayında</option><option>Taslak</option><option>Gizli</option></select></span>
+  <span class="mds-select"><select class="mds-input" aria-label="Müderris"><option>Müderris: tümü</option><option>Abdülhamit Karaosmanoğlu</option><option>Mehmet Emin Işıkoğlu</option></select></span>
+  <span class="mds-caption">7 ders · 126 talebe</span>
+</div>
+</section>
+
+<section class="sec">
+<p class="mds-eyebrow">Boylar</p>
+<div class="grid grid--5">
+<div class="cell"><span class="mds-caption">Mini · 24</span><span class="mds-select"><select class="mds-input mds-input--mini" aria-label="Hafta"><option>3. hafta</option></select></span></div>
+<div class="cell"><span class="mds-caption">Küçük · 32</span><span class="mds-select"><select class="mds-input mds-input--small" aria-label="Hafta"><option>3. hafta</option></select></span></div>
+<div class="cell"><span class="mds-caption">Normal · 40</span><span class="mds-select"><select class="mds-input" aria-label="Hafta"><option>3. hafta</option></select></span></div>
+<div class="cell"><span class="mds-caption">Büyük · 48</span><span class="mds-select"><select class="mds-input mds-input--large" aria-label="Hafta"><option>3. hafta</option></select></span></div>
+<div class="cell" data-density="compact"><span class="mds-caption">Sıkı bölge · 32</span><span class="mds-select"><select class="mds-input" aria-label="Hafta"><option>3. hafta</option></select></span></div>
+</div>
+</section>
+
+<section class="sec">
+<p class="mds-eyebrow">Arapça arayüz · ok sola geçer</p>
+<div class="rtl" lang="ar" dir="rtl">
+<div class="mds-field">
+  <label class="mds-label" for="a1">المنطقة الزمنية</label>
+  <span class="mds-select"><select class="mds-input" id="a1"><option selected>إسطنبول</option><option>برلين</option></select></span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="a2">المدرسة</label>
+  <span class="mds-select"><select class="mds-input" id="a2" aria-invalid="true" aria-describedby="a2-e"><option value="" disabled selected hidden>اختر</option><option>مدرسة السليمانية</option></select></span>
+  <span class="mds-error" id="a2-e">اختر مدرسة من القائمة.</span>
+</div>
+</div>
+</section>
+
+<section class="sec">
+<ul class="notes mds-caption">
+<li>Kutu, alan kutusunun aynısıdır: kenar, odak halkası, hatalı çift kenar ve boylar ortak.</li>
+<li>Ok, çizim setindeki <code>chevronDown</code>; <code>--text-neutral-muted</code> ile boyanır, alan zemininde gündüz 9,45:1. Devre dışıyken <code>--text-neutral-disabled</code> olur.</li>
+<li>“Seçin” gizli ve seçilemez bir ilk seçenektir; seçilene kadar soluk yazıyla görünür. Zorunlu alanda boş bırakılırsa form gönderilmez.</li>
+<li>İki ya da üç seçenek bir radyo grubudur, hepsi görünür kalır. Toplantı platformu hiçbir zaman seçilmez, bağlantıdan okunur.</li>
+</ul>
+</section>
+</body></html>

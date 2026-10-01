@@ -1,0 +1,125 @@
+<!-- @dsCard group="Forms" viewport="820x1540" name="Input" subtitle="A field and a text box: 40px (32 in a compact region), a 6px corner and a 3:1 ink edge. Every state, inside a field, four sizes and the Arabic interface." -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{display:flex;flex-direction:column;gap:var(--space-6);margin:0;padding:var(--space-6);background:var(--background-neutral-surface)}
+.sec{display:flex;flex-direction:column;gap:var(--space-4)}
+.sec + .sec{padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-5) var(--space-6)}
+.grid--5{grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--space-4);align-items:end}
+.cell{display:flex;flex-direction:column;gap:var(--space-2);min-inline-size:0}
+.span2{grid-column:span 2}
+.rtl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-6);padding:var(--space-5);border:var(--border-width-thin) dashed var(--border-neutral-control);border-radius:var(--radius-surface)}
+.notes{display:flex;flex-direction:column;gap:var(--space-1);margin:0;padding-inline-start:var(--space-5);max-inline-size:var(--layout-measure-prose)}
+</style></head><body>
+
+<section class="sec">
+<p class="mds-eyebrow">Durumlar</p>
+<div class="grid">
+<div class="cell"><span class="mds-caption">Boş</span><input class="mds-input" aria-label="Talebe adı"></div>
+<div class="cell"><span class="mds-caption">Yer tutucu</span><input class="mds-input" aria-label="Talebe adı" placeholder="Ad ve soyad"></div>
+<div class="cell"><span class="mds-caption">Dolu</span><input class="mds-input" aria-label="Talebe adı" value="Zeynep Betül Karahan"></div>
+<div class="cell"><span class="mds-caption">Üzerinde · kenar koyulaşır</span><input class="mds-input" aria-label="Talebe adı" value="Zeynep Betül Karahan" style="border-color:var(--border-neutral-strong)"></div>
+<div class="cell"><span class="mds-caption">Odakta · <code>:focus</code></span><input class="mds-input is-focus" aria-label="Talebe adı" value="Zeynep Betül Karahan"></div>
+<div class="cell"><span class="mds-caption">Hatalı · <code>aria-invalid</code></span><input class="mds-input" type="email" aria-label="E-posta" aria-invalid="true" value="zeynep.betul@"></div>
+<div class="cell"><span class="mds-caption">Hatalı ve odakta · aynı halka</span><input class="mds-input is-error is-focus" type="email" aria-label="E-posta" aria-invalid="true" value="zeynep.betul@"></div>
+<div class="cell"><span class="mds-caption">Salt okunur · <code>readonly</code></span><input class="mds-input" aria-label="Köşk" readonly value="Nûruosmaniye Köşkü"></div>
+<div class="cell"><span class="mds-caption">Devre dışı · <code>disabled</code></span><input class="mds-input" aria-label="Medrese" disabled value="Süleymaniye Medresesi"></div>
+</div>
+</section>
+
+<section class="sec">
+<p class="mds-eyebrow">Alan içinde</p>
+<p class="mds-caption">* zorunlu alan</p>
+<div class="grid">
+<div class="mds-field">
+  <label class="mds-label" for="i1">Ders adı<span class="mds-required" aria-hidden="true">*</span></label>
+  <input class="mds-input" id="i1" required aria-required="true" aria-describedby="i1-h" value="Emsile ve Bina">
+  <span class="mds-help" id="i1-h">Talebeler bu adı görür.</span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="i2">E-posta</label>
+  <input class="mds-input" id="i2" type="email" aria-invalid="true" aria-describedby="i2-e" value="zeynep.betul@">
+  <span class="mds-error" id="i2-e">Geçerli bir e-posta adresi yazın.</span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="i3">Giriş e-postası</label>
+  <input class="mds-input" id="i3" type="email" readonly aria-describedby="i3-h" value="abdulhamit@medaris.org">
+  <span class="mds-help" id="i3-h">Salt okunur. Giriş yaptığınız adres.</span>
+</div>
+<div class="mds-field span2">
+  <label class="mds-label" for="i4">Toplantı bağlantısı<span class="mds-required" aria-hidden="true">*</span></label>
+  <input class="mds-input mds-input--mono" id="i4" type="url" dir="ltr" required aria-required="true" aria-describedby="i4-h" value="https://meet.google.com/bqx-mfzn-rde">
+  <span class="mds-help" id="i4-h">Platform, bağlantının adresinden anlaşılır.</span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="i5">Süre (dk)</label>
+  <span class="mds-input-group">
+    <input class="mds-input" id="i5" type="number" value="60">
+    <span class="mds-input-group__trailing" aria-hidden="true">dk</span>
+  </span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="i6">Ders ara</label>
+  <span class="mds-input-group">
+    <span class="mds-input-group__leading" aria-hidden="true"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#search"/></svg></span>
+    <input class="mds-input" id="i6" type="search" placeholder="Ders, köşk veya müderris">
+  </span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="i7">Etiketler</label>
+  <input class="mds-input" id="i7" aria-describedby="i7-h" value="sarf, emsile, bina">
+  <span class="mds-help" id="i7-h">Virgülle ayırın.</span>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="i8">Ders kaydı</label>
+  <input class="mds-input" id="i8" type="file" accept="video/*" aria-describedby="i8-h">
+  <span class="mds-help" id="i8-h">Kayıt bu celsenin sayfasına eklenir.</span>
+</div>
+<div class="mds-field span2">
+  <label class="mds-label" for="i9">Müderrisin notu</label>
+  <textarea class="mds-input mds-textarea" id="i9" rows="4" dir="auto" placeholder="Talebelere celseye gelmeden önce ne okumaları gerektiğini yazın."></textarea>
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="i10">Yasaklama gerekçesi<span class="mds-required" aria-hidden="true">*</span></label>
+  <textarea class="mds-input mds-textarea" id="i10" rows="4" required aria-required="true" aria-invalid="true" aria-describedby="i10-e"></textarea>
+  <span class="mds-error" id="i10-e">Bir gerekçe yazın.</span>
+</div>
+</div>
+</section>
+
+<section class="sec">
+<p class="mds-eyebrow">Boylar</p>
+<div class="grid grid--5">
+<div class="cell"><span class="mds-caption">Mini · 24</span><input class="mds-input mds-input--mini" aria-label="Ders ara" placeholder="Ders ara"></div>
+<div class="cell"><span class="mds-caption">Küçük · 32</span><input class="mds-input mds-input--small" aria-label="Ders ara" placeholder="Ders ara"></div>
+<div class="cell"><span class="mds-caption">Normal · 40</span><input class="mds-input" aria-label="Ders ara" placeholder="Ders ara"></div>
+<div class="cell"><span class="mds-caption">Büyük · 48</span><input class="mds-input mds-input--large" aria-label="Ders ara" placeholder="Ders ara"></div>
+<div class="cell" data-density="compact"><span class="mds-caption">Sıkı bölge · 32</span><input class="mds-input" aria-label="Ders ara" placeholder="Ders ara"></div>
+</div>
+</section>
+
+<section class="sec">
+<p class="mds-eyebrow">Arapça arayüz</p>
+<div class="rtl" lang="ar" dir="rtl">
+<div class="mds-field">
+  <label class="mds-label" for="a1">عنوان الجلسة</label>
+  <input class="mds-input" id="a1" value="الأفعال المضاعفة">
+</div>
+<div class="mds-field">
+  <label class="mds-label" for="a2">رابط الاجتماع</label>
+  <input class="mds-input mds-input--mono" id="a2" type="url" dir="ltr" aria-invalid="true" aria-describedby="a2-e" value="zoom.us/j/">
+  <span class="mds-error" id="a2-e">رقم الاجتماع ناقص.</span>
+</div>
+</div>
+</section>
+
+<section class="sec">
+<ul class="notes mds-caption">
+<li>Kenar <code>--border-neutral-control</code>: alan zemininde gündüz 3,89:1, gece 4,61:1. Üzerine gelince <code>--border-neutral-strong</code> olur.</li>
+<li>Tek odak halkası var. Hatalı alan da aynı halkayı çizer; halka iç çizginin dışına eklenir.</li>
+<li>Hatalı kenar çifttir: 1 px kenar ve 1 px iç çizgi. Renk görmeyen de fark eder.</li>
+<li>Yer tutucu biçimi gösterir, etiketin yerine geçmez. Salt okunur değer mürekkepte kalır ve kopyalanır.</li>
+<li>Devre dışı alan kesik kenarlı bir kuyudur; soluklaşmaz, formdan çıkar.</li>
+<li>768 px altında yazı 16 px olur, telefon alana yakınlaşmaz. Oranların hepsi <code>contrast.md</code>’de.</li>
+</ul>
+</section>
+</body></html>

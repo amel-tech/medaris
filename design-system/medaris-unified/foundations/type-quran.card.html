@@ -1,0 +1,40 @@
+<!-- @dsCard group="Foundations" viewport="820x1070" name="Qur'an — Scheherazade New" subtitle="Qur'anic text only, at 34/2.25 (28 on a phone), always fully vocalised. An ayah is bound to its end mark, and every waqf sign is drawn in the Qur'an face." -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.f-folio{gap:var(--space-5);padding-block:var(--space-8);padding-inline:var(--space-8)}
+.f-waqf{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-5);border:var(--border-width-thin) solid var(--border-neutral-subtle);border-radius:var(--radius-surface);background:var(--background-neutral-surface)}
+.f-waqf .mds-quran{text-align:center}
+.f-spec{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-2) var(--space-6);margin:0;padding:0;list-style:none;font-size:var(--fs-caption);line-height:1.45;color:var(--text-neutral-muted)}
+.f-spec code{color:var(--text-neutral-default)}
+</style></head><body>
+<section class="f-sec">
+<article class="mds-folio f-folio" aria-label="Alak Sûresi, 96:1–5">
+<div class="mds-folio__matn">
+<p class="mds-sure-band"><span lang="ar" dir="rtl">سُورَةُ ٱلْعَلَقِ</span></p>
+<p class="mds-quran" lang="ar" dir="rtl">بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</p>
+<p class="mds-quran" lang="ar" dir="rtl">ٱقْرَأْ بِٱسْمِ رَبِّكَ ٱلَّذِى خَلَقَ&nbsp;۝١ خَلَقَ ٱلْإِنسَٰنَ مِنْ عَلَقٍ&nbsp;۝٢ ٱقْرَأْ وَرَبُّكَ ٱلْأَكْرَمُ&nbsp;۝٣ ٱلَّذِى عَلَّمَ بِٱلْقَلَمِ&nbsp;۝٤ عَلَّمَ ٱلْإِنسَٰنَ مَا لَمْ يَعْلَمْ&nbsp;۝٥</p>
+<p class="mds-source">Alak Sûresi, 96:1–5</p>
+<p class="mds-folio__meal">Meâl: Yaratan Rabbinin adıyla oku. O, insanı bir aşılanmış yumurtadan yarattı. Oku, Rabbin sonsuz kerem sahibidir. O, kalemle yazmayı öğretendir. İnsana bilmediğini öğretti.</p>
+</div>
+</article>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Vakıf işaretleri</h2><p class="mds-caption">Her vakıf işareti bir boşluk ve bir birleşen işarettir. İkisi tek kümedir, bu yüzden tek dosyadan çizilir.</p></header>
+<figure class="f-waqf"><p class="mds-quran" lang="ar" dir="rtl">الٓمٓ&nbsp;۝١ ذَٰلِكَ ٱلْكِتَٰبُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًى لِّلْمُتَّقِينَ&nbsp;۝٢</p><figcaption class="mds-source">Bakara Sûresi, 2:1–2</figcaption></figure>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Kurallar</h2></header>
+<ul class="f-spec">
+<li>Yalnızca <code>.mds-quran</code>. Scheherazade New başka hiçbir metinde, Türkçede hiç kullanılmaz.</li>
+<li>Mushaf hep harekelidir: Kur’ân için hareke anahtarı yok. “Metinde harekeler” yalnızca matnı etkiler.</li>
+<li>Âyet sonu işareti önceki kelimeye U+00A0 ile bağlanır; hiçbir satır bir âyet işaretiyle başlamaz.</li>
+<li><code>font-display: block</code>: bir âyet, işaretleri düşüren bir yedek yüzde hiç görünmez.</li>
+<li>Satır aralığı 2,25: 96:1–5'in mürekkebi taban çizgisinin 1,27em üstüne çıkar, 0,69em altına iner. Kesilmeyen en az değer 2,03.</li>
+<li>Yüz <code>text=</code> ile tek dosya istenir. <code>check.mjs</code> her <code>.mds-quran</code> glifinin hangi yüzle boyandığını sorar; sistem yüzü düşer.</li>
+</ul>
+</section>
+</body></html>

@@ -1,0 +1,35 @@
+/* Medaris — elevation and focus.
+   Nothing at rest casts a shadow: a resting surface is a hairline (MDS-SHAPE-02). Only floating layers
+   lift. Shadows are ink-tinted by day and black with a 1px ring by night, so they are re-pointed with the
+   theme (the night block comes first and is written twice, like tokens/semantic.css).
+
+   The focus ring is two bands: a 2px gap in --ring-focus-gap, then a 2px ring in --ring-focus-color.
+   The ring is ≥ 3:1 against every ground; the gap is ≥ 3:1 against every filled control; so the indicator
+   reads on ink, paper and red alike (contrast.md, "Focus indicator"). Use it as
+     outline: var(--ring-focus-outline); outline-offset: var(--ring-focus-offset); box-shadow: var(--ring-focus);
+   The transparent outline is what forced-colours mode paints (box-shadow is not painted there).
+   --ring-focus is re-declared wherever a theme is set, so a night island gets the night ring. */
+html[data-theme="dark"], [data-theme="dark"] {
+  --elevation-overlay: 0 0 0 1px rgb(0 0 0 / 0.4), 0 12px 32px -8px rgb(0 0 0 / 0.6);
+  --elevation-raised: 0 0 0 1px rgb(0 0 0 / 0.45), 0 16px 40px -12px rgb(0 0 0 / 0.65);
+  --elevation-modal: 0 0 0 1px rgb(0 0 0 / 0.5), 0 32px 80px -16px rgb(0 0 0 / 0.75);
+  --ring-focus: 0 0 0 var(--ring-focus-offset) var(--ring-focus-gap), 0 0 0 calc(var(--ring-focus-offset) + var(--ring-focus-width)) var(--ring-focus-color);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --elevation-overlay: 0 0 0 1px rgb(0 0 0 / 0.4), 0 12px 32px -8px rgb(0 0 0 / 0.6);
+    --elevation-raised: 0 0 0 1px rgb(0 0 0 / 0.45), 0 16px 40px -12px rgb(0 0 0 / 0.65);
+    --elevation-modal: 0 0 0 1px rgb(0 0 0 / 0.5), 0 32px 80px -16px rgb(0 0 0 / 0.75);
+    --ring-focus: 0 0 0 var(--ring-focus-offset) var(--ring-focus-gap), 0 0 0 calc(var(--ring-focus-offset) + var(--ring-focus-width)) var(--ring-focus-color);
+  }
+}
+:root {
+  --elevation-overlay: 0 0 0 1px rgb(24 29 38 / 0.06), 0 12px 28px -8px rgb(24 29 38 / 0.18);  /* menu, popover, tooltip */
+  --elevation-raised: 0 0 0 1px rgb(24 29 38 / 0.06), 0 16px 36px -12px rgb(24 29 38 / 0.24);  /* toast, sticky enrol card */
+  --elevation-modal: 0 0 0 1px rgb(24 29 38 / 0.08), 0 32px 72px -16px rgb(24 29 38 / 0.36);   /* dialog, nav sheet */
+
+  --ring-focus-width: 2px;
+  --ring-focus-offset: 2px;
+  --ring-focus-outline: 2px solid transparent;
+  --ring-focus: 0 0 0 var(--ring-focus-offset) var(--ring-focus-gap), 0 0 0 calc(var(--ring-focus-offset) + var(--ring-focus-width)) var(--ring-focus-color);
+}

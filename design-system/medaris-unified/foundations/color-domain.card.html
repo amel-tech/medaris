@@ -1,0 +1,58 @@
+<!-- @dsCard group="Foundations" viewport="820x850" name="Domain colour" subtitle="Bookcloth covers, platform dots, the logo, the rating star and the media scrim. They read the same by day and by night." -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.f-tok{font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--text-neutral-muted);overflow-wrap:anywhere}
+.f-id{white-space:nowrap}
+.f-covers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-5)}
+.f-cover{display:flex;flex-direction:column;gap:var(--space-2);min-inline-size:0}
+.f-cover .mds-cover{inline-size:100%;max-inline-size:150px;block-size:auto;aspect-ratio:3 / 4}
+.f-xs{display:flex;flex-wrap:wrap;gap:var(--space-3) var(--space-6)}
+.f-xs > span{display:inline-flex;align-items:center;gap:var(--space-2);font-family:var(--font-reading);font-size:var(--fs-body-sm);font-weight:var(--weight-semibold)}
+.f-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-6)}
+.f-box{display:flex;flex-direction:column;gap:var(--space-3);min-inline-size:0}
+.f-chips{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-2)}
+.f-marks{display:flex;align-items:center;gap:var(--space-3)}
+.f-rating{display:inline-flex;align-items:center;gap:var(--space-1);font-size:var(--fs-body-sm);font-weight:var(--weight-semibold)}
+.f-rating .mds-icon{color:var(--icon-rating)}
+.f-rating span{font-weight:var(--weight-regular);color:var(--text-neutral-subtle)}
+.f-poster{position:relative;display:flex;align-items:flex-end;block-size:120px;padding:var(--space-3);border-radius:var(--radius-control);overflow:hidden;box-shadow:inset 0 0 0 1px var(--border-neutral-subtle)}
+.f-poster--white{background-color:#fff;background-image:var(--gradient-scrim-media)}
+.f-poster__at{position:absolute;inset-inline:0;inset-block-start:70%;border-block-start:var(--border-width-thin) dashed var(--border-brand-default)}
+</style></head><body>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Cilt kapaklar</h2><p class="mds-caption">Bir ders ciltli bir kitaptır. Dört bez, kör baskı çift cetvel ve şemse. Etiket ilmin Arapça adı. Kapak hiçbir durum taşımaz ve temayla değişmez <span class="f-id">(MDS-COL-07)</span>.</p></header>
+<!-- The cover and logo ratios are copied from contrast.md; when verify-contrast.mjs --write changes it, change them here too. -->
+<div class="f-covers">
+<div class="f-cover"><div class="mds-cover mds-cover--laciverd"><p class="mds-eyebrow mds-cover__label" lang="ar" dir="rtl">النحو</p></div><code class="f-tok">--cover-laciverd</code><span class="mds-caption">laciverd-800 · etiket 10,57:1</span></div>
+<div class="f-cover"><div class="mds-cover mds-cover--bordo"><p class="mds-eyebrow mds-cover__label" lang="ar" dir="rtl">الصرف</p></div><code class="f-tok">--cover-bordo</code><span class="mds-caption">lal-900 · etiket 11,34:1</span></div>
+<div class="f-cover"><div class="mds-cover mds-cover--zumrut"><p class="mds-eyebrow mds-cover__label" lang="ar" dir="rtl">السيرة</p></div><code class="f-tok">--cover-zumrut</code><span class="mds-caption">zumrut-800 · etiket 8,69:1</span></div>
+<div class="f-cover"><div class="mds-cover mds-cover--murekkep"><p class="mds-eyebrow mds-cover__label" lang="ar" dir="rtl">المنطق</p></div><code class="f-tok">--cover-murekkep</code><span class="mds-caption">murekkep-850 · etiket 13,16:1</span></div>
+</div>
+<p class="mds-caption">Ton, yöneticinin seçimidir; seçim yoksa ders kimliğinden gelir: FNV-1a mod 4 sırasıyla laciverd, bordo, zumrut, murekkep. İkisi de yoksa murekkep. Etiket <code>--text-on-cover</code> (kagit-100), kör baskı <code>--stamp-on-cover</code> (süs, oran gerekmez).</p>
+<p class="f-xs"><span><span class="mds-cover mds-cover--laciverd mds-cover--xs" aria-hidden="true"></span>Kâfiye: nahve giriş</span><span><span class="mds-cover mds-cover--bordo mds-cover--xs" aria-hidden="true"></span>Emsile ve Bina</span><span><span class="mds-cover mds-cover--zumrut mds-cover--xs" aria-hidden="true"></span>Siyer-i Nebî</span><span><span class="mds-cover mds-cover--murekkep mds-cover--xs" aria-hidden="true"></span>İsâgûcî Şerhi</span></p>
+<p class="mds-caption">Tabloda kapak <code>xs</code> boyutunda düz bir bez örneğidir: 24 × 32.</p>
+</section>
+<section class="f-sec">
+<div class="f-grid">
+<div class="f-box">
+<header class="f-head"><h2 class="mds-h5">Platform noktası</h2></header>
+<div class="f-chips"><span class="mds-platform-chip mds-platform-chip--google-meet"><span class="mds-platform-chip__dot" aria-hidden="true"></span>Google Meet</span><span class="mds-platform-chip mds-platform-chip--zoom"><span class="mds-platform-chip__dot" aria-hidden="true"></span>Zoom</span><span class="mds-platform-chip mds-platform-chip--jitsi"><span class="mds-platform-chip__dot" aria-hidden="true"></span>Jitsi Meet</span><span class="mds-platform-chip"><span class="mds-platform-chip__dot" aria-hidden="true"></span>Bilinmeyen platform<span class="mds-platform-chip__host" dir="ltr">webex.com</span></span></div>
+<p class="mds-caption">8px nokta süstür; platformu adı söyler <span class="f-id">(MDS-COL-06)</span>. <code>--icon-platform-{id}</code>: <code>zumrut-500</code>, <code>laciverd-500</code>, <code>safran-500</code>, <code>murekkep-400</code>.</p>
+</div>
+<div class="f-box">
+<header class="f-head"><h2 class="mds-h5">Logo ve yıldız</h2></header>
+<div class="f-marks"><span class="mds-logo mds-logo--lg" role="img" aria-label="Medaris"><svg class="mds-logo__mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect class="mds-logo__ground" width="48" height="48" rx="12"/><g class="mds-logo__arch" filter="url(#mds-logo-arch-1)"><path d="M14.4327 24.2434V38.1C14.4327 38.9284 15.1042 39.6 15.9327 39.6H23.7173V8.4C15.0737 9.68201 14.9368 16.815 16.0327 20.4C14.0326 21.2 14.4327 23.2 14.4327 24.2434Z"/><path d="M33.3172 24.2434V38.1C33.3172 38.9284 32.6456 39.6 31.8172 39.6H24.0325V8.4C32.6762 9.68201 32.8131 16.815 31.7172 20.4C33.7172 21.2 33.3172 23.2 33.3172 24.2434Z"/></g><defs><filter id="mds-logo-arch-1" x="14.4" y="8.4" width="18.9498" height="31.2" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset/><feGaussianBlur stdDeviation="0.375"/><feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3 0"/><feBlend mode="normal" in2="shape" result="innerShadow"/></filter></defs></svg></span><span class="f-rating"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#star-fill"/></svg>4,8 <span>(126)</span></span></div>
+<p class="mds-caption"><code>--icon-logo-ground</code> laciverd-700 ve <code>--icon-logo-arch</code> laciverd-50: kemer zeminde 8,18:1, iki temada da aynı. Logo kontrast şartından muaftır. <code>--icon-rating</code> safran-500: süs, hep sayısının yanında.</p>
+</div>
+<div class="f-box">
+<header class="f-head"><h2 class="mds-h5">Görsel perdesi</h2></header>
+<div class="f-poster f-poster--white" role="img" aria-label="Beyaz bir poster üstünde perde"><span class="f-poster__at"></span></div>
+<p class="mds-caption"><code>--gradient-scrim-media</code> %70'te tam güce ulaşır; yazı oradan başlar. <code>--text-on-cover</code> beyaz bir poster pikselinde bile 9,86:1.</p>
+</div>
+</div>
+</section>
+</body></html>

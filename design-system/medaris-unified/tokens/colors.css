@@ -1,0 +1,64 @@
+/* Medaris — colour primitives. "Mürekkep ve kâğıt": ink on paper.
+   Six named ramps, defined in OKLCH and frozen to hex. Only tokens/*.css may name them (MDS-TOK-01):
+   a component reads the semantic roles in tokens/semantic.css, never a step from here.
+   Every step below is read by a semantic, focus or domain token; verify-contrast.mjs fails on an unread step. */
+:root {
+  /* kâğıt — paper. Ivory, hue 76–90°, chroma ≤ 0.02. Day surfaces, hairlines, and the text of the night theme. */
+  --kagit-0: #FEFDF9;
+  --kagit-50: #F9F6EF;
+  --kagit-100: #F2EDE3;
+  --kagit-150: #EAE4D8;
+  --kagit-200: #DED7CA;
+  --kagit-300: #CBC3B6;
+  --kagit-400: #AEA69B;
+  --kagit-500: #948C82;
+
+  /* mürekkep — iron-gall ink. Blue-black, hue 262°. Day text, control edges, the action fill, night surfaces. */
+  --murekkep-400: #7C8088;
+  --murekkep-600: #555A63;
+  --murekkep-700: #40454F;
+  --murekkep-800: #2B313B;
+  --murekkep-850: #20252F;
+  --murekkep-900: #181D26;
+  --murekkep-950: #11151D;
+  --murekkep-1000: #0B0E14;
+
+  /* lâciverd — lapis ultramarine, the one accent. Hue 274°, on the violet side of SaaS azure (~255°).
+     It marks where you are: links, the current lesson, the active page, progress, the focus ring. */
+  --laciverd-50: #EBEFFD;
+  --laciverd-300: #9EADEE;
+  --laciverd-400: #7E8EE2;
+  --laciverd-500: #6676D8;
+  --laciverd-600: #4551B3;
+  --laciverd-700: #343D93;
+  --laciverd-800: #272E6E;
+  --laciverd-950: #1B2037;
+
+  /* lal — the manuscript's red ink (rubric). Error, destructive, and the live-now state. Never decoration. */
+  --lal-50: #FDEDEB;
+  --lal-300: #F09A92;
+  --lal-400: #E47168;
+  --lal-600: #B3332E;
+  --lal-700: #972622;
+  --lal-900: #581B1A;
+  --lal-950: #361A18;
+
+  /* safran — saffron ochre. Warning only. */
+  --safran-50: #FBF2DE;
+  --safran-300: #E9B860;
+  --safran-400: #D89A3D;
+  --safran-500: #BC7F2E;
+  --safran-700: #86531F;
+  --safran-800: #6C411A;
+  --safran-950: #2F1F10;
+
+  /* zümrüt — emerald, blue-leaning (not sage). Success only. */
+  --zumrut-50: #E6F6EE;
+  --zumrut-300: #7ECAA9;
+  --zumrut-400: #58AF8C;
+  --zumrut-500: #37906E;
+  --zumrut-600: #277659;
+  --zumrut-700: #1B6047;
+  --zumrut-800: #164A37;
+  --zumrut-950: #0E261C;
+}

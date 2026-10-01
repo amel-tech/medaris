@@ -1,0 +1,72 @@
+<!-- @dsCard group="Navigation" viewport="1040x780" name="Sidebar" subtitle="One paper sidebar for Nizam and Nazır: sections, items with counts, the current page in a lâciverd tint, the signed-in person at the foot; mirrored in Arabic" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;background:var(--background-neutral-page);font-family:var(--font-ui);color:var(--text-neutral-default)}
+.row{display:grid;grid-template-columns:var(--layout-sidebar) 1fr var(--layout-sidebar);min-block-size:780px}
+.side{display:flex;flex-direction:column;padding-block:var(--space-5) var(--space-3);padding-inline:var(--space-3);background:var(--background-neutral-surface);border-inline-end:var(--border-width-thin) solid var(--border-neutral-subtle)}
+.brand{padding-block:var(--space-1) var(--space-2);padding-inline:var(--space-2)}
+.side nav{display:flex;flex-direction:column;gap:2px}
+.foot{margin-block-start:auto}
+.states{display:flex;flex-direction:column;gap:var(--space-5);padding:var(--space-8)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3) var(--space-6)}
+.cell{display:flex;flex-direction:column;gap:var(--space-2)}
+.cell .well{padding:var(--space-2);background:var(--background-neutral-surface);border:var(--border-width-thin) solid var(--border-neutral-subtle);border-radius:var(--radius-surface)}
+.demo-hover{background:var(--background-neutral-hover);color:var(--text-neutral-default)}
+.demo-focus{outline:var(--ring-focus-outline);outline-offset:var(--ring-focus-offset);box-shadow:var(--ring-focus)}
+.notes{display:flex;flex-direction:column;gap:var(--space-2);max-inline-size:60ch}
+.note{margin:0;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-subtle)}
+</style></head><body>
+<div class="row">
+  <aside class="side">
+    <div class="brand"><span class="mds-logo" role="img" aria-label="Medaris — Nizam"><svg class="mds-logo__mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect class="mds-logo__ground" width="48" height="48" rx="12"/><g class="mds-logo__arch" filter="url(#mds-logo-arch-1)"><path d="M14.4327 24.2434V38.1C14.4327 38.9284 15.1042 39.6 15.9327 39.6H23.7173V8.4C15.0737 9.68201 14.9368 16.815 16.0327 20.4C14.0326 21.2 14.4327 23.2 14.4327 24.2434Z"/><path d="M33.3172 24.2434V38.1C33.3172 38.9284 32.6456 39.6 31.8172 39.6H24.0325V8.4C32.6762 9.68201 32.8131 16.815 31.7172 20.4C33.7172 21.2 33.3172 23.2 33.3172 24.2434Z"/></g><defs><filter id="mds-logo-arch-1" x="14.4" y="8.4" width="18.9498" height="31.2" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset/><feGaussianBlur stdDeviation="0.375"/><feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3 0"/><feBlend mode="normal" in2="shape" result="innerShadow"/></filter></defs></svg><span class="mds-logo__text"><span class="mds-logo__word" lang="en" dir="ltr">Medaris</span><span class="mds-logo__subtitle" dir="auto">Nizam</span></span></span></div>
+    <nav aria-label="Ana menü">
+      <div class="mds-nav-section">Genel</div>
+      <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#home"/></svg>Ana sayfa</a>
+      <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#bell"/></svg>Bildirimler<span class="mds-nav-item__count">3<span class="mds-visually-hidden"> okunmamış</span></span></a>
+      <div class="mds-nav-section">Köşk</div>
+      <a class="mds-nav-item" href="#" aria-current="page"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#courses"/></svg>Dersler<span class="mds-nav-item__count">7</span></a>
+      <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#calendar"/></svg>Celseler<span class="mds-nav-item__count">2<span class="mds-visually-hidden"> bağlantısı eksik</span></span></a>
+      <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#users"/></svg>Talebeler<span class="mds-nav-item__count">126</span></a>
+      <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#inbox"/></svg>Başvurular<span class="mds-nav-item__count">5<span class="mds-visually-hidden"> bekleyen</span></span></a>
+      <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#cards"/></svg>Ezber desteleri</a>
+      <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#archive"/></svg>Arşiv</a>
+      <div class="mds-nav-section">Yönetim</div>
+      <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#chart"/></svg>Raporlar</a>
+      <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#settings"/></svg>Köşk ayarları</a>
+    </nav>
+    <div class="foot"><a class="mds-nav-user" href="#"><span class="mds-avatar mds-avatar--sm" aria-hidden="true">AK</span><span class="mds-nav-user__text"><span class="mds-nav-user__name"><bdi>Abdülhamit Karaosmanoğlu</bdi></span><span class="mds-nav-user__role">Müderris<span class="mds-visually-hidden">, ayarlar</span></span></span><svg class="mds-icon mds-icon--sm mds-icon--directional" aria-hidden="true"><use href="../assets/icons.svg#chevronRight"/></svg></a></div>
+  </aside>
+  <div class="states">
+    <p class="mds-eyebrow">Öğe durumları</p>
+    <div class="grid" lang="tr">
+      <div class="cell"><span class="mds-caption">Olağan</span><div class="well"><a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#calendar"/></svg>Celseler</a></div></div>
+      <div class="cell"><span class="mds-caption">Üzerinde</span><div class="well"><a class="mds-nav-item demo-hover" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#calendar"/></svg>Celseler</a></div></div>
+      <div class="cell"><span class="mds-caption">Geçerli sayfa</span><div class="well"><a class="mds-nav-item" href="#" aria-current="page"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#courses"/></svg>Dersler<span class="mds-nav-item__count">7</span></a></div></div>
+      <div class="cell"><span class="mds-caption">Odakta</span><div class="well"><a class="mds-nav-item demo-focus" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#inbox"/></svg>Başvurular<span class="mds-nav-item__count">5<span class="mds-visually-hidden"> bekleyen</span></span></a></div></div>
+      <div class="cell"><span class="mds-caption">Sayı, ardından gelen bir sözcükle okunur</span><div class="well"><a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#users"/></svg>Talebeler<span class="mds-nav-item__count">1.250<span class="mds-visually-hidden"> kayıtlı</span></span></a></div></div>
+      <div class="cell"><span class="mds-caption">Satır sonunda bir simge</span><div class="well"><a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#chart"/></svg>Raporlar<span class="mds-nav-item__trailing"><svg class="mds-icon mds-icon--sm" role="img" aria-label="Kilitli"><use href="../assets/icons.svg#lock"/></svg></span></a></div></div>
+      <div class="cell"><span class="mds-caption">Uzun, yazarın yazdığı etiket</span><div class="well"><a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#book"/></svg><bdi>Merâhu’l-Ervâh, Dede Cöngî şerhiyle</bdi><span class="mds-nav-item__count">2</span></a></div></div>
+      <div class="cell"><span class="mds-caption">Giriş yapmış kişi, altta</span><div class="well"><a class="mds-nav-user" href="#"><span class="mds-avatar mds-avatar--sm" aria-hidden="true">ZK</span><span class="mds-nav-user__text"><span class="mds-nav-user__name"><bdi>Zeynep Betül Karahanlı</bdi></span><span class="mds-nav-user__role"><span>Müderris<span class="mds-sep" aria-hidden="true">·</span></span><span>Köşk yöneticisi</span><span class="mds-visually-hidden">, ayarlar</span></span></span><svg class="mds-icon mds-icon--sm mds-icon--directional" aria-hidden="true"><use href="../assets/icons.svg#chevronRight"/></svg></a></div></div>
+    </div>
+    <div class="notes">
+      <p class="note">There is one sidebar, on the paper surface, in Nizam and Nazır. At night it turns to ink with the rest of the page. Tedris uses a top bar instead.</p>
+      <p class="note">The current page is a lâciverd tint, ink text at 600 and a lâciverd glyph. The link itself carries <code>aria-current="page"</code>.</p>
+      <p class="note">A count names what it counts with a hidden word (“5 bekleyen”). A lock says the page waits on something; the page it opens says why. Items the viewer cannot use are not drawn.</p>
+      <p class="note">The signed-in person ends the sidebar: one link to the settings page, where “Çıkış yap” lives. Below 768 the AppBar sheet holds the same items and ends with the same link.</p>
+    </div>
+  </div>
+  <aside class="side" lang="ar" dir="rtl">
+    <div class="brand"><span class="mds-logo" role="img" aria-label="Medaris — نظام"><svg class="mds-logo__mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect class="mds-logo__ground" width="48" height="48" rx="12"/><g class="mds-logo__arch" filter="url(#mds-logo-arch-2)"><path d="M14.4327 24.2434V38.1C14.4327 38.9284 15.1042 39.6 15.9327 39.6H23.7173V8.4C15.0737 9.68201 14.9368 16.815 16.0327 20.4C14.0326 21.2 14.4327 23.2 14.4327 24.2434Z"/><path d="M33.3172 24.2434V38.1C33.3172 38.9284 32.6456 39.6 31.8172 39.6H24.0325V8.4C32.6762 9.68201 32.8131 16.815 31.7172 20.4C33.7172 21.2 33.3172 23.2 33.3172 24.2434Z"/></g><defs><filter id="mds-logo-arch-2" x="14.4" y="8.4" width="18.9498" height="31.2" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset/><feGaussianBlur stdDeviation="0.375"/><feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3 0"/><feBlend mode="normal" in2="shape" result="innerShadow"/></filter></defs></svg><span class="mds-logo__text"><span class="mds-logo__word" lang="en" dir="ltr">Medaris</span><span class="mds-logo__subtitle" dir="auto">نظام</span></span></span></div>
+    <nav aria-label="القائمة الرئيسية">
+      <div class="mds-nav-section">عام</div>
+      <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#home"/></svg>الرئيسية</a>
+      <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#bell"/></svg>الإشعارات<span class="mds-nav-item__count">٣<span class="mds-visually-hidden"> غير مقروءة</span></span></a>
+      <div class="mds-nav-section">الإدارة</div>
+      <a class="mds-nav-item" href="#" aria-current="page"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#courses"/></svg>الدورات<span class="mds-nav-item__count">٧</span></a>
+      <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#calendar"/></svg>الجلسات<span class="mds-nav-item__count">٤</span></a>
+      <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#users"/></svg>الطلاب</a>
+      <a class="mds-nav-item" href="#"><svg class="mds-icon mds-icon--sm" aria-hidden="true"><use href="../assets/icons.svg#settings"/></svg>الإعدادات</a>
+    </nav>
+    <div class="foot"><a class="mds-nav-user" href="#"><span class="mds-avatar mds-avatar--sm" lang="tr" aria-hidden="true">AK</span><span class="mds-nav-user__text"><span class="mds-nav-user__name" lang="tr"><bdi>Abdülhamit Karaosmanoğlu</bdi></span><span class="mds-nav-user__role">مدرّس<span class="mds-visually-hidden">، الإعدادات</span></span></span><svg class="mds-icon mds-icon--sm mds-icon--directional" aria-hidden="true"><use href="../assets/icons.svg#chevronRight"/></svg></a></div>
+  </aside>
+</div>
+</body></html>
