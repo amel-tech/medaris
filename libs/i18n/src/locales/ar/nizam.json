@@ -178,6 +178,8 @@
     "editTitle": "Kursu Düzenle",
     "breadcrumbEdit": "Düzenle",
     "updated": "Kurs güncellendi.",
+    "conflict": "قام شخص آخر بحفظ هذه الدورة بعد أن فتحتَ النموذج. لم تُحفظ تغييراتك؛ أعد تحميل الصفحة لرؤية أحدث نسخة.",
+    "conflictReload": "إعادة التحميل",
     "requiresApproval": "اشتراط الموافقة على التسجيل",
     "requiresApprovalHint": "عند التفعيل، يبقى تسجيل الطلاب معلقًا حتى توافق عليه."
   },

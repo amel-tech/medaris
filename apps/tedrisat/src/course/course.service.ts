@@ -6,11 +6,14 @@ import {
   ICourseDetail,
   ICourseSummary,
   ICreateCourse,
+  ICreateLesson,
   IEnrolledCourse,
   IEnrollment,
+  ILessonMutation,
   IPendingEnrollment,
   IReplaceCourse,
   IUpdateCourse,
+  IUpdateLesson,
 } from "./course.repository.interface";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
@@ -97,6 +100,32 @@ export class CourseService {
   ): Promise<ICourseDetail> {
     await this.assertCourseOwner(id, userId);
     return this.courseRepo.replace(id, userId, data);
+  }
+
+  // ---- session-level writes (MDRS-95) ----
+  // Authorization for these three is `@Authz(SCOPES.EDIT, …)` on
+  // LessonController, resolved against the lesson's parent course, so no
+  // ownership assertion is repeated here.
+
+  async createLesson(
+    courseId: string,
+    weekId: string,
+    data: ICreateLesson
+  ): Promise<ILessonMutation> {
+    return this.courseRepo.createLesson(courseId, weekId, data);
+  }
+
+  async updateLesson(
+    lessonId: string,
+    expectedVersion: number,
+    data: IUpdateLesson
+  ): Promise<ILessonMutation> {
+    return this.courseRepo.updateLesson(lessonId, expectedVersion, data);
+  }
+
+  /** Hides the lesson; nothing attached to it is deleted (MDRS-124). */
+  async archiveLesson(lessonId: string): Promise<ILessonMutation> {
+    return this.courseRepo.archiveLesson(lessonId);
   }
 
   async delete(id: string, userId: string): Promise<boolean> {

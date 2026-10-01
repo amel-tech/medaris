@@ -69,6 +69,8 @@ export interface ICourse {
   status: CourseStatus;
   grantsCertificate: boolean;
   requiresApproval: boolean;
+  /** Optimistic-concurrency token; bumped by every course or syllabus write. */
+  version: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -187,7 +189,33 @@ export interface IUpdateCourse {
   requiresApproval?: boolean;
 }
 
-export type IReplaceCourse = Omit<ICreateCourse, "koskId" | "authorId">;
+export type IReplaceCourse = Omit<ICreateCourse, "koskId" | "authorId"> & {
+  /**
+   * The course `version` the editor loaded. When given, the replace is
+   * refused with a conflict if the course has been written since.
+   */
+  version?: number;
+};
+
+/** Fields a single-lesson PATCH may change; `weekId` moves the lesson. */
+export interface IUpdateLesson {
+  weekId?: string;
+  title?: string;
+  type?: LessonType;
+  duration?: string;
+  kaynak?: string;
+  scheduledAt?: Date;
+  meetingUrl?: string;
+  agenda?: IAgendaStep[];
+  isPreview?: boolean;
+  orderIndex?: number;
+}
+
+/** A lesson as returned by the session-level endpoints, with the course
+ *  version the write produced so the client can send it with its next one. */
+export interface ILessonMutation extends ILesson {
+  courseVersion: number;
+}
 
 export interface ICourseRepository {
   findSummariesByKosk(
@@ -206,6 +234,19 @@ export interface ICourseRepository {
     data: IReplaceCourse
   ): Promise<ICourseDetail>;
   delete(id: string): Promise<boolean>;
+  /** The course a lesson belongs to, archived or not; null if no such lesson. */
+  findLessonCourseId(lessonId: string): Promise<string | null>;
+  createLesson(
+    courseId: string,
+    weekId: string,
+    data: ICreateLesson
+  ): Promise<ILessonMutation>;
+  updateLesson(
+    lessonId: string,
+    expectedVersion: number,
+    data: IUpdateLesson
+  ): Promise<ILessonMutation>;
+  archiveLesson(lessonId: string): Promise<ILessonMutation>;
   enroll(
     userId: string,
     courseId: string,

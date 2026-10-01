@@ -543,7 +543,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateCourseDto"
+                "$ref": "#/components/schemas/ReplaceCourseDto"
               }
             }
           }
@@ -561,6 +561,9 @@
           },
           "404": {
             "description": ""
+          },
+          "409": {
+            "description": "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT)."
           }
         },
         "security": [
@@ -829,6 +832,161 @@
         "summary": "Update the current talebe's progress in a course",
         "tags": [
           "courses"
+        ]
+      }
+    },
+    "/courses/{courseId}/weeks/{weekId}/lessons": {
+      "post": {
+        "operationId": "createLesson",
+        "parameters": [
+          {
+            "name": "courseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "weekId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWeekLessonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonMutationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a lesson to the end of a week",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}": {
+      "patch": {
+        "operationId": "updateLesson",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLessonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonMutationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a lesson; a new weekId moves it and keeps its id",
+        "tags": [
+          "lessons"
+        ]
+      },
+      "delete": {
+        "operationId": "archiveLesson",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonMutationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a lesson from the course; it is archived, never deleted",
+        "tags": [
+          "lessons"
         ]
       }
     },
@@ -2242,7 +2400,7 @@
   "info": {
     "title": "Tedrisat Service API",
     "description": "Education management service for Madrasah platform",
-    "version": "0.1.5",
+    "version": "0.2.0",
     "contact": {}
   },
   "tags": [
@@ -2686,6 +2844,10 @@
           "requiresApproval": {
             "type": "boolean"
           },
+          "version": {
+            "type": "number",
+            "description": "Optimistic-concurrency token. Send it back with PUT /courses/:id and PATCH /lessons/:id; a stale value is refused with 409."
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -2724,6 +2886,7 @@
           "status",
           "grantsCertificate",
           "requiresApproval",
+          "version",
           "createdAt",
           "updatedAt",
           "weekCount",
@@ -3175,6 +3338,10 @@
           "requiresApproval": {
             "type": "boolean"
           },
+          "version": {
+            "type": "number",
+            "description": "Optimistic-concurrency token. Send it back with PUT /courses/:id and PATCH /lessons/:id; a stale value is refused with 409."
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -3216,6 +3383,7 @@
           "status",
           "grantsCertificate",
           "requiresApproval",
+          "version",
           "createdAt",
           "updatedAt",
           "weeks",
@@ -3277,6 +3445,10 @@
           "requiresApproval": {
             "type": "boolean"
           },
+          "version": {
+            "type": "number",
+            "description": "Optimistic-concurrency token. Send it back with PUT /courses/:id and PATCH /lessons/:id; a stale value is refused with 409."
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -3315,6 +3487,7 @@
           "status",
           "grantsCertificate",
           "requiresApproval",
+          "version",
           "createdAt",
           "updatedAt",
           "koskName",
@@ -3383,6 +3556,93 @@
             "description": "When true, enrollments need köşk-owner approval."
           }
         }
+      },
+      "ReplaceCourseDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Bina ve İzhar Şerhi"
+          },
+          "subtitle": {
+            "type": "string",
+            "example": "Klasik sarf metni — şerh, illet ve tatbiki örneklerle."
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "example": "Sarf"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "BEGINNER",
+              "INTERMEDIATE",
+              "ADVANCED"
+            ],
+            "example": "INTERMEDIATE"
+          },
+          "language": {
+            "type": "string",
+            "example": "Türkçe / Arapça"
+          },
+          "coverHue": {
+            "type": "number",
+            "example": 145,
+            "minimum": 0,
+            "maximum": 360
+          },
+          "durationWeeks": {
+            "type": "number",
+            "example": 10
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED"
+            ],
+            "example": "DRAFT"
+          },
+          "grantsCertificate": {
+            "type": "boolean",
+            "example": true
+          },
+          "requiresApproval": {
+            "type": "boolean",
+            "example": false,
+            "description": "When true, enrollments need köşk-owner approval."
+          },
+          "weeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateWeekDto"
+            }
+          },
+          "muderris": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateMuderrisDto"
+            }
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateResourceDto"
+            }
+          },
+          "version": {
+            "type": "number",
+            "example": 3,
+            "minimum": 0,
+            "description": "The course `version` this form was loaded with. When sent, the save is refused with 409 COURSE_VERSION_CONFLICT if anyone has written the course since; reload and re-apply instead of overwriting their work."
+          }
+        },
+        "required": [
+          "title"
+        ]
       },
       "PendingEnrollmentResponse": {
         "type": "object",
@@ -3455,6 +3715,187 @@
         },
         "required": [
           "progress"
+        ]
+      },
+      "CreateWeekLessonDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Birinci babın îsâgûcîsi"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "VIDEO",
+              "DOCUMENT",
+              "LIVE",
+              "QUIZ"
+            ],
+            "example": "VIDEO"
+          },
+          "duration": {
+            "type": "string",
+            "example": "28 dk"
+          },
+          "kaynak": {
+            "type": "string",
+            "example": "Bina · s. 4-9"
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-06-18T19:00:00.000Z",
+            "description": "When the live session starts (type = LIVE)."
+          },
+          "meetingUrl": {
+            "type": "string",
+            "example": "https://meet.google.com/bqx-mfzn-rde",
+            "description": "External meeting link (Meet/Zoom/Jitsi…). The platform is resolved from the URL on the client."
+          },
+          "agenda": {
+            "description": "Müzakere akışı — agenda steps shown to students.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgendaStepDto"
+            }
+          },
+          "isPreview": {
+            "type": "boolean",
+            "example": false
+          }
+        },
+        "required": [
+          "title",
+          "type"
+        ]
+      },
+      "LessonMutationResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "weekId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "VIDEO",
+              "DOCUMENT",
+              "LIVE",
+              "QUIZ"
+            ]
+          },
+          "duration": {
+            "type": "string"
+          },
+          "kaynak": {
+            "type": "string"
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "meetingUrl": {
+            "type": "string"
+          },
+          "agenda": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgendaStepResponse"
+            }
+          },
+          "isPreview": {
+            "type": "boolean"
+          },
+          "orderIndex": {
+            "type": "number"
+          },
+          "courseVersion": {
+            "type": "number",
+            "description": "The course version this write produced; send it with the next PUT /courses/:id or PATCH /lessons/:id."
+          }
+        },
+        "required": [
+          "id",
+          "weekId",
+          "title",
+          "type",
+          "isPreview",
+          "orderIndex",
+          "courseVersion"
+        ]
+      },
+      "UpdateLessonDto": {
+        "type": "object",
+        "properties": {
+          "duration": {
+            "type": "string",
+            "example": "28 dk"
+          },
+          "kaynak": {
+            "type": "string",
+            "example": "Bina · s. 4-9"
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-06-18T19:00:00.000Z",
+            "description": "When the live session starts (type = LIVE)."
+          },
+          "meetingUrl": {
+            "type": "string",
+            "example": "https://meet.google.com/bqx-mfzn-rde",
+            "description": "External meeting link (Meet/Zoom/Jitsi…). The platform is resolved from the URL on the client."
+          },
+          "agenda": {
+            "description": "Müzakere akışı — agenda steps shown to students.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgendaStepDto"
+            }
+          },
+          "version": {
+            "type": "number",
+            "example": 3,
+            "minimum": 0,
+            "description": "The course `version` the caller last saw. A stale value is refused with 409 COURSE_VERSION_CONFLICT."
+          },
+          "title": {
+            "type": "string",
+            "example": "Birinci babın îsâgûcîsi"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "VIDEO",
+              "DOCUMENT",
+              "LIVE",
+              "QUIZ"
+            ],
+            "example": "LIVE"
+          },
+          "isPreview": {
+            "type": "boolean",
+            "example": false
+          },
+          "weekId": {
+            "type": "string",
+            "description": "Move the lesson to another week of the same course. The lesson keeps its id; it is appended to the end of that week unless orderIndex is also given."
+          },
+          "orderIndex": {
+            "type": "number",
+            "example": 0,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "version"
         ]
       },
       "FlashcardProgressResponse": {
