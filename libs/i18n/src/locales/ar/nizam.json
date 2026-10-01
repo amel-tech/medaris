@@ -84,12 +84,19 @@
     "signIn": "تسجيل الدخول"
   },
   "KosksPage": {
-    "courseCreatedAt": "تم الإنشاء في",
-    "createNewCourse": "إنشاء دورة جديدة",
-    "description": "يمكنك الاطلاع على الكشك والدورات التدريبية التي تديرها هنا.",
-    "noCoursesAvailable": "لا توجد دورات متاحة",
-    "noCoursesAvailableDescription": "أنشئ دورتك الأولى للبدء.",
-    "title": "كوسكس"
+    "title": "أكشاكي",
+    "description": "الأكشاك التي تديرها ودروسها.",
+    "newKosk": "كشك جديد",
+    "courseCount": "{count, plural, zero {لا دروس} one {درس واحد} two {درسان} few {# دروس} many {# درسًا} other {# درس}}",
+    "emptyTitle": "لا تدير أي كشك بعد",
+    "emptyDescription": "افتح كشكًا جديدًا للبدء.",
+    "nazirTitle": "هذه الأعمال في تطبيق الناظر",
+    "nazirDescription": "تتم إدارة المدرسة في تطبيق الناظر. لا يُعرض هنا إلا الأكشاك التي تديرها.",
+    "taughtTitle": "الدروس التي تدرّسها",
+    "taughtDescription": "دروس أنت مدرّس فيها، في أكشاك لا تديرها.",
+    "previous": "السابق",
+    "next": "التالي",
+    "pageOf": "{page} / {total}"
   },
   "LessonTypes": {
     "VIDEO": "Video",
@@ -98,9 +105,10 @@
     "QUIZ": "Sınav"
   },
   "Levels": {
-    "BEGINNER": "Başlangıç",
-    "INTERMEDIATE": "Orta",
-    "ADVANCED": "İleri"
+    "ALL": "جميع المستويات",
+    "BEGINNER": "مبتدئ",
+    "INTERMEDIATE": "متوسط",
+    "ADVANCED": "متقدم"
   },
   "NavMain": {
     "content": "محتوى"
@@ -405,5 +413,50 @@
     "reasonRequired": "اكتب سببًا.",
     "cancel": "إلغاء",
     "confirmRemove": "إخراج"
+  },
+  "KoskDetail": {
+    "subtitle": "الدروس في هذا الكشك وإدارة مناهجها.",
+    "editKosk": "تعديل الكشك",
+    "newCourse": "درس جديد",
+    "published": "منشور",
+    "draft": "مسودة",
+    "weeks": "{count, plural, zero {لا أسابيع} one {أسبوع واحد} two {أسبوعان} few {# أسابيع} many {# أسبوعًا} other {# أسبوع}}",
+    "lessons": "{count, plural, zero {لا حصص} one {حصة واحدة} two {حصتان} few {# حصص} many {# حصة} other {# حصة}}",
+    "resources": "{count, plural, zero {لا مصادر} one {مصدر واحد} two {مصدران} few {# مصادر} many {# مصدرًا} other {# مصدر}}",
+    "noCoursesTitle": "لم يُنشأ أي درس بعد",
+    "noCoursesDescription": "أنشئ درسًا جديدًا للبدء.",
+    "noCoursesReadOnly": "لا يوجد في هذا الكشك درس متاح لك."
+  },
+  "KoskForm": {
+    "createTitle": "إنشاء كشك جديد",
+    "editTitle": "تعديل الكشك",
+    "name": "اسم الكشك",
+    "namePlaceholder": "مثال: كشك السليمانية",
+    "nameTooShort": "يجب ألا يقل اسم الكشك عن حرفين.",
+    "handle": "اسم المستخدم",
+    "handlePlaceholder": "@suleymaniye",
+    "description": "الوصف",
+    "descriptionPlaceholder": "الدروس التي يقدمها الكشك ومجالات تركيزه.",
+    "field": "مجال العلم",
+    "fieldPlaceholder": "مثال: التفسير والحديث",
+    "level": "المستوى",
+    "levelUnset": "غير محدد",
+    "tags": "الوسوم",
+    "tagsPlaceholder": "اكتب وسمًا واضغط Enter",
+    "tagsHelp": "حتى {max} وسوم، لا يزيد كل منها عن {length} حرفًا.",
+    "tagsFull": "يمكن إضافة {max} وسوم على الأكثر.",
+    "tagTooLong": "لا يزيد الوسم عن {length} حرفًا.",
+    "removeTag": "إزالة الوسم {tag}",
+    "coverHue": "لون الغلاف",
+    "coverHueValue": "درجة اللون {hue}°",
+    "private": "كشك خاص",
+    "privateHint": "لا يراه إلا الطلبة المدعوون.",
+    "cancel": "إلغاء",
+    "create": "إنشاء",
+    "creating": "جارٍ الإنشاء...",
+    "save": "حفظ",
+    "saving": "جارٍ الحفظ...",
+    "created": "تم إنشاء الكشك.",
+    "updated": "تم تحديث الكشك."
   }
 }

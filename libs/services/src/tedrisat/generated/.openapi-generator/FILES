@@ -55,7 +55,9 @@ src/models/FlashcardLabelingResponse.ts
 src/models/FlashcardProgressResponse.ts
 src/models/FlashcardResponse.ts
 src/models/HealthCheckDto.ts
+src/models/KoskLevel.ts
 src/models/KoskMadrasahRef.ts
+src/models/KoskManagedBy.ts
 src/models/KoskResponse.ts
 src/models/LabelStatsResponse.ts
 src/models/LessonMutationResponse.ts

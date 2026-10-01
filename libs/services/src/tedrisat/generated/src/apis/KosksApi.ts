@@ -16,6 +16,7 @@
 import * as runtime from '../runtime';
 import type {
   CreateKoskDto,
+  KoskManagedBy,
   KoskResponse,
   PaginatedKoskResponse,
   UpdateKoskDto,
@@ -23,6 +24,8 @@ import type {
 import {
     CreateKoskDtoFromJSON,
     CreateKoskDtoToJSON,
+    KoskManagedByFromJSON,
+    KoskManagedByToJSON,
     KoskResponseFromJSON,
     KoskResponseToJSON,
     PaginatedKoskResponseFromJSON,
@@ -51,6 +54,7 @@ export interface FollowKoskRequest {
 export interface GetAllKosksRequest {
     page?: number;
     limit?: number;
+    managedBy?: KoskManagedBy;
 }
 
 export interface GetKoskByIdRequest {
@@ -271,6 +275,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
+     * `managedBy=me` narrows the list, and its `total`, to the köşks the caller manages (`kosk_managers`, MDRS-108) — nizam\'s köşk list. Without it every köşk is listed.
      * Get a paginated list of köşks
      */
     async getAllKosksRaw(requestParameters: GetAllKosksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PaginatedKoskResponse>> {
@@ -282,6 +287,10 @@ export class KosksApi extends runtime.BaseAPI {
 
         if (requestParameters['limit'] != null) {
             queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['managedBy'] != null) {
+            queryParameters['managedBy'] = requestParameters['managedBy'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -305,6 +314,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
+     * `managedBy=me` narrows the list, and its `total`, to the köşks the caller manages (`kosk_managers`, MDRS-108) — nizam\'s köşk list. Without it every köşk is listed.
      * Get a paginated list of köşks
      */
     async getAllKosks(requestParameters: GetAllKosksRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PaginatedKoskResponse> {

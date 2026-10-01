@@ -1,5 +1,15 @@
 import { Injectable } from "@nestjs/common";
-import { and, desc, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  exists as existsSql,
+  isNotNull,
+  isNull,
+  or,
+  SQL,
+  sql,
+} from "drizzle-orm";
 import {
   courseIdsOfKosk,
   IPurgeCounts,
@@ -24,6 +34,7 @@ import {
   AddManagerOutcome,
   ICreateKosk,
   IKosk,
+  IKoskListFilter,
   IKoskRef,
   IKoskRepository,
   IKoskWithStats,
@@ -119,22 +130,50 @@ export class KoskRepository implements IKoskRepository {
     };
   }
 
+  /**
+   * The listing's WHERE clause, or `undefined` for every köşk. A `managerId`
+   * that is not a UUID (a realm minting a non-UUID `sub`, see `isManager`)
+   * manages nothing, so it matches no row instead of failing in Postgres with
+   * 22P02 — `sql\`false\`` rather than an early return, so `findAll` and
+   * `count` stay one query each and cannot disagree.
+   */
+  private listWhere({ managerId }: IKoskListFilter = {}): SQL | undefined {
+    if (managerId === undefined) return undefined;
+    if (!UUID_REGEX.test(managerId)) return sql`false`;
+    return existsSql(
+      this.db
+        .select({ one: sql`1` })
+        .from(koskManagers)
+        .where(
+          and(
+            eq(koskManagers.koskId, kosks.id),
+            eq(koskManagers.userId, managerId)
+          )
+        )
+    );
+  }
+
   async findAll(
     userId: string,
     limit: number,
-    offset: number
+    offset: number,
+    filter: IKoskListFilter = {}
   ): Promise<IKoskWithStats[]> {
     const rows = await this.selectWithStats(userId)
-      .orderBy(desc(kosks.featured), desc(kosks.createdAt))
+      .where(this.listWhere(filter))
+      // `id` last: two köşks created in the same instant would otherwise
+      // swap places between pages.
+      .orderBy(desc(kosks.featured), desc(kosks.createdAt), desc(kosks.id))
       .limit(limit)
       .offset(offset);
     return rows.map((r) => this.toStats(r));
   }
 
-  async count(): Promise<number> {
+  async count(filter: IKoskListFilter = {}): Promise<number> {
     const [row] = await this.db
       .select({ value: sql<number>`count(*)`.mapWith(Number) })
-      .from(kosks);
+      .from(kosks)
+      .where(this.listWhere(filter));
     return row?.value ?? 0;
   }
 
