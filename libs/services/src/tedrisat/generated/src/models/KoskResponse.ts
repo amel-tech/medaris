@@ -82,7 +82,7 @@ export interface KoskResponse {
      */
     coverHue: number;
     /**
-     * 
+     * Unlisted (MDRS-122): in no list or search, opened by its link to signed-in callers only, and every enrollment in its courses waits for approval.
      * @type {boolean}
      * @memberof KoskResponse
      */
