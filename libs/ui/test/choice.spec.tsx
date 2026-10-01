@@ -1,4 +1,6 @@
 // @vitest-environment happy-dom
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Checkbox } from "../src/mds/checkbox";
 import { ChoiceChips } from "../src/mds/choice-chips";
@@ -101,6 +103,28 @@ describe("RadioGroup", () => {
     expect(radios[0].getAttribute("aria-checked")).toBe("false");
     expect(radios[1].getAttribute("aria-checked")).toBe("true");
     expect(radios[1].hasAttribute("data-checked")).toBe(true);
+  });
+
+  it("controlled with value=null opens with nothing selected and no console error, then accepts a string", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    await act(async () => {
+      root.render(
+        <RadioGroup legend="Kapsam" options={options} value={null} />
+      );
+    });
+    const radios = host.querySelectorAll("[role=radio]");
+    expect(radios[0].getAttribute("aria-checked")).toBe("false");
+    expect(radios[1].getAttribute("aria-checked")).toBe("false");
+    await act(async () => {
+      root.render(<RadioGroup legend="Kapsam" options={options} value="b" />);
+    });
+    expect(radios[1].getAttribute("aria-checked")).toBe("true");
+    await act(async () => root.unmount());
+    expect(err).not.toHaveBeenCalled();
+    err.mockRestore();
   });
 });
 
