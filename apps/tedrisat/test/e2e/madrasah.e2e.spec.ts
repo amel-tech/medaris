@@ -9,7 +9,7 @@ import {
   courseWeeks,
   lessons,
 } from "../../src/database/schema/course.schema";
-import { kosks } from "../../src/database/schema/kosk.schema";
+import { koskManagers, kosks } from "../../src/database/schema/kosk.schema";
 import {
   madrasahNazirs,
   madrasahs,
@@ -81,6 +81,11 @@ describe("Madrasahs (e2e)", () => {
       .values({ ownerId: MANAGER_ID, name: "Hadis Köşkü" })
       .returning();
     koskId = kosk.id;
+    // Managing is `kosk_managers` since MDRS-126, which `POST /kosks` fills
+    // and a direct insert does not.
+    await databaseService.db
+      .insert(koskManagers)
+      .values({ koskId, userId: MANAGER_ID, addedBy: MANAGER_ID });
     const [course] = await databaseService.db
       .insert(courses)
       .values({ koskId, authorId: MANAGER_ID, title: "Usûl-i Hadis" })

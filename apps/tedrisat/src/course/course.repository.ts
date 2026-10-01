@@ -17,18 +17,22 @@ import {
   ICourseSummary,
   ICreateCourse,
   ICreateLesson,
+  ICreateSessionBatch,
   IEnrolledCourse,
   IEnrollment,
   IEnrollOptions,
   ILessonMutation,
   IPendingEnrollment,
   IReplaceCourse,
+  ISessionBatchResult,
+  ISessionBatchWeek,
   IUpdateCourse,
   IUpdateLesson,
 } from "./course.repository.interface";
 import { IPurgeCounts, purgeCourses, recordDeletion, Tx } from "./course-purge";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
+import { LessonType } from "./domain/lesson-type.enum";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { CourseVersionConflictError } from "./errors/course-version-conflict.error";
 import { LessonNotFoundError } from "./errors/lesson-not-found.error";
@@ -653,6 +657,140 @@ export class CourseRepository implements ICourseRepository {
       // Archived by a concurrent request between the read and the lock.
       if (!row) throw new LessonNotFoundError(lessonId);
       return this.toLessonMutation(row, courseVersion);
+    });
+  }
+
+  async findTimeZone(courseId: string): Promise<string | null> {
+    const rows = await this.db
+      .select({ timeZone: courses.timeZone })
+      .from(courses)
+      .where(eq(courses.id, courseId))
+      .limit(1);
+    return rows[0]?.timeZone ?? null;
+  }
+
+  /**
+   * A weekly pattern's sessions (MDRS-109), through the same session-level
+   * path as `createLesson`: one transaction that bumps the course version
+   * first, so a whole-course PUT loaded before it is refused rather than
+   * archiving what it added. Each session goes into the live week with its
+   * `weekNumber`; a missing week is created as "Hafta N" after the last one.
+   */
+  async createSessionBatch(
+    courseId: string,
+    batch: ICreateSessionBatch
+  ): Promise<ISessionBatchResult> {
+    return this.db.transaction(async (tx) => {
+      const courseVersion = await this.bumpVersion(tx, courseId, undefined);
+      const [course] = await tx
+        .select({ timeZone: courses.timeZone })
+        .from(courses)
+        .where(eq(courses.id, courseId));
+      const planned = batch.plan(course.timeZone);
+      const liveWeeks = await tx
+        .select({
+          id: courseWeeks.id,
+          weekNumber: courseWeeks.weekNumber,
+          title: courseWeeks.title,
+          orderIndex: courseWeeks.orderIndex,
+        })
+        .from(courseWeeks)
+        .where(
+          and(
+            eq(courseWeeks.courseId, courseId),
+            isNull(courseWeeks.archivedAt)
+          )
+        )
+        .orderBy(courseWeeks.weekNumber, courseWeeks.orderIndex);
+
+      // Two live weeks may share a number; the first in syllabus order wins.
+      const byNumber = new Map<number, ISessionBatchWeek>();
+      for (const w of liveWeeks) {
+        if (!byNumber.has(w.weekNumber)) {
+          byNumber.set(w.weekNumber, {
+            id: w.id,
+            weekNumber: w.weekNumber,
+            title: w.title,
+            created: false,
+          });
+        }
+      }
+      let lastOrder = liveWeeks.reduce((m, w) => Math.max(m, w.orderIndex), -1);
+      const needed = [...new Set(planned.map((s) => s.weekNumber))].sort(
+        (a, b) => a - b
+      );
+      const touched: ISessionBatchWeek[] = [];
+      for (const weekNumber of needed) {
+        let week = byNumber.get(weekNumber);
+        if (!week) {
+          lastOrder += 1;
+          const [row] = await tx
+            .insert(courseWeeks)
+            .values({
+              courseId,
+              weekNumber,
+              title: `Hafta ${weekNumber}`,
+              orderIndex: lastOrder,
+            })
+            .returning();
+          week = {
+            id: row.id,
+            weekNumber,
+            title: row.title,
+            created: true,
+          };
+          byNumber.set(weekNumber, week);
+        }
+        touched.push(week);
+      }
+
+      const nextOrder = new Map<string, number>();
+      for (const week of touched) {
+        // A week created above is empty; only an existing one needs a lookup.
+        nextOrder.set(
+          week.id,
+          week.created ? 0 : await this.nextOrderIndex(tx, week.id)
+        );
+      }
+      const sessions = [...planned].sort(
+        (a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime()
+      );
+      const values = sessions.map((s, i) => {
+        const weekId = (byNumber.get(s.weekNumber) as ISessionBatchWeek).id;
+        const orderIndex = nextOrder.get(weekId) as number;
+        nextOrder.set(weekId, orderIndex + 1);
+        return {
+          weekId,
+          title: batch.title,
+          type: LessonType.LIVE,
+          durationMinutes: batch.durationMinutes,
+          duration: legacyDuration(batch.durationMinutes),
+          scheduledAt: s.scheduledAt,
+          // Links change every week (MDRS-109): only the first gets one.
+          meetingUrl: i === 0 ? batch.meetingUrl : undefined,
+          isPreview: false,
+          orderIndex,
+        };
+      });
+      const rows = await tx.insert(lessons).values(values).returning();
+      const weekNumberOf = new Map(touched.map((w) => [w.id, w.weekNumber]));
+      return {
+        courseVersion,
+        weeks: touched,
+        lessons: rows
+          .map((row) => {
+            const { courseVersion: _version, ...lesson } =
+              this.toLessonMutation(row, courseVersion);
+            return {
+              ...lesson,
+              weekNumber: weekNumberOf.get(row.weekId) as number,
+            };
+          })
+          .sort(
+            (a, b) =>
+              (a.scheduledAt?.getTime() ?? 0) - (b.scheduledAt?.getTime() ?? 0)
+          ),
+      };
     });
   }
 

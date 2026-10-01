@@ -27,11 +27,11 @@ export class FlashcardDeckService {
   /**
    * Ensures the deck exists and is authored by `userId`, else throws.
    *
-   * Modelled on `KoskService.assertOwner`, down to the one-column read
-   * (`findAuthorId`, the sibling of `KoskRepository.findOwnerId`) and the
-   * 404/403 split: a deck that is not there is a `DeckNotFoundError` and a
-   * deck that belongs to somebody else is a `DeckForbiddenError`. That
-   * distinction is an enumeration oracle — the caller learns a UUID exists —
+   * Modelled on `KoskService.assertOwner` (since MDRS-126 `assertManager`),
+   * down to the one-column read (`findAuthorId`) and the 404/403 split: a
+   * deck that is not there is a `DeckNotFoundError` and a deck that belongs
+   * to somebody else is a `DeckForbiddenError`. That distinction is an
+   * enumeration oracle — the caller learns a UUID exists —
    * and it is kept deliberately, the way the label routes keep it: deck ids
    * are v4 UUIDs and are not enumerable in practice, whereas a blanket 404
    * would make a genuine permission problem indistinguishable from a
