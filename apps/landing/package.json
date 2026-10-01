@@ -14,7 +14,7 @@
   "dependencies": {
     "@medaris/env": "workspace:*",
     "@medaris/i18n": "workspace:*",
-    "@medaris/icons": "workspace:*",
+    "@medaris/tokens": "workspace:*",
     "@medaris/ui": "workspace:*",
     "@medaris/utils": "workspace:*",
     "@opentelemetry/api": "catalog:",

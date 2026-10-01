@@ -1,21 +1,13 @@
-import { Inter, Playfair_Display } from "next/font/google";
+import { textFontsHref } from "@medaris/tokens/medaris-fonts";
 import type { ReactNode } from "react";
-import "@medaris/ui/globals.css";
-import "../globals.css";
-
-// The same faces as `[locale]/layout.tsx`'s left-to-right pages.
-const inter = Inter({ subsets: ["latin"] });
-
-const playfairDisplay = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-display",
-  display: "swap",
-});
+import "@medaris/ui/medaris.css";
 
 /**
  * The privacy notice sits outside `[locale]` (MDRS-102): its address must not
  * change with the visitor's language, and it is Turkish for everyone. The
- * middleware's matcher leaves the path alone, so next-intl never prefixes it.
+ * middleware's matcher leaves the path alone, so next-intl never rewrites it.
+ * The shell is the one `[locale]/layout.tsx` gives every landing page
+ * (MDRS-151, MDS-LAY-03).
  */
 export default function PrivacyNoticeLayout({
   children,
@@ -23,10 +15,17 @@ export default function PrivacyNoticeLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="tr" dir="ltr">
-      <body
-        className={`${inter.className} ${playfairDisplay.variable} bg-white text-gray-800`}
-      >
+    <html lang="tr" dir="ltr" data-app="landing">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link rel="stylesheet" href={textFontsHref} />
+      </head>
+      <body className="relative min-block-screen bg-neutral-page font-ui text-body leading-body text-neutral-default">
         {children}
       </body>
     </html>
