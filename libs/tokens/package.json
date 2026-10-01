@@ -12,12 +12,22 @@
       "import": "./index.js",
       "types": "./index.d.ts"
     },
-    "./css": "./theme/main.css"
+    "./css": "./theme/main.css",
+    "./medaris.css": "./medaris.css",
+    "./tailwind.css": "./tailwind.css",
+    "./medaris-fonts": {
+      "types": "./medaris-fonts.d.ts",
+      "import": "./medaris-fonts.js"
+    }
   },
   "files": [
     "index.js",
     "index.d.ts",
     "theme/main.css",
+    "medaris.css",
+    "tailwind.css",
+    "medaris-fonts.js",
+    "medaris-fonts.d.ts",
     "build/*"
   ],
   "scripts": {

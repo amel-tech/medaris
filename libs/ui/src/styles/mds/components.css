@@ -1,0 +1,783 @@
+/* Medaris — component layer, "Mürekkep ve kâğıt". Every look goes through the semantic tokens
+   (tokens/semantic.css); each component's .prompt.md says why it looks the way it does.
+   This file declares no custom property; data variables (--mds-*) are read with a fallback (MDS-TOK-02).
+   Focus: tokens/base.css draws the two-band ring on every :focus-visible. A rule here that sets box-shadow
+   on a focused element composes var(--ring-focus) into it, never after an outer shadow (an elevation painted over
+   the ring would dim it). outline: none appears only where a parent draws the ring for its stretched link (the
+   interactive card, the lesson row), as MDS-A11Y-01 allows. A focus ring is never drawn outside a modal layer,
+   where its ground would be the page under the scrim (check.mjs).
+   Disabled: one rule everywhere (MDS-A11Y-11). A disabled control drops its tone: a sunken well, a hairline, the
+   disabled ink. A text field or a select keeps its control edge, dashed, so it still reads as a field. Its text
+   is ≥ 3:1 on every ground (contrast.md), although WCAG 1.4.3 exempts it. No opacity. */
+
+/* ---------------------------------------------------------------- Icon */
+/* Glyphs from assets/icons.svg (Phosphor Regular) on the 256 box, filled in currentColor. */
+.mds-icon { flex: none; inline-size: 20px; block-size: 20px; fill: currentColor; }
+.mds-icon--sm { inline-size: 16px; block-size: 16px; }
+.mds-icon--lg { inline-size: 24px; block-size: 24px; }
+.mds-icon--directional:dir(rtl) { scale: -1 1; }
+
+/* ---------------------------------------------------------------- Logo */
+/* The Medaris mark: two arch halves on a rounded ground, drawn as in libs/icons MadrasahLogoIcon. A logo
+   keeps its colours, so the ground and the arch are domain tokens, the same in both themes. The large lockup
+   adds مدارس as outlined paths, so a Latin-only page never fetches the Naskh file. */
+.mds-logo { display: inline-flex; align-items: center; gap: var(--space-3); color: var(--text-neutral-default); }
+.mds-logo__mark { flex: none; inline-size: 32px; block-size: 32px; }
+.mds-logo--sm { gap: var(--space-2); }
+.mds-logo--sm .mds-logo__mark { inline-size: 24px; block-size: 24px; }
+.mds-logo--lg { gap: var(--space-4); }
+.mds-logo--lg .mds-logo__mark { inline-size: 48px; block-size: 48px; }
+.mds-logo__ground { fill: var(--icon-logo-ground); }
+.mds-logo__arch { fill: var(--icon-logo-arch); }
+.mds-logo__text { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
+.mds-logo__word { font-family: var(--font-reading); font-size: var(--fs-h4); font-weight: var(--weight-semibold); line-height: 1.1; letter-spacing: -0.01em; white-space: nowrap; }
+.mds-logo--sm .mds-logo__word { font-size: var(--fs-h5); }
+.mds-logo--lg .mds-logo__word { font-size: var(--fs-h2); }
+.mds-logo__arabic { display: block; block-size: 18px; inline-size: auto; fill: var(--text-neutral-muted); }
+.mds-logo__subtitle { font-family: var(--font-ui); font-size: var(--fs-eyebrow); font-weight: var(--weight-semibold); line-height: 1.2; letter-spacing: var(--tracking-wide); color: var(--text-neutral-subtle); white-space: nowrap; }
+.mds-logo__subtitle:is(:lang(tr), :lang(en)) { text-transform: uppercase; }
+@media (forced-colors: active) {
+  .mds-logo__ground { fill: CanvasText; }
+  .mds-logo__arch { fill: Canvas; }
+  .mds-logo__arabic { fill: CanvasText; }
+}
+
+/* ---------------------------------------------------------------- Button */
+/* The primary action is written in ink: an ink fill by day, a paper fill by night. */
+.mds-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  block-size: var(--size-control-regular);
+  padding-inline: var(--space-4);
+  border: var(--border-width-thin) solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-neutral-default);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+/* aria-disabled keeps the control focusable and named: a busy button (MDS-A11Y-11), a disabled link.
+   A busy button keeps its tone and its full contrast; only its cursor and its spinner change. */
+.mds-btn[aria-disabled="true"] { cursor: not-allowed; }
+.mds-btn[aria-disabled="true"]:not([aria-busy="true"]) { pointer-events: none; }
+.mds-btn[aria-busy="true"] { cursor: progress; }
+.mds-btn--full { inline-size: 100%; }
+
+.mds-btn--mini    { block-size: var(--size-control-mini); padding-inline: var(--space-2); gap: var(--space-1); border-radius: var(--radius-tag); font-size: var(--fs-caption); }
+.mds-btn--small   { block-size: var(--size-control-small); padding-inline: var(--space-3); gap: 6px; }
+.mds-btn--regular { block-size: var(--size-control-regular); padding-inline: var(--space-4); }
+.mds-btn--large   { block-size: var(--size-control-large); padding-inline: var(--space-6); font-size: var(--fs-body); }
+
+.mds-btn--primary { background: var(--background-action-bold); color: var(--text-neutral-on-bold); }
+.mds-btn--primary:hover { background: var(--background-action-bold-hover); }
+.mds-btn--secondary { background: var(--background-neutral-sunken); color: var(--text-neutral-default); }
+.mds-btn--secondary:hover { background: var(--background-neutral-hover); }
+.mds-btn--outline { background: var(--background-neutral-surface); border-color: var(--border-neutral-control); }
+.mds-btn--outline:hover { background: var(--background-neutral-hover); border-color: var(--border-neutral-strong); }
+.mds-btn--ghost:hover { background: var(--background-neutral-hover); }
+/* Red ink on paper at rest; it fills with red only under the pointer, as the commitment is made. */
+.mds-btn--destructive { background: var(--background-error-subtle); border-color: var(--border-error-default); color: var(--text-error-default); }
+.mds-btn--destructive:hover { background: var(--background-error-bold); border-color: var(--background-error-bold); color: var(--text-neutral-on-bold); }
+.mds-btn--link { block-size: auto; min-block-size: 24px; padding: 0; color: var(--text-brand-default); font-weight: var(--weight-medium); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
+.mds-btn--link:hover { text-decoration-thickness: 2px; }
+/* Disabled drops the tone of every variant, destructive included: a disabled "Sil" must not read as armed. */
+.mds-btn:is([disabled], .is-disabled, [aria-disabled="true"]:not([aria-busy="true"])) { background: var(--background-neutral-sunken); border-color: var(--border-neutral-subtle); color: var(--text-neutral-disabled); pointer-events: none; }
+.mds-btn:is(.mds-btn--ghost, .mds-btn--link):is([disabled], .is-disabled, [aria-disabled="true"]:not([aria-busy="true"])) { background: transparent; border-color: transparent; }
+
+/* The busy glyph in place of iconLeft: `spinner` from the sprite as a mask, turned by mds-spin. */
+.mds-btn__spinner {
+  flex: none;
+  inline-size: 16px;
+  block-size: 16px;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  animation: mds-spin 0.8s linear infinite;
+}
+
+/* Icon button — square at every height */
+.mds-icon-btn { padding: 0; inline-size: var(--size-control-regular); }
+.mds-icon-btn.mds-btn--mini { inline-size: var(--size-control-mini); }
+.mds-icon-btn.mds-btn--small { inline-size: var(--size-control-small); }
+.mds-icon-btn.mds-btn--large { inline-size: var(--size-control-large); }
+
+@media (forced-colors: active) {
+  .mds-btn:is([disabled], .is-disabled, [aria-disabled="true"]:not([aria-busy="true"])) { color: GrayText; border-color: GrayText; }
+  .mds-btn__spinner { forced-color-adjust: none; background-color: ButtonText; }
+  a.mds-btn .mds-btn__spinner { background-color: LinkText; }
+}
+
+/* ---------------------------------------------------------------- Badge */
+/* Identity by line, not by fill: "Yayında" (primary) is inked on a paper tint, "Taslak" (outline) is
+   pencilled with a dashed edge, "Gizli" (ghost) is a glyph and grey words. Progress tones are tints. */
+.mds-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  block-size: 24px;
+  padding-inline: var(--space-2);
+  border: var(--border-width-thin) solid transparent;
+  border-radius: var(--radius-tag);
+  background: var(--background-neutral-sunken);
+  color: var(--text-neutral-muted);
+  font-family: var(--font-ui);
+  font-size: var(--fs-caption);
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  white-space: nowrap;
+}
+.mds-badge .mds-icon { inline-size: 14px; block-size: 14px; }
+.mds-badge--primary     { background: var(--background-neutral-hover); color: var(--text-neutral-default); font-weight: var(--weight-semibold); }
+.mds-badge--secondary   { background: var(--background-neutral-sunken); color: var(--text-neutral-muted); }
+.mds-badge--outline     { background: transparent; border-style: dashed; border-color: var(--border-neutral-control); color: var(--text-neutral-muted); }
+.mds-badge--ghost       { background: transparent; padding-inline: 0; color: var(--text-neutral-subtle); }
+.mds-badge--destructive { background: var(--background-error-subtle); color: var(--text-error-default); }
+.mds-badge--brand       { background: var(--background-brand-subtle); color: var(--text-brand-default); }
+.mds-badge--live        { background: var(--background-live-subtle); color: var(--text-live-default); }
+.mds-badge--success     { background: var(--background-success-subtle); color: var(--text-success-default); }
+.mds-badge--warning     { background: var(--background-warning-subtle); color: var(--text-warning-default); }
+.mds-badge--info        { background: var(--background-info-subtle); color: var(--text-info-default); }
+/* The dot repeats words that carry the state (MDS-COL-03): aria-hidden, never alone. */
+.mds-badge__dot { flex: none; inline-size: 8px; block-size: 8px; border-radius: var(--radius-full); background: currentColor; }
+.mds-badge--live .mds-badge__dot { background: var(--border-live-default); }
+@media (forced-colors: active) {
+  .mds-badge { border-color: CanvasText; }
+  /* the forced edge would touch the glyph and the word */
+  .mds-badge--ghost { padding-inline: var(--space-2); }
+  .mds-badge__dot, .mds-badge--live .mds-badge__dot { forced-color-adjust: none; background: CanvasText; }
+}
+
+/* ---------------------------------------------------------------- Input */
+.mds-input {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  inline-size: 100%;
+  block-size: var(--size-control-regular);
+  padding-inline: var(--space-3);
+  background: var(--background-neutral-field);
+  border: var(--border-width-thin) solid var(--border-neutral-control);
+  border-radius: var(--radius-control);
+  color: var(--text-neutral-default);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body-sm);
+  line-height: 1.2;
+  transition: var(--transition-colors);
+}
+.mds-input--mini  { block-size: var(--size-control-mini); padding-inline: var(--space-2); border-radius: var(--radius-tag); font-size: var(--fs-caption); }
+.mds-input--small { block-size: var(--size-control-small); }
+.mds-input--large { block-size: var(--size-control-large); padding-inline: var(--space-4); font-size: var(--fs-body); }
+.mds-input::placeholder { color: var(--text-neutral-subtle); opacity: 1; }
+/* A disabled, read-only or invalid field keeps its own edge under the pointer. */
+.mds-input:hover:not([disabled], [readonly], .is-disabled, [aria-invalid="true"], .is-error) { border-color: var(--border-neutral-strong); }
+.mds-input:focus, .mds-input.is-focus { border-color: var(--border-neutral-strong); outline: var(--ring-focus-outline); outline-offset: var(--ring-focus-offset); box-shadow: var(--ring-focus); }
+/* Invalid: the red edge is doubled (1px border + 1px inset), so it reads without colour vision. */
+.mds-input[aria-invalid="true"], .mds-input.is-error { border-color: var(--border-error-default); box-shadow: inset 0 0 0 1px var(--border-error-default); }
+.mds-input[aria-invalid="true"]:focus, .mds-input.is-error:focus, .mds-input.is-error.is-focus { box-shadow: inset 0 0 0 1px var(--border-error-default), var(--ring-focus); }
+/* Read-only is not disabled: the value stays in ink and can be focused, selected and copied. */
+.mds-input[readonly] { background: var(--background-neutral-sunken); cursor: default; }
+.mds-input[disabled], .mds-input.is-disabled { background: var(--background-neutral-sunken); border-style: dashed; color: var(--text-neutral-disabled); cursor: not-allowed; }
+.mds-input--mono { font-family: var(--font-mono); }
+.mds-input:dir(rtl) { font-family: var(--font-arabic); }
+@media (forced-colors: active) {
+  .mds-input[disabled], .mds-input.is-disabled { color: GrayText; border-color: GrayText; }
+  /* the inset second line is a shadow, which forced colours drop: the edge itself doubles */
+  .mds-input[aria-invalid="true"], .mds-input.is-error { border-width: 2px; border-style: double; border-color: CanvasText; }
+}
+/* A phone never zooms into a field: 16px text below 768. */
+@media (max-width: 767.98px) {
+  .mds-input:not(.mds-input--mini), .mds-select > select:not(.mds-input--mini) { font-size: var(--fs-body); }
+}
+
+.mds-textarea { block-size: auto; min-block-size: 96px; padding-block: var(--space-2); padding-inline: var(--space-3); resize: block; line-height: var(--lh-body); }
+
+/* The native file input: its button reads as a mini secondary button. */
+.mds-input[type="file"] { padding-block: calc((var(--size-control-regular) - var(--size-control-mini)) / 2 - var(--border-width-thin)); padding-inline-start: calc((var(--size-control-regular) - var(--size-control-mini)) / 2 - var(--border-width-thin)); cursor: pointer; }
+.mds-input[type="file"]::file-selector-button {
+  block-size: var(--size-control-mini);
+  margin-inline-end: var(--space-2);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-tag);
+  background: var(--background-neutral-sunken);
+  color: var(--text-neutral-default);
+  font-family: var(--font-ui);
+  font-size: var(--fs-caption);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+.mds-input[type="file"]:hover::file-selector-button { background: var(--background-neutral-hover); }
+.mds-input[type="file"][disabled]::file-selector-button { cursor: not-allowed; }
+
+/* Adornments: a decorative glyph at inline-start (search), a unit at inline-end ("dk"). */
+.mds-input-group { position: relative; display: flex; align-items: center; }
+.mds-input-group > .mds-input { flex: 1; }
+.mds-input-group__leading, .mds-input-group__trailing { position: absolute; display: inline-flex; align-items: center; pointer-events: none; }
+.mds-input-group__leading { inset-inline-start: var(--space-3); color: var(--text-neutral-subtle); }
+.mds-input-group__trailing { inset-inline-end: var(--space-3); font-family: var(--font-ui); font-size: var(--fs-body-sm); color: var(--text-neutral-subtle); }
+.mds-input-group:has(.mds-input-group__leading) > .mds-input { padding-inline-start: calc(var(--space-3) + 16px + var(--space-2)); }
+.mds-input-group:has(.mds-input-group__trailing) > .mds-input { padding-inline-end: var(--space-10); }
+
+/* ---------------------------------------------------------------- Field */
+.mds-field { display: flex; flex-direction: column; gap: 6px; min-inline-size: 0; }
+.mds-label { font-family: var(--font-ui); font-size: var(--fs-body-sm); font-weight: var(--weight-medium); line-height: var(--lh-ui); color: var(--text-neutral-default); }
+.mds-help  { font-family: var(--font-ui); font-size: var(--fs-caption); line-height: 1.45; color: var(--text-neutral-subtle); }
+.mds-error { font-family: var(--font-ui); font-size: var(--fs-caption); font-weight: var(--weight-medium); line-height: 1.45; color: var(--text-error-default); }
+/* Decorative: the control carries required. Not red — red is for what went wrong. */
+.mds-required { margin-inline-start: 2px; color: var(--text-neutral-subtle); font-weight: var(--weight-regular); }
+
+/* ---------------------------------------------------------------- Select */
+.mds-select { position: relative; display: block; }
+.mds-select > select { appearance: none; padding-inline-end: calc(var(--space-3) + 16px + var(--space-2)); cursor: pointer; }
+/* Chromium's own sheet fades a disabled select to 0.7; the system never fades (MDS-A11Y-11). */
+.mds-select > select:disabled { opacity: 1; cursor: not-allowed; }
+.mds-select > select:not(:disabled):has(> option[value=""]:checked) { color: var(--text-neutral-subtle); }
+.mds-select > select > option { color: var(--text-neutral-default); }
+.mds-select::after { content: ""; position: absolute; inset-block: 0; inset-inline-end: var(--space-3); margin-block: auto; inline-size: 16px; block-size: 16px; background-color: var(--text-neutral-muted); mask-position: center; mask-size: contain; mask-repeat: no-repeat; pointer-events: none; }
+.mds-select:has(> select:disabled)::after { background-color: var(--text-neutral-disabled); }
+@media (forced-colors: active) {
+  .mds-select::after { background-color: CanvasText; }
+  .mds-select:has(> select:disabled)::after { background-color: GrayText; }
+}
+
+/* ------------------------------------------------- Checkbox / Radio / Switch */
+/* 18px marks inside a label at least 24px tall. Checked and on are the action ink. */
+.mds-check, .mds-radio {
+  appearance: none; margin: 0; flex: none; position: relative;
+  inline-size: 18px; block-size: 18px;
+  background: var(--background-neutral-field);
+  border: var(--border-width-thin) solid var(--border-neutral-control);
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+.mds-check { border-radius: var(--radius-mark); }
+.mds-radio { border-radius: var(--radius-full); }
+.mds-check:checked { background: var(--background-action-bold); border-color: var(--background-action-bold); }
+.mds-check::after { content: ""; position: absolute; inset: 2px; mask-position: center; mask-size: contain; mask-repeat: no-repeat; }
+.mds-check:checked::after { background-color: var(--text-neutral-on-bold); }
+/* The radio's dot is the fill showing through a 4px ring of the field colour. */
+.mds-radio:checked { background: var(--background-action-bold); border-color: var(--background-action-bold); box-shadow: inset 0 0 0 4px var(--background-neutral-field); }
+.mds-radio:checked:focus-visible { box-shadow: inset 0 0 0 4px var(--background-neutral-field), var(--ring-focus); }
+:is(.mds-check, .mds-radio):hover:not(:checked, :disabled, [aria-invalid="true"]),
+.mds-choice:hover > :is(.mds-check, .mds-radio):not(:checked, :disabled, [aria-invalid="true"]) { border-color: var(--border-neutral-strong); }
+:is(.mds-check, .mds-radio):checked:hover:not(:disabled),
+.mds-choice:hover > :is(.mds-check, .mds-radio):checked:not(:disabled) { background-color: var(--background-action-bold-hover); border-color: var(--background-action-bold-hover); }
+:is(.mds-check, .mds-radio)[aria-invalid="true"]:not(:checked) { border-color: var(--border-error-default); box-shadow: inset 0 0 0 1px var(--border-error-default); }
+:is(.mds-check, .mds-radio)[aria-invalid="true"]:not(:checked):focus-visible { box-shadow: inset 0 0 0 1px var(--border-error-default), var(--ring-focus); }
+
+/* The switch is a native checkbox with role="switch". Off: a field track with a control edge and a knob in
+   the control ink (3.89:1). On: the action ink, knob in --text-neutral-on-bold. */
+.mds-switch { appearance: none; margin: 0; flex: none; position: relative; inline-size: 36px; block-size: 20px; border: var(--border-width-thin) solid var(--border-neutral-control); border-radius: var(--radius-full); background: var(--background-neutral-field); cursor: pointer; transition: var(--transition-colors); }
+.mds-switch::after { content: ""; position: absolute; inset-block-start: 2px; inset-inline-start: 2px; inline-size: 14px; block-size: 14px; border-radius: var(--radius-full); background: var(--border-neutral-control); transition: translate var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard); }
+.mds-switch:hover:not(:checked, :disabled), .mds-choice:hover > .mds-switch:not(:checked, :disabled) { border-color: var(--border-neutral-strong); }
+.mds-switch:checked { background: var(--background-action-bold); border-color: var(--background-action-bold); }
+.mds-switch:checked:hover:not(:disabled), .mds-choice:hover > .mds-switch:checked:not(:disabled) { background: var(--background-action-bold-hover); border-color: var(--background-action-bold-hover); }
+.mds-switch:checked::after { translate: 16px 0; background: var(--text-neutral-on-bold); }
+.mds-switch:dir(rtl):checked::after { translate: -16px 0; }
+:is(.mds-check, .mds-radio, .mds-switch):disabled { background-color: var(--background-neutral-sunken); border-color: var(--border-neutral-subtle); cursor: not-allowed; }
+.mds-check:disabled:checked::after { background-color: var(--text-neutral-disabled); }
+.mds-radio:disabled:checked { background-color: var(--text-neutral-disabled); box-shadow: inset 0 0 0 4px var(--background-neutral-sunken); }
+.mds-switch:disabled::after, .mds-switch:disabled:checked::after { background: var(--text-neutral-disabled); }
+
+/* A choice: the control, an optional glyph, a label and a description, all inside one <label>. */
+.mds-choice { display: flex; align-items: flex-start; gap: var(--space-3); min-block-size: 24px; font-family: var(--font-ui); font-size: var(--fs-body-sm); line-height: var(--lh-ui); color: var(--text-neutral-default); cursor: pointer; }
+.mds-choice > :is(.mds-check, .mds-radio) { margin-block-start: 1px; }
+.mds-choice > .mds-switch { margin-block-start: 0; }
+.mds-choice__icon { display: inline-flex; flex: none; margin-block-start: 2px; color: var(--text-neutral-muted); }
+.mds-choice__text { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
+.mds-choice__label { font-weight: var(--weight-regular); }
+.mds-choice__desc { font-size: var(--fs-caption); line-height: 1.45; color: var(--text-neutral-subtle); }
+/* A settings row: a bordered card around one choice. Selected, its edge thickens in lâciverd. */
+.mds-choice--bordered { padding: var(--space-4); border: var(--border-width-thin) solid var(--border-neutral-subtle); border-radius: var(--radius-control); background: var(--background-neutral-surface); transition: var(--transition-colors); }
+.mds-choice--bordered:where(:not(:has(> :disabled))):hover { border-color: var(--border-neutral-control); }
+.mds-choice--bordered:has(> :checked) { border-color: var(--border-brand-default); box-shadow: inset 0 0 0 1px var(--border-brand-default); }
+/* Disabled drops the tone here too: a checked disabled row must not read as selected. */
+.mds-choice--bordered:has(> :disabled) { border-color: var(--border-neutral-subtle); box-shadow: none; }
+.mds-choice:has(> :disabled), .mds-choice:has(> :disabled) :is(.mds-choice__icon, .mds-choice__desc) { color: var(--text-neutral-disabled); cursor: not-allowed; }
+.mds-choice-group { display: flex; flex-direction: column; gap: var(--space-3); min-inline-size: 0; margin: 0; padding: 0; border: 0; }
+.mds-choice-group > legend { padding: 0; padding-block-end: var(--space-2); }
+
+@media (forced-colors: active) {
+  :is(.mds-check, .mds-radio):checked { background-color: Highlight; border-color: Highlight; }
+  .mds-check:checked::after { background-color: HighlightText; }
+  .mds-switch::after { background-color: CanvasText; }
+  .mds-switch:checked { background-color: Highlight; border-color: Highlight; }
+  .mds-switch:checked::after { background-color: HighlightText; }
+  :is(.mds-check, .mds-radio, .mds-switch):disabled { border-color: GrayText; }
+  .mds-switch:disabled::after { background-color: GrayText; }
+  .mds-check:disabled:checked { background-color: Canvas; border-color: GrayText; }
+  .mds-check:disabled:checked::after { background-color: GrayText; }
+  .mds-radio:disabled:checked { background-color: GrayText; border-color: GrayText; }
+  .mds-choice--bordered:has(> :checked) { border-color: Highlight; }
+  .mds-choice--bordered:has(> :disabled) { border-color: GrayText; }
+  /* the red inset is a shadow, which forced colours drop; an 18px mark takes a 2px edge instead */
+  :is(.mds-check, .mds-radio)[aria-invalid="true"]:not(:checked) { border-width: 2px; border-color: CanvasText; }
+  .mds-switch:disabled:checked { background-color: Canvas; border-color: GrayText; }
+  .mds-switch:disabled:checked::after { background-color: GrayText; }
+  .mds-choice:has(> :disabled), .mds-choice:has(> :disabled) :is(.mds-choice__icon, .mds-choice__desc) { color: GrayText; }
+}
+
+/* ---------------------------------------------------------------- Choice chips */
+.mds-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); min-inline-size: 0; margin: 0; padding: 0; border: 0; }
+.mds-chips > legend:not(.mds-visually-hidden) { padding: 0; padding-block-end: var(--space-2); }
+.mds-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  block-size: var(--size-control-small);
+  padding-inline: var(--space-3);
+  border: var(--border-width-thin) solid var(--border-neutral-control);
+  border-radius: var(--radius-full);
+  background: var(--background-neutral-surface);
+  color: var(--text-neutral-muted);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body-sm);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+.mds-chip > input { appearance: none; position: absolute; inset: 0; inline-size: 100%; block-size: 100%; margin: 0; opacity: 0; cursor: inherit; }
+.mds-chip:hover:not(:has(> input:disabled)) { background: var(--background-neutral-hover); color: var(--text-neutral-default); }
+.mds-chip:has(> input:checked) { background: var(--background-action-bold); border-color: var(--background-action-bold); color: var(--text-neutral-on-bold); }
+.mds-chip:has(> input:checked:not(:disabled)):hover { background: var(--background-action-bold-hover); color: var(--text-neutral-on-bold); }
+.mds-chip:has(> input:focus-visible) { outline: var(--ring-focus-outline); outline-offset: var(--ring-focus-offset); box-shadow: var(--ring-focus); }
+.mds-chip:has(> input:disabled) { background: var(--background-neutral-sunken); border-color: var(--border-neutral-subtle); color: var(--text-neutral-disabled); cursor: not-allowed; }
+/* Disabled but selected still reads as selected: the hover fill and a doubled control edge, against the
+   sunken fill and hairline of a disabled chip that is not selected. */
+.mds-chip:has(> input:disabled:checked) { background: var(--background-neutral-hover); border-color: var(--border-neutral-control); box-shadow: inset 0 0 0 1px var(--border-neutral-control); }
+@media (forced-colors: active) {
+  .mds-chip:has(> input:checked) { forced-color-adjust: none; background-color: Highlight; border-color: Highlight; color: HighlightText; }
+  .mds-chip:has(> input:focus-visible) { outline: 2px solid CanvasText; outline-offset: 2px; }
+  .mds-chip:has(> input:disabled) { background-color: Canvas; border-color: GrayText; color: GrayText; }
+  /* the same selector as the hover rule, so a hovered checked chip stays Highlight */
+  .mds-chip:has(> input:checked:not(:disabled)):hover { background-color: Highlight; color: HighlightText; }
+  /* the inset second edge is a shadow, which forced colours drop */
+  .mds-chip:has(> input:disabled:checked) { outline: var(--border-width-thin) solid GrayText; outline-offset: -3px; }
+}
+
+/* ---------------------------------------------------------------- Card */
+/* A sheet on the page: paper, a hairline, no shadow (MDS-SHAPE-02). */
+.mds-card {
+  background: var(--background-neutral-surface);
+  border: var(--border-width-thin) solid var(--border-neutral-subtle);
+  border-radius: var(--radius-surface);
+  padding: var(--space-inset-card);
+}
+/* A badge beside the title wraps under it rather than squeeze it below 12ch. */
+.mds-card__header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
+.mds-card__title { flex: 1 1 12ch; margin: 0; font-family: var(--font-reading); font-size: var(--fs-h3); font-weight: var(--weight-semibold); line-height: var(--lh-tight); color: var(--text-neutral-default); text-wrap: balance; }
+.mds-card__body { margin: 0; margin-block-start: var(--space-2); font-size: var(--fs-body-sm); line-height: var(--lh-body); color: var(--text-neutral-muted); }
+.mds-card__media {
+  margin-block: calc(var(--space-inset-card) * -1) var(--space-inset-card);
+  margin-inline: calc(var(--space-inset-card) * -1);
+  border-start-start-radius: calc(var(--radius-surface) - var(--border-width-thin));
+  border-start-end-radius: calc(var(--radius-surface) - var(--border-width-thin));
+  overflow: hidden;
+}
+.mds-card > .mds-card__media > * { border-radius: 0; }
+.mds-card__footer {
+  margin-block: var(--space-inset-card) calc(var(--space-inset-card) * -1);
+  margin-inline: calc(var(--space-inset-card) * -1);
+  padding-block: var(--space-3);
+  padding-inline: var(--space-inset-card);
+  border-block-start: var(--border-width-thin) solid var(--border-neutral-subtle);
+  font-size: var(--fs-caption);
+  color: var(--text-neutral-subtle);
+}
+/* A meta run breaks between its parts, never inside a time ("Cmt 21:00"). */
+.mds-card__footer time { white-space: nowrap; }
+/* A clickable card is one link, in its title; its ::after covers the card. Hover changes the edge only. */
+.mds-card--interactive { position: relative; transition: var(--transition-colors); }
+.mds-card--interactive:hover { border-color: var(--border-neutral-control); }
+.mds-card__link { color: inherit; text-decoration: none; }
+.mds-card__link::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius-surface); }
+.mds-card__link:focus-visible { outline: none; box-shadow: none; }
+.mds-card--interactive:has(.mds-card__link:focus-visible) { outline: var(--ring-focus-outline); outline-offset: var(--ring-focus-offset); box-shadow: var(--ring-focus); }
+.mds-card--interactive :is(a, button):not(.mds-card__link) { position: relative; z-index: 1; }
+
+/* ---------------------------------------------------------------- Stat */
+.mds-stat > .mds-caption { display: block; }
+.mds-stat__value {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-block-start: var(--space-1);
+  font-family: var(--font-reading);
+  font-size: var(--fs-h1);
+  font-weight: var(--weight-medium);
+  line-height: var(--lh-tight);
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--text-neutral-default);
+}
+.mds-stat--success .mds-stat__value { color: var(--text-success-default); }
+.mds-stat--error .mds-stat__value { color: var(--text-error-default); }
+.mds-stat__cue { display: inline-flex; align-items: center; gap: var(--space-1); font-family: var(--font-ui); font-size: var(--fs-body-sm); font-weight: var(--weight-semibold); line-height: var(--lh-snug); }
+@media (forced-colors: active) {
+  .mds-stat__value { line-height: var(--lh-snug); }
+}
+
+/* ---------------------------------------------------------------- Alert */
+/* A tint and its glyph; the words stay in ink. The transparent edge outlines it in forced colours. */
+.mds-alert { display: flex; gap: var(--space-3); padding-block: var(--space-3); padding-inline: var(--space-4); border: var(--border-width-thin) solid transparent; border-radius: var(--radius-surface); color: var(--text-neutral-default); font-size: var(--fs-body-sm); line-height: var(--lh-body); }
+.mds-alert__title { margin: 0; margin-block-end: 2px; font-weight: var(--weight-semibold); }
+.mds-alert__icon {
+  flex: none;
+  inline-size: 16px;
+  block-size: 16px;
+  margin-block-start: 3px;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+}
+.mds-alert--neutral { background: var(--background-neutral-sunken); }
+.mds-alert--neutral .mds-alert__icon { color: var(--text-neutral-muted); }
+.mds-alert--info    { background: var(--background-info-subtle); }
+.mds-alert--success { background: var(--background-success-subtle); }
+.mds-alert--warning { background: var(--background-warning-subtle); }
+.mds-alert--error   { background: var(--background-error-subtle); }
+.mds-alert--info    :is(.mds-alert__icon, .mds-alert__title) { color: var(--text-info-default); }
+.mds-alert--success :is(.mds-alert__icon, .mds-alert__title) { color: var(--text-success-default); }
+.mds-alert--warning :is(.mds-alert__icon, .mds-alert__title) { color: var(--text-warning-default); }
+.mds-alert--error   :is(.mds-alert__icon, .mds-alert__title) { color: var(--text-error-default); }
+@media (forced-colors: active) {
+  .mds-alert { border-color: CanvasText; }
+  .mds-alert__icon { forced-color-adjust: none; background-color: CanvasText; }
+}
+
+/* ---------------------------------------------------------------- Avatar */
+/* A person is a circle in paper with ink initials; an institution (köşk, medrese, deste) is a square tile. */
+.mds-avatar { display: inline-flex; align-items: center; justify-content: center; flex: none; inline-size: 40px; block-size: 40px; overflow: hidden; border-radius: var(--radius-full); background: var(--background-neutral-sunken); box-shadow: inset 0 0 0 1px var(--border-neutral-subtle); color: var(--text-neutral-muted); font-family: var(--font-ui); font-size: var(--fs-body-sm); font-weight: var(--weight-semibold); }
+.mds-avatar--sm { inline-size: 32px; block-size: 32px; font-size: var(--fs-caption); }
+.mds-avatar--lg { inline-size: 56px; block-size: 56px; font-size: var(--fs-body); }
+.mds-avatar img { inline-size: 100%; block-size: 100%; object-fit: cover; }
+.mds-avatar--entity { border-radius: var(--radius-tag); background: var(--cover-laciverd); box-shadow: none; color: var(--text-on-cover); font-family: var(--font-reading); }
+.mds-avatar-stack { display: flex; }
+.mds-avatar-stack > .mds-avatar { box-shadow: 0 0 0 2px var(--background-neutral-surface); }
+.mds-avatar-stack > .mds-avatar + .mds-avatar { margin-inline-start: calc(var(--space-1) * -1); }
+.mds-avatar--more { background: var(--background-neutral-hover); color: var(--text-neutral-muted); }
+@media (forced-colors: active) {
+  .mds-avatar { border: var(--border-width-thin) solid CanvasText; }
+}
+
+/* ---------------------------------------------------------------- Table */
+/* A ledger: paper, hairline rows, headers in small grey type, figures lined up. Cell padding reads the
+   density roles, so a data-density="compact" region tightens the cells. */
+.mds-table-wrap { overflow: auto; background: var(--background-neutral-surface); border: var(--border-width-thin) solid var(--border-neutral-subtle); border-radius: var(--radius-surface); }
+.mds-table { inline-size: 100%; border-collapse: collapse; font-family: var(--font-ui); font-size: var(--fs-body-sm); line-height: var(--lh-ui); font-variant-numeric: lining-nums tabular-nums; }
+.mds-table col { inline-size: var(--mds-col-w, auto); }
+.mds-table__caption { padding-block: var(--space-4) var(--space-2); padding-inline: var(--space-cell-inline); text-align: start; font-family: var(--font-reading); font-size: var(--fs-h5); font-weight: var(--weight-semibold); color: var(--text-neutral-default); }
+.mds-table th, .mds-table td { padding: var(--space-cell-block) var(--space-cell-inline); border-block-end: var(--border-width-thin) solid var(--border-neutral-subtle); text-align: start; vertical-align: middle; }
+.mds-table thead th { padding-block: var(--space-2); font-size: var(--fs-caption); font-weight: var(--weight-medium); color: var(--text-neutral-subtle); white-space: nowrap; }
+.mds-table td, .mds-table tbody th { font-weight: var(--weight-regular); color: var(--text-neutral-default); }
+.mds-table :is(th, td).is-end { text-align: end; }
+.mds-table :is(.is-end, time) { white-space: nowrap; }
+.mds-table tbody tr:last-child > :is(th, td) { border-block-end: 0; }
+.mds-table tbody tr:hover > :is(th, td) { background: var(--background-neutral-hover); }
+/* "Yayında" is filled with the hover colour: on a hovered row it takes the surface, so it keeps its shape. */
+.mds-table tbody tr:hover .mds-badge--primary { background: var(--background-neutral-surface); }
+.mds-table .mds-table__cell--muted { color: var(--text-neutral-subtle); }
+.mds-table .mds-table__cell--strong { font-weight: var(--weight-semibold); }
+.mds-table thead th[aria-sort] { color: var(--text-neutral-default); }
+.mds-table__sort { display: inline-flex; align-items: center; gap: var(--space-1); min-block-size: 24px; padding: 0; border: 0; border-radius: var(--radius-tag); background: none; font: inherit; color: inherit; cursor: pointer; }
+.mds-table__sort:hover { color: var(--text-neutral-default); }
+.mds-table__sort-icon { flex: none; inline-size: 14px; block-size: 14px; background-color: currentColor; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; }
+.mds-table .mds-table__empty { padding: var(--space-8); text-align: center; color: var(--text-neutral-subtle); }
+.mds-table tbody tr:hover > .mds-table__empty { background: none; }
+@media (max-width: 767.98px) {
+  .mds-table--stack, .mds-table--stack :is(caption, tbody, tr, td, th[scope="row"]) { display: block; }
+  .mds-table--stack thead { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .mds-table--stack tr { padding-block: var(--space-3); padding-inline: var(--space-cell-inline); border-block-end: var(--border-width-thin) solid var(--border-neutral-subtle); }
+  .mds-table--stack tbody tr:last-child { border-block-end: 0; }
+  .mds-table--stack :is(td, th[scope="row"]) { padding-block: var(--space-1); padding-inline: 0; border: 0; }
+  .mds-table--stack :is(th, td).is-end { text-align: start; }
+  .mds-table--stack th[scope="row"] { font-weight: var(--weight-semibold); }
+  .mds-table--stack td[data-label]::before { content: attr(data-label); content: attr(data-label) / ""; display: block; font-size: var(--fs-caption); color: var(--text-neutral-subtle); }
+  .mds-table--stack td.mds-table__primary-action { display: flex; flex-direction: column; gap: var(--space-1); padding-block-start: var(--space-2); }
+  .mds-table--stack td.mds-table__primary-action .mds-btn { inline-size: 100%; }
+  .mds-table--stack tbody tr:hover > :is(th, td) { background: none; }
+  /* a stacked row takes no hover fill, so "Yayında" keeps its own */
+  .mds-table--stack tbody tr:hover .mds-badge--primary { background: var(--background-neutral-hover); }
+  .mds-table--stack thead:has(.mds-table__sort) { position: static; display: block; inline-size: auto; block-size: auto; overflow: visible; clip-path: none; }
+  .mds-table--stack thead:has(.mds-table__sort) tr { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); }
+  .mds-table--stack thead:has(.mds-table__sort) th { padding: 0; border: 0; }
+  .mds-table--stack thead:has(.mds-table__sort) th:not(:has(.mds-table__sort)) { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); }
+}
+@media (forced-colors: active) {
+  .mds-table__sort-icon { forced-color-adjust: none; background-color: ButtonText; }
+}
+
+/* ---------------------------------------------------------------- Tabs */
+/* Where you are is lâciverd: a 2px underline under ink text. */
+.mds-tabs { display: flex; gap: var(--space-1); border-block-end: var(--border-width-thin) solid var(--border-neutral-subtle); }
+.mds-tab { display: inline-flex; align-items: center; min-block-size: var(--size-control-regular); appearance: none; margin-block-end: -1px; padding-block: var(--space-2); padding-inline: var(--space-3); background: none; border: 0; border-block-end: var(--border-width-thick) solid transparent; border-start-start-radius: var(--radius-control); border-start-end-radius: var(--radius-control); color: var(--text-neutral-muted); font-family: var(--font-ui); font-size: var(--fs-body-sm); font-weight: var(--weight-medium); text-decoration: none; white-space: nowrap; cursor: pointer; transition: var(--transition-colors); }
+.mds-tab:hover { color: var(--text-neutral-default); background: var(--background-neutral-hover); }
+.mds-tab:is(.is-active, [aria-selected="true"], [aria-current="page"]) { color: var(--text-neutral-default); font-weight: var(--weight-semibold); border-block-end-color: var(--border-brand-default); }
+.mds-tab__count { margin-inline-start: 6px; padding-inline: 6px; border-radius: var(--radius-full); background: var(--background-neutral-sunken); color: var(--text-neutral-muted); font-size: var(--fs-caption); font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; }
+.mds-tab:is(.is-active, [aria-selected="true"], [aria-current="page"]) .mds-tab__count { background: var(--background-brand-subtle); color: var(--text-brand-default); }
+@media (max-width: 767.98px) {
+  .mds-tabs { overflow: auto; scrollbar-width: none; padding-block-start: 4px; padding-inline: 4px; margin-inline: -4px; scroll-padding-inline: 4px; border-block-end: 0; box-shadow: inset 0 -1px 0 var(--border-neutral-subtle); }
+  .mds-tab { flex: none; margin-block-end: 0; }
+  /* the scrolling row clips below the tab, so the ring is drawn inside it: the same two bands, lâciverd outermost */
+  .mds-tab:focus-visible { box-shadow: inset 0 0 0 var(--ring-focus-width) var(--ring-focus-color), inset 0 0 0 calc(var(--ring-focus-width) + var(--ring-focus-offset)) var(--ring-focus-gap); }
+}
+@media (forced-colors: active) {
+  .mds-tabs { border-block-end: var(--border-width-thin) solid CanvasText; }
+  .mds-tab { margin-block-end: 0; border-block-end-color: Canvas; }
+  .mds-tab:is(.is-active, [aria-selected="true"], [aria-current="page"]) { border-block-end-color: Highlight; }
+}
+@media (forced-colors: active) and (max-width: 767.98px) {
+  .mds-tab:focus-visible { outline-offset: -2px; }
+}
+
+/* ---------------------------------------------------------------- Breadcrumb */
+.mds-breadcrumb__list { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; padding: 0; list-style: none; font-family: var(--font-ui); font-size: var(--fs-caption); line-height: var(--lh-body); color: var(--text-neutral-subtle); }
+.mds-breadcrumb__item { display: inline-flex; align-items: center; gap: var(--space-2); min-inline-size: 0; }
+.mds-breadcrumb__link { display: inline-flex; align-items: center; gap: var(--space-1); min-block-size: 24px; color: var(--text-neutral-muted); text-decoration: none; }
+.mds-breadcrumb__link:hover { color: var(--text-neutral-default); text-decoration: underline; }
+.mds-breadcrumb__current { color: var(--text-neutral-default); font-weight: var(--weight-medium); }
+.mds-breadcrumb__sep { color: var(--text-neutral-subtle); }
+.mds-breadcrumb__back { display: none; flex: none; inline-size: 16px; block-size: 16px; background-color: currentColor; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; }
+.mds-breadcrumb__back:dir(rtl) { scale: -1 1; }
+@media (max-width: 767.98px) {
+  .mds-breadcrumb__item:not(:nth-last-child(2)) { display: none; }
+  .mds-breadcrumb__item:nth-last-child(2) .mds-breadcrumb__sep { display: none; }
+  .mds-breadcrumb__back { display: inline-block; }
+}
+@media (forced-colors: active) {
+  .mds-breadcrumb__back { forced-color-adjust: none; background-color: LinkText; }
+}
+
+/* ------------------------------------------------------- Progress / Slider */
+/* A 6px sunken track with a hairline, filled in the lâciverd mark colour (≥ 3:1 on the track). */
+.mds-progress { block-size: 6px; overflow: hidden; border-radius: var(--radius-full); background: var(--background-neutral-sunken); box-shadow: inset 0 0 0 1px var(--border-neutral-subtle); }
+.mds-progress__bar { inline-size: var(--mds-progress, 0%); block-size: 100%; border-radius: var(--radius-full); background: var(--border-brand-default); }
+.mds-progress__label { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: var(--space-2); margin-block-end: 6px; font-size: var(--fs-caption); color: var(--text-neutral-subtle); }
+.mds-progress__value { display: inline-flex; align-items: center; gap: var(--space-1); margin-inline-start: auto; font-variant-numeric: lining-nums tabular-nums; }
+.mds-progress__check {
+  flex: none;
+  inline-size: 16px;
+  block-size: 16px;
+  color: var(--text-success-default);
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+}
+@media (forced-colors: active) {
+  .mds-progress { border: var(--border-width-thin) solid CanvasText; }
+  .mds-progress__bar { forced-color-adjust: none; background-color: Highlight; }
+  .mds-progress__check { forced-color-adjust: none; background-color: CanvasText; }
+}
+
+/* ---------------------------------------------------- Separator / Skeleton */
+/* The skeleton is decoration, in the hairline colour: the hover fill all but vanished on the night surface. */
+.mds-separator { margin: 0; border: 0; border-block-start: var(--border-width-thin) solid var(--border-neutral-subtle); }
+.mds-skeleton { inline-size: var(--mds-skeleton-w, 100%); block-size: var(--mds-skeleton-h, 12px); border-radius: var(--radius-mark); background: var(--border-neutral-subtle); animation: mds-pulse 1.6s var(--ease-standard) infinite; }
+@keyframes mds-pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.5 } }
+@media (forced-colors: active) {
+  .mds-skeleton { forced-color-adjust: none; background-color: GrayText; }
+}
+
+/* ---------------------------------------------------------------- Sidebar */
+/* One sidebar in every app: a paper surface beside the page. The current item is a lâciverd tint, ink text
+   in semibold, and a lâciverd glyph. */
+.mds-nav-item { display: flex; align-items: center; gap: var(--space-3); min-block-size: 36px; padding-inline: var(--space-3); border-radius: var(--radius-control); color: var(--text-neutral-muted); font-family: var(--font-ui); font-size: var(--fs-body-sm); font-weight: var(--weight-medium); line-height: 1.2; text-decoration: none; cursor: pointer; transition: var(--transition-colors); }
+.mds-nav-item > .mds-icon { color: var(--text-neutral-subtle); }
+.mds-nav-item:hover { background: var(--background-neutral-hover); color: var(--text-neutral-default); }
+.mds-nav-item:is(.is-active, [aria-current="page"]) { background: var(--background-brand-subtle); color: var(--text-neutral-default); font-weight: var(--weight-semibold); }
+.mds-nav-item:is(.is-active, [aria-current="page"]) > .mds-icon { color: var(--text-brand-default); }
+.mds-nav-item__count { display: inline-flex; align-items: center; justify-content: center; margin-inline-start: auto; min-inline-size: 22px; block-size: 20px; padding-inline: 6px; border-radius: var(--radius-full); background: var(--background-neutral-sunken); color: var(--text-neutral-muted); font-size: var(--fs-caption); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
+.mds-nav-item:is(.is-active, [aria-current="page"]) .mds-nav-item__count { background: var(--background-neutral-surface); color: var(--text-brand-default); }
+.mds-nav-item__trailing { display: inline-flex; margin-inline-start: auto; color: var(--text-neutral-subtle); }
+.mds-nav-item__count + .mds-nav-item__trailing { margin-inline-start: 0; }
+.mds-nav-section { margin: 0; margin-block: var(--space-5) var(--space-2); padding-inline: var(--space-3); font-family: var(--font-ui); font-size: var(--fs-eyebrow); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-wide); color: var(--text-neutral-subtle); }
+.mds-nav-section:is(:lang(tr), :lang(en)) { text-transform: uppercase; }
+.mds-nav-user { display: flex; align-items: center; gap: var(--space-3); margin-block-start: var(--space-3); padding: var(--space-3); border-block-start: var(--border-width-thin) solid var(--border-neutral-subtle); color: var(--text-neutral-default); font-family: var(--font-ui); text-decoration: none; transition: var(--transition-colors); }
+.mds-nav-user:hover { background: var(--background-neutral-hover); }
+.mds-nav-user__text { display: flex; flex: 1; flex-direction: column; min-inline-size: 0; }
+.mds-nav-user__name { font-size: var(--fs-body-sm); font-weight: var(--weight-medium); line-height: var(--lh-snug); overflow-wrap: anywhere; }
+/* Several roles: each but the last ends on its .mds-sep, and a line breaks only between roles. */
+.mds-nav-user__role { display: flex; flex-wrap: wrap; font-size: var(--fs-caption); line-height: var(--lh-snug); color: var(--text-neutral-subtle); }
+.mds-nav-user > .mds-icon { flex: none; color: var(--text-neutral-subtle); }
+@media (forced-colors: active) {
+  .mds-nav-item:is(.is-active, [aria-current="page"]) { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+  .mds-nav-item:is(.is-active, [aria-current="page"]) > .mds-icon { color: HighlightText; }
+  .mds-nav-item:is(.is-active, [aria-current="page"]) .mds-nav-item__count { background: HighlightText; color: Highlight; }
+  .mds-nav-item__count { border: var(--border-width-thin) solid; }
+}
+
+/* ---------------------------------------------------------------- App bar */
+/* Below 768 the bar replaces the sidebar; its menu opens the nav sheet, a modal <dialog> at inline-start. */
+.mds-appbar { display: none; }
+@media (max-width: 767.98px) {
+  .mds-appbar { display: flex; align-items: center; gap: var(--space-2); block-size: 56px; padding-inline: var(--space-2); background: var(--background-neutral-surface); border-block-end: var(--border-width-thin) solid var(--border-neutral-subtle); }
+}
+.mds-appbar__menu { flex: none; }
+/* The title clips only sideways (overflow-x clip, overflow-y visible): a vertical clip would cut the descent of an
+   inline Arabic word and turn a final ي into ى. (overflow-inline is not in Chromium yet; the bar is horizontal.) */
+.mds-appbar__title { flex: 1; min-inline-size: 0; margin: 0; overflow: clip visible; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-reading); font-size: var(--fs-h5); font-weight: var(--weight-semibold); line-height: var(--lh-snug); color: var(--text-neutral-default); }
+.mds-appbar__actions { display: flex; align-items: center; gap: var(--space-1); }
+.mds-appbar__menu-icon, .mds-sheet__close-icon { flex: none; inline-size: 20px; block-size: 20px; background-color: currentColor; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; }
+.mds-sheet { position: fixed; inset-block: 0; inset-inline: 0 auto; margin: 0; inline-size: min(320px, 85vw); max-inline-size: 100%; block-size: 100%; max-block-size: 100%; padding: 0; border: 0; border-inline-end: var(--border-width-thin) solid var(--border-neutral-subtle); background: var(--background-neutral-surface); color: var(--text-neutral-default); box-shadow: var(--elevation-modal); }
+/* ::backdrop inherits from its dialog, so the scrim follows the theme. */
+.mds-sheet::backdrop { background: var(--background-neutral-scrim); }
+.mds-sheet__body { display: flex; flex-direction: column; gap: var(--space-4); min-block-size: 100%; padding: var(--space-4); }
+.mds-sheet__head { display: flex; align-items: center; gap: var(--space-2); }
+.mds-sheet__close { margin-inline-start: auto; }
+.mds-sheet__foot { margin-block-start: auto; }
+@media (forced-colors: active) {
+  .mds-appbar__menu-icon, .mds-sheet__close-icon { forced-color-adjust: none; background-color: ButtonText; }
+}
+
+/* ---------------------------------------------------------------- Tooltip */
+/* A slip of paper over the page: surface, hairline, overlay shadow. */
+.mds-tooltip { display: inline-block; max-inline-size: 280px; padding: 6px var(--space-2); border: var(--border-width-thin) solid var(--border-neutral-subtle); border-radius: var(--radius-tag); background: var(--background-neutral-surface); color: var(--text-neutral-default); font-family: var(--font-ui); font-size: var(--fs-caption); line-height: 1.4; box-shadow: var(--elevation-overlay); }
+/* fit-content: a column flex parent (a dialog body, a field) would otherwise stretch the anchor, and the bubble
+   would centre on the empty row. */
+.mds-tooltip-anchor { position: relative; display: inline-flex; inline-size: fit-content; }
+.mds-tooltip-anchor > .mds-tooltip {
+  position: absolute;
+  inset-block-end: calc(100% + 6px);
+  inset-inline-start: 50%;
+  translate: calc(-50% + var(--mds-tooltip-shift, 0px)) 0;
+  z-index: 50;
+  white-space: nowrap;
+  pointer-events: none;
+  display: none;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard), display var(--duration-fast) allow-discrete;
+}
+.mds-tooltip-anchor:dir(rtl) > .mds-tooltip { translate: calc(50% + var(--mds-tooltip-shift, 0px)) 0; }
+.mds-tooltip-anchor--bottom > .mds-tooltip { inset-block-end: auto; inset-block-start: calc(100% + 6px); }
+.mds-tooltip-anchor:is(:hover, :has(:focus-visible), .is-open):not([data-dismissed]) > .mds-tooltip { display: inline-block; opacity: 1; pointer-events: auto; }
+@starting-style {
+  .mds-tooltip-anchor:is(:hover, :has(:focus-visible), .is-open):not([data-dismissed]) > .mds-tooltip { opacity: 0; }
+}
+.mds-tooltip-anchor > .mds-tooltip::before { content: ""; position: absolute; inset-inline: 0; inset-block-start: 100%; block-size: 6px; }
+.mds-tooltip-anchor--bottom > .mds-tooltip::before { inset-block-start: auto; inset-block-end: 100%; }
+/* A bar at the top of the page and a dialog header have no room above: their tooltips open below. */
+:is(.mds-appbar__actions, .mds-dialog__actions) .mds-tooltip-anchor > .mds-tooltip { inset-block-end: auto; inset-block-start: calc(100% + 6px); }
+:is(.mds-appbar__actions, .mds-dialog__actions) .mds-tooltip-anchor > .mds-tooltip::before { inset-block-start: auto; inset-block-end: 100%; }
+/* Tooltip and IconButton set data-placement when the bubble would be clipped on its own side. */
+.mds-tooltip-anchor[data-placement="bottom"] > .mds-tooltip { inset-block-end: auto; inset-block-start: calc(100% + 6px); }
+.mds-tooltip-anchor[data-placement="bottom"] > .mds-tooltip::before { inset-block-start: auto; inset-block-end: 100%; }
+.mds-tooltip-anchor[data-placement="top"] > .mds-tooltip { inset-block-start: auto; inset-block-end: calc(100% + 6px); }
+.mds-tooltip-anchor[data-placement="top"] > .mds-tooltip::before { inset-block-end: auto; inset-block-start: 100%; }
+@media (forced-colors: active) {
+  .mds-tooltip { outline: var(--border-width-thin) solid CanvasText; }
+}
+
+/* ---------------------------------------------------------------- Dialog */
+/* A native <dialog> opened with showModal(). Nothing here sets display on .mds-dialog. */
+.mds-dialog {
+  inline-size: min(440px, 100% - 2 * var(--space-4));
+  max-inline-size: none;
+  max-block-size: calc(100dvh - 2 * var(--space-6));
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-surface);
+  background: var(--background-neutral-surface);
+  color: var(--text-neutral-default);
+  font-family: var(--font-ui);
+  box-shadow: var(--elevation-modal);
+}
+.mds-dialog--md { inline-size: min(640px, 100% - 2 * var(--space-4)); }
+.mds-dialog--lg { inline-size: min(960px, 100% - 2 * var(--space-4)); }
+.mds-dialog::backdrop { background: var(--background-neutral-scrim); }
+html:has(:is(.mds-dialog, .mds-sheet)[open]:modal) { overflow: hidden; }
+.mds-dialog__panel { display: flex; flex-direction: column; max-block-size: inherit; margin: 0; }
+.mds-dialog__header { display: flex; align-items: flex-start; gap: var(--space-4); padding-block: var(--space-6) var(--space-1); padding-inline: var(--space-6); }
+.mds-dialog__heading { display: flex; flex-direction: column; gap: var(--space-1); flex: 1; min-inline-size: 0; }
+.mds-dialog__title { margin: 0; font-family: var(--font-reading); font-size: var(--fs-h3); font-weight: var(--weight-semibold); line-height: var(--lh-tight); color: var(--text-neutral-default); text-wrap: balance; }
+.mds-dialog__actions { display: flex; align-items: center; gap: var(--space-2); flex: none; margin-block-start: -6px; margin-inline-end: -6px; }
+.mds-dialog__close::before { content: ""; inline-size: 16px; block-size: 16px; background-color: currentColor; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-size: contain; mask-size: contain; }
+/* The body scrolls; its 4px block padding keeps a field's focus ring inside the scroller. */
+.mds-dialog__body { display: flex; flex-direction: column; gap: var(--space-4); flex: 1 1 auto; min-block-size: 0; overflow: auto; padding-block: var(--space-3) var(--space-6); padding-inline: var(--space-6); font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-neutral-muted); }
+.mds-dialog__body > * { margin-block: 0; }
+.mds-dialog__body > :is(p, ul, ol, h3, h4) { max-inline-size: var(--layout-measure-prose); }
+.mds-dialog__body strong { color: var(--text-neutral-default); font-weight: var(--weight-semibold); }
+/* The footer is the desk under the sheet: page-coloured, a hairline above it. */
+.mds-dialog__footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); padding-block: var(--space-4); padding-inline: var(--space-6); border-block-start: var(--border-width-thin) solid var(--border-neutral-subtle); background: var(--background-neutral-page); }
+.mds-dialog__meta { margin: 0; margin-inline-end: auto; font-size: var(--fs-caption); line-height: var(--lh-body); color: var(--text-neutral-subtle); }
+.mds-dialog--lg .mds-dialog__header { padding-block-end: var(--space-4); border-block-end: var(--border-width-thin) solid var(--border-neutral-subtle); }
+.mds-dialog--lg .mds-dialog__body { padding-block: var(--space-4); font-family: var(--font-reading); font-size: var(--fs-reading); line-height: var(--lh-reading); color: var(--text-neutral-default); }
+/* A focused scroller draws its ring inside itself, on the dialog surface. Outside, the ring would sit on the page
+   under the scrim, a ground it cannot keep 3:1 against, and the modal's shadow would paint over it. */
+.mds-dialog__body:focus-visible { outline: var(--ring-focus-width) solid var(--ring-focus-color); outline-offset: calc(-1 * (var(--ring-focus-width) + var(--ring-focus-offset))); box-shadow: none; }
+@media (forced-colors: active) {
+  .mds-dialog { border: var(--border-width-thin) solid CanvasText; }
+  .mds-dialog__close::before { forced-color-adjust: none; background-color: ButtonText; }
+}
+
+/* ----------------------------------------------------------------- Toast */
+.mds-toaster { position: fixed; inset-block-end: var(--space-6); inset-inline-end: var(--space-6); z-index: 100; inline-size: min(320px, 100% - 2 * var(--space-4)); }
+.mds-toaster > [role] { display: flex; flex-direction: column; gap: var(--space-2); }
+.mds-toaster > :not(:empty) ~ :not(:empty) { padding-block-start: var(--space-2); }
+@media (max-width: 767.98px) {
+  .mds-toaster { inset-block-end: var(--space-4); inset-inline: var(--space-4); inline-size: auto; }
+}
+.mds-toast { display: flex; align-items: flex-start; gap: var(--space-3); padding-block: var(--space-3); padding-inline: var(--space-4); border: var(--border-width-thin) solid var(--border-neutral-subtle); border-radius: var(--radius-surface); background: var(--background-neutral-surface); color: var(--text-neutral-default); font-family: var(--font-ui); box-shadow: var(--elevation-raised); }
+.mds-toast__icon { flex: none; inline-size: 16px; block-size: 16px; margin-block-start: 2px; background-color: currentColor; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-size: contain; mask-size: contain; }
+.mds-toast--success .mds-toast__icon { color: var(--text-success-default); }
+.mds-toast--info .mds-toast__icon { color: var(--text-info-default); }
+.mds-toast--warning .mds-toast__icon { color: var(--text-warning-default); }
+.mds-toast--error .mds-toast__icon { color: var(--text-error-default); }
+.mds-toast__body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-inline-size: 0; }
+.mds-toast__title { margin: 0; font-size: var(--fs-body-sm); font-weight: var(--weight-semibold); line-height: var(--lh-ui); color: var(--text-neutral-default); }
+.mds-toast__desc { margin: 0; font-size: var(--fs-caption); line-height: 1.45; color: var(--text-neutral-subtle); }
+.mds-toast__action { display: flex; padding-block-start: var(--space-1); }
+.mds-toast__close::before { content: ""; inline-size: 16px; block-size: 16px; background-color: currentColor; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-size: contain; mask-size: contain; }
+@media (forced-colors: active) {
+  .mds-toast__icon { forced-color-adjust: none; background-color: CanvasText; }
+  .mds-toast__close::before { forced-color-adjust: none; background-color: ButtonText; }
+}
+
+/* ----------------------------------------------- Empty and system states */
+.mds-empty { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); padding-block: var(--space-10); padding-inline: var(--space-6); text-align: center; }
+.mds-empty__icon { display: inline-flex; color: var(--text-neutral-subtle); }
+.mds-empty__text { margin: 0; max-inline-size: var(--layout-measure-prose); font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-neutral-default); }
+.mds-system-state { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); max-inline-size: var(--layout-measure-prose); margin-inline: auto; padding-block: var(--space-10); padding-inline: var(--space-gutter-page); text-align: center; }
+.mds-system-state--page { justify-content: center; min-block-size: 100dvh; }
+.mds-system-state__text { margin: 0; font-family: var(--font-reading); font-size: var(--fs-reading); line-height: var(--lh-reading); color: var(--text-neutral-default); }
+
+/* ------------------------------------------------------------- Utilities */
+.mds-visually-hidden { position: absolute; inline-size: 1px; block-size: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* The middle dot between the parts of a meta run ("Cmt 21:00 · 60 dk"); always aria-hidden. */
+.mds-sep { padding-inline: 0.4em; color: var(--text-neutral-subtle); }
+@keyframes mds-spin { to { rotate: 1turn; } }
+
+/* ----------------------------------------------- Glyph masks (generated) */
+/* Written by tools/design-system/icons.mjs from assets/icons.svg and the masks
+   file (tools/design-system/icon-masks.json); never edit it by hand. Each rule
+   sets only the glyph: the requesting component's section sizes and colours it. */
+.mds-alert--error .mds-alert__icon { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z'/%3E%3C/svg%3E"); }
+.mds-alert--success .mds-alert__icon { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); }
+.mds-alert--warning .mds-alert__icon { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z'/%3E%3C/svg%3E"); }
+.mds-alert__icon { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z'/%3E%3C/svg%3E"); }
+.mds-appbar__menu-icon { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM40,72H216a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16ZM216,184H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM40,72H216a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16ZM216,184H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z'/%3E%3C/svg%3E"); }
+.mds-breadcrumb__back { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z'/%3E%3C/svg%3E"); }
+.mds-btn__spinner { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M232,128a104,104,0,0,1-208,0c0-41,23.81-78.36,60.66-95.27a8,8,0,0,1,6.68,14.54C60.15,61.59,40,93.27,40,128a88,88,0,0,0,176,0c0-34.73-20.15-66.41-51.34-80.73a8,8,0,0,1,6.68-14.54C208.19,49.64,232,87,232,128Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M232,128a104,104,0,0,1-208,0c0-41,23.81-78.36,60.66-95.27a8,8,0,0,1,6.68,14.54C60.15,61.59,40,93.27,40,128a88,88,0,0,0,176,0c0-34.73-20.15-66.41-51.34-80.73a8,8,0,0,1,6.68-14.54C208.19,49.64,232,87,232,128Z'/%3E%3C/svg%3E"); }
+.mds-check::after { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); }
+.mds-dialog__close::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z'/%3E%3C/svg%3E"); }
+.mds-progress__check { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); }
+.mds-select::after { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); }
+.mds-sheet__close-icon { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z'/%3E%3C/svg%3E"); }
+.mds-table th[aria-sort="ascending"] .mds-table__sort-icon { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,165.66a8,8,0,0,1-11.32,0L128,91.31,53.66,165.66a8,8,0,0,1-11.32-11.32l80-80a8,8,0,0,1,11.32,0l80,80A8,8,0,0,1,213.66,165.66Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,165.66a8,8,0,0,1-11.32,0L128,91.31,53.66,165.66a8,8,0,0,1-11.32-11.32l80-80a8,8,0,0,1,11.32,0l80,80A8,8,0,0,1,213.66,165.66Z'/%3E%3C/svg%3E"); }
+.mds-table th[aria-sort="descending"] .mds-table__sort-icon { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); }
+.mds-table__sort-icon { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z'/%3E%3C/svg%3E"); }
+.mds-toast--error .mds-toast__icon { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z'/%3E%3C/svg%3E"); }
+.mds-toast--info .mds-toast__icon { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z'/%3E%3C/svg%3E"); }
+.mds-toast--success .mds-toast__icon { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E"); }
+.mds-toast--warning .mds-toast__icon { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z'/%3E%3C/svg%3E"); }
+.mds-toast__close::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z'/%3E%3C/svg%3E"); }
