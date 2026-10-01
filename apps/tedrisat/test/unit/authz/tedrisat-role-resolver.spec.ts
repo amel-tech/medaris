@@ -1,12 +1,14 @@
 import { ENTITIES, ROLES } from "@medaris/common";
 import { TedrisatRoleResolver } from "../../../src/authz/tedrisat-role-resolver.service";
 import { CourseRepository } from "../../../src/course/course.repository";
+import { CourseStatus } from "../../../src/course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../../src/course/domain/enrollment-status.enum";
 import { CourseNotFoundError } from "../../../src/course/errors/course-not-found.error";
 import { DeckNotFoundError } from "../../../src/flashcard/errors/deck-not-found.error";
 import { FlashcardDeckService } from "../../../src/flashcard/flashcard-deck.service";
 import { KoskNotFoundError } from "../../../src/kosk/errors/kosk-not-found.error";
 import { KoskService } from "../../../src/kosk/kosk.service";
+import { MadrasahNotFoundError } from "../../../src/madrasah/errors/madrasah-not-found.error";
 import { MadrasahService } from "../../../src/madrasah/madrasah.service";
 
 interface DeckRow {
@@ -40,11 +42,22 @@ interface Stubs {
   madrasahNazirs?: string[];
   /** Nazırs of the medrese the köşk under test is affiliated with. */
   koskNazirs?: string[];
+  /** `KoskService.findVisibility` — the anonymous köşk path (MDRS-122). */
+  koskVisibility?: { isPrivate: boolean } | null;
+  /** `CourseRepository.findPublicVisibility` — the anonymous course path. */
+  coursePublic?: {
+    status: CourseStatus;
+    archived: boolean;
+    koskIsPrivate: boolean;
+  } | null;
+  /** `MadrasahService.exists`; defaults to true. */
+  madrasahExists?: boolean;
 }
 
 const build = (s: Stubs = {}) => {
   const kosk = {
     exists: vi.fn().mockResolvedValue(s.koskExists ?? true),
+    findVisibility: vi.fn().mockResolvedValue(s.koskVisibility ?? null),
     isManager: vi
       .fn()
       .mockImplementation(
@@ -56,6 +69,7 @@ const build = (s: Stubs = {}) => {
     findKoskId: vi.fn().mockResolvedValue(s.courseKoskId ?? null),
     isMuderris: vi.fn().mockResolvedValue(s.muderris ?? false),
     findEnrollment: vi.fn().mockResolvedValue(s.enrollment ?? null),
+    findPublicVisibility: vi.fn().mockResolvedValue(s.coursePublic ?? null),
   } as unknown as CourseRepository;
   const deck = {
     // `findVisibility`, not `findById`: the resolver reads exactly `authorId`
@@ -63,6 +77,7 @@ const build = (s: Stubs = {}) => {
     findVisibility: vi.fn().mockResolvedValue(s.deck ?? null),
   } as unknown as FlashcardDeckService;
   const madrasah = {
+    exists: vi.fn().mockResolvedValue(s.madrasahExists ?? true),
     isNazir: vi
       .fn()
       .mockImplementation(async (_madrasahId: string, userId: string) =>
@@ -212,16 +227,84 @@ describe("TedrisatRoleResolver", () => {
       expect(deck.findVisibility).not.toHaveBeenCalled();
     });
 
+    it("refuses ijazah — MDRS-122 opened köşk, medrese and course pages only", async () => {
+      const { resolver } = build();
+      await expect(
+        resolver.resolveAnonymous({ entity: ENTITIES.IJAZAH, id: REAL_UUID })
+      ).resolves.toBeNull();
+    });
+  });
+
+  describe("resolveAnonymous — köşk, course and medrese pages (MDRS-122)", () => {
+    const published = {
+      status: CourseStatus.PUBLISHED,
+      archived: false,
+      koskIsPrivate: false,
+    };
+
+    it("returns ANONYMOUS for a listed köşk", async () => {
+      const { resolver } = build({ koskVisibility: { isPrivate: false } });
+      await expect(
+        resolver.resolveAnonymous({ entity: ENTITIES.KOSK, id: REAL_UUID })
+      ).resolves.toBe(ROLES.ANONYMOUS);
+    });
+
+    it.each([
+      ["an unlisted köşk", { isPrivate: true }],
+      ["a köşk that does not exist", null],
+    ])("404s %s", async (_label, koskVisibility) => {
+      const { resolver } = build({ koskVisibility });
+      await expect(
+        resolver.resolveAnonymous({ entity: ENTITIES.KOSK, id: REAL_UUID })
+      ).rejects.toBeInstanceOf(KoskNotFoundError);
+    });
+
+    it("returns ANONYMOUS for a published course of a listed köşk", async () => {
+      const { resolver } = build({ coursePublic: published });
+      await expect(
+        resolver.resolveAnonymous({ entity: ENTITIES.COURSE, id: REAL_UUID })
+      ).resolves.toBe(ROLES.ANONYMOUS);
+    });
+
+    it.each([
+      ["a course that does not exist", null],
+      ["a draft", { ...published, status: CourseStatus.DRAFT }],
+      ["a hidden course", { ...published, archived: true }],
+      ["a course of an unlisted köşk", { ...published, koskIsPrivate: true }],
+    ])("404s %s", async (_label, coursePublic) => {
+      const { resolver } = build({ coursePublic });
+      await expect(
+        resolver.resolveAnonymous({ entity: ENTITIES.COURSE, id: REAL_UUID })
+      ).rejects.toBeInstanceOf(CourseNotFoundError);
+    });
+
+    it("returns ANONYMOUS for a medrese that exists, and 404s one that does not", async () => {
+      await expect(
+        build().resolver.resolveAnonymous({
+          entity: ENTITIES.MADRASAH,
+          id: REAL_UUID,
+        })
+      ).resolves.toBe(ROLES.ANONYMOUS);
+      await expect(
+        build({ madrasahExists: false }).resolver.resolveAnonymous({
+          entity: ENTITIES.MADRASAH,
+          id: REAL_UUID,
+        })
+      ).rejects.toBeInstanceOf(MadrasahNotFoundError);
+    });
+
     it.each([
       ENTITIES.KOSK,
       ENTITIES.COURSE,
       ENTITIES.MADRASAH,
-      ENTITIES.IJAZAH,
-    ])("refuses %s — MDRS-122 opens köşk, medrese and course pages", async (entity) => {
-      const { resolver } = build();
+    ])("returns ANONYMOUS for a non-UUID %s id without a lookup, so the pipe answers 400", async (entity) => {
+      const { resolver, kosk, course, madrasah } = build();
       await expect(
-        resolver.resolveAnonymous({ entity, id: REAL_UUID })
-      ).resolves.toBeNull();
+        resolver.resolveAnonymous({ entity, id: "not-a-uuid" })
+      ).resolves.toBe(ROLES.ANONYMOUS);
+      expect(kosk.findVisibility).not.toHaveBeenCalled();
+      expect(course.findPublicVisibility).not.toHaveBeenCalled();
+      expect(madrasah.exists).not.toHaveBeenCalled();
     });
   });
 

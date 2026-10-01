@@ -373,7 +373,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Any signed-in caller may read the course page: its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak` and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103).
+     * Anyone may read the course page, with or without a token (MDRS-122): its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak` and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103). A caller with no token gets the same filtered body, and 404 for a draft, a hidden course, or any course of an unlisted köşk.
      * Get a course with its syllabus, müderris and resources
      */
     async getCourseByIdRaw(requestParameters: GetCourseByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseDetailResponse>> {
@@ -408,7 +408,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Any signed-in caller may read the course page: its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak` and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103).
+     * Anyone may read the course page, with or without a token (MDRS-122): its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak` and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103). A caller with no token gets the same filtered body, and 404 for a draft, a hidden course, or any course of an unlisted köşk.
      * Get a course with its syllabus, müderris and resources
      */
     async getCourseById(requestParameters: GetCourseByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDetailResponse> {
@@ -461,6 +461,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * Open to callers with no token (MDRS-122): the köşk\'s published courses, with no enrollment. An unlisted köşk answers them 404, as `GET /kosks/:id` does. `archived=true` needs a token.
      * List the courses that belong to a köşk
      */
     async getCoursesByKoskRaw(requestParameters: GetCoursesByKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CourseSummaryResponse>>> {
@@ -499,6 +500,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * Open to callers with no token (MDRS-122): the köşk\'s published courses, with no enrollment. An unlisted köşk answers them 404, as `GET /kosks/:id` does. `archived=true` needs a token.
      * List the courses that belong to a köşk
      */
     async getCoursesByKosk(requestParameters: GetCoursesByKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CourseSummaryResponse>> {

@@ -108,6 +108,12 @@ export const MATRIX: Record<Entity, Partial<Record<Role, Scope[]>>> = {
     // line. Pending the matrix discussion; role model v2 (MDRS-135) replaces
     // this row with a permission catalogue.
     [ROLES.PUBLIC]: [SCOPES.VIEW, SCOPES.ENROLL],
+    // No token at all (MDRS-122): the course page — the same filtered body a
+    // signed-in stranger gets, because `CourseService.present` strips the
+    // content for anyone without `VIEW_DETAILS`. Not ENROLL: applying needs an
+    // account. `resolveAnonymous` answers 404 for a DRAFT or hidden course and
+    // for any course of an unlisted (`is_private`) köşk before this row is read.
+    [ROLES.ANONYMOUS]: [SCOPES.VIEW],
   },
 
   // Plan §4.3 — Kosk
@@ -130,6 +136,10 @@ export const MATRIX: Record<Entity, Partial<Record<Role, Scope[]>>> = {
     // realm bypass: only platform admins may open new köşks and assign
     // their owner. KOSK_MANAGER status flows from that assignment.
     [ROLES.PUBLIC]: [SCOPES.VIEW],
+    // No token (MDRS-122): the köşk's page and its shelf of courses. An
+    // unlisted köşk (`is_private`) is opened by link to signed-in callers
+    // only; `resolveAnonymous` answers it with the same 404 as a missing one.
+    [ROLES.ANONYMOUS]: [SCOPES.VIEW],
   },
 
   // Plan §4.4 — Madrasah
@@ -152,6 +162,9 @@ export const MATRIX: Record<Entity, Partial<Record<Role, Scope[]>>> = {
       SCOPES.VIEW_MADRASAH_ANALYTICS,
     ],
     [ROLES.PUBLIC]: [SCOPES.VIEW, SCOPES.DONATE],
+    // No token (MDRS-122): the medrese's page and the list. Not DONATE —
+    // a donation needs a donor.
+    [ROLES.ANONYMOUS]: [SCOPES.VIEW],
   },
 
   // Plan §4.2 — Flashcard deck. The 5 variants from the plan

@@ -52,7 +52,8 @@
     "leaveDescription": "Kaydınız ve ilerlemeniz silinir. İsterseniz daha sonra yeniden kayıt olabilirsiniz.",
     "leaveConfirm": "Ayrıl",
     "leaveCancel": "Vazgeç",
-    "left": "Dersten ayrıldınız."
+    "left": "Dersten ayrıldınız.",
+    "signInToApply": "Başvurmak için giriş yap"
   },
   "CreateDeckButtonDialog": {
     "cancel": "İptal etmek",
@@ -242,7 +243,7 @@
   "KoskPage": {
     "kosks": "Köşkler",
     "uncategorized": "Diğer",
-    "private": "Özel",
+    "private": "Liste dışı",
     "courses": "Ders",
     "students": "Talebe",
     "filterAll": "Tümü",
@@ -256,7 +257,8 @@
     "coursesCount": "{count} ders",
     "completed": "Tamamlandı",
     "percentComplete": "%{percent} tamamlandı",
-    "enroll": "Kayıt ol"
+    "enroll": "Kayıt ol",
+    "madrasah": "Medrese"
   },
   "LearningPage": {
     "title": "Öğrenme",
@@ -411,5 +413,9 @@
     "applying": "Gönderiliyor...",
     "pending": "Başvurun onay bekliyor",
     "backToCourse": "Kurs sayfasına dön"
+  },
+  "MadrasahPage": {
+    "kosks": "Köşkler",
+    "noKosks": "Bu medresede listelenen köşk yok."
   }
 }

@@ -324,6 +324,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
+     * Open to callers with no token (MDRS-122).
      * Get a paginated list of medreses
      */
     async getAllMadrasahsRaw(requestParameters: GetAllMadrasahsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PaginatedMadrasahResponse>> {
@@ -358,6 +359,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
+     * Open to callers with no token (MDRS-122).
      * Get a paginated list of medreses
      */
     async getAllMadrasahs(requestParameters: GetAllMadrasahsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PaginatedMadrasahResponse> {
@@ -366,6 +368,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
+     * Open to callers with no token (MDRS-122).
      * Get a medrese by ID
      */
     async getMadrasahByIdRaw(requestParameters: GetMadrasahByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahResponse>> {
@@ -400,6 +403,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
+     * Open to callers with no token (MDRS-122).
      * Get a medrese by ID
      */
     async getMadrasahById(requestParameters: GetMadrasahByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahResponse> {
