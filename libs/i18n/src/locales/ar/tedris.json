@@ -408,6 +408,9 @@
     "imam": "الإمام",
     "nextSession": "الجلسة القادمة",
     "noNextSession": "لا توجد جلسة مجدولة",
-    "koskCourses": "{count} دروس"
+    "koskCourses": "{count} دروس",
+    "notFoundTitle": "الصفحة غير موجودة",
+    "notFoundText": "المدرسة التي تبحث عنها غير موجودة أو ربما أُزيلت.",
+    "notFoundAction": "العودة إلى الرئيسية"
   }
 }

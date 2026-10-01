@@ -433,6 +433,9 @@
     "imam": "imam",
     "nextSession": "Next session",
     "noNextSession": "No session scheduled",
-    "koskCourses": "{count} courses"
+    "koskCourses": "{count} courses",
+    "notFoundTitle": "Page not found",
+    "notFoundText": "The madrasah you are looking for does not exist or may have been removed.",
+    "notFoundAction": "Back to home"
   }
 }

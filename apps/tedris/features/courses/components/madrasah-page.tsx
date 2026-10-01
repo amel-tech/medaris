@@ -148,11 +148,11 @@ export const MadrasahPage = async ({
     .filter(Boolean);
 
   return (
-    <main className="mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
+    <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
       <div className="flex min-inline-0 flex-col gap-stack">
         <Breadcrumb
           items={[
-            { label: t("MadrasahPage.discover"), href: "/learning" },
+            { label: t("MadrasahPage.discover"), href: "/home" },
             { label: madrasah.name },
           ]}
         />
@@ -227,7 +227,7 @@ export const MadrasahPage = async ({
         <aside className="sticky inset-bs-[calc(var(--layout-topbar)+var(--space-6))] flex flex-col gap-4 max-md:static">
           {headMuderris?.name ? (
             <Card title={t("MadrasahPage.headMuderris")} headingLevel={2}>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 mbs-6">
                 <Avatar name={headMuderris.name} decorative />
                 <div>
                   <p className="mds-body">
@@ -244,7 +244,7 @@ export const MadrasahPage = async ({
           ) : null}
           {kosks.length > 0 ? (
             <Card title={t("MadrasahPage.kosks")} headingLevel={2}>
-              <ul className="flex flex-col gap-2">
+              <ul className="flex flex-col gap-2 mbs-6">
                 {kosks.map((kosk) => (
                   <li key={kosk.id}>
                     <Link href={`/kosks/${kosk.id}`}>

@@ -433,6 +433,9 @@
     "imam": "imam",
     "nextSession": "Sonraki celse",
     "noNextSession": "Planlı celse yok",
-    "koskCourses": "{count} ders"
+    "koskCourses": "{count} ders",
+    "notFoundTitle": "Sayfa bulunamadı",
+    "notFoundText": "Aradığın medrese yok ya da kaldırılmış olabilir.",
+    "notFoundAction": "Ana sayfaya dön"
   }
 }
