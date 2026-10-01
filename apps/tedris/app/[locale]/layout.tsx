@@ -36,7 +36,13 @@ export default async function LocaleLayout({
 
   return (
     <html lang="tr" className="min-h-svh h-full">
-      <body className={`${inter.className} h-full flex flex-col`}>
+      {/* Browser extensions (e.g. ColorZilla's `cz-shortcut-listen`) inject
+          attributes on <body> before hydration; only this node's attributes
+          are exempted, children are still checked. */}
+      <body
+        className={`${inter.className} h-full flex flex-col`}
+        suppressHydrationWarning
+      >
         <NextIntlClientProvider>
           <ClientProviders>
             <Header />
