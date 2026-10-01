@@ -6,5 +6,6 @@ const intlMiddleware = createIntlMiddleware(routing);
 export default intlMiddleware;
 
 export const config = {
-  matcher: ["/((?!api|_next|_vercel|images|uthman|icons|.*\\..*).*)"],
+  // giris, kayit and tedris are redirect routes outside [locale] (MDRS-151).
+  matcher: ["/((?!api|_next|_vercel|giris|kayit|tedris|.*\\..*).*)"],
 };

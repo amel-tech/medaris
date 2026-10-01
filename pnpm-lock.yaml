@@ -496,9 +496,9 @@ importers:
       '@medaris/i18n':
         specifier: workspace:*
         version: link:../../libs/i18n
-      '@medaris/icons':
+      '@medaris/tokens':
         specifier: workspace:*
-        version: link:../../libs/icons
+        version: link:../../libs/tokens
       '@medaris/ui':
         specifier: workspace:*
         version: link:../../libs/ui

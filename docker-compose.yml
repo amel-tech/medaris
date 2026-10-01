@@ -311,7 +311,8 @@ services:
       - tedrisat
 
   # No auth: landing carries neither Keycloak credentials nor NEXTAUTH_*, and
-  # it calls no API server-side.
+  # it calls no API server-side. TEDRIS_URL is where its sign-in, registration
+  # and köşk links redirect (MDRS-151).
   landing:
     build:
       context: .
@@ -322,6 +323,7 @@ services:
     environment:
       OTEL_SERVICE_NAME: ${LANDING__OTEL_SERVICE_NAME:-landing-web}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${LANDING__OTEL_EXPORTER_OTLP_ENDPOINT:-${WEB__OTEL_EXPORTER_OTLP_ENDPOINT:?set WEB__OTEL_EXPORTER_OTLP_ENDPOINT in .env}}
+      TEDRIS_URL: ${LANDING__TEDRIS_URL:-http://localhost:${TEDRIS_WEB_PORT:-4000}}
 
 
   medaris-db:
