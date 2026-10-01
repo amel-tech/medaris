@@ -36,9 +36,18 @@
   --color-chart-4: var(--background-color-error-base);
   --color-chart-5: var(--background-color-info-base);
 
-  /* Radius values */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.625rem;
-  --radius-xl: 1rem;
+  /* Radius values — from the Figma "size" collection via @medaris/tokens
+     (MDRS-73). sm and md keep their pixels (6, 8). lg and xl were 10px and
+     16px, neither of which is on the Figma scale; each moves to the step the
+     design system assigns what shadcn draws with it: rounded-lg is cards,
+     dialogs and alerts, which Figma puts on m (12); rounded-xl is the sidebar
+     inset, a large surface, which Figma puts on l (20).
+     Nothing imports this file today: the apps load src/styles/globals.css,
+     whose radii derive from --radius (10 / 14px for lg / xl). Moving those
+     onto the tokens changes what every app renders and is left to its own
+     issue; see docs/migration/mdrs-73-non-colour-tokens.md. */
+  --radius-sm: var(--corner-radius-xs);
+  --radius-md: var(--corner-radius-s);
+  --radius-lg: var(--corner-radius-m);
+  --radius-xl: var(--corner-radius-l);
 }

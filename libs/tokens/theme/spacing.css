@@ -1,0 +1,39 @@
+/*
+ * @medaris/tokens — spacing and breakpoints. HAND-AUTHORED:
+ * scripts/process-tokens.js rewrites theme/main.css only and never touches
+ * this file.
+ *
+ * Source: Figma variable collection "typography" (spacing/xs .. spacing/4xl)
+ * in `Online Medrese UI UX.fig` (export 2026-09-04), read through the
+ * committed mirror design-system/tokens/spacing.css (MDRS-92). Eight steps,
+ * verbatim px. 40 and 56 are hand-picked in the file, not a grid.
+ *
+ * Breakpoints: the three layout frames on the Figma "Design System" page,
+ * verbatim px, under the mirror's names. They are recorded values, not
+ * Tailwind breakpoints: registering them as --breakpoint-* would add
+ * mobile:/tablet:/desktop: variants AND give every `container` in the apps
+ * two extra max-width steps (24.375rem and 90rem) — measured in the built
+ * CSS of the four Next apps. Adopting them as the layout grid is a separate
+ * decision.
+ *
+ * Spacing stays out of Tailwind's --spacing-* namespace for the same
+ * reason: max-w-*, w-* and size-* resolve --spacing-<name> BEFORE
+ * --container-<name>, so --spacing-md: 16px would turn every max-w-md in
+ * the apps from 28rem into 16px (measured on tailwindcss 4.3.3;
+ * test/tailwind-defaults.spec.ts). Use them as p-(--space-md),
+ * gap-(--space-lg) or var(--space-md).
+ */
+@theme {
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 40px;
+  --space-3xl: 56px;
+  --space-4xl: 64px;
+
+  --bp-mobile: 390px;
+  --bp-tablet: 768px;
+  --bp-desktop: 1440px;
+}

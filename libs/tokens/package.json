@@ -12,7 +12,7 @@
       "import": "./index.js",
       "types": "./index.d.ts"
     },
-    "./css": "./theme/main.css",
+    "./css": "./theme/index.css",
     "./medaris.css": "./medaris.css",
     "./tailwind.css": "./tailwind.css",
     "./medaris-fonts": {
@@ -23,7 +23,7 @@
   "files": [
     "index.js",
     "index.d.ts",
-    "theme/main.css",
+    "theme/*.css",
     "medaris.css",
     "tailwind.css",
     "medaris-fonts.js",
@@ -33,12 +33,16 @@
   "scripts": {
     "build": "pnpm run process && node scripts/build.js",
     "process": "node scripts/process-tokens.js",
-    "clean": "rm -rf .turbo node_modules dist",
+    "clean": "rm -rf .turbo node_modules dist coverage",
     "prepublishOnly": "pnpm run build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --coverage"
   },
   "devDependencies": {
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "tailwindcss": "catalog:",
+    "vitest": "catalog:"
   },
   "keywords": [
     "design-tokens",
