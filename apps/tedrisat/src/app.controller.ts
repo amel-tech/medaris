@@ -1,13 +1,18 @@
-import { HealthCheckDto } from "@medaris/common";
+import { AuthzPublic, HealthCheckDto } from "@medaris/common";
 import { Controller, Get } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { AppService } from "./app.service";
 
+// No guard on this controller, so `@AuthzPublic()` below changes nothing
+// today. It is the explicit, greppable exemption MDRS-44 needs when it flips
+// the matrix to closed-by-default: a load balancer probes `/health` with no
+// token and must keep getting 200.
 @ApiTags("Tedrisat Service")
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
+  @AuthzPublic()
   @Get()
   @ApiOperation({
     summary: "Get hello message",
@@ -23,6 +28,7 @@ export class AppController {
     return this.appService.getHello();
   }
 
+  @AuthzPublic()
   @Get("health")
   @ApiOperation({
     summary: "Health check",

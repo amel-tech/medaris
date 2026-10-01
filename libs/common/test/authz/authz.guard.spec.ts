@@ -2,6 +2,8 @@ import { ExecutionContext, NotFoundException } from "@nestjs/common";
 import { ModuleRef, Reflector } from "@nestjs/core";
 import {
   AUTHZ_KEY,
+  AUTHZ_PUBLIC_KEY,
+  AuthzForbiddenError,
   AuthzGuard,
   AuthzMeta,
   AuthzMissingUserError,
@@ -24,14 +26,31 @@ const buildContext = (
   return { ctx, handler };
 };
 
-const reflectorReturning = (meta?: AuthzMeta): Reflector =>
-  ({ get: () => meta }) as unknown as Reflector;
+// Keyed on purpose: the guard reads two keys off the same handler, and a fake
+// that answered `meta` for both would mark every handler `@AuthzPublic()`.
+const reflectorReturning = (meta?: AuthzMeta, isPublic = false): Reflector =>
+  ({
+    get: (key: string) => {
+      if (key === AUTHZ_KEY) return meta;
+      if (key === AUTHZ_PUBLIC_KEY && isPublic) return true;
+      return undefined;
+    },
+  }) as unknown as Reflector;
 
 const fakeRoleResolver = (
-  role: ReturnType<RoleResolver["resolve"]>
+  role: ReturnType<RoleResolver["resolve"]>,
+  anonymousRole?: typeof ROLES.ANONYMOUS | null
 ): RoleResolver => ({
   resolve: vi.fn().mockResolvedValue(role),
+  ...(anonymousRole !== undefined && {
+    resolveAnonymous: vi.fn().mockResolvedValue(anonymousRole),
+  }),
 });
+
+const publicDeckMeta: AuthzMeta = {
+  scope: SCOPES.VIEW,
+  resolve: () => ({ entity: ENTITIES.FLASHCARD_DECK, id: "d-1" }),
+};
 
 const moduleRefStub = {} as ModuleRef;
 
@@ -168,6 +187,94 @@ describe("AuthzGuard", () => {
       const { ctx } = buildContext({ user: { sub: "u-1" } });
       await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
         AuthzResolverError
+      );
+    });
+  });
+
+  describe("@AuthzPublic — a caller with no token (MDRS-45)", () => {
+    it("lets an anonymous caller through a public handler that carries no @Authz", async () => {
+      const guard = new AuthzGuard(
+        reflectorReturning(undefined, true),
+        new AuthzService(fakeRoleResolver(null)),
+        moduleRefStub
+      );
+      const { ctx } = buildContext({});
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    });
+
+    it("allows an anonymous caller when the resolver answers ANONYMOUS and the row lists the scope", async () => {
+      const resolver = fakeRoleResolver(null, ROLES.ANONYMOUS);
+      const guard = new AuthzGuard(
+        reflectorReturning(publicDeckMeta, true),
+        new AuthzService(resolver),
+        moduleRefStub
+      );
+      const { ctx } = buildContext({ params: { id: "d-1" } });
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+      // The authenticated path was never taken: there is no `sub` to resolve.
+      expect(resolver.resolve).not.toHaveBeenCalled();
+    });
+
+    it("refuses an anonymous caller with 401, not 403, when the resolver says no", async () => {
+      const guard = new AuthzGuard(
+        reflectorReturning(publicDeckMeta, true),
+        new AuthzService(fakeRoleResolver(null, null)),
+        moduleRefStub
+      );
+      const { ctx } = buildContext({ params: { id: "d-1" } });
+      await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
+        AuthzMissingUserError
+      );
+    });
+
+    it("refuses an anonymous caller with 401 when the ANONYMOUS row does not list the scope", async () => {
+      const guard = new AuthzGuard(
+        reflectorReturning(
+          { ...publicDeckMeta, scope: SCOPES.MANAGE_PRIVATE_DECK },
+          true
+        ),
+        new AuthzService(fakeRoleResolver(null, ROLES.ANONYMOUS)),
+        moduleRefStub
+      );
+      const { ctx } = buildContext({ params: { id: "d-1" } });
+      await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
+        AuthzMissingUserError
+      );
+    });
+
+    it("lets a resolver's 404 through for an anonymous caller, so private reads as absent", async () => {
+      const guard = new AuthzGuard(
+        reflectorReturning(
+          {
+            scope: SCOPES.VIEW,
+            resolve: () => {
+              throw new NotFoundException("missing");
+            },
+          },
+          true
+        ),
+        new AuthzService(fakeRoleResolver(null, ROLES.ANONYMOUS)),
+        moduleRefStub
+      );
+      const { ctx } = buildContext({});
+      await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
+        NotFoundException
+      );
+    });
+
+    it("decides an authenticated caller on a public handler exactly as without the marker", async () => {
+      const guard = new AuthzGuard(
+        reflectorReturning(
+          { ...publicDeckMeta, scope: SCOPES.MANAGE_PRIVATE_DECK },
+          true
+        ),
+        // ANONYMOUS would be refused this scope too; PUBLIC is what is read.
+        new AuthzService(fakeRoleResolver(ROLES.PUBLIC, ROLES.ANONYMOUS)),
+        moduleRefStub
+      );
+      const { ctx } = buildContext({ user: { sub: "u-1" } });
+      await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
+        AuthzForbiddenError
       );
     });
   });
