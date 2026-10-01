@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# config/keycloak/scripts/verify <env> — MDRS-97.
+#
+# Reads the realm back from KC_URL and diffs it against the repository. Prints
+# every difference and exits 1 if there is any; prints `no difference` and
+# exits 0 otherwise. Read-only.
+#
+# Compared: every setting the repository sets (a setting it does not set is
+# not reported), protocol mappers and user-profile attributes by name in both
+# directions, and the mail sender from KC_SMTP_* when KC_SMTP_HOST is set —
+# except its password, which Keycloak never returns.
+
+PREFIX=verify
+# shellcheck source=./lib/core.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/core.sh"
+require_tools curl jq
+read_env_arg "${1:-}"
+
+echo "verify: $ENV_NAME -> realm $KC_REALM on ${KC_URL:-http://localhost:8080}"
+run_plan check
+if [[ $DIFFERENCES -eq 0 ]]; then
+  echo "verify: no difference"
+else
+  echo "verify: $DIFFERENCES difference(s) between the repository and the server"
+  exit 1
+fi

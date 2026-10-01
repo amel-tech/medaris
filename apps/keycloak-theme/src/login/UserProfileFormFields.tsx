@@ -23,6 +23,11 @@ import { assert } from "keycloakify/tools/assert";
 import { Fragment, useEffect } from "react";
 import { FieldContainer } from "./components/FieldContainer";
 import { PasswordWrapper } from "./components/PasswordWrapper";
+import {
+  fieldDir,
+  fieldErrorClassName,
+  linkClassName,
+} from "./components/styles";
 import type { I18n } from "./i18n";
 import type { KcContext } from "./KcContext";
 
@@ -346,6 +351,11 @@ function InputTag(
         })()}
         id={attribute.name}
         name={attribute.name}
+        dir={
+          attribute.annotations.inputType === "html5-email"
+            ? "ltr"
+            : fieldDir(attribute.name)
+        }
         value={(() => {
           if (fieldIndex !== undefined) {
             assert(valueOrValues instanceof Array);
@@ -361,8 +371,7 @@ function InputTag(
             attribute.name === "password-confirm") &&
             "pr-10",
           displayableErrors.find((error) => error.fieldIndex === fieldIndex) !==
-            undefined &&
-            "border-error-secondary !text-error-primary placeholder:text-error-primary"
+            undefined && fieldErrorClassName
         )}
         aria-invalid={
           displayableErrors.find((error) => error.fieldIndex === fieldIndex) !==
@@ -611,7 +620,8 @@ function InputTagSelects(props: InputFieldByTypeProps) {
               attribute.readOnly && "opacity-50"
             )}
           >
-            {inputLabel(i18n, attribute, option)}
+            {optionLabelWithLink(i18n, attribute, option) ??
+              inputLabel(i18n, attribute, option)}
           </Label>
         </div>
       ))}
@@ -633,8 +643,7 @@ function TextareaTag(props: InputFieldByTypeProps) {
       name={attribute.name}
       className={cn(
         "flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-        displayableErrors.length !== 0 &&
-          "border-error-secondary !text-error-primary placeholder:text-error-primary"
+        displayableErrors.length !== 0 && fieldErrorClassName
       )}
       aria-invalid={displayableErrors.length !== 0}
       disabled={attribute.readOnly}
@@ -807,4 +816,52 @@ function inputLabel(i18n: I18n, attribute: Attribute, option: string) {
   }
 
   return option;
+}
+
+/**
+ * A checkbox or radio label that carries a link (MDRS-102): the attribute's
+ * `linkUrl` and `linkLabel` annotations, set in
+ * `config/keycloak/user-profile.json`, and an option label whose message has
+ * `{0}` where the link goes — "{0}’ni okudum." with "Aydınlatma Metni". The
+ * link opens in a new tab so the half-filled form stays where it is.
+ *
+ * Without an http(s) `linkUrl` the link text is still put in place of `{0}`,
+ * as plain text, so the label never shows the placeholder. `undefined` when
+ * the attribute has no `linkLabel`: the plain label is used.
+ */
+function optionLabelWithLink(i18n: I18n, attribute: Attribute, option: string) {
+  const { linkUrl, linkLabel } = attribute.annotations as Record<
+    string,
+    unknown
+  >;
+
+  if (typeof linkLabel !== "string") {
+    return undefined;
+  }
+
+  const { advancedMsgStr } = i18n;
+
+  const [before = "", after = ""] = advancedMsgStr(
+    attribute.annotations.inputOptionLabels?.[option] ?? option
+  ).split("{0}");
+  const text = advancedMsgStr(linkLabel);
+
+  if (typeof linkUrl !== "string" || !/^https?:\/\//.test(linkUrl)) {
+    return `${before}${text}${after}`;
+  }
+
+  return (
+    <>
+      {before}
+      <a
+        href={linkUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={linkClassName}
+      >
+        {text}
+      </a>
+      {after}
+    </>
+  );
 }

@@ -73,7 +73,7 @@ export default function Template(
               <div className="flex justify-center">
                 <img
                   src={BackgroundImage}
-                  alt="Madrasah Background"
+                  alt=""
                   className="h-16 w-auto object-contain"
                 />
               </div>
@@ -120,7 +120,7 @@ export default function Template(
                           {auth.attemptedUsername}
                         </span>
                         <Badge variant="secondary" className="text-xs">
-                          User
+                          {msg("username")}
                         </Badge>
                       </div>
                       <Button variant="ghost" size="sm" asChild>
@@ -283,7 +283,7 @@ export default function Template(
         id="kc-header"
         className={cn("hidden md:flex flex-1 items-center relative")}
       >
-        <img src={BackgroundImage} alt="Madrasah Background" />
+        <img src={BackgroundImage} alt="" />
       </div>
     </div>
   );

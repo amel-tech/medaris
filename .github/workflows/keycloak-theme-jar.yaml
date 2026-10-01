@@ -1,0 +1,121 @@
+name: Keycloak Theme JAR
+
+# Builds the login/e-mail theme JAR on every change that can alter it, proves
+# Keycloak loads it, and keeps it as an artifact (MDRS-99). Deploying is a
+# separate workflow, keycloak-theme-app.yaml, which calls this one for its
+# build so the JAR that is smoke-tested here is the JAR that ships.
+#
+# Why a separate workflow rather than a job in ci.yaml: ci.yaml's Verify job
+# runs `nx affected -t build`, and apps/keycloak-theme has no `build` target —
+# the JAR comes from `build-keycloak-theme`, which needs a JDK and Maven that
+# no other project needs. A path filter here keeps every other PR free of the
+# Java toolchain and the Keycloak boot.
+
+on:
+  pull_request:
+    paths:
+      - apps/keycloak-theme/**
+      - libs/ui/**
+      - libs/icons/**
+      - libs/tokens/**
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - tools/keycloak/smoke-theme-jar.sh
+      - .github/workflows/keycloak-theme-jar.yaml
+  push:
+    branches: [main]
+    paths:
+      - apps/keycloak-theme/**
+      - libs/ui/**
+      - libs/icons/**
+      - libs/tokens/**
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - tools/keycloak/smoke-theme-jar.sh
+      - .github/workflows/keycloak-theme-jar.yaml
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      artifact:
+        description: Name of the uploaded workflow artifact holding the JAR
+        value: ${{ jobs.build.outputs.artifact }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and smoke-test the theme JAR
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # One name for the upload and the output the deploy job downloads by.
+      ARTIFACT_NAME: keycloak-theme-jar-${{ github.sha }}
+    outputs:
+      artifact: ${{ env.ARTIFACT_NAME }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Third-party actions are pinned to a commit; first-party actions/* stay
+      # on tags (ci.yaml's policy). Same SHA as ci.yaml.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # keycloakify shells out to `mvn clean install` to package the theme, and
+      # the JAR runs on Keycloak 26.3.2, whose bundled JVM is OpenJDK 21.
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # Maven comes with the ubuntu-24.04 runner image. This step exists so a
+      # future image without it fails here instead of inside keycloakify.
+      - name: Verify Maven is available
+        run: mvn --version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # apps/keycloak-theme has no `build` target; the JAR target is inferred
+      # from package.json. Running it through Nx builds @medaris/ui and
+      # @medaris/icons first.
+      - name: Build Keycloak theme
+        run: pnpm exec nx run keycloak-theme:build-keycloak-theme
+
+      # keycloakify emits two JARs; Keycloak 26 needs
+      # …-for-kc-all-other-versions.jar.
+      - name: Verify JAR file exists
+        run: |
+          set -euo pipefail
+          jar="apps/keycloak-theme/dist_keycloak/keycloak-theme-for-kc-all-other-versions.jar"
+          if [ ! -f "$jar" ]; then
+            echo "::error::JAR not found at $jar"
+            ls -la apps/keycloak-theme/dist_keycloak || true
+            exit 1
+          fi
+          ls -l "$jar"
+          sha256sum "$jar" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # A JAR Keycloak cannot load fails nothing — the realm silently renders
+      # the built-in theme. Boot Keycloak 26.3.2 with it in providers/ and
+      # check the theme is listed and actually renders login and registration.
+      - name: Smoke-test the JAR in Keycloak
+        run: tools/keycloak/smoke-theme-jar.sh
+
+      # Retained for 90 days: the deploy workflow ships this artifact, and a
+      # rollback can re-upload it (docs/runbooks/deploy-keycloak-theme.md §3.2).
+      - name: Upload theme JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: apps/keycloak-theme/dist_keycloak/keycloak-theme-for-kc-all-other-versions.jar
+          if-no-files-found: error
+          retention-days: 90
