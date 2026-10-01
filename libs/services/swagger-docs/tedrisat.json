@@ -299,6 +299,109 @@
         ]
       }
     },
+    "/kosks/{id}/managers/{userId}": {
+      "post": {
+        "description": "Idempotent. Open to the köşk's managers and SYSTEM_ADMIN — not to a nazır of its medrese (MDRS-126).",
+        "operationId": "addKoskManager",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "No such köşk, or the user has never signed in (KOSK_MANAGER_UNKNOWN_USER)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Make a user a manager of the köşk",
+        "tags": [
+          "kosks"
+        ]
+      },
+      "delete": {
+        "description": "The last manager cannot be removed (409 KOSK_LAST_MANAGER). A manager may remove themselves while another remains (MDRS-126).",
+        "operationId": "removeKoskManager",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "No such köşk, or the user is not one of its managers"
+          },
+          "409": {
+            "description": "The user is the köşk's last manager (KOSK_LAST_MANAGER)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a manager from the köşk",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
     "/kosks/{id}/follow": {
       "post": {
         "operationId": "followKosk",
@@ -1403,6 +1506,66 @@
         ]
       }
     },
+    "/lessons/{id}/calendar.ics": {
+      "get": {
+        "description": "Authorized like the session page (`GET /courses/:id`). The event links to the Medaris session page, never to the meeting link. `UID` is derived from the lesson id and `SEQUENCE` is the course version, so a re-import after the session moved updates the event instead of duplicating it (MDRS-117).",
+        "operationId": "getLessonCalendar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "locale",
+            "required": false,
+            "in": "query",
+            "description": "Language of the one-line description; `tr` when omitted. Titles are the course's own.",
+            "schema": {
+              "enum": [
+                "tr",
+                "en",
+                "ar"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such live lesson, or it belongs to a course the caller may not see (LESSON_NOT_FOUND)."
+          },
+          "409": {
+            "description": "The lesson has no scheduled time (LESSON_NOT_SCHEDULED)."
+          },
+          "503": {
+            "description": "TEDRIS_WEB_URL is not configured on this server (CALENDAR_NOT_CONFIGURED)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One session as an iCalendar (.ics) file, for Apple Calendar, Google Calendar and Outlook",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
     "/courses/{courseId}/weeks/{weekId}/lessons": {
       "post": {
         "operationId": "createLesson",
@@ -1458,6 +1621,118 @@
           }
         ],
         "summary": "Add a lesson to the end of a week",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/courses/{courseId}/sessions/batch/preview": {
+      "post": {
+        "description": "Expands the pattern exactly as `POST /courses/:courseId/sessions/batch` would and writes nothing, so the editor can show the list before it is saved (MDRS-109).",
+        "operationId": "previewSessionBatch",
+        "parameters": [
+          {
+            "name": "courseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeeklyPatternDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionBatchPreviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation, or a pattern that cannot be expanded (INVALID_SESSION_PATTERN)."
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview the sessions a weekly pattern would create",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/courses/{courseId}/sessions/batch": {
+      "post": {
+        "description": "Expands the pattern in its IANA zone, so each session keeps its local start time across daylight-saving changes, and inserts every session in one transaction. The week holding `startDate` is \"Hafta 1\"; each session goes into the week of its date, and a missing week is created as \"Hafta N\". Bumps the course version like the other session-level writes (MDRS-109).",
+        "operationId": "createSessionBatch",
+        "parameters": [
+          {
+            "name": "courseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSessionBatchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionBatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation, or a pattern that cannot be expanded (INVALID_SESSION_PATTERN)."
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create live sessions from a weekly pattern",
         "tags": [
           "lessons"
         ]
@@ -2964,6 +3239,103 @@
         ]
       }
     },
+    "/calendar/{file}": {
+      "get": {
+        "description": "Every session of every course the feed's owner is enrolled in, teaches or manages, from 30 days back to 180 days ahead. Removed sessions carry `STATUS:CANCELLED`; UIDs and SEQUENCE are those of `GET /lessons/:id/calendar.ics` (MDRS-117). No meeting links.",
+        "operationId": "getCalendarFeed",
+        "parameters": [
+          {
+            "name": "file",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No feed has this URL: never issued, or replaced (CALENDAR_FEED_NOT_FOUND)."
+          },
+          "429": {
+            "description": ""
+          },
+          "503": {
+            "description": "TEDRIS_WEB_URL is not configured on this server (CALENDAR_NOT_CONFIGURED)."
+          }
+        },
+        "summary": "A personal calendar feed for Apple Calendar and Google Calendar",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/me/calendar-feed": {
+      "get": {
+        "operationId": "getMyCalendarFeed",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarFeedStatusResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Whether the caller has a calendar-feed URL",
+        "tags": [
+          "me"
+        ]
+      },
+      "post": {
+        "description": "The URL is returned this once — only a hash of its secret is stored. The previous URL answers 404 from now on.",
+        "operationId": "regenerateMyCalendarFeed",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarFeedLinkResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "TEDRIS_WEB_URL is not configured on this server (CALENDAR_NOT_CONFIGURED)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Issue a new calendar-feed URL; the previous one stops working",
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/me": {
       "get": {
         "operationId": "getMe",
@@ -3167,7 +3539,15 @@
             "type": "string"
           },
           "ownerId": {
-            "type": "string"
+            "type": "string",
+            "description": "Who created the köşk. Grants nothing since MDRS-126 — see managerIds"
+          },
+          "managerIds": {
+            "description": "Who manages the köşk, oldest first; never empty (MDRS-126)",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "madrasahId": {
             "type": "string",
@@ -3272,6 +3652,7 @@
         "required": [
           "id",
           "ownerId",
+          "managerIds",
           "name",
           "coverHue",
           "isPrivate",
@@ -4755,6 +5136,280 @@
           "courseVersion"
         ]
       },
+      "WeeklyPatternDto": {
+        "type": "object",
+        "properties": {
+          "weekdays": {
+            "example": [
+              2,
+              4
+            ],
+            "description": "ISO weekdays the session falls on: 1 = Monday … 7 = Sunday.",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "startTime": {
+            "type": "string",
+            "example": "21:00",
+            "description": "Local start time, 24-hour HH:mm, in `timeZone`."
+          },
+          "timeZone": {
+            "type": "string",
+            "example": "Europe/Istanbul",
+            "description": "IANA zone the start time is meant in; the course's zone when omitted. Sessions keep this local time across daylight-saving changes."
+          },
+          "startDate": {
+            "type": "string",
+            "example": "2026-10-06",
+            "description": "First calendar day of the range, YYYY-MM-DD. The Monday-to-Sunday week that holds it is \"Hafta 1\"."
+          },
+          "endDate": {
+            "type": "string",
+            "example": "2026-11-30",
+            "description": "Last calendar day, inclusive. Exactly one of this or count."
+          },
+          "count": {
+            "type": "number",
+            "example": 8,
+            "minimum": 1,
+            "maximum": 200,
+            "description": "How many sessions to create. Exactly one of this or endDate."
+          }
+        },
+        "required": [
+          "weekdays",
+          "startTime",
+          "startDate"
+        ]
+      },
+      "PlannedSessionResponse": {
+        "type": "object",
+        "properties": {
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-10-06T18:00:00.000Z"
+          },
+          "localDate": {
+            "type": "string",
+            "example": "2026-10-06",
+            "description": "Calendar date in the pattern's zone."
+          },
+          "weekNumber": {
+            "type": "number",
+            "example": 1
+          }
+        },
+        "required": [
+          "scheduledAt",
+          "localDate",
+          "weekNumber"
+        ]
+      },
+      "SessionBatchPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "timeZone": {
+            "type": "string",
+            "example": "Europe/Istanbul"
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlannedSessionResponse"
+            }
+          }
+        },
+        "required": [
+          "timeZone",
+          "sessions"
+        ]
+      },
+      "CreateSessionBatchDto": {
+        "type": "object",
+        "properties": {
+          "weekdays": {
+            "example": [
+              2,
+              4
+            ],
+            "description": "ISO weekdays the session falls on: 1 = Monday … 7 = Sunday.",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "startTime": {
+            "type": "string",
+            "example": "21:00",
+            "description": "Local start time, 24-hour HH:mm, in `timeZone`."
+          },
+          "timeZone": {
+            "type": "string",
+            "example": "Europe/Istanbul",
+            "description": "IANA zone the start time is meant in; the course's zone when omitted. Sessions keep this local time across daylight-saving changes."
+          },
+          "startDate": {
+            "type": "string",
+            "example": "2026-10-06",
+            "description": "First calendar day of the range, YYYY-MM-DD. The Monday-to-Sunday week that holds it is \"Hafta 1\"."
+          },
+          "endDate": {
+            "type": "string",
+            "example": "2026-11-30",
+            "description": "Last calendar day, inclusive. Exactly one of this or count."
+          },
+          "count": {
+            "type": "number",
+            "example": 8,
+            "minimum": 1,
+            "maximum": 200,
+            "description": "How many sessions to create. Exactly one of this or endDate."
+          },
+          "title": {
+            "type": "string",
+            "example": "Canlı ders",
+            "description": "Title every generated session starts with."
+          },
+          "durationMinutes": {
+            "type": "number",
+            "example": 60,
+            "minimum": 1,
+            "maximum": 1440
+          },
+          "meetingUrl": {
+            "type": "string",
+            "example": "https://meet.google.com/bqx-mfzn-rde",
+            "description": "Set on the first session only. Links change every week, so the others start empty."
+          }
+        },
+        "required": [
+          "weekdays",
+          "startTime",
+          "startDate",
+          "title",
+          "durationMinutes"
+        ]
+      },
+      "SessionBatchWeekResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "weekNumber": {
+            "type": "number"
+          },
+          "title": {
+            "type": "string"
+          },
+          "created": {
+            "type": "boolean",
+            "description": "Whether this batch created the week."
+          }
+        },
+        "required": [
+          "id",
+          "weekNumber",
+          "title",
+          "created"
+        ]
+      },
+      "SessionBatchLessonResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "weekId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "VIDEO",
+              "DOCUMENT",
+              "LIVE",
+              "QUIZ"
+            ]
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "Length of the lesson in minutes; null when not set."
+          },
+          "kaynak": {
+            "type": "string"
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "meetingUrl": {
+            "type": "string"
+          },
+          "agenda": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgendaStepResponse"
+            }
+          },
+          "isPreview": {
+            "type": "boolean"
+          },
+          "orderIndex": {
+            "type": "number"
+          },
+          "weekNumber": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "weekId",
+          "title",
+          "type",
+          "isPreview",
+          "orderIndex",
+          "weekNumber"
+        ]
+      },
+      "SessionBatchResponse": {
+        "type": "object",
+        "properties": {
+          "courseVersion": {
+            "type": "number",
+            "description": "The course version this write produced; send it with the next PUT /courses/:id or PATCH /lessons/:id."
+          },
+          "timeZone": {
+            "type": "string",
+            "example": "Europe/Istanbul"
+          },
+          "weeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionBatchWeekResponse"
+            }
+          },
+          "lessons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionBatchLessonResponse"
+            }
+          }
+        },
+        "required": [
+          "courseVersion",
+          "timeZone",
+          "weeks",
+          "lessons"
+        ]
+      },
       "UpdateLessonDto": {
         "type": "object",
         "properties": {
@@ -5455,6 +6110,49 @@
         "required": [
           "labelId",
           "usageCount"
+        ]
+      },
+      "CalendarFeedStatusResponse": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "description": "Whether the caller has a feed URL. The URL itself cannot be shown again: only its hash is stored."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the current URL was issued; null without one."
+          }
+        },
+        "required": [
+          "active",
+          "createdAt"
+        ]
+      },
+      "CalendarFeedLinkResponse": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "example": "https://tedris.medaris.app/calendar/Xk3…Q.ics",
+            "description": "The feed as https — for Google Calendar's \"From URL\"."
+          },
+          "webcalUrl": {
+            "type": "string",
+            "example": "webcal://tedris.medaris.app/calendar/Xk3…Q.ics",
+            "description": "The same feed as webcal — Apple Calendar subscribes to it."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "url",
+          "webcalUrl",
+          "createdAt"
         ]
       },
       "NazirMadrasahRef": {

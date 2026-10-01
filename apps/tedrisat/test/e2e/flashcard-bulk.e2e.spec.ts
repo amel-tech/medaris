@@ -346,7 +346,7 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
   });
 
   /**
-   * The 404/403 split is deliberate and matches `KoskService.assertOwner` and
+   * The 404/403 split is deliberate and matches `KoskService.assertManager` and
    * the label routes: an id that is not there is a 404, an id that is there
    * but belongs to somebody else is a 403. That does tell a caller which UUIDs
    * exist, which is defensible only because deck ids are v4 UUIDs and are not

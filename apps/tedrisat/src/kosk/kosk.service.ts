@@ -1,6 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { KoskAlreadyAffiliatedError } from "./errors/kosk-already-affiliated.error";
 import { KoskForbiddenError } from "./errors/kosk-forbidden.error";
+import { KoskLastManagerError } from "./errors/kosk-last-manager.error";
+import { KoskManagerNotFoundError } from "./errors/kosk-manager-not-found.error";
+import { KoskManagerUnknownUserError } from "./errors/kosk-manager-unknown-user.error";
 import { KoskNotAffiliatedError } from "./errors/kosk-not-affiliated.error";
 import { KoskNotFoundError } from "./errors/kosk-not-found.error";
 import { KoskRepository } from "./kosk.repository";
@@ -9,6 +12,7 @@ import {
   IKosk,
   IKoskRef,
   IKoskWithStats,
+  IManagerActor,
   IPaginatedKosks,
   IUpdateKosk,
 } from "./kosk.repository.interface";
@@ -38,29 +42,35 @@ export class KoskService {
     return kosk;
   }
 
-  /** True if `userId` owns the köşk; false if not (incl. a missing köşk). */
-  async isOwner(koskId: string, userId: string): Promise<boolean> {
-    const ownerId = await this.koskRepo.findOwnerId(koskId);
-    return ownerId !== null && ownerId === userId;
+  /**
+   * True if `userId` is one of the köşk's managers (`kosk_managers`,
+   * MDRS-126); false if not, including for a missing köşk. The one predicate
+   * authorization and the domain code both read.
+   */
+  async isManager(koskId: string, userId: string): Promise<boolean> {
+    return this.koskRepo.isManager(koskId, userId);
   }
 
   /** The köşks `userId` manages, by name — for the `GET /me` role summary. */
   async findManagedBy(userId: string): Promise<IKoskRef[]> {
-    return this.koskRepo.findOwnedBy(userId);
+    return this.koskRepo.findManagedBy(userId);
   }
 
   /** True if `userId` manages at least one köşk. */
   async managesAny(userId: string): Promise<boolean> {
-    return this.koskRepo.ownsAny(userId);
+    return this.koskRepo.managesAny(userId);
   }
 
-  /** Ensures the köşk exists and is owned by `userId`, else throws. */
-  async assertOwner(koskId: string, userId: string): Promise<void> {
-    const ownerId = await this.koskRepo.findOwnerId(koskId);
-    if (ownerId === null) {
+  /** Ensures the köşk exists and `userId` manages it, else throws. */
+  async assertManager(koskId: string, userId: string): Promise<void> {
+    const [exists, isManager] = await Promise.all([
+      this.koskRepo.exists(koskId),
+      this.koskRepo.isManager(koskId, userId),
+    ]);
+    if (!exists) {
       throw new KoskNotFoundError(koskId);
     }
-    if (ownerId !== userId) {
+    if (!isManager) {
       throw new KoskForbiddenError();
     }
   }
@@ -71,7 +81,46 @@ export class KoskService {
 
   /** True if a köşk with this id exists. */
   async exists(koskId: string): Promise<boolean> {
-    return (await this.koskRepo.findOwnerId(koskId)) !== null;
+    return this.koskRepo.exists(koskId);
+  }
+
+  /**
+   * Makes `userId` a manager of the köşk (MDRS-126). Idempotent. The route's
+   * `@Authz(SCOPES.MANAGE_KOSK_MANAGERS, byExistingKosk)` checks the actor
+   * first; the repository checks again under the köşk lock. 404 when that
+   * user has never signed in.
+   */
+  async addManager(
+    koskId: string,
+    userId: string,
+    actor: IManagerActor
+  ): Promise<void> {
+    const outcome = await this.koskRepo.addManager(koskId, userId, actor);
+    if (outcome === "no-kosk") throw new KoskNotFoundError(koskId);
+    if (outcome === "forbidden") throw new KoskForbiddenError();
+    if (outcome === "unknown-user") {
+      throw new KoskManagerUnknownUserError(userId);
+    }
+  }
+
+  /**
+   * Removes `userId` from the köşk's managers. 404 when they are not one,
+   * 409 when they are the last one — a köşk is never left unmanaged.
+   */
+  async removeManager(
+    koskId: string,
+    userId: string,
+    actor: IManagerActor
+  ): Promise<void> {
+    const outcome = await this.koskRepo.removeManager(koskId, userId, actor);
+    if (outcome === "no-kosk") throw new KoskNotFoundError(koskId);
+    if (outcome === "forbidden") throw new KoskForbiddenError();
+    if (outcome === "not-manager") {
+      throw new KoskManagerNotFoundError(koskId, userId);
+    }
+    if (outcome === "last") {
+      throw new KoskLastManagerError(koskId, userId);
+    }
   }
 
   /**

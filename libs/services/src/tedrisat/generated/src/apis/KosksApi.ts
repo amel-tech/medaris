@@ -31,6 +31,11 @@ import {
     UpdateKoskDtoToJSON,
 } from '../models/index';
 
+export interface AddKoskManagerRequest {
+    id: string;
+    userId: string;
+}
+
 export interface CreateKoskRequest {
     createKoskDto: CreateKoskDto;
 }
@@ -56,6 +61,11 @@ export interface LeaveMadrasahRequest {
     id: string;
 }
 
+export interface RemoveKoskManagerRequest {
+    id: string;
+    userId: string;
+}
+
 export interface UnfollowKoskRequest {
     id: string;
 }
@@ -69,6 +79,58 @@ export interface UpdateKoskRequest {
  * 
  */
 export class KosksApi extends runtime.BaseAPI {
+
+    /**
+     * Idempotent. Open to the köşk\'s managers and SYSTEM_ADMIN — not to a nazır of its medrese (MDRS-126).
+     * Make a user a manager of the köşk
+     */
+    async addKoskManagerRaw(requestParameters: AddKoskManagerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling addKoskManager().'
+            );
+        }
+
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling addKoskManager().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/managers/{userId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"userId"}}`, encodeURIComponent(String(requestParameters['userId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Idempotent. Open to the köşk\'s managers and SYSTEM_ADMIN — not to a nazır of its medrese (MDRS-126).
+     * Make a user a manager of the köşk
+     */
+    async addKoskManager(requestParameters: AddKoskManagerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
+        const response = await this.addKoskManagerRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
 
     /**
      * Create a new köşk
@@ -333,6 +395,58 @@ export class KosksApi extends runtime.BaseAPI {
      */
     async leaveMadrasah(requestParameters: LeaveMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
         const response = await this.leaveMadrasahRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The last manager cannot be removed (409 KOSK_LAST_MANAGER). A manager may remove themselves while another remains (MDRS-126).
+     * Remove a manager from the köşk
+     */
+    async removeKoskManagerRaw(requestParameters: RemoveKoskManagerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling removeKoskManager().'
+            );
+        }
+
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling removeKoskManager().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/managers/{userId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"userId"}}`, encodeURIComponent(String(requestParameters['userId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The last manager cannot be removed (409 KOSK_LAST_MANAGER). A manager may remove themselves while another remains (MDRS-126).
+     * Remove a manager from the köşk
+     */
+    async removeKoskManager(requestParameters: RemoveKoskManagerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
+        const response = await this.removeKoskManagerRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

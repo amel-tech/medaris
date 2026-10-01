@@ -7,7 +7,7 @@ import {
   courseMuderris,
   courses,
 } from "../../src/database/schema/course.schema";
-import { kosks } from "../../src/database/schema/kosk.schema";
+import { koskManagers, kosks } from "../../src/database/schema/kosk.schema";
 import { users } from "../../src/database/schema/user.schema";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
@@ -87,6 +87,11 @@ describe("Users (e2e)", () => {
       .values({ ownerId: MANAGER_ID, name: "Süleymaniye Köşkü" })
       .returning();
     koskId = kosk.id;
+    // Managing is `kosk_managers` since MDRS-126, which `POST /kosks` fills
+    // and a direct insert does not.
+    await databaseService.db
+      .insert(koskManagers)
+      .values({ koskId, userId: MANAGER_ID, addedBy: MANAGER_ID });
     const [course] = await databaseService.db
       .insert(courses)
       .values({ koskId, authorId: MANAGER_ID, title: "Usûl-i Fıkıh" })

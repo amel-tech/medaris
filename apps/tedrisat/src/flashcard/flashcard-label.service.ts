@@ -27,7 +27,7 @@ export class FlashcardLabelService {
   /**
    * Ensures the label exists and is owned by `userId`, else throws.
    *
-   * Modelled on `KoskService.assertOwner`. Ownership is `userId`, the column
+   * Modelled on `KoskService.assertManager`. Ownership is `userId`, the column
    * the create path fills from the verified token — NOT `createdBy`, which
    * happens to hold the same value today but is an audit field and would stop
    * matching the moment anything creates a label on another user's behalf.

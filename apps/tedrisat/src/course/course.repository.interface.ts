@@ -228,6 +228,41 @@ export interface ILessonMutation extends ILesson {
   courseVersion: number;
 }
 
+/** One session of a weekly-pattern batch (MDRS-109), already expanded. */
+export interface IBatchSession {
+  scheduledAt: Date;
+  /** The course week it goes into; created as "Hafta N" when missing. */
+  weekNumber: number;
+}
+
+export interface ICreateSessionBatch {
+  title: string;
+  durationMinutes: number;
+  /** Set on the first session only. */
+  meetingUrl?: string;
+  /**
+   * Expands the pattern against the course's zone. Called inside the write
+   * transaction, after the course row is locked, so a concurrent change of
+   * the zone cannot slip between the expansion and the insert.
+   */
+  plan: (courseTimeZone: string) => IBatchSession[];
+}
+
+export interface ISessionBatchWeek {
+  id: string;
+  weekNumber: number;
+  title: string;
+  /** Whether this batch created the week. */
+  created: boolean;
+}
+
+export interface ISessionBatchResult {
+  courseVersion: number;
+  weeks: ISessionBatchWeek[];
+  /** In date order. */
+  lessons: (ILesson & { weekNumber: number })[];
+}
+
 /** A course as it appears in a caller's role summary (`GET /me`, MDRS-104). */
 export interface ICourseRef {
   id: string;
@@ -269,6 +304,13 @@ export interface ICourseRepository {
     data: IUpdateLesson
   ): Promise<ILessonMutation>;
   archiveLesson(lessonId: string): Promise<ILessonMutation>;
+  /** The course's IANA zone; null if there is no such course. */
+  findTimeZone(courseId: string): Promise<string | null>;
+  /** Inserts every session of `batch` in one transaction (MDRS-109). */
+  createSessionBatch(
+    courseId: string,
+    batch: ICreateSessionBatch
+  ): Promise<ISessionBatchResult>;
   enroll(
     userId: string,
     courseId: string,
