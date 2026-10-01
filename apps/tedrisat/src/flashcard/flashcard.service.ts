@@ -2,8 +2,6 @@ import {
   type AuthenticatedUser,
   AuthzForbiddenError,
   AuthzService,
-  ENTITIES,
-  SCOPES,
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { CardIncludeEnum } from "./domain/card-include.enum";
@@ -171,13 +169,10 @@ export class FlashcardService {
     for (const cardId of cardIds) {
       const row = byCard.get(cardId);
       if (!row) throw new CardNotFoundError(cardId);
+      // No context: GlobalExceptionFilter serialises it into the response,
+      // and the parent deck id of a private card is not the caller's to see.
       if (row.authorId !== user.sub && !row.isPublic) {
-        throw new AuthzForbiddenError(undefined, {
-          userId: user.sub,
-          entity: ENTITIES.FLASHCARD_DECK,
-          resourceId: row.deckId,
-          scope: SCOPES.VIEW,
-        });
+        throw new AuthzForbiddenError();
       }
     }
   }
