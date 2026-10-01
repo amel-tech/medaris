@@ -16,7 +16,7 @@
 // would land after other rules once Tailwind inlines the file, where a browser
 // ignores them. The system's readme asks for a <link> with preconnect in
 // production, which is what medaris-fonts.js feeds.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { DEFAULT_DIR, fromRoot, parseArgs, repoRoot } from "./lib.mjs";
 
@@ -125,10 +125,21 @@ const outputs = new Map([
   ],
 ]);
 
+// Read and treat ENOENT as "absent" rather than asking existsSync first: a
+// check-then-use pair is the file-system race CodeQL flags (js/file-system-race).
+function readIfPresent(target) {
+  try {
+    return readFileSync(target, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
 let stale = 0;
 for (const [path, content] of outputs) {
   const target = fromRoot(path);
-  const current = existsSync(target) ? readFileSync(target, "utf8") : null;
+  const current = readIfPresent(target);
   if (current === content) continue;
   if (check) {
     console.error(`stale: ${path}`);
