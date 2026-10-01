@@ -315,7 +315,8 @@ services:
       - tedrisat
 
   # No auth: landing carries neither Keycloak credentials nor NEXTAUTH_*, and
-  # it calls no API server-side.
+  # it calls no API server-side. TEDRIS_URL is where its sign-in, registration
+  # and köşk links redirect (MDRS-151).
   landing:
     build:
       context: .

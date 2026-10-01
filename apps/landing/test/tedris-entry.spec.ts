@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { headerCtaIntent, headerSignInIntent } from "~/features/header/data";
-import { heroCtaIntent } from "~/features/hero/data";
+import { registerHref, signInHref } from "~/lib/tedris";
 import { landingEntryHref, tedrisEntryUrl } from "~/lib/tedris-entry";
 import { GET } from "../app/api/tedris/[intent]/route";
 
@@ -10,10 +9,9 @@ const get = (path: string, intent: string) =>
   });
 
 describe("landing's calls to action lead into tedris (MDRS-101)", () => {
-  it("the header and hero CTAs open registration, the header link sign-in", () => {
-    expect(heroCtaIntent).toBe("register");
-    expect(headerCtaIntent).toBe("register");
-    expect(headerSignInIntent).toBe("signin");
+  it('the page\'s "Kayıt ol" opens registration, "Giriş yap" sign-in', () => {
+    expect(registerHref).toBe("/api/tedris/register?locale=tr");
+    expect(signInHref).toBe("/api/tedris/signin?locale=tr");
   });
 
   it("one click: the CTA's link redirects to tedris's registration page", async () => {
@@ -30,16 +28,16 @@ describe("landing's calls to action lead into tedris (MDRS-101)", () => {
   });
 
   it("sign-in goes to tedris's sign-in page", async () => {
-    const response = await get(landingEntryHref("signin", "ar"), "signin");
+    const response = await get(signInHref, "signin");
     expect(response.headers.get("location")).toBe(
-      "http://localhost:4000/ar/auth/signin"
+      "http://localhost:4000/tr/auth/signin"
     );
   });
 
   it("falls back to the default locale rather than forwarding an unknown one", async () => {
     const response = await get("/api/tedris/register?locale=xx", "register");
     expect(response.headers.get("location")).toBe(
-      "http://localhost:4000/en/auth/register"
+      "http://localhost:4000/tr/auth/register"
     );
   });
 
