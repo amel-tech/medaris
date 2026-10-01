@@ -5,9 +5,11 @@
   "private": true,
   "scripts": {
     "clean": "rm -rf .turbo node_modules dist .tsbuild",
-    "typecheck": "tsc -b tsconfig.json"
+    "typecheck": "tsc -b tsconfig.json",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:",
     "@medaris/icons": "workspace:*",
     "@medaris/tokens": "workspace:*",
     "@radix-ui/react-alert-dialog": "catalog:",
@@ -42,8 +44,10 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "happy-dom": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "exports": {
     "./globals.css": "./src/styles/globals.css",
