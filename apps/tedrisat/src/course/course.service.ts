@@ -11,6 +11,7 @@ import { KoskService } from "../kosk/kosk.service";
 import { CourseRepository } from "./course.repository";
 import {
   ICourse,
+  ICourseBadgeCounts,
   ICourseDetail,
   ICourseDetailView,
   ICourseSummary,
@@ -546,6 +547,11 @@ export class CourseService {
   // Authorization is `@Authz(SCOPES.MANAGE_ENROLLMENTS, …)` on
   // CourseController: the köşk manager and the course's müderrisler. Nothing
   // narrows it further here.
+
+  /** The course menu's badges (MDRS-183); the controller has already 404ed an unknown course. */
+  async getBadgeCounts(courseId: string): Promise<ICourseBadgeCounts> {
+    return this.courseRepo.getBadgeCounts(courseId);
+  }
 
   /** Requests, active seats and completions, for the team's roster. */
   async findEnrollments(courseId: string): Promise<IRosterEnrollment[]> {

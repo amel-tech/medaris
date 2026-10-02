@@ -68,6 +68,14 @@ export interface IMadrasahKoskRef {
   name: string;
 }
 
+/** What the nazır portal's menu badges count for one medrese (MDRS-183). */
+export interface IMadrasahBadgeCounts {
+  /** PENDING enrollments across the medrese's courses. */
+  pendingApplications: number;
+  /** How many of those courses hold at least one of them. */
+  coursesWithPendingApplications: number;
+}
+
 export interface IMadrasahHeadMuderris {
   id: string;
   /** From the `users` row; null until that person has signed in once. */

@@ -166,6 +166,14 @@ export interface IPendingEnrollment extends IEnrollment {
   courseTitle: string;
 }
 
+/** What the nazır portal's course menu badges count (MDRS-183). */
+export interface ICourseBadgeCounts {
+  /** Live sessions still ahead, not cancelled, that have no meeting link. */
+  missingMeetingLinks: number;
+  /** PENDING enrollments of the course. */
+  pendingApplications: number;
+}
+
 /** A talebe taken out of a course by its team (MDRS-105). */
 export interface IRemoveEnrollment {
   userId: string;
@@ -400,6 +408,8 @@ export interface ICourseRepository {
     details: Record<string, unknown>;
   }): Promise<void>;
   findPendingByKosk(koskId: string): Promise<IPendingEnrollment[]>;
+  /** The counts behind the course menu's badges (MDRS-183). */
+  getBadgeCounts(courseId: string): Promise<ICourseBadgeCounts>;
   /** The course's müderris rows in display order (MDRS-105). */
   findMuderris(courseId: string): Promise<IMuderris[]>;
   /** Which of `ids` have signed in at least once (have a `users` row). */

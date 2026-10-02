@@ -1,5 +1,16 @@
 import { Injectable } from "@nestjs/common";
-import { and, eq, inArray, isNotNull, isNull, max, ne, sql } from "drizzle-orm";
+import {
+  and,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  max,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import { holdsIn, syncMuderrisAssignments } from "../database/role-assignments";
 import { auditLog } from "../database/schema/audit.schema";
@@ -19,6 +30,7 @@ import {
 import { users } from "../database/schema/user.schema";
 import {
   ICourse,
+  ICourseBadgeCounts,
   ICourseDetail,
   ICourseRef,
   ICourseRepository,
@@ -995,6 +1007,49 @@ export class CourseRepository implements ICourseRepository {
       )
       .orderBy(enrollments.createdAt);
     return rows;
+  }
+
+  /**
+   * The counts behind the nazır portal's course menu (MDRS-183). A session
+   * "misses its link" when it is live, still ahead, not cancelled, belongs to
+   * a week and a lesson nobody hid, and its `meeting_url` is null or only
+   * whitespace. A session already under way is not counted: a link added now
+   * would come too late for it.
+   */
+  async getBadgeCounts(courseId: string): Promise<ICourseBadgeCounts> {
+    const [[pending], [missing]] = await Promise.all([
+      this.db
+        .select({ value: sql<number>`count(*)`.mapWith(Number) })
+        .from(enrollments)
+        .where(
+          and(
+            eq(enrollments.courseId, courseId),
+            eq(enrollments.status, EnrollmentStatus.PENDING)
+          )
+        ),
+      this.db
+        .select({ value: sql<number>`count(*)`.mapWith(Number) })
+        .from(lessons)
+        .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
+        .where(
+          and(
+            eq(courseWeeks.courseId, courseId),
+            isNull(courseWeeks.archivedAt),
+            isNull(lessons.archivedAt),
+            isNull(lessons.cancelledAt),
+            eq(lessons.type, LessonType.LIVE),
+            gte(lessons.scheduledAt, sql`now()`),
+            or(
+              isNull(lessons.meetingUrl),
+              sql`btrim(${lessons.meetingUrl}) = ''`
+            )
+          )
+        ),
+    ]);
+    return {
+      missingMeetingLinks: missing?.value ?? 0,
+      pendingApplications: pending?.value ?? 0,
+    };
   }
 
   async setEnrollmentStatus(
