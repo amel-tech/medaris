@@ -9,6 +9,7 @@ src/apis/FlashcardCardsApi.ts
 src/apis/FlashcardDeckLabelApi.ts
 src/apis/FlashcardDecksApi.ts
 src/apis/FlashcardlabelApi.ts
+src/apis/KoskApplicationsApi.ts
 src/apis/KosksApi.ts
 src/apis/LessonsApi.ts
 src/apis/MadrasahsApi.ts
@@ -53,6 +54,7 @@ src/models/CreateFlashcardDto.ts
 src/models/CreateFlashcardLabelDto.ts
 src/models/CreateFlashcardLabelingDto.ts
 src/models/CreateFlashcardProgressDto.ts
+src/models/CreateKoskApplicationDto.ts
 src/models/CreateKoskDto.ts
 src/models/CreateLessonDto.ts
 src/models/CreateMadrasahDto.ts
@@ -85,6 +87,7 @@ src/models/FlashcardResponse.ts
 src/models/FlashcardType.ts
 src/models/GrantResponse.ts
 src/models/HealthCheckDto.ts
+src/models/KoskApplicationResponse.ts
 src/models/KoskDeckResponse.ts
 src/models/KoskDecksResponse.ts
 src/models/KoskLevel.ts
@@ -111,6 +114,7 @@ src/models/MyEffectivePermissionsResponse.ts
 src/models/MyEnrollmentResponse.ts
 src/models/MyGrantsResponse.ts
 src/models/MyPermissionsResponse.ts
+src/models/MyPublicProfileResponse.ts
 src/models/MyRolesResponse.ts
 src/models/NazirMadrasahRef.ts
 src/models/NextSessionResponse.ts
@@ -124,6 +128,8 @@ src/models/PendingEnrollmentResponse.ts
 src/models/PermissionGroupRef.ts
 src/models/PersonRef.ts
 src/models/PlannedSessionResponse.ts
+src/models/ProfileVisibility.ts
+src/models/PublicProfileResponse.ts
 src/models/ReadAllNotificationsResponse.ts
 src/models/RemoveEnrollmentDto.ts
 src/models/ReplaceCourseDto.ts
@@ -152,7 +158,9 @@ src/models/UpdateKoskDto.ts
 src/models/UpdateLessonDto.ts
 src/models/UpdateMadrasahDto.ts
 src/models/UpdateMeDto.ts
+src/models/UpdateProfileVisibilityDto.ts
 src/models/UpdateProgressDto.ts
+src/models/UpdatePublicProfileDto.ts
 src/models/UserSummaryResponse.ts
 src/models/WeekResponse.ts
 src/models/WeeklyPatternDto.ts

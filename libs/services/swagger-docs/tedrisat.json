@@ -4039,6 +4039,44 @@
         ]
       }
     },
+    "/kosk-applications": {
+      "post": {
+        "description": "The application waits as PENDING for Medaris management.",
+        "operationId": "createKoskApplication",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateKoskApplicationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskApplicationResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Apply to open a köşk",
+        "tags": [
+          "kosk-applications"
+        ]
+      }
+    },
     "/notifications": {
       "get": {
         "operationId": "listNotifications",
@@ -4867,6 +4905,111 @@
           }
         ],
         "summary": "Set the caller's time zone and locale",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/me/public-profile": {
+      "get": {
+        "operationId": "getMyPublicProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyPublicProfileResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's public profile, every field and every switch",
+        "tags": [
+          "me"
+        ]
+      },
+      "patch": {
+        "description": "Only the fields sent change. The künye must be non-empty and unique regardless of case.",
+        "operationId": "updateMyPublicProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePublicProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyPublicProfileResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The künye is taken (KUNYE_TAKEN)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change the caller's public profile",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/users/{id}/public-profile": {
+      "get": {
+        "operationId": "getUserPublicProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProfileResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The person has not chosen a künye yet."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Another person's public profile, filtered to what they show",
         "tags": [
           "me"
         ]
@@ -8897,6 +9040,79 @@
           "createdAt"
         ]
       },
+      "CreateKoskApplicationDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "example": "Davutpaşa Köşkü"
+          },
+          "field": {
+            "type": "string",
+            "enum": [
+              "ARABIC_LANGUAGE_SCIENCES",
+              "RHETORIC",
+              "FIQH",
+              "USUL_AL_FIQH",
+              "HADITH",
+              "QURAN_SCIENCES",
+              "TAFSIR",
+              "AQEEDAH_KALAM",
+              "SEERAH",
+              "LOGIC",
+              "OTHER"
+            ]
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 3000
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true,
+            "example": "+90 532 000 00 00"
+          }
+        },
+        "required": [
+          "name",
+          "field",
+          "summary",
+          "reason",
+          "email"
+        ]
+      },
+      "KoskApplicationResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "REJECTED"
+            ],
+            "example": "PENDING"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ]
+      },
       "NotificationResponse": {
         "type": "object",
         "properties": {
@@ -9876,6 +10092,16 @@
       "UpdateMeDto": {
         "type": "object",
         "properties": {
+          "givenName": {
+            "type": "string",
+            "maxLength": 100,
+            "example": "Zeynep Betül"
+          },
+          "familyName": {
+            "type": "string",
+            "maxLength": 100,
+            "example": "Karahanlı"
+          },
           "timeZone": {
             "type": "string",
             "nullable": true,
@@ -9889,6 +10115,169 @@
             "description": "BCP 47 language tag"
           }
         }
+      },
+      "ProfileVisibility": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "boolean",
+            "description": "Ad ve soyad"
+          },
+          "city": {
+            "type": "boolean"
+          },
+          "about": {
+            "type": "boolean",
+            "description": "Hakkında"
+          },
+          "courses": {
+            "type": "boolean",
+            "description": "Derslerin"
+          }
+        },
+        "required": [
+          "fullName",
+          "city",
+          "about",
+          "courses"
+        ]
+      },
+      "MyPublicProfileResponse": {
+        "type": "object",
+        "properties": {
+          "kunye": {
+            "type": "string",
+            "nullable": true,
+            "description": "İlmî künye. Null until the person chooses one."
+          },
+          "gender": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "FEMALE",
+              "MALE"
+            ]
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "about": {
+            "type": "string",
+            "nullable": true
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The name from the account, as shown on Hesap"
+          },
+          "courses": {
+            "description": "Titles of the published courses the caller is enrolled in or has completed",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/ProfileVisibility"
+          }
+        },
+        "required": [
+          "fullName",
+          "courses",
+          "visibility"
+        ]
+      },
+      "UpdateProfileVisibilityDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "boolean"
+          },
+          "city": {
+            "type": "boolean"
+          },
+          "about": {
+            "type": "boolean"
+          },
+          "courses": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdatePublicProfileDto": {
+        "type": "object",
+        "properties": {
+          "kunye": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "İlmî künye"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "FEMALE",
+              "MALE"
+            ],
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 80
+          },
+          "about": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 1000
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/UpdateProfileVisibilityDto"
+          }
+        }
+      },
+      "PublicProfileResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kunye": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "FEMALE",
+              "MALE"
+            ]
+          },
+          "fullName": {
+            "type": "string",
+            "description": "Present only while the owner shows it"
+          },
+          "city": {
+            "type": "string",
+            "description": "Present only while the owner shows it"
+          },
+          "about": {
+            "type": "string",
+            "description": "Present only while the owner shows it"
+          },
+          "courses": {
+            "description": "Present only while the owner shows it",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "kunye"
+        ]
       },
       "UserSummaryResponse": {
         "type": "object",
