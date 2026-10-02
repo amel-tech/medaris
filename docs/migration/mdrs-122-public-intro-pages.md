@@ -13,8 +13,8 @@ follow-ups MDRS-45 and MDRS-103 left for this issue
 - A token that is present but invalid is still 401.
 - `kosks.is_private` means **unlisted**: in no list or search; opened by its
   link to a signed-in caller; 404 without a token; every enrollment in its
-  courses waits for approval. New köşks default to listed; existing rows are
-  not touched.
+  courses waits for approval. New köşks default to listed, and 0022 lists
+  every existing köşk (owner decision, 2026-10-02).
 - Passive and DRAFT courses are 404 without a token. "Passive" is read as
   hidden (`courses.archived_at`, MDRS-124): it is the only inactive state a
   course has. Köşks and medreses have no passive or draft state today, so
@@ -93,10 +93,12 @@ answer does not rest on the guard alone.
   only through the köşk) and the caller's own (`courses/enrolled`, `GET /me`,
   the calendar feed), so an unlisted köşk's courses are in no public list.
 
-**Migration 0022** (`0022_kosk_listed_by_default.sql`) is one statement:
-`ALTER TABLE "kosks" ALTER COLUMN "is_private" SET DEFAULT false`. No UPDATE.
-The rollback is `rollbacks/0022_kosk_listed_by_default.down.sql` (`SET DEFAULT
-true`), which touches no row either. `CreateKoskDto.isPrivate` documents
+**Migration 0022** (`0022_kosk_listed_by_default.sql`) is two statements:
+`ALTER TABLE "kosks" ALTER COLUMN "is_private" SET DEFAULT false`, then
+`UPDATE "kosks" SET "is_private" = false WHERE "is_private" = true`, which
+lists every existing köşk. The rollback is
+`rollbacks/0022_kosk_listed_by_default.down.sql` (`SET DEFAULT true`); it
+touches no row, because what was unlisted before 0022 is not recorded. `CreateKoskDto.isPrivate` documents
 `default: false`; nizam's köşk form starts unchecked for a new köşk.
 
 **OpenAPI.** Descriptions on the six operations and on `isPrivate`, the
@@ -192,11 +194,15 @@ All runs used the prefix `env -u NODE_ENV -u DB_PORT -u POSTGRES_DB -u POSTGRES_
 ## The owner's decision: köşks that are unlisted today
 
 Every köşk created before 0022 without an explicit `isPrivate` got the old
-default, `true`. After this release those köşks disappear from every list and
-answer 404 to signed-out visitors. 0022 deliberately does not change them. The
-read-only query below lists them so the owner can decide one by one; flipping
-one is an edit of `isPrivate` in nizam's köşk form (or a PATCH), not part of
-this change.
+default, `true`. Left alone, those köşks would disappear from every list,
+answer 404 to signed-out visitors, and turn every new enrollment in their
+courses into PENDING — `CourseService.enroll` treats an unlisted köşk as
+requiring approval, whatever the course's own `requires_approval` says.
+
+The owner decided on 2026-10-02 that **every existing köşk is listed**, so
+0022 carries the UPDATE. A köşk that should be unlisted is unlisted again by
+hand afterwards, in nizam's köşk form or with a PATCH. The read-only query
+below, run before the release, shows which köşks the UPDATE will list:
 
 ```sql
 -- Köşks that are unlisted (is_private = true). Read-only.
