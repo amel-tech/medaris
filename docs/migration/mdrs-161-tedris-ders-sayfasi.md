@@ -4,7 +4,7 @@ Package 31 of the screen canvas. One page, `/[locale]/courses/[courseId]`, drawn
 
 ## What was done
 
-API (`tedrisat`, migration `0032_revoked_enrollment`)
+API (`tedrisat`, migration `0039_revoked_enrollment`)
 
 - No `GET /public/courses/:id`, no `DELETE /courses/:id/enroll`, no `POST .../complete`. `GET /courses/:id` is already `@AuthzPublic()` and already withholds content from a caller who may not read it (`contentLocked`, MDRS-103); `DELETE /courses/:id/enrollment` already withdraws a request or leaves a course; `PATCH /courses/:id/enrollments/:userId` already lets the course team complete a course (and the talebe can no longer complete it through `PUT .../progress`, MDRS-105). A second route for each would be a copy of the same rule.
 - New `enrollments.status = REVOKED` (enum value, declared last so the roster still sorts requests first). `POST /courses/:id/enrollments/:userId/remove` now turns the seat REVOKED instead of deleting it; the reason is still written to `audit_log`, with the previous status and progress. A REVOKED talebe resolves to the public role (as a barred one does, MDRS-177): `GET /courses/:id` answers `enrollment.status = REVOKED` and `contentLocked = true`; applying, leaving, recording progress and being completed are refused (409 `ENROLLMENT_STATE_CONFLICT`, or 403 on progress because the seat no longer holds `view_details`); `approve` brings the talebe back; the seat is not in `GET /courses/enrolled`, not counted in a köşk's students, and shows no badge on a medrese card. This changes the MDRS-105 rule "a removed talebe may apply again": they no longer apply on their own (tedris/13 criterion 5 was marked "not verifiable" in the spec; this is the decision recorded in the plan).

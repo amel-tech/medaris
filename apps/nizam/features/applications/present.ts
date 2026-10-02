@@ -136,7 +136,7 @@ export type StudentAction = "complete" | "reopen" | "remove" | "ban" | "lift";
  * tedrisat decides who may; the page is only reached by the course team.
  */
 export function studentActions(
-  status: "PENDING" | "ENROLLED" | "COMPLETED",
+  status: "PENDING" | "ENROLLED" | "COMPLETED" | "REVOKED",
   barred: boolean
 ): StudentAction[] {
   const bar: StudentAction = barred ? "lift" : "ban";
