@@ -67,9 +67,10 @@ export const CoursePage = ({
   registerHref?: string;
   /**
    * The recordings this caller may see (`GET /courses/:id/recordings`, MDRS-162):
-   * the API has already left out what they may not.
+   * the API has already left out what they may not. Null when the read
+   * failed: the tab then offers a retry instead of the empty state.
    */
-  recordings?: RecordingResponse[];
+  recordings?: RecordingResponse[] | null;
   /** The tab the page opens on: `?tab=kayitlar` from a session page. */
   initialTab?: string;
   /** The instant the page is drawn at, for tests. */
@@ -99,7 +100,9 @@ export const CoursePage = ({
     {
       value: "kayitlar",
       label: t("tabRecordings"),
-      ...(recordings.length > 0 ? { count: recordings.length } : {}),
+      ...(recordings && recordings.length > 0
+        ? { count: recordings.length }
+        : {}),
     },
     ...(seat ? [{ value: "deste", label: t("tabDeck") }] : []),
     { value: "muderrisler", label: t("tabTeachers") },

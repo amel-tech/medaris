@@ -310,5 +310,39 @@ describe("lesson recordings (MDRS-162, e2e)", () => {
         }
       }
     });
+
+    it("gives a locked caller the PUBLIC recording of a sample session, and only that", async () => {
+      await db()
+        .update(lessons)
+        .set({ isPreview: true })
+        .where(eq(lessons.id, publicLessonId));
+      await db()
+        .update(lessons)
+        .set({ isPreview: true })
+        .where(eq(lessons.id, enrolledLessonId));
+      for (const token of [undefined, as(STRANGER_ID), as(PENDING_ID)]) {
+        const open = http().get(session(publicLessonId));
+        const res = await (token
+          ? open.set("Authorization", token)
+          : open
+        ).expect(200);
+        expect(res.body.contentLocked).toBe(true);
+        expect(res.body.recording).toMatchObject({
+          title: "Bir: celse kaydı",
+          status: "READY",
+        });
+        expect(res.body).not.toHaveProperty("liveStreamUrl");
+
+        const closed = http().get(session(enrolledLessonId));
+        const hidden = await (token
+          ? closed.set("Authorization", token)
+          : closed
+        ).expect(200);
+        expect(hidden.body.recording).toBeNull();
+        expect(JSON.stringify(hidden.body)).not.toContain(
+          "drive.google.com/file/d/xyz"
+        );
+      }
+    });
   });
 });

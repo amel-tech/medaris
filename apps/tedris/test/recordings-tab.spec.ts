@@ -4,6 +4,8 @@ import { createElement, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, click, render } from "./dom";
 
+const refresh = vi.hoisted(() => vi.fn());
+
 vi.mock("next-intl", async () => {
   const { resources } = await import("@medaris/i18n");
   return {
@@ -47,6 +49,8 @@ vi.mock("~/features/courses/components/media-player", () => ({
       createElement("p", null, children)
     ),
 }));
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 
 afterEach(cleanup);
 
@@ -113,7 +117,7 @@ const FIVE = [
   }),
 ];
 
-const mount = async (recordings: RecordingResponse[]) => {
+const mount = async (recordings: RecordingResponse[] | null) => {
   const { RecordingsTab } = await import(
     "~/features/courses/components/recordings-tab"
   );
@@ -126,6 +130,19 @@ const mount = async (recordings: RecordingResponse[]) => {
 };
 
 const text = (el: Element) => el.textContent?.replace(/\s+/g, " ").trim();
+
+describe("recordings tab, read failed (design tedris/24)", () => {
+  it("says it failed and offers a retry, not the empty state", async () => {
+    const host = await mount(null);
+    expect(text(host)).toContain("Ders kayıtları yüklenemedi");
+    expect(text(host)).not.toContain("henüz yayımlanmış ders kaydı yok");
+    const retry = [...host.querySelectorAll("button")].find(
+      (b) => b.textContent?.trim() === "Yeniden dene"
+    ) as Element;
+    await click(retry);
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("recordings tab (design tedris/24, MDRS-162)", () => {
   it("groups the recordings by week, newest first, with date and length", async () => {

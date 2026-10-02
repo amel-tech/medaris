@@ -19,6 +19,7 @@ import { courseTotals, courseViewState } from "../course-view";
 import type { LessonLockReason } from "../lesson-lock";
 import { sessionStateOf } from "../session-model";
 import { CourseProgramme } from "./course-programme";
+import { EnrollmentReceivedDialog } from "./enrollment-received-dialog";
 
 /**
  * Design tedris/19 — a session opened by someone who may not read it. It is
@@ -54,6 +55,8 @@ export function LessonLocked({
   const router = useRouter();
   const [sending, startTransition] = useTransition();
   const [now] = useState(() => nowProp ?? Date.now());
+  // Design tedris/07: the window after an application that waits for approval.
+  const [received, setReceived] = useState(false);
   const totals = courseTotals(course);
 
   const apply = () =>
@@ -63,7 +66,10 @@ export function LessonLocked({
         toast.error(courseText(courseActionErrorKey(res.status)));
         return;
       }
-      // ENROLLED re-renders the session; PENDING re-renders this card.
+      // The API decides whether the application waits (PENDING: the window of
+      // tedris/07, then this card draws "awaiting approval") or the talebe is
+      // in (ENROLLED: the refresh draws the session).
+      if (res.data.status === "PENDING") setReceived(true);
       router.refresh();
     });
 
@@ -183,6 +189,11 @@ export function LessonLocked({
           />
         </aside>
       </div>
+      <EnrollmentReceivedDialog
+        open={received}
+        onClose={() => setReceived(false)}
+        courseTitle={course.title}
+      />
     </main>
   );
 }

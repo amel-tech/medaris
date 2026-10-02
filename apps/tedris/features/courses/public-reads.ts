@@ -89,15 +89,16 @@ export const getSession = cache(
 
 /**
  * The course's recordings for this caller (MDRS-162): everything for someone
- * who may read the course's content, only the public ones for anyone else. An
- * empty list on any failure: the tab then says there is none.
+ * who may read the course's content, only the public ones for anyone else.
+ * Null when the read fails, so the tab can say it failed and offer a retry
+ * rather than claim there are none.
  */
-export const getRecordings = async (
+export const getRecordings = (
   courseId: string
-): Promise<RecordingResponse[]> =>
-  (await orNull(async () =>
+): Promise<RecordingResponse[] | null> =>
+  orNull(async () =>
     (await viewerApi()).lessons.listCourseRecordings({ id: courseId })
-  )) ?? [];
+  );
 
 /** Whether the visitor has a usable token — what tedrisat will see. */
 export const isSignedIn = async (): Promise<boolean> =>

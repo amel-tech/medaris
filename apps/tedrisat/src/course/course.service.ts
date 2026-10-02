@@ -303,26 +303,36 @@ export class CourseService {
     if (!view) throw new LessonNotFoundError(sessionId);
 
     // The stream link and the recording are content (MDRS-162): a caller who
-    // may not read content gets neither key, as for the meeting link.
+    // may not read content gets neither key, as for the meeting link. The
+    // one exception is a sample session (`isPreview`), whose content the
+    // müderris opened to everyone: a PUBLIC recording of it is returned to a
+    // locked caller too, and nothing else.
+    const sample = detail.weeks
+      .flatMap((week) => week.lessons)
+      .some((lesson) => lesson.id === sessionId && lesson.isPreview);
     if (!detail.contentLocked) {
       view.liveStreamUrl = liveStreamFor(
         view.status,
         await this.recordingRepo.findLiveStreamUrl(sessionId),
         true
       );
+    }
+    if (!detail.contentLocked || sample) {
       const [stored] = await this.recordingRepo.findByLessonIds([sessionId]);
-      if (stored) {
-        const [shown] = visibleRecordings(
-          [
-            {
-              ...stored,
-              weekId: view.weekId,
-              weekNumber: view.weekNumber,
-              weekTitle: view.weekTitle,
-            },
-          ],
-          true
-        );
+      const [shown] = stored
+        ? visibleRecordings(
+            [
+              {
+                ...stored,
+                weekId: view.weekId,
+                weekNumber: view.weekNumber,
+                weekTitle: view.weekTitle,
+              },
+            ],
+            !detail.contentLocked
+          )
+        : [];
+      if (shown) {
         const {
           lessonId: _l,
           weekId: _w,

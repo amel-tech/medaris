@@ -13,6 +13,7 @@ import {
   recordingAction,
 } from "../recordings-model";
 import { MediaPlayer } from "./media-player";
+import { RecordingsFailed } from "./recordings-failed";
 
 const PROVIDER_NAMES: Record<string, string | undefined> = {
   YOUTUBE: "YouTube",
@@ -28,6 +29,18 @@ const PROVIDER_NAMES: Record<string, string | undefined> = {
  * offers nothing.
  */
 export const RecordingsTab = ({
+  recordings,
+  timeZone,
+}: {
+  /** Null when the read failed: the tab says so and offers a retry. */
+  recordings: RecordingResponse[] | null;
+  timeZone: string;
+}) => {
+  if (recordings === null) return <RecordingsFailed />;
+  return <RecordingsList recordings={recordings} timeZone={timeZone} />;
+};
+
+const RecordingsList = ({
   recordings,
   timeZone,
 }: {
