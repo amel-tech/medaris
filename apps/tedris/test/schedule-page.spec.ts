@@ -77,7 +77,9 @@ describe("Programım (design tedris/21)", () => {
     );
     expect(html).toContain("Saatler İstanbul saatiyle.");
     expect(html).toContain(">Saat dilimini değiştir<");
-    expect(html).toMatch(/href="\/account\/calendar"[^>]*>.*Takvim aboneliği/s);
+    expect(html).toMatch(
+      /href="\/account\/calendar"[^>]*>[\s\S]*Takvim aboneliği/
+    );
   });
 
   it("groups by day with the day, its distance from today, and each session's clock, length, course, week and title", async () => {

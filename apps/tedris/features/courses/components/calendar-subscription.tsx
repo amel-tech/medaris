@@ -91,7 +91,6 @@ const AsideItem = ({
 const Steps = ({ keys }: { keys: ReactNode[] }) => (
   <ol className="m-0 flex list-decimal flex-col gap-2 ps-5 mds-body-sm">
     {keys.map((step, i) => (
-      // biome-ignore lint/suspicious/noArrayIndexKey: fixed, ordered instructions
       <li key={i}>{step}</li>
     ))}
   </ol>
