@@ -77,7 +77,9 @@ const CourseCard = ({
       footer={
         <>
           <span>
-            <bdi>{course.koskName}</bdi>
+            <Link href={`/kosks/${course.koskId}`}>
+              <bdi>{course.koskName}</bdi>
+            </Link>
             <span className="mds-sep" aria-hidden="true">
               ·
             </span>
@@ -188,7 +190,11 @@ export const MadrasahPage = async ({
                 {t("MadrasahPage.courses")}
               </h2>
               <span className="mds-caption">
-                {t("MadrasahPage.coursesHint")}
+                {t(
+                  signedIn
+                    ? "MadrasahPage.coursesHint"
+                    : "MadrasahPage.coursesHintAnonymous"
+                )}
               </span>
             </div>
             {courses.length === 0 ? (
@@ -238,12 +244,31 @@ export const MadrasahPage = async ({
           ) : null}
           {kosks.length > 0 ? (
             <Card title={t("MadrasahPage.kosks")} headingLevel={2}>
-              <ul className="flex flex-col gap-2 mbs-6">
+              <p className="mds-caption mbs-1">{t("MadrasahPage.kosksHint")}</p>
+              <ul
+                className="m-0 flex list-none flex-col p-0 mbs-2"
+                aria-label={t("MadrasahPage.kosksLabel", {
+                  name: madrasah.name,
+                })}
+              >
                 {kosks.map((kosk) => (
-                  <li key={kosk.id}>
-                    <Link href={`/kosks/${kosk.id}`}>
-                      <bdi>{kosk.name}</bdi>
-                    </Link>
+                  <li
+                    key={kosk.id}
+                    className="flex items-center gap-3 py-3 [&:not(:last-child)]:border-b-[length:var(--border-width-thin)] [&:not(:last-child)]:border-[color:var(--border-neutral-subtle)]"
+                  >
+                    <Avatar entity size="sm" name={kosk.name} decorative />
+                    <span className="flex min-inline-0 flex-1 flex-col gap-0.5">
+                      <Link href={`/kosks/${kosk.id}`}>
+                        <bdi>{kosk.name}</bdi>
+                      </Link>
+                      {courses
+                        .filter((c) => c.koskId === kosk.id)
+                        .map((c) => (
+                          <span key={c.id} className="mds-caption" dir="auto">
+                            {c.title}
+                          </span>
+                        ))}
+                    </span>
                   </li>
                 ))}
               </ul>

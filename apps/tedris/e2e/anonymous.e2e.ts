@@ -383,6 +383,7 @@ test.describe("phone menu (tedris/45)", () => {
   }) => {
     await page.goto(`/tr/discover?q=${fx.tag}`);
     await expect(page.locator("[data-legacy-header]")).toBeHidden();
+    await expect(page.locator("[data-legacy-tabs]")).toBeHidden();
     await expect(page.locator(".mds-appbar")).toBeVisible();
   });
 });

@@ -349,10 +349,25 @@ describe("the medrese page for a visitor (design tedris/11)", () => {
     const html = await render(false);
     expect(html).not.toContain(tr.MadrasahPage.statusPending);
     expect(html).not.toContain(tr.MadrasahPage.statusEnrolled);
-    expect(html).toContain(tr.MadrasahPage.coursesHint);
+    expect(html).toContain(tr.MadrasahPage.coursesHintAnonymous);
     expect(html).toContain(
       `href="${inviteHrefs("tr", "/madrasahs/m1").signIn}">giriş yap</a>`
     );
+  });
+
+  it("words the courses hint differently for a signed-in caller", async () => {
+    const html = await render(true);
+    expect(html).toContain(tr.MadrasahPage.coursesHint);
+    expect(html).not.toContain(tr.MadrasahPage.coursesHintAnonymous);
+  });
+
+  it("draws the köşk card with a badge, a link and the course opened there", async () => {
+    const html = await render(false);
+    expect(html).toContain(">NK</span>");
+    expect(html).toContain(
+      'href="/kosks/k1"><bdi>Nûruosmaniye Köşkü</bdi></a>'
+    );
+    expect(html).toContain(">Bina ve İzhar Şerhi</span>");
   });
 
   it("leads back to Keşfet, which a visitor may now open", async () => {
