@@ -14,12 +14,15 @@ export interface AppShellProps extends HTMLAttributes<HTMLDivElement> {
   sidebar: ReactNode;
   /** the `AppBar`, drawn below 768 only */
   appBar?: ReactNode;
+  /** `data-density` of the `<main>`: the yönetim apps (nizam, nazır) pass `compact` (MDS-LAY-02) */
+  density?: "compact";
 }
 
 /** Nizam and nazir: a sidebar column and the `<main>`. Yönetim apps set `data-density="compact"` on the main. */
 export function AppShell({
   sidebar,
   appBar,
+  density,
   children,
   className,
   ...rest
@@ -37,7 +40,8 @@ export function AppShell({
         {appBar}
         <main
           id="main"
-          className="flex min-inline-0 flex-col gap-6 pbs-8 pbe-12 px-8 max-md:gap-5 max-md:pbs-5 max-md:pbe-10 max-md:px-gutter"
+          data-density={density}
+          className="flex min-inline-0 grow flex-col gap-6 pbs-8 pbe-12 px-8 max-md:gap-5 max-md:pbs-5 max-md:pbe-10 max-md:px-gutter"
         >
           {children}
         </main>
@@ -56,7 +60,7 @@ export interface SidebarProps extends HTMLAttributes<HTMLElement> {
   navLabel?: string;
 }
 
-/** The desktop sidebar: brand, scope, a named `<nav>`, and the account at the block-end. Hidden below 768. */
+/** The desktop sidebar: brand, scope, a named `<nav>` (none while it has no items), and the account at the block-end. Hidden below 768. */
 export function Sidebar({
   brand,
   scope,
@@ -76,9 +80,11 @@ export function Sidebar({
     >
       <div className="pbs-1 pbe-5 px-2">{brand}</div>
       {scope}
-      <nav aria-label={navLabel} className="flex flex-col gap-[2px]">
-        {children}
-      </nav>
+      {children ? (
+        <nav aria-label={navLabel} className="flex flex-col gap-[2px]">
+          {children}
+        </nav>
+      ) : null}
       {footer ? <div className="mbs-auto pbs-4">{footer}</div> : null}
     </aside>
   );

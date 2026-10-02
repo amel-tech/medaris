@@ -401,6 +401,52 @@ describe("AppShell, Sidebar and TopBar", () => {
     );
   });
 
+  it("puts the density on the main only when the app asks for it", async () => {
+    const dense = await render(
+      <AppShell sidebar={<aside />} density="compact">
+        <h1>Sayfa</h1>
+      </AppShell>
+    );
+    expect(dense.querySelector("main")?.getAttribute("data-density")).toBe(
+      "compact"
+    );
+    const plain = await render(
+      <AppShell sidebar={<aside />}>
+        <h1>Sayfa</h1>
+      </AppShell>
+    );
+    expect(plain.querySelector("main")?.hasAttribute("data-density")).toBe(
+      false
+    );
+  });
+
+  it("draws no empty nav landmark in a sidebar or a sheet that has no items", async () => {
+    const host = await render(
+      <AppShell
+        sidebar={
+          <Sidebar brand={<span>marka</span>} footer={<span>kullanıcı</span>} />
+        }
+        appBar={
+          <AppBar
+            title="Nazır"
+            logo={<Logo app="nazir" size="sm" />}
+            footer={<span>kullanıcı</span>}
+          />
+        }
+      >
+        <h1>Sayfa</h1>
+      </AppShell>
+    );
+    expect(host.querySelector("aside nav")).toBeNull();
+    await click(host.querySelector("button.mds-appbar__menu") as HTMLElement);
+    await settle();
+    expect(body().querySelector(".mds-sheet")).not.toBeNull();
+    expect(body().querySelector(".mds-sheet nav")).toBeNull();
+    expect(body().querySelector(".mds-sheet__foot")?.textContent).toBe(
+      "kullanıcı"
+    );
+  });
+
   it("TopBar puts the end side at the inline end", async () => {
     const host = await render(
       <TopBar brand={<span>m</span>} end={<span data-end />}>

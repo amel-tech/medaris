@@ -1,3 +1,5 @@
+"use client";
+
 import { Dialog } from "@base-ui/react/dialog";
 import { type ReactNode, useEffect, useState } from "react";
 import { cx } from "./cx";
@@ -85,20 +87,22 @@ export function AppBar({
               </Dialog.Close>
             </div>
             {scope}
-            {/* biome-ignore lint/a11y/useKeyWithClickEvents: delegated; a link followed by key or mouse bubbles a click, and the nav is a landmark, not a control */}
-            <nav
-              aria-label={navLabel}
-              onClick={(event) => {
-                // A followed link closes the sheet: the next page opens beneath it.
-                if (
-                  !event.defaultPrevented &&
-                  (event.target as Element).closest("a[href]")
-                )
-                  setOpen(false);
-              }}
-            >
-              {children}
-            </nav>
+            {children ? (
+              // biome-ignore lint/a11y/useKeyWithClickEvents: delegated; a link followed by key or mouse bubbles a click, and the nav is a landmark, not a control
+              <nav
+                aria-label={navLabel}
+                onClick={(event) => {
+                  // A followed link closes the sheet: the next page opens beneath it.
+                  if (
+                    !event.defaultPrevented &&
+                    (event.target as Element).closest("a[href]")
+                  )
+                    setOpen(false);
+                }}
+              >
+                {children}
+              </nav>
+            ) : null}
             {footer ? <div className="mds-sheet__foot">{footer}</div> : null}
           </div>
         </Dialog.Popup>
