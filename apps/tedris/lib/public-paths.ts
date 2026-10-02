@@ -10,6 +10,7 @@ import { locales } from "./i18n/routing";
 export const publicPages = [
   "/",
   "/home",
+  "/discover",
   authPages.signIn,
   authPages.signOut,
   authPages.error,

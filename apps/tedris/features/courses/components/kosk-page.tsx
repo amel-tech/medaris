@@ -14,6 +14,7 @@ import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
+import { AnonymousInvite } from "~/components/anonymous-invite";
 import { FollowButton } from "~/features/discover/components/follow-button";
 import { joinRun } from "../join-run";
 import { enrollmentBadge } from "../madrasah-enrollment";
@@ -167,6 +168,11 @@ export const KoskPage = async ({
                   <Badge variant="outline">{t("KoskPage.private")}</Badge>
                 ) : null}
               </p>
+              {kosk.managerName ? (
+                <p className="mds-body-sm">
+                  {t("KoskPage.manager", { name: kosk.managerName })}
+                </p>
+              ) : null}
             </div>
           </div>
           {signedIn ? (
@@ -214,6 +220,15 @@ export const KoskPage = async ({
               />
             ))}
           </div>
+        )}
+        {signedIn ? null : (
+          <AnonymousInvite
+            t={t}
+            locale={locale}
+            variant="apply"
+            callbackPath={`/kosks/${kosk.id}`}
+            className="mds-body-sm"
+          />
         )}
       </section>
 
