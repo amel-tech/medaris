@@ -5,6 +5,7 @@ import {
   type MadrasahOverviewResponse,
   type MadrasahResponse,
 } from "@medaris/services/tedrisat";
+import { cache } from "react";
 import { env } from "~/env";
 import { getAccessToken } from "~/lib/auth_options";
 
@@ -54,8 +55,11 @@ export const getMadrasahForMetadata = (
 ): Promise<MadrasahResponse | null> =>
   orNull(async () => (await anonymousApi()).madrasahs.getMadrasahById({ id }));
 
-export const getMadrasah = (id: string): Promise<MadrasahResponse | null> =>
-  orNull(async () => (await viewerApi()).madrasahs.getMadrasahById({ id }));
+/** Cached per request: the segment layout and the page both ask (see `[madrasahId]/layout.tsx`). */
+export const getMadrasah = cache(
+  (id: string): Promise<MadrasahResponse | null> =>
+    orNull(async () => (await viewerApi()).madrasahs.getMadrasahById({ id }))
+);
 
 /**
  * What the medrese page shows (MDRS-157): its courses with the caller's own

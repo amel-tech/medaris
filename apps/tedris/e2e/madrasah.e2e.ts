@@ -72,9 +72,15 @@ test("a course row leads to its course page", async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`/courses/${course.id}$`));
 });
 
-test("an unknown medrese answers 404", async ({ page }) => {
-  const response = await page.goto(
-    page_("a0000000-0000-4000-8000-0000000000ff")
-  );
-  expect(response?.status()).toBe(404);
+test("an unknown or malformed medrese id answers 404 with the not-found state and no page error", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  for (const id of ["a0000000-0000-4000-8000-0000000000ff", "abc"]) {
+    const response = await page.goto(page_(id));
+    expect(response?.status()).toBe(404);
+    await expect(page.getByText("Sayfa bulunamadı")).toBeVisible();
+  }
+  expect(errors).toEqual([]);
 });
