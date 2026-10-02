@@ -159,7 +159,17 @@
       "ban_lift_course": "Lift a course ban, with a reason",
       "deck_manage_course": "Create and edit the course's deck",
       "course_nazir_assign": "Appoint a course nazır; grant a permission or a group, within your own permissions",
-      "permission_group_define": "Define a permission group"
+      "permission_group_define": "Define a permission group",
+      "madrasah_course_open": "Open a medrese course",
+      "madrasah_muderris_manage": "Add or remove a müderris; change the imam",
+      "madrasah_students_view": "See the medrese's talebe",
+      "madrasah_ban": "Ban at medrese level; widen a course ban to the medrese",
+      "madrasah_course_hide": "Hide the medrese's courses, bring them back",
+      "madrasah_admission_rules": "Set the admission rules",
+      "madrasah_appeal_open": "Open an appeal against a köşk decision",
+      "madrasah_permanent_ban_request": "Request a permanent ban",
+      "madrasah_settings_edit": "Change the medrese's settings and policies",
+      "madrasah_nazir_appoint": "Appoint a medrese nazır"
     },
     "permissionNotes": {
       "course_manage_all": "Reads of the content are written to the audit log.",
@@ -192,7 +202,12 @@
     "forbiddenTitle": "You do not have access to this page",
     "forbidden": "You are not allowed to open this page. If you need access, ask the medrese's head müderris.",
     "actionForbidden": "You are not allowed to do this.",
-    "actionGeneric": "Something went wrong. Try again in a moment."
+    "actionGeneric": "Something went wrong. Try again in a moment.",
+    "permissionUnknown": "One of the permissions you chose is not recognised. Refresh the page and try again.",
+    "courseScope": "The courses you chose do not fit these permissions. Check the courses and try again.",
+    "expiryInvalid": "The end date cannot be in the past or after the end of the appointment.",
+    "groupGone": "This group no longer exists. The groups were refreshed; choose again.",
+    "groupNameTaken": "Another group has this name. Choose a different name."
   },
   "Settings": {
     "title": "Medrese settings",
@@ -298,7 +313,12 @@
     "dismissLabel": "Dismiss: {name}",
     "empty": "This medrese has no nazır yet. You can add one with “Appoint a medrese nazır”.",
     "loadFailedTitle": "The medrese nazırs could not be read",
-    "loadFailed": "The medrese nazırs could not be read right now. Try again in a few seconds."
+    "loadFailed": "The medrese nazırs could not be read right now. Try again in a few seconds.",
+    "editPermissions": "Edit permissions",
+    "editPermissionsLabel": "Edit permissions: {name}",
+    "givePermission": "Give permission",
+    "givePermissionLabel": "Give permission: {name}",
+    "courseScope": "Course permissions only in these courses: {list}"
   },
   "Appoint": {
     "title": "Appoint a medrese nazır",
@@ -349,5 +369,184 @@
     "gone": "This person is no longer a nazır of this medrese.",
     "loadFailedTitle": "The list could not be read",
     "loadFailed": "What this person gave cannot be read right now. Try again in a moment."
+  },
+  "Editor": {
+    "title": "Edit permissions",
+    "role": "Medrese nazır",
+    "group": "Ready-made permission group",
+    "groupNone": "No group",
+    "groupHelp": "Optional. The group's permissions come ticked and locked below; you can choose extra permissions separately.",
+    "fromGroup": "Comes from the group.",
+    "permissions": "Permissions",
+    "madrasahSection": "Medrese",
+    "courseSection": "Medrese courses",
+    "where": "In which courses",
+    "whereAll": "All medrese courses",
+    "whereChosen": "The courses I choose",
+    "whereAllHelp": "All medrese courses also covers courses opened later.",
+    "whereChosenHelp": "Applies only in the courses you choose; it does not cover courses opened later.",
+    "whereGroupSpans": "The group carries medrese permissions, so it applies in all medrese courses.",
+    "whereNeedsCoursePermission": "The courses you choose apply once you tick a course permission.",
+    "courses": "Courses",
+    "noCourses": "This medrese has no courses yet.",
+    "coursesProblem": "Choose at least one course.",
+    "expires": "End date (optional)",
+    "expiresHelp": "Leave empty for no end date. The permission lapses by itself when the date passes.",
+    "expiresProblems": {
+      "past": "The end date cannot be in the past.",
+      "afterAppointment": "The end date cannot be after the end of the appointment."
+    },
+    "note": "They cannot pass on a permission they receive. Every permission given and taken back is written to the audit log.",
+    "summary": {
+      "none": "No permission chosen",
+      "single": "{count, plural, one {# permission} other {# permissions}}",
+      "group": "{group, plural, one {# permission} other {# permissions}} from the group",
+      "groupAndExtra": "{group, plural, one {# permission} other {# permissions}} from the group and {extra, plural, one {# extra permission} other {# extra permissions}}"
+    },
+    "cancel": "Cancel",
+    "save": "Save",
+    "loadFailedTitle": "The permissions could not be read",
+    "loadFailed": "This person's permissions cannot be read right now. Try again in a moment.",
+    "saved": "Permissions saved",
+    "savedBody": "The permissions of {name} were updated.",
+    "failedTitle": "The permissions could not be saved"
+  },
+  "Groups": {
+    "title": "Permission groups",
+    "intro": "Groups apply only in this medrese and its courses.",
+    "define": "Define a group",
+    "edit": "Edit",
+    "editLabel": "Edit: {name}",
+    "usage": "{count, plural, one {# permission} other {# permissions}} · given to {users, plural, one {# nazır} other {# nazırs}}",
+    "more": "and {count, plural, one {# more permission} other {# more permissions}}",
+    "empty": "This medrese has no permission group yet. “Define a group” makes a ready-made set of permissions.",
+    "sectionFailed": "The permission groups could not be read right now. Refresh the page to try again.",
+    "createTitle": "Define a permission group",
+    "editTitle": "Edit the permission group",
+    "required": "required field",
+    "name": "Group name",
+    "nameHelp": "You see this name when you give permissions.",
+    "nameProblems": {
+      "required": "The group name cannot be empty.",
+      "long": "The group name can be at most {max} characters."
+    },
+    "scope": "Scope",
+    "scopes": {
+      "MADRASAH": {
+        "label": "Medrese",
+        "help": "Medrese work and the course work in the medrese's courses."
+      },
+      "COURSE": {
+        "label": "Course",
+        "help": "Course work only; you choose the courses it applies in when you give it."
+      }
+    },
+    "scopeHelp": "The scope decides which permissions can go into the group. The group applies only in this medrese and its courses.",
+    "permissions": "Permissions",
+    "permissionsHelp": "Only the permissions you can give are listed. {count, plural, =0 {No permission} one {# permission} other {# permissions}} chosen.",
+    "permissionsProblem": "Choose at least one permission.",
+    "unusedNote": "Nobody uses this group yet; once it is saved you can give it to a nazır.",
+    "usedNote": "{count, plural, one {# person uses} other {# people use}} this group. If you change its permissions we will ask what happens to them.",
+    "meta": {
+      "MADRASAH": "Medrese scope · {count, plural, =0 {no permission} one {# permission} other {# permissions}} chosen",
+      "COURSE": "Course scope · {count, plural, =0 {no permission} one {# permission} other {# permissions}} chosen"
+    },
+    "cancel": "Cancel",
+    "save": "Save the group",
+    "delete": "Delete the group",
+    "catalogFailedTitle": "The permission list could not be read",
+    "catalogFailed": "The permission list cannot be read right now. Try again in a moment.",
+    "saved": "Group saved",
+    "savedBody": "The group “{name}” was saved.",
+    "failedTitle": "The group could not be saved",
+    "deleted": "Group deleted",
+    "deletedBody": "The group “{name}” was deleted.",
+    "deleteFailedTitle": "The group could not be deleted",
+    "deleteTitle": "Delete the group",
+    "deleteBody": "The group “{name}” will be deleted. Nobody uses it, so nobody's permissions change.",
+    "users": {
+      "title": "{count, plural, one {# person uses} other {# people use}} this group",
+      "editIntro": "You are changing the permissions of the group “{name}”. The new permissions pass only to those who receive the group from now on; choose what happens to those who use it now.",
+      "deleteIntro": "You are deleting the group “{name}”. Choose what happens to those who use it.",
+      "legend": "Those who use this group",
+      "keep": "They keep the permissions",
+      "keepHelp": "The group's current permissions stay with each of them as single permissions; they leave the group.",
+      "revoke": "They lose the permissions",
+      "revokeHelp": "The group's current permissions are taken back from each of them at once.",
+      "confirmEdit": "Save the group",
+      "confirmDelete": "Delete the group",
+      "cancel": "Cancel"
+    }
+  },
+  "Archive": {
+    "title": "Archive",
+    "intro": "Courses, weeks, sessions and recordings hidden in this medrese. None is deleted; whoever hid an item, or someone above them, can bring it back.",
+    "tabsLabel": "Kinds of archived items",
+    "tabs": {
+      "all": "All",
+      "course": "Courses",
+      "weeks": "Weeks and sessions",
+      "recordings": "Recordings"
+    },
+    "caption": "Hidden items",
+    "columns": {
+      "item": "Item",
+      "type": "Kind",
+      "hider": "Hidden by",
+      "at": "Hidden on",
+      "actions": "Actions"
+    },
+    "types": {
+      "course": "Course",
+      "week": "Week",
+      "session": "Session",
+      "recording": "Recording"
+    },
+    "weekNumber": "Week {number}",
+    "weekCount": "{count, plural, one {# week} other {# weeks}}",
+    "studentCount": "{count, plural, one {# talebe} other {# talebe}}",
+    "hiderYou": "{role} (you)",
+    "byAdmin": "Medaris administration",
+    "restore": "Bring back",
+    "restoreLabel": "Bring back: {title}",
+    "locked": "The {role} hid this; only that level or one above it can bring it back.",
+    "lockedAdmin": "Medaris administration hid this; only that level or one above it can bring it back.",
+    "lockedUnknown": "Only the level that hid this, or one above it, can bring it back.",
+    "restored": "Brought back",
+    "restoredBody": "“{title}” is visible again in its place.",
+    "restoreFailedTitle": "It could not be brought back",
+    "errors": {
+      "forbidden": "You may not bring this back; a higher level may have hidden it. The list was refreshed.",
+      "gone": "This item is no longer in the archive. The list was refreshed.",
+      "parentHidden": "The medrese or köşk this belongs to is still hidden, so it could not be brought back. Only Medaris administration can bring a medrese back."
+    },
+    "empty": {
+      "all": "Nothing is hidden in this medrese.",
+      "course": "No course is hidden in this medrese.",
+      "weeks": "No week or session is hidden in this medrese.",
+      "recordings": "No recording is hidden in this medrese."
+    },
+    "today": "Today {time}",
+    "yesterday": "Yesterday {time}",
+    "pager": {
+      "label": "Archive pages",
+      "range": "{from}–{to} of {total}",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "loadFailedTitle": "The archive could not be read",
+    "loadFailed": "The archive cannot be read right now. Try again in a few seconds.",
+    "hide": {
+      "title": "Hide the medrese",
+      "text": "{name} and its courses disappear from every list and from search; the medrese and course pages close to everyone except you and Medaris administration. The köşks that host its courses are not hidden. Nothing is deleted; only Medaris administration can bring the medrese back.",
+      "button": "Hide the medrese",
+      "confirmBody": "{name} and its visible courses will be hidden from everyone; only you and Medaris administration will be able to open its pages. Nothing is deleted, but only Medaris administration can bring the medrese back; until then you cannot bring the courses back from the Archive.",
+      "confirm": "Hide",
+      "cancel": "Cancel",
+      "done": "Medrese hidden",
+      "doneBody": "{name} and its courses are now visible to nobody except you and Medaris administration. Ask Medaris administration to bring it back.",
+      "already": "This medrese is already hidden. Ask Medaris administration to bring it back.",
+      "failedTitle": "The medrese could not be hidden"
+    }
   }
 }
