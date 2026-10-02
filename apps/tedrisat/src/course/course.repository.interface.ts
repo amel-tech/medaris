@@ -368,7 +368,10 @@ export interface ICourseRepository {
     expectedVersion: number,
     data: IUpdateLesson
   ): Promise<ILessonMutation>;
-  archiveLesson(lessonId: string): Promise<ILessonMutation>;
+  archiveLesson(
+    lessonId: string,
+    actorId?: string | null
+  ): Promise<ILessonMutation>;
   /** The course's IANA zone; null if there is no such course. */
   findTimeZone(courseId: string): Promise<string | null>;
   /** Inserts every session of `batch` in one transaction (MDRS-109). */

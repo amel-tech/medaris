@@ -4,14 +4,14 @@ import { Client } from "pg";
 import { useDatabaseForThisFile } from "../helpers/test-app.helper";
 
 /**
- * MDRS-158: migration 0027 adds the cancellation columns to `lessons` without
+ * MDRS-158: migration 0029 adds the cancellation columns to `lessons` without
  * touching a lesson that exists before it, and its rollback takes them off
  * again. Like `madrasah-migration.e2e.spec.ts`, the schema is built file by
- * file so that a lesson can exist BEFORE 0027 runs.
+ * file so that a lesson can exist BEFORE 0029 runs.
  */
 const MIGRATIONS = join(__dirname, "../../src/database/migrations");
 const ROLLBACKS = join(__dirname, "../../src/database/rollbacks");
-const TARGET = "0027_session_cancellation";
+const TARGET = "0029_session_cancellation";
 const ADDED = ["cancel_reason", "cancelled_at", "replacement_lesson_id"];
 
 const statementsOf = (file: string): string[] =>
@@ -20,7 +20,7 @@ const statementsOf = (file: string): string[] =>
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 
-describe("0027_session_cancellation migration (e2e)", () => {
+describe("0029_session_cancellation migration (e2e)", () => {
   let client: Client;
 
   const run = async (file: string) => {
@@ -123,7 +123,7 @@ describe("0027_session_cancellation migration (e2e)", () => {
     await run(join(ROLLBACKS, `${TARGET}.down.sql`));
     expect(await lessonColumns()).toEqual(columnsBefore);
 
-    // And forward again: the rollback leaves exactly the state 0027 expects.
+    // And forward again: the rollback leaves exactly the state 0029 expects.
     await run(join(MIGRATIONS, `${TARGET}.sql`));
     expect(await lessonColumns()).toEqual([...columnsBefore, ...ADDED].sort());
   });

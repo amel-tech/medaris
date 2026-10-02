@@ -20,7 +20,7 @@ export default mergeConfig(
     },
     test: {
       root: __dirname,
-      include: ["test/**/*.spec.ts"],
+      include: ["test/**/*.spec.{ts,tsx}"],
       exclude: ["node_modules/**", ".next/**"],
       // next-intl's ESM build imports `next/server` without an extension,
       // which Node's own resolver refuses; inlined, Vite resolves it.

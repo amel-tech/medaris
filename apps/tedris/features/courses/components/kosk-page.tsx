@@ -167,7 +167,7 @@ const CourseCard = ({
           {course.category && (
             <span className="size-[3px] rounded-full bg-slate-300" />
           )}
-          <span>{levelLabel(course.level, t)}</span>
+          <span>{levelLabel(course.level, t as never)}</span>
         </div>
 
         <h3 className="text-base font-semibold leading-snug tracking-tight">

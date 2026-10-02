@@ -12,9 +12,9 @@ leaves `meetingUrl`, `agenda` and `kaynak` out for a caller without
 
 Backend (`apps/tedrisat`)
 
-- Migration `0027_session_cancellation` adds `lessons.cancelled_at`,
+- Migration `0029_session_cancellation` adds `lessons.cancelled_at`,
   `cancel_reason` and `replacement_lesson_id` (self-reference, `ON DELETE SET
-  NULL`). Rollback: `rollbacks/0027_session_cancellation.down.sql`.
+  NULL`). Rollback: `rollbacks/0029_session_cancellation.down.sql`.
 - Status is not stored. `sessionStatus` derives SCHEDULED / LIVE / ENDED /
   CANCELLED from the cancellation, the schedule and the length (60 minutes when
   a session has none, the rule the web page already used).

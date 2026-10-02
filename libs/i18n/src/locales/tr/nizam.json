@@ -1,4 +1,101 @@
 {
+  "ArchivePage": {
+    "title": "Arşiv",
+    "koskIntro": "Bu köşkte gizlenen dersler, haftalar, celseler, ders kayıtları ve desteler; köşkte okutulan medrese derslerinde gizlenenler de burada. Gizlenen hiçbir şey silinmez; geri aldığınızda eski yerine döner.",
+    "platformIntro": "Bütün köşk ve medreselerde gizlenenler. Geri alabilir ya da kalıcı olarak silebilirsiniz; kalıcı silme geri alınamaz ve denetim kaydına yazılır.",
+    "heading": "Gizlenenler",
+    "koskCaption": "{kosk} içinde gizlenenler",
+    "platformCaption": "Platformda gizlenenler",
+    "searchLabel": "Gizlenenlerde ara",
+    "searchPlaceholder": "Gizlenen öğenin adıyla ara",
+    "typeFilterLabel": "Tür süzgeci",
+    "typeFilter": "Tür: {value}",
+    "scopeFilterLabel": "Kapsam süzgeci",
+    "scopeFilter": "Kapsam: {value}",
+    "all": "tümü",
+    "types": {
+      "kosk": "Köşk",
+      "madrasah": "Medrese",
+      "course": "Ders",
+      "week": "Hafta",
+      "session": "Celse",
+      "recording": "Ders kaydı",
+      "deck": "Deste"
+    },
+    "count": "{count} gizli öğe",
+    "columns": {
+      "hidden": "Gizlenen",
+      "type": "Tür",
+      "scope": "Kapsam",
+      "hiddenBy": "Gizleyen",
+      "hiddenAt": "Gizlendiği tarih",
+      "actions": "İşlemler"
+    },
+    "roles": {
+      "KOSK_NAZIM": "Köşk nazımı",
+      "MEDRESE_BASMUDERRIS": "Başmüderris",
+      "MEDRESE_NAZIR": "Medrese nâzırı",
+      "MUDERRIS": "Müderris",
+      "DERS_NAZIR": "Ders nazırı"
+    },
+    "unknownPerson": "Bilinmiyor",
+    "today": "Bugün {time}",
+    "yesterday": "Dün {time}",
+    "context": {
+      "week": "Hafta {count}",
+      "weeks": "{count} hafta",
+      "sessions": "{count} celse",
+      "students": "{count} talebe"
+    },
+    "restore": "Geri al",
+    "restoreLabel": "Geri al: {name}",
+    "permanentDelete": "Kalıcı olarak sil",
+    "permanentDeleteLabel": "Kalıcı olarak sil: {name}",
+    "footer": "Geri aldığınız ders köşk sayfasına ve talebelerin ders listesine, hafta ya da celse dersin programına, ders kaydı kendi celsesine döner. Gizli olanı talebeler görmez; gizlenen dersin haftaları, celseleri ve ders kayıtları dersle birlikte geri gelir.",
+    "showing": "Toplam {total} öğe, {shown} tanesi gösteriliyor",
+    "loadMore": "Daha fazla göster",
+    "loading": "Yükleniyor",
+    "empty": "Gizlenen öğe yok",
+    "emptyFiltered": "Bu süzgece uyan gizli öğe yok",
+    "loadFailedTitle": "Arşiv yüklenemedi",
+    "loadFailed": "Arşiv şu an okunamıyor. Biraz sonra yeniden deneyin.",
+    "retry": "Yeniden dene",
+    "restored": "Geri alındı",
+    "restoredBody": "{title} eski yerine döndü.",
+    "restoreFailed": "Geri alınamadı",
+    "restoreParentHidden": "Bağlı olduğu öğe hâlâ gizli; önce onu geri alın.",
+    "restoreGone": "Bu öğe artık arşivde değil.",
+    "deleted": "Kalıcı olarak silindi",
+    "deletedBody": "{title} ve bağlı kayıtları silindi.",
+    "deleteFailed": "Silinemedi",
+    "deleteGone": "Bu öğe zaten silinmiş ya da artık gizli değil.",
+    "dialog": {
+      "titles": {
+        "kosk": "Köşkü kalıcı olarak sil",
+        "course": "Dersi kalıcı olarak sil",
+        "week": "Haftayı kalıcı olarak sil",
+        "session": "Celseyi kalıcı olarak sil",
+        "deck": "Desteyi kalıcı olarak sil",
+        "madrasah": "Medreseyi kalıcı olarak sil",
+        "recording": "Ders kaydını kalıcı olarak sil"
+      },
+      "body": "<b>{title}</b> ve ona bağlı her şey kalıcı olarak silinecek. Bu işlem geri alınamaz.",
+      "loadingImpact": "Silinecekler hesaplanıyor",
+      "impactFailed": "Silinecekler hesaplanamadı; yine de silebilirsiniz ama neyin gideceğini göremiyorsunuz.",
+      "courses": "{count} ders ve içindekiler",
+      "weeks": "Ders sayfası, tanıtımı ve {count} haftalık müfredatı",
+      "weeksOnly": "{count} hafta",
+      "sessions": "{count} celse, celse akışları ve toplantı bağlantıları",
+      "students": "{count} talebe kaydı ve talebelerin bu dersteki ilerlemesi",
+      "recordings": "{count} ders kaydı",
+      "followers": "{count} takipçi",
+      "cards": "{count} kart ve kartlardaki ilerleme",
+      "audit": "Silme, denetim kaydına adınızla yazılır.",
+      "cancel": "Vazgeç",
+      "close": "Kapat",
+      "confirm": "Kalıcı olarak sil"
+    }
+  },
   "Breadcrumbs": {
     "home": "Ev"
   },
@@ -416,6 +513,7 @@
   },
   "KoskDetail": {
     "subtitle": "Bu köşkte yer alan dersler ve müfredat yönetimi.",
+    "archive": "Arşiv",
     "editKosk": "Köşkü Düzenle",
     "newCourse": "Yeni Ders Aç",
     "published": "Yayında",
@@ -458,5 +556,31 @@
     "saving": "Kaydediliyor...",
     "created": "Köşk oluşturuldu.",
     "updated": "Köşk güncellendi."
+  },
+  "NazirRedirectPage": {
+    "title": "Medrese ve ders işleriniz Nazır’da",
+    "intro": "Nizam, Medaris’i ve köşkleri yönetenlerin uygulamasıdır. Medrese ve ders görevlerinizi Nazır’dan yürütürsünüz.",
+    "tasks": "Görevleriniz",
+    "students": "{count} talebe",
+    "imam": "Dersin imamı",
+    "draft": "Taslak",
+    "goToNazir": "Nazır’a git",
+    "roles": {
+      "MEDRESE_BASMUDERRIS": "Medrese başmüderrisi",
+      "MEDRESE_NAZIR": "Medrese nazırı",
+      "MUDERRIS": "Müderris",
+      "DERS_NAZIR": "Ders nazırı"
+    },
+    "empty": "Henüz bir medrese ya da ders göreviniz görünmüyor.",
+    "loadFailedTitle": "Görevleriniz yüklenemedi",
+    "loadFailed": "Görevleriniz şu an okunamadı.",
+    "retry": "Tekrar dene"
+  },
+  "NoAccess": {
+    "title": "Bu bölüm için izniniz yok",
+    "body": "Bu bölümün izni hesabınıza verilmemiş. İzinleri Medaris başnazımı verir; gerekirse {name}’dan isteyin.",
+    "bodyGeneric": "Bu bölümün izni hesabınıza verilmemiş. İzinleri Medaris başnazımı verir; gerekirse ondan isteyin.",
+    "account": "Giriş yaptığınız hesap:",
+    "back": "Ana sayfaya dön"
   }
 }

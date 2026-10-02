@@ -58,7 +58,7 @@ export const TabView = ({ children }: { children: React.ReactNode }) => {
       {ownsItsMain(pathname) ? (
         children
       ) : (
-        <main className="mx-auto w-full max-w-[80rem] py-2 grow-1 h-full">
+        <main className="mx-auto w-full max-w-[80rem] py-2 grow-1">
           {children}
         </main>
       )}

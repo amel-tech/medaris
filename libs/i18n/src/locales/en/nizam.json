@@ -1,4 +1,101 @@
 {
+  "ArchivePage": {
+    "title": "Archive",
+    "koskIntro": "Courses, weeks, sessions, recordings and decks hidden in this köşk, and what was hidden in the medrese courses taught here. Nothing hidden is deleted; when you restore it, it goes back where it was.",
+    "platformIntro": "What was hidden in every köşk and medrese. You can restore it or delete it for good; a permanent delete cannot be undone and is written to the audit log.",
+    "heading": "Hidden",
+    "koskCaption": "Hidden in {kosk}",
+    "platformCaption": "Hidden on the platform",
+    "searchLabel": "Search the hidden items",
+    "searchPlaceholder": "Search hidden items by name",
+    "typeFilterLabel": "Type filter",
+    "typeFilter": "Type: {value}",
+    "scopeFilterLabel": "Scope filter",
+    "scopeFilter": "Scope: {value}",
+    "all": "all",
+    "types": {
+      "kosk": "Köşk",
+      "madrasah": "Medrese",
+      "course": "Course",
+      "week": "Week",
+      "session": "Session",
+      "recording": "Recording",
+      "deck": "Deck"
+    },
+    "count": "{count, plural, one {# hidden item} other {# hidden items}}",
+    "columns": {
+      "hidden": "Hidden",
+      "type": "Type",
+      "scope": "Scope",
+      "hiddenBy": "Hidden by",
+      "hiddenAt": "Hidden on",
+      "actions": "Actions"
+    },
+    "roles": {
+      "KOSK_NAZIM": "Köşk nazım",
+      "MEDRESE_BASMUDERRIS": "Head müderris",
+      "MEDRESE_NAZIR": "Medrese nazır",
+      "MUDERRIS": "Müderris",
+      "DERS_NAZIR": "Course nazır"
+    },
+    "unknownPerson": "Unknown",
+    "today": "Today {time}",
+    "yesterday": "Yesterday {time}",
+    "context": {
+      "week": "Week {count}",
+      "weeks": "{count, plural, one {# week} other {# weeks}}",
+      "sessions": "{count, plural, one {# session} other {# sessions}}",
+      "students": "{count, plural, one {# talebe} other {# talebe}}"
+    },
+    "restore": "Restore",
+    "restoreLabel": "Restore: {name}",
+    "permanentDelete": "Delete permanently",
+    "permanentDeleteLabel": "Delete permanently: {name}",
+    "footer": "When you restore it, a course goes back to the köşk page and the talebe’s course lists, a week or a session to the course’s programme, and a recording to its own session. Talebe do not see what is hidden; a hidden course’s weeks, sessions and recordings come back with the course.",
+    "showing": "Showing {shown} of {total}",
+    "loadMore": "Show more",
+    "loading": "Loading",
+    "empty": "Nothing is hidden",
+    "emptyFiltered": "No hidden item matches this filter",
+    "loadFailedTitle": "The archive could not be loaded",
+    "loadFailed": "The archive could not be read right now. Try again in a moment.",
+    "retry": "Try again",
+    "restored": "Restored",
+    "restoredBody": "{title} is back where it was.",
+    "restoreFailed": "Could not restore",
+    "restoreParentHidden": "What it belongs to is still hidden; restore that first.",
+    "restoreGone": "This item is no longer in the archive.",
+    "deleted": "Deleted permanently",
+    "deletedBody": "{title} and its records were deleted.",
+    "deleteFailed": "Could not delete",
+    "deleteGone": "This item is already deleted or no longer hidden.",
+    "dialog": {
+      "titles": {
+        "kosk": "Delete the köşk permanently",
+        "course": "Delete the course permanently",
+        "week": "Delete the week permanently",
+        "session": "Delete the session permanently",
+        "deck": "Delete the deck permanently",
+        "madrasah": "Delete the medrese permanently",
+        "recording": "Delete the recording permanently"
+      },
+      "body": "<b>{title}</b> and everything attached to it will be deleted permanently. This cannot be undone.",
+      "loadingImpact": "Working out what will be deleted",
+      "impactFailed": "What will be deleted could not be worked out; you can still delete, but you cannot see what goes.",
+      "courses": "{count, plural, one {# course and what is in it} other {# courses and what is in them}}",
+      "weeks": "The course page, its introduction and its {count, plural, one {# week} other {# weeks}} of syllabus",
+      "weeksOnly": "{count, plural, one {# week} other {# weeks}}",
+      "sessions": "{count, plural, one {# session} other {# sessions}}, their agendas and meeting links",
+      "students": "{count, plural, one {# enrollment} other {# enrollments}} and the talebe’s progress in this course",
+      "recordings": "{count, plural, one {# recording} other {# recordings}}",
+      "followers": "{count, plural, one {# follower} other {# followers}}",
+      "cards": "{count, plural, one {# card} other {# cards}} and the progress on them",
+      "audit": "The deletion is written to the audit log under your name.",
+      "cancel": "Cancel",
+      "close": "Close",
+      "confirm": "Delete permanently"
+    }
+  },
   "Breadcrumbs": {
     "home": "Home"
   },
@@ -416,6 +513,7 @@
   },
   "KoskDetail": {
     "subtitle": "The courses in this köşk and their curriculum.",
+    "archive": "Archive",
     "editKosk": "Edit köşk",
     "newCourse": "New course",
     "published": "Published",
@@ -458,5 +556,31 @@
     "saving": "Saving...",
     "created": "Köşk created.",
     "updated": "Köşk updated."
+  },
+  "NazirRedirectPage": {
+    "title": "Your medrese and course work is in Nazır",
+    "intro": "Nizam is the app for those who run Medaris and the köşks. You carry out your medrese and course roles in Nazır.",
+    "tasks": "Your roles",
+    "students": "{count, plural, one {# talebe} other {# talebe}}",
+    "imam": "Course imam",
+    "draft": "Draft",
+    "goToNazir": "Go to Nazır",
+    "roles": {
+      "MEDRESE_BASMUDERRIS": "Medrese head müderris",
+      "MEDRESE_NAZIR": "Medrese nazır",
+      "MUDERRIS": "Müderris",
+      "DERS_NAZIR": "Course nazır"
+    },
+    "empty": "No medrese or course role shows for you yet.",
+    "loadFailedTitle": "Your roles could not be loaded",
+    "loadFailed": "Your roles could not be read right now.",
+    "retry": "Try again"
+  },
+  "NoAccess": {
+    "title": "You do not have access to this section",
+    "body": "This section’s permission has not been given to your account. The Medaris başnazım gives permissions; if you need one, ask {name}.",
+    "bodyGeneric": "This section’s permission has not been given to your account. The Medaris başnazım gives permissions; if you need one, ask them.",
+    "account": "Signed in as:",
+    "back": "Back to the home page"
   }
 }
