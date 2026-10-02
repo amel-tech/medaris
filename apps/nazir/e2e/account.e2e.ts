@@ -33,12 +33,9 @@ test("the roles table is the person's real assignments, the medrese first, with 
   ).toBeVisible();
   const table = page.getByRole("table", { name: "Görevleriniz" });
   const rows = table.locator("tbody tr");
-  await expect(
-    rows.filter({ hasText: fixture?.madrasah.name ?? "" })
-  ).toContainText("Medrese başmüderrisi");
-  await expect(
-    rows.filter({ hasText: fixture?.madrasah.name ?? "" })
-  ).toContainText("Etkin");
+  // the course rows name their medrese too, so the medrese's own row is the first
+  await expect(rows.first()).toContainText("Medrese başmüderrisi");
+  await expect(rows.first()).toContainText("Etkin");
   const course = rows.filter({ hasText: fixture?.first.title ?? "" });
   await expect(course).toContainText("Müderris");
   await expect(course).toContainText("Dersin imamı");
@@ -85,8 +82,9 @@ test("the e-mail is read-only and the language is Türkçe", async ({ as }) => {
   const email = page.getByLabel("E-posta");
   await expect(email).toHaveValue(BASMUDERRIS.email as string);
   await expect(email).toHaveAttribute("readonly", "");
-  await expect(page.getByLabel("Dil")).toHaveValue("Türkçe");
-  await expect(page.getByLabel("Dil")).toHaveAttribute("readonly", "");
+  const language = page.getByLabel("Dil", { exact: true });
+  await expect(language).toHaveValue("Türkçe");
+  await expect(language).toHaveAttribute("readonly", "");
   await expect(
     page.getByText("Medaris şimdilik yalnız Türkçe görünür.")
   ).toBeVisible();
@@ -166,7 +164,9 @@ test("a failed save puts the previous zone back and says so", async ({
   const before = (await zone.innerText()).trim();
   await zone.click();
   await page.getByRole("option", { name: "Berlin" }).click();
-  await expect(page.getByText("Saat dilimi kaydedilemedi")).toBeVisible();
+  await expect(
+    page.locator(".mds-toast--error").getByText("Saat dilimi kaydedilemedi")
+  ).toBeVisible();
   await expect(zone).toContainText(before);
 });
 
