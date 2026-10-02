@@ -17,13 +17,22 @@ export function TimeZoneSync() {
   useEffect(() => {
     try {
       if (sessionStorage.getItem(SYNCED_KEY)) return;
-      sessionStorage.setItem(SYNCED_KEY, "1");
     } catch {
       // No sessionStorage (private mode, blocked storage): sync every load.
     }
     const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    // A failed sync leaves the page in the zone it was rendered in.
-    syncViewerTimeZone(browserTimeZone).catch(() => undefined);
+    // The tab is marked only after a sync that worked, so a failed one is
+    // tried again on the next load. A failed sync leaves the page in the zone
+    // it was rendered in.
+    syncViewerTimeZone(browserTimeZone)
+      .then(() => {
+        try {
+          sessionStorage.setItem(SYNCED_KEY, "1");
+        } catch {
+          // No sessionStorage: nothing to mark.
+        }
+      })
+      .catch(() => undefined);
   }, []);
 
   return null;
