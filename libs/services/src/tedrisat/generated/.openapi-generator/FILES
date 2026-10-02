@@ -11,6 +11,7 @@ src/apis/KosksApi.ts
 src/apis/LessonsApi.ts
 src/apis/MadrasahsApi.ts
 src/apis/MeApi.ts
+src/apis/NotificationsApi.ts
 src/apis/TedrisatServiceApi.ts
 src/apis/UsersApi.ts
 src/apis/index.ts
@@ -72,10 +73,14 @@ src/models/MeResponse.ts
 src/models/MeRolesResponse.ts
 src/models/MuderrisResponse.ts
 src/models/NazirMadrasahRef.ts
+src/models/NotificationCountsResponse.ts
+src/models/NotificationResponse.ts
 src/models/PaginatedKoskResponse.ts
 src/models/PaginatedMadrasahResponse.ts
+src/models/PaginatedNotificationResponse.ts
 src/models/PendingEnrollmentResponse.ts
 src/models/PlannedSessionResponse.ts
+src/models/ReadAllNotificationsResponse.ts
 src/models/RemoveEnrollmentDto.ts
 src/models/ReplaceCourseDto.ts
 src/models/ResourceResponse.ts

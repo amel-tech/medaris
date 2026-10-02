@@ -319,7 +319,9 @@
     "talebe": "Talebe"
   },
   "UserNotifications": {
-    "noNewNotifications": "No new notifications"
+    "noNewNotifications": "No new notifications",
+    "label": "Notifications",
+    "labelUnread": "Notifications, {count} unread"
   },
   "Version": {
     "appVersion": "App version"
@@ -437,5 +439,95 @@
     "notFoundTitle": "Page not found",
     "notFoundText": "The madrasah you are looking for does not exist or may have been removed.",
     "notFoundAction": "Back to home"
+  },
+  "NotificationsPage": {
+    "title": "Notifications",
+    "subtitle": "News about your applications and your courses.",
+    "markAllRead": "Mark all as read",
+    "tabsLabel": "Notification filter",
+    "tabAll": "All",
+    "tabUnread": "Unread",
+    "listLabel": "Notification list",
+    "groupToday": "Today",
+    "groupYesterday": "Yesterday",
+    "groupEarlier": "Earlier",
+    "new": "New",
+    "menuLabel": "More actions: {title}",
+    "menuMarkRead": "Mark as read",
+    "emptyTitle": "No notifications",
+    "emptyUnreadTitle": "No unread notifications",
+    "errorTitle": "Notifications could not be loaded",
+    "errorText": "Something went wrong. Try again in a moment.",
+    "retry": "Try again",
+    "loadMore": "Show more",
+    "loadingMore": "Loading",
+    "markReadFailedTitle": "Could not mark it as read.",
+    "markReadFailedText": "The notification is still unread. Try again.",
+    "markAllFailedTitle": "Could not mark the notifications as read.",
+    "markAllFailedText": "Nothing changed. Try again.",
+    "markAllDone": "All notifications are read.",
+    "undo": "Undo",
+    "unknownTitle": "Notification",
+    "aside": {
+      "title": "What you are notified about",
+      "applicationResult": "The result of your applications",
+      "applicationResultText": "“Your application was approved” or “Your application was rejected”; if a reason was written, you see it too.",
+      "removed": "Being removed from a course",
+      "removedText": "“You were removed from the course”; you can apply again if you wish.",
+      "accessRemoved": "Your access to a course being removed",
+      "accessRemovedText": "“Your access to this course was removed.”",
+      "rescheduled": "A session's time changing",
+      "cancelled": "A session being cancelled, and its make-up session",
+      "added": "Lesson recordings added to your courses",
+      "kosk": "The result of your application to open a köşk",
+      "koskText": "If it is rejected, you see the reason.",
+      "deck": "The result of your request to make a deck public",
+      "deckText": "If it is rejected, or the deck is unpublished later, you see the reason."
+    },
+    "types": {
+      "SESSION_CANCELLED": {
+        "title": "Session cancelled",
+        "body": "The {sessionAt} session of {courseTitle} was cancelled.",
+        "bodyMakeup": "The {sessionAt} session of {courseTitle} was cancelled. Make-up session: {makeupAt}."
+      },
+      "SESSION_RESCHEDULED": {
+        "title": "Session time changed",
+        "body": "A session of {courseTitle} moved to {sessionAt}.",
+        "bodyPrevious": "The {previousAt} session of {courseTitle} moved to {sessionAt}."
+      },
+      "SESSION_ADDED": {
+        "title": "New lesson recording",
+        "body": "A lesson recording was added to the {sessionLabel} session of {courseTitle}.",
+        "bodyNoSession": "A lesson recording was added to {courseTitle}."
+      },
+      "ENROLLMENT_APPROVED": {
+        "title": "Your application was approved",
+        "body": "Your enrollment in {courseTitle} was approved."
+      },
+      "ENROLLMENT_REJECTED": {
+        "title": "Your application was rejected",
+        "body": "Your application to {courseTitle} was rejected.",
+        "bodyReason": "Your application to {courseTitle} was rejected. Reason: {reason}"
+      },
+      "REMOVED_FROM_COURSE": {
+        "title": "You were removed from a course",
+        "body": "You were removed from {courseTitle}.",
+        "bodyReason": "You were removed from {courseTitle}. Reason: {reason}"
+      },
+      "COURSE_ACCESS_REMOVED": {
+        "title": "Your access was removed",
+        "body": "Your access to {courseTitle} was removed."
+      },
+      "KOSK_APPLICATION_RESULT": {
+        "title": "{outcome, select, approved {Your köşk application was approved} other {Your köşk application was rejected}}",
+        "body": "{outcome, select, approved {Your application to open {koskName} was approved.} other {Your application to open {koskName} was rejected.}}",
+        "bodyReason": "Your application to open {koskName} was rejected. Reason: {reason}"
+      },
+      "DECK_PUBLISH_RESULT": {
+        "title": "{outcome, select, approved {Deck published} unpublished {Deck unpublished} other {Deck publish request rejected}}",
+        "body": "{outcome, select, approved {{deckTitle} is now public.} unpublished {{deckTitle} was unpublished.} other {Your request to make {deckTitle} public was rejected.}}",
+        "bodyReason": "{outcome, select, approved {{deckTitle} is now public.} unpublished {{deckTitle} was unpublished.} other {Your request to make {deckTitle} public was rejected.}} Reason: {reason}"
+      }
+    }
   }
 }

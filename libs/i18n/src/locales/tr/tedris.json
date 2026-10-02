@@ -319,7 +319,9 @@
     "talebe": "Talebe"
   },
   "UserNotifications": {
-    "noNewNotifications": "Yeni bildirim yok."
+    "noNewNotifications": "Yeni bildirim yok.",
+    "label": "Bildirimler",
+    "labelUnread": "Bildirimler, {count} okunmamış"
   },
   "Version": {
     "appVersion": "Uygulama sürümü"
@@ -437,5 +439,95 @@
     "notFoundTitle": "Sayfa bulunamadı",
     "notFoundText": "Aradığın medrese yok ya da kaldırılmış olabilir.",
     "notFoundAction": "Ana sayfaya dön"
+  },
+  "NotificationsPage": {
+    "title": "Bildirimler",
+    "subtitle": "Başvurularından ve derslerinden gelen haberler.",
+    "markAllRead": "Tümünü okundu say",
+    "tabsLabel": "Bildirim süzgeci",
+    "tabAll": "Tümü",
+    "tabUnread": "Okunmamış",
+    "listLabel": "Bildirim listesi",
+    "groupToday": "Bugün",
+    "groupYesterday": "Dün",
+    "groupEarlier": "Daha önce",
+    "new": "Yeni",
+    "menuLabel": "Diğer işlemler: {title}",
+    "menuMarkRead": "Okundu say",
+    "emptyTitle": "Bildirim yok",
+    "emptyUnreadTitle": "Okunmamış bildirim yok",
+    "errorTitle": "Bildirimler yüklenemedi",
+    "errorText": "Bir sorun oluştu. Birazdan yeniden dene.",
+    "retry": "Yeniden dene",
+    "loadMore": "Daha fazla göster",
+    "loadingMore": "Yükleniyor",
+    "markReadFailedTitle": "Okundu olarak işaretlenemedi.",
+    "markReadFailedText": "Bildirim okunmamış kaldı. Yeniden dene.",
+    "markAllFailedTitle": "Bildirimler okundu yapılamadı.",
+    "markAllFailedText": "Hiçbiri değişmedi. Yeniden dene.",
+    "markAllDone": "Tüm bildirimler okundu.",
+    "undo": "Geri al",
+    "unknownTitle": "Bildirim",
+    "aside": {
+      "title": "Neler bildirilir",
+      "applicationResult": "Başvurularının sonucu",
+      "applicationResultText": "“Başvurun onaylandı” ya da “Başvurun reddedildi”; ret gerekçesi yazıldıysa onu da görürsün.",
+      "removed": "Dersten çıkarılman",
+      "removedText": "“Dersten çıkarıldın”; istersen derse yeniden başvurabilirsin.",
+      "accessRemoved": "Bir derse erişiminin kaldırılması",
+      "accessRemovedText": "“Bu derse erişimin kaldırıldı.”",
+      "rescheduled": "Celse saatinin değişmesi",
+      "cancelled": "Celsenin iptal edilmesi ve telafi celsesi",
+      "added": "Derslerine eklenen ders kayıtları",
+      "kosk": "Köşk açma başvurunun sonucu",
+      "koskText": "Reddedilirse gerekçesini görürsün.",
+      "deck": "Desteni herkese açma isteğinin sonucu",
+      "deckText": "Reddedilirse ya da yayın sonradan kaldırılırsa gerekçesini görürsün."
+    },
+    "types": {
+      "SESSION_CANCELLED": {
+        "title": "Celse iptal edildi",
+        "body": "{courseTitle} dersinin {sessionAt} celsesi iptal edildi.",
+        "bodyMakeup": "{courseTitle} dersinin {sessionAt} celsesi iptal edildi. Telafi celsesi {makeupAt}."
+      },
+      "SESSION_RESCHEDULED": {
+        "title": "Celse saati değişti",
+        "body": "{courseTitle} dersinin celsesi {sessionAt} tarihine alındı.",
+        "bodyPrevious": "{courseTitle} dersinin {previousAt} celsesi {sessionAt} tarihine alındı."
+      },
+      "SESSION_ADDED": {
+        "title": "Yeni ders kaydı",
+        "body": "{courseTitle} dersinin {sessionLabel} celsesine ders kaydı eklendi.",
+        "bodyNoSession": "{courseTitle} dersine ders kaydı eklendi."
+      },
+      "ENROLLMENT_APPROVED": {
+        "title": "Başvurun onaylandı",
+        "body": "{courseTitle} dersine kaydın onaylandı."
+      },
+      "ENROLLMENT_REJECTED": {
+        "title": "Başvurun reddedildi",
+        "body": "{courseTitle} dersine başvurun reddedildi.",
+        "bodyReason": "{courseTitle} dersine başvurun reddedildi. Gerekçe: {reason}"
+      },
+      "REMOVED_FROM_COURSE": {
+        "title": "Dersten çıkarıldın",
+        "body": "{courseTitle} dersinden çıkarıldın.",
+        "bodyReason": "{courseTitle} dersinden çıkarıldın. Gerekçe: {reason}"
+      },
+      "COURSE_ACCESS_REMOVED": {
+        "title": "Erişimin kaldırıldı",
+        "body": "{courseTitle} dersine erişimin kaldırıldı."
+      },
+      "KOSK_APPLICATION_RESULT": {
+        "title": "{outcome, select, approved {Köşk başvurun onaylandı} other {Köşk başvurun reddedildi}}",
+        "body": "{outcome, select, approved {{koskName} köşkünü açma başvurun onaylandı.} other {{koskName} köşkünü açma başvurun reddedildi.}}",
+        "bodyReason": "{koskName} köşkünü açma başvurun reddedildi. Gerekçe: {reason}"
+      },
+      "DECK_PUBLISH_RESULT": {
+        "title": "{outcome, select, approved {Deste yayınlandı} unpublished {Deste yayından kaldırıldı} other {Deste yayın isteği reddedildi}}",
+        "body": "{outcome, select, approved {{deckTitle} destesi herkese açıldı.} unpublished {{deckTitle} destesi yayından kaldırıldı.} other {{deckTitle} destesini herkese açma isteğin reddedildi.}}",
+        "bodyReason": "{outcome, select, approved {{deckTitle} destesi herkese açıldı.} unpublished {{deckTitle} destesi yayından kaldırıldı.} other {{deckTitle} destesini herkese açma isteğin reddedildi.}} Gerekçe: {reason}"
+      }
+    }
   }
 }
