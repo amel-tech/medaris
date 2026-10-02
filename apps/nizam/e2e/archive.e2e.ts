@@ -142,7 +142,7 @@ test("nizam/28 — the köşk page links to the archive for its nazım", async (
   test.skip(!(seedable && KOSK_NAZIM.password), "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
   await page.goto(`/tr/kosks/${fixture.koskId}`);
-  await page.getByRole("link", { name: "Arşiv" }).click();
+  await page.locator("main").getByRole("link", { name: "Arşiv" }).click();
   await expect(page).toHaveURL(new RegExp(`/kosks/${fixture.koskId}/arsiv$`));
 });
 
