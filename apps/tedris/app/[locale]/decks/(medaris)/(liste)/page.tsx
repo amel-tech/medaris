@@ -1,37 +1,23 @@
-import {
-  getDecks,
-  getMyDecks,
-  parseDeckFilter,
-} from "~/features/flashcards/actions";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { DecksPage } from "~/features/flashcards/components/decks-page";
+import { getDeckSummaries } from "~/features/flashcards/reads";
 import { requireAccessToken } from "~/lib/require-access-token";
-import { subjectOf } from "~/lib/token-subject";
+
+// Behind the sign-in middleware (not in `publicPages`), and per caller.
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("tedris.Decks");
+  return { title: `${t("title")} | Tedris` };
+}
 
 export default async function Page({
   params,
-  searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ filter?: string }>;
 }) {
   const { locale } = await params;
-  const { filter: filterParam } = await searchParams;
-  const filter = await parseDeckFilter(filterParam);
-
-  const accessToken = await requireAccessToken(
-    `/${locale}/decks${filterParam ? `?filter=${encodeURIComponent(filterParam)}` : ""}`
-  );
-  const [decks, myDecks] = await Promise.all([
-    getDecks(filter),
-    getMyDecks(filter),
-  ]);
-
-  return (
-    <DecksPage
-      decks={decks}
-      myDecks={myDecks}
-      filter={filter}
-      currentUserId={subjectOf(accessToken)}
-    />
-  );
+  await requireAccessToken(`/${locale}/decks`);
+  return <DecksPage decks={await getDeckSummaries()} />;
 }

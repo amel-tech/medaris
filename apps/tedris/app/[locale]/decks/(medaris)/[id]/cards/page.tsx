@@ -1,58 +1,45 @@
-import {
-  createServerTedrisatAPIs,
-  type FlashcardDeckResponse,
-  type FlashcardResponse,
-} from "@medaris/services/tedrisat";
-import { env } from "~/env";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { ForbiddenState } from "~/features/errors/system-page";
 import { DeckCardsPage } from "~/features/flashcards/components/deck-cards-page";
 import { DeckUnavailable } from "~/features/flashcards/components/deck-unavailable";
-import { requireAccessToken } from "~/lib/require-access-token";
-import { subjectOf } from "~/lib/token-subject";
+import { loadDeckPage } from "~/features/flashcards/deck-page-data";
+import { readDeck } from "~/features/flashcards/reads";
 
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const t = await getTranslations("tedris.Decks");
+  const { id } = await params;
+  const read = await readDeck(id).catch(() => null);
+  return {
+    title:
+      read?.status === "ok"
+        ? `${t("tableCaption", { title: read.deck.title })} | Tedris`
+        : "Tedris",
+  };
+}
+
+/**
+ * The card list (design tedris/29) is the author's. Every write control on it
+ * would answer 403 for anyone else, so a reader who can see the deck is told
+ * so up front (design tedris/39) instead of being shown controls that cannot
+ * work; the cards they may read are on the deck's own page (design tedris/31).
+ */
 export default async function Page({
   params,
 }: {
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
-
-  const token = await requireAccessToken(`/${locale}/decks/${id}/cards`);
-  const API = await createServerTedrisatAPIs(token, env.TEDRISAT_API_BASE_URL);
-
-  // The deck is fetched for one field, `authorId`: this route is reachable for
-  // any public deck, and every write control on the page (add a card, edit a
-  // cell, delete a row) answers 403 for anyone but the author now that
-  // MDRS-63's assertions cover the card routes. Rendering an affordance that
-  // can only ever fail is worse than not rendering it.
-  // Both calls catch. MDRS-63 put `assertReadable` on `GET /flashcard/cards`
-  // as well, so a private deck belonging to someone else now throws here too —
-  // and an uncaught rejection inside `Promise.all` takes the whole page to the
-  // error boundary, which would also make the sibling's `.catch` protect
-  // nothing. A visitor who may not read this deck gets `DeckUnavailable`,
-  // which is the shape `[id]/page.tsx` already uses for the same pair.
-  const [cards, deck] = await Promise.all([
-    API.cards
-      .getFlashcardByDeckId({ deckId: id })
-      .catch((): FlashcardResponse[] | null => null),
-    API.decks
-      .getFlashcardDeckById({ id })
-      .catch((): FlashcardDeckResponse | null => null),
-  ]);
-
-  if (!deck) {
-    return <DeckUnavailable />;
+  const data = await loadDeckPage(locale, id, `/decks/${id}/cards`);
+  if (data.kind === "unavailable") return <DeckUnavailable />;
+  if (!data.isOwner) {
+    return <ForbiddenState deck={{ id, name: data.deck.title }} />;
   }
-
-  const currentUserId = subjectOf(token);
-  const isOwner = !!currentUserId && deck.authorId === currentUserId;
-
-  // The deck was readable (a public one), so naming it leaks nothing; every
-  // write on this page would answer 403 for a non-owner, so the page says so
-  // up front (design tedris/39) instead of drawing controls that cannot work.
-  if (!isOwner) {
-    return <ForbiddenState deck={{ id, name: deck.title }} />;
-  }
-
-  return <DeckCardsPage deckId={id} flashcards={cards || []} isOwner />;
+  return <DeckCardsPage deck={data.deck} cards={data.cards} />;
 }

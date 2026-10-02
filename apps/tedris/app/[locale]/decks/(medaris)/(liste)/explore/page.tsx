@@ -1,39 +1,40 @@
-import {
-  getDecks,
-  getMyDecks,
-  parseDeckFilter,
-} from "~/features/flashcards/actions";
+import type { FlashcardType } from "@medaris/services/tedrisat";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { ExploreDecksPage } from "~/features/flashcards/components/explore-decks-page";
+import { getDeckExplore } from "~/features/flashcards/reads";
 import { requireAccessToken } from "~/lib/require-access-token";
-import { subjectOf } from "~/lib/token-subject";
+
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("tedris.Decks");
+  return { title: `${t("explore")} | Tedris` };
+}
+
+const TYPES: Record<string, FlashcardType> = {
+  VOCABULARY: "VOCABULARY",
+  HADEETH: "HADEETH",
+};
 
 export default async function Page({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ filter?: string }>;
+  searchParams: Promise<{ type?: string | string[] }>;
 }) {
   const { locale } = await params;
-  const { filter: filterParam } = await searchParams;
-  const filter = await parseDeckFilter(filterParam);
-
-  const accessToken = await requireAccessToken(
-    `/${locale}/decks/explore${filterParam ? `?filter=${encodeURIComponent(filterParam)}` : ""}`
+  const { type } = await searchParams;
+  // A `?type=` that is not one of the two kinds is no filter at all.
+  const cardType = TYPES[Array.isArray(type) ? (type[0] ?? "") : (type ?? "")];
+  await requireAccessToken(
+    `/${locale}/decks/explore${cardType ? `?type=${cardType}` : ""}`
   );
-  const [decks, userDecks] = await Promise.all([
-    getDecks(filter),
-    getMyDecks("all"),
-  ]);
-
-  const userDeckIds = new Set((userDecks ?? []).map((deck) => deck.id));
-
   return (
     <ExploreDecksPage
-      initialDecks={decks}
-      userDeckIds={Array.from(userDeckIds)}
-      filter={filter}
-      currentUserId={subjectOf(accessToken)}
+      data={await getDeckExplore(cardType)}
+      cardType={cardType ?? null}
     />
   );
 }

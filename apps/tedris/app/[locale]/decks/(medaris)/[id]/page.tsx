@@ -1,77 +1,26 @@
-import {
-  createServerTedrisatAPIs,
-  type FlashcardDeckResponse,
-  type FlashcardResponse,
-  ResponseError,
-} from "@medaris/services/tedrisat";
-import { notFound } from "next/navigation";
-import { env } from "~/env";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { DeckDetailPage } from "~/features/flashcards/components/deck-detail-page";
 import { DeckUnavailable } from "~/features/flashcards/components/deck-unavailable";
-import { getAccessToken } from "~/lib/auth_options";
-import { requireAccessToken } from "~/lib/require-access-token";
-import { subjectOf } from "~/lib/token-subject";
+import { loadDeckPage } from "~/features/flashcards/deck-page-data";
+import { readDeck } from "~/features/flashcards/reads";
 
-/**
- * `null` when the API refused (403) the deck; a 404 is the not-found page
- * (design tedris/38). Both are expected outcomes of MDRS-43's authz, so
- * neither is logged as an error.
- */
-async function getDeck(deckId: string): Promise<FlashcardDeckResponse | null> {
-  try {
-    const token = await getAccessToken();
-    const { decks } = await createServerTedrisatAPIs(
-      token,
-      env.TEDRISAT_API_BASE_URL
-    );
-    const deck = await decks.getFlashcardDeckById({ id: deckId });
-    return deck || null;
-  } catch (error) {
-    if (error instanceof ResponseError && error.response.status === 404) {
-      // Design tedris/38: a deck that does not exist is the not-found page.
-      notFound();
-    }
-    if (error instanceof ResponseError && error.response.status === 403) {
-      return null;
-    }
-    console.error("Error fetching deck:", error);
-    return null;
-  }
-}
+export const dynamic = "force-dynamic";
 
-async function getDeckCards(deckId: string): Promise<FlashcardResponse[]> {
-  try {
-    const token = await getAccessToken();
-    const API = await createServerTedrisatAPIs(
-      token,
-      env.TEDRISAT_API_BASE_URL
-    );
-    const cards = await API.cards.getFlashcardByDeckId({
-      deckId,
-      include: ["progress"],
-    });
-
-    return cards || [];
-  } catch (error) {
-    console.error("Error fetching deck cards:", error);
-    return [];
-  }
-}
-
-async function isDeckInCollection(deckId: string): Promise<boolean> {
-  try {
-    const token = await getAccessToken();
-    if (!token) return false;
-    const API = await createServerTedrisatAPIs(
-      token,
-      env.TEDRISAT_API_BASE_URL
-    );
-    const userDecks = await API.decks.getAllFlashcardDecksByUser();
-    return userDecks.some((deck) => deck.id === deckId);
-  } catch (error) {
-    console.error("Error checking if deck is in collection:", error);
-    return false;
-  }
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const t = await getTranslations("tedris.Decks");
+  const { id } = await params;
+  const read = await readDeck(id).catch(() => null);
+  return {
+    title:
+      read?.status === "ok"
+        ? `${read.deck.title} | ${t("title")}`
+        : `${t("title")} | Tedris`,
+  };
 }
 
 export default async function Page({
@@ -80,27 +29,17 @@ export default async function Page({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
-
-  const accessToken = await requireAccessToken(`/${locale}/decks/${id}`);
-  const deck = await getDeck(id);
-
-  if (!deck) {
-    return <DeckUnavailable />;
-  }
-
-  const [cards, isInCollection] = await Promise.all([
-    getDeckCards(id),
-    isDeckInCollection(id),
-  ]);
-
-  const currentUserId = subjectOf(accessToken);
-
+  const data = await loadDeckPage(locale, id, `/decks/${id}`);
+  if (data.kind === "unavailable") return <DeckUnavailable />;
   return (
     <DeckDetailPage
-      deck={deck}
-      cards={cards}
-      isInCollection={isInCollection}
-      isOwner={!!currentUserId && deck.authorId === currentUserId}
+      deck={data.deck}
+      cards={data.cards}
+      isOwner={data.isOwner}
+      inCollection={data.summaries.some(
+        (d) => d.id === data.deck.id && d.inCollection
+      )}
+      ownDecks={data.summaries.filter((d) => d.isMine)}
     />
   );
 }
