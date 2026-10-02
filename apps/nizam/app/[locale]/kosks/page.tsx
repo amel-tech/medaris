@@ -2,6 +2,7 @@ import { getManagedKosks, getMe } from "~/features/kosks/actions";
 import { KosksPage } from "~/features/kosks/components/kosks-page";
 import {
   koskListEmptyState,
+  mayCreateKosk,
   taughtElsewhere,
 } from "~/features/kosks/kosk-abilities";
 
@@ -28,6 +29,7 @@ export default async function Page({
       totalPages={totalPages}
       emptyState={koskListEmptyState(me)}
       taughtCourses={taughtElsewhere(me)}
+      canCreateKosk={mayCreateKosk(me)}
     />
   );
 }

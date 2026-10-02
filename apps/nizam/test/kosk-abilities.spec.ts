@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   koskAbilities,
   koskListEmptyState,
+  mayCreateKosk,
   mayEditCourse,
   taughtElsewhere,
 } from "~/features/kosks/kosk-abilities";
@@ -18,6 +19,7 @@ import {
  *   Yeni Ders Aç          | KOSK_MANAGER
  *   Bekleyen talepler     | KOSK_MANAGER
  *   course editor         | KOSK_MANAGER, MUDERRIS (of that course)
+ *   Yeni Köşk             | SYSTEM_ADMIN only
  *
  * SYSTEM_ADMIN sees every button; tedrisat's realm bypass answers it.
  */
@@ -147,5 +149,15 @@ describe("koskListEmptyState", () => {
     expect(koskListEmptyState(me())).toBe("none");
     expect(koskListEmptyState(ROLES.MUDERRIS)).toBe("none");
     expect(koskListEmptyState(null)).toBe("none");
+  });
+});
+
+describe("mayCreateKosk", () => {
+  it("shows Yeni Köşk to SYSTEM_ADMIN alone, as POST /kosks allows", () => {
+    expect(shownTo(mayCreateKosk)).toEqual(["SYSTEM_ADMIN"]);
+  });
+
+  it("shows nothing when /me could not be read", () => {
+    expect(mayCreateKosk(null)).toBe(false);
   });
 });

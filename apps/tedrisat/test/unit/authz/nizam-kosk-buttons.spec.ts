@@ -172,10 +172,18 @@ describe("nizam köşk buttons ↔ the matrix (MDRS-108)", () => {
     expect(holders).toEqual([ROLES.KOSK_MANAGER]);
   });
 
-  it("Yeni Köşk needs no role: creating a köşk is exempt from the matrix", () => {
+  it("Yeni Köşk is SYSTEM_ADMIN's alone, as CREATE_KOSK is on no köşk row", () => {
+    // Shown by `mayCreateKosk`. Since 2026-10-02 `POST /kosks` is
+    // `@Authz(CREATE_KOSK, forNew(KOSK))`, and only the realm bypass holds it.
     const handler = KoskController.prototype.create;
-    expect(Reflect.getMetadata(AUTHZ_EXEMPT_KEY, handler)).toBe(true);
-    expect(Reflect.getMetadata(AUTHZ_KEY, handler)).toBeUndefined();
+    expect(Reflect.getMetadata(AUTHZ_EXEMPT_KEY, handler)).toBeUndefined();
+    expect(Reflect.getMetadata(AUTHZ_KEY, handler)).toEqual(
+      expect.objectContaining({ scope: SCOPES.CREATE_KOSK })
+    );
+    const holders = Object.entries(MATRIX[ENTITIES.KOSK])
+      .filter(([, scopes]) => scopes?.includes(SCOPES.CREATE_KOSK))
+      .map(([role]) => role);
+    expect(holders).toEqual([]);
   });
 
   // The list needs no role: since MDRS-122 it is `@AuthzPublic()`, open even
