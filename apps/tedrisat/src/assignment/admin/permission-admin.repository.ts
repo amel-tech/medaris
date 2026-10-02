@@ -76,6 +76,7 @@ export interface INazimGrantRow {
 
 export interface IGroupRow {
   id: string;
+  createdAt: Date;
   name: string;
   scopeType: ScopeType;
   scopeId: string | null;
@@ -167,6 +168,7 @@ export class PermissionAdminRepository {
         scopeType: permissionGroups.scopeType,
         scopeId: permissionGroups.scopeId,
         courseTitle: courses.title,
+        createdAt: permissionGroups.createdAt,
       })
       .from(permissionGroups)
       .leftJoin(courses, eq(courses.id, permissionGroups.scopeId))
@@ -578,9 +580,8 @@ export class PermissionAdminRepository {
       .map((g) => ({ ...g, userCount: counts.get(g.id) ?? 0 }))
       .sort(
         (a, b) =>
-          (a.scopeType === SCOPE_TYPES.PLATFORM ? 0 : 1) -
-            (b.scopeType === SCOPE_TYPES.PLATFORM ? 0 : 1) ||
-          a.name.localeCompare(b.name, "tr")
+          a.createdAt.getTime() - b.createdAt.getTime() ||
+          a.id.localeCompare(b.id)
       );
   }
 

@@ -244,7 +244,7 @@ export class AppointMedarisNazimDto {
   @IsUUID()
   userId!: string;
 
-  @ApiPropertyOptional({ format: "uuid", nullable: true })
+  @ApiPropertyOptional({ type: String, format: "uuid", nullable: true })
   @IsOptional()
   @IsUUID()
   groupId?: string | null;
@@ -268,6 +268,7 @@ export class AppointMedarisNazimDto {
 
 export class SetNazimGrantsDto {
   @ApiPropertyOptional({
+    type: String,
     format: "uuid",
     nullable: true,
     description: "A platform group, or empty for none",

@@ -21,10 +21,10 @@ import { mapValues } from '../runtime';
 export interface SetNazimGrantsDto {
     /**
      * A platform group, or empty for none
-     * @type {object}
+     * @type {string}
      * @memberof SetNazimGrantsDto
      */
-    groupId?: object | null;
+    groupId?: string | null;
     /**
      * The permissions given on top of the group
      * @type {Array<string>}

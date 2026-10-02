@@ -9828,7 +9828,7 @@
             "description": "The account to appoint"
           },
           "groupId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
@@ -9855,7 +9855,7 @@
         "type": "object",
         "properties": {
           "groupId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true,
             "description": "A platform group, or empty for none"

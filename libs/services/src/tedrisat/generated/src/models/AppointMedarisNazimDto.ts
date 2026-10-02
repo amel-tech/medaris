@@ -27,10 +27,10 @@ export interface AppointMedarisNazimDto {
     userId: string;
     /**
      * 
-     * @type {object}
+     * @type {string}
      * @memberof AppointMedarisNazimDto
      */
-    groupId?: object | null;
+    groupId?: string | null;
     /**
      * Codes from the catalog of the group's scope
      * @type {Array<string>}
