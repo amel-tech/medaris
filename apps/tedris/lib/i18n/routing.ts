@@ -10,5 +10,6 @@ export const routing = defineRouting({
     "/": "/",
     "/home": "/home",
     "/account": "/account",
+    "/account/calendar": "/account/calendar",
   },
 });

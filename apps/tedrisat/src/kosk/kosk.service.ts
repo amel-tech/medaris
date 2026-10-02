@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { KoskForbiddenError } from "./errors/kosk-forbidden.error";
+import { KoskHandleTakenError } from "./errors/kosk-handle-taken.error";
 import { KoskLastManagerError } from "./errors/kosk-last-manager.error";
 import { KoskManagerNotFoundError } from "./errors/kosk-manager-not-found.error";
 import { KoskManagerUnknownUserError } from "./errors/kosk-manager-unknown-user.error";
@@ -7,10 +8,12 @@ import { KoskNotFoundError } from "./errors/kosk-not-found.error";
 import { KoskRepository } from "./kosk.repository";
 import {
   ICreateKosk,
+  IFollowedKoskCourse,
   IKosk,
   IKoskDecks,
   IKoskListFilter,
   IKoskRef,
+  IKoskVisibility,
   IKoskWithStats,
   IManagerActor,
   IPaginatedKosks,
@@ -74,6 +77,14 @@ export class KoskService {
     return this.koskRepo.findDecks(koskId, userId);
   }
 
+  /** Courses of the köşks the caller follows, for Ana sayfa (MDRS-165). */
+  async findFollowedCourses(
+    userId: string,
+    limit: number
+  ): Promise<IFollowedKoskCourse[]> {
+    return this.koskRepo.findFollowedCourses(userId, limit);
+  }
+
   async findById(id: string, userId: string | null): Promise<IKoskWithStats> {
     const kosk = await this.koskRepo.findById(id, userId);
     if (!kosk) {
@@ -116,7 +127,18 @@ export class KoskService {
   }
 
   async create(newKosk: ICreateKosk): Promise<IKosk> {
+    await this.assertHandleFree(newKosk.handle);
     return this.koskRepo.create(newKosk);
+  }
+
+  /** 409 when a typed short name belongs to another köşk (nizam/10). */
+  async assertHandleFree(
+    handle: string | null | undefined,
+    exceptId?: string
+  ): Promise<void> {
+    if (handle && (await this.koskRepo.handleTaken(handle, exceptId))) {
+      throw new KoskHandleTakenError(handle);
+    }
   }
 
   /**
@@ -125,8 +147,13 @@ export class KoskService {
    * köşk with the same 404 as a missing one, and enrolment reads it because
    * every request to join a course of an unlisted köşk waits for approval.
    */
-  async findVisibility(id: string): Promise<{ isPrivate: boolean } | null> {
+  async findVisibility(id: string): Promise<IKoskVisibility | null> {
     return this.koskRepo.findVisibility(id);
+  }
+
+  /** True when another köşk already uses this short name (MDRS-174). */
+  async handleTaken(handle: string, exceptId?: string): Promise<boolean> {
+    return this.koskRepo.handleTaken(handle, exceptId);
   }
 
   /** True if a köşk with this id exists. */
@@ -178,6 +205,7 @@ export class KoskService {
    * köşk's managers. A medrese has no say over a köşk since MDRS-134.
    */
   async update(id: string, updates: IUpdateKosk): Promise<IKosk> {
+    await this.assertHandleFree(updates.handle, id);
     const updated = await this.koskRepo.update(id, updates);
     if (!updated) {
       throw new KoskNotFoundError(id);

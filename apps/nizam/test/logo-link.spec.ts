@@ -2,8 +2,8 @@ import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
-import { homeHref } from "~/components/layout/nav-routes";
 import { isPublicPath } from "~/lib/public-paths";
+import { homeHref } from "~/lib/shell-nav";
 import middleware from "../middleware";
 
 const appDir = join(__dirname, "..", "app");

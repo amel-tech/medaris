@@ -7,18 +7,21 @@ import {
   FlashcardDeckLabelApi,
   FlashcardDecksApi,
   FlashcardlabelApi,
+  KoskApplicationsApi,
   KosksApi,
   LessonsApi,
   MadrasahsApi,
   MeApi,
   NizamApi,
   NotificationsApi,
+  SessionsApi,
   TedrisatServiceApi,
   UsersApi,
 } from "./generated/src";
 
 // Re-export types that are used in other apps
 export type {
+  AppointMedarisNazimDto,
   ArchiveImpactResponse,
   ArchiveItemResponse,
   ArchiveItemType,
@@ -30,6 +33,7 @@ export type {
   BanPersonResponse,
   BanResponse,
   BanScope,
+  CatalogSectionResponse,
   ChiefNazimResponse,
   CourseDetailResponse,
   CourseSummaryResponse,
@@ -40,38 +44,65 @@ export type {
   CreateFlashcardDto,
   CreateFlashcardLabelDto,
   CreateFlashcardLabelingDto,
+  CreateKoskApplicationDto,
   CreateKoskDto,
   CreateLessonDto,
   CreateMuderrisDto,
+  CreatePermissionGroupDto,
   CreateResourceDto,
   CreateWeekDto,
   CreateWeekLessonDto,
   DeckLabelStatsResponse,
+  DeletePermissionGroupDto,
+  DismissAction,
+  DismissDecisionDto,
+  DismissMedarisNazimDto,
   EffectivePermissionGroup,
   EnrolledCourseResponse,
   EnrollmentBanResponse,
   EnrollmentResponse,
   FlashcardCreateLabelResponse,
   FlashcardDeckCreateLabelResponse,
+  FlashcardDeckExploreResponse,
   FlashcardDeckLabelingResponse,
   FlashcardDeckLabelResponse,
   FlashcardDeckResponse,
+  FlashcardDeckSummaryResponse,
   FlashcardLabelingResponse,
   FlashcardLabelResponse,
+  FlashcardProgressResponse,
   FlashcardResponse,
+  FlashcardStudyRoundResponse,
+  FollowedKoskCourseResponse,
+  GivenItemResponse,
+  GivenKind,
   GrantResponse,
+  GroupUserResponse,
+  HostingCoursesAction,
+  HostingOpenCourseResponse,
+  HostingRightResponse,
+  KoskApplicationResponse,
   KoskResponse,
   LabelStatsResponse,
   LessonMutationResponse,
   LessonResponse,
+  MadrasahDirectoryItemResponse,
+  MadrasahDirectoryResponse,
   MadrasahResponse,
+  MadrasahStatus,
+  MadrasahStatusFilter,
+  MedarisNazimResponse,
   MeResponse,
   MuderrisResponse,
   MyAssignmentsResponse,
   MyEffectivePermissionsResponse,
   MyGrantsResponse,
   MyPermissionsResponse,
+  MyPublicProfileResponse,
   MyRolesResponse,
+  NazimGroupResponse,
+  NazimPermissionResponse,
+  NazimPersonResponse,
   NotificationCountsResponse,
   NotificationResponse,
   PaginatedArchiveResponse,
@@ -79,19 +110,31 @@ export type {
   PaginatedMadrasahResponse,
   PaginatedNotificationResponse,
   PendingEnrollmentResponse,
+  PermissionCatalogResponse,
+  PermissionGroupResponse,
+  PermissionGroupScope,
+  ProfileVisibility,
+  PublicProfileResponse,
   ReadAllNotificationsResponse,
   RemoveEnrollmentDto,
   ReplaceCourseDto,
   ResourceResponse,
   RosterEnrollmentResponse,
+  ScheduleSessionResponse,
   SetEnrollmentStatusDto,
+  SetNazimGrantsDto,
   UpdateCourseDto,
   UpdateFlashcardDeckDto,
   UpdateFlashcardDto,
   UpdateKoskDto,
   UpdateLessonDto,
+  UpdateMeDto,
+  UpdatePermissionGroupDto,
+  UpdateProfileVisibilityDto,
   UpdateProgressDto,
+  UpdatePublicProfileDto,
   UserSummaryResponse,
+  UsersPolicy,
   WeekResponse,
 } from "./generated/src";
 
@@ -101,12 +144,22 @@ import {
 } from "./generated/src/models/CreateCourseDto";
 import { CreateFlashcardDtoTypeEnum } from "./generated/src/models/CreateFlashcardDto";
 import { CreateLessonDtoTypeEnum } from "./generated/src/models/CreateLessonDto";
+import { DeckCollectionKind } from "./generated/src/models/DeckCollectionKind";
+import { DeckPublishStatus } from "./generated/src/models/DeckPublishStatus";
+import { DeckSource } from "./generated/src/models/DeckSource";
 import { EnrollmentResponseStatusEnum } from "./generated/src/models/EnrollmentResponse";
 // Re-export enum constants (they are used at runtime as values)
 import { FlashcardResponseTypeEnum } from "./generated/src/models/FlashcardResponse";
+import { FlashcardType } from "./generated/src/models/FlashcardType";
+import { ReviewRating } from "./generated/src/models/ReviewRating";
 import { TeamSettableEnrollmentStatus } from "./generated/src/models/TeamSettableEnrollmentStatus";
 
 export {
+  DeckCollectionKind,
+  DeckPublishStatus,
+  DeckSource,
+  FlashcardType,
+  ReviewRating,
   FlashcardResponseTypeEnum,
   CreateFlashcardDtoTypeEnum,
   CreateLessonDtoTypeEnum,
@@ -140,6 +193,8 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     cards: new FlashcardCardsApi(configuration),
     service: new TedrisatServiceApi(configuration),
     kosks: new KosksApi(configuration),
+    // "Köşk açma başvurusu" (MDRS-166).
+    koskApplications: new KoskApplicationsApi(configuration),
     // The medrese layer (MDRS-106); tedris' medrese page reads it (MDRS-122).
     madrasahs: new MadrasahsApi(configuration),
     courses: new CoursesApi(configuration),
@@ -154,6 +209,8 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     nizam: new NizamApi(configuration),
     // The caller's in-app notifications (MDRS-167): the list page and the bell.
     notifications: new NotificationsApi(configuration),
+    // The caller's own schedule: Programım and the phone menu's next session (MDRS-163).
+    sessions: new SessionsApi(configuration),
     // Hidden things, brought back or deleted for real (MDRS-173).
     archive: new ArchiveApi(configuration),
     // Barring a talebe and lifting it (MDRS-177).

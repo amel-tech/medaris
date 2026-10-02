@@ -35,13 +35,30 @@ export interface IFlashcardProgress {
   userId: string;
   flashcardId: string;
   status: FlashcardProgressStatus;
-  // this will potentially be extended
+  dueAt: Date | null;
+  reviewedAt: Date | null;
+  intervalDays: number;
 }
 
 export interface ICreateFlashcardProgress {
   userId: string;
   flashcardId: string;
   status: FlashcardProgressStatus;
+  dueAt: Date | null;
+  reviewedAt: Date | null;
+  intervalDays: number;
+}
+
+/** A card of today's study round, with the caller's row for it (null: never studied). */
+export interface IStudyCard extends IFlashcard {
+  progress: IFlashcardProgress[];
+}
+
+export interface IStudyQueue {
+  /** Cards waiting for a repeat, most overdue first. */
+  due: IStudyCard[];
+  /** Cards the caller has not started, oldest first. */
+  fresh: IStudyCard[];
 }
 
 /**
@@ -54,6 +71,8 @@ export interface IFlashcardVisibility {
   deckId: string;
   authorId: string;
   isPublic: boolean;
+  /** The deck belongs to a course, köşk or medrese the asked-about user is in. */
+  sharedWithViewer: boolean;
 }
 
 export interface IFlashcardRepository {
@@ -64,7 +83,7 @@ export interface IFlashcardRepository {
   ): Promise<IFlashcard | null>;
   findByDeckId(
     deckId: string,
-    userId: string,
+    userId: string | null,
     include?: Set<CardIncludeEnum>
   ): Promise<IFlashcard[] | null>;
   /**
@@ -84,7 +103,10 @@ export interface IFlashcardRepository {
    * result are cards that do not exist; the caller decides whether that is a
    * 404 or a deny, because this projection deliberately does not.
    */
-  findVisibilityByIds(cardIds: string[]): Promise<IFlashcardVisibility[]>;
+  findVisibilityByIds(
+    cardIds: string[],
+    viewerId?: string
+  ): Promise<IFlashcardVisibility[]>;
   createMany(cards: ICreateFlashcard[]): Promise<IFlashcard[]>;
   update(id: string, updates: IUpdateFlashcard): Promise<IFlashcard | null>;
   delete(id: string): Promise<boolean>;
@@ -92,4 +114,15 @@ export interface IFlashcardRepository {
   replaceManyProgress(
     updates: ICreateFlashcardProgress[]
   ): Promise<IFlashcardProgress[]>;
+  /** The caller's rows for these cards; a card they never studied has none. */
+  findProgress(
+    userId: string,
+    cardIds: string[]
+  ): Promise<IFlashcardProgress[]>;
+  /** Today's study round of one deck for one caller (MDRS-165). */
+  findStudyQueue(
+    deckId: string,
+    userId: string,
+    limits: { due: number; fresh: number }
+  ): Promise<IStudyQueue>;
 }

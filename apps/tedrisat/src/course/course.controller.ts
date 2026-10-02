@@ -43,14 +43,17 @@ import {
 } from "@nestjs/swagger";
 import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
+import { CourseStatsRepository } from "./course-stats.repository";
 import {
   CourseDetailResponse,
   CourseSummaryResponse,
   EnrolledCourseResponse,
   EnrollmentResponse,
   PendingEnrollmentResponse,
+  RemovedEnrollmentResponse,
   RosterEnrollmentResponse,
 } from "./dto/course-response.dto";
+import { CourseStatsResponse } from "./dto/course-stats.dto";
 import { CreateCourseDto } from "./dto/create-course.dto";
 import {
   RemoveEnrollmentDto,
@@ -95,7 +98,10 @@ const byExistingCourse: AuthzResolve = async (req, moduleRef) => {
 @UseGuards(AuthGuard, AuthzGuard)
 @Controller()
 export class CourseController {
-  constructor(private readonly courseService: CourseService) {}
+  constructor(
+    private readonly courseService: CourseService,
+    private readonly statsRepo: CourseStatsRepository
+  ) {}
 
   @ApiOperation({
     summary: "List the courses that belong to a köşk",
@@ -361,6 +367,25 @@ export class CourseController {
   }
 
   @ApiOperation({
+    summary: "The numbers of a course's overview (course team)",
+    description:
+      "nizam/53: talebe enrolled, applications waiting, completions and how many weeks have begun. For the course team: the köşk manager and the course's müderrisler.",
+    operationId: "getCourseStats",
+  })
+  @ApiOkResponse({ type: CourseStatsResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  // `byExistingCourse`: SYSTEM_ADMIN bypasses the resolver, so a missing
+  // course must answer 404 here and not an empty count.
+  @Authz(SCOPES.MANAGE_ENROLLMENTS, byExistingCourse)
+  @Get("courses/:id/stats")
+  async stats(
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<CourseStatsResponse> {
+    return this.statsRepo.stats(id, new Date());
+  }
+
+  @ApiOperation({
     summary: "List a course's enrollments — requests, talebe and completions",
     description:
       "For the course team: the köşk manager and the course's müderrisler (MDRS-105). Requests first, then active seats, then completions.",
@@ -375,6 +400,23 @@ export class CourseController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<RosterEnrollmentResponse[]> {
     return this.courseService.findEnrollments(id);
+  }
+
+  @ApiOperation({
+    summary: "Talebe the team took out of the course, with the reasons",
+    description:
+      "For the course team (MDRS-178, Erişimi kaldırılanlar): who was taken out by `POST …/remove`, by whom, when and why, newest first. Read from the audit log; a talebe may have applied again since.",
+    operationId: "getRemovedEnrollments",
+  })
+  @ApiOkResponse({ type: RemovedEnrollmentResponse, isArray: true })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
+  @Get("courses/:id/enrollments/removed")
+  async removedEnrollments(
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<RemovedEnrollmentResponse[]> {
+    return this.courseService.findRemovedEnrollments(id);
   }
 
   @ApiOperation({

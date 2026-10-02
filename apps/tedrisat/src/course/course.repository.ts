@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import {
   and,
+  desc,
   eq,
   inArray,
   isNotNull,
@@ -10,6 +11,7 @@ import {
   notInArray,
   sql,
 } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { DatabaseService } from "../database/database.service";
 import {
   holdsIn,
@@ -47,6 +49,7 @@ import {
   ILessonMutation,
   IMuderris,
   IPendingEnrollment,
+  IRemovedEnrollment,
   IRemoveEnrollment,
   IReplaceCourse,
   ISessionBatchResult,
@@ -974,12 +977,14 @@ export class CourseRepository implements ICourseRepository {
     status: CourseStatus;
     archived: boolean;
     koskIsPrivate: boolean;
+    koskHidden: boolean;
   } | null> {
     const rows = await this.db
       .select({
         status: courses.status,
         archivedAt: courses.archivedAt,
         koskIsPrivate: kosks.isPrivate,
+        koskArchivedAt: kosks.archivedAt,
       })
       .from(courses)
       .innerJoin(kosks, eq(kosks.id, courses.koskId))
@@ -991,6 +996,7 @@ export class CourseRepository implements ICourseRepository {
       status: row.status,
       archived: row.archivedAt !== null,
       koskIsPrivate: row.koskIsPrivate,
+      koskHidden: row.koskArchivedAt !== null,
     };
   }
 
@@ -1343,6 +1349,8 @@ export class CourseRepository implements ICourseRepository {
         entityId: entry.courseId,
         details: {
           userId: before.userId,
+          studentName: before.studentName,
+          studentEmail: before.studentEmail,
           reason: entry.reason,
           status: before.status,
           progress: before.progress,
@@ -1350,6 +1358,61 @@ export class CourseRepository implements ICourseRepository {
         },
       });
       return true;
+    });
+  }
+
+  /**
+   * The talebe the team took out of a course, newest first (MDRS-178,
+   * "Erişimi kaldırılanlar"): the `enrollment.remove` rows of the audit log.
+   * Names come from the row itself when it kept them, else from `users`.
+   */
+  async findRemovedEnrollments(
+    courseId: string
+  ): Promise<IRemovedEnrollment[]> {
+    const target = alias(users, "removed_target");
+    const actor = alias(users, "removed_actor");
+    const rows = await this.db
+      .select({
+        id: auditLog.id,
+        actorId: auditLog.actorId,
+        details: auditLog.details,
+        createdAt: auditLog.createdAt,
+        targetGiven: target.givenName,
+        targetFamily: target.familyName,
+        targetEmail: target.email,
+        actorGiven: actor.givenName,
+        actorFamily: actor.familyName,
+      })
+      .from(auditLog)
+      .leftJoin(
+        target,
+        sql`${target.id}::text = ${auditLog.details}->>'userId'`
+      )
+      .leftJoin(actor, eq(actor.id, auditLog.actorId))
+      .where(
+        and(
+          eq(auditLog.action, "enrollment.remove"),
+          eq(auditLog.entityId, courseId)
+        )
+      )
+      .orderBy(desc(auditLog.createdAt), desc(auditLog.id));
+    const full = (g: string | null, f: string | null) =>
+      [g, f].filter(Boolean).join(" ").trim() || null;
+    return rows.map((r) => {
+      const d = r.details as Record<string, unknown>;
+      const text = (v: unknown) => (typeof v === "string" ? v : null);
+      return {
+        userId: String(d.userId ?? ""),
+        name: text(d.studentName) ?? full(r.targetGiven, r.targetFamily),
+        email: text(d.studentEmail) ?? r.targetEmail,
+        reason: text(d.reason) ?? "",
+        progress: typeof d.progress === "number" ? d.progress : 0,
+        removedAt: r.createdAt,
+        removedBy: {
+          id: r.actorId,
+          name: full(r.actorGiven, r.actorFamily),
+        },
+      };
     });
   }
 

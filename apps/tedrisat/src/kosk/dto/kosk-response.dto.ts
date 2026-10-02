@@ -55,6 +55,26 @@ export class KoskResponse {
   @ApiProperty({ type: [String], example: ["Tefsir", "Hadis"] })
   tags!: string[];
 
+  @ApiProperty({
+    example: false,
+    description: "Köşk-wide policy (MDRS-174): enrollment always waits",
+  })
+  alwaysRequireApproval!: boolean;
+
+  @ApiProperty({
+    example: false,
+    description: "Köşk-wide policy (MDRS-174): no recording is made public",
+  })
+  recordingsNeverPublic!: boolean;
+
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+    description:
+      "Since when the köşk is hidden (MDRS-174); null while it is shown. Only its nazımları and SYSTEM_ADMIN can read a hidden köşk.",
+  })
+  archivedAt!: Date | null;
+
   @ApiProperty({ example: false })
   verified!: boolean;
 

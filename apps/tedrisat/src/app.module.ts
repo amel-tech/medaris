@@ -18,9 +18,13 @@ import { CourseModule } from "./course/course.module";
 import { DatabaseModule } from "./database/database.module";
 import { FlashcardModule } from "./flashcard/flashcard.module";
 import { FlashcardLabelModule } from "./flashcard/flashcard-label.module";
+import { HostingModule } from "./hosting/hosting.module";
+import { InactiveScopeModule } from "./inactive-scope/inactive-scope.module";
 import { KoskModule } from "./kosk/kosk.module";
+import { KoskApplicationModule } from "./kosk-application/kosk-application.module";
 import { MadrasahModule } from "./madrasah/madrasah.module";
 import { NotificationModule } from "./notification/notification.module";
+import { ScheduleModule } from "./schedule/schedule.module";
 import { UserModule } from "./user/user.module";
 
 @Module({
@@ -43,10 +47,14 @@ import { UserModule } from "./user/user.module";
     FlashcardLabelModule,
     KoskModule,
     MadrasahModule,
+    HostingModule,
     CourseModule,
     CalendarFeedModule,
+    KoskApplicationModule,
     NotificationModule,
+    ScheduleModule,
     AssignmentModule,
+    InactiveScopeModule,
     ArchiveModule,
     BanModule,
     UserModule,

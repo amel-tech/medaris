@@ -8,8 +8,13 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+import { DeckPublishStatus } from "../../flashcard/domain/deck-publish-status.enum";
+import { FlashcardType } from "../../flashcard/domain/flashcard-type.enum";
+import { courses } from "./course.schema";
 import { flashcards } from "./flashcard.schema";
+import { flashcardType } from "./flashcard-enums.schema";
 import { kosks } from "./kosk.schema";
+import { madrasahs } from "./madrasah.schema";
 
 // Tables
 export const decks = table(
@@ -20,6 +25,34 @@ export const decks = table(
     title: text("title").notNull(),
     description: text("description"),
     isPublic: boolean("is_public").default(false).notNull(),
+    // What the deck's cards are (MDRS-164): a deck holds one kind, the way the
+    // design lists it ("36 kart · Kelime"). Cards keep their own `type`.
+    cardType: flashcardType("card_type")
+      .default(FlashcardType.VOCABULARY)
+      .notNull(),
+    // The author's request to publish and the reviewer's answer; see
+    // `DeckPublishStatus`. `publishRequestedAt` is set while PENDING only.
+    publishStatus: text("publish_status")
+      .$type<DeckPublishStatus>()
+      .default(DeckPublishStatus.PRIVATE)
+      .notNull(),
+    publishRequestedAt: timestamp("publish_requested_at", {
+      withTimezone: true,
+    }),
+    // Free labels the author types on the create form; only the author reads
+    // them back. Not the `deck_label` tables: those need a title of five
+    // characters and a second request per label.
+    tags: text("tags").array().default([]).notNull(),
+    // Where the deck belongs, if anywhere (MDRS-164): a "ders destesi", a
+    // "köşk destesi" (`koskId` below), a "medrese destesi". At most one is set
+    // by convention; the talebe enrolled in the course, in a course of that
+    // köşk or in a course of that medrese may read it (`deckSharedWith`).
+    courseId: uuid("course_id").references(() => courses.id, {
+      onDelete: "set null",
+    }),
+    madrasahId: uuid("madrasah_id").references(() => madrasahs.id, {
+      onDelete: "set null",
+    }),
     // The köşk the deck belongs to (MDRS-159): a "köşk destesi", open to the
     // talebe of that köşk's courses. Null for a talebe's own deck. A köşk that
     // goes leaves its decks to their authors.
@@ -32,7 +65,11 @@ export const decks = table(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (table) => [index("decks_kosk_id_idx").on(table.koskId)]
+  (table) => [
+    index("decks_kosk_id_idx").on(table.koskId),
+    index("decks_course_id_idx").on(table.courseId),
+    index("decks_madrasah_id_idx").on(table.madrasahId),
+  ]
 );
 
 export const decksUsers = table(

@@ -41,6 +41,11 @@ async function signIn(
   await page.waitForURL(/localhost:4001/);
 }
 
+/** The roster is the "Kayıtlı" tab of the course's Talebeler page (nizam/57). */
+const openRoster = async (page: Page) => {
+  await page.goto(studentsUrl());
+  await page.getByRole("tab", { name: /^Kayıtlı/ }).click();
+};
 const studentsUrl = () =>
   `/tr/kosks/${fixture.koskId}/courses/${fixture.course.id}/students`;
 const rowOf = (page: Page, name: string) =>
@@ -51,7 +56,7 @@ test("nizam/41 — 'Yasakla' opens the window for that talebe, with the course s
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(studentsUrl());
+  await openRoster(page);
 
   await page
     .getByRole("button", { name: `Yasakla: ${fixture.talebe.name}` })
@@ -76,7 +81,7 @@ test("nizam/41 — the reason is required: 'Yasakla' stays off for empty or blan
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(studentsUrl());
+  await openRoster(page);
   await page
     .getByRole("button", { name: `Yasakla: ${fixture.talebe.name}` })
     .click();
@@ -98,7 +103,7 @@ test("nizam/41 — the scrim does not close it; Escape and 'Vazgeç' do", async 
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(studentsUrl());
+  await openRoster(page);
   const open = async () => {
     await page
       .getByRole("button", { name: `Yasakla: ${fixture.talebe.name}` })
@@ -130,7 +135,7 @@ test("nizam/41 — barring marks the row 'Yasaklı', swaps 'Dersten çıkar' for
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(studentsUrl());
+  await openRoster(page);
   const row = rowOf(page, fixture.talebe.name);
   await expect(
     row.getByRole("button", { name: /Dersten çıkar/ })
@@ -160,7 +165,7 @@ test("nizam/41 — the köşk nazımı can bar the whole köşk, and the ban rem
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(studentsUrl());
+  await openRoster(page);
   await page
     .getByRole("button", { name: `Yasakla: ${fixture.talebe.name}` })
     .click();

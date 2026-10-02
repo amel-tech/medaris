@@ -34,6 +34,16 @@ export const kosks = table("kosks", {
   field: text("field"), // ilim alanı, e.g. "Tefsir & Hadis"
   level: text("level"), // 'ALL' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
   tags: text("tags").array().default([]).notNull(),
+  // Köşk-wide policies (MDRS-174, nizam/24): they apply to every course of
+  // the köşk and a course's own setting cannot loosen them. Approval is
+  // enforced at enrollment; the recordings policy is stored for the recording
+  // model to read (there is none yet).
+  alwaysRequireApproval: boolean("always_require_approval")
+    .default(false)
+    .notNull(),
+  recordingsNeverPublic: boolean("recordings_never_public")
+    .default(false)
+    .notNull(),
   verified: boolean("verified").default(false).notNull(),
   featured: boolean("featured").default(false).notNull(),
   rating: real("rating").default(0).notNull(),

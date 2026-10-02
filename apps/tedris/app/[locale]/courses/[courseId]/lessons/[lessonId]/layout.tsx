@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { ToastHost } from "~/components/toast-host";
 import { getSession } from "~/features/courses/public-reads";
 
 /**
@@ -18,5 +19,5 @@ export default async function SessionLayout({
 }) {
   const { courseId, lessonId } = await params;
   if (!(await getSession(courseId, lessonId))) notFound();
-  return children;
+  return <ToastHost>{children}</ToastHost>;
 }
