@@ -243,6 +243,9 @@ export class TedrisatRoleResolver implements RoleResolver {
    *   priority order becomes unsound with it. (Before MDRS-43 the same
    *   invariant was held up by an `assertOwner` call in the handler.)
    * - Public deck, not the author: PUBLIC (any authenticated caller may view).
+   * - Private deck shared through a course (`deckSharedWith`, MDRS-164), not
+   *   the author: PUBLIC as well, which reads and collects it and writes
+   *   nothing.
    * - Private deck, not the author: `DeckNotFoundError`, the same 404 as a
    *   deck that is not there — on every deck route, reads and writes alike.
    *   A 403 here told a stranger the UUID was somebody's private deck;
@@ -262,10 +265,14 @@ export class TedrisatRoleResolver implements RoleResolver {
   ): Promise<Role> {
     if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
 
-    const deck = await this.deckService.findVisibility(resource.id);
+    const deck = await this.deckService.findVisibility(resource.id, userId);
     if (!deck) throw new DeckNotFoundError(resource.id);
     if (deck.authorId === userId) return ROLES.DECK_OWNER;
-    if (!deck.isPublic) throw new DeckNotFoundError(resource.id);
+    // A deck that belongs to a course the caller is enrolled in (MDRS-164) is
+    // read like a public one: PUBLIC holds VIEW and nothing that writes.
+    if (!deck.isPublic && !deck.sharedWithViewer) {
+      throw new DeckNotFoundError(resource.id);
+    }
     return ROLES.PUBLIC;
   }
 
