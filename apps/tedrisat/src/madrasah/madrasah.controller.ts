@@ -37,6 +37,7 @@ import {
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
+import { CourseStatus } from "../course/domain/course-status.enum";
 import { PublicRequest } from "../course/interfaces/authorized-request.interface";
 import { AuthorizedRequest } from "../kosk/interfaces/authorized-request.interface";
 import { maskMadrasahForAnonymous } from "./anonymous-mask";
@@ -423,20 +424,25 @@ export class MadrasahController {
   }
 
   @ApiOperation({
-    summary: "The medrese's courses for its settings screen (its başmüderris)",
+    summary: "The medrese's courses (its başmüderris)",
     description:
-      'nazir/04\'s "Politikaların uygulandığı dersler": drafts and published courses, a hidden one not, by title, each with its köşk and müderrisler (the imam marked).',
+      "nazir/07's table and nazir/04's \"Politikaların uygulandığı dersler\": drafts and published courses, a hidden one not, by title. Each with its köşk, the enrolled and the waiting talebe, and its müderrisler (the imam marked, with the account and e-mail a change of the list needs). `koskId` and `status` narrow the list.",
     operationId: "getMadrasahCourses",
   })
+  @ApiQuery({ name: "koskId", required: false, type: String, format: "uuid" })
+  @ApiQuery({ name: "status", required: false, enum: CourseStatus })
   @ApiOkResponse({ type: MadrasahCourseListItemResponse, isArray: true })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/courses")
   @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
   async findCourses(
-    @Param("id", ParseUUIDPipe) id: string
+    @Param("id", ParseUUIDPipe) id: string,
+    @Query("koskId", new ParseUUIDPipe({ optional: true })) koskId?: string,
+    @Query("status", new ParseEnumPipe(CourseStatus, { optional: true }))
+    status?: CourseStatus
   ): Promise<MadrasahCourseListItemResponse[]> {
-    return this.madrasahService.findCourseList(id);
+    return this.madrasahService.findCourseList(id, { koskId, status });
   }
 
   @ApiOperation({

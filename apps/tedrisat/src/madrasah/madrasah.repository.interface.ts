@@ -186,12 +186,37 @@ export interface IUpdateMadrasahSettings {
   policies?: Partial<IMadrasahPolicies>;
 }
 
-/** A course of the medrese as the settings screen lists it, drafts included. */
+/** A müderris of a course as the nazırs' course list shows them (nazir/07, nazir/17). */
+export interface IMadrasahCourseListMuderris extends IMadrasahCourseMuderris {
+  /** Null for a müderris shown by name alone, with no account behind them. */
+  userId: string | null;
+  /** From the `users` row; null until that person has signed in once. */
+  email: string | null;
+}
+
+/**
+ * A course of the medrese as the nazırs list it, drafts included: the settings
+ * screen's (nazir/04) and the course list's (nazir/07).
+ */
 export interface IMadrasahCourseListItem {
   id: string;
   title: string;
   koskId: string;
   koskName: string;
   status: CourseStatus;
-  muderris: IMadrasahCourseMuderris[];
+  requiresApproval: boolean;
+  closed: boolean;
+  createdAt: Date;
+  /** Enrolled talebe; pending applications and completions are not counted. */
+  studentCount: number;
+  pendingCount: number;
+  muderris: IMadrasahCourseListMuderris[];
+}
+
+/** Narrows the nazırs' course list; what is left out is not filtered on. */
+export interface IMadrasahCourseFilter {
+  koskId?: string;
+  status?: CourseStatus;
+  /** One course, for the answer to a write on it. */
+  courseId?: string;
 }

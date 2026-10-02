@@ -60,6 +60,11 @@ export const courses = table("courses", {
   status: courseStatus().default(CourseStatus.DRAFT).notNull(),
   grantsCertificate: boolean("grants_certificate").default(false).notNull(),
   requiresApproval: boolean("requires_approval").default(false).notNull(),
+  // Kapalı ders (MDRS-186): the course's content and recordings are never made
+  // public, only its introduction page. Set when a medrese opens the course
+  // (nazir/08), where the medrese's "Kapalı ders zorunlu" policy forces it on.
+  // Stored only: nothing in the API reads it yet, as with that policy.
+  closed: boolean("closed").default(false).notNull(),
   // IANA zone the course's sessions are authored in (MDRS-110). An editor
   // types "21:00" meaning 21:00 here; talebe elsewhere see it converted.
   timeZone: text("time_zone").default("Europe/Istanbul").notNull(),

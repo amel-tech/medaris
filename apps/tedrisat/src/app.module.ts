@@ -20,6 +20,7 @@ import { FlashcardModule } from "./flashcard/flashcard.module";
 import { FlashcardLabelModule } from "./flashcard/flashcard-label.module";
 import { HostingModule } from "./hosting/hosting.module";
 import { KoskModule } from "./kosk/kosk.module";
+import { MadrasahCourseModule } from "./madrasah/course/madrasah-course.module";
 import { MadrasahModule } from "./madrasah/madrasah.module";
 import { MadrasahNazirModule } from "./madrasah/nazir/madrasah-nazir.module";
 import { NotificationModule } from "./notification/notification.module";
@@ -53,6 +54,7 @@ import { UserModule } from "./user/user.module";
     // After AssignmentModule: it imports it, and the exported API document
     // lists paths in the order the modules are scanned.
     MadrasahNazirModule,
+    MadrasahCourseModule,
     ArchiveModule,
     BanModule,
     UserModule,

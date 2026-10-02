@@ -246,6 +246,13 @@
       "when": 1790958628527,
       "tag": "0034_madrasah_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790973689767,
+      "tag": "0035_course_closed",
+      "breakpoints": true
     }
   ]
 }

@@ -105,6 +105,23 @@ export class UpdateMadrasahSettingsDto {
   policies?: MadrasahPoliciesDto;
 }
 
+export class MadrasahCourseListMuderrisResponse extends MadrasahCourseMuderrisResponse {
+  @ApiProperty({
+    type: String,
+    format: "uuid",
+    nullable: true,
+    description: "Null for a müderris shown by name alone, with no account",
+  })
+  userId!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: "Null until that person has signed in once",
+  })
+  email!: string | null;
+}
+
 export class MadrasahCourseListItemResponse {
   @ApiProperty({ format: "uuid" })
   id!: string;
@@ -121,6 +138,38 @@ export class MadrasahCourseListItemResponse {
   @ApiProperty({ enum: CourseStatus })
   status!: CourseStatus;
 
-  @ApiProperty({ type: [MadrasahCourseMuderrisResponse] })
-  muderris!: MadrasahCourseMuderrisResponse[];
+  @ApiProperty({
+    description:
+      "As stored, after the medrese's policy: enrollments wait for approval",
+  })
+  requiresApproval!: boolean;
+
+  @ApiProperty({
+    description:
+      "Kapalı ders, as stored, after the medrese's policy. Nothing in the API reads it yet",
+  })
+  closed!: boolean;
+
+  @ApiProperty({
+    type: Date,
+    description: 'When the course was opened ("bugün açıldı")',
+  })
+  createdAt!: Date;
+
+  @ApiProperty({
+    description:
+      "Enrolled talebe; pending applications and completions are not counted",
+  })
+  studentCount!: number;
+
+  @ApiProperty({
+    description: 'Applications waiting for approval ("N onay bekliyor")',
+  })
+  pendingCount!: number;
+
+  @ApiProperty({
+    type: [MadrasahCourseListMuderrisResponse],
+    description: "In list order; the imam is marked",
+  })
+  muderris!: MadrasahCourseListMuderrisResponse[];
 }
