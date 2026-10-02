@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { MedarisAssets } from "~/components/medaris-assets";
 import { PhoneChrome } from "~/components/phone-menu/phone-chrome";
+import { ToastHost } from "~/components/toast-host";
 
 /**
  * Programım is on the unified design system (MDRS-163) while the shell is not,
@@ -12,7 +13,7 @@ export default function ScheduleLayout({ children }: { children: ReactNode }) {
     <>
       <MedarisAssets />
       <PhoneChrome />
-      {children}
+      <ToastHost>{children}</ToastHost>
     </>
   );
 }

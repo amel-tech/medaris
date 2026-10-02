@@ -35,6 +35,10 @@ const prop = (ics: string, name: string) =>
   unfold(ics)
     .find((l) => l.startsWith(`${name}:`))
     ?.slice(name.length + 1);
+const zoned = (ics: string, name: string) =>
+  unfold(ics)
+    .find((l) => l.startsWith(`${name};TZID=Europe/Istanbul:`))
+    ?.split(":")[1];
 
 describe("lesson calendar (MDRS-117)", () => {
   it("writes one VEVENT with the fields the issue lists", () => {
@@ -44,8 +48,8 @@ describe("lesson calendar (MDRS-117)", () => {
     expect(prop(ics, "UID")).toBe(`lesson-${LESSON_ID}@medaris.app`);
     expect(prop(ics, "DTSTAMP")).toBe("20260928T091530Z");
     expect(prop(ics, "SEQUENCE")).toBe("7");
-    expect(prop(ics, "DTSTART")).toBe("20261001T180000Z");
-    expect(prop(ics, "DTEND")).toBe("20261001T193000Z");
+    expect(zoned(ics, "DTSTART")).toBe("20261001T210000");
+    expect(zoned(ics, "DTEND")).toBe("20261001T223000");
     expect(prop(ics, "SUMMARY")).toBe("Bina ve İzhar Şerhi — Açılış");
     expect(prop(ics, "URL")).toBe(PAGE);
     expect(prop(ics, "LOCATION")).toBe(PAGE);
@@ -60,10 +64,12 @@ describe("lesson calendar (MDRS-117)", () => {
     expect(ics.replace(/\r\n/g, "")).not.toMatch(/[\r\n]/);
   });
 
-  it("writes times in UTC only, so the calendar converts to the viewer's zone", () => {
+  it("writes the event in Europe/Istanbul with a VTIMEZONE; DTSTAMP stays UTC", () => {
     const ics = buildLessonIcs(input());
-    expect(ics).not.toContain("TZID");
-    expect(prop(ics, "DTSTART")).toMatch(/^\d{8}T\d{6}Z$/);
+    expect(ics).toContain("BEGIN:VTIMEZONE\r\nTZID:Europe/Istanbul");
+    expect(ics).toContain("TZOFFSETTO:+0300");
+    expect(zoned(ics, "DTSTART")).toMatch(/^\d{8}T\d{6}$/);
+    expect(prop(ics, "DTSTAMP")).toMatch(/^\d{8}T\d{6}Z$/);
   });
 
   it("leaves DTEND out when the session has no length", () => {

@@ -95,6 +95,28 @@ export const formatIcsUtc = (date: Date): string =>
     .replace(/\.\d{3}Z$/, "Z")
     .replace(/[-:]/g, "");
 
+/** The zone the single-session file is written in (design tedris/22 criterion 5). */
+export const CALENDAR_TIME_ZONE = "Europe/Istanbul";
+
+/** Turkey has been on a fixed UTC+3 since 2016, so one STANDARD observance is the whole zone. */
+const ISTANBUL_OFFSET_MS = 3 * 60 * 60_000;
+
+/** `YYYYMMDDTHHMMSS` — a floating DATE-TIME read in `Europe/Istanbul` (paired with `TZID`). */
+export const formatIcsIstanbul = (date: Date): string =>
+  formatIcsUtc(new Date(date.getTime() + ISTANBUL_OFFSET_MS)).slice(0, -1);
+
+const ISTANBUL_VTIMEZONE = [
+  "BEGIN:VTIMEZONE",
+  `TZID:${CALENDAR_TIME_ZONE}`,
+  "BEGIN:STANDARD",
+  "DTSTART:19700101T000000",
+  "TZOFFSETFROM:+0300",
+  "TZOFFSETTO:+0300",
+  "TZNAME:+03",
+  "END:STANDARD",
+  "END:VTIMEZONE",
+];
+
 /** RFC 5545 §3.3.11 TEXT escaping. */
 export const escapeIcsText = (value: string): string =>
   value
@@ -147,8 +169,10 @@ const lessonEventLines = (input: CalendarEventInput): string[] => {
     `UID:${lessonCalendarUid(lesson.id)}`,
     `DTSTAMP:${formatIcsUtc(now)}`,
     `SEQUENCE:${course.version}`,
-    `DTSTART:${formatIcsUtc(lesson.scheduledAt)}`,
-    ...(end ? [`DTEND:${formatIcsUtc(end)}`] : []),
+    `DTSTART;TZID=${CALENDAR_TIME_ZONE}:${formatIcsIstanbul(lesson.scheduledAt)}`,
+    ...(end
+      ? [`DTEND;TZID=${CALENDAR_TIME_ZONE}:${formatIcsIstanbul(end)}`]
+      : []),
     ...(input.cancelled ? ["STATUS:CANCELLED"] : []),
     `SUMMARY:${escapeIcsText(lessonCalendarSummary(course.title, lesson.title))}`,
     `DESCRIPTION:${escapeIcsText(lessonCalendarDescription(pageUrl, locale))}`,
@@ -171,7 +195,12 @@ const serialize = (lines: string[]): string =>
   `${lines.map(foldIcsLine).join("\r\n")}\r\n`;
 
 export const buildLessonIcs = (input: CalendarEventInput): string =>
-  serialize([...CALENDAR_HEAD, ...lessonEventLines(input), "END:VCALENDAR"]);
+  serialize([
+    ...CALENDAR_HEAD,
+    ...ISTANBUL_VTIMEZONE,
+    ...lessonEventLines(input),
+    "END:VCALENDAR",
+  ]);
 
 /** The name a subscribing calendar app shows for the feed (MDRS-120). */
 export const CALENDAR_FEED_NAME = "Medaris";
@@ -191,6 +220,7 @@ const FEED_REFRESH = "PT1H";
 export const buildCalendarFeedIcs = (events: CalendarEventInput[]): string =>
   serialize([
     ...CALENDAR_HEAD,
+    ...ISTANBUL_VTIMEZONE,
     `X-WR-CALNAME:${escapeIcsText(CALENDAR_FEED_NAME)}`,
     `REFRESH-INTERVAL;VALUE=DURATION:${FEED_REFRESH}`,
     `X-PUBLISHED-TTL:${FEED_REFRESH}`,

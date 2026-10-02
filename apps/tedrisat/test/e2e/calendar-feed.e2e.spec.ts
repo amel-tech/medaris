@@ -297,11 +297,13 @@ describe("calendar feed (e2e)", () => {
     expect(Number(prop(matching[0], "SEQUENCE"))).toBeGreaterThan(
       Number(prop(before as string[], "SEQUENCE"))
     );
-    expect(prop(matching[0], "DTSTART")).toBe(
-      movedTo
+    expect(matching[0].join("\n")).toContain(
+      `DTSTART;TZID=Europe/Istanbul:${new Date(
+        movedTo.getTime() + 3 * 3_600_000
+      )
         .toISOString()
-        .replace(/\.\d{3}Z$/, "Z")
-        .replace(/[-:]/g, "")
+        .replace(/\.\d{3}Z$/, "")
+        .replace(/[-:]/g, "")}`
     );
   });
 
