@@ -299,7 +299,8 @@
     "decksEmpty": "This köşk has no decks yet.",
     "deckMeta": "Köşk deck",
     "cardsCount": "{count} memorisation cards",
-    "inCollection": "In your collection"
+    "inCollection": "In your collection",
+    "manager": "Köşk manager {name}"
   },
   "LearningPage": {
     "title": "Öğrenme",
@@ -752,5 +753,18 @@
     "prev": "Previous",
     "next": "Next",
     "pageOf": "{page} / {total}"
+  },
+  "AnonymousInvite": {
+    "apply": "To apply for a course, <signIn>sign in</signIn> or <register>create an account</register>.",
+    "discover": "To apply for a course, <signIn>sign in</signIn> or <register>create an account</register>. You can also browse köşks, madrasas and course introductions without an account."
+  },
+  "PhoneMenu": {
+    "menu": "Menu",
+    "navLabel": "Main menu",
+    "close": "Close",
+    "home": "Home",
+    "discover": "Discover",
+    "signIn": "Sign in",
+    "register": "Create an account"
   }
 }
