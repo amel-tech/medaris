@@ -65,11 +65,16 @@ courses, hidden ones included, then the followers and the köşk.
 
 **Tests.** New `test/e2e/hide-instead-of-delete.e2e.spec.ts` (9 tests, real
 AuthGuard with minted tokens) and `test/e2e/hide-instead-of-delete-migration.e2e.spec.ts`
-(1 test). The two old "owner deletes" e2e cases in `course` and `kosk` now
-expect 403. Four suites cleaned with `DELETE FROM kosks`, which RESTRICT now
-refuses; they use `COURSE_TREE_TABLES` (children first) from
-`test/helpers/test-database.helper.ts`. The OpenAPI spec and the generated
-client were regenerated.
+(1 test). Re-run on 2026-10-02:
+`cd apps/tedrisat && pnpm exec vitest run test/e2e/hide-instead-of-delete.e2e.spec.ts test/e2e/hide-instead-of-delete-migration.e2e.spec.ts`
+→ `Test Files 2 passed (2)`, `Tests 10 passed (10)` (9 + 1). The two old
+"owner deletes" e2e cases in `course` and `kosk` now expect 403. The four
+pre-existing suites that cleaned with `DELETE FROM kosks`, which RESTRICT now
+refuses (`course`, `kosk`, `madrasah` and `user` e2e), use
+`COURSE_TREE_TABLES` (children first) from
+`test/helpers/test-database.helper.ts`; the new hide suite is a fifth user
+(`grep -rl COURSE_TREE_TABLES apps/tedrisat/test`). The OpenAPI spec and the
+generated client were regenerated.
 
 ## Acceptance criteria → evidence
 
