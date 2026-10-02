@@ -23,6 +23,7 @@ import type {
   PendingEnrollmentResponse,
   RemoveEnrollmentDto,
   ReplaceCourseDto,
+  RosterEnrollmentResponse,
   SetEnrollmentStatusDto,
   UpdateCourseDto,
   UpdateProgressDto,
@@ -44,6 +45,8 @@ import {
     RemoveEnrollmentDtoToJSON,
     ReplaceCourseDtoFromJSON,
     ReplaceCourseDtoToJSON,
+    RosterEnrollmentResponseFromJSON,
+    RosterEnrollmentResponseToJSON,
     SetEnrollmentStatusDtoFromJSON,
     SetEnrollmentStatusDtoToJSON,
     UpdateCourseDtoFromJSON,
@@ -420,7 +423,7 @@ export class CoursesApi extends runtime.BaseAPI {
      * For the course team: the köşk manager and the course\'s müderrisler (MDRS-105). Requests first, then active seats, then completions.
      * List a course\'s enrollments — requests, talebe and completions
      */
-    async getCourseEnrollmentsRaw(requestParameters: GetCourseEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<EnrollmentResponse>>> {
+    async getCourseEnrollmentsRaw(requestParameters: GetCourseEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<RosterEnrollmentResponse>>> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -448,14 +451,14 @@ export class CoursesApi extends runtime.BaseAPI {
             query: queryParameters,
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(EnrollmentResponseFromJSON));
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(RosterEnrollmentResponseFromJSON));
     }
 
     /**
      * For the course team: the köşk manager and the course\'s müderrisler (MDRS-105). Requests first, then active seats, then completions.
      * List a course\'s enrollments — requests, talebe and completions
      */
-    async getCourseEnrollments(requestParameters: GetCourseEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<EnrollmentResponse>> {
+    async getCourseEnrollments(requestParameters: GetCourseEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<RosterEnrollmentResponse>> {
         const response = await this.getCourseEnrollmentsRaw(requestParameters, initOverrides);
         return await response.value();
     }

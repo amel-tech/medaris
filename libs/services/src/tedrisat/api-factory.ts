@@ -1,5 +1,6 @@
 import {
   ArchiveApi,
+  BansApi,
   Configuration,
   CoursesApi,
   FlashcardCardsApi,
@@ -25,6 +26,10 @@ export type {
   ArchiverResponse,
   ArchiveScopesResponse,
   AssignmentResponse,
+  BanListResponse,
+  BanPersonResponse,
+  BanResponse,
+  BanScope,
   ChiefNazimResponse,
   CourseDetailResponse,
   CourseSummaryResponse,
@@ -44,6 +49,7 @@ export type {
   DeckLabelStatsResponse,
   EffectivePermissionGroup,
   EnrolledCourseResponse,
+  EnrollmentBanResponse,
   EnrollmentResponse,
   FlashcardCreateLabelResponse,
   FlashcardDeckCreateLabelResponse,
@@ -77,6 +83,7 @@ export type {
   RemoveEnrollmentDto,
   ReplaceCourseDto,
   ResourceResponse,
+  RosterEnrollmentResponse,
   SetEnrollmentStatusDto,
   UpdateCourseDto,
   UpdateFlashcardDeckDto,
@@ -149,6 +156,8 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     notifications: new NotificationsApi(configuration),
     // Hidden things, brought back or deleted for real (MDRS-173).
     archive: new ArchiveApi(configuration),
+    // Barring a talebe and lifting it (MDRS-177).
+    bans: new BansApi(configuration),
     // The two label controllers MDRS-58 published for the first time. Generated
     // classes that only `./generated/src` exported were reachable by no app —
     // this factory is what `@medaris/services/tedrisat` hands out.
