@@ -179,7 +179,9 @@ describe("NoAccess (nizam 06)", () => {
     sessionEmail = "h.gundogdu@example.com";
     const html = await render();
     expect(html).toContain("Bu bölüm için izniniz yok");
-    expect(html).toContain("gerekirse Yusuf Ziya Ertuğrul’dan isteyin.");
+    expect(html).toContain(
+      "gerekirse şu kişiden isteyin: Yusuf Ziya Ertuğrul."
+    );
     expect(html).toContain("h.gundogdu@example.com");
     expect(html).toContain('href="/tr"');
     expect(html).toContain("Ana sayfaya dön");
