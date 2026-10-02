@@ -187,5 +187,167 @@
     "signOut": "Çıkış yap",
     "signOutBusy": "Çıkış yapılıyor",
     "signOutNote": "Bu tarayıcıda Medaris’ten çıkarsınız. Görevleriniz ve tercihleriniz hesabınızda kalır."
+  },
+  "Problems": {
+    "forbiddenTitle": "Bu sayfaya izniniz yok",
+    "forbidden": "Bu sayfayı açma izniniz yok. İzne ihtiyacınız varsa medresenin başmüderrisine başvurun.",
+    "actionForbidden": "Bunu yapma izniniz yok.",
+    "actionGeneric": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin."
+  },
+  "Settings": {
+    "title": "Medrese ayarları",
+    "subtitle": "Medresenin adı, açıklaması ve bütün medrese derslerine uygulanan politikalar.",
+    "viewPage": "Medrese sayfasını gör",
+    "viewPageHint": "(yeni sekmede açılır)",
+    "generalTitle": "Genel",
+    "required": "zorunlu alan",
+    "name": "Medrese adı",
+    "nameHelp": "Talebeler bu adı medrese sayfasında ve medrese derslerinin sayfalarında görür.",
+    "nameProblems": {
+      "required": "Medrese adı boş olamaz.",
+      "short": "Medrese adı en az {min} karakter olmalı.",
+      "long": "Medrese adı en çok {max} karakter olabilir."
+    },
+    "description": "Açıklama",
+    "descriptionHelp": "Medrese sayfasında, derslerin listesinin üstünde görünür.",
+    "descriptionLong": "Açıklama en çok {max} karakter olabilir.",
+    "policiesTitle": "Politikalar",
+    "policiesIntro": "Bir politika, medresenin bütün derslerinde bir izni kapatır. Ders ayarları politikanın kapattığını açamaz.",
+    "policiesGroup": "Medrese derslerinde",
+    "policies": {
+      "closedCourseRequired": {
+        "label": "Kapalı ders zorunlu",
+        "help": "Açıkken medrese derslerinin hiçbir içeriği ve ders kaydı herkese açılamaz; tanıtımda yalnız ders kadrosunun seçtiği örnek ders açık kalabilir."
+      },
+      "alwaysApproval": {
+        "label": "Kayıt her zaman onaylı",
+        "help": "Açıkken medrese derslerine doğrudan kaydolunamaz; her kayıt bir başvuru olur ve ders kadrosu onaylar."
+      },
+      "noPublicRecordings": {
+        "label": "Ders kayıtları herkese açılamaz",
+        "help": "Açıkken hiçbir kayıt herkese açık yapılamaz ve YouTube’a yüklenemez; ders kayıtlarını yalnız kayıtlı talebeler ve ders kadrosu izler."
+      }
+    },
+    "policiesNote": "Politika değişikliği kaydettiğiniz anda geçerli olur ve denetim kaydına yazılır.",
+    "narrowerTitle": "Köşk politikası daha dar olabilir",
+    "narrower": "Medrese dersi, açıldığı köşkün politikalarına da uyar; ikisinden daha dar olanı geçerlidir.",
+    "lastChange": "Son değişiklik {date} · {name}",
+    "lastChangeAnonymous": "Son değişiklik {date}",
+    "cancel": "Vazgeç",
+    "save": "Kaydet",
+    "saving": "Kaydediliyor",
+    "saved": "Ayarlar kaydedildi.",
+    "saveFailedTitle": "Ayarlar kaydedilemedi",
+    "saveFailedInvalid": "Medrese adını ve açıklamayı denetleyip yeniden deneyin.",
+    "tiersTitle": "Politikalar nasıl birleşir",
+    "tiersIntro": "Bir izin ancak dört kademenin hepsinde açıksa kullanılır; biri kapatırsa kapalıdır.",
+    "tiers": {
+      "medaris": {
+        "name": "Medaris",
+        "help": "Medaris yönetimi belirler"
+      },
+      "kosk": {
+        "name": "Dersin açıldığı köşk",
+        "help": "Köşk nazımı belirler"
+      },
+      "medrese": {
+        "help": "Başmüderris ya da izinli medrese nazırı belirler"
+      },
+      "ders": {
+        "name": "Ders ayarları",
+        "help": "Ders kadrosu belirler"
+      }
+    },
+    "thisPage": "Bu sayfa",
+    "coursesTitle": "Politikaların uygulandığı dersler",
+    "coursesEmpty": "Bu medresenin henüz dersi yok.",
+    "coursesFailed": "Dersler şu an okunamadı. Sayfayı yenileyerek yeniden deneyin.",
+    "coursesLink": "Medrese dersleri",
+    "imam": "imam",
+    "status": {
+      "PUBLISHED": "Yayında",
+      "DRAFT": "Taslak"
+    },
+    "loadFailedTitle": "Medrese ayarları okunamadı",
+    "loadFailed": "Medrese ayarları şu an okunamadı. Birkaç saniye sonra yeniden deneyin."
+  },
+  "Nazirs": {
+    "title": "Medrese nazırları",
+    "intro": "Medrese nazırları yalnız sizin ya da izinli bir Medaris nazımının verdiği izinlerle çalışır ve aldıkları izni başkasına veremez.",
+    "appoint": "Medrese nazırı ata",
+    "awaitingTitle": "{name} henüz izin almadı",
+    "awaiting": "{appointer} {dateLocative} atadı. Siz izin verene kadar hiçbir işlem yapamaz.",
+    "awaitingManyTitle": "{count} nazır henüz izin almadı",
+    "awaitingMany": "{names}. Siz izin verene kadar hiçbir işlem yapamazlar.",
+    "caption": "{name} nazırları",
+    "columns": {
+      "nazir": "Nazır",
+      "grants": "İzinler ve gruplar",
+      "end": "Bitiş",
+      "giver": "Veren",
+      "actions": "İşlemler"
+    },
+    "unknownPerson": "Adı bilinmiyor",
+    "noGrants": "İzin yok",
+    "appointedBy": "Atayan: {name} · {date}",
+    "permissionsWithGroups": "Ayrıca {count} izin: {list}",
+    "permissionsOnly": "{count} izin: {list}",
+    "never": "Süresiz",
+    "noValue": "—",
+    "dismiss": "Görevden al",
+    "dismissLabel": "Görevden al: {name}",
+    "empty": "Bu medresenin henüz nazırı yok. “Medrese nazırı ata” ile bir kişi ekleyebilirsiniz.",
+    "loadFailedTitle": "Medrese nazırları okunamadı",
+    "loadFailed": "Medrese nazırları şu an okunamadı. Birkaç saniye sonra yeniden deneyin."
+  },
+  "Appoint": {
+    "title": "Medrese nazırı ata",
+    "intro": "Atadığınız kişi izinsiz başlar; siz izin verene kadar hiçbir işlem yapamaz.",
+    "label": "Nazırın e-posta adresi",
+    "help": "Kayıtlı hesabın e-posta adresini eksiksiz yazın; her arama denetim kaydına yazılır.",
+    "placeholder": "ad.soyad@example.com",
+    "notFound": "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.",
+    "failed": "Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.",
+    "already": "Bu kişi zaten bu medresenin nazırı.",
+    "searching": "Aranıyor",
+    "chosenTitle": "Seçilen kişi",
+    "chosen": "{name} seçildi",
+    "remove": "Seçimi kaldır: {name}",
+    "submit": "Ata",
+    "cancel": "Vazgeç",
+    "appointed": "Nazır atandı",
+    "appointedBody": "{name} atandı; siz izin verene kadar hiçbir işlem yapamaz.",
+    "failedTitle": "Nazır atanamadı"
+  },
+  "Dismiss": {
+    "title": "{name} görevden alınıyor",
+    "intro": "{name} şu kişilere rol ve izin vermişti. Her biri için ne olacağını seçin.",
+    "introNone": "{name} başkasına rol ya da izin vermemiş; seçilecek bir şey yok. Görevden alınınca yalnız kendi görevi ve izinleri kalkar.",
+    "takeOver": "Devral",
+    "drop": "Düşür",
+    "answerLegend": "{person} için seçim",
+    "noEnd": "süresiz",
+    "until": "{date} tarihine kadar",
+    "givenAt": "verildi {date}",
+    "noPermissions": "Hiç izni yok; medrese nazırı atadığı nazıra izin veremez.",
+    "answersNote": "Devralırsanız rol ve izin sürer, veren olarak siz görünürsünüz; düşürürseniz hemen geri alınır. Her karar denetim kaydına yazılır.",
+    "gateNote": "Her satır için seçim yapılmadan görevden alınamaz.",
+    "drops": {
+      "summary": "Görevden alınırsa {name} için {what} hemen düşer.",
+      "groupOne": "{names} grubu",
+      "groupMany": "{names} grupları",
+      "permissions": "{count} ek izin",
+      "both": "{groups} ile {permissions}",
+      "nothing": "{name} henüz izin almadığı için düşecek bir izin yok."
+    },
+    "submit": "Görevden al",
+    "cancel": "Vazgeç",
+    "dismissed": "Görevden alındı",
+    "dismissedBody": "{name} artık bu medresenin nazırı değil.",
+    "failedTitle": "Görevden alınamadı",
+    "changed": "Bu kişinin verdikleri siz bakarken değişti. Liste yenilendi; seçimlerinizi yeniden yapın.",
+    "gone": "Bu kişi artık bu medresenin nazırı değil.",
+    "loadFailedTitle": "Liste okunamadı",
+    "loadFailed": "Bu kişinin verdikleri şu an okunamıyor. Biraz sonra yeniden deneyin."
   }
 }
