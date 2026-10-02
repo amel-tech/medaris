@@ -5,15 +5,19 @@ import { cleanup, click, render, settle } from "./dom";
 
 /** "Takvime ekle" (MDRS-163, design tedris/22): three rows, a note, no meeting link anywhere. */
 
-const mocks = vi.hoisted(() => ({ push: vi.fn() }));
+const mocks = vi.hoisted(() => ({ push: vi.fn(), notify: vi.fn() }));
+vi.mock("@medaris/ui/mds/toast", () => ({
+  useToaster: () => ({ notify: mocks.notify, dismiss: () => {} }),
+}));
 vi.mock("~/lib/i18n/navigation", () => ({
   useRouter: () => ({ push: mocks.push }),
 }));
 
 const labels = {
   button: "Takvime ekle",
-  google: "Google Takvim",
+  google: "Google Takvim (yeni sekmede açılır)",
   apple: "Apple Takvim (.ics)",
+  downloadFailed: "Takvim dosyası indirilemedi. Biraz sonra yeniden dene.",
   subscribe: "Tüm derslerime abone ol",
   note: "Takvim kaydı bu celse sayfasına bağlanır; toplantı bağlantısı takvime yazılmaz.",
   linkIsOnPage: "Toplantı bağlantısı oturum sayfasındadır:",
@@ -53,7 +57,7 @@ describe("Takvime ekle (design tedris/22)", () => {
   it("opens three rows and the note, the last row set apart", async () => {
     const rows = await open();
     expect(rows.map((r) => r.textContent)).toEqual([
-      "Google Takvim",
+      "Google Takvim (yeni sekmede açılır)",
       "Apple Takvim (.ics)",
       "Tüm derslerime abone ol",
     ]);
@@ -92,6 +96,27 @@ describe("Takvime ekle (design tedris/22)", () => {
     const rows = await open();
     await click(rows[2]);
     expect(mocks.push).toHaveBeenCalledWith("/account/calendar");
+  });
+
+  it("the .ics row fetches the file and, when that fails, stays on the page", async () => {
+    const fetched = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("{}", { status: 500 }));
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    const rows = await open();
+    await click(rows[1]);
+    await settle(50);
+    expect(fetched).toHaveBeenCalledWith(
+      "/api/lessons/l1/calendar?locale=tr",
+      expect.anything()
+    );
+    expect(assign).not.toHaveBeenCalled();
+    expect(mocks.notify).toHaveBeenCalledWith({
+      tone: "error",
+      title: labels.downloadFailed,
+    });
+    vi.unstubAllGlobals();
   });
 
   it("is an icon-only button named for its session when it has no text", async () => {

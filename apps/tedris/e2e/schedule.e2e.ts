@@ -166,7 +166,7 @@ test.describe("Takvime ekle (tedris/22)", () => {
       .click();
     const menu = page.getByRole("menu");
     await expect(menu.getByRole("menuitem")).toHaveText([
-      "Google Takvim",
+      "Google Takvim (yeni sekmede açılır)",
       "Apple Takvim (.ics)",
       "Tüm derslerime abone ol",
     ]);
@@ -197,7 +197,9 @@ test.describe("Takvime ekle (tedris/22)", () => {
         return null;
       };
     });
-    await page.getByRole("menuitem", { name: "Google Takvim" }).click();
+    await page
+      .getByRole("menuitem", { name: "Google Takvim (yeni sekmede açılır)" })
+      .click();
     const [href, target, features] = await page.evaluate(
       () => (window as unknown as { opened: string[][] }).opened[0]
     );
@@ -260,7 +262,7 @@ test.describe("Takvime ekle (tedris/22)", () => {
     );
     await page.getByRole("button", { name: "Takvime ekle" }).click();
     await expect(page.getByRole("menuitem")).toHaveText([
-      "Google Takvim",
+      "Google Takvim (yeni sekmede açılır)",
       "Apple Takvim (.ics)",
       "Tüm derslerime abone ol",
     ]);

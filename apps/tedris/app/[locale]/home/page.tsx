@@ -10,7 +10,11 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   if (!(await isSignedIn())) {
     const t = await getTranslations("tedris");
-    return <div>{t("TabView.home")}</div>;
+    return (
+      <main className="mx-auto w-full max-w-[80rem] py-2 grow-1">
+        {t("TabView.home")}
+      </main>
+    );
   }
   const session = await auth();
   const sessions = await getMyUpcomingLessons(4);

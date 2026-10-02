@@ -4,9 +4,9 @@ import { Button } from "@medaris/ui/mds/button";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
 import { PlatformChip } from "@medaris/ui/mds/platform-chip";
-import { resolveMeetingPlatform } from "@medaris/utils";
+import { DEFAULT_TIME_ZONE, resolveMeetingPlatform } from "@medaris/utils";
 import Link from "next/link";
-import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { CalendarMenu } from "~/features/courses/components/calendar-menu";
 import { sessionStateOf, zoneLabel } from "~/features/courses/session-model";
 import {
@@ -140,6 +140,7 @@ const ScheduleRow = ({
                   button: t("AddToCalendar.rowLabel", { title: session.title }),
                   google: t("AddToCalendar.google"),
                   apple: t("AddToCalendar.apple"),
+                  downloadFailed: t("AddToCalendar.downloadFailed"),
                   subscribe: t("AddToCalendar.subscribe"),
                   note: t("AddToCalendar.note"),
                   linkIsOnPage: t("AddToCalendar.linkIsOnPage"),
@@ -170,7 +171,9 @@ export const SchedulePage = async ({
 }) => {
   const t = await getTranslations("tedris");
   const locale = await getLocale();
-  const timeZone = await getTimeZone();
+  // Programım is written in Istanbul time, as the page says, whatever zone the
+  // viewer reads in (design tedris/21, criterion 5).
+  const timeZone = DEFAULT_TIME_ZONE;
   const groups = groupByDay(sessions ?? [], timeZone);
 
   return (

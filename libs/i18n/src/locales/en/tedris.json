@@ -395,8 +395,9 @@
   },
   "AddToCalendar": {
     "button": "Add to calendar",
-    "google": "Google Calendar",
+    "google": "Google Calendar (opens in a new tab)",
     "apple": "Apple Calendar (.ics)",
+    "downloadFailed": "The calendar file could not be downloaded. Try again in a moment.",
     "linkIsOnPage": "The meeting link is on the session page:",
     "subscribe": "Subscribe to all my courses",
     "note": "The calendar entry links to this session page; the meeting link is not written into the calendar.",

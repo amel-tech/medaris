@@ -2,6 +2,7 @@
 
 import { Icon } from "@medaris/ui/mds/icon";
 import { Menu } from "@medaris/ui/mds/menu";
+import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "~/lib/i18n/navigation";
 import {
   googleCalendarUrl,
@@ -14,6 +15,8 @@ export interface CalendarMenuLabels {
   button: string;
   google: string;
   apple: string;
+  /** the toast when the .ics file cannot be fetched */
+  downloadFailed: string;
   subscribe: string;
   note: string;
   linkIsOnPage: string;
@@ -50,6 +53,34 @@ export function CalendarMenu({
   text?: boolean;
 }) {
   const router = useRouter();
+  const toaster = useToaster();
+
+  // A plain navigation to the handler would replace the page with its raw
+  // error body when tedrisat is down, so the file is fetched and handed to the
+  // browser as a download; a failure is a toast and the page stays.
+  const downloadIcs = async () => {
+    const path = icsDownloadPath(lesson.id, locale);
+    try {
+      const response = await fetch(path, { credentials: "same-origin" });
+      // Not signed in: the handler redirects to the sign-in page, which the
+      // browser has to show, so hand the navigation to it.
+      if (response.redirected) {
+        window.location.assign(path);
+        return;
+      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `medaris-${lesson.id}.ics`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toaster.notify({ tone: "error", title: labels.downloadFailed });
+    }
+  };
 
   return (
     <Menu
@@ -83,7 +114,7 @@ export function CalendarMenu({
           label: labels.apple,
           icon: <Icon name="fileDownload" size="sm" />,
           onSelect: () => {
-            window.location.assign(icsDownloadPath(lesson.id, locale));
+            void downloadIcs();
           },
         },
         {

@@ -395,8 +395,9 @@
   },
   "AddToCalendar": {
     "button": "Takvime ekle",
-    "google": "Google Takvim",
+    "google": "Google Takvim (yeni sekmede açılır)",
     "apple": "Apple Takvim (.ics)",
+    "downloadFailed": "Takvim dosyası indirilemedi. Biraz sonra yeniden dene.",
     "linkIsOnPage": "Toplantı bağlantısı oturum sayfasındadır:",
     "subscribe": "Tüm derslerime abone ol",
     "note": "Takvim kaydı bu celse sayfasına bağlanır; toplantı bağlantısı takvime yazılmaz.",

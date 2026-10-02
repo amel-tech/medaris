@@ -1,5 +1,6 @@
+import { DEFAULT_TIME_ZONE } from "@medaris/utils";
 import type { Metadata } from "next";
-import { getTimeZone, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import { SchedulePage } from "~/features/schedule/components/schedule-page";
 import { getMySessions } from "~/features/schedule/reads";
 import { scheduleWindow } from "~/features/schedule/schedule-model";
@@ -22,7 +23,7 @@ export default async function Page({
   const window = scheduleWindow(
     Array.isArray(from) ? from[0] : from,
     now,
-    await getTimeZone()
+    DEFAULT_TIME_ZONE
   );
   const sessions = await getMySessions(window.from, window.to);
   return <SchedulePage sessions={sessions} window={window} now={now} />;

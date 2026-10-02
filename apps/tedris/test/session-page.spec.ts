@@ -29,6 +29,9 @@ const translate = Object.assign(lookup, {
     return createElement(Fragment, null, parts[0], when(parts[1]), parts[2]);
   },
 });
+vi.mock("@medaris/ui/mds/toast", () => ({
+  useToaster: () => ({ notify: () => "", dismiss: () => {} }),
+}));
 vi.mock("next-intl/server", () => ({
   getTranslations: async () => translate,
   getLocale: async () => "tr",
