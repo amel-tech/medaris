@@ -6448,6 +6448,11 @@
           "koskName": {
             "type": "string"
           },
+          "madrasahName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The medrese that opened the course, or null (MDRS-159)."
+          },
           "weekCount": {
             "type": "number"
           },
@@ -6457,7 +6462,7 @@
           "muderris": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/MuderrisResponse"
+              "$ref": "#/components/schemas/SummaryMuderrisResponse"
             }
           },
           "nextSession": {
