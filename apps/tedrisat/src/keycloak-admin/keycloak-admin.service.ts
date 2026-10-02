@@ -127,7 +127,14 @@ export class KeycloakAdminService {
       );
       throw new KeycloakAdminUnavailableError();
     }
-    return (await response.json()) as T;
+    try {
+      return (await response.json()) as T;
+    } catch (error) {
+      this.logger.warn(
+        `Keycloak admin body unreadable for ${path.split("?")[0]}: ${String(error)}`
+      );
+      throw new KeycloakAdminUnavailableError();
+    }
   }
 
   private async accessToken(): Promise<string> {

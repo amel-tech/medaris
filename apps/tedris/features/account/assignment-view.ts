@@ -24,10 +24,9 @@ const trimSlash = (url: string) => url.replace(/\/+$/, "");
 
 /**
  * The page the button opens, or null when the target app's address is not set.
- * A köşk goes to its page in Nizam, a course to its page in Nazır; a role with
- * no page of its own (the platform, a medrese) goes to the app's root. The
- * paths are the apps' own route names; Nazır has no course page yet, so that
- * link is not verified against a real route.
+ * A köşk goes to its page in Nizam; every other role (the platform, a
+ * medrese, a course) goes to the app's root. Nazır has no course page yet, so
+ * a course link would point at a route that does not exist.
  */
 export const openUrl = (
   assignment: Pick<AssignmentResponse, "role" | "scopeType" | "scopeId">,
@@ -39,9 +38,6 @@ export const openUrl = (
   const root = trimSlash(base);
   if (assignment.scopeId && assignment.scopeType === "kosk") {
     return `${root}/kosks/${assignment.scopeId}`;
-  }
-  if (assignment.scopeId && assignment.scopeType === "course") {
-    return `${root}/courses/${assignment.scopeId}`;
   }
   return root;
 };
