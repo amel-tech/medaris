@@ -65,22 +65,6 @@
   "DataTable": {
     "noResults": "لا توجد نتائج."
   },
-  "FlashCardContent": {
-    "card": "بطاقة",
-    "flip": "نقف",
-    "flipTooltip": "اقلب البطاقة",
-    "markAsMemorized": "ضع علامة كمحفوظ",
-    "markAsMemorizedTooltip": "ضع علامة كما هو محفوظ",
-    "markAsToReviewLater": "ضع علامة للمراجعة لاحقًا",
-    "repeat": "يكرر",
-    "updating": "جارٍ التحديث..."
-  },
-  "FlashCardList": {
-    "noCardsFound": "لم يتم العثور على أي بطاقات حتى الآن."
-  },
-  "HomePage": {
-    "greeting": "السلام عليكم!"
-  },
   "KoskPage": {
     "kosks": "Köşkler",
     "uncategorized": "Diğer",

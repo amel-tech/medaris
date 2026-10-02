@@ -65,22 +65,6 @@
   "DataTable": {
     "noResults": "Sonuç bulunamadı."
   },
-  "FlashCardContent": {
-    "card": "Kart",
-    "flip": "Çevir",
-    "flipTooltip": "Kartı çevirin",
-    "markAsMemorized": "Hafızaya Alındı Olarak İşaretle",
-    "markAsMemorizedTooltip": "Ezbere alındı olarak işaretle",
-    "markAsToReviewLater": "Daha sonra incelemek üzere işaretle.",
-    "repeat": "Tekrarlamak",
-    "updating": "Guncelleniyor..."
-  },
-  "FlashCardList": {
-    "noCardsFound": "Henüz hiçbir kart bulunamadı."
-  },
-  "HomePage": {
-    "greeting": "Selamünaleyküm!"
-  },
   "KoskPage": {
     "kosks": "Köşkler",
     "uncategorized": "Diğer",

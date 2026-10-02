@@ -37,6 +37,18 @@ export interface FlashcardProgressResponse {
      * @memberof FlashcardProgressResponse
      */
     userId: string;
+    /**
+     * When the card is due again (MDRS-165); null for a card nobody rated, which is due now if it is LEARNING.
+     * @type {Date}
+     * @memberof FlashcardProgressResponse
+     */
+    dueAt?: Date | null;
+    /**
+     * The days between the last two reviews; 0 before the first.
+     * @type {number}
+     * @memberof FlashcardProgressResponse
+     */
+    intervalDays?: number;
 }
 
 
@@ -74,6 +86,8 @@ export function FlashcardProgressResponseFromJSONTyped(json: any, ignoreDiscrimi
         'flashcardId': json['flashcardId'],
         'status': json['status'],
         'userId': json['userId'],
+        'dueAt': json['dueAt'] == null ? undefined : (new Date(json['dueAt'])),
+        'intervalDays': json['intervalDays'] == null ? undefined : json['intervalDays'],
     };
 }
 
@@ -91,6 +105,8 @@ export function FlashcardProgressResponseToJSONTyped(value?: FlashcardProgressRe
         'flashcardId': value['flashcardId'],
         'status': value['status'],
         'userId': value['userId'],
+        'dueAt': value['dueAt'] === null ? null : ((value['dueAt'] as any)?.toISOString()),
+        'intervalDays': value['intervalDays'],
     };
 }
 

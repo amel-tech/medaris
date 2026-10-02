@@ -3,3 +3,4 @@ export { default as landing } from "./landing.json";
 export { default as nazir } from "./nazir.json";
 export { default as nizam } from "./nizam.json";
 export { default as tedris } from "./tedris.json";
+export { default as tedrisLearn } from "./tedris-learn.json";

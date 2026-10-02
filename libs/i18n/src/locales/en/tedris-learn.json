@@ -1,0 +1,38 @@
+{
+  "Home": {
+    "continueTitle": "Pick up where you left off",
+    "decksTitle": "Decks to study today",
+    "followedTitle": "From the köşks you follow",
+    "sectionFailed": "This section could not be read right now.",
+    "retry": "Try again",
+    "emptyCourses": "You have no course in progress. You can find one in Discover.",
+    "emptyDecks": "No deck to study today. Look at your collection on the Decks page.",
+    "emptyFollowed": "The köşks you follow have no new course.",
+    "studyDeck": "Study: {title}"
+  },
+  "Study": {
+    "title": "Study",
+    "subtitleDue": "{deck} · {count, plural, one {# card waits} other {# cards wait}} for review today",
+    "subtitleNew": "{deck} · {count, plural, one {# new card} other {# new cards}}",
+    "subtitleAll": "{deck} · {count, plural, one {# card} other {# cards}}",
+    "finish": "Finish studying",
+    "round": "This round: {done} / {total} cards",
+    "cardOf": "Card {n} / {total}",
+    "showBack": "Show the back",
+    "difficulty": "How hard was it?",
+    "hard": "Hard",
+    "medium": "Medium",
+    "easy": "Easy",
+    "saveFailedTitle": "Your progress was not saved",
+    "saveFailedText": "The card stays where it is. Try again.",
+    "nothingTitle": "All done for today",
+    "nothingText": "No card is waiting for review today. Look again tomorrow.",
+    "doneTitle": "Round finished",
+    "doneText": "{count, plural, one {You studied # card.} other {You studied # cards.}}",
+    "backToDeck": "Back to the deck"
+  },
+  "PublicDeck": {
+    "note": "If you study without signing in, your progress is not saved.",
+    "signIn": "Sign in to save it"
+  }
+}

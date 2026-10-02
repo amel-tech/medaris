@@ -7,6 +7,7 @@ import { KoskNotFoundError } from "./errors/kosk-not-found.error";
 import { KoskRepository } from "./kosk.repository";
 import {
   ICreateKosk,
+  IFollowedKoskCourse,
   IKosk,
   IKoskDecks,
   IKoskListFilter,
@@ -72,6 +73,14 @@ export class KoskService {
   /** The köşk's decks for a caller who belongs to it (MDRS-159). */
   async findDecks(koskId: string, userId: string): Promise<IKoskDecks> {
     return this.koskRepo.findDecks(koskId, userId);
+  }
+
+  /** Courses of the köşks the caller follows, for Ana sayfa (MDRS-165). */
+  async findFollowedCourses(
+    userId: string,
+    limit: number
+  ): Promise<IFollowedKoskCourse[]> {
+    return this.koskRepo.findFollowedCourses(userId, limit);
   }
 
   async findById(id: string, userId: string | null): Promise<IKoskWithStats> {

@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { ReviewRating } from './ReviewRating';
+import {
+    ReviewRatingFromJSON,
+    ReviewRatingFromJSONTyped,
+    ReviewRatingToJSON,
+    ReviewRatingToJSONTyped,
+} from './ReviewRating';
+
 /**
  * 
  * @export
@@ -26,11 +34,17 @@ export interface CreateFlashcardProgressDto {
      */
     flashcardId: string;
     /**
-     * 
+     * The state to record. Required unless `rating` is sent; with a rating the server derives the state and the next review time and ignores this.
      * @type {string}
      * @memberof CreateFlashcardProgressDto
      */
-    status: CreateFlashcardProgressDtoStatusEnum;
+    status?: CreateFlashcardProgressDtoStatusEnum;
+    /**
+     * How hard the talebe found the card (MDRS-165). HARD and MEDIUM keep it LEARNING, EASY masters it; each sets when it is due again.
+     * @type {ReviewRating}
+     * @memberof CreateFlashcardProgressDto
+     */
+    rating?: ReviewRating;
 }
 
 
@@ -50,7 +64,6 @@ export type CreateFlashcardProgressDtoStatusEnum = typeof CreateFlashcardProgres
  */
 export function instanceOfCreateFlashcardProgressDto(value: object): value is CreateFlashcardProgressDto {
     if (!('flashcardId' in value) || value['flashcardId'] === undefined) return false;
-    if (!('status' in value) || value['status'] === undefined) return false;
     return true;
 }
 
@@ -65,7 +78,8 @@ export function CreateFlashcardProgressDtoFromJSONTyped(json: any, ignoreDiscrim
     return {
         
         'flashcardId': json['flashcardId'],
-        'status': json['status'],
+        'status': json['status'] == null ? undefined : json['status'],
+        'rating': json['rating'] == null ? undefined : ReviewRatingFromJSON(json['rating']),
     };
 }
 
@@ -82,6 +96,7 @@ export function CreateFlashcardProgressDtoToJSONTyped(value?: CreateFlashcardPro
         
         'flashcardId': value['flashcardId'],
         'status': value['status'],
+        'rating': ReviewRatingToJSON(value['rating']),
     };
 }
 
