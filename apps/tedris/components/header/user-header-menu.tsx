@@ -17,10 +17,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@medaris/ui/components/dropdown-menu";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { UserAvatar } from "~/features/user-avatar";
+import { Link } from "~/lib/i18n/navigation";
 import { keycloakSignOut } from "~/lib/keycloak-logout";
 import Version from "./version";
 

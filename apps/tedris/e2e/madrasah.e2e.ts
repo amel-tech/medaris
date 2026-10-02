@@ -89,6 +89,7 @@ test("an unknown or malformed medrese id answers 404 with the not-found state an
 
 test("a signed-in talebe sees Devam ediyor and Onay bekliyor on their courses", async ({
   page,
+  baseURL,
 }) => {
   const email = process.env.E2E_TALEBE_EMAIL;
   const password = process.env.E2E_TALEBE_PASSWORD;
@@ -103,7 +104,8 @@ test("a signed-in talebe sees Devam ediyor and Onay bekliyor on their courses", 
     await page.locator("#username").fill(email as string);
     await page.locator("#password").fill(password as string);
     await page.locator("button[type=submit]").click();
-    await page.waitForURL(/localhost:4000/);
+    const appOrigin = new URL(baseURL as string).origin;
+    await page.waitForURL((url) => url.origin === appOrigin);
     await page.goto(page_(fixture.madrasahId));
     const [enrolled, pending] = fixture.courses;
     const row = (title: string) =>
