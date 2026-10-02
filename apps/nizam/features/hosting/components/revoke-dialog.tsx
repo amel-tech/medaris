@@ -4,17 +4,20 @@ import type { HostingRightResponse } from "@medaris/services/tedrisat";
 import { toast } from "@medaris/ui/components/sonner";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
+import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { revokeHostingRight } from "../actions";
 import {
   type CoursesChoice,
   canRevoke,
+  countWord,
   courseLine,
   coursesActionFor,
   hostingErrorKey,
+  koskLocative,
   type Messages,
   studentTotal,
 } from "../present";
@@ -46,6 +49,7 @@ export function RevokeDialog({
   onRevoked,
 }: Props) {
   const tm = useTranslations("nizam.RevokeDialog");
+  const locale = useLocale();
   const t = tm as unknown as Messages;
   const tp = useTranslations("nizam.HostingPage");
   const [choice, setChoice] = useState<CoursesChoice>(null);
@@ -112,23 +116,33 @@ export function RevokeDialog({
       <p>
         {tm.rich("intro", {
           name: right?.name ?? "",
+          koskLocative: koskLocative(koskName, locale),
           count,
+          countWord: countWord(count, locale),
           b: (chunks) => <b>{chunks}</b>,
         })}
       </p>
       {count > 0 ? (
         <>
           <ul
-            className="mds-card flex flex-col divide-y divide-[var(--border-neutral-default)] p-0"
+            className="mds-card flex flex-col divide-y divide-[var(--border-neutral-subtle)] p-0"
             data-testid="open-courses"
           >
             {courses.map((course) => (
               <li
                 key={course.id}
-                className="flex items-center justify-between gap-3 p-card"
+                className="flex items-center gap-3 px-card py-3"
               >
-                <span className="flex min-w-0 flex-col">
-                  <bdi className="font-semibold">{course.title}</bdi>
+                <CoverPattern
+                  seed={course.id}
+                  size="xs"
+                  label=""
+                  aria-hidden="true"
+                />
+                <span className="flex min-w-0 grow flex-col">
+                  <bdi className="font-semibold [font-family:var(--font-reading)]">
+                    {course.title}
+                  </bdi>
                   <bdi className="mds-caption">{courseLine(course, t)}</bdi>
                 </span>
                 <Badge
@@ -152,12 +166,19 @@ export function RevokeDialog({
               {
                 value: "KEEP",
                 label: t("keep"),
-                description: t("keepDesc", { count }),
+                description: t("keepDesc", {
+                  count,
+                  countWordCap: countWord(count, locale, true),
+                }),
               },
               {
                 value: "HIDE",
                 label: t("hide"),
-                description: t("hideDesc", { count, students }),
+                description: t("hideDesc", {
+                  count,
+                  countWordCap: countWord(count, locale, true),
+                  students,
+                }),
               },
             ]}
           />

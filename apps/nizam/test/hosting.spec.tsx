@@ -6,12 +6,14 @@ import { describe, expect, it, vi } from "vitest";
 import { HostingView } from "~/features/hosting/components/hosting-view";
 import {
   canRevoke,
+  countWord,
   courseLine,
   coursesActionFor,
   grantable,
   grantedOn,
   granterRole,
   hostingErrorKey,
+  koskLocative,
   type Messages,
   openCoursesSummary,
   studentTotal,
@@ -232,5 +234,41 @@ describe("HostingView (nizam 26)", () => {
     ]);
     expect(html).toContain("Eski Veren");
     expect(html).not.toContain("Medaris başnazımı");
+  });
+
+  it("names the köşk in the locative, as the design does (nizam 26)", () => {
+    const html = view([right()]);
+    expect(html).toContain(
+      "Nûruosmaniye Köşkü’nde barındırma hakkı olan medreseler. Bu hak"
+    );
+    expect(html).not.toContain("Köşkü köşkünün");
+  });
+
+  it("still draws the page, without a köşk name, when the API is down", () => {
+    const html = render(
+      <HostingView koskId="k1" koskName="" rights={null} madrasahs={null} />
+    );
+    expect(html).toContain("Barındırma hakları yüklenemedi");
+    expect(html).toContain("Bu köşkte barındırma hakkı olan medreseler");
+    expect(html).not.toContain("Bu bölüm için izniniz yok");
+  });
+});
+
+describe("koskLocative and countWord (nizam 26, 27 prose)", () => {
+  it("ends a Turkish köşk name by how it ends", () => {
+    expect(koskLocative("Nûruosmaniye Köşkü", "tr")).toBe(
+      "Nûruosmaniye Köşkü’nde"
+    );
+    expect(koskLocative("Fatih Köşk", "tr")).toBe("Fatih Köşk’te");
+    expect(koskLocative("Fatih", "tr")).toBe("Fatih köşkünde");
+    expect(koskLocative("Fatih Köşkü", "en")).toBe("Fatih Köşkü");
+  });
+
+  it("writes small counts out in Turkish, with a capital at a sentence start", () => {
+    expect(countWord(2, "tr")).toBe("iki");
+    expect(countWord(2, "tr", true)).toBe("İki");
+    expect(countWord(1, "tr", true)).toBe("Bir");
+    expect(countWord(11, "tr")).toBe("11");
+    expect(countWord(2, "en")).toBe("2");
   });
 });

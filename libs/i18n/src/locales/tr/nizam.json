@@ -964,7 +964,7 @@
     "title": "Barındırma hakları",
     "settings": "Köşk ayarları",
     "breadcrumbLabel": "Sayfa yolu",
-    "intro": "Bu köşkte barındırma hakkı olan medreseler. Bu hak, medreseye köşk üzerinde hiçbir yetki vermez.",
+    "intro": "{koskLocative} barındırma hakkı olan medreseler. Bu hak, medreseye köşk üzerinde hiçbir yetki vermez.",
     "grant": "Barındırma hakkı ver",
     "tabsLabel": "Köşk ayarları bölümleri",
     "tabs": {
@@ -972,7 +972,9 @@
       "nazims": "Köşk nazımları",
       "hosting": "Barındırma hakları"
     },
-    "caption": "{kosk} köşkünün barındırma hakları",
+    "caption": "{koskLocative} barındırma hakkı olan medreseler",
+    "unknownKosk": "Bu köşk",
+    "unknownKoskLocative": "Bu köşkte",
     "columns": {
       "madrasah": "Medrese",
       "grantedBy": "Veren",
@@ -1021,12 +1023,12 @@
   },
   "RevokeDialog": {
     "title": "Barındırma hakkını geri al",
-    "intro": "<b>{name}</b> bu köşkte yeni ders açamayacak. {count, plural, =0 {Medresenin bu köşkte açık dersi yok.} other {Medresenin bu köşkteki {count} açık dersi kapanmaz; onlara ne olacağını seçin.}}",
+    "intro": "<b>{name}</b>, {koskLocative} yeni ders açamayacak. {count, plural, =0 {Medresenin bu köşkte açık dersi yok.} other {Medresenin bu köşkteki {countWord} açık dersi kapanmaz; onlara ne olacağını seçin.}}",
     "coursesLegend": "Açık dersler",
     "keep": "Dersler sürsün",
-    "keepDesc": "{count, plural, one {Ders bu köşkte sürer; talebeler bir değişiklik görmez. Medrese bu dersi yürütmeye devam eder.} other {{count} ders de bu köşkte sürer; talebeler bir değişiklik görmez. Medrese bu dersleri yürütmeye devam eder.}}",
+    "keepDesc": "{count, plural, one {Ders bu köşkte sürer; talebeler bir değişiklik görmez. Medrese bu dersi yürütmeye devam eder.} other {{countWordCap} ders de bu köşkte sürer; talebeler bir değişiklik görmez. Medrese bu dersleri yürütmeye devam eder.}}",
     "hide": "Dersleri gizle",
-    "hideDesc": "{count, plural, one {Ders listelerden çıkar;} other {{count} ders de listelerden çıkar;}} {students, plural, =0 {} other {{students} talebe celselere ve ders kayıtlarına erişemez. }}Hiçbir şey silinmez; Arşiv’den geri alabilirsiniz.",
+    "hideDesc": "{count, plural, one {Ders listelerden çıkar;} other {{countWordCap} ders de listelerden çıkar;}} {students, plural, =0 {} other {{students} talebe celselere ve ders kayıtlarına erişemez. }}Hiçbir şey silinmez; Arşiv’den geri alabilirsiniz.",
     "courseStatus": {
       "PUBLISHED": "Yayında",
       "DRAFT": "Taslak"

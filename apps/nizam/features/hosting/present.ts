@@ -115,3 +115,49 @@ export function grantable<T extends { id: string }>(
   const taken = new Set(held.map((h) => h.madrasahId));
   return all.filter((m) => !taken.has(m.id));
 }
+
+/**
+ * "Nûruosmaniye Köşkü’nde": a Turkish köşk name takes its locative by how it
+ * ends, so "{kosk} köşkünde" cannot be one fixed string (that read "Nûruosmaniye
+ * Köşkü köşkünün"). A name that does not end in "Köşkü" or "Köşk" gets
+ * "… köşkünde". Other languages get the bare name; their own messages carry
+ * the preposition.
+ */
+export function koskLocative(name: string, locale: string): string {
+  if (!locale.toLowerCase().startsWith("tr")) return name;
+  if (/köşkü$/iu.test(name)) return `${name}’nde`;
+  if (/köşk$/iu.test(name)) return `${name}’te`;
+  return `${name} köşkünde`;
+}
+
+const TR_COUNTS = [
+  "sıfır",
+  "bir",
+  "iki",
+  "üç",
+  "dört",
+  "beş",
+  "altı",
+  "yedi",
+  "sekiz",
+  "dokuz",
+  "on",
+];
+
+/**
+ * "iki" for 2 and "İki" for sentence-initial use: the design writes small
+ * counts out in Turkish prose. Past ten, and in other languages, the digits.
+ */
+export function countWord(
+  count: number,
+  locale: string,
+  capital = false
+): string {
+  if (!locale.toLowerCase().startsWith("tr") || count < 0 || count > 10) {
+    return String(count);
+  }
+  const word = TR_COUNTS[count] ?? String(count);
+  return capital
+    ? word.replace(/^i/u, "İ").replace(/^./u, (c) => c.toUpperCase())
+    : word;
+}

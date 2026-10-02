@@ -35,7 +35,7 @@ export default async function Page({
   if (directory === "forbidden") forbidden();
 
   return (
-    <div className="mx-auto max-w-[80rem] px-gutter py-8">
+    <div className="mx-auto w-full max-w-[80rem]">
       <MadrasahsView directory={directory} status={status} q={q} />
     </div>
   );

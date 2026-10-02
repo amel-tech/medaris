@@ -973,6 +973,8 @@
       "hosting": "حقوق الاستضافة"
     },
     "caption": "حقوق الاستضافة في {kosk}",
+    "unknownKosk": "هذا الرواق",
+    "unknownKoskLocative": "في هذا الرواق",
     "columns": {
       "madrasah": "المدرسة",
       "grantedBy": "الجهة المانحة",

@@ -34,13 +34,16 @@ export default async function Page({
 
   if (rights === "not-found") notFound();
   if (rights === "forbidden") forbidden();
-  if (!kosk) notFound();
+  // A köşk that did not read while the rights did is gone; with both failing
+  // the API is down, and the page says so in place (spec §3) rather than
+  // passing it off as a missing permission.
+  if (!kosk && rights !== null) notFound();
 
   return (
-    <div className="mx-auto max-w-[72rem] px-gutter py-8">
+    <div className="mx-auto w-full max-w-[72rem]">
       <HostingView
-        koskId={kosk.id}
-        koskName={kosk.name}
+        koskId={id}
+        koskName={kosk?.name ?? ""}
         rights={rights}
         madrasahs={madrasahs}
       />

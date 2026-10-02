@@ -4,7 +4,7 @@ import { Skeleton } from "@medaris/ui/mds/skeleton";
 export default function Loading() {
   return (
     <div
-      className="mx-auto flex max-w-[80rem] flex-col gap-section px-gutter py-8"
+      className="mx-auto flex w-full max-w-[80rem] flex-col gap-section"
       aria-busy="true"
     >
       <header className="flex flex-col gap-3">

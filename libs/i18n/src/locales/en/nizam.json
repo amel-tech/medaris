@@ -973,6 +973,8 @@
       "hosting": "Hosting rights"
     },
     "caption": "Hosting rights of {kosk}",
+    "unknownKosk": "This köşk",
+    "unknownKoskLocative": "this köşk",
     "columns": {
       "madrasah": "Medrese",
       "grantedBy": "Given by",

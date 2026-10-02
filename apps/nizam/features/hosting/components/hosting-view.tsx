@@ -18,6 +18,7 @@ import {
   grantable,
   grantedOn,
   granterRole,
+  koskLocative,
   type Messages,
   openCoursesSummary,
 } from "../present";
@@ -55,6 +56,11 @@ export function HostingView({ koskId, koskName, rights, madrasahs }: Props) {
   const refresh = () => startTransition(() => router.refresh());
   const base = `/${locale}/kosks/${koskId}/ayarlar`;
   const held = rights ?? [];
+  // With the API down the köşk's name may not be known; the page still draws.
+  const name = koskName || t("unknownKosk");
+  const koskIn = koskName
+    ? koskLocative(koskName, locale)
+    : t("unknownKoskLocative");
 
   const columns: TableColumn<HostingRightResponse>[] = [
     {
@@ -145,7 +151,7 @@ export function HostingView({ koskId, koskName, rights, madrasahs }: Props) {
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex max-w-[44rem] flex-col gap-3">
           <h1 className="mds-h1">{t("title")}</h1>
-          <p>{t("intro", { kosk: koskName })}</p>
+          <p>{t("intro", { kosk: name, koskLocative: koskIn })}</p>
         </div>
         <Button
           iconLeft={<Icon name="plus" size="sm" />}
@@ -186,7 +192,7 @@ export function HostingView({ koskId, koskName, rights, madrasahs }: Props) {
       ) : (
         <>
           <Table
-            caption={t("caption", { kosk: koskName })}
+            caption={t("caption", { kosk: name, koskLocative: koskIn })}
             columns={columns}
             rows={held}
             rowKey={(r) => r.madrasahId}
@@ -201,7 +207,7 @@ export function HostingView({ koskId, koskName, rights, madrasahs }: Props) {
         open={granting}
         onOpenChange={setGranting}
         koskId={koskId}
-        koskName={koskName}
+        koskName={name}
         options={madrasahs === null ? null : grantable(madrasahs, held)}
         onGranted={refresh}
       />
@@ -211,7 +217,7 @@ export function HostingView({ koskId, koskName, rights, madrasahs }: Props) {
           if (!open) setRevoking(null);
         }}
         koskId={koskId}
-        koskName={koskName}
+        koskName={name}
         right={revoking}
         onRevoked={refresh}
       />
