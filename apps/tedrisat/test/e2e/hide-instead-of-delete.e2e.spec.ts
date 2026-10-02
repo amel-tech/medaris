@@ -14,7 +14,11 @@ import {
   enrollments,
   lessons,
 } from "../../src/database/schema/course.schema";
-import { koskFollowers, kosks } from "../../src/database/schema/kosk.schema";
+import {
+  koskFollowers,
+  koskManagers,
+  kosks,
+} from "../../src/database/schema/kosk.schema";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
   COURSE_TREE_TABLES,
@@ -66,6 +70,11 @@ describe("Hide instead of delete (e2e)", () => {
       .values({ ownerId: MANAGER_ID, name: "Süleymaniye Köşkü" })
       .returning();
     koskId = kosk.id;
+    // Managing is `kosk_managers` since MDRS-126, which `POST /kosks` fills
+    // and a direct insert does not.
+    await db()
+      .insert(koskManagers)
+      .values({ koskId, userId: MANAGER_ID, addedBy: MANAGER_ID });
     const [course] = await db()
       .insert(courses)
       .values({

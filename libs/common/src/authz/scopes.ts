@@ -69,6 +69,11 @@ export const SCOPES = {
   CREATE_KOSK: "create_kosk",
   MANAGE_COURSES: "manage_courses",
   MANAGE_KOSK: "manage_kosk",
+  // Add or remove a köşk's managers (MDRS-126). Its own scope rather than
+  // EDIT, which a nazır of the köşk's medrese also holds: a nazır who could
+  // make themselves a manager would gain KOSK_MANAGER on the köşk's courses,
+  // which PRD §4.1 keeps out of a nazır's reach.
+  MANAGE_KOSK_MANAGERS: "manage_kosk_managers",
   // Medrese yönetimi
   CREATE_MADRASAH: "create_madrasah",
   MANAGE_MADRASAH: "manage_madrasah",

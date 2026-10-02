@@ -124,6 +124,17 @@ describe("auth-matrix structural invariants", () => {
     expect(granting).toEqual([ROLES.KOSK_MANAGER]);
   });
 
+  // MDRS-126: a nazır who could add köşk managers could add themselves, and
+  // a köşk manager is KOSK_MANAGER on every course of the köşk.
+  it("only the köşk manager may add or remove köşk managers", () => {
+    const granting = Object.entries(MATRIX).flatMap(([entity, rows]) =>
+      Object.entries(rows ?? {})
+        .filter(([, scopes]) => scopes?.includes(SCOPES.MANAGE_KOSK_MANAGERS))
+        .map(([role]) => `${entity}:${role}`)
+    );
+    expect(granting).toEqual([`${ENTITIES.KOSK}:${ROLES.KOSK_MANAGER}`]);
+  });
+
   it("a nazır's köşk scopes are a subset of the köşk manager's, without DELETE", () => {
     const nazir = MATRIX[ENTITIES.KOSK][ROLES.MADRASAH_NAZIR] ?? [];
     const manager = MATRIX[ENTITIES.KOSK][ROLES.KOSK_MANAGER] ?? [];

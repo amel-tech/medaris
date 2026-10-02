@@ -18,7 +18,7 @@ const UUID_REGEX =
 /**
  * Resolves the caller's role on a given resource by consulting the
  * domain's ownership/enrollment tables — through the feature modules'
- * services where one already answers the question (`KoskService.isOwner`,
+ * services where one already answers the question (`KoskService.isManager`,
  * `FlashcardDeckService.findVisibility`) and through `CourseRepository` for
  * the course lookups no service exposes, never through `DatabaseService`
  * directly. Authorization and the domain code therefore read ownership from
@@ -131,7 +131,7 @@ export class TedrisatRoleResolver implements RoleResolver {
    *   that hands köşk creation to every authenticated user.
    * - Köşk missing: PUBLIC. Mirrors the deck pattern — the controller
    *   surfaces 404 later when its own query returns nothing.
-   * - Caller owns the köşk: KOSK_MANAGER.
+   * - Caller is one of the köşk's managers: KOSK_MANAGER.
    * - Caller is a nazır of the medrese the köşk is affiliated with:
    *   MADRASAH_NAZIR (MDRS-106) — VIEW, EDIT, MANAGE_COURSES; no DELETE.
    * - Otherwise: PUBLIC. Anyone authenticated may VIEW; EDIT/DELETE
@@ -146,13 +146,14 @@ export class TedrisatRoleResolver implements RoleResolver {
   ): Promise<Role | null> {
     if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
 
-    // `KoskService.isOwner` is the module's one ownership predicate; a
-    // missing köşk is simply "not the owner", which is PUBLIC here too.
-    const [isOwner, isNazir] = await Promise.all([
-      this.koskService.isOwner(resource.id, userId),
+    // `KoskService.isManager` is the module's one management predicate
+    // (`kosk_managers`, MDRS-126); a missing köşk is simply "not a manager",
+    // which is PUBLIC here too.
+    const [isManager, isNazir] = await Promise.all([
+      this.koskService.isManager(resource.id, userId),
       this.madrasahService.isNazirOfKosk(resource.id, userId),
     ]);
-    if (isOwner) return ROLES.KOSK_MANAGER;
+    if (isManager) return ROLES.KOSK_MANAGER;
     if (isNazir) return ROLES.MADRASAH_NAZIR;
     return ROLES.PUBLIC;
   }
@@ -181,7 +182,7 @@ export class TedrisatRoleResolver implements RoleResolver {
    * Course role dispatch.
    *
    * Priority (highest first):
-   *   1. KOSK_MANAGER — caller owns the course's parent köşk
+   *   1. KOSK_MANAGER — caller manages the course's parent köşk
    *   2. MUDERRIS     — caller is listed in `course_muderris` for this course
    *   3. ENROLLED     — caller has an `ENROLLED` (or `COMPLETED`) enrollment
    *   4. PENDING      — caller has a `PENDING` enrollment awaiting approval
@@ -193,7 +194,7 @@ export class TedrisatRoleResolver implements RoleResolver {
    * need nothing but the course id and the caller, so the three run
    * concurrently once the course is known. It could be one hop with a
    * courses⋈kosks join, but that would re-implement köşk ownership beside
-   * `KoskService.isOwner` — one owner of that predicate was judged worth
+   * `KoskService.isManager` — one owner of that predicate was judged worth
    * the extra hop; revisit if the guard shows up in a profile. The most common caller — an
    * authenticated visitor with no relationship to the course, who ends at
    * PUBLIC — used to pay all four in series, inside the guard, before the
@@ -215,7 +216,7 @@ export class TedrisatRoleResolver implements RoleResolver {
     if (koskId === null) return ROLES.PUBLIC;
 
     const [ownsParentKosk, isMuderris, enrollment] = await Promise.all([
-      this.koskService.isOwner(koskId, userId),
+      this.koskService.isManager(koskId, userId),
       this.courseRepo.isMuderris(resource.id, userId),
       this.courseRepo.findEnrollment(userId, resource.id),
     ]);

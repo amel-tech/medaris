@@ -15,10 +15,16 @@
 
 import * as runtime from '../runtime';
 import type {
+  CalendarFeedLinkResponse,
+  CalendarFeedStatusResponse,
   MeResponse,
   UpdateMeDto,
 } from '../models/index';
 import {
+    CalendarFeedLinkResponseFromJSON,
+    CalendarFeedLinkResponseToJSON,
+    CalendarFeedStatusResponseFromJSON,
+    CalendarFeedStatusResponseToJSON,
     MeResponseFromJSON,
     MeResponseToJSON,
     UpdateMeDtoFromJSON,
@@ -65,6 +71,76 @@ export class MeApi extends runtime.BaseAPI {
      */
     async getMe(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeResponse> {
         const response = await this.getMeRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Whether the caller has a calendar-feed URL
+     */
+    async getMyCalendarFeedRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CalendarFeedStatusResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/me/calendar-feed`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CalendarFeedStatusResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Whether the caller has a calendar-feed URL
+     */
+    async getMyCalendarFeed(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CalendarFeedStatusResponse> {
+        const response = await this.getMyCalendarFeedRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The URL is returned this once — only a hash of its secret is stored. The previous URL answers 404 from now on.
+     * Issue a new calendar-feed URL; the previous one stops working
+     */
+    async regenerateMyCalendarFeedRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CalendarFeedLinkResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/me/calendar-feed`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CalendarFeedLinkResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The URL is returned this once — only a hash of its secret is stored. The previous URL answers 404 from now on.
+     * Issue a new calendar-feed URL; the previous one stops working
+     */
+    async regenerateMyCalendarFeed(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CalendarFeedLinkResponse> {
+        const response = await this.regenerateMyCalendarFeedRaw(initOverrides);
         return await response.value();
     }
 
