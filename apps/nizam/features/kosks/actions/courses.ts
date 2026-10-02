@@ -4,6 +4,7 @@ import type {
   CourseDetailResponse,
   CreateCourseDto,
   EnrollmentResponse,
+  ReplaceCourseDto,
 } from "@medaris/services/tedrisat";
 import { revalidatePath } from "next/cache";
 import {
@@ -22,13 +23,18 @@ export const createKoskCourse = async (
   return result;
 };
 
+/**
+ * Saves the whole course form. `course.version` must be the version the form
+ * was loaded with: tedrisat answers 409 `COURSE_VERSION_CONFLICT` if anyone
+ * saved the course since, instead of overwriting their changes (MDRS-95).
+ */
 export const updateKoskCourse = async (
   koskId: string,
   courseId: string,
-  course: CreateCourseDto
+  course: ReplaceCourseDto
 ): Promise<AuthenticatedActionResult<CourseDetailResponse>> => {
   const result = await authenticatedAction((api) =>
-    api.courses.replaceCourse({ id: courseId, createCourseDto: course })
+    api.courses.replaceCourse({ id: courseId, replaceCourseDto: course })
   );
   if (result.success) {
     revalidatePath(`/kosks/${koskId}`);

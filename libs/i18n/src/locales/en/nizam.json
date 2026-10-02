@@ -178,6 +178,8 @@
     "editTitle": "Kursu Düzenle",
     "breadcrumbEdit": "Düzenle",
     "updated": "Kurs güncellendi.",
+    "conflict": "Someone else saved this course after you opened the form. Your changes were not saved; reload to see the latest version.",
+    "conflictReload": "Reload",
     "requiresApproval": "Require enrollment approval",
     "requiresApprovalHint": "When on, student enrollments stay pending until you approve them."
   },

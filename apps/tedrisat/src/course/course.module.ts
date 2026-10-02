@@ -5,10 +5,11 @@ import { KoskModule } from "../kosk/kosk.module";
 import { CourseController } from "./course.controller";
 import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
+import { LessonController } from "./lesson.controller";
 
 @Module({
   imports: [AuthGuardModule, KoskModule],
-  controllers: [CourseController],
+  controllers: [CourseController, LessonController],
   providers: [CourseService, CourseRepository, DatabaseService],
   // For AuthzBindingsModule's role resolver (MDRS-41): findKoskId,
   // isMuderris and findEnrollment have no CourseService counterpart, so the

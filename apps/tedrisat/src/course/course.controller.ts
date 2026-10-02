@@ -15,6 +15,7 @@ import {
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -30,6 +31,7 @@ import {
   PendingEnrollmentResponse,
 } from "./dto/course-response.dto";
 import { CreateCourseDto } from "./dto/create-course.dto";
+import { ReplaceCourseDto } from "./dto/replace-course.dto";
 import { UpdateCourseDto } from "./dto/update-course.dto";
 import { UpdateProgressDto } from "./dto/update-progress.dto";
 import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
@@ -120,12 +122,16 @@ export class CourseController {
   })
   @ApiOkResponse({ type: CourseDetailResponse })
   @ApiNotFoundResponse()
+  @ApiConflictResponse({
+    description:
+      "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT).",
+  })
   @Put("courses/:id")
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   async replace(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
-    @Body() courseDto: CreateCourseDto
+    @Body() courseDto: ReplaceCourseDto
   ): Promise<CourseDetailResponse> {
     return this.courseService.replace(id, request.user.sub, courseDto);
   }

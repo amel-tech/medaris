@@ -6,6 +6,7 @@ import {
   FlashcardDecksApi,
   FlashcardlabelApi,
   KosksApi,
+  LessonsApi,
   TedrisatServiceApi,
 } from "./generated/src";
 
@@ -25,6 +26,7 @@ export type {
   CreateMuderrisDto,
   CreateResourceDto,
   CreateWeekDto,
+  CreateWeekLessonDto,
   DeckLabelStatsResponse,
   EnrolledCourseResponse,
   EnrollmentResponse,
@@ -38,15 +40,18 @@ export type {
   FlashcardResponse,
   KoskResponse,
   LabelStatsResponse,
+  LessonMutationResponse,
   LessonResponse,
   MuderrisResponse,
   PaginatedKoskResponse,
   PendingEnrollmentResponse,
+  ReplaceCourseDto,
   ResourceResponse,
   UpdateCourseDto,
   UpdateFlashcardDeckDto,
   UpdateFlashcardDto,
   UpdateKoskDto,
+  UpdateLessonDto,
   UpdateProgressDto,
   WeekResponse,
 } from "./generated/src";
@@ -95,6 +100,8 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     service: new TedrisatServiceApi(configuration),
     kosks: new KosksApi(configuration),
     courses: new CoursesApi(configuration),
+    // Session-level lesson writes (MDRS-95).
+    lessons: new LessonsApi(configuration),
     // The two label controllers MDRS-58 published for the first time. Generated
     // classes that only `./generated/src` exported were reachable by no app —
     // this factory is what `@medaris/services/tedrisat` hands out.
