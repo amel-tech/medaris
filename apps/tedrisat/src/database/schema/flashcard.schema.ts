@@ -1,7 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
   jsonb,
-  pgEnum,
   primaryKey,
   pgTable as table,
   text,
@@ -9,14 +8,11 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { FlashcardProgressStatus } from "../../flashcard/domain/flashcard-progress-status.enum";
-import { FlashcardType } from "../../flashcard/domain/flashcard-type.enum";
 import { decks } from "./flashcard-deck.schema";
-
-export const flashcardType = pgEnum("flashcard_type", FlashcardType);
-export const flashcardProgressStatus = pgEnum(
-  "flashcard_user_status",
-  FlashcardProgressStatus
-);
+import {
+  flashcardProgressStatus,
+  flashcardType,
+} from "./flashcard-enums.schema";
 
 // Tables
 export const flashcards = table("flashcards", {

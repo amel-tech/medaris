@@ -16,6 +16,8 @@ interface DeckRow {
   id: string;
   isPublic: boolean;
   authorId: string;
+  /** a course deck the asked-about caller is enrolled for (MDRS-164) */
+  sharedWithViewer?: boolean;
 }
 interface EnrollmentRow {
   status: EnrollmentStatus;
@@ -129,6 +131,26 @@ describe("TedrisatRoleResolver", () => {
           id: REAL_UUID,
         })
       ).resolves.toBe(ROLES.DECK_OWNER);
+    });
+
+    // MDRS-164: a deck that belongs to a course the caller is enrolled in is
+    // read like a public one — PUBLIC holds VIEW and nothing that writes.
+    it("returns PUBLIC for a private deck shared with the caller through a course", async () => {
+      const { resolver, deck } = build({
+        deck: {
+          id: REAL_UUID,
+          isPublic: false,
+          authorId: "owner-1",
+          sharedWithViewer: true,
+        },
+      });
+      await expect(
+        resolver.resolve("talebe", {
+          entity: ENTITIES.FLASHCARD_DECK,
+          id: REAL_UUID,
+        })
+      ).resolves.toBe(ROLES.PUBLIC);
+      expect(deck.findVisibility).toHaveBeenCalledWith(REAL_UUID, "talebe");
     });
 
     // MDRS-43 AC-4: a stranger must not be able to tell somebody else's

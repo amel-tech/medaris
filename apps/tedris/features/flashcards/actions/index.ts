@@ -1,192 +1,179 @@
 "use server";
 
 import {
-  type CreateFlashcardDeckDto,
   CreateFlashcardDtoTypeEnum,
   type CreateFlashcardProgressDto,
-  createServerTedrisatAPIs,
   type FlashcardDeckResponse,
+  type FlashcardType,
 } from "@medaris/services/tedrisat";
 import { revalidatePath } from "next/cache";
-import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
 import { authenticatedAction } from "~/lib/authenticated-action";
 
-export type DeckFilter = "all" | "public" | "private";
+/**
+ * The deck screens' writes (design tedris/25-33, MDRS-164). Each one is an HTTP
+ * endpoint like any other: the page hides what the caller may not do, and
+ * tedrisat is what refuses it.
+ */
 
-export const parseDeckFilter = async (
-  value: string | undefined
-): Promise<DeckFilter> => {
-  if (value === "public" || value === "private") return value;
-  return "all";
+/** Every list and page that shows a deck. The routes are locale-prefixed, so the pattern, not a URL. */
+const revalidateDecks = () => {
+  revalidatePath("/[locale]/decks", "page");
+  revalidatePath("/[locale]/decks/explore", "page");
+  revalidatePath("/[locale]/decks/[id]", "page");
+  revalidatePath("/[locale]/decks/[id]/cards", "page");
 };
 
-const deckFilterToIsPublic = (filter: DeckFilter): boolean | undefined => {
-  if (filter === "public") return true;
-  if (filter === "private") return false;
-  return undefined;
-};
+export interface NewDeck {
+  title: string;
+  description?: string;
+  cardType: FlashcardType;
+  tags?: string[];
+}
 
-export const getDecks = async (
-  filter: DeckFilter
-): Promise<FlashcardDeckResponse[]> => {
-  const isPublic = deckFilterToIsPublic(filter);
-  try {
-    const token = await getAccessToken();
-    const { decks } = await createServerTedrisatAPIs(
-      token,
-      env.TEDRISAT_API_BASE_URL
-    );
-    return decks.getAllFlashcardDecks(
-      isPublic === undefined ? {} : { isPublic }
-    );
-  } catch (error) {
-    console.error("Error fetching decks:", error);
-    return [];
-  }
-};
-
-export const getMyDecks = async (
-  filter: DeckFilter
-): Promise<FlashcardDeckResponse[] | undefined> => {
-  const isPublic = deckFilterToIsPublic(filter);
-  try {
-    const token = await getAccessToken();
-    if (!token) return undefined;
-    const API = await createServerTedrisatAPIs(
-      token,
-      env.TEDRISAT_API_BASE_URL
-    );
-    const all = await API.decks.getAllFlashcardDecksByUser();
-    if (isPublic === undefined) return all;
-    return all.filter((deck) => deck.isPublic === isPublic);
-  } catch (error) {
-    console.error("Error fetching my decks:", error);
-    return undefined;
-  }
-};
-
-export const createFlashCardDeck = async (
-  createFlashcardDeckDto: CreateFlashcardDeckDto
-) => {
-  return authenticatedAction(async ({ decks }) => {
-    const response = await decks.createFlashcardDeckRaw({
-      createFlashcardDeckDto,
-    });
-    return response.value();
-  });
-};
-
-export const updateFlashcard = async (
-  cardId: string,
-  updatedCard: {
-    contentFront?: string;
-    contentBack?: string;
-  }
-) => {
-  return authenticatedAction(async ({ cards }) => {
-    const response = await cards.updateFlashcardRaw({
-      id: cardId,
-      updateFlashcardDto: {
-        contentBack: updatedCard.contentBack,
-        contentFront: updatedCard.contentFront,
+/** A deck is born private; the form sends no visibility. */
+export const createDeck = async (deck: NewDeck) =>
+  authenticatedAction(async ({ decks }) => {
+    const created = await decks.createFlashcardDeck({
+      createFlashcardDeckDto: {
+        title: deck.title.trim(),
+        description: deck.description?.trim() || undefined,
+        cardType: deck.cardType,
+        tags: deck.tags,
       },
     });
-    return response.value();
+    revalidateDecks();
+    return created;
   });
-};
 
-export const createFlashcards = async (
+export const updateDeck = async (
   deckId: string,
-  newCards: {
+  changes: { title: string; description: string }
+) =>
+  authenticatedAction(async ({ decks }) => {
+    const updated = await decks.updateFlashcardDeck({
+      id: deckId,
+      updateFlashcardDeckDto: {
+        title: changes.title.trim(),
+        // An emptied box clears the description rather than keeping the old one.
+        description: changes.description.trim(),
+      },
+    });
+    revalidateDecks();
+    return updated;
+  });
+
+export const deleteDeck = async (deckId: string) =>
+  authenticatedAction(async ({ decks }) => {
+    await decks.deleteFlashcardDeck({ id: deckId });
+    revalidateDecks();
+    return true;
+  });
+
+export const requestDeckPublication = async (
+  deckId: string
+): ReturnType<typeof publicationAction> => publicationAction(deckId, "request");
+
+export const withdrawDeckPublication = async (
+  deckId: string
+): ReturnType<typeof publicationAction> =>
+  publicationAction(deckId, "withdraw");
+
+const publicationAction = (deckId: string, kind: "request" | "withdraw") =>
+  authenticatedAction(async ({ decks }): Promise<FlashcardDeckResponse> => {
+    const deck =
+      kind === "request"
+        ? await decks.requestFlashcardDeckPublication({ id: deckId })
+        : await decks.withdrawFlashcardDeckPublication({ id: deckId });
+    revalidateDecks();
+    return deck;
+  });
+
+export const addDeckToCollection = async (deckId: string) =>
+  authenticatedAction(async ({ decks }) => {
+    await decks.createFlashcardDeckUser({ id: deckId });
+    revalidateDecks();
+    return true;
+  });
+
+export const removeDeckFromCollection = async (deckId: string) =>
+  authenticatedAction(async ({ decks }) => {
+    await decks.deleteFlashcardDeckUser({ id: deckId });
+    revalidateDecks();
+    return true;
+  });
+
+export interface CardFields {
+  contentFront: string;
+  contentBack: string;
+}
+
+export const createCard = async (
+  deckId: string,
+  kind: FlashcardType,
+  card: CardFields
+) =>
+  authenticatedAction(async ({ cards }) => {
+    const [created] = await cards.createFlashcards({
+      deckId,
+      createFlashcardDto: [
+        {
+          type:
+            kind === "HADEETH"
+              ? CreateFlashcardDtoTypeEnum.Hadeeth
+              : CreateFlashcardDtoTypeEnum.Vocabulary,
+          contentFront: card.contentFront.trim(),
+          contentBack: card.contentBack.trim(),
+        },
+      ],
+    });
+    revalidateDecks();
+    return created;
+  });
+
+/** A card of somebody else's deck, copied as it is into one of the caller's own decks. */
+export const copyCard = async (
+  targetDeckId: string,
+  card: {
+    type: CreateFlashcardDtoTypeEnum;
     contentFront: string;
     contentBack: string;
-  }[]
-) => {
-  return authenticatedAction(async ({ cards }) => {
-    const response = await cards.createFlashcards({
-      deckId,
-      createFlashcardDto: newCards.map((card) => ({
-        type: CreateFlashcardDtoTypeEnum.Hadeeth,
-        contentFront: card.contentFront,
-        contentBack: card.contentBack,
-      })),
+    contentMeta?: object;
+  }
+) =>
+  authenticatedAction(async ({ cards }) => {
+    const [created] = await cards.createFlashcards({
+      deckId: targetDeckId,
+      createFlashcardDto: [card],
     });
-    // The rendered route is `app/[locale]/decks/[id]/cards`, so a literal
-    // `/decks/<uuid>/cards` matches no cache entry and the table keeps the
-    // rows it was server-rendered with until a hard reload. Next wants the
-    // dynamic form plus the `"page"` type — the same shape `deleteDeck` uses.
-    revalidatePath("/[locale]/decks/[id]/cards", "page");
-    revalidatePath("/[locale]/decks/[id]", "page");
-    return response;
+    revalidateDecks();
+    return created;
   });
-};
 
-export const deleteDeck = async (deckId: string) => {
-  return authenticatedAction(async ({ decks }) => {
-    await decks.deleteFlashcardDeck({ id: deckId });
-    // The routes are locale-prefixed, so the bare path would match nothing.
-    revalidatePath("/[locale]/decks", "page");
-    revalidatePath("/[locale]/decks/explore", "page");
-    return true;
-  });
-};
-
-/**
- * Flips a deck between private and public. Only the author reaches it: the
- * API's `PATCH /flashcard/decks/:id` is owner-scoped (MDRS-43), so the
- * `isOwner` flag that shows the button is convenience, not the check.
- */
-export const setDeckVisibility = async (deckId: string, isPublic: boolean) => {
-  return authenticatedAction(async ({ decks }) => {
-    const deck = await decks.updateFlashcardDeck({
-      id: deckId,
-      updateFlashcardDeckDto: { isPublic },
+export const updateCard = async (cardId: string, card: CardFields) =>
+  authenticatedAction(async ({ cards }) => {
+    const updated = await cards.updateFlashcard({
+      id: cardId,
+      updateFlashcardDto: {
+        contentFront: card.contentFront.trim(),
+        contentBack: card.contentBack.trim(),
+      },
     });
-    revalidatePath("/[locale]/decks/[id]", "page");
-    revalidatePath("/[locale]/decks", "page");
-    revalidatePath("/[locale]/decks/explore", "page");
-    return deck.isPublic;
+    revalidateDecks();
+    return updated;
   });
-};
 
-export const deleteFlashcard = async (cardId: string) => {
-  return authenticatedAction(async ({ cards }) => {
+export const deleteCard = async (cardId: string) =>
+  authenticatedAction(async ({ cards }) => {
     await cards.deleteFlashcardRaw({ id: cardId });
-    // Dynamic form, as in `createFlashcards` above. The deck id the caller
-    // used to pass is no longer needed: `revalidatePath` takes the route
-    // pattern, not a concrete URL.
-    revalidatePath("/[locale]/decks/[id]/cards", "page");
-    revalidatePath("/[locale]/decks/[id]", "page");
+    revalidateDecks();
     return true;
   });
-};
-
-export const addDeckToCollection = async (deckId: string) => {
-  return authenticatedAction(async ({ decks }) => {
-    await decks.createFlashcardDeckUser({ id: deckId });
-    revalidatePath("/[locale]/decks/[id]", "page");
-    revalidatePath("/[locale]/decks", "page");
-    return true;
-  });
-};
-
-export const removeDeckFromCollection = async (deckId: string) => {
-  return authenticatedAction(async ({ decks }) => {
-    await decks.deleteFlashcardDeckUser({ id: deckId });
-    revalidatePath("/[locale]/decks/[id]", "page");
-    revalidatePath("/[locale]/decks", "page");
-    return true;
-  });
-};
 
 export const updateFlashcardProgress = async (
   progressUpdates: CreateFlashcardProgressDto[]
-) => {
-  return authenticatedAction(async ({ cards }) => {
-    const response = await cards.replaceManyFlashcardProgress({
+) =>
+  authenticatedAction(async ({ cards }) => {
+    return cards.replaceManyFlashcardProgress({
       createFlashcardProgressDto: progressUpdates,
     });
-    return response;
   });
-};
