@@ -16,32 +16,48 @@
 import * as runtime from '../runtime';
 import type {
   CreateMadrasahDto,
+  DismissMadrasahNazirDto,
   MadrasahBadgeCountsResponse,
+  MadrasahCourseListItemResponse,
   MadrasahDirectoryItemResponse,
   MadrasahDirectoryResponse,
   MadrasahExploreResponse,
+  MadrasahNazirGivenResponse,
+  MadrasahNazirResponse,
   MadrasahOverviewResponse,
   MadrasahResponse,
+  MadrasahSettingsResponse,
   MadrasahStatusFilter,
   PaginatedMadrasahResponse,
   SetHeadMuderrisDto,
   UpdateMadrasahDto,
+  UpdateMadrasahSettingsDto,
 } from '../models/index';
 import {
     CreateMadrasahDtoFromJSON,
     CreateMadrasahDtoToJSON,
+    DismissMadrasahNazirDtoFromJSON,
+    DismissMadrasahNazirDtoToJSON,
     MadrasahBadgeCountsResponseFromJSON,
     MadrasahBadgeCountsResponseToJSON,
+    MadrasahCourseListItemResponseFromJSON,
+    MadrasahCourseListItemResponseToJSON,
     MadrasahDirectoryItemResponseFromJSON,
     MadrasahDirectoryItemResponseToJSON,
     MadrasahDirectoryResponseFromJSON,
     MadrasahDirectoryResponseToJSON,
     MadrasahExploreResponseFromJSON,
     MadrasahExploreResponseToJSON,
+    MadrasahNazirGivenResponseFromJSON,
+    MadrasahNazirGivenResponseToJSON,
+    MadrasahNazirResponseFromJSON,
+    MadrasahNazirResponseToJSON,
     MadrasahOverviewResponseFromJSON,
     MadrasahOverviewResponseToJSON,
     MadrasahResponseFromJSON,
     MadrasahResponseToJSON,
+    MadrasahSettingsResponseFromJSON,
+    MadrasahSettingsResponseToJSON,
     MadrasahStatusFilterFromJSON,
     MadrasahStatusFilterToJSON,
     PaginatedMadrasahResponseFromJSON,
@@ -50,6 +66,8 @@ import {
     SetHeadMuderrisDtoToJSON,
     UpdateMadrasahDtoFromJSON,
     UpdateMadrasahDtoToJSON,
+    UpdateMadrasahSettingsDtoFromJSON,
+    UpdateMadrasahSettingsDtoToJSON,
 } from '../models/index';
 
 export interface AddMadrasahNazirRequest {
@@ -85,6 +103,10 @@ export interface GetMadrasahByIdRequest {
     id: string;
 }
 
+export interface GetMadrasahCoursesRequest {
+    id: string;
+}
+
 export interface GetMadrasahDirectoryRequest {
     status?: MadrasahStatusFilter;
     page?: number;
@@ -92,13 +114,27 @@ export interface GetMadrasahDirectoryRequest {
     q?: string;
 }
 
+export interface GetMadrasahNazirGrantsRequest {
+    id: string;
+    userId: string;
+}
+
+export interface GetMadrasahNazirsRequest {
+    id: string;
+}
+
 export interface GetMadrasahOverviewRequest {
+    id: string;
+}
+
+export interface GetMadrasahSettingsRequest {
     id: string;
 }
 
 export interface RemoveMadrasahNazirRequest {
     id: string;
     userId: string;
+    dismissMadrasahNazirDto: DismissMadrasahNazirDto;
 }
 
 export interface RestoreMadrasahRequest {
@@ -115,15 +151,21 @@ export interface UpdateMadrasahRequest {
     updateMadrasahDto: UpdateMadrasahDto;
 }
 
+export interface UpdateMadrasahSettingsRequest {
+    id: string;
+    updateMadrasahSettingsDto: UpdateMadrasahSettingsDto;
+}
+
 /**
  * 
  */
 export class MadrasahsApi extends runtime.BaseAPI {
 
     /**
-     * Make a user a nazır of the medrese
+     * nazir/05\'s \"Medrese nazırı ata\": the person is found with `GET /users/lookup`, which writes the search to the audit log. They are appointed with no permissions. Idempotent. Written to the audit log.
+     * Make a user a nazır of the medrese (its başmüderris)
      */
-    async addMadrasahNazirRaw(requestParameters: AddMadrasahNazirRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahResponse>> {
+    async addMadrasahNazirRaw(requestParameters: AddMadrasahNazirRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahNazirResponse>> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -159,13 +201,14 @@ export class MadrasahsApi extends runtime.BaseAPI {
             query: queryParameters,
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahResponseFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahNazirResponseFromJSON(jsonValue));
     }
 
     /**
-     * Make a user a nazır of the medrese
+     * nazir/05\'s \"Medrese nazırı ata\": the person is found with `GET /users/lookup`, which writes the search to the audit log. They are appointed with no permissions. Idempotent. Written to the audit log.
+     * Make a user a nazır of the medrese (its başmüderris)
      */
-    async addMadrasahNazir(requestParameters: AddMadrasahNazirRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahResponse> {
+    async addMadrasahNazir(requestParameters: AddMadrasahNazirRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahNazirResponse> {
         const response = await this.addMadrasahNazirRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -449,6 +492,50 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
+     * nazir/04\'s \"Politikaların uygulandığı dersler\": drafts and published courses, a hidden one not, by title, each with its köşk and müderrisler (the imam marked).
+     * The medrese\'s courses for its settings screen (its başmüderris)
+     */
+    async getMadrasahCoursesRaw(requestParameters: GetMadrasahCoursesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<MadrasahCourseListItemResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getMadrasahCourses().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/courses`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(MadrasahCourseListItemResponseFromJSON));
+    }
+
+    /**
+     * nazir/04\'s \"Politikaların uygulandığı dersler\": drafts and published courses, a hidden one not, by title, each with its köşk and müderrisler (the imam marked).
+     * The medrese\'s courses for its settings screen (its başmüderris)
+     */
+    async getMadrasahCourses(requestParameters: GetMadrasahCoursesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<MadrasahCourseListItemResponse>> {
+        const response = await this.getMadrasahCoursesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * nizam/07: hidden and passive medreses too, each with its başmüderris, course count and hosting köşks, and the per-status counts the tabs show. The open list above leaves hidden medreses out; this one is the başnazım\'s.
      * Every medrese for the platform\'s table (SYSTEM_ADMIN only)
      */
@@ -501,6 +588,102 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
+     * nazir/15\'s rows, one per person: the roles and permissions this nazır gave them in the medrese or one of its courses that are still held. Empty when they gave no one anything. 404 (MADRASAH_NAZIR_NOT_FOUND) when the user is not a nazır of the medrese.
+     * What a nazır has handed on in the medrese (its başmüderris)
+     */
+    async getMadrasahNazirGrantsRaw(requestParameters: GetMadrasahNazirGrantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<MadrasahNazirGivenResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getMadrasahNazirGrants().'
+            );
+        }
+
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling getMadrasahNazirGrants().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/nazirs/{userId}/grants`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"userId"}}`, encodeURIComponent(String(requestParameters['userId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(MadrasahNazirGivenResponseFromJSON));
+    }
+
+    /**
+     * nazir/15\'s rows, one per person: the roles and permissions this nazır gave them in the medrese or one of its courses that are still held. Empty when they gave no one anything. 404 (MADRASAH_NAZIR_NOT_FOUND) when the user is not a nazır of the medrese.
+     * What a nazır has handed on in the medrese (its başmüderris)
+     */
+    async getMadrasahNazirGrants(requestParameters: GetMadrasahNazirGrantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<MadrasahNazirGivenResponse>> {
+        const response = await this.getMadrasahNazirGrantsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nazir/05\'s table, oldest appointment first. Each with who appointed them and when, the groups and single permissions they hold in this medrese, the earliest end among them, and who gave the permissions. A nazır who holds neither has just been appointed (\"henüz izin almadı\").
+     * The medrese\'s nazırs (its başmüderris)
+     */
+    async getMadrasahNazirsRaw(requestParameters: GetMadrasahNazirsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<MadrasahNazirResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getMadrasahNazirs().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/nazirs`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(MadrasahNazirResponseFromJSON));
+    }
+
+    /**
+     * nazir/05\'s table, oldest appointment first. Each with who appointed them and when, the groups and single permissions they hold in this medrese, the earliest end among them, and who gave the permissions. A nazır who holds neither has just been appointed (\"henüz izin almadı\").
+     * The medrese\'s nazırs (its başmüderris)
+     */
+    async getMadrasahNazirs(requestParameters: GetMadrasahNazirsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<MadrasahNazirResponse>> {
+        const response = await this.getMadrasahNazirsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Open to callers with no token (MDRS-122). The medrese\'s published courses in listed köşks, each with its müderrisler, the caller\'s own enrollment state and the next session (never the meeting link); the köşks those courses are in; and the başmüderris.
      * Get what a medrese\'s page shows
      */
@@ -545,9 +728,54 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Remove a nazır from the medrese
+     * nazir/04: the name and description, the three policies (all off until the first save) and who saved last. Not part of `GET /madrasahs/:id`, which anyone reads.
+     * Get the medrese\'s settings (its başmüderris)
      */
-    async removeMadrasahNazirRaw(requestParameters: RemoveMadrasahNazirRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahResponse>> {
+    async getMadrasahSettingsRaw(requestParameters: GetMadrasahSettingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahSettingsResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getMadrasahSettings().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/settings`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahSettingsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nazir/04: the name and description, the three policies (all off until the first save) and who saved last. Not part of `GET /madrasahs/:id`, which anyone reads.
+     * Get the medrese\'s settings (its başmüderris)
+     */
+    async getMadrasahSettings(requestParameters: GetMadrasahSettingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahSettingsResponse> {
+        const response = await this.getMadrasahSettingsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nazir/15\'s \"Görevden al\", in one transaction. `decisions` answers every person `…/grants` lists, once and nobody else: TAKE_OVER leaves what the nazır gave them in place under the caller\'s name, DROP revokes it. The nazır\'s own appointment and permissions in the medrese are revoked. Written to the audit log.
+     * Dismiss a nazır of the medrese (its başmüderris)
+     */
+    async removeMadrasahNazirRaw(requestParameters: RemoveMadrasahNazirRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -562,9 +790,18 @@ export class MadrasahsApi extends runtime.BaseAPI {
             );
         }
 
+        if (requestParameters['dismissMadrasahNazirDto'] == null) {
+            throw new runtime.RequiredError(
+                'dismissMadrasahNazirDto',
+                'Required parameter "dismissMadrasahNazirDto" was null or undefined when calling removeMadrasahNazir().'
+            );
+        }
+
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
 
         if (this.configuration && this.configuration.accessToken) {
             // oauth required
@@ -581,17 +818,18 @@ export class MadrasahsApi extends runtime.BaseAPI {
             method: 'DELETE',
             headers: headerParameters,
             query: queryParameters,
+            body: DismissMadrasahNazirDtoToJSON(requestParameters['dismissMadrasahNazirDto']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahResponseFromJSON(jsonValue));
+        return new runtime.VoidApiResponse(response);
     }
 
     /**
-     * Remove a nazır from the medrese
+     * nazir/15\'s \"Görevden al\", in one transaction. `decisions` answers every person `…/grants` lists, once and nobody else: TAKE_OVER leaves what the nazır gave them in place under the caller\'s name, DROP revokes it. The nazır\'s own appointment and permissions in the medrese are revoked. Written to the audit log.
+     * Dismiss a nazır of the medrese (its başmüderris)
      */
-    async removeMadrasahNazir(requestParameters: RemoveMadrasahNazirRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahResponse> {
-        const response = await this.removeMadrasahNazirRaw(requestParameters, initOverrides);
-        return await response.value();
+    async removeMadrasahNazir(requestParameters: RemoveMadrasahNazirRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.removeMadrasahNazirRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -741,6 +979,60 @@ export class MadrasahsApi extends runtime.BaseAPI {
      */
     async updateMadrasah(requestParameters: UpdateMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahResponse> {
         const response = await this.updateMadrasahRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nazir/04\'s Kaydet. Only what is sent changes; a blank `description` clears it. Written to the audit log with what changed, and `updatedAt`/`updatedBy` move — unless nothing changed. `alwaysApproval` takes effect at once: every enrollment in the medrese\'s courses waits for approval from then on.
+     * Save the medrese\'s settings (its başmüderris)
+     */
+    async updateMadrasahSettingsRaw(requestParameters: UpdateMadrasahSettingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahSettingsResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling updateMadrasahSettings().'
+            );
+        }
+
+        if (requestParameters['updateMadrasahSettingsDto'] == null) {
+            throw new runtime.RequiredError(
+                'updateMadrasahSettingsDto',
+                'Required parameter "updateMadrasahSettingsDto" was null or undefined when calling updateMadrasahSettings().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/settings`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdateMadrasahSettingsDtoToJSON(requestParameters['updateMadrasahSettingsDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahSettingsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nazir/04\'s Kaydet. Only what is sent changes; a blank `description` clears it. Written to the audit log with what changed, and `updatedAt`/`updatedBy` move — unless nothing changed. `alwaysApproval` takes effect at once: every enrollment in the medrese\'s courses waits for approval from then on.
+     * Save the medrese\'s settings (its başmüderris)
+     */
+    async updateMadrasahSettings(requestParameters: UpdateMadrasahSettingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahSettingsResponse> {
+        const response = await this.updateMadrasahSettingsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
