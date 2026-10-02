@@ -99,7 +99,9 @@ export function DeckSummaryCard({
               </>
             ) : null}
           </span>
-          {actions}
+          <span className="relative z-[1] flex shrink-0 items-center">
+            {actions}
+          </span>
         </div>
       }
     >
