@@ -264,13 +264,44 @@ export const faceProblem = (text: string): FaceProblem => {
   return null;
 };
 
-/** What the import endpoint answers to a file with bad rows: the rows and their field messages. */
-export interface ImportRowError {
-  row: number;
-  messages: string[];
+export type ImportField = "front" | "back" | "type" | "other";
+export type ImportProblemKind = "required" | "tooShort" | "tooLong" | "invalid";
+
+export interface ImportProblem {
+  field: ImportField;
+  kind: ImportProblemKind;
 }
 
-/** Reads the 422 body (`context.errors`) into rows with their messages; empty when it is not that shape. */
+/** What the import endpoint answers to a file with bad rows: the rows and what is wrong in each. */
+export interface ImportRowError {
+  row: number;
+  problems: ImportProblem[];
+}
+
+const importFieldOf = (name: unknown, message: string): ImportField => {
+  const text = typeof name === "string" && name !== "" ? name : message;
+  if (text.startsWith("contentFront")) return "front";
+  if (text.startsWith("contentBack")) return "back";
+  if (text.startsWith("type") || text.startsWith("cardType")) return "type";
+  return "other";
+};
+
+/**
+ * One field's validator sentences, which are English and several per value
+ * ("must be shorter than…; must be longer than…; must be a string" is one
+ * missing value), read as the single thing wrong with it.
+ */
+const importKindOf = (messages: string[]): ImportProblemKind => {
+  const all = messages.join(" ").toLowerCase();
+  if (all.includes("should not be empty") || all.includes("must be a string")) {
+    return "required";
+  }
+  if (all.includes("shorter than")) return "tooLong";
+  if (all.includes("longer than")) return "tooShort";
+  return "invalid";
+};
+
+/** Reads the 422 body (`context.errors`) into rows with what is wrong in each; empty when it is not that shape. */
 export const importRowErrors = (body: unknown): ImportRowError[] => {
   const errors = (body as { context?: { errors?: unknown } } | null)?.context
     ?.errors;
@@ -279,13 +310,91 @@ export const importRowErrors = (body: unknown): ImportRowError[] => {
     const row = (entry as { row?: unknown }).row;
     const fields = (entry as { errors?: unknown }).errors;
     if (typeof row !== "number" || !Array.isArray(fields)) return [];
+    const byField = new Map<ImportField, string[]>();
+    for (const f of fields) {
+      const message = (f as { message?: unknown }).message;
+      if (typeof message !== "string") continue;
+      const field = importFieldOf((f as { field?: unknown }).field, message);
+      byField.set(field, [...(byField.get(field) ?? []), message]);
+    }
     return [
       {
         row,
-        messages: fields
-          .map((f) => (f as { message?: unknown }).message)
-          .filter((m): m is string => typeof m === "string"),
+        problems: [...byField].map(([field, messages]) => ({
+          field,
+          kind: importKindOf(messages),
+        })),
       },
     ];
   });
+};
+
+const TR_VOWELS = "aıoueiöü";
+const lastVowel = (word: string): string =>
+  [...word].reverse().find((c) => TR_VOWELS.includes(c)) ?? "e";
+
+/** How a Turkish number is last said, whose vowel and final sound the suffix follows. */
+const trNumberWord = (n: number): string => {
+  if (n === 0) return "sıfır";
+  const ones = [
+    "",
+    "bir",
+    "iki",
+    "üç",
+    "dört",
+    "beş",
+    "altı",
+    "yedi",
+    "sekiz",
+    "dokuz",
+  ];
+  const tens = [
+    "",
+    "on",
+    "yirmi",
+    "otuz",
+    "kırk",
+    "elli",
+    "altmış",
+    "yetmiş",
+    "seksen",
+    "doksan",
+  ];
+  if (n % 10 !== 0) return ones[n % 10] ?? "";
+  if (n % 100 !== 0) return tens[(n % 100) / 10] ?? "";
+  if (n % 1000 !== 0) return "yüz";
+  if (n % 1_000_000 !== 0) return "bin";
+  return "milyon";
+};
+
+/** "21:10’da": the time's locative, which follows how its minutes are said (…on → da, …yirmi → de, …kırk → ta). */
+export const trLocative = (word: string, hard = false): string => {
+  const back = "aıou".includes(lastVowel(word));
+  const voiceless = "çfhkpsşt".includes(word.at(-1) ?? "");
+  const initial = hard && voiceless ? "t" : "d";
+  return `${initial}${back ? "a" : "e"}`;
+};
+
+/** Appends the locative to a time, "21:10" → "21:10’da"; only Turkish has one. */
+export const atTime = (time: string, locale: string): string => {
+  if (!locale.startsWith("tr")) return time;
+  const minutes = Number(time.slice(-2));
+  const word = trNumberWord(minutes);
+  return `${time}’${trLocative(word, true)}`;
+};
+
+/** "6’sı": a count with its possessive suffix, as Turkish counts it ("40 karttan 6’sı"); other locales get the bare count. */
+export const countOf = (n: number, locale: string): string => {
+  if (!locale.startsWith("tr")) return String(n);
+  const word = trNumberWord(n);
+  const endsInVowel = "aıoueiöü".includes(word.at(-1) ?? "");
+  const vowel = lastVowel(word);
+  const harmony = "aı".includes(vowel)
+    ? "ı"
+    : "ei".includes(vowel)
+      ? "i"
+      : "ou".includes(vowel)
+        ? "u"
+        : "ü";
+  return `${n}’${endsInVowel ? "s" : ""}${harmony}`;
 };

@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type FormEvent, type RefObject, useState } from "react";
 import { updateDeck } from "../actions";
+import { attempt } from "../attempt";
 import {
   DESCRIPTION_MAX,
   TITLE_MAX,
@@ -72,7 +73,9 @@ export function DeckEditDialog({
       return;
     }
     setBusy(true);
-    const result = await updateDeck(deck.id, { title, description });
+    const result = await attempt(() =>
+      updateDeck(deck.id, { title, description })
+    );
     setBusy(false);
     if (!result.success) {
       toaster.notify({
@@ -135,7 +138,7 @@ export function DeckEditDialog({
           />
         </Field>
         {deck.publishStatus === "PENDING" ? (
-          <Alert tone="info" title={t("pendingTitle")}>
+          <Alert tone="neutral" title={t("pendingTitle")}>
             {t("pendingText")}
           </Alert>
         ) : null}

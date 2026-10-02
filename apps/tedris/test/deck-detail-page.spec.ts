@@ -156,7 +156,7 @@ describe("Deste ayrıntısı, sahibi (design tedris/28)", () => {
       }),
     });
     expect(document.body.textContent).toContain(
-      "Yayın isteğini 29 Eylül 2026 Salı 21:10 tarihinde gönderdin. Medaris yönetimi inceleyip yayımlayana dek deste özel kalır."
+      "Yayın isteğini 29 Eylül 2026 Salı 21:10’da gönderdin. Medaris yönetimi inceleyip yayımlayana dek deste özel kalır."
     );
     expect(button("İsteği geri çek")).toBeTruthy();
     await cleanup();
@@ -425,14 +425,10 @@ describe("Deste, okuyan kişinin görünümü (design tedris/31)", () => {
     await reader();
     expect(rows()).toHaveLength(6);
     expect(rows()[0].textContent).toContain("Buhârî, Müslim");
-    expect(document.body.textContent).toContain(
-      "8 kartın 6 tanesi gösteriliyor"
-    );
+    expect(document.body.textContent).toContain("8 karttan 6’sı gösteriliyor");
     await click(button("Daha fazla göster"));
     expect(rows()).toHaveLength(8);
-    expect(document.body.textContent).toContain(
-      "8 kartın 8 tanesi gösteriliyor"
-    );
+    expect(document.body.textContent).toContain("8 karttan 8’i gösteriliyor");
     expect(button("Daha fazla göster")).toBeUndefined();
   });
 

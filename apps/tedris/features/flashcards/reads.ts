@@ -8,6 +8,7 @@ import {
   type FlashcardType,
   ResponseError,
 } from "@medaris/services/tedrisat";
+import { cache } from "react";
 import { env } from "~/env";
 import { getAccessToken } from "~/lib/auth_options";
 
@@ -55,7 +56,7 @@ export type DeckRead =
  * to be told what the API said. Anything else is the server's fault and is
  * thrown to the route's error page.
  */
-export const readDeck = async (id: string): Promise<DeckRead> => {
+export const readDeck = cache(async (id: string): Promise<DeckRead> => {
   const { decks, cards } = await api();
   try {
     const [deck, rows] = await Promise.all([
@@ -73,7 +74,7 @@ export const readDeck = async (id: string): Promise<DeckRead> => {
     }
     throw error;
   }
-};
+});
 
 /** The caller's own decks, for the card-copy picker; empty when they cannot be read. */
 export const getOwnDecks = async (): Promise<FlashcardDeckSummaryResponse[]> =>

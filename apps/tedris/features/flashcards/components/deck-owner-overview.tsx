@@ -18,7 +18,9 @@ import {
   requestDeckPublication,
   withdrawDeckPublication,
 } from "../actions";
+import { attempt } from "../attempt";
 import {
+  atTime,
   cardStatus,
   countCards,
   dueNow,
@@ -60,8 +62,8 @@ export function DeckOwnerOverview({
     setPublishing(true);
     const result =
       kind === "request"
-        ? await requestDeckPublication(deck.id)
-        : await withdrawDeckPublication(deck.id);
+        ? await attempt(() => requestDeckPublication(deck.id))
+        : await attempt(() => withdrawDeckPublication(deck.id));
     setPublishing(false);
     if (!result.success) {
       toaster.notify({
@@ -83,7 +85,7 @@ export function DeckOwnerOverview({
   const remove = async () => {
     if (deleting) return;
     setDeleting(true);
-    const result = await deleteDeck(deck.id);
+    const result = await attempt(() => deleteDeck(deck.id));
     if (result.success) {
       router.push("/decks");
       return;
@@ -97,15 +99,12 @@ export function DeckOwnerOverview({
     });
   };
 
+  const requestedAt = deck.publishRequestedAt
+    ? fullDateTime(new Date(deck.publishRequestedAt), locale, timeZone)
+    : null;
   const who =
-    deck.publishStatus === "PENDING" && deck.publishRequestedAt
-      ? t("whoPENDING", {
-          when: fullDateTime(
-            new Date(deck.publishRequestedAt),
-            locale,
-            timeZone
-          ),
-        })
+    deck.publishStatus === "PENDING" && requestedAt
+      ? t("whoPENDING", { when: requestedAt, at: atTime(requestedAt, locale) })
       : deck.publishStatus === "PUBLISHED"
         ? t("whoPUBLISHED")
         : t("whoPRIVATE");

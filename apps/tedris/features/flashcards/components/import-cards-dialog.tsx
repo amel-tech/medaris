@@ -9,7 +9,13 @@ import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useState } from "react";
-import { type ImportRowError, importRowErrors } from "../deck-model";
+import {
+  FACE_MAX,
+  FACE_MIN,
+  type ImportProblem,
+  type ImportRowError,
+  importRowErrors,
+} from "../deck-model";
 
 /**
  * "İçe aktar" (design tedris/29): a CSV or Excel file of cards into the deck.
@@ -33,6 +39,25 @@ export function ImportCardsDialog({
   const [busy, setBusy] = useState(false);
   const [rowErrors, setRowErrors] = useState<ImportRowError[]>([]);
   const [failed, setFailed] = useState(false);
+
+  const problemText = (problem: ImportProblem): string => {
+    const field = t(
+      problem.field === "front"
+        ? "importFieldFront"
+        : problem.field === "back"
+          ? "importFieldBack"
+          : problem.field === "type"
+            ? "importFieldType"
+            : "importFieldOther"
+    );
+    return problem.kind === "required"
+      ? t("importProblemRequired", { field })
+      : problem.kind === "tooShort"
+        ? t("importProblemTooShort", { field, min: FACE_MIN })
+        : problem.kind === "tooLong"
+          ? t("importProblemTooLong", { field, max: FACE_MAX })
+          : t("importProblemInvalid", { field });
+  };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -127,8 +152,8 @@ export function ImportCardsDialog({
               {rowErrors.map((entry) => (
                 <li key={entry.row}>
                   <strong>{t("importRow", { row: entry.row })}</strong>
-                  {entry.messages.length > 0
-                    ? `: ${entry.messages.join("; ")}`
+                  {entry.problems.length > 0
+                    ? `: ${entry.problems.map(problemText).join("; ")}`
                     : null}
                 </li>
               ))}
