@@ -16,6 +16,7 @@
 import * as runtime from '../runtime';
 import type {
   CreateMadrasahDto,
+  MadrasahBadgeCountsResponse,
   MadrasahOverviewResponse,
   MadrasahResponse,
   PaginatedMadrasahResponse,
@@ -24,6 +25,8 @@ import type {
 import {
     CreateMadrasahDtoFromJSON,
     CreateMadrasahDtoToJSON,
+    MadrasahBadgeCountsResponseFromJSON,
+    MadrasahBadgeCountsResponseToJSON,
     MadrasahOverviewResponseFromJSON,
     MadrasahOverviewResponseToJSON,
     MadrasahResponseFromJSON,
@@ -50,6 +53,10 @@ export interface DeleteMadrasahRequest {
 export interface GetAllMadrasahsRequest {
     page?: number;
     limit?: number;
+}
+
+export interface GetMadrasahBadgeCountsRequest {
+    id: string;
 }
 
 export interface GetMadrasahByIdRequest {
@@ -258,6 +265,50 @@ export class MadrasahsApi extends runtime.BaseAPI {
      */
     async getAllMadrasahs(requestParameters: GetAllMadrasahsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PaginatedMadrasahResponse> {
         const response = await this.getAllMadrasahsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * For the medrese\'s nazırs (MDRS-183): the pending enrollment requests across its courses, and how many courses hold one. A hidden course is not counted. Unread notifications are the caller\'s own and come from `GET /notifications/unread-count`.
+     * Get the counts behind the nazır portal\'s menu badges
+     */
+    async getMadrasahBadgeCountsRaw(requestParameters: GetMadrasahBadgeCountsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahBadgeCountsResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getMadrasahBadgeCounts().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/badge-counts`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahBadgeCountsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * For the medrese\'s nazırs (MDRS-183): the pending enrollment requests across its courses, and how many courses hold one. A hidden course is not counted. Unread notifications are the caller\'s own and come from `GET /notifications/unread-count`.
+     * Get the counts behind the nazır portal\'s menu badges
+     */
+    async getMadrasahBadgeCounts(requestParameters: GetMadrasahBadgeCountsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahBadgeCountsResponse> {
+        const response = await this.getMadrasahBadgeCountsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

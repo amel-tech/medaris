@@ -40,6 +40,7 @@ src/models/BulkFlashcardResponse.ts
 src/models/CalendarFeedLinkResponse.ts
 src/models/CalendarFeedStatusResponse.ts
 src/models/ChiefNazimResponse.ts
+src/models/CourseBadgeCountsResponse.ts
 src/models/CourseDetailResponse.ts
 src/models/CourseSummaryResponse.ts
 src/models/CreateBanDto.ts
@@ -84,6 +85,7 @@ src/models/LabelStatsResponse.ts
 src/models/LessonMutationResponse.ts
 src/models/LessonResponse.ts
 src/models/LiftBanDto.ts
+src/models/MadrasahBadgeCountsResponse.ts
 src/models/MadrasahCourseMuderrisResponse.ts
 src/models/MadrasahCourseResponse.ts
 src/models/MadrasahHeadMuderrisResponse.ts

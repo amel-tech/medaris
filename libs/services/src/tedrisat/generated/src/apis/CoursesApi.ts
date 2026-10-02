@@ -15,6 +15,7 @@
 
 import * as runtime from '../runtime';
 import type {
+  CourseBadgeCountsResponse,
   CourseDetailResponse,
   CourseSummaryResponse,
   CreateCourseDto,
@@ -29,6 +30,8 @@ import type {
   UpdateProgressDto,
 } from '../models/index';
 import {
+    CourseBadgeCountsResponseFromJSON,
+    CourseBadgeCountsResponseToJSON,
     CourseDetailResponseFromJSON,
     CourseDetailResponseToJSON,
     CourseSummaryResponseFromJSON,
@@ -74,6 +77,10 @@ export interface DeleteCourseRequest {
 }
 
 export interface EnrollInCourseRequest {
+    id: string;
+}
+
+export interface GetCourseBadgeCountsRequest {
     id: string;
 }
 
@@ -372,6 +379,50 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async enrollInCourse(requestParameters: EnrollInCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EnrollmentResponse> {
         const response = await this.enrollInCourseRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * For the course team (MDRS-183): the live sessions still ahead that have no meeting link — cancelled and hidden ones are not counted — and the pending enrollment requests.
+     * Get the counts behind the nazır portal\'s course menu badges
+     */
+    async getCourseBadgeCountsRaw(requestParameters: GetCourseBadgeCountsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseBadgeCountsResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getCourseBadgeCounts().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/badge-counts`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseBadgeCountsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * For the course team (MDRS-183): the live sessions still ahead that have no meeting link — cancelled and hidden ones are not counted — and the pending enrollment requests.
+     * Get the counts behind the nazır portal\'s course menu badges
+     */
+    async getCourseBadgeCounts(requestParameters: GetCourseBadgeCountsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseBadgeCountsResponse> {
+        const response = await this.getCourseBadgeCountsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
