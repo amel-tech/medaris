@@ -7,6 +7,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { act } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { REGISTER_ATTRIBUTES } from "../src/login/pages/Register";
 import { type RenderedPage, renderPage } from "./render-page";
@@ -159,7 +160,28 @@ describe("the state pages", () => {
     );
     expect(q("#backToApplication")?.textContent).toBe("Giriş sayfasına dön");
     expect(q("#backToApplication")?.getAttribute("href")).toBe(
-      page.kcContext.url.loginRestartFlowUrl
+      (page.kcContext.client as { baseUrl?: string }).baseUrl ??
+        page.kcContext.url.loginRestartFlowUrl
+    );
+  });
+
+  it("error.ftl: the client's start page wins over the restart URL, which answers 400 without an auth session", async () => {
+    page = await renderPage("error.ftl", "tr", {
+      client: { baseUrl: "https://tedris.example.org" },
+      url: { loginRestartFlowUrl: "https://kc.example.org/restart" },
+    });
+    expect(q("#backToApplication")?.getAttribute("href")).toBe(
+      "https://tedris.example.org"
+    );
+  });
+
+  it("error.ftl: without a client start page the way back is the restart URL", async () => {
+    page = await renderPage("error.ftl", "tr", {
+      client: { baseUrl: undefined },
+      url: { loginRestartFlowUrl: "https://kc.example.org/restart" },
+    });
+    expect(q("#backToApplication")?.getAttribute("href")).toBe(
+      "https://kc.example.org/restart"
     );
   });
 
@@ -228,5 +250,31 @@ describe("register.ftl and login-update-password.ftl", () => {
     expect(document.body.textContent).toContain(
       "Hesabın başka bir cihazda açık kaldıysa oradan da çıkılır."
     );
+  });
+
+  it("update-password measures 'not the e-mail' against an address, never the user name", async () => {
+    const typeInto = async (value: string) => {
+      const input = q<HTMLInputElement>('input[name="password-new"]');
+      if (!input) throw new Error("no password field");
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          "value"
+        )?.set?.call(input, value);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    };
+    const emailRule = () =>
+      [...document.querySelectorAll("li")].find((li) =>
+        li.textContent?.includes("E-posta adresinden farklı")
+      );
+    page = await renderPage("login-update-password.ftl", "tr", {
+      username: "s25kayit",
+      user: { email: "s25kayit@example.test" },
+    } as never);
+    await typeInto("s25kayit@example.test");
+    expect(emailRule()?.textContent).not.toContain("karşılandı");
+    await typeInto("s25kayit");
+    expect(emailRule()?.textContent).toContain("karşılandı");
   });
 });

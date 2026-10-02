@@ -8,7 +8,10 @@ import type { ExtendedPageProps } from "../types/PageProps";
  * global `Error`. Whatever stopped the sign-in, the person is told that it did
  * not finish and is sent to the start of it; a blocked cookie, the one cause
  * the canvas words differently, gets its own sentences. The raw message is
- * Keycloak's internal wording and is not shown.
+ * Keycloak's internal wording and is not shown. The way back is the client's
+ * `baseUrl` first: the app starts a fresh sign-in, while `loginRestartFlowUrl`
+ * answers 400 when the browser holds no auth session (bad redirect_uri,
+ * unknown client, a used e-mail link), which is the usual cause of this page.
  */
 export default function ErrorPage(
   props: ExtendedPageProps<Extract<KcContext, { pageId: "error.ftl" }>, I18n>
@@ -21,7 +24,7 @@ export default function ErrorPage(
 
   const cookieBlocked = message.summary === msgStr("cookieNotFoundMessage");
 
-  const href = url.loginRestartFlowUrl || client?.baseUrl;
+  const href = client?.baseUrl || url.loginRestartFlowUrl;
 
   return (
     <Template
