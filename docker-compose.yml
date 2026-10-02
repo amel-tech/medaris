@@ -102,6 +102,12 @@ services:
       # calendar files (MDRS-117). Empty is allowed: only GET
       # /lessons/:id/calendar.ics needs it, and it answers 503 until it is set.
       TEDRIS_WEB_URL: ${TEDRISAT__TEDRIS_WEB_URL:-}
+
+      # The service account that reads the realm's users (MDRS-169). Both
+      # empty is allowed: only GET /users/lookup needs them, and it answers 503.
+      KEYCLOAK_ADMIN_CLIENT_ID: ${TEDRISAT__KEYCLOAK_ADMIN_CLIENT_ID:-}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${TEDRISAT__KEYCLOAK_ADMIN_CLIENT_SECRET:-}
+
       # Both carry the API__ tier the file header promises ("the app-specific
       # spelling first, then the group one"). Without it the
       # API__KEYCLOAK_REDIRECT_URL that .env.example ships reached the container
@@ -271,6 +277,8 @@ services:
       # network the API answers on its service name — a host-side run (nx dev,
       # bare `docker run`) needs the localhost value instead.
       TEDRISAT_API_BASE_URL: http://tedrisat:3001
+      NIZAM_URL: ${TEDRIS__NIZAM_URL:-}
+      NAZIR_URL: ${TEDRIS__NAZIR_URL:-}
     depends_on:
       - tedrisat
 
@@ -291,6 +299,7 @@ services:
       NEXTAUTH_SECRET: ${NIZAM__NEXTAUTH_SECRET:?set NIZAM__NEXTAUTH_SECRET in .env}
       API_MOCKING: ${NIZAM__API_MOCKING:-${WEB__API_MOCKING:-disabled}}
       TEDRISAT_API_BASE_URL: http://tedrisat:3001
+      NAZIR_URL: ${NIZAM__NAZIR_URL:-}
     depends_on:
       - tedrisat
 
