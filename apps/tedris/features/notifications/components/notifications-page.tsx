@@ -289,8 +289,10 @@ export function NotificationsPage({ initial, now }: NotificationsPageProps) {
               },
             ]}
           >
-            <TabsPanel value="all">{tab === "all" ? body() : null}</TabsPanel>
-            <TabsPanel value="unread">
+            <TabsPanel value="all" className="pbs-8">
+              {tab === "all" ? body() : null}
+            </TabsPanel>
+            <TabsPanel value="unread" className="pbs-8">
               {tab === "unread" ? body() : null}
             </TabsPanel>
           </Tabs>
