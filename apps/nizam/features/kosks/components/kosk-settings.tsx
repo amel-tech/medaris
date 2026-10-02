@@ -2,6 +2,7 @@
 
 import type { KoskLevel, KoskResponse } from "@medaris/services/tedrisat";
 import { toast } from "@medaris/ui/components/sonner";
+import { Alert } from "@medaris/ui/mds/alert";
 import { Button } from "@medaris/ui/mds/button";
 import { Checkbox } from "@medaris/ui/mds/checkbox";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
@@ -214,7 +215,7 @@ export function KoskSettings({ kosk, nazimCount, hostingCount }: Props) {
                 name="cover"
                 value={form.tone}
                 disabled={saving}
-                className="flex-row flex-wrap gap-x-6"
+                className="flex-row flex-wrap gap-x-6 [&>.mds-label]:basis-full"
                 onChange={(value) => set("tone", value as SettingsForm["tone"])}
                 options={COVER_TONES.map((tone) => ({
                   value: tone,
@@ -324,5 +325,27 @@ export function KoskSettings({ kosk, nazimCount, hostingCount }: Props) {
         onHidden={() => router.push(`/${locale}/kosks`)}
       />
     </div>
+  );
+}
+
+/**
+ * The page's own state when the API could not be reached (nizam 24, error):
+ * an alert in place with "Yeniden dene", not the "izniniz yok" screen.
+ */
+export function KoskSettingsUnavailable() {
+  const t = useTranslations("nizam.KoskSettings");
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  return (
+    <Alert tone="error" title={t("loadFailedTitle")}>
+      <p>{t("loadFailed")}</p>
+      <Button
+        variant="outline"
+        size="small"
+        onClick={() => startTransition(() => router.refresh())}
+      >
+        {t("retry")}
+      </Button>
+    </Alert>
   );
 }

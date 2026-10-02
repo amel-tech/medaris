@@ -1505,6 +1505,9 @@
     "required": "En az bir köşk nazımı seçin."
   },
   "KoskSettings": {
+    "loadFailedTitle": "Köşk ayarları yüklenemedi",
+    "loadFailed": "Köşk ayarları şu an okunamıyor. Biraz sonra yeniden deneyin.",
+    "retry": "Yeniden dene",
     "title": "Köşk ayarları",
     "intro": "{koskGenitive} sayfasında görünen bilgileri, köşkün görünürlüğünü ve bütün derslerinde geçerli politikaları buradan değiştirirsiniz.",
     "unknownKosk": "Bu köşkün",

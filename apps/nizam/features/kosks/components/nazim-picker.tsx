@@ -5,7 +5,13 @@ import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
 import { useTranslations } from "next-intl";
-import { type KeyboardEvent, useId, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  type RefObject,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { lookupUserByEmail } from "../../madrasahs/actions";
 import {
   isEmailLike,
@@ -21,6 +27,8 @@ interface Props {
   disabled?: boolean;
   /** shown under the field while nobody is chosen and the form was sent */
   error?: string;
+  /** receives the e-mail input, for a dialog's opening focus */
+  inputRef?: RefObject<HTMLElement | null>;
 }
 
 /**
@@ -31,7 +39,13 @@ interface Props {
  * same person again adds nobody. Each chosen account is a row with a remove
  * button, and the live region says who was chosen.
  */
-export function NazimPicker({ value, onChange, disabled, error }: Props) {
+export function NazimPicker({
+  value,
+  onChange,
+  disabled,
+  error,
+  inputRef,
+}: Props) {
   const t = useTranslations("nizam.KoskNazimPicker");
   const [email, setEmail] = useState("");
   const [state, setState] = useState<LookupState | { kind: "already" }>({
@@ -97,6 +111,7 @@ export function NazimPicker({ value, onChange, disabled, error }: Props) {
     <div className="flex flex-col gap-4">
       <Field label={t("label")} required help={t("help")} error={fieldError}>
         <Input
+          {...(inputRef ? ({ ref: inputRef } as object) : {})}
           type="email"
           name="nazimEmail"
           mono

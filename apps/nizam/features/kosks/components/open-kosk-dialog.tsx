@@ -245,7 +245,7 @@ export function OpenKoskDialog({ open, onOpenChange, onOpened }: Props) {
           name="cover"
           value={form.tone}
           disabled={saving}
-          className="flex-row flex-wrap gap-x-3"
+          className="flex-row flex-wrap gap-x-3 [&>.mds-label]:basis-full"
           onChange={(value) => set("tone", value as OpenKoskForm["tone"])}
           options={COVER_TONES.map((tone) => ({
             value: tone,

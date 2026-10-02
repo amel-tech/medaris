@@ -6,7 +6,7 @@ import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
 import { Field } from "@medaris/ui/mds/field";
 import { Input } from "@medaris/ui/mds/input";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { PickedUser } from "../../madrasahs/present";
 import { addKoskNazims } from "../admin-actions";
 import {
@@ -49,6 +49,7 @@ export function AddNazimDialog({
   const [day, setDay] = useState("");
   const [saving, setSaving] = useState(false);
   const [sent, setSent] = useState(false);
+  const emailRef = useRef<HTMLElement | null>(null);
   const today = useMemo(() => isoDay(new Date(), timeZone), [timeZone]);
 
   // A new addition starts from a clean form.
@@ -105,6 +106,7 @@ export function AddNazimDialog({
       eyebrow={koskName}
       title={t("title")}
       closeLabel={t("close")}
+      initialFocus={emailRef}
       footer={
         <>
           <DialogClose>{t("cancel")}</DialogClose>
@@ -122,6 +124,7 @@ export function AddNazimDialog({
         value={people}
         onChange={setPeople}
         disabled={saving}
+        inputRef={emailRef}
         error={sent ? tp("required") : undefined}
       />
       <div className="max-w-[16rem]">

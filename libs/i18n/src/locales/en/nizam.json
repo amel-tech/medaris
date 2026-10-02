@@ -1505,6 +1505,9 @@
     "required": "Choose at least one köşk nazımı."
   },
   "KoskSettings": {
+    "loadFailedTitle": "Köşk settings could not be loaded",
+    "loadFailed": "The köşk settings cannot be read right now. Try again in a moment.",
+    "retry": "Try again",
     "title": "Köşk settings",
     "intro": "Here you change what {koskGenitive} page shows, the köşk's visibility and the policies that hold in all its courses.",
     "unknownKosk": "this köşk's",

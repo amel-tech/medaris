@@ -4,7 +4,10 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getHostingRights } from "~/features/hosting/reads";
 import { getKoskById } from "~/features/kosks/actions";
 import { getKoskNazims } from "~/features/kosks/admin-reads";
-import { KoskSettings } from "~/features/kosks/components/kosk-settings";
+import {
+  KoskSettings,
+  KoskSettingsUnavailable,
+} from "~/features/kosks/components/kosk-settings";
 
 // Behind the sign-in middleware, and per caller.
 export const dynamic = "force-dynamic";
@@ -37,7 +40,16 @@ export default async function Page({
 
   if (nazims === "not-found") notFound();
   if (nazims === "forbidden") forbidden();
-  if (!kosk) notFound();
+  // Both reads failing means the API is down: say so in place, not as a
+  // missing right. A köşk that did not read while the list did is gone.
+  if (!kosk && nazims !== null) notFound();
+  if (!kosk) {
+    return (
+      <div className="mx-auto w-full max-w-[72rem]">
+        <KoskSettingsUnavailable />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-[72rem]">
