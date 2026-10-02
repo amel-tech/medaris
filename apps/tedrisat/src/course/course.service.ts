@@ -39,6 +39,7 @@ import {
   muderrisListChanged,
   newlyLinkedUserIds,
 } from "./domain/muderris-list";
+import { buildSessionView, type ISessionView } from "./domain/session-view";
 import { withCanonicalTimeZone } from "./domain/time-zone";
 import {
   expandWeeklyPattern,
@@ -259,6 +260,34 @@ export class CourseService {
     if (!lesson.scheduledAt) throw new LessonNotScheduledError(lessonId);
 
     return { course, lesson: { ...lesson, scheduledAt: lesson.scheduledAt } };
+  }
+
+  /**
+   * One live session of a course, for its page (MDRS-158): its status, the
+   * cancellation and the replacement, the neighbouring sessions, and — only
+   * for a caller who may read course content — the meeting link and agenda.
+   *
+   * Authorized and filtered exactly like `GET /courses/:id`: it is built from
+   * `viewDetail`, so a hidden course, a draft and the content rule all behave
+   * the same, and a content read is audited the same way. A session that is
+   * missing, archived, not live or in another course is LESSON_NOT_FOUND.
+   * `now` is a parameter so a spec can pin the clock.
+   */
+  async getSession(
+    courseId: string,
+    sessionId: string,
+    user: AuthenticatedUser | null,
+    now: Date = new Date()
+  ): Promise<ISessionView> {
+    const detail = await this.viewDetail(courseId, user);
+    const view = buildSessionView(
+      detail,
+      sessionId,
+      now,
+      await this.courseRepo.findImamUserId(courseId)
+    );
+    if (!view) throw new LessonNotFoundError(sessionId);
+    return view;
   }
 
   // ---- course writes (MDRS-105) ----

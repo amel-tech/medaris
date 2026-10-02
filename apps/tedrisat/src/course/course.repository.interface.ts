@@ -23,6 +23,12 @@ export interface ILesson {
   agenda: IAgendaStep[] | null;
   isPreview: boolean;
   orderIndex: number;
+  /** When the session was cancelled (MDRS-158); null while it stands. */
+  cancelledAt: Date | null;
+  /** Why it was cancelled — course content, like the meeting link. */
+  cancelReason: string | null;
+  /** The session that makes up for a cancelled one, if there is one. */
+  replacementLessonId: string | null;
 }
 
 export interface IWeek {
@@ -96,7 +102,11 @@ export interface ICourseDetail extends ICourse {
  * else gets the lesson without these keys — absent, not null, so no body
  * sent to a non-enrolled caller names them at all.
  */
-export type LessonContentField = "kaynak" | "meetingUrl" | "agenda";
+export type LessonContentField =
+  | "kaynak"
+  | "meetingUrl"
+  | "agenda"
+  | "cancelReason";
 
 /** A lesson as a response carries it: the content fields may be absent. */
 export type ILessonView = Omit<ILesson, LessonContentField> &
@@ -328,6 +338,8 @@ export interface ICourseRepository {
   findEnrolledByUser(userId: string): Promise<IEnrolledCourse[]>;
   create(course: ICreateCourse): Promise<ICourseDetail>;
   findKoskId(id: string): Promise<string | null>;
+  /** The user holding the course's imam grant, or null (MDRS-133). */
+  findImamUserId(courseId: string): Promise<string | null>;
   /** Status, hidden, and the köşk's `is_private`; null for no course (MDRS-122). */
   findPublicVisibility(id: string): Promise<{
     status: CourseStatus;

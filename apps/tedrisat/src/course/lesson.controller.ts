@@ -3,6 +3,7 @@ import {
   Authz,
   AuthzExempt,
   AuthzGuard,
+  AuthzPublic,
   type AuthzResolve,
   byParam,
   ENTITIES,
@@ -59,10 +60,15 @@ import {
   SessionBatchResponse,
   WeeklyPatternDto,
 } from "./dto/session-batch.dto";
+import { SessionResponse } from "./dto/session-response.dto";
 import { UpdateLessonDto } from "./dto/update-lesson.dto";
 import { CalendarNotConfiguredError } from "./errors/calendar-not-configured.error";
+import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { LessonNotFoundError } from "./errors/lesson-not-found.error";
-import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
+import {
+  AuthorizedRequest,
+  PublicRequest,
+} from "./interfaces/authorized-request.interface";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -82,6 +88,26 @@ const byLessonCourse: AuthzResolve = async (req, moduleRef) => {
     .get(CourseRepository, { strict: false })
     .findLessonCourseId(lessonId);
   if (!courseId) throw new LessonNotFoundError(lessonId);
+  return { entity: ENTITIES.COURSE, id: courseId };
+};
+
+/**
+ * Authorizes `GET /courses/:courseId/sessions/:sessionId` against the course,
+ * answering a missing or malformed id as not-found first (guards run before
+ * pipes, and SYSTEM_ADMIN bypasses the resolver, so the existence check stays
+ * here — the same reason as `byExistingCourse` on `CourseController`).
+ */
+const bySessionCourse: AuthzResolve = async (req, moduleRef) => {
+  const courseId =
+    typeof req.params.courseId === "string" ? req.params.courseId : "";
+  if (
+    !UUID_REGEX.test(courseId) ||
+    (await moduleRef
+      .get(CourseRepository, { strict: false })
+      .findKoskId(courseId)) === null
+  ) {
+    throw new CourseNotFoundError(courseId);
+  }
   return { entity: ENTITIES.COURSE, id: courseId };
 };
 
@@ -172,6 +198,34 @@ export class LessonController {
       type: "text/calendar; charset=utf-8",
       disposition: `attachment; filename="medaris-${lesson.id}.ics"`,
     });
+  }
+
+  @ApiOperation({
+    summary: "One live session: its status, cancellation, neighbours and link",
+    description:
+      "Open to callers with no token, like the course page (MDRS-122), and filtered the same way: `meetingUrl`, `agenda`, `kaynak` and `cancelReason` are sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. `status` is derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED after the session's length (60 minutes when it has none), LIVE while it runs, SCHEDULED before. `meetingUrl` is null for a cancelled or finished session. `previous` and `next` are the neighbouring live sessions in programme order, cancelled ones skipped. A content read by anyone who is neither enrolled nor a müderris is recorded in `audit_log`, as on `GET /courses/:id` (MDRS-158).",
+    operationId: "getSession",
+  })
+  @ApiOkResponse({ type: SessionResponse })
+  @ApiNotFoundResponse({
+    description:
+      "No such course or session, the session is not a live one, or the course is a draft, hidden or in an unlisted köşk to this caller (LESSON_NOT_FOUND, COURSE_NOT_FOUND).",
+  })
+  @Authz(SCOPES.VIEW, bySessionCourse)
+  @AuthzPublic()
+  // Per-user authorization decided this answer; no shared cache may keep it.
+  @Header("Cache-Control", "private, no-store")
+  @Get("courses/:courseId/sessions/:sessionId")
+  async getSession(
+    @Req() request: PublicRequest,
+    @Param("courseId", ParseUUIDPipe) courseId: string,
+    @Param("sessionId", ParseUUIDPipe) sessionId: string
+  ): Promise<SessionResponse> {
+    return this.courseService.getSession(
+      courseId,
+      sessionId,
+      request.user ?? null
+    );
   }
 
   @ApiOperation({
