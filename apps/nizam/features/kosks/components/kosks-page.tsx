@@ -16,8 +16,8 @@ import { isKoskLevel } from "~/features/kosks/kosk-form";
 /**
  * nizam's köşk list (MDRS-108): the köşks the caller manages
  * (`GET /kosks?managedBy=me`), then the courses they teach elsewhere. Every
- * card opens a page the caller may see; "Yeni Köşk" is open to everyone
- * signed in, as `POST /kosks` is.
+ * card opens a page the caller may see; "Yeni Köşk" is SYSTEM_ADMIN's alone,
+ * as `POST /kosks` is (`mayCreateKosk`).
  */
 export async function KosksPage({
   kosks,
@@ -25,12 +25,14 @@ export async function KosksPage({
   totalPages,
   emptyState,
   taughtCourses,
+  canCreateKosk,
 }: {
   kosks: KoskResponse[];
   page: number;
   totalPages: number;
   emptyState: KoskListEmptyState;
   taughtCourses: TaughtCourseRef[];
+  canCreateKosk: boolean;
 }) {
   const t = await getTranslations("nizam");
 
@@ -43,7 +45,7 @@ export async function KosksPage({
             {t("KosksPage.description")}
           </p>
         </div>
-        <KoskFormDialog />
+        {canCreateKosk && <KoskFormDialog />}
       </div>
 
       {kosks.length === 0 ? (
