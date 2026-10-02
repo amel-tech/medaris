@@ -152,7 +152,7 @@ export const CoursePage = ({
     <div className="pb-16">
       {preview && (
         <Alert
-          tone="info"
+          tone="neutral"
           title={t("CoursePage.previewBannerTitle")}
           className="mb-6 font-ui"
         >
@@ -249,19 +249,21 @@ export const CoursePage = ({
                 <Badge variant="outline" className="self-start">
                   {t("CoursePage.previewCardBadge")}
                 </Badge>
-                <h2 className="mds-h2">{t("CoursePage.previewCardTitle")}</h2>
-                <p className="mds-body">{t("CoursePage.previewCardText")}</p>
+                <h3 className="mds-h3">{t("CoursePage.previewCardTitle")}</h3>
+                <p className="mds-body-sm">{t("CoursePage.previewCardText")}</p>
                 {firstSession && (
                   <div>
                     <p className="mds-eyebrow">
                       {t("CoursePage.firstSession")}
                     </p>
-                    <p className="mds-body">
-                      {formatFirstSession(
-                        firstSession,
-                        locale,
-                        course.timeZone
-                      )}
+                    <p className="mds-body-sm mds-num">
+                      <time dateTime={firstSession.toISOString()}>
+                        {formatFirstSession(
+                          firstSession,
+                          locale,
+                          course.timeZone
+                        )}
+                      </time>
                     </p>
                   </div>
                 )}

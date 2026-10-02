@@ -19,7 +19,11 @@ export default function GlobalError({ reset }: { reset: () => void }) {
         <SystemState
           className="font-ui"
           title="Bir şeyler ters gitti"
-          action={<Button onClick={() => reset()}>Yeniden dene</Button>}
+          action={
+            <Button variant="secondary" onClick={() => reset()}>
+              Yeniden dene
+            </Button>
+          }
         >
           Sunucuya ulaşılamadı. İnternet bağlantını denetleyip yeniden dene.
         </SystemState>

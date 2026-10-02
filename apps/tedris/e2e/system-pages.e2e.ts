@@ -111,7 +111,7 @@ test.describe("tedris/07: the application window", () => {
 
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
-    await expect(page.getByText("Onay bekleniyor")).toBeVisible();
+    await expect(page.getByText("Onay bekliyor")).toBeVisible();
   });
 
   test("'Tamam' closes it and hands focus to 'Başvuruyu geri çek'", async ({
