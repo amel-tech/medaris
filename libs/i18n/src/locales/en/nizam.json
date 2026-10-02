@@ -847,5 +847,200 @@
     "confirm": "Sign out",
     "cancel": "Cancel",
     "busy": "Signing out"
+  },
+  "MadrasahsPage": {
+    "title": "Medreses",
+    "intro": "A medrese opens together with its head müderris. The head müderris runs the medrese from the Nazır app.",
+    "open": "Open a medrese",
+    "heading": "All medreses",
+    "archive": "Archive",
+    "tabsLabel": "Status filter",
+    "tabs": {
+      "ALL": "All",
+      "ACTIVE": "Active",
+      "PASSIVE": "Passive",
+      "HIDDEN": "Hidden"
+    },
+    "searchLabel": "Search medreses",
+    "searchPlaceholder": "Search by medrese or head müderris",
+    "caption": {
+      "ALL": "All medreses",
+      "ACTIVE": "Active medreses",
+      "PASSIVE": "Passive medreses",
+      "HIDDEN": "Hidden medreses"
+    },
+    "columns": {
+      "madrasah": "Medrese",
+      "head": "Head müderris",
+      "courses": "Courses",
+      "hosting": "Hosting right",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "PASSIVE": "Passive",
+      "HIDDEN": "Hidden"
+    },
+    "since": "Since {date}",
+    "termEnded": "Term ended {date}",
+    "unassigned": "Unassigned",
+    "unknownPerson": "Name unknown",
+    "noHosting": "None",
+    "restore": "Restore",
+    "restoreLabel": "Restore: {name}",
+    "assign": "Appoint head müderris",
+    "assignLabel": "Appoint head müderris: {name}",
+    "restored": "Restored",
+    "restoredBody": "{name} is listed again.",
+    "restoreFailed": "Could not restore",
+    "passiveTitleOne": "{name} is passive",
+    "passiveTitleMany": "{count} medreses are passive",
+    "passiveBodyOne": "The head müderris's term ended on {date}. The medrese's page is closed to visitors and its content to enrolled talebe too; it reopens when you appoint a head müderris.",
+    "passiveBodyMany": "{names}. A passive medrese's page is closed to visitors and its content to enrolled talebe too; it reopens when you appoint a head müderris.",
+    "footnote": "A hidden medrese, with its courses, leaves every list talebe and visitors see. It is restored from the Archive or deleted for good.",
+    "emptyAll": "There are no medreses yet.",
+    "emptySearch": "No medrese matches the search.",
+    "emptyStatus": "No medrese has this status.",
+    "showing": "{total} medreses in all, showing {shown}",
+    "loadFailedTitle": "Medreses could not be loaded",
+    "loadFailed": "The list of medreses cannot be read right now. Try again in a moment.",
+    "retry": "Try again",
+    "errors": {
+      "generic": "Something went wrong. Try again in a moment.",
+      "handleTaken": "This short name is used by another medrese.",
+      "notFound": "This medrese no longer exists.",
+      "notHidden": "This medrese is not hidden.",
+      "forbidden": "You may not do this."
+    }
+  },
+  "HeadPicker": {
+    "label": "Head müderris",
+    "help": "Type the registered account's full e-mail address; every search is written to the audit log.",
+    "placeholder": "first.last@example.com",
+    "notFound": "No account is registered with this e-mail address.",
+    "failed": "The search cannot be made right now. Try again in a moment.",
+    "searching": "Searching",
+    "chosenTitle": "Chosen head müderris",
+    "chosen": "{name} chosen",
+    "remove": "Remove the choice: {name}"
+  },
+  "OpenMadrasahDialog": {
+    "title": "Open a medrese",
+    "intro": "A medrese opens together with its head müderris. To open courses it needs a hosting right in a köşk.",
+    "requiredNote": "required field",
+    "nameLabel": "Name",
+    "nameHelp": "Talebe and visitors see this name.",
+    "handleLabel": "Short name",
+    "handleHelp": "Used in the medrese's address; lower-case letters, digits and hyphens.",
+    "descriptionLabel": "Description",
+    "descriptionHelp": "Shown on the medrese's page.",
+    "chosenNote": "When the medrese opens they become its head müderris and run it from the Nazır app.",
+    "cancel": "Cancel",
+    "submit": "Open a medrese",
+    "close": "Close",
+    "saved": "Medrese opened",
+    "savedBody": "{name} is open; its head müderris is {head}.",
+    "failed": "The medrese could not be opened",
+    "errors": {
+      "nameRequired": "Enter a name.",
+      "nameShort": "The name needs at least 2 letters.",
+      "handleInvalid": "The short name may hold only lower-case letters, digits and hyphens, 2 to 60 characters, and may not start or end with a hyphen.",
+      "handleTaken": "@{handle} is used by another medrese."
+    }
+  },
+  "AssignHeadDialog": {
+    "title": "Appoint a head müderris",
+    "intro": "Choose a head müderris for {name}. When you appoint one the medrese reopens and they run it from the Nazır app.",
+    "chosenNote": "They become the head müderris; a passive medrese becomes active again.",
+    "cancel": "Cancel",
+    "submit": "Appoint head müderris",
+    "close": "Close",
+    "saved": "Head müderris appointed",
+    "savedBody": "{head} is now the head müderris of {name}.",
+    "failed": "The head müderris could not be appointed"
+  },
+  "HostingPage": {
+    "title": "Hosting rights",
+    "settings": "Köşk settings",
+    "breadcrumbLabel": "Page path",
+    "intro": "The medreses that hold a hosting right in this köşk. The right gives a medrese no authority over the köşk.",
+    "grant": "Give a hosting right",
+    "tabsLabel": "Köşk settings sections",
+    "tabs": {
+      "general": "General",
+      "nazims": "Köşk nazıms",
+      "hosting": "Hosting rights"
+    },
+    "caption": "Hosting rights of {kosk}",
+    "columns": {
+      "madrasah": "Medrese",
+      "grantedBy": "Given by",
+      "grantedAt": "Date",
+      "openCourses": "Open courses",
+      "actions": "Actions"
+    },
+    "head": "Head müderris {name}",
+    "noHead": "No head müderris",
+    "unknownPerson": "Name unknown",
+    "roles": {
+      "SYSTEM_ADMIN": "Medaris chief nazım",
+      "KOSK_NAZIM": "Köşk nazım"
+    },
+    "published": "{count} live",
+    "draft": "{count} draft",
+    "revoke": "Withdraw the hosting right",
+    "revokeLabel": "Withdraw the hosting right: {name}",
+    "footnote": "Once the right is withdrawn the medrese cannot open new courses in this köşk. Its open courses do not close; you choose what becomes of them.",
+    "empty": "No hosting right yet",
+    "loadFailedTitle": "Hosting rights could not be loaded",
+    "loadFailed": "The hosting rights cannot be read right now. Try again in a moment.",
+    "retry": "Try again",
+    "errors": {
+      "generic": "Something went wrong. Try again in a moment.",
+      "notHeld": "This medrese holds no hosting right in this köşk.",
+      "madrasahGone": "This medrese no longer exists or is hidden.",
+      "koskGone": "This köşk no longer exists.",
+      "forbidden": "You may not do this."
+    }
+  },
+  "GrantDialog": {
+    "title": "Give a hosting right",
+    "intro": "The medrese you choose can open courses in this köşk. The right gives it no authority over the köşk.",
+    "madrasahLabel": "Medrese",
+    "placeholder": "Choose a medrese",
+    "none": "There is no other medrese to give a right to.",
+    "loadFailedTitle": "Medreses could not be loaded",
+    "loadFailed": "The list of medreses cannot be read right now. Try again in a moment.",
+    "cancel": "Cancel",
+    "submit": "Give a hosting right",
+    "close": "Close",
+    "granted": "Hosting right given",
+    "grantedBody": "{name} can open courses in this köşk.",
+    "failed": "The hosting right could not be given"
+  },
+  "RevokeDialog": {
+    "title": "Withdraw the hosting right",
+    "intro": "<b>{name}</b> will not be able to open new courses in this köşk. {count, plural, =0 {The medrese has no open course in this köşk.} one {The medrese's open course in this köşk does not close; choose what becomes of it.} other {The medrese's {count} open courses in this köşk do not close; choose what becomes of them.}}",
+    "coursesLegend": "Open courses",
+    "keep": "Let the courses go on",
+    "keepDesc": "{count, plural, one {The course goes on in this köşk; talebe see no change. The medrese keeps running it.} other {All {count} courses go on in this köşk; talebe see no change. The medrese keeps running them.}}",
+    "hide": "Hide the courses",
+    "hideDesc": "{count, plural, one {The course leaves the lists;} other {All {count} courses leave the lists;}} {students, plural, =0 {} other {{students} talebe cannot reach the sessions and recordings. }}Nothing is deleted; you can restore them from the Archive.",
+    "courseStatus": {
+      "PUBLISHED": "Live",
+      "DRAFT": "Draft"
+    },
+    "students": "{count} talebe",
+    "noStudents": "No talebe yet",
+    "imam": "{name}, imam",
+    "noOpenCourses": "Nothing to choose: once the right is withdrawn the medrese cannot open new courses in this köşk.",
+    "auditNote": "Your choice is written to the audit log.",
+    "cancel": "Cancel",
+    "submit": "Withdraw the hosting right",
+    "close": "Close",
+    "revoked": "Hosting right withdrawn",
+    "revokedBody": "{name} cannot open new courses in this köşk.",
+    "failed": "Could not withdraw it"
   }
 }
