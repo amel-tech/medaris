@@ -58,6 +58,8 @@ describe("the open scope picker (nazir 03)", () => {
     await open();
     const menu = document.querySelector("[role=menu]");
     expect(menu?.getAttribute("aria-label")).toBe("Kapsamlar");
+    // Base UI points aria-labelledby at the trigger, which would win over the label
+    expect(menu?.hasAttribute("aria-labelledby")).toBe(false);
     expect(menu?.className).toContain("mds-popup");
     const groups = [...document.querySelectorAll("[role=group]")];
     expect(groups.map((g) => g.firstElementChild?.textContent)).toEqual([

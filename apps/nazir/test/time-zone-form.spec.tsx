@@ -113,6 +113,17 @@ describe("the time zone select (nazir 20)", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
+  it("reads a rejected action, as a dropped connection gives, as a failed save", async () => {
+    save.mockRejectedValue(new TypeError("Failed to fetch"));
+    await mount();
+    await choose(0, "Berlin");
+    expect(triggers()[0]?.textContent).toContain("İstanbul");
+    expect(document.querySelector(".mds-toast--error")?.textContent).toContain(
+      "Saat dilimi kaydedilemedi"
+    );
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
   it("does not save the zone that is already chosen", async () => {
     await mount();
     await choose(0, "İstanbul");
