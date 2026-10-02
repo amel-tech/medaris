@@ -104,22 +104,23 @@ describe("Keşfet's address (MDRS-159, design tedris/02)", () => {
 });
 
 describe("a köşk's level as words (design tedris/02 and 04)", () => {
+  const names: Record<string, string> = {
+    BEGINNER: "Başlangıç seviyesi",
+    INTERMEDIATE: "Orta seviye",
+    ADVANCED: "İleri seviye",
+  };
   const t = (key: string, values?: Record<string, string>) =>
-    key === "Levels.BEGINNER"
-      ? "Başlangıç"
-      : key === "Levels.INTERMEDIATE"
-        ? "Orta"
-        : key === "DiscoverPage.level" || key === "KoskPage.level"
-          ? `${values?.level} seviyesi`
-          : key === "DiscoverPage.levelAll"
-            ? "Bütün seviyeler"
-            : key;
+    key === "DiscoverPage.level" || key === "KoskPage.level"
+      ? (names[values?.level ?? ""] ?? key)
+      : key === "DiscoverPage.levelAll"
+        ? "Bütün seviyeler"
+        : key;
 
   it("writes BEGINNER as 'Başlangıç seviyesi' and ALL as 'Bütün seviyeler'", () => {
     expect(koskLevelLabel("BEGINNER", t, "DiscoverPage")).toBe(
       "Başlangıç seviyesi"
     );
-    expect(koskLevelLabel("INTERMEDIATE", t, "KoskPage")).toBe("Orta seviyesi");
+    expect(koskLevelLabel("INTERMEDIATE", t, "KoskPage")).toBe("Orta seviye");
     expect(koskLevelLabel("ALL", t, "DiscoverPage")).toBe("Bütün seviyeler");
   });
 
