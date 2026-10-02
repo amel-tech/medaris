@@ -1,0 +1,170 @@
+"use client";
+
+import { Avatar } from "@medaris/ui/mds/avatar";
+import { Badge } from "@medaris/ui/mds/badge";
+import { Button } from "@medaris/ui/mds/button";
+import { Table, type TableColumn } from "@medaris/ui/mds/table";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useEffect, useState, useTransition } from "react";
+import { dismissOpen, type NazirRow } from "../nazirs";
+import { DismissDialog } from "./dismiss-dialog";
+
+/**
+ * The table of "Medrese nazırları" (nazir 05). The rows arrive worded and
+ * dated, so the table has nothing to translate; the kit's `Table` keeps state
+ * of its own and the dismissal dialog is opened from here, which is why this
+ * is a client component. "Görevden al" stays off until the version gate of 4
+ * Ekim 2026, decided on the viewer's clock after mounting so the server's page
+ * and the browser's agree while hydrating; the screen never says why.
+ *
+ * "İzinleri düzenle" and "İzin ver" (nazir 06) are not here: the permission
+ * editor is a later package's, and a button with nowhere to go is not drawn.
+ */
+export function NazirsTable({
+  rows,
+  madrasahId,
+  madrasahName,
+  locale,
+  timeZone,
+}: {
+  rows: NazirRow[];
+  madrasahId: string;
+  madrasahName: string;
+  locale: string;
+  timeZone: string;
+}) {
+  const t = useTranslations("nazir");
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const [dismissing, setDismissing] = useState<NazirRow | null>(null);
+  const [gateOpen, setGateOpen] = useState(false);
+  useEffect(() => setGateOpen(dismissOpen(Date.now())), []);
+
+  const columns: TableColumn<NazirRow>[] = [
+    {
+      key: "nazir",
+      header: t("Nazirs.columns.nazir"),
+      rowHeader: true,
+      width: "27%",
+      render: (row) => (
+        <span className="flex min-inline-0 items-center gap-3">
+          <Avatar name={row.name} decorative />
+          <span className="flex min-inline-0 flex-col">
+            <bdi className="font-semibold">{row.name}</bdi>
+            {row.email ? (
+              <bdi dir="ltr" className="mds-caption break-all font-mono">
+                {row.email}
+              </bdi>
+            ) : null}
+          </span>
+        </span>
+      ),
+    },
+    {
+      key: "grants",
+      header: t("Nazirs.columns.grants"),
+      width: "30%",
+      render: (row) =>
+        row.awaiting ? (
+          <span className="flex flex-col items-start gap-1">
+            <Badge variant="outline">{t("Nazirs.noGrants")}</Badge>
+            <span className="mds-caption">
+              <bdi>{row.appointedLine}</bdi>
+            </span>
+          </span>
+        ) : (
+          <span className="flex flex-col items-start gap-2">
+            {row.groups.length > 0 ? (
+              <span className="flex flex-wrap gap-2">
+                {row.groups.map((name) => (
+                  <Badge key={name} variant="secondary">
+                    <bdi>{name}</bdi>
+                  </Badge>
+                ))}
+              </span>
+            ) : null}
+            {row.extra ? (
+              <span className="mds-caption" data-testid="extra-permissions">
+                {row.extra}
+              </span>
+            ) : null}
+          </span>
+        ),
+    },
+    {
+      key: "end",
+      header: t("Nazirs.columns.end"),
+      width: "12%",
+      render: (row) =>
+        row.end ? (
+          row.end.iso ? (
+            <time dateTime={row.end.iso}>{row.end.label}</time>
+          ) : (
+            row.end.label
+          )
+        ) : (
+          t("Nazirs.noValue")
+        ),
+    },
+    {
+      key: "giver",
+      header: t("Nazirs.columns.giver"),
+      width: "15%",
+      render: (row) =>
+        row.giver ? (
+          <span className="flex flex-col">
+            <bdi>{row.giver.name}</bdi>
+            <time className="mds-caption" dateTime={row.giver.at.iso}>
+              {row.giver.at.label}
+            </time>
+          </span>
+        ) : (
+          t("Nazirs.noValue")
+        ),
+    },
+    {
+      key: "actions",
+      header: (
+        <span className="mds-visually-hidden">
+          {t("Nazirs.columns.actions")}
+        </span>
+      ),
+      align: "right",
+      width: "16%",
+      render: (row) => (
+        <Button
+          variant="ghost"
+          size="small"
+          disabled={!gateOpen}
+          aria-label={t("Nazirs.dismissLabel", { name: row.name })}
+          onClick={() => setDismissing(row)}
+        >
+          {t("Nazirs.dismiss")}
+        </Button>
+      ),
+    },
+  ];
+
+  return (
+    <div data-testid="nazirs">
+      <Table
+        caption={t("Nazirs.caption", { name: madrasahName })}
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => row.id}
+        empty={t("Nazirs.empty")}
+        responsive="stack"
+      />
+      <DismissDialog
+        madrasahId={madrasahId}
+        madrasahName={madrasahName}
+        nazir={dismissing}
+        locale={locale}
+        timeZone={timeZone}
+        onClose={() => setDismissing(null)}
+        onDone={() => startTransition(() => router.refresh())}
+      />
+    </div>
+  );
+}
