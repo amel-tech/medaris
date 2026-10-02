@@ -6,6 +6,7 @@ import { getHostingRights } from "~/features/hosting/reads";
 import { getKoskById, getMe } from "~/features/kosks/actions";
 import { getKoskNazims } from "~/features/kosks/admin-reads";
 import { KoskManagePage } from "~/features/kosks/components/kosk-manage-page";
+import { LoadFailed } from "~/features/kosks/components/load-failed";
 import {
   getKoskCourseRoster,
   getKoskOverview,
@@ -53,25 +54,23 @@ export default async function Page({
 
   if (overview === "not-found") notFound();
   if (overview === "forbidden") forbidden();
-  // A köşk that did not read while the overview did is gone; with both failing
-  // the API is down, and the page says so in place rather than as a missing right.
-  if (!kosk) {
-    if (overview !== null) notFound();
-    const t = await getTranslations("nizam.KoskManage");
-    return (
-      <div className="mx-auto w-full max-w-[72rem]">
-        <p role="alert">{t("loadFailed")}</p>
-      </div>
-    );
-  }
+  // The overview is the page's own read: without it the API is down (or the
+  // köşk is gone, which the overview would have said as "not-found" above), so
+  // the page says so in place and offers a retry rather than a missing right.
   if (overview === null) {
     const t = await getTranslations("nizam.KoskManage");
     return (
       <div className="mx-auto w-full max-w-[72rem]">
-        <p role="alert">{t("loadFailed")}</p>
+        <LoadFailed
+          title={t("loadFailedTitle")}
+          message={t("loadFailed")}
+          retry={t("retry")}
+        />
       </div>
     );
   }
+  // A köşk that did not read while the overview did is gone.
+  if (!kosk) notFound();
 
   return (
     <div className="mx-auto w-full max-w-[72rem]">

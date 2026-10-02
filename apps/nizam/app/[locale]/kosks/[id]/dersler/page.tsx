@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { env } from "~/env";
 import { getKoskById, getMe } from "~/features/kosks/actions";
 import { KoskCoursesView } from "~/features/kosks/components/kosk-courses-view";
+import { LoadFailed } from "~/features/kosks/components/load-failed";
 import { koskAbilities } from "~/features/kosks/kosk-abilities";
 import {
   getKoskCourseRoster,
@@ -48,7 +49,11 @@ export default async function Page({
     const t = await getTranslations("nizam.KoskCourses");
     return (
       <div className="mx-auto w-full max-w-[72rem]">
-        <p role="alert">{t("loadFailed")}</p>
+        <LoadFailed
+          title={t("loadFailedTitle")}
+          message={t("loadFailed")}
+          retry={t("retry")}
+        />
       </div>
     );
   }

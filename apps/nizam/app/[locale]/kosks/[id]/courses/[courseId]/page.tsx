@@ -7,6 +7,7 @@ import {
   getKoskById,
 } from "~/features/kosks/actions";
 import { CourseOverview } from "~/features/kosks/components/course-overview";
+import { LoadFailed } from "~/features/kosks/components/load-failed";
 import {
   getCourseStats,
   getKoskCourseRoster,
@@ -44,6 +45,20 @@ export default async function Page({
 
   if (stats === "forbidden") forbidden();
   if (stats === "not-found") notFound();
+  // Nothing read and no verdict from the API: it is down. Say so in place, with
+  // a retry, instead of the "no right" screen a notFound() would draw.
+  if (stats === null && (!kosk || !course)) {
+    const tk = await getTranslations("nizam.KoskManage");
+    return (
+      <div className="mx-auto w-full max-w-[72rem]">
+        <LoadFailed
+          title={tk("loadFailedTitle")}
+          message={tk("loadFailed")}
+          retry={tk("retry")}
+        />
+      </div>
+    );
+  }
   if (!kosk || !course || course.koskId !== kosk.id) notFound();
 
   return (

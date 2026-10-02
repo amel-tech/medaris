@@ -371,7 +371,7 @@ export function KoskManagePage({
         </div>
       </header>
 
-      <Alert tone="info">{t("notice")}</Alert>
+      <Alert tone="neutral">{t("notice")}</Alert>
       {hiddenSince ? (
         <Alert tone="warning">
           {status === "HIDDEN"

@@ -11,6 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 import { CourseOverview } from "~/features/kosks/components/course-overview";
 import { KoskCoursesView } from "~/features/kosks/components/kosk-courses-view";
 import { KoskManagePage } from "~/features/kosks/components/kosk-manage-page";
+import { LoadFailed } from "~/features/kosks/components/load-failed";
 import {
   COURSE_TABS,
   canDeactivate,
@@ -431,6 +432,12 @@ describe("Köşk — Medaris yönetimi görünümü (nizam 20)", () => {
     expect(html.match(/Bölüm yüklenemedi/g)).toHaveLength(3);
   });
 
+  it("draws the notice in the neutral tone, not the info one (canvas)", () => {
+    const html = page();
+    expect(html).toContain("mds-alert--neutral");
+    expect(html).not.toContain("mds-alert--info");
+  });
+
   it("warns that a hidden or passive köşk is out of sight", () => {
     expect(
       page({
@@ -492,10 +499,17 @@ describe("Dersler (nizam 23)", () => {
     expect(html).not.toContain("Gizle: Merâhu’l-ervâh okumaları");
   });
 
-  it("writes the pending and barred chips", () => {
+  it("writes the pending and barred chips, the barred one in the error tone", () => {
     const html = view();
     expect(html).toContain("2 onay bekliyor");
     expect(html).toContain("5 yasaklı");
+    expect(html).toMatch(/mds-badge--error[^>]*>(?:<[^>]*>)*5 yasaklı/);
+  });
+
+  it("keeps the row buttons on one line as text buttons", () => {
+    const html = view();
+    expect(html).toContain("flex-nowrap");
+    expect(html).not.toContain("mds-btn--link");
   });
 
   it("offers Ders aç only to who may open a course", () => {
@@ -618,5 +632,20 @@ describe("Genel bakış (nizam 53)", () => {
     });
     expect(html).toContain("Bekleyen başvuru yok");
     expect(html).toContain("Yaklaşan celse yok");
+  });
+});
+
+describe("the page-level load failure", () => {
+  it("is an error Alert with a title and Yeniden dene, not a bare paragraph", () => {
+    const html = render(
+      <LoadFailed
+        title="Bölüm yüklenemedi"
+        message="Bu bölüm şu an okunamıyor."
+        retry="Yeniden dene"
+      />
+    );
+    expect(html).toContain("mds-alert--error");
+    expect(html).toContain("Bölüm yüklenemedi");
+    expect(html).toContain("Yeniden dene");
   });
 });

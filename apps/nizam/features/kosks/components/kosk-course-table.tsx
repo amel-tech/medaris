@@ -90,7 +90,7 @@ export function KoskCourseTable({
       key: "course",
       header: t("columns.course"),
       rowHeader: true,
-      width: mode === "nazim" ? "26%" : "38%",
+      width: mode === "nazim" ? "22%" : "38%",
       render: (row) => (
         <span className="flex min-w-0 items-center gap-3">
           <CoverPattern tone={toneOfHue(row.coverHue)} size="xs" />
@@ -133,7 +133,7 @@ export function KoskCourseTable({
     {
       key: "muderris",
       header: t("columns.muderris"),
-      width: mode === "nazim" ? "19%" : "34%",
+      width: mode === "nazim" ? "15%" : "34%",
       render: (row) =>
         row.muderris.length === 0 ? (
           <span className="text-neutral-muted">{t("noMuderris")}</span>
@@ -224,18 +224,18 @@ export function KoskCourseTable({
               </span>
             ),
             align: "right",
-            width: "21%",
+            width: "28%",
             render: (row: KoskCourseRowResponse) => {
               const href = viewHref?.(row.id) ?? null;
               return (
-                <span className="flex flex-wrap items-center justify-end gap-2">
+                <span className="flex flex-nowrap items-center justify-end gap-1 whitespace-nowrap">
                   {rowActions(row).map((action) => {
                     switch (action) {
                       case "edit":
                         return (
                           <Button
                             key={action}
-                            variant="outline"
+                            variant="ghost"
                             size="small"
                             href={`/${locale}/kosks/${koskId}/courses/${row.id}/edit`}
                             aria-label={t("editLabel", { name: row.title })}
@@ -247,7 +247,7 @@ export function KoskCourseTable({
                         return (
                           <Button
                             key={action}
-                            variant="link"
+                            variant="ghost"
                             size="small"
                             href={`/${locale}/kosks/${koskId}/courses/${row.id}/edit`}
                             aria-label={t("editMuderrisLabel", {
@@ -273,7 +273,7 @@ export function KoskCourseTable({
                         return (
                           <Button
                             key={action}
-                            variant="link"
+                            variant="ghost"
                             size="small"
                             aria-label={t("hideLabel", { name: row.title })}
                             onClick={() => setHiding(row)}
