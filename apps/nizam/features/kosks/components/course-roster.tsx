@@ -3,12 +3,13 @@
 import {
   ArrowCounterClockwiseIcon,
   CheckIcon,
+  ProhibitIcon,
   SealCheckIcon,
   UserMinusIcon,
   XIcon,
 } from "@medaris/icons";
 import {
-  type EnrollmentResponse,
+  type RosterEnrollmentResponse as EnrollmentResponse,
   TeamSettableEnrollmentStatus,
 } from "@medaris/services/tedrisat";
 import { Badge } from "@medaris/ui/components/badge";
@@ -35,6 +36,14 @@ import { useRouter } from "next/navigation";
 import { useFormatter, useTranslations } from "next-intl";
 import { type ReactNode, useId, useState, useTransition } from "react";
 import {
+  BanDialog,
+  type BanTarget,
+} from "~/features/bans/components/ban-dialog";
+import {
+  LiftDialog,
+  type LiftTarget,
+} from "~/features/bans/components/lift-dialog";
+import {
   approveEnrollment,
   rejectEnrollment,
   removeEnrollment,
@@ -60,12 +69,22 @@ type Result =
  */
 export const CourseRoster = ({
   koskId,
+  koskName,
   courseId,
+  courseTitle,
   enrollments,
+  mayBanKosk = false,
+  nextSessionAt = null,
 }: {
   koskId: string;
+  koskName: string;
   courseId: string;
+  courseTitle: string;
   enrollments: EnrollmentResponse[];
+  /** whether "Köşkten de yasakla" is offered (MDRS-177) */
+  mayBanKosk?: boolean;
+  /** the next live session still to come, for the ban dialog's link warning */
+  nextSessionAt?: string | null;
 }) => {
   const t = useTranslations("nizam");
   const format = useFormatter();
@@ -76,9 +95,27 @@ export const CourseRoster = ({
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState(false);
   const reasonId = useId();
+  const [banning, setBanning] = useState<BanTarget | null>(null);
+  const [lifting, setLifting] = useState<LiftTarget | null>(null);
 
   const nameOf = (e: EnrollmentResponse) =>
     e.studentName || t("CourseTeam.unnamed", { id: e.userId.slice(0, 8) });
+
+  const startBan = (e: EnrollmentResponse) =>
+    setBanning({
+      userId: e.userId,
+      name: nameOf(e),
+      email: e.studentEmail ?? null,
+    });
+  const startLift = (e: EnrollmentResponse) => {
+    if (!e.ban) return;
+    setLifting({
+      banId: e.ban.id,
+      name: nameOf(e),
+      email: e.studentEmail ?? null,
+      courseTitle,
+    });
+  };
 
   const run = (
     e: EnrollmentResponse,
@@ -229,7 +266,21 @@ export const CourseRoster = ({
                       </div>
                     )}
                   </TableCell>
-                  <TableCell>{statusBadge(e.status)}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {statusBadge(e.status)}
+                      {e.ban ? (
+                        <Badge variant="destructive">
+                          {t("CourseTeam.ban_banned")} ·{" "}
+                          {t(
+                            e.ban.scope === "KOSK"
+                              ? "CourseTeam.ban_bannedScopeKosk"
+                              : "CourseTeam.ban_bannedScopeCourse"
+                          )}
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </TableCell>
                   <TableCell>%{e.progress}</TableCell>
                   <TableCell>
                     {format.dateTime(new Date(e.createdAt), {
@@ -238,26 +289,54 @@ export const CourseRoster = ({
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1.5">
-                      {rosterActions(e.status).map((action) => {
-                        const ui = ACTION_UI[action];
-                        return (
-                          <Button
-                            key={action}
-                            size="sm"
-                            variant={ui.destructive ? "outline" : "ghost"}
-                            disabled={busy}
-                            onClick={() => act(e, action)}
-                            className={
-                              ui.destructive
-                                ? "gap-1.5 text-destructive"
-                                : "gap-1.5"
-                            }
-                          >
-                            {ui.icon}
-                            {ui.label}
-                          </Button>
-                        );
-                      })}
+                      {e.ban ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          aria-label={t("CourseTeam.ban_liftActionLabel", {
+                            name: nameOf(e),
+                          })}
+                          onClick={() => startLift(e)}
+                        >
+                          {t("CourseTeam.ban_liftAction")}
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy}
+                          aria-label={t("CourseTeam.ban_banActionLabel", {
+                            name: nameOf(e),
+                          })}
+                          onClick={() => startBan(e)}
+                          className="gap-1.5 text-destructive"
+                        >
+                          <ProhibitIcon size={14} />
+                          {t("CourseTeam.ban_banAction")}
+                        </Button>
+                      )}
+                      {rosterActions(e.status)
+                        .filter((action) => !(e.ban && action === "remove"))
+                        .map((action) => {
+                          const ui = ACTION_UI[action];
+                          return (
+                            <Button
+                              key={action}
+                              size="sm"
+                              variant={ui.destructive ? "outline" : "ghost"}
+                              disabled={busy}
+                              onClick={() => act(e, action)}
+                              className={
+                                ui.destructive
+                                  ? "gap-1.5 text-destructive"
+                                  : "gap-1.5"
+                              }
+                            >
+                              {ui.icon}
+                              {ui.label}
+                            </Button>
+                          );
+                        })}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -331,6 +410,27 @@ export const CourseRoster = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BanDialog
+        open={banning !== null}
+        onOpenChange={(open) => {
+          if (!open) setBanning(null);
+        }}
+        student={banning}
+        course={{ id: courseId, title: courseTitle }}
+        koskName={koskName}
+        mayBanKosk={mayBanKosk}
+        nextSessionAt={nextSessionAt}
+        onBanned={() => router.refresh()}
+      />
+      <LiftDialog
+        open={lifting !== null}
+        onOpenChange={(open) => {
+          if (!open) setLifting(null);
+        }}
+        target={lifting}
+        onLifted={() => router.refresh()}
+      />
     </>
   );
 };

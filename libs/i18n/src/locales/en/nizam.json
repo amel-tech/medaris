@@ -531,7 +531,8 @@
     "resources": "{count, plural, one {# resource} other {# resources}}",
     "noCoursesTitle": "No courses yet",
     "noCoursesDescription": "Create a new course to get started.",
-    "noCoursesReadOnly": "There is no course in this köşk open to you."
+    "noCoursesReadOnly": "There is no course in this köşk open to you.",
+    "bans": "Bans"
   },
   "KoskForm": {
     "createTitle": "Create a new köşk",

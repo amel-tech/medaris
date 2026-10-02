@@ -531,7 +531,8 @@
     "resources": "{count} kaynak",
     "noCoursesTitle": "Henüz ders oluşturulmamış",
     "noCoursesDescription": "Yeni bir ders oluşturarak başlayın.",
-    "noCoursesReadOnly": "Bu köşkte size açık bir ders yok."
+    "noCoursesReadOnly": "Bu köşkte size açık bir ders yok.",
+    "bans": "Yasaklamalar"
   },
   "KoskForm": {
     "createTitle": "Yeni Köşk Oluştur",

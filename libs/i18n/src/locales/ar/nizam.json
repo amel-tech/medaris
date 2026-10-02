@@ -531,7 +531,8 @@
     "resources": "{count, plural, zero {لا مصادر} one {مصدر واحد} two {مصدران} few {# مصادر} many {# مصدرًا} other {# مصدر}}",
     "noCoursesTitle": "لم يُنشأ أي درس بعد",
     "noCoursesDescription": "أنشئ درسًا جديدًا للبدء.",
-    "noCoursesReadOnly": "لا يوجد في هذا الكشك درس متاح لك."
+    "noCoursesReadOnly": "لا يوجد في هذا الكشك درس متاح لك.",
+    "bans": "الحظر"
   },
   "KoskForm": {
     "createTitle": "إنشاء كشك جديد",
