@@ -134,16 +134,24 @@ export interface ICourseSummary extends ICourse {
   weekCount: number;
   lessonCount: number;
   resourceCount: number;
-  muderris: IMuderris[];
+  muderris: (IMuderris & { isImam: boolean })[];
   enrollment: IEnrollment | null;
+  /** The medrese the course is opened by, or null (MDRS-159). */
+  madrasah: { id: string; name: string } | null;
+  /** The earliest standing session still ahead, or null (MDRS-159). */
+  nextSessionAt: Date | null;
 }
 
 export interface IEnrolledCourse extends ICourse {
   koskName: string;
+  /** The medrese that opened the course, or null (MDRS-159). */
+  madrasahName: string | null;
   weekCount: number;
   lessonCount: number;
-  muderris: IMuderris[];
-  enrollment: IEnrollment;
+  muderris: (IMuderris & { isImam: boolean })[];
+  /** The next standing session, or null when none is scheduled ahead. */
+  nextSession: { at: Date; weekNumber: number } | null;
+  enrollment: IEnrollment & { completedAt: Date | null };
 }
 
 export interface IEnrollment {
@@ -348,7 +356,10 @@ export interface ICourseRepository {
     id: string,
     userId: string | null
   ): Promise<ICourseDetail | null>;
-  findEnrolledByUser(userId: string): Promise<IEnrolledCourse[]>;
+  findEnrolledByUser(
+    userId: string,
+    includePending?: boolean
+  ): Promise<IEnrolledCourse[]>;
   create(course: ICreateCourse): Promise<ICourseDetail>;
   findKoskId(id: string): Promise<string | null>;
   /** The user holding the course's imam grant, or null (MDRS-133). */

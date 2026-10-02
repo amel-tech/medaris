@@ -5,6 +5,7 @@ import {
   index,
   pgEnum,
   pgTable as table,
+  text,
   timestamp,
   uniqueIndex,
   uuid,
@@ -156,6 +157,10 @@ export const madrasahKoskHosting = table(
       .references(() => kosks.id, { onDelete: "cascade" })
       .notNull(),
     grantedBy: uuid("granted_by").notNull(),
+    // How the granter was entitled to grant — `SYSTEM_ADMIN` (a realm role,
+    // stored nowhere else) or `KOSK_NAZIM` — so nizam/26's "Veren" column can
+    // name the role without guessing. Null on rows older than MDRS-170.
+    grantedByRole: text("granted_by_role"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

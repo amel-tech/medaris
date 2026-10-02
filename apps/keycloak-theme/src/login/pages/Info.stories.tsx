@@ -40,7 +40,11 @@ export const EmailVerified: Story = {
       kcContext={{
         locale: { currentLanguageTag: "tr" },
         messageHeader: undefined,
-        message: { type: "success", summary: "E-posta adresiniz doğrulandı." },
+        message: {
+          type: "success",
+          summary:
+            "Hesabın etkinleşti. Köşkleri keşfedip derslere başvurabilirsin.",
+        },
         pageRedirectUri: "https://tedris.example.org/start",
       }}
     />
@@ -58,6 +62,23 @@ export const WithRequiredActions: Story = {
         },
         requiredActions: ["VERIFY_EMAIL", "UPDATE_PASSWORD"],
         actionUri: "#",
+      }}
+    />
+  ),
+};
+
+/** Canvas medaris/17: a header Keycloak sends of its own, over one sentence. */
+export const EmailChanged: Story = {
+  render: () => (
+    <KcPageStory
+      kcContext={{
+        locale: { currentLanguageTag: "tr" },
+        messageHeader: "E-posta adresin değişti",
+        message: {
+          type: "success",
+          summary: "Yeni adresin hesabına kaydedildi.",
+        },
+        pageRedirectUri: "https://tedris.example.org/start",
       }}
     />
   ),

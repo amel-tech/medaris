@@ -1,26 +1,31 @@
-import { Button } from "@medaris/ui/components/button";
-import { Checkbox } from "@medaris/ui/components/checkbox";
-import { Input } from "@medaris/ui/components/input";
-import { Label } from "@medaris/ui/components/label";
-import { cn } from "@medaris/ui/lib/utils";
-import { kcSanitize } from "keycloakify/lib/kcSanitize";
-import { getKcClsx } from "keycloakify/login/lib/kcClsx";
-import { FieldContainer } from "../components/FieldContainer";
-import { PasswordWrapper } from "../components/PasswordWrapper";
-import {
-  fieldDir,
-  fieldErrorClassName,
-  primaryButtonClassName,
-  secondaryButtonClassName,
-} from "../components/styles";
+import { UpdatePasswordForm } from "@medaris/ui/giris";
+import { Html } from "../components/Html";
 import type { I18n } from "../i18n";
 import type { KcContext } from "../KcContext";
 import type { ExtendedPageProps } from "../types/PageProps";
 
+/** Stands in for the account while the message is cut around it. */
+const ACCOUNT_SLOT = "\u0001";
+
+/** "{0} hesabın için yeni bir şifre seç.": the account is set in mono, whatever order the language puts it in. */
+function AccountSentence(props: { template: string; account: string }) {
+  const [before = "", after = ""] = props.template.split(ACCOUNT_SLOT);
+  return (
+    <>
+      {before}
+      <bdi className="mds-mono" dir="ltr">
+        {props.account}
+      </bdi>
+      {after}
+    </>
+  );
+}
+
 /**
- * `login-update-password.ftl` — second half of password reset (the page the
- * e-mailed link opens), and the "Update Password" required action.
- * Placeholder layout until MDRS-127's design.
+ * `login-update-password.ftl` (canvas medaris/07): the second half of password
+ * reset, the page the e-mailed link opens, and the "Update Password" required
+ * action. Keycloak's template prints the account's user name here although
+ * keycloakify's types do not declare it.
  */
 export default function LoginUpdatePassword(
   props: ExtendedPageProps<
@@ -28,15 +33,27 @@ export default function LoginUpdatePassword(
     I18n
   >
 ) {
-  const { kcContext, i18n, doUseDefaultCss, Template, classes } = props;
-
-  const { kcClsx } = getKcClsx({ doUseDefaultCss, classes });
+  const { kcContext, i18n, Template, classes } = props;
 
   const { msg, msgStr } = i18n;
 
-  const { url, messagesPerField, isAppInitiatedAction } = kcContext;
+  const { url, messagesPerField, isAppInitiatedAction, auth } = kcContext;
 
-  const hasError = messagesPerField.existsError("password", "password-confirm");
+  const account =
+    (kcContext as { username?: string }).username ?? auth?.attemptedUsername;
+
+  // Keycloak sends only the user name here. The e-mail rule compares against an
+  // address the page really has: an `email` Keycloak did send, or a user name
+  // that is itself an address; otherwise the server enforces `notEmail`.
+  const knownEmail =
+    (kcContext as { user?: { email?: string } }).user?.email ??
+    (kcContext as { email?: string }).email ??
+    (account?.includes("@") ? account : undefined);
+
+  const fieldError = (name: string) =>
+    messagesPerField.existsError(name) ? (
+      <Html html={messagesPerField.get(name)} />
+    ) : undefined;
 
   return (
     <Template
@@ -44,83 +61,64 @@ export default function LoginUpdatePassword(
       i18n={i18n}
       doUseDefaultCss={false}
       classes={classes}
-      displayMessage={!hasError}
+      displayMessage={
+        !messagesPerField.existsError("password", "password-confirm")
+      }
       headerNode={msg("updatePasswordTitle")}
     >
-      <form
-        id="kc-passwd-update-form"
-        action={url.loginAction}
-        method="post"
-        className="flex flex-col gap-5"
-      >
-        {(
-          [
-            ["password-new", "passwordNew", "password"],
-            ["password-confirm", "passwordConfirm", "password-confirm"],
-          ] as const
-        ).map(([inputId, labelKey, errorField]) => (
-          <FieldContainer key={inputId} className="max-w-none">
-            <Label htmlFor={inputId} className="text-gray-600">
-              {msg(labelKey)}
-            </Label>
-            <PasswordWrapper
-              kcClsx={kcClsx}
-              i18n={i18n}
-              passwordInputId={inputId}
-            >
-              <Input
-                type="password"
-                id={inputId}
-                name={inputId}
-                dir={fieldDir(inputId)}
-                autoFocus={inputId === "password-new"}
-                autoComplete="new-password"
-                aria-invalid={hasError}
-                className={cn("w-full pr-10", hasError && fieldErrorClassName)}
-              />
-            </PasswordWrapper>
-            {messagesPerField.existsError(errorField) && (
-              <span
-                id={`input-error-${errorField}`}
-                className="text-error-secondary"
-                aria-live="polite"
-                dangerouslySetInnerHTML={{
-                  __html: kcSanitize(messagesPerField.get(errorField)),
-                }}
-              />
-            )}
-          </FieldContainer>
-        ))}
-        <div className="flex flex-row items-center gap-2">
-          {/* Checked by default, as in Keycloak's own page: after a reset
-              the old sessions — possibly someone else's — should end. */}
-          <Checkbox
-            id="logout-sessions"
-            name="logout-sessions"
-            value="on"
-            defaultChecked
+      <p className="mds-body">
+        {account ? (
+          <AccountSentence
+            template={msgStr("updatePasswordForAccount", ACCOUNT_SLOT)}
+            account={account}
           />
-          <Label htmlFor="logout-sessions" className="text-sm">
-            {msg("logoutOtherSessions")}
-          </Label>
-        </div>
-        <div id="kc-form-buttons" className="flex flex-col gap-3">
-          <Button type="submit" className={primaryButtonClassName}>
-            {msgStr("doSubmit")}
-          </Button>
-          {isAppInitiatedAction && (
-            <Button
-              type="submit"
-              name="cancel-aia"
-              value="true"
-              variant="outline"
-              className={secondaryButtonClassName}
-            >
-              {msg("doCancel")}
-            </Button>
-          )}
-        </div>
-      </form>
+        ) : (
+          msg("updatePasswordForYou")
+        )}
+      </p>
+      <UpdatePasswordForm
+        action={url.loginAction}
+        requiredNote={msg("requiredFields")}
+        password={{
+          name: "password-new",
+          label: msg("passwordNew"),
+          showLabel: msgStr("showPassword"),
+          error: fieldError("password"),
+        }}
+        passwordConfirm={{
+          name: "password-confirm",
+          label: msg("passwordNewConfirm"),
+          showLabel: msgStr("showPasswordConfirm"),
+          error: fieldError("password-confirm"),
+        }}
+        email={knownEmail}
+        username={account}
+        ruleLabels={{
+          length: msg("passwordRuleLength", "10"),
+          notEmail: msg("passwordRuleNotEmail"),
+          notUsername: msg("passwordRuleNotUsername"),
+          met: msgStr("passwordRuleMet"),
+        }}
+        errors={{
+          required: msg("error-user-attribute-required"),
+          passwordTooShort: msg("passwordTooShort", "10"),
+          passwordRules: msg("passwordRulesUnmet"),
+          passwordMismatch: msg("passwordMismatch"),
+        }}
+        signOutOthers={{
+          name: "logout-sessions",
+          value: "on",
+          label: msg("logoutOtherSessions"),
+          description: msg("logoutOtherSessionsHelp"),
+        }}
+        submitLabel={msg("updatePasswordSubmit")}
+        submittingLabel={msgStr("formSubmitting")}
+        cancel={
+          isAppInitiatedAction
+            ? { name: "cancel-aia", value: "true", label: msg("doCancel") }
+            : undefined
+        }
+      />
     </Template>
   );
 }

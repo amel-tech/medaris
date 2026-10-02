@@ -715,5 +715,653 @@
     "lifted": "Ban lifted",
     "liftedBody": "{name} can apply again.",
     "failed": "The ban could not be lifted"
+  },
+  "Shell": {
+    "appName": "Nizam",
+    "menu": "Menu",
+    "nav": "Main menu",
+    "close": "Close",
+    "switchKosk": "Switch kiosk:",
+    "userLink": "Account",
+    "bell": "Notifications",
+    "groups": {
+      "general": "General",
+      "platform": "Platform",
+      "requests": "Requests",
+      "audit": "Audit",
+      "settings": "Settings",
+      "kosk": "Kiosk",
+      "manage": "Management"
+    },
+    "items": {
+      "home": "Home",
+      "notifications": "Notifications",
+      "madrasahs": "Madrasahs",
+      "kosks": "Kiosks",
+      "nazims": "Medaris nazims",
+      "grants": "Permission groups",
+      "inactive": "Inactive scopes",
+      "koskApplications": "Kiosk applications",
+      "deckRequests": "Deck publish requests",
+      "appeals": "Appeals",
+      "permanentBans": "Permanent ban requests",
+      "bans": "Bans",
+      "auditLog": "Audit log",
+      "archive": "Archive",
+      "youtube": "YouTube connection",
+      "platformSettings": "Platform settings",
+      "courses": "Courses",
+      "sessions": "Sessions",
+      "students": "Students",
+      "applications": "Applications",
+      "courseRequests": "Course requests",
+      "enrollments": "Session recordings",
+      "decks": "Kiosk decks",
+      "permissions": "Permissions",
+      "koskSettings": "Kiosk settings"
+    },
+    "countLabels": {
+      "unread": "unread",
+      "pending": "pending"
+    },
+    "roles": {
+      "chief": "Medaris chief nazim",
+      "medaris": "Medaris nazim",
+      "kosk": "Kiosk nazim",
+      "student": "Student",
+      "MEDRESE_BASMUDERRIS": "Madrasah head teacher",
+      "MEDRESE_NAZIR": "Madrasah nazir",
+      "MUDERRIS": "Teacher",
+      "DERS_NAZIR": "Course nazir"
+    }
+  },
+  "NoRole": {
+    "title": "You have no management role",
+    "body": "Nizam is the app for those who manage Medaris and its kiosks. No management role has been given to this account.",
+    "account": "Signed in as:",
+    "back": "Back to Tedris",
+    "errorTitle": "Your roles could not be read",
+    "errorBody": "Your account's roles could not be read right now. Try again shortly.",
+    "retry": "Try again"
+  },
+  "ApplicationsPage": {
+    "title": "Applications",
+    "intro": "Enrollment applications waiting for approval in this kiosk's courses. A student you approve is enrolled; a student you reject may apply again.",
+    "heading": "Applications awaiting approval",
+    "courseFilterLabel": "Course filter",
+    "allCourses": "Course: all",
+    "courseOption": "Course: {course}",
+    "searchLabel": "Search applications",
+    "searchPlaceholder": "Search by student name or e-mail",
+    "count": "{count, plural, one {# application is waiting} other {# applications are waiting}}",
+    "caption": "Applications awaiting approval in {kosk} courses",
+    "columns": {
+      "student": "Student",
+      "course": "Course",
+      "date": "Applied",
+      "actions": "Actions",
+      "email": "E-mail"
+    },
+    "unnamed": "Unnamed student",
+    "approve": "Approve",
+    "reject": "Reject",
+    "approveLabel": "Approve: {name}, {course}",
+    "rejectLabel": "Reject: {name}, {course}",
+    "approved": "Application approved",
+    "approvedBody": "{name} is enrolled in {course}.",
+    "rejected": "Application rejected",
+    "rejectedBody": "{name} may apply to {course} again.",
+    "actionFailed": "The action failed",
+    "errorForbidden": "You may not decide this application.",
+    "errorGone": "This application is no longer pending; the list was refreshed.",
+    "errorUnknown": "The application could not be processed. Try again shortly.",
+    "empty": "No pending applications",
+    "emptyFiltered": "No application matches this filter",
+    "loadFailedTitle": "Applications could not be loaded",
+    "loadFailed": "The list of applications could not be read right now.",
+    "retry": "Try again",
+    "today": "Today {time}",
+    "yesterday": "Yesterday {time}"
+  },
+  "StudentsPage": {
+    "title": "Students",
+    "subtitle": "Decide on applications to {course} and follow the enrolled students' progress.",
+    "back": "Back to the course",
+    "tabsLabel": "Student status",
+    "tabs": {
+      "applications": "Applications",
+      "enrolled": "Enrolled",
+      "completed": "Completed"
+    },
+    "applicationsNote": "This course needs your approval to enroll. A student you approve gets the sessions and recordings at once; a student you reject may apply again.",
+    "applicationsNoteOpen": "This course does not ask for approval; students enroll as soon as they apply.",
+    "caption": "Applications awaiting approval in {course}",
+    "unavailable": "This course's enrollments could not be read right now.",
+    "emptyCompleted": "No student has completed the course",
+    "emptyEnrolled": "No enrolled students",
+    "emptyApplications": "No pending applications"
+  },
+  "SignOutPage": {
+    "title": "Sign out?",
+    "body": "You will be signed out of Medaris in this browser.",
+    "confirm": "Sign out",
+    "cancel": "Cancel",
+    "busy": "Signing out",
+    "failed": "Could not sign out. Try again."
+  },
+  "MadrasahsPage": {
+    "title": "Medreses",
+    "intro": "A medrese opens together with its head müderris. The head müderris runs the medrese from the Nazır app.",
+    "open": "Open a medrese",
+    "heading": "All medreses",
+    "archive": "Archive",
+    "tabsLabel": "Status filter",
+    "tabs": {
+      "ALL": "All",
+      "ACTIVE": "Active",
+      "PASSIVE": "Passive",
+      "HIDDEN": "Hidden"
+    },
+    "searchLabel": "Search medreses",
+    "searchPlaceholder": "Search by medrese or head müderris",
+    "caption": {
+      "ALL": "All medreses",
+      "ACTIVE": "Active medreses",
+      "PASSIVE": "Passive medreses",
+      "HIDDEN": "Hidden medreses"
+    },
+    "columns": {
+      "madrasah": "Medrese",
+      "head": "Head müderris",
+      "courses": "Courses",
+      "hosting": "Hosting right",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "PASSIVE": "Passive",
+      "HIDDEN": "Hidden"
+    },
+    "since": "Since {date}",
+    "termEnded": "Term ended {date}",
+    "unassigned": "Unassigned",
+    "unknownPerson": "Name unknown",
+    "noHosting": "None",
+    "restore": "Restore",
+    "restoreLabel": "Restore: {name}",
+    "assign": "Appoint head müderris",
+    "assignLabel": "Appoint head müderris: {name}",
+    "restored": "Restored",
+    "restoredBody": "{name} is listed again.",
+    "restoreFailed": "Could not restore",
+    "passiveTitleOne": "{name} is passive",
+    "passiveTitleMany": "{count} medreses are passive",
+    "passiveBodyOne": "The head müderris's term ended on {date}. The medrese's page is closed to visitors and its content to enrolled talebe too; it reopens when you appoint a head müderris.",
+    "passiveBodyMany": "{names}. A passive medrese's page is closed to visitors and its content to enrolled talebe too; it reopens when you appoint a head müderris.",
+    "footnote": "A hidden medrese, with its courses, leaves every list talebe and visitors see. It is restored from the Archive or deleted for good.",
+    "emptyAll": "There are no medreses yet.",
+    "emptySearch": "No medrese matches the search.",
+    "emptyStatus": "No medrese has this status.",
+    "showing": "{total} medreses in all, showing {shown}",
+    "loadFailedTitle": "Medreses could not be loaded",
+    "loadFailed": "The list of medreses cannot be read right now. Try again in a moment.",
+    "retry": "Try again",
+    "errors": {
+      "generic": "Something went wrong. Try again in a moment.",
+      "handleTaken": "This short name is used by another medrese.",
+      "notFound": "This medrese no longer exists.",
+      "notHidden": "This medrese is not hidden.",
+      "forbidden": "You may not do this."
+    }
+  },
+  "HeadPicker": {
+    "label": "Head müderris",
+    "help": "Type the registered account's full e-mail address; every search is written to the audit log.",
+    "placeholder": "first.last@example.com",
+    "notFound": "No account is registered with this e-mail address.",
+    "failed": "The search cannot be made right now. Try again in a moment.",
+    "searching": "Searching",
+    "chosenTitle": "Chosen head müderris",
+    "chosen": "{name} chosen",
+    "remove": "Remove the choice: {name}"
+  },
+  "OpenMadrasahDialog": {
+    "title": "Open a medrese",
+    "intro": "A medrese opens together with its head müderris. To open courses it needs a hosting right in a köşk.",
+    "requiredNote": "required field",
+    "nameLabel": "Name",
+    "nameHelp": "Talebe and visitors see this name.",
+    "handleLabel": "Short name",
+    "handleHelp": "Used in the medrese's address; lower-case letters, digits and hyphens.",
+    "descriptionLabel": "Description",
+    "descriptionHelp": "Shown on the medrese's page.",
+    "chosenNote": "When the medrese opens they become its head müderris and run it from the Nazır app.",
+    "cancel": "Cancel",
+    "submit": "Open a medrese",
+    "close": "Close",
+    "saved": "Medrese opened",
+    "savedBody": "{name} is open; its head müderris is {head}.",
+    "failed": "The medrese could not be opened",
+    "errors": {
+      "nameRequired": "Enter a name.",
+      "nameShort": "The name needs at least 2 letters.",
+      "handleInvalid": "The short name may hold only lower-case letters, digits and hyphens, 2 to 60 characters, and may not start or end with a hyphen.",
+      "handleTaken": "@{handle} is used by another medrese."
+    }
+  },
+  "AssignHeadDialog": {
+    "title": "Appoint a head müderris",
+    "intro": "Choose a head müderris for {name}. When you appoint one the medrese reopens and they run it from the Nazır app.",
+    "chosenNote": "They become the head müderris; a passive medrese becomes active again.",
+    "cancel": "Cancel",
+    "submit": "Appoint head müderris",
+    "close": "Close",
+    "saved": "Head müderris appointed",
+    "savedBody": "{head} is now the head müderris of {name}.",
+    "failed": "The head müderris could not be appointed"
+  },
+  "HostingPage": {
+    "title": "Hosting rights",
+    "settings": "Köşk settings",
+    "breadcrumbLabel": "Page path",
+    "intro": "The medreses that hold a hosting right in this köşk. The right gives a medrese no authority over the köşk.",
+    "grant": "Give a hosting right",
+    "tabsLabel": "Köşk settings sections",
+    "tabs": {
+      "general": "General",
+      "nazims": "Köşk nazıms",
+      "hosting": "Hosting rights"
+    },
+    "caption": "Hosting rights of {kosk}",
+    "unknownKosk": "This köşk",
+    "unknownKoskLocative": "this köşk",
+    "columns": {
+      "madrasah": "Medrese",
+      "grantedBy": "Given by",
+      "grantedAt": "Date",
+      "openCourses": "Open courses",
+      "actions": "Actions"
+    },
+    "head": "Head müderris {name}",
+    "noHead": "No head müderris",
+    "unknownPerson": "Name unknown",
+    "roles": {
+      "SYSTEM_ADMIN": "Medaris chief nazım",
+      "KOSK_NAZIM": "Köşk nazım"
+    },
+    "published": "{count} live",
+    "draft": "{count} draft",
+    "revoke": "Withdraw the hosting right",
+    "revokeLabel": "Withdraw the hosting right: {name}",
+    "footnote": "Once the right is withdrawn the medrese cannot open new courses in this köşk. Its open courses do not close; you choose what becomes of them.",
+    "empty": "No hosting right yet",
+    "loadFailedTitle": "Hosting rights could not be loaded",
+    "loadFailed": "The hosting rights cannot be read right now. Try again in a moment.",
+    "retry": "Try again",
+    "errors": {
+      "generic": "Something went wrong. Try again in a moment.",
+      "notHeld": "This medrese holds no hosting right in this köşk.",
+      "madrasahGone": "This medrese no longer exists or is hidden.",
+      "koskGone": "This köşk no longer exists.",
+      "forbidden": "You may not do this."
+    }
+  },
+  "GrantDialog": {
+    "title": "Give a hosting right",
+    "intro": "The medrese you choose can open courses in this köşk. The right gives it no authority over the köşk.",
+    "madrasahLabel": "Medrese",
+    "placeholder": "Choose a medrese",
+    "none": "There is no other medrese to give a right to.",
+    "loadFailedTitle": "Medreses could not be loaded",
+    "loadFailed": "The list of medreses cannot be read right now. Try again in a moment.",
+    "cancel": "Cancel",
+    "submit": "Give a hosting right",
+    "close": "Close",
+    "granted": "Hosting right given",
+    "grantedBody": "{name} can open courses in this köşk.",
+    "failed": "The hosting right could not be given"
+  },
+  "RevokeDialog": {
+    "title": "Withdraw the hosting right",
+    "intro": "<b>{name}</b> will not be able to open new courses in this köşk. {count, plural, =0 {The medrese has no open course in this köşk.} one {The medrese's open course in this köşk does not close; choose what becomes of it.} other {The medrese's {count} open courses in this köşk do not close; choose what becomes of them.}}",
+    "coursesLegend": "Open courses",
+    "keep": "Let the courses go on",
+    "keepDesc": "{count, plural, one {The course goes on in this köşk; talebe see no change. The medrese keeps running it.} other {All {count} courses go on in this köşk; talebe see no change. The medrese keeps running them.}}",
+    "hide": "Hide the courses",
+    "hideDesc": "{count, plural, one {The course leaves the lists;} other {All {count} courses leave the lists;}} {students, plural, =0 {} other {{students} talebe cannot reach the sessions and recordings. }}Nothing is deleted; you can restore them from the Archive.",
+    "courseStatus": {
+      "PUBLISHED": "Live",
+      "DRAFT": "Draft"
+    },
+    "students": "{count} talebe",
+    "noStudents": "No talebe yet",
+    "imam": "{name}, imam",
+    "noOpenCourses": "Nothing to choose: once the right is withdrawn the medrese cannot open new courses in this köşk.",
+    "auditNote": "Your choice is written to the audit log.",
+    "cancel": "Cancel",
+    "submit": "Withdraw the hosting right",
+    "close": "Close",
+    "revoked": "Hosting right withdrawn",
+    "revokedBody": "{name} cannot open new courses in this köşk.",
+    "failed": "Could not withdraw it"
+  },
+  "PermissionCatalog": {
+    "sections": {
+      "kosks": "Köşks",
+      "madrasahs": "Medreses",
+      "requests": "Requests and decks",
+      "bans": "Bans and devices",
+      "audit": "Audit and settings",
+      "course": "Course permissions"
+    },
+    "bansNote": "A device restriction set together with a ban lifts by itself when the ban is lifted; it has no permission of its own.",
+    "permissions": {
+      "platform_kosk_create": {
+        "title": "Open a köşk and choose its köşk nazım",
+        "short": "Open a köşk",
+        "help": "A köşk is opened together with at least one köşk nazım."
+      },
+      "platform_kosk_nazim_manage": {
+        "title": "Add or remove a köşk nazım",
+        "short": "Add or remove a köşk nazım",
+        "help": "If the last köşk nazım is removed with no successor, the köşk becomes inactive."
+      },
+      "platform_kosk_edit": {
+        "title": "Edit, hide or restore a köşk",
+        "short": "Edit a köşk",
+        "help": "A hidden köşk is restored from the Archive."
+      },
+      "platform_hosting_grant": {
+        "title": "Give or withdraw a hosting right",
+        "short": "Give a hosting right",
+        "help": "A medrese opens courses in the köşk that gave it the right."
+      },
+      "platform_madrasah_create": {
+        "title": "Open a medrese and choose its head müderris",
+        "short": "Open a medrese"
+      },
+      "platform_head_muderris_manage": {
+        "title": "Add or remove a head müderris",
+        "short": "Add or remove a head müderris",
+        "help": "If the last head müderris is removed with no successor, the medrese becomes inactive."
+      },
+      "platform_madrasah_edit": {
+        "title": "Edit, hide or restore a medrese",
+        "short": "Edit a medrese",
+        "help": "A hidden medrese goes to the Archive with its courses."
+      },
+      "platform_madrasah_nazir_grant": {
+        "title": "Give permissions to a medrese nazır",
+        "short": "Give permissions to a medrese nazır",
+        "help": "Gives a medrese nazır permissions, limited to the giver's own."
+      },
+      "platform_kosk_application_decide": {
+        "title": "Decide köşk applications",
+        "short": "Decide köşk applications"
+      },
+      "platform_deck_publish": {
+        "title": "Publish a deck to everyone",
+        "short": "Publish a deck to everyone",
+        "help": "Accepts or rejects the owner's publish request."
+      },
+      "platform_appeal_decide": {
+        "title": "Decide an appeal",
+        "short": "Decide an appeal",
+        "help": "Decides a medrese's appeal against a köşk's decision."
+      },
+      "platform_ban_scoped": {
+        "title": "Ban and lift bans at köşk or medrese level",
+        "short": "Ban at köşk or medrese level",
+        "help": "A reason is always required."
+      },
+      "platform_ban_account": {
+        "title": "Ban from the platform and lift the ban",
+        "short": "Ban from the platform",
+        "help": "The account is closed; includes deciding a permanent ban request. A reason is always required."
+      },
+      "platform_audit_read": {
+        "title": "Read the audit log",
+        "short": "Read the audit log",
+        "help": "Content reads, permissions, searches and deletions."
+      },
+      "platform_inactive_scopes_manage": {
+        "title": "Manage inactive scopes",
+        "short": "Manage inactive scopes",
+        "help": "Sees the list, opens the content, appoints a manager."
+      },
+      "platform_youtube_manage": {
+        "title": "Manage the YouTube connection",
+        "short": "Manage the YouTube connection",
+        "help": "The link to the Google account of the Medaris channel."
+      },
+      "platform_policy_edit": {
+        "title": "Change platform policies",
+        "short": "Change platform policies",
+        "help": "Narrows the registration and course enrolment policies platform-wide."
+      }
+    },
+    "course": {
+      "course_edit": "Edit the course: title, introduction, syllabus, time zone",
+      "session_manage": "Add a session, change its date, cancel it; enter the meeting link",
+      "session_live_link": "Add the live-stream link to a session",
+      "week_hide": "Hide a week or a session, bring it back",
+      "course_settings": "Change the course settings and the closed-course flag",
+      "course_publish": "Publish the course or return it to draft",
+      "course_view_unpublished": "See a draft or hidden course",
+      "enrollment_decide": "Approve or reject an application",
+      "enrollment_remove": "Remove a talebe from the course, with a reason",
+      "enrollment_complete": "Mark a talebe as having completed the course",
+      "recording_manage": "Add, rename and hide a recording; change its visibility",
+      "recording_upload": "Upload a recording",
+      "recording_watch_restricted": "Watch recordings open to enrolled talebe only",
+      "session_view_content": "See the content and meeting links of a session",
+      "ban_course": "Ban a talebe from the course (includes seeing the course's ban list)",
+      "ban_lift_course": "Lift a course ban, with a reason",
+      "deck_manage_course": "Create and edit the course's deck",
+      "course_nazir_assign": "Appoint a course nazır; grant a permission or a group, within your own permissions"
+    }
+  },
+  "NazimsPage": {
+    "title": "Medaris nazims",
+    "intro": "A Medaris nazim works only with the permissions you give and sees only those sections in Nizam. A permission that runs out drops by itself.",
+    "appoint": "Appoint a Medaris nazim",
+    "heading": "In office",
+    "count": "{count, plural, one {# person} other {# people}}",
+    "caption": "Medaris nazims in office",
+    "empty": "No Medaris nazim is in office yet.",
+    "columns": {
+      "person": "Medaris nazim",
+      "grants": "Permissions and groups",
+      "end": "Ends",
+      "giver": "Given by",
+      "actions": "Actions"
+    },
+    "unknownPerson": "Name unknown",
+    "noGrants": "No permissions given",
+    "groupSuffix": "group",
+    "everyCourse": "every course",
+    "andPermissions": "and {list}",
+    "never": "No end",
+    "endsToday": "Ends today",
+    "daysLeft": "{count, plural, one {# day left} other {# days left}}",
+    "edit": "Edit permissions",
+    "editLabel": "Edit permissions: {name}",
+    "dismiss": "Dismiss",
+    "dismissLabel": "Dismiss: {name}",
+    "loadFailedTitle": "The Medaris nazims could not be loaded",
+    "loadFailed": "The Medaris nazims cannot be read right now. Try again in a moment.",
+    "retry": "Try again"
+  },
+  "PermissionsPage": {
+    "errors": {
+      "generic": "Something went wrong. Try again in a moment.",
+      "nameTaken": "A group with this name already exists.",
+      "groupNotFound": "This group no longer exists.",
+      "groupEmpty": "A group holds at least one permission.",
+      "scopeInvalid": "This scope is not valid for this group.",
+      "nazimNotFound": "This person is no longer a Medaris nazim.",
+      "alreadyAppointed": "This person is already a Medaris nazim.",
+      "expiryInvalid": "The end date is in the past or after the end of the appointment.",
+      "dismissChanged": "What this person handed on has changed; read the list again and make the choices again.",
+      "usersPolicy": "Choose what becomes of the permissions of the people who hold the group.",
+      "forbidden": "You are not allowed to do this."
+    }
+  },
+  "NazimPicker": {
+    "label": "Medaris nazim",
+    "help": "Type the registered account's full e-mail address; every search is written to the audit log.",
+    "placeholder": "first.last@example.com",
+    "notFound": "No account is registered with this e-mail address.",
+    "failed": "The search cannot be done right now. Try again in a moment.",
+    "searching": "Searching",
+    "chosenTitle": "Chosen person",
+    "chosen": "{name} chosen",
+    "remove": "Remove the choice: {name}"
+  },
+  "PermissionsDialog": {
+    "eyebrow": "Platform",
+    "titleEdit": "Edit permissions",
+    "titleAppoint": "Appoint a Medaris nazim",
+    "close": "Close",
+    "cancel": "Cancel",
+    "save": "Save",
+    "unknownPerson": "Name unknown",
+    "cardLine": "Medaris nazim · Given by: {by} · {date}",
+    "groupLabel": "Ready-made permission group",
+    "groupHelp": "The group's permissions come ticked and cannot be removed one by one; you can tick extra permissions on top of the group.",
+    "noGroup": "No group",
+    "editGroups": "Edit permission groups",
+    "courseGroupNote": "{groups} was given to this person separately; course permissions are not shown in this window.",
+    "groupEveryCourse": "The {name} group (every course)",
+    "groupOneCourse": "The {name} group ({course})",
+    "permissionsHeading": "Permissions",
+    "fromGroup": "Comes from the group.",
+    "grantedAt": "Given at: {moment}.",
+    "endLabel": "End date (optional)",
+    "endHelpAssignment": "Because your appointment ends on {date}, the permission ends on that day at the latest.",
+    "endHelpNone": "Left empty, it has no end.",
+    "endPast": "The end date must be after today.",
+    "endAfterAssignment": "The end date cannot be after the end of the appointment ({date}).",
+    "auditNote": "They cannot give on a permission they were given. Every permission given and taken back is written to the audit log.",
+    "summaryGroup": "{fromGroup} permissions from the group and {extra} extra",
+    "summaryPlain": "{extra, plural, one {# permission} other {# permissions}}",
+    "failed": "The permissions could not be saved",
+    "appointFailed": "The Medaris nazim could not be appointed",
+    "saved": "Permissions saved",
+    "savedBody": "The permissions of {name} are updated.",
+    "appointed": "Medaris nazim appointed",
+    "appointedBody": "{name} is now a Medaris nazim."
+  },
+  "DismissDialog": {
+    "title": "Dismiss",
+    "intro": "{name} will be dismissed from the Medaris nazim role and the platform permissions will be taken away.",
+    "question": "{count, plural, one {This person gave one permission or role to others.} other {This person gave # permissions or roles to others.}} Choose what happens to each.",
+    "answersNote": "Take over: the permission stays and you become the giver. Drop: the permission is taken back.",
+    "takeOver": "Take over",
+    "drop": "Drop",
+    "answerLegend": "{what}, {person}",
+    "itemLine": "{person}",
+    "itemLineScoped": "{person} · {scope}",
+    "nothingHandedOn": "This person has given no permission or role to others.",
+    "submit": "Dismiss",
+    "cancel": "Cancel",
+    "close": "Close",
+    "auditNote": "The dismissal is written to the audit log.",
+    "failed": "The dismissal failed",
+    "dismissed": "Dismissed",
+    "dismissedBody": "{name} is no longer a Medaris nazim.",
+    "loadFailedTitle": "The list could not be read",
+    "loadFailed": "What this person gave cannot be read right now. Try again in a moment.",
+    "retry": "Try again"
+  },
+  "UsersPolicyDialog": {
+    "titleUsers": "{count, plural, one {# person uses this group} other {# people use this group}}",
+    "titleDelete": "Delete {name}?",
+    "legendSave": "The group's permissions are changing; what becomes of the permissions of the {count, plural, one {# person} other {# people}} who use it?",
+    "legendDelete": "The group is being deleted; what becomes of the permissions of the {count, plural, one {# person} other {# people}} who use it?",
+    "keep": "Keep their permissions",
+    "keepDescSave": "They keep the group's current permissions as single permissions; the new ones do not pass to them.",
+    "keepDescDelete": "They keep the group's permissions as single permissions.",
+    "revoke": "Take their permissions away",
+    "revokeDescSave": "They lose the permissions that came from this group.",
+    "revokeDescDelete": "They lose the permissions that came from this group.",
+    "noUsers": "Nobody uses this group. A deleted group leaves the list and cannot be brought back.",
+    "confirmSave": "Save",
+    "confirmDelete": "Delete the group",
+    "cancel": "Cancel",
+    "close": "Close"
+  },
+  "GroupsPage": {
+    "title": "Permission groups",
+    "intro": "Gather permissions that are often given together into a group and give them to a person at once. A group you define on the platform can be chosen on the platform and in the scopes under it.",
+    "create": "Create a group",
+    "listLabel": "Groups",
+    "listHeading": "Groups",
+    "listEmpty": "No group yet.",
+    "itemLine": "{scope} · {count, plural, one {# permission} other {# permissions}}",
+    "usedBy": "{count, plural, one {# person uses it} other {# people use it}}",
+    "scope": {
+      "PLATFORM": {
+        "label": "Platform",
+        "help": "Opening köşks and medreses, requests, bans, audit.",
+        "chip": "Platform",
+        "short": "Platform"
+      },
+      "ALL_COURSES": {
+        "label": "Every course",
+        "help": "Course work, in all courses.",
+        "chip": "Every course",
+        "short": "Every course"
+      },
+      "COURSE": {
+        "label": "One course",
+        "help": "Course work, in the one course you choose.",
+        "chip": "One course",
+        "short": "One course"
+      }
+    },
+    "scopeHelp": "The scope decides which permissions can go into the group.",
+    "courseOf": "Course: {course}",
+    "missingTitle": "This group does not exist",
+    "missing": "The group you are looking for was deleted or never existed. Choose one from the list on the left.",
+    "newTitle": "New group",
+    "requiredNote": "* required field",
+    "nameLabel": "Group name",
+    "nameHelp": "You see this name when you give permissions.",
+    "scopeLabel": "Scope",
+    "permissionsHeading": "Permissions",
+    "errors": {
+      "nameRequired": "Write a group name.",
+      "nameTooLong": "A group name has at most {max} characters.",
+      "nameTaken": "A group with this name exists.",
+      "noPermission": "Choose at least one permission."
+    },
+    "usersHeading": "Used by",
+    "usersCount": "{count, plural, one {# person} other {# people}}",
+    "usersNone": "Nobody uses this group.",
+    "usersFailedTitle": "The users could not be read",
+    "usersFailed": "The people who use the group cannot be read right now.",
+    "unknownPerson": "Name unknown",
+    "userLineEnds": "Medaris nazim · ends {date}",
+    "userLineNever": "Medaris nazim · no end",
+    "editUser": "Edit their permissions",
+    "editUserLabel": "Edit their permissions: {name}",
+    "usersNote": "When you save or delete, you choose what becomes of the permissions of the people who use the group. Every change is written to the audit log.",
+    "delete": "Delete the group",
+    "deleteLabel": "Delete the group: {name}",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saved": "Group saved",
+    "savedBody": "{name} is updated.",
+    "created": "Group created",
+    "createdBody": "{name} is created.",
+    "deleted": "Group deleted",
+    "deletedBody": "{name} is deleted.",
+    "saveFailed": "The group could not be saved",
+    "deleteFailed": "The group could not be deleted",
+    "loadFailedTitle": "The permission groups could not be loaded",
+    "loadFailed": "The permission groups cannot be read right now. Try again in a moment.",
+    "retry": "Try again"
   }
 }

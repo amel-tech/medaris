@@ -17,9 +17,14 @@ import * as runtime from '../runtime';
 import type {
   CreateMadrasahDto,
   MadrasahBadgeCountsResponse,
+  MadrasahDirectoryItemResponse,
+  MadrasahDirectoryResponse,
+  MadrasahExploreResponse,
   MadrasahOverviewResponse,
   MadrasahResponse,
+  MadrasahStatusFilter,
   PaginatedMadrasahResponse,
+  SetHeadMuderrisDto,
   UpdateMadrasahDto,
 } from '../models/index';
 import {
@@ -27,12 +32,22 @@ import {
     CreateMadrasahDtoToJSON,
     MadrasahBadgeCountsResponseFromJSON,
     MadrasahBadgeCountsResponseToJSON,
+    MadrasahDirectoryItemResponseFromJSON,
+    MadrasahDirectoryItemResponseToJSON,
+    MadrasahDirectoryResponseFromJSON,
+    MadrasahDirectoryResponseToJSON,
+    MadrasahExploreResponseFromJSON,
+    MadrasahExploreResponseToJSON,
     MadrasahOverviewResponseFromJSON,
     MadrasahOverviewResponseToJSON,
     MadrasahResponseFromJSON,
     MadrasahResponseToJSON,
+    MadrasahStatusFilterFromJSON,
+    MadrasahStatusFilterToJSON,
     PaginatedMadrasahResponseFromJSON,
     PaginatedMadrasahResponseToJSON,
+    SetHeadMuderrisDtoFromJSON,
+    SetHeadMuderrisDtoToJSON,
     UpdateMadrasahDtoFromJSON,
     UpdateMadrasahDtoToJSON,
 } from '../models/index';
@@ -50,6 +65,13 @@ export interface DeleteMadrasahRequest {
     id: string;
 }
 
+export interface ExploreMadrasahsRequest {
+    q?: string;
+    level?: ExploreMadrasahsLevelEnum;
+    field?: string;
+    madrasahId?: string;
+}
+
 export interface GetAllMadrasahsRequest {
     page?: number;
     limit?: number;
@@ -63,6 +85,13 @@ export interface GetMadrasahByIdRequest {
     id: string;
 }
 
+export interface GetMadrasahDirectoryRequest {
+    status?: MadrasahStatusFilter;
+    page?: number;
+    limit?: number;
+    q?: string;
+}
+
 export interface GetMadrasahOverviewRequest {
     id: string;
 }
@@ -70,6 +99,15 @@ export interface GetMadrasahOverviewRequest {
 export interface RemoveMadrasahNazirRequest {
     id: string;
     userId: string;
+}
+
+export interface RestoreMadrasahRequest {
+    id: string;
+}
+
+export interface SetMadrasahHeadMuderrisRequest {
+    id: string;
+    setHeadMuderrisDto: SetHeadMuderrisDto;
 }
 
 export interface UpdateMadrasahRequest {
@@ -133,7 +171,8 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Create a medrese (SYSTEM_ADMIN only)
+     * The medrese and the başmüderris\'s grant are written together. Without a `handle` one is made from the name.
+     * Open a medrese with its başmüderris (SYSTEM_ADMIN only)
      */
     async createMadrasahRaw(requestParameters: CreateMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahResponse>> {
         if (requestParameters['createMadrasahDto'] == null) {
@@ -169,7 +208,8 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Create a medrese (SYSTEM_ADMIN only)
+     * The medrese and the başmüderris\'s grant are written together. Without a `handle` one is made from the name.
+     * Open a medrese with its başmüderris (SYSTEM_ADMIN only)
      */
     async createMadrasah(requestParameters: CreateMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahResponse> {
         const response = await this.createMadrasahRaw(requestParameters, initOverrides);
@@ -221,6 +261,58 @@ export class MadrasahsApi extends runtime.BaseAPI {
      */
     async deleteMadrasah(requestParameters: DeleteMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
         const response = await this.deleteMadrasahRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Open to callers with no token (MDRS-122). Each medrese with its başmüderris\'s name and its listed courses (published, in a köşk the public list holds), by name. `level` and `field` keep the medreses with a listed course in a köşk of that level or ilim alanı; `q` matches the name, handle or description, or the başmüderris\'s name. Not paginated (MDRS-159).
+     * Get the medreses Keşfet lists
+     */
+    async exploreMadrasahsRaw(requestParameters: ExploreMadrasahsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<MadrasahExploreResponse>>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['q'] != null) {
+            queryParameters['q'] = requestParameters['q'];
+        }
+
+        if (requestParameters['level'] != null) {
+            queryParameters['level'] = requestParameters['level'];
+        }
+
+        if (requestParameters['field'] != null) {
+            queryParameters['field'] = requestParameters['field'];
+        }
+
+        if (requestParameters['madrasahId'] != null) {
+            queryParameters['madrasahId'] = requestParameters['madrasahId'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/explore`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(MadrasahExploreResponseFromJSON));
+    }
+
+    /**
+     * Open to callers with no token (MDRS-122). Each medrese with its başmüderris\'s name and its listed courses (published, in a köşk the public list holds), by name. `level` and `field` keep the medreses with a listed course in a köşk of that level or ilim alanı; `q` matches the name, handle or description, or the başmüderris\'s name. Not paginated (MDRS-159).
+     * Get the medreses Keşfet lists
+     */
+    async exploreMadrasahs(requestParameters: ExploreMadrasahsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<MadrasahExploreResponse>> {
+        const response = await this.exploreMadrasahsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -357,6 +449,58 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
+     * nizam/07: hidden and passive medreses too, each with its başmüderris, course count and hosting köşks, and the per-status counts the tabs show. The open list above leaves hidden medreses out; this one is the başnazım\'s.
+     * Every medrese for the platform\'s table (SYSTEM_ADMIN only)
+     */
+    async getMadrasahDirectoryRaw(requestParameters: GetMadrasahDirectoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahDirectoryResponse>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['q'] != null) {
+            queryParameters['q'] = requestParameters['q'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/directory`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahDirectoryResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/07: hidden and passive medreses too, each with its başmüderris, course count and hosting köşks, and the per-status counts the tabs show. The open list above leaves hidden medreses out; this one is the başnazım\'s.
+     * Every medrese for the platform\'s table (SYSTEM_ADMIN only)
+     */
+    async getMadrasahDirectory(requestParameters: GetMadrasahDirectoryRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahDirectoryResponse> {
+        const response = await this.getMadrasahDirectoryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Open to callers with no token (MDRS-122). The medrese\'s published courses in listed köşks, each with its müderrisler, the caller\'s own enrollment state and the next session (never the meeting link); the köşks those courses are in; and the başmüderris.
      * Get what a medrese\'s page shows
      */
@@ -451,6 +595,104 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
+     * 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.
+     * Bring a hidden medrese back (SYSTEM_ADMIN only)
+     */
+    async restoreMadrasahRaw(requestParameters: RestoreMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahDirectoryItemResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling restoreMadrasah().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/restore`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahDirectoryItemResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.
+     * Bring a hidden medrese back (SYSTEM_ADMIN only)
+     */
+    async restoreMadrasah(requestParameters: RestoreMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahDirectoryItemResponse> {
+        const response = await this.restoreMadrasahRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. Written to the audit log.
+     * Make a user the medrese\'s başmüderris (SYSTEM_ADMIN only)
+     */
+    async setMadrasahHeadMuderrisRaw(requestParameters: SetMadrasahHeadMuderrisRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahDirectoryItemResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling setMadrasahHeadMuderris().'
+            );
+        }
+
+        if (requestParameters['setHeadMuderrisDto'] == null) {
+            throw new runtime.RequiredError(
+                'setHeadMuderrisDto',
+                'Required parameter "setHeadMuderrisDto" was null or undefined when calling setMadrasahHeadMuderris().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/head-muderris`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetHeadMuderrisDtoToJSON(requestParameters['setHeadMuderrisDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahDirectoryItemResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. Written to the audit log.
+     * Make a user the medrese\'s başmüderris (SYSTEM_ADMIN only)
+     */
+    async setMadrasahHeadMuderris(requestParameters: SetMadrasahHeadMuderrisRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahDirectoryItemResponse> {
+        const response = await this.setMadrasahHeadMuderrisRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Update a medrese (its nazırs)
      */
     async updateMadrasahRaw(requestParameters: UpdateMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahResponse>> {
@@ -503,3 +745,14 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
 }
+
+/**
+ * @export
+ */
+export const ExploreMadrasahsLevelEnum = {
+    All: 'ALL',
+    Beginner: 'BEGINNER',
+    Intermediate: 'INTERMEDIATE',
+    Advanced: 'ADVANCED'
+} as const;
+export type ExploreMadrasahsLevelEnum = typeof ExploreMadrasahsLevelEnum[keyof typeof ExploreMadrasahsLevelEnum];

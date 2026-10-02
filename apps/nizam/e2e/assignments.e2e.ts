@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { type NizamFixture, seedMuderris } from "./seed";
+import { seedShell } from "./shell-seed";
 
 /**
  * Designs nizam/04 and nizam/06 against the running app and API, with real
@@ -84,11 +85,18 @@ test("a köşk nazım is not sent to Nazır", async ({ page }) => {
     !(KOSK_NAZIM.email && KOSK_NAZIM.password),
     "no köşk nazım account"
   );
-  await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr");
-  await expect(page).toHaveURL(/\/tr$/);
-  await page.goto("/tr/nazir-yonlendirme");
-  await expect(page).toHaveURL(/\/tr$/);
+  test.skip(!KOSK_NAZIM.sub, "no köşk nazım id");
+  // a köşk the account manages: without one it holds no role to be sent by
+  const managed = await seedShell({ nazim: KOSK_NAZIM.sub as string });
+  try {
+    await signIn(page, KOSK_NAZIM);
+    await page.goto("/tr");
+    await expect(page).toHaveURL(/\/tr$/);
+    await page.goto("/tr/nazir-yonlendirme");
+    await expect(page).toHaveURL(/\/tr$/);
+  } finally {
+    await managed.remove();
+  }
 });
 
 test("a route the account has no page for shows 'Bu bölüm için izniniz yok' inside the shell, with the account e-mail", async ({
@@ -98,18 +106,25 @@ test("a route the account has no page for shows 'Bu bölüm için izniniz yok' i
     !(KOSK_NAZIM.email && KOSK_NAZIM.password),
     "no köşk nazım account"
   );
-  await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/izin-gruplari");
-  await expect(
-    page.getByRole("heading", { name: "Bu bölüm için izniniz yok" })
-  ).toBeVisible();
-  await expect(
-    page.locator("main code").filter({ hasText: KOSK_NAZIM.email as string })
-  ).toBeVisible();
-  // the shell around it is still there
-  await expect(page.locator("[data-sidebar=sidebar]").first()).toBeVisible();
-  await page.getByRole("link", { name: "Ana sayfaya dön" }).click();
-  await expect(page).toHaveURL(/\/tr$/);
+  test.skip(!KOSK_NAZIM.sub, "no köşk nazım id");
+  // a köşk the account manages, so that "Ana sayfaya dön" has a home to go to
+  const managed = await seedShell({ nazim: KOSK_NAZIM.sub as string });
+  try {
+    await signIn(page, KOSK_NAZIM);
+    await page.goto("/tr/izin-gruplari");
+    await expect(
+      page.getByRole("heading", { name: "Bu bölüm için izniniz yok" })
+    ).toBeVisible();
+    await expect(
+      page.locator("main code").filter({ hasText: KOSK_NAZIM.email as string })
+    ).toBeVisible();
+    // the shell around it is still there
+    await expect(page.locator("aside").first()).toBeVisible();
+    await page.getByRole("link", { name: "Ana sayfaya dön" }).click();
+    await expect(page).toHaveURL(/\/tr$/);
+  } finally {
+    await managed.remove();
+  }
 });
 
 test("a köşk id that does not exist shows the same screen", async ({

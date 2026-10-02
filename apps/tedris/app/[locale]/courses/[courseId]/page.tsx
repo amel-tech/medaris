@@ -51,6 +51,7 @@ export default async function Page({ params }: { params: Params }) {
       koskName={kosk?.name ?? null}
       approvalRequired={course.requiresApproval || Boolean(kosk?.isPrivate)}
       signedIn={signedIn}
+      nazirUrl={env.NAZIR_URL || null}
     />
   );
 }

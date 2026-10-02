@@ -10,6 +10,7 @@ import { introMetadata } from "~/features/courses/intro-metadata";
 vi.mock("next-intl", async () => {
   const { resources } = await import("@medaris/i18n");
   return {
+    useLocale: () => "tr",
     useTranslations: (namespace: string) => (key: string) =>
       [...namespace.split("."), ...key.split(".")].reduce<unknown>(
         (node, part) => (node as Record<string, unknown>)?.[part],

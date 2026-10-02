@@ -218,6 +218,27 @@
       "when": 1790914266857,
       "tag": "0030_bans",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790932155082,
+      "tag": "0031_kesfet",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790950266993,
+      "tag": "0032_madrasah_archive_hosting_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790950379254,
+      "tag": "0033_permission_groups_course_wide",
+      "breakpoints": true
     }
   ]
 }

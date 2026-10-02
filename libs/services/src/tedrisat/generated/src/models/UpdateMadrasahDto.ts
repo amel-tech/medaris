@@ -20,7 +20,7 @@ import { mapValues } from '../runtime';
  */
 export interface UpdateMadrasahDto {
     /**
-     * Unique, URL-safe: lower-case letters, digits and inner hyphens, 2–60 characters
+     * Unique, URL-safe: lower-case letters, digits and inner hyphens, 2–60 characters. Left out, it is made from the name (MDRS-170).
      * @type {string}
      * @memberof UpdateMadrasahDto
      */

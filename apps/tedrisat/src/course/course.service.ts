@@ -118,8 +118,11 @@ export class CourseService {
     return this.courseRepo.findSummariesByKosk(koskId, user.sub, isManager);
   }
 
-  async findEnrolledCourses(userId: string): Promise<IEnrolledCourse[]> {
-    return this.courseRepo.findEnrolledByUser(userId);
+  async findEnrolledCourses(
+    userId: string,
+    includePending = false
+  ): Promise<IEnrolledCourse[]> {
+    return this.courseRepo.findEnrolledByUser(userId, includePending);
   }
 
   async getDetail(

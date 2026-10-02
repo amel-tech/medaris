@@ -16,6 +16,10 @@
 import * as runtime from '../runtime';
 import type {
   CreateKoskDto,
+  GrantHostingRightDto,
+  HostingCoursesAction,
+  HostingRightResponse,
+  KoskDecksResponse,
   KoskManagedBy,
   KoskResponse,
   PaginatedKoskResponse,
@@ -24,6 +28,14 @@ import type {
 import {
     CreateKoskDtoFromJSON,
     CreateKoskDtoToJSON,
+    GrantHostingRightDtoFromJSON,
+    GrantHostingRightDtoToJSON,
+    HostingCoursesActionFromJSON,
+    HostingCoursesActionToJSON,
+    HostingRightResponseFromJSON,
+    HostingRightResponseToJSON,
+    KoskDecksResponseFromJSON,
+    KoskDecksResponseToJSON,
     KoskManagedByFromJSON,
     KoskManagedByToJSON,
     KoskResponseFromJSON,
@@ -56,15 +68,37 @@ export interface GetAllKosksRequest {
     limit?: number;
     managedBy?: KoskManagedBy;
     madrasahId?: string;
+    level?: GetAllKosksLevelEnum;
+    field?: string;
+    q?: string;
 }
 
 export interface GetKoskByIdRequest {
     id: string;
 }
 
+export interface GetKoskDecksRequest {
+    id: string;
+}
+
+export interface GetKoskHostingRightsRequest {
+    id: string;
+}
+
+export interface GrantKoskHostingRightRequest {
+    id: string;
+    grantHostingRightDto: GrantHostingRightDto;
+}
+
 export interface RemoveKoskManagerRequest {
     id: string;
     userId: string;
+}
+
+export interface RevokeKoskHostingRightRequest {
+    id: string;
+    madrasahId: string;
+    coursesAction: HostingCoursesAction;
 }
 
 export interface UnfollowKoskRequest {
@@ -294,6 +328,18 @@ export class KosksApi extends runtime.BaseAPI {
             queryParameters['madrasahId'] = requestParameters['madrasahId'];
         }
 
+        if (requestParameters['level'] != null) {
+            queryParameters['level'] = requestParameters['level'];
+        }
+
+        if (requestParameters['field'] != null) {
+            queryParameters['field'] = requestParameters['field'];
+        }
+
+        if (requestParameters['q'] != null) {
+            queryParameters['q'] = requestParameters['q'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
         if (this.configuration && this.configuration.accessToken) {
@@ -368,6 +414,184 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
+     * The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk\'s existence is never denied to them here, `GET /kosks/:id` answers that.
+     * Get the köşk\'s decks (MDRS-159)
+     */
+    async getKoskDecksRaw(requestParameters: GetKoskDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskDecksResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getKoskDecks().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/decks`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskDecksResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk\'s existence is never denied to them here, `GET /kosks/:id` answers that.
+     * Get the köşk\'s decks (MDRS-159)
+     */
+    async getKoskDecks(requestParameters: GetKoskDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskDecksResponse> {
+        const response = await this.getKoskDecksRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Open to callers with no token. The distinct `field` values of the köşks the public list holds, alphabetical: the chips of Keşfet (MDRS-159).
+     * List the ilim alanı of the listed köşks
+     */
+    async getKoskFieldsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<string>>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/fields`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse<any>(response);
+    }
+
+    /**
+     * Open to callers with no token. The distinct `field` values of the köşks the public list holds, alphabetical: the chips of Keşfet (MDRS-159).
+     * List the ilim alanı of the listed köşks
+     */
+    async getKoskFields(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<string>> {
+        const response = await this.getKoskFieldsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/26. Each with its başmüderris, who granted the right and when, and the medrese\'s courses here that are not hidden (nizam/27 asks what becomes of them).
+     * The medreses that hold a hosting right in the köşk
+     */
+    async getKoskHostingRightsRaw(requestParameters: GetKoskHostingRightsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<HostingRightResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getKoskHostingRights().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/hosting-rights`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(HostingRightResponseFromJSON));
+    }
+
+    /**
+     * nizam/26. Each with its başmüderris, who granted the right and when, and the medrese\'s courses here that are not hidden (nizam/27 asks what becomes of them).
+     * The medreses that hold a hosting right in the köşk
+     */
+    async getKoskHostingRights(requestParameters: GetKoskHostingRightsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<HostingRightResponse>> {
+        const response = await this.getKoskHostingRightsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Idempotent. 404 for a medrese that is missing or hidden. Written to the audit log.
+     * Give a medrese a hosting right in the köşk
+     */
+    async grantKoskHostingRightRaw(requestParameters: GrantKoskHostingRightRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<HostingRightResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling grantKoskHostingRight().'
+            );
+        }
+
+        if (requestParameters['grantHostingRightDto'] == null) {
+            throw new runtime.RequiredError(
+                'grantHostingRightDto',
+                'Required parameter "grantHostingRightDto" was null or undefined when calling grantKoskHostingRight().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/hosting-rights`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: GrantHostingRightDtoToJSON(requestParameters['grantHostingRightDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => HostingRightResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Idempotent. 404 for a medrese that is missing or hidden. Written to the audit log.
+     * Give a medrese a hosting right in the köşk
+     */
+    async grantKoskHostingRight(requestParameters: GrantKoskHostingRightRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<HostingRightResponse> {
+        const response = await this.grantKoskHostingRightRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * The last manager cannot be removed (409 KOSK_LAST_MANAGER). A manager may remove themselves while another remains (MDRS-126).
      * Remove a manager from the köşk
      */
@@ -417,6 +641,68 @@ export class KosksApi extends runtime.BaseAPI {
     async removeKoskManager(requestParameters: RemoveKoskManagerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
         const response = await this.removeKoskManagerRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * `coursesAction` decides what becomes of the medrese\'s courses in this köşk: KEEP leaves them as they are, HIDE hides each (they come back from the archive). The medrese can open no new course here. Written to the audit log.
+     * Withdraw a medrese\'s hosting right
+     */
+    async revokeKoskHostingRightRaw(requestParameters: RevokeKoskHostingRightRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling revokeKoskHostingRight().'
+            );
+        }
+
+        if (requestParameters['madrasahId'] == null) {
+            throw new runtime.RequiredError(
+                'madrasahId',
+                'Required parameter "madrasahId" was null or undefined when calling revokeKoskHostingRight().'
+            );
+        }
+
+        if (requestParameters['coursesAction'] == null) {
+            throw new runtime.RequiredError(
+                'coursesAction',
+                'Required parameter "coursesAction" was null or undefined when calling revokeKoskHostingRight().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['coursesAction'] != null) {
+            queryParameters['coursesAction'] = requestParameters['coursesAction'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/hosting-rights/{madrasahId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"madrasahId"}}`, encodeURIComponent(String(requestParameters['madrasahId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * `coursesAction` decides what becomes of the medrese\'s courses in this köşk: KEEP leaves them as they are, HIDE hides each (they come back from the archive). The medrese can open no new course here. Written to the audit log.
+     * Withdraw a medrese\'s hosting right
+     */
+    async revokeKoskHostingRight(requestParameters: RevokeKoskHostingRightRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.revokeKoskHostingRightRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -518,3 +804,14 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
 }
+
+/**
+ * @export
+ */
+export const GetAllKosksLevelEnum = {
+    All: 'ALL',
+    Beginner: 'BEGINNER',
+    Intermediate: 'INTERMEDIATE',
+    Advanced: 'ADVANCED'
+} as const;
+export type GetAllKosksLevelEnum = typeof GetAllKosksLevelEnum[keyof typeof GetAllKosksLevelEnum];

@@ -13,13 +13,20 @@
  */
 
 import { mapValues } from '../runtime';
-import type { MuderrisResponse } from './MuderrisResponse';
+import type { SummaryMuderrisResponse } from './SummaryMuderrisResponse';
 import {
-    MuderrisResponseFromJSON,
-    MuderrisResponseFromJSONTyped,
-    MuderrisResponseToJSON,
-    MuderrisResponseToJSONTyped,
-} from './MuderrisResponse';
+    SummaryMuderrisResponseFromJSON,
+    SummaryMuderrisResponseFromJSONTyped,
+    SummaryMuderrisResponseToJSON,
+    SummaryMuderrisResponseToJSONTyped,
+} from './SummaryMuderrisResponse';
+import type { CourseMadrasahResponse } from './CourseMadrasahResponse';
+import {
+    CourseMadrasahResponseFromJSON,
+    CourseMadrasahResponseFromJSONTyped,
+    CourseMadrasahResponseToJSON,
+    CourseMadrasahResponseToJSONTyped,
+} from './CourseMadrasahResponse';
 import type { EnrollmentResponse } from './EnrollmentResponse';
 import {
     EnrollmentResponseFromJSON,
@@ -174,16 +181,28 @@ export interface CourseSummaryResponse {
     resourceCount: number;
     /**
      * 
-     * @type {Array<MuderrisResponse>}
+     * @type {Array<SummaryMuderrisResponse>}
      * @memberof CourseSummaryResponse
      */
-    muderris: Array<MuderrisResponse>;
+    muderris: Array<SummaryMuderrisResponse>;
     /**
      * 
      * @type {EnrollmentResponse}
      * @memberof CourseSummaryResponse
      */
     enrollment?: EnrollmentResponse;
+    /**
+     * The medrese that opened the course in this köşk (MDRS-159).
+     * @type {CourseMadrasahResponse}
+     * @memberof CourseSummaryResponse
+     */
+    madrasah?: CourseMadrasahResponse | null;
+    /**
+     * The earliest session still ahead that has not been cancelled; null when none is scheduled (MDRS-159). The meeting link is never part of a summary.
+     * @type {Date}
+     * @memberof CourseSummaryResponse
+     */
+    nextSessionAt?: Date | null;
 }
 
 
@@ -265,8 +284,10 @@ export function CourseSummaryResponseFromJSONTyped(json: any, ignoreDiscriminato
         'weekCount': json['weekCount'],
         'lessonCount': json['lessonCount'],
         'resourceCount': json['resourceCount'],
-        'muderris': ((json['muderris'] as Array<any>).map(MuderrisResponseFromJSON)),
+        'muderris': ((json['muderris'] as Array<any>).map(SummaryMuderrisResponseFromJSON)),
         'enrollment': json['enrollment'] == null ? undefined : EnrollmentResponseFromJSON(json['enrollment']),
+        'madrasah': json['madrasah'] == null ? undefined : CourseMadrasahResponseFromJSON(json['madrasah']),
+        'nextSessionAt': json['nextSessionAt'] == null ? undefined : (new Date(json['nextSessionAt'])),
     };
 }
 
@@ -304,8 +325,10 @@ export function CourseSummaryResponseToJSONTyped(value?: CourseSummaryResponse |
         'weekCount': value['weekCount'],
         'lessonCount': value['lessonCount'],
         'resourceCount': value['resourceCount'],
-        'muderris': ((value['muderris'] as Array<any>).map(MuderrisResponseToJSON)),
+        'muderris': ((value['muderris'] as Array<any>).map(SummaryMuderrisResponseToJSON)),
         'enrollment': EnrollmentResponseToJSON(value['enrollment']),
+        'madrasah': CourseMadrasahResponseToJSON(value['madrasah']),
+        'nextSessionAt': value['nextSessionAt'] === null ? null : ((value['nextSessionAt'] as any)?.toISOString()),
     };
 }
 
