@@ -233,6 +233,7 @@ catalog:
   vitest: ^4.1.9
   '@vitest/coverage-v8': ^4.1.9
   '@vitest/ui': ^4.1.9
+  happy-dom: ^20.14.5 # MDRS-100: DOM for keycloak-theme's page tests (Template renders nothing without one)
   '@swc/core': ~1.15.43 # floors backend 1.15.33; emitDecoratorMetadata under Vitest
   unplugin-swc: ^1.5.11 # MDRS-20: routes Vitest's transform through @swc/core so
   #                       `design:paramtypes` survives — esbuild drops it and

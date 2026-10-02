@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# config/keycloak/scripts/provision <env> — MDRS-97.
+#
+# Makes the realm on KC_URL match the repository: the realm settings
+# (realms/_base.json deep-merged with realms/<KC_REALM>.json), the mail sender
+# from KC_SMTP_*, the realm roles, the declarative user profile, and every
+# client under clients/<env>/ (deep-merged with clients/_base.json).
+#
+# Idempotent: a missing part is created with POST, an existing one that
+# differs is updated with PUT, and a part that already matches is reported as
+# `in sync`. Nothing is skipped because it exists — a skipped realm drifts
+# away from the repository unnoticed. The mail sender is re-sent on every run
+# (its password cannot be read back and compared).
+#
+# Runs `validate <env>` first and stops if it fails. See RUNBOOK.md for the
+# environment it reads.
+
+PREFIX=provision
+# shellcheck source=./lib/core.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/core.sh"
+require_tools curl jq
+read_env_arg "${1:-}"
+
+"$SCRIPTS_DIR/validate" "$ENV_NAME" >/dev/null || exit 1
+
+echo "provision: $ENV_NAME -> realm $KC_REALM on ${KC_URL:-http://localhost:8080}"
+run_plan apply
+echo "provision: done ($DIFFERENCES difference(s) applied)"

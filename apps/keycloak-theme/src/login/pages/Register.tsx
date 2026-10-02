@@ -8,6 +8,7 @@ import type { UserProfileFormFieldsProps } from "keycloakify/login/UserProfileFo
 import type { JSX } from "keycloakify/tools/JSX";
 import type { LazyOrNot } from "keycloakify/tools/LazyOrNot";
 import { useState } from "react";
+import { primaryButtonClassName } from "../components/styles";
 import type { I18n } from "../i18n";
 import type { KcContext } from "../KcContext";
 import type { ExtendedPageProps } from "../types/PageProps";
@@ -125,10 +126,7 @@ export default function Register(props: RegisterProps) {
             <div id="kc-form-buttons">
               <Button
                 size="lg"
-                className={cn(
-                  "w-full bg-brand-primary text-white h-[48px] hover:bg-brand-primary/90 font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md",
-                  "g-recaptcha"
-                )}
+                className={cn(primaryButtonClassName, "g-recaptcha")}
                 data-sitekey={recaptchaSiteKey}
                 data-callback={() => {
                   (
@@ -151,7 +149,7 @@ export default function Register(props: RegisterProps) {
                   !isFormSubmittable ||
                   (termsAcceptanceRequired && !areTermsAccepted)
                 }
-                className="w-full bg-brand-primary text-white h-[48px] hover:bg-brand-primary/90 disabled:opacity-50 font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                className={primaryButtonClassName}
                 type="submit"
               >
                 {msgStr("doRegister")}
