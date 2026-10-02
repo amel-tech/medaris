@@ -51,7 +51,7 @@
     "restoreLabel": "Geri al: {name}",
     "permanentDelete": "Kalıcı olarak sil",
     "permanentDeleteLabel": "Kalıcı olarak sil: {name}",
-    "footer": "Geri aldığınızda ders köşk sayfasına ve talebelerin ders listesine, hafta ya da celse dersin programına, ders kaydı kendi celsesine döner. Gizlenen olanı talebeler görmez; gizlenen dersin haftaları, celseleri ve ders kayıtları dersle birlikte geri gelir.",
+    "footer": "Geri aldığınız ders köşk sayfasına ve talebelerin ders listesine, hafta ya da celse dersin programına, ders kaydı kendi celsesine döner. Gizli olanı talebeler görmez; gizlenen dersin haftaları, celseleri ve ders kayıtları dersle birlikte geri gelir.",
     "showing": "Toplam {total} öğe, {shown} tanesi gösteriliyor",
     "loadMore": "Daha fazla göster",
     "loading": "Yükleniyor",

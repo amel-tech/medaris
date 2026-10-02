@@ -379,7 +379,10 @@ export function ArchiveView({ mode, initial, scopes, pageSize }: Props) {
       : [];
 
   return (
-    <div className="flex flex-col gap-section" data-testid="archive">
+    <div
+      className="flex flex-col gap-section [font-family:var(--font-ui)]"
+      data-testid="archive"
+    >
       <header className="flex flex-col gap-3">
         <h1 className="mds-h1">{t("title")}</h1>
         <p className="max-w-[48rem]">
