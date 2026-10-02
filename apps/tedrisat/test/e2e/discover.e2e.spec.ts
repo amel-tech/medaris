@@ -1,4 +1,5 @@
 import { INestApplication } from "@nestjs/common";
+import { eq } from "drizzle-orm";
 import request from "supertest";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
@@ -179,6 +180,14 @@ describe("Keşfet, köşk page and Derslerim reads (e2e)", () => {
     it("reads a wildcard in the search as text", async () => {
       const res = await http().get("/kosks?q=%25").expect(200);
       expect(res.body.total).toBe(0);
+    });
+
+    it("counts a köşk's published courses only, drafts left out", async () => {
+      const kosk = await makeKosk({ name: "Sayılı Köşk", field: "Sayı" });
+      await makeCourse(kosk.id, "Yayında");
+      await makeCourse(kosk.id, "Taslak", { status: CourseStatus.DRAFT });
+      const res = await http().get("/kosks?field=Say%C4%B1").expect(200);
+      expect(res.body.items[0].courseCount).toBe(1);
     });
 
     it("refuses a level it does not know", async () => {
@@ -586,6 +595,45 @@ describe("Keşfet, köşk page and Derslerim reads (e2e)", () => {
       expect(running.nextSession.weekNumber).toBe(5);
       const done = res.body.find((c: { title: string }) => c.title === "done");
       expect(done.nextSession).toBeNull();
+      expect(running.madrasahName).toBeNull();
+    });
+
+    it("names the medrese that opened a course and marks its imam", async () => {
+      const [madrasah] = await db()
+        .insert(madrasahs)
+        .values({
+          handle: "suleymaniye",
+          name: "Süleymaniye Medresesi",
+          createdBy: ADMIN_ID,
+        })
+        .returning();
+      await db()
+        .update(courses)
+        .set({ madrasahId: madrasah.id })
+        .where(eq(courses.id, idOf.running));
+      await db().insert(courseMuderris).values({
+        courseId: idOf.running,
+        userId: HEAD_ID,
+        name: "Mehmet Emin Işıkoğlu",
+      });
+      await assignRole(db(), {
+        userId: HEAD_ID,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeId: idOf.running,
+        isImam: true,
+      });
+      const res = await http()
+        .get("/courses/enrolled")
+        .set("Authorization", auth(TALEBE_ID))
+        .expect(200);
+      const running = res.body.find(
+        (c: { title: string }) => c.title === "running"
+      );
+      expect(running.madrasahName).toBe("Süleymaniye Medresesi");
+      expect(running.muderris[0]).toMatchObject({
+        name: "Mehmet Emin Işıkoğlu",
+        isImam: true,
+      });
     });
 
     it("dates a completion when the team marks it, and clears it on reopening", async () => {

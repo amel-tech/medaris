@@ -74,10 +74,12 @@ export class KoskRepository implements IKoskRepository {
       kosk: kosks,
       // Its KOSK_NAZIM holders (MDRS-134), oldest grant first.
       managerIds: holderIdsOf(ASSIGNED_ROLES.KOSK_NAZIM, sql`"kosks"."id"`),
-      // The three course-derived counts leave hidden courses out (MDRS-124):
+      // The course count leaves out drafts (MDRS-159: it is the number the köşk's
+      // page lists), and the three course-derived counts leave hidden courses
+      // out (MDRS-124):
       // a hidden course is in no list, so it is in no total either.
       courseCount:
-        sql<number>`(select count(*) from ${courses} c where c.kosk_id = "kosks"."id" and c.archived_at is null)`.mapWith(
+        sql<number>`(select count(*) from ${courses} c where c.kosk_id = "kosks"."id" and c.archived_at is null and c.status = 'PUBLISHED')`.mapWith(
           Number
         ),
       studentCount:
