@@ -3,6 +3,7 @@ import {
   Authz,
   AuthzExempt,
   AuthzGuard,
+  AuthzPublic,
   byParam,
   ENTITIES,
   forNew,
@@ -46,6 +47,7 @@ import { FlashcardDeckUserResponse } from "./dto/flashcard-deck-user-response.dt
 import { UpdateFlashcardDeckDto } from "./dto/update-flashcard-deck.dto";
 import { FlashcardDeckService } from "./flashcard-deck.service";
 import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
+import { PublicRequest } from "./interfaces/public-request.interface";
 
 export enum DeckIncludeEnum {}
 // Tags = 'tags',
@@ -91,9 +93,14 @@ export class FlashcardDeckController {
   })
   @IncludeApiQuery(DeckIncludeEnum)
   @Authz(SCOPES.VIEW, byParam(ENTITIES.FLASHCARD_DECK))
+  // MDRS-45: a public deck is readable with no token (PRD:76). An anonymous
+  // caller is decided by `resolveAnonymous` — ANONYMOUS for a public deck,
+  // the same 404 as a missing deck for a private one — and a token that is
+  // present but invalid is still a 401 from `AuthGuard`.
+  @AuthzPublic()
   @Get(":id")
   async findById(
-    @Req() request: AuthorizedRequest,
+    @Req() request: PublicRequest,
     @Param("id", ParseUUIDPipe) deckId: string,
     @IncludeQuery() include?: string[]
   ): Promise<FlashcardDeckResponse> {
@@ -103,7 +110,11 @@ export class FlashcardDeckController {
     // private one (MDRS-43 AC-4). `findReadable` still re-reads the rule
     // rather than `findById`, so the handler does not depend on the guard
     // having run.
-    return this.deckService.findReadable(deckId, request.user.sub, include);
+    return this.deckService.findReadable(
+      deckId,
+      request.user?.sub ?? null,
+      include
+    );
   }
 
   @ApiOperation({
@@ -120,19 +131,28 @@ export class FlashcardDeckController {
     description:
       "When omitted returns public decks and user-owned private decks. When true returns only public decks. When false returns only user-owned private decks.",
   })
-  // Exempt: a list route has no single resource to authorize. Visibility is
-  // enforced inside the query — `findAllVisibleToUser` returns public decks
-  // plus the caller's own — which is the only place it can be for a list.
-  @AuthzExempt()
+  // No `@Authz`: a list route has no single resource to authorize.
+  // Visibility is enforced inside the query — `findAllVisibleToUser` returns
+  // public decks plus the caller's own — which is the only place it can be
+  // for a list. `@AuthzPublic()` (MDRS-45) opens it to a caller with no
+  // token, who has no decks of their own and so sees the public ones only.
+  @AuthzPublic()
   @Get()
   @IncludeApiQuery(DeckIncludeEnum)
   async findAll(
-    @Req() request: AuthorizedRequest,
+    @Req() request: PublicRequest,
     @Query("isPublic", new ParseBoolPipe({ optional: true }))
     isPublic?: boolean,
     @IncludeQuery() include?: string[]
   ): Promise<FlashcardDeckResponse[]> {
-    const userId = request.user.sub;
+    const userId = request.user?.sub;
+    if (userId === undefined) {
+      // `isPublic=false` asks for the caller's own private decks, and an
+      // anonymous caller owns none. Answered here rather than by passing a
+      // null author into the query, where "matches nobody" would rest on how
+      // SQL compares NULL.
+      return isPublic === false ? [] : this.deckService.findAll(include);
+    }
     const filters = isPublic !== undefined ? { isPublic } : undefined;
     return this.deckService.findAllVisibleToUser(userId, filters, include);
   }

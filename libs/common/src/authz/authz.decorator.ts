@@ -43,6 +43,39 @@ export const AUTHZ_EXEMPT_KEY = "authz:exempt";
 export const AuthzExempt = (): MethodDecorator =>
   SetMetadata<string, true>(AUTHZ_EXEMPT_KEY, true);
 
+export const AUTHZ_PUBLIC_KEY = "authz:public";
+
+/**
+ * Declare that a handler is reachable by a caller with NO token at all
+ * (MDRS-45) — a public deck, a health probe, later the köşk and course
+ * discovery pages (MDRS-122).
+ *
+ * Two walls come down, and this one marker opens both:
+ *
+ *  1. **Authentication.** `AuthGuard` lets a request with no
+ *     `Authorization` header through on a handler carrying this marker,
+ *     leaving `request.user` undefined. A header that IS present is verified
+ *     exactly as before, so a malformed or expired token is still a 401 —
+ *     an invalid token never degrades to anonymous.
+ *  2. **Authorization.** With `@Authz` on the same handler, an anonymous
+ *     caller is decided by `AuthzService.canAnonymous`: the resolver's
+ *     `resolveAnonymous` must answer `ROLES.ANONYMOUS` for that resource,
+ *     and the scope must sit on the entity's ANONYMOUS matrix row. An
+ *     authenticated caller on the same handler is decided exactly as if the
+ *     marker were absent. Without `@Authz`, the handler is open to anyone
+ *     and does its own scoping — a list route, where there is no single
+ *     resource to authorize.
+ *
+ * Per method on purpose, like `@Authz`: the controller keeps its one
+ * class-level `@UseGuards(AuthGuard, AuthzGuard)`, so a handler added later
+ * without this marker is closed, not open. `AuthzWiringAssertion` counts the
+ * marker as a deliberate decision, and `AuthzGuard` honours it ahead of its
+ * transitional no-metadata pass-through, so it keeps working when MDRS-44
+ * flips that pass-through to deny.
+ */
+export const AuthzPublic = (): MethodDecorator =>
+  SetMetadata<string, true>(AUTHZ_PUBLIC_KEY, true);
+
 /**
  * Declare that a route requires the given `scope` on a resource
  * extracted from the request by `resolve`.
