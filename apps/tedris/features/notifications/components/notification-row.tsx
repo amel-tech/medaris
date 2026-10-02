@@ -50,16 +50,25 @@ export function NotificationRow({
         className="mbs-1 text-neutral-muted"
       />
       <div className="flex min-inline-0 flex-1 flex-col gap-1">
-        <p className="mds-body-sm">
-          {href ? (
-            <Link href={href} onClick={() => unread && onRead(n)}>
+        {href ? (
+          <Link
+            href={href}
+            onClick={() => unread && onRead(n)}
+            className="flex flex-col gap-1"
+          >
+            <p className="mds-body-sm text-[color:var(--text-brand-default)]">
+              <strong className="underline">{text.title}</strong>
+            </p>
+            {text.body ? <p className="mds-body-sm">{text.body}</p> : null}
+          </Link>
+        ) : (
+          <>
+            <p className="mds-body-sm">
               <strong>{text.title}</strong>
-            </Link>
-          ) : (
-            <strong>{text.title}</strong>
-          )}
-        </p>
-        {text.body ? <p className="mds-body-sm">{text.body}</p> : null}
+            </p>
+            {text.body ? <p className="mds-body-sm">{text.body}</p> : null}
+          </>
+        )}
         <p className="mds-caption">
           {text.source ? (
             <>
