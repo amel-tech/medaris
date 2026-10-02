@@ -121,4 +121,12 @@ describe("lesson calendar (MDRS-117)", () => {
       `https://tedris.example/courses/${COURSE_ID}/lessons/${LESSON_ID}`
     );
   });
+
+  it("marks a cancelled session STATUS:CANCELLED, keeping its UID (MDRS-163)", () => {
+    const planned = buildLessonIcs(input());
+    const cancelled = buildLessonIcs({ ...input(), cancelled: true });
+    expect(prop(planned, "STATUS")).toBeUndefined();
+    expect(prop(cancelled, "STATUS")).toBe("CANCELLED");
+    expect(prop(cancelled, "UID")).toBe(prop(planned, "UID"));
+  });
 });

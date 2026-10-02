@@ -170,7 +170,7 @@ const CALENDAR_HEAD = [
 const serialize = (lines: string[]): string =>
   `${lines.map(foldIcsLine).join("\r\n")}\r\n`;
 
-export const buildLessonIcs = (input: CalendarLessonInput): string =>
+export const buildLessonIcs = (input: CalendarEventInput): string =>
   serialize([...CALENDAR_HEAD, ...lessonEventLines(input), "END:VCALENDAR"]);
 
 /** The name a subscribing calendar app shows for the feed (MDRS-120). */
