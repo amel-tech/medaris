@@ -1,5 +1,6 @@
 import { resources } from "@medaris/i18n";
 import type {
+  HeadDelegationResponse,
   MadrasahDirectoryItemResponse,
   MadrasahDirectoryResponse,
 } from "@medaris/services/tedrisat";
@@ -12,6 +13,7 @@ import {
   cleanHandle,
   dateWithCase,
   directoryPath,
+  groupByPerson,
   handleError,
   hostingLabel,
   isEmailLike,
@@ -19,6 +21,8 @@ import {
   madrasahErrorKey,
   nameError,
   openPayload,
+  personDecisions,
+  personsReady,
   pickedUser,
   STATUS_LOOK,
   searchFromParam,
@@ -456,5 +460,52 @@ describe("MadrasahsView (nizam 07)", () => {
 
   it("keeps the search term in the field", () => {
     expect(view(directory(three), "ALL", "zeyrek")).toContain('value="zeyrek"');
+  });
+});
+
+describe("the hand-ons of a replaced başmüderris (nizam 22)", () => {
+  const item = (
+    id: string,
+    to: string,
+    kind: "ROLE" | "GRANT" = "GRANT"
+  ): HeadDelegationResponse =>
+    ({
+      kind,
+      id,
+      to: { id: to, name: to, email: null },
+      grantedAt: new Date("2026-09-12T00:00:00Z"),
+    }) as HeadDelegationResponse;
+  const items = [
+    item("r1", "fatma", "ROLE"),
+    item("g1", "fatma"),
+    item("g2", "ummu"),
+    item("p1", "fatma"),
+  ];
+
+  it("gathers the items by person, in order of first appearance", () => {
+    const people = groupByPerson(items);
+    expect(people.map((p) => p.person.id)).toEqual(["fatma", "ummu"]);
+    expect(people[0]?.items.map((i) => i.id)).toEqual(["r1", "g1", "p1"]);
+  });
+
+  it("wants one answer for each person, not for each item", () => {
+    const people = groupByPerson(items);
+    expect(personsReady(people, {})).toBe(false);
+    expect(personsReady(people, { fatma: "DROP" })).toBe(false);
+    expect(personsReady(people, { fatma: "DROP", ummu: "TAKE_OVER" })).toBe(
+      true
+    );
+  });
+
+  it("sends the person's answer for every one of their items", () => {
+    const people = groupByPerson(items);
+    expect(
+      personDecisions(people, { fatma: "DROP", ummu: "TAKE_OVER" })
+    ).toEqual([
+      { kind: "ROLE", id: "r1", action: "DROP" },
+      { kind: "GRANT", id: "g1", action: "DROP" },
+      { kind: "GRANT", id: "p1", action: "DROP" },
+      { kind: "GRANT", id: "g2", action: "TAKE_OVER" },
+    ]);
   });
 });

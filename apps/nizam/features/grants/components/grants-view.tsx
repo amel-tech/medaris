@@ -66,7 +66,12 @@ export function GrantsView({ koskId, data, viewerId }: Props) {
     [data]
   );
   const order = data?.grantable ?? [];
-  const nameOf = (code: string) => tc(`course.${courseCodeKey(code)}` as never);
+  // The short name of a permission ("celseler"), not its sentence: the
+  // sentences stay in the dialog, the column only sums them up (nizam/38).
+  const nameOf = (code: string) =>
+    tc(`courseShort.${courseCodeKey(code)}` as never);
+  const sentence = (text: string) =>
+    text ? text.charAt(0).toLocaleUpperCase(locale) + text.slice(1) : text;
   const list = (items: string[]) => {
     try {
       return new Intl.ListFormat(locale, {
@@ -119,7 +124,7 @@ export function GrantsView({ koskId, data, viewerId }: Props) {
             </span>
             {sum.names ? (
               <span className="mds-caption" data-testid="permission-names">
-                {sum.names}
+                {sentence(sum.names)}
               </span>
             ) : null}
           </span>
@@ -213,7 +218,7 @@ export function GrantsView({ koskId, data, viewerId }: Props) {
       </header>
 
       {medrese.titles.length > 0 ? (
-        <Alert tone="info" data-testid="madrasah-note">
+        <Alert tone="neutral" data-testid="madrasah-note">
           <p>
             {t("madrasahNote", {
               courses: list(medrese.titles),

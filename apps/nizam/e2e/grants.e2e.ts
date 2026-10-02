@@ -82,7 +82,7 @@ test("nizam/38 — the list shows each ders nazırı with course, permission sum
   await expect(row).toContainText(fixture.courses.emsile.title);
   await expect(row.getByTestId("permission-count")).toHaveText("3 izin");
   await expect(row.getByTestId("permission-names")).toHaveText(
-    `${SESSION_MANAGE}, ${LIVE_LINK}, ${WEEK_HIDE}`
+    "Celseler, canlı yayın, hafta ve celse gizleme"
   );
   await expect(row).toContainText("31 Aralık 2026");
   await expect(row).toContainText("Görev ve izinler aynı gün biter.");
@@ -225,9 +225,11 @@ test("nizam/38 — 'İzinleri düzenle' starts from what the person holds and ch
 
   const row = rowOf(page, fixture.existing.name);
   await expect(row.getByTestId("permission-count")).toHaveText("3 izin");
-  await expect(row.getByTestId("permission-names")).toContainText(RECORDING);
+  await expect(row.getByTestId("permission-names")).toContainText(
+    "ders kayıtları"
+  );
   await expect(row.getByTestId("permission-names")).not.toContainText(
-    LIVE_LINK
+    "canlı yayın"
   );
   await expect(row).toContainText("15 Kasım 2026");
 

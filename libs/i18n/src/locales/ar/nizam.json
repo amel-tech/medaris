@@ -985,7 +985,10 @@
     "givenOn": "مُنح في {date}",
     "handedOnHeading": " منح أدوارًا وصلاحيات لهؤلاء. اختاروا مصير كل منها.",
     "nothingHandedOn": "لم يمنح كبير المدرّسين أي صلاحية أو دور لغيره.",
-    "answerLegend": "{what}، {person}",
+    "personLegend": "قرار بشأن {person}",
+    "groupsSummary": "{count, plural, one {مجموعة} other {مجموعات}} {names}",
+    "permissionsSummary": "{count, plural, one {إذن واحد} other {# أذونات}}: {names}",
+    "alsoSummary": "وكذلك {text}",
     "takeOver": "تولّي",
     "drop": "إسقاط",
     "answersNote": "تولّي: تبقى الصلاحية وتصبحون أنتم المانح. إسقاط: تُسحب الصلاحية.",
@@ -1172,6 +1175,26 @@
         "short": "تغيير سياسات المنصة",
         "help": "يضيّق سياسات التسجيل والتسجيل في الدروس على مستوى المنصة."
       }
+    },
+    "courseShort": {
+      "course_edit": "تعديل الدرس",
+      "session_manage": "الجلسات",
+      "session_live_link": "البث المباشر",
+      "week_hide": "إخفاء الأسبوع والجلسة",
+      "course_settings": "إعدادات الدرس",
+      "course_publish": "النشر",
+      "course_view_unpublished": "رؤية الدرس المسودة",
+      "enrollment_decide": "الطلبات",
+      "enrollment_remove": "إخراج الطالب",
+      "enrollment_complete": "اعتبار الإكمال",
+      "recording_manage": "تسجيلات الدرس",
+      "recording_upload": "رفع التسجيلات",
+      "recording_watch_restricted": "التسجيلات المقيّدة",
+      "session_view_content": "محتوى الجلسة",
+      "ban_course": "حظر الدرس",
+      "ban_lift_course": "رفع الحظر",
+      "deck_manage_course": "مجموعة الدرس",
+      "course_nazir_assign": "تعيين ناظر الدرس"
     },
     "course": {
       "course_edit": "تعديل الدرس: العنوان والتعريف والمنهج والمنطقة الزمنية",

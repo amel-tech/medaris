@@ -14,15 +14,19 @@ import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import {
   type DismissAnswer,
-  dismissDecisions,
-  dismissReady,
   endError,
   endOfDayIso,
   formatDay,
-  givenKey,
 } from "../../permissions/present";
 import { getHeadDelegations, setHeadMuderris } from "../actions";
-import { madrasahErrorKey, type PickedUser } from "../present";
+import {
+  groupByPerson,
+  madrasahErrorKey,
+  type PersonHandOn,
+  type PickedUser,
+  personDecisions,
+  personsReady,
+} from "../present";
 import { HeadPicker } from "./head-picker";
 
 export interface AssignTarget {
@@ -106,8 +110,9 @@ export function AssignHeadDialog({
     : [];
   const same = head !== null && head.id === target?.headId;
   const problem = endError(endDay, { now, timeZone, assignmentEnd: null });
+  const people = groupByPerson(list);
   const answered =
-    !changing || (Array.isArray(items) && dismissReady(list, answers));
+    !changing || (Array.isArray(items) && personsReady(people, answers));
   const ready = head !== null && !same && problem === null && answered;
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -117,7 +122,7 @@ export function AssignHeadDialog({
     const endIso = endDay ? endOfDayIso(endDay, timeZone) : null;
     const result = await setHeadMuderris(target.id, head.id, {
       ...(endIso ? { endsAt: new Date(endIso) } : {}),
-      ...(changing ? { delegations: dismissDecisions(list, answers) } : {}),
+      ...(changing ? { delegations: personDecisions(people, answers) } : {}),
     });
     setSaving(false);
     if (!result.success) {
@@ -146,27 +151,66 @@ export function AssignHeadDialog({
     onOpenChange(false);
   };
 
-  const what = (item: HeadDelegationResponse): string => {
-    if (item.kind === "ROLE") {
-      const role = item.role ?? "";
-      return tr.has(role as never) ? tr(role as never) : role;
-    }
-    if (item.permission) {
-      const key = item.permission.replace(/\./g, "_");
-      return tc.has(`permissions.${key}.title` as never)
-        ? tc(`permissions.${key}.title` as never)
-        : item.permission;
-    }
-    return t("groupName", { name: item.groupName ?? "" });
+  const permissionName = (item: HeadDelegationResponse): string => {
+    const code = item.permission ?? "";
+    const key = code.replace(/\./g, "_");
+    return tc.has(`permissions.${key}.short` as never)
+      ? tc(`permissions.${key}.short` as never)
+      : code;
   };
 
-  const detail = (item: HeadDelegationResponse): string =>
-    [
+  const list_ = (names: string[]) => {
+    try {
+      return new Intl.ListFormat(locale, {
+        style: "long",
+        type: "conjunction",
+      }).format(names);
+    } catch {
+      return names.join(", ");
+    }
+  };
+
+  // The line under the person: the role with its scope and dates, the way
+  // the table of nizam/22 reads it.
+  const heading = (group: PersonHandOn): string => {
+    const item = group.items.find((i) => i.kind === "ROLE") ?? group.items[0];
+    if (!item) return "";
+    const role = item.kind === "ROLE" ? (item.role ?? "") : "";
+    return [
+      role && tr.has(role as never) ? tr(role as never) : role,
+      target?.name ?? "",
       item.expiresAt
         ? t("untilDate", { date: formatDay(item.expiresAt, locale, timeZone) })
         : t("noEnd"),
       t("givenOn", { date: formatDay(item.grantedAt, locale, timeZone) }),
-    ].join(" · ");
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  };
+
+  // "Ders açma ve kadro ile Yasak ve itiraz grupları; ayrıca 3 izin: …"
+  const summary = (group: PersonHandOn): string => {
+    const groups = group.items
+      .filter((i) => i.kind !== "ROLE" && !i.permission)
+      .map((i) => i.groupName ?? "");
+    const perms = group.items
+      .filter((i) => i.kind !== "ROLE" && i.permission)
+      .map(permissionName);
+    const parts: string[] = [];
+    if (groups.length > 0) {
+      parts.push(
+        t("groupsSummary", { names: list_(groups), count: groups.length })
+      );
+    }
+    if (perms.length > 0) {
+      const text = t("permissionsSummary", {
+        names: perms.join(" · "),
+        count: perms.length,
+      });
+      parts.push(groups.length > 0 ? t("alsoSummary", { text }) : text);
+    }
+    return parts.join("; ");
+  };
 
   return (
     <Dialog
@@ -254,9 +298,10 @@ export function AssignHeadDialog({
                 {t("handedOnHeading")}
               </h3>
               <ul className="flex flex-col gap-3">
-                {list.map((item) => {
-                  const key = givenKey(item);
-                  const person = item.to.name ?? item.to.email ?? "";
+                {people.map((group) => {
+                  const key = group.person.id;
+                  const person = group.person.name ?? group.person.email ?? "";
+                  const more = summary(group);
                   return (
                     <li
                       key={key}
@@ -266,18 +311,20 @@ export function AssignHeadDialog({
                       <Avatar name={person} decorative />
                       <span className="flex min-w-0 grow flex-col">
                         <bdi className="font-semibold">
-                          {item.to.name ?? t("unknownPerson")}
+                          {group.person.name ?? t("unknownPerson")}
                         </bdi>
-                        {item.to.email ? (
+                        {group.person.email ? (
                           <bdi dir="ltr" className="mds-caption font-mono">
-                            {item.to.email}
+                            {group.person.email}
                           </bdi>
                         ) : null}
-                        <bdi className="mds-caption">{what(item)}</bdi>
-                        <span className="mds-caption">{detail(item)}</span>
+                        <span className="mds-caption">{heading(group)}</span>
+                        {more ? (
+                          <span className="mds-caption">{more}</span>
+                        ) : null}
                       </span>
                       <ChoiceChips
-                        legend={t("answerLegend", { what: what(item), person })}
+                        legend={t("personLegend", { person })}
                         value={answers[key] ?? null}
                         onChange={(v) =>
                           setAnswers((a) => ({

@@ -3,7 +3,7 @@ import { forbidden, notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { GrantsView } from "~/features/grants/components/grants-view";
 import { getKoskGrants } from "~/features/grants/reads";
-import { getKoskById, getMe } from "~/features/kosks/actions";
+import { getMe } from "~/features/kosks/actions";
 
 // Behind the sign-in middleware, and per caller.
 export const dynamic = "force-dynamic";
@@ -26,18 +26,16 @@ export default async function Page({
 }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
-  const [kosk, grants, me] = await Promise.all([
-    getKoskById(id),
-    getKoskGrants(id),
-    getMe(),
-  ]);
+  const [grants, me] = await Promise.all([getKoskGrants(id), getMe()]);
 
-  if (!kosk || grants === "not-found") notFound();
+  // The köşk is told apart by the grants read itself (404): a failed read is
+  // `null` and shows the page's own warning with "Yeniden dene".
+  if (grants === "not-found") notFound();
   if (grants === "forbidden") forbidden();
 
   return (
     <div className="mx-auto max-w-[72rem] px-gutter py-8">
-      <GrantsView koskId={kosk.id} data={grants} viewerId={me?.id ?? null} />
+      <GrantsView koskId={id} data={grants} viewerId={me?.id ?? null} />
     </div>
   );
 }

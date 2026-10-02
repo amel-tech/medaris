@@ -985,7 +985,10 @@
     "givenOn": "given {date}",
     "handedOnHeading": " gave roles and permissions to these people. Choose what happens to each.",
     "nothingHandedOn": "The head müderris has given no permission or role to others.",
-    "answerLegend": "{what}, {person}",
+    "personLegend": "Decision for {person}",
+    "groupsSummary": "{names} {count, plural, one {group} other {groups}}",
+    "permissionsSummary": "{count, plural, one {1 permission} other {# permissions}}: {names}",
+    "alsoSummary": "also {text}",
     "takeOver": "Take over",
     "drop": "Drop",
     "answersNote": "Take over: the permission stays and you become the giver. Drop: the permission is taken back.",
@@ -1172,6 +1175,26 @@
         "short": "Change platform policies",
         "help": "Narrows the registration and course enrolment policies platform-wide."
       }
+    },
+    "courseShort": {
+      "course_edit": "course editing",
+      "session_manage": "sessions",
+      "session_live_link": "live stream",
+      "week_hide": "week and session hiding",
+      "course_settings": "course settings",
+      "course_publish": "publishing",
+      "course_view_unpublished": "seeing a draft course",
+      "enrollment_decide": "applications",
+      "enrollment_remove": "removing a talebe",
+      "enrollment_complete": "marking as completed",
+      "recording_manage": "course recordings",
+      "recording_upload": "uploading recordings",
+      "recording_watch_restricted": "restricted recordings",
+      "session_view_content": "session content",
+      "ban_course": "course bans",
+      "ban_lift_course": "lifting bans",
+      "deck_manage_course": "course deck",
+      "course_nazir_assign": "appointing course nazırs"
     },
     "course": {
       "course_edit": "Edit the course: title, introduction, syllabus, time zone",
