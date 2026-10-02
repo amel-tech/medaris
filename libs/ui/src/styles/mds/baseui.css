@@ -71,6 +71,9 @@
 .mds-option[data-highlighted] { background: var(--background-neutral-hover); }
 .mds-option[data-selected] { font-weight: var(--weight-semibold); }
 .mds-option[data-disabled] { color: var(--text-neutral-disabled); cursor: not-allowed; }
+.mds-option > .mds-icon { flex: none; color: var(--text-neutral-subtle); }
+.mds-popup__sep { margin-block: var(--space-1); border: 0; border-block-start: var(--border-width-thin) solid var(--border-neutral-subtle); }
+.mds-popup__note { margin: 0; padding: var(--space-2) var(--space-3); max-inline-size: 28ch; color: var(--text-neutral-subtle); font-size: var(--fs-caption); line-height: var(--lh-snug); }
 @media (forced-colors: active) {
   .mds-popup { outline: var(--border-width-thin) solid CanvasText; }
   .mds-option[data-highlighted] { background: Highlight; color: HighlightText; }
