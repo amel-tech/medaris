@@ -71,7 +71,8 @@ UI follows the existing patterns of each screen.
 
 - `nx affected -t typecheck test build lint module-boundaries` from `cdb582b`:
   7 projects (tedrisat, tedris-web, nizam-web, landing-web, services, i18n,
-  utils), all green; tedrisat 32 test files, 477 tests passed.
+  utils), all green; tedrisat 32 test files, 477 tests passed. That run's
+  output was not kept, so these totals are not verified by this note.
 - `test/e2e/lesson-duration-migration.e2e.spec.ts`: applies 0000–0018, inserts
   20 lessons with different duration texts (the `CASES` array), runs 0019 and checks every
   `duration_minutes`, the course's `time_zone`, then the rollback and 0019
