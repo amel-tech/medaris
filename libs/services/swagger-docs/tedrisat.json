@@ -4790,14 +4790,20 @@
           },
           "ownerId": {
             "type": "string",
-            "description": "Who created the köşk. Grants nothing since MDRS-126 — see managerIds"
+            "nullable": true,
+            "description": "Who created the köşk. Grants nothing since MDRS-126 — see managerIds. Null for a caller with no token (MDRS-160): a person's id is not for the public."
           },
           "managerIds": {
-            "description": "Who manages the köşk, oldest first; never empty (MDRS-126)",
+            "description": "Who manages the köşk, oldest first; never empty for a signed-in caller (MDRS-126). Empty for a caller with no token (MDRS-160), who gets `managerName` instead.",
             "type": "array",
             "items": {
               "type": "string"
             }
+          },
+          "managerName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The name of the köşk's oldest manager, shown as \"Köşk nazımı\" (MDRS-160). Null when that person has no name on file. Open to everyone, signed in or not."
           },
           "name": {
             "type": "string",
@@ -4889,6 +4895,7 @@
           "id",
           "ownerId",
           "managerIds",
+          "managerName",
           "name",
           "coverHue",
           "isPrivate",
@@ -5152,10 +5159,11 @@
           },
           "createdBy": {
             "type": "string",
-            "description": "The SYSTEM_ADMIN who created it"
+            "nullable": true,
+            "description": "The SYSTEM_ADMIN who created it. Null for a caller with no token (MDRS-160)"
           },
           "nazirIds": {
-            "description": "User ids of the medrese's nazırs, oldest first",
+            "description": "User ids of the medrese's nazırs, oldest first. Empty for a caller with no token (MDRS-160)",
             "type": "array",
             "items": {
               "type": "string"
