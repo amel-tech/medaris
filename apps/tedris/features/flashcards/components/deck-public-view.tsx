@@ -10,9 +10,15 @@ import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Table } from "@medaris/ui/mds/table";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
-import { countCards, READER_PAGE, showMore, sourceOf } from "../deck-model";
+import {
+  countCards,
+  countOf,
+  READER_PAGE,
+  showMore,
+  sourceOf,
+} from "../deck-model";
 import { CardFace } from "./card-face";
 import { DeckHeader } from "./deck-header";
 
@@ -33,6 +39,7 @@ export function DeckPublicView({
   signInHref: string;
 }) {
   const t = useTranslations("tedris.Decks");
+  const locale = useLocale();
   const pub = useTranslations("tedrisLearn.PublicDeck");
   const discover = useTranslations("tedris.PhoneMenu");
   const [shown, setShown] = useState(Math.min(cards.length, READER_PAGE));
@@ -118,7 +125,11 @@ export function DeckPublicView({
                 />
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="mds-caption">
-                    {t("showing", { shown: visible.length, total })}
+                    {t("showing", {
+                      shown: visible.length,
+                      shownText: countOf(visible.length, locale),
+                      total,
+                    })}
                   </p>
                   {shown < cards.length ? (
                     <Button

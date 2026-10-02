@@ -14,7 +14,6 @@ import { Skeleton } from "@medaris/ui/mds/skeleton";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import { joinRun } from "~/features/courses/join-run";
-import { formatSessionMoment } from "~/features/courses/my-courses";
 import { coursesToContinue, deckLine } from "../model";
 import { getHomeCourses, getHomeDecks, getHomeFollowedCourses } from "../reads";
 
@@ -100,14 +99,26 @@ const teachers = (
     </span>
   ) : null;
 
+/** "Cmt 21:00": the weekday and clock of a session, as the design's course card gives it. */
+const shortMoment = (at: string | Date, locale: string, timeZone: string) =>
+  new Intl.DateTimeFormat(locale, {
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone,
+  }).format(new Date(at));
+
 const ContinueCard = ({
   course,
   t,
+  learn,
   locale,
   timeZone,
 }: {
   course: EnrolledCourseResponse;
   t: Translate;
+  learn: Translate;
   locale: string;
   timeZone: string;
 }) => (
@@ -128,9 +139,9 @@ const ContinueCard = ({
             <bdi key="k">{course.koskName}</bdi>,
             course.nextSession ? (
               <span key="n">
-                {t("MyCoursesPage.nextSession")}{" "}
+                {learn("Home.nextSessionShort")}{" "}
                 <time dateTime={new Date(course.nextSession.at).toISOString()}>
-                  {formatSessionMoment(course.nextSession.at, locale, timeZone)}
+                  {shortMoment(course.nextSession.at, locale, timeZone)}
                 </time>
               </span>
             ) : (
@@ -199,6 +210,7 @@ export const ContinueSection = async () => {
               key={course.id}
               course={course}
               t={t}
+              learn={learn}
               locale={locale}
               timeZone={timeZone}
             />

@@ -1,5 +1,6 @@
 import type { ScheduleSessionResponse } from "@medaris/services/tedrisat";
 import { Card } from "@medaris/ui/mds/card";
+import { Icon } from "@medaris/ui/mds/icon";
 import { PlatformChip } from "@medaris/ui/mds/platform-chip";
 import { resolveMeetingPlatform } from "@medaris/utils";
 import Link from "next/link";
@@ -9,6 +10,11 @@ import { CalendarMenu } from "~/features/courses/components/calendar-menu";
 import { joinRun } from "~/features/courses/join-run";
 import { formatSessionMoment } from "~/features/courses/my-courses";
 import { dayInZone } from "~/features/courses/session-model";
+import {
+  atTime,
+  trLocative,
+  trNumberWord,
+} from "~/features/flashcards/deck-model";
 import {
   type DayLabel,
   dayLabel,
@@ -22,6 +28,14 @@ const relativeText = (label: DayLabel, t: Translate): string =>
   label.kind === "inDays"
     ? t("SchedulePage.inDays", { count: label.count })
     : t(`SchedulePage.${label.kind}`);
+
+/** "21:00’de": a time on the hour is said by its hour (yirmi bir’de), any other by its minutes. */
+const atClock = (clock: string, locale: string): string => {
+  if (!locale.startsWith("tr") || !clock.endsWith(":00")) {
+    return atTime(clock, locale);
+  }
+  return `${clock}’${trLocative(trNumberWord(Number(clock.slice(0, 2))), true)}`;
+};
 
 /** "Öbür gün, Cumartesi 21:00": when a session is, from today's point of view. */
 const whenText = (
@@ -37,7 +51,7 @@ const whenText = (
     weekday: "long",
     timeZone,
   }).format(new Date(session.startsAt));
-  return `${relativeText(label, t)}, ${weekday} ${formatClock(session.startsAt, locale, timeZone)}`;
+  return `${relativeText(label, t).toLocaleLowerCase(locale)}, ${weekday} ${atClock(formatClock(session.startsAt, locale, timeZone), locale)}`;
 };
 
 /**
@@ -216,28 +230,36 @@ export const HomeSessions = async ({
                       key={session.id}
                       className="flex items-start justify-between gap-4 py-3 border-be border-neutral-subtle first:pbs-0 last:pbe-0 last:border-be-0"
                     >
-                      <div className="flex min-inline-0 flex-col gap-1">
-                        <Link
-                          href={`/courses/${session.courseId}/lessons/${session.id}`}
-                          className="mds-h4"
-                          dir="auto"
+                      <div className="flex min-inline-0 items-start gap-3">
+                        <span
+                          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-sunken"
+                          aria-hidden="true"
                         >
-                          {session.title}
-                        </Link>
-                        <span className="mds-caption" dir="auto">
-                          {joinRun([
-                            t("PhoneMenu.liveBadge"),
-                            <bdi key="c">{session.courseTitle}</bdi>,
-                            t("SchedulePage.week", {
-                              week: session.weekNumber,
-                            }),
-                            formatSessionMoment(
-                              session.startsAt,
-                              locale,
-                              timeZone
-                            ),
-                          ])}
+                          <Icon name="video" />
                         </span>
+                        <div className="flex min-inline-0 flex-col gap-1">
+                          <Link
+                            href={`/courses/${session.courseId}/lessons/${session.id}`}
+                            className="mds-h4"
+                            dir="auto"
+                          >
+                            {session.title}
+                          </Link>
+                          <span className="mds-caption" dir="auto">
+                            {joinRun([
+                              t("PhoneMenu.liveBadge"),
+                              <bdi key="c">{session.courseTitle}</bdi>,
+                              t("SchedulePage.week", {
+                                week: session.weekNumber,
+                              }),
+                              formatSessionMoment(
+                                session.startsAt,
+                                locale,
+                                timeZone
+                              ),
+                            ])}
+                          </span>
+                        </div>
                       </div>
                       {session.durationMinutes ? (
                         <span className="mds-caption shrink-0">

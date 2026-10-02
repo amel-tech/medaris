@@ -334,7 +334,7 @@ const lastVowel = (word: string): string =>
   [...word].reverse().find((c) => TR_VOWELS.includes(c)) ?? "e";
 
 /** How a Turkish number is last said, whose vowel and final sound the suffix follows. */
-const trNumberWord = (n: number): string => {
+export const trNumberWord = (n: number): string => {
   if (n === 0) return "sıfır";
   const ones = [
     "",

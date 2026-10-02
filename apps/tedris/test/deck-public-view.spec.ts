@@ -86,7 +86,7 @@ describe("Deste, girişsiz ziyaretçi (design tedris/32)", () => {
   it("shows six cards at a time", async () => {
     await mount(14);
     expect(document.querySelectorAll("tbody tr")).toHaveLength(6);
-    expect(text()).toContain("14 kartın 6 tanesi gösteriliyor");
+    expect(text()).toContain("14 karttan 6’sı gösteriliyor");
     const more = [...document.querySelectorAll("button")].find(
       (b) => b.textContent === "Daha fazla göster"
     ) as HTMLElement;
@@ -98,7 +98,7 @@ describe("Deste, girişsiz ziyaretçi (design tedris/32)", () => {
       ) as HTMLElement
     );
     expect(document.querySelectorAll("tbody tr")).toHaveLength(14);
-    expect(text()).toContain("14 kartın 14 tanesi gösteriliyor");
+    expect(text()).toContain("14 karttan 14’ü gösteriliyor");
     expect(
       [...document.querySelectorAll("button")].some(
         (b) => b.textContent === "Daha fazla göster"

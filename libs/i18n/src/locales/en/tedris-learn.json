@@ -8,6 +8,7 @@
     "emptyCourses": "You have no course in progress. You can find one in Discover.",
     "emptyDecks": "No deck to study today. Look at your collection on the Decks page.",
     "emptyFollowed": "The köşks you follow have no new course.",
+    "nextSessionShort": "Next session",
     "studyDeck": "Study: {title}"
   },
   "Study": {

@@ -79,7 +79,7 @@ describe("Kaldığın yerden devam et", () => {
     expect(out).toContain("imam");
     expect(out).toContain("İlerlemen 40");
     expect(out).toContain("Beyazıt Köşkü");
-    expect(out).toContain("Sıradaki celse");
+    expect(out).toContain("Sonraki celse");
   });
 
   it("says there is no session when none is planned", async () => {

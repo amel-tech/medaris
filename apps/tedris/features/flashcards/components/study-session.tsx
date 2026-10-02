@@ -55,6 +55,9 @@ export function StudySession({
   const locale = useLocale();
   const toaster = useToaster();
   const [round] = useState(cards);
+  // The subtitle names the round as it began; the page is re-read after each
+  // rating and its counts fall, but the round's own total does not.
+  const [counts] = useState({ due: dueCount, fresh: newCount });
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -63,20 +66,21 @@ export function StudySession({
   const card = round[index];
   const finished = index >= total;
 
+  const toggle = useCallback(() => setRevealed((r) => !r), []);
   const reveal = useCallback(() => setRevealed(true), []);
 
-  // Space turns the card over; the buttons below stay the way to do everything.
+  // Space turns the card over and back; the buttons below stay the way to do everything.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== " " || revealed || finished) return;
+      if (event.key !== " " || finished) return;
       const target = event.target as HTMLElement | null;
       if (target?.closest("button, a, input, textarea, select")) return;
       event.preventDefault();
-      reveal();
+      toggle();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [revealed, finished, reveal]);
+  }, [finished, toggle]);
 
   const rate = async (rating: ReviewRating) => {
     if (!card || busy) return;
@@ -100,12 +104,12 @@ export function StudySession({
     setIndex((i) => i + 1);
   };
 
-  const kind = subtitleKind(signedIn, dueCount);
+  const kind = total === 0 ? "all" : subtitleKind(signedIn, counts.due);
   const subtitle =
     kind === "due"
-      ? t("subtitleDue", { deck: deck.title, count: dueCount })
+      ? t("subtitleDue", { deck: deck.title, count: counts.due })
       : kind === "new"
-        ? t("subtitleNew", { deck: deck.title, count: newCount })
+        ? t("subtitleNew", { deck: deck.title, count: counts.fresh })
         : t("subtitleAll", { deck: deck.title, count: total });
 
   return (
@@ -193,7 +197,12 @@ export function StudySession({
                   ) : null}
                 </div>
                 {card ? (
-                  <div className="flex min-block-40 items-center justify-center py-6">
+                  // biome-ignore lint/a11y/useKeyWithClickEvents: Space and the buttons below are the keyboard way to turn the card
+                  // biome-ignore lint/a11y/noStaticElementInteractions: clicking the face turns the card (design tedris/30)
+                  <div
+                    className="flex min-block-40 cursor-pointer items-center justify-center py-6"
+                    onClick={toggle}
+                  >
                     <CardFace text={card.contentFront} size="sample" />
                   </div>
                 ) : null}

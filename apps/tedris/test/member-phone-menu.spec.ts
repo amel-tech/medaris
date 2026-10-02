@@ -156,7 +156,7 @@ describe("the signed-in Ana sayfa's sessions (design tedris/44)", () => {
   it("greets by first name and says when the next session is", async () => {
     const html = await render([session({})]);
     expect(html).toContain("Selâmün aleyküm, Zeynep");
-    expect(html).toContain("Sıradaki celsen: Öbür gün, Cumartesi 21:00.");
+    expect(html).toContain("Sıradaki celsen öbür gün, Cumartesi 21:00’de.");
   });
 
   it("shows the nearest session as the card, and says when its link is not there yet", async () => {

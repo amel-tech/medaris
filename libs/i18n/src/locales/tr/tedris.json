@@ -600,7 +600,7 @@
     "register": "Kayıt ol",
     "greeting": "Selâmün aleyküm, {name}",
     "greetingAnon": "Selâmün aleyküm",
-    "nextIntro": "Sıradaki celsen: {when}.",
+    "nextIntro": "Sıradaki celsen {when}.",
     "noNext": "Planlı bir celsen görünmüyor.",
     "nextTitle": "Sıradaki celse",
     "liveBadge": "Canlı ders",
