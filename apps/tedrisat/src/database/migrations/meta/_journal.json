@@ -211,6 +211,13 @@
       "when": 1790913540176,
       "tag": "0029_session_cancellation",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1790914266857,
+      "tag": "0030_bans",
+      "breakpoints": true
     }
   ]
 }

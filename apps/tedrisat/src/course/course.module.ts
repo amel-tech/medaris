@@ -1,5 +1,6 @@
 import { AuthGuardModule } from "@medaris/common";
 import { Module } from "@nestjs/common";
+import { BanModule } from "../ban/ban.module";
 import { DatabaseService } from "../database/database.service";
 import { KoskModule } from "../kosk/kosk.module";
 import { CourseController } from "./course.controller";
@@ -8,7 +9,7 @@ import { CourseService } from "./course.service";
 import { LessonController } from "./lesson.controller";
 
 @Module({
-  imports: [AuthGuardModule, KoskModule],
+  imports: [AuthGuardModule, KoskModule, BanModule],
   controllers: [CourseController, LessonController],
   providers: [CourseService, CourseRepository, DatabaseService],
   // For AuthzBindingsModule's role resolver (MDRS-41): findKoskId,

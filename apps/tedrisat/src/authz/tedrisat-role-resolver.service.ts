@@ -7,6 +7,7 @@ import {
   RoleResolver,
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
+import { BanRepository } from "../ban/ban.repository";
 import { CourseRepository } from "../course/course.repository";
 import { CourseStatus } from "../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
@@ -73,7 +74,8 @@ export class TedrisatRoleResolver implements RoleResolver {
     private readonly koskService: KoskService,
     private readonly courseRepo: CourseRepository,
     private readonly deckService: FlashcardDeckService,
-    private readonly madrasahService: MadrasahService
+    private readonly madrasahService: MadrasahService,
+    private readonly banRepo: BanRepository
   ) {}
 
   async resolve(userId: string, resource: ResourceRef): Promise<Role | null> {
@@ -373,6 +375,17 @@ export class TedrisatRoleResolver implements RoleResolver {
 
     if (ownsParentKosk) return ROLES.KOSK_MANAGER;
     if (isMuderris) return ROLES.MUDERRIS;
+    // A barred talebe is a stranger to the course (MDRS-177): they keep the
+    // public page and lose what only the enrolled hold. Staff are never
+    // barred (`BanService.create` refuses it), so this sits after them. It
+    // asks the repository, not `BanService`: the service needs `AuthzService`,
+    // which needs this resolver, and that cycle never resolves.
+    if (
+      enrollment &&
+      (await this.banRepo.isBarredFromCourse(userId, resource.id))
+    ) {
+      return ROLES.PUBLIC;
+    }
     if (enrollment?.status === EnrollmentStatus.PENDING) return ROLES.PENDING;
     if (enrollment) return ROLES.ENROLLED; // ENROLLED or COMPLETED
     return ROLES.PUBLIC;

@@ -157,6 +157,11 @@ export interface IEnrollment {
   updatedAt: Date;
 }
 
+/** An enrollment on the team's roster, with the ban that bars the talebe, if any (MDRS-177). */
+export interface IRosterEnrollment extends IEnrollment {
+  ban: { id: string; scope: "COURSE" | "KOSK" } | null;
+}
+
 export interface IPendingEnrollment extends IEnrollment {
   courseTitle: string;
 }
