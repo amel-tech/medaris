@@ -42,6 +42,14 @@ export default function LoginUpdatePassword(
   const account =
     (kcContext as { username?: string }).username ?? auth?.attemptedUsername;
 
+  // Keycloak sends only the user name here. The e-mail rule compares against an
+  // address the page really has: an `email` Keycloak did send, or a user name
+  // that is itself an address; otherwise the server enforces `notEmail`.
+  const knownEmail =
+    (kcContext as { user?: { email?: string } }).user?.email ??
+    (kcContext as { email?: string }).email ??
+    (account?.includes("@") ? account : undefined);
+
   const fieldError = (name: string) =>
     messagesPerField.existsError(name) ? (
       <Html html={messagesPerField.get(name)} />
@@ -83,7 +91,7 @@ export default function LoginUpdatePassword(
           showLabel: msgStr("showPasswordConfirm"),
           error: fieldError("password-confirm"),
         }}
-        email={account}
+        email={knownEmail}
         username={account}
         ruleLabels={{
           length: msg("passwordRuleLength", "10"),
