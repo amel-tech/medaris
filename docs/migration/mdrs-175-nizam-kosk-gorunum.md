@@ -2,9 +2,17 @@
 
 Screens: nizam/20 "Köşk — Medaris yönetimi görünümü", nizam/23 "Dersler",
 nizam/53 "Genel bakış" (a course, for its köşk nazımı).
-Base: `release/stack-44-nizam-kosk-yonetimi`. This is the Mac lane (nizam/nazır
-packages); it is not linked to stack #130 until the tedris lane (26, 29–36) is
-merged in.
+Base: the top of stack #130 when the PR was opened
+(`release/stack-48-nizam-yasak`). The package was coded on
+`release/stack-44-nizam-kosk-yonetimi`; taking the stack top in brought an older
+copy of the MDRS-174 köşk work into conflict, resolved in favour of the stack top.
+
+**Known gap (accepted by the product owner on 2026-10-02):** nizam/20's
+"Çıkar" button on the köşk nazımları table, the "Son köşk nazımı ardılsız
+çıkarılamaz" warning, the note on the roles and permissions the removed person
+gave, and the Devral/Düşür dialog are not built. The 4 October release gate
+(`_kurallar` 15) keeps them out, and the backend has no hand-over model or
+removal endpoint for a köşk nazımı yet. They belong to a follow-up.
 
 ## What was done
 
