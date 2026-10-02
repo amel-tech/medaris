@@ -74,7 +74,7 @@ export function NazimsView({ nazims, catalog, groups }: Props) {
       key: "person",
       header: t("columns.person"),
       rowHeader: true,
-      width: "24%",
+      width: "22%",
       render: (n) => (
         <span className="flex min-w-0 items-center gap-3">
           <Avatar name={n.user.name ?? n.user.email ?? ""} decorative />
@@ -94,7 +94,7 @@ export function NazimsView({ nazims, catalog, groups }: Props) {
     {
       key: "grants",
       header: t("columns.grants"),
-      width: "29%",
+      width: "27%",
       render: (n) => {
         const held = heldGroupsOf(n);
         const codes = orderByCatalog(
@@ -178,7 +178,7 @@ export function NazimsView({ nazims, catalog, groups }: Props) {
         <span className="mds-visually-hidden">{t("columns.actions")}</span>
       ),
       align: "right",
-      width: "20%",
+      width: "24%",
       render: (n) => (
         <span className="flex flex-nowrap items-center justify-end gap-2">
           <Button
