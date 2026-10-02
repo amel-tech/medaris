@@ -78,6 +78,10 @@ export function UpdatePasswordForm({
   usePageShowReset(() => setBusy(false));
   useFocusFirstInvalid(form, checked);
 
+  // Without an address to compare against the e-mail rule cannot be measured:
+  // listing it would tick it for every password, so it is left off and the
+  // server (realm policy `notEmail`) stays the only judge.
+  const emailKnown = email !== undefined && email.trim() !== "";
   const rules = evaluatePasswordRules({
     password: value,
     email,
@@ -145,11 +149,15 @@ export function UpdatePasswordForm({
             metLabel={ruleLabels.met}
             rules={[
               { id: "length", label: ruleLabels.length, met: rules.length },
-              {
-                id: "notEmail",
-                label: ruleLabels.notEmail,
-                met: rules.notEmail,
-              },
+              ...(emailKnown
+                ? [
+                    {
+                      id: "notEmail",
+                      label: ruleLabels.notEmail,
+                      met: rules.notEmail,
+                    },
+                  ]
+                : []),
               {
                 id: "notUsername",
                 label: ruleLabels.notUsername,
