@@ -47,7 +47,14 @@ export const LeaveCourse = ({
           ? await withdrawEnrollment(courseId)
           : await leaveCourse(courseId);
       if (res.success === false) {
-        toast.error(t(`CoursePage.${courseActionErrorKey(res.status)}`));
+        // The page was drawn, so the course exists: a 404 here means the
+        // enrollment is gone or settled elsewhere (an application approved in
+        // the meantime), not that the course vanished.
+        toast.error(
+          t(
+            `CoursePage.${res.status === 404 ? "actionConflict" : courseActionErrorKey(res.status)}`
+          )
+        );
         // A stale page: draw what the enrollment is now.
         if (res.status === 404 || res.status === 409) router.refresh();
         return;

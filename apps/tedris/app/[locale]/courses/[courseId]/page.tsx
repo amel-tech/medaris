@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { env } from "~/env";
-import { getCourse, getKosk } from "~/features/courses/actions";
+import { getKosk } from "~/features/courses/actions";
 import { CoursePage } from "~/features/courses/components/course-page";
 import { introMetadata } from "~/features/courses/intro-metadata";
+import { loadCourse } from "~/features/courses/load-course";
 import {
   getCourseForMetadata,
   isSignedIn,
@@ -36,7 +37,7 @@ export async function generateMetadata({
 
 export default async function Page({ params }: { params: Params }) {
   const { courseId } = await params;
-  const course = await getCourse(courseId);
+  const course = await loadCourse(courseId);
   if (!course) notFound();
 
   // Köşk name for the breadcrumb (CourseDetailResponse only carries koskId),
