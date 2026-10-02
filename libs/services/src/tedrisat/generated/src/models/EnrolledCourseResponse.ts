@@ -13,6 +13,20 @@
  */
 
 import { mapValues } from '../runtime';
+import type { MyEnrollmentResponse } from './MyEnrollmentResponse';
+import {
+    MyEnrollmentResponseFromJSON,
+    MyEnrollmentResponseFromJSONTyped,
+    MyEnrollmentResponseToJSON,
+    MyEnrollmentResponseToJSONTyped,
+} from './MyEnrollmentResponse';
+import type { NextSessionResponse } from './NextSessionResponse';
+import {
+    NextSessionResponseFromJSON,
+    NextSessionResponseFromJSONTyped,
+    NextSessionResponseToJSON,
+    NextSessionResponseToJSONTyped,
+} from './NextSessionResponse';
 import type { MuderrisResponse } from './MuderrisResponse';
 import {
     MuderrisResponseFromJSON,
@@ -20,13 +34,6 @@ import {
     MuderrisResponseToJSON,
     MuderrisResponseToJSONTyped,
 } from './MuderrisResponse';
-import type { EnrollmentResponse } from './EnrollmentResponse';
-import {
-    EnrollmentResponseFromJSON,
-    EnrollmentResponseFromJSONTyped,
-    EnrollmentResponseToJSON,
-    EnrollmentResponseToJSONTyped,
-} from './EnrollmentResponse';
 
 /**
  * 
@@ -179,11 +186,17 @@ export interface EnrolledCourseResponse {
      */
     muderris: Array<MuderrisResponse>;
     /**
-     * 
-     * @type {EnrollmentResponse}
+     * The earliest session still ahead that has not been cancelled (MDRS-159); null when none is scheduled.
+     * @type {NextSessionResponse}
      * @memberof EnrolledCourseResponse
      */
-    enrollment: EnrollmentResponse;
+    nextSession?: NextSessionResponse | null;
+    /**
+     * 
+     * @type {MyEnrollmentResponse}
+     * @memberof EnrolledCourseResponse
+     */
+    enrollment: MyEnrollmentResponse;
 }
 
 
@@ -267,7 +280,8 @@ export function EnrolledCourseResponseFromJSONTyped(json: any, ignoreDiscriminat
         'weekCount': json['weekCount'],
         'lessonCount': json['lessonCount'],
         'muderris': ((json['muderris'] as Array<any>).map(MuderrisResponseFromJSON)),
-        'enrollment': EnrollmentResponseFromJSON(json['enrollment']),
+        'nextSession': json['nextSession'] == null ? undefined : NextSessionResponseFromJSON(json['nextSession']),
+        'enrollment': MyEnrollmentResponseFromJSON(json['enrollment']),
     };
 }
 
@@ -306,7 +320,8 @@ export function EnrolledCourseResponseToJSONTyped(value?: EnrolledCourseResponse
         'weekCount': value['weekCount'],
         'lessonCount': value['lessonCount'],
         'muderris': ((value['muderris'] as Array<any>).map(MuderrisResponseToJSON)),
-        'enrollment': EnrollmentResponseToJSON(value['enrollment']),
+        'nextSession': NextSessionResponseToJSON(value['nextSession']),
+        'enrollment': MyEnrollmentResponseToJSON(value['enrollment']),
     };
 }
 
