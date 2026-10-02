@@ -131,9 +131,13 @@ export class KoskAdminController {
     return this.admin.directory(request.user, {
       status,
       level,
-      field: field?.trim().slice(0, MAX_TEXT_LENGTH) || undefined,
+      // A repeated query key arrives as an array; only a single value is read.
+      field:
+        typeof field === "string"
+          ? field.trim().slice(0, MAX_TEXT_LENGTH) || undefined
+          : undefined,
       listing,
-      q: q?.slice(0, MAX_TEXT_LENGTH),
+      q: typeof q === "string" ? q.slice(0, MAX_TEXT_LENGTH) : undefined,
       page: page < 1 ? 1 : page,
       limit: Math.min(Math.max(limit, 1), MAX_PAGE_SIZE),
     });
