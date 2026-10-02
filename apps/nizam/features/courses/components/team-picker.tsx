@@ -216,34 +216,27 @@ export function TeamPicker({
       </fieldset>
     );
 
+  const searchPart = (
+    <>
+      {searchField}
+      {searchProblem && value.members.length > 0 ? (
+        <p className="mds-error" role="alert" data-testid="picker-note">
+          {searchProblem}
+        </p>
+      ) : null}
+    </>
+  );
+
   return (
     <div className="flex flex-col gap-4">
-      {listFirst ? null : searchField}
-      {listFirst ? null : (
-        <>
-          {searchProblem && value.members.length > 0 ? (
-            <p className="mds-error" role="alert" data-testid="picker-note">
-              {searchProblem}
-            </p>
-          ) : null}
-        </>
-      )}
+      {listFirst ? null : searchPart}
       {list}
       {value.members.length === 0 && error ? (
         <p className="mds-error" role="alert" data-testid="team-empty">
           {error}
         </p>
       ) : null}
-      {listFirst ? (
-        <>
-          {searchField}
-          {searchProblem && value.members.length > 0 ? (
-            <p className="mds-error" role="alert" data-testid="picker-note">
-              {searchProblem}
-            </p>
-          ) : null}
-        </>
-      ) : null}
+      {listFirst ? searchPart : null}
       <output className="mds-visually-hidden">
         {state.kind === "searching" ? t("searching") : announce}
       </output>

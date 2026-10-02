@@ -17,11 +17,7 @@ import { normalizeMeetingUrl, resolveMeetingPlatform } from "@medaris/utils";
 import { useRouter } from "next/navigation";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { type FormEvent, useMemo, useState, useTransition } from "react";
-import {
-  COVER_TONES,
-  TONE_HUE,
-  toneOfHue,
-} from "~/features/kosks/admin-present";
+import { COVER_TONES, toneOfHue } from "~/features/kosks/admin-present";
 import { saveCurriculum } from "../actions";
 import { formatDay } from "../format";
 import { curriculumPayload } from "../payload";
