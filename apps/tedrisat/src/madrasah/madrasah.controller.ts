@@ -158,7 +158,11 @@ export class MadrasahController {
     const safePage = page < 1 ? 1 : page;
     const safeLimit = Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
     return this.madrasahService.directory(
-      { status, q: q?.slice(0, MAX_SEARCH_LENGTH) },
+      // A repeated query key arrives as an array; only a single value is read.
+      {
+        status,
+        q: typeof q === "string" ? q.slice(0, MAX_SEARCH_LENGTH) : undefined,
+      },
       safePage,
       safeLimit
     );
