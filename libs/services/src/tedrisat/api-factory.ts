@@ -9,6 +9,7 @@ import {
   LessonsApi,
   MadrasahsApi,
   MeApi,
+  NizamApi,
   NotificationsApi,
   TedrisatServiceApi,
   UsersApi,
@@ -16,6 +17,8 @@ import {
 
 // Re-export types that are used in other apps
 export type {
+  AssignmentResponse,
+  ChiefNazimResponse,
   CourseDetailResponse,
   CourseSummaryResponse,
   CreateCourseDto,
@@ -32,6 +35,7 @@ export type {
   CreateWeekDto,
   CreateWeekLessonDto,
   DeckLabelStatsResponse,
+  EffectivePermissionGroup,
   EnrolledCourseResponse,
   EnrollmentResponse,
   FlashcardCreateLabelResponse,
@@ -42,6 +46,7 @@ export type {
   FlashcardLabelingResponse,
   FlashcardLabelResponse,
   FlashcardResponse,
+  GrantResponse,
   KoskResponse,
   LabelStatsResponse,
   LessonMutationResponse,
@@ -49,6 +54,11 @@ export type {
   MadrasahResponse,
   MeResponse,
   MuderrisResponse,
+  MyAssignmentsResponse,
+  MyEffectivePermissionsResponse,
+  MyGrantsResponse,
+  MyPermissionsResponse,
+  MyRolesResponse,
   NotificationCountsResponse,
   NotificationResponse,
   PaginatedKoskResponse,
@@ -125,6 +135,8 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     me: new MeApi(configuration),
     // Exact e-mail lookup (MDRS-104) — nizam's müderris picker (MDRS-105).
     users: new UsersApi(configuration),
+    // Who the Medaris başnazımı is, for the 'no access' screen (MDRS-169).
+    nizam: new NizamApi(configuration),
     // The caller's in-app notifications (MDRS-167): the list page and the bell.
     notifications: new NotificationsApi(configuration),
     // The two label controllers MDRS-58 published for the first time. Generated
