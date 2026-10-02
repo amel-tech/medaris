@@ -117,7 +117,6 @@
     "sampleIntro": "يمكنك قراءة مخطط هذه الجلسة ومصادرها دون التسجيل.",
     "agendaHeading": "مخطط الجلسة",
     "sourceHeading": "المصادر",
-    "recordingsEmpty": "تُنشر التسجيلات في صفحات الجلسات. لا توجد تسجيلات منشورة لهذا الدرس بعد.",
     "deckEmpty": "لا توجد مجموعة بطاقات مرتبطة بهذا الدرس.",
     "teachers": "المدرّسون",
     "typeLive": "جلسة مباشرة",
@@ -249,46 +248,6 @@
   "HomePage": {
     "greeting": "السلام عليكم!"
   },
-  "KeycloakLogout": {
-    "button": "تسجيل الخروج"
-  },
-  "KoskListPage": {
-    "title": "Köşkler",
-    "subtitle": "İlim halkalarını yürüten köşkleri keşfedin, takip edin ve derslerine katılın.",
-    "breadcrumbKosks": "Köşkler",
-    "searchPlaceholder": "Köşk ara...",
-    "featured": "Öne çıkan",
-    "verified": "Onaylı",
-    "follow": "Takip et",
-    "following": "Takipte",
-    "enterKosk": "Köşke gir",
-    "filterAll": "Tümü",
-    "filterFollowing": "Takip ettiklerim",
-    "filterRecommended": "Önerilen",
-    "filterNew": "Yeni açılanlar",
-    "sortPopular": "Sırala: Popüler",
-    "fields": "İlim alanları",
-    "allFields": "Tüm alanlar",
-    "uncategorized": "Diğer",
-    "allLevels": "Tüm seviyeler",
-    "statCourses": "Ders",
-    "statStudents": "Talebe",
-    "statMuderris": "Müderris",
-    "coursesShort": "ders",
-    "studentsShort": "talebe",
-    "openKoskTitle": "Köşk aç",
-    "openKoskHint": "Müderris misiniz? Kendi köşkünüzü açıp ders halkalarınızı başlatın.",
-    "apply": "Başvuru yap",
-    "empty": "Henüz köşk bulunmuyor.",
-    "prev": "Önceki",
-    "next": "Sonraki",
-    "pageOf": "{page} / {total}",
-    "continueTitle": "تابع من حيث توقفت",
-    "continueCount": "{count} دروس",
-    "allMyCourses": "كل دروسي",
-    "continue": "متابعة",
-    "completed": "مكتمل"
-  },
   "KoskPage": {
     "kosks": "Köşkler",
     "uncategorized": "Diğer",
@@ -336,11 +295,6 @@
     "cardsCount": "{count} بطاقة حفظ",
     "inCollection": "في مجموعتك",
     "manager": "ناظم الكُشك {name}"
-  },
-  "LearningPage": {
-    "title": "Öğrenme",
-    "subtitle": "Köşkler ve kurslar",
-    "empty": "Henüz köşk bulunmuyor."
   },
   "LessonTypes": {
     "VIDEO": "Video",
@@ -492,17 +446,16 @@
     "backToDecks": "العودة إلى المجموعات"
   },
   "LessonLocked": {
-    "title": "هذا الدرس متاح للطلاب المسجلين",
     "description": {
-      "signIn": "سجّل الدخول لترى محتوى الدرس ورابط الاجتماع والمصادر.",
-      "apply": "محتوى الدرس ورابط الاجتماع والمصادر متاحة لطلاب الدورة المسجلين. يعرض برنامج الدورة في صفحتها.",
-      "pending": "أُرسل طلبك إلى مدير الكُشك. بعد الموافقة عليه يُفتح الدرس هنا."
+      "signIn": "محتوى الجلسة وروابط الاجتماع والتسجيلات متاحة للطلاب المسجّلين. سجّل الدخول ثم سجّل في الدرس لترى ذلك.",
+      "apply": "محتوى الجلسة وروابط الاجتماع والتسجيلات متاحة للطلاب المسجّلين. ستراها عند تسجيلك في الدرس.",
+      "pending": "محتوى الجلسة وروابط الاجتماع والتسجيلات متاحة للطلاب المسجّلين. ستراها عند الموافقة على طلبك.",
+      "revoked": "محتوى الجلسة وروابط الاجتماع والتسجيلات متاحة للطلاب المسجّلين. أُلغي وصولك إلى هذا الدرس."
     },
     "signIn": "تسجيل الدخول",
-    "apply": "قدّم طلبًا",
-    "applying": "جارٍ الإرسال...",
+    "apply": "تقديم طلب التسجيل",
     "pending": "طلبك بانتظار الموافقة",
-    "backToCourse": "العودة إلى صفحة الدورة"
+    "teachers": "المدرّس {names}"
   },
   "MadrasahPage": {
     "kosks": "الأكشاك",
@@ -658,7 +611,32 @@
     "weekEmpty": "لم تُضَف حلقات إلى هذا الأسبوع بعد.",
     "rowCurrent": "التالية",
     "rowDone": "، انتهت",
-    "rowCancelled": "أُلغيت"
+    "rowCancelled": "أُلغيت",
+    "recordingsGo": "الانتقال إلى تسجيلات الدرس",
+    "elapsed": "مستمرة منذ {minutes} دقيقة",
+    "recordingPlaceholder": "يُعرض التسجيل هنا",
+    "recordingOpen": "فتح التسجيل",
+    "recordingKind": "تسجيل",
+    "liveStreamTitle": "البث المباشر",
+    "liveStreamPlaceholder": "يُعرض البث المباشر هنا",
+    "liveStreamOpen": "فتح البث",
+    "liveStreamText": "يمكنك متابعة البث من هنا. للسؤال والمشاركة في الحوار انضم إلى الجلسة."
+  },
+  "RecordingsTab": {
+    "empty": "لم يُنشر أي تسجيل لهذا الدرس بعد.",
+    "playerPlaceholder": "يُعرض التسجيل هنا",
+    "allTitle": "كل التسجيلات",
+    "allHint": "حسب الأسبوع، الأحدث أولًا",
+    "weekLabel": "الأسبوع {number}",
+    "minutes": "{count} د",
+    "preparing": "قيد الإعداد",
+    "preparingHint": "يُعرض هنا عند جاهزيته",
+    "public": "متاح للجميع",
+    "inPlayer": "في المشغّل",
+    "play": "تشغيل",
+    "playLabel": "تشغيل: {title}",
+    "open": "فتح التسجيل",
+    "openLabel": ": {title} (يُفتح في تبويب جديد)"
   },
   "AccountPage": {
     "pageTitle": "الحساب",

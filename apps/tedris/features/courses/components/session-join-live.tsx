@@ -25,6 +25,9 @@ export interface SessionJoinLabels {
   revealLabel: string;
   localTimeLabel: string;
   minuteUnit: string;
+  recordingsLabel?: string;
+  /** keeps a literal `{minutes}`, which the card fills in while the celse runs */
+  elapsedText?: string;
 }
 
 export interface CalendarLabels {
@@ -60,6 +63,7 @@ export function SessionJoinLive({
   courseTimeZone,
   labels,
   calendar,
+  recordingsHref,
 }: {
   renderedAt: string;
   startsAt: string;
@@ -79,6 +83,8 @@ export function SessionJoinLive({
   labels: SessionJoinLabels;
   /** present for a session a talebe may still add to a calendar */
   calendar?: CalendarLabels;
+  /** where "Ders kayıtlarına git" goes once the celse is over; absent without a recording */
+  recordingsHref?: string;
 }) {
   const [now, setNow] = useState(() => new Date(renderedAt));
   useEffect(() => {
@@ -95,6 +101,22 @@ export function SessionJoinLive({
     },
     now
   );
+
+  const { elapsedText, ...joinLabels } = labels;
+  const elapsed =
+    state === "live" && elapsedText
+      ? elapsedText.replace(
+          "{minutes}",
+          String(
+            Math.max(
+              0,
+              Math.floor(
+                (now.getTime() - new Date(startsAt).getTime()) / 60_000
+              )
+            )
+          )
+        )
+      : undefined;
 
   const addToCalendar =
     calendar && (state === "upcoming" || state === "live") ? (
@@ -144,9 +166,11 @@ export function SessionJoinLive({
       host={platformHost}
       href={meetingUrl}
       actions={addToCalendar}
+      recordingsHref={recordingsHref}
+      elapsedText={elapsed}
       now={now}
       locale={locale}
-      {...labels}
+      {...joinLabels}
     />
   );
 }

@@ -119,6 +119,10 @@ src/models/PermissionGroupRef.ts
 src/models/PersonRef.ts
 src/models/PlannedSessionResponse.ts
 src/models/ReadAllNotificationsResponse.ts
+src/models/RecordingProvider.ts
+src/models/RecordingResponse.ts
+src/models/RecordingStatus.ts
+src/models/RecordingVisibility.ts
 src/models/RemoveEnrollmentDto.ts
 src/models/ReplaceCourseDto.ts
 src/models/ResourceResponse.ts
@@ -131,6 +135,7 @@ src/models/SessionBatchPreviewResponse.ts
 src/models/SessionBatchResponse.ts
 src/models/SessionBatchWeekResponse.ts
 src/models/SessionMuderrisResponse.ts
+src/models/SessionRecordingResponse.ts
 src/models/SessionRefResponse.ts
 src/models/SessionResponse.ts
 src/models/SessionStatus.ts

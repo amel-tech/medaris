@@ -44,6 +44,7 @@ export const COURSE_TREE_TABLES = [
   "role_assignments",
   "enrollments",
   "course_resources",
+  "lesson_recordings",
   "course_muderris",
   "lessons",
   "course_weeks",

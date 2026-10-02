@@ -2,11 +2,22 @@ import type { KoskResponse } from "@medaris/services/tedrisat";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Card } from "@medaris/ui/mds/card";
-import type { getTranslations } from "next-intl/server";
 import { koskLevelLabel } from "~/features/courses/components/labels";
 import { FollowButton } from "./follow-button";
 
-type Translate = Awaited<ReturnType<typeof getTranslations>>;
+/**
+ * The keys this card reads, as a narrow signature: the full translator type
+ * makes the checker expand the whole catalogue per call, which no longer
+ * finishes (TS2589, MDRS-164).
+ */
+type Translate = (
+  key:
+    | "DiscoverPage.coursesCount"
+    | "DiscoverPage.follow"
+    | "DiscoverPage.following"
+    | "DiscoverPage.followFailed",
+  values?: Record<string, string | number>
+) => string;
 
 /**
  * A köşk on Keşfet (MDRS-159, design tedris/02): its mark, name and ilim

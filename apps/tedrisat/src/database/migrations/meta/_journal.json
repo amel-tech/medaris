@@ -232,6 +232,13 @@
       "when": 1790941924453,
       "tag": "0032_revoked_enrollment",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790960808756,
+      "tag": "0035_lesson_recordings",
+      "breakpoints": true
     }
   ]
 }

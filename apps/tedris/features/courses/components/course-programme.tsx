@@ -41,10 +41,13 @@ export const CourseProgramme = ({
   course,
   state,
   now,
+  openWeeks,
 }: {
   course: CourseDetailResponse;
   state: CourseViewState;
   now: number;
+  /** Weeks open at first, instead of the sample and next-session weeks. */
+  openWeeks?: number[];
 }) => {
   const t = useTranslations("tedris.CoursePage");
   const locale = useLocale();
@@ -123,7 +126,7 @@ export const CourseProgramme = ({
         .map((week) => week.weekNumber);
 
   return (
-    <Weeks defaultOpen={openAtFirst}>
+    <Weeks defaultOpen={openWeeks ?? openAtFirst}>
       {course.weeks.map((week) => {
         const sampleWeek = hasSample(week);
         const wState = seat

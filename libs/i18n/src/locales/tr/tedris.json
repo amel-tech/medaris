@@ -117,7 +117,6 @@
     "sampleIntro": "Bu celseyi kaydolmadan izleyebilir, celse akışını ve kaynaklarını okuyabilirsin.",
     "agendaHeading": "Celse akışı",
     "sourceHeading": "Kaynaklar",
-    "recordingsEmpty": "Ders kayıtları, celse sayfalarında yayımlanır. Bu derste henüz yayımlanmış kayıt yok.",
     "deckEmpty": "Bu derse bağlı bir deste yok.",
     "teachers": "Müderrisler",
     "typeLive": "Canlı ders",
@@ -274,46 +273,6 @@
   "HomePage": {
     "greeting": "Selamünaleyküm!"
   },
-  "KeycloakLogout": {
-    "button": "Çıkış yap"
-  },
-  "KoskListPage": {
-    "title": "Köşkler",
-    "subtitle": "İlim halkalarını yürüten köşkleri keşfedin, takip edin ve derslerine katılın.",
-    "breadcrumbKosks": "Köşkler",
-    "searchPlaceholder": "Köşk ara...",
-    "featured": "Öne çıkan",
-    "verified": "Onaylı",
-    "follow": "Takip et",
-    "following": "Takipte",
-    "enterKosk": "Köşke gir",
-    "filterAll": "Tümü",
-    "filterFollowing": "Takip ettiklerim",
-    "filterRecommended": "Önerilen",
-    "filterNew": "Yeni açılanlar",
-    "sortPopular": "Sırala: Popüler",
-    "fields": "İlim alanları",
-    "allFields": "Tüm alanlar",
-    "uncategorized": "Diğer",
-    "allLevels": "Tüm seviyeler",
-    "statCourses": "Ders",
-    "statStudents": "Talebe",
-    "statMuderris": "Müderris",
-    "coursesShort": "ders",
-    "studentsShort": "talebe",
-    "openKoskTitle": "Köşk aç",
-    "openKoskHint": "Müderris misiniz? Kendi köşkünüzü açıp ders halkalarınızı başlatın.",
-    "apply": "Başvuru yap",
-    "empty": "Henüz köşk bulunmuyor.",
-    "prev": "Önceki",
-    "next": "Sonraki",
-    "pageOf": "{page} / {total}",
-    "continueTitle": "Kaldığın yerden devam et",
-    "continueCount": "{count} ders",
-    "allMyCourses": "Tüm derslerim",
-    "continue": "Devam et",
-    "completed": "tamamlandı"
-  },
   "KoskPage": {
     "kosks": "Köşkler",
     "uncategorized": "Diğer",
@@ -361,11 +320,6 @@
     "cardsCount": "{count} ezber kartı",
     "inCollection": "Koleksiyonunda",
     "manager": "Köşk nazımı {name}"
-  },
-  "LearningPage": {
-    "title": "Öğrenme",
-    "subtitle": "Köşkler ve kurslar",
-    "empty": "Henüz köşk bulunmuyor."
   },
   "LessonTypes": {
     "VIDEO": "Video",
@@ -517,17 +471,16 @@
     "backToDecks": "Destelere dön"
   },
   "LessonLocked": {
-    "title": "Bu ders kayıtlı talebelere açık",
     "description": {
-      "signIn": "Dersin içeriğini, toplantı bağlantısını ve kaynaklarını görmek için giriş yapın.",
-      "apply": "Dersin içeriği, toplantı bağlantısı ve kaynakları kursa kayıtlı talebelere açılır. Kursun programını kurs sayfasında görebilirsiniz.",
-      "pending": "Başvurunuz köşk yöneticisine iletildi. Onaylandığında dersin içeriği burada açılır."
+      "signIn": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Giriş yapıp derse kaydolduğunda görebilirsin.",
+      "apply": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Derse kaydolduğunda görebilirsin.",
+      "pending": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Başvurun onaylandığında görebilirsin.",
+      "revoked": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Bu derse erişimin kaldırıldı."
     },
     "signIn": "Giriş yap",
-    "apply": "Başvur",
-    "applying": "Gönderiliyor...",
+    "apply": "Kayıt başvurusu yap",
     "pending": "Başvurun onay bekliyor",
-    "backToCourse": "Kurs sayfasına dön"
+    "teachers": "Müderris {names}"
   },
   "MadrasahPage": {
     "kosks": "Köşkler",
@@ -683,7 +636,32 @@
     "weekEmpty": "Bu hafta için henüz celse eklenmedi.",
     "rowCurrent": "Sıradaki",
     "rowDone": ", sona erdi",
-    "rowCancelled": "İptal edildi"
+    "rowCancelled": "İptal edildi",
+    "recordingsGo": "Ders kayıtlarına git",
+    "elapsed": "{minutes} dakikadır sürüyor",
+    "recordingPlaceholder": "Ders kaydı burada oynar",
+    "recordingOpen": "Ders kaydını aç",
+    "recordingKind": "Ders kaydı",
+    "liveStreamTitle": "Canlı yayın",
+    "liveStreamPlaceholder": "Canlı yayın burada oynar",
+    "liveStreamOpen": "Yayını aç",
+    "liveStreamText": "Yayını buradan izleyebilirsin. Soru sormak ve konuşmaya katılmak için celseye katıl."
+  },
+  "RecordingsTab": {
+    "empty": "Bu derste henüz yayımlanmış ders kaydı yok.",
+    "playerPlaceholder": "Ders kaydı burada oynar",
+    "allTitle": "Bütün ders kayıtları",
+    "allHint": "Haftalara göre, yeniden eskiye",
+    "weekLabel": "Hafta {number}",
+    "minutes": "{count} dk",
+    "preparing": "Hazırlanıyor",
+    "preparingHint": "Hazır olunca burada oynar",
+    "public": "Herkese açık",
+    "inPlayer": "Oynatıcıda",
+    "play": "Oynat",
+    "playLabel": "Oynat: {title}",
+    "open": "Ders kaydını aç",
+    "openLabel": ": {title} (yeni sekmede açılır)"
   },
   "AccountPage": {
     "pageTitle": "Hesap",

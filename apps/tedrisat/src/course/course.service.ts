@@ -41,6 +41,12 @@ import {
   muderrisListChanged,
   newlyLinkedUserIds,
 } from "./domain/muderris-list";
+import {
+  type IRecordingRow,
+  type IRecordingView,
+  liveStreamFor,
+  visibleRecordings,
+} from "./domain/recording";
 import { buildSessionView, type ISessionView } from "./domain/session-view";
 import { withCanonicalTimeZone } from "./domain/time-zone";
 import {
@@ -60,6 +66,7 @@ import { LessonNotScheduledError } from "./errors/lesson-not-scheduled.error";
 import { MuderrisAssignmentForbiddenError } from "./errors/muderris-assignment-forbidden.error";
 import { MuderrisDuplicateUserError } from "./errors/muderris-duplicate-user.error";
 import { MuderrisUnknownUserError } from "./errors/muderris-unknown-user.error";
+import { RecordingRepository } from "./recording.repository";
 
 /** A weekly pattern as the API takes it; `timeZone` defaults to the course's. */
 export type SessionPatternInput = Omit<
@@ -84,7 +91,8 @@ export class CourseService {
     private readonly courseRepo: CourseRepository,
     private readonly koskService: KoskService,
     private readonly authz: AuthzService,
-    private readonly banService: BanService
+    private readonly banService: BanService,
+    private readonly recordingRepo: RecordingRepository
   ) {}
 
   /**
@@ -293,7 +301,75 @@ export class CourseService {
       await this.courseRepo.findImamUserId(courseId)
     );
     if (!view) throw new LessonNotFoundError(sessionId);
+
+    // The stream link and the recording are content (MDRS-162): a caller who
+    // may not read content gets neither key, as for the meeting link.
+    if (!detail.contentLocked) {
+      view.liveStreamUrl = liveStreamFor(
+        view.status,
+        await this.recordingRepo.findLiveStreamUrl(sessionId),
+        true
+      );
+      const [stored] = await this.recordingRepo.findByLessonIds([sessionId]);
+      if (stored) {
+        const [shown] = visibleRecordings(
+          [
+            {
+              ...stored,
+              weekId: view.weekId,
+              weekNumber: view.weekNumber,
+              weekTitle: view.weekTitle,
+            },
+          ],
+          true
+        );
+        const {
+          lessonId: _l,
+          weekId: _w,
+          weekNumber: _n,
+          weekTitle: _t,
+          ...own
+        } = shown;
+        view.recording = own;
+      } else {
+        view.recording = null;
+      }
+    }
     return view;
+  }
+
+  /**
+   * The course's lesson recordings (MDRS-162), newest week first. A caller who
+   * may read course content sees them all; anyone else, a visitor included,
+   * only those marked PUBLIC. A recording that is still PROCESSING is listed
+   * with no link. Built from the filtered detail like `getSession`, so a
+   * draft, a hidden course or an archived lesson is not listed or is a 404.
+   */
+  async listRecordings(
+    courseId: string,
+    user: AuthenticatedUser | null
+  ): Promise<IRecordingView[]> {
+    const detail = await this.viewDetail(courseId, user, { audit: false });
+    const placed = detail.weeks.flatMap((week) =>
+      week.lessons.map((lesson) => ({ week, lesson }))
+    );
+    const stored = await this.recordingRepo.findByLessonIds(
+      placed.map((p) => p.lesson.id)
+    );
+    const rows: IRecordingRow[] = stored.flatMap((rec) => {
+      const at = placed.find((p) => p.lesson.id === rec.lessonId);
+      return at
+        ? [
+            {
+              ...rec,
+              weekId: at.week.id,
+              weekNumber: at.week.weekNumber,
+              weekTitle: at.week.title,
+            },
+          ]
+        : [];
+    });
+    return visibleRecordings(rows, !detail.contentLocked);
   }
 
   // ---- course writes (MDRS-105) ----

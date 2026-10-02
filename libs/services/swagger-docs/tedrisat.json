@@ -1983,6 +1983,49 @@
         ]
       }
     },
+    "/courses/{id}/recordings": {
+      "get": {
+        "description": "Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162).",
+        "operationId": "listCourseRecordings",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecordingResponse"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such course, or it is a draft, hidden or in an unlisted köşk to this caller (COURSE_NOT_FOUND)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course's lesson recordings, newest week first",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
     "/courses/{courseId}/weeks/{weekId}/lessons": {
       "post": {
         "operationId": "createLesson",
@@ -6972,6 +7015,80 @@
           "status"
         ]
       },
+      "RecordingProvider": {
+        "type": "string",
+        "enum": [
+          "YOUTUBE",
+          "DRIVE",
+          "OTHER"
+        ]
+      },
+      "RecordingVisibility": {
+        "type": "string",
+        "enum": [
+          "PUBLIC",
+          "ENROLLED"
+        ]
+      },
+      "RecordingStatus": {
+        "type": "string",
+        "enum": [
+          "PROCESSING",
+          "READY"
+        ]
+      },
+      "SessionRecordingResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "recordedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true
+          },
+          "provider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingProvider"
+              }
+            ]
+          },
+          "url": {
+            "type": "string",
+            "nullable": true
+          },
+          "visibility": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingVisibility"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "provider",
+          "visibility",
+          "status"
+        ]
+      },
       "SessionMuderrisResponse": {
         "type": "object",
         "properties": {
@@ -7069,6 +7186,21 @@
             "type": "string",
             "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103). Null once the session is cancelled or over: there is nothing left to join."
           },
+          "liveStreamUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103). The embeddable stream, sent only while the session is LIVE and only when one was set."
+          },
+          "recording": {
+            "nullable": true,
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103). The session's recording, or null when it has none. Its `url` is null while it is PROCESSING.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SessionRecordingResponse"
+              }
+            ]
+          },
           "previous": {
             "nullable": true,
             "description": "The standing (not cancelled) session before this one.",
@@ -7111,6 +7243,76 @@
           "weekTitle",
           "muderris",
           "contentLocked"
+        ]
+      },
+      "RecordingResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "lessonId": {
+            "type": "string",
+            "description": "The session this is the recording of."
+          },
+          "weekId": {
+            "type": "string"
+          },
+          "weekNumber": {
+            "type": "number"
+          },
+          "weekTitle": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "recordedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true
+          },
+          "provider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingProvider"
+              }
+            ]
+          },
+          "url": {
+            "type": "string",
+            "nullable": true,
+            "description": "Null while the recording is PROCESSING."
+          },
+          "visibility": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingVisibility"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "lessonId",
+          "weekId",
+          "weekNumber",
+          "weekTitle",
+          "title",
+          "provider",
+          "visibility",
+          "status"
         ]
       },
       "CreateWeekLessonDto": {

@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
+import { getLocale, getTimeZone } from "next-intl/server";
 import { getCourse, getKosk } from "~/features/courses/actions";
 import { LessonLocked } from "~/features/courses/components/lesson-locked";
 import { SessionPage } from "~/features/courses/components/session-page";
 import { lessonLockReason } from "~/features/courses/lesson-lock";
 import { getSession } from "~/features/courses/public-reads";
 import { auth } from "~/lib/auth_options";
+import { inviteHrefs } from "~/lib/invite-hrefs";
 
 export default async function Page({
   params,
@@ -25,19 +27,24 @@ export default async function Page({
   // behind the auth middleware, so "signIn" stays for a session whose token
   // could not be refreshed.
   const reason = lessonLockReason(course, Boolean(await auth()));
+  const kosk = await getKosk(course.koskId);
   if (reason) {
+    const hrefs = inviteHrefs(
+      await getLocale(),
+      `/courses/${course.id}/lessons/${session.id}`
+    );
     return (
       <LessonLocked
-        courseId={course.id}
-        courseTitle={course.title}
-        lessonId={session.id}
-        lessonTitle={session.title}
+        course={course}
+        session={session}
+        koskName={kosk?.name ?? null}
         reason={reason}
+        signInHref={hrefs.signIn}
+        timeZone={await getTimeZone()}
       />
     );
   }
 
-  const kosk = await getKosk(course.koskId);
   return (
     <SessionPage
       course={course}
