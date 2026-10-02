@@ -35,7 +35,10 @@ export const markNotificationRead = async (
 
 export const markAllNotificationsRead = async (): Promise<
   AuthenticatedActionResult<ReadAllNotificationsResponse>
-> => authenticatedAction((api) => api.notifications.markAllNotificationsRead());
+> =>
+  authenticatedAction((api) =>
+    api.notifications.markAllNotificationsRead({ types: NIZAM_TYPES.join(",") })
+  );
 
 export const loadNotificationCounts = async (): Promise<
   AuthenticatedActionResult<NotificationCountsResponse>

@@ -151,13 +151,30 @@ export class NotificationController {
     summary: "Mark every unread notification of the caller read",
     operationId: "markAllNotificationsRead",
   })
+  @ApiQuery({
+    name: "types",
+    required: false,
+    type: String,
+    description: `Comma separated; only these types are marked read. Any of ${NOTIFICATION_TYPES.join(", ")}.`,
+  })
   @ApiOkResponse({ type: ReadAllNotificationsResponse })
+  @ApiBadRequestResponse({
+    description: "An unknown type (INVALID_NOTIFICATION_TYPES).",
+  })
   @Post("read-all")
   @HttpCode(200)
   async readAll(
-    @Req() request: AuthenticatedUserRequest
+    @Req() request: AuthenticatedUserRequest,
+    @Query("types") types: string | undefined
   ): Promise<ReadAllNotificationsResponse> {
-    return this.notifications.markAllRead(request.user.sub);
+    const parsed = parseNotificationTypes(types);
+    if (parsed === null) {
+      throw new BadRequestException({
+        code: "INVALID_NOTIFICATION_TYPES",
+        message: `types must be a comma separated list of: ${NOTIFICATION_TYPES.join(", ")}`,
+      });
+    }
+    return this.notifications.markAllRead(request.user.sub, parsed);
   }
 
   @ApiOperation({

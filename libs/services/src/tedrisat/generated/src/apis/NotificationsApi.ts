@@ -42,6 +42,10 @@ export interface ListNotificationsRequest {
     types?: string;
 }
 
+export interface MarkAllNotificationsReadRequest {
+    types?: string;
+}
+
 export interface MarkNotificationReadRequest {
     id: string;
 }
@@ -144,8 +148,12 @@ export class NotificationsApi extends runtime.BaseAPI {
     /**
      * Mark every unread notification of the caller read
      */
-    async markAllNotificationsReadRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ReadAllNotificationsResponse>> {
+    async markAllNotificationsReadRaw(requestParameters: MarkAllNotificationsReadRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ReadAllNotificationsResponse>> {
         const queryParameters: any = {};
+
+        if (requestParameters['types'] != null) {
+            queryParameters['types'] = requestParameters['types'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -170,8 +178,8 @@ export class NotificationsApi extends runtime.BaseAPI {
     /**
      * Mark every unread notification of the caller read
      */
-    async markAllNotificationsRead(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReadAllNotificationsResponse> {
-        const response = await this.markAllNotificationsReadRaw(initOverrides);
+    async markAllNotificationsRead(requestParameters: MarkAllNotificationsReadRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReadAllNotificationsResponse> {
+        const response = await this.markAllNotificationsReadRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

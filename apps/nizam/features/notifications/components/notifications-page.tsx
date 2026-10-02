@@ -122,7 +122,7 @@ export function NotificationsPage({
   const retryFirst = () =>
     startTransition(async () => {
       const [list, counts] = await Promise.all([
-        loadNotifications("all", []),
+        loadNotifications("all", typesOf("all")),
         loadNotificationCounts(),
       ]);
       if (!list.success || !counts.success) return;

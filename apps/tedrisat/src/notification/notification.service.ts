@@ -68,7 +68,10 @@ export class NotificationService {
     return row;
   }
 
-  async markAllRead(userId: string): Promise<{ updated: number }> {
-    return { updated: await this.repo.markAllRead(userId) };
+  async markAllRead(
+    userId: string,
+    types?: string[]
+  ): Promise<{ updated: number }> {
+    return { updated: await this.repo.markAllRead(userId, types) };
   }
 }

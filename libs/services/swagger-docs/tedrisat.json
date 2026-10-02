@@ -3375,7 +3375,17 @@
     "/notifications/read-all": {
       "post": {
         "operationId": "markAllNotificationsRead",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "types",
+            "required": false,
+            "in": "query",
+            "description": "Comma separated; only these types are marked read. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -3386,6 +3396,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "An unknown type (INVALID_NOTIFICATION_TYPES)."
           }
         },
         "security": [

@@ -264,6 +264,26 @@ describe("notifications (e2e)", () => {
     expect(again.body).toEqual({ updated: 0 });
   });
 
+  it("read-all with types leaves the other types unread and rejects an unknown type", async () => {
+    await seed();
+    await db.insert(notifications).values({
+      userId: TEST_USER_ID,
+      type: "ENROLLMENT_APPROVED",
+      params: {},
+    });
+    expect(await counts()).toEqual({ unread: 4, total: 7 });
+
+    await request(app.getHttpServer())
+      .post("/notifications/read-all?types=SESSION_ADDED,NOPE")
+      .expect(400);
+
+    const res = await request(app.getHttpServer())
+      .post("/notifications/read-all?types=SESSION_ADDED,SESSION_CANCELLED")
+      .expect(200);
+    expect(res.body).toEqual({ updated: 3 });
+    expect(await counts()).toEqual({ unread: 1, total: 7 });
+  });
+
   it("starts empty", async () => {
     expect(await counts()).toEqual({ unread: 0, total: 0 });
     const list = await request(app.getHttpServer())

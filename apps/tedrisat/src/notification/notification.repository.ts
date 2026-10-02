@@ -119,12 +119,19 @@ export class NotificationRepository {
     return row ?? null;
   }
 
-  async markAllRead(userId: string): Promise<number> {
+  /** `types` narrows what is marked; empty marks every type. */
+  async markAllRead(userId: string, types?: string[]): Promise<number> {
     const rows = await this.db
       .update(notifications)
       .set({ readAt: new Date() })
       .where(
-        and(eq(notifications.userId, userId), isNull(notifications.readAt))
+        and(
+          eq(notifications.userId, userId),
+          isNull(notifications.readAt),
+          types && types.length > 0
+            ? inArray(notifications.type, types)
+            : undefined
+        )
       )
       .returning({ id: notifications.id });
     return rows.length;
