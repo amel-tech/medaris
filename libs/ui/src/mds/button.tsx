@@ -7,6 +7,7 @@ import type {
   KeyboardEvent,
   MouseEvent,
   ReactNode,
+  Ref,
 } from "react";
 import { cx } from "./cx";
 
@@ -35,6 +36,8 @@ interface ButtonOwnProps {
 export type ButtonProps = ButtonOwnProps &
   Omit<ButtonHTMLAttributes<HTMLButtonElement>, keyof ButtonOwnProps> & {
     href?: undefined;
+    /** the button element, for a dialog's `initialFocus` (React 19 passes `ref` as a prop) */
+    ref?: Ref<HTMLButtonElement>;
   };
 export type ButtonLinkProps = ButtonOwnProps &
   Omit<AnchorHTMLAttributes<HTMLAnchorElement>, keyof ButtonOwnProps> & {

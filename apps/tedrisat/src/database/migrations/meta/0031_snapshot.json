@@ -1,5 +1,5 @@
 {
-  "id": "f34e1283-dc78-4fa2-8264-bb44f7cc1539",
+  "id": "f3d9218d-7132-435d-bb19-4f862cf99cfc",
   "prevId": "333e032f-a672-4721-aa2b-31500c428393",
   "version": "7",
   "dialect": "postgresql",
@@ -773,6 +773,12 @@
           "notNull": true,
           "default": "'ENROLLED'"
         },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -1221,6 +1227,12 @@
           "notNull": true,
           "default": false
         },
+        "kosk_id": {
+          "name": "kosk_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "archived_at": {
           "name": "archived_at",
           "type": "timestamp with time zone",
@@ -1248,8 +1260,38 @@
           "default": "now()"
         }
       },
-      "indexes": {},
-      "foreignKeys": {},
+      "indexes": {
+        "decks_kosk_id_idx": {
+          "name": "decks_kosk_id_idx",
+          "columns": [
+            {
+              "expression": "kosk_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "decks_kosk_id_kosks_id_fk": {
+          "name": "decks_kosk_id_kosks_id_fk",
+          "tableFrom": "decks",
+          "tableTo": "kosks",
+          "columnsFrom": [
+            "kosk_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -1884,18 +1926,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "archived_by": {
-          "name": "archived_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -2349,12 +2379,6 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
-        },
-        "granted_by_role": {
-          "name": "granted_by_role",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "created_at": {
           "name": "created_at",

@@ -7,6 +7,8 @@ export interface FieldProps {
   help?: ReactNode;
   /** replaces the help line; it does not stack under it */
   error?: ReactNode;
+  /** marks the control invalid when the reason is shown elsewhere (a page-level Alert) */
+  invalid?: boolean;
   required?: boolean;
   /** one control: Input, Textarea or Select */
   children: ReactNode;
@@ -23,6 +25,7 @@ export function Field({
   label,
   help,
   error,
+  invalid = false,
   required = false,
   children,
   className,
@@ -31,7 +34,7 @@ export function Field({
   return (
     <BaseField.Root
       className={cx("mds-field", className)}
-      invalid={hasError || undefined}
+      invalid={hasError || invalid || undefined}
     >
       {label ? (
         <BaseField.Label className="mds-label">

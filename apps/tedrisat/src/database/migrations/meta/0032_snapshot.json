@@ -1,6 +1,6 @@
 {
-  "id": "66fd5723-e2b3-4e40-a234-1c604a1485cd",
-  "prevId": "f34e1283-dc78-4fa2-8264-bb44f7cc1539",
+  "id": "c27bde2d-20f9-4d50-a9b9-cdc6763c1282",
+  "prevId": "f3d9218d-7132-435d-bb19-4f862cf99cfc",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -773,6 +773,12 @@
           "notNull": true,
           "default": "'ENROLLED'"
         },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -1221,6 +1227,12 @@
           "notNull": true,
           "default": false
         },
+        "kosk_id": {
+          "name": "kosk_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "archived_at": {
           "name": "archived_at",
           "type": "timestamp with time zone",
@@ -1248,8 +1260,38 @@
           "default": "now()"
         }
       },
-      "indexes": {},
-      "foreignKeys": {},
+      "indexes": {
+        "decks_kosk_id_idx": {
+          "name": "decks_kosk_id_idx",
+          "columns": [
+            {
+              "expression": "kosk_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "decks_kosk_id_kosks_id_fk": {
+          "name": "decks_kosk_id_kosks_id_fk",
+          "tableFrom": "decks",
+          "tableTo": "kosks",
+          "columnsFrom": [
+            "kosk_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -2166,7 +2208,7 @@
         },
         "permission_grants_scope_id_present": {
           "name": "permission_grants_scope_id_present",
-          "value": "(\"permission_grants\".\"scope_type\" = 'platform' and \"permission_grants\".\"scope_id\" is null) or (\"permission_grants\".\"scope_type\" in ('kosk', 'madrasah') and \"permission_grants\".\"scope_id\" is not null) or \"permission_grants\".\"scope_type\" = 'course'"
+          "value": "(\"permission_grants\".\"scope_type\" = 'platform') = (\"permission_grants\".\"scope_id\" is null)"
         },
         "permission_grants_revocation_complete": {
           "name": "permission_grants_revocation_complete",
@@ -2307,22 +2349,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "permission_groups_name_idx": {
-          "name": "permission_groups_name_idx",
-          "columns": [
-            {
-              "expression": "lower(\"name\")",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"permission_groups\".\"deleted_at\" is null and \"permission_groups\".\"scope_id\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {},
@@ -2332,7 +2358,7 @@
       "checkConstraints": {
         "permission_groups_scope_id_present": {
           "name": "permission_groups_scope_id_present",
-          "value": "(\"permission_groups\".\"scope_type\" = 'platform' and \"permission_groups\".\"scope_id\" is null) or (\"permission_groups\".\"scope_type\" in ('kosk', 'madrasah') and \"permission_groups\".\"scope_id\" is not null) or \"permission_groups\".\"scope_type\" = 'course'"
+          "value": "(\"permission_groups\".\"scope_type\" = 'platform') = (\"permission_groups\".\"scope_id\" is null)"
         }
       },
       "isRLSEnabled": false

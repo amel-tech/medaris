@@ -9,12 +9,14 @@ Screens: nizam/11 "Medaris nazımları", nizam/12 "İzin ver" (dialog), nizam/13
 
 **tedrisat** (`src/assignment/admin/`)
 
-- Migration `0032_permission_groups_course_wide` (rollback in
+- Migration `0033_permission_groups_course_wide` (rollback in
   `src/database/rollbacks`): a group or a grant in the scope `course` may name
   no course (= every course); köşk and medrese groups and grants must still name
   theirs; a live group name is unique (case-insensitive) among groups with no
-  scope id. **Numbering:** the Linux lane may also have taken 0032; the clash is
-  resolved when the two lanes are merged.
+  scope id. **Numbering:** written as 0032; when this chain was stacked on
+  top of the tedris lane (`0031_kesfet`) it became 0033. Its snapshot was
+  regenerated with `drizzle-kit generate`, which wrote the same SQL byte for
+  byte.
 - Permission catalog: 17 platform codes (`platform.*`) in the five sections of
   nizam/12, plus the 18 course codes a course-scoped group may carry.
 - All of the following are the SYSTEM_ADMIN realm role's alone (403 otherwise,
@@ -90,5 +92,5 @@ Screens: nizam/11 "Medaris nazımları", nizam/12 "İzin ver" (dialog), nizam/13
 - Giving a course-wide group to a person has no screen.
 - Lesson for the next runner: `.env`'s `API__DB_PORT` decides the database, a
   process variable of that name is ignored. A run that forgot this applied
-  0032 to another lane's database; it was rolled back with the rollback file and
+  0032 (now 0033) to another lane's database; it was rolled back with the rollback file and
   the drizzle row deleted.

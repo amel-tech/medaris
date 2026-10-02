@@ -9,12 +9,14 @@ is not linked to stack #130 until the tedris lane (26, 29–36) is merged in.
 
 **tedrisat**
 
-- Migration `0031_madrasah_archive_hosting_role` (rollback in
+- Migration `0032_madrasah_archive_hosting_role` (rollback in
   `src/database/rollbacks`): `madrasahs.archived_at/archived_by` (the "Gizli"
   state) and `madrasah_kosk_hosting.granted_by_role` (so "Veren" can name the
   role: `SYSTEM_ADMIN` is a realm role and is stored nowhere else).
-  **Numbering:** the Linux lane (tedris) may also have taken 0031; the clash is
-  resolved when the two lanes are merged.
+  **Numbering:** written as 0031; the tedris lane took 0031 (`0031_kesfet`),
+  so when this chain was stacked on top of it the migration became 0032. Its
+  snapshot was regenerated with `drizzle-kit generate`, which wrote the same
+  SQL byte for byte.
 - `GET /madrasahs/directory?status=&q=&page=&limit=` (SYSTEM_ADMIN only): every
   medrese, hidden and passive ones too, with status, başmüderris, course count,
   hosting köşks, per-status counts and the passive medreses the warning names.

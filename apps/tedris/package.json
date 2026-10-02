@@ -49,6 +49,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "autoprefixer": "catalog:",
+    "happy-dom": "catalog:",
     "lightningcss": "catalog:",
     "next-intl": "catalog:",
     "pg": "catalog:",

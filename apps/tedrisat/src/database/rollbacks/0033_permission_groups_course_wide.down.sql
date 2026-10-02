@@ -1,8 +1,8 @@
--- Reverses migrations/0032_permission_groups_course_wide.sql (MDRS-171). The
+-- Reverses migrations/0033_permission_groups_course_wide.sql (MDRS-171). The
 -- app never runs this: drizzle's migrator only moves forward. To roll back by
 -- hand, first delete every course-wide row the new constraint allows (a group
 -- or a grant with scope_type 'course' and no scope_id), or the old constraint
--- cannot be added; then run these statements and delete 0032's row from
+-- cannot be added; then run these statements and delete 0033's row from
 -- "drizzle"."__drizzle_migrations" so that the next boot applies it again.
 DELETE FROM "permission_grants" WHERE "scope_type" = 'course' AND "scope_id" IS NULL;--> statement-breakpoint
 DELETE FROM "permission_groups" WHERE "scope_type" = 'course' AND "scope_id" IS NULL AND NOT EXISTS (SELECT 1 FROM "permission_grants" g WHERE g."group_id" = "permission_groups"."id");--> statement-breakpoint
