@@ -69,4 +69,42 @@ describe("Menu", () => {
     await click(rows[0]);
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
+
+  it("draws a rule above a divided row, a glyph before a row's label and a note at the foot", async () => {
+    await render(
+      <Menu
+        label="Takvime ekle"
+        text="Takvime ekle"
+        icon={<Icon name="calendar" size="sm" />}
+        note="Toplantı bağlantısı takvime yazılmaz."
+        items={[
+          {
+            value: "google",
+            label: "Google Takvim",
+            icon: <Icon name="calendar" size="sm" />,
+            onSelect: () => {},
+          },
+          {
+            value: "all",
+            label: "Tüm derslerime abone ol",
+            icon: <Icon name="repeat" size="sm" />,
+            divided: true,
+            onSelect: () => {},
+          },
+        ]}
+      />
+    );
+    await click(document.querySelector("button.mds-btn") as HTMLElement);
+    await settle(50);
+    const popup = document.querySelector("[role=menu]") as HTMLElement;
+    const kids = Array.from(popup.children).map(
+      (c) => c.getAttribute("role") ?? c.tagName.toLowerCase()
+    );
+    expect(kids).toEqual(["menuitem", "separator", "menuitem", "p"]);
+    expect(popup.querySelector("[role=menuitem] svg")).not.toBeNull();
+    expect(popup.querySelector(".mds-popup__note")?.textContent).toBe(
+      "Toplantı bağlantısı takvime yazılmaz."
+    );
+    expect(popup.querySelectorAll("[role=menuitem]").length).toBe(2);
+  });
 });

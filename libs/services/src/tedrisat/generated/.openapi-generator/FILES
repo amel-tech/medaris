@@ -15,6 +15,7 @@ src/apis/MadrasahsApi.ts
 src/apis/MeApi.ts
 src/apis/NizamApi.ts
 src/apis/NotificationsApi.ts
+src/apis/SessionsApi.ts
 src/apis/TedrisatServiceApi.ts
 src/apis/UsersApi.ts
 src/apis/index.ts
@@ -179,6 +180,7 @@ src/models/ResourceResponse.ts
 src/models/RoleSummary.ts
 src/models/RosterEnrollmentResponse.ts
 src/models/RowError.ts
+src/models/ScheduleSessionResponse.ts
 src/models/ScopeRefResponse.ts
 src/models/SessionBatchLessonResponse.ts
 src/models/SessionBatchPreviewResponse.ts
