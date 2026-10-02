@@ -178,6 +178,185 @@ describe("KoskController (e2e)", () => {
     });
   });
 
+  // MDRS-108: nizam's köşk list asks for the caller's own köşks only.
+  describe("/kosks?managedBy=me", () => {
+    const insertForeignKosk = async (name: string) => {
+      const [other] = await databaseService.db
+        .insert(kosks)
+        .values({ ownerId: OTHER_USER_ID, name })
+        .returning();
+      await databaseService.db.insert(koskManagers).values({
+        koskId: other.id,
+        userId: OTHER_USER_ID,
+        addedBy: OTHER_USER_ID,
+      });
+      return other;
+    };
+
+    it("lists only the köşks the caller manages, and counts only those", async () => {
+      const mine = await createKosk({ name: "Benim Köşküm" }).expect(201);
+      await insertForeignKosk("Başka Köşk");
+
+      await request(app.getHttpServer())
+        .get("/kosks")
+        .expect(200)
+        .expect((res) => expect(res.body).toHaveProperty("total", 2));
+
+      return request(app.getHttpServer())
+        .get("/kosks?managedBy=me")
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.items.map((k: { id: string }) => k.id)).toEqual([
+            mine.body.id,
+          ]);
+          expect(res.body).toHaveProperty("total", 1);
+          expect(res.body.items[0].managerIds).toContain(TEST_USER_ID);
+        });
+    });
+
+    it("includes a köşk the caller was added to as a second manager", async () => {
+      const other = await insertForeignKosk("Ortak Köşk");
+      await databaseService.db.insert(koskManagers).values({
+        koskId: other.id,
+        userId: TEST_USER_ID,
+        addedBy: OTHER_USER_ID,
+      });
+
+      return request(app.getHttpServer())
+        .get("/kosks?managedBy=me")
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.items.map((k: { id: string }) => k.id)).toEqual([
+            other.id,
+          ]);
+          expect(res.body).toHaveProperty("total", 1);
+        });
+    });
+
+    it("pages through the caller's köşks with the list's page/limit", async () => {
+      await createKosk({ name: "Bir" }).expect(201);
+      await createKosk({ name: "İki" }).expect(201);
+      await createKosk({ name: "Üç" }).expect(201);
+      await insertForeignKosk("Başka Köşk");
+
+      const first = await request(app.getHttpServer())
+        .get("/kosks?managedBy=me&page=1&limit=2")
+        .expect(200);
+      const second = await request(app.getHttpServer())
+        .get("/kosks?managedBy=me&page=2&limit=2")
+        .expect(200);
+
+      expect(first.body).toMatchObject({ total: 3, page: 1, limit: 2 });
+      expect(first.body.items).toHaveLength(2);
+      expect(second.body).toMatchObject({ total: 3, page: 2, limit: 2 });
+      expect(second.body.items).toHaveLength(1);
+      const ids = [...first.body.items, ...second.body.items].map(
+        (k: { id: string }) => k.id
+      );
+      expect(new Set(ids).size).toBe(3);
+    });
+
+    it("answers an empty page to a caller who manages nothing", async () => {
+      await insertForeignKosk("Başka Köşk");
+      return request(app.getHttpServer())
+        .get("/kosks?managedBy=me")
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.items).toHaveLength(0);
+          expect(res.body).toHaveProperty("total", 0);
+        });
+    });
+
+    it("refuses any value but `me` — it never lists another user's köşks", () => {
+      return request(app.getHttpServer())
+        .get(`/kosks?managedBy=${OTHER_USER_ID}`)
+        .expect(400);
+    });
+  });
+
+  // MDRS-108: the köşk form's discovery fields.
+  describe("köşk form fields", () => {
+    it("updates and clears field, level, tags and coverHue", async () => {
+      const created = await createKosk().expect(201);
+      const id = created.body.id;
+
+      await request(app.getHttpServer())
+        .patch(`/kosks/${id}`)
+        .send({
+          field: "Fıkıh",
+          level: "BEGINNER",
+          tags: ["Usûl", "Fürû"],
+          coverHue: 30,
+        })
+        .expect(200)
+        .expect((res) => {
+          expect(res.body).toMatchObject({
+            field: "Fıkıh",
+            level: "BEGINNER",
+            tags: ["Usûl", "Fürû"],
+            coverHue: 30,
+          });
+        });
+
+      return request(app.getHttpServer())
+        .patch(`/kosks/${id}`)
+        .send({ field: null, level: null, tags: [] })
+        .expect(200)
+        .expect((res) => {
+          expect(res.body).toMatchObject({
+            field: null,
+            level: null,
+            tags: [],
+            coverHue: 30,
+            name: "Süleymaniye Köşkü",
+          });
+        });
+    });
+
+    it.each([
+      ["level", { level: "EXPERT" }],
+      ["tags", { tags: Array.from({ length: 11 }, (_, i) => `etiket-${i}`) }],
+      ["tags", { tags: ["x".repeat(41)] }],
+      ["tags", { tags: ["Tefsir", "Tefsir"] }],
+      ["tags", { tags: ["  "] }],
+      ["field", { field: "x".repeat(61) }],
+    ])("refuses an invalid %s on create", (property, body) => {
+      return createKosk(body)
+        .expect(400)
+        .expect((res) => {
+          expect(res.body.context.errors[0]).toHaveProperty(
+            "property",
+            property
+          );
+        });
+    });
+
+    // A NOT NULL column sent as null used to pass `@IsOptional()` and come
+    // back from Postgres as a 500.
+    it.each([
+      ["name"],
+      ["coverHue"],
+      ["tags"],
+      ["isPrivate"],
+    ])("refuses a null %s on update with 400, not 500", async (property) => {
+      const created = await createKosk().expect(201);
+      return request(app.getHttpServer())
+        .patch(`/kosks/${created.body.id}`)
+        .send({ [property]: null })
+        .expect(400)
+        .expect((res) => {
+          expect(res.body.context.errors[0]).toHaveProperty(
+            "property",
+            property
+          );
+        });
+    });
+
+    it("refuses a null coverHue on create with 400, not 500", () => {
+      return createKosk({ coverHue: null }).expect(400);
+    });
+  });
+
   describe("/kosks/:id (GET)", () => {
     it("returns 404 for a missing köşk", () => {
       return request(app.getHttpServer())

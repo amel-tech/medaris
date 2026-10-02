@@ -17,6 +17,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseEnumPipe,
   ParseIntPipe,
   ParseUUIDPipe,
   Patch,
@@ -37,6 +38,7 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { CreateKoskDto } from "./dto/create-kosk.dto";
+import { KoskManagedBy } from "./dto/kosk-managed-by.enum";
 import { KoskResponse } from "./dto/kosk-response.dto";
 import { PaginatedKoskResponse } from "./dto/paginated-kosk-response.dto";
 import { UpdateKoskDto } from "./dto/update-kosk.dto";
@@ -88,26 +90,41 @@ export class KoskController {
 
   @ApiOperation({
     summary: "Get a paginated list of köşks",
+    description:
+      "`managedBy=me` narrows the list, and its `total`, to the köşks the caller manages (`kosk_managers`, MDRS-108) — nizam's köşk list. Without it every köşk is listed.",
     operationId: "getAllKosks",
   })
   @ApiQuery({ name: "page", required: false, type: Number })
   @ApiQuery({ name: "limit", required: false, type: Number })
+  @ApiQuery({
+    name: "managedBy",
+    required: false,
+    enum: KoskManagedBy,
+    enumName: "KoskManagedBy",
+    description: "Only the köşks the caller manages (MDRS-108)",
+  })
   @ApiOkResponse({ type: PaginatedKoskResponse })
   // Exempt: a paginated list has no single resource to authorize. Note what
   // this does NOT do — `kosks.is_private` is still not applied to the listing,
   // and the matrix cannot apply it either, because the KOSK PUBLIC row grants
   // `VIEW` unconditionally. Enforcing that column is its own change; the
   // MDRS-43 brief supersedes it and this task does not smuggle it in.
+  // `managedBy=me` only ever narrows the list to the caller's own rows, so it
+  // needs no authorization of its own either.
   @AuthzExempt()
   @Get()
   async findAll(
     @Req() request: AuthorizedRequest,
     @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query("limit", new DefaultValuePipe(12), ParseIntPipe) limit: number
+    @Query("limit", new DefaultValuePipe(12), ParseIntPipe) limit: number,
+    @Query("managedBy", new ParseEnumPipe(KoskManagedBy, { optional: true }))
+    managedBy?: KoskManagedBy
   ): Promise<PaginatedKoskResponse> {
     const safePage = page < 1 ? 1 : page;
     const safeLimit = Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
-    return this.koskService.findAll(request.user.sub, safePage, safeLimit);
+    return this.koskService.findAll(request.user.sub, safePage, safeLimit, {
+      managedByCaller: managedBy === KoskManagedBy.ME,
+    });
   }
 
   @ApiOperation({

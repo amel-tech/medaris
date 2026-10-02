@@ -6,6 +6,7 @@ import {
   type CreateKoskDto,
   createServerTedrisatAPIs,
   type EnrollmentResponse,
+  KoskManagedBy,
   type KoskResponse,
   type MeResponse,
   type PaginatedKoskResponse,
@@ -20,7 +21,11 @@ import {
   authenticatedAction,
 } from "~/lib/authenticated-action";
 
-export const getKosks = async (
+/**
+ * The köşks the caller manages, a page at a time (MDRS-108). nizam is where a
+ * köşk is run, so its list is never the whole catalogue — tedris lists that.
+ */
+export const getManagedKosks = async (
   page = 1,
   limit = 12
 ): Promise<PaginatedKoskResponse> => {
@@ -30,7 +35,11 @@ export const getKosks = async (
       accessToken,
       env.TEDRISAT_API_BASE_URL
     );
-    return await kosks.getAllKosks({ page, limit });
+    return await kosks.getAllKosks({
+      page,
+      limit,
+      managedBy: KoskManagedBy.Me,
+    });
   } catch (error) {
     console.error("Error fetching köşks:", error);
     return { items: [], total: 0, page, limit };
