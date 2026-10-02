@@ -19,10 +19,11 @@ vi.mock("next-intl/server", () => ({
 const props = (bolum: string) => ({ params: Promise.resolve({ bolum }) });
 
 /**
- * The medrese's sections that have a page of their own (MDRS-184): a static
- * route folder wins over the placeholder's `[bolum]`, so these never reach it.
+ * The medrese's sections that have a page of their own (MDRS-184, MDRS-185): a
+ * static route folder wins over the placeholder's `[bolum]`, so these never
+ * reach it.
  */
-const BUILT = ["nazirlar", "ayarlar"];
+const BUILT = ["nazirlar", "ayarlar", "arsiv"];
 
 /** The pages no package has built yet: one placeholder per kind of scope. */
 describe("the shared placeholder under a medrese", () => {

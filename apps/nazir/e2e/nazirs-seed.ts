@@ -11,6 +11,9 @@ import type { NazirFixture } from "./seed";
  * away (a role in the medrese, a permission, a role in a course), which is
  * what nazir/15 asks about. Direct SQL: the API only writes what the screens
  * ask, and nothing seeds a role someone else gave.
+ *
+ * The permission specs (MDRS-185) read what the screens wrote back through
+ * `heldGrants`, `groupRow` and `auditsOn`.
  */
 export interface Person {
   id: string;
@@ -54,6 +57,22 @@ export interface NazirsFixture {
     userId: string,
     permission: string
   ) => Promise<{ grantedBy: string; revoked: boolean } | null>;
+  /** the permission rows a person holds now (not revoked, not ended), anywhere in the medrese and its courses */
+  heldGrants: (userId: string) => Promise<
+    Array<{
+      scopeType: string;
+      scopeId: string;
+      groupId: string | null;
+      permission: string | null;
+      expiresAt: Date | null;
+    }>
+  >;
+  /** a group of the medrese by name: its permissions, and whether it has been deleted */
+  groupRow: (
+    name: string
+  ) => Promise<{ id: string; permissions: string[]; deleted: boolean } | null>;
+  /** the audit rows of an action on an entity (a person, a group) */
+  auditsOn: (action: string, entityId: string) => Promise<number>;
   /** takes a person a spec appointed through the screen out of the medrese again */
   forget: (userId: string) => Promise<void>;
   remove: () => Promise<void>;
@@ -268,6 +287,46 @@ export async function seedNazirs(base: NazirFixture): Promise<NazirsFixture> {
         ? { grantedBy: rows[0].granted_by, revoked: rows[0].revoked }
         : null;
     },
+    heldGrants: async (userId) => {
+      const { rows } = await client.query(
+        `select scope_type, scope_id, group_id, permission, expires_at from permission_grants
+         where user_id = $1 and revoked_at is null
+           and (expires_at is null or expires_at > now())
+         order by created_at, permission`,
+        [userId]
+      );
+      return rows.map((row) => ({
+        scopeType: row.scope_type,
+        scopeId: row.scope_id,
+        groupId: row.group_id,
+        permission: row.permission,
+        expiresAt: row.expires_at,
+      }));
+    },
+    groupRow: async (name) => {
+      const { rows } = await client.query(
+        `select g.id, g.deleted_at is not null as deleted,
+          coalesce(array_agg(i.permission order by i.permission) filter (where i.permission is not null), '{}') as permissions
+         from permission_groups g left join permission_group_items i on i.group_id = g.id
+         where g.scope_id = $1 and g.name = $2
+         group by g.id order by g.created_at desc limit 1`,
+        [madrasahId, name]
+      );
+      return rows[0]
+        ? {
+            id: rows[0].id,
+            permissions: rows[0].permissions,
+            deleted: rows[0].deleted,
+          }
+        : null;
+    },
+    auditsOn: async (action, entityId) => {
+      const { rows } = await client.query(
+        "select count(*)::int as n from audit_log where action = $1 and entity_id = $2",
+        [action, entityId]
+      );
+      return rows[0].n;
+    },
     forget: async (userId) => {
       await client.query(
         "delete from role_assignments where user_id = $1 and scope_id = $2",
@@ -281,6 +340,12 @@ export async function seedNazirs(base: NazirFixture): Promise<NazirsFixture> {
         await client.query(
           "delete from permission_grants where scope_id = $1 or user_id = any($2)",
           [madrasahId, ids]
+        );
+        // the audit rows of the groups the specs defined, before the groups go
+        await client.query(
+          `delete from audit_log where entity_id = any($1) or entity_id in (
+             select id from permission_groups where scope_id = $2)`,
+          [ids, madrasahId]
         );
         await client.query(
           "delete from permission_groups where scope_id = $1",
