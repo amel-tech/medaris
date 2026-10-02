@@ -1,7 +1,10 @@
-import { ArrowLeftIcon } from "@medaris/icons/ssr";
+import { Icon } from "@medaris/ui/mds/icon";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { StudentsTabs } from "~/features/applications/components/students-tabs";
+import { toRow } from "~/features/applications/present";
 import { mayBanWholeKosk, nextSessionAt } from "~/features/bans/present";
 import {
   getCourse,
@@ -9,15 +12,27 @@ import {
   getKoskById,
   getMe,
 } from "~/features/kosks/actions";
-import { CourseRoster } from "~/features/kosks/components/course-roster";
 
-/** The course team's roster (MDRS-105). */
+// Behind the sign-in middleware, and per caller.
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("nizam.StudentsPage");
+  return { title: t("title") };
+}
+
+/**
+ * A course's Talebeler (design nizam/57, with the roster of MDRS-105 behind
+ * its tabs): the waiting applications first, then the enrolled and the
+ * talebe who completed the course.
+ */
 export default async function Page({
   params,
 }: {
-  params: Promise<{ id: string; courseId: string }>;
+  params: Promise<{ locale: string; id: string; courseId: string }>;
 }) {
-  const { id, courseId } = await params;
+  const { locale, id, courseId } = await params;
+  setRequestLocale(locale);
   const [kosk, course, enrollments, me] = await Promise.all([
     getKoskById(id),
     getCourse(courseId),
@@ -25,41 +40,48 @@ export default async function Page({
     getMe(),
   ]);
   if (!kosk || !course || course.koskId !== kosk.id) notFound();
-  const t = await getTranslations("nizam.CourseTeam");
+  const t = await getTranslations("nizam.StudentsPage");
+  const unnamed = (await getTranslations("nizam.ApplicationsPage"))("unnamed");
 
   return (
-    <div className="mx-auto max-w-6xl py-8">
-      <Link
-        href={`/kosks/${kosk.id}/courses/${course.id}/edit`}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground"
-      >
-        <ArrowLeftIcon size={14} /> {t("back")}
-      </Link>
-      <div className="mb-6 border-b pb-5">
-        <h1 className="text-2xl font-bold tracking-tight">
-          {t("rosterTitle")}
-        </h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          {t("rosterSubtitle", { course: course.title })}
+    <>
+      <header className="flex flex-col gap-3">
+        <Link
+          href={`/${locale}/kosks/${kosk.id}/courses/${course.id}/edit`}
+          className="mds-caption inline-flex items-center gap-1.5 no-underline"
+        >
+          <Icon name="arrowLeft" size="sm" /> {t("back")}
+        </Link>
+        <h1 className="mds-h1">{t("title")}</h1>
+        <p className="max-w-[48rem]">
+          {t("subtitle", { course: course.title })}
         </p>
-      </div>
+      </header>
       {enrollments === null ? (
-        <p className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
-          {t("unavailable")}
-        </p>
+        <p className="mds-caption">{t("unavailable")}</p>
       ) : (
-        <CourseRoster
+        <StudentsTabs
           koskId={kosk.id}
           koskName={kosk.name}
           courseId={course.id}
           courseTitle={course.title}
-          enrollments={enrollments}
+          requiresApproval={course.requiresApproval}
+          applications={enrollments
+            .filter((e) => e.status === "PENDING")
+            .map((e) =>
+              toRow(
+                { ...e, courseTitle: course.title },
+                course.muderris.map((m) => m.name),
+                unnamed
+              )
+            )}
+          roster={enrollments.filter((e) => e.status !== "PENDING")}
           mayBanKosk={mayBanWholeKosk(me, kosk.id)}
           nextSessionAt={
             nextSessionAt(course, new Date())?.toISOString() ?? null
           }
         />
       )}
-    </div>
+    </>
   );
 }

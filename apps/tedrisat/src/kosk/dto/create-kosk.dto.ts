@@ -1,11 +1,19 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsOptional } from "class-validator";
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  ArrayUnique,
+  IsArray,
+  IsOptional,
+  IsUUID,
+} from "class-validator";
 import {
   KOSK_DESCRIPTION_MAX,
   KOSK_FIELD_MAX,
   KOSK_HANDLE_MAX,
   KOSK_HUE_MAX,
   KOSK_LEVELS,
+  KOSK_MANAGERS_MAX,
   KOSK_NAME_MAX,
   KOSK_NAME_MIN,
   KOSK_TAG_MAX,
@@ -18,6 +26,7 @@ import {
   type KoskLevel,
   KoskLevelRules,
   KoskNameRules,
+  KoskPolicyRules,
   KoskTagsRules,
   OmittedButNotNull,
 } from "./kosk-field-rules";
@@ -103,4 +112,40 @@ export class CreateKoskDto {
   @OmittedButNotNull()
   @KoskTagsRules()
   tags?: string[];
+
+  @ApiPropertyOptional({
+    example: false,
+    default: false,
+    description:
+      "Köşk-wide policy (MDRS-174): every enrollment in any course of the köşk waits for approval, whatever the course says.",
+  })
+  @OmittedButNotNull()
+  @KoskPolicyRules()
+  alwaysRequireApproval?: boolean;
+
+  @ApiPropertyOptional({
+    example: false,
+    default: false,
+    description:
+      "Köşk-wide policy (MDRS-174): no recording of the köşk is opened to everyone or uploaded to YouTube. Stored for the recording model; nothing reads it yet.",
+  })
+  @OmittedButNotNull()
+  @KoskPolicyRules()
+  recordingsNeverPublic?: boolean;
+
+  @ApiPropertyOptional({
+    type: [String],
+    format: "uuid",
+    minItems: 1,
+    maxItems: KOSK_MANAGERS_MAX,
+    description:
+      "nizam/10: the köşk's first nazımları, found by e-mail (`GET /users/lookup`). SYSTEM_ADMIN only; when given, they are the köşk's nazımları and the caller is not one. Omitted: the caller becomes the köşk's only nazım, as before.",
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(KOSK_MANAGERS_MAX)
+  @ArrayUnique()
+  @IsUUID("all", { each: true })
+  managerUserIds?: string[];
 }

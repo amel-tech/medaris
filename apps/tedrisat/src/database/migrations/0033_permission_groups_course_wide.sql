@@ -1,0 +1,5 @@
+ALTER TABLE "permission_grants" DROP CONSTRAINT "permission_grants_scope_id_present";--> statement-breakpoint
+ALTER TABLE "permission_groups" DROP CONSTRAINT "permission_groups_scope_id_present";--> statement-breakpoint
+CREATE UNIQUE INDEX "permission_groups_name_idx" ON "permission_groups" USING btree (lower("name")) WHERE "permission_groups"."deleted_at" is null and "permission_groups"."scope_id" is null;--> statement-breakpoint
+ALTER TABLE "permission_grants" ADD CONSTRAINT "permission_grants_scope_id_present" CHECK (("permission_grants"."scope_type" = 'platform' and "permission_grants"."scope_id" is null) or ("permission_grants"."scope_type" in ('kosk', 'madrasah') and "permission_grants"."scope_id" is not null) or "permission_grants"."scope_type" = 'course');--> statement-breakpoint
+ALTER TABLE "permission_groups" ADD CONSTRAINT "permission_groups_scope_id_present" CHECK (("permission_groups"."scope_type" = 'platform' and "permission_groups"."scope_id" is null) or ("permission_groups"."scope_type" in ('kosk', 'madrasah') and "permission_groups"."scope_id" is not null) or "permission_groups"."scope_type" = 'course');
