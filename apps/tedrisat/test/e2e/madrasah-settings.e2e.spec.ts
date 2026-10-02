@@ -413,22 +413,35 @@ describe("Medrese settings (e2e)", () => {
 
     it("lists the medrese's drafts and published courses by title, with their köşk and müderrisler", async () => {
       const res = await list(HEAD_ID).expect(200);
+      const shared = {
+        koskId,
+        koskName: "Nûruosmaniye Köşkü",
+        requiresApproval: false,
+        closed: false,
+        createdAt: expect.any(String),
+        studentCount: 0,
+        pendingCount: 0,
+      };
       expect(res.body).toEqual([
         {
+          ...shared,
           id: publishedCourse,
           title: "Bina ve İzhar Şerhi",
-          koskId,
-          koskName: "Nûruosmaniye Köşkü",
           status: "PUBLISHED",
           muderris: [
-            { name: "Mehmet Emin Işıkoğlu", title: null, isImam: true },
+            {
+              userId: IMAM_ID,
+              name: "Mehmet Emin Işıkoğlu",
+              title: null,
+              email: null,
+              isImam: true,
+            },
           ],
         },
         {
+          ...shared,
           id: draftCourse,
           title: "Maksûd şerhi",
-          koskId,
-          koskName: "Nûruosmaniye Köşkü",
           status: "DRAFT",
           muderris: [],
         },
