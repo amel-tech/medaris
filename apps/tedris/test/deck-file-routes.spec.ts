@@ -32,7 +32,7 @@ describe("the deck file routes (design tedris/29)", () => {
         },
       })
     );
-    const { GET } = await import("~/app/api/decks/[id]/export/route");
+    const { GET } = await import("../app/api/decks/[id]/export/route");
     const res = await GET(
       new Request(`http://app/api/decks/${DECK}/export?format=xlsx`),
       ctx()
@@ -54,7 +54,7 @@ describe("the deck file routes (design tedris/29)", () => {
 
   it("export defaults to xlsx and refuses a format the API does not know, and an id that is no UUID", async () => {
     fetchMock.mockResolvedValue(new Response("x"));
-    const { GET } = await import("~/app/api/decks/[id]/export/route");
+    const { GET } = await import("../app/api/decks/[id]/export/route");
     await GET(new Request(`http://app/api/decks/${DECK}/export`), ctx());
     expect(String(fetchMock.mock.calls[0][0])).toContain("format=xlsx");
     fetchMock.mockClear();
@@ -73,7 +73,7 @@ describe("the deck file routes (design tedris/29)", () => {
 
   it("without a usable token it answers 401 and does not reach tedrisat", async () => {
     token.value = undefined;
-    const { GET } = await import("~/app/api/decks/sample/route");
+    const { GET } = await import("../app/api/decks/sample/route");
     const res = await GET(
       new Request("http://app/api/decks/sample?format=csv")
     );
@@ -82,7 +82,7 @@ describe("the deck file routes (design tedris/29)", () => {
   });
 
   it("passes tedrisat's own refusals on: 403 for a stranger's deck, 429 with its Retry-After", async () => {
-    const { GET } = await import("~/app/api/decks/[id]/export/route");
+    const { GET } = await import("../app/api/decks/[id]/export/route");
     fetchMock.mockResolvedValueOnce(new Response("{}", { status: 403 }));
     expect(
       (
@@ -105,7 +105,7 @@ describe("the deck file routes (design tedris/29)", () => {
 
   it("a service that cannot be reached is a 502, not a crash", async () => {
     fetchMock.mockRejectedValue(new TypeError("fetch failed"));
-    const { GET } = await import("~/app/api/decks/sample/route");
+    const { GET } = await import("../app/api/decks/sample/route");
     const res = await GET(
       new Request("http://app/api/decks/sample?format=xlsx")
     );
@@ -119,7 +119,7 @@ describe("the deck file routes (design tedris/29)", () => {
         headers: { "content-type": "application/json" },
       })
     );
-    const { POST } = await import("~/app/api/decks/[id]/import/route");
+    const { POST } = await import("../app/api/decks/[id]/import/route");
     const form = new FormData();
     form.set("file", new File(["a,b"], "kartlar.csv", { type: "text/csv" }));
     form.set("other", "dropped");
@@ -144,7 +144,7 @@ describe("the deck file routes (design tedris/29)", () => {
   });
 
   it("import refuses a request with no file, or for an id that is no UUID", async () => {
-    const { POST } = await import("~/app/api/decks/[id]/import/route");
+    const { POST } = await import("../app/api/decks/[id]/import/route");
     const empty = await POST(
       new Request(`http://app/api/decks/${DECK}/import`, {
         method: "POST",

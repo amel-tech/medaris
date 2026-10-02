@@ -80,7 +80,6 @@ const data = {
       id: "mine",
       title: "Emsile çekimleri",
       publishStatus: "PUBLISHED",
-      isPublic: true,
     }),
   ],
 } as never;
