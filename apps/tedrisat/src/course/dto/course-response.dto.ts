@@ -10,7 +10,7 @@ export class AgendaStepResponse {
 }
 
 const CONTENT_FIELD =
-  "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).";
+  "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.";
 
 export class LessonResponse {
   @ApiProperty() id!: string;

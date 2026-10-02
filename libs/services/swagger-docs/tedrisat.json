@@ -6032,7 +6032,7 @@
           },
           "kaynak": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "scheduledAt": {
             "format": "date-time",
@@ -6040,10 +6040,10 @@
           },
           "meetingUrl": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "agenda": {
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AgendaStepResponse"
@@ -6068,7 +6068,7 @@
           },
           "cancelReason": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           }
         },
         "required": [
@@ -6173,7 +6173,7 @@
           },
           "url": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "orderIndex": {
             "type": "number"
@@ -7159,7 +7159,7 @@
           },
           "kaynak": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "scheduledAt": {
             "format": "date-time",
@@ -7167,10 +7167,10 @@
           },
           "meetingUrl": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "agenda": {
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AgendaStepResponse"
@@ -7195,7 +7195,7 @@
           },
           "cancelReason": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "courseVersion": {
             "type": "number",
@@ -7421,7 +7421,7 @@
           },
           "kaynak": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "scheduledAt": {
             "format": "date-time",
@@ -7429,10 +7429,10 @@
           },
           "meetingUrl": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "agenda": {
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AgendaStepResponse"
@@ -7457,7 +7457,7 @@
           },
           "cancelReason": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "weekNumber": {
             "type": "number"
