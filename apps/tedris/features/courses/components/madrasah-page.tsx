@@ -11,6 +11,7 @@ import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { Icon } from "@medaris/ui/mds/icon";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
+import { AnonymousInvite } from "~/components/anonymous-invite";
 import { joinRun } from "../join-run";
 import { enrollmentBadge } from "../madrasah-enrollment";
 import { formatNextSession } from "../next-session";
@@ -116,9 +117,12 @@ const CourseCard = ({
 export const MadrasahPage = async ({
   madrasah,
   overview,
+  signedIn = true,
 }: {
   madrasah: MadrasahResponse;
   overview: MadrasahOverviewResponse;
+  /** False for a visitor with no account (design tedris/11): an invitation under the courses. */
+  signedIn?: boolean;
 }) => {
   const t = await getTranslations("tedris");
   const locale = await getLocale();
@@ -133,7 +137,7 @@ export const MadrasahPage = async ({
       <div className="flex min-inline-0 flex-col gap-stack">
         <Breadcrumb
           items={[
-            { label: t("MadrasahPage.discover"), href: "/home" },
+            { label: t("MadrasahPage.discover"), href: "/discover" },
             { label: madrasah.name },
           ]}
         />
@@ -201,6 +205,15 @@ export const MadrasahPage = async ({
                   />
                 ))}
               </div>
+            )}
+            {signedIn ? null : (
+              <AnonymousInvite
+                t={t}
+                locale={locale}
+                variant="apply"
+                callbackPath={`/madrasahs/${madrasah.id}`}
+                className="mds-body-sm"
+              />
             )}
           </section>
         </div>
