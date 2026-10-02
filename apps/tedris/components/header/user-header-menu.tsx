@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@medaris/ui/components/dropdown-menu";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { UserAvatar } from "~/features/user-avatar";
@@ -65,11 +66,13 @@ export const UserHeaderMenu = ({ imageIssuer }: UserHeaderMenuProps) => {
             {t("UserHeaderMenu.profile")}
           </p>
         </DropdownMenuItem>
-        <DropdownMenuItem disabled>
-          <GearIcon className="text-neutral-primary" />
-          <p className="text-neutral-primary text-sm">
-            {t("UserHeaderMenu.accountSettings")}
-          </p>
+        <DropdownMenuItem asChild>
+          <Link href="/account">
+            <GearIcon className="text-neutral-primary" />
+            <p className="text-neutral-primary text-sm">
+              {t("UserHeaderMenu.accountSettings")}
+            </p>
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem disabled>
           <QuestionIcon className="text-neutral-primary" />

@@ -14,6 +14,10 @@ export const env = createEnv({
     OTEL_SERVICE_NAME: z.string().min(1).optional(),
     API_MOCKING: z.enum(["enabled", "disabled"]).default("disabled"),
     TEDRISAT_API_BASE_URL: z.string().min(1).url(),
+    // Where the account page's "Nizam'da aç" and "Nazır'da aç" point
+    // (MDRS-169). Unset or empty: the buttons are left out.
+    NIZAM_URL: z.union([z.string().url(), z.literal("")]).optional(),
+    NAZIR_URL: z.union([z.string().url(), z.literal("")]).optional(),
   },
   // MDRS-86: no `client` block on purpose. A NEXT_PUBLIC_ value is inlined
   // into the browser bundle at `next build`, which would make the image
@@ -31,5 +35,7 @@ export const env = createEnv({
     API_MOCKING: process.env.API_MOCKING,
 
     TEDRISAT_API_BASE_URL: process.env.TEDRISAT_API_BASE_URL,
+    NIZAM_URL: process.env.NIZAM_URL,
+    NAZIR_URL: process.env.NAZIR_URL,
   },
 });
