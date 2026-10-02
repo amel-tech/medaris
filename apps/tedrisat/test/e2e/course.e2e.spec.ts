@@ -1,10 +1,15 @@
+import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { eq } from "drizzle-orm";
 import request from "supertest";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
+import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
+import { LessonType } from "../../src/course/domain/lesson-type.enum";
 import { DatabaseService } from "../../src/database/database.service";
+import { auditLog } from "../../src/database/schema/audit.schema";
 import {
   courseMuderris,
+  courseResources,
   courses,
   courseWeeks,
   enrollments,
@@ -17,6 +22,7 @@ import {
   COURSE_TREE_TABLES,
   TestDatabaseUtils,
 } from "../helpers/test-database.helper";
+import { bearerFor } from "../helpers/test-keycloak.helper";
 
 const MISSING_UUID = "00000000-0000-0000-0000-000000000000";
 
@@ -915,10 +921,50 @@ describe("CourseController (e2e)", () => {
         .get(`/courses/${draft.id}`)
         .expect(404);
 
-      // a PUBLISHED course in the same köşk is still visible
+      // A PUBLISHED course in the same köşk is still visible — as its page,
+      // not its content (MDRS-103): the caller is not enrolled, so the
+      // meeting link, agenda, kaynak and resource URL are absent.
+      const [week] = await databaseService.db
+        .insert(courseWeeks)
+        .values({ courseId: published.id, weekNumber: 1, title: "Giriş" })
+        .returning();
+      await databaseService.db.insert(lessons).values({
+        weekId: week.id,
+        title: "Canlı halka",
+        type: "LIVE",
+        durationMinutes: 60,
+        scheduledAt: new Date("2026-10-05T18:00:00Z"),
+        meetingUrl: "https://meet.google.com/bqx-mfzn-rde",
+        kaynak: "Bina · s. 4-9",
+        agenda: [{ time: "21:00", title: "Açılış" }],
+      });
+      await databaseService.db.insert(courseResources).values({
+        courseId: published.id,
+        name: "Bina ve İzhar",
+        type: "pdf",
+        url: "https://files.medaris.test/bina.pdf",
+      });
       await request(app.getHttpServer())
         .get(`/courses/${published.id}`)
-        .expect(200);
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.contentLocked).toBe(true);
+          const lesson = res.body.weeks[0].lessons[0];
+          expect(lesson).toMatchObject({
+            title: "Canlı halka",
+            type: "LIVE",
+            durationMinutes: 60,
+          });
+          expect(lesson.scheduledAt).toBeTruthy();
+          for (const key of ["meetingUrl", "agenda", "kaynak"]) {
+            expect(lesson).not.toHaveProperty(key);
+          }
+          expect(res.body.resources[0]).toHaveProperty("name", "Bina ve İzhar");
+          expect(res.body.resources[0]).not.toHaveProperty("url");
+          const text = JSON.stringify(res.body);
+          expect(text).not.toContain("meet.google.com");
+          expect(text).not.toContain("files.medaris.test");
+        });
 
       // summaries omit the DRAFT for a non-owner
       await request(app.getHttpServer())
@@ -1307,5 +1353,249 @@ describe("CourseController (e2e)", () => {
         .where(eq(lessons.weekId, week.id));
       expect(weekLessons).toHaveLength(1);
     });
+  });
+});
+
+/**
+ * MDRS-103 acceptance: the course page is public, its content is not.
+ *
+ * A second app in this file, booted with `createTestApp()` and no
+ * `authUserId`, so the real AuthGuard verifies minted tokens — one identity
+ * per role, and the SYSTEM_ADMIN bypass through its `realm_access` claim. It
+ * shares this file's database with the stubbed app above; the two
+ * `describe`s run one after the other and each cleans what it uses.
+ */
+const ADMIN_ID = "e0000000-0000-4000-8000-000000000001";
+const MANAGER_ID = "e0000000-0000-4000-8000-000000000002";
+const TALEBE_ID = "e0000000-0000-4000-8000-000000000003";
+const MUDERRIS_ID = "e0000000-0000-4000-8000-000000000004";
+const PENDING_ID = "e0000000-0000-4000-8000-000000000005";
+const STRANGER_ID = "e0000000-0000-4000-8000-000000000006";
+const COMPLETED_ID = "e0000000-0000-4000-8000-000000000007";
+
+const MEETING_URL = "https://meet.google.com/bqx-mfzn-rde";
+const RESOURCE_URL = "https://files.medaris.test/bina.pdf";
+const KAYNAK = "Bina · s. 4-9";
+const AGENDA_STEP = "Açılış ve geçen haftanın özeti";
+
+/** Every key and value that is content — none may appear in a locked body. */
+const CONTENT_MARKERS = [
+  "meetingUrl",
+  "agenda",
+  "kaynak",
+  '"url"',
+  MEETING_URL,
+  RESOURCE_URL,
+  KAYNAK,
+  AGENDA_STEP,
+];
+
+const auth = (sub: string) =>
+  bearerFor({
+    sub,
+    claims:
+      sub === ADMIN_ID ? { realm_access: { roles: [ROLES.SYSTEM_ADMIN] } } : {},
+  });
+
+describe("Course content access (MDRS-103, e2e)", () => {
+  let app: INestApplication;
+  let databaseService: DatabaseService;
+  let dbUtils: TestDatabaseUtils;
+  let koskId: string;
+  let courseId: string;
+
+  const http = () => request(app.getHttpServer());
+  const db = () => databaseService.db;
+  const getCourse = (sub: string, id = courseId) =>
+    http().get(`/courses/${id}`).set("Authorization", auth(sub));
+  const auditRows = () =>
+    db().select().from(auditLog).where(eq(auditLog.entityId, courseId));
+
+  const expectLocked = (body: Record<string, unknown>) => {
+    expect(body.contentLocked).toBe(true);
+    const text = JSON.stringify(body);
+    for (const marker of CONTENT_MARKERS) {
+      expect(text).not.toContain(marker);
+    }
+    // The programme stays: titles, types, schedule and length.
+    const week = (body.weeks as { lessons: Record<string, unknown>[] }[])[0];
+    expect(week.lessons).toHaveLength(2);
+    expect(week.lessons[0]).toMatchObject({
+      title: "Canlı halka",
+      type: LessonType.LIVE,
+      durationMinutes: 60,
+    });
+    expect(week.lessons[0].scheduledAt).toBeTruthy();
+    expect(body.resources).toEqual([
+      expect.objectContaining({ name: "Bina ve İzhar", type: "pdf" }),
+    ]);
+  };
+
+  const expectFull = (body: Record<string, unknown>) => {
+    expect(body.contentLocked).toBe(false);
+    const week = (body.weeks as { lessons: Record<string, unknown>[] }[])[0];
+    expect(week.lessons[0]).toMatchObject({
+      meetingUrl: MEETING_URL,
+      kaynak: KAYNAK,
+      agenda: [{ time: "21:00", title: AGENDA_STEP }],
+    });
+    expect((body.resources as Record<string, unknown>[])[0]).toHaveProperty(
+      "url",
+      RESOURCE_URL
+    );
+  };
+
+  beforeAll(async () => {
+    app = await createTestApp();
+    databaseService = app.get<DatabaseService>(DatabaseService);
+    dbUtils = new TestDatabaseUtils(databaseService);
+  });
+
+  beforeEach(async () => {
+    await dbUtils.cleanTables(...COURSE_TREE_TABLES, "audit_log", "users");
+    const [kosk] = await db()
+      .insert(kosks)
+      .values({ ownerId: MANAGER_ID, name: "Süleymaniye Köşkü" })
+      .returning();
+    koskId = kosk.id;
+    await db()
+      .insert(koskManagers)
+      .values({ koskId, userId: MANAGER_ID, addedBy: MANAGER_ID });
+    const [course] = await db()
+      .insert(courses)
+      .values({
+        koskId,
+        authorId: MANAGER_ID,
+        title: "Bina ve İzhar Şerhi",
+        status: CourseStatus.PUBLISHED,
+      })
+      .returning();
+    courseId = course.id;
+    const [week] = await db()
+      .insert(courseWeeks)
+      .values({ courseId, weekNumber: 1, title: "Birinci Bab" })
+      .returning();
+    await db()
+      .insert(lessons)
+      .values([
+        {
+          weekId: week.id,
+          title: "Canlı halka",
+          type: LessonType.LIVE,
+          durationMinutes: 60,
+          scheduledAt: new Date("2026-10-05T18:00:00Z"),
+          meetingUrl: MEETING_URL,
+          kaynak: KAYNAK,
+          agenda: [{ time: "21:00", title: AGENDA_STEP }],
+          // A preview lesson opens nothing: a meeting link is never public.
+          isPreview: true,
+          orderIndex: 0,
+        },
+        {
+          weekId: week.id,
+          title: "Şerh",
+          type: LessonType.VIDEO,
+          durationMinutes: 28,
+          kaynak: KAYNAK,
+          orderIndex: 1,
+        },
+      ]);
+    await db()
+      .insert(courseMuderris)
+      .values({ courseId, userId: MUDERRIS_ID, name: "Musa Müderris" });
+    await db().insert(courseResources).values({
+      courseId,
+      name: "Bina ve İzhar",
+      type: "pdf",
+      url: RESOURCE_URL,
+    });
+    await db()
+      .insert(enrollments)
+      .values([
+        { userId: TALEBE_ID, courseId, status: EnrollmentStatus.ENROLLED },
+        { userId: PENDING_ID, courseId, status: EnrollmentStatus.PENDING },
+        { userId: COMPLETED_ID, courseId, status: EnrollmentStatus.COMPLETED },
+      ]);
+  });
+
+  afterAll(async () => {
+    await dbUtils.cleanTables(...COURSE_TREE_TABLES, "audit_log", "users");
+    await app.close();
+  });
+
+  it("gives a signed-in, non-enrolled caller the programme without any content", async () => {
+    const res = await getCourse(STRANGER_ID).expect(200);
+    expectLocked(res.body);
+    expect(res.body.enrollment).toBeNull();
+    expect(await auditRows()).toEqual([]);
+  });
+
+  it("gives a PENDING caller the same filtered body", async () => {
+    const res = await getCourse(PENDING_ID).expect(200);
+    expectLocked(res.body);
+    expect(res.body.enrollment).toHaveProperty("status", "PENDING");
+    expect(await auditRows()).toEqual([]);
+  });
+
+  it.each([
+    ["the enrolled talebe", TALEBE_ID],
+    ["a talebe who completed the course", COMPLETED_ID],
+    ["the müderris", MUDERRIS_ID],
+  ])("gives %s the full body and writes no audit row", async (_who, sub) => {
+    const res = await getCourse(sub).expect(200);
+    expectFull(res.body);
+    expect(await auditRows()).toEqual([]);
+  });
+
+  it.each([
+    ["the köşk manager", MANAGER_ID, false],
+    ["SYSTEM_ADMIN", ADMIN_ID, true],
+  ])("gives %s the full body and records the read in audit_log", async (_who, sub, systemAdmin) => {
+    const res = await getCourse(sub).expect(200);
+    expectFull(res.body);
+
+    const rows = await auditRows();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      actorId: sub,
+      action: "course.content_read",
+      entity: "course",
+      entityId: courseId,
+      details: { title: "Bina ve İzhar Şerhi", systemAdmin },
+    });
+  });
+
+  it("does not audit the köşk manager's write echoes, only reads", async () => {
+    await http()
+      .patch(`/courses/${courseId}`)
+      .set("Authorization", auth(MANAGER_ID))
+      .send({ subtitle: "Klasik sarf metni" })
+      .expect(200)
+      .expect((res) => expectFull(res.body));
+    expect(await auditRows()).toEqual([]);
+  });
+
+  it("keeps a DRAFT course a 404 for everyone but its managers", async () => {
+    await db()
+      .update(courses)
+      .set({ status: CourseStatus.DRAFT })
+      .where(eq(courses.id, courseId));
+
+    for (const sub of [STRANGER_ID, PENDING_ID, TALEBE_ID, MUDERRIS_ID]) {
+      await getCourse(sub).expect(404);
+    }
+    const res = await getCourse(MANAGER_ID).expect(200);
+    expectFull(res.body);
+  });
+
+  it("answers 404 for a course that does not exist, and 400 for a malformed id", async () => {
+    await getCourse(STRANGER_ID, "00000000-0000-4000-8000-000000000000").expect(
+      404
+    );
+    await getCourse(STRANGER_ID, "not-a-uuid").expect(400);
+  });
+
+  it("still requires a token", async () => {
+    await http().get(`/courses/${courseId}`).expect(401);
   });
 });

@@ -390,5 +390,18 @@
     "title": "Bu desteye ulaşılamıyor",
     "description": "Deste silinmiş olabilir ya da sahibi onu yalnızca kendine açık tutuyor.",
     "backToDecks": "Destelere dön"
+  },
+  "LessonLocked": {
+    "title": "Bu ders kayıtlı talebelere açık",
+    "description": {
+      "signIn": "Dersin içeriğini, toplantı bağlantısını ve kaynaklarını görmek için giriş yapın.",
+      "apply": "Dersin içeriği, toplantı bağlantısı ve kaynakları kursa kayıtlı talebelere açılır. Kursun programını kurs sayfasında görebilirsiniz.",
+      "pending": "Başvurunuz köşk yöneticisine iletildi. Onaylandığında dersin içeriği burada açılır."
+    },
+    "signIn": "Giriş yap",
+    "apply": "Başvur",
+    "applying": "Gönderiliyor...",
+    "pending": "Başvurun onay bekliyor",
+    "backToCourse": "Kurs sayfasına dön"
   }
 }
