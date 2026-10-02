@@ -10,6 +10,7 @@ import {
   type EnrollmentResponse,
   type KoskResponse,
   type PaginatedKoskResponse,
+  ResponseError,
 } from "@medaris/services/tedrisat";
 import { revalidatePath } from "next/cache";
 import { env } from "~/env";
@@ -66,6 +67,15 @@ export const getKoskCourses = async (
   }
 };
 
+/**
+ * The API said no, about this course: unknown id or a malformed one (400,
+ * 404), a draft the caller may not open or a course they may not see (403),
+ * a token it did not accept (401). Anything else is a failure to ask.
+ */
+const isAnswerAboutTheCourse = (error: unknown): boolean =>
+  error instanceof ResponseError &&
+  [400, 401, 403, 404].includes(error.response.status);
+
 export const getCourse = async (
   courseId: string
 ): Promise<CourseDetailResponse | null> => {
@@ -77,8 +87,11 @@ export const getCourse = async (
     );
     return await courses.getCourseById({ id: courseId });
   } catch (error) {
+    if (isAnswerAboutTheCourse(error)) return null;
+    // The API did not answer, or answered 5xx: that is not "no such course".
+    // It goes to the error boundary (design tedris/40), not to the 404 page.
     console.error("Error fetching course:", error);
-    return null;
+    throw error;
   }
 };
 

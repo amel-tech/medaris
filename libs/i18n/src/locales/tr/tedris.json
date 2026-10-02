@@ -53,7 +53,21 @@
     "leaveConfirm": "Ayrıl",
     "leaveCancel": "Vazgeç",
     "left": "Dersten ayrıldınız.",
-    "signInToApply": "Başvurmak için giriş yap"
+    "signInToApply": "Başvurmak için giriş yap",
+    "receivedTitle": "Başvurun alındı",
+    "receivedBody": "Ders kadrosu başvurunu değerlendirecek. Onaylandığında bildirim alırsın; ders içerikleri, celselerin toplantı bağlantıları ve ders kayıtları o zaman sana açılır.",
+    "receivedNote": "Onaylanana kadar başvurunu bu sayfadan geri çekebilirsin.",
+    "receivedOk": "Tamam",
+    "previewBannerTitle": "Önizleme",
+    "previewBannerText": "Ders henüz yayında değil; bu önizlemeyi yalnızca yöneticiler görür.",
+    "draftBadge": "Taslak",
+    "previewCardBadge": "Önizleme",
+    "previewCardTitle": "Ders yayımlandığında",
+    "previewCardText": "Talebeler burada “Kayıt başvurusu yap” düğmesini ve ilk celsenin zamanını görür. Önizlemede başvuru yapılmaz.",
+    "firstSession": "İlk celse",
+    "backToEditing": "Düzenlemeye dön",
+    "backToEditingLabel": "Düzenlemeye dön: {title}, Nazır’da Müfredat",
+    "receivedClose": "Kapat"
   },
   "CreateDeckButtonDialog": {
     "cancel": "İptal etmek",
@@ -298,7 +312,7 @@
     "helpAndSupport": "Yardım ve Destek",
     "myLearning": "Öğrenimim",
     "profile": "Profil",
-    "signOut": "oturumu Kapat",
+    "signOut": "Çıkış yap",
     "talebe": "Talebe"
   },
   "UserNotifications": {
@@ -366,9 +380,11 @@
     "configurationError": "Giriş hizmeti şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
     "retry": "Tekrar dene",
     "backHome": "Ana sayfaya dön",
-    "signOutTitle": "Çıkış yap",
-    "signOutDescription": "Oturumunuzu kapatmak istediğinize emin misiniz?",
-    "signOutConfirm": "Çıkış yap"
+    "signOutTitle": "Çıkış yapılsın mı?",
+    "signOutDescription": "Bu tarayıcıda Medaris’ten çıkarsın.",
+    "signOutConfirm": "Çıkış yap",
+    "signOutCancel": "Vazgeç",
+    "signingOut": "Çıkış yapılıyor"
   },
   "WelcomePage": {
     "title": "Hoş geldin!",
@@ -418,10 +434,7 @@
     "imam": "imam",
     "nextSession": "Sonraki celse",
     "noNextSession": "Planlı celse yok",
-    "koskCourses": "{count} ders",
-    "notFoundTitle": "Sayfa bulunamadı",
-    "notFoundText": "Aradığın medrese yok ya da kaldırılmış olabilir.",
-    "notFoundAction": "Ana sayfaya dön"
+    "koskCourses": "{count} ders"
   },
   "NotificationsPage": {
     "title": "Bildirimler",
@@ -553,10 +566,7 @@
     "weekEmpty": "Bu hafta için henüz celse eklenmedi.",
     "rowCurrent": "Sıradaki",
     "rowDone": ", sona erdi",
-    "rowCancelled": "İptal edildi",
-    "notFoundTitle": "Sayfa bulunamadı",
-    "notFoundText": "Aradığın celse yok ya da kaldırılmış olabilir.",
-    "notFoundAction": "Ana sayfaya dön"
+    "rowCancelled": "İptal edildi"
   },
   "AccountPage": {
     "pageTitle": "Hesap",
@@ -641,5 +651,18 @@
       "user_lookup": "Her arama denetim kaydına yazılır.",
       "ban_lift_course": "Üst kademenin koyduğu yasağı kaldıramazsın."
     }
+  },
+  "SystemPages": {
+    "notFoundTitle": "Sayfa bulunamadı",
+    "notFoundText": "Aradığın sayfa yok ya da artık burada değil. Adresi kontrol et ya da ana sayfadan devam et.",
+    "notFoundAction": "Ana sayfaya dön",
+    "forbiddenTitle": "Bu sayfayı göremezsin",
+    "forbiddenDeckText": "{deck} herkese açık bir deste; kartlarını yalnız sahibi düzenler. Desteyi çalışabilirsin; istediğin kartı kendi destene kopyalayabilirsin.",
+    "forbiddenGenericText": "Bu sayfayı görmek için yetkin yok.",
+    "forbiddenDeckAction": "Desteye dön",
+    "forbiddenGenericAction": "Ana sayfaya dön",
+    "errorTitle": "Bir şeyler ters gitti",
+    "errorText": "Sunucuya ulaşılamadı. İnternet bağlantını denetleyip yeniden dene.",
+    "errorAction": "Yeniden dene"
   }
 }

@@ -53,7 +53,21 @@
     "leaveConfirm": "Leave",
     "leaveCancel": "Cancel",
     "left": "You left the course.",
-    "signInToApply": "Sign in to apply"
+    "signInToApply": "Sign in to apply",
+    "receivedTitle": "Your application was received",
+    "receivedBody": "The course staff will review your application. You will get a notification once it is approved; the lessons, session meeting links and recordings open to you then.",
+    "receivedNote": "Until it is approved you can withdraw your application from this page.",
+    "receivedOk": "OK",
+    "previewBannerTitle": "Preview",
+    "previewBannerText": "This course is not published yet; only administrators can see this preview.",
+    "draftBadge": "Draft",
+    "previewCardBadge": "Preview",
+    "previewCardTitle": "When the course is published",
+    "previewCardText": "Students will see the “Request enrollment” button and the time of the first session here. You cannot apply in a preview.",
+    "firstSession": "First session",
+    "backToEditing": "Back to editing",
+    "backToEditingLabel": "Back to editing: {title}, Curriculum in Nazır",
+    "receivedClose": "Close"
   },
   "CreateDeckButtonDialog": {
     "cancel": "Cancel",
@@ -366,9 +380,11 @@
     "configurationError": "Sign-in is unavailable right now. Please try again later.",
     "retry": "Try again",
     "backHome": "Back to the home page",
-    "signOutTitle": "Sign out",
-    "signOutDescription": "Are you sure you want to sign out?",
-    "signOutConfirm": "Sign out"
+    "signOutTitle": "Sign out?",
+    "signOutDescription": "You will be signed out of Medaris in this browser.",
+    "signOutConfirm": "Sign out",
+    "signOutCancel": "Cancel",
+    "signingOut": "Signing out"
   },
   "WelcomePage": {
     "title": "Welcome!",
@@ -418,10 +434,7 @@
     "imam": "imam",
     "nextSession": "Next session",
     "noNextSession": "No session scheduled",
-    "koskCourses": "{count} courses",
-    "notFoundTitle": "Page not found",
-    "notFoundText": "The madrasah you are looking for does not exist or may have been removed.",
-    "notFoundAction": "Back to home"
+    "koskCourses": "{count} courses"
   },
   "NotificationsPage": {
     "title": "Notifications",
@@ -553,10 +566,7 @@
     "weekEmpty": "No session has been added to this week yet.",
     "rowCurrent": "Up next",
     "rowDone": ", ended",
-    "rowCancelled": "Cancelled",
-    "notFoundTitle": "Page not found",
-    "notFoundText": "The session you are looking for does not exist or may have been removed.",
-    "notFoundAction": "Back to home"
+    "rowCancelled": "Cancelled"
   },
   "AccountPage": {
     "pageTitle": "Account",
@@ -641,5 +651,18 @@
       "user_lookup": "Every search is written to the audit log.",
       "ban_lift_course": "You cannot lift a ban set by a higher level."
     }
+  },
+  "SystemPages": {
+    "notFoundTitle": "Page not found",
+    "notFoundText": "The page you are looking for does not exist or is no longer here. Check the address or continue from the home page.",
+    "notFoundAction": "Back to the home page",
+    "forbiddenTitle": "You cannot view this page",
+    "forbiddenDeckText": "{deck} is a public deck; only its owner edits its cards. You can study the deck, and copy any card into your own deck.",
+    "forbiddenGenericText": "You are not allowed to view this page.",
+    "forbiddenDeckAction": "Back to the deck",
+    "forbiddenGenericAction": "Back to the home page",
+    "errorTitle": "Something went wrong",
+    "errorText": "The server could not be reached. Check your internet connection and try again.",
+    "errorAction": "Try again"
   }
 }

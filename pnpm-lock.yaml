@@ -830,6 +830,9 @@ importers:
       autoprefixer:
         specifier: 'catalog:'
         version: 10.5.4(postcss@8.5.23)
+      happy-dom:
+        specifier: 'catalog:'
+        version: 20.14.5
       lightningcss:
         specifier: 'catalog:'
         version: 1.33.0
