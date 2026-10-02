@@ -1,5 +1,5 @@
 {
-  "id": "7c76ab6c-a8a8-4a79-8c1d-404c7fd63e2b",
+  "id": "c27bde2d-20f9-4d50-a9b9-cdc6763c1282",
   "prevId": "f3d9218d-7132-435d-bb19-4f862cf99cfc",
   "version": "7",
   "dialect": "postgresql",
@@ -1926,6 +1926,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archived_by": {
+          "name": "archived_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -2380,6 +2392,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "granted_by_role": {
+          "name": "granted_by_role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -2786,8 +2804,7 @@
       "values": [
         "PENDING",
         "ENROLLED",
-        "COMPLETED",
-        "REVOKED"
+        "COMPLETED"
       ]
     },
     "public.lesson_type": {

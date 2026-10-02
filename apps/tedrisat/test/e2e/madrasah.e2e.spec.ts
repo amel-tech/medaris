@@ -141,9 +141,13 @@ describe("Madrasahs (e2e)", () => {
   });
 
   describe("creating a medrese — SYSTEM_ADMIN only", () => {
-    const body = { handle: "amel-tech", name: "Amel Tech Medresesi" };
+    const body = {
+      handle: "amel-tech",
+      name: "Amel Tech Medresesi",
+      headMuderrisUserId: STRANGER_ID,
+    };
 
-    it("lets SYSTEM_ADMIN create one, with no nazırs yet", async () => {
+    it("lets SYSTEM_ADMIN create one, headed by the person it names", async () => {
       const res = await http()
         .post("/madrasahs")
         .set("Authorization", auth(ADMIN_ID))
@@ -153,7 +157,7 @@ describe("Madrasahs (e2e)", () => {
         handle: "amel-tech",
         name: "Amel Tech Medresesi",
         createdBy: ADMIN_ID,
-        nazirIds: [],
+        nazirIds: [STRANGER_ID],
       });
     });
 
@@ -178,7 +182,11 @@ describe("Madrasahs (e2e)", () => {
       const res = await http()
         .post("/madrasahs")
         .set("Authorization", auth(ADMIN_ID))
-        .send({ handle: "hadis-ve-siyer", name: "İkinci" })
+        .send({
+          handle: "hadis-ve-siyer",
+          name: "İkinci",
+          headMuderrisUserId: STRANGER_ID,
+        })
         .expect(409);
       expect(res.body.code).toBe("MADRASAH_HANDLE_TAKEN");
     });
@@ -187,7 +195,14 @@ describe("Madrasahs (e2e)", () => {
       http()
         .post("/madrasahs")
         .set("Authorization", auth(ADMIN_ID))
-        .send({ handle: "Amel Tech", name: "Amel Tech Medresesi" })
+        .send({ ...body, handle: "Amel Tech" })
+        .expect(400));
+
+    it("rejects a medrese opened with no başmüderris", () =>
+      http()
+        .post("/madrasahs")
+        .set("Authorization", auth(ADMIN_ID))
+        .send({ handle: "amel-tech", name: "Amel Tech Medresesi" })
         .expect(400));
   });
 

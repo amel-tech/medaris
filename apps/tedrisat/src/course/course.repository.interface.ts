@@ -172,6 +172,17 @@ export interface IRosterEnrollment extends IEnrollment {
   ban: { id: string; scope: "COURSE" | "KOSK" } | null;
 }
 
+/** A talebe the team took out of a course, from the audit log (MDRS-178). */
+export interface IRemovedEnrollment {
+  userId: string;
+  name: string | null;
+  email: string | null;
+  reason: string;
+  progress: number;
+  removedAt: Date;
+  removedBy: { id: string; name: string | null };
+}
+
 export interface IPendingEnrollment extends IEnrollment {
   courseTitle: string;
 }
@@ -363,6 +374,7 @@ export interface ICourseRepository {
     status: CourseStatus;
     archived: boolean;
     koskIsPrivate: boolean;
+    koskHidden: boolean;
   } | null>;
   update(id: string, updates: IUpdateCourse): Promise<ICourse | null>;
   replace(
@@ -421,6 +433,7 @@ export interface ICourseRepository {
   findEnrollmentsByCourse(courseId: string): Promise<IEnrollment[]>;
   /** Deletes the enrollment and audits the reason, in one transaction. */
   removeEnrollment(entry: IRemoveEnrollment): Promise<boolean>;
+  findRemovedEnrollments(courseId: string): Promise<IRemovedEnrollment[]>;
   setEnrollmentStatus(
     userId: string,
     courseId: string,

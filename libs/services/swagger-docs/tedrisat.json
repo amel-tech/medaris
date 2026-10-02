@@ -47,6 +47,630 @@
         ]
       }
     },
+    "/kosks/directory": {
+      "get": {
+        "description": "Hidden and passive köşks too, each with its nazımları and course count, the per-status counts the tabs show and the fields the Alan chips offer. The Medaris başnazımı (SYSTEM_ADMIN) sees every köşk; a köşk nazımı only their own; anyone else is refused.",
+        "operationId": "getKoskDirectory",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/KoskStatusFilter"
+            }
+          },
+          {
+            "name": "listing",
+            "required": false,
+            "in": "query",
+            "description": "Görünürlük: LISTED, UNLISTED (Listelenmeyen) or ALL",
+            "schema": {
+              "$ref": "#/components/schemas/KoskListingFilter"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 50; default 12.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Part of the köşk's name, its short name or a nazım's name",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "field",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "level",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/KoskLevel"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskDirectoryResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every köşk for the table of nizam/09",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/overview": {
+      "get": {
+        "description": "nizam/20. Course counts by status, the talebe enrolled (hidden courses left out), waiting applications, the nazımları held now and the medreses with a hosting right. For the köşk's nazımları and the başnazım.",
+        "operationId": "getKoskOverview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskOverviewResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The Medaris yönetimi's page of one köşk (numbers and facts)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/course-roster": {
+      "get": {
+        "description": "nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show.",
+        "operationId": "getKoskCourseRoster",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskCourseRosterResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every course of the köşk for the Dersler table",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/deactivate": {
+      "post": {
+        "description": "nizam/20. The köşk becomes passive and its nazımları are taken off the post; nothing is hidden or deleted, and adding a nazım makes it active again. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log, naming the nazımları removed.",
+        "operationId": "deactivateKosk",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskDirectoryItemResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "KOSK_ALREADY_PASSIVE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a köşk out of service (Köşkü pasife al, SYSTEM_ADMIN only)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/nazims": {
+      "get": {
+        "description": "nizam/25. The köşk's nazımları and the Medaris başnazımı read it; nobody changes the list from here.",
+        "operationId": "getKoskNazims",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/KoskNazimResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The köşk's nazımları with who gave each post and when",
+        "tags": [
+          "kosks"
+        ]
+      },
+      "post": {
+        "description": "nizam/21. Accounts found by e-mail, with an optional end of the post. All or nothing: someone who is a nazım already refuses the whole call with 409 (KOSK_NAZIM_EXISTS). A passive köşk is active again. One audit entry per person. Answers the köşk's nazımları as they are now.",
+        "operationId": "addKoskNazims",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddKoskNazimsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/KoskNazimResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "No such köşk, or an account the directory does not know"
+          },
+          "409": {
+            "description": "KOSK_NAZIM_EXISTS"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Make people the köşk's nazımları (SYSTEM_ADMIN only)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/hide": {
+      "post": {
+        "description": "Nothing is deleted: the köşk and its courses leave every list, and nobody but its nazımları and the başnazım can open it. The başnazım brings it back (`POST /kosks/:id/restore`) or deletes it from the archive. 409 (KOSK_ALREADY_HIDDEN) when it is hidden already. Written to the audit log.",
+        "operationId": "hideKosk",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskDirectoryItemResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "KOSK_ALREADY_HIDDEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Hide a köşk (Köşkü gizle)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/restore": {
+      "post": {
+        "description": "nizam/09 \"Geri al\". 409 (KOSK_NOT_HIDDEN) when it is not hidden. Written to the audit log.",
+        "operationId": "restoreKosk",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskDirectoryItemResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "KOSK_NOT_HIDDEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Bring a hidden köşk back (SYSTEM_ADMIN only)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/grants": {
+      "get": {
+        "description": "nizam/38. The posts held in the köşk's medrese-free courses with their permission codes, end, giver and date; the courses of the köşk; and the codes the caller may hand out.",
+        "operationId": "getKoskGrants",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskGrantsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The köşk's ders nazırları and what they may do",
+        "tags": [
+          "kosks"
+        ]
+      },
+      "post": {
+        "description": "nizam/38 'Ders nazırı ata'. The post and the permissions end together at `endsAt`. 403 (GRANT_EXCEEDS_GIVER) for a permission the caller does not hold, 400 for a code outside the course catalog, a course that is not the köşk's or belongs to a medrese, or an end in the past; 409 (COURSE_NAZIR_EXISTS) when the person is one already. Written to the audit log. Answers the page as it is now.",
+        "operationId": "createKoskGrant",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateKoskGrantDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskGrantsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "COURSE_NAZIR_EXISTS"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Make someone a ders nazırı and give them permissions",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/grants/{grantId}": {
+      "patch": {
+        "description": "nizam/38 'İzinleri düzenle'. Replaces the whole set; what stays keeps its giver and date. The post ends when the permissions do. Written to the audit log.",
+        "operationId": "updateKoskGrant",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "grantId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateKoskGrantDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskGrantsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change a ders nazırı's permissions and end",
+        "tags": [
+          "kosks"
+        ]
+      },
+      "delete": {
+        "description": "nizam/38 'Görevden al'. The post and every permission the person holds in the course end at once. Written to the audit log.",
+        "operationId": "revokeKoskGrant",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "grantId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a ders nazırı's post and permissions away",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
     "/kosks": {
       "get": {
         "description": "Open to callers with no token (MDRS-122). Lists every köşk except the unlisted ones (`isPrivate`): an unlisted köşk is in no list, for anyone — it is reached by its link. `managedBy=me` narrows the list, and its `total`, to the köşks the caller manages (KOSK_NAZIM, MDRS-108, MDRS-134), unlisted ones included — nizam's köşk list; it needs a token. `madrasahId` narrows it to the köşks that medrese holds a hosting right in (MDRS-134).",
@@ -205,6 +829,47 @@
           }
         ],
         "summary": "List the ilim alanı of the listed köşks",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/followed/courses": {
+      "get": {
+        "description": "Published courses of the köşks the caller follows, newest first, leaving out the courses they already applied to or are in (MDRS-165): Ana sayfa's \"Takip ettiğin köşklerden\".",
+        "operationId": "getFollowedKoskCourses",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "At most this many; 4 by default, 12 at most.",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FollowedKoskCourseResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Courses of the köşks the caller follows",
         "tags": [
           "kosks"
         ]
@@ -602,6 +1267,7 @@
         ]
       },
       "post": {
+        "description": "The medrese and the başmüderris's grant are written together. Without a `handle` one is made from the name.",
         "operationId": "createMadrasah",
         "parameters": [],
         "requestBody": {
@@ -637,7 +1303,7 @@
             "bearer": []
           }
         ],
-        "summary": "Create a medrese (SYSTEM_ADMIN only)",
+        "summary": "Open a medrese with its başmüderris (SYSTEM_ADMIN only)",
         "tags": [
           "madrasahs"
         ]
@@ -709,6 +1375,71 @@
           }
         ],
         "summary": "Get the medreses Keşfet lists",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/directory": {
+      "get": {
+        "description": "nizam/07: hidden and passive medreses too, each with its başmüderris, course count and hosting köşks, and the per-status counts the tabs show. The open list above leaves hidden medreses out; this one is the başnazım's.",
+        "operationId": "getMadrasahDirectory",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/MadrasahStatusFilter"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Part of the medrese's name, its handle or its başmüderris",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahDirectoryResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every medrese for the platform's table (SYSTEM_ADMIN only)",
         "tags": [
           "madrasahs"
         ]
@@ -883,6 +1614,154 @@
           }
         ],
         "summary": "Get what a medrese's page shows",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/head-muderris/delegations": {
+      "get": {
+        "description": "nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese that are still held; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.",
+        "operationId": "getMadrasahHeadDelegations",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HeadDelegationResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What the başmüderris handed on (SYSTEM_ADMIN only)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/head-muderris": {
+      "put": {
+        "description": "Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. `delegations` answers what the replaced başmüderris handed on (Devral / Düşür), `endsAt` is the new one's Görev bitişi. Written to the audit log.",
+        "operationId": "setMadrasahHeadMuderris",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetHeadMuderrisDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahDirectoryItemResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "DISMISS_DECISIONS_INCOMPLETE: a hand-on is unanswered or unknown; GRANT_EXPIRY_INVALID: the end is in the past"
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Make a user the medrese's başmüderris (SYSTEM_ADMIN only)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/restore": {
+      "post": {
+        "description": "409 (MADRASAH_NOT_HIDDEN) when it is not hidden.",
+        "operationId": "restoreMadrasah",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahDirectoryItemResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "MADRASAH_NOT_HIDDEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Bring a hidden medrese back (SYSTEM_ADMIN only)",
         "tags": [
           "madrasahs"
         ]
@@ -1513,6 +2392,49 @@
         ]
       }
     },
+    "/courses/{id}/stats": {
+      "get": {
+        "description": "nizam/53: talebe enrolled, applications waiting, completions and how many weeks have begun. For the course team: the köşk manager and the course's müderrisler.",
+        "operationId": "getCourseStats",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseStatsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The numbers of a course's overview (course team)",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
     "/courses/{id}/enrollments": {
       "get": {
         "description": "For the course team: the köşk manager and the course's müderrisler (MDRS-105). Requests first, then active seats, then completions.",
@@ -1554,6 +2476,52 @@
           }
         ],
         "summary": "List a course's enrollments — requests, talebe and completions",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/enrollments/removed": {
+      "get": {
+        "description": "For the course team (MDRS-178, Erişimi kaldırılanlar): who was taken out by `POST …/remove`, by whom, when and why, newest first. Read from the audit log; a talebe may have applied again since.",
+        "operationId": "getRemovedEnrollments",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RemovedEnrollmentResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Talebe the team took out of the course, with the reasons",
         "tags": [
           "courses"
         ]
@@ -2401,6 +3369,142 @@
         ]
       }
     },
+    "/bans": {
+      "get": {
+        "description": "Newest first, one page at a time, with platform-wide counts for the tabs. Medaris administration only: the başnazım and the Medaris nazımı. `q` matches the person's name or e-mail; `scope` keeps one scope.",
+        "operationId": "listAllBans",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "ACTIVE",
+                "LIFTED"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "COURSE",
+                "KOSK"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllBansListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "BAN_FORBIDDEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every ban of every köşk, open or lifted (Medaris Yasaklamalar)",
+        "tags": [
+          "bans"
+        ]
+      }
+    },
+    "/bans/{banId}/extend": {
+      "post": {
+        "description": "Opens a KOSK ban for the same person with its own reason and leaves the course ban standing; the audit row says `ban.extend`. The köşk's nazım and above. A person already barred from the köşk gets the standing ban back.",
+        "operationId": "extendBan",
+        "parameters": [
+          {
+            "name": "banId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtendBanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BanResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "BAN_FORBIDDEN"
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "BAN_ALREADY_LIFTED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Widen a course ban to the whole köşk (Yasağı genişlet)",
+        "tags": [
+          "bans"
+        ]
+      }
+    },
     "/bans/{banId}/lift": {
       "post": {
         "description": "Only the kademe that placed the ban, or a higher one: a Medaris nazımı's ban is lifted by Medaris administration alone. The reason and the lifter's name are kept with the ban.",
@@ -2454,6 +3558,197 @@
         "summary": "Lift a ban with a reason (Yasağı kaldır)",
         "tags": [
           "bans"
+        ]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "listNotifications",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "`unread` leaves out what the caller has read. Default `all`.",
+            "schema": {
+              "enum": [
+                "all",
+                "unread"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 50; default 20.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "types",
+            "required": false,
+            "in": "query",
+            "description": "Comma separated; only these types are listed. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedNotificationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A cursor this server did not issue (INVALID_NOTIFICATION_CURSOR)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's notifications, newest first",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/unread-count": {
+      "get": {
+        "description": "`unread` is what the bell announces; `total` is the \"all\" tab's count.",
+        "operationId": "getNotificationCounts",
+        "parameters": [
+          {
+            "name": "types",
+            "required": false,
+            "in": "query",
+            "description": "Comma separated; only these types are counted. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationCountsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An unknown type (INVALID_NOTIFICATION_TYPES)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "How many notifications the caller has, and how many are unread",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/read-all": {
+      "post": {
+        "operationId": "markAllNotificationsRead",
+        "parameters": [
+          {
+            "name": "types",
+            "required": false,
+            "in": "query",
+            "description": "Comma separated; only these types are marked read. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadAllNotificationsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An unknown type (INVALID_NOTIFICATION_TYPES)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark every unread notification of the caller read",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/{id}/read": {
+      "post": {
+        "description": "Idempotent: a notification already read keeps its `readAt`.",
+        "operationId": "markNotificationRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such notification, or it is another person's (NOTIFICATION_NOT_FOUND)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark one notification read",
+        "tags": [
+          "notifications"
         ]
       }
     },
@@ -2705,6 +4000,46 @@
           }
         ],
         "summary": "Get all flashcards from a deck",
+        "tags": [
+          "flashcard-cards"
+        ]
+      }
+    },
+    "/flashcard/decks/{id}/due": {
+      "get": {
+        "description": "The cards of the deck that wait for a repeat, most overdue first, then a few the caller has not started (MDRS-165). Each card carries the caller's own progress.",
+        "operationId": "getFlashcardStudyRound",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardStudyRoundResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such deck, or a private deck owned by another user — deliberately the same answer"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get today's study round of a deck",
         "tags": [
           "flashcard-cards"
         ]
@@ -3091,6 +4426,120 @@
         ]
       }
     },
+    "/flashcard/decks/summary": {
+      "get": {
+        "description": "The caller's own decks followed by the decks of other people they collected, each with the card counts and the caller's progress through them, so a list page makes one request instead of one per deck.",
+        "operationId": "getFlashcardDeckSummaries",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FlashcardDeckSummaryResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the caller's decks with their progress",
+        "tags": [
+          "flashcard-decks"
+        ]
+      }
+    },
+    "/flashcard/decks/due": {
+      "get": {
+        "description": "The decks of the caller's collection with something to study (MDRS-165): first the ones with cards waiting for a repeat, most first, then the decks of other people that grew since the caller collected them.",
+        "operationId": "getFlashcardDecksDueToday",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "At most this many decks; 3 by default, 10 at most.",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FlashcardDeckSummaryResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The decks to study today",
+        "tags": [
+          "flashcard-decks"
+        ]
+      }
+    },
+    "/flashcard/decks/explore": {
+      "get": {
+        "description": "The decks of the courses, köşks and medreses the caller is enrolled in, and the decks Medaris published, each marked with whether the caller has it in the collection.",
+        "operationId": "exploreFlashcardDecks",
+        "parameters": [
+          {
+            "name": "cardType",
+            "required": false,
+            "in": "query",
+            "description": "Leaves out decks of the other kind.",
+            "schema": {
+              "enum": [
+                "VOCABULARY",
+                "HADEETH"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardDeckExploreResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Discover decks to collect",
+        "tags": [
+          "flashcard-decks"
+        ]
+      }
+    },
     "/flashcard/decks/{id}": {
       "get": {
         "description": "Retrieves a single flashcard deck by its ID with optional includes for related data such as tags.",
@@ -3443,6 +4892,96 @@
           }
         ],
         "summary": "Delete a flashcard deck from user's collection",
+        "tags": [
+          "flashcard-decks"
+        ]
+      }
+    },
+    "/flashcard/decks/{id}/publish-request": {
+      "post": {
+        "description": "Marks a private deck as waiting for Medaris to review it. The deck stays private until it is published.",
+        "operationId": "requestFlashcardDeckPublication",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardDeckResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Deck belongs to another user"
+          },
+          "404": {
+            "description": "Deck not found"
+          },
+          "409": {
+            "description": "The deck already waits for review or is already public"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ask for a deck to be published",
+        "tags": [
+          "flashcard-decks"
+        ]
+      },
+      "delete": {
+        "description": "Cancels the request for review, or turns a published deck private again.",
+        "operationId": "withdrawFlashcardDeckPublication",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardDeckResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Deck belongs to another user"
+          },
+          "404": {
+            "description": "Deck not found"
+          },
+          "409": {
+            "description": "The deck is private already"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Withdraw a publication request, or take a public deck back",
         "tags": [
           "flashcard-decks"
         ]
@@ -3860,9 +5399,158 @@
         ]
       }
     },
+    "/kosks/{id}/hosting-rights": {
+      "get": {
+        "description": "nizam/26. Each with its başmüderris, who granted the right and when, and the medrese's courses here that are not hidden (nizam/27 asks what becomes of them).",
+        "operationId": "getKoskHostingRights",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HostingRightResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The medreses that hold a hosting right in the köşk",
+        "tags": [
+          "kosks"
+        ]
+      },
+      "post": {
+        "description": "Idempotent. 404 for a medrese that is missing or hidden. Written to the audit log.",
+        "operationId": "grantKoskHostingRight",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantHostingRightDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingRightResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Give a medrese a hosting right in the köşk",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/hosting-rights/{madrasahId}": {
+      "delete": {
+        "description": "`coursesAction` decides what becomes of the medrese's courses in this köşk: KEEP leaves them as they are, HIDE hides each (they come back from the archive). The medrese can open no new course here. Written to the audit log.",
+        "operationId": "revokeKoskHostingRight",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "madrasahId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "coursesAction",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/HostingCoursesAction"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Withdraw a medrese's hosting right",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
     "/calendar/{file}": {
       "get": {
-        "description": "Every session of every course the feed's owner is enrolled in, teaches or manages, from 30 days back to 180 days ahead. Removed sessions carry `STATUS:CANCELLED`; UIDs and SEQUENCE are those of `GET /lessons/:id/calendar.ics` (MDRS-117). No meeting links.",
+        "description": "Every session of every course the feed's owner is enrolled in, teaches or manages, from 30 days back to 180 days ahead. Removed and cancelled sessions carry `STATUS:CANCELLED`; UIDs and SEQUENCE are those of `GET /lessons/:id/calendar.ics` (MDRS-117). No meeting links.",
         "operationId": "getCalendarFeed",
         "parameters": [
           {
@@ -3957,36 +5645,63 @@
         ]
       }
     },
-    "/notifications": {
+    "/kosk-applications": {
+      "post": {
+        "description": "The application waits as PENDING for Medaris management.",
+        "operationId": "createKoskApplication",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateKoskApplicationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskApplicationResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Apply to open a köşk",
+        "tags": [
+          "kosk-applications"
+        ]
+      }
+    },
+    "/sessions": {
       "get": {
-        "operationId": "listNotifications",
+        "description": "Programım. Only courses the caller is ENROLLED in: a pending request, a completed course and a barred talebe's course are left out. Starts in `[from, to)`, soonest first. A cancelled session is kept with `status: CANCELLED`; a hidden one is not here. `meetingUrl` is null for a cancelled or finished session.",
+        "operationId": "listMySessions",
         "parameters": [
           {
-            "name": "status",
-            "required": false,
+            "name": "to",
+            "required": true,
             "in": "query",
-            "description": "`unread` leaves out what the caller has read. Default `all`.",
+            "description": "Exclusive end; after `from`, at most 31 days later.",
             "schema": {
-              "enum": [
-                "all",
-                "unread"
-              ],
               "type": "string"
             }
           },
           {
-            "name": "limit",
-            "required": false,
+            "name": "from",
+            "required": true,
             "in": "query",
-            "description": "1 to 50; default 20.",
-            "schema": {
-              "type": "number"
-            }
-          },
-          {
-            "name": "cursor",
-            "required": false,
-            "in": "query",
+            "description": "ISO 8601 date or date-time with an offset. A bare date is UTC midnight.",
             "schema": {
               "type": "string"
             }
@@ -3998,13 +5713,16 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginatedNotificationResponse"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduleSessionResponse"
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "A cursor this server did not issue (INVALID_NOTIFICATION_CURSOR)."
+            "description": "A missing or malformed window (INVALID_SCHEDULE_WINDOW)."
           }
         },
         "security": [
@@ -4012,78 +5730,24 @@
             "bearer": []
           }
         ],
-        "summary": "The caller's notifications, newest first",
+        "summary": "The live sessions of the caller's enrolled courses in a window",
         "tags": [
-          "notifications"
+          "sessions"
         ]
       }
     },
-    "/notifications/unread-count": {
+    "/me/upcoming-lessons": {
       "get": {
-        "description": "`unread` is what the bell announces; `total` is the \"all\" tab's count.",
-        "operationId": "getNotificationCounts",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificationCountsResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "How many notifications the caller has, and how many are unread",
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/notifications/read-all": {
-      "post": {
-        "operationId": "markAllNotificationsRead",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReadAllNotificationsResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Mark every unread notification of the caller read",
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/notifications/{id}/read": {
-      "post": {
-        "description": "Idempotent: a notification already read keeps its `readAt`.",
-        "operationId": "markNotificationRead",
+        "description": "The phone menu's \"Sıradaki celse\" card and its list. Sessions running now or still ahead, cancelled ones skipped, soonest first.",
+        "operationId": "listMyUpcomingLessons",
         "parameters": [
           {
-            "name": "id",
-            "required": true,
-            "in": "path",
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 20; default 5.",
             "schema": {
-              "type": "string"
+              "type": "number"
             }
           }
         ],
@@ -4093,13 +5757,13 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotificationResponse"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduleSessionResponse"
+                  }
                 }
               }
             }
-          },
-          "404": {
-            "description": "No such notification, or it is another person's (NOTIFICATION_NOT_FOUND)."
           }
         },
         "security": [
@@ -4107,9 +5771,9 @@
             "bearer": []
           }
         ],
-        "summary": "Mark one notification read",
+        "summary": "The caller's next live sessions",
         "tags": [
-          "notifications"
+          "sessions"
         ]
       }
     },
@@ -4273,6 +5937,644 @@
           }
         ],
         "summary": "The name of the Medaris başnazımı",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/permissions": {
+      "get": {
+        "description": "nizam/12 and 13: the platform's permissions in their five sections and the course permissions a course-scoped group may carry. Codes only; the sentences under them are the web app's.",
+        "operationId": "getPermissionCatalog",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionCatalogResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The permission catalog (SYSTEM_ADMIN only)",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/medaris-nazims": {
+      "get": {
+        "description": "nizam/11. Held appointments only, in the order they were made; one whose end has passed is not listed. Each carries its groups and single platform permissions.",
+        "operationId": "getMedarisNazims",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MedarisNazimResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The Medaris nazımları in office (SYSTEM_ADMIN only)",
+        "tags": [
+          "nizam"
+        ]
+      },
+      "post": {
+        "description": "nizam/12. The appointment and the permissions end together at `expiresAt`. Written to the audit log.",
+        "operationId": "appointMedarisNazim",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppointMedarisNazimDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedarisNazimResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "409": {
+            "description": "Already a Medaris nazımı"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Appoint a Medaris nazımı and give them their permissions",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/medaris-nazims/{userId}/grants": {
+      "put": {
+        "description": "nizam/12. Replaces the group and the single permissions with the ones sent; what stays keeps its giver and date. The end may not be after the appointment's. Written to the audit log.",
+        "operationId": "setMedarisNazimGrants",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetNazimGrantsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedarisNazimResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set a Medaris nazımı's platform permissions",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/medaris-nazims/{userId}/given": {
+      "get": {
+        "description": "nizam/11's dismissal question: the roles and permissions this person gave to others that are still held.",
+        "operationId": "getMedarisNazimGiven",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GivenItemResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What a Medaris nazımı has handed on",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/medaris-nazims/{userId}": {
+      "delete": {
+        "description": "nizam/11. `decisions` answers every item `…/given` lists: TAKE_OVER leaves the right in place under the başnazım's name, DROP revokes it. The appointment and the platform permissions are revoked. Written to the audit log.",
+        "operationId": "dismissMedarisNazim",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DismissMedarisNazimDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Dismiss a Medaris nazımı",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/permission-groups": {
+      "get": {
+        "description": "nizam/13. The platform's groups and the course groups, each with its permissions and how many people hold it.",
+        "operationId": "getPermissionGroups",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionGroupResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The permission groups (SYSTEM_ADMIN only)",
+        "tags": [
+          "nizam"
+        ]
+      },
+      "post": {
+        "description": "nizam/13. The name is not blank and not used by another live group, whatever its case. Written to the audit log.",
+        "operationId": "createPermissionGroup",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePermissionGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionGroupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "409": {
+            "description": "The name is taken"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a permission group",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/permission-groups/{id}": {
+      "put": {
+        "description": "nizam/13. Changing the permissions while people hold the group needs `usersPolicy`: they keep what it gave them as single permissions, or lose it; either way they no longer hold the group. Written to the audit log.",
+        "operationId": "updatePermissionGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePermissionGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionGroupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "The name is taken"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rename a permission group or change its permissions",
+        "tags": [
+          "nizam"
+        ]
+      },
+      "delete": {
+        "description": "nizam/13. While people hold the group, `usersPolicy` is required: `keep` turns its permissions into single ones for each of them, `revoke` takes them away. Written to the audit log.",
+        "operationId": "deletePermissionGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeletePermissionGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a permission group",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/permission-groups/{id}/users": {
+      "get": {
+        "operationId": "getPermissionGroupUsers",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupUserResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The people who hold a permission group",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/inactive-scopes": {
+      "get": {
+        "description": "nizam/14. Only scopes that once had a manager and have none now, oldest first; hidden ones are left out. `reason` says whether the last term ran out or somebody took it away.",
+        "operationId": "getInactiveScopes",
+        "parameters": [
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/InactiveScopeType"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InactiveScopeResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Köşks, medreses and courses with no manager",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/inactive-scopes/{type}/{id}/assign": {
+      "post": {
+        "description": "nizam/14 'Başmüderris ata' / 'Köşk nazımı ata' / 'Müderris ata'. The scope is active again. 404 (INACTIVE_SCOPE_NOT_FOUND) when it has a manager already, is hidden or does not exist. Written to the audit log.",
+        "operationId": "assignInactiveScope",
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignInactiveScopeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Give a passive scope its manager",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/inactive-scopes/{type}/{id}/view": {
+      "post": {
+        "description": "nizam/14 'İçeriği gör'. Writes one audit row (`inactive_scope.view`) per call; the content itself is the web app's page.",
+        "operationId": "viewInactiveScope",
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record that a passive scope's content was opened",
         "tags": [
           "nizam"
         ]
@@ -4696,6 +6998,111 @@
         ]
       }
     },
+    "/me/public-profile": {
+      "get": {
+        "operationId": "getMyPublicProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyPublicProfileResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's public profile, every field and every switch",
+        "tags": [
+          "me"
+        ]
+      },
+      "patch": {
+        "description": "Only the fields sent change. The künye must be non-empty and unique regardless of case.",
+        "operationId": "updateMyPublicProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePublicProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyPublicProfileResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The künye is taken (KUNYE_TAKEN)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change the caller's public profile",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/users/{id}/public-profile": {
+      "get": {
+        "operationId": "getUserPublicProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProfileResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The person has not chosen a künye yet."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Another person's public profile, filtered to what they show",
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/users": {
       "get": {
         "description": "Returns zero or one user. Callable by SYSTEM_ADMIN and köşk managers.",
@@ -4857,6 +7264,650 @@
           "service"
         ]
       },
+      "KoskStatusFilter": {
+        "type": "string",
+        "enum": [
+          "ALL",
+          "ACTIVE",
+          "PASSIVE",
+          "HIDDEN"
+        ]
+      },
+      "KoskListingFilter": {
+        "type": "string",
+        "enum": [
+          "ALL",
+          "LISTED",
+          "UNLISTED"
+        ]
+      },
+      "KoskLevel": {
+        "type": "string",
+        "enum": [
+          "ALL",
+          "BEGINNER",
+          "INTERMEDIATE",
+          "ADVANCED"
+        ]
+      },
+      "KoskStatus": {
+        "type": "string",
+        "enum": [
+          "ACTIVE",
+          "PASSIVE",
+          "HIDDEN"
+        ],
+        "description": "HIDDEN wins over PASSIVE: someone hid it, which says more than that nobody attends it."
+      },
+      "KoskPersonResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Null when neither the app nor the directory knows the name"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "KoskDirectoryItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "handle": {
+            "type": "string",
+            "nullable": true,
+            "description": "The short name, without a leading @",
+            "example": "nuruosmaniye"
+          },
+          "name": {
+            "type": "string",
+            "example": "Nûruosmaniye Köşkü"
+          },
+          "coverHue": {
+            "type": "number",
+            "example": 215
+          },
+          "field": {
+            "type": "string",
+            "nullable": true
+          },
+          "level": {
+            "type": "string",
+            "nullable": true
+          },
+          "isPrivate": {
+            "type": "boolean",
+            "description": "Unlisted: shown as Listelenmeyen"
+          },
+          "status": {
+            "description": "HIDDEN wins over PASSIVE: someone hid it, which says more than that nobody attends it.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskStatus"
+              }
+            ]
+          },
+          "since": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Since when it is hidden or passive; null while active"
+          },
+          "nazims": {
+            "description": "The köşk nazımları held now, oldest grant first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskPersonResponse"
+            }
+          },
+          "courseCount": {
+            "type": "number",
+            "description": "Every course of the köşk, drafts, hidden and passive ones too"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "coverHue",
+          "isPrivate",
+          "status",
+          "nazims",
+          "courseCount"
+        ]
+      },
+      "KoskDirectoryCountsResponse": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "number"
+          },
+          "active": {
+            "type": "number"
+          },
+          "passive": {
+            "type": "number"
+          },
+          "hidden": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "all",
+          "active",
+          "passive",
+          "hidden"
+        ]
+      },
+      "KoskDirectoryResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskDirectoryItemResponse"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Rows matching every filter"
+          },
+          "page": {
+            "type": "number",
+            "example": 1
+          },
+          "limit": {
+            "type": "number",
+            "example": 50
+          },
+          "counts": {
+            "description": "The caller's köşks by status, whatever the filters and search: the tabs' numbers",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskDirectoryCountsResponse"
+              }
+            ]
+          },
+          "fields": {
+            "description": "The fields (alan) the caller's köşks carry, for the Alan chips; alphabetical",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "counts",
+          "fields"
+        ]
+      },
+      "KoskCourseCountsResponse": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "number",
+            "description": "Every course, hidden ones too"
+          },
+          "published": {
+            "type": "number",
+            "description": "Published and not hidden"
+          },
+          "draft": {
+            "type": "number",
+            "description": "Drafts that are not hidden"
+          },
+          "hidden": {
+            "type": "number",
+            "description": "Hidden, whatever their status was"
+          }
+        },
+        "required": [
+          "all",
+          "published",
+          "draft",
+          "hidden"
+        ]
+      },
+      "KoskOverviewMadrasahResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "KoskOverviewResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskStatus"
+              }
+            ]
+          },
+          "since": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Since when it is hidden or passive; null while active"
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the köşk was opened"
+          },
+          "openedBy": {
+            "nullable": true,
+            "description": "Who opened it (the köşk's creator)",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskPersonResponse"
+              }
+            ]
+          },
+          "courses": {
+            "$ref": "#/components/schemas/KoskCourseCountsResponse"
+          },
+          "students": {
+            "type": "number",
+            "description": "Distinct talebe enrolled in the köşk's courses; hidden courses do not count"
+          },
+          "pendingApplications": {
+            "type": "number",
+            "description": "Applications waiting for a decision in courses that are not hidden"
+          },
+          "nazimCount": {
+            "type": "number",
+            "description": "Köşk nazımları held now"
+          },
+          "hostingMadrasahs": {
+            "description": "The medreses that hold a hosting right here, oldest first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskOverviewMadrasahResponse"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "openedAt",
+          "courses",
+          "students",
+          "pendingApplications",
+          "nazimCount",
+          "hostingMadrasahs"
+        ]
+      },
+      "KoskCourseStatus": {
+        "type": "string",
+        "enum": [
+          "PUBLISHED",
+          "DRAFT",
+          "HIDDEN"
+        ],
+        "description": "HIDDEN wins over PUBLISHED and DRAFT"
+      },
+      "KoskCourseMuderrisResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "isImam": {
+            "type": "boolean",
+            "description": "The course's imam"
+          }
+        },
+        "required": [
+          "name",
+          "isImam"
+        ]
+      },
+      "KoskCourseRowResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "coverHue": {
+            "type": "number",
+            "example": 220
+          },
+          "weekCount": {
+            "type": "number",
+            "description": "Weeks the programme still has"
+          },
+          "madrasah": {
+            "nullable": true,
+            "description": "The medrese that opened the course; null for the köşk's own",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskOverviewMadrasahResponse"
+              }
+            ]
+          },
+          "status": {
+            "description": "HIDDEN wins over PUBLISHED and DRAFT",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskCourseStatus"
+              }
+            ]
+          },
+          "hiddenAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "muderris": {
+            "description": "In the order the course lists them; the imam is flagged",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskCourseMuderrisResponse"
+            }
+          },
+          "studentCount": {
+            "type": "number",
+            "description": "Enrolled talebe (applications do not count)"
+          },
+          "pendingCount": {
+            "type": "number",
+            "description": "Applications waiting for a decision"
+          },
+          "bannedCount": {
+            "type": "number",
+            "description": "Talebe barred from this course or from the whole köşk, counted once each"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "coverHue",
+          "weekCount",
+          "status",
+          "createdAt",
+          "muderris",
+          "studentCount",
+          "pendingCount",
+          "bannedCount"
+        ]
+      },
+      "KoskCourseRosterResponse": {
+        "type": "object",
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/KoskCourseCountsResponse"
+          },
+          "items": {
+            "description": "Every course, newest first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskCourseRowResponse"
+            }
+          }
+        },
+        "required": [
+          "counts",
+          "items"
+        ]
+      },
+      "KoskNazimGranterRole": {
+        "type": "string",
+        "enum": [
+          "SYSTEM_ADMIN",
+          "MEDARIS_NAZIM",
+          "KOSK_NAZIM"
+        ],
+        "description": "What the giver is, worked out when read: the realm's başnazım, a Medaris nazımı, or a nazım of this köşk. Null when it cannot be told."
+      },
+      "KoskNazimResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/KoskPersonResponse"
+          },
+          "grantedBy": {
+            "$ref": "#/components/schemas/KoskPersonResponse"
+          },
+          "grantedByRole": {
+            "nullable": true,
+            "description": "What the giver is, worked out when read: the realm's başnazım, a Medaris nazımı, or a nazım of this köşk. Null when it cannot be told.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskNazimGranterRole"
+              }
+            ]
+          },
+          "grantedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endsAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the post ends; null means until it is taken away"
+          }
+        },
+        "required": [
+          "user",
+          "grantedBy",
+          "grantedAt"
+        ]
+      },
+      "AddKoskNazimsDto": {
+        "type": "object",
+        "properties": {
+          "userIds": {
+            "minItems": 1,
+            "maxItems": 10,
+            "description": "Accounts found by e-mail (`GET /users/lookup`)",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Görev bitişi. Omitted: until the nazım is taken away. In the past: 400."
+          }
+        },
+        "required": [
+          "userIds"
+        ]
+      },
+      "KoskGrantCourseResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "example": "Emsile ve Bina"
+          },
+          "madrasahName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The medrese the course is the work of; null for a medrese-free course. A medrese's permissions come from its own staff, so only the null ones are offered in 'Ders nazırı ata'."
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "KoskGrantResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The ders nazırı post; `PATCH` and `DELETE` address it"
+          },
+          "user": {
+            "$ref": "#/components/schemas/KoskPersonResponse"
+          },
+          "course": {
+            "$ref": "#/components/schemas/KoskGrantCourseResponse"
+          },
+          "permissions": {
+            "description": "Course permission codes the person holds in the course now",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "endsAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the post and its permissions end, on the same day; null means until they are taken away"
+          },
+          "grantedBy": {
+            "$ref": "#/components/schemas/KoskPersonResponse"
+          },
+          "grantedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "user",
+          "course",
+          "permissions",
+          "grantedBy",
+          "grantedAt"
+        ]
+      },
+      "KoskGrantsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "The ders nazırları of the köşk's medrese-free courses, oldest post first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskGrantResponse"
+            }
+          },
+          "courses": {
+            "description": "Every course of the köşk that is not hidden: the ones a post can be made in, and the medrese ones the page names",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskGrantCourseResponse"
+            }
+          },
+          "grantable": {
+            "description": "The permission codes the caller may hand out, in the order the dialog draws them",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "items",
+          "courses",
+          "grantable"
+        ]
+      },
+      "CreateKoskGrantDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The account that becomes a ders nazırı (`GET /users/lookup`)"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A medrese-free course"
+          },
+          "permissions": {
+            "minItems": 1,
+            "maxItems": 40,
+            "description": "Course permission codes; none the caller does not hold themselves (403 GRANT_EXCEEDS_GIVER)",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The post and its permissions end together. Omitted: until taken away. In the past: 400."
+          }
+        },
+        "required": [
+          "userId",
+          "courseId",
+          "permissions"
+        ]
+      },
+      "UpdateKoskGrantDto": {
+        "type": "object",
+        "properties": {
+          "permissions": {
+            "minItems": 1,
+            "maxItems": 40,
+            "description": "The whole set the person holds from now on",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "The new end; null (or omitted) means until taken away"
+          }
+        },
+        "required": [
+          "permissions"
+        ]
+      },
       "KoskManagedBy": {
         "type": "string",
         "enum": [
@@ -4924,6 +7975,22 @@
               "type": "string"
             }
           },
+          "alwaysRequireApproval": {
+            "type": "boolean",
+            "example": false,
+            "description": "Köşk-wide policy (MDRS-174): enrollment always waits"
+          },
+          "recordingsNeverPublic": {
+            "type": "boolean",
+            "example": false,
+            "description": "Köşk-wide policy (MDRS-174): no recording is made public"
+          },
+          "archivedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Since when the köşk is hidden (MDRS-174); null while it is shown. Only its nazımları and SYSTEM_ADMIN can read a hidden köşk."
+          },
           "verified": {
             "type": "boolean",
             "example": false
@@ -4981,6 +8048,8 @@
           "coverHue",
           "isPrivate",
           "tags",
+          "alwaysRequireApproval",
+          "recordingsNeverPublic",
           "verified",
           "featured",
           "rating",
@@ -5024,6 +8093,46 @@
           "total",
           "page",
           "limit"
+        ]
+      },
+      "FollowedKoskCourseResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "koskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "koskName": {
+            "type": "string"
+          },
+          "coverHue": {
+            "type": "number",
+            "description": "The cover's hue, 0–360."
+          },
+          "muderrisName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The first müderris by the order the course lists them in."
+          },
+          "muderrisIsImam": {
+            "type": "boolean",
+            "description": "That müderris is the course's imam."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "koskId",
+          "koskName",
+          "coverHue",
+          "muderrisIsImam"
         ]
       },
       "KoskDeckResponse": {
@@ -5072,16 +8181,6 @@
           "accessible",
           "decks"
         ]
-      },
-      "KoskLevel": {
-        "type": "string",
-        "enum": [
-          "ALL",
-          "BEGINNER",
-          "INTERMEDIATE",
-          "ADVANCED"
-        ],
-        "description": "Who the köşk is for; null clears it"
       },
       "CreateKoskDto": {
         "type": "object",
@@ -5144,6 +8243,28 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "alwaysRequireApproval": {
+            "type": "boolean",
+            "example": false,
+            "default": false,
+            "description": "Köşk-wide policy (MDRS-174): every enrollment in any course of the köşk waits for approval, whatever the course says."
+          },
+          "recordingsNeverPublic": {
+            "type": "boolean",
+            "example": false,
+            "default": false,
+            "description": "Köşk-wide policy (MDRS-174): no recording of the köşk is opened to everyone or uploaded to YouTube. Stored for the recording model; nothing reads it yet."
+          },
+          "managerUserIds": {
+            "minItems": 1,
+            "maxItems": 10,
+            "description": "nizam/10: the köşk's first nazımları, found by e-mail (`GET /users/lookup`). SYSTEM_ADMIN only; when given, they are the köşk's nazımları and the caller is not one. Omitted: the caller becomes the köşk's only nazım, as before.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
             }
           }
         },
@@ -5213,6 +8334,18 @@
             "items": {
               "type": "string"
             }
+          },
+          "alwaysRequireApproval": {
+            "type": "boolean",
+            "example": false,
+            "default": false,
+            "description": "Köşk-wide policy (MDRS-174): every enrollment in any course of the köşk waits for approval, whatever the course says."
+          },
+          "recordingsNeverPublic": {
+            "type": "boolean",
+            "example": false,
+            "default": false,
+            "description": "Köşk-wide policy (MDRS-174): no recording of the köşk is opened to everyone or uploaded to YouTube. Stored for the recording model; nothing reads it yet."
           }
         }
       },
@@ -5359,6 +8492,212 @@
           "name",
           "courseCount",
           "courses"
+        ]
+      },
+      "MadrasahStatusFilter": {
+        "type": "string",
+        "enum": [
+          "ALL",
+          "ACTIVE",
+          "PASSIVE",
+          "HIDDEN"
+        ]
+      },
+      "MadrasahStatus": {
+        "type": "string",
+        "enum": [
+          "ACTIVE",
+          "PASSIVE",
+          "HIDDEN"
+        ],
+        "description": "HIDDEN wins over PASSIVE: a hidden medrese is in nobody's list but this one."
+      },
+      "MadrasahPersonResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Null until that person has signed in once"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "MadrasahHostingKoskResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "MadrasahDirectoryItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "handle": {
+            "type": "string",
+            "example": "suleymaniye"
+          },
+          "name": {
+            "type": "string",
+            "example": "Süleymaniye Medresesi"
+          },
+          "coverHue": {
+            "type": "number",
+            "example": 215
+          },
+          "status": {
+            "description": "HIDDEN wins over PASSIVE: a hidden medrese is in nobody's list but this one.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MadrasahStatus"
+              }
+            ]
+          },
+          "since": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Since when it is hidden or passive; null while active"
+          },
+          "headMuderris": {
+            "nullable": true,
+            "description": "The oldest held başmüderris; null when there is none",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MadrasahPersonResponse"
+              }
+            ]
+          },
+          "courseCount": {
+            "type": "number",
+            "description": "Courses that are not hidden"
+          },
+          "hostingKosks": {
+            "description": "The köşks that hold a hosting right for this medrese",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahHostingKoskResponse"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "handle",
+          "name",
+          "coverHue",
+          "status",
+          "courseCount",
+          "hostingKosks"
+        ]
+      },
+      "MadrasahStatusCountsResponse": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "number"
+          },
+          "active": {
+            "type": "number"
+          },
+          "passive": {
+            "type": "number"
+          },
+          "hidden": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "all",
+          "active",
+          "passive",
+          "hidden"
+        ]
+      },
+      "PassiveMadrasahResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "since": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "since"
+        ]
+      },
+      "MadrasahDirectoryResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahDirectoryItemResponse"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Rows matching the status and search"
+          },
+          "page": {
+            "type": "number",
+            "example": 1
+          },
+          "limit": {
+            "type": "number",
+            "example": 25
+          },
+          "counts": {
+            "description": "Every medrese by status, whatever the filter and search: the tabs' numbers",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MadrasahStatusCountsResponse"
+              }
+            ]
+          },
+          "passive": {
+            "description": "The passive medreses the page's warning names, oldest first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PassiveMadrasahResponse"
+            }
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "counts",
+          "passive"
         ]
       },
       "MadrasahHeadMuderrisResponse": {
@@ -5508,7 +8847,7 @@
           "handle": {
             "type": "string",
             "example": "hadis-ve-siyer",
-            "description": "Unique, URL-safe: lower-case letters, digits and inner hyphens, 2–60 characters"
+            "description": "Unique, URL-safe: lower-case letters, digits and inner hyphens, 2–60 characters. Left out, it is made from the name (MDRS-170)."
           },
           "name": {
             "type": "string",
@@ -5523,11 +8862,163 @@
             "example": 215,
             "minimum": 0,
             "maximum": 360
+          },
+          "headMuderrisUserId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The account that becomes the başmüderris when the medrese opens (found with GET /users/lookup). A medrese opens with one (MDRS-170)."
           }
         },
         "required": [
-          "handle",
-          "name"
+          "name",
+          "headMuderrisUserId"
+        ]
+      },
+      "HeadDelegationKind": {
+        "type": "string",
+        "enum": [
+          "ROLE",
+          "GRANT"
+        ]
+      },
+      "NazimPersonResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email"
+        ]
+      },
+      "HeadDelegationResponse": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HeadDelegationKind"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string",
+            "nullable": true,
+            "description": "The role handed on (MEDRESE_NAZIR), for a ROLE"
+          },
+          "permission": {
+            "type": "string",
+            "nullable": true,
+            "description": "The permission code, for a single-permission GRANT"
+          },
+          "groupName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The group's name, for a group GRANT"
+          },
+          "to": {
+            "$ref": "#/components/schemas/NazimPersonResponse"
+          },
+          "grantedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "to",
+          "grantedAt"
+        ]
+      },
+      "GivenKind": {
+        "type": "string",
+        "enum": [
+          "ROLE",
+          "GRANT"
+        ]
+      },
+      "DismissAction": {
+        "type": "string",
+        "enum": [
+          "TAKE_OVER",
+          "DROP"
+        ],
+        "description": "TAKE_OVER: the başnazım becomes the giver and the right stays. DROP: the right is revoked."
+      },
+      "DismissDecisionDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GivenKind"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "description": "TAKE_OVER: the başnazım becomes the giver and the right stays. DROP: the right is revoked.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DismissAction"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "action"
+        ]
+      },
+      "SetHeadMuderrisDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The account that becomes the başmüderris"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Görev bitişi (nizam/22). Omitted: until taken away. In the past: 400."
+          },
+          "delegations": {
+            "description": "One answer per item `GET …/head-muderris/delegations` lists, when the medrese has a başmüderris who is replaced: TAKE_OVER leaves the right in place under the caller's name, DROP revokes it. Incomplete: 400 (DISMISS_DECISIONS_INCOMPLETE), nothing changes.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DismissDecisionDto"
+            }
+          }
+        },
+        "required": [
+          "userId"
         ]
       },
       "UpdateMadrasahDto": {
@@ -5536,7 +9027,7 @@
           "handle": {
             "type": "string",
             "example": "hadis-ve-siyer",
-            "description": "Unique, URL-safe: lower-case letters, digits and inner hyphens, 2–60 characters"
+            "description": "Unique, URL-safe: lower-case letters, digits and inner hyphens, 2–60 characters. Left out, it is made from the name (MDRS-170)."
           },
           "name": {
             "type": "string",
@@ -6824,6 +10315,38 @@
           "courseTitle"
         ]
       },
+      "CourseStatsResponse": {
+        "type": "object",
+        "properties": {
+          "enrolledCount": {
+            "type": "number",
+            "description": "Talebe with an active seat (Kayıtlı talebe)"
+          },
+          "pendingCount": {
+            "type": "number",
+            "description": "Applications waiting for a decision"
+          },
+          "completedCount": {
+            "type": "number",
+            "description": "Talebe who completed the course"
+          },
+          "weekCount": {
+            "type": "number",
+            "description": "Weeks the programme has"
+          },
+          "startedWeekCount": {
+            "type": "number",
+            "description": "Weeks that have begun: one of their live lessons is dated now or earlier (Devam eden hafta)"
+          }
+        },
+        "required": [
+          "enrolledCount",
+          "pendingCount",
+          "completedCount",
+          "weekCount",
+          "startedWeekCount"
+        ]
+      },
       "BanScope": {
         "type": "string",
         "enum": [
@@ -6908,6 +10431,64 @@
           "createdAt",
           "updatedAt",
           "ban"
+        ]
+      },
+      "RemovedByResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "RemovedEnrollmentResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "description": "The team's reason for taking them out."
+          },
+          "progress": {
+            "type": "number",
+            "description": "Percent complete when they were taken out."
+          },
+          "removedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "removedBy": {
+            "$ref": "#/components/schemas/RemovedByResponse"
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "email",
+          "reason",
+          "progress",
+          "removedAt",
+          "removedBy"
         ]
       },
       "TeamSettableEnrollmentStatus": {
@@ -7892,6 +11473,11 @@
             "format": "uuid",
             "nullable": true
           },
+          "koskName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The köşk the ban sits in; the Medaris-wide list names it."
+          },
           "courseTitle": {
             "type": "string",
             "nullable": true
@@ -7957,6 +11543,7 @@
           "scope",
           "koskId",
           "courseId",
+          "koskName",
           "courseTitle",
           "madrasahName",
           "extendedFromCourseId",
@@ -8001,6 +11588,70 @@
           "recentCount"
         ]
       },
+      "AllBansListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BanResponse"
+            }
+          },
+          "activeCount": {
+            "type": "number",
+            "description": "Open bans in the köşk."
+          },
+          "liftedCount": {
+            "type": "number",
+            "description": "Lifted bans in the köşk."
+          },
+          "recentCount": {
+            "type": "number",
+            "description": "Open bans placed in the last 24 hours."
+          },
+          "total": {
+            "type": "number",
+            "description": "How many bans match the filter in all; `items` is one page of them."
+          }
+        },
+        "required": [
+          "items",
+          "activeCount",
+          "liftedCount",
+          "recentCount",
+          "total"
+        ]
+      },
+      "ExtendBanScope": {
+        "type": "string",
+        "enum": [
+          "KOSK"
+        ],
+        "description": "The wider scope the ban moves up to. Only KOSK exists: medrese and platform bans are not modelled yet."
+      },
+      "ExtendBanDto": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "description": "The wider scope the ban moves up to. Only KOSK exists: medrese and platform bans are not modelled yet.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExtendBanScope"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "example": "Ders yasağından sonra köşkün başka derslerine başvurdu.",
+            "description": "Kept with the new, wider ban and read by whoever lifts it; never sent to the talebe. Required, and not blank."
+          }
+        },
+        "required": [
+          "scope",
+          "reason"
+        ]
+      },
       "LiftBanDto": {
         "type": "object",
         "properties": {
@@ -8013,6 +11664,128 @@
         },
         "required": [
           "reason"
+        ]
+      },
+      "NotificationResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "ENROLLMENT_APPROVED",
+              "ENROLLMENT_REJECTED",
+              "REMOVED_FROM_COURSE",
+              "COURSE_ACCESS_REMOVED",
+              "SESSION_RESCHEDULED",
+              "SESSION_CANCELLED",
+              "SESSION_ADDED",
+              "KOSK_APPLICATION_RESULT",
+              "DECK_PUBLISH_RESULT",
+              "COURSE_BAN_PLACED",
+              "KOSK_BAN_PLACED"
+            ],
+            "description": "What happened. The sentence is not stored: the client words it from this key and `params`, in the reader's language."
+          },
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "COURSE",
+              "SESSION",
+              "DECK",
+              "KOSK"
+            ],
+            "nullable": true,
+            "description": "What the notification leads to. For a SESSION, `params.courseId` names its course."
+          },
+          "targetId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "courseTitle": "Bina ve İzhar Şerhi",
+              "source": "Beyazıt Köşkü"
+            },
+            "description": "Flat values the sentence is filled from (course title, session time, reason, who or where it came from)."
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the caller read it; null while unread."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "targetType",
+          "targetId",
+          "params",
+          "readAt",
+          "createdAt"
+        ]
+      },
+      "PaginatedNotificationResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Pass as `cursor` for the next page; null on the last page. Opaque."
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "NotificationCountsResponse": {
+        "type": "object",
+        "properties": {
+          "unread": {
+            "type": "number",
+            "example": 3,
+            "description": "Unread — the bell and the tab."
+          },
+          "total": {
+            "type": "number",
+            "example": 6,
+            "description": "Every notification the caller has."
+          }
+        },
+        "required": [
+          "unread",
+          "total"
+        ]
+      },
+      "ReadAllNotificationsResponse": {
+        "type": "object",
+        "properties": {
+          "updated": {
+            "type": "number",
+            "example": 3,
+            "description": "How many were unread and are read now."
+          }
+        },
+        "required": [
+          "updated"
         ]
       },
       "FlashcardProgressResponse": {
@@ -8031,6 +11804,16 @@
           },
           "userId": {
             "type": "string"
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the card is due again (MDRS-165); null for a card nobody rated, which is due now if it is LEARNING."
+          },
+          "intervalDays": {
+            "type": "number",
+            "description": "The days between the last two reviews; 0 before the first."
           }
         },
         "required": [
@@ -8083,6 +11866,30 @@
           "authorId"
         ]
       },
+      "FlashcardStudyRoundResponse": {
+        "type": "object",
+        "properties": {
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FlashcardResponse"
+            }
+          },
+          "dueCount": {
+            "type": "number",
+            "description": "How many of `cards` are repeats that are due."
+          },
+          "newCount": {
+            "type": "number",
+            "description": "How many of `cards` are cards the caller has not started."
+          }
+        },
+        "required": [
+          "cards",
+          "dueCount",
+          "newCount"
+        ]
+      },
       "CreateFlashcardDto": {
         "type": "object",
         "properties": {
@@ -8109,6 +11916,15 @@
           "contentBack"
         ]
       },
+      "ReviewRating": {
+        "type": "string",
+        "enum": [
+          "HARD",
+          "MEDIUM",
+          "EASY"
+        ],
+        "description": "How hard the talebe found the card (MDRS-165). HARD and MEDIUM keep it LEARNING, EASY masters it; each sets when it is due again."
+      },
       "CreateFlashcardProgressDto": {
         "type": "object",
         "properties": {
@@ -8121,12 +11937,20 @@
               "NEW",
               "LEARNING",
               "MASTERED"
+            ],
+            "description": "The state to record. Required unless `rating` is sent; with a rating the server derives the state and the next review time and ignores this."
+          },
+          "rating": {
+            "description": "How hard the talebe found the card (MDRS-165). HARD and MEDIUM keep it LEARNING, EASY masters it; each sets when it is due again.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReviewRating"
+              }
             ]
           }
         },
         "required": [
-          "flashcardId",
-          "status"
+          "flashcardId"
         ]
       },
       "UpdateFlashcardDto": {
@@ -8256,31 +12080,224 @@
         "type": "object",
         "properties": {}
       },
+      "FlashcardType": {
+        "type": "string",
+        "enum": [
+          "VOCABULARY",
+          "HADEETH"
+        ]
+      },
+      "DeckPublishStatus": {
+        "type": "string",
+        "enum": [
+          "PRIVATE",
+          "PENDING",
+          "PUBLISHED"
+        ]
+      },
       "FlashcardDeckResponse": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string"
+          },
           "title": {
-            "type": "string",
-            "example": "Colours - Vocabulary Deck"
+            "type": "string"
           },
           "isPublic": {
             "type": "boolean"
-          },
-          "id": {
-            "type": "string"
           },
           "authorId": {
             "type": "string"
           },
           "description": {
             "type": "string"
+          },
+          "cardType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FlashcardType"
+              }
+            ]
+          },
+          "publishStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeckPublishStatus"
+              }
+            ]
+          },
+          "publishRequestedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "tags": {
+            "description": "Empty for everyone but the author.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
+          "id",
           "title",
           "isPublic",
+          "authorId",
+          "cardType",
+          "publishStatus",
+          "tags"
+        ]
+      },
+      "DeckSource": {
+        "type": "string",
+        "enum": [
+          "OWN",
+          "COLLECTION"
+        ],
+        "description": "OWN: the caller wrote it. COLLECTION: somebody else did."
+      },
+      "DeckCollectionKind": {
+        "type": "string",
+        "enum": [
+          "COURSE",
+          "KOSK",
+          "MADRASAH",
+          "PUBLIC"
+        ],
+        "description": "Where a deck of somebody else's comes from; null for the caller's own decks."
+      },
+      "FlashcardDeckSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorId": {
+            "type": "string"
+          },
+          "isMine": {
+            "type": "boolean",
+            "description": "The caller wrote this deck."
+          },
+          "cardType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FlashcardType"
+              }
+            ]
+          },
+          "publishStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeckPublishStatus"
+              }
+            ]
+          },
+          "publishRequestedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "description": "OWN: the caller wrote it. COLLECTION: somebody else did.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeckSource"
+              }
+            ]
+          },
+          "collectionKind": {
+            "nullable": true,
+            "description": "Where a deck of somebody else's comes from; null for the caller's own decks.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeckCollectionKind"
+              }
+            ]
+          },
+          "inCollection": {
+            "type": "boolean",
+            "description": "The caller has the deck in the collection."
+          },
+          "contextTitle": {
+            "type": "string",
+            "nullable": true,
+            "description": "The course, köşk or medrese the deck belongs to, by name; null for a public deck."
+          },
+          "muderrisName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The course's first müderris, for a course deck."
+          },
+          "cardCount": {
+            "type": "number"
+          },
+          "masteredCount": {
+            "type": "number",
+            "description": "Cards the caller has mastered."
+          },
+          "learningCount": {
+            "type": "number",
+            "description": "Cards the caller is learning."
+          },
+          "newCount": {
+            "type": "number",
+            "description": "Cards the caller has not started."
+          },
+          "dueCount": {
+            "type": "number",
+            "description": "Cards waiting for a repeat now (MDRS-165): started, and their review time has come, or they never got one while learning."
+          },
+          "addedSinceCollectedCount": {
+            "type": "number",
+            "description": "Cards written after the caller collected the deck; always 0 for the caller's own."
+          }
+        },
+        "required": [
           "id",
-          "authorId"
+          "title",
+          "authorId",
+          "isMine",
+          "cardType",
+          "publishStatus",
+          "source",
+          "inCollection",
+          "cardCount",
+          "masteredCount",
+          "learningCount",
+          "newCount",
+          "dueCount",
+          "addedSinceCollectedCount"
+        ]
+      },
+      "FlashcardDeckExploreResponse": {
+        "type": "object",
+        "properties": {
+          "courseDecks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FlashcardDeckSummaryResponse"
+            }
+          },
+          "publicDecks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FlashcardDeckSummaryResponse"
+            }
+          }
+        },
+        "required": [
+          "courseDecks",
+          "publicDecks"
         ]
       },
       "CreateFlashcardDeckDto": {
@@ -8291,15 +12308,33 @@
             "example": "Colours - Vocabulary Deck"
           },
           "isPublic": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": false
+          },
+          "cardType": {
+            "default": "VOCABULARY",
+            "description": "What the deck's cards are; fixed once the deck exists.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FlashcardType"
+              }
+            ]
+          },
+          "tags": {
+            "maxItems": 20,
+            "description": "Free labels, trimmed and de-duplicated by the server. Only the author reads them back.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 1000
           }
         },
         "required": [
-          "title",
-          "isPublic"
+          "title"
         ]
       },
       "FlashcardDeckUserResponse": {
@@ -8330,10 +12365,20 @@
             "example": "Colours - Vocabulary Deck"
           },
           "isPublic": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": false
+          },
+          "tags": {
+            "maxItems": 20,
+            "description": "Free labels, trimmed and de-duplicated by the server. Only the author reads them back.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 1000
           }
         }
       },
@@ -8647,6 +12692,160 @@
           "usageCount"
         ]
       },
+      "HostingPersonResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "HostingGrantedByResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "SYSTEM_ADMIN",
+              "KOSK_NAZIM"
+            ],
+            "description": "How the granter was entitled to grant; null on rights older than MDRS-170"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "HostingCourseStatus": {
+        "type": "string",
+        "enum": [
+          "DRAFT",
+          "PUBLISHED"
+        ]
+      },
+      "HostingOpenCourseResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HostingCourseStatus"
+              }
+            ]
+          },
+          "studentCount": {
+            "type": "number",
+            "description": "Enrolled talebe (pending applications do not count)"
+          },
+          "imamName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The course's imam, as the course page names them"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "status",
+          "studentCount"
+        ]
+      },
+      "HostingRightResponse": {
+        "type": "object",
+        "properties": {
+          "madrasahId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "coverHue": {
+            "type": "number",
+            "example": 215
+          },
+          "headMuderris": {
+            "nullable": true,
+            "description": "The medrese's başmüderris; null when it has none",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HostingPersonResponse"
+              }
+            ]
+          },
+          "grantedBy": {
+            "$ref": "#/components/schemas/HostingGrantedByResponse"
+          },
+          "grantedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "openCourses": {
+            "description": "The medrese's courses in this köşk that are not hidden: what the right's withdrawal decides about",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HostingOpenCourseResponse"
+            }
+          }
+        },
+        "required": [
+          "madrasahId",
+          "name",
+          "handle",
+          "coverHue",
+          "grantedBy",
+          "grantedAt",
+          "openCourses"
+        ]
+      },
+      "GrantHostingRightDto": {
+        "type": "object",
+        "properties": {
+          "madrasahId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The medrese that gets the right"
+          }
+        },
+        "required": [
+          "madrasahId"
+        ]
+      },
+      "HostingCoursesAction": {
+        "type": "string",
+        "enum": [
+          "KEEP",
+          "HIDE"
+        ]
+      },
       "CalendarFeedStatusResponse": {
         "type": "object",
         "properties": {
@@ -8690,124 +12889,139 @@
           "createdAt"
         ]
       },
-      "NotificationResponse": {
+      "CreateKoskApplicationDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "example": "Davutpaşa Köşkü"
+          },
+          "field": {
+            "type": "string",
+            "enum": [
+              "ARABIC_LANGUAGE_SCIENCES",
+              "RHETORIC",
+              "FIQH",
+              "USUL_AL_FIQH",
+              "HADITH",
+              "QURAN_SCIENCES",
+              "TAFSIR",
+              "AQEEDAH_KALAM",
+              "SEERAH",
+              "LOGIC",
+              "OTHER"
+            ]
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 3000
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true,
+            "example": "+90 532 000 00 00"
+          }
+        },
+        "required": [
+          "name",
+          "field",
+          "summary",
+          "reason",
+          "email"
+        ]
+      },
+      "KoskApplicationResponse": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
             "format": "uuid"
           },
-          "type": {
+          "status": {
             "type": "string",
             "enum": [
-              "ENROLLMENT_APPROVED",
-              "ENROLLMENT_REJECTED",
-              "REMOVED_FROM_COURSE",
-              "COURSE_ACCESS_REMOVED",
-              "SESSION_RESCHEDULED",
-              "SESSION_CANCELLED",
-              "SESSION_ADDED",
-              "KOSK_APPLICATION_RESULT",
-              "DECK_PUBLISH_RESULT"
+              "PENDING",
+              "APPROVED",
+              "REJECTED"
             ],
-            "description": "What happened. The sentence is not stored: the client words it from this key and `params`, in the reader's language."
-          },
-          "targetType": {
-            "type": "string",
-            "enum": [
-              "COURSE",
-              "SESSION",
-              "DECK",
-              "KOSK"
-            ],
-            "nullable": true,
-            "description": "What the notification leads to. For a SESSION, `params.courseId` names its course."
-          },
-          "targetId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "params": {
-            "type": "object",
-            "additionalProperties": true,
-            "example": {
-              "courseTitle": "Bina ve İzhar Şerhi",
-              "source": "Beyazıt Köşkü"
-            },
-            "description": "Flat values the sentence is filled from (course title, session time, reason, who or where it came from)."
-          },
-          "readAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true,
-            "description": "When the caller read it; null while unread."
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
+            "example": "PENDING"
           }
         },
         "required": [
           "id",
-          "type",
-          "targetType",
-          "targetId",
-          "params",
-          "readAt",
-          "createdAt"
+          "status"
         ]
       },
-      "PaginatedNotificationResponse": {
+      "ScheduleSessionResponse": {
         "type": "object",
         "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/NotificationResponse"
-            }
+          "id": {
+            "type": "string"
           },
-          "nextCursor": {
+          "courseId": {
+            "type": "string"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "koskId": {
+            "type": "string"
+          },
+          "koskName": {
+            "type": "string"
+          },
+          "weekNumber": {
+            "type": "number",
+            "description": "The week the session sits in."
+          },
+          "title": {
+            "type": "string"
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "Length in minutes; null when the müderris set none."
+          },
+          "status": {
+            "description": "Derived from the clock and the cancellation, as on `GET /courses/:courseId/sessions/:sessionId`.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SessionStatus"
+              }
+            ]
+          },
+          "meetingUrl": {
             "type": "string",
             "nullable": true,
-            "description": "Pass as `cursor` for the next page; null on the last page. Opaque."
+            "description": "The meeting link; null when none was added, and always null once the session is cancelled or over. Only an enrolled caller receives this response, so the link is theirs to read."
           }
         },
         "required": [
-          "items",
-          "nextCursor"
-        ]
-      },
-      "NotificationCountsResponse": {
-        "type": "object",
-        "properties": {
-          "unread": {
-            "type": "number",
-            "example": 3,
-            "description": "Unread — the bell and the tab."
-          },
-          "total": {
-            "type": "number",
-            "example": 6,
-            "description": "Every notification the caller has."
-          }
-        },
-        "required": [
-          "unread",
-          "total"
-        ]
-      },
-      "ReadAllNotificationsResponse": {
-        "type": "object",
-        "properties": {
-          "updated": {
-            "type": "number",
-            "example": 3,
-            "description": "How many were unread and are read now."
-          }
-        },
-        "required": [
-          "updated"
+          "id",
+          "courseId",
+          "courseTitle",
+          "koskId",
+          "koskName",
+          "weekNumber",
+          "title",
+          "startsAt",
+          "durationMinutes",
+          "status",
+          "meetingUrl"
         ]
       },
       "PersonRef": {
@@ -9183,6 +13397,615 @@
             "description": "Null when nobody holds the role or the directory is not reachable"
           }
         }
+      },
+      "CatalogSectionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "kosks"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "permissions"
+        ]
+      },
+      "PermissionCatalogResponse": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "description": "The platform's permissions in the five sections of nizam/12",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogSectionResponse"
+            }
+          },
+          "course": {
+            "description": "What a group scoped to courses may carry",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "platform",
+          "course"
+        ]
+      },
+      "PermissionGroupScope": {
+        "type": "string",
+        "enum": [
+          "PLATFORM",
+          "ALL_COURSES",
+          "COURSE"
+        ]
+      },
+      "NazimGroupResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scope": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PermissionGroupScope"
+              }
+            ]
+          },
+          "courseTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "scope",
+          "courseTitle",
+          "permissions"
+        ]
+      },
+      "NazimPermissionResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "grantedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "grantedAt"
+        ]
+      },
+      "MedarisNazimResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/NazimPersonResponse"
+          },
+          "appointedBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NazimPersonResponse"
+              }
+            ]
+          },
+          "appointedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "assignmentExpiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "The appointment's own end; null while it has none"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "The earliest end among the appointment and the platform permissions; null when nothing ends"
+          },
+          "groups": {
+            "description": "Every group held: the platform's and the course-wide ones",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NazimGroupResponse"
+            }
+          },
+          "permissions": {
+            "description": "Platform permissions given one by one, not through a group",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NazimPermissionResponse"
+            }
+          }
+        },
+        "required": [
+          "user",
+          "appointedBy",
+          "appointedAt",
+          "assignmentExpiresAt",
+          "expiresAt",
+          "groups",
+          "permissions"
+        ]
+      },
+      "AppointMedarisNazimDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The account to appoint"
+          },
+          "groupId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "permissions": {
+            "description": "Codes from the catalog of the group's scope",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the appointment and its permissions end; empty: never"
+          }
+        },
+        "required": [
+          "userId",
+          "permissions"
+        ]
+      },
+      "SetNazimGrantsDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "A platform group, or empty for none"
+          },
+          "permissions": {
+            "description": "The permissions given on top of the group",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the permissions end; empty: when the appointment does. Never later than the appointment's end."
+          }
+        },
+        "required": [
+          "permissions"
+        ]
+      },
+      "GivenItemResponse": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GivenKind"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string",
+            "nullable": true
+          },
+          "permission": {
+            "type": "string",
+            "nullable": true
+          },
+          "groupName": {
+            "type": "string",
+            "nullable": true
+          },
+          "to": {
+            "$ref": "#/components/schemas/NazimPersonResponse"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "scopeName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "role",
+          "permission",
+          "groupName",
+          "to",
+          "scopeType",
+          "scopeName"
+        ]
+      },
+      "DismissMedarisNazimDto": {
+        "type": "object",
+        "properties": {
+          "decisions": {
+            "description": "One per item `GET …/given` lists",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DismissDecisionDto"
+            }
+          }
+        },
+        "required": [
+          "decisions"
+        ]
+      },
+      "PermissionGroupResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scope": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PermissionGroupScope"
+              }
+            ]
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "courseTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "userCount": {
+            "type": "number",
+            "description": "People who hold the group right now"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "scope",
+          "courseId",
+          "courseTitle",
+          "permissions",
+          "userCount"
+        ]
+      },
+      "CreatePermissionGroupDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "scope": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PermissionGroupScope"
+              }
+            ]
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The one course, when `scope` is COURSE"
+          },
+          "permissions": {
+            "description": "Codes from the catalog of the group's scope",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "scope",
+          "permissions"
+        ]
+      },
+      "UsersPolicy": {
+        "type": "string",
+        "enum": [
+          "keep",
+          "revoke"
+        ],
+        "description": "Required when the permissions change while people hold the group. `keep`: they keep what the group gave them, as single permissions. `revoke`: they lose it."
+      },
+      "UpdatePermissionGroupDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "permissions": {
+            "description": "Codes from the catalog of the group's scope",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "usersPolicy": {
+            "description": "Required when the permissions change while people hold the group. `keep`: they keep what the group gave them, as single permissions. `revoke`: they lose it.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UsersPolicy"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "permissions"
+        ]
+      },
+      "DeletePermissionGroupDto": {
+        "type": "object",
+        "properties": {
+          "usersPolicy": {
+            "description": "Required while people hold the group: `keep` turns the group's permissions into single permissions for each of them, `revoke` takes them away.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UsersPolicy"
+              }
+            ]
+          }
+        }
+      },
+      "GroupUserResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "isMedarisNazim": {
+            "type": "boolean",
+            "description": "Holds the Medaris nazımı role right now"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "email",
+          "isMedarisNazim",
+          "expiresAt"
+        ]
+      },
+      "InactiveScopeType": {
+        "type": "string",
+        "enum": [
+          "KOSK",
+          "MADRASAH",
+          "COURSE"
+        ]
+      },
+      "InactiveKoskRefResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "InactiveEndReason": {
+        "type": "string",
+        "enum": [
+          "EXPIRED",
+          "REMOVED"
+        ],
+        "description": "EXPIRED: the last manager's term ran out; REMOVED: somebody took it away"
+      },
+      "InactivePersonResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "InactiveRemoverRole": {
+        "type": "string",
+        "enum": [
+          "SYSTEM_ADMIN",
+          "MEDARIS_NAZIM",
+          "KOSK_NAZIM"
+        ],
+        "description": "What the remover is, worked out when read"
+      },
+      "InactiveScopeResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InactiveScopeType"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Zeyrek Medresesi"
+          },
+          "kosk": {
+            "nullable": true,
+            "description": "The köşk of a course; null for a köşk or a medrese",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InactiveKoskRefResponse"
+              }
+            ]
+          },
+          "reason": {
+            "description": "EXPIRED: the last manager's term ran out; REMOVED: somebody took it away",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InactiveEndReason"
+              }
+            ]
+          },
+          "since": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the last manager's post ended: the scope's passive since"
+          },
+          "lastManager": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InactivePersonResponse"
+              }
+            ]
+          },
+          "lastRole": {
+            "type": "string",
+            "description": "KOSK_NAZIM, MEDRESE_BASMUDERRIS or MUDERRIS: what the last manager was"
+          },
+          "wasImam": {
+            "type": "boolean",
+            "description": "The last müderris of a course was its imam"
+          },
+          "removedBy": {
+            "nullable": true,
+            "description": "Who took the post away; null when it ran out",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InactivePersonResponse"
+              }
+            ]
+          },
+          "removedByRole": {
+            "nullable": true,
+            "description": "What the remover is, worked out when read",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InactiveRemoverRole"
+              }
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "name",
+          "reason",
+          "since",
+          "lastRole",
+          "wasImam"
+        ]
+      },
+      "AssignInactiveScopeDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The account that takes the scope over (`GET /users/lookup`)"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Görev bitişi. Omitted: until taken away. In the past: 400."
+          }
+        },
+        "required": [
+          "userId"
+        ]
       },
       "ArchiveItemType": {
         "type": "string",
@@ -9607,6 +14430,16 @@
       "UpdateMeDto": {
         "type": "object",
         "properties": {
+          "givenName": {
+            "type": "string",
+            "maxLength": 100,
+            "example": "Zeynep Betül"
+          },
+          "familyName": {
+            "type": "string",
+            "maxLength": 100,
+            "example": "Karahanlı"
+          },
           "timeZone": {
             "type": "string",
             "nullable": true,
@@ -9620,6 +14453,169 @@
             "description": "BCP 47 language tag"
           }
         }
+      },
+      "ProfileVisibility": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "boolean",
+            "description": "Ad ve soyad"
+          },
+          "city": {
+            "type": "boolean"
+          },
+          "about": {
+            "type": "boolean",
+            "description": "Hakkında"
+          },
+          "courses": {
+            "type": "boolean",
+            "description": "Derslerin"
+          }
+        },
+        "required": [
+          "fullName",
+          "city",
+          "about",
+          "courses"
+        ]
+      },
+      "MyPublicProfileResponse": {
+        "type": "object",
+        "properties": {
+          "kunye": {
+            "type": "string",
+            "nullable": true,
+            "description": "İlmî künye. Null until the person chooses one."
+          },
+          "gender": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "FEMALE",
+              "MALE"
+            ]
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "about": {
+            "type": "string",
+            "nullable": true
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The name from the account, as shown on Hesap"
+          },
+          "courses": {
+            "description": "Titles of the published courses the caller is enrolled in or has completed",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/ProfileVisibility"
+          }
+        },
+        "required": [
+          "fullName",
+          "courses",
+          "visibility"
+        ]
+      },
+      "UpdateProfileVisibilityDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "boolean"
+          },
+          "city": {
+            "type": "boolean"
+          },
+          "about": {
+            "type": "boolean"
+          },
+          "courses": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdatePublicProfileDto": {
+        "type": "object",
+        "properties": {
+          "kunye": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "İlmî künye"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "FEMALE",
+              "MALE"
+            ],
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 80
+          },
+          "about": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 1000
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/UpdateProfileVisibilityDto"
+          }
+        }
+      },
+      "PublicProfileResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kunye": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "FEMALE",
+              "MALE"
+            ]
+          },
+          "fullName": {
+            "type": "string",
+            "description": "Present only while the owner shows it"
+          },
+          "city": {
+            "type": "string",
+            "description": "Present only while the owner shows it"
+          },
+          "about": {
+            "type": "string",
+            "description": "Present only while the owner shows it"
+          },
+          "courses": {
+            "description": "Present only while the owner shows it",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "kunye"
+        ]
       },
       "UserSummaryResponse": {
         "type": "object",

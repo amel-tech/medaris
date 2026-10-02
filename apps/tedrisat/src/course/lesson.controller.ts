@@ -193,6 +193,7 @@ export class LessonController {
       sessionPageUrl: sessionPageUrl(webUrl, course.id, lesson.id),
       locale: locale ?? CALENDAR_LOCALES.tr,
       now: new Date(),
+      cancelled: lesson.cancelledAt != null,
     });
 
     return new StreamableFile(Buffer.from(ics, "utf8"), {

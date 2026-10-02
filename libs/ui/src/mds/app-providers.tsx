@@ -1,3 +1,5 @@
+"use client";
+
 import { DirectionProvider } from "@base-ui/react/direction-provider";
 import type { ReactNode } from "react";
 import { cx } from "./cx";

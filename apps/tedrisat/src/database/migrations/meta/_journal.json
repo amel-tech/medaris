@@ -229,15 +229,57 @@
     {
       "idx": 32,
       "version": "7",
-      "when": 1790941924453,
-      "tag": "0032_revoked_enrollment",
+      "when": 1790950266993,
+      "tag": "0032_madrasah_archive_hosting_role",
       "breakpoints": true
     },
     {
       "idx": 33,
       "version": "7",
-      "when": 1790960808756,
-      "tag": "0035_lesson_recordings",
+      "when": 1790950379254,
+      "tag": "0033_permission_groups_course_wide",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790950480845,
+      "tag": "0034_kosk_policies",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790966122608,
+      "tag": "0036_decks_summary",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790967082621,
+      "tag": "0037_flashcard_review_schedule",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790969495913,
+      "tag": "0038_profile_and_kosk_application",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790971045895,
+      "tag": "0039_revoked_enrollment",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1790972623120,
+      "tag": "0041_lesson_recordings",
       "breakpoints": true
     }
   ]

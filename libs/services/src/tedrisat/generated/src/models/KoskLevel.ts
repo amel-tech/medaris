@@ -14,7 +14,7 @@
 
 
 /**
- * Who the köşk is for; null clears it
+ * 
  * @export
  */
 export const KoskLevel = {

@@ -3,21 +3,12 @@ import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Card } from "@medaris/ui/mds/card";
 import { koskLevelLabel } from "~/features/courses/components/labels";
+import type { LooseTranslator } from "~/lib/i18n/loose";
 import { FollowButton } from "./follow-button";
 
-/**
- * The keys this card reads, as a narrow signature: the full translator type
- * makes the checker expand the whole catalogue per call, which no longer
- * finishes (TS2589, MDRS-164).
- */
-type Translate = (
-  key:
-    | "DiscoverPage.coursesCount"
-    | "DiscoverPage.follow"
-    | "DiscoverPage.following"
-    | "DiscoverPage.followFailed",
-  values?: Record<string, string | number>
-) => string;
+// Typed by what the card calls, not by the whole catalogue: whether this file's
+// `t(...)` hit TS2589 depended on what else the program checked first (MDRS-166).
+type Translate = LooseTranslator;
 
 /**
  * A köşk on Keşfet (MDRS-159, design tedris/02): its mark, name and ilim

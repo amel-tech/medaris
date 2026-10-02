@@ -1,15 +1,9 @@
 "use client";
 
-import { Icon } from "@medaris/ui/mds/icon";
-import { Menu } from "@medaris/ui/mds/menu";
 import { SessionJoin } from "@medaris/ui/mds/session-join";
 import { useEffect, useState } from "react";
-import {
-  googleCalendarUrl,
-  icsDownloadPath,
-  sessionPagePath,
-} from "../calendar-links";
 import { sessionStateOf } from "../session-model";
+import { CalendarMenu, type CalendarMenuLabels } from "./calendar-menu";
 
 export interface SessionJoinLabels {
   label: string;
@@ -30,12 +24,7 @@ export interface SessionJoinLabels {
   elapsedText?: string;
 }
 
-export interface CalendarLabels {
-  button: string;
-  google: string;
-  apple: string;
-  linkIsOnPage: string;
-}
+export type CalendarLabels = CalendarMenuLabels;
 
 /**
  * The join card of the session page (design tedris/15, 18). `SessionJoin` is
@@ -120,38 +109,13 @@ export function SessionJoinLive({
 
   const addToCalendar =
     calendar && (state === "upcoming" || state === "live") ? (
-      <Menu
-        label={calendar.button}
-        text={calendar.button}
-        size="small"
-        icon={<Icon name="calendar" size="sm" />}
-        items={[
-          {
-            value: "google",
-            label: calendar.google,
-            onSelect: () => {
-              const url = googleCalendarUrl({
-                courseTitle,
-                lesson: {
-                  id: lessonId,
-                  title,
-                  scheduledAt: new Date(startsAt),
-                  durationMinutes: durationMinutes ?? null,
-                },
-                pageUrl: `${window.location.origin}${sessionPagePath(courseId, lessonId)}`,
-                linkIsOnPage: calendar.linkIsOnPage,
-              });
-              window.open(url, "_blank", "noopener,noreferrer");
-            },
-          },
-          {
-            value: "ics",
-            label: calendar.apple,
-            onSelect: () => {
-              window.location.assign(icsDownloadPath(lessonId, locale));
-            },
-          },
-        ]}
+      <CalendarMenu
+        text
+        courseId={courseId}
+        courseTitle={courseTitle}
+        lesson={{ id: lessonId, title, startsAt, durationMinutes }}
+        locale={locale}
+        labels={calendar}
       />
     ) : undefined;
 

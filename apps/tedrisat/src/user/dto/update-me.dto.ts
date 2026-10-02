@@ -1,11 +1,39 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsLocale, IsOptional, IsTimeZone, MaxLength } from "class-validator";
+import { Transform } from "class-transformer";
+import {
+  IsLocale,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsTimeZone,
+  MaxLength,
+} from "class-validator";
+
+const trim = ({ value }: { value: unknown }) =>
+  typeof value === "string" ? value.trim() : value;
 
 /**
- * The two settings a user owns (MDRS-104). `null` clears one; an absent
- * field leaves it as it is.
+ * What a user owns about themselves (MDRS-104, MDRS-166). `null` clears the
+ * time zone or the locale; an absent field leaves it as it is. The names cannot
+ * be cleared, only replaced: Hesap requires both.
  */
 export class UpdateMeDto {
+  @ApiPropertyOptional({ maxLength: 100, example: "Zeynep Betül" })
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  givenName?: string;
+
+  @ApiPropertyOptional({ maxLength: 100, example: "Karahanlı" })
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  familyName?: string;
+
   @ApiPropertyOptional({
     type: String,
     nullable: true,

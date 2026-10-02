@@ -6,6 +6,7 @@ import { KoskModule } from "../kosk/kosk.module";
 import { CourseController } from "./course.controller";
 import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
+import { CourseStatsRepository } from "./course-stats.repository";
 import { LessonController } from "./lesson.controller";
 import { RecordingRepository } from "./recording.repository";
 
@@ -16,6 +17,7 @@ import { RecordingRepository } from "./recording.repository";
     CourseService,
     CourseRepository,
     RecordingRepository,
+    CourseStatsRepository,
     DatabaseService,
   ],
   // For AuthzBindingsModule's role resolver (MDRS-41): findKoskId,
