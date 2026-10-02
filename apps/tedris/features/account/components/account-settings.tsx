@@ -11,6 +11,7 @@ import { useToaster } from "@medaris/ui/mds/toast";
 import { useLocale } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
 import { useAccountTranslations } from "~/lib/i18n/loose";
+import { CARD_GAP } from "../card-gap";
 import { updateMyName, updateMyTimeZone } from "../profile-actions";
 import {
   allTimeZones,
@@ -56,14 +57,14 @@ function PersonalCard({
         toaster.notify({
           tone: "error",
           title: t("nameFailed"),
-          description: res.error,
+          description: t("errorHint"),
         });
       }
     });
   };
 
   return (
-    <Card title={t("personalTitle")} headingLevel={2}>
+    <Card title={t("personalTitle")} headingLevel={2} className={CARD_GAP}>
       <form className="flex flex-col gap-5" onSubmit={submit} noValidate>
         <p className="mds-caption">{t("requiredNote")}</p>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -152,7 +153,7 @@ function TimeLanguageCard({
       toaster.notify({
         tone: "error",
         title: t("zoneFailed"),
-        description: res.error,
+        description: t("errorHint"),
       });
     });
   };
@@ -166,7 +167,7 @@ function TimeLanguageCard({
   };
 
   return (
-    <Card title={t("timeTitle")} headingLevel={2}>
+    <Card title={t("timeTitle")} headingLevel={2} className={CARD_GAP}>
       <div className="flex flex-col gap-5" aria-busy={pending}>
         <Field label={t("timeZone")} help={t("timeZoneHelp")}>
           <Select
@@ -184,9 +185,7 @@ function TimeLanguageCard({
               aria-label={t("otherZone")}
               options={everyZone}
               placeholder={t("otherZonePlaceholder")}
-              value={
-                zoneChoice(saved) === OTHER_ZONE && saved ? saved : undefined
-              }
+              value={zoneChoice(saved) === OTHER_ZONE && saved ? saved : null}
               onChange={(zone) => {
                 if (zone) save(zone, OTHER_ZONE);
               }}
@@ -205,7 +204,7 @@ function CalendarCard() {
   const t = useAccountTranslations("AccountProfile");
   const locale = useLocale();
   return (
-    <Card title={t("calendarTitle")} headingLevel={2}>
+    <Card title={t("calendarTitle")} headingLevel={2} className={CARD_GAP}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-inline-0 flex-1 items-start gap-3">
           <Icon name="calendar" className="mbs-1 text-neutral-muted" />
@@ -226,7 +225,7 @@ function PublicProfileCard() {
   const t = useAccountTranslations("AccountProfile");
   const locale = useLocale();
   return (
-    <Card title={t("publicTitle")} headingLevel={2}>
+    <Card title={t("publicTitle")} headingLevel={2} className={CARD_GAP}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <p className="mds-caption min-inline-0 flex-1">{t("publicText")}</p>
         <Button variant="outline" href={`/${locale}/account/public-profile`}>
@@ -244,7 +243,11 @@ function SignOutCard() {
     <Card>
       <div className="flex flex-col items-start gap-4">
         <p className="mds-body-sm">{t("signOutText")}</p>
-        <Button variant="secondary" href={`/${locale}/auth/signout`}>
+        <Button
+          variant="secondary"
+          href={`/${locale}/auth/signout`}
+          iconLeft={<Icon name="signOut" />}
+        >
           {t("signOut")}
         </Button>
       </div>

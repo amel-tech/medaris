@@ -1,5 +1,6 @@
 {
   "AccountProfile": {
+    "errorHint": "Sunucu isteği tamamlayamadı.",
     "personalTitle": "Kişisel bilgiler",
     "requiredNote": "* zorunlu alan",
     "givenName": "Ad",
@@ -48,6 +49,7 @@
     "profileFailed": "Adın, e-postan ve saat dilimin şu an okunamadı. Biraz sonra yeniden dene."
   },
   "PublicProfile": {
+    "errorHint": "Sunucu isteği tamamlayamadı.",
     "title": "Herkese açık profil",
     "trail": "Sayfa yolu",
     "breadcrumbAccount": "Hesap",
@@ -99,6 +101,7 @@
     "loadFailed": "Herkese açık profilin şu an okunamadı. Biraz sonra yeniden dene."
   },
   "KoskApplication": {
+    "errorHint": "Sunucu isteği tamamlayamadı.",
     "title": "Köşk açma başvurusu",
     "trail": "Sayfa yolu",
     "breadcrumbDiscover": "Keşfet",

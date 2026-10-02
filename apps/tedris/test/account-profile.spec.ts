@@ -146,13 +146,16 @@ describe("Hesap cards (design tedris/34)", () => {
     );
   });
 
-  it("shows the server's refusal as an error toast", async () => {
+  it("shows a refusal as an error toast with a Turkish line, not the API's raw text", async () => {
     mocks.updateName.mockResolvedValue({ success: false, error: "no" });
     const host = await mount();
     await click(host.querySelector('button[type="submit"]') as HTMLElement);
     await settle();
     expect(mocks.notify).toHaveBeenCalledWith(
-      expect.objectContaining({ tone: "error", description: "no" })
+      expect.objectContaining({
+        tone: "error",
+        description: "Sunucu isteği tamamlayamadı.",
+      })
     );
   });
 

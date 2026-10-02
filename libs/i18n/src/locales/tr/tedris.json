@@ -472,7 +472,8 @@
   },
   "AccountPage": {
     "pageTitle": "Hesap",
-    "pageSubtitle": "Görevlerin, adın, saat dilimin ve takvim tercihlerin.",
+    "pageSubtitle": "Adın, saat dilimin ve takvim tercihlerin.",
+    "pageSubtitleRoles": "Görevlerin, adın, saat dilimin ve takvim tercihlerin.",
     "title": "Görevlerin ve izinlerin",
     "intro": "Her görev bir kapsamda geçerlidir. Görevi ve süresini, onu atayan kişi değiştirir.",
     "whereIntro": "Köşk ve ders işlerini Tedris’te değil, görevinin uygulamasında yaparsın: köşk nazımı Nizam’da, müderris Nazır’da.",

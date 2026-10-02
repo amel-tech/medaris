@@ -12,6 +12,7 @@ import { useToaster } from "@medaris/ui/mds/toast";
 import { PRIVACY_NOTICE_URL } from "@medaris/utils";
 import { useLocale } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
+import { CARD_GAP } from "~/features/account/card-gap";
 import { useAccountTranslations } from "~/lib/i18n/loose";
 import { submitKoskApplication } from "../actions";
 import {
@@ -66,7 +67,7 @@ function Content({ email }: { email: string }) {
         toaster.notify({
           tone: "error",
           title: t("submitFailed"),
-          description: res.error,
+          description: t("errorHint"),
         });
       }
     });
@@ -76,7 +77,7 @@ function Content({ email }: { email: string }) {
 
   if (sent) {
     return (
-      <Card title={t("sentTitle")} headingLevel={2}>
+      <Card title={t("sentTitle")} headingLevel={2} className={CARD_GAP}>
         <div
           className="flex flex-col items-start gap-4"
           data-testid="application-sent"
@@ -97,7 +98,7 @@ function Content({ email }: { email: string }) {
         onSubmit={submit}
         noValidate
       >
-        <Card title={t("koskTitle")} headingLevel={2}>
+        <Card title={t("koskTitle")} headingLevel={2} className={CARD_GAP}>
           <div className="flex flex-col gap-5">
             <p className="mds-caption">{t("requiredNote")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -168,7 +169,7 @@ function Content({ email }: { email: string }) {
           </div>
         </Card>
 
-        <Card title={t("contactTitle")} headingLevel={2}>
+        <Card title={t("contactTitle")} headingLevel={2} className={CARD_GAP}>
           <div className="flex flex-col gap-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field

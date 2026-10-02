@@ -1,5 +1,6 @@
 {
   "AccountProfile": {
+    "errorHint": "تعذّر على الخادم إكمال الطلب.",
     "personalTitle": "المعلومات الشخصية",
     "requiredNote": "* حقل مطلوب",
     "givenName": "الاسم",
@@ -48,6 +49,7 @@
     "profileFailed": "تعذّرت قراءة اسمك وبريدك ومنطقتك الزمنية الآن. حاول مرة أخرى بعد قليل."
   },
   "PublicProfile": {
+    "errorHint": "تعذّر على الخادم إكمال الطلب.",
     "title": "الملف العام",
     "trail": "مسار الصفحة",
     "breadcrumbAccount": "الحساب",
@@ -99,6 +101,7 @@
     "loadFailed": "تعذّرت قراءة ملفك العام الآن. حاول مرة أخرى بعد قليل."
   },
   "KoskApplication": {
+    "errorHint": "تعذّر على الخادم إكمال الطلب.",
     "title": "طلب فتح كشك",
     "trail": "مسار الصفحة",
     "breadcrumbDiscover": "استكشف",

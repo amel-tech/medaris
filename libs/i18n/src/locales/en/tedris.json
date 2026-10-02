@@ -472,7 +472,8 @@
   },
   "AccountPage": {
     "pageTitle": "Account",
-    "pageSubtitle": "Your roles, name, time zone and calendar preferences.",
+    "pageSubtitle": "Your name, time zone and calendar preferences.",
+    "pageSubtitleRoles": "Your roles, name, time zone and calendar preferences.",
     "title": "Your roles and permissions",
     "intro": "Every role applies in one scope. The person who assigned a role changes it and its term.",
     "whereIntro": "You do köşk and course work not in Tedris but in your role’s own app: a köşk nazım in Nizam, a müderris in Nazır.",

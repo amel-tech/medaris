@@ -1,5 +1,6 @@
 {
   "AccountProfile": {
+    "errorHint": "The server could not complete the request.",
     "personalTitle": "Personal information",
     "requiredNote": "* required",
     "givenName": "First name",
@@ -48,6 +49,7 @@
     "profileFailed": "Your name, e-mail and time zone could not be read right now. Try again in a moment."
   },
   "PublicProfile": {
+    "errorHint": "The server could not complete the request.",
     "title": "Public profile",
     "trail": "Breadcrumb",
     "breadcrumbAccount": "Account",
@@ -99,6 +101,7 @@
     "loadFailed": "Your public profile could not be read right now. Try again in a moment."
   },
   "KoskApplication": {
+    "errorHint": "The server could not complete the request.",
     "title": "Köşk application",
     "trail": "Breadcrumb",
     "breadcrumbDiscover": "Discover",

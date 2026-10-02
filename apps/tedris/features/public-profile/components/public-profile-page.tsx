@@ -16,6 +16,7 @@ import { Textarea } from "@medaris/ui/mds/textarea";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useLocale } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
+import { CARD_GAP } from "~/features/account/card-gap";
 import { useAccountTranslations } from "~/lib/i18n/loose";
 import { saveProfileTexts, saveVisibility } from "../actions";
 import {
@@ -81,7 +82,7 @@ function Content({ profile }: PublicProfilePageProps) {
         toaster.notify({
           tone: "error",
           title: t("saveFailed"),
-          description: res.error,
+          description: t("errorHint"),
         });
       }
     });
@@ -103,7 +104,7 @@ function Content({ profile }: PublicProfilePageProps) {
       toaster.notify({
         tone: "error",
         title: t("switchFailed"),
-        description: res.error,
+        description: t("errorHint"),
       });
     });
   };
@@ -131,6 +132,7 @@ function Content({ profile }: PublicProfilePageProps) {
         <Card
           title={t("identityTitle")}
           headingLevel={2}
+          className={CARD_GAP}
           action={<Badge variant="outline">{t("alwaysPublic")}</Badge>}
         >
           <div className="flex flex-col gap-5">
@@ -156,6 +158,7 @@ function Content({ profile }: PublicProfilePageProps) {
               />
             </Field>
             <RadioGroup
+              className="flex flex-row flex-wrap items-center gap-x-6 gap-y-2 [&>.mds-label]:basis-full"
               legend={t("gender")}
               name="gender"
               value={draft.gender}
@@ -176,13 +179,14 @@ function Content({ profile }: PublicProfilePageProps) {
         <Card
           title={t("otherTitle")}
           headingLevel={2}
+          className={CARD_GAP}
           action={
-            <Badge variant="ghost" icon={<Icon name="lock" size="sm" />}>
+            <Badge variant="ghost" icon={<Icon name="eyeOff" size="sm" />}>
               {t("hiddenByDefault")}
             </Badge>
           }
         >
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-4">
             <p className="mds-body-sm">{t("otherIntro")}</p>
 
             <section className="flex flex-col gap-1">
@@ -201,7 +205,7 @@ function Content({ profile }: PublicProfilePageProps) {
               </p>
             </section>
 
-            <hr className="border-bs border-neutral-subtle" />
+            <hr className="mds-separator" />
 
             <section className="flex items-start justify-between gap-4">
               <Field label={t("city")} className="min-inline-0 flex-1">
@@ -215,7 +219,7 @@ function Content({ profile }: PublicProfilePageProps) {
               {switchFor("city")}
             </section>
 
-            <hr className="border-bs border-neutral-subtle" />
+            <hr className="mds-separator" />
 
             <section className="flex items-start justify-between gap-4">
               <Field
@@ -234,7 +238,7 @@ function Content({ profile }: PublicProfilePageProps) {
               {switchFor("about")}
             </section>
 
-            <hr className="border-bs border-neutral-subtle" />
+            <hr className="mds-separator" />
 
             <section className="flex flex-col gap-1">
               <div className="flex items-start justify-between gap-4">
@@ -315,6 +319,11 @@ function Content({ profile }: PublicProfilePageProps) {
             className="mds-caption border-bs border-neutral-subtle pbs-3"
             data-testid="preview-hidden"
           >
+            <Icon
+              name="eyeOff"
+              size="sm"
+              className="mie-1 inline-block align-text-bottom"
+            />
             {t("hiddenLine", { fields: hidden })}
           </p>
         ) : null}

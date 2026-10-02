@@ -29,8 +29,11 @@ Designs tedris/34 (Hesap), tedris/35 (Herkese açık profil) and tedris/37
   profile page with its live "Başkaları böyle görür" preview; and
   `/kosk-applications/new`, the address Keşfet's "Köşk açma başvurusu" button
   already pointed to. Choosing a time zone saves at once and refreshes the
-  viewer's zone cookie, so Programım and every date change zone without a
-  reload.
+  viewer's zone cookie, so the dates rendered with the viewer's zone (the home
+  page's next session, measured 20:00 in Istanbul, 13:00 in New York) change
+  zone without a reload. Programım does **not**: it stays on Istanbul time and
+  says "Saatler İstanbul saatiyle" (the stack-33 decision), measured 20:00
+  before and after the change.
 - **i18n**: one new namespace `tedrisAccount` (tr, en, ar), loaded by
   `lib/i18n/request.ts` and **not** registered in `next-i18n.d.ts`: the
   `tedris` catalogue is at the edge of TS2589 (see MDRS-164) and 150 more typed
@@ -75,8 +78,7 @@ Designs tedris/34 (Hesap), tedris/35 (Herkese açık profil) and tedris/37
 - The real name of the explicit-consent text: the canvas shows the placeholder
   `[Açık rıza metninin adı]` and so does the page, as plain text with no link.
 - Phone layout (390 px), dark theme, Arabic (rtl) UI, and the English/Arabic
-  wording (written, not read by a speaker). The gender radios stack; the canvas
-  puts them on one line.
+  wording (written, not read by a speaker).
 - "Diğer…" opens the runtime's full IANA list in a second select; the canvas
   does not draw it. After the sign-out confirmation Keycloak's end-session page
   may refuse the post-logout address on a non-4000 port; the session is gone
