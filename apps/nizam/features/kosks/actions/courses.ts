@@ -3,8 +3,12 @@
 import type {
   CourseDetailResponse,
   CreateCourseDto,
+  CreateSessionBatchDto,
   EnrollmentResponse,
   ReplaceCourseDto,
+  SessionBatchPreviewResponse,
+  SessionBatchResponse,
+  WeeklyPatternDto,
 } from "@medaris/services/tedrisat";
 import { revalidatePath } from "next/cache";
 import {
@@ -35,6 +39,38 @@ export const updateKoskCourse = async (
 ): Promise<AuthenticatedActionResult<CourseDetailResponse>> => {
   const result = await authenticatedAction((api) =>
     api.courses.replaceCourse({ id: courseId, replaceCourseDto: course })
+  );
+  if (result.success) {
+    revalidatePath(`/kosks/${koskId}`);
+    revalidatePath(`/kosks/${koskId}/courses/${courseId}/edit`);
+  }
+  return result;
+};
+
+/**
+ * The sessions a weekly pattern would create, expanded by tedrisat exactly as
+ * `createCourseSessions` will (MDRS-109). Writes nothing.
+ */
+export const previewCourseSessions = async (
+  courseId: string,
+  pattern: WeeklyPatternDto
+): Promise<AuthenticatedActionResult<SessionBatchPreviewResponse>> =>
+  authenticatedAction((api) =>
+    api.lessons.previewSessionBatch({ courseId, weeklyPatternDto: pattern })
+  );
+
+/**
+ * Creates every session of a weekly pattern in one server-side transaction
+ * (MDRS-109). It bumps the course version, so a form loaded before it has to
+ * reload before its next whole-course save.
+ */
+export const createCourseSessions = async (
+  koskId: string,
+  courseId: string,
+  batch: CreateSessionBatchDto
+): Promise<AuthenticatedActionResult<SessionBatchResponse>> => {
+  const result = await authenticatedAction((api) =>
+    api.lessons.createSessionBatch({ courseId, createSessionBatchDto: batch })
   );
   if (result.success) {
     revalidatePath(`/kosks/${koskId}`);

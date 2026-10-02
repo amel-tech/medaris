@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start --port 4001",
     "clean": "rm -rf .turbo .next node_modules dist",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@medaris/env": "workspace:*",
@@ -36,6 +37,7 @@
     "lightningcss": "catalog:",
     "next-intl": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

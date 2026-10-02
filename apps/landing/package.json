@@ -8,13 +8,15 @@
     "build": "next build",
     "start": "next start --port 4003",
     "clean": "rm -rf .turbo .next node_modules dist",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@medaris/env": "workspace:*",
     "@medaris/i18n": "workspace:*",
     "@medaris/icons": "workspace:*",
     "@medaris/ui": "workspace:*",
+    "@medaris/utils": "workspace:*",
     "@opentelemetry/api": "catalog:",
     "@t3-oss/env-nextjs": "catalog:",
     "@vercel/otel": "catalog:",
@@ -31,6 +33,7 @@
     "@types/react-dom": "catalog:",
     "lightningcss": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
