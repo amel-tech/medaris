@@ -194,6 +194,20 @@ describe("Desteleri keşfet (design tedris/26)", () => {
     expect(mocks.refresh).not.toHaveBeenCalled();
   });
 
+  it("undoes the change and says so when the request never reaches the server (network dropped)", async () => {
+    mocks.add.mockRejectedValue(new TypeError("Failed to fetch"));
+    await mount();
+    await click(
+      button("Koleksiyona ekle: Sarfın temel kelimeleri") as HTMLElement
+    );
+    expect(button("Koleksiyona ekle: Sarfın temel kelimeleri")).toBeTruthy();
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(mocks.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ tone: "error", title: "Deste eklenemedi" })
+    );
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+
   it("the card-type chips write the choice into the address", async () => {
     await mount();
     const chips = [

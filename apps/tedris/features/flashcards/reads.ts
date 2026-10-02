@@ -4,9 +4,11 @@ import {
   type FlashcardDeckResponse,
   type FlashcardDeckSummaryResponse,
   type FlashcardResponse,
+  type FlashcardStudyRoundResponse,
   type FlashcardType,
   ResponseError,
 } from "@medaris/services/tedrisat";
+import { cache } from "react";
 import { env } from "~/env";
 import { getAccessToken } from "~/lib/auth_options";
 
@@ -54,7 +56,7 @@ export type DeckRead =
  * to be told what the API said. Anything else is the server's fault and is
  * thrown to the route's error page.
  */
-export const readDeck = async (id: string): Promise<DeckRead> => {
+export const readDeck = cache(async (id: string): Promise<DeckRead> => {
   const { decks, cards } = await api();
   try {
     const [deck, rows] = await Promise.all([
@@ -72,8 +74,41 @@ export const readDeck = async (id: string): Promise<DeckRead> => {
     }
     throw error;
   }
-};
+});
 
 /** The caller's own decks, for the card-copy picker; empty when they cannot be read. */
 export const getOwnDecks = async (): Promise<FlashcardDeckSummaryResponse[]> =>
   (await getDeckSummaries())?.filter((d) => d.isMine) ?? [];
+
+export type StudyRead =
+  | {
+      status: "ok";
+      deck: FlashcardDeckResponse;
+      round: FlashcardStudyRoundResponse;
+    }
+  | { status: "missing" }
+  | { status: "forbidden" };
+
+/**
+ * One deck with today's study round for the caller (MDRS-165): the cards that
+ * wait for a repeat, then a few they have not started. Missing and forbidden
+ * as `readDeck` reads them.
+ */
+export const readStudyRound = async (id: string): Promise<StudyRead> => {
+  const { decks, cards } = await api();
+  try {
+    const [deck, round] = await Promise.all([
+      decks.getFlashcardDeckById({ id }),
+      cards.getFlashcardStudyRound({ id }),
+    ]);
+    return { status: "ok", deck, round };
+  } catch (error) {
+    if (error instanceof ResponseError) {
+      if (error.response.status === 404 || error.response.status === 400) {
+        return { status: "missing" };
+      }
+      if (error.response.status === 403) return { status: "forbidden" };
+    }
+    throw error;
+  }
+};

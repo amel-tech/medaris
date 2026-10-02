@@ -3,6 +3,7 @@ import {
   Authz,
   AuthzExempt,
   AuthzGuard,
+  AuthzPublic,
   byParam,
   byQuery,
   ENTITIES,
@@ -67,12 +68,14 @@ import {
 } from "./dto/flashcard-bulk-response.dto";
 import { FlashcardProgressResponse } from "./dto/flashcard-progress-response.dto";
 import { FlashcardResponse } from "./dto/flashcard-response.dto";
+import { FlashcardStudyRoundResponse } from "./dto/flashcard-study-round-response.dto";
 import { UpdateFlashcardDto } from "./dto/update-flashcard.dto";
 import { BulkValidationError } from "./errors/bulk-validation.error";
 import { FlashcardService } from "./flashcard.service";
 import { FlashcardBulkService } from "./flashcard-bulk.service";
 import { FlashcardDeckService } from "./flashcard-deck.service";
 import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
+import { PublicRequest } from "./interfaces/public-request.interface";
 
 @ApiTags("flashcard-cards")
 @ApiBearerAuth()
@@ -136,19 +139,45 @@ export class FlashcardController {
   @ApiQuery({ name: "deckId", required: true, type: String })
   @IncludeApiQuery(CardIncludeEnum)
   @Authz(SCOPES.VIEW, byQuery(ENTITIES.FLASHCARD_DECK, "deckId"))
+  // MDRS-165: the cards of a PUBLIC deck are readable with no token, as the
+  // deck is (`GET /flashcard/decks/:id`, MDRS-45) — the signed-out visitor's
+  // deck page (design tedris/32) needs them. `resolveAnonymous` answers a
+  // private deck, or none, with the same 404, so nothing leaks; a caller with
+  // no token gets no `progress`, which is nobody's.
+  @AuthzPublic()
   @Get("cards")
   async findByDeckId(
-    @Req() request: AuthorizedRequest,
+    @Req() request: PublicRequest,
     @Query("deckId", ParseUUIDPipe) deckId: string,
     @IncludeQuery() include?: string[]
   ): Promise<FlashcardResponse[]> {
-    const userId = request.user.sub;
+    const userId = request.user?.sub ?? null;
     // The `userId` threaded into `findByDeckId` is NOT a scoping argument —
     // it only narrows the optional `progress` relation, and the rows come
     // back filtered on `deckId` alone either way. The guard is what scopes
     // this route, off the `deckId` QUERY param rather than a route param;
     // `VIEW` and not an owner scope, because a public deck is browsable.
     return this.cardService.findByDeckId(deckId, userId, include);
+  }
+
+  @ApiOperation({
+    summary: "Get today's study round of a deck",
+    description:
+      "The cards of the deck that wait for a repeat, most overdue first, then a few the caller has not started (MDRS-165). Each card carries the caller's own progress.",
+    operationId: "getFlashcardStudyRound",
+  })
+  @ApiOkResponse({ type: FlashcardStudyRoundResponse })
+  @ApiNotFoundResponse({
+    description:
+      "No such deck, or a private deck owned by another user — deliberately the same answer",
+  })
+  @Authz(SCOPES.VIEW, byParam(ENTITIES.FLASHCARD_DECK))
+  @Get("decks/:id/due")
+  async studyRound(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) deckId: string
+  ): Promise<FlashcardStudyRoundResponse> {
+    return this.cardService.studyRound(deckId, request.user.sub);
   }
 
   // POST Requests

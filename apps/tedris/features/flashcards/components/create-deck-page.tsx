@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useState } from "react";
 import { createDeck } from "../actions";
+import { attempt } from "../attempt";
 import {
   DESCRIPTION_MAX,
   MAX_TAG_LENGTH,
@@ -73,12 +74,14 @@ export function CreateDeckPage() {
     setAttempted(true);
     if (invalid || kind === null) return;
     setBusy(true);
-    const result = await createDeck({
-      title,
-      description,
-      cardType: kind,
-      tags,
-    });
+    const result = await attempt(() =>
+      createDeck({
+        title,
+        description,
+        cardType: kind,
+        tags,
+      })
+    );
     if (result.success) {
       router.push(`/decks/${result.data.id}`);
       return;
@@ -187,7 +190,7 @@ export function CreateDeckPage() {
               onChange={(event) => setTagsText(event.target.value)}
             />
           </Field>
-          <Alert tone="info" title={t("noticeTitle")}>
+          <Alert tone="neutral" title={t("noticeTitle")}>
             {t("noticeText")}
           </Alert>
           <div className="flex flex-wrap justify-end gap-3">

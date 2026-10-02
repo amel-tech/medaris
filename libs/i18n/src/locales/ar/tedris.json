@@ -65,22 +65,6 @@
   "DataTable": {
     "noResults": "لا توجد نتائج."
   },
-  "FlashCardContent": {
-    "card": "بطاقة",
-    "flip": "نقف",
-    "flipTooltip": "اقلب البطاقة",
-    "markAsMemorized": "ضع علامة كمحفوظ",
-    "markAsMemorizedTooltip": "ضع علامة كما هو محفوظ",
-    "markAsToReviewLater": "ضع علامة للمراجعة لاحقًا",
-    "repeat": "يكرر",
-    "updating": "جارٍ التحديث..."
-  },
-  "FlashCardList": {
-    "noCardsFound": "لم يتم العثور على أي بطاقات حتى الآن."
-  },
-  "HomePage": {
-    "greeting": "السلام عليكم!"
-  },
   "KoskPage": {
     "kosks": "Köşkler",
     "uncategorized": "Diğer",
@@ -827,6 +811,14 @@
     "importFile": "الملف",
     "importSample": "نزّل القالب النموذجي",
     "importNoFile": "اختر ملفًا.",
+    "importFieldFront": "الوجه الأمامي",
+    "importFieldBack": "الوجه الخلفي",
+    "importFieldType": "النوع",
+    "importFieldOther": "حقل",
+    "importProblemRequired": "{field} فارغ",
+    "importProblemTooShort": "يجب ألا يقل {field} عن {min} أحرف",
+    "importProblemTooLong": "يجب ألا يزيد {field} عن {max} حرفًا",
+    "importProblemInvalid": "{field} غير صالح",
     "importedTitle": "تم استيراد البطاقات",
     "importedText": "أُضيفت {count} بطاقة.",
     "importRowErrors": "في {count} سطر مشكلة؛ ولم تُضف أي بطاقة.",

@@ -63,7 +63,10 @@ export type {
   FlashcardDeckSummaryResponse,
   FlashcardLabelingResponse,
   FlashcardLabelResponse,
+  FlashcardProgressResponse,
   FlashcardResponse,
+  FlashcardStudyRoundResponse,
+  FollowedKoskCourseResponse,
   GrantResponse,
   KoskApplicationResponse,
   KoskResponse,
@@ -121,6 +124,7 @@ import { EnrollmentResponseStatusEnum } from "./generated/src/models/EnrollmentR
 // Re-export enum constants (they are used at runtime as values)
 import { FlashcardResponseTypeEnum } from "./generated/src/models/FlashcardResponse";
 import { FlashcardType } from "./generated/src/models/FlashcardType";
+import { ReviewRating } from "./generated/src/models/ReviewRating";
 import { TeamSettableEnrollmentStatus } from "./generated/src/models/TeamSettableEnrollmentStatus";
 
 export {
@@ -128,6 +132,7 @@ export {
   DeckPublishStatus,
   DeckSource,
   FlashcardType,
+  ReviewRating,
   FlashcardResponseTypeEnum,
   CreateFlashcardDtoTypeEnum,
   CreateLessonDtoTypeEnum,

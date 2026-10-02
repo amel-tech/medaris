@@ -4,7 +4,9 @@ import type {
 } from "@medaris/services/tedrisat";
 import { describe, expect, it } from "vitest";
 import {
+  atTime,
   countCards,
+  countOf,
   dayAndMonth,
   faceProblem,
   filterMyDecks,
@@ -271,8 +273,61 @@ describe("the import's refusal (design tedris/29)", () => {
         },
       })
     ).toEqual([
-      { row: 2, messages: ["type must be a valid enum value", "too short"] },
-      { row: 5, messages: [] },
+      {
+        row: 2,
+        problems: [
+          { field: "type", kind: "invalid" },
+          { field: "front", kind: "invalid" },
+        ],
+      },
+      { row: 5, problems: [] },
+    ]);
+  });
+
+  it("reads the validator's English as one Turkish-able problem per field", () => {
+    const front = (message: string) => ({ field: "contentFront", message });
+    const rows = importRowErrors({
+      context: {
+        errors: [
+          {
+            row: 2,
+            errors: [
+              front(
+                "contentFront must be shorter than or equal to 5000 characters"
+              ),
+              front(
+                "contentFront must be longer than or equal to 3 characters"
+              ),
+              front("contentFront must be a string"),
+              {
+                field: "contentBack",
+                message:
+                  "contentBack must be longer than or equal to 3 characters",
+              },
+            ],
+          },
+          {
+            row: 3,
+            errors: [
+              {
+                field: "contentBack",
+                message:
+                  "contentBack must be shorter than or equal to 5000 characters",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(rows).toEqual([
+      {
+        row: 2,
+        problems: [
+          { field: "front", kind: "required" },
+          { field: "back", kind: "tooShort" },
+        ],
+      },
+      { row: 3, problems: [{ field: "back", kind: "tooLong" }] },
     ]);
   });
 
@@ -283,5 +338,28 @@ describe("the import's refusal (design tedris/29)", () => {
     expect(importRowErrors({ context: { errors: [{ row: "a" }] } })).toEqual(
       []
     );
+  });
+});
+
+describe("Turkish suffixes the canvas copy carries", () => {
+  it("puts the locative on a time by how its minutes are said", () => {
+    expect(atTime("29 Eylül 2026 Salı 21:10", "tr")).toBe(
+      "29 Eylül 2026 Salı 21:10’da"
+    );
+    expect(atTime("x 21:20", "tr")).toBe("x 21:20’de");
+    expect(atTime("x 21:40", "tr")).toBe("x 21:40’ta");
+    expect(atTime("x 21:05", "tr")).toBe("x 21:05’te");
+    expect(atTime("x 21:00", "tr")).toBe("x 21:00’da");
+    expect(atTime("x 21:10", "en")).toBe("x 21:10");
+  });
+
+  it("puts the possessive on a count", () => {
+    expect(countOf(6, "tr")).toBe("6’sı");
+    expect(countOf(12, "tr")).toBe("12’si");
+    expect(countOf(18, "tr")).toBe("18’i");
+    expect(countOf(24, "tr")).toBe("24’ü");
+    expect(countOf(40, "tr")).toBe("40’ı");
+    expect(countOf(9, "tr")).toBe("9’u");
+    expect(countOf(6, "en")).toBe("6");
   });
 });

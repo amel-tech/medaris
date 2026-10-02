@@ -6,6 +6,7 @@ import {
   eq,
   exists as existsSql,
   ilike,
+  inArray,
   isNotNull,
   isNull,
   or,
@@ -19,6 +20,7 @@ import {
   recordDeletion,
   Tx,
 } from "../course/course-purge";
+import { CourseStatus } from "../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { DatabaseService } from "../database/database.service";
 import {
@@ -47,6 +49,7 @@ import { users } from "../database/schema/user.schema";
 import {
   AddManagerOutcome,
   ICreateKosk,
+  IFollowedKoskCourse,
   IKosk,
   IKoskDecks,
   IKoskListFilter,
@@ -291,6 +294,85 @@ export class KoskRepository implements IKoskRepository {
       )
       .orderBy(asc(decks.title), asc(decks.id));
     return { accessible: true, decks: rows };
+  }
+
+  /**
+   * The published courses of the köşks `userId` follows, newest first, leaving
+   * out the ones they already applied to or are in (a talebe is not invited to
+   * a course they have). Hidden courses and hidden köşks are not offered.
+   */
+  async findFollowedCourses(
+    userId: string,
+    limit: number
+  ): Promise<IFollowedKoskCourse[]> {
+    const rows = await this.db
+      .select({
+        id: courses.id,
+        title: courses.title,
+        koskId: courses.koskId,
+        koskName: kosks.name,
+        coverHue: courses.coverHue,
+        // The first müderris by the order the course lists them in.
+        muderrisName: sql<string | null>`(
+          SELECT ${courseMuderris.name}
+          FROM ${courseMuderris}
+          WHERE ${courseMuderris.courseId} = ${courses.id}
+          ORDER BY ${courseMuderris.orderIndex}, ${courseMuderris.id}
+          LIMIT 1
+        )`,
+        muderrisUserId: sql<string | null>`(
+          SELECT ${courseMuderris.userId}
+          FROM ${courseMuderris}
+          WHERE ${courseMuderris.courseId} = ${courses.id}
+          ORDER BY ${courseMuderris.orderIndex}, ${courseMuderris.id}
+          LIMIT 1
+        )`,
+      })
+      .from(koskFollowers)
+      .innerJoin(kosks, eq(kosks.id, koskFollowers.koskId))
+      .innerJoin(courses, eq(courses.koskId, kosks.id))
+      .where(
+        and(
+          eq(koskFollowers.userId, userId),
+          isNull(kosks.archivedAt),
+          eq(courses.status, CourseStatus.PUBLISHED),
+          isNull(courses.archivedAt),
+          sql`NOT EXISTS (
+            SELECT 1 FROM ${enrollments}
+            WHERE ${enrollments.courseId} = ${courses.id}
+              AND ${enrollments.userId} = ${userId}
+          )`
+        )
+      )
+      .orderBy(desc(courses.createdAt), desc(courses.id))
+      .limit(limit);
+    if (rows.length === 0) return [];
+
+    // Whether the first müderris is the course's imam: a role assignment, not
+    // a column of the müderris row (see `CourseRepository.madrasahsAndImamsOf`).
+    const imams = await this.db
+      .select({
+        courseId: roleAssignments.scopeId,
+        userId: roleAssignments.userId,
+      })
+      .from(roleAssignments)
+      .where(
+        and(
+          eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS),
+          eq(roleAssignments.isImam, true),
+          inArray(
+            roleAssignments.scopeId,
+            rows.map((r) => r.id)
+          ),
+          isHeld()
+        )
+      );
+    const imamKeys = new Set(imams.map((i) => `${i.courseId}:${i.userId}`));
+    return rows.map(({ muderrisUserId, ...row }) => ({
+      ...row,
+      muderrisIsImam:
+        muderrisUserId !== null && imamKeys.has(`${row.id}:${muderrisUserId}`),
+    }));
   }
 
   async findAll(

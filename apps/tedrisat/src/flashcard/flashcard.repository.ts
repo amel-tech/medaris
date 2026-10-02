@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import { decks, flashcardProgress, flashcards } from "../database/schema";
 import { deckSharedWith } from "./deck-sharing";
@@ -11,8 +11,11 @@ import {
   IFlashcardProgress,
   IFlashcardRepository,
   IFlashcardVisibility,
+  IStudyCard,
+  IStudyQueue,
   IUpdateFlashcard,
 } from "./flashcard.repository.interface";
+import { isReviewDue } from "./review-due";
 
 /** Overrides for includes that need custom config (e.g. a where clause). */
 const cardIncludeOverrides: Partial<
@@ -23,13 +26,20 @@ const cardIncludeOverrides: Partial<
   }),
 };
 
-function buildWith(include: Set<CardIncludeEnum> | undefined, userId: string) {
+function buildWith(
+  include: Set<CardIncludeEnum> | undefined,
+  userId: string | null
+) {
   if (!include?.size) return {};
   return Object.fromEntries(
-    [...include].map((key) => [
-      key,
-      cardIncludeOverrides[key]?.(userId) ?? true,
-    ])
+    [...include]
+      // Nobody's progress is anonymous: a caller with no token gets the cards.
+      .filter((key) => userId !== null || key !== CardIncludeEnum.Progress)
+      .map((key) => [
+        key,
+        // `userId` is non-null here whenever an override exists (Progress).
+        cardIncludeOverrides[key]?.(userId as string) ?? true,
+      ])
   );
 }
 
@@ -52,7 +62,7 @@ export class FlashcardRepository implements IFlashcardRepository {
 
   async findByDeckId(
     deckId: string,
-    userId: string,
+    userId: string | null,
     include?: Set<CardIncludeEnum>
   ): Promise<IFlashcard[]> {
     return this.databaseService.db.query.flashcards.findMany({
@@ -140,8 +150,80 @@ export class FlashcardRepository implements IFlashcardRepository {
       .values(updates)
       .onConflictDoUpdate({
         target: [flashcardProgress.userId, flashcardProgress.flashcardId],
-        set: { status: sql.raw(`excluded.${flashcardProgress.status.name}`) },
+        set: {
+          status: sql.raw(`excluded.${flashcardProgress.status.name}`),
+          dueAt: sql.raw(`excluded.${flashcardProgress.dueAt.name}`),
+          reviewedAt: sql.raw(`excluded.${flashcardProgress.reviewedAt.name}`),
+          intervalDays: sql.raw(
+            `excluded.${flashcardProgress.intervalDays.name}`
+          ),
+        },
       })
       .returning();
+  }
+
+  async findProgress(
+    userId: string,
+    cardIds: string[]
+  ): Promise<IFlashcardProgress[]> {
+    if (cardIds.length === 0) return [];
+    return this.databaseService.db
+      .select()
+      .from(flashcardProgress)
+      .where(
+        and(
+          eq(flashcardProgress.userId, userId),
+          inArray(flashcardProgress.flashcardId, cardIds)
+        )
+      );
+  }
+
+  async findStudyQueue(
+    deckId: string,
+    userId: string,
+    limits: { due: number; fresh: number }
+  ): Promise<IStudyQueue> {
+    const db = this.databaseService.db;
+    const select = () =>
+      db
+        .select({ card: flashcards, progress: flashcardProgress })
+        .from(flashcards)
+        .leftJoin(
+          flashcardProgress,
+          and(
+            eq(flashcardProgress.flashcardId, flashcards.id),
+            eq(flashcardProgress.userId, userId)
+          )
+        );
+    const asStudyCard = (row: {
+      card: typeof flashcards.$inferSelect;
+      progress: typeof flashcardProgress.$inferSelect | null;
+    }): IStudyCard => ({
+      ...row.card,
+      progress: row.progress ? [row.progress] : [],
+    });
+
+    const [due, fresh] = await Promise.all([
+      select()
+        .where(and(eq(flashcards.deckId, deckId), isReviewDue(new Date())))
+        // Never-rated LEARNING rows (no due time) come first: they are the
+        // oldest debt.
+        .orderBy(
+          sql`${flashcardProgress.dueAt} ASC NULLS FIRST`,
+          asc(flashcards.createdAt),
+          asc(flashcards.id)
+        )
+        .limit(limits.due),
+      select()
+        .where(
+          and(
+            eq(flashcards.deckId, deckId),
+            sql`(${flashcardProgress.flashcardId} IS NULL OR ${flashcardProgress.status} = 'NEW')`
+          )
+        )
+        .orderBy(asc(flashcards.createdAt), asc(flashcards.id))
+        .limit(limits.fresh),
+    ]);
+    return { due: due.map(asStudyCard), fresh: fresh.map(asStudyCard) };
   }
 }

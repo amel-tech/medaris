@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useState } from "react";
 import { copyCard } from "../actions";
+import { attempt } from "../attempt";
 
 /**
  * "Kendi desteme kopyala" (design tedris/31): a card of somebody else's deck
@@ -49,12 +50,14 @@ export function CopyCardDialog({
     const deck = ownDecks.find((d) => d.id === target);
     if (!deck) return;
     setBusy(true);
-    const result = await copyCard(deck.id, {
-      type: card.type as CreateFlashcardDtoTypeEnum,
-      contentFront: card.contentFront,
-      contentBack: card.contentBack,
-      contentMeta: card.contentMeta,
-    });
+    const result = await attempt(() =>
+      copyCard(deck.id, {
+        type: card.type as CreateFlashcardDtoTypeEnum,
+        contentFront: card.contentFront,
+        contentBack: card.contentBack,
+        contentMeta: card.contentMeta,
+      })
+    );
     setBusy(false);
     if (!result.success) {
       toaster.notify({

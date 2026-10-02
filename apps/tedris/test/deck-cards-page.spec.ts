@@ -365,6 +365,25 @@ describe("Deste kartları (design tedris/29)", () => {
                 row: 2,
                 errors: [{ field: "type", message: "type must be valid" }],
               },
+              {
+                row: 3,
+                errors: [
+                  {
+                    field: "contentFront",
+                    message:
+                      "contentFront must be shorter than or equal to 5000 characters",
+                  },
+                  {
+                    field: "contentFront",
+                    message:
+                      "contentFront must be longer than or equal to 3 characters",
+                  },
+                  {
+                    field: "contentFront",
+                    message: "contentFront must be a string",
+                  },
+                ],
+              },
             ],
           },
         }),
@@ -374,9 +393,11 @@ describe("Deste kartları (design tedris/29)", () => {
       await click(button("İçe aktar", dialog()));
       await settle();
       expect(dialog().textContent).toContain(
-        "1 satırda sorun var; hiçbir kart eklenmedi."
+        "2 satırda sorun var; hiçbir kart eklenmedi."
       );
-      expect(dialog().textContent).toContain("Satır 2: type must be valid");
+      expect(dialog().textContent).toContain("Satır 2: Tür geçersiz");
+      expect(dialog().textContent).toContain("Satır 3: Ön yüz boş");
+      expect(dialog().textContent).not.toContain("must be");
       expect(mocks.refresh).not.toHaveBeenCalled();
     });
 

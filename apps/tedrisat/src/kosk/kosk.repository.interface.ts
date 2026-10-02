@@ -142,6 +142,17 @@ export interface IKoskDecks {
   decks: IKoskDeck[];
 }
 
+/** A course of a köşk the caller follows (MDRS-165). */
+export interface IFollowedKoskCourse {
+  id: string;
+  title: string;
+  koskId: string;
+  koskName: string;
+  coverHue: number;
+  muderrisName: string | null;
+  muderrisIsImam: boolean;
+}
+
 export interface IKoskRepository {
   findAll(
     userId: string | null,
@@ -153,6 +164,10 @@ export interface IKoskRepository {
   /** The distinct ilim alanı of the listed köşks, alphabetical. */
   listFields(): Promise<string[]>;
   findDecks(koskId: string, userId: string): Promise<IKoskDecks>;
+  findFollowedCourses(
+    userId: string,
+    limit: number
+  ): Promise<IFollowedKoskCourse[]>;
   /** `userId` null is a caller with no token (MDRS-122): following nothing. */
   findById(id: string, userId: string | null): Promise<IKoskWithStats | null>;
   exists(id: string): Promise<boolean>;

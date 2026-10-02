@@ -12,6 +12,7 @@ import {
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Delete,
   Get,
   HttpException,
@@ -19,6 +20,7 @@ import {
   Param,
   ParseBoolPipe,
   ParseEnumPipe,
+  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -107,6 +109,32 @@ export class FlashcardDeckController {
     @Req() request: AuthorizedRequest
   ): Promise<FlashcardDeckSummaryResponse[]> {
     return this.summaryService.summarize(request.user.sub);
+  }
+
+  @ApiOperation({
+    summary: "The decks to study today",
+    description:
+      "The decks of the caller's collection with something to study (MDRS-165): first the ones with cards waiting for a repeat, most first, then the decks of other people that grew since the caller collected them.",
+    operationId: "getFlashcardDecksDueToday",
+  })
+  @ApiQuery({
+    name: "limit",
+    required: false,
+    type: Number,
+    description: "At most this many decks; 3 by default, 10 at most.",
+  })
+  @ApiOkResponse({ type: FlashcardDeckSummaryResponse, isArray: true })
+  // Exempt for the reason `summary` is. Declared before `:id`.
+  @AuthzExempt()
+  @Get("due")
+  async dueToday(
+    @Req() request: AuthorizedRequest,
+    @Query("limit", new DefaultValuePipe(3), ParseIntPipe) limit: number
+  ): Promise<FlashcardDeckSummaryResponse[]> {
+    return this.summaryService.dueToday(
+      request.user.sub,
+      Math.min(Math.max(limit, 1), 10)
+    );
   }
 
   @ApiOperation({

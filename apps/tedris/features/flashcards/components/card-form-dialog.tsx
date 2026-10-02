@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type FormEvent, type RefObject, useState } from "react";
 import { createCard, updateCard } from "../actions";
+import { attempt } from "../attempt";
 import { FACE_MAX, FACE_MIN, faceProblem, isArabic } from "../deck-model";
 
 const FRONT_ID = "card-form-front";
@@ -65,8 +66,8 @@ export function CardFormDialog({
     setBusy(true);
     const fields = { contentFront: front, contentBack: back };
     const result = card
-      ? await updateCard(card.id, fields)
-      : await createCard(deckId, kind, fields);
+      ? await attempt(() => updateCard(card.id, fields))
+      : await attempt(() => createCard(deckId, kind, fields));
     setBusy(false);
     if (!result.success) {
       toaster.notify({

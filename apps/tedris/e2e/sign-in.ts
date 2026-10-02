@@ -108,3 +108,22 @@ export async function signIn(page: Page, who: E2eAccount): Promise<void> {
   await page.locator("button[type=submit]").click();
   await page.waitForURL((url) => url.origin === base.origin);
 }
+
+/**
+ * Signs in as `e2e-talebe` (E2E_TALEBE_EMAIL and E2E_TALEBE_PASSWORD), the
+ * entry point the deck specs use. `E2E_SESSION_COOKIES` names a JSON file of
+ * cookies (Playwright `storageState` shape) that replaces the sign-in when set.
+ */
+export const signInAsTalebe = async (page: Page): Promise<void> => {
+  const cookieFile = process.env.E2E_SESSION_COOKIES;
+  if (cookieFile) {
+    const { readFileSync } = await import("node:fs");
+    const { cookies } = JSON.parse(readFileSync(cookieFile, "utf8"));
+    await page.context().addCookies(cookies);
+    return;
+  }
+  await signIn(page, {
+    email: process.env.E2E_TALEBE_EMAIL,
+    password: process.env.E2E_TALEBE_PASSWORD,
+  });
+};

@@ -65,22 +65,6 @@
   "DataTable": {
     "noResults": "Sonuç bulunamadı."
   },
-  "FlashCardContent": {
-    "card": "Kart",
-    "flip": "Çevir",
-    "flipTooltip": "Kartı çevirin",
-    "markAsMemorized": "Hafızaya Alındı Olarak İşaretle",
-    "markAsMemorizedTooltip": "Ezbere alındı olarak işaretle",
-    "markAsToReviewLater": "Daha sonra incelemek üzere işaretle.",
-    "repeat": "Tekrarlamak",
-    "updating": "Guncelleniyor..."
-  },
-  "FlashCardList": {
-    "noCardsFound": "Henüz hiçbir kart bulunamadı."
-  },
-  "HomePage": {
-    "greeting": "Selamünaleyküm!"
-  },
   "KoskPage": {
     "kosks": "Köşkler",
     "uncategorized": "Diğer",
@@ -617,7 +601,7 @@
     "register": "Kayıt ol",
     "greeting": "Selâmün aleyküm, {name}",
     "greetingAnon": "Selâmün aleyküm",
-    "nextIntro": "Sıradaki celsen: {when}.",
+    "nextIntro": "Sıradaki celsen {when}.",
     "noNext": "Planlı bir celsen görünmüyor.",
     "nextTitle": "Sıradaki celse",
     "liveBadge": "Canlı ders",
@@ -762,7 +746,7 @@
     "addCard": "Kart ekle",
     "whoTitle": "Kimler görebilir",
     "whoPRIVATE": "Bu deste özel; yalnız sen görürsün. Herkese açmak için yayın iste: Medaris yönetimi inceler, uygun bulursa yayımlar.",
-    "whoPENDING": "Yayın isteğini {when} tarihinde gönderdin. Medaris yönetimi inceleyip yayımlayana dek deste özel kalır.",
+    "whoPENDING": "Yayın isteğini {at} gönderdin. Medaris yönetimi inceleyip yayımlayana dek deste özel kalır.",
     "whoPUBLISHED": "Bu deste herkese açık: Medaris yönetimi inceleyip yayımladı. İstediğin an özele çekebilirsin.",
     "requestPublish": "Yayın iste",
     "withdrawRequest": "İsteği geri çek",
@@ -788,7 +772,7 @@
     "actionsCol": "İşlemler",
     "copy": "Kendi desteme kopyala",
     "copyLabel": "Kendi desteme kopyala: kart {n}",
-    "showing": "{total} kartın {shown} tanesi gösteriliyor",
+    "showing": "{total} karttan {shownText} gösteriliyor",
     "loadMore": "Daha fazla göster",
     "removeFromCollection": "Koleksiyondan çıkar",
     "aboutTitle": "Deste hakkında",
@@ -827,6 +811,14 @@
     "importFile": "Dosya",
     "importSample": "Örnek şablonu indir",
     "importNoFile": "Bir dosya seç.",
+    "importFieldFront": "Ön yüz",
+    "importFieldBack": "Arka yüz",
+    "importFieldType": "Tür",
+    "importFieldOther": "Bir alan",
+    "importProblemRequired": "{field} boş",
+    "importProblemTooShort": "{field} en az {min} karakter olmalı",
+    "importProblemTooLong": "{field} en çok {max} karakter olabilir",
+    "importProblemInvalid": "{field} geçersiz",
     "importedTitle": "Kartlar içe aktarıldı",
     "importedText": "{count} kart eklendi.",
     "importRowErrors": "{count} satırda sorun var; hiçbir kart eklenmedi.",

@@ -2,9 +2,9 @@
 
 import {
   CreateFlashcardDtoTypeEnum,
-  type CreateFlashcardProgressDto,
   type FlashcardDeckResponse,
   type FlashcardType,
+  type ReviewRating,
 } from "@medaris/services/tedrisat";
 import { revalidatePath } from "next/cache";
 import { authenticatedAction } from "~/lib/authenticated-action";
@@ -169,11 +169,21 @@ export const deleteCard = async (cardId: string) =>
     return true;
   });
 
-export const updateFlashcardProgress = async (
-  progressUpdates: CreateFlashcardProgressDto[]
+/**
+ * One card rated ("Zor", "Orta", "Kolay"; design tedris/30, MDRS-165): the API
+ * decides the state and when the card is due again. The page the talebe is on is
+ * not revalidated — the study round keeps its own queue — but the lists that
+ * count what waits are.
+ */
+export const rateFlashcard = async (
+  flashcardId: string,
+  rating: ReviewRating
 ) =>
   authenticatedAction(async ({ cards }) => {
-    return cards.replaceManyFlashcardProgress({
-      createFlashcardProgressDto: progressUpdates,
+    const rows = await cards.replaceManyFlashcardProgress({
+      createFlashcardProgressDto: [{ flashcardId, rating }],
     });
+    revalidateDecks();
+    revalidatePath("/[locale]/home", "page");
+    return rows;
   });

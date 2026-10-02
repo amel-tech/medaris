@@ -16,6 +16,7 @@ const NO_PROGRESS: DeckProgressStats = {
   cardCount: 0,
   masteredCount: 0,
   learningCount: 0,
+  dueCount: 0,
   addedSinceCollectedCount: 0,
 };
 
@@ -58,9 +59,7 @@ export const toDeckSummary = (
       0,
       progress.cardCount - progress.masteredCount - progress.learningCount
     ),
-    // No review time is kept, so "waiting for a repeat" is the cards the
-    // caller has started and not finished; a scheduler would replace it here.
-    dueCount: progress.learningCount,
+    dueCount: progress.dueCount,
     addedSinceCollectedCount: isMine ? 0 : progress.addedSinceCollectedCount,
   };
 };
@@ -92,6 +91,29 @@ export class FlashcardDeckSummaryService {
       courseDecks: all.slice(0, shared.length),
       publicDecks: all.slice(shared.length),
     };
+  }
+
+  /**
+   * Ana sayfa's "Bugün çalışılacak desteler" (MDRS-165): the decks of the
+   * caller's collection with something to study today. A deck with cards
+   * waiting for a repeat comes first, the most waiting first; then the decks
+   * of other people that grew since the caller collected them ("N yeni kart").
+   * A deck of the caller's own with nothing due is not listed: they wrote it,
+   * so "new" is not news.
+   */
+  async dueToday(
+    userId: string,
+    limit: number
+  ): Promise<FlashcardDeckSummaryResponse[]> {
+    const all = await this.summarize(userId);
+    const waiting = all
+      .filter((deck) => deck.dueCount > 0)
+      .sort((a, b) => b.dueCount - a.dueCount);
+    const grown = all.filter(
+      (deck) =>
+        deck.dueCount === 0 && !deck.isMine && deck.addedSinceCollectedCount > 0
+    );
+    return [...waiting, ...grown].slice(0, limit);
   }
 
   private async withProgress(

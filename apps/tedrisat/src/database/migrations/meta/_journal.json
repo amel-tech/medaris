@@ -236,7 +236,14 @@
     {
       "idx": 33,
       "version": "7",
-      "when": 1790959777911,
+      "when": 1790959831479,
+      "tag": "0033_flashcard_review_schedule",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790964730400,
       "tag": "0034_profile_and_kosk_application",
       "breakpoints": true
     }

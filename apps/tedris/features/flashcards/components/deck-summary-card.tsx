@@ -75,7 +75,7 @@ export function DeckSummaryCard({
       action={badge}
       footer={
         <div className="flex items-center justify-between gap-3">
-          <span>
+          <span className="whitespace-nowrap">
             {labels.cards(deck.cardCount)}
             <span className="mds-sep" aria-hidden="true">
               ·
@@ -99,7 +99,9 @@ export function DeckSummaryCard({
               </>
             ) : null}
           </span>
-          {actions}
+          <span className="relative z-[1] flex shrink-0 items-center">
+            {actions}
+          </span>
         </div>
       }
     >

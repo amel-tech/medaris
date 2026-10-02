@@ -65,22 +65,6 @@
   "DataTable": {
     "noResults": "No results."
   },
-  "FlashCardContent": {
-    "card": "Card",
-    "flip": "Flip",
-    "flipTooltip": "Flip the card",
-    "markAsMemorized": "Mark as Memorized",
-    "markAsMemorizedTooltip": "Mark as memorized",
-    "markAsToReviewLater": "Mark as to review later",
-    "repeat": "Repeat",
-    "updating": "Updating..."
-  },
-  "FlashCardList": {
-    "noCardsFound": "No cards found yet."
-  },
-  "HomePage": {
-    "greeting": "Assalamu alaikum!"
-  },
   "KoskPage": {
     "kosks": "Köşkler",
     "uncategorized": "Diğer",
@@ -827,6 +811,14 @@
     "importFile": "File",
     "importSample": "Download the sample template",
     "importNoFile": "Choose a file.",
+    "importFieldFront": "Front",
+    "importFieldBack": "Back",
+    "importFieldType": "Type",
+    "importFieldOther": "A field",
+    "importProblemRequired": "{field} is empty",
+    "importProblemTooShort": "{field} must be at least {min} characters",
+    "importProblemTooLong": "{field} can be at most {max} characters",
+    "importProblemInvalid": "{field} is not valid",
     "importedTitle": "Cards imported",
     "importedText": "{count, plural, one {# card was} other {# cards were}} added.",
     "importRowErrors": "{count, plural, one {# row has a problem} other {# rows have a problem}}; no card was added.",
