@@ -163,6 +163,9 @@ export const SessionPage = async ({
           button: t("AddToCalendar.button"),
           google: t("AddToCalendar.google"),
           apple: t("AddToCalendar.apple"),
+          downloadFailed: t("AddToCalendar.downloadFailed"),
+          subscribe: t("AddToCalendar.subscribe"),
+          note: t("AddToCalendar.note"),
           linkIsOnPage: t("AddToCalendar.linkIsOnPage"),
         }
       : undefined;

@@ -4818,7 +4818,7 @@
     },
     "/calendar/{file}": {
       "get": {
-        "description": "Every session of every course the feed's owner is enrolled in, teaches or manages, from 30 days back to 180 days ahead. Removed sessions carry `STATUS:CANCELLED`; UIDs and SEQUENCE are those of `GET /lessons/:id/calendar.ics` (MDRS-117). No meeting links.",
+        "description": "Every session of every course the feed's owner is enrolled in, teaches or manages, from 30 days back to 180 days ahead. Removed and cancelled sessions carry `STATUS:CANCELLED`; UIDs and SEQUENCE are those of `GET /lessons/:id/calendar.ics` (MDRS-117). No meeting links.",
         "operationId": "getCalendarFeed",
         "parameters": [
           {
@@ -5066,6 +5066,100 @@
         "summary": "Mark one notification read",
         "tags": [
           "notifications"
+        ]
+      }
+    },
+    "/sessions": {
+      "get": {
+        "description": "Programım. Only courses the caller is ENROLLED in: a pending request, a completed course and a barred talebe's course are left out. Starts in `[from, to)`, soonest first. A cancelled session is kept with `status: CANCELLED`; a hidden one is not here. `meetingUrl` is null for a cancelled or finished session.",
+        "operationId": "listMySessions",
+        "parameters": [
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "Exclusive end; after `from`, at most 31 days later.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "ISO 8601 date or date-time with an offset. A bare date is UTC midnight.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduleSessionResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A missing or malformed window (INVALID_SCHEDULE_WINDOW)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The live sessions of the caller's enrolled courses in a window",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/me/upcoming-lessons": {
+      "get": {
+        "description": "The phone menu's \"Sıradaki celse\" card and its list. Sessions running now or still ahead, cancelled ones skipped, soonest first.",
+        "operationId": "listMyUpcomingLessons",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 20; default 5.",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduleSessionResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's next live sessions",
+        "tags": [
+          "sessions"
         ]
       }
     },
@@ -11309,6 +11403,68 @@
         },
         "required": [
           "updated"
+        ]
+      },
+      "ScheduleSessionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "courseId": {
+            "type": "string"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "koskId": {
+            "type": "string"
+          },
+          "koskName": {
+            "type": "string"
+          },
+          "weekNumber": {
+            "type": "number",
+            "description": "The week the session sits in."
+          },
+          "title": {
+            "type": "string"
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "Length in minutes; null when the müderris set none."
+          },
+          "status": {
+            "description": "Derived from the clock and the cancellation, as on `GET /courses/:courseId/sessions/:sessionId`.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SessionStatus"
+              }
+            ]
+          },
+          "meetingUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "The meeting link; null when none was added, and always null once the session is cancelled or over. Only an enrolled caller receives this response, so the link is theirs to read."
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "courseTitle",
+          "koskId",
+          "koskName",
+          "weekNumber",
+          "title",
+          "startsAt",
+          "durationMinutes",
+          "status",
+          "meetingUrl"
         ]
       },
       "PersonRef": {

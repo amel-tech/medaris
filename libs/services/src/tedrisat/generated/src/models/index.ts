@@ -165,6 +165,7 @@ export * from './ResourceResponse';
 export * from './RoleSummary';
 export * from './RosterEnrollmentResponse';
 export * from './RowError';
+export * from './ScheduleSessionResponse';
 export * from './ScopeRefResponse';
 export * from './SessionBatchLessonResponse';
 export * from './SessionBatchPreviewResponse';

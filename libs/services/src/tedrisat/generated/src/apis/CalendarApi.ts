@@ -25,7 +25,7 @@ export interface GetCalendarFeedRequest {
 export class CalendarApi extends runtime.BaseAPI {
 
     /**
-     * Every session of every course the feed\'s owner is enrolled in, teaches or manages, from 30 days back to 180 days ahead. Removed sessions carry `STATUS:CANCELLED`; UIDs and SEQUENCE are those of `GET /lessons/:id/calendar.ics` (MDRS-117). No meeting links.
+     * Every session of every course the feed\'s owner is enrolled in, teaches or manages, from 30 days back to 180 days ahead. Removed and cancelled sessions carry `STATUS:CANCELLED`; UIDs and SEQUENCE are those of `GET /lessons/:id/calendar.ics` (MDRS-117). No meeting links.
      * A personal calendar feed for Apple Calendar and Google Calendar
      */
     async getCalendarFeedRaw(requestParameters: GetCalendarFeedRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<string>> {
@@ -59,7 +59,7 @@ export class CalendarApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every session of every course the feed\'s owner is enrolled in, teaches or manages, from 30 days back to 180 days ahead. Removed sessions carry `STATUS:CANCELLED`; UIDs and SEQUENCE are those of `GET /lessons/:id/calendar.ics` (MDRS-117). No meeting links.
+     * Every session of every course the feed\'s owner is enrolled in, teaches or manages, from 30 days back to 180 days ahead. Removed and cancelled sessions carry `STATUS:CANCELLED`; UIDs and SEQUENCE are those of `GET /lessons/:id/calendar.ics` (MDRS-117). No meeting links.
      * A personal calendar feed for Apple Calendar and Google Calendar
      */
     async getCalendarFeed(requestParameters: GetCalendarFeedRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<string> {

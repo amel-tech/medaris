@@ -297,11 +297,13 @@ describe("calendar feed (e2e)", () => {
     expect(Number(prop(matching[0], "SEQUENCE"))).toBeGreaterThan(
       Number(prop(before as string[], "SEQUENCE"))
     );
-    expect(prop(matching[0], "DTSTART")).toBe(
-      movedTo
+    expect(matching[0].join("\n")).toContain(
+      `DTSTART;TZID=Europe/Istanbul:${new Date(
+        movedTo.getTime() + 3 * 3_600_000
+      )
         .toISOString()
-        .replace(/\.\d{3}Z$/, "Z")
-        .replace(/[-:]/g, "")
+        .replace(/\.\d{3}Z$/, "")
+        .replace(/[-:]/g, "")}`
     );
   });
 
@@ -321,6 +323,31 @@ describe("calendar feed (e2e)", () => {
     expect(Number(prop(after as string[], "SEQUENCE"))).toBeGreaterThan(
       Number(prop(before as string[], "SEQUENCE"))
     );
+  });
+
+  it("writes a cancelled session STATUS:CANCELLED and keeps it in the feed (MDRS-163)", async () => {
+    const detail = await createCourse("İptal edilen");
+    const lesson = firstLesson(detail);
+    await request(otherApp.getHttpServer())
+      .post(`/courses/${detail.id}/enroll`)
+      .expect(201);
+    const { url } = await issueFeed(otherApp);
+    expect(
+      prop(
+        eventFor((await fetchFeed(url)).body, lesson.id) as string[],
+        "STATUS"
+      )
+    ).toBeUndefined();
+
+    await app
+      .get(DatabaseService)
+      .db.execute(
+        `UPDATE "lessons" SET "cancelled_at" = now() WHERE "id" = '${lesson.id}'`
+      );
+
+    const event = eventFor((await fetchFeed(url)).body, lesson.id);
+    expect(event).toBeDefined();
+    expect(prop(event as string[], "STATUS")).toBe("CANCELLED");
   });
 
   it("answers 404 for the old URL once the link is regenerated", async () => {
