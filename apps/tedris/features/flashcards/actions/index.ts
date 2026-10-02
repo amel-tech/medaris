@@ -132,6 +132,24 @@ export const deleteDeck = async (deckId: string) => {
   });
 };
 
+/**
+ * Flips a deck between private and public. Only the author reaches it: the
+ * API's `PATCH /flashcard/decks/:id` is owner-scoped (MDRS-43), so the
+ * `isOwner` flag that shows the button is convenience, not the check.
+ */
+export const setDeckVisibility = async (deckId: string, isPublic: boolean) => {
+  return authenticatedAction(async ({ decks }) => {
+    const deck = await decks.updateFlashcardDeck({
+      id: deckId,
+      updateFlashcardDeckDto: { isPublic },
+    });
+    revalidatePath("/[locale]/decks/[id]", "page");
+    revalidatePath("/[locale]/decks", "page");
+    revalidatePath("/[locale]/decks/explore", "page");
+    return deck.isPublic;
+  });
+};
+
 export const deleteFlashcard = async (cardId: string) => {
   return authenticatedAction(async ({ cards }) => {
     await cards.deleteFlashcardRaw({ id: cardId });

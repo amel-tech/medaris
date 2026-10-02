@@ -59,3 +59,25 @@ export const byQuery =
     entity,
     id: clientStringOf(req.query[field], field),
   });
+
+/**
+ * Resolver for a create endpoint: there is no resource ID yet, so the
+ * check is "may this caller create one of these at all".
+ *
+ * The sentinel is a non-UUID string on purpose. Every `RoleResolver`
+ * implementation already has to answer for an id that is not a UUID —
+ * malformed input reaches the guard before any pipe has validated it —
+ * and `TedrisatRoleResolver` answers `ROLES.PUBLIC` there rather than
+ * letting Postgres raise 22P02. A create scope therefore has to live on
+ * the entity's `PUBLIC` matrix row to pass, which is exactly the
+ * decision the matrix should be making: `CREATE_PRIVATE_DECK` is on that
+ * row, `CREATE_KOSK` is deliberately on none.
+ *
+ * Do NOT give this an id that could collide with a real row — the guard
+ * rejects an empty id as a configuration error, and a UUID here would
+ * silently authorize against whatever row happens to carry it.
+ */
+export const forNew = (entity: Entity) => (): ResourceRef => ({
+  entity,
+  id: "new",
+});
