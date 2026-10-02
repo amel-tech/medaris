@@ -87,6 +87,7 @@ export function RemoveDialog({
         if (!saving) onOpenChange(next);
       }}
       form
+      size="md"
       onSubmit={submit}
       eyebrow={course.title}
       title={t("title")}

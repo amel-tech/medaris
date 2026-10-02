@@ -6,7 +6,6 @@ import type {
 } from "@medaris/services/tedrisat";
 import { toast } from "@medaris/ui/components/sonner";
 import { Alert } from "@medaris/ui/mds/alert";
-import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { ChoiceChips } from "@medaris/ui/mds/choice-chips";
@@ -196,10 +195,9 @@ export function AllBansView({ initial, viewerId, viewerRoleLabel }: Props) {
 
   const personCell = (ban: BanResponse) => (
     <span className="flex min-w-0 items-center gap-3">
-      <Avatar name={ban.user.name ?? ban.user.email ?? ""} decorative />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="flex flex-wrap items-center gap-2">
-          <bdi className="font-semibold">{nameOf(ban)}</bdi>
+          <bdi>{nameOf(ban)}</bdi>
           {query.status === "ACTIVE" && isRecent(ban, now) ? (
             <Badge variant="info">{t("new")}</Badge>
           ) : null}
@@ -208,7 +206,7 @@ export function AllBansView({ initial, viewerId, viewerRoleLabel }: Props) {
           <bdi
             dir="ltr"
             title={ban.user.email}
-            className="mds-caption block max-w-full truncate font-mono"
+            className="mds-caption block max-w-full font-mono [overflow-wrap:anywhere]"
           >
             {ban.user.email}
           </bdi>

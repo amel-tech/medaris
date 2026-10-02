@@ -151,7 +151,7 @@ export function RosterTable({
       header: t("columns.student"),
       rowHeader: true,
       sortable: true,
-      width: "26%",
+      width: "20%",
       render: (e) => (
         <span className="flex min-w-0 items-center gap-3">
           <Avatar name={nameOf(e)} decorative />
@@ -169,13 +169,13 @@ export function RosterTable({
     {
       key: "email",
       header: t("columns.email"),
-      width: "24%",
+      width: "25%",
       render: (e) =>
         e.studentEmail ? (
           <bdi
             dir="ltr"
             title={e.studentEmail}
-            className="block truncate font-mono"
+            className="block font-mono [overflow-wrap:anywhere]"
           >
             {e.studentEmail}
           </bdi>
@@ -184,7 +184,7 @@ export function RosterTable({
     {
       key: "joined",
       header: t("columns.joined"),
-      width: "13%",
+      width: "10%",
       render: (e) => (
         <span className="whitespace-nowrap">
           {format.dateTime(new Date(e.createdAt), { dateStyle: "medium" })}
@@ -194,7 +194,7 @@ export function RosterTable({
     {
       key: "progress",
       header: t("columns.progress"),
-      width: "15%",
+      width: "12%",
       render: (e) => (
         <Progress
           value={e.progress}
@@ -212,12 +212,12 @@ export function RosterTable({
         <span className="mds-visually-hidden">{t("columns.actions")}</span>
       ),
       align: "right",
-      width: "22%",
+      width: "33%",
       render: (e) => {
         const name = nameOf(e);
         const busy = busyId === e.userId;
         return (
-          <span className="flex flex-wrap justify-end gap-2">
+          <span className="flex flex-nowrap items-center justify-end gap-2 whitespace-nowrap">
             {studentActions(e.status, e.ban !== null).map((action, index) => (
               <Button
                 key={action}
@@ -282,7 +282,7 @@ export function RosterTable({
         responsive="stack"
       />
 
-      {list.length > 0 ? (
+      {list.length > 0 && matches.length > 0 ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="mds-caption" data-testid="roster-showing">
             {t("showing", { shown: shown.length, total: matches.length })}
