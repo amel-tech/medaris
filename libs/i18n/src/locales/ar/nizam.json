@@ -631,6 +631,15 @@
       "MEDARIS_NAZIM": "ناظم مداريس",
       "SYSTEM_ADMIN": "إدارة مداريس"
     },
+    "rolePhrases": {
+      "KOSK_NAZIM": "ناظم الكشك",
+      "MUDERRIS": "مدرّس",
+      "DERS_NAZIR": "ناظر الدرس",
+      "MEDRESE_NAZIR": "ناظر المدرسة",
+      "MEDRESE_BASMUDERRIS": "كبير المدرّسين",
+      "MEDARIS_NAZIM": "ناظم مداريس",
+      "SYSTEM_ADMIN": "إدارة مداريس"
+    },
     "you": "{role} (أنت)",
     "unknownPerson": "غير معروف",
     "today": "اليوم {time}",
@@ -684,6 +693,7 @@
     "submit": "حظر",
     "saved": "سُجّل الحظر",
     "savedBody": "لم يعد {name} قادرًا على الوصول إلى هذا الدرس.",
+    "savedBodyKosk": "لم يعد {name} قادرًا على الوصول إلى أي درس في {kosk}.",
     "failed": "تعذّر فرض الحظر"
   },
   "LiftDialog": {
@@ -694,8 +704,8 @@
     "reason": "السبب",
     "scopeCourse": "درس · {course}",
     "scopeKosk": "كشك · {kosk}",
-    "info": "فرض هذا الحظر {role}؛ ويمكنك رفعه بصفتك {viewer}. وعند رفعه يستطيع {name} التقديم من جديد.",
-    "infoSimple": "وعند رفع الحظر يستطيع {name} التقديم من جديد.",
+    "info": "فرض هذا الحظر {role}؛ ويمكنك رفعه بصفتك {viewer}. وعند رفعه يستطيع <b>{name}</b> التقديم من جديد.",
+    "infoSimple": "وعند رفع الحظر يستطيع <b>{name}</b> التقديم من جديد.",
     "requiredNote": "حقل مطلوب",
     "reasonLabel": "سبب الرفع",
     "reasonHelp": "يُسجَّل الرفع مع هذا السبب واسمك.",
@@ -703,7 +713,7 @@
     "cancel": "تراجع",
     "submit": "رفع الحظر",
     "lifted": "رُفع الحظر",
-    "liftedBody": "يستطيع {name} التقديم من جديد.",
+    "liftedBody": "يستطيع <b>{name}</b> التقديم من جديد.",
     "failed": "تعذّر رفع الحظر"
   }
 }

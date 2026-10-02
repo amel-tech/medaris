@@ -96,7 +96,10 @@ export function BanDialog({
       return;
     }
     toast.success(t("saved"), {
-      description: t("savedBody", { name: student.name }),
+      description:
+        scope === "KOSK"
+          ? t("savedBodyKosk", { name: student.name, kosk: koskName })
+          : t("savedBody", { name: student.name }),
     });
     onBanned?.(result.data);
     onOpenChange(false);
@@ -121,6 +124,7 @@ export function BanDialog({
         if (!saving) onOpenChange(next);
       }}
       form
+      size="md"
       onSubmit={submit}
       eyebrow={course.title || t("eyebrowFallback")}
       title={t("title")}
@@ -163,6 +167,7 @@ export function BanDialog({
         value={scope}
         onChange={(v) => setScope(v === "KOSK" ? "KOSK" : "COURSE")}
         bordered
+        disabled={saving}
         options={[
           {
             value: "COURSE",
@@ -192,6 +197,7 @@ export function BanDialog({
           maxLength={REASON_MAX}
           rows={4}
           required
+          disabled={saving}
           onChange={(e) => setReason(e.target.value)}
           onBlur={() => setTouched(true)}
         />

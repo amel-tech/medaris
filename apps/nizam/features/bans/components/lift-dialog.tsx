@@ -24,6 +24,8 @@ export interface LiftTarget {
     bannedAt: string;
     reason: string;
     role: string;
+    /** the role as the info line names it: "dersin müderrisi" */
+    rolePhrase: string;
   };
 }
 
@@ -148,12 +150,16 @@ export function LiftDialog({
       ) : null}
       <p>
         {summary && viewerRole
-          ? t("info", {
-              role: summary.role,
+          ? t.rich("info", {
+              role: summary.rolePhrase,
               viewer: viewerRole,
               name: target?.name ?? "",
+              b: (chunks) => <strong>{chunks}</strong>,
             })
-          : t("infoSimple", { name: target?.name ?? "" })}
+          : t.rich("infoSimple", {
+              name: target?.name ?? "",
+              b: (chunks) => <strong>{chunks}</strong>,
+            })}
       </p>
       <p className="mds-caption">* {t("requiredNote")}</p>
       <Field

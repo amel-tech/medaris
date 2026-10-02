@@ -76,9 +76,14 @@ export function BansView({
   const load = useCallback(
     async (next: Status) => {
       setLoading(true);
-      const result = await loadKoskBans(koskId, next);
+      let result: Awaited<ReturnType<typeof loadKoskBans>> | null = null;
+      try {
+        result = await loadKoskBans(koskId, next);
+      } catch {
+        result = null;
+      }
       setLoading(false);
-      if (!result.success) {
+      if (!result?.success) {
         setFailed(true);
         toast.error(t("loadFailedTitle"), {
           description: t("loadFailed"),
@@ -118,10 +123,11 @@ export function BansView({
         courseTitle: ban.courseTitle ?? ban.extendedFromCourseTitle,
         summary: {
           scope: [scope.label, ...scope.detail.slice(0, 1)].join(" · "),
-          bannedBy: ban.bannedBy.name ?? t("unknownPerson"),
+          bannedBy: `${ban.bannedBy.name ?? t("unknownPerson")}, ${role.toLocaleLowerCase(locale)}`,
           bannedAt: when(ban.createdAt),
           reason: ban.reason,
           role: role.toLocaleLowerCase(locale),
+          rolePhrase: t(`rolePhrases.${ban.bannedRole}`),
         },
       },
     });

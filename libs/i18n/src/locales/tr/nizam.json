@@ -631,6 +631,15 @@
       "MEDARIS_NAZIM": "Medaris nazımı",
       "SYSTEM_ADMIN": "Medaris yönetimi"
     },
+    "rolePhrases": {
+      "KOSK_NAZIM": "köşk nazımı",
+      "MUDERRIS": "dersin müderrisi",
+      "DERS_NAZIR": "dersin nazırı",
+      "MEDRESE_NAZIR": "medrese nâzırı",
+      "MEDRESE_BASMUDERRIS": "medresenin başmüderrisi",
+      "MEDARIS_NAZIM": "Medaris nazımı",
+      "SYSTEM_ADMIN": "Medaris yönetimi"
+    },
     "you": "{role} (siz)",
     "unknownPerson": "Bilinmiyor",
     "today": "Bugün {time}",
@@ -673,7 +682,7 @@
     "scopeCourse": "Yalnızca bu ders",
     "scopeCourseDesc": "{course} dersinin celselerine, ders kayıtlarına ve içeriğine erişemez.",
     "scopeKosk": "Köşkten de yasakla",
-    "scopeKoskDesc": "{kosk} köşkünün bütün derslerine erişemez ve başvuramaz.",
+    "scopeKoskDesc": "{kosk}’nün bütün derslerine erişemez ve başvuramaz.",
     "scopeKoskOnlyNazim": "Köşkün bütün dersleri için yasağı yalnız köşk nazımı koyabilir.",
     "reasonLabel": "Yasaklama gerekçesi",
     "reasonHelp": "Gerekçeyi yasağı görenler ve kaldıracak kişi okur; talebe görmez.",
@@ -684,6 +693,7 @@
     "submit": "Yasakla",
     "saved": "Yasak kaydedildi",
     "savedBody": "{name} artık bu derse erişemez.",
+    "savedBodyKosk": "{name} artık {kosk} içindeki hiçbir derse erişemez.",
     "failed": "Yasak konamadı"
   },
   "LiftDialog": {
@@ -694,8 +704,8 @@
     "reason": "Gerekçe",
     "scopeCourse": "Ders · {course}",
     "scopeKosk": "Köşk · {kosk}",
-    "info": "Bu yasağı {role} koydu; {viewer} olarak kaldırabilirsiniz. Yasak kalkınca {name} yeniden başvurabilir.",
-    "infoSimple": "Yasak kalkınca {name} yeniden başvurabilir.",
+    "info": "Bu yasağı {role} koydu; {viewer} olarak kaldırabilirsiniz. Yasak kalkınca <b>{name}</b> bu derse yeniden başvurabilir.",
+    "infoSimple": "Yasak kalkınca <b>{name}</b> bu derse yeniden başvurabilir.",
     "requiredNote": "zorunlu alan",
     "reasonLabel": "Kaldırma gerekçesi",
     "reasonHelp": "Kaldırma, bu gerekçe ve adınızla kaydedilir.",

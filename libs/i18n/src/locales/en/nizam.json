@@ -631,6 +631,15 @@
       "MEDARIS_NAZIM": "Medaris nazım",
       "SYSTEM_ADMIN": "Medaris administration"
     },
+    "rolePhrases": {
+      "KOSK_NAZIM": "köşk nazım",
+      "MUDERRIS": "müderris",
+      "DERS_NAZIR": "course nazır",
+      "MEDRESE_NAZIR": "medrese nazır",
+      "MEDRESE_BASMUDERRIS": "chief müderris",
+      "MEDARIS_NAZIM": "Medaris nazım",
+      "SYSTEM_ADMIN": "Medaris administration"
+    },
     "you": "{role} (you)",
     "unknownPerson": "Unknown",
     "today": "Today {time}",
@@ -684,6 +693,7 @@
     "submit": "Bar",
     "saved": "Ban saved",
     "savedBody": "{name} can no longer reach this course.",
+    "savedBodyKosk": "{name} can no longer reach any course of {kosk}.",
     "failed": "The ban could not be placed"
   },
   "LiftDialog": {
@@ -694,8 +704,8 @@
     "reason": "Reason",
     "scopeCourse": "Course · {course}",
     "scopeKosk": "Köşk · {kosk}",
-    "info": "This ban was placed by a {role}; as {viewer} you can lift it. Once lifted, {name} can apply again.",
-    "infoSimple": "Once lifted, {name} can apply again.",
+    "info": "This ban was placed by a {role}; as {viewer} you can lift it. Once lifted, <b>{name}</b> can apply to this course again.",
+    "infoSimple": "Once lifted, <b>{name}</b> can apply to this course again.",
     "requiredNote": "required field",
     "reasonLabel": "Reason for lifting",
     "reasonHelp": "Lifting is recorded with this reason and your name.",

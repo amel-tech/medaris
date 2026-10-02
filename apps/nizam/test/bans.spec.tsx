@@ -265,6 +265,41 @@ describe("BansView (nizam 42)", () => {
   });
 });
 
+describe("the ban windows' Turkish sentences (stack-47 round 1)", () => {
+  const all = resources.tr.nizam as unknown as Record<
+    string,
+    Record<string, unknown>
+  >;
+  const tr = {
+    BanDialog: all.BanDialog as Record<string, unknown>,
+    BansPage: all.BansPage as Record<string, unknown>,
+    LiftDialog: all.LiftDialog as Record<string, unknown>,
+  };
+
+  it("keeps the köşk name whole in the köşk option", () => {
+    expect(String(tr.BanDialog.scopeKoskDesc)).toBe(
+      "{kosk}’nün bütün derslerine erişemez ve başvuramaz."
+    );
+  });
+
+  it("has a köşk-scoped toast body and a role phrase for every role", () => {
+    expect(String(tr.BanDialog.savedBodyKosk)).toContain("{kosk}");
+    const roles = Object.keys(tr.BansPage.roles as object).sort();
+    expect(Object.keys(tr.BansPage.rolePhrases as object).sort()).toEqual(
+      roles
+    );
+    expect((tr.BansPage.rolePhrases as Record<string, string>).MUDERRIS).toBe(
+      "dersin müderrisi"
+    );
+  });
+
+  it("names the talebe in bold and says 'bu derse' in the lift note", () => {
+    expect(String(tr.LiftDialog.info)).toContain(
+      "<b>{name}</b> bu derse yeniden başvurabilir."
+    );
+  });
+});
+
 describe("the tr, en and ar strings", () => {
   const sets = {
     tr: resources.tr.nizam,
