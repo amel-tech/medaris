@@ -239,6 +239,13 @@
       "when": 1790950379254,
       "tag": "0033_permission_groups_course_wide",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790958628527,
+      "tag": "0034_madrasah_settings",
+      "breakpoints": true
     }
   ]
 }

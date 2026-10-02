@@ -31,7 +31,10 @@ import {
   lessons,
 } from "../database/schema/course.schema";
 import { kosks } from "../database/schema/kosk.schema";
-import { madrasahs } from "../database/schema/madrasah.schema";
+import {
+  madrasahSettings,
+  madrasahs,
+} from "../database/schema/madrasah.schema";
 import {
   ASSIGNED_ROLES,
   roleAssignments,
@@ -44,24 +47,28 @@ import {
   IMadrasah,
   IMadrasahBadgeCounts,
   IMadrasahCourse,
+  IMadrasahCourseListItem,
   IMadrasahDirectoryFilter,
   IMadrasahDirectoryItem,
   IMadrasahExplore,
   IMadrasahExploreFilter,
   IMadrasahHeadMuderris,
   IMadrasahOverview,
+  IMadrasahSettings,
   IMadrasahStatusCounts,
   IMadrasahWithNazirs,
   IPassiveMadrasah,
   IUpdateMadrasah,
+  IUpdateMadrasahSettings,
   MadrasahStatus,
   RestoreMadrasahResult,
 } from "./madrasah.repository.interface";
+import { NO_POLICIES, planSettingsUpdate } from "./madrasah-settings";
 
 /**
- * A medrese's "nazırs" in this API are its MEDRESE_BASMUDERRIS holders since
- * MDRS-134, which moved `madrasah_nazirs` into `role_assignments`. MDRS-144
- * renames the API; MDRS-136 adds the medrese nazırı proper.
+ * A medrese's `nazirIds` are its MEDRESE_BASMUDERRIS holders since MDRS-134,
+ * which moved `madrasah_nazirs` into `role_assignments`; MDRS-144 renames the
+ * field. The medrese nazırs proper (MEDRESE_NAZIR) are `nazir/`'s.
  */
 const NAZIR_ROLE = ASSIGNED_ROLES.MEDRESE_BASMUDERRIS;
 
@@ -462,49 +469,6 @@ export class MadrasahRepository {
   }
 
   /**
-   * Locks the medrese row first: `scope_id` is no foreign key, so without the
-   * lock a grant racing SYSTEM_ADMIN's delete could commit after it and leave
-   * a role in a medrese that no longer exists. False when there is none.
-   */
-  async addNazir(
-    madrasahId: string,
-    userId: string,
-    actorId: string
-  ): Promise<boolean> {
-    return this.db.transaction(async (tx) => {
-      const [madrasah] = await tx
-        .select({ id: madrasahs.id })
-        .from(madrasahs)
-        .where(eq(madrasahs.id, madrasahId))
-        .for("no key update");
-      if (!madrasah) return false;
-      await grantRole(tx, {
-        userId,
-        role: NAZIR_ROLE,
-        scopeId: madrasahId,
-        grantedBy: actorId,
-      });
-      return true;
-    });
-  }
-
-  /** Revoked in the actor's name, not deleted (MDRS-134). */
-  async removeNazir(
-    madrasahId: string,
-    userId: string,
-    actorId: string
-  ): Promise<boolean> {
-    return this.db.transaction((tx) =>
-      revokeRole(tx, {
-        userId,
-        role: NAZIR_ROLE,
-        scopeId: madrasahId,
-        revokedBy: actorId,
-      })
-    );
-  }
-
-  /**
    * The medrese's talebe (MDRS-133, MDRS-134): everyone with an ENROLLED or
    * COMPLETED enrollment in one of its courses. Derived on every read, never
    * stored, so it cannot drift from the enrollments it comes from.
@@ -818,6 +782,158 @@ export class MadrasahRepository {
       pendingApplications: row?.pendingApplications ?? 0,
       coursesWithPendingApplications: row?.coursesWithPendingApplications ?? 0,
     };
+  }
+
+  /**
+   * The settings screen's read (nazir/04): the medrese row, its policies (all
+   * off until the first save) and who saved last. Null when there is no such
+   * medrese.
+   */
+  async getSettings(id: string): Promise<IMadrasahSettings | null> {
+    const [row] = await this.db
+      .select({
+        name: madrasahs.name,
+        description: madrasahs.description,
+        closedCourseRequired: madrasahSettings.policyClosedCourseRequired,
+        alwaysApproval: madrasahSettings.policyAlwaysApproval,
+        noPublicRecordings: madrasahSettings.policyNoPublicRecordings,
+        updatedAt: madrasahSettings.updatedAt,
+        updatedBy: madrasahSettings.updatedBy,
+        givenName: users.givenName,
+        familyName: users.familyName,
+        email: users.email,
+      })
+      .from(madrasahs)
+      .leftJoin(madrasahSettings, eq(madrasahSettings.madrasahId, madrasahs.id))
+      .leftJoin(users, eq(users.id, madrasahSettings.updatedBy))
+      .where(eq(madrasahs.id, id))
+      .limit(1);
+    if (!row) return null;
+    const name = [row.givenName, row.familyName].filter(Boolean).join(" ");
+    return {
+      name: row.name,
+      description: row.description,
+      policies: {
+        closedCourseRequired: row.closedCourseRequired ?? false,
+        alwaysApproval: row.alwaysApproval ?? false,
+        noPublicRecordings: row.noPublicRecordings ?? false,
+      },
+      updatedAt: row.updatedAt,
+      updatedBy: row.updatedBy
+        ? { id: row.updatedBy, name: name || null, email: row.email }
+        : null,
+    };
+  }
+
+  /**
+   * Saves nazir/04 in one transaction with its audit row: the name and
+   * description on the medrese row, the policies and the "Son değişiklik"
+   * stamp on `madrasah_settings`. The medrese row is locked first, so two
+   * saves cannot both diff against the same old values. A save that changes
+   * nothing writes nothing. False when there is no such medrese.
+   */
+  async updateSettings(
+    id: string,
+    patch: IUpdateMadrasahSettings,
+    actorId: string
+  ): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select({
+          name: madrasahs.name,
+          description: madrasahs.description,
+          closedCourseRequired: madrasahSettings.policyClosedCourseRequired,
+          alwaysApproval: madrasahSettings.policyAlwaysApproval,
+          noPublicRecordings: madrasahSettings.policyNoPublicRecordings,
+        })
+        .from(madrasahs)
+        .leftJoin(
+          madrasahSettings,
+          eq(madrasahSettings.madrasahId, madrasahs.id)
+        )
+        .where(eq(madrasahs.id, id))
+        .for("update", { of: madrasahs });
+      if (!row) return false;
+
+      const { next, changes } = planSettingsUpdate(
+        {
+          name: row.name,
+          description: row.description,
+          policies: {
+            closedCourseRequired:
+              row.closedCourseRequired ?? NO_POLICIES.closedCourseRequired,
+            alwaysApproval: row.alwaysApproval ?? NO_POLICIES.alwaysApproval,
+            noPublicRecordings:
+              row.noPublicRecordings ?? NO_POLICIES.noPublicRecordings,
+          },
+        },
+        patch
+      );
+      if (Object.keys(changes).length === 0) return true;
+
+      if ("name" in changes || "description" in changes) {
+        await tx
+          .update(madrasahs)
+          .set({
+            name: next.name,
+            description: next.description,
+            updatedAt: new Date(),
+          })
+          .where(eq(madrasahs.id, id));
+      }
+      const stamp = {
+        policyClosedCourseRequired: next.policies.closedCourseRequired,
+        policyAlwaysApproval: next.policies.alwaysApproval,
+        policyNoPublicRecordings: next.policies.noPublicRecordings,
+        updatedAt: sql`now()`,
+        updatedBy: actorId,
+      };
+      await tx
+        .insert(madrasahSettings)
+        .values({ madrasahId: id, ...stamp })
+        .onConflictDoUpdate({
+          target: madrasahSettings.madrasahId,
+          set: stamp,
+        });
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "madrasah.settings.update",
+        entity: "madrasah",
+        entityId: id,
+        details: { changes },
+      });
+      return true;
+    });
+  }
+
+  /**
+   * The medrese's courses for the settings screen's "Politikaların uygulandığı
+   * dersler": drafts and published ones, a hidden one not, by title. The köşk
+   * can be unlisted — this is the nazırs' own view, not the public page's.
+   */
+  async findCourseList(madrasahId: string): Promise<IMadrasahCourseListItem[]> {
+    const rows = await this.db
+      .select({
+        id: courses.id,
+        title: courses.title,
+        koskId: courses.koskId,
+        koskName: kosks.name,
+        status: courses.status,
+      })
+      .from(courses)
+      .innerJoin(kosks, eq(kosks.id, courses.koskId))
+      .where(
+        and(eq(courses.madrasahId, madrasahId), isNull(courses.archivedAt))
+      )
+      .orderBy(asc(courses.title), asc(courses.id));
+    const muderris = await this.muderrisOf(rows.map((r) => r.id));
+    return rows.map((r) => ({
+      ...r,
+      status: r.status as CourseStatus,
+      muderris: muderris
+        .filter((m) => m.courseId === r.id)
+        .map((m) => ({ name: m.name, title: m.title, isImam: m.isImam })),
+    }));
   }
 
   /** The earliest session still ahead, per course; archived ones do not count. */

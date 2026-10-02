@@ -362,6 +362,11 @@ export interface ICourseRepository {
   ): Promise<IEnrolledCourse[]>;
   create(course: ICreateCourse): Promise<ICourseDetail>;
   findKoskId(id: string): Promise<string | null>;
+  /**
+   * Whether the course's medrese makes every enrollment wait for approval
+   * ("Kayıt her zaman onaylı", nazir/04). False for a course in no medrese.
+   */
+  forcesApproval(id: string): Promise<boolean>;
   /** The user holding the course's imam grant, or null (MDRS-133). */
   findImamUserId(courseId: string): Promise<string | null>;
   /** Status, hidden, and the köşk's `is_private`; null for no course (MDRS-122). */

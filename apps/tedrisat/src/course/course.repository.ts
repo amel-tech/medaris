@@ -27,7 +27,10 @@ import {
   lessons,
 } from "../database/schema/course.schema";
 import { kosks } from "../database/schema/kosk.schema";
-import { madrasahs } from "../database/schema/madrasah.schema";
+import {
+  madrasahSettings,
+  madrasahs,
+} from "../database/schema/madrasah.schema";
 import {
   ASSIGNED_ROLES,
   roleAssignments,
@@ -950,6 +953,21 @@ export class CourseRepository implements ICourseRepository {
       .where(eq(courses.id, id))
       .limit(1);
     return rows[0]?.koskId ?? null;
+  }
+
+  async forcesApproval(id: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: courses.id })
+      .from(courses)
+      .innerJoin(
+        madrasahSettings,
+        eq(madrasahSettings.madrasahId, courses.madrasahId)
+      )
+      .where(
+        and(eq(courses.id, id), eq(madrasahSettings.policyAlwaysApproval, true))
+      )
+      .limit(1);
+    return rows.length > 0;
   }
 
   /**

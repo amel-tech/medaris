@@ -523,12 +523,16 @@ export class CourseService {
     await this.banService.assertNotBarred(userId, courseId);
     // A course of an unlisted köşk always waits for approval (MDRS-122),
     // whatever its own `requires_approval` says: the link is how the köşk is
-    // found, and passing a link on must not hand out seats.
+    // found, and passing a link on must not hand out seats. So does a course
+    // of a medrese whose policy is "Kayıt her zaman onaylı" (nazir/04), which
+    // its own settings cannot reopen.
     const unlisted =
       (await this.koskService.findVisibility(course.koskId))?.isPrivate ??
       false;
     const status =
-      course.requiresApproval || unlisted
+      course.requiresApproval ||
+      unlisted ||
+      (await this.courseRepo.forcesApproval(courseId))
         ? EnrollmentStatus.PENDING
         : EnrollmentStatus.ENROLLED;
     return this.courseRepo.enroll(userId, courseId, {
