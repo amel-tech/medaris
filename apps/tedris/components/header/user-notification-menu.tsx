@@ -1,21 +1,25 @@
 import { BellIcon } from "@medaris/icons/ssr";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@medaris/ui/components/hover-card";
-import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { getTranslations } from "next-intl/server";
+import { bellLabel } from "~/features/notifications/notification-view";
+import { getUnreadNotificationCount } from "~/features/notifications/reads";
 
-export const UserNotifications = () => {
-  const t = useTranslations("tedris");
+/**
+ * The header bell (MDRS-167): a link to `/notifications` whose accessible name
+ * says how many are unread — "Bildirimler, 3 okunmamış", or just
+ * "Bildirimler" for none (canvas rule 10). The count is not drawn.
+ */
+export const UserNotifications = async () => {
+  const t = await getTranslations("tedris.UserNotifications");
+  const unread = await getUnreadNotificationCount();
   return (
-    <HoverCard>
-      <HoverCardTrigger>
-        <BellIcon size={24} className="text-primary" />
-      </HoverCardTrigger>
-      <HoverCardContent>
-        <p>{t("UserNotifications.noNewNotifications")}</p>
-      </HoverCardContent>
-    </HoverCard>
+    <Link
+      href="/notifications"
+      aria-label={bellLabel(unread, (key, values) =>
+        t(key as never, values as never)
+      )}
+    >
+      <BellIcon size={24} className="text-primary" />
+    </Link>
   );
 };
