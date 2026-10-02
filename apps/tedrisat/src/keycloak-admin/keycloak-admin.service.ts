@@ -51,8 +51,9 @@ const REQUEST_TIMEOUT_MS = 5_000;
 
 /**
  * Reads the realm's users through Keycloak's Admin REST API as a service
- * account (MDRS-169). The account needs `view-users` (and `query-users`) from
- * `realm-management` and nothing more; see
+ * account (MDRS-169). The account needs `view-users`, `query-users` and
+ * `view-realm` (for `/roles/:role/users`) from `realm-management` and nothing
+ * more; see
  * `docs/migration/mdrs-169-atama-temeli.md`.
  */
 @Injectable()
