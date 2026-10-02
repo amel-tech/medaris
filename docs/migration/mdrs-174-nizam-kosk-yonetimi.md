@@ -10,10 +10,12 @@ merged in.
 
 **tedrisat** (`src/kosk/`)
 
-- Migration `0033_kosk_policies` (rollback in `src/database/rollbacks`): two
+- Migration `0034_kosk_policies` (rollback in `src/database/rollbacks`): two
   columns on `kosks`, `always_require_approval` and `recordings_never_public`,
-  both `boolean not null default false`. **Numbering:** the Linux lane may also
-  have taken 0033; the clash is resolved when the two lanes are merged.
+  both `boolean not null default false`. **Numbering:** written as 0033; when
+  this chain was stacked on top of the tedris lane (`0031_kesfet`) it became
+  0034. Its snapshot was regenerated with `drizzle-kit generate`, which wrote
+  the same SQL byte for byte.
 - New `KoskAdminController` (declared before `KoskController` in the module, so
   `GET /kosks/directory` is matched before `GET /kosks/:id`):
   - `GET /kosks/directory` — the table of nizam/09: every köşk with its nazımları,

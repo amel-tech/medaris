@@ -50,13 +50,13 @@ export interface MadrasahResponse {
      */
     coverHue: number;
     /**
-     * The SYSTEM_ADMIN who created it
+     * The SYSTEM_ADMIN who created it. Null for a caller with no token (MDRS-160)
      * @type {string}
      * @memberof MadrasahResponse
      */
-    createdBy: string;
+    createdBy: string | null;
     /**
-     * User ids of the medrese's nazırs, oldest first
+     * User ids of the medrese's nazırs, oldest first. Empty for a caller with no token (MDRS-160)
      * @type {Array<string>}
      * @memberof MadrasahResponse
      */

@@ -9,6 +9,7 @@ import { KoskRepository } from "./kosk.repository";
 import {
   ICreateKosk,
   IKosk,
+  IKoskDecks,
   IKoskListFilter,
   IKoskRef,
   IKoskVisibility,
@@ -39,18 +40,40 @@ export class KoskService {
     {
       managedByCaller = false,
       madrasahId,
-    }: { managedByCaller?: boolean; madrasahId?: string } = {}
+      level,
+      field,
+      q,
+    }: {
+      managedByCaller?: boolean;
+      madrasahId?: string;
+      level?: string;
+      field?: string;
+      q?: string;
+    } = {}
   ): Promise<IPaginatedKosks> {
     const offset = (page - 1) * limit;
     const filter: IKoskListFilter = {
       ...(managedByCaller && userId !== null ? { managerId: userId } : {}),
       ...(madrasahId !== undefined ? { madrasahId } : {}),
+      ...(level !== undefined ? { level } : {}),
+      ...(field !== undefined ? { field } : {}),
+      ...(q !== undefined && q.trim() !== "" ? { q: q.trim() } : {}),
     };
     const [items, total] = await Promise.all([
       this.koskRepo.findAll(userId, limit, offset, filter),
       this.koskRepo.count(filter),
     ]);
     return { items, total, page, limit };
+  }
+
+  /** The ilim alanı Keşfet offers as chips (MDRS-159). */
+  async listFields(): Promise<string[]> {
+    return this.koskRepo.listFields();
+  }
+
+  /** The köşk's decks for a caller who belongs to it (MDRS-159). */
+  async findDecks(koskId: string, userId: string): Promise<IKoskDecks> {
+    return this.koskRepo.findDecks(koskId, userId);
   }
 
   async findById(id: string, userId: string | null): Promise<IKoskWithStats> {

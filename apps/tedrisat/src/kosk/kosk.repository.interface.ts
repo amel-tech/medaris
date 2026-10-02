@@ -30,6 +30,8 @@ export interface IKosk {
 export interface IKoskWithStats extends IKosk {
   /** Who manages the köşk (MDRS-126), oldest first; never empty. */
   managerIds: string[];
+  /** The oldest manager's name, for the köşk's page (MDRS-160); null when none is on file. */
+  managerName: string | null;
   courseCount: number;
   studentCount: number;
   muderrisCount: number;
@@ -126,6 +128,28 @@ export interface IKoskRef {
 export interface IKoskListFilter {
   managerId?: string;
   madrasahId?: string;
+  /** Exactly this `kosks.level` (MDRS-159). */
+  level?: string;
+  /** Exactly this `kosks.field`, the ilim alanı (MDRS-159). */
+  field?: string;
+  /** Words of the name, handle, description or field, case-insensitive (MDRS-159). */
+  q?: string;
+}
+
+/** A deck the köşk offers its talebe (MDRS-159). */
+export interface IKoskDeck {
+  id: string;
+  title: string;
+  cardCount: number;
+  /** Whether the caller already has the deck in their collection. */
+  inCollection: boolean;
+}
+
+/** What the köşk page's deck block shows the caller (MDRS-159). */
+export interface IKoskDecks {
+  /** False for a caller who is neither a talebe, müderris nor manager of the köşk. */
+  accessible: boolean;
+  decks: IKoskDeck[];
 }
 
 /** What decides who may open a köşk and how enrollment goes in it. */
@@ -144,6 +168,9 @@ export interface IKoskRepository {
     filter?: IKoskListFilter
   ): Promise<IKoskWithStats[]>;
   count(filter?: IKoskListFilter): Promise<number>;
+  /** The distinct ilim alanı of the listed köşks, alphabetical. */
+  listFields(): Promise<string[]>;
+  findDecks(koskId: string, userId: string): Promise<IKoskDecks>;
   /** `userId` null is a caller with no token (MDRS-122): following nothing. */
   findById(id: string, userId: string | null): Promise<IKoskWithStats | null>;
   exists(id: string): Promise<boolean>;

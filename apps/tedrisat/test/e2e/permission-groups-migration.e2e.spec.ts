@@ -4,15 +4,15 @@ import { Client } from "pg";
 import { useDatabaseForThisFile } from "../helpers/test-app.helper";
 
 /**
- * MDRS-171: migration 0032 lets a group or a grant in the scope "course" name
+ * MDRS-171: migration 0033 lets a group or a grant in the scope "course" name
  * no course (every course), puts a unique live name on the groups no scope id
  * narrows, and leaves every row that exists before it as it was. Its rollback
  * puts the old constraints back (after taking the course-wide rows out). The
- * schema is built file by file so that rows can exist BEFORE 0032 runs.
+ * schema is built file by file so that rows can exist BEFORE 0033 runs.
  */
 const MIGRATIONS = join(__dirname, "../../src/database/migrations");
 const ROLLBACKS = join(__dirname, "../../src/database/rollbacks");
-const TARGET = "0032_permission_groups_course_wide";
+const TARGET = "0033_permission_groups_course_wide";
 
 const statementsOf = (file: string): string[] =>
   readFileSync(file, "utf8")
@@ -20,7 +20,7 @@ const statementsOf = (file: string): string[] =>
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 
-describe("0032_permission_groups_course_wide migration (e2e)", () => {
+describe("0033_permission_groups_course_wide migration (e2e)", () => {
   let client: Client;
 
   const run = async (file: string) => {

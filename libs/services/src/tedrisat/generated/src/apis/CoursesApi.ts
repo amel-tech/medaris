@@ -90,6 +90,10 @@ export interface GetCoursesByKoskRequest {
     archived?: boolean;
 }
 
+export interface GetEnrolledCoursesRequest {
+    includePending?: boolean;
+}
+
 export interface GetPendingEnrollmentsRequest {
     koskId: string;
 }
@@ -512,10 +516,15 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * Enrolled and completed courses, oldest enrollment first, each with its next standing session. `includePending=true` adds the requests still waiting for approval (MDRS-159), marked by `enrollment.status`.
      * List the courses the current talebe is enrolled in
      */
-    async getEnrolledCoursesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<EnrolledCourseResponse>>> {
+    async getEnrolledCoursesRaw(requestParameters: GetEnrolledCoursesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<EnrolledCourseResponse>>> {
         const queryParameters: any = {};
+
+        if (requestParameters['includePending'] != null) {
+            queryParameters['includePending'] = requestParameters['includePending'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -538,10 +547,11 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * Enrolled and completed courses, oldest enrollment first, each with its next standing session. `includePending=true` adds the requests still waiting for approval (MDRS-159), marked by `enrollment.status`.
      * List the courses the current talebe is enrolled in
      */
-    async getEnrolledCourses(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<EnrolledCourseResponse>> {
-        const response = await this.getEnrolledCoursesRaw(initOverrides);
+    async getEnrolledCourses(requestParameters: GetEnrolledCoursesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<EnrolledCourseResponse>> {
+        const response = await this.getEnrolledCoursesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -4,14 +4,14 @@ import { Client } from "pg";
 import { useDatabaseForThisFile } from "../helpers/test-app.helper";
 
 /**
- * MDRS-170: migration 0031 adds the hide stamps to `madrasahs` and the granter's
+ * MDRS-170: migration 0032 adds the hide stamps to `madrasahs` and the granter's
  * role to `madrasah_kosk_hosting` without touching a row that exists before it,
  * and its rollback takes them off again. Like the other migration specs, the
- * schema is built file by file so that rows can exist BEFORE 0031 runs.
+ * schema is built file by file so that rows can exist BEFORE 0032 runs.
  */
 const MIGRATIONS = join(__dirname, "../../src/database/migrations");
 const ROLLBACKS = join(__dirname, "../../src/database/rollbacks");
-const TARGET = "0031_madrasah_archive_hosting_role";
+const TARGET = "0032_madrasah_archive_hosting_role";
 
 const statementsOf = (file: string): string[] =>
   readFileSync(file, "utf8")
@@ -19,7 +19,7 @@ const statementsOf = (file: string): string[] =>
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 
-describe("0031_madrasah_archive_hosting_role migration (e2e)", () => {
+describe("0032_madrasah_archive_hosting_role migration (e2e)", () => {
   let client: Client;
 
   const run = async (file: string) => {
@@ -108,7 +108,7 @@ describe("0031_madrasah_archive_hosting_role migration (e2e)", () => {
     expect(await columns("madrasahs")).toEqual(madrasahColumns);
     expect(await columns("madrasah_kosk_hosting")).toEqual(hostingColumns);
 
-    // And forward again: the rollback leaves exactly the state 0031 expects.
+    // And forward again: the rollback leaves exactly the state 0032 expects.
     await run(join(MIGRATIONS, `${TARGET}.sql`));
     expect(await columns("madrasahs")).toEqual(
       [...madrasahColumns, "archived_at", "archived_by"].sort()
