@@ -557,8 +557,13 @@ export class PermissionAdminRepository {
 
   // ---- groups ------------------------------------------------------------
 
-  /** The platform's and the course groups that are not deleted, with their user counts. */
-  async listGroups(): Promise<Array<IGroupRow & { userCount: number }>> {
+  /**
+   * The groups that are not deleted, with their user counts: the platform's
+   * and the course ones, or with `madrasahId` the groups of that medrese.
+   */
+  async listGroups(
+    madrasahId?: string
+  ): Promise<Array<IGroupRow & { userCount: number }>> {
     const rows = await this.db
       .select({
         id: permissionGroups.id,
@@ -568,10 +573,15 @@ export class PermissionAdminRepository {
       .where(
         and(
           isNull(permissionGroups.deletedAt),
-          inArray(permissionGroups.scopeType, [
-            SCOPE_TYPES.PLATFORM,
-            SCOPE_TYPES.COURSE,
-          ])
+          madrasahId
+            ? and(
+                eq(permissionGroups.scopeType, SCOPE_TYPES.MADRASAH),
+                eq(permissionGroups.scopeId, madrasahId)
+              )
+            : inArray(permissionGroups.scopeType, [
+                SCOPE_TYPES.PLATFORM,
+                SCOPE_TYPES.COURSE,
+              ])
         )
       );
     const groups = await this.groupsById(rows.map((r) => r.id));

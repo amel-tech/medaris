@@ -330,8 +330,29 @@ export class MadrasahController {
   }
 
   @ApiOperation({
+    summary: "Hide a medrese (its başmüderris)",
+    description:
+      'nazir/12\'s "Medreseyi gizle". The medrese leaves every list and its page closes, and so do its courses, all at once; nothing is deleted. The köşks that host its courses stay. Only the Medaris administration brings it back (`POST …/restore`). 409 (MADRASAH_ALREADY_HIDDEN) when it is hidden. Written to the audit log.',
+    operationId: "hideMadrasah",
+  })
+  @ApiOkResponse({ type: MadrasahDirectoryItemResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @ApiConflictResponse({ description: "MADRASAH_ALREADY_HIDDEN" })
+  @Post(":id/hide")
+  @HttpCode(HttpStatus.OK)
+  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  async hide(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<MadrasahDirectoryItemResponse> {
+    return this.madrasahService.hide(id, request.user.sub);
+  }
+
+  @ApiOperation({
     summary: "Bring a hidden medrese back (SYSTEM_ADMIN only)",
-    description: "409 (MADRASAH_NOT_HIDDEN) when it is not hidden.",
+    description:
+      "The courses hidden with it come back too. 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.",
     operationId: "restoreMadrasah",
   })
   @ApiOkResponse({ type: MadrasahDirectoryItemResponse })

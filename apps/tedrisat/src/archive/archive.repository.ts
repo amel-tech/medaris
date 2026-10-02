@@ -19,6 +19,7 @@ import {
 } from "../database/schema/flashcard.schema";
 import { decks } from "../database/schema/flashcard-deck.schema";
 import { koskFollowers, kosks } from "../database/schema/kosk.schema";
+import { madrasahs } from "../database/schema/madrasah.schema";
 import {
   roleAssignments,
   SCOPE_TYPES,
@@ -143,6 +144,16 @@ export class ArchiveRepository {
       sql`select count(*)::int as n from (${HIDDEN}) h where ${this.where(filter)}`
     );
     return result.rows[0]?.n ?? 0;
+  }
+
+  /** How many hidden items of each type match; a type with none is left out. */
+  async countByType(
+    filter: IArchiveFilter & { types?: readonly string[] }
+  ): Promise<Map<ArchiveItemType, number>> {
+    const result = await this.db.execute<{ type: ArchiveItemType; n: number }>(
+      sql`select h.type, count(*)::int as n from (${HIDDEN}) h where ${this.where(filter)} group by h.type`
+    );
+    return new Map(result.rows.map((r) => [r.type, r.n]));
   }
 
   /** Newest hidden first. */
@@ -343,13 +354,21 @@ export class ArchiveRepository {
 
   private async restoreCourse(tx: Tx, id: string): Promise<RestoreOutcome> {
     const [course] = await tx
-      .select({ title: courses.title, koskArchivedAt: kosks.archivedAt })
+      .select({
+        title: courses.title,
+        koskArchivedAt: kosks.archivedAt,
+        madrasahArchivedAt: madrasahs.archivedAt,
+      })
       .from(courses)
       .innerJoin(kosks, eq(kosks.id, courses.koskId))
+      .leftJoin(madrasahs, eq(madrasahs.id, courses.madrasahId))
       .where(and(eq(courses.id, id), isNotNull(courses.archivedAt)))
       .for("update", { of: courses });
     if (!course) return { status: "not-found" };
-    if (course.koskArchivedAt !== null) return { status: "parent-hidden" };
+    // A course hidden with its medrese comes back with the medrese.
+    if (course.koskArchivedAt !== null || course.madrasahArchivedAt !== null) {
+      return { status: "parent-hidden" };
+    }
     await tx
       .update(courses)
       .set({
