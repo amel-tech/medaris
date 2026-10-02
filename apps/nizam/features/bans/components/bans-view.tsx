@@ -185,11 +185,13 @@ export function BansView({
       key: "person",
       header: t("columns.person"),
       rowHeader: true,
+      width: "300px",
       render: personCell,
     },
     {
       key: "scope",
       header: t("columns.scope"),
+      width: "153px",
       render: (ban) => {
         const scope = scopeParts(ban, koskName, t);
         return (
@@ -205,11 +207,13 @@ export function BansView({
     {
       key: "reason",
       header: t("columns.reason"),
+      width: "142px",
       render: (ban) => <bdi>{ban.reason}</bdi>,
     },
     {
       key: "bannedBy",
       header: t("columns.bannedBy"),
+      width: "129px",
       render: (ban) => (
         <span className="flex flex-col">
           <bdi>{ban.bannedBy.name ?? t("unknownPerson")}</bdi>
@@ -220,7 +224,10 @@ export function BansView({
     {
       key: "when",
       header: t("columns.when"),
-      render: (ban) => when(ban.createdAt),
+      width: "106px",
+      render: (ban) => (
+        <span className="whitespace-nowrap">{when(ban.createdAt)}</span>
+      ),
     },
     status === "ACTIVE"
       ? {
@@ -229,11 +236,12 @@ export function BansView({
             <span className="mds-visually-hidden">{t("columns.actions")}</span>
           ),
           align: "right",
+          width: "289px",
           render: (ban) => {
             const name = ban.user.name ?? ban.user.email ?? "";
             return (
               <span className="flex flex-col items-end gap-2">
-                <span className="flex flex-wrap justify-end gap-2">
+                <span className="flex flex-nowrap justify-end gap-2">
                   {ban.viewerMayLift ? (
                     <Button
                       variant="outline"
@@ -246,7 +254,7 @@ export function BansView({
                   ) : null}
                   {ban.viewerMayExtend ? (
                     <Button
-                      variant="ghost"
+                      variant={ban.viewerMayLift ? "ghost" : "outline"}
                       size="small"
                       loading={busyId === ban.id}
                       aria-label={t("extendLabel", { name })}

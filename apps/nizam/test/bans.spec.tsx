@@ -254,6 +254,28 @@ describe("BansView (nizam 42)", () => {
     expect(html.match(/Köşkten de yasakla: /g)).toHaveLength(1);
   });
 
+  it("sets the canvas column widths and keeps both actions on one line (stack-47 round 2)", () => {
+    const html = view(list([ban()]));
+    for (const w of ["300px", "153px", "142px", "129px", "106px", "289px"]) {
+      expect(html).toContain(`--mds-col-w:${w}`);
+    }
+    expect(html).toContain("flex-nowrap");
+  });
+
+  it("draws 'Köşkten de yasakla' ghost beside 'Yasağı kaldır' and outline when alone", () => {
+    const both = view(list([ban()]));
+    const alone = view(
+      list([ban({ viewerMayLift: false, bannedRole: "MEDARIS_NAZIM" })])
+    );
+    const variantOf = (html: string) =>
+      html
+        .split("<button")
+        .find((tag) => tag.includes('aria-label="Köşkten de yasakla: '))
+        ?.split(">")[0] ?? "";
+    expect(variantOf(both)).toContain("mds-btn--ghost");
+    expect(variantOf(alone)).toContain("mds-btn--outline");
+  });
+
   it("shows the empty state of an empty list", () => {
     expect(view(list([]))).toContain("Etkin yasak yok");
   });
