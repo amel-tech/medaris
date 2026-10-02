@@ -13,6 +13,7 @@ import {
   MeApi,
   NizamApi,
   NotificationsApi,
+  SessionsApi,
   TedrisatServiceApi,
   UsersApi,
 } from "./generated/src";
@@ -84,6 +85,7 @@ export type {
   ReplaceCourseDto,
   ResourceResponse,
   RosterEnrollmentResponse,
+  ScheduleSessionResponse,
   SetEnrollmentStatusDto,
   UpdateCourseDto,
   UpdateFlashcardDeckDto,
@@ -154,6 +156,8 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     nizam: new NizamApi(configuration),
     // The caller's in-app notifications (MDRS-167): the list page and the bell.
     notifications: new NotificationsApi(configuration),
+    // The caller's own schedule: Programım and the phone menu's next session (MDRS-163).
+    sessions: new SessionsApi(configuration),
     // Hidden things, brought back or deleted for real (MDRS-173).
     archive: new ArchiveApi(configuration),
     // Barring a talebe and lifting it (MDRS-177).
