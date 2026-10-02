@@ -5,9 +5,9 @@ Designs tedris/34 (Hesap), tedris/35 (Herkese açık profil) and tedris/37
 
 ## What was done
 
-- **tedrisat** (migration `0034_profile_and_kosk_application`, number chosen so
-  it does not meet the parallel package's 0033; rollback in
-  `database/rollbacks/`): two tables.
+- **tedrisat** (migration `0038_profile_and_kosk_application`, renumbered on
+  top of stack-35's `0037_flashcard_review_schedule`; `0035` stays reserved
+  for another package; rollback in `database/rollbacks/`): two tables.
   - `user_profiles` (key = Keycloak `sub`, not a foreign key): the names a
     person typed, `kunye` (unique, case-insensitive, nullable), `gender`
     (FEMALE/MALE), `city`, `about` and four `show_*` switches, all off.
@@ -90,8 +90,9 @@ Designs tedris/34 (Hesap), tedris/35 (Herkese açık profil) and tedris/37
 
 ## Merge notes
 
-- Migration `0034` assumes the parallel package took `0033`; renumber the
-  journal entry, file and snapshot if the order differs.
+- Migration `0038` follows stack-35's `0037`; the earlier `0034` copy was
+  regenerated with drizzle-kit (same SQL, new prevId) when stack-35 was merged.
+  Renumber the journal entry, file and snapshot again if the order differs.
 - stack-35 also moved its texts into a separate namespace (`tedrisLearn`);
   both lists go into `request.ts`. If it registers its namespace in
   `next-i18n.d.ts`, mine intentionally is not there.
