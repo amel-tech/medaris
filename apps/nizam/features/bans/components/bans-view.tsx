@@ -185,13 +185,13 @@ export function BansView({
       key: "person",
       header: t("columns.person"),
       rowHeader: true,
-      width: "300px",
+      width: "26.8%",
       render: personCell,
     },
     {
       key: "scope",
       header: t("columns.scope"),
-      width: "153px",
+      width: "13.7%",
       render: (ban) => {
         const scope = scopeParts(ban, koskName, t);
         return (
@@ -207,13 +207,13 @@ export function BansView({
     {
       key: "reason",
       header: t("columns.reason"),
-      width: "142px",
+      width: "12.7%",
       render: (ban) => <bdi>{ban.reason}</bdi>,
     },
     {
       key: "bannedBy",
       header: t("columns.bannedBy"),
-      width: "129px",
+      width: "11.5%",
       render: (ban) => (
         <span className="flex flex-col">
           <bdi>{ban.bannedBy.name ?? t("unknownPerson")}</bdi>
@@ -224,7 +224,7 @@ export function BansView({
     {
       key: "when",
       header: t("columns.when"),
-      width: "106px",
+      width: "9.5%",
       render: (ban) => (
         <span className="whitespace-nowrap">{when(ban.createdAt)}</span>
       ),
@@ -236,7 +236,7 @@ export function BansView({
             <span className="mds-visually-hidden">{t("columns.actions")}</span>
           ),
           align: "right",
-          width: "289px",
+          width: "25.8%",
           render: (ban) => {
             const name = ban.user.name ?? ban.user.email ?? "";
             return (

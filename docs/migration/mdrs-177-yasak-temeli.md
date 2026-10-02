@@ -102,6 +102,8 @@ stack, so the base was moved up to it with a fast-forward before any commit).
   405 instead of 201, and passed in isolation before and in run 3 after. The
   cause of that single 405 was not found.
 
+- Round 4 (Linux, 2026-10-02): the round-3 column widths had no effect because `.mds-table` laid out with `table-layout: auto`. `Table` now sets `table-layout: fixed` whenever a column carries a width, and the ban table gives its widths as percentages of the canvas total (26.8 / 13.7 / 12.7 / 11.5 / 9.5 / 25.8), so the table fits its wrapper. Measured by `bans.e2e.ts` at 1440 px: no horizontal overflow of `.mds-table-wrap` and no clipped row button. The e2e suite ran 9/9 against a real Keycloak sign-in and the shared local Postgres with migration 0030 applied. The pixel widths of the canvas were not reproduced exactly (the wrapper is narrower than the canvas frame); the proportions were.
+
 ## What was not verified, or not built
 
 - **Device events** (`GET /kosks/:koskId/ban-device-events`, the "Cihaz

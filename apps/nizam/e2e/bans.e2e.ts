@@ -193,6 +193,19 @@ test("nizam/42 — the list shows the bans with their columns and counts, and hi
   await expect(page.getByRole("tab", { name: /Kaldırılan\s*0/ })).toBeVisible();
   await expect(page.locator("tbody tr")).toHaveCount(2);
 
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const fit = await page.locator(".mds-table-wrap").evaluate((wrap) => ({
+    scroll: wrap.scrollWidth,
+    client: wrap.clientWidth,
+  }));
+  expect(fit.scroll).toBeLessThanOrEqual(fit.client);
+  const clipped = await page
+    .locator("tbody td button")
+    .evaluateAll(
+      (btns) => btns.filter((b) => b.scrollWidth > b.clientWidth).length
+    );
+  expect(clipped).toBe(0);
+
   const muderris = rowOf(page, fixture.byMuderris.name);
   await expect(muderris).toContainText(fixture.byMuderris.reason);
   await expect(muderris).toContainText("Müderris");

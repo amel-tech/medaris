@@ -256,10 +256,11 @@ describe("BansView (nizam 42)", () => {
 
   it("sets the canvas column widths and keeps both actions on one line (stack-47 round 2)", () => {
     const html = view(list([ban()]));
-    for (const w of ["300px", "153px", "142px", "129px", "106px", "289px"]) {
+    for (const w of ["26.8%", "13.7%", "12.7%", "11.5%", "9.5%", "25.8%"]) {
       expect(html).toContain(`--mds-col-w:${w}`);
     }
     expect(html).toContain("flex-nowrap");
+    expect(html).toContain("table-layout:fixed");
   });
 
   it("draws 'Köşkten de yasakla' ghost beside 'Yasağı kaldır' and outline when alone", () => {
