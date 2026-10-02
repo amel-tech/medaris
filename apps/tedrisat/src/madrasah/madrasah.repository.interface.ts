@@ -7,6 +7,8 @@ export interface IMadrasah {
   createdBy: string;
   passiveSince: Date | null;
   passiveReason: string | null;
+  archivedAt: Date | null;
+  archivedBy: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -81,3 +83,53 @@ export interface IMadrasahOverview {
   courses: IMadrasahCourse[];
   kosks: IMadrasahKoskRef[];
 }
+
+/** The medrese's state, hidden first (MDRS-170). */
+export type MadrasahStatus = "ACTIVE" | "PASSIVE" | "HIDDEN";
+export type MadrasahStatusFilter = "ALL" | MadrasahStatus;
+
+export interface IMadrasahDirectoryItem {
+  id: string;
+  handle: string;
+  name: string;
+  coverHue: number;
+  status: MadrasahStatus;
+  since: Date | null;
+  headMuderris: { id: string; name: string | null } | null;
+  courseCount: number;
+  hostingKosks: { id: string; name: string }[];
+}
+
+export interface IMadrasahDirectoryFilter {
+  status: MadrasahStatusFilter;
+  q?: string;
+}
+
+export interface IMadrasahStatusCounts {
+  all: number;
+  active: number;
+  passive: number;
+  hidden: number;
+}
+
+export interface IPassiveMadrasah {
+  id: string;
+  name: string;
+  since: Date;
+}
+
+export interface IMadrasahDirectory {
+  items: IMadrasahDirectoryItem[];
+  total: number;
+  page: number;
+  limit: number;
+  counts: IMadrasahStatusCounts;
+  passive: IPassiveMadrasah[];
+}
+
+/** What opening a medrese needs: the medrese and the person who heads it. */
+export interface ICreateMadrasahWithHead extends ICreateMadrasah {
+  headMuderrisUserId: string;
+}
+
+export type RestoreMadrasahResult = "restored" | "not-found" | "not-hidden";
