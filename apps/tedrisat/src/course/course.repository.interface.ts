@@ -144,9 +144,11 @@ export interface ICourseSummary extends ICourse {
 
 export interface IEnrolledCourse extends ICourse {
   koskName: string;
+  /** The medrese that opened the course, or null (MDRS-159). */
+  madrasahName: string | null;
   weekCount: number;
   lessonCount: number;
-  muderris: IMuderris[];
+  muderris: (IMuderris & { isImam: boolean })[];
   /** The next standing session, or null when none is scheduled ahead. */
   nextSession: { at: Date; weekNumber: number } | null;
   enrollment: IEnrollment & { completedAt: Date | null };

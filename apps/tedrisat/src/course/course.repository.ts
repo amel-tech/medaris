@@ -104,34 +104,14 @@ export class CourseRepository implements ICourseRepository {
     return this.databaseService.db;
   }
 
-  async findSummariesByKosk(
-    koskId: string,
-    userId: string | null,
-    includeDrafts: boolean,
-    archived = false
-  ): Promise<ICourseSummary[]> {
-    const rows = await this.db.query.courses.findMany({
-      // DRAFT courses are only visible to the köşk owner. `archived` picks
-      // the list: live courses, or the hidden ones for the "Arşiv" view
-      // (MDRS-124) — never both, so a hidden course is in no ordinary list.
-      where: and(
-        eq(courses.koskId, koskId),
-        archived ? isNotNull(courses.archivedAt) : isNull(courses.archivedAt),
-        includeDrafts ? undefined : eq(courses.status, CourseStatus.PUBLISHED)
-      ),
-      with: {
-        weeks: {
-          where: (w, { isNull }) => isNull(w.archivedAt),
-          with: { lessons: { where: (l, { isNull }) => isNull(l.archivedAt) } },
-        },
-        muderris: { orderBy: (m, { asc }) => [asc(m.orderIndex), asc(m.id)] },
-        resources: true,
-        enrollments: { where: (e) => enrollmentOf(e.userId, userId) },
-      },
-    });
-
-    // The medrese a course is opened by, and its imam among the müderrisler
-    // (MDRS-159): two small reads over the course ids, not a wider join.
+  /**
+   * The medrese each course is opened by, by id, and the courses' imams as
+   * `courseId:userId` keys (MDRS-159): two small reads over the course ids,
+   * not a wider join.
+   */
+  private async madrasahsAndImamsOf(
+    rows: { id: string; madrasahId: string | null }[]
+  ): Promise<{ madrasahName: Map<string, string>; imamKeys: Set<string> }> {
     const madrasahIds = [
       ...new Set(rows.flatMap((r) => (r.madrasahId ? [r.madrasahId] : []))),
     ];
@@ -165,8 +145,39 @@ export class CourseRepository implements ICourseRepository {
               )
             ),
     ]);
-    const madrasahName = new Map(madrasahRows.map((m) => [m.id, m.name]));
-    const imamKeys = new Set(imamRows.map((i) => `${i.courseId}:${i.userId}`));
+    return {
+      madrasahName: new Map(madrasahRows.map((m) => [m.id, m.name])),
+      imamKeys: new Set(imamRows.map((i) => `${i.courseId}:${i.userId}`)),
+    };
+  }
+
+  async findSummariesByKosk(
+    koskId: string,
+    userId: string | null,
+    includeDrafts: boolean,
+    archived = false
+  ): Promise<ICourseSummary[]> {
+    const rows = await this.db.query.courses.findMany({
+      // DRAFT courses are only visible to the köşk owner. `archived` picks
+      // the list: live courses, or the hidden ones for the "Arşiv" view
+      // (MDRS-124) — never both, so a hidden course is in no ordinary list.
+      where: and(
+        eq(courses.koskId, koskId),
+        archived ? isNotNull(courses.archivedAt) : isNull(courses.archivedAt),
+        includeDrafts ? undefined : eq(courses.status, CourseStatus.PUBLISHED)
+      ),
+      with: {
+        weeks: {
+          where: (w, { isNull }) => isNull(w.archivedAt),
+          with: { lessons: { where: (l, { isNull }) => isNull(l.archivedAt) } },
+        },
+        muderris: { orderBy: (m, { asc }) => [asc(m.orderIndex), asc(m.id)] },
+        resources: true,
+        enrollments: { where: (e) => enrollmentOf(e.userId, userId) },
+      },
+    });
+
+    const { madrasahName, imamKeys } = await this.madrasahsAndImamsOf(rows);
     const now = new Date();
 
     return rows.map((row) => {
@@ -260,30 +271,38 @@ export class CourseRepository implements ICourseRepository {
 
     // A hidden course drops out of its talebe's list too (MDRS-124); the
     // enrollment row stays, so restoring the course brings it back.
-    return rows
-      .filter((row) => row.course.archivedAt === null)
-      .map((row) => {
-        const { kosk, weeks, muderris, ...course } = row.course;
-        return {
-          ...course,
-          koskName: kosk.name,
-          weekCount: weeks.length,
-          lessonCount: weeks.reduce((sum, w) => sum + w.lessons.length, 0),
-          muderris,
-          nextSession: nextSessionOf(weeks, now),
-          enrollment: {
-            userId: row.userId,
-            courseId: row.courseId,
-            studentName: row.studentName,
-            studentEmail: row.studentEmail,
-            progress: row.progress,
-            status: row.status,
-            completedAt: row.completedAt,
-            createdAt: row.createdAt,
-            updatedAt: row.updatedAt,
-          },
-        };
-      });
+    const live = rows.filter((row) => row.course.archivedAt === null);
+    const { madrasahName, imamKeys } = await this.madrasahsAndImamsOf(
+      live.map((row) => row.course)
+    );
+    return live.map((row) => {
+      const { kosk, weeks, muderris, ...course } = row.course;
+      return {
+        ...course,
+        koskName: kosk.name,
+        madrasahName: course.madrasahId
+          ? (madrasahName.get(course.madrasahId) ?? null)
+          : null,
+        weekCount: weeks.length,
+        lessonCount: weeks.reduce((sum, w) => sum + w.lessons.length, 0),
+        muderris: muderris.map((m) => ({
+          ...m,
+          isImam: m.userId !== null && imamKeys.has(`${course.id}:${m.userId}`),
+        })),
+        nextSession: nextSessionOf(weeks, now),
+        enrollment: {
+          userId: row.userId,
+          courseId: row.courseId,
+          studentName: row.studentName,
+          studentEmail: row.studentEmail,
+          progress: row.progress,
+          status: row.status,
+          completedAt: row.completedAt,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+        },
+      };
+    });
   }
 
   async create(course: ICreateCourse): Promise<ICourseDetail> {

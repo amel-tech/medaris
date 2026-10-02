@@ -249,9 +249,16 @@ export class NextSessionResponse {
 
 export class EnrolledCourseResponse extends CourseBase {
   @ApiProperty() koskName!: string;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: "The medrese that opened the course, or null (MDRS-159).",
+  })
+  madrasahName!: string | null;
   @ApiProperty() weekCount!: number;
   @ApiProperty() lessonCount!: number;
-  @ApiProperty({ type: [MuderrisResponse] }) muderris!: MuderrisResponse[];
+  @ApiProperty({ type: [SummaryMuderrisResponse] })
+  muderris!: SummaryMuderrisResponse[];
   @ApiPropertyOptional({
     type: NextSessionResponse,
     nullable: true,
