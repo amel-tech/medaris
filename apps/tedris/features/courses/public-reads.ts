@@ -1,6 +1,7 @@
 import {
   type CourseDetailResponse,
   createServerTedrisatAPIs,
+  type KoskDecksResponse,
   type KoskResponse,
   type MadrasahOverviewResponse,
   type MadrasahResponse,
@@ -88,3 +89,16 @@ export const getSession = cache(
 /** Whether the visitor has a usable token — what tedrisat will see. */
 export const isSignedIn = async (): Promise<boolean> =>
   Boolean(await getAccessToken());
+
+/**
+ * The köşk's decks for the signed-in caller (MDRS-159), or null for a visitor
+ * with no token and when the read fails: either way the page leaves the block
+ * out. `accessible` is the API's word on whether the caller belongs to the
+ * köşk.
+ */
+export const getKoskDecks = async (
+  id: string
+): Promise<KoskDecksResponse | null> => {
+  if (!(await isSignedIn())) return null;
+  return orNull(async () => (await viewerApi()).kosks.getKoskDecks({ id }));
+};

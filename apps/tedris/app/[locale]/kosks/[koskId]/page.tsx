@@ -4,7 +4,11 @@ import { env } from "~/env";
 import { getKosk, getKoskCourses } from "~/features/courses/actions";
 import { KoskPage } from "~/features/courses/components/kosk-page";
 import { introMetadata } from "~/features/courses/intro-metadata";
-import { getKoskForMetadata } from "~/features/courses/public-reads";
+import {
+  getKoskDecks,
+  getKoskForMetadata,
+  isSignedIn,
+} from "~/features/courses/public-reads";
 
 type Params = Promise<{ locale: string; koskId: string }>;
 
@@ -31,6 +35,12 @@ export default async function Page({ params }: { params: Params }) {
   const kosk = await getKosk(koskId);
   if (!kosk) notFound();
 
-  const courses = await getKoskCourses(koskId);
-  return <KoskPage kosk={kosk} courses={courses} />;
+  const [courses, decks, signedIn] = await Promise.all([
+    getKoskCourses(koskId),
+    getKoskDecks(koskId),
+    isSignedIn(),
+  ]);
+  return (
+    <KoskPage kosk={kosk} courses={courses} decks={decks} signedIn={signedIn} />
+  );
 }

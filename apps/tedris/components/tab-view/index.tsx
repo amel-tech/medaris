@@ -11,6 +11,9 @@ import { usePathname } from "~/lib/i18n/navigation";
  */
 const ownsItsMain = (pathname: string) =>
   pathname.startsWith("/madrasahs") ||
+  pathname.startsWith("/kosks") ||
+  pathname.startsWith("/discover") ||
+  pathname.startsWith("/my-courses") ||
   /^\/courses\/[^/]+\/lessons\//.test(pathname);
 
 export const TabView = ({ children }: { children: React.ReactNode }) => {
@@ -33,10 +36,13 @@ export const TabView = ({ children }: { children: React.ReactNode }) => {
           </Link>
           <Link
             prefetch
-            href="/learning"
+            href="/discover"
             className={cn(
               "px-4 py-2 text-sm font-medium",
-              pathname.startsWith("/learning") &&
+              (pathname.startsWith("/learning") ||
+                pathname.startsWith("/discover") ||
+                pathname.startsWith("/my-courses") ||
+                pathname.startsWith("/kosks")) &&
                 "text-brand-primary border-b-2 border-brand-primary"
             )}
           >
