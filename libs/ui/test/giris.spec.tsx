@@ -10,6 +10,7 @@ import {
   PasswordField,
   passwordProblems,
   RegisterForm,
+  UpdatePasswordForm,
 } from "../src/giris";
 import { cleanup, click, render } from "./render";
 
@@ -276,5 +277,49 @@ describe("AuthMessage and LogoutConfirmForm", () => {
     expect(host.querySelector("a.mds-btn--ghost")?.getAttribute("href")).toBe(
       "/app"
     );
+  });
+});
+
+const updateProps = {
+  action: "/update",
+  requiredNote: "* zorunlu alan",
+  password: registerProps.password,
+  passwordConfirm: registerProps.passwordConfirm,
+  ruleLabels: registerProps.ruleLabels,
+  errors: {
+    required: "Boş bırakma.",
+    passwordTooShort: "Şifre çok kısa.",
+    passwordRules: "Kurallar.",
+    passwordMismatch: "Eşleşmiyor.",
+  },
+  signOutOthers: {
+    name: "logout-sessions",
+    value: "on",
+    label: "Diğer cihazlarda çıkış yap",
+    description: "açıklama",
+  },
+  submitLabel: "Kaydet",
+  submittingLabel: "Gönderiliyor",
+};
+
+describe("UpdatePasswordForm", () => {
+  it("does not list the e-mail rule when the account's address is unknown", async () => {
+    const host = await render(
+      <UpdatePasswordForm {...updateProps} username="zeynep" />
+    );
+    const labels = [...host.querySelectorAll("li")].map((i) => i.textContent);
+    expect(labels).toHaveLength(2);
+    expect(labels.join("|")).not.toContain("E-posta farklı");
+  });
+
+  it("lists the e-mail rule when the address is known", async () => {
+    const host = await render(
+      <UpdatePasswordForm
+        {...updateProps}
+        username="zeynep"
+        email="z@example.test"
+      />
+    );
+    expect(host.querySelectorAll("li")).toHaveLength(3);
   });
 });
