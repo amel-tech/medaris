@@ -21,12 +21,14 @@ import type {
   CreateCourseDto,
   EnrolledCourseResponse,
   EnrollmentResponse,
+  MuderrisListResponse,
   PendingEnrollmentResponse,
   RemoveEnrollmentDto,
   RemovedEnrollmentResponse,
   ReplaceCourseDto,
   RosterEnrollmentResponse,
   SetEnrollmentStatusDto,
+  SetMuderrisDto,
   UpdateCourseDto,
   UpdateProgressDto,
 } from '../models/index';
@@ -43,6 +45,8 @@ import {
     EnrolledCourseResponseToJSON,
     EnrollmentResponseFromJSON,
     EnrollmentResponseToJSON,
+    MuderrisListResponseFromJSON,
+    MuderrisListResponseToJSON,
     PendingEnrollmentResponseFromJSON,
     PendingEnrollmentResponseToJSON,
     RemoveEnrollmentDtoFromJSON,
@@ -55,6 +59,8 @@ import {
     RosterEnrollmentResponseToJSON,
     SetEnrollmentStatusDtoFromJSON,
     SetEnrollmentStatusDtoToJSON,
+    SetMuderrisDtoFromJSON,
+    SetMuderrisDtoToJSON,
     UpdateCourseDtoFromJSON,
     UpdateCourseDtoToJSON,
     UpdateProgressDtoFromJSON,
@@ -134,6 +140,11 @@ export interface ReplaceCourseRequest {
 
 export interface RestoreCourseRequest {
     id: string;
+}
+
+export interface SetCourseMuderrisRequest {
+    id: string;
+    setMuderrisDto: SetMuderrisDto;
 }
 
 export interface SetEnrollmentStatusRequest {
@@ -962,6 +973,60 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async restoreCourse(requestParameters: RestoreCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDetailResponse> {
         const response = await this.restoreCourseRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Partial update for the \'Müderrisleri düzenle\' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `assign_muderris`; the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.
+     * Replace a course\'s müderris list and pick its imam
+     */
+    async setCourseMuderrisRaw(requestParameters: SetCourseMuderrisRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MuderrisListResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling setCourseMuderris().'
+            );
+        }
+
+        if (requestParameters['setMuderrisDto'] == null) {
+            throw new runtime.RequiredError(
+                'setMuderrisDto',
+                'Required parameter "setMuderrisDto" was null or undefined when calling setCourseMuderris().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/muderris`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetMuderrisDtoToJSON(requestParameters['setMuderrisDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MuderrisListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Partial update for the \'Müderrisleri düzenle\' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `assign_muderris`; the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.
+     * Replace a course\'s müderris list and pick its imam
+     */
+    async setCourseMuderris(requestParameters: SetCourseMuderrisRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MuderrisListResponse> {
+        const response = await this.setCourseMuderrisRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

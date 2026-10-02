@@ -316,6 +316,24 @@ export class CreateCourseDto {
   @IsBoolean()
   requiresApproval?: boolean;
 
+  @ApiPropertyOptional({
+    example: false,
+    description:
+      "Closed course (MDRS-176): its content and recordings are never opened to everyone; recordings marked PUBLIC are read by the course team and the enrolled talebe only.",
+  })
+  @IsOptional()
+  @IsBoolean()
+  isClosed?: boolean;
+
+  @ApiPropertyOptional({
+    example: "Sarf",
+    description: "The word printed on the cover.",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  coverLabel?: string;
+
   @ApiPropertyOptional({ type: [CreateWeekDto] })
   @IsOptional()
   @IsArray()
