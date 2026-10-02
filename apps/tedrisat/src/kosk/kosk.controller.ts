@@ -38,6 +38,7 @@ import {
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
+import { AuthenticatedUserRequest } from "../user/interfaces/authenticated-user-request.interface";
 import { CreateKoskDto } from "./dto/create-kosk.dto";
 import { KoskManagedBy } from "./dto/kosk-managed-by.enum";
 import { KoskResponse } from "./dto/kosk-response.dto";
@@ -49,6 +50,7 @@ import {
   PublicRequest,
 } from "./interfaces/authorized-request.interface";
 import { KoskService } from "./kosk.service";
+import { KoskAdminService } from "./kosk-admin.service";
 
 const MAX_PAGE_SIZE = 50;
 
@@ -81,7 +83,8 @@ export const byExistingKosk: AuthzResolve = async (req, moduleRef) => {
 export class KoskController {
   constructor(
     private readonly koskService: KoskService,
-    private readonly authz: AuthzService
+    private readonly authz: AuthzService,
+    private readonly koskAdmin: KoskAdminService
   ) {}
 
   /** Who is changing the managers, for the check under the köşk lock. */
@@ -159,7 +162,20 @@ export class KoskController {
     @Req() request: PublicRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskResponse> {
-    return this.koskService.findById(id, request.user?.sub ?? null);
+    const kosk = await this.koskService.findById(id, request.user?.sub ?? null);
+    // A hidden köşk (MDRS-174) opens for its nazımları and the başnazım
+    // only; for everyone else it is one that does not exist.
+    if (
+      kosk.archivedAt !== null &&
+      !(
+        request.user &&
+        (this.authz.isSystemAdmin(request.user) ||
+          kosk.managerIds.includes(request.user.sub.toLowerCase()))
+      )
+    ) {
+      throw new KoskNotFoundError(id);
+    }
+    return kosk;
   }
 
   @ApiOperation({
@@ -180,11 +196,16 @@ export class KoskController {
   @AuthzExempt()
   @Post()
   async create(
-    @Req() request: AuthorizedRequest,
+    @Req() request: AuthenticatedUserRequest,
     @Body() koskDto: CreateKoskDto
   ): Promise<KoskResponse> {
     const ownerId = request.user.sub;
-    const created = await this.koskService.create({ ownerId, ...koskDto });
+    // With `managerUserIds` this is nizam/10: the başnazım opens the köşk
+    // for the nazımları they named and is not one of them.
+    const { managerUserIds, ...fields } = koskDto;
+    const created = managerUserIds
+      ? await this.koskAdmin.createWithNazims(request.user, koskDto)
+      : await this.koskService.create({ ownerId, ...fields });
     return this.koskService.findById(created.id, ownerId);
   }
 

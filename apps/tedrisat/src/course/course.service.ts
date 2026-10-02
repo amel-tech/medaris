@@ -520,9 +520,12 @@ export class CourseService {
     // A course of an unlisted köşk always waits for approval (MDRS-122),
     // whatever its own `requires_approval` says: the link is how the köşk is
     // found, and passing a link on must not hand out seats.
+    // The köşk's own policy (MDRS-174, nizam/24) says the same for all its
+    // courses and a course's setting cannot loosen it.
+    const koskRule = await this.koskService.findVisibility(course.koskId);
     const unlisted =
-      (await this.koskService.findVisibility(course.koskId))?.isPrivate ??
-      false;
+      (koskRule?.isPrivate ?? false) ||
+      (koskRule?.alwaysRequireApproval ?? false);
     const status =
       course.requiresApproval || unlisted
         ? EnrollmentStatus.PENDING

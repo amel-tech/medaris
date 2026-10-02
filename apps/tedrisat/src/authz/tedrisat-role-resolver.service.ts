@@ -127,9 +127,10 @@ export class TedrisatRoleResolver implements RoleResolver {
    *
    * - Non-UUID id: ANONYMOUS, so `ParseUUIDPipe` gives everyone the same 400.
    *   Safe: the ANONYMOUS row holds VIEW alone.
-   * - Köşk missing, or unlisted (`is_private`): `KoskNotFoundError`. An
-   *   unlisted köşk opens by its link to a signed-in caller only; without a
-   *   token it is indistinguishable from one that does not exist.
+   * - Köşk missing, unlisted (`is_private`) or hidden (MDRS-174):
+   *   `KoskNotFoundError`. An unlisted köşk opens by its link to a signed-in
+   *   caller only; without a token it is indistinguishable from one that
+   *   does not exist, and a hidden one is that for everyone anonymous.
    * - Otherwise: ANONYMOUS.
    */
   private async resolveAnonymousKoskRole(
@@ -138,7 +139,9 @@ export class TedrisatRoleResolver implements RoleResolver {
     if (!UUID_REGEX.test(resource.id)) return ROLES.ANONYMOUS;
 
     const kosk = await this.koskService.findVisibility(resource.id);
-    if (!kosk || kosk.isPrivate) throw new KoskNotFoundError(resource.id);
+    if (!kosk || kosk.isPrivate || kosk.hidden) {
+      throw new KoskNotFoundError(resource.id);
+    }
     return ROLES.ANONYMOUS;
   }
 
@@ -165,7 +168,8 @@ export class TedrisatRoleResolver implements RoleResolver {
       !course ||
       course.status !== CourseStatus.PUBLISHED ||
       course.archived ||
-      course.koskIsPrivate
+      course.koskIsPrivate ||
+      course.koskHidden
     ) {
       throw new CourseNotFoundError(resource.id);
     }

@@ -232,6 +232,13 @@
       "when": 1790936133635,
       "tag": "0032_permission_groups_course_wide",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790941903416,
+      "tag": "0033_kosk_policies",
+      "breakpoints": true
     }
   ]
 }

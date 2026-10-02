@@ -350,6 +350,7 @@ export interface ICourseRepository {
     status: CourseStatus;
     archived: boolean;
     koskIsPrivate: boolean;
+    koskHidden: boolean;
   } | null>;
   update(id: string, updates: IUpdateCourse): Promise<ICourse | null>;
   replace(
