@@ -53,7 +53,21 @@
     "leaveConfirm": "مغادرة",
     "leaveCancel": "إلغاء",
     "left": "لقد غادرت الدرس.",
-    "signInToApply": "سجّل الدخول للتقديم"
+    "signInToApply": "سجّل الدخول للتقديم",
+    "receivedTitle": "تم استلام طلبك",
+    "receivedBody": "سيراجع كادر الدرس طلبك. ستصلك إشعارات عند الموافقة؛ وعندها تُفتح لك محتويات الدرس وروابط اجتماعات الحلقات وتسجيلاتها.",
+    "receivedNote": "يمكنك سحب طلبك من هذه الصفحة إلى أن تتم الموافقة عليه.",
+    "receivedOk": "حسنًا",
+    "previewBannerTitle": "معاينة",
+    "previewBannerText": "هذا الدرس لم يُنشر بعد؛ لا يرى هذه المعاينة إلا المسؤولون.",
+    "draftBadge": "مسوّدة",
+    "previewCardBadge": "معاينة",
+    "previewCardTitle": "عند نشر الدرس",
+    "previewCardText": "سيرى الطلاب هنا زر «طلب التسجيل» وموعد أول حلقة. لا يمكن التقديم في المعاينة.",
+    "firstSession": "أول حلقة",
+    "backToEditing": "العودة إلى التحرير",
+    "backToEditingLabel": "العودة إلى التحرير: {title}، المنهج في ناظر",
+    "receivedClose": "إغلاق"
   },
   "CreateDeckButtonDialog": {
     "cancel": "يلغي",
@@ -341,9 +355,11 @@
     "configurationError": "خدمة تسجيل الدخول غير متاحة حاليًا. يُرجى المحاولة لاحقًا.",
     "retry": "حاول مرة أخرى",
     "backHome": "العودة إلى الصفحة الرئيسية",
-    "signOutTitle": "تسجيل الخروج",
-    "signOutDescription": "هل أنت متأكد من أنك تريد تسجيل الخروج؟",
-    "signOutConfirm": "تسجيل الخروج"
+    "signOutTitle": "هل تريد تسجيل الخروج؟",
+    "signOutDescription": "ستخرج من مدارس في هذا المتصفح.",
+    "signOutConfirm": "تسجيل الخروج",
+    "signOutCancel": "إلغاء",
+    "signingOut": "جارٍ تسجيل الخروج"
   },
   "WelcomePage": {
     "title": "أهلًا بك!",
@@ -393,10 +409,7 @@
     "imam": "الإمام",
     "nextSession": "الجلسة القادمة",
     "noNextSession": "لا توجد جلسة مجدولة",
-    "koskCourses": "{count} دروس",
-    "notFoundTitle": "الصفحة غير موجودة",
-    "notFoundText": "المدرسة التي تبحث عنها غير موجودة أو ربما أُزيلت.",
-    "notFoundAction": "العودة إلى الرئيسية"
+    "koskCourses": "{count} دروس"
   },
   "NotificationsPage": {
     "title": "الإشعارات",
@@ -528,10 +541,7 @@
     "weekEmpty": "لم تُضَف حلقات إلى هذا الأسبوع بعد.",
     "rowCurrent": "التالية",
     "rowDone": "، انتهت",
-    "rowCancelled": "أُلغيت",
-    "notFoundTitle": "الصفحة غير موجودة",
-    "notFoundText": "الحلقة التي تبحث عنها غير موجودة أو ربما أُزيلت.",
-    "notFoundAction": "العودة إلى الرئيسية"
+    "rowCancelled": "أُلغيت"
   },
   "AccountPage": {
     "pageTitle": "الحساب",
@@ -616,5 +626,18 @@
       "user_lookup": "يُسجَّل كل بحث في سجل التدقيق.",
       "ban_lift_course": "لا يمكنك رفع حظر وضعه مستوى أعلى."
     }
+  },
+  "SystemPages": {
+    "notFoundTitle": "الصفحة غير موجودة",
+    "notFoundText": "الصفحة التي تبحث عنها غير موجودة أو لم تعد هنا. تحقق من العنوان أو تابع من الصفحة الرئيسية.",
+    "notFoundAction": "العودة إلى الصفحة الرئيسية",
+    "forbiddenTitle": "لا يمكنك عرض هذه الصفحة",
+    "forbiddenDeckText": "{deck} مجموعة عامة؛ لا يعدّل بطاقاتها إلا صاحبها. يمكنك مراجعة المجموعة ونسخ أي بطاقة إلى مجموعتك.",
+    "forbiddenGenericText": "ليس لديك إذن لعرض هذه الصفحة.",
+    "forbiddenDeckAction": "العودة إلى المجموعة",
+    "forbiddenGenericAction": "العودة إلى الصفحة الرئيسية",
+    "errorTitle": "حدث خطأ ما",
+    "errorText": "تعذّر الوصول إلى الخادم. تحقق من اتصالك بالإنترنت وحاول مرة أخرى.",
+    "errorAction": "حاول مرة أخرى"
   }
 }

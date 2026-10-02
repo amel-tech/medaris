@@ -18,17 +18,22 @@ import type {
 import { Breadcrumbs } from "@medaris/ui/components/breadcrumb";
 import { toast } from "@medaris/ui/components/sonner";
 import { cn } from "@medaris/ui/lib/utils";
+import { Alert } from "@medaris/ui/mds/alert";
+import { Badge } from "@medaris/ui/mds/badge";
+import { Button } from "@medaris/ui/mds/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useEffect, useState, useTransition } from "react";
 import { authPages } from "~/lib/auth_pages";
 import { enrollInCourse } from "../actions";
 import { nextLiveLesson, upcomingLiveLesson } from "../live-lessons";
+import { firstSessionAt, formatFirstSession, isPreview } from "../preview";
 import { AddToCalendarMenu } from "./add-to-calendar";
 import { CoverPlaceholder, HueAvatar } from "./cover";
+import { EnrollmentReceivedDialog } from "./enrollment-received-dialog";
 import { levelLabel } from "./labels";
-import { LeaveCourse } from "./leave-course";
+import { LeaveCourse, WITHDRAW_BUTTON_ID } from "./leave-course";
 import { SyllabusModal, WeekModule } from "./syllabus";
 
 const initials = (name: string) =>
@@ -51,6 +56,7 @@ export const CoursePage = ({
   koskName,
   approvalRequired = course.requiresApproval,
   signedIn = true,
+  nazirUrl = null,
 }: {
   course: CourseDetailResponse;
   koskName?: string | null;
@@ -61,8 +67,14 @@ export const CoursePage = ({
   approvalRequired?: boolean;
   /** False for a signed-out visitor (MDRS-122): the card asks them to sign in. */
   signedIn?: boolean;
+  /**
+   * Where "Düzenlemeye dön" goes (design tedris/14), the Nazır app's address;
+   * null leaves the button out. Read from the server's environment.
+   */
+  nazirUrl?: string | null;
 }) => {
   const t = useTranslations("tedris");
+  const locale = useLocale();
   const router = useRouter();
   const [tab, setTab] = useState("mufredat");
   const [openWeek, setOpenWeek] = useState<string | null>(
@@ -70,6 +82,11 @@ export const CoursePage = ({
   );
   const [showSyllabus, setShowSyllabus] = useState(false);
   const [pending, startTransition] = useTransition();
+  // Design tedris/07: the window after an application that waits for approval.
+  const [received, setReceived] = useState(false);
+  const [focusWithdraw, setFocusWithdraw] = useState(false);
+  // Design tedris/14: a draft is shown to those who may edit it, as a preview.
+  const preview = isPreview(course);
 
   const isPending = course.enrollment?.status === "PENDING";
   const enrolled = Boolean(course.enrollment) && !isPending;
@@ -89,13 +106,25 @@ export const CoursePage = ({
         toast.error(res.error);
         return;
       }
-      toast.success(
-        approvalRequired
-          ? t("CoursePage.requestSent")
-          : t("CoursePage.enrolled")
-      );
+      // The API decides whether the application waits (PENDING) or the
+      // talebe is in (ENROLLED); the window is for the first only.
+      if (res.data.status === "PENDING") setReceived(true);
+      else toast.success(t("CoursePage.enrolled"));
       router.refresh();
     });
+
+  const closeReceived = () => {
+    setReceived(false);
+    setFocusWithdraw(true);
+  };
+
+  // After "Tamam" focus goes to "Başvuruyu geri çek", which is on the page
+  // once the refresh that follows the application has drawn it.
+  useEffect(() => {
+    if (!focusWithdraw || !isPending) return;
+    document.getElementById(WITHDRAW_BUTTON_ID)?.focus();
+    setFocusWithdraw(false);
+  }, [focusWithdraw, isPending]);
 
   const tabs = [
     { id: "genel", label: t("CoursePage.tabOverview") },
@@ -112,8 +141,25 @@ export const CoursePage = ({
     },
   ];
 
+  const firstSession = preview ? firstSessionAt(course) : null;
+
+  // Layout note: the segment loads the unified system's stylesheet (layout.tsx),
+  // whose Tailwind build has no `lg:`/`sm:` and re-emits plain utilities after
+  // the app's, so a plain `grid-cols-1` would beat the app's `lg:grid-cols-…`.
+  // The two page grids therefore state the wide layout plainly and narrow it
+  // with an arbitrary max-width variant, which both builds emit alike.
   return (
     <div className="pb-16">
+      {preview && (
+        <Alert
+          tone="info"
+          title={t("CoursePage.previewBannerTitle")}
+          className="mb-6 font-ui"
+        >
+          {t("CoursePage.previewBannerText")}
+        </Alert>
+      )}
+
       {/* Breadcrumb */}
       <Breadcrumbs
         className="mb-4"
@@ -129,7 +175,7 @@ export const CoursePage = ({
       />
 
       {/* Hero */}
-      <div className="grid grid-cols-1 gap-9 lg:grid-cols-[1fr_360px]">
+      <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-9 max-[1023px]:grid-cols-[minmax(0,1fr)]">
         <div>
           <div className="mb-2.5 flex items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground">
             {course.category && (
@@ -144,6 +190,12 @@ export const CoursePage = ({
             )}
             {course.language && <span>{course.language}</span>}
           </div>
+
+          {preview && (
+            <Badge variant="outline" className="mb-2.5 font-ui">
+              {t("CoursePage.draftBadge")}
+            </Badge>
+          )}
 
           <h1 className="text-[34px] font-bold leading-tight tracking-tight">
             {course.title}
@@ -189,148 +241,190 @@ export const CoursePage = ({
           )}
         </div>
 
-        {/* Enroll card */}
-        <aside className="lg:sticky lg:top-6 lg:self-start">
-          <div className="overflow-hidden rounded-2xl border bg-white shadow-[0_20px_40px_-28px_rgba(15,23,42,0.18)]">
-            <div className="p-4 pb-0">
-              <CoverPlaceholder
-                hue={course.coverHue}
-                label={course.category ?? undefined}
-                className="h-40"
-              />
+        {/* Enroll card, or for a draft the preview card: nobody applies to a draft */}
+        {preview ? (
+          <aside className="lg:sticky lg:top-6 lg:self-start">
+            <div className="mds-card font-ui">
+              <div className="mds-card__body flex flex-col gap-3">
+                <Badge variant="outline" className="self-start">
+                  {t("CoursePage.previewCardBadge")}
+                </Badge>
+                <h2 className="mds-h2">{t("CoursePage.previewCardTitle")}</h2>
+                <p className="mds-body">{t("CoursePage.previewCardText")}</p>
+                {firstSession && (
+                  <div>
+                    <p className="mds-eyebrow">
+                      {t("CoursePage.firstSession")}
+                    </p>
+                    <p className="mds-body">
+                      {formatFirstSession(
+                        firstSession,
+                        locale,
+                        course.timeZone
+                      )}
+                    </p>
+                  </div>
+                )}
+                {nazirUrl && (
+                  <Button
+                    href={nazirUrl}
+                    variant="secondary"
+                    fullWidth
+                    aria-label={t("CoursePage.backToEditingLabel", {
+                      title: course.title,
+                    })}
+                  >
+                    {t("CoursePage.backToEditing")}
+                  </Button>
+                )}
+              </div>
             </div>
-            <div className="p-4">
-              {enrolled && (
-                <>
-                  <div className="mb-1.5 flex items-baseline justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {t("CoursePage.inProgress")}
-                    </span>
-                    <span className="text-xs font-semibold">%{progress}</span>
-                  </div>
-                  <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full bg-blue-700"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                </>
-              )}
+          </aside>
+        ) : (
+          <aside className="lg:sticky lg:top-6 lg:self-start">
+            <div className="overflow-hidden rounded-2xl border bg-white shadow-[0_20px_40px_-28px_rgba(15,23,42,0.18)]">
+              <div className="p-4 pb-0">
+                <CoverPlaceholder
+                  hue={course.coverHue}
+                  label={course.category ?? undefined}
+                  className="h-40"
+                />
+              </div>
+              <div className="p-4">
+                {enrolled && (
+                  <>
+                    <div className="mb-1.5 flex items-baseline justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {t("CoursePage.inProgress")}
+                      </span>
+                      <span className="text-xs font-semibold">%{progress}</span>
+                    </div>
+                    <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full bg-blue-700"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </>
+                )}
 
-              {!signedIn ? (
-                // MDRS-122: the page is open, applying needs an account. Back
-                // to this course once the sign-in completes.
-                <Link
-                  href={`${authPages.signIn}?callbackUrl=${encodeURIComponent(
-                    `/courses/${course.id}`
-                  )}`}
-                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white no-underline"
-                >
-                  {t("CoursePage.signInToApply")}
-                </Link>
-              ) : isPending ? (
-                <button
-                  type="button"
-                  disabled
-                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-700"
-                >
-                  <Clock size={14} /> {t("CoursePage.pendingApproval")}
-                </button>
-              ) : enrolled ? (
-                continueLesson ? (
+                {!signedIn ? (
+                  // MDRS-122: the page is open, applying needs an account. Back
+                  // to this course once the sign-in completes.
                   <Link
-                    href={`/courses/${course.id}/lessons/${continueLesson.id}`}
+                    href={`${authPages.signIn}?callbackUrl=${encodeURIComponent(
+                      `/courses/${course.id}`
+                    )}`}
                     className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white no-underline"
                   >
-                    <Play size={14} weight="fill" /> {t("CoursePage.continue")}
+                    {t("CoursePage.signInToApply")}
                   </Link>
-                ) : (
+                ) : isPending ? (
                   <button
                     type="button"
                     disabled
-                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white opacity-60"
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-700"
                   >
-                    <Play size={14} weight="fill" /> {t("CoursePage.continue")}
+                    <Clock size={14} /> {t("CoursePage.pendingApproval")}
                   </button>
-                )
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleEnroll}
-                  disabled={pending}
-                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
-                >
-                  {pending
-                    ? t("CoursePage.enrolling")
-                    : approvalRequired
-                      ? t("CoursePage.requestEnroll")
-                      : t("CoursePage.enroll")}
-                </button>
-              )}
+                ) : enrolled ? (
+                  continueLesson ? (
+                    <Link
+                      href={`/courses/${course.id}/lessons/${continueLesson.id}`}
+                      className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white no-underline"
+                    >
+                      <Play size={14} weight="fill" />{" "}
+                      {t("CoursePage.continue")}
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white opacity-60"
+                    >
+                      <Play size={14} weight="fill" />{" "}
+                      {t("CoursePage.continue")}
+                    </button>
+                  )
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleEnroll}
+                    disabled={pending}
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
+                  >
+                    {pending
+                      ? t("CoursePage.enrolling")
+                      : approvalRequired
+                        ? t("CoursePage.requestEnroll")
+                        : t("CoursePage.enroll")}
+                  </button>
+                )}
 
-              {isPending && (
-                <LeaveCourse courseId={course.id} mode="withdraw" />
-              )}
+                {isPending && (
+                  <LeaveCourse courseId={course.id} mode="withdraw" />
+                )}
 
-              {upcomingLesson && (
-                <AddToCalendarMenu
-                  className="mt-2.5 w-full"
-                  courseId={course.id}
-                  courseTitle={course.title}
-                  lesson={{
-                    id: upcomingLesson.id,
-                    title: upcomingLesson.title,
-                    scheduledAt: upcomingLesson.scheduledAt,
-                    durationMinutes: upcomingLesson.durationMinutes ?? null,
-                  }}
-                />
-              )}
+                {upcomingLesson && (
+                  <AddToCalendarMenu
+                    className="mt-2.5 w-full"
+                    courseId={course.id}
+                    courseTitle={course.title}
+                    lesson={{
+                      id: upcomingLesson.id,
+                      title: upcomingLesson.title,
+                      scheduledAt: upcomingLesson.scheduledAt,
+                      durationMinutes: upcomingLesson.durationMinutes ?? null,
+                    }}
+                  />
+                )}
 
-              {enrolled && !completed && (
-                <LeaveCourse courseId={course.id} mode="leave" />
-              )}
+                {enrolled && !completed && (
+                  <LeaveCourse courseId={course.id} mode="leave" />
+                )}
 
-              <div className="mt-2.5 flex gap-2">
-                <button
-                  type="button"
-                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border bg-white px-3.5 py-2 text-[13px] font-medium"
-                >
-                  <BookmarkSimple size={14} /> {t("CoursePage.save")}
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border bg-white px-3.5 py-2 text-[13px] font-medium"
-                >
-                  <ShareNetwork size={14} /> {t("CoursePage.share")}
-                </button>
+                <div className="mt-2.5 flex gap-2">
+                  <button
+                    type="button"
+                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border bg-white px-3.5 py-2 text-[13px] font-medium"
+                  >
+                    <BookmarkSimple size={14} /> {t("CoursePage.save")}
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border bg-white px-3.5 py-2 text-[13px] font-medium"
+                  >
+                    <ShareNetwork size={14} /> {t("CoursePage.share")}
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 border-t px-4 py-3.5 text-xs">
+                <div>
+                  <div className="mb-0.5 text-muted-foreground">
+                    {t("CoursePage.duration")}
+                  </div>
+                  <div className="font-medium">
+                    {t("CoursePage.weeksLessonsShort", {
+                      weeks: course.weeks.length,
+                      lessons: lessonCount,
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-0.5 text-muted-foreground">
+                    {t("CoursePage.certificate")}
+                  </div>
+                  <div className="inline-flex items-center gap-1 font-medium">
+                    <Certificate size={14} />
+                    {course.grantsCertificate
+                      ? t("CoursePage.granted")
+                      : t("CoursePage.notGranted")}
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 border-t px-4 py-3.5 text-xs">
-              <div>
-                <div className="mb-0.5 text-muted-foreground">
-                  {t("CoursePage.duration")}
-                </div>
-                <div className="font-medium">
-                  {t("CoursePage.weeksLessonsShort", {
-                    weeks: course.weeks.length,
-                    lessons: lessonCount,
-                  })}
-                </div>
-              </div>
-              <div>
-                <div className="mb-0.5 text-muted-foreground">
-                  {t("CoursePage.certificate")}
-                </div>
-                <div className="inline-flex items-center gap-1 font-medium">
-                  <Certificate size={14} />
-                  {course.grantsCertificate
-                    ? t("CoursePage.granted")
-                    : t("CoursePage.notGranted")}
-                </div>
-              </div>
-            </div>
-          </div>
-        </aside>
+          </aside>
+        )}
       </div>
 
       {/* Tabs */}
@@ -368,7 +462,7 @@ export const CoursePage = ({
       </div>
 
       {/* Body */}
-      <div className="mt-7 grid grid-cols-1 gap-9 lg:grid-cols-[1fr_360px]">
+      <div className="mt-7 grid grid-cols-[minmax(0,1fr)_360px] gap-9 max-[1023px]:grid-cols-[minmax(0,1fr)]">
         <div>
           {tab === "genel" && (
             <section>
@@ -422,7 +516,7 @@ export const CoursePage = ({
           )}
 
           {tab === "muderris" && (
-            <section className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+            <section className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-3.5 max-[639px]:grid-cols-[minmax(0,1fr)]">
               {course.muderris.map((m) => (
                 <div key={m.id} className="flex gap-3.5 rounded-xl border p-4">
                   <HueAvatar
@@ -503,6 +597,12 @@ export const CoursePage = ({
         course={course}
         open={showSyllabus}
         onOpenChange={setShowSyllabus}
+      />
+
+      <EnrollmentReceivedDialog
+        open={received}
+        onClose={closeReceived}
+        courseTitle={course.title}
       />
     </div>
   );

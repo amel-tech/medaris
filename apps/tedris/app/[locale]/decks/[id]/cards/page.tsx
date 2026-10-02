@@ -4,6 +4,7 @@ import {
   type FlashcardResponse,
 } from "@medaris/services/tedrisat";
 import { env } from "~/env";
+import { ForbiddenState } from "~/features/errors/system-page";
 import { DeckCardsPage } from "~/features/flashcards/components/deck-cards-page";
 import { DeckUnavailable } from "~/features/flashcards/components/deck-unavailable";
 import { requireAccessToken } from "~/lib/require-access-token";
@@ -46,7 +47,12 @@ export default async function Page({
   const currentUserId = subjectOf(token);
   const isOwner = !!currentUserId && deck.authorId === currentUserId;
 
-  return (
-    <DeckCardsPage deckId={id} flashcards={cards || []} isOwner={isOwner} />
-  );
+  // The deck was readable (a public one), so naming it leaks nothing; every
+  // write on this page would answer 403 for a non-owner, so the page says so
+  // up front (design tedris/39) instead of drawing controls that cannot work.
+  if (!isOwner) {
+    return <ForbiddenState deck={{ id, name: deck.title }} />;
+  }
+
+  return <DeckCardsPage deckId={id} flashcards={cards || []} isOwner />;
 }
