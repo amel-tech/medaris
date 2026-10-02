@@ -51,3 +51,12 @@ export function dayMonthLocative(
   const ending = LOCATIVE_TR[month];
   return ending ? `${base}’${ending}` : base;
 }
+
+/** The calendar day of an instant in a zone ("2026-10-02"): two instants fall on the same day when their keys are equal. */
+export const dayKey = (date: Date, timeZone: string): string =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
