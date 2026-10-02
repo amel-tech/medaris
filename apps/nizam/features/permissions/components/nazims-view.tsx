@@ -74,7 +74,7 @@ export function NazimsView({ nazims, catalog, groups }: Props) {
       key: "person",
       header: t("columns.person"),
       rowHeader: true,
-      width: "22%",
+      width: "27%",
       render: (n) => (
         <span className="flex min-w-0 items-center gap-3">
           <Avatar name={n.user.name ?? n.user.email ?? ""} decorative />
@@ -83,7 +83,7 @@ export function NazimsView({ nazims, catalog, groups }: Props) {
               {n.user.name ?? t("unknownPerson")}
             </bdi>
             {n.user.email ? (
-              <bdi dir="ltr" className="mds-caption font-mono">
+              <bdi dir="ltr" className="mds-caption break-all font-mono">
                 {n.user.email}
               </bdi>
             ) : null}
@@ -94,7 +94,7 @@ export function NazimsView({ nazims, catalog, groups }: Props) {
     {
       key: "grants",
       header: t("columns.grants"),
-      width: "27%",
+      width: "22%",
       render: (n) => {
         const held = heldGroupsOf(n);
         const codes = orderByCatalog(
@@ -136,7 +136,7 @@ export function NazimsView({ nazims, catalog, groups }: Props) {
     {
       key: "end",
       header: t("columns.end"),
-      width: "13%",
+      width: "12%",
       render: (n) => {
         const label = endLabel(n.expiresAt, now ?? new Date(), {
           locale,
@@ -162,7 +162,7 @@ export function NazimsView({ nazims, catalog, groups }: Props) {
     {
       key: "giver",
       header: t("columns.giver"),
-      width: "14%",
+      width: "15%",
       render: (n) => (
         <span className="flex flex-col">
           <bdi>{n.appointedBy?.name ?? t("unknownPerson")}</bdi>
