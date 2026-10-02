@@ -10,7 +10,7 @@ export async function LegalFooter() {
 
   return (
     <footer className="mt-auto border-t border-gray-200 py-4 text-sm text-gray-500">
-      <div className="container mx-auto flex justify-center gap-6 px-4">
+      <div className="mx-auto flex w-full max-w-[80rem] justify-center gap-6 px-4">
         <a
           href={PRIVACY_NOTICE_URL}
           target="_blank"
