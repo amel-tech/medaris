@@ -708,8 +708,10 @@ reviews:
         instructions: |
           For every file matching apps/tedrisat/src/**/*.controller.ts or
           apps/teskilat/src/**/*.controller.ts that was added or modified in this
-          PR, except apps/tedrisat/src/app.controller.ts and
-          apps/teskilat/src/app.controller.ts: PASS if the file contains
+          PR, except apps/tedrisat/src/app.controller.ts,
+          apps/teskilat/src/app.controller.ts and
+          apps/tedrisat/src/calendar-feed/calendar-feed.controller.ts (calendar
+          app cannot sign in; token is the credential): PASS if the file contains
           `@UseGuards(` with `AuthGuard` as an argument, either above the class or
           above every route handler (@Get, @Post, @Put, @Patch, @Delete). FAIL
           otherwise, naming the file and the unguarded handler. PASS if no such
