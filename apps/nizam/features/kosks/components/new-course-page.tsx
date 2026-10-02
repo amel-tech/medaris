@@ -34,6 +34,8 @@ import {
   DEFAULT_TIME_ZONE,
   fromZonedDatetimeLocal,
   listTimeZones,
+  meetingUrlProblem,
+  normalizeMeetingUrl,
   timeZoneCity,
   toZonedDatetimeLocal,
 } from "@medaris/utils";
@@ -51,6 +53,7 @@ import {
   emptyLiveLesson,
   type LiveLessonDraft,
   LiveLessonEditor,
+  MEETING_URL_PROBLEM_KEY,
   toMinutes,
 } from "./live-lesson-editor";
 
@@ -102,7 +105,7 @@ const fromLiveDraft = (
   durationMinutes: d.durationMinutes,
   kaynak: prev?.kaynak ?? "",
   scheduledAt: d.scheduledAt,
-  meetingUrl: d.meetingUrl,
+  meetingUrl: normalizeMeetingUrl(d.meetingUrl),
   agenda: d.agenda,
 });
 
@@ -303,7 +306,7 @@ export const NewCoursePage = ({
               scheduledAt: l.scheduledAt
                 ? (fromZonedDatetimeLocal(l.scheduledAt, timeZone) ?? undefined)
                 : undefined,
-              meetingUrl: l.meetingUrl.trim() || undefined,
+              meetingUrl: normalizeMeetingUrl(l.meetingUrl) || undefined,
               agenda: agenda.length ? agenda : undefined,
             };
           }),
@@ -357,6 +360,21 @@ export const NewCoursePage = ({
     if (weeks.some(isWeekEmpty)) {
       toast.error(t("NewCoursePage.validationEmptyWeek"));
       return;
+    }
+    // A link tedrisat would refuse, named by its lesson, instead of the
+    // API's field path (MDRS-111). A pre-MDRS-111 `http://` link is not one:
+    // `buildDto` upgrades it.
+    for (const l of weeks.flatMap((w) => w.lessons)) {
+      const problem = l.title.trim() ? meetingUrlProblem(l.meetingUrl) : null;
+      if (problem) {
+        toast.error(
+          t("NewCoursePage.meetingUrlLessonProblem", {
+            lesson: l.title.trim(),
+          }),
+          { description: t(MEETING_URL_PROBLEM_KEY[problem]) }
+        );
+        return;
+      }
     }
     startTransition(async () => {
       const dto = buildDto(status);
