@@ -3,7 +3,10 @@ import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
-import { TestDatabaseUtils } from "../helpers/test-database.helper";
+import {
+  COURSE_TREE_TABLES,
+  TestDatabaseUtils,
+} from "../helpers/test-database.helper";
 
 const MISSING_UUID = "00000000-0000-0000-0000-000000000000";
 const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";
@@ -20,12 +23,11 @@ describe("KoskController (e2e)", () => {
   });
 
   beforeEach(async () => {
-    // Deleting köşks cascades to courses → weeks/lessons/müderris/resources/enrollments.
-    await dbUtils.cleanTables("kosks");
+    await dbUtils.cleanTables(...COURSE_TREE_TABLES);
   });
 
   afterAll(async () => {
-    await dbUtils.cleanTables("kosks");
+    await dbUtils.cleanTables(...COURSE_TREE_TABLES);
     await app.close();
   });
 
@@ -191,14 +193,20 @@ describe("KoskController (e2e)", () => {
         });
     });
 
-    it("deletes a köşk", async () => {
+    it("refuses the owner's DELETE — only SYSTEM_ADMIN deletes (MDRS-124)", async () => {
       const created = await createKosk().expect(201);
       await request(app.getHttpServer())
         .delete(`/kosks/${created.body.id}`)
-        .expect(200);
+        .expect(403);
 
       return request(app.getHttpServer())
         .get(`/kosks/${created.body.id}`)
+        .expect(200);
+    });
+
+    it("answers 404 to a DELETE of a köşk that does not exist", () => {
+      return request(app.getHttpServer())
+        .delete(`/kosks/${MISSING_UUID}`)
         .expect(404);
     });
 

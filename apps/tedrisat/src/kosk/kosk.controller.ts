@@ -160,12 +160,17 @@ export class KoskController {
   }
 
   @ApiOperation({
-    summary: "Delete a köşk",
+    summary: "Delete a köşk for real (SYSTEM_ADMIN only)",
+    description:
+      "Removes the köşk, its followers, and every course with its weeks, lessons, müderris, resources and enrollments, in one transaction, and records an audit entry. Köşk managers cannot delete (MDRS-124).",
     operationId: "deleteKosk",
   })
   @ApiOkResponse({ type: Boolean })
+  @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Delete(":id")
+  @UseGuards(AuthzGuard)
+  @Authz(SCOPES.DELETE, byExistingKosk)
   async delete(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string

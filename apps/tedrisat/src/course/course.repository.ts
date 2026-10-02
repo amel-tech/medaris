@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { and, eq, inArray, isNull, max, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, max, ne, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import {
   courseMuderris,
@@ -26,14 +26,13 @@ import {
   IUpdateCourse,
   IUpdateLesson,
 } from "./course.repository.interface";
+import { IPurgeCounts, purgeCourses, recordDeletion, Tx } from "./course-purge";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { CourseVersionConflictError } from "./errors/course-version-conflict.error";
 import { LessonNotFoundError } from "./errors/lesson-not-found.error";
 import { WeekNotFoundError } from "./errors/week-not-found.error";
-
-type Tx = Parameters<Parameters<DatabaseService["db"]["transaction"]>[0]>[0];
 
 @Injectable()
 export class CourseRepository implements ICourseRepository {
@@ -46,16 +45,18 @@ export class CourseRepository implements ICourseRepository {
   async findSummariesByKosk(
     koskId: string,
     userId: string,
-    includeDrafts: boolean
+    includeDrafts: boolean,
+    archived = false
   ): Promise<ICourseSummary[]> {
     const rows = await this.db.query.courses.findMany({
-      // DRAFT courses are only visible to the köşk owner.
-      where: includeDrafts
-        ? eq(courses.koskId, koskId)
-        : and(
-            eq(courses.koskId, koskId),
-            eq(courses.status, CourseStatus.PUBLISHED)
-          ),
+      // DRAFT courses are only visible to the köşk owner. `archived` picks
+      // the list: live courses, or the hidden ones for the "Arşiv" view
+      // (MDRS-124) — never both, so a hidden course is in no ordinary list.
+      where: and(
+        eq(courses.koskId, koskId),
+        archived ? isNotNull(courses.archivedAt) : isNull(courses.archivedAt),
+        includeDrafts ? undefined : eq(courses.status, CourseStatus.PUBLISHED)
+      ),
       with: {
         weeks: {
           where: (w, { isNull }) => isNull(w.archivedAt),
@@ -135,26 +136,30 @@ export class CourseRepository implements ICourseRepository {
       },
     });
 
-    return rows.map((row) => {
-      const { kosk, weeks, muderris, ...course } = row.course;
-      return {
-        ...course,
-        koskName: kosk.name,
-        weekCount: weeks.length,
-        lessonCount: weeks.reduce((sum, w) => sum + w.lessons.length, 0),
-        muderris,
-        enrollment: {
-          userId: row.userId,
-          courseId: row.courseId,
-          studentName: row.studentName,
-          studentEmail: row.studentEmail,
-          progress: row.progress,
-          status: row.status,
-          createdAt: row.createdAt,
-          updatedAt: row.updatedAt,
-        },
-      };
-    });
+    // A hidden course drops out of its talebe's list too (MDRS-124); the
+    // enrollment row stays, so restoring the course brings it back.
+    return rows
+      .filter((row) => row.course.archivedAt === null)
+      .map((row) => {
+        const { kosk, weeks, muderris, ...course } = row.course;
+        return {
+          ...course,
+          koskName: kosk.name,
+          weekCount: weeks.length,
+          lessonCount: weeks.reduce((sum, w) => sum + w.lessons.length, 0),
+          muderris,
+          enrollment: {
+            userId: row.userId,
+            courseId: row.courseId,
+            studentName: row.studentName,
+            studentEmail: row.studentEmail,
+            progress: row.progress,
+            status: row.status,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          },
+        };
+      });
   }
 
   async create(course: ICreateCourse): Promise<ICourseDetail> {
@@ -655,12 +660,77 @@ export class CourseRepository implements ICourseRepository {
       .then((result) => result[0] || null);
   }
 
-  async delete(id: string): Promise<boolean> {
-    const deleted = await this.db
-      .delete(courses)
-      .where(eq(courses.id, id))
+  /**
+   * Hides the course (MDRS-124): stamps `archived_at`/`archived_by` and bumps
+   * the version, so an editor still holding the old one cannot save over the
+   * hide unawares. Hiding a hidden course changes nothing — not the first
+   * stamp, not the version. Null when no such course exists.
+   */
+  async archive(id: string, userId: string): Promise<ICourse | null> {
+    const now = new Date();
+    const [row] = await this.db
+      .update(courses)
+      .set({
+        archivedAt: now,
+        archivedBy: userId,
+        version: sql`${courses.version} + 1`,
+        updatedAt: now,
+      })
+      .where(and(eq(courses.id, id), isNull(courses.archivedAt)))
       .returning();
-    return deleted.length > 0;
+    return row ?? this.findCourseRow(id);
+  }
+
+  /** Brings a hidden course back; a no-op on a live one. Null if missing. */
+  async restore(id: string): Promise<ICourse | null> {
+    const [row] = await this.db
+      .update(courses)
+      .set({
+        archivedAt: null,
+        archivedBy: null,
+        version: sql`${courses.version} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(courses.id, id), isNotNull(courses.archivedAt)))
+      .returning();
+    return row ?? this.findCourseRow(id);
+  }
+
+  private async findCourseRow(id: string): Promise<ICourse | null> {
+    const [row] = await this.db
+      .select()
+      .from(courses)
+      .where(eq(courses.id, id))
+      .limit(1);
+    return row ?? null;
+  }
+
+  /**
+   * SYSTEM_ADMIN's real delete (MDRS-124): the course and every row under it,
+   * children first, plus one `audit_log` entry naming what went — all in one
+   * transaction. Null when there is no such course.
+   */
+  async purge(id: string, actorId: string): Promise<IPurgeCounts | null> {
+    return this.db.transaction(async (tx) => {
+      // FOR UPDATE: a concurrent syllabus write takes the same row lock
+      // (`bumpVersion`), so nothing can add a child between the reads below
+      // and the delete.
+      const [course] = await tx
+        .select({ title: courses.title, koskId: courses.koskId })
+        .from(courses)
+        .where(eq(courses.id, id))
+        .for("update");
+      if (!course) return null;
+
+      const removed = await purgeCourses(tx, [id]);
+      await recordDeletion(tx, {
+        actorId,
+        entity: "course",
+        entityId: id,
+        details: { title: course.title, koskId: course.koskId, removed },
+      });
+      return removed;
+    });
   }
 
   async enroll(
@@ -704,6 +774,7 @@ export class CourseRepository implements ICourseRepository {
       .where(
         and(
           eq(courses.koskId, koskId),
+          isNull(courses.archivedAt),
           eq(enrollments.status, EnrollmentStatus.PENDING)
         )
       )
@@ -755,16 +826,21 @@ export class CourseRepository implements ICourseRepository {
    * because nothing stops the same account being listed twice on one course.
    */
   async findTaughtBy(userId: string): Promise<ICourseRef[]> {
-    return this.db
-      .selectDistinct({
-        id: courses.id,
-        title: courses.title,
-        koskId: courses.koskId,
-      })
-      .from(courseMuderris)
-      .innerJoin(courses, eq(courses.id, courseMuderris.courseId))
-      .where(eq(courseMuderris.userId, userId))
-      .orderBy(courses.title, courses.id);
+    return (
+      this.db
+        .selectDistinct({
+          id: courses.id,
+          title: courses.title,
+          koskId: courses.koskId,
+        })
+        .from(courseMuderris)
+        .innerJoin(courses, eq(courses.id, courseMuderris.courseId))
+        // A hidden course is not in anyone's `GET /me` either (MDRS-124).
+        .where(
+          and(eq(courseMuderris.userId, userId), isNull(courses.archivedAt))
+        )
+        .orderBy(courses.title, courses.id)
+    );
   }
 
   async findEnrollment(
