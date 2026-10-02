@@ -51,7 +51,11 @@ export function NotFoundState() {
         shell
         className="font-ui"
         title={t("notFoundTitle")}
-        action={<Button href={home}>{t("notFoundAction")}</Button>}
+        action={
+          <Button href={home} variant="secondary">
+            {t("notFoundAction")}
+          </Button>
+        }
       >
         {t("notFoundText")}
       </SystemState>
@@ -82,11 +86,13 @@ export function ForbiddenState({ deck }: ForbiddenStateProps) {
         title={t("forbiddenTitle")}
         action={
           deck ? (
-            <Button href={`/${locale}/decks/${deck.id}`}>
+            <Button href={`/${locale}/decks/${deck.id}`} variant="secondary">
               {t("forbiddenDeckAction")}
             </Button>
           ) : (
-            <Button href={home}>{t("forbiddenGenericAction")}</Button>
+            <Button href={home} variant="secondary">
+              {t("forbiddenGenericAction")}
+            </Button>
           )
         }
       >
@@ -108,7 +114,11 @@ export function ErrorState({ reset }: { reset: () => void }) {
         shell
         className="font-ui"
         title={t("errorTitle")}
-        action={<Button onClick={() => reset()}>{t("errorAction")}</Button>}
+        action={
+          <Button variant="secondary" onClick={() => reset()}>
+            {t("errorAction")}
+          </Button>
+        }
       >
         {t("errorText")}
       </SystemState>

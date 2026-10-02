@@ -23,7 +23,7 @@ export default function RootNotFound() {
           className="font-ui"
           title="Sayfa bulunamadı"
           action={
-            <a className="mds-btn mds-btn--regular mds-btn--primary" href="/">
+            <a className="mds-btn mds-btn--regular mds-btn--secondary" href="/">
               Ana sayfaya dön
             </a>
           }
