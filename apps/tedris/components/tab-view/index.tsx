@@ -9,7 +9,9 @@ import { usePathname } from "~/lib/i18n/navigation";
  * Routes already on the unified design system (MDRS-157). They bring their own
  * `<main>` and page width, so the shell's wrapper is left off them.
  */
-const ownsItsMain = (pathname: string) => pathname.startsWith("/madrasahs");
+const ownsItsMain = (pathname: string) =>
+  pathname.startsWith("/madrasahs") ||
+  /^\/courses\/[^/]+\/lessons\//.test(pathname);
 
 export const TabView = ({ children }: { children: React.ReactNode }) => {
   const t = useTranslations("tedris");

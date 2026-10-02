@@ -11,28 +11,9 @@ import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { Icon } from "@medaris/ui/mds/icon";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
-import { Fragment, type ReactNode } from "react";
+import { joinRun } from "../join-run";
 import { enrollmentBadge } from "../madrasah-enrollment";
 import { formatNextSession } from "../next-session";
-
-/**
- * A meta run: each part but the last ends on its separator, so a wrapped line
- * ends on the dot and never starts with it. `joinRun` of the kit sits in a
- * file that also holds client hooks, which a server component cannot import.
- */
-const joinRun = (parts: ReactNode[]): ReactNode[] =>
-  parts.map((part, i) =>
-    i < parts.length - 1 ? (
-      <span key={i}>
-        {part}
-        <span className="mds-sep" aria-hidden="true">
-          ·
-        </span>{" "}
-      </span>
-    ) : (
-      <Fragment key={i}>{part}</Fragment>
-    )
-  );
 
 type Translate = Awaited<ReturnType<typeof getTranslations>>;
 

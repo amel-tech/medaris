@@ -4,6 +4,7 @@ import {
   type KoskResponse,
   type MadrasahOverviewResponse,
   type MadrasahResponse,
+  type SessionResponse,
 } from "@medaris/services/tedrisat";
 import { cache } from "react";
 import { env } from "~/env";
@@ -70,6 +71,19 @@ export const getMadrasahOverview = (
   id: string
 ): Promise<MadrasahOverviewResponse | null> =>
   orNull(async () => (await viewerApi()).madrasahs.getMadrasahOverview({ id }));
+
+/**
+ * One live session with its status, cancellation, neighbours and — for a
+ * caller who may read course content — its link (MDRS-158). Cached per
+ * request: the segment layout settles a 404 before the skeleton streams, and
+ * the page reads the same answer. Null on any failure, a 404 included.
+ */
+export const getSession = cache(
+  (courseId: string, sessionId: string): Promise<SessionResponse | null> =>
+    orNull(async () =>
+      (await viewerApi()).lessons.getSession({ courseId, sessionId })
+    )
+);
 
 /** Whether the visitor has a usable token — what tedrisat will see. */
 export const isSignedIn = async (): Promise<boolean> =>
