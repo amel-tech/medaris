@@ -135,6 +135,24 @@ export class RosterEnrollmentResponse extends EnrollmentResponse {
   ban!: EnrollmentBanResponse | null;
 }
 
+export class RemovedByResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty({ type: String, nullable: true }) name!: string | null;
+}
+
+/** A talebe the course team took out, with the reason (MDRS-178). */
+export class RemovedEnrollmentResponse {
+  @ApiProperty({ format: "uuid" }) userId!: string;
+  @ApiProperty({ type: String, nullable: true }) name!: string | null;
+  @ApiProperty({ type: String, nullable: true }) email!: string | null;
+  @ApiProperty({ description: "The team's reason for taking them out." })
+  reason!: string;
+  @ApiProperty({ description: "Percent complete when they were taken out." })
+  progress!: number;
+  @ApiProperty({ type: String, format: "date-time" }) removedAt!: Date;
+  @ApiProperty({ type: () => RemovedByResponse }) removedBy!: RemovedByResponse;
+}
+
 export class PendingEnrollmentResponse extends EnrollmentResponse {
   @ApiProperty() courseTitle!: string;
 }

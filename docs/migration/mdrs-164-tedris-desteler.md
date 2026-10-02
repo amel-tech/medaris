@@ -6,7 +6,7 @@ Designs tedris/25 (Desteler), 26 (Desteleri keşfet), 27 (Deste oluştur), 28
 
 ## What was done
 
-- **tedrisat** (migration `0032_decks_summary`): `decks` gains `card_type`,
+- **tedrisat** (migration `0036_decks_summary`): `decks` gains `card_type`,
   `publish_status`, `publish_requested_at`, `tags text[]`, `course_id`,
   `madrasah_id`. Existing public decks are backfilled to PUBLISHED, and each
   deck's type to its cards' majority type.
@@ -63,7 +63,8 @@ Designs tedris/25 (Desteler), 26 (Desteleri keşfet), 27 (Deste oluştur), 28
 
 ## Merge notes
 
-- Migration 0032 collides with `release/stack-31`'s 0032; renumber one (journal
-  and snapshot too) when the branches meet.
+- This package's migration was renumbered 0032 -> 0036 (`0036_decks_summary`)
+  when stack-42's 0032-0034 were merged in; 0035 belongs to stack-32. The SQL
+  is byte-identical; the snapshot chain continues from stack-42's 0034.
 - The tedris message catalogue is at the edge of TypeScript's TS2589: 797 keys
   failed to compile `t.rich`, 742 compiled; it is 730 now.

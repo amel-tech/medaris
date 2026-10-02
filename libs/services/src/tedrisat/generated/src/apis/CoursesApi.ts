@@ -16,12 +16,14 @@
 import * as runtime from '../runtime';
 import type {
   CourseDetailResponse,
+  CourseStatsResponse,
   CourseSummaryResponse,
   CreateCourseDto,
   EnrolledCourseResponse,
   EnrollmentResponse,
   PendingEnrollmentResponse,
   RemoveEnrollmentDto,
+  RemovedEnrollmentResponse,
   ReplaceCourseDto,
   RosterEnrollmentResponse,
   SetEnrollmentStatusDto,
@@ -31,6 +33,8 @@ import type {
 import {
     CourseDetailResponseFromJSON,
     CourseDetailResponseToJSON,
+    CourseStatsResponseFromJSON,
+    CourseStatsResponseToJSON,
     CourseSummaryResponseFromJSON,
     CourseSummaryResponseToJSON,
     CreateCourseDtoFromJSON,
@@ -43,6 +47,8 @@ import {
     PendingEnrollmentResponseToJSON,
     RemoveEnrollmentDtoFromJSON,
     RemoveEnrollmentDtoToJSON,
+    RemovedEnrollmentResponseFromJSON,
+    RemovedEnrollmentResponseToJSON,
     ReplaceCourseDtoFromJSON,
     ReplaceCourseDtoToJSON,
     RosterEnrollmentResponseFromJSON,
@@ -85,6 +91,10 @@ export interface GetCourseEnrollmentsRequest {
     id: string;
 }
 
+export interface GetCourseStatsRequest {
+    id: string;
+}
+
 export interface GetCoursesByKoskRequest {
     koskId: string;
     archived?: boolean;
@@ -96,6 +106,10 @@ export interface GetEnrolledCoursesRequest {
 
 export interface GetPendingEnrollmentsRequest {
     koskId: string;
+}
+
+export interface GetRemovedEnrollmentsRequest {
+    id: string;
 }
 
 export interface LeaveCourseRequest {
@@ -468,6 +482,50 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * nizam/53: talebe enrolled, applications waiting, completions and how many weeks have begun. For the course team: the köşk manager and the course\'s müderrisler.
+     * The numbers of a course\'s overview (course team)
+     */
+    async getCourseStatsRaw(requestParameters: GetCourseStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseStatsResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getCourseStats().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/stats`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseStatsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/53: talebe enrolled, applications waiting, completions and how many weeks have begun. For the course team: the köşk manager and the course\'s müderrisler.
+     * The numbers of a course\'s overview (course team)
+     */
+    async getCourseStats(requestParameters: GetCourseStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseStatsResponse> {
+        const response = await this.getCourseStatsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Open to callers with no token (MDRS-122): the köşk\'s published courses, with no enrollment. An unlisted köşk answers them 404, as `GET /kosks/:id` does. `archived=true` needs a token.
      * List the courses that belong to a köşk
      */
@@ -594,6 +652,50 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async getPendingEnrollments(requestParameters: GetPendingEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<PendingEnrollmentResponse>> {
         const response = await this.getPendingEnrollmentsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * For the course team (MDRS-178, Erişimi kaldırılanlar): who was taken out by `POST …/remove`, by whom, when and why, newest first. Read from the audit log; a talebe may have applied again since.
+     * Talebe the team took out of the course, with the reasons
+     */
+    async getRemovedEnrollmentsRaw(requestParameters: GetRemovedEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<RemovedEnrollmentResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getRemovedEnrollments().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/enrollments/removed`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(RemovedEnrollmentResponseFromJSON));
+    }
+
+    /**
+     * For the course team (MDRS-178, Erişimi kaldırılanlar): who was taken out by `POST …/remove`, by whom, when and why, newest first. Read from the audit log; a talebe may have applied again since.
+     * Talebe the team took out of the course, with the reasons
+     */
+    async getRemovedEnrollments(requestParameters: GetRemovedEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<RemovedEnrollmentResponse>> {
+        const response = await this.getRemovedEnrollmentsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

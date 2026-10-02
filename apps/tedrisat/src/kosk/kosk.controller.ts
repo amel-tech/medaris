@@ -38,6 +38,7 @@ import {
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
+import { AuthenticatedUserRequest } from "../user/interfaces/authenticated-user-request.interface";
 import { maskKoskForAnonymous } from "./anonymous-mask";
 import { CreateKoskDto } from "./dto/create-kosk.dto";
 import { FollowedKoskCourseResponse } from "./dto/followed-course-response.dto";
@@ -52,6 +53,7 @@ import {
   PublicRequest,
 } from "./interfaces/authorized-request.interface";
 import { KoskService } from "./kosk.service";
+import { KoskAdminService } from "./kosk-admin.service";
 
 const MAX_PAGE_SIZE = 50;
 
@@ -73,7 +75,7 @@ const UUID_REGEX =
  * SYSTEM_ADMIN bypasses the resolver, so the existence check stays here for
  * the routes whose handlers assume the köşk is there.
  */
-const byExistingKosk: AuthzResolve = async (req, moduleRef) => {
+export const byExistingKosk: AuthzResolve = async (req, moduleRef) => {
   const koskId = typeof req.params.id === "string" ? req.params.id : "";
   if (
     !UUID_REGEX.test(koskId) ||
@@ -91,7 +93,8 @@ const byExistingKosk: AuthzResolve = async (req, moduleRef) => {
 export class KoskController {
   constructor(
     private readonly koskService: KoskService,
-    private readonly authz: AuthzService
+    private readonly authz: AuthzService,
+    private readonly koskAdmin: KoskAdminService
   ) {}
 
   /** Who is changing the managers, for the check under the köşk lock. */
@@ -243,6 +246,18 @@ export class KoskController {
   ): Promise<KoskResponse> {
     const userId = request.user?.sub ?? null;
     const kosk = await this.koskService.findById(id, userId);
+    // A hidden köşk (MDRS-174) opens for its nazımları and the başnazım
+    // only; for everyone else it is one that does not exist.
+    if (
+      kosk.archivedAt !== null &&
+      !(
+        request.user &&
+        (this.authz.isSystemAdmin(request.user) ||
+          kosk.managerIds.includes(request.user.sub.toLowerCase()))
+      )
+    ) {
+      throw new KoskNotFoundError(id);
+    }
     return userId === null ? maskKoskForAnonymous(kosk) : kosk;
   }
 
@@ -281,11 +296,16 @@ export class KoskController {
   @AuthzExempt()
   @Post()
   async create(
-    @Req() request: AuthorizedRequest,
+    @Req() request: AuthenticatedUserRequest,
     @Body() koskDto: CreateKoskDto
   ): Promise<KoskResponse> {
     const ownerId = request.user.sub;
-    const created = await this.koskService.create({ ownerId, ...koskDto });
+    // With `managerUserIds` this is nizam/10: the başnazım opens the köşk
+    // for the nazımları they named and is not one of them.
+    const { managerUserIds, ...fields } = koskDto;
+    const created = managerUserIds
+      ? await this.koskAdmin.createWithNazims(request.user, koskDto)
+      : await this.koskService.create({ ownerId, ...fields });
     return this.koskService.findById(created.id, ownerId);
   }
 

@@ -147,9 +147,10 @@ describe("KoskController (e2e)", () => {
     });
 
     it("honours page/limit", async () => {
-      await createKosk().expect(201);
-      await createKosk().expect(201);
-      await createKosk().expect(201);
+      // A short name is one köşk's alone (MDRS-174), so each gets its own.
+      await createKosk({ handle: "bir" }).expect(201);
+      await createKosk({ handle: "iki" }).expect(201);
+      await createKosk({ handle: "uc" }).expect(201);
       return request(app.getHttpServer())
         .get("/kosks?page=1&limit=2")
         .expect(200)
@@ -219,9 +220,9 @@ describe("KoskController (e2e)", () => {
     });
 
     it("pages through the caller's köşks with the list's page/limit", async () => {
-      await createKosk({ name: "Bir" }).expect(201);
-      await createKosk({ name: "İki" }).expect(201);
-      await createKosk({ name: "Üç" }).expect(201);
+      await createKosk({ name: "Bir", handle: "bir" }).expect(201);
+      await createKosk({ name: "İki", handle: "iki" }).expect(201);
+      await createKosk({ name: "Üç", handle: "uc" }).expect(201);
       await insertForeignKosk("Başka Köşk");
 
       const first = await request(app.getHttpServer())

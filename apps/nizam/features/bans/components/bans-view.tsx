@@ -3,7 +3,6 @@
 import type { BanListResponse, BanResponse } from "@medaris/services/tedrisat";
 import { toast } from "@medaris/ui/components/sonner";
 import { Alert } from "@medaris/ui/mds/alert";
-import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
@@ -161,12 +160,9 @@ export function BansView({
 
   const personCell = (ban: BanResponse) => (
     <span className="flex min-w-0 items-center gap-3">
-      <Avatar name={ban.user.name ?? ban.user.email ?? ""} decorative />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="flex items-center gap-2">
-          <bdi className="font-semibold">
-            {ban.user.name ?? ban.user.email ?? t("unknownPerson")}
-          </bdi>
+          <bdi>{ban.user.name ?? ban.user.email ?? t("unknownPerson")}</bdi>
           {status === "ACTIVE" && isRecent(ban, now) ? (
             <Badge variant="info">{t("new")}</Badge>
           ) : null}
@@ -175,7 +171,7 @@ export function BansView({
           <bdi
             dir="ltr"
             title={ban.user.email}
-            className="mds-caption block max-w-full truncate font-mono"
+            className="mds-caption block max-w-full font-mono [overflow-wrap:anywhere]"
           >
             {ban.user.email}
           </bdi>

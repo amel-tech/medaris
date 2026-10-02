@@ -7,7 +7,7 @@ tedris/32 (deste, girişsiz ziyaretçi), on top of `release/stack-34-tedris-dest
 
 Backend (tedrisat)
 
-- Migration `0033_flashcard_review_schedule`: `flashcard_progress` gains `due_at`,
+- Migration `0037_flashcard_review_schedule`: `flashcard_progress` gains `due_at`,
   `reviewed_at`, `interval_days` and an index on `(user_id, due_at)`. (stack-31
   also uses 0032 for its own migration; renumber when the branches meet.)
 - Review schedule, one function (`domain/review-schedule.ts`): HARD stays LEARNING

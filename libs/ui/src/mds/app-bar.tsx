@@ -90,10 +90,16 @@ export function AppBar({
               aria-label={navLabel}
               onClick={(event) => {
                 // A followed link closes the sheet: the next page opens beneath it.
-                if (
-                  !event.defaultPrevented &&
-                  (event.target as Element).closest("a[href]")
-                )
+                // A client router calls preventDefault on its own links, so that
+                // cannot tell a followed link; a plain primary click can, while a
+                // modified one (new tab, new window) leaves the page where it is.
+                const plain =
+                  event.button === 0 &&
+                  !event.metaKey &&
+                  !event.ctrlKey &&
+                  !event.shiftKey &&
+                  !event.altKey;
+                if (plain && (event.target as Element).closest("a[href]"))
                   setOpen(false);
               }}
             >

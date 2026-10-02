@@ -26,6 +26,22 @@ export interface BanFixture {
     reason: string;
     bannedBy: string;
   } | null>;
+  /** every ban in the köşk, newest first */
+  koskBans: () => Promise<
+    {
+      id: string;
+      userId: string;
+      scope: string;
+      reason: string;
+      lifted: boolean;
+      extendedFromCourseId: string | null;
+      bannedRole: string;
+    }[]
+  >;
+  /** `count` more open course bans by the müderris, for the paging spec */
+  addBans: (count: number) => Promise<void>;
+  /** the audit actions written for the köşk's bans, oldest first */
+  auditActions: () => Promise<string[]>;
   remove: () => Promise<void>;
 }
 
@@ -152,6 +168,53 @@ export async function seedBans(subs: {
             bannedBy: row.banned_by,
           }
         : null;
+    },
+    koskBans: async () => {
+      const { rows } = await client.query(
+        "select id, user_id, scope, reason, lifted_at is not null as lifted, extended_from_course_id, banned_role from bans where kosk_id = $1 order by created_at desc",
+        [koskId]
+      );
+      return rows.map((r) => ({
+        id: r.id,
+        userId: r.user_id,
+        scope: r.scope,
+        reason: r.reason,
+        lifted: r.lifted,
+        extendedFromCourseId: r.extended_from_course_id,
+        bannedRole: r.banned_role,
+      }));
+    },
+    addBans: async (count) => {
+      for (let i = 0; i < count; i += 1) {
+        const id = randomUUID();
+        people.push(id);
+        await client.query(
+          "insert into users(id, given_name, family_name, email) values ($1, $2, 'Sayfalı', $3)",
+          [
+            id,
+            `Kişi${String(i).padStart(2, "0")}`,
+            `${id.slice(0, 8)}.${tail}@example.test`,
+          ]
+        );
+        await client.query(
+          "insert into bans(user_id, kosk_id, course_id, scope, reason, banned_by, banned_role, banned_tier, created_at) values ($1, $2, $3, 'COURSE', $4, $5, 'MUDERRIS', 1, now() - ($6 || ' minutes')::interval)",
+          [
+            id,
+            koskId,
+            course.id,
+            `Sayfa denemesi ${i}`,
+            subs.muderris,
+            String(i + 1),
+          ]
+        );
+      }
+    },
+    auditActions: async () => {
+      const { rows } = await client.query(
+        "select action from audit_log where entity = 'ban' and details->>'koskId' = $1 order by created_at",
+        [koskId]
+      );
+      return rows.map((r) => r.action);
     },
     remove: async () => {
       try {
