@@ -7,5 +7,6 @@ export * from "./flashcard-deck-label.schema";
 export * from "./flashcard-label.schema";
 export * from "./kosk.schema";
 export * from "./madrasah.schema";
+export * from "./notification.schema";
 export * from "./role-assignment.schema";
 export * from "./user.schema";
