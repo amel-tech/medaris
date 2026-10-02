@@ -208,6 +208,9 @@ export const enrollments = table(
     studentEmail: text("student_email"),
     progress: integer("progress").default(0).notNull(),
     status: enrollmentStatus().default(EnrollmentStatus.ENROLLED).notNull(),
+    // When the course team marked the course completed for the talebe
+    // (MDRS-159); null while the enrollment is anything else.
+    completedAt: timestamp("completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

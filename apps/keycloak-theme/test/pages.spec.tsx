@@ -35,7 +35,14 @@ const REGISTRANT_PAGES: PageId[] = [
   "login-update-password.ftl",
   "login-page-expired.ftl",
   "error.ftl",
+  "logout-confirm.ftl",
 ];
+
+/**
+ * The wordmark in the logo: a name, not copy, so it is Latin on every page
+ * (`lang="en"`, set in `Logo`) and the same in every language.
+ */
+const BRAND = new Set(["Medaris"]);
 
 const LANGUAGES = ["tr", "en", "ar"] as const;
 
@@ -111,7 +118,8 @@ describe.each(REGISTRANT_PAGES)("%s", (pageId) => {
     const english = await copyOf(pageId, "en");
     const translated = await copyOf(pageId, languageTag);
     const leftovers = translated.strings.filter(
-      (s) => english.strings.includes(s) && !translated.data.has(s)
+      (s) =>
+        english.strings.includes(s) && !translated.data.has(s) && !BRAND.has(s)
     );
     expect(leftovers).toEqual([]);
   });
@@ -119,7 +127,7 @@ describe.each(REGISTRANT_PAGES)("%s", (pageId) => {
   it("has no Latin-script copy in Arabic", async () => {
     const { strings, data } = await copyOf(pageId, "ar");
     const latin = strings
-      .filter((s) => !data.has(s))
+      .filter((s) => !data.has(s) && !BRAND.has(s))
       .map((s) => [...data].reduce((rest, d) => rest.split(d).join(""), s))
       .filter((s) => /[A-Za-z]/.test(s));
     expect(latin).toEqual([]);

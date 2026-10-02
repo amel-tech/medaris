@@ -16,6 +16,7 @@ import {
   ASSIGNED_ROLES,
   madrasahKoskHosting,
 } from "../../src/database/schema/role-assignment.schema";
+import { users } from "../../src/database/schema/user.schema";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
   assignRole,
@@ -258,6 +259,67 @@ describe("Public köşk, medrese and course pages (MDRS-122, e2e)", () => {
 
     it("answers a malformed id with 400, as for everyone", async () => {
       await http().get("/kosks/not-a-uuid").expect(400);
+    });
+  });
+
+  describe("masking for a caller with no token (MDRS-160)", () => {
+    beforeEach(async () => {
+      await db().insert(users).values({
+        id: MANAGER_ID,
+        givenName: "Abdülhamit",
+        familyName: "Karaosmanoğlu",
+      });
+    });
+
+    it("names the köşk's manager and hides who that is, on the page and in the list", async () => {
+      const page = await http().get(`/kosks/${listedKoskId}`).expect(200);
+      expect(page.body).toMatchObject({
+        ownerId: null,
+        managerIds: [],
+        managerName: "Abdülhamit Karaosmanoğlu",
+      });
+      const list = await http().get("/kosks").expect(200);
+      expect(list.body.items[0]).toMatchObject({
+        ownerId: null,
+        managerIds: [],
+        managerName: "Abdülhamit Karaosmanoğlu",
+      });
+      expect(JSON.stringify([page.body, list.body])).not.toContain(MANAGER_ID);
+    });
+
+    it("leaves the ids to a signed-in caller", async () => {
+      const page = await http()
+        .get(`/kosks/${listedKoskId}`)
+        .set("Authorization", as(STRANGER_ID))
+        .expect(200);
+      expect(page.body).toMatchObject({
+        ownerId: MANAGER_ID,
+        managerIds: [MANAGER_ID],
+        managerName: "Abdülhamit Karaosmanoğlu",
+      });
+    });
+
+    it("gives a null name when the manager has none on file", async () => {
+      await db().delete(users);
+      const page = await http().get(`/kosks/${listedKoskId}`).expect(200);
+      expect(page.body.managerName).toBeNull();
+    });
+
+    it("hides who created a medrese and who its nazırs are, and keeps them for a signed-in caller", async () => {
+      const anonymous = await http()
+        .get(`/madrasahs/${madrasahId}`)
+        .expect(200);
+      expect(anonymous.body).toMatchObject({ createdBy: null, nazirIds: [] });
+      const list = await http().get("/madrasahs").expect(200);
+      expect(list.body.items[0]).toMatchObject({
+        createdBy: null,
+        nazirIds: [],
+      });
+      const signedIn = await http()
+        .get(`/madrasahs/${madrasahId}`)
+        .set("Authorization", as(STRANGER_ID))
+        .expect(200);
+      expect(signedIn.body.createdBy).toBe(MANAGER_ID);
     });
   });
 
