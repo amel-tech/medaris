@@ -86,6 +86,39 @@
               "format": "uuid",
               "type": "string"
             }
+          },
+          {
+            "name": "level",
+            "required": false,
+            "in": "query",
+            "description": "Only the köşks of this level (MDRS-159)",
+            "schema": {
+              "enum": [
+                "ALL",
+                "BEGINNER",
+                "INTERMEDIATE",
+                "ADVANCED"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "field",
+            "required": false,
+            "in": "query",
+            "description": "Only the köşks of this ilim alanı, exactly (MDRS-159)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Only the köşks whose name, handle, description or field contain every word (MDRS-159)",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -144,6 +177,37 @@
           }
         ],
         "summary": "Create a new köşk",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/fields": {
+      "get": {
+        "description": "Open to callers with no token. The distinct `field` values of the köşks the public list holds, alphabetical: the chips of Keşfet (MDRS-159).",
+        "operationId": "getKoskFields",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the ilim alanı of the listed köşks",
         "tags": [
           "kosks"
         ]
@@ -275,6 +339,46 @@
           }
         ],
         "summary": "Delete a köşk for real (SYSTEM_ADMIN only)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/decks": {
+      "get": {
+        "description": "The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk's existence is never denied to them here, `GET /kosks/:id` answers that.",
+        "operationId": "getKoskDecks",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskDecksResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the köşk's decks (MDRS-159)",
         "tags": [
           "kosks"
         ]
@@ -537,6 +641,77 @@
           }
         ],
         "summary": "Create a medrese (SYSTEM_ADMIN only)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/explore": {
+      "get": {
+        "description": "Open to callers with no token (MDRS-122). Each medrese with its başmüderris's name and its listed courses (published, in a köşk the public list holds), by name. `level` and `field` keep the medreses with a listed course in a köşk of that level or ilim alanı; `q` matches the name, handle or description, or the başmüderris's name. Not paginated (MDRS-159).",
+        "operationId": "exploreMadrasahs",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "level",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "ALL",
+                "BEGINNER",
+                "INTERMEDIATE",
+                "ADVANCED"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "field",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "madrasahId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MadrasahExploreResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the medreses Keşfet lists",
         "tags": [
           "madrasahs"
         ]
@@ -918,8 +1093,18 @@
     },
     "/courses/enrolled": {
       "get": {
+        "description": "Enrolled and completed courses, oldest enrollment first, each with its next standing session. `includePending=true` adds the requests still waiting for approval (MDRS-159), marked by `enrollment.status`.",
         "operationId": "getEnrolledCourses",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "includePending",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -4756,6 +4941,53 @@
           "limit"
         ]
       },
+      "KoskDeckResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "example": "Sarfın temel kelimeleri"
+          },
+          "cardCount": {
+            "type": "number",
+            "example": 60,
+            "description": "Cards in the deck"
+          },
+          "inCollection": {
+            "type": "boolean",
+            "description": "Whether the caller has the deck in their collection"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "cardCount",
+          "inCollection"
+        ]
+      },
+      "KoskDecksResponse": {
+        "type": "object",
+        "properties": {
+          "accessible": {
+            "type": "boolean",
+            "description": "False for a caller who is neither a talebe, a müderris nor a manager of the köşk: the köşk page then leaves the block out."
+          },
+          "decks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskDeckResponse"
+            }
+          }
+        },
+        "required": [
+          "accessible",
+          "decks"
+        ]
+      },
       "KoskLevel": {
         "type": "string",
         "enum": [
@@ -4984,6 +5216,65 @@
           "limit"
         ]
       },
+      "MadrasahExploreCourseResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "coverHue": {
+            "type": "number",
+            "example": 215
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "coverHue"
+        ]
+      },
+      "MadrasahExploreResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "headMuderrisName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The başmüderris's display name; null with none, or while that person has never signed in."
+          },
+          "courseCount": {
+            "type": "number",
+            "description": "Courses listed under the medrese"
+          },
+          "courses": {
+            "description": "The medrese's listed courses, by title",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahExploreCourseResponse"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "handle",
+          "name",
+          "courseCount",
+          "courses"
+        ]
+      },
       "MadrasahHeadMuderrisResponse": {
         "type": "object",
         "properties": {
@@ -5177,7 +5468,7 @@
           }
         }
       },
-      "MuderrisResponse": {
+      "SummaryMuderrisResponse": {
         "type": "object",
         "properties": {
           "id": {
@@ -5203,6 +5494,10 @@
           },
           "orderIndex": {
             "type": "number"
+          },
+          "isImam": {
+            "type": "boolean",
+            "description": "The course's imam among its müderrisler (MDRS-133)"
           }
         },
         "required": [
@@ -5210,7 +5505,8 @@
           "courseId",
           "name",
           "avatarHue",
-          "orderIndex"
+          "orderIndex",
+          "isImam"
         ]
       },
       "EnrollmentResponse": {
@@ -5258,6 +5554,22 @@
           "status",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "CourseMadrasahResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
         ]
       },
       "CourseSummaryResponse": {
@@ -5354,11 +5666,27 @@
           "muderris": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/MuderrisResponse"
+              "$ref": "#/components/schemas/SummaryMuderrisResponse"
             }
           },
           "enrollment": {
             "$ref": "#/components/schemas/EnrollmentResponse"
+          },
+          "madrasah": {
+            "nullable": true,
+            "description": "The medrese that opened the course in this köşk (MDRS-159).",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CourseMadrasahResponse"
+              }
+            ]
+          },
+          "nextSessionAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "The earliest session still ahead that has not been cancelled; null when none is scheduled (MDRS-159). The meeting link is never part of a summary."
           }
         },
         "required": [
@@ -5767,6 +6095,42 @@
           "lessons"
         ]
       },
+      "MuderrisResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "courseId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "avatarHue": {
+            "type": "number"
+          },
+          "orderIndex": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "name",
+          "avatarHue",
+          "orderIndex"
+        ]
+      },
       "ResourceResponse": {
         "type": "object",
         "properties": {
@@ -5929,6 +6293,76 @@
           "contentLocked"
         ]
       },
+      "NextSessionResponse": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "weekNumber": {
+            "type": "number",
+            "description": "Number of the week the session falls in"
+          }
+        },
+        "required": [
+          "at",
+          "weekNumber"
+        ]
+      },
+      "MyEnrollmentResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "courseId": {
+            "type": "string"
+          },
+          "studentName": {
+            "type": "string",
+            "nullable": true
+          },
+          "studentEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "progress": {
+            "type": "number",
+            "description": "Percent complete, 0-100"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ENROLLED",
+              "COMPLETED"
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "completedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the course team marked the course completed (MDRS-159); null for any other status."
+          }
+        },
+        "required": [
+          "userId",
+          "courseId",
+          "progress",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
       "EnrolledCourseResponse": {
         "type": "object",
         "properties": {
@@ -6026,8 +6460,18 @@
               "$ref": "#/components/schemas/MuderrisResponse"
             }
           },
+          "nextSession": {
+            "nullable": true,
+            "description": "The earliest session still ahead that has not been cancelled (MDRS-159); null when none is scheduled.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NextSessionResponse"
+              }
+            ]
+          },
           "enrollment": {
-            "$ref": "#/components/schemas/EnrollmentResponse"
+            "$ref": "#/components/schemas/MyEnrollmentResponse"
           }
         },
         "required": [
