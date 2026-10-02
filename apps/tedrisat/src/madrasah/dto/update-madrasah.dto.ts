@@ -1,4 +1,7 @@
-import { PartialType } from "@nestjs/swagger";
+import { OmitType, PartialType } from "@nestjs/swagger";
 import { CreateMadrasahDto } from "./create-madrasah.dto";
 
-export class UpdateMadrasahDto extends PartialType(CreateMadrasahDto) {}
+/** Who heads the medrese is `PUT /madrasahs/:id/head-muderris`, not a field here. */
+export class UpdateMadrasahDto extends PartialType(
+  OmitType(CreateMadrasahDto, ["headMuderrisUserId"] as const)
+) {}

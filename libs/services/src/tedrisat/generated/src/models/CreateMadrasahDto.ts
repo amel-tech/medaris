@@ -20,11 +20,11 @@ import { mapValues } from '../runtime';
  */
 export interface CreateMadrasahDto {
     /**
-     * Unique, URL-safe: lower-case letters, digits and inner hyphens, 2–60 characters
+     * Unique, URL-safe: lower-case letters, digits and inner hyphens, 2–60 characters. Left out, it is made from the name (MDRS-170).
      * @type {string}
      * @memberof CreateMadrasahDto
      */
-    handle: string;
+    handle?: string;
     /**
      * 
      * @type {string}
@@ -43,14 +43,20 @@ export interface CreateMadrasahDto {
      * @memberof CreateMadrasahDto
      */
     coverHue?: number;
+    /**
+     * The account that becomes the başmüderris when the medrese opens (found with GET /users/lookup). A medrese opens with one (MDRS-170).
+     * @type {string}
+     * @memberof CreateMadrasahDto
+     */
+    headMuderrisUserId: string;
 }
 
 /**
  * Check if a given object implements the CreateMadrasahDto interface.
  */
 export function instanceOfCreateMadrasahDto(value: object): value is CreateMadrasahDto {
-    if (!('handle' in value) || value['handle'] === undefined) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
+    if (!('headMuderrisUserId' in value) || value['headMuderrisUserId'] === undefined) return false;
     return true;
 }
 
@@ -64,10 +70,11 @@ export function CreateMadrasahDtoFromJSONTyped(json: any, ignoreDiscriminator: b
     }
     return {
         
-        'handle': json['handle'],
+        'handle': json['handle'] == null ? undefined : json['handle'],
         'name': json['name'],
         'description': json['description'] == null ? undefined : json['description'],
         'coverHue': json['coverHue'] == null ? undefined : json['coverHue'],
+        'headMuderrisUserId': json['headMuderrisUserId'],
     };
 }
 
@@ -86,6 +93,7 @@ export function CreateMadrasahDtoToJSONTyped(value?: CreateMadrasahDto | null, i
         'name': value['name'],
         'description': value['description'],
         'coverHue': value['coverHue'],
+        'headMuderrisUserId': value['headMuderrisUserId'],
     };
 }
 

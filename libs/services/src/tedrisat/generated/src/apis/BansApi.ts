@@ -15,18 +15,24 @@
 
 import * as runtime from '../runtime';
 import type {
+  AllBansListResponse,
   BanListResponse,
   BanResponse,
   CreateBanDto,
+  ExtendBanDto,
   LiftBanDto,
 } from '../models/index';
 import {
+    AllBansListResponseFromJSON,
+    AllBansListResponseToJSON,
     BanListResponseFromJSON,
     BanListResponseToJSON,
     BanResponseFromJSON,
     BanResponseToJSON,
     CreateBanDtoFromJSON,
     CreateBanDtoToJSON,
+    ExtendBanDtoFromJSON,
+    ExtendBanDtoToJSON,
     LiftBanDtoFromJSON,
     LiftBanDtoToJSON,
 } from '../models/index';
@@ -36,9 +42,22 @@ export interface CreateBanRequest {
     createBanDto: CreateBanDto;
 }
 
+export interface ExtendBanRequest {
+    banId: string;
+    extendBanDto: ExtendBanDto;
+}
+
 export interface LiftBanRequest {
     banId: string;
     liftBanDto: LiftBanDto;
+}
+
+export interface ListAllBansRequest {
+    status?: ListAllBansStatusEnum;
+    scope?: ListAllBansScopeEnum;
+    q?: string;
+    offset?: number;
+    limit?: number;
 }
 
 export interface ListKoskBansRequest {
@@ -106,6 +125,60 @@ export class BansApi extends runtime.BaseAPI {
     }
 
     /**
+     * Opens a KOSK ban for the same person with its own reason and leaves the course ban standing; the audit row says `ban.extend`. The köşk\'s nazım and above. A person already barred from the köşk gets the standing ban back.
+     * Widen a course ban to the whole köşk (Yasağı genişlet)
+     */
+    async extendBanRaw(requestParameters: ExtendBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BanResponse>> {
+        if (requestParameters['banId'] == null) {
+            throw new runtime.RequiredError(
+                'banId',
+                'Required parameter "banId" was null or undefined when calling extendBan().'
+            );
+        }
+
+        if (requestParameters['extendBanDto'] == null) {
+            throw new runtime.RequiredError(
+                'extendBanDto',
+                'Required parameter "extendBanDto" was null or undefined when calling extendBan().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/bans/{banId}/extend`;
+        urlPath = urlPath.replace(`{${"banId"}}`, encodeURIComponent(String(requestParameters['banId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ExtendBanDtoToJSON(requestParameters['extendBanDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BanResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Opens a KOSK ban for the same person with its own reason and leaves the course ban standing; the audit row says `ban.extend`. The köşk\'s nazım and above. A person already barred from the köşk gets the standing ban back.
+     * Widen a course ban to the whole köşk (Yasağı genişlet)
+     */
+    async extendBan(requestParameters: ExtendBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BanResponse> {
+        const response = await this.extendBanRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Only the kademe that placed the ban, or a higher one: a Medaris nazımı\'s ban is lifted by Medaris administration alone. The reason and the lifter\'s name are kept with the ban.
      * Lift a ban with a reason (Yasağı kaldır)
      */
@@ -160,6 +233,62 @@ export class BansApi extends runtime.BaseAPI {
     }
 
     /**
+     * Newest first, one page at a time, with platform-wide counts for the tabs. Medaris administration only: the başnazım and the Medaris nazımı. `q` matches the person\'s name or e-mail; `scope` keeps one scope.
+     * Every ban of every köşk, open or lifted (Medaris Yasaklamalar)
+     */
+    async listAllBansRaw(requestParameters: ListAllBansRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AllBansListResponse>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['scope'] != null) {
+            queryParameters['scope'] = requestParameters['scope'];
+        }
+
+        if (requestParameters['q'] != null) {
+            queryParameters['q'] = requestParameters['q'];
+        }
+
+        if (requestParameters['offset'] != null) {
+            queryParameters['offset'] = requestParameters['offset'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/bans`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AllBansListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Newest first, one page at a time, with platform-wide counts for the tabs. Medaris administration only: the başnazım and the Medaris nazımı. `q` matches the person\'s name or e-mail; `scope` keeps one scope.
+     * Every ban of every köşk, open or lifted (Medaris Yasaklamalar)
+     */
+    async listAllBans(requestParameters: ListAllBansRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AllBansListResponse> {
+        const response = await this.listAllBansRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Newest first, with the counts the tabs show. The köşk\'s nazım and above. Each row says whether the caller\'s kademe reaches the ban\'s (`viewerMayLift`).
      * A köşk\'s bans, open or lifted (Yasaklamalar)
      */
@@ -209,6 +338,22 @@ export class BansApi extends runtime.BaseAPI {
 
 }
 
+/**
+ * @export
+ */
+export const ListAllBansStatusEnum = {
+    Active: 'ACTIVE',
+    Lifted: 'LIFTED'
+} as const;
+export type ListAllBansStatusEnum = typeof ListAllBansStatusEnum[keyof typeof ListAllBansStatusEnum];
+/**
+ * @export
+ */
+export const ListAllBansScopeEnum = {
+    Course: 'COURSE',
+    Kosk: 'KOSK'
+} as const;
+export type ListAllBansScopeEnum = typeof ListAllBansScopeEnum[keyof typeof ListAllBansScopeEnum];
 /**
  * @export
  */

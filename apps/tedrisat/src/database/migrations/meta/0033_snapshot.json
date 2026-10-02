@@ -1,6 +1,6 @@
 {
-  "id": "cc57f9a4-c490-4ec3-b9a8-aa4b0376be1a",
-  "prevId": "7bf1ce6b-899a-4f41-81ec-a000fa7dd373",
+  "id": "a6cab698-158b-4b9e-80aa-6865f7a562a7",
+  "prevId": "c27bde2d-20f9-4d50-a9b9-cdc6763c1282",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1227,45 +1227,6 @@
           "notNull": true,
           "default": false
         },
-        "card_type": {
-          "name": "card_type",
-          "type": "flashcard_type",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'VOCABULARY'"
-        },
-        "publish_status": {
-          "name": "publish_status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'PRIVATE'"
-        },
-        "publish_requested_at": {
-          "name": "publish_requested_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "tags": {
-          "name": "tags",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'"
-        },
-        "course_id": {
-          "name": "course_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "madrasah_id": {
-          "name": "madrasah_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "kosk_id": {
           "name": "kosk_id",
           "type": "uuid",
@@ -1314,65 +1275,9 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "decks_course_id_idx": {
-          "name": "decks_course_id_idx",
-          "columns": [
-            {
-              "expression": "course_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "decks_madrasah_id_idx": {
-          "name": "decks_madrasah_id_idx",
-          "columns": [
-            {
-              "expression": "madrasah_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
-        "decks_course_id_courses_id_fk": {
-          "name": "decks_course_id_courses_id_fk",
-          "tableFrom": "decks",
-          "tableTo": "courses",
-          "columnsFrom": [
-            "course_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "decks_madrasah_id_madrasahs_id_fk": {
-          "name": "decks_madrasah_id_madrasahs_id_fk",
-          "tableFrom": "decks",
-          "tableTo": "madrasahs",
-          "columnsFrom": [
-            "madrasah_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
         "decks_kosk_id_kosks_id_fk": {
           "name": "decks_kosk_id_kosks_id_fk",
           "tableFrom": "decks",
@@ -1668,50 +1573,9 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'NEW'"
-        },
-        "due_at": {
-          "name": "due_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reviewed_at": {
-          "name": "reviewed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "interval_days": {
-          "name": "interval_days",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
         }
       },
-      "indexes": {
-        "flashcard_progress_user_due_idx": {
-          "name": "flashcard_progress_user_due_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "due_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "flashcard_progress_user_id_flashcard_id_pk": {
@@ -2062,6 +1926,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archived_by": {
+          "name": "archived_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -2332,7 +2208,7 @@
         },
         "permission_grants_scope_id_present": {
           "name": "permission_grants_scope_id_present",
-          "value": "(\"permission_grants\".\"scope_type\" = 'platform') = (\"permission_grants\".\"scope_id\" is null)"
+          "value": "(\"permission_grants\".\"scope_type\" = 'platform' and \"permission_grants\".\"scope_id\" is null) or (\"permission_grants\".\"scope_type\" in ('kosk', 'madrasah') and \"permission_grants\".\"scope_id\" is not null) or \"permission_grants\".\"scope_type\" = 'course'"
         },
         "permission_grants_revocation_complete": {
           "name": "permission_grants_revocation_complete",
@@ -2473,6 +2349,22 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "permission_groups_name_idx": {
+          "name": "permission_groups_name_idx",
+          "columns": [
+            {
+              "expression": "lower(\"name\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"permission_groups\".\"deleted_at\" is null and \"permission_groups\".\"scope_id\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -2482,7 +2374,7 @@
       "checkConstraints": {
         "permission_groups_scope_id_present": {
           "name": "permission_groups_scope_id_present",
-          "value": "(\"permission_groups\".\"scope_type\" = 'platform') = (\"permission_groups\".\"scope_id\" is null)"
+          "value": "(\"permission_groups\".\"scope_type\" = 'platform' and \"permission_groups\".\"scope_id\" is null) or (\"permission_groups\".\"scope_type\" in ('kosk', 'madrasah') and \"permission_groups\".\"scope_id\" is not null) or \"permission_groups\".\"scope_type\" = 'course'"
         }
       },
       "isRLSEnabled": false
@@ -2515,6 +2407,12 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
+        },
+        "granted_by_role": {
+          "name": "granted_by_role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",

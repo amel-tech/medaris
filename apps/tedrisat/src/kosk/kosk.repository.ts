@@ -9,6 +9,7 @@ import {
   inArray,
   isNotNull,
   isNull,
+  ne,
   or,
   SQL,
   sql,
@@ -55,6 +56,7 @@ import {
   IKoskListFilter,
   IKoskRef,
   IKoskRepository,
+  IKoskVisibility,
   IKoskWithStats,
   IManagerActor,
   IUpdateKosk,
@@ -159,7 +161,9 @@ export class KoskRepository implements IKoskRepository {
     field,
     q,
   }: IKoskListFilter = {}): SQL | undefined {
-    const conditions: (SQL | undefined)[] = [];
+    // A hidden köşk (MDRS-174) is in no list, its nazımları' own included:
+    // the archive and the başnazım's directory are where it is found.
+    const conditions: (SQL | undefined)[] = [isNull(kosks.archivedAt)];
     if (managerId === undefined) {
       // A hidden köşk (MDRS-173) is in no public list either.
       conditions.push(eq(kosks.isPrivate, false), isNull(kosks.archivedAt));
@@ -407,13 +411,44 @@ export class KoskRepository implements IKoskRepository {
     return rows[0] ? this.toStats(rows[0]) : null;
   }
 
-  async findVisibility(id: string): Promise<{ isPrivate: boolean } | null> {
+  async findVisibility(id: string): Promise<IKoskVisibility | null> {
     const rows = await this.db
-      .select({ isPrivate: kosks.isPrivate })
+      .select({
+        isPrivate: kosks.isPrivate,
+        archivedAt: kosks.archivedAt,
+        alwaysRequireApproval: kosks.alwaysRequireApproval,
+      })
       .from(kosks)
       .where(eq(kosks.id, id))
       .limit(1);
-    return rows[0] ?? null;
+    const row = rows[0];
+    return row
+      ? {
+          isPrivate: row.isPrivate,
+          hidden: row.archivedAt !== null,
+          alwaysRequireApproval: row.alwaysRequireApproval,
+        }
+      : null;
+  }
+
+  /**
+   * Whether another köşk already uses this short name. Compared without case
+   * and without a leading "@", which older rows may carry.
+   */
+  async handleTaken(handle: string, exceptId?: string): Promise<boolean> {
+    const wanted = handle.trim().replace(/^@+/, "").toLowerCase();
+    if (wanted === "") return false;
+    const rows = await this.db
+      .select({ id: kosks.id })
+      .from(kosks)
+      .where(
+        and(
+          sql`lower(ltrim(${kosks.handle}, '@')) = ${wanted}`,
+          exceptId ? ne(kosks.id, exceptId) : undefined
+        )
+      )
+      .limit(1);
+    return rows.length > 0;
   }
 
   async exists(id: string): Promise<boolean> {

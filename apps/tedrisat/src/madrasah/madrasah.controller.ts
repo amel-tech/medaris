@@ -13,17 +13,21 @@ import {
   DefaultValuePipe,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseEnumPipe,
   ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -38,15 +42,26 @@ import { PublicRequest } from "../course/interfaces/authorized-request.interface
 import { AuthorizedRequest } from "../kosk/interfaces/authorized-request.interface";
 import { maskMadrasahForAnonymous } from "./anonymous-mask";
 import { CreateMadrasahDto } from "./dto/create-madrasah.dto";
+import {
+  MADRASAH_STATUS_FILTERS,
+  MadrasahDirectoryItemResponse,
+  MadrasahDirectoryResponse,
+  type MadrasahStatusFilter,
+} from "./dto/madrasah-directory-response.dto";
 import { MadrasahExploreResponse } from "./dto/madrasah-explore-response.dto";
 import { MadrasahOverviewResponse } from "./dto/madrasah-overview-response.dto";
 import { MadrasahResponse } from "./dto/madrasah-response.dto";
 import { PaginatedMadrasahResponse } from "./dto/paginated-madrasah-response.dto";
+import {
+  HeadDelegationResponse,
+  SetHeadMuderrisDto,
+} from "./dto/set-head-muderris.dto";
 import { UpdateMadrasahDto } from "./dto/update-madrasah.dto";
 import { MadrasahNotFoundError } from "./errors/madrasah-not-found.error";
 import { MadrasahService } from "./madrasah.service";
 
 const MAX_PAGE_SIZE = 50;
+const MAX_SEARCH_LENGTH = 100;
 
 const EXPLORE_LEVELS = {
   ALL: "ALL",
@@ -164,6 +179,54 @@ export class MadrasahController {
   }
 
   @ApiOperation({
+    summary: "Every medrese for the platform's table (SYSTEM_ADMIN only)",
+    description:
+      "nizam/07: hidden and passive medreses too, each with its başmüderris, course count and hosting köşks, and the per-status counts the tabs show. The open list above leaves hidden medreses out; this one is the başnazım's.",
+    operationId: "getMadrasahDirectory",
+  })
+  @ApiQuery({
+    name: "status",
+    required: false,
+    enum: MADRASAH_STATUS_FILTERS,
+    enumName: "MadrasahStatusFilter",
+  })
+  @ApiQuery({
+    name: "q",
+    required: false,
+    type: String,
+    description: "Part of the medrese's name, its handle or its başmüderris",
+  })
+  @ApiQuery({ name: "page", required: false, type: Number })
+  @ApiQuery({ name: "limit", required: false, type: Number })
+  @ApiOkResponse({ type: MadrasahDirectoryResponse })
+  @ApiForbiddenResponse()
+  @Get("directory")
+  @Authz(SCOPES.CREATE_MADRASAH, anyMadrasah)
+  async directory(
+    @Query(
+      "status",
+      new DefaultValuePipe("ALL"),
+      new ParseEnumPipe(MADRASAH_STATUS_FILTERS)
+    )
+    status: MadrasahStatusFilter,
+    @Query("q") q: string | undefined,
+    @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query("limit", new DefaultValuePipe(25), ParseIntPipe) limit: number
+  ): Promise<MadrasahDirectoryResponse> {
+    const safePage = page < 1 ? 1 : page;
+    const safeLimit = Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
+    return this.madrasahService.directory(
+      // A repeated query key arrives as an array; only a single value is read.
+      {
+        status,
+        q: typeof q === "string" ? q.slice(0, MAX_SEARCH_LENGTH) : undefined,
+      },
+      safePage,
+      safeLimit
+    );
+  }
+
+  @ApiOperation({
     summary: "Get a medrese by ID",
     description: "Open to callers with no token (MDRS-122).",
     operationId: "getMadrasahById",
@@ -200,7 +263,9 @@ export class MadrasahController {
   }
 
   @ApiOperation({
-    summary: "Create a medrese (SYSTEM_ADMIN only)",
+    summary: "Open a medrese with its başmüderris (SYSTEM_ADMIN only)",
+    description:
+      "The medrese and the başmüderris's grant are written together. Without a `handle` one is made from the name.",
     operationId: "createMadrasah",
   })
   @ApiCreatedResponse({ type: MadrasahResponse })
@@ -212,10 +277,77 @@ export class MadrasahController {
     @Req() request: AuthorizedRequest,
     @Body() dto: CreateMadrasahDto
   ): Promise<MadrasahResponse> {
-    return this.madrasahService.create({
+    return this.madrasahService.open({
       ...dto,
       createdBy: request.user.sub,
     });
+  }
+
+  @ApiOperation({
+    summary: "What the başmüderris handed on (SYSTEM_ADMIN only)",
+    description:
+      "nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese that are still held; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.",
+    operationId: "getMadrasahHeadDelegations",
+  })
+  @ApiOkResponse({ type: HeadDelegationResponse, isArray: true })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Get(":id/head-muderris/delegations")
+  @Authz(SCOPES.CREATE_MADRASAH, byExistingMadrasah)
+  async headDelegations(
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<HeadDelegationResponse[]> {
+    return this.madrasahService.headDelegations(id);
+  }
+
+  @ApiOperation({
+    summary: "Make a user the medrese's başmüderris (SYSTEM_ADMIN only)",
+    description:
+      "Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. `delegations` answers what the replaced başmüderris handed on (Devral / Düşür), `endsAt` is the new one's Görev bitişi. Written to the audit log.",
+    operationId: "setMadrasahHeadMuderris",
+  })
+  @ApiOkResponse({ type: MadrasahDirectoryItemResponse })
+  @ApiBadRequestResponse({
+    description:
+      "DISMISS_DECISIONS_INCOMPLETE: a hand-on is unanswered or unknown; GRANT_EXPIRY_INVALID: the end is in the past",
+  })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Put(":id/head-muderris")
+  @Authz(SCOPES.CREATE_MADRASAH, byExistingMadrasah)
+  async setHeadMuderris(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: SetHeadMuderrisDto
+  ): Promise<MadrasahDirectoryItemResponse> {
+    return this.madrasahService.setHeadMuderris(
+      id,
+      dto.userId.toLowerCase(),
+      request.user.sub,
+      {
+        endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
+        decisions: dto.delegations,
+      }
+    );
+  }
+
+  @ApiOperation({
+    summary: "Bring a hidden medrese back (SYSTEM_ADMIN only)",
+    description: "409 (MADRASAH_NOT_HIDDEN) when it is not hidden.",
+    operationId: "restoreMadrasah",
+  })
+  @ApiOkResponse({ type: MadrasahDirectoryItemResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @ApiConflictResponse({ description: "MADRASAH_NOT_HIDDEN" })
+  @Post(":id/restore")
+  @HttpCode(HttpStatus.OK)
+  @Authz(SCOPES.CREATE_MADRASAH, byExistingMadrasah)
+  async restore(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<MadrasahDirectoryItemResponse> {
+    return this.madrasahService.restore(id, request.user.sub);
   }
 
   @ApiOperation({

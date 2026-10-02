@@ -27,6 +27,12 @@ export const madrasahs = table("madrasahs", {
   // passive medrese, it is unattended. Null while active.
   passiveSince: timestamp("passive_since", { withTimezone: true }),
   passiveReason: text("passive_reason"),
+  // Hidden (MDRS-170): nothing is deleted, the medrese is in no list but
+  // SYSTEM_ADMIN's and the same person brings it back (nizam/07 "Geri al").
+  // `archivedBy` is the account that hid it — not a foreign key, like every
+  // other user column. Null while shown.
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  archivedBy: uuid("archived_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

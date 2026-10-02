@@ -49,6 +49,7 @@ import {
   EnrolledCourseResponse,
   EnrollmentResponse,
   PendingEnrollmentResponse,
+  RemovedEnrollmentResponse,
   RosterEnrollmentResponse,
 } from "./dto/course-response.dto";
 import { CreateCourseDto } from "./dto/create-course.dto";
@@ -375,6 +376,23 @@ export class CourseController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<RosterEnrollmentResponse[]> {
     return this.courseService.findEnrollments(id);
+  }
+
+  @ApiOperation({
+    summary: "Talebe the team took out of the course, with the reasons",
+    description:
+      "For the course team (MDRS-178, Erişimi kaldırılanlar): who was taken out by `POST …/remove`, by whom, when and why, newest first. Read from the audit log; a talebe may have applied again since.",
+    operationId: "getRemovedEnrollments",
+  })
+  @ApiOkResponse({ type: RemovedEnrollmentResponse, isArray: true })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
+  @Get("courses/:id/enrollments/removed")
+  async removedEnrollments(
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<RemovedEnrollmentResponse[]> {
+    return this.courseService.findRemovedEnrollments(id);
   }
 
   @ApiOperation({

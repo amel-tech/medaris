@@ -229,15 +229,36 @@
     {
       "idx": 32,
       "version": "7",
-      "when": 1790953048168,
-      "tag": "0032_decks_summary",
+      "when": 1790950266993,
+      "tag": "0032_madrasah_archive_hosting_role",
       "breakpoints": true
     },
     {
       "idx": 33,
       "version": "7",
-      "when": 1790959831479,
-      "tag": "0033_flashcard_review_schedule",
+      "when": 1790950379254,
+      "tag": "0033_permission_groups_course_wide",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790950480845,
+      "tag": "0034_kosk_policies",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790966122608,
+      "tag": "0036_decks_summary",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790967082621,
+      "tag": "0037_flashcard_review_schedule",
       "breakpoints": true
     }
   ]

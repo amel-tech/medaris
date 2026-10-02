@@ -38,6 +38,8 @@ export const KOSK_FIELD_MAX = 60;
 export const KOSK_HUE_MAX = 360;
 export const KOSK_TAGS_MAX = 10;
 export const KOSK_TAG_MAX = 40;
+/** How many nazımları a köşk can be opened with at once (nizam/10). */
+export const KOSK_MANAGERS_MAX = 10;
 
 /**
  * Optional, but never null: `@IsOptional()` skips validation for `null` as
@@ -66,6 +68,8 @@ export const KoskCoverHueRules = () =>
   applyDecorators(IsInt(), Min(0), Max(KOSK_HUE_MAX));
 
 export const KoskIsPrivateRules = () => applyDecorators(IsBoolean());
+
+export const KoskPolicyRules = () => applyDecorators(IsBoolean());
 
 export const KoskFieldRules = () =>
   applyDecorators(IsString(), MaxLength(KOSK_FIELD_MAX));
