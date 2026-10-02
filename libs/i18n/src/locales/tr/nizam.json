@@ -458,5 +458,31 @@
     "saving": "Kaydediliyor...",
     "created": "Köşk oluşturuldu.",
     "updated": "Köşk güncellendi."
+  },
+  "NazirRedirectPage": {
+    "title": "Medrese ve ders işleriniz Nazır’da",
+    "intro": "Nizam, Medaris’i ve köşkleri yönetenlerin uygulamasıdır. Medrese ve ders görevlerinizi Nazır’dan yürütürsünüz.",
+    "tasks": "Görevleriniz",
+    "students": "{count} talebe",
+    "imam": "Dersin imamı",
+    "draft": "Taslak",
+    "goToNazir": "Nazır’a git",
+    "roles": {
+      "MEDRESE_BASMUDERRIS": "Medrese başmüderrisi",
+      "MEDRESE_NAZIR": "Medrese nazırı",
+      "MUDERRIS": "Müderris",
+      "DERS_NAZIR": "Ders nazırı"
+    },
+    "empty": "Henüz bir medrese ya da ders göreviniz görünmüyor.",
+    "loadFailedTitle": "Görevleriniz yüklenemedi",
+    "loadFailed": "Görevleriniz şu an okunamadı.",
+    "retry": "Tekrar dene"
+  },
+  "NoAccess": {
+    "title": "Bu bölüm için izniniz yok",
+    "body": "Bu bölümün izni hesabınıza verilmemiş. İzinleri Medaris başnazımı verir; gerekirse {name}’dan isteyin.",
+    "bodyGeneric": "Bu bölümün izni hesabınıza verilmemiş. İzinleri Medaris başnazımı verir; gerekirse ondan isteyin.",
+    "account": "Giriş yaptığınız hesap:",
+    "back": "Ana sayfaya dön"
   }
 }
