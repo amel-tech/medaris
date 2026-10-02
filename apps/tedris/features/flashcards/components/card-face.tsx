@@ -17,14 +17,24 @@ export function CardFace({
   className?: string;
 }) {
   const arabic = isArabic(text);
+  if (arabic && size === "table") {
+    // The canvas draws a row's Arabic as the system's inline run (`.mds-arabic`),
+    // which keeps the row at the height of the Latin text next to it.
+    return (
+      <span
+        className={["mds-arabic", className].filter(Boolean).join(" ")}
+        dir="rtl"
+        lang="ar"
+      >
+        {text}
+      </span>
+    );
+  }
   return (
     <span
       className={[
         "block",
-        arabic &&
-          (size === "sample"
-            ? "font-arabic text-center text-[1.75rem] leading-[2.2]"
-            : "font-arabic text-[1.375rem] leading-[2]"),
+        arabic && "font-arabic text-center text-[1.75rem] leading-[2.2]",
         className,
       ]
         .filter(Boolean)

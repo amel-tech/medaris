@@ -15,8 +15,10 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { addDeckToCollection, removeDeckFromCollection } from "../actions";
+import { attempt } from "../attempt";
 import {
   countCards,
+  countOf,
   percentOf,
   READER_PAGE,
   showMore,
@@ -61,9 +63,9 @@ export function DeckReaderView({
     const next = !collected;
     setBusy(true);
     setCollected(next);
-    const result = await (next
-      ? addDeckToCollection(deck.id)
-      : removeDeckFromCollection(deck.id));
+    const result = await attempt(() =>
+      next ? addDeckToCollection(deck.id) : removeDeckFromCollection(deck.id)
+    );
     setBusy(false);
     if (result.success) {
       router.refresh();
@@ -135,7 +137,7 @@ export function DeckReaderView({
                   {
                     key: "front",
                     header: t("frontLabel"),
-                    width: "30%",
+                    rowHeader: true,
                     render: (card) => <CardFace text={card.contentFront} />,
                   },
                   {
@@ -162,7 +164,6 @@ export function DeckReaderView({
                       </span>
                     ),
                     align: "right",
-                    width: "15rem",
                     render: (_card, index) => (
                       <Button
                         variant="outline"
@@ -179,7 +180,11 @@ export function DeckReaderView({
               />
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="mds-caption">
-                  {t("showing", { shown: visible.length, total: counts.total })}
+                  {t("showing", {
+                    shown: visible.length,
+                    shownText: countOf(visible.length, locale),
+                    total: counts.total,
+                  })}
                 </p>
                 {shown < cards.length ? (
                   <Button

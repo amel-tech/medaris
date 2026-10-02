@@ -18,6 +18,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { addDeckToCollection, removeDeckFromCollection } from "../actions";
+import { attempt } from "../attempt";
 import { matchesQuery } from "../deck-model";
 import { KindBadge } from "./deck-badges";
 import { type DeckCardLabels, DeckSummaryCard } from "./deck-summary-card";
@@ -77,9 +78,9 @@ export function ExploreDecksPage({ data, cardType }: ExploreDecksPageProps) {
     const before = inCollection(deck);
     setBusy((s) => new Set(s).add(deck.id));
     setOverrides((o) => ({ ...o, [deck.id]: next }));
-    const result = await (next
-      ? addDeckToCollection(deck.id)
-      : removeDeckFromCollection(deck.id));
+    const result = await attempt(() =>
+      next ? addDeckToCollection(deck.id) : removeDeckFromCollection(deck.id)
+    );
     setBusy((s) => {
       const rest = new Set(s);
       rest.delete(deck.id);
@@ -137,13 +138,13 @@ export function ExploreDecksPage({ data, cardType }: ExploreDecksPageProps) {
     const isBusy = busy.has(deck.id);
     if (inCollection(deck)) {
       return (
-        <span className="flex items-center gap-2">
+        <span className="flex shrink-0 items-center gap-2">
           <Badge variant="success" icon={<Icon name="check" size="sm" />}>
             {t("inCollection")}
           </Badge>
           <Button
             variant="ghost"
-            size="small"
+            size="mini"
             loading={isBusy}
             aria-label={t("removeLabel", { title: deck.title })}
             onClick={() => toggle(deck, false)}

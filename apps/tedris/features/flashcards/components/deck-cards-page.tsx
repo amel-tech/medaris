@@ -4,7 +4,6 @@ import type {
   FlashcardDeckResponse,
   FlashcardResponse,
 } from "@medaris/services/tedrisat";
-import { Alert } from "@medaris/ui/mds/alert";
 import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { Button } from "@medaris/ui/mds/button";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
@@ -15,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { deleteCard } from "../actions";
+import { attempt } from "../attempt";
 import { cardStatus, kindOf } from "../deck-model";
 import { CardFace } from "./card-face";
 import { CardFormDialog } from "./card-form-dialog";
@@ -55,7 +55,7 @@ export function DeckCardsPage({
   const remove = async (card: FlashcardResponse) => {
     if (deleting) return;
     setDeleting(true);
-    const result = await deleteCard(card.id);
+    const result = await attempt(() => deleteCard(card.id));
     setDeleting(false);
     if (!result.success) {
       close();
@@ -105,7 +105,7 @@ export function DeckCardsPage({
         }
       />
 
-      <Alert tone="neutral">{t("cardsNote")}</Alert>
+      <p className="mds-caption max-inline-measure">{t("cardsNote")}</p>
 
       {cards.length === 0 ? (
         <EmptyState
@@ -124,7 +124,6 @@ export function DeckCardsPage({
       ) : (
         <Table
           caption={t("tableCaption", { title: deck.title })}
-          captionVisible
           responsive="stack"
           rows={cards}
           rowKey={(card) => card.id}
@@ -132,7 +131,7 @@ export function DeckCardsPage({
             {
               key: "front",
               header: t("frontLabel"),
-              width: "28%",
+              rowHeader: true,
               render: (card) => <CardFace text={card.contentFront} />,
             },
             {
@@ -147,7 +146,6 @@ export function DeckCardsPage({
             {
               key: "status",
               header: t("statusCol"),
-              width: "9rem",
               render: (card) => (
                 <CardStatusBadge
                   status={cardStatus(card)}
@@ -163,10 +161,12 @@ export function DeckCardsPage({
             },
             {
               key: "actions",
-              header: t("actionsCol"),
-              width: "14rem",
+              header: (
+                <span className="mds-visually-hidden">{t("actionsCol")}</span>
+              ),
+              align: "right",
               render: (card, index) => (
-                <span className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex flex-wrap items-center gap-2">
                   <Button
                     variant="outline"
                     size="small"
