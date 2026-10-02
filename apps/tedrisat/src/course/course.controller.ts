@@ -502,6 +502,27 @@ export class CourseController {
   }
 
   @ApiOperation({
+    summary: "Withdraw a request still awaiting approval (the current talebe)",
+    description:
+      "Deletes the caller's own PENDING enrollment. Once it is approved (or when there is none) this is a 404 (ENROLLMENT_NOT_FOUND): leaving an approved seat is `DELETE /courses/{id}/enrollment`.",
+    operationId: "withdrawEnrollment",
+  })
+  @ApiOkResponse({ type: Boolean })
+  @ApiNotFoundResponse({
+    description:
+      "No enrollment, or it is no longer pending (ENROLLMENT_NOT_FOUND).",
+  })
+  // Same scope as `leave`: the caller's own row, selected by `sub`.
+  @Authz(SCOPES.VIEW, byParam(ENTITIES.COURSE))
+  @Delete("courses/:id/enroll")
+  async withdraw(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<boolean> {
+    return this.courseService.withdraw(request.user.sub, id);
+  }
+
+  @ApiOperation({
     summary: "Update the current talebe's progress in a course",
     description:
       "Records progress only. Reaching 100 does not complete the course, and `status` is refused unless it is the current one (MDRS-105): the course team completes a course.",

@@ -1431,6 +1431,44 @@
         "tags": [
           "courses"
         ]
+      },
+      "delete": {
+        "description": "Deletes the caller's own PENDING enrollment. Once it is approved (or when there is none) this is a 404 (ENROLLMENT_NOT_FOUND): leaving an approved seat is `DELETE /courses/{id}/enrollment`.",
+        "operationId": "withdrawEnrollment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No enrollment, or it is no longer pending (ENROLLMENT_NOT_FOUND)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Withdraw a request still awaiting approval (the current talebe)",
+        "tags": [
+          "courses"
+        ]
       }
     },
     "/kosks/{koskId}/enrollments/pending": {

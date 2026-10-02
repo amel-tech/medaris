@@ -698,6 +698,27 @@ export class CourseService {
   }
 
   /**
+   * The caller withdraws a request still awaiting approval. Only a PENDING
+   * row goes: once the team has approved it the seat is theirs, and a stale
+   * page that still offers "Başvuruyu geri çek" gets a 404 instead of quietly
+   * dropping them from the course (design tedris/08, criterion 5).
+   */
+  async withdraw(userId: string, courseId: string): Promise<boolean> {
+    await this.banService.assertNotBarred(userId, courseId);
+    const existing = await this.courseRepo.findEnrollment(userId, courseId);
+    if (!existing || existing.status !== EnrollmentStatus.PENDING) {
+      throw new EnrollmentNotFoundError(courseId);
+    }
+    const removed = await this.courseRepo.deleteEnrollment(
+      userId,
+      courseId,
+      EnrollmentStatus.PENDING
+    );
+    if (!removed) throw new EnrollmentNotFoundError(courseId);
+    return true;
+  }
+
+  /**
    * Records the talebe's own progress. The status is not theirs to set
    * (MDRS-105): reaching 100% no longer completes the course, a completion
    * set by the team survives later progress writes, and a `status` that

@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { type ReactNode, useEffect, useState, useTransition } from "react";
+import { courseActionErrorKey } from "../action-error";
 import { enrollInCourse } from "../actions";
 import {
   type CourseViewState,
@@ -72,7 +73,7 @@ export const CourseAside = ({
     startTransition(async () => {
       const res = await enrollInCourse(course.id);
       if (res.success === false) {
-        toast.error(res.error);
+        toast.error(t(courseActionErrorKey(res.status)));
         return;
       }
       // The API decides whether the application waits (PENDING) or the
@@ -110,9 +111,11 @@ export const CourseAside = ({
           })}
         </Fact>
       ) : null}
-      <Fact icon="shield">
-        {t(approvalRequired ? "approvalNotice" : "openEnrollNotice")}
-      </Fact>
+      {isPending ? null : (
+        <Fact icon="shield">
+          {t(approvalRequired ? "approvalNotice" : "openEnrollNotice")}
+        </Fact>
+      )}
     </ul>
   );
 

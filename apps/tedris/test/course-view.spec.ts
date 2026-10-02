@@ -79,6 +79,23 @@ describe("the programme in numbers", () => {
     expect(courseTotals(c)).toEqual({ weeks: 2, sessions: 3, hours: 4 });
   });
 
+  it("does not count a cancelled session", () => {
+    const withCancelled = course([
+      week(1, [
+        lesson("a", "2026-09-13T18:00:00Z", { durationMinutes: 105 }),
+        lesson("x", "2026-09-14T18:00:00Z", {
+          durationMinutes: 105,
+          cancelledAt: new Date("2026-09-10T10:00:00Z"),
+        }),
+      ]),
+    ]);
+    expect(courseTotals(withCancelled)).toEqual({
+      weeks: 1,
+      sessions: 1,
+      hours: 2,
+    });
+  });
+
   it("gives the span from the first to the last scheduled session, in the course's zone", () => {
     expect(courseSpan(c, "tr")).toBe("13 Eylül – 20 Eylül 2026");
   });
@@ -170,10 +187,10 @@ describe("days and words", () => {
     expect(calendarDaysUntil(late, late, ZONE)).toBe(0);
   });
 
-  it("speaks them in the language: yarın, öbür gün, 3 gün sonra", () => {
+  it("speaks them in the language, led by a capital: Yarın, Öbür gün, 3 gün sonra", () => {
     const at = (days: number) => NOW + days * 86_400_000;
-    expect(relativeDay(at(1), NOW, "tr", ZONE)).toBe("yarın");
-    expect(relativeDay(at(2), NOW, "tr", ZONE)).toBe("öbür gün");
+    expect(relativeDay(at(1), NOW, "tr", ZONE)).toBe("Yarın");
+    expect(relativeDay(at(2), NOW, "tr", ZONE)).toBe("Öbür gün");
     expect(relativeDay(at(3), NOW, "tr", ZONE)).toBe("3 gün sonra");
   });
 

@@ -12,10 +12,12 @@ import {
   AlertDialogTrigger,
 } from "@medaris/ui/components/alert-dialog";
 import { toast } from "@medaris/ui/components/sonner";
+import { Button } from "@medaris/ui/mds/button";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useTransition } from "react";
-import { leaveCourse } from "../actions";
+import { courseActionErrorKey } from "../action-error";
+import { leaveCourse, withdrawEnrollment } from "../actions";
 
 /** The withdraw button's id: the application window hands focus to it (design tedris/07). */
 export const WITHDRAW_BUTTON_ID = "withdraw-request";
@@ -40,9 +42,14 @@ export const LeaveCourse = ({
 
   const leave = () =>
     startTransition(async () => {
-      const res = await leaveCourse(courseId);
+      const res =
+        mode === "withdraw"
+          ? await withdrawEnrollment(courseId)
+          : await leaveCourse(courseId);
       if (res.success === false) {
-        toast.error(res.error);
+        toast.error(t(`CoursePage.${courseActionErrorKey(res.status)}`));
+        // A stale page: draw what the enrollment is now.
+        if (res.status === 404 || res.status === 409) router.refresh();
         return;
       }
       toast.success(
@@ -56,15 +63,17 @@ export const LeaveCourse = ({
 
   if (mode === "withdraw") {
     return (
-      <button
+      <Button
         id={WITHDRAW_BUTTON_ID}
-        type="button"
+        variant="secondary"
+        fullWidth
+        className="mbs-3"
         onClick={leave}
-        disabled={pending}
-        className={linkClass}
+        loading={pending}
+        loadingLabel={t("CoursePage.withdrawing")}
       >
         {t("CoursePage.withdrawRequest")}
-      </button>
+      </Button>
     );
   }
 

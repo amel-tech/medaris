@@ -65,13 +65,13 @@ test.describe("tedris/05: a visitor with no account", () => {
     await expect(
       main.getByRole("link", { name: fixture.madrasahName })
     ).toBeVisible();
-    // Every week of the programme is there and locked.
+    // Every week of the programme is there; all but the sample session's are locked.
     await expect(main.locator(".mds-week")).toHaveCount(4);
     await expect(
       main.locator(".mds-week__titles .mds-visually-hidden", {
         hasText: ", kilitli",
       })
-    ).toHaveCount(4);
+    ).toHaveCount(3);
     // Times are the course's own zone, said out loud.
     await expect(main.getByText(/İstanbul saatiyle/)).toBeVisible();
     // The next session is named, its content is not.

@@ -138,6 +138,10 @@ export interface UpdateCourseProgressRequest {
     updateProgressDto: UpdateProgressDto;
 }
 
+export interface WithdrawEnrollmentRequest {
+    id: string;
+}
+
 /**
  * 
  */
@@ -1024,6 +1028,54 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async updateCourseProgress(requestParameters: UpdateCourseProgressRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EnrollmentResponse> {
         const response = await this.updateCourseProgressRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Deletes the caller\'s own PENDING enrollment. Once it is approved (or when there is none) this is a 404 (ENROLLMENT_NOT_FOUND): leaving an approved seat is `DELETE /courses/{id}/enrollment`.
+     * Withdraw a request still awaiting approval (the current talebe)
+     */
+    async withdrawEnrollmentRaw(requestParameters: WithdrawEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<boolean>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling withdrawEnrollment().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/enroll`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<boolean>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Deletes the caller\'s own PENDING enrollment. Once it is approved (or when there is none) this is a 404 (ENROLLMENT_NOT_FOUND): leaving an approved seat is `DELETE /courses/{id}/enrollment`.
+     * Withdraw a request still awaiting approval (the current talebe)
+     */
+    async withdrawEnrollment(requestParameters: WithdrawEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
+        const response = await this.withdrawEnrollmentRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -1153,11 +1153,19 @@ export class CourseRepository implements ICourseRepository {
       .then((result) => result[0] || null);
   }
 
-  async deleteEnrollment(userId: string, courseId: string): Promise<boolean> {
+  async deleteEnrollment(
+    userId: string,
+    courseId: string,
+    onlyStatus?: EnrollmentStatus
+  ): Promise<boolean> {
     const deleted = await this.db
       .delete(enrollments)
       .where(
-        and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId))
+        and(
+          eq(enrollments.userId, userId),
+          eq(enrollments.courseId, courseId),
+          onlyStatus ? eq(enrollments.status, onlyStatus) : undefined
+        )
       )
       .returning();
     return deleted.length > 0;

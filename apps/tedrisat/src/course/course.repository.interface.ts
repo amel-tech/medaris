@@ -426,7 +426,12 @@ export interface ICourseRepository {
     courseId: string,
     status: EnrollmentStatus
   ): Promise<IEnrollment | null>;
-  deleteEnrollment(userId: string, courseId: string): Promise<boolean>;
+  /** With `onlyStatus`, the row goes only while it still has that status. */
+  deleteEnrollment(
+    userId: string,
+    courseId: string,
+    onlyStatus?: EnrollmentStatus
+  ): Promise<boolean>;
   updateProgress(
     userId: string,
     courseId: string,

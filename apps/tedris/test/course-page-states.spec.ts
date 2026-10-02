@@ -28,6 +28,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh() {} }) }));
 vi.mock("~/features/courses/actions", () => ({
   enrollInCourse: vi.fn(),
   leaveCourse: vi.fn(),
+  withdrawEnrollment: vi.fn(),
   updateCourseProgress: vi.fn(),
 }));
 
@@ -149,11 +150,11 @@ const render = async (
 };
 
 describe("tedris/05: a visitor", () => {
-  it("is asked to sign in or register, and sees every week locked", async () => {
+  it("is asked to sign in or register, and sees every week but the sample session's locked", async () => {
     const html = await render(null, { signedIn: false });
     expect(html).toContain(tr.signInToApply);
     expect(html).toContain("Hesabın yok mu?");
-    expect(html.match(/, kilitli/g)).toHaveLength(3);
+    expect(html.match(/, kilitli/g)).toHaveLength(2);
     expect(html).not.toContain(tr.apply);
   });
 
@@ -167,7 +168,7 @@ describe("tedris/05: a visitor", () => {
 
   it("names the next session with its day, behind the lock notice", async () => {
     const html = await render(null, { signedIn: false });
-    expect(html).toContain("yarın");
+    expect(html).toContain(">Yarın<");
     expect(html).toContain(tr.lockedNotice);
   });
 
@@ -198,6 +199,14 @@ describe("tedris/08: waiting for approval", () => {
     expect(html).not.toContain(`>${tr.apply}</button>`);
     expect(html).not.toContain(MEETING);
   });
+
+  it("withdraws with a full-width secondary button and without the approval line", async () => {
+    const html = await render("PENDING");
+    expect(html).toMatch(
+      /class="mds-btn[^"]*mds-btn--secondary[^"]*mds-btn--full[^"]*"[^>]*id="withdraw-request"|id="withdraw-request"[^>]*class="mds-btn[^"]*mds-btn--secondary/
+    );
+    expect(html).not.toContain(tr.approvalNotice);
+  });
 });
 
 describe("tedris/12: an enrolled talebe", () => {
@@ -209,6 +218,13 @@ describe("tedris/12: an enrolled talebe", () => {
     expect(html).toContain("%40");
     expect(html).toContain(tr.updateProgress);
     expect(html).toContain(tr.tabDeck);
+  });
+
+  it("does not count a cancelled session in its week or in the totals", async () => {
+    const html = await render("ENROLLED");
+    expect(html).toContain("1 celse · 60 dk");
+    expect(html).not.toContain("2 celse · 120 dk");
+    expect(html).toContain("3 celse");
   });
 
   it("marks a cancelled session and says when a week that has not begun opens", async () => {
@@ -235,13 +251,20 @@ describe("tedris/13: access withdrawn", () => {
     expect(html).toContain('href="/my-courses"');
     expect(html).not.toContain(`>${tr.apply}</button>`);
     expect(html).not.toContain(tr.tabDeck);
-    expect(html).not.toContain("ornek-celse");
     expect(html).not.toContain(tr.nextSession);
   });
 
-  it("keeps the programme, every week locked", async () => {
+  it("still shows the sample session, as everyone without a seat does", async () => {
     const html = await render("REVOKED");
-    expect(html.match(/, kilitli/g)).toHaveLength(3);
+    expect(html).toContain('id="ornek-celse"');
+    expect(html).toContain("Tanışma ve dersin işleyişi");
+    expect(html).toContain("Binâü’l-ef’âl, s. 1–6");
+    expect(html).not.toContain(MEETING);
+  });
+
+  it("keeps the programme, every week but the sample session's locked", async () => {
+    const html = await render("REVOKED");
+    expect(html.match(/, kilitli/g)).toHaveLength(2);
   });
 });
 

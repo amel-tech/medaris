@@ -57,11 +57,16 @@ export const isCancelled = (lesson: Pick<LessonResponse, "cancelledAt">) =>
 const lessonsOf = (course: Pick<CourseDetailResponse, "weeks">) =>
   course.weeks.flatMap((week) => week.lessons);
 
-/** The programme in numbers: weeks, sessions, and whole hours (a cancelled session still counts as part of the programme). */
+/** The sessions that will be held: a cancelled one is in the programme but not in its numbers. */
+export const heldLessons = <T extends Pick<LessonResponse, "cancelledAt">>(
+  lessons: T[]
+): T[] => lessons.filter((lesson) => !isCancelled(lesson));
+
+/** The programme in numbers: weeks, sessions held, and whole hours (design tedris/12: a cancelled session is not counted). */
 export const courseTotals = (
   course: Pick<CourseDetailResponse, "weeks">
 ): { weeks: number; sessions: number; hours: number } => {
-  const lessons = lessonsOf(course);
+  const lessons = heldLessons(lessonsOf(course));
   const minutes = lessons.reduce(
     (sum, lesson) => sum + (lesson.durationMinutes ?? 0),
     0
@@ -165,17 +170,19 @@ export const calendarDaysUntil = (
   return Math.round((day(time) - day(now)) / 86_400_000);
 };
 
-/** "3 gün sonra", "yarın", "öbür gün", "bugün": the language's own words. */
+/** "3 gün sonra", "Yarın", "Öbür gün", "Bugün": the language's own words, led by a capital as the badge is a label (design tedris/05, 12). */
 export const relativeDay = (
   time: number,
   now: number,
   locale: string,
   timeZone: string
-): string =>
-  new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(
-    calendarDaysUntil(time, now, timeZone),
-    "day"
-  );
+): string => {
+  const words = new Intl.RelativeTimeFormat(locale, {
+    numeric: "auto",
+  }).format(calendarDaysUntil(time, now, timeZone), "day");
+  const [first = "", ...rest] = Array.from(words);
+  return first.toLocaleUpperCase(locale) + rest.join("");
+};
 
 const parts = (
   time: number,

@@ -767,6 +767,24 @@ describe("Course team (MDRS-105, e2e)", () => {
       await as(PENDING_ID).post(`/courses/${courseId}/enroll`).expect(201);
     });
 
+    it("withdraws only a pending request: an approved seat is a 404 and stays", async () => {
+      await as(TALEBE_ID)
+        .delete(`/courses/${courseId}/enroll`)
+        .expect(404)
+        .expect((res) => expect(res.body.code).toBe("ENROLLMENT_NOT_FOUND"));
+      expect(await enrollmentOf(TALEBE_ID)).toHaveProperty(
+        "status",
+        EnrollmentStatus.ENROLLED
+      );
+      await as(STRANGER_ID).delete(`/courses/${courseId}/enroll`).expect(404);
+      await as(PENDING_ID)
+        .delete(`/courses/${courseId}/enroll`)
+        .expect(200)
+        .expect((res) => expect(res.text).toBe("true"));
+      expect(await enrollmentOf(PENDING_ID)).toBeNull();
+      await as(PENDING_ID).post(`/courses/${courseId}/enroll`).expect(201);
+    });
+
     it("leaves an active course", async () => {
       await as(TALEBE_ID).delete(`/courses/${courseId}/enrollment`).expect(200);
       expect(await enrollmentOf(TALEBE_ID)).toBeNull();

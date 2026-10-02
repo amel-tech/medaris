@@ -3,6 +3,7 @@
 import type {
   CourseDetailResponse,
   LessonResponse,
+  WeekResponse,
 } from "@medaris/services/tedrisat";
 import { Badge } from "@medaris/ui/mds/badge";
 import { LessonRow, type LessonType } from "@medaris/ui/mds/lesson-row";
@@ -11,6 +12,7 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   type CourseViewState,
   hasEnded,
+  heldLessons,
   holdsSeat,
   isCancelled,
   isoDateIn,
@@ -57,7 +59,7 @@ export const CourseProgramme = ({
 
   const rowOf = (lesson: LessonResponse, weekOpen: boolean) => {
     const open = seat && weekOpen;
-    const sample = !seat && state !== "revoked" && lesson.isPreview;
+    const sample = !seat && lesson.isPreview;
     const cancelled = isCancelled(lesson);
     const current = next?.lesson.id === lesson.id;
     return (
@@ -73,7 +75,7 @@ export const CourseProgramme = ({
         state={
           current
             ? "current"
-            : seat && !cancelled && hasEnded(lesson, now)
+            : (seat || sample) && !cancelled && hasEnded(lesson, now)
               ? "done"
               : "default"
         }
@@ -106,16 +108,34 @@ export const CourseProgramme = ({
     );
   };
 
+  // The sample session's week is open to everyone (design tedris/05, 06, 08):
+  // it is the one week a visitor can read, and it opens at first together
+  // with the week of the next session.
+  const hasSample = (week: WeekResponse) =>
+    !seat && week.lessons.some((lesson) => lesson.isPreview);
+  const upcoming = seat ? null : nextSession(course, now);
+  const openAtFirst = seat
+    ? undefined
+    : course.weeks
+        .filter(
+          (week) => hasSample(week) || week.weekNumber === upcoming?.weekNumber
+        )
+        .map((week) => week.weekNumber);
+
   return (
-    <Weeks>
+    <Weeks defaultOpen={openAtFirst}>
       {course.weeks.map((week) => {
+        const sampleWeek = hasSample(week);
         const wState = seat
           ? weekState(week, next?.weekNumber ?? null, now)
-          : "default";
+          : sampleWeek
+            ? weekState(week, null, now)
+            : "default";
         const opens = weekOpensAt(week);
         const notBegun =
           seat && opens !== null && opens > now && wState === "default";
-        const minutes = week.lessons.reduce(
+        const held = heldLessons(week.lessons);
+        const minutes = held.reduce(
           (sum, l) => sum + (l.durationMinutes ?? 0),
           0
         );
@@ -126,9 +146,9 @@ export const CourseProgramme = ({
             title={week.title}
             summary={week.summary ?? undefined}
             state={wState}
-            access={seat ? "open" : "locked"}
+            access={seat || sampleWeek ? "open" : "locked"}
             opensOn={notBegun ? isoDateIn(opens, course.timeZone) : undefined}
-            meta={t("weekMeta", { count: week.lessons.length, minutes })}
+            meta={t("weekMeta", { count: held.length, minutes })}
             locale={locale}
             weekLabel={t("week", { number: "{week}" })}
             activeLabel={t("weekActive")}

@@ -78,7 +78,7 @@ export const CoursePage = ({
       week.lessons.map((lesson) => ({ week: week.weekNumber, lesson }))
     )
     .find(({ lesson }) => lesson.isPreview);
-  const showSample = !seat && state !== "revoked" && !preview && sample;
+  const showSample = !seat && !preview && sample;
 
   const firstSession = preview ? firstSessionAt(course) : null;
 
@@ -137,10 +137,10 @@ export const CoursePage = ({
       <div className="grid items-start gap-8 grid-cols-[minmax(0,1fr)_var(--layout-aside)] max-md:grid-cols-1">
         <div className="flex min-inline-0 flex-col gap-section">
           <div className="flex items-start gap-6 max-md:flex-col">
-            <div className="shrink-0 inline-[9.5rem] max-md:inline-[7.5rem]">
+            <div className="shrink-0 inline-[165px] max-md:inline-[7.5rem]">
               <CoverPattern
                 seed={course.id}
-                size="md"
+                size="lg"
                 label={course.category ?? ""}
               />
             </div>
