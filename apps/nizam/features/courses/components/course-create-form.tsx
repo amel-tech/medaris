@@ -230,6 +230,7 @@ export function CourseCreateForm({ kosk }: Props) {
                 <RadioGroup
                   legend={t("toneLegend")}
                   name="tone"
+                  className="flex-row flex-wrap gap-x-5 [&>.mds-label]:basis-full"
                   value={tone}
                   onChange={(v) => setTone(v as typeof tone)}
                   options={COVER_TONES.map((value) => ({

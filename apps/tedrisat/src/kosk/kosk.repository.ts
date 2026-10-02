@@ -417,6 +417,7 @@ export class KoskRepository implements IKoskRepository {
         isPrivate: kosks.isPrivate,
         archivedAt: kosks.archivedAt,
         alwaysRequireApproval: kosks.alwaysRequireApproval,
+        recordingsNeverPublic: kosks.recordingsNeverPublic,
       })
       .from(kosks)
       .where(eq(kosks.id, id))
@@ -427,6 +428,7 @@ export class KoskRepository implements IKoskRepository {
           isPrivate: row.isPrivate,
           hidden: row.archivedAt !== null,
           alwaysRequireApproval: row.alwaysRequireApproval,
+          recordingsNeverPublic: row.recordingsNeverPublic,
         }
       : null;
   }

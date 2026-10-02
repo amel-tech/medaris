@@ -16,6 +16,7 @@ import {
   fromZonedDatetimeLocal,
   normalizeMeetingUrl,
   resolveMeetingPlatform,
+  timeZoneCity,
   toZonedDatetimeLocal,
 } from "@medaris/utils";
 import { useRouter } from "next/navigation";
@@ -357,7 +358,10 @@ export function SessionsView({
           <p>
             {t("intro", {
               name: course.title,
-              zone: zone === "Europe/Istanbul" ? t("zoneIstanbul") : zone,
+              zone:
+                zone === "Europe/Istanbul"
+                  ? t("zoneIstanbul")
+                  : timeZoneCity(zone),
             })}
           </p>
         </div>

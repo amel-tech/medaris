@@ -2664,6 +2664,7 @@
     "lessonHeading": "Session {n} · {when}",
     "cancelled": "Cancelled",
     "linkMissing": "Link missing",
+    "scheduled": "Planned",
     "hide": "Hide",
     "minutes": "{minutes} min",
     "cancelledNote": "Cancelled on {when}. The meeting link is not shown.",

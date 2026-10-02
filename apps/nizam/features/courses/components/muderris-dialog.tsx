@@ -79,6 +79,13 @@ export function MuderrisDialog({
     if (open) void load();
   }, [open, load]);
 
+  // The e-mail field exists only once the course has been read, after the
+  // dialog's own opening focus has already gone to its first button, so it is
+  // focused when the picker appears (_kurallar 13: the first field).
+  useEffect(() => {
+    if (open && !loading && !failed) emailRef.current?.focus();
+  }, [open, loading, failed]);
+
   const payload = teamPayload(team, version);
   const dirty = teamChanged(stored, team);
   const ready = payload !== null && teamReady(team) && dirty;

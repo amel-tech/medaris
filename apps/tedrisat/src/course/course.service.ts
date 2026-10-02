@@ -332,7 +332,7 @@ export class CourseService {
               },
             ],
             !detail.contentLocked,
-            !detail.isClosed
+            await this.publicRecordingsAllowed(detail)
           )
         : [];
       if (shown) {
@@ -382,7 +382,25 @@ export class CourseService {
           ]
         : [];
     });
-    return visibleRecordings(rows, !detail.contentLocked, !detail.isClosed);
+    return visibleRecordings(
+      rows,
+      !detail.contentLocked,
+      await this.publicRecordingsAllowed(detail)
+    );
+  }
+
+  /**
+   * Whether a PUBLIC recording may be shown to someone who cannot read the
+   * course's content: not for a closed course (MDRS-176), and not when the
+   * köşk's policy says its recordings are never public (nizam/34).
+   */
+  private async publicRecordingsAllowed(detail: {
+    koskId: string;
+    isClosed: boolean;
+  }): Promise<boolean> {
+    if (detail.isClosed) return false;
+    const rule = await this.koskService.findVisibility(detail.koskId);
+    return !(rule?.recordingsNeverPublic ?? false);
   }
 
   // ---- course writes (MDRS-105) ----

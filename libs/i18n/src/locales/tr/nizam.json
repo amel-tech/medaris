@@ -2664,6 +2664,7 @@
     "lessonHeading": "Celse {n} · {when}",
     "cancelled": "İptal edildi",
     "linkMissing": "Bağlantı eksik",
+    "scheduled": "Planlandı",
     "hide": "Gizle",
     "minutes": "{minutes} dk",
     "cancelledNote": "{when} tarihinde iptal edildi. Toplantı bağlantısı gösterilmez.",

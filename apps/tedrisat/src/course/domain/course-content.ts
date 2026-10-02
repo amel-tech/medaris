@@ -52,9 +52,22 @@ export function withoutContent(course: ICourseDetail): ICourseDetailView {
   };
 }
 
-/** The detail unchanged, for a caller who may read the content. */
+/**
+ * The detail for a caller who may read the content. A cancelled session's
+ * meeting link is not sent even to them (nizam/56): the session page already
+ * answers `meetingUrl: null` for it, and the course body must say the same.
+ */
 export function withContent(course: ICourseDetail): ICourseDetailView {
-  return { ...course, contentLocked: false };
+  return {
+    ...course,
+    weeks: course.weeks.map((week) => ({
+      ...week,
+      lessons: week.lessons.map((lesson) =>
+        lesson.cancelledAt ? { ...lesson, meetingUrl: null } : lesson
+      ),
+    })),
+    contentLocked: false,
+  };
 }
 
 /**

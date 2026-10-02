@@ -2664,6 +2664,7 @@
     "lessonHeading": "الحلقة {n} · {when}",
     "cancelled": "ملغاة",
     "linkMissing": "الرابط ناقص",
+    "scheduled": "مجدولة",
     "hide": "إخفاء",
     "minutes": "{minutes} د",
     "cancelledNote": "أُلغيت في {when}. لا يُعرض رابط الاجتماع.",

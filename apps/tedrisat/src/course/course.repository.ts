@@ -61,6 +61,7 @@ import { IPurgeCounts, purgeCourses, recordDeletion, Tx } from "./course-purge";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import { LessonType } from "./domain/lesson-type.enum";
+import { localDateOf, placeInWeeks } from "./domain/weekly-pattern";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { CourseVersionConflictError } from "./errors/course-version-conflict.error";
 import { LessonAlreadyCancelledError } from "./errors/lesson-already-cancelled.error";
@@ -977,7 +978,7 @@ export class CourseRepository implements ICourseRepository {
         .select({ timeZone: courses.timeZone })
         .from(courses)
         .where(eq(courses.id, courseId));
-      const planned = batch.plan(course.timeZone);
+      const drafted = batch.plan(course.timeZone);
       const liveWeeks = await tx
         .select({
           id: courseWeeks.id,
@@ -993,6 +994,40 @@ export class CourseRepository implements ICourseRepository {
           )
         )
         .orderBy(courseWeeks.weekNumber, courseWeeks.orderIndex);
+
+      // A session goes into the week its date falls in (nizam/55), counted
+      // from the weeks that already hold dated sessions; the pattern's own
+      // numbering applies only when the course has none.
+      const dated = await tx
+        .select({
+          weekNumber: courseWeeks.weekNumber,
+          scheduledAt: lessons.scheduledAt,
+        })
+        .from(lessons)
+        .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
+        .where(
+          and(
+            eq(courseWeeks.courseId, courseId),
+            isNull(courseWeeks.archivedAt),
+            isNull(lessons.archivedAt),
+            isNull(lessons.cancelledAt),
+            isNotNull(lessons.scheduledAt)
+          )
+        );
+      const firstDay = new Map<number, string>();
+      for (const row of dated) {
+        const day = localDateOf(row.scheduledAt as Date, course.timeZone);
+        const held = firstDay.get(row.weekNumber);
+        if (held === undefined || day < held) firstDay.set(row.weekNumber, day);
+      }
+      const numbers = placeInWeeks(
+        drafted,
+        [...firstDay].map(([weekNumber, from]) => ({ weekNumber, from }))
+      );
+      const planned = drafted.map((s, i) => ({
+        ...s,
+        weekNumber: numbers[i],
+      }));
 
       // Two live weeks may share a number; the first in syllabus order wins.
       const byNumber = new Map<number, ISessionBatchWeek>();

@@ -319,7 +319,13 @@ export interface ILessonMutation extends ILesson {
 /** One session of a weekly-pattern batch (MDRS-109), already expanded. */
 export interface IBatchSession {
   scheduledAt: Date;
-  /** The course week it goes into; created as "Hafta N" when missing. */
+  /** Its calendar date in the pattern's zone, "YYYY-MM-DD". */
+  localDate: string;
+  /**
+   * The week the pattern numbers it into; the repository places it against
+   * the course's own weeks by date (nizam/55) and creates "Hafta N" when
+   * that week is missing.
+   */
   weekNumber: number;
 }
 

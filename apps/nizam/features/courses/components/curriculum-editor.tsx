@@ -6,6 +6,7 @@ import { Alert } from "@medaris/ui/mds/alert";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Breadcrumb } from "@medaris/ui/mds/breadcrumb";
 import { Button } from "@medaris/ui/mds/button";
+import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
@@ -13,7 +14,12 @@ import { PlatformChip } from "@medaris/ui/mds/platform-chip";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { WeekAccordion, Weeks } from "@medaris/ui/mds/week-accordion";
-import { normalizeMeetingUrl, resolveMeetingPlatform } from "@medaris/utils";
+import {
+  normalizeMeetingUrl,
+  resolveMeetingPlatform,
+  timeZoneCity,
+  toZonedDatetimeLocal,
+} from "@medaris/utils";
 import { useRouter } from "next/navigation";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { type FormEvent, useMemo, useState, useTransition } from "react";
@@ -166,7 +172,9 @@ export function CurriculumEditor({ kosk, course }: Props) {
     startTransition(() => router.refresh());
   };
 
-  const nowDay = new Date().toISOString().slice(0, 10);
+  // Today in the course's zone: the sessions' dates are written in it, and
+  // the UTC day is a day behind in Istanbul from 00:00 to 03:00.
+  const nowDay = toZonedDatetimeLocal(new Date(), zone).slice(0, 10);
 
   return (
     <form
@@ -256,11 +264,17 @@ export function CurriculumEditor({ kosk, course }: Props) {
           <RadioGroup
             legend={t("toneLegend")}
             name="tone"
+            className="flex-row flex-wrap gap-x-5 [&>.mds-label]:basis-full"
             value={tone}
             onChange={(v) => setTone(v as typeof tone)}
             options={COVER_TONES.map((value) => ({
               value,
-              label: t(`tones.${value}`),
+              label: (
+                <span className="inline-flex items-center gap-2">
+                  <CoverPattern tone={value} size="xs" />
+                  {t(`tones.${value}`)}
+                </span>
+              ),
             }))}
           />
         </div>
@@ -287,7 +301,7 @@ export function CurriculumEditor({ kosk, course }: Props) {
                 sessions: sessionCount,
                 zone: t(
                   zone === "Europe/Istanbul" ? "zoneIstanbul" : "zoneOther",
-                  { zone }
+                  { zone: timeZoneCity(zone) }
                 ),
               })}
             </p>
@@ -416,7 +430,7 @@ export function CurriculumEditor({ kosk, course }: Props) {
                       data-testid={`lesson-${wi}-${li}`}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="mds-h3">
+                        <h3 className="mds-label">
                           {t("lessonHeading", {
                             n: li + 1,
                             when: at
@@ -439,7 +453,9 @@ export function CurriculumEditor({ kosk, course }: Props) {
                             >
                               {t("linkMissing")}
                             </Badge>
-                          ) : null}
+                          ) : (
+                            <Badge variant="secondary">{t("scheduled")}</Badge>
+                          )}
                           {lesson.cancelledAt ? null : (
                             <Button
                               variant="ghost"

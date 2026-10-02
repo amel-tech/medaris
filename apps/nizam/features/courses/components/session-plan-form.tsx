@@ -443,7 +443,7 @@ export function SessionPlanForm({ kosk, course }: Props) {
               zone:
                 form.timeZone === "Europe/Istanbul"
                   ? t("zoneIstanbul")
-                  : form.timeZone,
+                  : timeZoneCity(form.timeZone),
             })}
           </p>
         </aside>

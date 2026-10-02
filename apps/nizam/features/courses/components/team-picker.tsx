@@ -1,6 +1,7 @@
 "use client";
 
 import { Avatar } from "@medaris/ui/mds/avatar";
+import { Badge } from "@medaris/ui/mds/badge";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
@@ -186,8 +187,8 @@ export function TeamPicker({
                       </bdi>
                     ) : null}
                     {isImam ? (
-                      <span className="mds-caption font-semibold">
-                        {t("imamBadge")}
+                      <span>
+                        <Badge variant="secondary">{t("imamBadge")}</Badge>
                       </span>
                     ) : null}
                   </span>
