@@ -20,6 +20,7 @@ import type {
   LessonMutationResponse,
   SessionBatchPreviewResponse,
   SessionBatchResponse,
+  SessionResponse,
   UpdateLessonDto,
   WeeklyPatternDto,
 } from '../models/index';
@@ -34,6 +35,8 @@ import {
     SessionBatchPreviewResponseToJSON,
     SessionBatchResponseFromJSON,
     SessionBatchResponseToJSON,
+    SessionResponseFromJSON,
+    SessionResponseToJSON,
     UpdateLessonDtoFromJSON,
     UpdateLessonDtoToJSON,
     WeeklyPatternDtoFromJSON,
@@ -58,6 +61,11 @@ export interface CreateSessionBatchRequest {
 export interface GetLessonCalendarRequest {
     id: string;
     locale?: GetLessonCalendarLocaleEnum;
+}
+
+export interface GetSessionRequest {
+    courseId: string;
+    sessionId: string;
 }
 
 export interface PreviewSessionBatchRequest {
@@ -280,6 +288,58 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async getLessonCalendar(requestParameters: GetLessonCalendarRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<string> {
         const response = await this.getLessonCalendarRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Open to callers with no token, like the course page (MDRS-122), and filtered the same way: `meetingUrl`, `agenda`, `kaynak` and `cancelReason` are sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. `status` is derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED after the session\'s length (60 minutes when it has none), LIVE while it runs, SCHEDULED before. `meetingUrl` is null for a cancelled or finished session. `previous` and `next` are the neighbouring live sessions in programme order, cancelled ones skipped. A content read by anyone who is neither enrolled nor a müderris is recorded in `audit_log`, as on `GET /courses/:id` (MDRS-158).
+     * One live session: its status, cancellation, neighbours and link
+     */
+    async getSessionRaw(requestParameters: GetSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SessionResponse>> {
+        if (requestParameters['courseId'] == null) {
+            throw new runtime.RequiredError(
+                'courseId',
+                'Required parameter "courseId" was null or undefined when calling getSession().'
+            );
+        }
+
+        if (requestParameters['sessionId'] == null) {
+            throw new runtime.RequiredError(
+                'sessionId',
+                'Required parameter "sessionId" was null or undefined when calling getSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{courseId}/sessions/{sessionId}`;
+        urlPath = urlPath.replace(`{${"courseId"}}`, encodeURIComponent(String(requestParameters['courseId'])));
+        urlPath = urlPath.replace(`{${"sessionId"}}`, encodeURIComponent(String(requestParameters['sessionId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SessionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Open to callers with no token, like the course page (MDRS-122), and filtered the same way: `meetingUrl`, `agenda`, `kaynak` and `cancelReason` are sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. `status` is derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED after the session\'s length (60 minutes when it has none), LIVE while it runs, SCHEDULED before. `meetingUrl` is null for a cancelled or finished session. `previous` and `next` are the neighbouring live sessions in programme order, cancelled ones skipped. A content read by anyone who is neither enrolled nor a müderris is recorded in `audit_log`, as on `GET /courses/:id` (MDRS-158).
+     * One live session: its status, cancellation, neighbours and link
+     */
+    async getSession(requestParameters: GetSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionResponse> {
+        const response = await this.getSessionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

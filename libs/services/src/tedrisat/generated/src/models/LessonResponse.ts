@@ -93,6 +93,24 @@ export interface LessonResponse {
      * @memberof LessonResponse
      */
     orderIndex: number;
+    /**
+     * When the session was cancelled (MDRS-158); null while it stands. It stays in the programme, marked.
+     * @type {Date}
+     * @memberof LessonResponse
+     */
+    cancelledAt?: Date | null;
+    /**
+     * The session that makes up for a cancelled one; null when there is none.
+     * @type {string}
+     * @memberof LessonResponse
+     */
+    replacementLessonId?: string | null;
+    /**
+     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103).
+     * @type {string}
+     * @memberof LessonResponse
+     */
+    cancelReason?: string;
 }
 
 
@@ -142,6 +160,9 @@ export function LessonResponseFromJSONTyped(json: any, ignoreDiscriminator: bool
         'agenda': json['agenda'] == null ? undefined : ((json['agenda'] as Array<any>).map(AgendaStepResponseFromJSON)),
         'isPreview': json['isPreview'],
         'orderIndex': json['orderIndex'],
+        'cancelledAt': json['cancelledAt'] == null ? undefined : (new Date(json['cancelledAt'])),
+        'replacementLessonId': json['replacementLessonId'] == null ? undefined : json['replacementLessonId'],
+        'cancelReason': json['cancelReason'] == null ? undefined : json['cancelReason'],
     };
 }
 
@@ -167,6 +188,9 @@ export function LessonResponseToJSONTyped(value?: LessonResponse | null, ignoreD
         'agenda': value['agenda'] == null ? undefined : ((value['agenda'] as Array<any>).map(AgendaStepResponseToJSON)),
         'isPreview': value['isPreview'],
         'orderIndex': value['orderIndex'],
+        'cancelledAt': value['cancelledAt'] === null ? null : ((value['cancelledAt'] as any)?.toISOString()),
+        'replacementLessonId': value['replacementLessonId'],
+        'cancelReason': value['cancelReason'],
     };
 }
 

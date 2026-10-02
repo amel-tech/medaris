@@ -94,6 +94,24 @@ export interface SessionBatchLessonResponse {
      */
     orderIndex: number;
     /**
+     * When the session was cancelled (MDRS-158); null while it stands. It stays in the programme, marked.
+     * @type {Date}
+     * @memberof SessionBatchLessonResponse
+     */
+    cancelledAt?: Date | null;
+    /**
+     * The session that makes up for a cancelled one; null when there is none.
+     * @type {string}
+     * @memberof SessionBatchLessonResponse
+     */
+    replacementLessonId?: string | null;
+    /**
+     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103).
+     * @type {string}
+     * @memberof SessionBatchLessonResponse
+     */
+    cancelReason?: string;
+    /**
      * 
      * @type {number}
      * @memberof SessionBatchLessonResponse
@@ -149,6 +167,9 @@ export function SessionBatchLessonResponseFromJSONTyped(json: any, ignoreDiscrim
         'agenda': json['agenda'] == null ? undefined : ((json['agenda'] as Array<any>).map(AgendaStepResponseFromJSON)),
         'isPreview': json['isPreview'],
         'orderIndex': json['orderIndex'],
+        'cancelledAt': json['cancelledAt'] == null ? undefined : (new Date(json['cancelledAt'])),
+        'replacementLessonId': json['replacementLessonId'] == null ? undefined : json['replacementLessonId'],
+        'cancelReason': json['cancelReason'] == null ? undefined : json['cancelReason'],
         'weekNumber': json['weekNumber'],
     };
 }
@@ -175,6 +196,9 @@ export function SessionBatchLessonResponseToJSONTyped(value?: SessionBatchLesson
         'agenda': value['agenda'] == null ? undefined : ((value['agenda'] as Array<any>).map(AgendaStepResponseToJSON)),
         'isPreview': value['isPreview'],
         'orderIndex': value['orderIndex'],
+        'cancelledAt': value['cancelledAt'] === null ? null : ((value['cancelledAt'] as any)?.toISOString()),
+        'replacementLessonId': value['replacementLessonId'],
+        'cancelReason': value['cancelReason'],
         'weekNumber': value['weekNumber'],
     };
 }
