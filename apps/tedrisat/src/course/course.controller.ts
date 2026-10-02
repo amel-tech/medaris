@@ -160,17 +160,25 @@ export class CourseController {
 
   @ApiOperation({
     summary: "List the courses the current talebe is enrolled in",
+    description:
+      "Enrolled and completed courses, oldest enrollment first, each with its next standing session. `includePending=true` adds the requests still waiting for approval (MDRS-159), marked by `enrollment.status`.",
     operationId: "getEnrolledCourses",
   })
+  @ApiQuery({ name: "includePending", required: false, type: Boolean })
   @ApiOkResponse({ type: EnrolledCourseResponse, isArray: true })
   // Exempt: no resource in the request. The rows are the caller's own
   // enrollments, selected by `sub`, so there is nothing for a scope to name.
   @AuthzExempt()
   @Get("courses/enrolled")
   async findEnrolled(
-    @Req() request: AuthorizedRequest
+    @Req() request: AuthorizedRequest,
+    @Query("includePending", new DefaultValuePipe(false), ParseBoolPipe)
+    includePending: boolean
   ): Promise<EnrolledCourseResponse[]> {
-    return this.courseService.findEnrolledCourses(request.user.sub);
+    return this.courseService.findEnrolledCourses(
+      request.user.sub,
+      includePending
+    );
   }
 
   @ApiOperation({
