@@ -58,6 +58,7 @@ src/models/CreateFlashcardProgressDto.ts
 src/models/CreateKoskDto.ts
 src/models/CreateLessonDto.ts
 src/models/CreateMadrasahDto.ts
+src/models/CreateMadrasahPermissionGroupDto.ts
 src/models/CreateMuderrisDto.ts
 src/models/CreatePermissionGroupDto.ts
 src/models/CreateResourceDto.ts
@@ -107,6 +108,8 @@ src/models/LabelStatsResponse.ts
 src/models/LessonMutationResponse.ts
 src/models/LessonResponse.ts
 src/models/LiftBanDto.ts
+src/models/MadrasahArchiveCountsResponse.ts
+src/models/MadrasahArchiveItemResponse.ts
 src/models/MadrasahBadgeCountsResponse.ts
 src/models/MadrasahCourseListItemResponse.ts
 src/models/MadrasahCourseMuderrisResponse.ts
@@ -118,11 +121,16 @@ src/models/MadrasahExploreResponse.ts
 src/models/MadrasahHeadMuderrisResponse.ts
 src/models/MadrasahHostingKoskResponse.ts
 src/models/MadrasahKoskRefResponse.ts
+src/models/MadrasahNazirCourseGrantResponse.ts
 src/models/MadrasahNazirGivenResponse.ts
 src/models/MadrasahNazirGivenRoleResponse.ts
 src/models/MadrasahNazirGroupResponse.ts
+src/models/MadrasahNazirPermissionsResponse.ts
 src/models/MadrasahNazirResponse.ts
 src/models/MadrasahOverviewResponse.ts
+src/models/MadrasahPermissionCatalogResponse.ts
+src/models/MadrasahPermissionGroupResponse.ts
+src/models/MadrasahPermissionGroupScope.ts
 src/models/MadrasahPersonResponse.ts
 src/models/MadrasahPoliciesDto.ts
 src/models/MadrasahPoliciesResponse.ts
@@ -151,6 +159,7 @@ src/models/NotificationCountsResponse.ts
 src/models/NotificationResponse.ts
 src/models/PaginatedArchiveResponse.ts
 src/models/PaginatedKoskResponse.ts
+src/models/PaginatedMadrasahArchiveResponse.ts
 src/models/PaginatedMadrasahResponse.ts
 src/models/PaginatedNotificationResponse.ts
 src/models/PassiveMadrasahResponse.ts
@@ -179,6 +188,7 @@ src/models/SessionResponse.ts
 src/models/SessionStatus.ts
 src/models/SetEnrollmentStatusDto.ts
 src/models/SetHeadMuderrisDto.ts
+src/models/SetMadrasahNazirPermissionsDto.ts
 src/models/SetNazimGrantsDto.ts
 src/models/SummaryMuderrisResponse.ts
 src/models/TaughtCourseRef.ts
@@ -189,6 +199,7 @@ src/models/UpdateFlashcardDto.ts
 src/models/UpdateKoskDto.ts
 src/models/UpdateLessonDto.ts
 src/models/UpdateMadrasahDto.ts
+src/models/UpdateMadrasahPermissionGroupDto.ts
 src/models/UpdateMadrasahSettingsDto.ts
 src/models/UpdateMeDto.ts
 src/models/UpdatePermissionGroupDto.ts
