@@ -160,9 +160,9 @@ export function BansView({
   };
 
   const personCell = (ban: BanResponse) => (
-    <span className="flex items-center gap-3">
+    <span className="flex min-w-0 items-center gap-3">
       <Avatar name={ban.user.name ?? ban.user.email ?? ""} decorative />
-      <span className="flex min-w-0 flex-col">
+      <span className="flex min-w-0 flex-1 flex-col">
         <span className="flex items-center gap-2">
           <bdi className="font-semibold">
             {ban.user.name ?? ban.user.email ?? t("unknownPerson")}
@@ -172,7 +172,11 @@ export function BansView({
           ) : null}
         </span>
         {ban.user.email ? (
-          <bdi dir="ltr" className="mds-caption font-mono">
+          <bdi
+            dir="ltr"
+            title={ban.user.email}
+            className="mds-caption block max-w-full truncate font-mono"
+          >
             {ban.user.email}
           </bdi>
         ) : null}
@@ -185,13 +189,13 @@ export function BansView({
       key: "person",
       header: t("columns.person"),
       rowHeader: true,
-      width: "26.8%",
+      width: "24.5%",
       render: personCell,
     },
     {
       key: "scope",
       header: t("columns.scope"),
-      width: "13.7%",
+      width: "13%",
       render: (ban) => {
         const scope = scopeParts(ban, koskName, t);
         return (
@@ -207,13 +211,13 @@ export function BansView({
     {
       key: "reason",
       header: t("columns.reason"),
-      width: "12.7%",
+      width: "11.5%",
       render: (ban) => <bdi>{ban.reason}</bdi>,
     },
     {
       key: "bannedBy",
       header: t("columns.bannedBy"),
-      width: "11.5%",
+      width: "10.5%",
       render: (ban) => (
         <span className="flex flex-col">
           <bdi>{ban.bannedBy.name ?? t("unknownPerson")}</bdi>
@@ -236,7 +240,7 @@ export function BansView({
             <span className="mds-visually-hidden">{t("columns.actions")}</span>
           ),
           align: "right",
-          width: "25.8%",
+          width: "31%",
           render: (ban) => {
             const name = ban.user.name ?? ban.user.email ?? "";
             return (

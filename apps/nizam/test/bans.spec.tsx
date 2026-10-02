@@ -256,10 +256,11 @@ describe("BansView (nizam 42)", () => {
 
   it("sets the canvas column widths and keeps both actions on one line (stack-47 round 2)", () => {
     const html = view(list([ban()]));
-    for (const w of ["26.8%", "13.7%", "12.7%", "11.5%", "9.5%", "25.8%"]) {
+    for (const w of ["24.5%", "13%", "11.5%", "10.5%", "9.5%", "31%"]) {
       expect(html).toContain(`--mds-col-w:${w}`);
     }
     expect(html).toContain("flex-nowrap");
+    expect(html).toContain("truncate");
     expect(html).toContain("table-layout:fixed");
   });
 
