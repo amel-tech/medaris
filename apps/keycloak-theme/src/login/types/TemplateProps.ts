@@ -4,4 +4,6 @@ import type { ReactNode } from "react";
 export interface ExtendedTemplateProps<KcContext, I18n>
   extends BaseTemplateProps<KcContext, I18n> {
   headerSubNode?: ReactNode;
+  /** replaces the alert Template would draw from `kcContext.message` */
+  alertNode?: ReactNode;
 }

@@ -44,12 +44,13 @@ afterEach(() => {
   page = undefined;
 });
 
+/** The posted input (Base UI keeps the id there) and the control a person sees. */
+const input = () =>
+  document.querySelector<HTMLInputElement>("input#privacyNoticeRead-yes") ??
+  undefined;
+const label = () => input()?.closest("label") ?? null;
 const box = () =>
-  document.querySelector<HTMLElement>("#privacyNoticeRead-yes") ?? undefined;
-const label = () =>
-  document.querySelector<HTMLLabelElement>(
-    'label[for="privacyNoticeRead-yes"]'
-  );
+  label()?.querySelector<HTMLElement>('[role="checkbox"]') ?? undefined;
 
 describe("the privacy notice box (MDRS-102)", () => {
   it("is declared in the realm's user profile the way the theme renders it", () => {
@@ -75,8 +76,11 @@ describe("the privacy notice box (MDRS-102)", () => {
     expect(checkbox, "checkbox").toBeDefined();
     expect(checkbox?.getAttribute("role")).toBe("checkbox");
     expect(checkbox?.getAttribute("aria-checked")).toBe("false");
+    expect(input()?.name).toBe("privacyNoticeRead");
+    expect(input()?.value).toBe("yes");
     expect(checkbox?.closest("form")?.id).toBe("kc-register-form");
-    expect(label()?.textContent).toBe(text);
+    // the label is the text, the link inside it, and the decorative asterisk
+    expect(label()?.textContent).toBe(`${text}*`);
 
     const link = label()?.querySelector("a");
     expect(link?.textContent).toBe(linkText);
@@ -84,9 +88,12 @@ describe("the privacy notice box (MDRS-102)", () => {
     expect(link?.getAttribute("target")).toBe("_blank");
     expect(link?.getAttribute("rel")).toBe("noopener noreferrer");
 
-    // Required: the field's own label carries the asterisk.
-    const fieldLabel = document.querySelector('label[for="privacyNoticeRead"]');
-    expect(fieldLabel?.textContent).toContain("*");
+    // Required: the box says so and the link says it opens elsewhere.
+    expect(checkbox?.getAttribute("aria-required")).toBe("true");
+    const note = document.getElementById(
+      link?.getAttribute("aria-describedby") ?? ""
+    );
+    expect(note?.textContent?.length).toBeGreaterThan(0);
   });
 
   it("shows no link, but the same words, for a linkUrl that is not http(s)", async () => {
@@ -102,6 +109,6 @@ describe("the privacy notice box (MDRS-102)", () => {
 
     expect(label()?.querySelector("a")).toBeNull();
     // The link text still stands in for {0}; the placeholder never shows.
-    expect(label()?.textContent).toBe("Aydınlatma Metni’ni okudum.");
+    expect(label()?.textContent).toBe("Aydınlatma Metni’ni okudum.*");
   });
 });
