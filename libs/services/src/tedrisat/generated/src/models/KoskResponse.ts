@@ -86,6 +86,24 @@ export interface KoskResponse {
      */
     tags: Array<string>;
     /**
+     * Köşk-wide policy (MDRS-174): enrollment always waits
+     * @type {boolean}
+     * @memberof KoskResponse
+     */
+    alwaysRequireApproval: boolean;
+    /**
+     * Köşk-wide policy (MDRS-174): no recording is made public
+     * @type {boolean}
+     * @memberof KoskResponse
+     */
+    recordingsNeverPublic: boolean;
+    /**
+     * Since when the köşk is hidden (MDRS-174); null while it is shown. Only its nazımları and SYSTEM_ADMIN can read a hidden köşk.
+     * @type {Date}
+     * @memberof KoskResponse
+     */
+    archivedAt?: Date | null;
+    /**
      * 
      * @type {boolean}
      * @memberof KoskResponse
@@ -164,6 +182,8 @@ export function instanceOfKoskResponse(value: object): value is KoskResponse {
     if (!('coverHue' in value) || value['coverHue'] === undefined) return false;
     if (!('isPrivate' in value) || value['isPrivate'] === undefined) return false;
     if (!('tags' in value) || value['tags'] === undefined) return false;
+    if (!('alwaysRequireApproval' in value) || value['alwaysRequireApproval'] === undefined) return false;
+    if (!('recordingsNeverPublic' in value) || value['recordingsNeverPublic'] === undefined) return false;
     if (!('verified' in value) || value['verified'] === undefined) return false;
     if (!('featured' in value) || value['featured'] === undefined) return false;
     if (!('rating' in value) || value['rating'] === undefined) return false;
@@ -199,6 +219,9 @@ export function KoskResponseFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'field': json['field'] == null ? undefined : json['field'],
         'level': json['level'] == null ? undefined : json['level'],
         'tags': json['tags'],
+        'alwaysRequireApproval': json['alwaysRequireApproval'],
+        'recordingsNeverPublic': json['recordingsNeverPublic'],
+        'archivedAt': json['archivedAt'] == null ? undefined : (new Date(json['archivedAt'])),
         'verified': json['verified'],
         'featured': json['featured'],
         'rating': json['rating'],
@@ -235,6 +258,9 @@ export function KoskResponseToJSONTyped(value?: KoskResponse | null, ignoreDiscr
         'field': value['field'],
         'level': value['level'],
         'tags': value['tags'],
+        'alwaysRequireApproval': value['alwaysRequireApproval'],
+        'recordingsNeverPublic': value['recordingsNeverPublic'],
+        'archivedAt': value['archivedAt'] === null ? null : ((value['archivedAt'] as any)?.toISOString()),
         'verified': value['verified'],
         'featured': value['featured'],
         'rating': value['rating'],

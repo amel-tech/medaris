@@ -19,6 +19,7 @@ src/apis/TedrisatServiceApi.ts
 src/apis/UsersApi.ts
 src/apis/index.ts
 src/index.ts
+src/models/AddKoskNazimsDto.ts
 src/models/AgendaStepDto.ts
 src/models/AgendaStepResponse.ts
 src/models/AppointMedarisNazimDto.ts
@@ -94,9 +95,18 @@ src/models/HostingGrantedByResponse.ts
 src/models/HostingOpenCourseResponse.ts
 src/models/HostingPersonResponse.ts
 src/models/HostingRightResponse.ts
+src/models/KoskDirectoryCountsResponse.ts
+src/models/KoskDirectoryItemResponse.ts
+src/models/KoskDirectoryResponse.ts
 src/models/KoskLevel.ts
+src/models/KoskListingFilter.ts
 src/models/KoskManagedBy.ts
+src/models/KoskNazimGranterRole.ts
+src/models/KoskNazimResponse.ts
+src/models/KoskPersonResponse.ts
 src/models/KoskResponse.ts
+src/models/KoskStatus.ts
+src/models/KoskStatusFilter.ts
 src/models/LabelStatsResponse.ts
 src/models/LessonMutationResponse.ts
 src/models/LessonResponse.ts
