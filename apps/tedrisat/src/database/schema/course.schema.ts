@@ -48,6 +48,9 @@ export const courses = table("courses", {
   status: courseStatus().default(CourseStatus.DRAFT).notNull(),
   grantsCertificate: boolean("grants_certificate").default(false).notNull(),
   requiresApproval: boolean("requires_approval").default(false).notNull(),
+  // IANA zone the course's sessions are authored in (MDRS-110). An editor
+  // types "21:00" meaning 21:00 here; talebe elsewhere see it converted.
+  timeZone: text("time_zone").default("Europe/Istanbul").notNull(),
   // Optimistic-concurrency token (MDRS-95). Every write to the course or to
   // its syllabus bumps it; a whole-course PUT or a lesson PATCH that carries
   // a stale value is refused with 409 instead of overwriting the newer save.
@@ -88,7 +91,14 @@ export const lessons = table("lessons", {
     .notNull(),
   title: text("title").notNull(),
   type: lessonType().notNull(),
+  // Deprecated (MDRS-110): the free-text duration ("60 dk") it replaces.
+  // Nothing reads or writes it any more; migration 0019 copied its minutes
+  // into `duration_minutes`, and a follow-up migration drops it once the
+  // release that stopped using it is live.
   duration: text("duration"),
+  // Length of the lesson in whole minutes (MDRS-110). A calendar event needs
+  // an end time, and free text could not give one.
+  durationMinutes: integer("duration_minutes"),
   kaynak: text("kaynak"),
   // Live-session fields (type = LIVE). `withTimezone` because students and
   // müderris may be in different zones; created/updated remain naive for

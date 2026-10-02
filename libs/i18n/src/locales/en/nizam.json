@@ -181,7 +181,10 @@
     "conflict": "Someone else saved this course after you opened the form. Your changes were not saved; reload to see the latest version.",
     "conflictReload": "Reload",
     "requiresApproval": "Require enrollment approval",
-    "requiresApprovalHint": "When on, student enrollments stay pending until you approve them."
+    "requiresApprovalHint": "When on, student enrollments stay pending until you approve them.",
+    "fieldTimeZone": "Time zone",
+    "fieldTimeZoneHint": "Live session times are entered in this zone; talebe also see them in their own time.",
+    "liveLessonWhenZone": "{zone} time"
   },
   "SampleFile": {
     "backWord": "Sample Translation {index}",
@@ -282,5 +285,10 @@
       "topicMin": "Topic title must be at least 3 characters",
       "weekMin": "Week number cannot be less than 1"
     }
+  },
+  "SessionTime": {
+    "istanbul": "Istanbul",
+    "yourTime": "{time} your time",
+    "minutes": "{minutes} min"
   }
 }

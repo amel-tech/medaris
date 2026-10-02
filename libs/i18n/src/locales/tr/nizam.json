@@ -181,7 +181,10 @@
     "conflict": "Bu kurs, siz formu açtıktan sonra başka biri tarafından kaydedildi. Değişiklikleriniz kaydedilmedi; güncel hâlini görmek için sayfayı yenileyin.",
     "conflictReload": "Yenile",
     "requiresApproval": "Kayıt onayı gereksin",
-    "requiresApprovalHint": "Açık olduğunda talebelerin kaydı, siz onaylayana kadar beklemede kalır."
+    "requiresApprovalHint": "Açık olduğunda talebelerin kaydı, siz onaylayana kadar beklemede kalır.",
+    "fieldTimeZone": "Saat dilimi",
+    "fieldTimeZoneHint": "Canlı derslerin saati bu dilimde girilir; talebe kendi saatiyle de görür.",
+    "liveLessonWhenZone": "{zone} saatiyle"
   },
   "SampleFile": {
     "backWord": "Örnek Çeviri {index}",
@@ -282,5 +285,10 @@
       "topicMin": "Konu başlığı en az 3 karakterden oluşmalıdır.",
       "weekMin": "Hafta numarası 1'den küçük olamaz."
     }
+  },
+  "SessionTime": {
+    "istanbul": "İstanbul",
+    "yourTime": "{time} senin saatinle",
+    "minutes": "{minutes} dk"
   }
 }

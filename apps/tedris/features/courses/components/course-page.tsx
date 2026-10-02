@@ -357,6 +357,7 @@ export const CoursePage = ({
                       setOpenWeek(openWeek === week.id ? null : week.id)
                     }
                     courseId={enrolled ? course.id : undefined}
+                    timeZone={course.timeZone}
                   />
                 ))}
               </div>

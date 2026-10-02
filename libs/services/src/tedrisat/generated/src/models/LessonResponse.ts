@@ -52,11 +52,11 @@ export interface LessonResponse {
      */
     type: LessonResponseTypeEnum;
     /**
-     * 
-     * @type {string}
+     * Length of the lesson in minutes; null when not set.
+     * @type {number}
      * @memberof LessonResponse
      */
-    duration?: string;
+    durationMinutes?: number | null;
     /**
      * 
      * @type {string}
@@ -135,7 +135,7 @@ export function LessonResponseFromJSONTyped(json: any, ignoreDiscriminator: bool
         'weekId': json['weekId'],
         'title': json['title'],
         'type': json['type'],
-        'duration': json['duration'] == null ? undefined : json['duration'],
+        'durationMinutes': json['durationMinutes'] == null ? undefined : json['durationMinutes'],
         'kaynak': json['kaynak'] == null ? undefined : json['kaynak'],
         'scheduledAt': json['scheduledAt'] == null ? undefined : (new Date(json['scheduledAt'])),
         'meetingUrl': json['meetingUrl'] == null ? undefined : json['meetingUrl'],
@@ -160,7 +160,7 @@ export function LessonResponseToJSONTyped(value?: LessonResponse | null, ignoreD
         'weekId': value['weekId'],
         'title': value['title'],
         'type': value['type'],
-        'duration': value['duration'],
+        'durationMinutes': value['durationMinutes'],
         'kaynak': value['kaynak'],
         'scheduledAt': value['scheduledAt'] == null ? undefined : ((value['scheduledAt']).toISOString()),
         'meetingUrl': value['meetingUrl'],

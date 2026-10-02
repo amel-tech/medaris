@@ -1,4 +1,6 @@
 import { resources } from "@medaris/i18n";
+import { resolveTimeZone, TIME_ZONE_COOKIE } from "@medaris/utils";
+import { cookies } from "next/headers";
 import { hasLocale } from "next-intl";
 import { getRequestConfig } from "next-intl/server";
 import { routing } from "./routing";
@@ -30,8 +32,17 @@ export default getRequestConfig(async ({ requestLocale }) => {
     ["common", "tedris"]
   );
 
+  // Without a zone next-intl formats server-rendered dates in the server's
+  // own zone, and the browser then disagrees while hydrating (MDRS-110). The
+  // viewer's zone arrives in a cookie that `TimeZoneSync` keeps; until it
+  // exists, server and browser both use the default.
+  const timeZone = resolveTimeZone(
+    (await cookies()).get(TIME_ZONE_COOKIE)?.value
+  );
+
   return {
     locale,
     messages,
+    timeZone,
   };
 });

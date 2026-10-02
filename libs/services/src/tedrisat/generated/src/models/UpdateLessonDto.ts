@@ -28,11 +28,11 @@ import {
  */
 export interface UpdateLessonDto {
     /**
-     * 
-     * @type {string}
+     * Length of the lesson in whole minutes (MDRS-110). Replaces the free-text `duration`, from which no end time could be computed.
+     * @type {number}
      * @memberof UpdateLessonDto
      */
-    duration?: string;
+    durationMinutes?: number;
     /**
      * 
      * @type {string}
@@ -126,7 +126,7 @@ export function UpdateLessonDtoFromJSONTyped(json: any, ignoreDiscriminator: boo
     }
     return {
         
-        'duration': json['duration'] == null ? undefined : json['duration'],
+        'durationMinutes': json['durationMinutes'] == null ? undefined : json['durationMinutes'],
         'kaynak': json['kaynak'] == null ? undefined : json['kaynak'],
         'scheduledAt': json['scheduledAt'] == null ? undefined : (new Date(json['scheduledAt'])),
         'meetingUrl': json['meetingUrl'] == null ? undefined : json['meetingUrl'],
@@ -151,7 +151,7 @@ export function UpdateLessonDtoToJSONTyped(value?: UpdateLessonDto | null, ignor
 
     return {
         
-        'duration': value['duration'],
+        'durationMinutes': value['durationMinutes'],
         'kaynak': value['kaynak'],
         'scheduledAt': value['scheduledAt'] == null ? undefined : ((value['scheduledAt']).toISOString()),
         'meetingUrl': value['meetingUrl'],

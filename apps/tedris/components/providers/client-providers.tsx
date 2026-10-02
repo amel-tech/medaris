@@ -4,6 +4,7 @@ import { RefreshErrorRedirect } from "@medaris/services/auth-client";
 import { Toaster } from "@medaris/ui/components/sonner";
 import { SessionProvider } from "next-auth/react";
 import { useLocale } from "next-intl";
+import { TimeZoneSync } from "./time-zone-sync";
 
 /**
  * `RefreshErrorRedirect` is shared with the other web app through
@@ -18,6 +19,7 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <RefreshErrorRedirect locale={locale} />
+      <TimeZoneSync />
       {children}
       <Toaster />
     </SessionProvider>

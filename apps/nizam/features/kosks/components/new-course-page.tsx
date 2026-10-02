@@ -30,10 +30,18 @@ import {
 } from "@medaris/ui/components/select";
 import { toast } from "@medaris/ui/components/sonner";
 import { Textarea } from "@medaris/ui/components/textarea";
+import {
+  DEFAULT_TIME_ZONE,
+  fromZonedDatetimeLocal,
+  listTimeZones,
+  timeZoneCity,
+  toZonedDatetimeLocal,
+} from "@medaris/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useFormatter, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
+import { SessionTime } from "~/components/session-time";
 import {
   createKoskCourse,
   updateKoskCourse,
@@ -43,15 +51,17 @@ import {
   emptyLiveLesson,
   type LiveLessonDraft,
   LiveLessonEditor,
+  toMinutes,
 } from "./live-lesson-editor";
 
 type LessonDraft = {
   id?: string;
   title: string;
   type: CreateLessonDtoTypeEnum;
-  duration: string;
+  /** whole minutes as typed; '' = unset */
+  durationMinutes: string;
   kaynak: string;
-  /** datetime-local value; '' = unset */
+  /** datetime-local value, read on a clock in the course's zone; '' = unset */
   scheduledAt: string;
   meetingUrl: string;
   agenda: AgendaStepDraft[];
@@ -73,21 +83,11 @@ const isVersionConflict = (errorBody: unknown): boolean =>
   errorBody !== null &&
   (errorBody as { code?: unknown }).code === "COURSE_VERSION_CONFLICT";
 
-/** Convert an API Date to the value of an <input type="datetime-local">
- *  in the editor's local zone. */
-const toDatetimeLocal = (date: Date): string => {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-};
-
-const parseMinutes = (duration: string): string =>
-  /(\d+)/.exec(duration)?.[1] ?? "";
-
 const toLiveDraft = (l: LessonDraft): LiveLessonDraft => ({
   id: l.id,
   title: l.title,
   scheduledAt: l.scheduledAt,
-  durationMinutes: parseMinutes(l.duration) || "60",
+  durationMinutes: l.durationMinutes || "60",
   meetingUrl: l.meetingUrl,
   agenda: l.agenda,
 });
@@ -99,7 +99,7 @@ const fromLiveDraft = (
   id: d.id,
   title: d.title,
   type: CreateLessonDtoTypeEnum.Live,
-  duration: d.durationMinutes ? `${d.durationMinutes} dk` : "",
+  durationMinutes: d.durationMinutes,
   kaynak: prev?.kaynak ?? "",
   scheduledAt: d.scheduledAt,
   meetingUrl: d.meetingUrl,
@@ -114,7 +114,6 @@ export const NewCoursePage = ({
   course?: CourseDetailResponse;
 }) => {
   const t = useTranslations("nizam");
-  const format = useFormatter();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const isEdit = Boolean(course);
@@ -132,6 +131,14 @@ export const NewCoursePage = ({
   const [requiresApproval, setRequiresApproval] = useState(
     course?.requiresApproval ?? false
   );
+  // The zone every session time on this form is typed and shown in
+  // (MDRS-110). The drafts hold wall-clock text in this zone.
+  const [timeZone, setTimeZone] = useState(
+    course?.timeZone ?? DEFAULT_TIME_ZONE
+  );
+  const timeZones = useMemo(() => listTimeZones(timeZone), [timeZone]);
+  const zoneLabel = (zone: string) =>
+    zone === DEFAULT_TIME_ZONE ? t("SessionTime.istanbul") : timeZoneCity(zone);
   const [muderris, setMuderris] = useState<MuderrisDraft[]>(
     course?.muderris.length
       ? course.muderris.map((m) => ({
@@ -160,10 +167,14 @@ export const NewCoursePage = ({
             id: l.id,
             title: l.title,
             type: l.type as CreateLessonDtoTypeEnum,
-            duration: l.duration ?? "",
+            durationMinutes:
+              l.durationMinutes != null ? String(l.durationMinutes) : "",
             kaynak: l.kaynak ?? "",
             scheduledAt: l.scheduledAt
-              ? toDatetimeLocal(new Date(l.scheduledAt))
+              ? toZonedDatetimeLocal(
+                  new Date(l.scheduledAt),
+                  course.timeZone ?? DEFAULT_TIME_ZONE
+                )
               : "",
             meetingUrl: l.meetingUrl ?? "",
             agenda:
@@ -228,6 +239,36 @@ export const NewCoursePage = ({
     setEditor(null);
   };
 
+  // Changing the zone must not move a session that is already scheduled —
+  // talebe may have planned around it. Every typed time is re-expressed in
+  // the new zone so that it still means the same instant: 21:00 İstanbul
+  // becomes 20:00 in Berlin (summer time), not 21:00 Berlin.
+  const changeTimeZone = (next: string) => {
+    const reexpress = (value: string) => {
+      const at = value ? fromZonedDatetimeLocal(value, timeZone) : null;
+      return at ? toZonedDatetimeLocal(at, next) : value;
+    };
+    setWeeks(
+      weeks.map((w) => ({
+        ...w,
+        lessons: w.lessons.map((l) => ({
+          ...l,
+          scheduledAt: reexpress(l.scheduledAt),
+        })),
+      }))
+    );
+    if (editor) {
+      setEditor({
+        ...editor,
+        draft: {
+          ...editor.draft,
+          scheduledAt: reexpress(editor.draft.scheduledAt),
+        },
+      });
+    }
+    setTimeZone(next);
+  };
+
   const lessonCount = useMemo(
     () =>
       weeks.reduce(
@@ -257,9 +298,11 @@ export const NewCoursePage = ({
               id: l.id,
               title: l.title.trim(),
               type: l.type,
-              duration: l.duration.trim() || undefined,
+              durationMinutes: toMinutes(l.durationMinutes),
               kaynak: l.kaynak.trim() || undefined,
-              scheduledAt: l.scheduledAt ? new Date(l.scheduledAt) : undefined,
+              scheduledAt: l.scheduledAt
+                ? (fromZonedDatetimeLocal(l.scheduledAt, timeZone) ?? undefined)
+                : undefined,
               meetingUrl: l.meetingUrl.trim() || undefined,
               agenda: agenda.length ? agenda : undefined,
             };
@@ -275,6 +318,7 @@ export const NewCoursePage = ({
       status,
       grantsCertificate,
       requiresApproval,
+      timeZone,
       muderris: muderris
         .filter((m) => m.name.trim())
         .map((m) => ({
@@ -434,6 +478,23 @@ export const NewCoursePage = ({
                 </Select>
               </Field>
             </div>
+            <Field
+              label={t("NewCoursePage.fieldTimeZone")}
+              hint={t("NewCoursePage.fieldTimeZoneHint")}
+            >
+              <Select value={timeZone} onValueChange={changeTimeZone}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeZones.map((zone) => (
+                    <SelectItem key={zone} value={zone}>
+                      {zone}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
           </Section>
 
           {/* Teachers & resources */}
@@ -581,6 +642,7 @@ export const NewCoursePage = ({
                           return (
                             <LiveLessonEditor
                               key={li}
+                              zoneLabel={zoneLabel(timeZone)}
                               draft={editor.draft}
                               onChange={(draft) =>
                                 setEditor({ ...editor, draft })
@@ -590,6 +652,10 @@ export const NewCoursePage = ({
                             />
                           );
                         }
+                        const startsAt = l.scheduledAt
+                          ? fromZonedDatetimeLocal(l.scheduledAt, timeZone)
+                          : null;
+                        const minutes = toMinutes(l.durationMinutes);
                         return (
                           <div
                             key={li}
@@ -608,20 +674,24 @@ export const NewCoursePage = ({
                             >
                               {t(`LessonTypes.${l.type}`)}
                             </span>
-                            {l.scheduledAt && (
+                            {startsAt && (
                               <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
                                 <CalendarBlank size={13} />
-                                {format.dateTime(new Date(l.scheduledAt), {
-                                  day: "numeric",
-                                  month: "short",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
+                                <SessionTime
+                                  at={startsAt}
+                                  courseTimeZone={timeZone}
+                                  options={{
+                                    day: "numeric",
+                                    month: "short",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }}
+                                />
                               </span>
                             )}
-                            {l.duration && (
+                            {minutes !== undefined && (
                               <span className="w-12 shrink-0 text-right text-xs text-muted-foreground">
-                                {l.duration}
+                                {t("SessionTime.minutes", { minutes })}
                               </span>
                             )}
                             {isLive && (
@@ -658,6 +728,7 @@ export const NewCoursePage = ({
                       })}
                       {editor && editor.wi === wi && editor.li === null ? (
                         <LiveLessonEditor
+                          zoneLabel={zoneLabel(timeZone)}
                           draft={editor.draft}
                           onChange={(draft) => setEditor({ ...editor, draft })}
                           onSave={saveEditor}
