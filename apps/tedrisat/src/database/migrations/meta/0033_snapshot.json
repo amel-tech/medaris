@@ -1,6 +1,6 @@
 {
-  "id": "b6e4a6fa-7370-4385-ba36-f51d98a72cc4",
-  "prevId": "66fd5723-e2b3-4e40-a234-1c604a1485cd",
+  "id": "a6cab698-158b-4b9e-80aa-6865f7a562a7",
+  "prevId": "c27bde2d-20f9-4d50-a9b9-cdc6763c1282",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -773,6 +773,12 @@
           "notNull": true,
           "default": "'ENROLLED'"
         },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -1221,6 +1227,12 @@
           "notNull": true,
           "default": false
         },
+        "kosk_id": {
+          "name": "kosk_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "archived_at": {
           "name": "archived_at",
           "type": "timestamp with time zone",
@@ -1248,8 +1260,38 @@
           "default": "now()"
         }
       },
-      "indexes": {},
-      "foreignKeys": {},
+      "indexes": {
+        "decks_kosk_id_idx": {
+          "name": "decks_kosk_id_idx",
+          "columns": [
+            {
+              "expression": "kosk_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "decks_kosk_id_kosks_id_fk": {
+          "name": "decks_kosk_id_kosks_id_fk",
+          "tableFrom": "decks",
+          "tableTo": "kosks",
+          "columnsFrom": [
+            "kosk_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -1754,20 +1796,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'{}'"
-        },
-        "always_require_approval": {
-          "name": "always_require_approval",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "recordings_never_public": {
-          "name": "recordings_never_public",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
         },
         "verified": {
           "name": "verified",

@@ -44,6 +44,7 @@ src/models/CalendarFeedStatusResponse.ts
 src/models/CatalogSectionResponse.ts
 src/models/ChiefNazimResponse.ts
 src/models/CourseDetailResponse.ts
+src/models/CourseMadrasahResponse.ts
 src/models/CourseStatsResponse.ts
 src/models/CourseSummaryResponse.ts
 src/models/CreateBanDto.ts
@@ -101,6 +102,8 @@ src/models/KoskCourseMuderrisResponse.ts
 src/models/KoskCourseRosterResponse.ts
 src/models/KoskCourseRowResponse.ts
 src/models/KoskCourseStatus.ts
+src/models/KoskDeckResponse.ts
+src/models/KoskDecksResponse.ts
 src/models/KoskDirectoryCountsResponse.ts
 src/models/KoskDirectoryItemResponse.ts
 src/models/KoskDirectoryResponse.ts
@@ -123,6 +126,8 @@ src/models/MadrasahCourseMuderrisResponse.ts
 src/models/MadrasahCourseResponse.ts
 src/models/MadrasahDirectoryItemResponse.ts
 src/models/MadrasahDirectoryResponse.ts
+src/models/MadrasahExploreCourseResponse.ts
+src/models/MadrasahExploreResponse.ts
 src/models/MadrasahHeadMuderrisResponse.ts
 src/models/MadrasahHostingKoskResponse.ts
 src/models/MadrasahKoskRefResponse.ts
@@ -139,6 +144,7 @@ src/models/MedarisNazimResponse.ts
 src/models/MuderrisResponse.ts
 src/models/MyAssignmentsResponse.ts
 src/models/MyEffectivePermissionsResponse.ts
+src/models/MyEnrollmentResponse.ts
 src/models/MyGrantsResponse.ts
 src/models/MyPermissionsResponse.ts
 src/models/MyRolesResponse.ts
@@ -146,6 +152,7 @@ src/models/NazimGroupResponse.ts
 src/models/NazimPermissionResponse.ts
 src/models/NazimPersonResponse.ts
 src/models/NazirMadrasahRef.ts
+src/models/NextSessionResponse.ts
 src/models/NotificationCountsResponse.ts
 src/models/NotificationResponse.ts
 src/models/PaginatedArchiveResponse.ts
@@ -179,6 +186,7 @@ src/models/SessionStatus.ts
 src/models/SetEnrollmentStatusDto.ts
 src/models/SetHeadMuderrisDto.ts
 src/models/SetNazimGrantsDto.ts
+src/models/SummaryMuderrisResponse.ts
 src/models/TaughtCourseRef.ts
 src/models/TeamSettableEnrollmentStatus.ts
 src/models/UpdateCourseDto.ts

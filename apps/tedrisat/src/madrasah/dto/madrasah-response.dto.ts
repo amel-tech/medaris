@@ -16,12 +16,18 @@ export class MadrasahResponse {
   @ApiProperty({ example: 215 })
   coverHue!: number;
 
-  @ApiProperty({ description: "The SYSTEM_ADMIN who created it" })
-  createdBy!: string;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      "The SYSTEM_ADMIN who created it. Null for a caller with no token (MDRS-160)",
+  })
+  createdBy!: string | null;
 
   @ApiProperty({
     type: [String],
-    description: "User ids of the medrese's nazırs, oldest first",
+    description:
+      "User ids of the medrese's nazırs, oldest first. Empty for a caller with no token (MDRS-160)",
   })
   nazirIds!: string[];
 

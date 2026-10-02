@@ -1,11 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import {
   and,
+  asc,
   desc,
   eq,
   exists as existsSql,
+  ilike,
+  isNotNull,
   isNull,
   ne,
+  or,
   SQL,
   sql,
 } from "drizzle-orm";
@@ -16,6 +20,7 @@ import {
   recordDeletion,
   Tx,
 } from "../course/course-purge";
+import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { DatabaseService } from "../database/database.service";
 import {
   deleteAssignmentsIn,
@@ -30,6 +35,8 @@ import {
   courses,
   enrollments,
 } from "../database/schema/course.schema";
+import { flashcards } from "../database/schema/flashcard.schema";
+import { decks, decksUsers } from "../database/schema/flashcard-deck.schema";
 import { koskFollowers, kosks } from "../database/schema/kosk.schema";
 import {
   ASSIGNED_ROLES,
@@ -42,6 +49,7 @@ import {
   AddManagerOutcome,
   ICreateKosk,
   IKosk,
+  IKoskDecks,
   IKoskListFilter,
   IKoskRef,
   IKoskRepository,
@@ -68,10 +76,18 @@ export class KoskRepository implements IKoskRepository {
       kosk: kosks,
       // Its KOSK_NAZIM holders (MDRS-134), oldest grant first.
       managerIds: holderIdsOf(ASSIGNED_ROLES.KOSK_NAZIM, sql`"kosks"."id"`),
-      // The three course-derived counts leave hidden courses out (MDRS-124):
+      // The name the köşk's page shows as "Köşk nazımı" (MDRS-160): its oldest
+      // KOSK_NAZIM holder's given and family name, null when the person has
+      // no name on file. A name is public; the id beside it is not.
+      managerName: sql<
+        string | null
+      >`(select nullif(btrim(concat_ws(' ', u.given_name, u.family_name)), '') from "users" u where u.id::text = (${holderIdsOf(ASSIGNED_ROLES.KOSK_NAZIM, sql`"kosks"."id"`)})[1])`,
+      // The course count leaves out drafts (MDRS-159: it is the number the köşk's
+      // page lists), and the three course-derived counts leave hidden courses
+      // out (MDRS-124):
       // a hidden course is in no list, so it is in no total either.
       courseCount:
-        sql<number>`(select count(*) from ${courses} c where c.kosk_id = "kosks"."id" and c.archived_at is null)`.mapWith(
+        sql<number>`(select count(*) from ${courses} c where c.kosk_id = "kosks"."id" and c.archived_at is null and c.status = 'PUBLISHED')`.mapWith(
           Number
         ),
       studentCount:
@@ -104,6 +120,7 @@ export class KoskRepository implements IKoskRepository {
   private toStats(row: {
     kosk: IKosk;
     managerIds: string[];
+    managerName: string | null;
     courseCount: number;
     studentCount: number;
     muderrisCount: number;
@@ -113,6 +130,7 @@ export class KoskRepository implements IKoskRepository {
     return {
       ...row.kosk,
       managerIds: row.managerIds,
+      managerName: row.managerName,
       courseCount: row.courseCount,
       studentCount: row.studentCount,
       muderrisCount: row.muderrisCount,
@@ -136,12 +154,16 @@ export class KoskRepository implements IKoskRepository {
   private listWhere({
     managerId,
     madrasahId,
+    level,
+    field,
+    q,
   }: IKoskListFilter = {}): SQL | undefined {
     // A hidden köşk (MDRS-174) is in no list, its nazımları' own included:
     // the archive and the başnazım's directory are where it is found.
     const conditions: (SQL | undefined)[] = [isNull(kosks.archivedAt)];
     if (managerId === undefined) {
-      conditions.push(eq(kosks.isPrivate, false));
+      // A hidden köşk (MDRS-173) is in no public list either.
+      conditions.push(eq(kosks.isPrivate, false), isNull(kosks.archivedAt));
     } else if (!UUID_REGEX.test(managerId)) {
       return sql`false`;
     } else {
@@ -176,7 +198,103 @@ export class KoskRepository implements IKoskRepository {
         )
       );
     }
+    if (level !== undefined) conditions.push(eq(kosks.level, level));
+    if (field !== undefined) conditions.push(eq(kosks.field, field));
+    const words = (q ?? "").split(/\s+/).filter(Boolean);
+    for (const word of words) {
+      // `%`, `_` and the escape itself are text here, not wildcards.
+      const pattern = `%${word.replace(/[\\%_]/g, "\\$&")}%`;
+      conditions.push(
+        or(
+          ilike(kosks.name, pattern),
+          ilike(kosks.handle, pattern),
+          ilike(kosks.description, pattern),
+          ilike(kosks.field, pattern)
+        )
+      );
+    }
     return and(...conditions);
+  }
+
+  async listFields(): Promise<string[]> {
+    const rows = await this.db
+      .selectDistinct({ field: kosks.field })
+      .from(kosks)
+      .where(
+        and(
+          eq(kosks.isPrivate, false),
+          isNull(kosks.archivedAt),
+          isNotNull(kosks.field)
+        )
+      )
+      .orderBy(asc(kosks.field));
+    return rows.flatMap((r) => (r.field ? [r.field] : []));
+  }
+
+  /**
+   * The köşk's decks for a caller who belongs to it: talebe (ENROLLED or
+   * COMPLETED) of one of its courses, müderris of one, or its manager. Anyone
+   * else gets `accessible: false` and no decks. Only shared (`is_public`) decks
+   * are offered: the deck endpoints read a deck by its own rules, and a deck
+   * the talebe cannot open would be a dead link (MDRS-159).
+   */
+  async findDecks(koskId: string, userId: string): Promise<IKoskDecks> {
+    if (!UUID_REGEX.test(koskId) || !UUID_REGEX.test(userId)) {
+      return { accessible: false, decks: [] };
+    }
+    const [talebe, muderris, manager] = await Promise.all([
+      this.db
+        .select({ one: sql`1` })
+        .from(enrollments)
+        .innerJoin(courses, eq(courses.id, enrollments.courseId))
+        .where(
+          and(
+            eq(courses.koskId, koskId),
+            isNull(courses.archivedAt),
+            eq(enrollments.userId, userId),
+            or(
+              eq(enrollments.status, EnrollmentStatus.ENROLLED),
+              eq(enrollments.status, EnrollmentStatus.COMPLETED)
+            )
+          )
+        )
+        .limit(1),
+      this.db
+        .select({ one: sql`1` })
+        .from(courseMuderris)
+        .innerJoin(courses, eq(courses.id, courseMuderris.courseId))
+        .where(
+          and(eq(courses.koskId, koskId), eq(courseMuderris.userId, userId))
+        )
+        .limit(1),
+      this.isManager(koskId, userId),
+    ]);
+    const belongs = talebe.length > 0 || muderris.length > 0 || manager;
+    if (!belongs) return { accessible: false, decks: [] };
+
+    const rows = await this.db
+      .select({
+        id: decks.id,
+        title: decks.title,
+        cardCount:
+          sql<number>`(select count(*) from ${flashcards} f where f.deck_id = "decks"."id")`.mapWith(
+            Number
+          ),
+        inCollection:
+          sql<boolean>`exists(select 1 from ${decksUsers} du where du.deck_id = "decks"."id" and du.user_id = ${userId})`.mapWith(
+            Boolean
+          ),
+      })
+      .from(decks)
+      .where(
+        and(
+          eq(decks.koskId, koskId),
+          eq(decks.isPublic, true),
+          isNull(decks.archivedAt)
+        )
+      )
+      .orderBy(asc(decks.title), asc(decks.id));
+    return { accessible: true, decks: rows };
   }
 
   async findAll(
