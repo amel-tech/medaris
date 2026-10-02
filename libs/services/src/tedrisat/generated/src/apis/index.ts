@@ -7,6 +7,7 @@ export * from './FlashcardDecksApi';
 export * from './FlashcardlabelApi';
 export * from './KosksApi';
 export * from './LessonsApi';
+export * from './MadrasahsApi';
 export * from './MeApi';
 export * from './TedrisatServiceApi';
 export * from './UsersApi';

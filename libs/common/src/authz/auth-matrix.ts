@@ -29,9 +29,10 @@ import { ENTITIES, Entity, ROLES, Role, SCOPES, Scope } from "./scopes";
  * plan §4 in full, kept complete on purpose rather than trimmed to what
  * `TedrisatRoleResolver` currently wires up — the unwired rows are where
  * the next resolver work (nazır tables, ijazah tables) lands. As of this
- * port, 9 of the 19 rows below are unreachable because no `RoleResolver`
- * implementation can produce that role for that entity yet; each is
- * marked `// UNREACHABLE` with the reason. An unreachable row denies
+ * port, 9 of the 19 rows below were unreachable because no `RoleResolver`
+ * implementation could produce that role for that entity yet; MDRS-106 made
+ * the two MADRASAH_NAZIR rows on `kosk` and `madrasah` reachable, leaving 7,
+ * each marked `// UNREACHABLE` with the reason. An unreachable row denies
  * everyone but SYSTEM_ADMIN today — it grants nothing until its resolver
  * exists, so keeping it here is behaviour-neutral. `MATRIX.ijazah` is the
  * one to read carefully: it has no `PUBLIC` row at all, and
@@ -100,9 +101,10 @@ export const MATRIX: Record<Entity, Partial<Record<Role, Scope[]>>> = {
 
   // Plan §4.3 — Kosk
   [ENTITIES.KOSK]: {
-    // UNREACHABLE (MDRS-41): `resolveKoskRole` only ever returns
-    // KOSK_MANAGER or PUBLIC — the nazır→kosk FK this role depends on
-    // has not landed. Kept per plan §4.3 for when it does.
+    // Reachable since MDRS-106: `resolveKoskRole` returns it to a nazır of
+    // the medrese the köşk is affiliated with (`kosks.madrasah_id`). A
+    // strict subset of KOSK_MANAGER, so an owner who is also a nazır loses
+    // nothing by being resolved as the manager.
     [ROLES.MADRASAH_NAZIR]: [SCOPES.VIEW, SCOPES.EDIT, SCOPES.MANAGE_COURSES],
     [ROLES.KOSK_MANAGER]: [
       SCOPES.VIEW,
@@ -119,13 +121,13 @@ export const MATRIX: Record<Entity, Partial<Record<Role, Scope[]>>> = {
 
   // Plan §4.4 — Madrasah
   [ENTITIES.MADRASAH]: {
-    // UNREACHABLE (MDRS-41): `TedrisatRoleResolver` returns PUBLIC
-    // unconditionally for `madrasah` until the nazır tables land — see
-    // the TODO(authz) on `resolve()`. Kept per plan §4.4.
+    // Reachable since MDRS-106: `resolveMadrasahRole` returns it to a user
+    // listed in `madrasah_nazirs`. `DELETE` is deliberately absent — plan
+    // §4.4 granted it, the owner withdrew it on 26 September (MDRS-124):
+    // only SYSTEM_ADMIN deletes a medrese, through the realm bypass.
     [ROLES.MADRASAH_NAZIR]: [
       SCOPES.VIEW,
       SCOPES.EDIT,
-      SCOPES.DELETE,
       SCOPES.MANAGE_MADRASAH,
       SCOPES.MANAGE_KOSK,
       SCOPES.MANAGE_DONATIONS,

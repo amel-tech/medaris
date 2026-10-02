@@ -1,6 +1,7 @@
 export interface IKosk {
   id: string;
   ownerId: string;
+  madrasahId: string | null;
   name: string;
   handle: string | null;
   description: string | null;
@@ -17,7 +18,15 @@ export interface IKosk {
   updatedAt: Date;
 }
 
+/** The medrese a köşk is affiliated with, as köşk responses carry it. */
+export interface IKoskMadrasahRef {
+  id: string;
+  name: string;
+  handle: string;
+}
+
 export interface IKoskWithStats extends IKosk {
+  madrasah: IKoskMadrasahRef | null;
   courseCount: number;
   studentCount: number;
   muderrisCount: number;
@@ -83,6 +92,9 @@ export interface IKoskRepository {
   create(kosk: ICreateKosk): Promise<IKosk>;
   update(id: string, updates: IUpdateKosk): Promise<IKosk | null>;
   delete(id: string): Promise<boolean>;
+  affiliate(koskId: string, madrasahId: string): Promise<boolean>;
+  detach(koskId: string, madrasahId: string): Promise<boolean>;
+  leaveMadrasah(koskId: string): Promise<boolean>;
   follow(userId: string, koskId: string): Promise<boolean>;
   unfollow(userId: string, koskId: string): Promise<boolean>;
 }
