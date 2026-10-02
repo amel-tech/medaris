@@ -36,6 +36,7 @@ import {
 } from "@nestjs/swagger";
 import { PublicRequest } from "../course/interfaces/authorized-request.interface";
 import { AuthorizedRequest } from "../kosk/interfaces/authorized-request.interface";
+import { maskMadrasahForAnonymous } from "./anonymous-mask";
 import { CreateMadrasahDto } from "./dto/create-madrasah.dto";
 import { MadrasahExploreResponse } from "./dto/madrasah-explore-response.dto";
 import { MadrasahOverviewResponse } from "./dto/madrasah-overview-response.dto";
@@ -109,12 +110,16 @@ export class MadrasahController {
   @Authz(SCOPES.VIEW, anyMadrasah)
   @AuthzPublic()
   async findAll(
+    @Req() request: PublicRequest,
     @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query("limit", new DefaultValuePipe(12), ParseIntPipe) limit: number
   ): Promise<PaginatedMadrasahResponse> {
     const safePage = page < 1 ? 1 : page;
     const safeLimit = Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
-    return this.madrasahService.findAll(safePage, safeLimit);
+    const result = await this.madrasahService.findAll(safePage, safeLimit);
+    return request.user
+      ? result
+      : { ...result, items: result.items.map(maskMadrasahForAnonymous) };
   }
 
   @ApiOperation({
@@ -169,9 +174,11 @@ export class MadrasahController {
   @Authz(SCOPES.VIEW, byExistingMadrasah)
   @AuthzPublic()
   async findById(
+    @Req() request: PublicRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahResponse> {
-    return this.madrasahService.findById(id);
+    const madrasah = await this.madrasahService.findById(id);
+    return request.user ? madrasah : maskMadrasahForAnonymous(madrasah);
   }
 
   @ApiOperation({
