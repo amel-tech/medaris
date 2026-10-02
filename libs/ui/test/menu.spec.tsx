@@ -27,6 +27,25 @@ describe("Menu", () => {
     expect(document.querySelector("[role=menu]")).toBeNull();
   });
 
+  it("with `text` is a small text button named by its text, glyph first", async () => {
+    await render(
+      <Menu
+        label="Takvime ekle"
+        text="Takvime ekle"
+        size="small"
+        icon={<Icon name="calendar" size="sm" />}
+        items={[{ value: "ics", label: "Apple Takvim", onSelect: () => {} }]}
+      />
+    );
+    const trigger = document.querySelector("button.mds-btn") as HTMLElement;
+    expect(trigger.className).not.toContain("mds-icon-btn");
+    expect(trigger.className).toContain("mds-btn--small");
+    expect(trigger.hasAttribute("aria-label")).toBe(false);
+    expect(trigger.textContent).toBe("Takvime ekle");
+    expect(trigger.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+    expect(trigger.getAttribute("aria-haspopup")).toBe("menu");
+  });
+
   it("lists .mds-option menu items and reports the chosen one", async () => {
     const onSelect = vi.fn();
     await render(

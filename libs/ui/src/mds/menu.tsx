@@ -1,3 +1,5 @@
+"use client";
+
 import { Menu as BaseMenu } from "@base-ui/react/menu";
 import type { ReactNode } from "react";
 import { cx } from "./cx";
@@ -14,6 +16,8 @@ export interface MenuProps {
   label: string;
   /** the glyph, an `<Icon>` from the caller */
   icon: ReactNode;
+  /** a visible name: the trigger becomes a small text button with the glyph before it, and `label` is no longer an aria-label */
+  text?: string;
   items: MenuItem[];
   size?: "mini" | "small" | "regular" | "large";
   className?: string;
@@ -28,6 +32,7 @@ export interface MenuProps {
 export function Menu({
   label,
   icon,
+  text,
   items,
   size = "mini",
   className,
@@ -35,16 +40,17 @@ export function Menu({
   return (
     <BaseMenu.Root>
       <BaseMenu.Trigger
-        aria-label={label}
+        aria-label={text ? undefined : label}
         className={cx(
           "mds-btn",
-          "mds-icon-btn",
+          !text && "mds-icon-btn",
           `mds-btn--${size}`,
           "mds-btn--ghost",
           className
         )}
       >
         {icon}
+        {text}
       </BaseMenu.Trigger>
       <BaseMenu.Portal>
         <BaseMenu.Positioner sideOffset={4} align="end">
