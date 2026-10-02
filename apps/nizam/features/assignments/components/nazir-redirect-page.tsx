@@ -7,6 +7,7 @@ import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
 import { getTranslations } from "next-intl/server";
 import type { TaskRow } from "../landing";
+import { LoadFailedToast } from "./load-failed-toast";
 
 type Messages = (
   key: string,
@@ -42,16 +43,22 @@ export async function NazirRedirectPage({
       </header>
 
       {failed || rows === null ? (
-        <Alert
-          tone="error"
-          title={t("loadFailedTitle")}
-          className="w-full text-start"
-        >
-          <p>{t("loadFailed")}</p>
-          <Button href={retryHref} variant="outline" size="small">
-            {t("retry")}
-          </Button>
-        </Alert>
+        <>
+          <LoadFailedToast
+            title={t("loadFailedTitle")}
+            description={t("loadFailed")}
+          />
+          <Alert
+            tone="error"
+            title={t("loadFailedTitle")}
+            className="w-full text-start"
+          >
+            <p>{t("loadFailed")}</p>
+            <Button href={retryHref} variant="outline" size="small">
+              {t("retry")}
+            </Button>
+          </Alert>
+        </>
       ) : rows.length === 0 ? (
         <EmptyState>{t("empty")}</EmptyState>
       ) : (
@@ -72,7 +79,7 @@ export async function NazirRedirectPage({
                 {row.kind === "madrasah" ? (
                   <Avatar name={row.title} size="md" entity decorative />
                 ) : (
-                  <CoverPattern seed={row.id} size="sm" label="" />
+                  <CoverPattern seed={row.id} size="xs" label="" />
                 )}
                 <span className="flex min-w-0 grow flex-col">
                   <bdi>{row.title}</bdi>

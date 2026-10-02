@@ -264,7 +264,9 @@ describe("RolesSection", () => {
     expect(html).toContain("Nizam’da aç: köşk nazımı, Nûruosmaniye Köşkü");
     expect(html).toContain("Nazır’da aç: müderris, Emsile ve Bina");
 
-    expect(html).toContain("Nûruosmaniye Köşkü · Köşk nazımı");
+    expect(html).toContain("Nûruosmaniye Köşkü · köşk nazımı");
+    expect(html).not.toContain("mds-badge--success");
+    expect(html).toContain('<hr class="mds-separator"');
     expect(html).toContain("Köşkü düzenle, gizle ya da geri al");
     expect(html).toContain("Her arama denetim kaydına yazılır.");
     expect(html).toContain(

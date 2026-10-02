@@ -34,6 +34,7 @@ const nextConfig = {
     "@medaris/services",
   ],
   experimental: {
+    authInterrupts: true,
     optimizePackageImports: [
       "@medaris/icons",
       "@medaris/icons/ssr",

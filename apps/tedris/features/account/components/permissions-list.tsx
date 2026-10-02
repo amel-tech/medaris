@@ -1,5 +1,6 @@
 import type { EffectivePermissionGroup } from "@medaris/services/tedrisat";
 import { Icon } from "@medaris/ui/mds/icon";
+import { Fragment } from "react";
 import type { AccountMessages } from "../account-messages";
 import {
   PERMISSION_NOTE_CODES,
@@ -23,7 +24,10 @@ function heading(
     .map((scope) => scope.name)
     .filter((name): name is string => Boolean(name));
   if (group.scopes.length === 1 && names.length === 1) {
-    return { title: `${names[0]} · ${roleLabel}`, scopeLine: null };
+    return {
+      title: `${names[0]} · ${roleLabel.toLocaleLowerCase(locale)}`,
+      scopeLine: null,
+    };
   }
   if (names.length === 0) return { title: roleLabel, scopeLine: null };
   const key =
@@ -51,6 +55,7 @@ export function PermissionsList({
   locale: string;
   t: AccountMessages;
 }) {
+  let shown = 0;
   return (
     <>
       {groups.map((group, index) => {
@@ -59,43 +64,49 @@ export function PermissionsList({
           t.has(`permissions.${permissionMessageKey(code)}`)
         );
         if (codes.length === 0) return null;
+        const first = shown === 0;
+        shown += 1;
         return (
-          <section
+          <Fragment
             key={`${group.role ?? "grant"}-${group.scopeType}-${index}`}
-            className="flex flex-col gap-3"
-            aria-labelledby={`perm-group-${index}`}
-            data-testid="permission-group"
           >
-            <h3 className="mds-h3" id={`perm-group-${index}`}>
-              {title}
-            </h3>
-            {scopeLine ? <p className="mds-caption">{scopeLine}</p> : null}
-            <ul className="md:columns-2 md:gap-x-8">
-              {codes.map((code) => (
-                <li
-                  key={code}
-                  className="flex break-inside-avoid items-start gap-2 border-be py-2"
-                  data-permission={code}
-                >
-                  <Icon name="check" size="sm" className="mt-1 shrink-0" />
-                  <span className="flex flex-col">
-                    <span>
-                      {t(`permissions.${permissionMessageKey(code)}`)}
-                    </span>
-                    {PERMISSION_NOTE_CODES.has(code) &&
-                    t.has(`permissionNotes.${permissionMessageKey(code)}`) ? (
-                      <span className="mds-caption">
-                        {t(`permissionNotes.${permissionMessageKey(code)}`)}
+            {first ? null : <hr className="mds-separator" />}
+            <section
+              className="flex flex-col gap-3"
+              aria-labelledby={`perm-group-${index}`}
+              data-testid="permission-group"
+            >
+              <h4 className="mds-h6" id={`perm-group-${index}`}>
+                {title}
+              </h4>
+              {scopeLine ? <p className="mds-caption">{scopeLine}</p> : null}
+              <ul className="md:columns-2 md:gap-x-8">
+                {codes.map((code) => (
+                  <li
+                    key={code}
+                    className="flex break-inside-avoid items-start gap-2 border-be py-2"
+                    data-permission={code}
+                  >
+                    <Icon name="check" size="sm" className="mt-1 shrink-0" />
+                    <span className="flex flex-col">
+                      <span>
+                        {t(`permissions.${permissionMessageKey(code)}`)}
                       </span>
-                    ) : null}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {group.role && ROLE_DEFAULTS_NOTE.has(group.role) ? (
-              <p className="mds-caption">{t(`defaultsNote.${group.role}`)}</p>
-            ) : null}
-          </section>
+                      {PERMISSION_NOTE_CODES.has(code) &&
+                      t.has(`permissionNotes.${permissionMessageKey(code)}`) ? (
+                        <span className="mds-caption">
+                          {t(`permissionNotes.${permissionMessageKey(code)}`)}
+                        </span>
+                      ) : null}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {group.role && ROLE_DEFAULTS_NOTE.has(group.role) ? (
+                <p className="mds-caption">{t(`defaultsNote.${group.role}`)}</p>
+              ) : null}
+            </section>
+          </Fragment>
         );
       })}
     </>

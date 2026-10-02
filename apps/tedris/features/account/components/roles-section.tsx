@@ -7,6 +7,12 @@ import { getAccountRoles } from "../reads";
 import { type AssignmentRow, AssignmentsTable } from "./assignments-table";
 import { PermissionsList } from "./permissions-list";
 
+const BADGE_VARIANT = {
+  published: "primary",
+  draft: "outline",
+  hidden: "ghost",
+} as const;
+
 /**
  * "Görevlerin ve izinlerin" (MDRS-169, design tedris/43). Shown only to a
  * person who holds a role: for everyone else the section is not there at all,
@@ -49,7 +55,7 @@ export async function RolesSection() {
       scopeBadge: badge
         ? {
             label: t(`courseBadge.${badge}`),
-            variant: badge === "published" ? "success" : "secondary",
+            variant: BADGE_VARIANT[badge],
             hidden: badge === "hidden",
           }
         : null,
@@ -90,7 +96,6 @@ export async function RolesSection() {
         <p>{t("whereIntro")}</p>
       </div>
       <div className="flex flex-col gap-3">
-        <h3 className="mds-h3">{t("tasks")}</h3>
         <AssignmentsTable
           rows={rows}
           labels={{
@@ -105,11 +110,21 @@ export async function RolesSection() {
         />
       </div>
       {roles.groups.length > 0 ? (
-        <div className="flex flex-col gap-4 border-bs pbs-6">
-          <h3 className="mds-h3">{t("permissionsTitle")}</h3>
-          <p>{t("permissionsIntro")}</p>
-          <PermissionsList groups={roles.groups} locale={locale} t={t} />
-        </div>
+        <>
+          <hr className="mds-separator" />
+          <section
+            aria-labelledby="permissions-heading"
+            className="flex flex-col gap-6"
+          >
+            <div className="flex flex-col gap-2">
+              <h3 className="mds-h5" id="permissions-heading">
+                {t("permissionsTitle")}
+              </h3>
+              <p>{t("permissionsIntro")}</p>
+            </div>
+            <PermissionsList groups={roles.groups} locale={locale} t={t} />
+          </section>
+        </>
       ) : null}
     </section>
   );
