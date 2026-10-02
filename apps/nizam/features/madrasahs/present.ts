@@ -239,6 +239,8 @@ const KNOWN: Record<string, string> = {
   MADRASAH_HANDLE_TAKEN: "errors.handleTaken",
   MADRASAH_NOT_FOUND: "errors.notFound",
   MADRASAH_NOT_HIDDEN: "errors.notHidden",
+  DISMISS_DECISIONS_INCOMPLETE: "errors.delegationsChanged",
+  GRANT_EXPIRY_INVALID: "errors.expiryInvalid",
   AUTHZ_FORBIDDEN: "errors.forbidden",
 };
 

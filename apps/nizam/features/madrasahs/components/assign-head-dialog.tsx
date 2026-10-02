@@ -1,17 +1,36 @@
 "use client";
 
+import type { HeadDelegationResponse } from "@medaris/services/tedrisat";
 import { toast } from "@medaris/ui/components/sonner";
+import { Alert } from "@medaris/ui/mds/alert";
+import { Avatar } from "@medaris/ui/mds/avatar";
 import { Button } from "@medaris/ui/mds/button";
+import { ChoiceChips } from "@medaris/ui/mds/choice-chips";
 import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
-import { useTranslations } from "next-intl";
-import { type FormEvent, useEffect, useState } from "react";
-import { setHeadMuderris } from "../actions";
+import { Field } from "@medaris/ui/mds/field";
+import { Input } from "@medaris/ui/mds/input";
+import { Skeleton } from "@medaris/ui/mds/skeleton";
+import { useLocale, useTimeZone, useTranslations } from "next-intl";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
+import {
+  type DismissAnswer,
+  dismissDecisions,
+  dismissReady,
+  endError,
+  endOfDayIso,
+  formatDay,
+  givenKey,
+} from "../../permissions/present";
+import { getHeadDelegations, setHeadMuderris } from "../actions";
 import { madrasahErrorKey, type PickedUser } from "../present";
 import { HeadPicker } from "./head-picker";
 
 export interface AssignTarget {
   id: string;
   name: string;
+  /** the sitting başmüderris, if there is one: "Başmüderrisi değiştir" instead of "Başmüderris ata" */
+  headId?: string | null;
+  headName?: string | null;
 }
 
 interface Props {
@@ -22,12 +41,18 @@ interface Props {
   onAssigned?: () => void;
 }
 
+type Message = (
+  key: string,
+  values?: Record<string, string | number>
+) => string;
+
 /**
- * "Başmüderris ata" (nizam 07, the pasif row's button): the same e-mail
- * search as "Medrese aç", then the chosen account heads the medrese and a
- * passive one is active again. The design of nizam/22 (the köşk-and-medrese
- * "başmüderrisi değiştir" dialog) is a later package's; this is the small
- * dialog the Medreseler row needs to be usable on its own.
+ * "Başmüderrisi değiştir" and "Başmüderris ata" (nizam 22, 07): the e-mail
+ * search of "Medrese aç", an optional "Görev bitişi" and, when a başmüderris
+ * is replaced, one "Devral" or "Düşür" for each role and permission they
+ * handed on — none is chosen for the başnazım, and "Değiştir" stays off until
+ * every row has an answer (_kurallar 14, 15). Without a sitting başmüderris
+ * there is nothing to ask. The scrim does not close it.
  */
 export function AssignHeadDialog({
   open,
@@ -35,34 +60,113 @@ export function AssignHeadDialog({
   target,
   onAssigned,
 }: Props) {
-  const t = useTranslations("nizam.AssignHeadDialog");
+  const tm = useTranslations("nizam.AssignHeadDialog");
+  const t = tm as unknown as Message;
   const tp = useTranslations("nizam.MadrasahsPage");
-  const [head, setHead] = useState<PickedUser | null>(null);
-  const [saving, setSaving] = useState(false);
+  const tc = useTranslations("nizam.PermissionCatalog");
+  const tr = useTranslations("nizam.Shell.roles");
+  const locale = useLocale();
+  const timeZone = useTimeZone() ?? "Europe/Istanbul";
 
+  const changing = Boolean(target?.headId);
+  const [head, setHead] = useState<PickedUser | null>(null);
+  const [endDay, setEndDay] = useState("");
+  const [items, setItems] = useState<
+    HeadDelegationResponse[] | "failed" | null
+  >(null);
+  const [answers, setAnswers] = useState<
+    Record<string, DismissAnswer | undefined>
+  >({});
+  const [saving, setSaving] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+  const targetId = target?.id;
+
+  const load = useCallback(async () => {
+    if (!targetId) return;
+    setItems(null);
+    const result = await getHeadDelegations(targetId);
+    setItems(result.success ? result.data : "failed");
+  }, [targetId]);
+
+  // Every opening starts clean and, when somebody is replaced, asks again
+  // what they handed on: it may have changed since the table was read.
   useEffect(() => {
-    if (open) setHead(null);
-  }, [open]);
+    if (!open) return;
+    setHead(null);
+    setEndDay("");
+    setAnswers({});
+    setSaving(false);
+    setNow(new Date());
+    setItems(changing ? null : []);
+    if (changing) void load();
+  }, [open, changing, load]);
+
+  const list = Array.isArray(items)
+    ? items.filter((i) => i.to.id !== head?.id)
+    : [];
+  const same = head !== null && head.id === target?.headId;
+  const problem = endError(endDay, { now, timeZone, assignmentEnd: null });
+  const answered =
+    !changing || (Array.isArray(items) && dismissReady(list, answers));
+  const ready = head !== null && !same && problem === null && answered;
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!target || !head) return;
+    if (!target || !head || !ready) return;
     setSaving(true);
-    const result = await setHeadMuderris(target.id, head.id);
+    const endIso = endDay ? endOfDayIso(endDay, timeZone) : null;
+    const result = await setHeadMuderris(target.id, head.id, {
+      ...(endIso ? { endsAt: new Date(endIso) } : {}),
+      ...(changing ? { delegations: dismissDecisions(list, answers) } : {}),
+    });
     setSaving(false);
     if (!result.success) {
-      toast.error(t("failed"), {
+      toast.error(t(changing ? "changeFailed" : "failed"), {
         description: tp(madrasahErrorKey(result.errorBody) as never),
         duration: Number.POSITIVE_INFINITY,
       });
+      // The list moved under the başnazım: ask again.
+      if (
+        result.errorBody &&
+        (result.errorBody as { code?: string }).code ===
+          "DISMISS_DECISIONS_INCOMPLETE"
+      ) {
+        setAnswers({});
+        void load();
+      }
       return;
     }
-    toast.success(t("saved"), {
-      description: t("savedBody", { name: target.name, head: head.name }),
+    toast.success(t(changing ? "changed" : "saved"), {
+      description: t(changing ? "changedBody" : "savedBody", {
+        name: target.name,
+        head: head.name,
+      }),
     });
     onAssigned?.();
     onOpenChange(false);
   };
+
+  const what = (item: HeadDelegationResponse): string => {
+    if (item.kind === "ROLE") {
+      const role = item.role ?? "";
+      return tr.has(role as never) ? tr(role as never) : role;
+    }
+    if (item.permission) {
+      const key = item.permission.replace(/\./g, "_");
+      return tc.has(`permissions.${key}.title` as never)
+        ? tc(`permissions.${key}.title` as never)
+        : item.permission;
+    }
+    return t("groupName", { name: item.groupName ?? "" });
+  };
+
+  const detail = (item: HeadDelegationResponse): string =>
+    [
+      item.expiresAt
+        ? t("untilDate", { date: formatDay(item.expiresAt, locale, timeZone) })
+        : t("noEnd"),
+      t("givenOn", { date: formatDay(item.grantedAt, locale, timeZone) }),
+    ].join(" · ");
 
   return (
     <Dialog
@@ -74,24 +178,129 @@ export function AssignHeadDialog({
       size="md"
       onSubmit={submit}
       eyebrow={target?.name}
-      title={t("title")}
+      title={changing ? t("titleChange") : t("title")}
       closeLabel={t("close")}
+      footerMeta={changing && list.length > 0 ? t("answersNeeded") : undefined}
       footer={
         <>
           <DialogClose>{t("cancel")}</DialogClose>
-          <Button type="submit" loading={saving} disabled={!head}>
-            {t("submit")}
+          <Button type="submit" loading={saving} disabled={!ready}>
+            {changing ? t("submitChange") : t("submit")}
           </Button>
         </>
       }
     >
-      <p>{t("intro", { name: target?.name ?? "" })}</p>
+      {changing ? (
+        <p>
+          <strong>{target?.headName ?? t("unknownPerson")}</strong>
+          {t("introChange")}
+        </p>
+      ) : (
+        <p>{t("intro", { name: target?.name ?? "" })}</p>
+      )}
+      <p className="mds-caption">{t("requiredNote")}</p>
       <HeadPicker
         value={head}
         onChange={setHead}
         disabled={saving}
-        chosenNote={t("chosenNote")}
+        label={changing ? t("newHeadLabel") : undefined}
+        chosenNote={t(changing ? "chosenNoteChange" : "chosenNote")}
+        error={same ? t("sameHead") : undefined}
       />
+      <Field
+        label={t("endLabel")}
+        help={t("endHelp")}
+        error={problem ? t("endPast") : undefined}
+      >
+        <Input
+          type="date"
+          name="endDay"
+          value={endDay}
+          disabled={saving}
+          onChange={(event) => setEndDay(event.target.value)}
+        />
+      </Field>
+
+      {changing ? (
+        <section
+          aria-labelledby="delegations-heading"
+          className="flex flex-col gap-3 border-t border-[var(--border-neutral-subtle)] pt-4"
+          data-testid="delegations"
+        >
+          {items === null ? (
+            <div className="flex flex-col gap-3" aria-busy="true">
+              <Skeleton height="3rem" />
+              <Skeleton height="3rem" />
+            </div>
+          ) : items === "failed" ? (
+            <Alert tone="error" title={t("loadFailedTitle")}>
+              <p>{t("loadFailed")}</p>
+              <Button
+                variant="outline"
+                size="small"
+                onClick={() => void load()}
+              >
+                {t("retry")}
+              </Button>
+            </Alert>
+          ) : list.length === 0 ? (
+            <p className="mds-caption" id="delegations-heading">
+              {t("nothingHandedOn", { head: target?.headName ?? "" })}
+            </p>
+          ) : (
+            <>
+              <h3 id="delegations-heading" className="mds-label">
+                <strong>{target?.headName ?? t("unknownPerson")}</strong>
+                {t("handedOnHeading")}
+              </h3>
+              <ul className="flex flex-col gap-3">
+                {list.map((item) => {
+                  const key = givenKey(item);
+                  const person = item.to.name ?? item.to.email ?? "";
+                  return (
+                    <li
+                      key={key}
+                      className="flex flex-wrap items-center gap-3"
+                      data-testid="delegation"
+                    >
+                      <Avatar name={person} decorative />
+                      <span className="flex min-w-0 grow flex-col">
+                        <bdi className="font-semibold">
+                          {item.to.name ?? t("unknownPerson")}
+                        </bdi>
+                        {item.to.email ? (
+                          <bdi dir="ltr" className="mds-caption font-mono">
+                            {item.to.email}
+                          </bdi>
+                        ) : null}
+                        <bdi className="mds-caption">{what(item)}</bdi>
+                        <span className="mds-caption">{detail(item)}</span>
+                      </span>
+                      <ChoiceChips
+                        legend={t("answerLegend", { what: what(item), person })}
+                        value={answers[key] ?? null}
+                        onChange={(v) =>
+                          setAnswers((a) => ({
+                            ...a,
+                            [key]: (v ?? undefined) as
+                              | DismissAnswer
+                              | undefined,
+                          }))
+                        }
+                        options={[
+                          { value: "TAKE_OVER", label: t("takeOver") },
+                          { value: "DROP", label: t("drop") },
+                        ]}
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="mds-caption">{t("answersNote")}</p>
+            </>
+          )}
+        </section>
+      ) : null}
     </Dialog>
   );
 }
