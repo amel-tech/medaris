@@ -74,6 +74,8 @@ export interface IRoleGrant {
   scopeId: string;
   grantedBy: string;
   isImam?: boolean;
+  /** When the post ends (nizam/21's "Görev bitişi"); omitted: until revoked. */
+  expiresAt?: Date | null;
 }
 
 /**
@@ -102,6 +104,7 @@ export async function grantRole(tx: Tx, grant: IRoleGrant): Promise<void> {
       scopeId: grant.scopeId,
       grantedBy: grant.grantedBy,
       isImam: grant.isImam ?? false,
+      expiresAt: grant.expiresAt ?? null,
     })
     .onConflictDoNothing();
 }

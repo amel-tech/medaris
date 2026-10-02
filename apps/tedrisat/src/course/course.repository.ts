@@ -949,12 +949,14 @@ export class CourseRepository implements ICourseRepository {
     status: CourseStatus;
     archived: boolean;
     koskIsPrivate: boolean;
+    koskHidden: boolean;
   } | null> {
     const rows = await this.db
       .select({
         status: courses.status,
         archivedAt: courses.archivedAt,
         koskIsPrivate: kosks.isPrivate,
+        koskArchivedAt: kosks.archivedAt,
       })
       .from(courses)
       .innerJoin(kosks, eq(kosks.id, courses.koskId))
@@ -966,6 +968,7 @@ export class CourseRepository implements ICourseRepository {
       status: row.status,
       archived: row.archivedAt !== null,
       koskIsPrivate: row.koskIsPrivate,
+      koskHidden: row.koskArchivedAt !== null,
     };
   }
 

@@ -110,6 +110,9 @@ describe("Select", () => {
     await settle(50);
     const popup = document.querySelector(".mds-popup");
     expect(popup).not.toBeNull();
+    // MDRS-170: a list opened inside a dialog sat under its viewport and could
+    // not be clicked; the positioner takes the class that lifts it above.
+    expect(popup?.closest(".mds-popup-positioner")).not.toBeNull();
     const options = document.querySelectorAll(".mds-option");
     expect(options.length).toBe(2);
     expect(options[0].getAttribute("role")).toBe("option");

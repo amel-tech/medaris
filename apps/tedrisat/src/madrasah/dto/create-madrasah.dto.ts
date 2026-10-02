@@ -3,6 +3,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   Max,
   MaxLength,
@@ -14,14 +15,15 @@ import {
 export const MADRASAH_HANDLE_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])$/;
 
 export class CreateMadrasahDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: "hadis-ve-siyer",
     description:
-      "Unique, URL-safe: lower-case letters, digits and inner hyphens, 2–60 characters",
+      "Unique, URL-safe: lower-case letters, digits and inner hyphens, 2–60 characters. Left out, it is made from the name (MDRS-170).",
   })
+  @IsOptional()
   @IsString()
   @Matches(MADRASAH_HANDLE_PATTERN)
-  handle!: string;
+  handle?: string;
 
   @ApiProperty({ example: "Hadis ve Siyer Araştırmaları Medresesi" })
   @IsString()
@@ -44,4 +46,12 @@ export class CreateMadrasahDto {
   @Min(0)
   @Max(360)
   coverHue?: number;
+
+  @ApiProperty({
+    format: "uuid",
+    description:
+      "The account that becomes the başmüderris when the medrese opens (found with GET /users/lookup). A medrese opens with one (MDRS-170).",
+  })
+  @IsUUID()
+  headMuderrisUserId!: string;
 }

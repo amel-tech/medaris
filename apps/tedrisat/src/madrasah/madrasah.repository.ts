@@ -1,5 +1,16 @@
 import { Injectable } from "@nestjs/common";
-import { and, asc, eq, gt, inArray, isNull, min, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  min,
+  type SQL,
+  sql,
+} from "drizzle-orm";
 import { CourseStatus } from "../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { DatabaseService } from "../database/database.service";
@@ -11,6 +22,7 @@ import {
   isHeld,
   revokeRole,
 } from "../database/role-assignments";
+import { auditLog } from "../database/schema/audit.schema";
 import {
   courseMuderris,
   courses,
@@ -28,14 +40,21 @@ import {
 import { users } from "../database/schema/user.schema";
 import {
   ICreateMadrasah,
+  ICreateMadrasahWithHead,
   IMadrasah,
   IMadrasahCourse,
+  IMadrasahDirectoryFilter,
+  IMadrasahDirectoryItem,
   IMadrasahExplore,
   IMadrasahExploreFilter,
   IMadrasahHeadMuderris,
   IMadrasahOverview,
+  IMadrasahStatusCounts,
   IMadrasahWithNazirs,
+  IPassiveMadrasah,
   IUpdateMadrasah,
+  MadrasahStatus,
+  RestoreMadrasahResult,
 } from "./madrasah.repository.interface";
 
 /**
@@ -74,6 +93,7 @@ export class MadrasahRepository {
     const rows = await this.db
       .select(this.withNazirsSelect())
       .from(madrasahs)
+      .where(isNull(madrasahs.archivedAt))
       .orderBy(asc(madrasahs.name), asc(madrasahs.id))
       .limit(limit)
       .offset(offset);
@@ -83,7 +103,8 @@ export class MadrasahRepository {
   async count(): Promise<number> {
     const [row] = await this.db
       .select({ value: sql<number>`count(*)`.mapWith(Number) })
-      .from(madrasahs);
+      .from(madrasahs)
+      .where(isNull(madrasahs.archivedAt));
     return row?.value ?? 0;
   }
 
@@ -156,6 +177,287 @@ export class MadrasahRepository {
       )
       .limit(1);
     return rows.length > 0;
+  }
+
+  /** True when the medrese exists and is hidden (MDRS-170). */
+  async isHidden(id: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: madrasahs.id })
+      .from(madrasahs)
+      .where(and(eq(madrasahs.id, id), isNotNull(madrasahs.archivedAt)))
+      .limit(1);
+    return rows.length > 0;
+  }
+
+  /**
+   * Opens a medrese together with its başmüderris (MDRS-170): one transaction,
+   * so a medrese never exists without the person who heads it, and the audit
+   * row exists exactly when it does.
+   */
+  async createWithHead(
+    input: ICreateMadrasahWithHead,
+    actorId: string
+  ): Promise<IMadrasah> {
+    const { headMuderrisUserId, ...madrasah } = input;
+    return this.db.transaction(async (tx) => {
+      const [created] = await tx.insert(madrasahs).values(madrasah).returning();
+      await grantRole(tx, {
+        userId: headMuderrisUserId,
+        role: NAZIR_ROLE,
+        scopeId: created.id,
+        grantedBy: actorId,
+      });
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "madrasah.create",
+        entity: "madrasah",
+        entityId: created.id,
+        details: {
+          name: created.name,
+          handle: created.handle,
+          headMuderrisUserId,
+        },
+      });
+      return created;
+    });
+  }
+
+  /**
+   * Makes `userId` the medrese's only başmüderris (MDRS-170): the others'
+   * grants are revoked in the actor's name, not deleted, and a passive medrese
+   * is active again — that is what "bir başmüderris atadığınızda yeniden açılır"
+   * means. Locks the medrese first, like `addNazir`. False when there is none.
+   */
+  async setHeadMuderris(
+    madrasahId: string,
+    userId: string,
+    actorId: string
+  ): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const [madrasah] = await tx
+        .select({ id: madrasahs.id })
+        .from(madrasahs)
+        .where(eq(madrasahs.id, madrasahId))
+        .for("no key update");
+      if (!madrasah) return false;
+      const held = await tx
+        .select({ userId: roleAssignments.userId })
+        .from(roleAssignments)
+        .where(holdsIn(NAZIR_ROLE, madrasahId));
+      const previous = held.map((h) => h.userId);
+      for (const other of previous.filter((id) => id !== userId)) {
+        await revokeRole(tx, {
+          userId: other,
+          role: NAZIR_ROLE,
+          scopeId: madrasahId,
+          revokedBy: actorId,
+        });
+      }
+      await grantRole(tx, {
+        userId,
+        role: NAZIR_ROLE,
+        scopeId: madrasahId,
+        grantedBy: actorId,
+      });
+      await tx
+        .update(madrasahs)
+        .set({
+          passiveSince: null,
+          passiveReason: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(madrasahs.id, madrasahId));
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "madrasah.head_muderris.set",
+        entity: "madrasah",
+        entityId: madrasahId,
+        details: { headMuderrisUserId: userId, previous },
+      });
+      return true;
+    });
+  }
+
+  /** Brings a hidden medrese back (nizam/07 "Geri al"), with an audit row. */
+  async restore(
+    madrasahId: string,
+    actorId: string
+  ): Promise<RestoreMadrasahResult> {
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select({ archivedAt: madrasahs.archivedAt })
+        .from(madrasahs)
+        .where(eq(madrasahs.id, madrasahId))
+        .for("no key update");
+      if (!row) return "not-found";
+      if (row.archivedAt === null) return "not-hidden";
+      await tx
+        .update(madrasahs)
+        .set({ archivedAt: null, archivedBy: null, updatedAt: new Date() })
+        .where(eq(madrasahs.id, madrasahId));
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "madrasah.restore",
+        entity: "madrasah",
+        entityId: madrasahId,
+        details: { hiddenSince: row.archivedAt.toISOString() },
+      });
+      return "restored";
+    });
+  }
+
+  /**
+   * SQL for the status a row is in. Hidden wins over passive: someone hid the
+   * medrese, which says more than that nobody attends it.
+   */
+  private statusSql() {
+    return sql`case when m.archived_at is not null then 'HIDDEN'
+      when m.passive_since is not null then 'PASSIVE' else 'ACTIVE' end`;
+  }
+
+  /**
+   * One page of nizam/07's table — every medrese, hidden and passive ones
+   * included — with its başmüderris, course count and hosting köşks. One
+   * statement with correlated subqueries, so a page of 25 is one round trip
+   * rather than 75.
+   */
+  async findDirectory(
+    filter: IMadrasahDirectoryFilter,
+    limit: number,
+    offset: number
+  ): Promise<{ items: IMadrasahDirectoryItem[]; total: number }> {
+    const where = this.directoryWhere(filter);
+    const items = await this.queryDirectory(
+      where,
+      sql`limit ${limit} offset ${offset}`
+    );
+    const [count] = (
+      await this.db.execute<{ total: string }>(
+        sql`select count(*) as total from madrasahs m ${where}`
+      )
+    ).rows;
+    return { items, total: Number(count?.total ?? 0) };
+  }
+
+  async findDirectoryItem(id: string): Promise<IMadrasahDirectoryItem | null> {
+    const rows = await this.queryDirectory(sql`where m.id = ${id}`, sql``);
+    return rows[0] ?? null;
+  }
+
+  private directoryWhere(filter: IMadrasahDirectoryFilter) {
+    const parts: SQL[] = [];
+    if (filter.status !== "ALL") {
+      parts.push(sql`(${this.statusSql()}) = ${filter.status}`);
+    }
+    const q = filter.q?.trim();
+    if (q) {
+      const like = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
+      parts.push(
+        sql`(m.name ilike ${like} or m.handle ilike ${like} or exists (
+          select 1 from role_assignments ra join users u on u.id = ra.user_id
+           where ra.scope_id = m.id and ra.role = ${NAZIR_ROLE}
+             and ra.revoked_at is null
+             and (ra.expires_at is null or ra.expires_at > now())
+             and concat_ws(' ', u.given_name, u.family_name) ilike ${like}))`
+      );
+    }
+    return parts.length === 0
+      ? sql``
+      : sql`where ${sql.join(parts, sql` and `)}`;
+  }
+
+  private async queryDirectory(
+    where: SQL,
+    page: SQL
+  ): Promise<IMadrasahDirectoryItem[]> {
+    const result = await this.db.execute<{
+      id: string;
+      handle: string;
+      name: string;
+      cover_hue: number;
+      status: MadrasahStatus;
+      since: Date | string | null;
+      head_id: string | null;
+      head_name: string | null;
+      course_count: string;
+      hosting: { id: string; name: string }[];
+    }>(sql`
+      select m.id, m.handle, m.name, m.cover_hue,
+             ${this.statusSql()} as status,
+             coalesce(m.archived_at, m.passive_since) as since,
+             h.user_id as head_id,
+             nullif(trim(concat_ws(' ', u.given_name, u.family_name)), '') as head_name,
+             (select count(*) from courses c
+               where c.madrasah_id = m.id and c.archived_at is null) as course_count,
+             coalesce((select json_agg(json_build_object('id', k.id, 'name', k.name)
+                                       order by k.name, k.id)
+                         from madrasah_kosk_hosting hr
+                         join kosks k on k.id = hr.kosk_id
+                        where hr.madrasah_id = m.id and hr.revoked_at is null
+                          and k.archived_at is null), '[]'::json) as hosting
+        from madrasahs m
+        left join lateral (
+          select ra.user_id from role_assignments ra
+           where ra.scope_id = m.id and ra.role = ${NAZIR_ROLE}
+             and ra.revoked_at is null
+             and (ra.expires_at is null or ra.expires_at > now())
+           order by ra.created_at, ra.user_id limit 1) h on true
+        left join users u on u.id = h.user_id
+        ${where}
+       order by m.name, m.id
+       ${page}`);
+    return result.rows.map((r) => ({
+      id: r.id,
+      handle: r.handle,
+      name: r.name,
+      coverHue: r.cover_hue,
+      status: r.status,
+      // A raw `execute` skips drizzle's column mappers: timestamps arrive as text.
+      since: r.since ? new Date(r.since) : null,
+      headMuderris: r.head_id ? { id: r.head_id, name: r.head_name } : null,
+      courseCount: Number(r.course_count),
+      hostingKosks: r.hosting,
+    }));
+  }
+
+  async statusCounts(): Promise<IMadrasahStatusCounts> {
+    const [row] = (
+      await this.db.execute<{
+        total: string;
+        active: string;
+        passive: string;
+        hidden: string;
+      }>(sql`
+        select count(*) as total,
+               count(*) filter (where m.archived_at is null and m.passive_since is null) as active,
+               count(*) filter (where m.archived_at is null and m.passive_since is not null) as passive,
+               count(*) filter (where m.archived_at is not null) as hidden
+          from madrasahs m`)
+    ).rows;
+    return {
+      all: Number(row?.total ?? 0),
+      active: Number(row?.active ?? 0),
+      passive: Number(row?.passive ?? 0),
+      hidden: Number(row?.hidden ?? 0),
+    };
+  }
+
+  /** The passive medreses the warning on nizam/07 names, oldest first. */
+  async findPassive(): Promise<IPassiveMadrasah[]> {
+    const rows = await this.db
+      .select({
+        id: madrasahs.id,
+        name: madrasahs.name,
+        since: madrasahs.passiveSince,
+      })
+      .from(madrasahs)
+      .where(
+        and(isNull(madrasahs.archivedAt), isNotNull(madrasahs.passiveSince))
+      )
+      .orderBy(asc(madrasahs.passiveSince), asc(madrasahs.id));
+    return rows.flatMap((r) =>
+      r.since ? [{ id: r.id, name: r.name, since: r.since }] : []
+    );
   }
 
   /**

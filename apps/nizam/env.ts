@@ -17,6 +17,9 @@ export const env = createEnv({
     // Where "Nazır'a git" points (MDRS-169). Unset or empty: the button is
     // left out.
     NAZIR_URL: z.union([z.string().url(), z.literal("")]).optional(),
+    // Where "Tedris'e dön" points on the "Yönetim yetkiniz yok" screen
+    // (MDRS-168). Unset or empty: the button is left out.
+    TEDRIS_URL: z.union([z.string().url(), z.literal("")]).optional(),
   },
   // MDRS-86: no `client` block on purpose — see apps/tedris/env.ts.
   client: {},
@@ -32,5 +35,6 @@ export const env = createEnv({
 
     TEDRISAT_API_BASE_URL: process.env.TEDRISAT_API_BASE_URL,
     NAZIR_URL: process.env.NAZIR_URL,
+    TEDRIS_URL: process.env.TEDRIS_URL,
   },
 });
