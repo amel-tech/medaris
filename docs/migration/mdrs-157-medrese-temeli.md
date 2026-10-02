@@ -85,15 +85,22 @@ Browser e2e (new, first in the repo)
   unknown and a malformed id, empty list for a medrese with no courses.
 - `apps/tedris` Vitest: badge mapping, `Paz 21:00` formatting in two zones,
   the page markup for badges, no-badge, empty medrese, i18n key parity.
-- Playwright against a locally running tedrisat + tedris-web + Postgres: five
+- Playwright against a locally running tedrisat + tedris-web + Postgres: six
   cases pass (page content, time format and no meeting link, köşk card, course
-  link, unknown id 404). A screenshot was compared by eye with `ekran.png`.
+  link, unknown id 404, and a real Keycloak sign-in as the `e2e-talebe` test
+  user showing `Devam ediyor` on an ENROLLED course and `Onay bekliyor` on a
+  PENDING one). The last case reads `E2E_TALEBE_EMAIL`, `E2E_TALEBE_PASSWORD`
+  and `E2E_TALEBE_SUB` from the environment and is skipped when they are
+  unset. A screenshot was compared by eye with `ekran.png`.
+- Base: the branch was merged with `release/stack-37-bildirim-temeli`
+  (conflicts in the three `tedris.json` locale files and `tab-view`, both
+  resolved by keeping both sides); the five gate targets were re-run green.
 
 ## What was not verified
 
-- The `Devam ediyor` / `Onay bekliyor` badges in a browser: they need a signed-in
-  user and no Keycloak test user is available. Covered by the API e2e and the
-  page spec only.
+- `tedrisat:test` failed once in the full `run-many -t test` run (one e2e
+  seed call did not return 201) and passed on three reruns; Nx flagged it as a
+  flaky task. The cause was not found.
 - Mobile layout (390 px), dark theme, Arabic (`rtl`) rendering.
 - Viewing the page with the unified stylesheet loaded and then navigating to a
   shadcn page in the same session (the leak the `container` change was meant to

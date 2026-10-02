@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { type MadrasahFixture, seedMadrasah } from "./seed";
+import { type MadrasahFixture, seedEnrollments, seedMadrasah } from "./seed";
 
 /**
  * Design tedris/03, acceptance criteria 1 to 5, against the running app and
- * API. Signed out: the page is open to visitors (MDRS-122), so the enrollment
- * badges (`Devam ediyor`, `Onay bekliyor`) need a Keycloak login and are
- * covered by tedrisat's own e2e (the endpoint) and the page spec (the badge
- * mapping); they are not asserted in a browser here.
+ * API. Most specs run signed out: the page is open to visitors (MDRS-122). The
+ * enrollment badges (`Devam ediyor`, `Onay bekliyor`) need a real Keycloak
+ * login; that spec runs when E2E_TALEBE_EMAIL, E2E_TALEBE_PASSWORD and
+ * E2E_TALEBE_SUB (the user's Keycloak id) are set, and is skipped otherwise.
  */
 let fixture: MadrasahFixture;
 
@@ -24,15 +24,17 @@ test("shows the medrese, its head müderris and its courses", async ({
   page,
 }) => {
   await page.goto(page_(fixture.madrasahId));
+  // streaming SSR leaves a hidden copy of the page outside <main> for a moment
+  const main = page.getByRole("main");
   await expect(
     page.getByRole("heading", { level: 1, name: "Süleymaniye Medresesi" })
   ).toBeVisible();
-  await expect(page.getByText(/^2 ders/)).toBeVisible();
+  await expect(main.getByText(/^2 ders/)).toBeVisible();
   await expect(
-    page.getByText(`Başmüderris ${fixture.headMuderrisName}`)
+    main.getByText(`Başmüderris ${fixture.headMuderrisName}`)
   ).toBeVisible();
   await expect(
-    page.getByText("Bu medresenin 2 dersinde müderris")
+    main.getByText("Bu medresenin 2 dersinde müderris")
   ).toBeVisible();
   for (const course of fixture.courses) {
     await expect(page.getByRole("link", { name: course.title })).toBeVisible();
@@ -83,4 +85,35 @@ test("an unknown or malformed medrese id answers 404 with the not-found state an
     await expect(page.getByText("Sayfa bulunamadı")).toBeVisible();
   }
   expect(errors).toEqual([]);
+});
+
+test("a signed-in talebe sees Devam ediyor and Onay bekliyor on their courses", async ({
+  page,
+}) => {
+  const email = process.env.E2E_TALEBE_EMAIL;
+  const password = process.env.E2E_TALEBE_PASSWORD;
+  const sub = process.env.E2E_TALEBE_SUB;
+  test.skip(
+    !(email && password && sub),
+    "no Keycloak talebe in the environment"
+  );
+  const remove = await seedEnrollments(fixture, sub as string);
+  try {
+    await page.goto("/tr/auth/signin");
+    await page.locator("#username").fill(email as string);
+    await page.locator("#password").fill(password as string);
+    await page.locator("button[type=submit]").click();
+    await page.waitForURL(/localhost:4000/);
+    await page.goto(page_(fixture.madrasahId));
+    const [enrolled, pending] = fixture.courses;
+    const row = (title: string) =>
+      page
+        .locator(".mds-card")
+        .filter({ has: page.getByRole("link", { name: title }) })
+        .first();
+    await expect(row(enrolled.title)).toContainText("Devam ediyor");
+    await expect(row(pending.title)).toContainText("Onay bekliyor");
+  } finally {
+    await remove();
+  }
 });

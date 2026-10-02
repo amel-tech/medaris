@@ -26,6 +26,39 @@ const databaseUrl = () => {
   return url;
 };
 
+/**
+ * Gives one signed-in talebe an ENROLLED place in the first course and a
+ * PENDING one in the second, so the page's two badges can be read in a
+ * browser. Returns what to remove. `userId` is the Keycloak `sub`.
+ */
+export async function seedEnrollments(
+  fixture: MadrasahFixture,
+  userId: string
+): Promise<() => Promise<void>> {
+  const client = new pg.Client({ connectionString: databaseUrl() });
+  await client.connect();
+  const [enrolled, pending] = fixture.courses;
+  try {
+    await client.query(
+      "insert into enrollments(user_id, course_id, status) values ($1, $2, 'ENROLLED'), ($1, $3, 'PENDING')",
+      [userId, enrolled.id, pending.id]
+    );
+  } catch (error) {
+    await client.end();
+    throw error;
+  }
+  return async () => {
+    try {
+      await client.query(
+        "delete from enrollments where user_id = $1 and course_id = any($2)",
+        [userId, [enrolled.id, pending.id]]
+      );
+    } finally {
+      await client.end();
+    }
+  };
+}
+
 export async function seedMadrasah(): Promise<MadrasahFixture> {
   const client = new pg.Client({ connectionString: databaseUrl() });
   await client.connect();
