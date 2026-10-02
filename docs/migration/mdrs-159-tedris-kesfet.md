@@ -27,7 +27,7 @@ Run on this branch, against a local Postgres (:5433), tedrisat and tedris-web in
 - Gate, all five targets with `--skip-nx-cache`: typecheck, test, build, lint, module-boundaries green; `node tools/ci/biome-ratchet.mjs` reports below baseline.
 - `apps/tedrisat/test/e2e/discover.e2e.spec.ts` (24 tests, Testcontainers): the filters, `explore`, `decks` access rules, `includePending`, the next session, `completedAt` set, kept and cleared, imam and medrese on summaries.
 - tedris-web vitest: query parsing, the three pages rendered, the follow button (optimistic and revert), the withdrawal row, the filters writing the address.
-- `apps/tedris/e2e/discover.e2e.ts` (27 Playwright tests, real API and Keycloak): every acceptance criterion of 02 (1 to 7 except 7), 04 (1 to 6) and 20 (1 to 5); 27 passed on the last full run except two köşk-count assertions that exposed the draft count above, fixed afterwards and covered by an API test. The affected two tests were not re-run in the browser after the fix; the API test and the server render tests cover it.
+- `apps/tedris/e2e/discover.e2e.ts` (27 Playwright tests, real API and Keycloak): acceptance criteria 1 to 6 of 02, 1 to 6 of 04 and 1 to 5 of 20. The last full run was 25 passed, 2 failed: two köşk-count assertions that exposed the draft count above, fixed afterwards and covered by an API test. Those two were not re-run in the browser after the fix.
 - The pages were looked at in Chromium at 1440 and 390 px against the canvas PNGs.
 
 ## What was not verified
