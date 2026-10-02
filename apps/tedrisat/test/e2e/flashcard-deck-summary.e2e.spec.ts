@@ -566,6 +566,35 @@ describe("Deck lists, publish request and course decks (e2e)", () => {
       expect(hidden.status).toBe(404);
     });
 
+    it("is not opened to an enrolled talebe by another deck's links: unlinked and other-course decks stay private", async () => {
+      // The regression the first draft of the predicate had: a bare column
+      // name bound to the enrollments table, so any enrolled talebe could read
+      // any private deck.
+      const unlinked = await makeDeck({ title: "Bağsız özel deste" });
+      const elsewhere = await makeDeck({
+        title: "Başka dersin destesi",
+        courseId: madrasahCourseId,
+      });
+      for (const id of [unlinked.id, elsewhere.id]) {
+        const read = await http()
+          .get(`/flashcard/decks/${id}`)
+          .set("Authorization", auth(TALEBE_ID));
+        expect(read.status, id).toBe(404);
+        const collect = await http()
+          .post(`/flashcard/decks/${id}/collections`)
+          .set("Authorization", auth(TALEBE_ID));
+        expect(collect.status, id).toBe(404);
+      }
+      const explore = await http()
+        .get("/flashcard/decks/explore")
+        .set("Authorization", auth(TALEBE_ID));
+      const titles = explore.body.courseDecks.map(
+        (d: { title: string }) => d.title
+      );
+      expect(titles).not.toContain("Bağsız özel deste");
+      expect(titles).not.toContain("Başka dersin destesi");
+    });
+
     it("is closed to everyone but its author once the deck is hidden", async () => {
       await db()
         .update(decks)

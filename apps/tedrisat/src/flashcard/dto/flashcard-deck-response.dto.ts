@@ -21,7 +21,9 @@ export class FlashcardDeckResponse {
   @ApiProperty()
   authorId!: string;
 
-  @ApiPropertyOptional({ type: String, nullable: true })
+  // Published as it always was (an optional string): the köşk and nizam apps
+  // read it under that type, and `null` on the wire is read as absent.
+  @ApiPropertyOptional({ type: String })
   description!: string | null;
 
   @ApiProperty({ enum: FlashcardType, enumName: "FlashcardType" })
