@@ -9,6 +9,7 @@ import {
   LessonsApi,
   MadrasahsApi,
   MeApi,
+  NotificationsApi,
   TedrisatServiceApi,
   UsersApi,
 } from "./generated/src";
@@ -48,9 +49,13 @@ export type {
   MadrasahResponse,
   MeResponse,
   MuderrisResponse,
+  NotificationCountsResponse,
+  NotificationResponse,
   PaginatedKoskResponse,
   PaginatedMadrasahResponse,
+  PaginatedNotificationResponse,
   PendingEnrollmentResponse,
+  ReadAllNotificationsResponse,
   RemoveEnrollmentDto,
   ReplaceCourseDto,
   ResourceResponse,
@@ -120,6 +125,8 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     me: new MeApi(configuration),
     // Exact e-mail lookup (MDRS-104) — nizam's müderris picker (MDRS-105).
     users: new UsersApi(configuration),
+    // The caller's in-app notifications (MDRS-167): the list page and the bell.
+    notifications: new NotificationsApi(configuration),
     // The two label controllers MDRS-58 published for the first time. Generated
     // classes that only `./generated/src` exported were reachable by no app —
     // this factory is what `@medaris/services/tedrisat` hands out.
