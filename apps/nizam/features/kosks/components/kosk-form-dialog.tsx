@@ -56,7 +56,8 @@ const initialState = (kosk?: KoskResponse): KoskFormState => ({
     : "",
   tags: kosk?.tags ?? [],
   coverHue: kosk?.coverHue ?? 215,
-  isPrivate: kosk?.isPrivate ?? true,
+  // A new köşk is listed unless its manager unlists it (MDRS-122).
+  isPrivate: kosk?.isPrivate ?? false,
 });
 
 /**

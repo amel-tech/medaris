@@ -25,18 +25,27 @@ export class KoskService {
   /**
    * A page of köşks. `managedByCaller` (`GET /kosks?managedBy=me`, MDRS-108)
    * narrows both the page and `total` to the köşks `userId` manages, so the
-   * page count nizam derives from `total` matches what it lists.
+   * page count nizam derives from `total` matches what it lists. Without it
+   * the page is the public listing, which never holds an unlisted köşk
+   * (MDRS-122). `madrasahId` narrows to one medrese's köşks.
+   *
+   * `userId` null is a caller with no token (MDRS-122); the controller does
+   * not let such a caller ask for `managedByCaller`.
    */
   async findAll(
-    userId: string,
+    userId: string | null,
     page: number,
     limit: number,
-    { managedByCaller = false }: { managedByCaller?: boolean } = {}
+    {
+      managedByCaller = false,
+      madrasahId,
+    }: { managedByCaller?: boolean; madrasahId?: string } = {}
   ): Promise<IPaginatedKosks> {
     const offset = (page - 1) * limit;
-    const filter: IKoskListFilter = managedByCaller
-      ? { managerId: userId }
-      : {};
+    const filter: IKoskListFilter = {
+      ...(managedByCaller && userId !== null ? { managerId: userId } : {}),
+      ...(madrasahId !== undefined ? { madrasahId } : {}),
+    };
     const [items, total] = await Promise.all([
       this.koskRepo.findAll(userId, limit, offset, filter),
       this.koskRepo.count(filter),
@@ -44,7 +53,7 @@ export class KoskService {
     return { items, total, page, limit };
   }
 
-  async findById(id: string, userId: string): Promise<IKoskWithStats> {
+  async findById(id: string, userId: string | null): Promise<IKoskWithStats> {
     const kosk = await this.koskRepo.findById(id, userId);
     if (!kosk) {
       throw new KoskNotFoundError(id);
@@ -87,6 +96,16 @@ export class KoskService {
 
   async create(newKosk: ICreateKosk): Promise<IKosk> {
     return this.koskRepo.create(newKosk);
+  }
+
+  /**
+   * Whether the köşk is unlisted (`is_private`, MDRS-122), or null when there
+   * is no such köşk. The anonymous resolver reads it to answer an unlisted
+   * köşk with the same 404 as a missing one, and enrolment reads it because
+   * every request to join a course of an unlisted köşk waits for approval.
+   */
+  async findVisibility(id: string): Promise<{ isPrivate: boolean } | null> {
+    return this.koskRepo.findVisibility(id);
   }
 
   /** True if a köşk with this id exists. */

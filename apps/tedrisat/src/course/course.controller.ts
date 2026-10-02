@@ -3,6 +3,8 @@ import {
   Authz,
   AuthzExempt,
   AuthzGuard,
+  AuthzMissingUserError,
+  AuthzPublic,
   type AuthzResolve,
   byParam,
   ENTITIES,
@@ -57,7 +59,10 @@ import { ReplaceCourseDto } from "./dto/replace-course.dto";
 import { UpdateCourseDto } from "./dto/update-course.dto";
 import { UpdateProgressDto } from "./dto/update-progress.dto";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
-import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
+import {
+  AuthorizedRequest,
+  PublicRequest,
+} from "./interfaces/authorized-request.interface";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -93,6 +98,8 @@ export class CourseController {
 
   @ApiOperation({
     summary: "List the courses that belong to a köşk",
+    description:
+      "Open to callers with no token (MDRS-122): the köşk's published courses, with no enrollment. An unlisted köşk answers them 404, as `GET /kosks/:id` does. `archived=true` needs a token.",
     operationId: "getCoursesByKosk",
   })
   @ApiQuery({
@@ -108,17 +115,24 @@ export class CourseController {
   // Authorized against the parent köşk, not the courses: the list has no
   // single resource of its own, and `VIEW` on a köşk is what decides whether
   // its shelf of courses is visible at all.
+  // Anonymous callers are decided against the köşk too (MDRS-122):
+  // `resolveAnonymous` 404s an unlisted köşk, so its shelf is not reachable
+  // by its id either.
   @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK, "koskId"))
+  @AuthzPublic()
   @Get("kosks/:koskId/courses")
   async findByKosk(
-    @Req() request: AuthorizedRequest,
+    @Req() request: PublicRequest,
     @Param("koskId", ParseUUIDPipe) koskId: string,
     @Query("archived", new DefaultValuePipe(false), ParseBoolPipe)
     archived: boolean
   ): Promise<CourseSummaryResponse[]> {
+    if (archived && !request.user) {
+      throw new AuthzMissingUserError("Sign in to see the köşk's archive");
+    }
     return this.courseService.findSummariesByKosk(
       koskId,
-      request.user,
+      request.user ?? null,
       archived
     );
   }
@@ -161,7 +175,7 @@ export class CourseController {
   @ApiOperation({
     summary: "Get a course with its syllabus, müderris and resources",
     description:
-      "Any signed-in caller may read the course page: its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak` and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103).",
+      "Anyone may read the course page, with or without a token (MDRS-122): its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak` and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103). A caller with no token gets the same filtered body, and 404 for a draft, a hidden course, or any course of an unlisted köşk.",
     operationId: "getCourseById",
   })
   @ApiOkResponse({ type: CourseDetailResponse })
@@ -171,13 +185,18 @@ export class CourseController {
   // PUBLIC row since MDRS-103, so this no longer needs an exemption, and the
   // content is filtered by `VIEW_DETAILS` inside `viewDetail`. DRAFT and
   // hidden courses stay not-found to non-managers inside `getDetail`.
+  //
+  // `@AuthzPublic()` (MDRS-122): a caller with no token is decided by
+  // `resolveAnonymous`, and `present` hands them `withoutContent` unchanged —
+  // there is no second filter for the anonymous case.
   @Authz(SCOPES.VIEW, byParam(ENTITIES.COURSE))
+  @AuthzPublic()
   @Get("courses/:id")
   async findById(
-    @Req() request: AuthorizedRequest,
+    @Req() request: PublicRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseDetailResponse> {
-    return this.courseService.viewDetail(id, request.user);
+    return this.courseService.viewDetail(id, request.user ?? null);
   }
 
   @ApiOperation({

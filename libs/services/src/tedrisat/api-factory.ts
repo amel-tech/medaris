@@ -7,6 +7,7 @@ import {
   FlashcardlabelApi,
   KosksApi,
   LessonsApi,
+  MadrasahsApi,
   MeApi,
   TedrisatServiceApi,
   UsersApi,
@@ -44,9 +45,11 @@ export type {
   LabelStatsResponse,
   LessonMutationResponse,
   LessonResponse,
+  MadrasahResponse,
   MeResponse,
   MuderrisResponse,
   PaginatedKoskResponse,
+  PaginatedMadrasahResponse,
   PendingEnrollmentResponse,
   RemoveEnrollmentDto,
   ReplaceCourseDto,
@@ -107,6 +110,8 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     cards: new FlashcardCardsApi(configuration),
     service: new TedrisatServiceApi(configuration),
     kosks: new KosksApi(configuration),
+    // The medrese layer (MDRS-106); tedris' medrese page reads it (MDRS-122).
+    madrasahs: new MadrasahsApi(configuration),
     courses: new CoursesApi(configuration),
     // Session-level lesson writes (MDRS-95).
     lessons: new LessonsApi(configuration),

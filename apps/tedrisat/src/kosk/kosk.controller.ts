@@ -3,6 +3,8 @@ import {
   Authz,
   AuthzExempt,
   AuthzGuard,
+  AuthzMissingUserError,
+  AuthzPublic,
   type AuthzResolve,
   AuthzService,
   byParam,
@@ -43,7 +45,10 @@ import { KoskResponse } from "./dto/kosk-response.dto";
 import { PaginatedKoskResponse } from "./dto/paginated-kosk-response.dto";
 import { UpdateKoskDto } from "./dto/update-kosk.dto";
 import { KoskNotFoundError } from "./errors/kosk-not-found.error";
-import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
+import {
+  AuthorizedRequest,
+  PublicRequest,
+} from "./interfaces/authorized-request.interface";
 import { KoskService } from "./kosk.service";
 
 const MAX_PAGE_SIZE = 50;
@@ -91,7 +96,7 @@ export class KoskController {
   @ApiOperation({
     summary: "Get a paginated list of köşks",
     description:
-      "`managedBy=me` narrows the list, and its `total`, to the köşks the caller manages (`kosk_managers`, MDRS-108) — nizam's köşk list. Without it every köşk is listed.",
+      "Open to callers with no token (MDRS-122). Lists every köşk except the unlisted ones (`isPrivate`): an unlisted köşk is in no list, for anyone — it is reached by its link. `managedBy=me` narrows the list, and its `total`, to the köşks the caller manages (`kosk_managers`, MDRS-108), unlisted ones included — nizam's köşk list; it needs a token. `madrasahId` narrows it to the köşks affiliated with that medrese.",
     operationId: "getAllKosks",
   })
   @ApiQuery({ name: "page", required: false, type: Number })
@@ -103,43 +108,59 @@ export class KoskController {
     enumName: "KoskManagedBy",
     description: "Only the köşks the caller manages (MDRS-108)",
   })
+  @ApiQuery({
+    name: "madrasahId",
+    required: false,
+    type: String,
+    format: "uuid",
+    description: "Only the köşks affiliated with this medrese (MDRS-122)",
+  })
   @ApiOkResponse({ type: PaginatedKoskResponse })
-  // Exempt: a paginated list has no single resource to authorize. Note what
-  // this does NOT do — `kosks.is_private` is still not applied to the listing,
-  // and the matrix cannot apply it either, because the KOSK PUBLIC row grants
-  // `VIEW` unconditionally. Enforcing that column is its own change; the
-  // MDRS-43 brief supersedes it and this task does not smuggle it in.
-  // `managedBy=me` only ever narrows the list to the caller's own rows, so it
-  // needs no authorization of its own either.
-  @AuthzExempt()
+  // No `@Authz`: a paginated list has no single resource to authorize. The
+  // visibility rule lives in the query, which is the only place it can live
+  // for a list: `KoskRepository.listWhere` leaves unlisted köşks out of
+  // every listing but the manager's own (MDRS-122). `@AuthzPublic()` opens the
+  // list to a caller with no token; `managedBy=me` only ever narrows the list
+  // to the caller's own rows, so it needs a caller and nothing more.
+  @AuthzPublic()
   @Get()
   async findAll(
-    @Req() request: AuthorizedRequest,
+    @Req() request: PublicRequest,
     @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query("limit", new DefaultValuePipe(12), ParseIntPipe) limit: number,
     @Query("managedBy", new ParseEnumPipe(KoskManagedBy, { optional: true }))
-    managedBy?: KoskManagedBy
+    managedBy?: KoskManagedBy,
+    @Query("madrasahId", new ParseUUIDPipe({ optional: true }))
+    madrasahId?: string
   ): Promise<PaginatedKoskResponse> {
+    const userId = request.user?.sub ?? null;
+    if (managedBy === KoskManagedBy.ME && userId === null) {
+      throw new AuthzMissingUserError("Sign in to list the köşks you manage");
+    }
     const safePage = page < 1 ? 1 : page;
     const safeLimit = Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
-    return this.koskService.findAll(request.user.sub, safePage, safeLimit, {
+    return this.koskService.findAll(userId, safePage, safeLimit, {
       managedByCaller: managedBy === KoskManagedBy.ME,
+      madrasahId,
     });
   }
 
   @ApiOperation({
     summary: "Get a köşk by ID",
+    description:
+      "Open to callers with no token (MDRS-122), except for an unlisted köşk (`isPrivate`), which answers them with the same 404 as a köşk that does not exist. A signed-in caller opens an unlisted köşk by its link.",
     operationId: "getKoskById",
   })
   @ApiOkResponse({ type: KoskResponse })
   @ApiNotFoundResponse()
   @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK))
+  @AuthzPublic()
   @Get(":id")
   async findById(
-    @Req() request: AuthorizedRequest,
+    @Req() request: PublicRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskResponse> {
-    return this.koskService.findById(id, request.user.sub);
+    return this.koskService.findById(id, request.user?.sub ?? null);
   }
 
   @ApiOperation({
