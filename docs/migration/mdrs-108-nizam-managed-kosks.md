@@ -53,7 +53,7 @@ checked against the code and the earlier migration notes (MDRS-103, -105,
 
   | Button | Routes it calls | Shown to |
   | -- | -- | -- |
-  | Yeni Köşk | `POST /kosks` (exempt) | everyone signed in |
+  | Yeni Köşk | `POST /kosks` (`CREATE_KOSK`, on no köşk row) | SYSTEM_ADMIN only (since 2026-10-02) |
   | Köşkü Düzenle | `PATCH /kosks/:id` — kosk `EDIT` | köşk manager |
   | Yeni Ders Aç | `POST /kosks/:id/courses` — kosk `MANAGE_COURSES`; session batch — course `EDIT` | köşk manager |
   | Bekleyen talepler | pending list — kosk `MANAGE_COURSES`; approve/reject — course `MANAGE_ENROLLMENTS` | köşk manager |

@@ -12,6 +12,7 @@ import {
   roleAssignments,
 } from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
+import { asSystemAdmin } from "../helpers/system-admin.helper";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
   assignRole,
@@ -103,7 +104,7 @@ describe("Köşk managers (e2e)", () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES, "madrasahs", "users");
     const res = await http()
       .post("/kosks")
-      .set("Authorization", auth(FIRST_ID))
+      .set("Authorization", asSystemAdmin(FIRST_ID))
       .send({ name: "Süleymaniye Köşkü" })
       .expect(201);
     koskId = res.body.id;
