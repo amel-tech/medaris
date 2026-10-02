@@ -1,5 +1,6 @@
 import { ENTITIES, ROLES } from "@medaris/common";
 import { TedrisatRoleResolver } from "../../../src/authz/tedrisat-role-resolver.service";
+import { BanRepository } from "../../../src/ban/ban.repository";
 import { CourseRepository } from "../../../src/course/course.repository";
 import { CourseStatus } from "../../../src/course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../../src/course/domain/enrollment-status.enum";
@@ -38,6 +39,8 @@ interface Stubs {
   courseKoskId?: string | null;
   muderris?: boolean;
   enrollment?: EnrollmentRow | null;
+  /** an open ban bars the caller from the course (MDRS-177) */
+  barred?: boolean;
   /** Nazırs of the medrese under test (`isNazir`). */
   madrasahNazirs?: string[];
   /** `KoskService.findVisibility` — the anonymous köşk path (MDRS-122). */
@@ -82,12 +85,16 @@ const build = (s: Stubs = {}) => {
         (s.madrasahNazirs ?? []).includes(userId)
       ),
   } as unknown as MadrasahService;
+  const bans = {
+    isBarredFromCourse: vi.fn().mockResolvedValue(s.barred ?? false),
+  } as unknown as BanRepository;
   return {
-    resolver: new TedrisatRoleResolver(kosk, course, deck, madrasah),
+    resolver: new TedrisatRoleResolver(kosk, course, deck, madrasah, bans),
     kosk,
     course,
     deck,
     madrasah,
+    bans,
   };
 };
 
@@ -435,6 +442,40 @@ describe("TedrisatRoleResolver", () => {
           id: REAL_UUID,
         })
       ).resolves.toBe(ROLES.ENROLLED);
+    });
+
+    it("treats a barred, enrolled talebe as PUBLIC (MDRS-177)", async () => {
+      const { resolver, bans } = build({
+        courseKoskId: KOSK_UUID,
+        koskManagerId: "someone-else",
+        enrollment: { status: EnrollmentStatus.ENROLLED },
+        barred: true,
+      });
+      await expect(
+        resolver.resolve("talebe-1", {
+          entity: ENTITIES.COURSE,
+          id: REAL_UUID,
+        })
+      ).resolves.toBe(ROLES.PUBLIC);
+      expect(bans.isBarredFromCourse).toHaveBeenCalledWith(
+        "talebe-1",
+        REAL_UUID
+      );
+    });
+
+    it("does not bar the köşk manager or a müderris, whatever the ban table says (MDRS-177)", async () => {
+      const { resolver } = build({
+        courseKoskId: KOSK_UUID,
+        koskManagerId: "nazim-1",
+        enrollment: { status: EnrollmentStatus.ENROLLED },
+        barred: true,
+      });
+      await expect(
+        resolver.resolve("nazim-1", {
+          entity: ENTITIES.COURSE,
+          id: REAL_UUID,
+        })
+      ).resolves.toBe(ROLES.KOSK_MANAGER);
     });
 
     it("returns PENDING when caller has a PENDING enrollment", async () => {
