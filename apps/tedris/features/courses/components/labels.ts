@@ -23,7 +23,7 @@ export const koskLevelLabel = (
   if (!level) return null;
   if (level === "ALL") return t(`${scope}.levelAll`);
   if (["BEGINNER", "INTERMEDIATE", "ADVANCED"].includes(level)) {
-    return t(`${scope}.level`, { level: t(`Levels.${level}`) });
+    return t(`${scope}.level`, { level });
   }
   return null;
 };

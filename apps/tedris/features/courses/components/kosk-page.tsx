@@ -3,9 +3,11 @@ import type {
   KoskDecksResponse,
   KoskResponse,
 } from "@medaris/services/tedrisat";
+import { Alert } from "@medaris/ui/mds/alert";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Breadcrumb } from "@medaris/ui/mds/breadcrumb";
+import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
@@ -138,7 +140,7 @@ export const KoskPage = async ({
             { label: kosk.name },
           ]}
         />
-        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
           <div className="flex flex-nowrap items-start gap-4">
             <Avatar entity size="lg" name={kosk.name} decorative />
             <div className="flex min-inline-0 flex-col gap-2">
@@ -169,6 +171,7 @@ export const KoskPage = async ({
           </div>
           {signedIn ? (
             <FollowButton
+              size="regular"
               koskId={kosk.id}
               koskName={kosk.name}
               following={kosk.isFollowing}
@@ -259,6 +262,29 @@ export const KoskPage = async ({
           )}
         </section>
       ) : null}
+    </main>
+  );
+};
+
+/**
+ * The köşk could not be read (design tedris/04): an Alert in the page with a
+ * way to try again, not the generic error page and not a "no such köşk".
+ */
+export const KoskLoadError = async ({ koskId }: { koskId: string }) => {
+  const t = await getTranslations("tedris");
+  return (
+    <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
+      <Breadcrumb
+        items={[{ label: t("KoskPage.discover"), href: "/discover" }]}
+      />
+      <Alert tone="error" title={t("KoskPage.loadErrorTitle")}>
+        <p>{t("KoskPage.loadError")}</p>
+        <p className="mbs-3">
+          <Button variant="outline" size="small" href={`/kosks/${koskId}`}>
+            {t("KoskPage.retry")}
+          </Button>
+        </p>
+      </Alert>
     </main>
   );
 };

@@ -125,7 +125,7 @@ describe("Keşfet (design tedris/02)", () => {
     expect(html).toContain(">Medreseler<");
     expect(html).toContain("Nûruosmaniye Köşkü");
     expect(html).toContain("Başlangıç seviyesi");
-    expect(html).toContain("Orta seviyesi");
+    expect(html).toContain("Orta seviye");
     expect(html).toContain("3 ders");
   });
 

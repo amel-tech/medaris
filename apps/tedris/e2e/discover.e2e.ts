@@ -90,9 +90,7 @@ test.describe("Keşfet", () => {
     await expect(nur).toContainText(fx.kosks.nur.field);
     await expect(nur).toContainText("Başlangıç seviyesi");
     await expect(nur).toContainText("3 ders");
-    await expect(card(page, fx.kosks.fatih.name)).toContainText(
-      "Orta seviyesi"
-    );
+    await expect(card(page, fx.kosks.fatih.name)).toContainText("Orta seviye");
   });
 
   test("shows a medrese's başmüderris and courses, and says so when it has none", async ({

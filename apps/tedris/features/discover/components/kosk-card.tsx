@@ -34,8 +34,8 @@ export const KoskCard = ({
         </span>
       }
       footer={
-        <>
-          <span className="me-3 grow">
+        <div className="flex items-center justify-between gap-3">
+          <span>
             {level ? (
               <>
                 {level}
@@ -58,7 +58,7 @@ export const KoskCard = ({
               }}
             />
           ) : null}
-        </>
+        </div>
       }
     >
       {kosk.field ? (

@@ -24,11 +24,13 @@ export function FollowButton({
   koskName,
   following,
   labels,
+  size = "mini",
 }: {
   koskId: string;
   koskName: string;
   following: boolean;
   labels: FollowLabels;
+  size?: "mini" | "regular";
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -51,7 +53,7 @@ export function FollowButton({
   return (
     <Button
       variant="outline"
-      size="mini"
+      size={size}
       disabled={pending}
       aria-pressed={shown}
       aria-label={`${shown ? labels.following : labels.follow}: ${koskName}`}
