@@ -123,7 +123,7 @@ describe("the shell of a köşk nazımı (nizam/52, nizam/31)", () => {
       "Köşk ayarları",
     ]);
     expect(nav).toMatch(
-      /<a[^>]*href="\/tr\/kosks\/k1\/basvurular"[^>]*aria-current="page"/
+      /<a[^>]*aria-current="page"[^>]*href="\/tr\/kosks\/k1\/basvurular"/
     );
     expect((nav.match(/aria-current="page"/g) ?? []).length).toBe(1);
   });
@@ -141,7 +141,7 @@ describe("the shell of a köşk nazımı (nizam/52, nizam/31)", () => {
     expect(nav).not.toContain("mds-nav-item__count");
     // a course's roster draws Talebeler selected (nizam/57)
     expect(nav).toMatch(
-      /<a[^>]*href="\/tr\/kosks\/k2\/talebeler"[^>]*aria-current="page"/
+      /<a[^>]*aria-current="page"[^>]*href="\/tr\/kosks\/k2\/talebeler"/
     );
   });
 

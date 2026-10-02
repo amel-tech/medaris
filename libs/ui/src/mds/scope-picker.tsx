@@ -64,7 +64,11 @@ export function ScopePicker({
         <Icon name="chevronsUpDown" size="sm" />
       </BaseMenu.Trigger>
       <BaseMenu.Portal>
-        <BaseMenu.Positioner sideOffset={4} align="start">
+        <BaseMenu.Positioner
+          className="mds-popup-positioner"
+          sideOffset={4}
+          align="start"
+        >
           <BaseMenu.Popup className="mds-popup">
             {options.map((o) => (
               <BaseMenu.LinkItem

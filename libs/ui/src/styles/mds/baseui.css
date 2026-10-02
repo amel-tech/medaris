@@ -84,7 +84,9 @@
 .mds-scrim { position: fixed; inset: 0; z-index: 60; background: var(--background-neutral-scrim); }
 .mds-dialog-viewport { position: fixed; inset: 0; z-index: 61; display: grid; place-items: center; padding: var(--space-4); overflow: auto; }
 .mds-dialog-viewport > .mds-dialog { position: relative; }
-.mds-sheet { z-index: 61; }
+.mds-sheet { z-index: 61; overflow-y: auto; overscroll-behavior: contain; }
+/* A list opened from inside a sheet or a dialog (the scope picker) must sit above them (z-index 61). */
+.mds-popup-positioner { z-index: 62; }
 .mds-sheet:focus-visible { outline: 0; }
 .mds-dialog:focus-visible { outline: 0; }
 

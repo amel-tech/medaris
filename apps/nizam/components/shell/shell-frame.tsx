@@ -8,6 +8,7 @@ import { Logo } from "@medaris/ui/mds/logo";
 import { NavItem } from "@medaris/ui/mds/nav-item";
 import { NavSection } from "@medaris/ui/mds/nav-section";
 import { ScopePicker } from "@medaris/ui/mds/scope-picker";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLocale } from "next-intl";
 import { Fragment, type ReactNode } from "react";
@@ -123,6 +124,7 @@ export function ShellFrame({
               <NavItem
                 key={i.id}
                 href={resolve(i.path)}
+                linkComponent={Link}
                 icon={<Icon name={i.icon} size="sm" />}
                 active={activeId === `${g.id}.${i.id}`}
                 count={koskId ? i.counts?.[koskId] : undefined}
