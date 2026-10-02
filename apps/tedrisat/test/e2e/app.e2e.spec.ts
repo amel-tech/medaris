@@ -1,4 +1,5 @@
 import { INestApplication } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { getTableConfig, PgTable } from "drizzle-orm/pg-core";
 import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
@@ -28,10 +29,16 @@ describe("AppController (e2e)", () => {
       .get("/health")
       .expect(200)
       .expect((res) => {
-        expect(res.body).toHaveProperty("service", "tedrisat");
+        // MDRS-129: service and environment follow the configuration, not
+        // literals. The unit suite pins the NODE_ENV mapping itself.
+        const config = app.get(ConfigService);
+        expect(res.body).toHaveProperty("service", config.get("serviceName"));
         expect(res.body).toHaveProperty("status", "ok");
         expect(res.body).toHaveProperty("version");
-        expect(res.body).toHaveProperty("environment");
+        expect(res.body).toHaveProperty(
+          "environment",
+          config.get("environment")
+        );
       });
   });
 

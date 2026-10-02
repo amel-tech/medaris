@@ -79,7 +79,7 @@ UI follows the existing patterns of each screen.
   again.
 - `test/e2e/course.e2e.spec.ts`: `durationMinutes` round-trips and `duration`
   is not served; a course's zone is set on create, changed by PATCH, kept by a
-  PUT that omits it; `Mars/Olympus`, `null` and `""` are 400 on PATCH and PUT;
+  PUT that omits it; `Mars/Olympus`, `null`, `""` and `"+03:00"` are 400 on PATCH and PUT;
   `durationMinutes` of 0, 1441, 30.5, `"60 dk"` and a legacy `duration` are
   400.
 - The zone arithmetic was checked by hand in Node: 18:00Z is 21:00 Istanbul
