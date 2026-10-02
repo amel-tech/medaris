@@ -8273,8 +8273,7 @@
             "type": "string"
           },
           "description": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "cardType": {
             "allOf": [

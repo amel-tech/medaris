@@ -63,7 +63,7 @@ export interface FlashcardDeckResponse {
      * @type {string}
      * @memberof FlashcardDeckResponse
      */
-    description?: string | null;
+    description?: string;
     /**
      * 
      * @type {FlashcardType}
