@@ -159,7 +159,7 @@ export const MyCoursesPage = async ({
 
   return (
     <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
-      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
         <div className="flex min-inline-0 flex-col gap-3">
           <h1 className="mds-h1">{t("MyCoursesPage.title")}</h1>
           <p className="mds-body">{t("MyCoursesPage.subtitle")}</p>

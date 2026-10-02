@@ -140,7 +140,7 @@ export const KoskPage = async ({
             { label: kosk.name },
           ]}
         />
-        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
           <div className="flex flex-nowrap items-start gap-4">
             <Avatar entity size="lg" name={kosk.name} decorative />
             <div className="flex min-inline-0 flex-col gap-2">
