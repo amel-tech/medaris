@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { eq, inArray, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import { decks, flashcardProgress, flashcards } from "../database/schema";
+import { deckSharedWith } from "./deck-sharing";
 import { CardIncludeEnum } from "./domain/card-include.enum";
 import {
   ICreateFlashcard,
@@ -72,7 +73,8 @@ export class FlashcardRepository implements IFlashcardRepository {
   }
 
   async findVisibilityByIds(
-    cardIds: string[]
+    cardIds: string[],
+    viewerId?: string
   ): Promise<IFlashcardVisibility[]> {
     // `inArray` with an empty list compiles to `in ()`, which Postgres
     // rejects — and there is nothing to ask about anyway.
@@ -90,6 +92,9 @@ export class FlashcardRepository implements IFlashcardRepository {
         deckId: flashcards.deckId,
         authorId: decks.authorId,
         isPublic: decks.isPublic,
+        sharedWithViewer: viewerId
+          ? deckSharedWith(viewerId)
+          : sql<boolean>`false`,
       })
       .from(flashcards)
       .innerJoin(decks, eq(flashcards.deckId, decks.id))
