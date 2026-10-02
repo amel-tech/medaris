@@ -35,6 +35,7 @@ export interface ListNotificationsRequest {
     status?: ListNotificationsStatusEnum;
     limit?: number;
     cursor?: string;
+    types?: string;
 }
 
 export interface MarkNotificationReadRequest {
@@ -98,6 +99,10 @@ export class NotificationsApi extends runtime.BaseAPI {
 
         if (requestParameters['cursor'] != null) {
             queryParameters['cursor'] = requestParameters['cursor'];
+        }
+
+        if (requestParameters['types'] != null) {
+            queryParameters['types'] = requestParameters['types'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};

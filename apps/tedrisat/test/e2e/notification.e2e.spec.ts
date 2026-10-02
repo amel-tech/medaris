@@ -106,6 +106,26 @@ describe("notifications (e2e)", () => {
     ).toBe(true);
   });
 
+  it("lists only the types asked for, and rejects an unknown type with 400 (MDRS-179)", async () => {
+    await seed();
+    const res = await request(app.getHttpServer())
+      .get("/notifications?types=SESSION_ADDED,ENROLLMENT_APPROVED")
+      .expect(200);
+    expect(res.body.items).toHaveLength(4);
+    expect(
+      res.body.items.every((n: { type: string }) =>
+        ["SESSION_ADDED", "ENROLLMENT_APPROVED"].includes(n.type)
+      )
+    ).toBe(true);
+    const unread = await request(app.getHttpServer())
+      .get("/notifications?types=SESSION_CANCELLED&status=unread")
+      .expect(200);
+    expect(unread.body.items).toHaveLength(2);
+    await request(app.getHttpServer())
+      .get("/notifications?types=SESSION_ADDED,NOPE")
+      .expect(400);
+  });
+
   it("pages with an opaque cursor without skipping or repeating a row", async () => {
     await seed();
     const seen: string[] = [];

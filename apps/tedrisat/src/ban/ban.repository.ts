@@ -386,6 +386,34 @@ export class BanRepository {
     return { items, total: count?.total ?? 0 };
   }
 
+  /**
+   * Who is told of a ban in a köşk (MDRS-179): the köşk's nazımları and every
+   * Medaris nazımı, each once. The başnazım is a Keycloak realm role, not a
+   * row here, so is not reached.
+   */
+  async nazimRecipients(koskId: string): Promise<string[]> {
+    const rows = await this.db
+      .selectDistinct({ userId: roleAssignments.userId })
+      .from(roleAssignments)
+      .where(
+        and(
+          isHeld(),
+          or(
+            and(
+              eq(roleAssignments.role, "KOSK_NAZIM"),
+              eq(roleAssignments.scopeType, "kosk"),
+              eq(roleAssignments.scopeId, koskId)
+            ),
+            and(
+              eq(roleAssignments.role, "MEDARIS_NAZIM"),
+              eq(roleAssignments.scopeType, "platform")
+            )
+          )
+        )
+      );
+    return rows.map((r) => r.userId);
+  }
+
   /** Whether the person holds a platform-wide role (Medaris nazımı). */
   async holdsPlatformRole(userId: string, role: BanRole): Promise<boolean> {
     const rows = await this.db

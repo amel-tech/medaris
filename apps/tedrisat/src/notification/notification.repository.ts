@@ -1,5 +1,15 @@
 import { Injectable } from "@nestjs/common";
-import { and, count, desc, eq, isNull, lt, or, sql } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  lt,
+  or,
+  sql,
+} from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import { notifications } from "../database/schema/notification.schema";
 import type { NotificationCursor } from "./notification-cursor";
@@ -44,9 +54,11 @@ export class NotificationRepository {
       status: NotificationStatus;
       cursor: NotificationCursor | null;
       limit: number;
+      /** only these types; empty keeps every type */
+      types?: string[];
     }
   ): Promise<INotification[]> {
-    const { status, cursor, limit } = options;
+    const { status, cursor, limit, types } = options;
     return this.db
       .select()
       .from(notifications)
@@ -54,6 +66,9 @@ export class NotificationRepository {
         and(
           eq(notifications.userId, userId),
           status === "unread" ? isNull(notifications.readAt) : undefined,
+          types && types.length > 0
+            ? inArray(notifications.type, types)
+            : undefined,
           cursor
             ? or(
                 lt(notifications.createdAt, cursor.createdAt),

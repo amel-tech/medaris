@@ -30,13 +30,19 @@ export class NotificationService {
 
   async list(
     userId: string,
-    options: { status: NotificationStatus; cursor?: string; limit: number }
+    options: {
+      status: NotificationStatus;
+      cursor?: string;
+      limit: number;
+      types?: string[];
+    }
   ): Promise<{ items: INotification[]; nextCursor: string | null }> {
     const limit = Math.min(Math.max(options.limit, 1), MAX_PAGE_SIZE);
     const rows = await this.repo.findPage(userId, {
       status: options.status,
       cursor: options.cursor ? decodeNotificationCursor(options.cursor) : null,
       limit,
+      types: options.types,
     });
     const items = rows.slice(0, limit);
     const last = items[items.length - 1];
