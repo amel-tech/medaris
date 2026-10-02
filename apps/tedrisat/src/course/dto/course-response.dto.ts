@@ -183,7 +183,19 @@ class CourseBase {
   @ApiProperty() updatedAt!: Date;
 }
 
+export class CourseDetailMadrasahResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty() name!: string;
+}
+
 export class CourseDetailResponse extends CourseBase {
+  @ApiPropertyOptional({
+    type: CourseDetailMadrasahResponse,
+    nullable: true,
+    description:
+      "The medrese that opened the course (MDRS-161); null when none, absent on a write's answer.",
+  })
+  madrasah?: CourseDetailMadrasahResponse | null;
   @ApiProperty({ type: [WeekResponse] }) weeks!: WeekResponse[];
   @ApiProperty({ type: [MuderrisResponse] }) muderris!: MuderrisResponse[];
   @ApiProperty({ type: [ResourceResponse] }) resources!: ResourceResponse[];

@@ -1682,7 +1682,7 @@
     },
     "/courses/{id}/enrollments/{userId}/remove": {
       "post": {
-        "description": "Deletes the enrollment and keeps the reason in the audit log (MDRS-105). It is not a ban: the talebe may apply again. Only an active seat — reject a request, reopen a completion first.",
+        "description": "Turns the enrollment REVOKED and keeps the reason in the audit log (MDRS-105, MDRS-161). The talebe sees the public page and nothing the enrolled hold, and does not apply again on their own; approving the seat reinstates them. Not a ban. Only an active seat — reject a request, reopen a completion first.",
         "operationId": "removeEnrollment",
         "parameters": [
           {
@@ -1746,7 +1746,7 @@
     },
     "/courses/{id}/enrollment": {
       "delete": {
-        "description": "Deletes the caller's own enrollment; they may apply again (MDRS-105). A completed course is not left (ENROLLMENT_STATE_CONFLICT).",
+        "description": "Deletes the caller's own enrollment; they may apply again (MDRS-105). A completed course, or a seat the course team revoked, is not left (ENROLLMENT_STATE_CONFLICT).",
         "operationId": "leaveCourse",
         "parameters": [
           {
@@ -1773,7 +1773,7 @@
             "description": ""
           },
           "409": {
-            "description": "The enrollment is completed (ENROLLMENT_STATE_CONFLICT)."
+            "description": "The enrollment is completed or revoked (ENROLLMENT_STATE_CONFLICT)."
           }
         },
         "security": [
@@ -5540,7 +5540,8 @@
             "enum": [
               "PENDING",
               "ENROLLED",
-              "COMPLETED"
+              "COMPLETED",
+              "REVOKED"
             ]
           },
           "createdAt": {
@@ -5970,6 +5971,22 @@
           "title"
         ]
       },
+      "CourseDetailMadrasahResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
       "AgendaStepResponse": {
         "type": "object",
         "properties": {
@@ -6251,6 +6268,16 @@
             "format": "date-time",
             "type": "string"
           },
+          "madrasah": {
+            "nullable": true,
+            "description": "The medrese that opened the course (MDRS-161); null when none, absent on a write's answer.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CourseDetailMadrasahResponse"
+              }
+            ]
+          },
           "weeks": {
             "type": "array",
             "items": {
@@ -6341,7 +6368,8 @@
             "enum": [
               "PENDING",
               "ENROLLED",
-              "COMPLETED"
+              "COMPLETED",
+              "REVOKED"
             ]
           },
           "createdAt": {
@@ -6689,7 +6717,8 @@
             "enum": [
               "PENDING",
               "ENROLLED",
-              "COMPLETED"
+              "COMPLETED",
+              "REVOKED"
             ]
           },
           "createdAt": {
@@ -6767,7 +6796,8 @@
             "enum": [
               "PENDING",
               "ENROLLED",
-              "COMPLETED"
+              "COMPLETED",
+              "REVOKED"
             ]
           },
           "createdAt": {
@@ -6851,7 +6881,8 @@
             "enum": [
               "PENDING",
               "ENROLLED",
-              "COMPLETED"
+              "COMPLETED",
+              "REVOKED"
             ],
             "deprecated": true,
             "description": "Not the talebe's to set (MDRS-105): a value other than the enrollment's current status is refused with 403 ENROLLMENT_STATUS_FORBIDDEN. Completion is set by the course team."

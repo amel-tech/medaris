@@ -598,7 +598,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Deletes the caller\'s own enrollment; they may apply again (MDRS-105). A completed course is not left (ENROLLMENT_STATE_CONFLICT).
+     * Deletes the caller\'s own enrollment; they may apply again (MDRS-105). A completed course, or a seat the course team revoked, is not left (ENROLLMENT_STATE_CONFLICT).
      * Leave a course, or withdraw a request still awaiting approval (the current talebe)
      */
     async leaveCourseRaw(requestParameters: LeaveCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<boolean>> {
@@ -637,7 +637,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Deletes the caller\'s own enrollment; they may apply again (MDRS-105). A completed course is not left (ENROLLMENT_STATE_CONFLICT).
+     * Deletes the caller\'s own enrollment; they may apply again (MDRS-105). A completed course, or a seat the course team revoked, is not left (ENROLLMENT_STATE_CONFLICT).
      * Leave a course, or withdraw a request still awaiting approval (the current talebe)
      */
     async leaveCourse(requestParameters: LeaveCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
@@ -700,7 +700,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Deletes the enrollment and keeps the reason in the audit log (MDRS-105). It is not a ban: the talebe may apply again. Only an active seat — reject a request, reopen a completion first.
+     * Turns the enrollment REVOKED and keeps the reason in the audit log (MDRS-105, MDRS-161). The talebe sees the public page and nothing the enrolled hold, and does not apply again on their own; approving the seat reinstates them. Not a ban. Only an active seat — reject a request, reopen a completion first.
      * Take a talebe out of a course, with a reason (course team)
      */
     async removeEnrollmentRaw(requestParameters: RemoveEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<boolean>> {
@@ -757,7 +757,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Deletes the enrollment and keeps the reason in the audit log (MDRS-105). It is not a ban: the talebe may apply again. Only an active seat — reject a request, reopen a completion first.
+     * Turns the enrollment REVOKED and keeps the reason in the audit log (MDRS-105, MDRS-161). The talebe sees the public page and nothing the enrolled hold, and does not apply again on their own; approving the seat reinstates them. Not a ban. Only an active seat — reject a request, reopen a completion first.
      * Take a talebe out of a course, with a reason (course team)
      */
     async removeEnrollment(requestParameters: RemoveEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {

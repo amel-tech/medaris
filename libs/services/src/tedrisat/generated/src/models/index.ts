@@ -21,6 +21,7 @@ export * from './BulkFlashcardResponse';
 export * from './CalendarFeedLinkResponse';
 export * from './CalendarFeedStatusResponse';
 export * from './ChiefNazimResponse';
+export * from './CourseDetailMadrasahResponse';
 export * from './CourseDetailResponse';
 export * from './CourseMadrasahResponse';
 export * from './CourseSummaryResponse';

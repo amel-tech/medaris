@@ -386,6 +386,8 @@ export class TedrisatRoleResolver implements RoleResolver {
     ) {
       return ROLES.PUBLIC;
     }
+    // A talebe the course team took out keeps the public page too (MDRS-161).
+    if (enrollment?.status === EnrollmentStatus.REVOKED) return ROLES.PUBLIC;
     if (enrollment?.status === EnrollmentStatus.PENDING) return ROLES.PENDING;
     if (enrollment) return ROLES.ENROLLED; // ENROLLED or COMPLETED
     return ROLES.PUBLIC;

@@ -90,6 +90,8 @@ export interface ICourse {
 }
 
 export interface ICourseDetail extends ICourse {
+  /** The medrese that opened the course, or null; read by `findDetailById` (MDRS-161). */
+  madrasah?: { id: string; name: string } | null;
   weeks: IWeek[];
   muderris: IMuderris[];
   resources: IResource[];

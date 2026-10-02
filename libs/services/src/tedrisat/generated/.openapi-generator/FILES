@@ -40,6 +40,7 @@ src/models/BulkFlashcardResponse.ts
 src/models/CalendarFeedLinkResponse.ts
 src/models/CalendarFeedStatusResponse.ts
 src/models/ChiefNazimResponse.ts
+src/models/CourseDetailMadrasahResponse.ts
 src/models/CourseDetailResponse.ts
 src/models/CourseMadrasahResponse.ts
 src/models/CourseSummaryResponse.ts

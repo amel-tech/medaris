@@ -15,6 +15,7 @@ import {
   lessons,
 } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
+import { madrasahs } from "../../src/database/schema/madrasah.schema";
 import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
 import { createTestApp } from "../helpers/test-app.helper";
@@ -580,14 +581,17 @@ describe("Course team (MDRS-105, e2e)", () => {
       );
     });
 
-    it("takes a talebe out with a reason, audits it, and lets them apply again", async () => {
+    it("takes a talebe out with a reason, audits it, and keeps the seat as REVOKED (MDRS-161)", async () => {
       await as(MUDERRIS_ID)
         .post(`/courses/${courseId}/enrollments/${TALEBE_ID}/remove`)
         .send({ reason: "  Üç haftadır derslere katılmıyor.  " })
         .expect(200)
         .expect((res) => expect(res.text).toBe("true"));
 
-      expect(await enrollmentOf(TALEBE_ID)).toBeNull();
+      expect(await enrollmentOf(TALEBE_ID)).toMatchObject({
+        status: EnrollmentStatus.REVOKED,
+        progress: 40,
+      });
       const audit = await db()
         .select()
         .from(auditLog)
@@ -604,12 +608,91 @@ describe("Course team (MDRS-105, e2e)", () => {
           progress: 40,
         },
       });
+    });
 
-      // Not a ban.
+    it("shows a revoked talebe the public page with the content locked, and does not let them apply, leave or record progress", async () => {
+      await db()
+        .update(lessons)
+        .set({ meetingUrl: "https://meet.example/secret" })
+        .where(eq(lessons.weekId, weekId));
+      await as(MUDERRIS_ID)
+        .post(`/courses/${courseId}/enrollments/${TALEBE_ID}/remove`)
+        .send({ reason: "Gerekçe" })
+        .expect(200);
+
+      const page = await as(TALEBE_ID).get(`/courses/${courseId}`).expect(200);
+      expect(page.body.enrollment.status).toBe("REVOKED");
+      expect(page.body.contentLocked).toBe(true);
+      expect(JSON.stringify(page.body)).not.toContain("meet.example");
+      expect(page.body.weeks).toHaveLength(1);
+
       await as(TALEBE_ID)
         .post(`/courses/${courseId}/enroll`)
+        .expect(409)
+        .expect((res) =>
+          expect(res.body.code).toBe("ENROLLMENT_STATE_CONFLICT")
+        );
+      await as(TALEBE_ID).delete(`/courses/${courseId}/enrollment`).expect(409);
+      await as(TALEBE_ID)
+        .put(`/courses/${courseId}/progress`)
+        .send({ progress: 50 })
+        .expect(403);
+      await as(MUDERRIS_ID)
+        .patch(`/courses/${courseId}/enrollments/${TALEBE_ID}`)
+        .send({ status: "COMPLETED" })
+        .expect(409);
+      expect(await enrollmentOf(TALEBE_ID)).toHaveProperty(
+        "status",
+        EnrollmentStatus.REVOKED
+      );
+    });
+
+    it("lets the team approve a revoked seat back in", async () => {
+      await as(MUDERRIS_ID)
+        .post(`/courses/${courseId}/enrollments/${TALEBE_ID}/remove`)
+        .send({ reason: "Gerekçe" })
+        .expect(200);
+      await as(MUDERRIS_ID)
+        .post(`/courses/${courseId}/enrollments/${TALEBE_ID}/approve`)
         .expect(201)
         .expect((res) => expect(res.body.status).toBe("ENROLLED"));
+    });
+
+    it("names the medrese that opened the course on the page, to a caller with no token", async () => {
+      const [madrasah] = await db()
+        .insert(madrasahs)
+        .values({
+          handle: "course-page-madrasah",
+          name: "Süleymaniye Medresesi",
+          createdBy: ADMIN_ID,
+        })
+        .returning();
+      await db()
+        .update(courses)
+        .set({ madrasahId: madrasah.id })
+        .where(eq(courses.id, courseId));
+      try {
+        const res = await http().get(`/courses/${courseId}`).expect(200);
+        expect(res.body.madrasah).toEqual({
+          id: madrasah.id,
+          name: "Süleymaniye Medresesi",
+        });
+      } finally {
+        await db()
+          .update(courses)
+          .set({ madrasahId: null })
+          .where(eq(courses.id, courseId));
+        await db().delete(madrasahs).where(eq(madrasahs.id, madrasah.id));
+      }
+    });
+
+    it("does not list a revoked course among the talebe's own, and does not count it in the köşk", async () => {
+      await as(MUDERRIS_ID)
+        .post(`/courses/${courseId}/enrollments/${TALEBE_ID}/remove`)
+        .send({ reason: "Gerekçe" })
+        .expect(200);
+      const mine = await as(TALEBE_ID).get("/courses/enrolled").expect(200);
+      expect(mine.body).toEqual([]);
     });
 
     it("refuses a removal without a reason, of a request or a completion, and by the talebe", async () => {

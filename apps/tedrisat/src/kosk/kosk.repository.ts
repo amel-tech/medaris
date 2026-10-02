@@ -89,7 +89,7 @@ export class KoskRepository implements IKoskRepository {
           Number
         ),
       studentCount:
-        sql<number>`(select count(distinct e.user_id) from ${enrollments} e join ${courses} c on e.course_id = c.id where c.kosk_id = "kosks"."id" and c.archived_at is null)`.mapWith(
+        sql<number>`(select count(distinct e.user_id) from ${enrollments} e join ${courses} c on e.course_id = c.id where c.kosk_id = "kosks"."id" and c.archived_at is null and e.status <> 'REVOKED')`.mapWith(
           Number
         ),
       muderrisCount:

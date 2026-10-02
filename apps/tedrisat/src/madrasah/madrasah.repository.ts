@@ -478,14 +478,28 @@ export class MadrasahRepository {
   private async enrollmentsOf(
     ids: string[],
     userId: string | null
-  ): Promise<{ courseId: string; status: EnrollmentStatus }[]> {
+  ): Promise<
+    {
+      courseId: string;
+      status:
+        | EnrollmentStatus.PENDING
+        | EnrollmentStatus.ENROLLED
+        | EnrollmentStatus.COMPLETED;
+    }[]
+  > {
     if (ids.length === 0 || userId === null) return [];
-    return this.db
+    // A seat the course team revoked shows no badge on the card (MDRS-161).
+    const rows = await this.db
       .select({ courseId: enrollments.courseId, status: enrollments.status })
       .from(enrollments)
       .where(
         and(eq(enrollments.userId, userId), inArray(enrollments.courseId, ids))
       );
+    return rows.flatMap((r) =>
+      r.status === EnrollmentStatus.REVOKED
+        ? []
+        : [{ courseId: r.courseId, status: r.status }]
+    );
   }
 
   /** The earliest session still ahead, per course; archived ones do not count. */

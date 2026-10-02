@@ -1,5 +1,15 @@
 import { Injectable } from "@nestjs/common";
-import { and, eq, inArray, isNotNull, isNull, max, ne, sql } from "drizzle-orm";
+import {
+  and,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  max,
+  ne,
+  notInArray,
+  sql,
+} from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import {
   holdsIn,
@@ -232,7 +242,18 @@ export class CourseRepository implements ICourseRepository {
 
     if (!row) return null;
     const { enrollments: enr, ...course } = row;
-    return { ...course, enrollment: enr[0] ?? null };
+    const { madrasahName } = await this.madrasahsAndImamsOf([row]);
+    return {
+      ...course,
+      enrollment: enr[0] ?? null,
+      madrasah:
+        row.madrasahId && madrasahName.has(row.madrasahId)
+          ? {
+              id: row.madrasahId,
+              name: madrasahName.get(row.madrasahId) as string,
+            }
+          : null,
+    };
   }
 
   async findEnrolledByUser(
@@ -243,9 +264,13 @@ export class CourseRepository implements ICourseRepository {
     const rows = await this.db.query.enrollments.findMany({
       where: and(
         eq(enrollments.userId, userId),
+        // A revoked seat is not a course the talebe is in (MDRS-161).
         includePending
-          ? undefined
-          : ne(enrollments.status, EnrollmentStatus.PENDING)
+          ? ne(enrollments.status, EnrollmentStatus.REVOKED)
+          : notInArray(enrollments.status, [
+              EnrollmentStatus.PENDING,
+              EnrollmentStatus.REVOKED,
+            ])
       ),
       with: {
         course: {
@@ -1269,16 +1294,18 @@ export class CourseRepository implements ICourseRepository {
 
   /**
    * Takes a talebe out of a course with the team's reason (MDRS-105): the
-   * enrollment row goes and one `enrollment.remove` row lands in
-   * `audit_log`, in one transaction, so the reason cannot be lost while the
-   * seat is. Not a ban — nothing stops the talebe from applying again.
-   * Only an enrollment still in `expectedStatus` is removed; false when there
+   * enrollment turns REVOKED (MDRS-161, design tedris/13) and one
+   * `enrollment.remove` row lands in `audit_log`, in one transaction, so the
+   * reason cannot be lost while the seat is. The row stays so the talebe's
+   * page can say so; progress is kept. Not a ban — a ban is MDRS-177's.
+   * Only an enrollment still in `expectedStatus` is revoked; false when there
    * was none (a concurrent leave, reject or completion got there first).
    */
   async removeEnrollment(entry: IRemoveEnrollment): Promise<boolean> {
     return this.db.transaction(async (tx) => {
-      const [removed] = await tx
-        .delete(enrollments)
+      const [before] = await tx
+        .select()
+        .from(enrollments)
         .where(
           and(
             eq(enrollments.userId, entry.userId),
@@ -1286,19 +1313,32 @@ export class CourseRepository implements ICourseRepository {
             eq(enrollments.status, entry.expectedStatus)
           )
         )
-        .returning();
-      if (!removed) return false;
+        .for("update");
+      if (!before) return false;
+      await tx
+        .update(enrollments)
+        .set({
+          status: EnrollmentStatus.REVOKED,
+          completedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(enrollments.userId, entry.userId),
+            eq(enrollments.courseId, entry.courseId)
+          )
+        );
       await tx.insert(auditLog).values({
         actorId: entry.actorId,
         action: "enrollment.remove",
         entity: "course",
         entityId: entry.courseId,
         details: {
-          userId: removed.userId,
+          userId: before.userId,
           reason: entry.reason,
-          status: removed.status,
-          progress: removed.progress,
-          enrolledAt: removed.createdAt.toISOString(),
+          status: before.status,
+          progress: before.progress,
+          enrolledAt: before.createdAt.toISOString(),
         },
       });
       return true;

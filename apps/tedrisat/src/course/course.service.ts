@@ -518,8 +518,13 @@ export class CourseService {
   ): Promise<IEnrollment> {
     const userId = user.sub;
     const course = await this.getDetail(courseId, user); // throws if missing
-    // A barred talebe does not apply again (MDRS-177).
+    // A barred talebe does not apply again (MDRS-177), nor one the course
+    // team took out: the REVOKED row is their record (MDRS-161).
     await this.banService.assertNotBarred(userId, courseId);
+    const held = await this.courseRepo.findEnrollment(userId, courseId);
+    if (held?.status === EnrollmentStatus.REVOKED) {
+      throw new EnrollmentStateError(courseId, held.status);
+    }
     // A course of an unlisted köşk always waits for approval (MDRS-122),
     // whatever its own `requires_approval` says: the link is how the köşk is
     // found, and passing a link on must not hand out seats.
@@ -574,7 +579,9 @@ export class CourseService {
   /**
    * Approves a request. Approving an active seat again changes nothing; a
    * completion is not turned back into a seat this way (that is
-   * `setEnrollmentStatus`), since the team now includes every müderris.
+   * `setEnrollmentStatus`), since the team now includes every müderris. A
+   * revoked seat is the one way back in: approving it reinstates the talebe
+   * (MDRS-161).
    */
   async approveEnrollment(
     courseId: string,
@@ -625,6 +632,10 @@ export class CourseService {
     if (existing.status === EnrollmentStatus.PENDING) {
       throw new EnrollmentStateError(courseId, existing.status);
     }
+    // A revoked seat is reinstated by approving it, not by completing it.
+    if (existing.status === EnrollmentStatus.REVOKED) {
+      throw new EnrollmentStateError(courseId, existing.status);
+    }
     if (existing.status === status) return existing;
     return (await this.courseRepo.setEnrollmentStatus(
       studentId,
@@ -635,8 +646,9 @@ export class CourseService {
 
   /**
    * Takes an enrolled talebe out of the course, with the team's reason
-   * (MDRS-105). The seat goes and the reason is kept in `audit_log`. It is
-   * not a ban: the talebe may apply again, and a ban is MDRS-113's.
+   * (MDRS-105). The enrollment turns REVOKED (MDRS-161) and the reason is kept
+   * in `audit_log`. It is not a ban (MDRS-177): the team may approve the seat
+   * back, but the talebe does not apply again on their own.
    *
    * Only an active seat: a request is rejected instead, and a completed
    * course is reopened first, so a completion is never removed by accident.
@@ -676,7 +688,10 @@ export class CourseService {
     await this.banService.assertNotBarred(userId, courseId);
     const existing = await this.courseRepo.findEnrollment(userId, courseId);
     if (!existing) throw new EnrollmentNotFoundError(courseId);
-    if (existing.status === EnrollmentStatus.COMPLETED) {
+    if (
+      existing.status === EnrollmentStatus.COMPLETED ||
+      existing.status === EnrollmentStatus.REVOKED
+    ) {
       throw new EnrollmentStateError(courseId, existing.status);
     }
     return this.courseRepo.deleteEnrollment(userId, courseId);
@@ -698,7 +713,11 @@ export class CourseService {
     // (awaiting-approval) or missing enrollment must not be silently promoted,
     // otherwise this endpoint would bypass the course team's approval.
     const existing = await this.courseRepo.findEnrollment(userId, courseId);
-    if (!existing || existing.status === EnrollmentStatus.PENDING) {
+    if (
+      !existing ||
+      existing.status === EnrollmentStatus.PENDING ||
+      existing.status === EnrollmentStatus.REVOKED
+    ) {
       throw new EnrollmentNotFoundError(courseId);
     }
     if (status !== undefined && status !== existing.status) {

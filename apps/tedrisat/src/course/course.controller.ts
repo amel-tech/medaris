@@ -448,7 +448,7 @@ export class CourseController {
   @ApiOperation({
     summary: "Take a talebe out of a course, with a reason (course team)",
     description:
-      "Deletes the enrollment and keeps the reason in the audit log (MDRS-105). It is not a ban: the talebe may apply again. Only an active seat — reject a request, reopen a completion first.",
+      "Turns the enrollment REVOKED and keeps the reason in the audit log (MDRS-105, MDRS-161). The talebe sees the public page and nothing the enrolled hold, and does not apply again on their own; approving the seat reinstates them. Not a ban. Only an active seat — reject a request, reopen a completion first.",
     operationId: "removeEnrollment",
   })
   @ApiOkResponse({ type: Boolean })
@@ -479,13 +479,14 @@ export class CourseController {
     summary:
       "Leave a course, or withdraw a request still awaiting approval (the current talebe)",
     description:
-      "Deletes the caller's own enrollment; they may apply again (MDRS-105). A completed course is not left (ENROLLMENT_STATE_CONFLICT).",
+      "Deletes the caller's own enrollment; they may apply again (MDRS-105). A completed course, or a seat the course team revoked, is not left (ENROLLMENT_STATE_CONFLICT).",
     operationId: "leaveCourse",
   })
   @ApiOkResponse({ type: Boolean })
   @ApiNotFoundResponse()
   @ApiConflictResponse({
-    description: "The enrollment is completed (ENROLLMENT_STATE_CONFLICT).",
+    description:
+      "The enrollment is completed or revoked (ENROLLMENT_STATE_CONFLICT).",
   })
   // The caller's own row, selected by `sub`. `VIEW` is on every COURSE row,
   // PENDING and PUBLIC included, so this only says "the course exists and
