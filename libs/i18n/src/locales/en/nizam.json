@@ -773,7 +773,8 @@
       "MEDRESE_NAZIR": "Madrasah nazir",
       "MUDERRIS": "Teacher",
       "DERS_NAZIR": "Course nazir"
-    }
+    },
+    "bellUnread": "Notifications, {count} unread"
   },
   "NoRole": {
     "title": "You have no management role",
@@ -2003,6 +2004,180 @@
     "reopened": "Enrollment reopened",
     "reopenedBody": "{name} is back under Enrolled.",
     "actionFailed": "The action could not be completed"
+  },
+  "NotificationsPage": {
+    "title": "Notifications",
+    "subtitleKosk": "Bans placed in your köşk.",
+    "subtitlePlatform": "Bans placed in the köşks.",
+    "markAllRead": "Mark all as read",
+    "tabsLabel": "Notification filter",
+    "tabAll": "All",
+    "tabUnread": "Unread",
+    "typeLegend": "Notification type",
+    "filters": {
+      "all": "All",
+      "bans": "Bans"
+    },
+    "listLabel": "Notification list",
+    "groupToday": "Today",
+    "groupYesterday": "Yesterday",
+    "groupEarlier": "Earlier",
+    "new": "New",
+    "markRead": "Mark as read",
+    "markReadLabel": "Mark as read: {title}",
+    "emptyTitle": "No notifications",
+    "emptyUnreadTitle": "No unread notifications",
+    "errorTitle": "Notifications could not be loaded",
+    "errorText": "Something went wrong. Try again in a moment.",
+    "retry": "Try again",
+    "loadMore": "Show more",
+    "loadingMore": "Loading",
+    "markReadFailedTitle": "Could not mark it as read.",
+    "markReadFailedText": "The notification stays unread. Try again.",
+    "markAllFailedTitle": "Could not mark the notifications as read.",
+    "markAllFailedText": "Nothing changed. Try again.",
+    "unknownTitle": "Notification",
+    "types": {
+      "COURSE_BAN_PLACED": {
+        "title": "New course ban",
+        "body": "{actorName} banned the talebe {talebeName} from the course {courseTitle}.",
+        "bodyReason": "{actorName} banned the talebe {talebeName} from the course {courseTitle}. Reason: {reason}"
+      },
+      "KOSK_BAN_PLACED": {
+        "title": "New köşk ban",
+        "body": "{actorName} banned the talebe {talebeName} from the courses of {koskName}.",
+        "bodyReason": "{actorName} banned the talebe {talebeName} from the courses of {koskName}. Reason: {reason}",
+        "bodyAnyKosk": "{actorName} banned the talebe {talebeName} from every course of the köşk.",
+        "bodyReasonAnyKosk": "{actorName} banned the talebe {talebeName} from every course of the köşk. Reason: {reason}"
+      }
+    }
+  },
+  "AccountPage": {
+    "roles": {
+      "MEDARIS_NAZIM": "Medaris nazım",
+      "KOSK_NAZIM": "Köşk nazım",
+      "MEDRESE_BASMUDERRIS": "Medrese head müderris",
+      "MEDRESE_NAZIR": "Medrese nazır",
+      "MUDERRIS": "Müderris",
+      "DERS_NAZIR": "Course nazır",
+      "chief": "Medaris chief nazım"
+    },
+    "grantedRole": "Granted permissions",
+    "courseBadge": {
+      "published": "Published",
+      "draft": "Draft",
+      "hidden": "Hidden"
+    },
+    "imam": "Imam",
+    "self": "Yourself",
+    "unknownPerson": "Unknown",
+    "noExpiry": "No end date",
+    "permissions": {
+      "kosk_manage": "Edit the köşk, hide it or bring it back",
+      "kosk_hosting": "Give or take back a hosting right",
+      "course_open_standalone": "Open courses outside a medrese; choose the müderrisler and the imam",
+      "course_manage_all": "Manage the content, sessions, recordings and applications of the courses in the köşk",
+      "ban_manage_kosk": "Ban at course and köşk level, or lift a ban with a reason; widen a course ban to the köşk",
+      "deck_manage_kosk": "Create and edit the köşk's deck",
+      "course_nazir_assign_kosk": "Appoint a course nazır and grant permissions in the köşk's courses outside a medrese, within your own permissions",
+      "user_lookup": "Find a user by e-mail",
+      "course_edit": "Edit the course: title, introduction, syllabus, time zone",
+      "session_manage": "Add a session, change its date, cancel it; enter the meeting link",
+      "session_live_link": "Add the live-stream link to a session",
+      "week_hide": "Hide a week or a session, bring it back",
+      "course_settings": "Change the course settings and the closed-course flag",
+      "course_publish": "Publish the course or return it to draft",
+      "course_view_unpublished": "See a draft or hidden course",
+      "enrollment_decide": "Approve or reject an application",
+      "enrollment_remove": "Remove a talebe from the course, with a reason",
+      "enrollment_complete": "Mark a talebe as having completed the course",
+      "recording_manage": "Add, rename and hide a recording; change its visibility",
+      "recording_upload": "Upload a recording",
+      "recording_watch_restricted": "Watch recordings open to enrolled talebe only",
+      "session_view_content": "See the content and meeting links of a session",
+      "ban_course": "Ban a talebe from the course (includes seeing the course's ban list)",
+      "ban_lift_course": "Lift a course ban, with a reason",
+      "deck_manage_course": "Create and edit the course's deck",
+      "course_nazir_assign": "Appoint a course nazır; grant a permission or a group, within your own permissions",
+      "permission_group_define": "Define a permission group"
+    },
+    "permissionNotes": {
+      "course_manage_all": "Reads of the content are written to the audit log.",
+      "course_nazir_assign_kosk": "In a medrese's courses the medrese's staff grants permissions.",
+      "user_lookup": "Every search is written to the audit log.",
+      "ban_lift_course": "You cannot lift a ban set by a higher level."
+    },
+    "defaultsNote": {
+      "KOSK_NAZIM": "A köşk nazım’s default permissions. In the köşk’s medrese courses, opening the course and the müderris list belong to the medrese.",
+      "MUDERRIS": "A müderris’s default permissions. The course staff see the name and e-mail of the talebe enrolled in the course by default; this is not a separate permission."
+    },
+    "columns": {
+      "role": "Role",
+      "scope": "Scope",
+      "grantor": "Assigned by",
+      "expires": "Term"
+    },
+    "pageTitle": "Account and settings",
+    "pageSubtitle": "Your roles, permissions, time zone and language.",
+    "tasksTitle": "Your roles",
+    "tasksIntro": "Each role applies in one scope. Whoever assigned it can change the role and its term.",
+    "noTasks": "You have no roles yet.",
+    "chiefScope": "Platform",
+    "chiefGrantor": "Defined in the sign-in system",
+    "until": "Until {date}",
+    "permissionsTitle": "Your active permissions",
+    "permissionsIntro": "Permissions come from your roles. You cannot give someone a permission you were given; you can give the permission that comes from being a köşk nazım in your own köşk, within your own permissions.",
+    "permissionsIntroChief": "Permissions come from your roles and from the permission groups given to you. You cannot give someone a permission you were given; you can give the permission that comes from your role within your own scope.",
+    "chiefPermissions": "Every permission, in every scope. Your reads of course content, private decks and personal data, your user lookups and your permanent deletions are written to the audit log.",
+    "endsNote": "Your assignment ends on {date}, so the permissions end by that day at the latest.",
+    "indefinite": {
+      "MEDARIS_NAZIM": "No end date: your assignment lasts until whoever assigned it takes it back.",
+      "KOSK_NAZIM": "No end date: your assignment lasts until whoever assigned it takes it back.",
+      "MEDRESE_BASMUDERRIS": "No end date: your role lasts until whoever assigned it takes it back.",
+      "MEDRESE_NAZIR": "No end date: your role lasts until whoever assigned it takes it back.",
+      "MUDERRIS": "No end date: the role lasts until you are removed from the course's müderris list.",
+      "DERS_NAZIR": "No end date: your role lasts until whoever assigned it takes it back."
+    },
+    "eachScope": {
+      "MUDERRIS": "Applies in each course you teach: {names}.",
+      "default": "Applies in every scope where you are {role}: {names}."
+    },
+    "zoneTitle": "Time and language",
+    "zone": "Time zone",
+    "zoneHelp": "Session times are shown in this time zone. It is saved the moment you choose.",
+    "zoneOther": "Other…",
+    "allZones": "All time zones",
+    "allZonesHelp": "Choose a region from the list; it is saved the moment you choose.",
+    "zoneSavedTitle": "Your time zone was saved.",
+    "zoneSavedText": "Session times now show in this time zone.",
+    "zoneFailedTitle": "The time zone could not be saved.",
+    "zoneFailedText": "Your previous time zone still applies. Try again.",
+    "language": "Language",
+    "languageValue": "Türkçe",
+    "languageHelp": "For now Medaris appears in Turkish only.",
+    "accountTitle": "Account",
+    "email": "E-mail",
+    "emailHelp": "Read only. The address registered to your account; it cannot be changed here.",
+    "teachingTitle": "Teaching",
+    "teachingText": "You manage the sessions, talebes and recordings of the courses you teach in Nazır.",
+    "openNazir": "Open in Nazır",
+    "signOutText": "This signs you out of Medaris in this browser. Your roles and preferences stay on your account.",
+    "signOut": "Sign out",
+    "retry": "Try again",
+    "loadFailedTitle": "Your account could not be loaded",
+    "loadFailed": "Your account could not be read right now. Reload the page to try again.",
+    "zones": {
+      "Europe/Istanbul": "Istanbul",
+      "Europe/Berlin": "Berlin",
+      "Europe/Amsterdam": "Amsterdam",
+      "Europe/Brussels": "Brussels",
+      "Europe/Paris": "Paris",
+      "Europe/Vienna": "Vienna",
+      "Europe/London": "London",
+      "America/New_York": "New York"
+    },
+    "permissionsIntroMedaris": "Permissions come from your role. You cannot give someone a permission you were given.",
+    "permissionsEmpty": "You have no separate permission group. As a Medaris nazım you reach the administration screens through your role."
   },
   "KoskManage": {
     "title": "Köşk",

@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
   } | null,
   kosks: [] as { id: string; name: string }[],
   pending: {} as Record<string, number>,
+  unread: 0,
   pathname: "/tr",
 }));
 
@@ -19,15 +20,23 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: () => undefined, push: () => undefined }),
 }));
 vi.mock("next-intl/server", () => ({
-  getTranslations: async (namespace: string) => (key: string) =>
-    [...namespace.split("."), ...key.split(".")].reduce<unknown>(
-      (node, part) => (node as Record<string, unknown>)?.[part],
-      resources.tr
-    ),
+  getTranslations:
+    async (namespace: string) =>
+    (key: string, values?: Record<string, string | number>) =>
+      Object.entries(values ?? {}).reduce(
+        (text, [name, value]) => text.replace(`{${name}}`, String(value)),
+        [...namespace.split("."), ...key.split(".")].reduce<unknown>(
+          (node, part) => (node as Record<string, unknown>)?.[part],
+          resources.tr
+        ) as string
+      ),
 }));
 vi.mock("~/lib/auth_options", () => ({ auth: async () => state.session }));
 vi.mock("~/features/assignments/reads", () => ({
   getMyAssignments: async () => state.me,
+}));
+vi.mock("~/features/notifications/reads", () => ({
+  getUnreadNotificationCount: async () => state.unread,
 }));
 vi.mock("~/features/kosks/actions", () => ({
   getManagedKosks: async () => ({ items: state.kosks }),
@@ -65,6 +74,7 @@ beforeEach(() => {
   state.pathname = "/tr";
   state.kosks = [];
   state.pending = {};
+  state.unread = 0;
 });
 
 describe("without a session", () => {
@@ -151,6 +161,35 @@ describe("the shell of a köşk nazımı (nizam/52, nizam/31)", () => {
     expect(html).toContain('aria-label="Menü"');
     const nav = /<nav[\s\S]*?<\/nav>/.exec(sidebarNav(html))?.[0] ?? "";
     expect(nav).not.toMatch(/Çıkış/);
+  });
+});
+
+describe("the unread notifications (MDRS-179, canvas rule 10)", () => {
+  beforeEach(() => {
+    state.me = { systemAdmin: false, assignments: [{ role: "KOSK_NAZIM" }] };
+    state.kosks = [{ id: "k1", name: "Nûruosmaniye Köşkü" }];
+  });
+
+  it("badges the menu item and names the bell with the count, drawing no number on the bell", async () => {
+    state.unread = 3;
+    const html = await render();
+    expect(sidebarNav(html)).toMatch(
+      /href="\/tr\/bildirimler"[\s\S]*?mds-nav-item__count">3<span[^>]*> okunmamış</
+    );
+    expect(html).toContain('aria-label="Bildirimler, 3 okunmamış"');
+  });
+
+  it("says only 'Bildirimler' for zero, and draws no badge", async () => {
+    state.unread = 0;
+    const html = await render();
+    expect(html).toContain('aria-label="Bildirimler"');
+    expect(html).not.toContain("okunmamış");
+    expect(sidebarNav(html)).not.toContain("mds-nav-item__count");
+  });
+
+  it("points the person row at Hesap, not at the sign-out card", async () => {
+    const aside = sidebarNav(await render());
+    expect(aside).toMatch(/<a[^>]*mds-nav-user[^>]*href="\/tr\/hesap"/);
   });
 });
 
