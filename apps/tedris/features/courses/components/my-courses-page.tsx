@@ -166,7 +166,7 @@ export const MyCoursesPage = async ({
         </div>
         <Button
           variant="secondary"
-          href="/learning/calendar"
+          href="/account/calendar"
           iconLeft={<Icon name="calendar" size="sm" />}
         >
           {t("CalendarSubscription.link")}

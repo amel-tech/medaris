@@ -1,55 +1,129 @@
 "use client";
 
-import {
-  AppleLogoIcon as AppleLogo,
-  ArrowsClockwiseIcon as ArrowsClockwise,
-  CheckIcon as Check,
-  CopyIcon as Copy,
-  GoogleLogoIcon as GoogleLogo,
-} from "@medaris/icons";
+import { Alert } from "@medaris/ui/mds/alert";
+import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
+import { AppProviders } from "@medaris/ui/mds/app-providers";
+import { Button } from "@medaris/ui/mds/button";
+import { Card } from "@medaris/ui/mds/card";
+import { Field } from "@medaris/ui/mds/field";
+import { Icon, type IconName } from "@medaris/ui/mds/icon";
+import { Input } from "@medaris/ui/mds/input";
+import { useToaster } from "@medaris/ui/mds/toast";
 import { useFormatter, useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 import { regenerateMyCalendarFeed } from "../actions";
-
-/** Google Calendar's "Add calendar → From URL" screen. */
-const GOOGLE_ADD_BY_URL =
-  "https://calendar.google.com/calendar/u/0/r/settings/addbyurl";
 
 type FeedLink = { url: string; webcalUrl: string };
 
+/** The status tedrisat reports: when the current link was issued, or null without one. */
+export type CalendarFeedStatus = { createdAt: string | null } | null;
+
+const MASK = "••••••••••••••••••••••••••••••••";
+
+const CopyField = ({
+  id,
+  label,
+  help,
+  value,
+  masked,
+  copyLabel,
+}: {
+  id: string;
+  label: string;
+  help: string;
+  value: string;
+  masked: boolean;
+  copyLabel: string;
+}) => {
+  const t = useTranslations("tedris.CalendarSubscription");
+  const toaster = useToaster();
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toaster.notify({ tone: "success", title: t("copied") });
+    } catch {
+      // No clipboard access (an insecure origin, a refused permission): the
+      // field is left selected so the viewer can still copy by hand.
+      (document.getElementById(id) as HTMLInputElement | null)?.select();
+      toaster.notify({ tone: "warning", title: t("copyFailed") });
+    }
+  };
+
+  return (
+    <Field label={label} help={help}>
+      <div className="flex items-center gap-2">
+        <Input
+          id={id}
+          mono
+          readOnly
+          className="min-inline-0 flex-1"
+          value={masked ? MASK : value}
+          onFocus={(e) => e.currentTarget.select()}
+        />
+        <Button
+          variant="secondary"
+          iconLeft={<Icon name="copy" size="sm" />}
+          onClick={copy}
+          disabled={masked}
+          aria-label={copyLabel}
+        >
+          {t("copy")}
+        </Button>
+      </div>
+    </Field>
+  );
+};
+
+const AsideItem = ({
+  icon,
+  children,
+}: {
+  icon: IconName;
+  children: ReactNode;
+}) => (
+  <li className="flex items-start gap-3 py-3 border-be border-neutral-subtle last:border-be-0">
+    <Icon name={icon} size="sm" />
+    <span className="mds-body-sm">{children}</span>
+  </li>
+);
+
+const Steps = ({ keys }: { keys: ReactNode[] }) => (
+  <ol className="m-0 flex list-decimal flex-col gap-2 ps-5 mds-body-sm">
+    {keys.map((step, i) => (
+      // biome-ignore lint/suspicious/noArrayIndexKey: fixed, ordered instructions
+      <li key={i}>{step}</li>
+    ))}
+  </ol>
+);
+
 /**
- * B11 "Takvim aboneliği" (MDRS-120). B11 is not in the design-system mirror
- * yet (MDRS-127 is designing it), so this follows the pages' existing card
- * and outline-button pattern.
+ * The body of "Takvim aboneliği" (design tedris/23, MDRS-120/163).
  *
- * tedrisat keeps only a hash of the feed secret, so an existing URL cannot
- * be shown again: the page says one exists and offers a new one, and a newly
- * issued URL is shown until the viewer leaves.
+ * tedrisat keeps only a hash of the feed secret, so a link that already exists
+ * cannot be shown again: the page says one exists, shows its fields masked and
+ * offers a new one; a link just issued is shown, with the warning to copy it,
+ * until the viewer leaves. Renewing always asks first: a new link silently
+ * stops every calendar subscribed to the old one.
  */
 export const CalendarSubscription = ({
   status,
 }: {
-  /**
-   * When the current URL was issued (ISO time, or null without one); null
-   * when tedrisat could not be asked.
-   */
-  status: { createdAt: string | null } | null;
+  status: CalendarFeedStatus;
 }) => {
-  const t = useTranslations("tedris");
+  const t = useTranslations("tedris.CalendarSubscription");
   const format = useFormatter();
   const [issuedAt, setIssuedAt] = useState(status?.createdAt ?? null);
   const [link, setLink] = useState<FeedLink | null>(null);
   const [failed, setFailed] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const issue = () => {
-    // Always asked, not only when this page believes a link exists: the page
-    // may be stale (another tab issued one) or may not have been able to ask
-    // (status null), and a new link silently stops every subscribed calendar.
-    if (!window.confirm(t("CalendarSubscription.confirmRegenerate"))) return;
     setFailed(false);
     startTransition(async () => {
       const result = await regenerateMyCalendarFeed();
+      setConfirming(false);
       if (!result.success) {
         setFailed(true);
         return;
@@ -59,125 +133,164 @@ export const CalendarSubscription = ({
     });
   };
 
-  // With a link just issued, the card below says so; the "shown only once"
-  // line would read as an instruction to regenerate it again.
-  const statusText = link
-    ? null
-    : issuedAt
-      ? t("CalendarSubscription.active", {
-          date: format.dateTime(new Date(issuedAt), { dateStyle: "medium" }),
-        })
-      : status === null
-        ? t("CalendarSubscription.unknown")
-        : t("CalendarSubscription.none");
+  // A link is already there, or the page could not ask: renewing is a
+  // decision. Only a page that knows there is none creates without asking.
+  const needsConfirmation = !link && (issuedAt !== null || status === null);
+  const hasLink = link !== null || issuedAt !== null;
+
+  const code = (chunks: ReactNode) => (
+    <code className="mds-code" dir="ltr">
+      {chunks}
+    </code>
+  );
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border bg-white p-5">
-        {statusText && (
-          <p className="mb-4 text-sm text-muted-foreground">{statusText}</p>
-        )}
-        <button
-          type="button"
-          onClick={issue}
-          disabled={pending}
-          className="inline-flex items-center justify-center gap-1.5 rounded-lg border bg-white px-3.5 py-2 text-[13px] font-medium disabled:opacity-50"
-        >
-          <ArrowsClockwise size={14} />
-          {issuedAt
-            ? t("CalendarSubscription.regenerate")
-            : t("CalendarSubscription.create")}
-        </button>
-        {failed && (
-          <p role="alert" className="mt-3 text-sm text-destructive">
-            {t("CalendarSubscription.failed")}
-          </p>
-        )}
+    <AppProviders>
+      <div className="grid items-start gap-6 grid-cols-[minmax(0,1fr)_var(--layout-aside)] max-md:grid-cols-1">
+        <div className="flex min-inline-0 flex-col gap-6">
+          <Card title={t("cardTitle")} headingLevel={2}>
+            <div className="flex flex-col gap-5 mbs-4">
+              {link ? (
+                <Alert tone="warning" title={t("copyNowTitle")}>
+                  {t("copyNowText")}
+                </Alert>
+              ) : null}
+
+              {hasLink ? (
+                <>
+                  <CopyField
+                    id="calendar-google"
+                    label={t("googleFor")}
+                    help={t("googleHelp")}
+                    value={link?.url ?? ""}
+                    masked={link === null}
+                    copyLabel={t("copyGoogle")}
+                  />
+                  <CopyField
+                    id="calendar-apple"
+                    label={t("appleFor")}
+                    help={t("appleHelp")}
+                    value={link?.webcalUrl ?? ""}
+                    masked={link === null}
+                    copyLabel={t("copyApple")}
+                  />
+                  {link === null ? (
+                    <p className="mds-body-sm">{t("hidden")}</p>
+                  ) : null}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    {link ? (
+                      <Button
+                        variant="secondary"
+                        href={link.webcalUrl}
+                        iconLeft={<Icon name="calendarPlus" size="sm" />}
+                      >
+                        {t("appleOpen")}
+                      </Button>
+                    ) : null}
+                    {issuedAt ? (
+                      <span className="mds-caption">
+                        {t("createdAt", {
+                          date: format.dateTime(new Date(issuedAt), {
+                            dateStyle: "full",
+                            timeStyle: "short",
+                          }),
+                        })}
+                      </span>
+                    ) : null}
+                  </div>
+                </>
+              ) : (
+                <p className="mds-body-sm">
+                  {status === null ? t("unknown") : t("createHelp")}
+                </p>
+              )}
+
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-bs border-neutral-subtle pbs-5">
+                {needsConfirmation ? (
+                  <Button
+                    variant="outline"
+                    iconLeft={<Icon name="repeat" size="sm" />}
+                    onClick={() => setConfirming(true)}
+                    loading={pending}
+                  >
+                    {t("regenerate")}
+                  </Button>
+                ) : (
+                  <Button
+                    variant={link ? "outline" : "primary"}
+                    iconLeft={<Icon name="repeat" size="sm" />}
+                    onClick={link ? () => setConfirming(true) : issue}
+                    loading={pending}
+                  >
+                    {hasLink ? t("regenerate") : t("create")}
+                  </Button>
+                )}
+                {hasLink ? (
+                  <span className="mds-caption">{t("regenerateHelp")}</span>
+                ) : null}
+              </div>
+              {failed ? (
+                <Alert tone="error" role="alert">
+                  {t("failed")}
+                </Alert>
+              ) : null}
+            </div>
+          </Card>
+
+          <Card title={t("howTitle")} headingLevel={2}>
+            <div className="grid gap-6 mbs-4 grid-cols-2 max-md:grid-cols-1">
+              <section className="flex flex-col gap-3">
+                <h3 className="mds-h4">{t("googleTitle")}</h3>
+                <Steps
+                  keys={[
+                    t.rich("googleStep1", { code }),
+                    t("googleStep2"),
+                    t("googleStep3"),
+                  ]}
+                />
+                <p className="mds-caption">{t("googlePhone")}</p>
+              </section>
+              <section className="flex flex-col gap-3">
+                <h3 className="mds-h4">{t("appleTitle")}</h3>
+                <Steps
+                  keys={[t("appleStep1"), t("appleStep2"), t("appleStep3")]}
+                />
+              </section>
+            </div>
+          </Card>
+
+          <Alert tone="info" title={t("delayTitle")}>
+            {t("delayText")}
+          </Alert>
+        </div>
+
+        <aside className="flex flex-col gap-4">
+          <Card title={t("whatTitle")} headingLevel={2}>
+            <ul className="m-0 flex list-none flex-col p-0 mbs-2">
+              <AsideItem icon="calendar">{t("what1")}</AsideItem>
+              <AsideItem icon="repeat">{t("what2")}</AsideItem>
+              <AsideItem icon="link">{t("what3")}</AsideItem>
+              <AsideItem icon="eyeOff">{t("what4")}</AsideItem>
+            </ul>
+          </Card>
+          <Card title={t("privateTitle")} headingLevel={2}>
+            <p className="mds-body-sm mbs-2">{t("privateText")}</p>
+          </Card>
+        </aside>
       </div>
 
-      {link && (
-        <div className="space-y-4 rounded-xl border bg-white p-5">
-          <p className="text-sm font-medium">
-            {t("CalendarSubscription.newLink")}
-          </p>
-
-          <section className="space-y-2">
-            <h2 className="flex items-center gap-1.5 text-sm font-semibold">
-              <AppleLogo size={16} /> {t("CalendarSubscription.appleTitle")}
-            </h2>
-            <CopyableUrl value={link.webcalUrl} />
-            <a
-              href={link.webcalUrl}
-              className="inline-flex items-center gap-1.5 rounded-lg border bg-white px-3.5 py-2 text-[13px] font-medium"
-            >
-              {t("CalendarSubscription.appleOpen")}
-            </a>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="flex items-center gap-1.5 text-sm font-semibold">
-              <GoogleLogo size={16} /> {t("CalendarSubscription.googleTitle")}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {t("CalendarSubscription.googleSteps")}
-            </p>
-            <CopyableUrl value={link.url} />
-            <a
-              href={GOOGLE_ADD_BY_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border bg-white px-3.5 py-2 text-[13px] font-medium"
-            >
-              {t("CalendarSubscription.googleOpen")}
-            </a>
-          </section>
-        </div>
-      )}
-
-      <p className="text-sm text-muted-foreground">
-        {t("CalendarSubscription.googleDelay")}
-      </p>
-      <p className="text-sm text-muted-foreground">
-        {t("CalendarSubscription.private")}
-      </p>
-    </div>
-  );
-};
-
-const CopyableUrl = ({ value }: { value: string }) => {
-  const t = useTranslations("tedris");
-  const [copied, setCopied] = useState(false);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // No clipboard access (an insecure origin, a refused permission): the
-      // field below is selectable, so the viewer can still copy by hand.
-    }
-  };
-
-  return (
-    <div className="flex items-center gap-2">
-      <input
-        readOnly
-        value={value}
-        onFocus={(e) => e.currentTarget.select()}
-        className="min-w-0 flex-1 rounded-lg border px-3 py-2 font-mono text-xs"
-        dir="ltr"
-      />
-      <button
-        type="button"
-        onClick={copy}
-        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-[13px] font-medium"
+      <AlertDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title={t("confirmTitle")}
+        confirmLabel={t("confirmAction")}
+        cancelLabel={t("confirmCancel")}
+        confirmVariant="primary"
+        confirmLoading={pending}
+        onConfirm={issue}
       >
-        {copied ? <Check size={14} /> : <Copy size={14} />}
-        {copied
-          ? t("CalendarSubscription.copied")
-          : t("CalendarSubscription.copy")}
-      </button>
-    </div>
+        {t("confirmText")}
+      </AlertDialog>
+    </AppProviders>
   );
 };

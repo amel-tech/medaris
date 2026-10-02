@@ -452,7 +452,7 @@ describe("Derslerim (design tedris/20)", () => {
     expect(html).toContain("Başvuruyu geri çek");
     expect(html).toContain("Onay bekliyor");
     expect(html).toContain("Takvim aboneliği");
-    expect(html).toContain('href="/learning/calendar"');
+    expect(html).toContain('href="/account/calendar"');
     expect(html).toContain("Ders kayıtlarına git");
   });
 

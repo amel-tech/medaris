@@ -34,6 +34,10 @@ vi.mock("next-intl/server", () => ({
   getLocale: async () => "tr",
   getTimeZone: async () => "Europe/Istanbul",
 }));
+// The calendar menu routes through next-intl's navigation, which needs a mounted app router.
+vi.mock("~/lib/i18n/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
 // The programme is an async server component with its own spec below.
 vi.mock("~/features/courses/components/session-programme", () => ({
   SessionProgramme: () => null,
