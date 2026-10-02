@@ -174,8 +174,9 @@ export class KoskController {
       managedByCaller: managedBy === KoskManagedBy.ME,
       madrasahId,
       level,
-      field: field?.trim() || undefined,
-      q: q?.slice(0, 100),
+      // A repeated query key arrives as an array; only a single value is read.
+      field: typeof field === "string" ? field.trim() || undefined : undefined,
+      q: typeof q === "string" ? q.slice(0, 100) : undefined,
     });
     return userId === null
       ? { ...page_, items: page_.items.map(maskKoskForAnonymous) }

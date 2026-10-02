@@ -155,9 +155,10 @@ export class MadrasahController {
     madrasahId?: string
   ): Promise<MadrasahExploreResponse[]> {
     return this.madrasahService.findExplore({
-      q: q?.slice(0, 100),
+      // A repeated query key arrives as an array; only a single value is read.
+      q: typeof q === "string" ? q.slice(0, 100) : undefined,
       level,
-      field: field?.trim() || undefined,
+      field: typeof field === "string" ? field.trim() || undefined : undefined,
       madrasahId,
     });
   }
