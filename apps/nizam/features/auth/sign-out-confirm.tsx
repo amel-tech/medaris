@@ -24,11 +24,19 @@ export function SignOutConfirm() {
   const router = useRouter();
   const { data: session } = useSession();
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
   const headingId = useId();
 
-  const confirm = () => {
+  const confirm = async () => {
     setBusy(true);
-    void keycloakSignOut(session?.idToken);
+    setFailed(false);
+    try {
+      await keycloakSignOut(session?.idToken);
+    } catch {
+      // the sign-out config or NextAuth call failed: let the person try again
+      setFailed(true);
+      setBusy(false);
+    }
   };
   const cancel = () => {
     if (window.history.length > 1) router.back();
@@ -46,6 +54,11 @@ export function SignOutConfirm() {
           {t("title")}
         </h1>
         <p className="mds-body">{t("body")}</p>
+        {failed ? (
+          <p role="alert" className="mds-body text-danger-strong">
+            {t("failed")}
+          </p>
+        ) : null}
         <div className="flex flex-col gap-2 pbs-2">
           <Button
             fullWidth

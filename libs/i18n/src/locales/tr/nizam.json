@@ -846,6 +846,7 @@
     "body": "Bu tarayıcıda Medaris’ten çıkarsın.",
     "confirm": "Çıkış yap",
     "cancel": "Vazgeç",
-    "busy": "Çıkış yapılıyor"
+    "busy": "Çıkış yapılıyor",
+    "failed": "Çıkış yapılamadı. Yeniden deneyin."
   }
 }
