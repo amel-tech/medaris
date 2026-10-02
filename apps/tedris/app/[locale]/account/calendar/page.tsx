@@ -18,7 +18,7 @@ export default async function CalendarSubscriptionPage() {
   const feed = await getMyCalendarFeed();
 
   return (
-    <div className="mx-auto flex max-w-[80rem] flex-col gap-section px-gutter py-8">
+    <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
       <div className="flex flex-col gap-4">
         <Breadcrumb
           label={t("trail")}
@@ -41,6 +41,6 @@ export default async function CalendarSubscriptionPage() {
           }
         }
       />
-    </div>
+    </main>
   );
 }

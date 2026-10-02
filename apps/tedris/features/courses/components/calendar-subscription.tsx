@@ -259,7 +259,7 @@ export const CalendarSubscription = ({
             </div>
           </Card>
 
-          <Alert tone="info" title={t("delayTitle")}>
+          <Alert tone="neutral" title={t("delayTitle")}>
             {t("delayText")}
           </Alert>
         </div>
