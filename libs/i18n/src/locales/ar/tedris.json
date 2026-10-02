@@ -274,7 +274,8 @@
     "decksEmpty": "لا مجموعات لهذا الكُشك بعد.",
     "deckMeta": "مجموعة كُشك",
     "cardsCount": "{count} بطاقة حفظ",
-    "inCollection": "في مجموعتك"
+    "inCollection": "في مجموعتك",
+    "manager": "ناظم الكُشك {name}"
   },
   "LearningPage": {
     "title": "Öğrenme",
@@ -727,5 +728,18 @@
     "prev": "السابق",
     "next": "التالي",
     "pageOf": "{page} / {total}"
+  },
+  "AnonymousInvite": {
+    "apply": "للتقدّم إلى درس، <signIn>سجّل الدخول</signIn> أو <register>أنشئ حسابًا</register>.",
+    "discover": "للتقدّم إلى درس، <signIn>سجّل الدخول</signIn> أو <register>أنشئ حسابًا</register>. ويمكنك تصفّح الكُشوك والمدارس وتعريفات الدروس دون حساب."
+  },
+  "PhoneMenu": {
+    "menu": "القائمة",
+    "navLabel": "القائمة الرئيسية",
+    "close": "إغلاق",
+    "home": "الرئيسية",
+    "discover": "استكشف",
+    "signIn": "تسجيل الدخول",
+    "register": "إنشاء حساب"
   }
 }
