@@ -37,12 +37,20 @@ export const notificationIcon = (type: string): IconName =>
 export const TYPE_FILTERS = ["all", "bans"] as const;
 export type TypeFilter = (typeof TYPE_FILTERS)[number];
 
+/**
+ * Every type this app words. The caller's tedris-side notifications (an
+ * enrollment approved, a session moved) live in the same table but are not
+ * nizam's: "Tümü", the tab counts, the bell and the badge all ask for these
+ * types only, so they never count or draw a row this page cannot word.
+ */
+export const NIZAM_TYPES: string[] = Object.keys(ICONS);
+
 const FILTER_TYPES: Record<TypeFilter, string[]> = {
-  all: [],
+  all: NIZAM_TYPES,
   bans: ["COURSE_BAN_PLACED", "KOSK_BAN_PLACED"],
 };
 
-/** The `types` query of a chip; empty means every type. */
+/** The `types` query of a chip; "Tümü" is every type nizam words. */
 export const typesOf = (filter: TypeFilter): string[] => FILTER_TYPES[filter];
 
 const text = (
@@ -102,7 +110,12 @@ export const describeNotification = (
   // An ICU placeholder with no value makes the whole message fail.
   for (const key of PLACEHOLDERS) values[key] ??= "";
   const base = `types.${n.type}`;
-  const bodyKey = text(n.params, "reason") ? "bodyReason" : "body";
+  // A köşk ban without a köşk name keeps the wording that needs none.
+  const anyKosk =
+    n.type === "KOSK_BAN_PLACED" && !text(n.params, "koskName")
+      ? "AnyKosk"
+      : "";
+  const bodyKey = `${text(n.params, "reason") ? "bodyReason" : "body"}${anyKosk}`;
   return {
     title: t(`${base}.title`, values),
     body: t(`${base}.${bodyKey}`, values),

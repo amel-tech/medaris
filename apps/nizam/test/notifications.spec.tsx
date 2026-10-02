@@ -17,6 +17,7 @@ import {
   describeNotification,
   formatRowTime,
   groupByDay,
+  NIZAM_TYPES,
   notificationHref,
   notificationIcon,
   typesOf,
@@ -93,6 +94,24 @@ describe("the sentence of a notification (nizam/37, 46)", () => {
     expect(text.source).toBe("Nûruosmaniye Köşkü");
   });
 
+  it("words a köşk ban with the köşk's name as the canvas does", () => {
+    const text = describeNotification(
+      row("1", NOW, {
+        type: "KOSK_BAN_PLACED",
+        params: {
+          actorName: "A",
+          talebeName: "B",
+          koskName: "Nûruosmaniye Köşkü",
+          reason: "Sebep",
+        },
+      }),
+      { t }
+    );
+    expect(text.body).toBe(
+      "A, B adlı talebeyi Nûruosmaniye Köşkü'nün derslerinden yasakladı. Gerekçe: Sebep"
+    );
+  });
+
   it("words a köşk ban and leaves the reason out when there is none", () => {
     const text = describeNotification(
       row("1", NOW, {
@@ -148,8 +167,10 @@ describe("where a notification leads", () => {
 });
 
 describe("the type chips", () => {
-  it("asks for no type at Tümü and for the ban types at Yasaklar", () => {
-    expect(typesOf("all")).toEqual([]);
+  it("asks for the types nizam words at Tümü, never the tedris ones, and for the ban types at Yasaklar", () => {
+    expect(typesOf("all")).toEqual(NIZAM_TYPES);
+    expect(NIZAM_TYPES).toEqual(["COURSE_BAN_PLACED", "KOSK_BAN_PLACED"]);
+    expect(NIZAM_TYPES).not.toContain("ENROLLMENT_APPROVED");
     expect(typesOf("bans")).toEqual(["COURSE_BAN_PLACED", "KOSK_BAN_PLACED"]);
   });
 });

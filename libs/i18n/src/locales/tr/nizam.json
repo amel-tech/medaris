@@ -2045,8 +2045,10 @@
       },
       "KOSK_BAN_PLACED": {
         "title": "Yeni köşk yasağı",
-        "body": "{actorName}, {talebeName} adlı talebeyi köşkün tüm derslerinden yasakladı.",
-        "bodyReason": "{actorName}, {talebeName} adlı talebeyi köşkün tüm derslerinden yasakladı. Gerekçe: {reason}"
+        "body": "{actorName}, {talebeName} adlı talebeyi {koskName}'nün derslerinden yasakladı.",
+        "bodyReason": "{actorName}, {talebeName} adlı talebeyi {koskName}'nün derslerinden yasakladı. Gerekçe: {reason}",
+        "bodyAnyKosk": "{actorName}, {talebeName} adlı talebeyi köşkün tüm derslerinden yasakladı.",
+        "bodyReasonAnyKosk": "{actorName}, {talebeName} adlı talebeyi köşkün tüm derslerinden yasakladı. Gerekçe: {reason}"
       }
     }
   },
@@ -2173,6 +2175,8 @@
       "Europe/Vienna": "Viyana",
       "Europe/London": "Londra",
       "America/New_York": "New York"
-    }
+    },
+    "permissionsIntroMedaris": "İzinler görevinizden gelir. Size verilen bir izni başkasına veremezsiniz.",
+    "permissionsEmpty": "Size ayrıca verilmiş bir izin grubu yok. Medaris nazımı olarak yönetim ekranlarına görevinizle erişirsiniz."
   }
 }

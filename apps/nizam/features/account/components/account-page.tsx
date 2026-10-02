@@ -13,6 +13,7 @@ import {
   heldRoleKeys,
   roleSummary,
   scopeMeta,
+  visibleGroups,
 } from "../account-view";
 import type { AccountData } from "../reads";
 import { type AssignmentRow, AssignmentsTable } from "./assignments-table";
@@ -48,6 +49,17 @@ export async function AccountPage({
     dateStyle: "long",
     timeZone: viewerZone,
   });
+
+  // The köşk sentence only fits someone who holds a köşk nazımlığı; the
+  // Medaris nazımı has none, and without any group there is nothing to list.
+  const introKey = data.systemAdmin
+    ? "permissionsIntroChief"
+    : data.assignments.some((a) => a.role === "KOSK_NAZIM")
+      ? "permissionsIntro"
+      : "permissionsIntroMedaris";
+  const noPermissions =
+    !data.systemAdmin &&
+    visibleGroups(data.groups, (key) => t.has(key)).length === 0;
 
   const rows: AssignmentRow[] = [
     ...(data.systemAdmin
@@ -151,14 +163,13 @@ export async function AccountPage({
                 <h2 className="mds-h2" id="permissions-heading">
                   {t("permissionsTitle")}
                 </h2>
-                <p className="mds-body-sm">
-                  {t(
-                    data.systemAdmin
-                      ? "permissionsIntroChief"
-                      : "permissionsIntro"
-                  )}
-                </p>
+                <p className="mds-body-sm">{t(introKey)}</p>
               </div>
+              {noPermissions ? (
+                <p className="mds-body-sm" data-testid="permissions-empty">
+                  {t("permissionsEmpty")}
+                </p>
+              ) : null}
               <PermissionsList
                 groups={data.groups}
                 assignments={data.assignments}

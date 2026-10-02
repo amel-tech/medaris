@@ -5,6 +5,7 @@ import {
 } from "@medaris/services/tedrisat";
 import { env } from "~/env";
 import { getAccessToken } from "~/lib/auth_options";
+import { NIZAM_TYPES } from "./notification-view";
 
 /**
  * Server-side reads for the Bildirimler page and the shell's bell and badge
@@ -25,8 +26,11 @@ export const getNotificationsOverview =
     try {
       const { notifications } = await api();
       const [first, counts] = await Promise.all([
-        notifications.listNotifications({ status: "all" }),
-        notifications.getNotificationCounts(),
+        notifications.listNotifications({
+          status: "all",
+          types: NIZAM_TYPES.join(","),
+        }),
+        notifications.getNotificationCounts({ types: NIZAM_TYPES.join(",") }),
       ]);
       return { first, counts };
     } catch (error) {
@@ -39,7 +43,11 @@ export const getNotificationsOverview =
 export const getUnreadNotificationCount = async (): Promise<number> => {
   try {
     const { notifications } = await api();
-    return (await notifications.getNotificationCounts()).unread;
+    return (
+      await notifications.getNotificationCounts({
+        types: NIZAM_TYPES.join(","),
+      })
+    ).unread;
   } catch {
     return 0;
   }

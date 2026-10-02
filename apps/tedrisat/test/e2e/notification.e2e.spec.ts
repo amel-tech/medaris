@@ -126,6 +126,18 @@ describe("notifications (e2e)", () => {
       .expect(400);
   });
 
+  it("counts only the types asked for, and rejects an unknown type with 400 (MDRS-179)", async () => {
+    await seed();
+    const res = await request(app.getHttpServer())
+      .get("/notifications/unread-count?types=SESSION_ADDED")
+      .expect(200);
+    expect(res.body).toEqual({ unread: 1, total: 2 });
+    await request(app.getHttpServer())
+      .get("/notifications/unread-count?types=NOPE")
+      .expect(400);
+    expect(await counts()).toEqual({ unread: 3, total: 6 });
+  });
+
   it("pages with an opaque cursor without skipping or repeating a row", async () => {
     await seed();
     const seen: string[] = [];

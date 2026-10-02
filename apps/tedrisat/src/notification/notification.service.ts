@@ -55,8 +55,11 @@ export class NotificationService {
     };
   }
 
-  counts(userId: string): Promise<{ unread: number; total: number }> {
-    return this.repo.counts(userId);
+  counts(
+    userId: string,
+    types?: string[]
+  ): Promise<{ unread: number; total: number }> {
+    return this.repo.counts(userId, types);
   }
 
   async markRead(userId: string, id: string): Promise<INotification> {

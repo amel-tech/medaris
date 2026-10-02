@@ -10,6 +10,7 @@ import {
   type AuthenticatedActionResult,
   authenticatedAction,
 } from "~/lib/authenticated-action";
+import { NIZAM_TYPES } from "./notification-view";
 
 export type NotificationFilter = "all" | "unread";
 
@@ -38,4 +39,7 @@ export const markAllNotificationsRead = async (): Promise<
 
 export const loadNotificationCounts = async (): Promise<
   AuthenticatedActionResult<NotificationCountsResponse>
-> => authenticatedAction((api) => api.notifications.getNotificationCounts());
+> =>
+  authenticatedAction((api) =>
+    api.notifications.getNotificationCounts({ types: NIZAM_TYPES.join(",") })
+  );

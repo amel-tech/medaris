@@ -2045,8 +2045,10 @@
       },
       "KOSK_BAN_PLACED": {
         "title": "New köşk ban",
-        "body": "{actorName} banned the talebe {talebeName} from every course of the köşk.",
-        "bodyReason": "{actorName} banned the talebe {talebeName} from every course of the köşk. Reason: {reason}"
+        "body": "{actorName} banned the talebe {talebeName} from the courses of {koskName}.",
+        "bodyReason": "{actorName} banned the talebe {talebeName} from the courses of {koskName}. Reason: {reason}",
+        "bodyAnyKosk": "{actorName} banned the talebe {talebeName} from every course of the köşk.",
+        "bodyReasonAnyKosk": "{actorName} banned the talebe {talebeName} from every course of the köşk. Reason: {reason}"
       }
     }
   },
@@ -2173,6 +2175,8 @@
       "Europe/Vienna": "Vienna",
       "Europe/London": "London",
       "America/New_York": "New York"
-    }
+    },
+    "permissionsIntroMedaris": "Permissions come from your role. You cannot give someone a permission you were given.",
+    "permissionsEmpty": "You have no separate permission group. As a Medaris nazım you reach the administration screens through your role."
   }
 }

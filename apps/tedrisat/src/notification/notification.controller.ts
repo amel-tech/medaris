@@ -122,12 +122,29 @@ export class NotificationController {
       '`unread` is what the bell announces; `total` is the "all" tab\'s count.',
     operationId: "getNotificationCounts",
   })
+  @ApiQuery({
+    name: "types",
+    required: false,
+    type: String,
+    description: `Comma separated; only these types are counted. Any of ${NOTIFICATION_TYPES.join(", ")}.`,
+  })
   @ApiOkResponse({ type: NotificationCountsResponse })
+  @ApiBadRequestResponse({
+    description: "An unknown type (INVALID_NOTIFICATION_TYPES).",
+  })
   @Get("unread-count")
   async counts(
-    @Req() request: AuthenticatedUserRequest
+    @Req() request: AuthenticatedUserRequest,
+    @Query("types") types: string | undefined
   ): Promise<NotificationCountsResponse> {
-    return this.notifications.counts(request.user.sub);
+    const parsed = parseNotificationTypes(types);
+    if (parsed === null) {
+      throw new BadRequestException({
+        code: "INVALID_NOTIFICATION_TYPES",
+        message: `types must be a comma separated list of: ${NOTIFICATION_TYPES.join(", ")}`,
+      });
+    }
+    return this.notifications.counts(request.user.sub, parsed);
   }
 
   @ApiOperation({

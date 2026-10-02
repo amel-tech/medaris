@@ -31,6 +31,10 @@ import {
     ReadAllNotificationsResponseToJSON,
 } from '../models/index';
 
+export interface GetNotificationCountsRequest {
+    types?: string;
+}
+
 export interface ListNotificationsRequest {
     status?: ListNotificationsStatusEnum;
     limit?: number;
@@ -51,8 +55,12 @@ export class NotificationsApi extends runtime.BaseAPI {
      * `unread` is what the bell announces; `total` is the \"all\" tab\'s count.
      * How many notifications the caller has, and how many are unread
      */
-    async getNotificationCountsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<NotificationCountsResponse>> {
+    async getNotificationCountsRaw(requestParameters: GetNotificationCountsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<NotificationCountsResponse>> {
         const queryParameters: any = {};
+
+        if (requestParameters['types'] != null) {
+            queryParameters['types'] = requestParameters['types'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -78,8 +86,8 @@ export class NotificationsApi extends runtime.BaseAPI {
      * `unread` is what the bell announces; `total` is the \"all\" tab\'s count.
      * How many notifications the caller has, and how many are unread
      */
-    async getNotificationCounts(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<NotificationCountsResponse> {
-        const response = await this.getNotificationCountsRaw(initOverrides);
+    async getNotificationCounts(requestParameters: GetNotificationCountsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<NotificationCountsResponse> {
+        const response = await this.getNotificationCountsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

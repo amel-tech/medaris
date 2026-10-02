@@ -357,6 +357,17 @@ describe("the page (nizam/47)", () => {
     expect(html).toContain("Çıkış yap");
   });
 
+  it("gives a Medaris nazımı with no permission group an empty state and its own intro", async () => {
+    const html = await render(
+      data({ assignments: [assignment({ role: "MEDARIS_NAZIM" })] as never })
+    );
+    expect(html).toContain("Etkin izinleriniz");
+    expect(html).toContain('data-testid="permissions-empty"');
+    expect(html).toContain("Size ayrıca verilmiş bir izin grubu yok.");
+    expect(html).toContain("İzinler görevinizden gelir.");
+    expect(html).not.toContain("köşk nazımlığından gelen izni");
+  });
+
   it("offers 'Nazır’da aç' only to a müderris, from the configured address", async () => {
     const without = await render(
       data({ assignments: [assignment({})] as never })

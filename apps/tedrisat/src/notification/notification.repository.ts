@@ -84,14 +84,25 @@ export class NotificationRepository {
       .limit(limit + 1);
   }
 
-  async counts(userId: string): Promise<{ unread: number; total: number }> {
+  /** `types` narrows what is counted; empty counts every type. */
+  async counts(
+    userId: string,
+    types?: string[]
+  ): Promise<{ unread: number; total: number }> {
     const [row] = await this.db
       .select({
         total: count(),
         unread: sql<number>`count(*) filter (where ${notifications.readAt} is null)`,
       })
       .from(notifications)
-      .where(eq(notifications.userId, userId));
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          types && types.length > 0
+            ? inArray(notifications.type, types)
+            : undefined
+        )
+      );
     return { total: Number(row.total), unread: Number(row.unread) };
   }
 
