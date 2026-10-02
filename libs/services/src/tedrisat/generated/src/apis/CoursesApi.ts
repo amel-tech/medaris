@@ -16,6 +16,7 @@
 import * as runtime from '../runtime';
 import type {
   CourseDetailResponse,
+  CourseStatsResponse,
   CourseSummaryResponse,
   CreateCourseDto,
   EnrolledCourseResponse,
@@ -31,6 +32,8 @@ import type {
 import {
     CourseDetailResponseFromJSON,
     CourseDetailResponseToJSON,
+    CourseStatsResponseFromJSON,
+    CourseStatsResponseToJSON,
     CourseSummaryResponseFromJSON,
     CourseSummaryResponseToJSON,
     CreateCourseDtoFromJSON,
@@ -82,6 +85,10 @@ export interface GetCourseByIdRequest {
 }
 
 export interface GetCourseEnrollmentsRequest {
+    id: string;
+}
+
+export interface GetCourseStatsRequest {
     id: string;
 }
 
@@ -460,6 +467,50 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async getCourseEnrollments(requestParameters: GetCourseEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<RosterEnrollmentResponse>> {
         const response = await this.getCourseEnrollmentsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/53: talebe enrolled, applications waiting, completions and how many weeks have begun. For the course team: the köşk manager and the course\'s müderrisler.
+     * The numbers of a course\'s overview (course team)
+     */
+    async getCourseStatsRaw(requestParameters: GetCourseStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseStatsResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getCourseStats().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/stats`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseStatsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/53: talebe enrolled, applications waiting, completions and how many weeks have begun. For the course team: the köşk manager and the course\'s müderrisler.
+     * The numbers of a course\'s overview (course team)
+     */
+    async getCourseStats(requestParameters: GetCourseStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseStatsResponse> {
+        const response = await this.getCourseStatsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

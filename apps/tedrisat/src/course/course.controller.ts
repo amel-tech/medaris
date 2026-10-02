@@ -43,6 +43,7 @@ import {
 } from "@nestjs/swagger";
 import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
+import { CourseStatsRepository } from "./course-stats.repository";
 import {
   CourseDetailResponse,
   CourseSummaryResponse,
@@ -51,6 +52,7 @@ import {
   PendingEnrollmentResponse,
   RosterEnrollmentResponse,
 } from "./dto/course-response.dto";
+import { CourseStatsResponse } from "./dto/course-stats.dto";
 import { CreateCourseDto } from "./dto/create-course.dto";
 import {
   RemoveEnrollmentDto,
@@ -95,7 +97,10 @@ const byExistingCourse: AuthzResolve = async (req, moduleRef) => {
 @UseGuards(AuthGuard, AuthzGuard)
 @Controller()
 export class CourseController {
-  constructor(private readonly courseService: CourseService) {}
+  constructor(
+    private readonly courseService: CourseService,
+    private readonly statsRepo: CourseStatsRepository
+  ) {}
 
   @ApiOperation({
     summary: "List the courses that belong to a köşk",
@@ -350,6 +355,25 @@ export class CourseController {
     @Param("koskId", ParseUUIDPipe) koskId: string
   ): Promise<PendingEnrollmentResponse[]> {
     return this.courseService.findPendingEnrollments(koskId, request.user.sub);
+  }
+
+  @ApiOperation({
+    summary: "The numbers of a course's overview (course team)",
+    description:
+      "nizam/53: talebe enrolled, applications waiting, completions and how many weeks have begun. For the course team: the köşk manager and the course's müderrisler.",
+    operationId: "getCourseStats",
+  })
+  @ApiOkResponse({ type: CourseStatsResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  // `byExistingCourse`: SYSTEM_ADMIN bypasses the resolver, so a missing
+  // course must answer 404 here and not an empty count.
+  @Authz(SCOPES.MANAGE_ENROLLMENTS, byExistingCourse)
+  @Get("courses/:id/stats")
+  async stats(
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<CourseStatsResponse> {
+    return this.statsRepo.stats(id, new Date());
   }
 
   @ApiOperation({

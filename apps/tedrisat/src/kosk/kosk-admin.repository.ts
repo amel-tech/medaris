@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { Tx } from "../course/course-purge";
 import { DatabaseService } from "../database/database.service";
-import { grantRole, holdsIn } from "../database/role-assignments";
+import { grantRole, holdsIn, revokeRole } from "../database/role-assignments";
 import { auditLog } from "../database/schema/audit.schema";
 import { kosks } from "../database/schema/kosk.schema";
 import {
@@ -47,6 +47,33 @@ export interface IKoskDirectoryRow {
   since: Date | null;
   nazimIds: string[];
   courseCount: number;
+}
+
+export interface IKoskOverviewRow {
+  status: KoskStatus;
+  since: Date | null;
+  openedAt: Date;
+  ownerId: string;
+  courses: { all: number; published: number; draft: number; hidden: number };
+  students: number;
+  pendingApplications: number;
+  nazimCount: number;
+  hostingMadrasahs: { id: string; name: string }[];
+}
+
+export interface IKoskCourseRow {
+  id: string;
+  title: string;
+  coverHue: number;
+  weekCount: number;
+  madrasah: { id: string; name: string } | null;
+  status: "PUBLISHED" | "DRAFT" | "HIDDEN";
+  hiddenAt: Date | null;
+  createdAt: Date;
+  muderris: { name: string; isImam: boolean }[];
+  studentCount: number;
+  pendingCount: number;
+  bannedCount: number;
 }
 
 export interface IKoskDirectoryCounts {
@@ -450,6 +477,198 @@ export class KoskAdminRepository {
         },
       });
       return "restored";
+    });
+  }
+
+  // ---- nizam/20 and 23: the köşk page and its courses ----------------------------
+
+  /** The numbers and facts of nizam/20, or null when there is no such köşk. */
+  async overview(koskId: string): Promise<IKoskOverviewRow | null> {
+    const [head] = (
+      await this.db.execute<{
+        status: KoskStatus;
+        since: Date | string | null;
+        created_at: Date | string;
+        owner_id: string;
+      }>(sql`
+        select ${this.statusSql()} as status,
+               coalesce(k.archived_at, k.passive_since) as since,
+               k.created_at, k.owner_id
+          from kosks k where k.id = ${koskId}`)
+    ).rows;
+    if (!head) return null;
+    const [numbers] = (
+      await this.db.execute<{
+        total: string;
+        published: string;
+        draft: string;
+        hidden: string;
+        students: string;
+        pending: string;
+        nazims: string;
+      }>(sql`
+        select
+          (select count(*) from courses c where c.kosk_id = ${koskId}) as total,
+          (select count(*) from courses c where c.kosk_id = ${koskId}
+              and c.archived_at is null and c.status = 'PUBLISHED') as published,
+          (select count(*) from courses c where c.kosk_id = ${koskId}
+              and c.archived_at is null and c.status = 'DRAFT') as draft,
+          (select count(*) from courses c where c.kosk_id = ${koskId}
+              and c.archived_at is not null) as hidden,
+          (select count(distinct e.user_id) from enrollments e
+             join courses c on c.id = e.course_id
+            where c.kosk_id = ${koskId} and c.archived_at is null
+              and e.status = 'ENROLLED') as students,
+          (select count(*) from enrollments e
+             join courses c on c.id = e.course_id
+            where c.kosk_id = ${koskId} and c.archived_at is null
+              and e.status = 'PENDING') as pending,
+          (select count(*) from role_assignments ra, kosks k
+            where k.id = ${koskId} and ${this.heldNazimSql()}) as nazims`)
+    ).rows;
+    const hosting = await this.db.execute<{ id: string; name: string }>(sql`
+      select m.id, m.name
+        from madrasah_kosk_hosting h
+        join madrasahs m on m.id = h.madrasah_id
+       where h.kosk_id = ${koskId} and h.revoked_at is null
+         and m.archived_at is null
+       order by h.created_at, m.name`);
+    return {
+      status: head.status,
+      since: head.since ? new Date(head.since) : null,
+      openedAt: new Date(head.created_at),
+      ownerId: head.owner_id,
+      courses: {
+        all: Number(numbers?.total ?? 0),
+        published: Number(numbers?.published ?? 0),
+        draft: Number(numbers?.draft ?? 0),
+        hidden: Number(numbers?.hidden ?? 0),
+      },
+      students: Number(numbers?.students ?? 0),
+      pendingApplications: Number(numbers?.pending ?? 0),
+      nazimCount: Number(numbers?.nazims ?? 0),
+      hostingMadrasahs: hosting.rows,
+    };
+  }
+
+  /**
+   * Every course of the köşk, hidden ones too, with what the Dersler table
+   * (nizam/23) draws. A few reads over the course ids so that a course with
+   * many müderrisler does not multiply rows.
+   */
+  async courseRoster(koskId: string): Promise<IKoskCourseRow[]> {
+    const rows = await this.db.execute<{
+      id: string;
+      title: string;
+      cover_hue: number;
+      status: "PUBLISHED" | "DRAFT";
+      archived_at: Date | string | null;
+      created_at: Date | string;
+      madrasah_id: string | null;
+      madrasah_name: string | null;
+      week_count: string;
+      students: string;
+      pending: string;
+      banned: string;
+    }>(sql`
+      select c.id, c.title, c.cover_hue, c.status, c.archived_at, c.created_at,
+             m.id as madrasah_id, m.name as madrasah_name,
+             (select count(*) from course_weeks w
+               where w.course_id = c.id and w.archived_at is null) as week_count,
+             (select count(*) from enrollments e
+               where e.course_id = c.id and e.status = 'ENROLLED') as students,
+             (select count(*) from enrollments e
+               where e.course_id = c.id and e.status = 'PENDING') as pending,
+             (select count(distinct b.user_id) from bans b
+               where b.kosk_id = c.kosk_id and b.lifted_at is null
+                 and (b.course_id = c.id or b.scope = 'KOSK')) as banned
+        from courses c
+        left join madrasahs m on m.id = c.madrasah_id
+       where c.kosk_id = ${koskId}
+       order by c.created_at desc, c.id`);
+    if (rows.rows.length === 0) return [];
+    const ids = rows.rows.map((r) => r.id);
+    const muderris = await this.db.execute<{
+      course_id: string;
+      name: string;
+      is_imam: boolean;
+    }>(sql`
+      select cm.course_id, cm.name,
+             exists (select 1 from role_assignments ra
+                      where ra.role = ${ASSIGNED_ROLES.MUDERRIS}
+                        and ra.is_imam and ra.revoked_at is null
+                        and ra.scope_id = cm.course_id
+                        and ra.user_id = cm.user_id) as is_imam
+        from course_muderris cm
+       where cm.course_id in (${sql.join(
+         ids.map((id) => sql`${id}`),
+         sql`, `
+       )})
+       order by cm.order_index, cm.id`);
+    return rows.rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      coverHue: r.cover_hue,
+      weekCount: Number(r.week_count),
+      madrasah: r.madrasah_id
+        ? { id: r.madrasah_id, name: r.madrasah_name ?? "" }
+        : null,
+      status: r.archived_at ? "HIDDEN" : r.status,
+      hiddenAt: r.archived_at ? new Date(r.archived_at) : null,
+      createdAt: new Date(r.created_at),
+      muderris: muderris.rows
+        .filter((m) => m.course_id === r.id)
+        .map((m) => ({ name: m.name, isImam: m.is_imam })),
+      studentCount: Number(r.students),
+      pendingCount: Number(r.pending),
+      bannedCount: Number(r.banned),
+    }));
+  }
+
+  /**
+   * "Köşkü pasife al": the köşk is passive and its held nazımları are taken
+   * off the post, in one transaction with the audit row naming them.
+   */
+  async deactivate(
+    koskId: string,
+    actorId: string
+  ): Promise<"deactivated" | "no-kosk" | "already-passive"> {
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select({ name: kosks.name, passiveSince: kosks.passiveSince })
+        .from(kosks)
+        .where(eq(kosks.id, koskId))
+        .for("no key update");
+      if (!row) return "no-kosk";
+      if (row.passiveSince !== null) return "already-passive";
+      const held = await tx
+        .select({ userId: roleAssignments.userId })
+        .from(roleAssignments)
+        .where(holdsIn(NAZIM, koskId));
+      for (const { userId } of held) {
+        await revokeRole(tx, {
+          userId,
+          role: NAZIM,
+          scopeId: koskId,
+          revokedBy: actorId,
+        });
+      }
+      await tx
+        .update(kosks)
+        .set({
+          passiveSince: new Date(),
+          passiveReason: "DEACTIVATED_BY_ADMIN",
+          updatedAt: new Date(),
+        })
+        .where(eq(kosks.id, koskId));
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "kosk.deactivate",
+        entity: "kosk",
+        entityId: koskId,
+        details: { name: row.name, removedNazimIds: held.map((h) => h.userId) },
+      });
+      return "deactivated";
     });
   }
 

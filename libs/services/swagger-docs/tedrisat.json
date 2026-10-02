@@ -138,6 +138,138 @@
         ]
       }
     },
+    "/kosks/{id}/overview": {
+      "get": {
+        "description": "nizam/20. Course counts by status, the talebe enrolled (hidden courses left out), waiting applications, the nazımları held now and the medreses with a hosting right. For the köşk's nazımları and the başnazım.",
+        "operationId": "getKoskOverview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskOverviewResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The Medaris yönetimi's page of one köşk (numbers and facts)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/course-roster": {
+      "get": {
+        "description": "nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show.",
+        "operationId": "getKoskCourseRoster",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskCourseRosterResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every course of the köşk for the Dersler table",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/deactivate": {
+      "post": {
+        "description": "nizam/20. The köşk becomes passive and its nazımları are taken off the post; nothing is hidden or deleted, and adding a nazım makes it active again. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log, naming the nazımları removed.",
+        "operationId": "deactivateKosk",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskDirectoryItemResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "KOSK_ALREADY_PASSIVE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a köşk out of service (Köşkü pasife al, SYSTEM_ADMIN only)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
     "/kosks/{id}/nazims": {
       "get": {
         "description": "nizam/25. The köşk's nazımları and the Medaris başnazımı read it; nobody changes the list from here.",
@@ -1736,6 +1868,49 @@
           }
         ],
         "summary": "List pending enrollment requests for a köşk (owner only)",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/stats": {
+      "get": {
+        "description": "nizam/53: talebe enrolled, applications waiting, completions and how many weeks have begun. For the course team: the köşk manager and the course's müderrisler.",
+        "operationId": "getCourseStats",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseStatsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The numbers of a course's overview (course team)",
         "tags": [
           "courses"
         ]
@@ -5876,6 +6051,235 @@
           "fields"
         ]
       },
+      "KoskCourseCountsResponse": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "number",
+            "description": "Every course, hidden ones too"
+          },
+          "published": {
+            "type": "number",
+            "description": "Published and not hidden"
+          },
+          "draft": {
+            "type": "number",
+            "description": "Drafts that are not hidden"
+          },
+          "hidden": {
+            "type": "number",
+            "description": "Hidden, whatever their status was"
+          }
+        },
+        "required": [
+          "all",
+          "published",
+          "draft",
+          "hidden"
+        ]
+      },
+      "KoskOverviewMadrasahResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "KoskOverviewResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskStatus"
+              }
+            ]
+          },
+          "since": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Since when it is hidden or passive; null while active"
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the köşk was opened"
+          },
+          "openedBy": {
+            "nullable": true,
+            "description": "Who opened it (the köşk's creator)",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskPersonResponse"
+              }
+            ]
+          },
+          "courses": {
+            "$ref": "#/components/schemas/KoskCourseCountsResponse"
+          },
+          "students": {
+            "type": "number",
+            "description": "Distinct talebe enrolled in the köşk's courses; hidden courses do not count"
+          },
+          "pendingApplications": {
+            "type": "number",
+            "description": "Applications waiting for a decision in courses that are not hidden"
+          },
+          "nazimCount": {
+            "type": "number",
+            "description": "Köşk nazımları held now"
+          },
+          "hostingMadrasahs": {
+            "description": "The medreses that hold a hosting right here, oldest first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskOverviewMadrasahResponse"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "openedAt",
+          "courses",
+          "students",
+          "pendingApplications",
+          "nazimCount",
+          "hostingMadrasahs"
+        ]
+      },
+      "KoskCourseStatus": {
+        "type": "string",
+        "enum": [
+          "PUBLISHED",
+          "DRAFT",
+          "HIDDEN"
+        ],
+        "description": "HIDDEN wins over PUBLISHED and DRAFT"
+      },
+      "KoskCourseMuderrisResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "isImam": {
+            "type": "boolean",
+            "description": "The course's imam"
+          }
+        },
+        "required": [
+          "name",
+          "isImam"
+        ]
+      },
+      "KoskCourseRowResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "coverHue": {
+            "type": "number",
+            "example": 220
+          },
+          "weekCount": {
+            "type": "number",
+            "description": "Weeks the programme still has"
+          },
+          "madrasah": {
+            "nullable": true,
+            "description": "The medrese that opened the course; null for the köşk's own",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskOverviewMadrasahResponse"
+              }
+            ]
+          },
+          "status": {
+            "description": "HIDDEN wins over PUBLISHED and DRAFT",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskCourseStatus"
+              }
+            ]
+          },
+          "hiddenAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "muderris": {
+            "description": "In the order the course lists them; the imam is flagged",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskCourseMuderrisResponse"
+            }
+          },
+          "studentCount": {
+            "type": "number",
+            "description": "Enrolled talebe (applications do not count)"
+          },
+          "pendingCount": {
+            "type": "number",
+            "description": "Applications waiting for a decision"
+          },
+          "bannedCount": {
+            "type": "number",
+            "description": "Talebe barred from this course or from the whole köşk, counted once each"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "coverHue",
+          "weekCount",
+          "status",
+          "createdAt",
+          "muderris",
+          "studentCount",
+          "pendingCount",
+          "bannedCount"
+        ]
+      },
+      "KoskCourseRosterResponse": {
+        "type": "object",
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/KoskCourseCountsResponse"
+          },
+          "items": {
+            "description": "Every course, newest first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskCourseRowResponse"
+            }
+          }
+        },
+        "required": [
+          "counts",
+          "items"
+        ]
+      },
       "KoskNazimGranterRole": {
         "type": "string",
         "enum": [
@@ -7873,6 +8277,38 @@
           "createdAt",
           "updatedAt",
           "courseTitle"
+        ]
+      },
+      "CourseStatsResponse": {
+        "type": "object",
+        "properties": {
+          "enrolledCount": {
+            "type": "number",
+            "description": "Talebe with an active seat (Kayıtlı talebe)"
+          },
+          "pendingCount": {
+            "type": "number",
+            "description": "Applications waiting for a decision"
+          },
+          "completedCount": {
+            "type": "number",
+            "description": "Talebe who completed the course"
+          },
+          "weekCount": {
+            "type": "number",
+            "description": "Weeks the programme has"
+          },
+          "startedWeekCount": {
+            "type": "number",
+            "description": "Weeks that have begun: one of their live lessons is dated now or earlier (Devam eden hafta)"
+          }
+        },
+        "required": [
+          "enrolledCount",
+          "pendingCount",
+          "completedCount",
+          "weekCount",
+          "startedWeekCount"
         ]
       },
       "BanScope": {

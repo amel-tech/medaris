@@ -19,8 +19,13 @@ import type {
   KoskPersonResponse,
   KoskStatusFilter,
 } from "./dto/kosk-admin.dto";
+import type {
+  KoskCourseRosterResponse,
+  KoskOverviewResponse,
+} from "./dto/kosk-overview.dto";
 import {
   KoskAlreadyHiddenError,
+  KoskAlreadyPassiveError,
   KoskNazimExistsError,
   KoskNazimUnknownAccountError,
   KoskNotHiddenError,
@@ -188,6 +193,46 @@ export class KoskAdminService {
     const outcome = await this.repo.restore(koskId, user.sub);
     if (outcome === "no-kosk") throw new KoskNotFoundError(koskId);
     if (outcome === "not-hidden") throw new KoskNotHiddenError(koskId);
+    return this.presentOne(koskId);
+  }
+
+  // ---- nizam/20 and 23: the köşk page, its courses, taking it out of service ----
+
+  /** `@Authz(EDIT)` on the route decided who may read. */
+  async overview(koskId: string): Promise<KoskOverviewResponse> {
+    const row = await this.repo.overview(koskId);
+    if (!row) throw new KoskNotFoundError(koskId);
+    const { ownerId, ...rest } = row;
+    const people = await this.resolvePeople([ownerId]);
+    return { ...rest, openedBy: this.person(ownerId, people) };
+  }
+
+  async courseRoster(koskId: string): Promise<KoskCourseRosterResponse> {
+    if (!(await this.repo.koskName(koskId))) {
+      throw new KoskNotFoundError(koskId);
+    }
+    const items = await this.repo.courseRoster(koskId);
+    return {
+      items,
+      counts: {
+        all: items.length,
+        published: items.filter((i) => i.status === "PUBLISHED").length,
+        draft: items.filter((i) => i.status === "DRAFT").length,
+        hidden: items.filter((i) => i.status === "HIDDEN").length,
+      },
+    };
+  }
+
+  async deactivate(
+    user: AuthenticatedUser,
+    koskId: string
+  ): Promise<KoskDirectoryItemResponse> {
+    this.requireChiefNazim(user, "take a köşk out of service");
+    const outcome = await this.repo.deactivate(koskId, user.sub);
+    if (outcome === "no-kosk") throw new KoskNotFoundError(koskId);
+    if (outcome === "already-passive") {
+      throw new KoskAlreadyPassiveError(koskId);
+    }
     return this.presentOne(koskId);
   }
 

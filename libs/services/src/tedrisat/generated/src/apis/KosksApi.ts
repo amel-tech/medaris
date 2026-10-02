@@ -20,12 +20,14 @@ import type {
   GrantHostingRightDto,
   HostingCoursesAction,
   HostingRightResponse,
+  KoskCourseRosterResponse,
   KoskDirectoryItemResponse,
   KoskDirectoryResponse,
   KoskLevel,
   KoskListingFilter,
   KoskManagedBy,
   KoskNazimResponse,
+  KoskOverviewResponse,
   KoskResponse,
   KoskStatusFilter,
   PaginatedKoskResponse,
@@ -42,6 +44,8 @@ import {
     HostingCoursesActionToJSON,
     HostingRightResponseFromJSON,
     HostingRightResponseToJSON,
+    KoskCourseRosterResponseFromJSON,
+    KoskCourseRosterResponseToJSON,
     KoskDirectoryItemResponseFromJSON,
     KoskDirectoryItemResponseToJSON,
     KoskDirectoryResponseFromJSON,
@@ -54,6 +58,8 @@ import {
     KoskManagedByToJSON,
     KoskNazimResponseFromJSON,
     KoskNazimResponseToJSON,
+    KoskOverviewResponseFromJSON,
+    KoskOverviewResponseToJSON,
     KoskResponseFromJSON,
     KoskResponseToJSON,
     KoskStatusFilterFromJSON,
@@ -78,6 +84,10 @@ export interface CreateKoskRequest {
     createKoskDto: CreateKoskDto;
 }
 
+export interface DeactivateKoskRequest {
+    id: string;
+}
+
 export interface DeleteKoskRequest {
     id: string;
 }
@@ -97,6 +107,10 @@ export interface GetKoskByIdRequest {
     id: string;
 }
 
+export interface GetKoskCourseRosterRequest {
+    id: string;
+}
+
 export interface GetKoskDirectoryRequest {
     status?: KoskStatusFilter;
     listing?: KoskListingFilter;
@@ -112,6 +126,10 @@ export interface GetKoskHostingRightsRequest {
 }
 
 export interface GetKoskNazimsRequest {
+    id: string;
+}
+
+export interface GetKoskOverviewRequest {
     id: string;
 }
 
@@ -300,6 +318,50 @@ export class KosksApi extends runtime.BaseAPI {
      */
     async createKosk(requestParameters: CreateKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
         const response = await this.createKoskRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/20. The köşk becomes passive and its nazımları are taken off the post; nothing is hidden or deleted, and adding a nazım makes it active again. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log, naming the nazımları removed.
+     * Take a köşk out of service (Köşkü pasife al, SYSTEM_ADMIN only)
+     */
+    async deactivateKoskRaw(requestParameters: DeactivateKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskDirectoryItemResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling deactivateKosk().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/deactivate`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskDirectoryItemResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/20. The köşk becomes passive and its nazımları are taken off the post; nothing is hidden or deleted, and adding a nazım makes it active again. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log, naming the nazımları removed.
+     * Take a köşk out of service (Köşkü pasife al, SYSTEM_ADMIN only)
+     */
+    async deactivateKosk(requestParameters: DeactivateKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskDirectoryItemResponse> {
+        const response = await this.deactivateKoskRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -494,6 +556,50 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
+     * nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show.
+     * Every course of the köşk for the Dersler table
+     */
+    async getKoskCourseRosterRaw(requestParameters: GetKoskCourseRosterRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskCourseRosterResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getKoskCourseRoster().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/course-roster`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskCourseRosterResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show.
+     * Every course of the köşk for the Dersler table
+     */
+    async getKoskCourseRoster(requestParameters: GetKoskCourseRosterRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskCourseRosterResponse> {
+        const response = await this.getKoskCourseRosterRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Hidden and passive köşks too, each with its nazımları and course count, the per-status counts the tabs show and the fields the Alan chips offer. The Medaris başnazımı (SYSTEM_ADMIN) sees every köşk; a köşk nazımı only their own; anyone else is refused.
      * Every köşk for the table of nizam/09
      */
@@ -642,6 +748,50 @@ export class KosksApi extends runtime.BaseAPI {
      */
     async getKoskNazims(requestParameters: GetKoskNazimsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<KoskNazimResponse>> {
         const response = await this.getKoskNazimsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/20. Course counts by status, the talebe enrolled (hidden courses left out), waiting applications, the nazımları held now and the medreses with a hosting right. For the köşk\'s nazımları and the başnazım.
+     * The Medaris yönetimi\'s page of one köşk (numbers and facts)
+     */
+    async getKoskOverviewRaw(requestParameters: GetKoskOverviewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskOverviewResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getKoskOverview().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/overview`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskOverviewResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/20. Course counts by status, the talebe enrolled (hidden courses left out), waiting applications, the nazımları held now and the medreses with a hosting right. For the köşk\'s nazımları and the başnazım.
+     * The Medaris yönetimi\'s page of one köşk (numbers and facts)
+     */
+    async getKoskOverview(requestParameters: GetKoskOverviewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskOverviewResponse> {
+        const response = await this.getKoskOverviewRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
