@@ -98,7 +98,7 @@ test.describe("an enrolled talebe", () => {
     ).toBeVisible();
     await expect(page.locator("iframe")).toHaveAttribute(
       "src",
-      /youtube-nocookie\.com\/embed\/9bZkp7q19f0/
+      /^https:\/\/(www\.)?youtube-nocookie\.com\/embed\/9bZkp7q19f0/
     );
     await main.getByRole("link", { name: /Ders kayıtlarına git/ }).click();
     await expect(page).toHaveURL(/tab=kayitlar/);
@@ -133,7 +133,7 @@ test.describe("an enrolled talebe", () => {
       .click();
     await expect(page.locator("iframe")).toHaveAttribute(
       "src",
-      /youtube-nocookie\.com\/embed\/dQw4w9WgXcQ/
+      /^https:\/\/(www\.)?youtube-nocookie\.com\/embed\/dQw4w9WgXcQ/
     );
   });
 });

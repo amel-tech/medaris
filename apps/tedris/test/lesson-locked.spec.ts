@@ -209,7 +209,7 @@ describe("tedris/19 renders (MDRS-162)", () => {
   it.each(["en", "ar"] as const)("is translated in %s", async (languageTag) => {
     const html = await render("apply", languageTag);
     expect(html).toContain(
-      resources[languageTag].tedris.LessonLocked.description.apply.replace(
+      resources[languageTag].tedris.LessonLocked.description.apply.replaceAll(
         "'",
         "&#x27;"
       )

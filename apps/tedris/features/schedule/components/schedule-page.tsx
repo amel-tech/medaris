@@ -18,7 +18,11 @@ import {
   type ScheduleWindow,
 } from "../schedule-model";
 
-type Translate = Awaited<ReturnType<typeof getTranslations>>;
+/** Loose on purpose: the full next-intl key union of the catalogue exceeds the instantiation depth (TS2589). */
+type Translate = (
+  key: string,
+  values?: Record<string, number | string>
+) => string;
 
 const hostOf = (url: string): string | undefined => {
   try {
