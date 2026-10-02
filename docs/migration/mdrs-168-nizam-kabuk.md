@@ -100,6 +100,16 @@ tedris lane (26, 29–36) is merged in.
 
 ## Verified and not verified
 
+Status of the counts below: they were taken before the CodeRabbit round-1
+fix commit (PR #144) and were not re-run after it, except where marked
+"re-run". Re-run on 2026-10-02 after that commit:
+`pnpm nx run-many -t typecheck,lint,test,module-boundaries -p nizam-web,i18n --skip-nx-cache`
+→ `Successfully ran targets typecheck, lint, test, module-boundaries for 2 projects`;
+`cd apps/nizam && pnpm exec vitest run` → `Test Files 14 passed (14)`,
+`Tests 143 passed (143)`; `node tools/ci/biome-ratchet.mjs` → `no severity
+count exceeded its baseline`. The full five-target gate, the tedrisat suites
+and the Playwright counts were not re-run after the fix commit.
+
 - The gate, in this worktree with `--skip-nx-cache`: typecheck (17 projects),
   test (11 projects, including tedrisat's Docker suites), build (8 projects),
   lint (17) and module-boundaries (17) all green on the first run, and

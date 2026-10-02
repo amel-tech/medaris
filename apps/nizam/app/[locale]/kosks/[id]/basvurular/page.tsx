@@ -34,7 +34,8 @@ export default async function Page({
 
   if (read === "not-found") notFound();
   if (read === "forbidden") forbidden();
-  if (!kosk && read !== null) notFound();
+  // A köşk read that failed (null) leaves the name empty; the applications,
+  // which tedrisat already authorised, are still shown.
 
   const t = await getTranslations("nizam.ApplicationsPage");
   const unnamed = t("unnamed");

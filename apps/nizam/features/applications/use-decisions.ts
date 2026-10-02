@@ -33,11 +33,25 @@ export function useDecisions(koskId: string) {
     async (row: ApplicationRow, kind: "approve" | "reject") => {
       const key = rowKey(row);
       setBusy(key);
-      const result =
-        kind === "approve"
-          ? await approveEnrollment(koskId, row.courseId, row.userId)
-          : await rejectEnrollment(koskId, row.courseId, row.userId);
-      setBusy(null);
+      let result:
+        | Awaited<ReturnType<typeof approveEnrollment>>
+        | Awaited<ReturnType<typeof rejectEnrollment>>;
+      try {
+        result =
+          kind === "approve"
+            ? await approveEnrollment(koskId, row.courseId, row.userId)
+            : await rejectEnrollment(koskId, row.courseId, row.userId);
+      } catch {
+        // the action itself failed (network, server crash): say so, keep the row
+        toaster.notify({
+          tone: "error",
+          title: t("actionFailed"),
+          description: t("errorUnknown"),
+        });
+        return;
+      } finally {
+        setBusy(null);
+      }
 
       if (!result.success) {
         const errorKey = decisionErrorKey(result.errorBody);
