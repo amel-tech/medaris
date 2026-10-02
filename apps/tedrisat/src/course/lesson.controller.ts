@@ -278,8 +278,9 @@ export class LessonController {
   @Delete("lessons/:id")
   @Authz(SCOPES.EDIT, byLessonCourse)
   async archive(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<LessonMutationResponse> {
-    return this.courseService.archiveLesson(id);
+    return this.courseService.archiveLesson(id, request.user.sub);
   }
 }

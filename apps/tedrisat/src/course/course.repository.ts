@@ -459,7 +459,7 @@ export class CourseRepository implements ICourseRepository {
       if (unclaimedLessonIds.size) {
         await tx
           .update(lessons)
-          .set({ archivedAt: now, updatedAt: now })
+          .set({ archivedAt: now, archivedBy: userId, updatedAt: now })
           .where(inArray(lessons.id, [...unclaimedLessonIds]));
       }
 
@@ -469,7 +469,7 @@ export class CourseRepository implements ICourseRepository {
       if (weeksToArchive.length) {
         await tx
           .update(courseWeeks)
-          .set({ archivedAt: now, updatedAt: now })
+          .set({ archivedAt: now, archivedBy: userId, updatedAt: now })
           .where(inArray(courseWeeks.id, weeksToArchive));
       }
     });
@@ -668,14 +668,17 @@ export class CourseRepository implements ICourseRepository {
     });
   }
 
-  async archiveLesson(lessonId: string): Promise<ILessonMutation> {
+  async archiveLesson(
+    lessonId: string,
+    actorId: string | null = null
+  ): Promise<ILessonMutation> {
     return this.db.transaction(async (tx) => {
       const courseId = await this.findLiveLessonCourseId(tx, lessonId);
       const courseVersion = await this.bumpVersion(tx, courseId, undefined);
       const now = new Date();
       const [row] = await tx
         .update(lessons)
-        .set({ archivedAt: now, updatedAt: now })
+        .set({ archivedAt: now, archivedBy: actorId, updatedAt: now })
         .where(and(eq(lessons.id, lessonId), isNull(lessons.archivedAt)))
         .returning();
       // Archived by a concurrent request between the read and the lock.
