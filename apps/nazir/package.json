@@ -8,26 +8,40 @@
     "build": "next build",
     "start": "next start --port 4002",
     "clean": "rm -rf .turbo .next node_modules dist",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:",
     "@medaris/env": "workspace:*",
+    "@medaris/i18n": "workspace:*",
+    "@medaris/services": "workspace:*",
+    "@medaris/tokens": "workspace:*",
     "@medaris/ui": "workspace:*",
+    "@medaris/utils": "workspace:*",
     "@opentelemetry/api": "catalog:",
     "@t3-oss/env-nextjs": "catalog:",
     "@vercel/otel": "catalog:",
     "next": "catalog:",
+    "next-auth": "catalog:",
+    "next-intl": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@playwright/test": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "happy-dom": "catalog:",
     "lightningcss": "catalog:",
+    "pg": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
