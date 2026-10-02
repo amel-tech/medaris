@@ -82,12 +82,13 @@ export async function seedCelseStates(): Promise<CelseStatesFixture> {
     title: string,
     visibility: "PUBLIC" | "ENROLLED",
     status: "READY" | "PROCESSING",
-    url: string | null
+    url: string | null,
+    daysAgo: number
   ) =>
     client.query(
       `insert into lesson_recordings(lesson_id, title, provider, url, duration_minutes, recorded_at, visibility, status)
-       values ($1, $2, 'YOUTUBE', $3, 58, now() - interval '3 days', $4, $5)`,
-      [lessonId, title, url, visibility, status]
+       values ($1, $2, 'YOUTUBE', $3, 58, now() - ($6 || ' days')::interval, $4, $5)`,
+      [lessonId, title, url, visibility, status, String(daysAgo)]
     );
 
   try {
@@ -139,21 +140,24 @@ export async function seedCelseStates(): Promise<CelseStatesFixture> {
       s.sample.recordingTitle,
       "PUBLIC",
       "READY",
-      "https://youtu.be/dQw4w9WgXcQ"
+      "https://youtu.be/dQw4w9WgXcQ",
+      19
     );
     await recording(
       s.ended.id,
       s.ended.recordingTitle,
       "ENROLLED",
       "READY",
-      "https://youtu.be/9bZkp7q19f0"
+      "https://youtu.be/9bZkp7q19f0",
+      5
     );
     await recording(
       s.processing.id,
       "Hafta sonu müzakeresi: celse kaydı",
       "ENROLLED",
       "PROCESSING",
-      null
+      null,
+      4
     );
     await client.query("commit");
   } catch (error) {

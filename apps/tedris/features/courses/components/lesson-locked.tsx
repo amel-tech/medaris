@@ -17,9 +17,11 @@ import { courseActionErrorKey } from "../action-error";
 import { enrollInCourse } from "../actions";
 import { courseTotals, courseViewState } from "../course-view";
 import type { LessonLockReason } from "../lesson-lock";
+import { embedUrlOf } from "../recordings-model";
 import { sessionStateOf } from "../session-model";
 import { CourseProgramme } from "./course-programme";
 import { EnrollmentReceivedDialog } from "./enrollment-received-dialog";
+import { MediaPlayer } from "./media-player";
 
 /**
  * Design tedris/19 — a session opened by someone who may not read it. It is
@@ -106,6 +108,25 @@ export function LessonLocked({
     course.muderris.map((m) => m.name)
   );
 
+  // tedris/17 criterion 3: the one recording a locked reader may see is the
+  // PUBLIC one of a sample (isPreview) session; the API leaves every other
+  // recording out of the body, so whatever arrives here is already allowed.
+  const recording = session.recording ?? null;
+  const showRecording =
+    session.status === "ENDED" && recording?.status === "READY";
+  const recordingEmbed = recording
+    ? embedUrlOf(recording.provider, recording.url)
+    : null;
+  const recordedOn = recording?.recordedAt
+    ? new Intl.DateTimeFormat(locale, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: course.timeZone,
+      }).format(recording.recordedAt)
+    : null;
+
   return (
     <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
       <div className="flex min-inline-0 flex-col gap-4">
@@ -122,6 +143,30 @@ export function LessonLocked({
 
       <div className="grid items-start gap-8 grid-cols-[minmax(0,1fr)_var(--layout-aside)] max-md:grid-cols-1">
         <div className="grid items-start gap-6 grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] max-md:grid-cols-1">
+          {showRecording && recording ? (
+            <div className="col-span-full">
+              <MediaPlayer
+                id="recording-title"
+                title={recording.title}
+                embedUrl={recordingEmbed}
+                placeholder={sessionText("recordingPlaceholder")}
+                openHref={recordingEmbed ? null : recording.url}
+                openLabel={sessionText("recordingOpen")}
+              >
+                {[
+                  sessionText("recordingKind"),
+                  recordedOn,
+                  recording.durationMinutes != null
+                    ? sessionText("minutes", {
+                        count: recording.durationMinutes,
+                      })
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </MediaPlayer>
+            </div>
+          ) : null}
           {session.startsAt ? (
             <SessionJoin
               startsAt={session.startsAt.toISOString()}

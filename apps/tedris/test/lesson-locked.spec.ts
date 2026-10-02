@@ -92,7 +92,11 @@ const session = {
   contentLocked: true,
 } as unknown as SessionResponse;
 
-const render = async (reason: LessonLockReason, languageTag = "tr") => {
+const render = async (
+  reason: LessonLockReason,
+  languageTag = "tr",
+  over: Record<string, unknown> = {}
+) => {
   locale.current = languageTag;
   const { LessonLocked } = await import(
     "~/features/courses/components/lesson-locked"
@@ -100,7 +104,7 @@ const render = async (reason: LessonLockReason, languageTag = "tr") => {
   return renderToStaticMarkup(
     createElement(LessonLocked, {
       course,
-      session,
+      session: { ...session, ...over } as SessionResponse,
       koskName: "Nûruosmaniye Köşkü",
       reason,
       signInHref: `/tr/auth/signin?callbackUrl=${encodeURIComponent(`/courses/${COURSE_ID}/lessons/${LESSON_ID}`)}`,
@@ -210,5 +214,31 @@ describe("tedris/19 renders (MDRS-162)", () => {
         "&#x27;"
       )
     );
+  });
+});
+
+describe("tedris/17 criterion 3: the public recording of a sample session", () => {
+  const ended = {
+    status: "ENDED",
+    recording: {
+      title: "Açık ders kaydı",
+      provider: "YOUTUBE",
+      url: "https://youtu.be/dQw4w9WgXcQ",
+      status: "READY",
+      durationMinutes: 58,
+      recordedAt: new Date("2026-09-26T17:00:00Z"),
+    },
+  };
+
+  it("plays for a locked caller when the API sent it", async () => {
+    const html = await render("apply", "tr", ended);
+    expect(html).toContain("<iframe");
+    expect(html).toContain("dQw4w9WgXcQ");
+    expect(html).toContain("Açık ders kaydı");
+  });
+
+  it("draws no player when the API left the recording out", async () => {
+    const html = await render("apply", "tr", { status: "ENDED" });
+    expect(html).not.toContain("<iframe");
   });
 });
