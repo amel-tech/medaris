@@ -44,7 +44,15 @@
     "icazetDescription": "Müfredatı tamamlayan talebelere müderris onaylı icâzet verilir.",
     "requestEnroll": "Request enrollment",
     "requestSent": "Your enrollment request was sent and is awaiting approval.",
-    "pendingApproval": "Awaiting approval"
+    "pendingApproval": "Awaiting approval",
+    "withdrawRequest": "Withdraw request",
+    "withdrawn": "Your request was withdrawn.",
+    "leaveCourse": "Leave course",
+    "leaveTitle": "Leave this course?",
+    "leaveDescription": "Your enrollment and progress are deleted. You can enroll again later.",
+    "leaveConfirm": "Leave",
+    "leaveCancel": "Cancel",
+    "left": "You left the course."
   },
   "CreateDeckButtonDialog": {
     "cancel": "Cancel",

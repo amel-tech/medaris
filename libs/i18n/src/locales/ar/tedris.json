@@ -44,7 +44,15 @@
     "icazetDescription": "Müfredatı tamamlayan talebelere müderris onaylı icâzet verilir.",
     "requestEnroll": "طلب التسجيل",
     "requestSent": "تم إرسال طلب تسجيلك وهو بانتظار الموافقة.",
-    "pendingApproval": "بانتظار الموافقة"
+    "pendingApproval": "بانتظار الموافقة",
+    "withdrawRequest": "سحب الطلب",
+    "withdrawn": "تم سحب طلبك.",
+    "leaveCourse": "مغادرة الدرس",
+    "leaveTitle": "هل تريد مغادرة هذا الدرس؟",
+    "leaveDescription": "يُحذف تسجيلك وتقدّمك. يمكنك التسجيل مجددًا لاحقًا.",
+    "leaveConfirm": "مغادرة",
+    "leaveCancel": "إلغاء",
+    "left": "لقد غادرت الدرس."
   },
   "CreateDeckButtonDialog": {
     "cancel": "يلغي",

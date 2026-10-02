@@ -49,6 +49,10 @@ import {
   PendingEnrollmentResponse,
 } from "./dto/course-response.dto";
 import { CreateCourseDto } from "./dto/create-course.dto";
+import {
+  RemoveEnrollmentDto,
+  SetEnrollmentStatusDto,
+} from "./dto/enrollment-actions.dto";
 import { ReplaceCourseDto } from "./dto/replace-course.dto";
 import { UpdateCourseDto } from "./dto/update-course.dto";
 import { UpdateProgressDto } from "./dto/update-progress.dto";
@@ -182,6 +186,8 @@ export class CourseController {
   })
   @ApiOkResponse({ type: CourseDetailResponse })
   @ApiNotFoundResponse()
+  // The köşk manager and the course's müderrisler (MDRS-105): `EDIT` is on
+  // both rows, and nothing in the service narrows it any more.
   @Authz(SCOPES.EDIT, byParam(ENTITIES.COURSE))
   @Patch("courses/:id")
   async update(
@@ -189,7 +195,7 @@ export class CourseController {
     @Param("id", ParseUUIDPipe) id: string,
     @Body() courseDto: UpdateCourseDto
   ): Promise<CourseDetailResponse> {
-    await this.courseService.update(id, request.user.sub, courseDto);
+    await this.courseService.update(id, request.user, courseDto);
     return this.courseService.viewDetail(id, request.user, { audit: false });
   }
 
@@ -199,11 +205,21 @@ export class CourseController {
     operationId: "replaceCourse",
   })
   @ApiOkResponse({ type: CourseDetailResponse })
-  @ApiNotFoundResponse()
+  @ApiNotFoundResponse({
+    description:
+      "No such course, or a müderris row links an account that has never signed in (MUDERRIS_UNKNOWN_USER).",
+  })
+  @ApiForbiddenResponse({
+    description:
+      "No `edit` on the course, or the save changes the müderris list without `assign_muderris` — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN).",
+  })
   @ApiConflictResponse({
     description:
       "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT).",
   })
+  // `EDIT` lets the köşk manager and the course's müderrisler save it
+  // (MDRS-105). The müderris list inside the payload is `ASSIGN_MUDERRIS`,
+  // the köşk manager's alone, and `CourseService.replace` checks that part.
   @Authz(SCOPES.EDIT, byParam(ENTITIES.COURSE))
   @Put("courses/:id")
   @UsePipes(new MedarisValidationPipe({ transform: true }))
@@ -317,7 +333,24 @@ export class CourseController {
   }
 
   @ApiOperation({
-    summary: "Approve a pending enrollment (köşk owner only)",
+    summary: "List a course's enrollments — requests, talebe and completions",
+    description:
+      "For the course team: the köşk manager and the course's müderrisler (MDRS-105). Requests first, then active seats, then completions.",
+    operationId: "getCourseEnrollments",
+  })
+  @ApiOkResponse({ type: EnrollmentResponse, isArray: true })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
+  @Get("courses/:id/enrollments")
+  async enrollments(
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<EnrollmentResponse[]> {
+    return this.courseService.findEnrollments(id);
+  }
+
+  @ApiOperation({
+    summary: "Approve a pending enrollment (course team)",
     operationId: "approveEnrollment",
   })
   // 201, not 200: this is a plain @Post with no @HttpCode, so Nest answers
@@ -329,41 +362,127 @@ export class CourseController {
   // follow-up in docs/migration/mdrs-58-tedrisat-spec-exporter.md.
   @ApiCreatedResponse({ type: EnrollmentResponse })
   @ApiNotFoundResponse()
+  @ApiConflictResponse({
+    description:
+      "The enrollment is completed; reopen it instead (ENROLLMENT_STATE_CONFLICT).",
+  })
+  // `MANAGE_ENROLLMENTS` is the köşk manager's and the müderris' (MDRS-105);
+  // the köşk-owner check the service used to add on top is gone.
   @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
   @Post("courses/:id/enrollments/:userId/approve")
   async approveEnrollment(
-    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("userId", ParseUUIDPipe) userId: string
   ): Promise<EnrollmentResponse> {
-    return this.courseService.approveEnrollment(id, request.user.sub, userId);
+    return this.courseService.approveEnrollment(id, userId);
   }
 
   @ApiOperation({
-    summary: "Reject a pending enrollment, deleting it (köşk owner only)",
+    summary: "Reject a pending enrollment, deleting it (course team)",
     operationId: "rejectEnrollment",
   })
   @ApiOkResponse({ type: Boolean })
   @ApiNotFoundResponse()
   // Same scope as approve: the matrix does not distinguish granting a seat
-  // from refusing one. `MANAGE_ENROLLMENTS` reaches MUDERRIS as well as
-  // KOSK_MANAGER, and `CourseService` still restricts both routes to the
-  // köşk's owner — the guard is the outer fence, not the whole rule.
+  // from refusing one.
   @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
   @Delete("courses/:id/enrollments/:userId")
   async rejectEnrollment(
-    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("userId", ParseUUIDPipe) userId: string
   ): Promise<boolean> {
-    return this.courseService.rejectEnrollment(id, request.user.sub, userId);
+    return this.courseService.rejectEnrollment(id, userId);
+  }
+
+  @ApiOperation({
+    summary: "Complete a talebe's enrollment, or reopen it (course team)",
+    description:
+      "Only the course team completes a course for a talebe (MDRS-105, decision of 1 October); `PUT /courses/:id/progress` no longer can.",
+    operationId: "setEnrollmentStatus",
+  })
+  @ApiOkResponse({ type: EnrollmentResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @ApiConflictResponse({
+    description:
+      "The enrollment is still a pending request; approve it first (ENROLLMENT_STATE_CONFLICT).",
+  })
+  @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
+  @Patch("courses/:id/enrollments/:userId")
+  async setEnrollmentStatus(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("userId", ParseUUIDPipe) userId: string,
+    @Body() dto: SetEnrollmentStatusDto
+  ): Promise<EnrollmentResponse> {
+    return this.courseService.setEnrollmentStatus(id, userId, dto.status);
+  }
+
+  @ApiOperation({
+    summary: "Take a talebe out of a course, with a reason (course team)",
+    description:
+      "Deletes the enrollment and keeps the reason in the audit log (MDRS-105). It is not a ban: the talebe may apply again. Only an active seat — reject a request, reopen a completion first.",
+    operationId: "removeEnrollment",
+  })
+  @ApiOkResponse({ type: Boolean })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @ApiConflictResponse({
+    description:
+      "The enrollment is a pending request or a completion (ENROLLMENT_STATE_CONFLICT).",
+  })
+  @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
+  @Post("courses/:id/enrollments/:userId/remove")
+  @HttpCode(HttpStatus.OK)
+  async removeEnrollment(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("userId", ParseUUIDPipe) userId: string,
+    @Body() dto: RemoveEnrollmentDto
+  ): Promise<boolean> {
+    return this.courseService.removeEnrollment(
+      id,
+      request.user.sub,
+      userId,
+      dto.reason
+    );
+  }
+
+  @ApiOperation({
+    summary:
+      "Leave a course, or withdraw a request still awaiting approval (the current talebe)",
+    description:
+      "Deletes the caller's own enrollment; they may apply again (MDRS-105). A completed course is not left (ENROLLMENT_STATE_CONFLICT).",
+    operationId: "leaveCourse",
+  })
+  @ApiOkResponse({ type: Boolean })
+  @ApiNotFoundResponse()
+  @ApiConflictResponse({
+    description: "The enrollment is completed (ENROLLMENT_STATE_CONFLICT).",
+  })
+  // The caller's own row, selected by `sub`. `VIEW` is on every COURSE row,
+  // PENDING and PUBLIC included, so this only says "the course exists and
+  // the caller may see it is there"; the service 404s a caller with no
+  // enrollment. `ENROLL` would not do: it is on PUBLIC only.
+  @Authz(SCOPES.VIEW, byParam(ENTITIES.COURSE))
+  @Delete("courses/:id/enrollment")
+  async leave(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<boolean> {
+    return this.courseService.leave(request.user.sub, id);
   }
 
   @ApiOperation({
     summary: "Update the current talebe's progress in a course",
+    description:
+      "Records progress only. Reaching 100 does not complete the course, and `status` is refused unless it is the current one (MDRS-105): the course team completes a course.",
     operationId: "updateCourseProgress",
   })
   @ApiOkResponse({ type: EnrollmentResponse })
+  @ApiForbiddenResponse({
+    description:
+      "`status` would change the enrollment's status (ENROLLMENT_STATUS_FORBIDDEN).",
+  })
   // The matrix has no "record progress" scope, and the real requirement is
   // that the caller hold an active enrollment. `VIEW_DETAILS` is exactly that
   // line — ENROLLED, MUDERRIS and KOSK_MANAGER carry it, PENDING and PUBLIC do

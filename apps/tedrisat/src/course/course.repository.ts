@@ -10,6 +10,7 @@ import {
   enrollments,
   lessons,
 } from "../database/schema/course.schema";
+import { users } from "../database/schema/user.schema";
 import {
   ICourse,
   ICourseDetail,
@@ -23,7 +24,9 @@ import {
   IEnrollment,
   IEnrollOptions,
   ILessonMutation,
+  IMuderris,
   IPendingEnrollment,
+  IRemoveEnrollment,
   IReplaceCourse,
   ISessionBatchResult,
   ISessionBatchWeek,
@@ -76,7 +79,7 @@ export class CourseRepository implements ICourseRepository {
           where: (w, { isNull }) => isNull(w.archivedAt),
           with: { lessons: { where: (l, { isNull }) => isNull(l.archivedAt) } },
         },
-        muderris: { orderBy: (m, { asc }) => [asc(m.orderIndex)] },
+        muderris: { orderBy: (m, { asc }) => [asc(m.orderIndex), asc(m.id)] },
         resources: true,
         enrollments: { where: (e, { eq }) => eq(e.userId, userId) },
       },
@@ -115,7 +118,7 @@ export class CourseRepository implements ICourseRepository {
             },
           },
         },
-        muderris: { orderBy: (m, { asc }) => [asc(m.orderIndex)] },
+        muderris: { orderBy: (m, { asc }) => [asc(m.orderIndex), asc(m.id)] },
         resources: { orderBy: (r, { asc }) => [asc(r.orderIndex)] },
         enrollments: { where: (e, { eq }) => eq(e.userId, userId) },
       },
@@ -145,7 +148,9 @@ export class CourseRepository implements ICourseRepository {
                 },
               },
             },
-            muderris: { orderBy: (m, { asc }) => [asc(m.orderIndex)] },
+            muderris: {
+              orderBy: (m, { asc }) => [asc(m.orderIndex), asc(m.id)],
+            },
           },
         },
       },
@@ -277,8 +282,15 @@ export class CourseRepository implements ICourseRepository {
         .select({ id: courseMuderris.id })
         .from(courseMuderris)
         .where(eq(courseMuderris.courseId, id));
+      // Ids are compared lowercased, the way `muderrisListChanged` compares
+      // them before the ASSIGN_MUDERRIS check. Postgres returns uuids in
+      // lowercase and `@IsUUID()` accepts uppercase, so an exact match here
+      // would delete and re-insert a row the check called unchanged — with
+      // every field the payload left out, `userId` included, reset.
       const muderrisKeep = new Set(
-        muderris.map((m) => m.id).filter((x): x is string => Boolean(x))
+        muderris
+          .map((m) => m.id?.toLowerCase())
+          .filter((x): x is string => Boolean(x))
       );
       const muderrisToDelete = existingMuderris
         .filter((e) => !muderrisKeep.has(e.id))
@@ -299,11 +311,12 @@ export class CourseRepository implements ICourseRepository {
           avatarHue: m.avatarHue,
           orderIndex: i,
         };
-        if (m.id && existingMuderrisIds.has(m.id)) {
+        const muderrisId = m.id?.toLowerCase();
+        if (muderrisId && existingMuderrisIds.has(muderrisId)) {
           await tx
             .update(courseMuderris)
             .set(values)
-            .where(eq(courseMuderris.id, m.id));
+            .where(eq(courseMuderris.id, muderrisId));
         } else {
           await tx.insert(courseMuderris).values(values);
         }
@@ -1032,6 +1045,83 @@ export class CourseRepository implements ICourseRepository {
       )
       .limit(1)
       .then((result) => result[0] || null);
+  }
+
+  /** The course's müderris rows in display order (MDRS-105). */
+  async findMuderris(courseId: string): Promise<IMuderris[]> {
+    return this.db
+      .select()
+      .from(courseMuderris)
+      .where(eq(courseMuderris.courseId, courseId))
+      .orderBy(courseMuderris.orderIndex, courseMuderris.id);
+  }
+
+  /**
+   * Which of `ids` have a `users` row, i.e. have signed in at least once
+   * (MDRS-104). Lowercased, like the ids Postgres returns for a `uuid`.
+   */
+  async findKnownUserIds(ids: readonly string[]): Promise<string[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db
+      .select({ id: users.id })
+      .from(users)
+      .where(inArray(users.id, [...ids]));
+    return rows.map((r) => r.id.toLowerCase());
+  }
+
+  /**
+   * Every enrollment in the course — requests, active seats and completions
+   * — for the course team's roster (MDRS-105). Requests first, then active
+   * seats, then completions, each by when they joined.
+   */
+  async findEnrollmentsByCourse(courseId: string): Promise<IEnrollment[]> {
+    return (
+      this.db
+        .select()
+        .from(enrollments)
+        .where(eq(enrollments.courseId, courseId))
+        // A Postgres enum sorts in declaration order: PENDING, ENROLLED,
+        // COMPLETED (migrations 0008 and 0010).
+        .orderBy(enrollments.status, enrollments.createdAt, enrollments.userId)
+    );
+  }
+
+  /**
+   * Takes a talebe out of a course with the team's reason (MDRS-105): the
+   * enrollment row goes and one `enrollment.remove` row lands in
+   * `audit_log`, in one transaction, so the reason cannot be lost while the
+   * seat is. Not a ban — nothing stops the talebe from applying again.
+   * Only an enrollment still in `expectedStatus` is removed; false when there
+   * was none (a concurrent leave, reject or completion got there first).
+   */
+  async removeEnrollment(entry: IRemoveEnrollment): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const [removed] = await tx
+        .delete(enrollments)
+        .where(
+          and(
+            eq(enrollments.userId, entry.userId),
+            eq(enrollments.courseId, entry.courseId),
+            eq(enrollments.status, entry.expectedStatus)
+          )
+        )
+        .returning();
+      if (!removed) return false;
+      await tx.insert(auditLog).values({
+        actorId: entry.actorId,
+        action: "enrollment.remove",
+        entity: "course",
+        entityId: entry.courseId,
+        details: {
+          userId: removed.userId,
+          reason: entry.reason,
+          status: removed.status,
+          progress: removed.progress,
+          enrolledAt: removed.createdAt.toISOString(),
+        },
+      });
+      return true;
+    });
   }
 
   async updateProgress(

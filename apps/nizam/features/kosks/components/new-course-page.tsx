@@ -49,6 +49,7 @@ import {
   createKoskCourse,
   updateKoskCourse,
 } from "~/features/kosks/actions/courses";
+import { courseTeamErrorKey } from "~/features/kosks/course-team";
 import {
   type AgendaStepDraft,
   emptyLiveLesson,
@@ -57,6 +58,7 @@ import {
   MEETING_URL_PROBLEM_KEY,
   toMinutes,
 } from "./live-lesson-editor";
+import { type MuderrisDraft, MuderrisPicker } from "./muderris-picker";
 import { WeeklySessionsPanel } from "./weekly-sessions-panel";
 
 type LessonDraft = {
@@ -77,7 +79,6 @@ type WeekDraft = {
   summary: string;
   lessons: LessonDraft[];
 };
-type MuderrisDraft = { id?: string; name: string; title: string };
 type ResourceDraft = { id?: string; name: string; meta: string };
 
 const newWeek = (): WeekDraft => ({ title: "", summary: "", lessons: [] });
@@ -114,9 +115,15 @@ const fromLiveDraft = (
 export const NewCoursePage = ({
   kosk,
   course,
+  canAssignMuderris = true,
 }: {
   kosk: KoskResponse;
   course?: CourseDetailResponse;
+  /**
+   * Whether the viewer may change who teaches the course — the köşk manager
+   * or SYSTEM_ADMIN (MDRS-105). A müderris edits everything else.
+   */
+  canAssignMuderris?: boolean;
 }) => {
   const t = useTranslations("nizam");
   const router = useRouter();
@@ -148,10 +155,11 @@ export const NewCoursePage = ({
     course?.muderris.length
       ? course.muderris.map((m) => ({
           id: m.id,
+          userId: m.userId ?? null,
           name: m.name,
           title: m.title ?? "",
         }))
-      : [{ name: "", title: "" }]
+      : []
   );
   const [resources, setResources] = useState<ResourceDraft[]>(
     course?.resources.map((r) => ({
@@ -331,6 +339,9 @@ export const NewCoursePage = ({
         .filter((m) => m.name.trim())
         .map((m) => ({
           id: m.id,
+          // The account the row links (MDRS-105). Left out for a name-only
+          // row, which the save then leaves unlinked.
+          userId: m.userId ?? undefined,
           name: m.name.trim(),
           title: m.title.trim() || undefined,
         })),
@@ -404,7 +415,8 @@ export const NewCoursePage = ({
           });
           return;
         }
-        toast.error(res.error);
+        const teamKey = courseTeamErrorKey(res.errorBody);
+        toast.error(teamKey ? t(teamKey) : res.error);
         return;
       }
       toast.success(
@@ -427,6 +439,15 @@ export const NewCoursePage = ({
           </p>
         </div>
         <div className="flex gap-2">
+          {course && (
+            // The course team's roster (MDRS-105).
+            <Link
+              href={`/kosks/${kosk.id}/courses/${course.id}/students`}
+              className="rounded-lg border bg-white px-3.5 py-2 text-sm font-medium"
+            >
+              {t("CourseTeam.studentsLink")}
+            </Link>
+          )}
           <Link
             href={`/kosks/${kosk.id}`}
             className="rounded-lg border bg-white px-3.5 py-2 text-sm font-medium"
@@ -534,36 +555,11 @@ export const NewCoursePage = ({
                   : undefined
               }
             >
-              <div className="flex flex-col gap-2">
-                {muderris.map((m, i) => (
-                  <div key={i} className="flex gap-2">
-                    <Input
-                      placeholder={t("NewCoursePage.muderrisNamePlaceholder")}
-                      value={m.name}
-                      onChange={(e) =>
-                        setMuderris(upd(muderris, i, { name: e.target.value }))
-                      }
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setMuderris(muderris.filter((_, idx) => idx !== i))
-                      }
-                      className="grid size-9 shrink-0 place-items-center rounded-lg border text-muted-foreground"
-                      aria-label={t("NewCoursePage.remove")}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ))}
-                <AddButton
-                  onClick={() =>
-                    setMuderris([...muderris, { name: "", title: "" }])
-                  }
-                >
-                  {t("NewCoursePage.addMuderris")}
-                </AddButton>
-              </div>
+              <MuderrisPicker
+                value={muderris}
+                onChange={setMuderris}
+                canAssign={canAssignMuderris}
+              />
             </Field>
 
             <Field label={t("NewCoursePage.resources")}>
