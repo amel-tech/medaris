@@ -191,7 +191,8 @@ export class BanController {
       await this.bans.listAll(request.user, {
         status,
         scope,
-        q: q?.slice(0, 100),
+        // A repeated query key arrives as an array; only a single value is read.
+        q: typeof q === "string" ? q.slice(0, 100) : undefined,
         limit: Math.min(Math.max(limit, 1), BAN_LIST_LIMIT_MAX),
         offset: Math.max(offset, 0),
       })
