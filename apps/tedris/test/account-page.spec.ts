@@ -52,7 +52,10 @@ const ROLES = [
 ];
 
 const messages = (locale: "tr" | "en" | "ar") =>
-  resources[locale].tedris.AccountPage as Record<string, any>;
+  resources[locale].tedris.AccountPage as Record<
+    "permissions" | "roles" | "permissionNotes" | "courseBadge",
+    Record<string, string>
+  >;
 
 const dig = (node: unknown, path: string) =>
   path

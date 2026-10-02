@@ -245,7 +245,7 @@ describe("Assignments (e2e)", () => {
       const res = await get("/me/assignments", MUDERRIS_ID).expect(200);
       const byScope = new Map(
         res.body.assignments.map((a: { scopeId: string }) => [a.scopeId, a])
-      ) as Map<string, any>;
+      ) as Map<string, unknown>;
 
       expect(res.body.assignments).toHaveLength(3);
       const published = byScope.get(publishedId);
@@ -305,7 +305,9 @@ describe("Assignments (e2e)", () => {
       const eff = await get("/me/effective-permissions", MUDERRIS_ID).expect(
         200
       );
-      const muderris = eff.body.groups.find((g: any) => g.role === "MUDERRIS");
+      const muderris = eff.body.groups.find(
+        (g: { role: string }) => g.role === "MUDERRIS"
+      );
       expect(muderris.scopes).toHaveLength(2);
     });
 
@@ -391,8 +393,10 @@ describe("Assignments (e2e)", () => {
       ]);
       const res = await get("/me/grants", TALEBE_ID).expect(200);
       expect(res.body.grants).toHaveLength(2);
-      const direct = res.body.grants.find((g: any) => g.permission);
-      const grouped = res.body.grants.find((g: any) => g.group);
+      const direct = res.body.grants.find(
+        (g: { permission?: string }) => g.permission
+      );
+      const grouped = res.body.grants.find((g: { group?: unknown }) => g.group);
       expect(direct).toMatchObject({
         permission: "session.manage",
         scopeName: "Bina ve İzhar Şerhi",
@@ -413,9 +417,13 @@ describe("Assignments (e2e)", () => {
       const res = await get("/me/effective-permissions", MUDERRIS_ID).expect(
         200
       );
-      const groups = res.body.groups as any[];
+      const groups = res.body.groups as {
+        role: string;
+        scopes: { name: string }[];
+        permissions: string[];
+      }[];
       const muderris = groups.find((g) => g.role === "MUDERRIS");
-      expect(muderris.scopes.map((s: any) => s.name).sort()).toEqual(
+      expect(muderris.scopes.map((s) => s.name).sort()).toEqual(
         ["Bina ve İzhar Şerhi", "Kâfiye'ye giriş"].sort()
       );
       expect(muderris.permissions).toContain("course.publish");
