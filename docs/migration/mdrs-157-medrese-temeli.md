@@ -83,6 +83,10 @@ Browser e2e (new, first in the repo)
   müderris, no meeting link, draft and unlisted-köşk courses left out), own
   enrollment state (PENDING for the owner, null for a stranger), 404 for an
   unknown and a malformed id, empty list for a medrese with no courses.
+  Re-run on 2026-10-02 after the stack-37 sync:
+  `cd apps/tedrisat && pnpm exec vitest run test/e2e/madrasah.e2e.spec.ts` →
+  `Test Files 1 passed (1)`, `Tests 21 passed (21)` (the suite's 21 cases
+  include the three added here).
 - `apps/tedris` Vitest: badge mapping, `Paz 21:00` formatting in two zones,
   the page markup for badges, no-badge, empty medrese, i18n key parity.
 - Playwright against a locally running tedrisat + tedris-web + Postgres: six
@@ -91,10 +95,18 @@ Browser e2e (new, first in the repo)
   user showing `Devam ediyor` on an ENROLLED course and `Onay bekliyor` on a
   PENDING one). The last case reads `E2E_TALEBE_EMAIL`, `E2E_TALEBE_PASSWORD`
   and `E2E_TALEBE_SUB` from the environment and is skipped when they are
-  unset. A screenshot was compared by eye with `ekran.png`.
+  unset. A screenshot was compared by eye with `ekran.png`. Command:
+  `pnpm nx run tedris-web:test:e2e` with the two servers running. The run's
+  output was not kept, so the six-pass count is not backed by a recorded
+  output here.
 - Base: the branch was merged with `release/stack-37-bildirim-temeli`
   (conflicts in the three `tedris.json` locale files and `tab-view`, both
   resolved by keeping both sides); the five gate targets were re-run green.
+  That gate output was not kept either, so treat it as not verified by this
+  note. After the stack-37 sync on 2026-10-02 the gate was re-run on the
+  stack-28 head, which contains this branch:
+  `pnpm nx run-many -t typecheck lint module-boundaries test -p tedrisat tedris-web common --skip-nx-cache`
+  → `Successfully ran targets typecheck, lint, module-boundaries, test for 3 projects and 9 tasks they depend on`.
 
 ## What was not verified
 

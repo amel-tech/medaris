@@ -131,7 +131,7 @@ describe("assignment view helpers", () => {
     ).toBe("http://nizam.test/kosks/k-1");
     expect(
       openUrl({ role: "MUDERRIS", scopeType: "course", scopeId: "c-1" }, urls)
-    ).toBe("http://nazir.test/courses/c-1");
+    ).toBe("http://nazir.test");
     expect(
       openUrl(
         { role: "MEDRESE_NAZIR", scopeType: "madrasah", scopeId: "m" },
@@ -262,7 +262,7 @@ describe("RolesSection", () => {
     expect(html).toContain("Gizli");
     expect(html).toContain("İmam");
     expect(html).toContain('href="http://nizam.test/kosks/k-1"');
-    expect(html).toContain('href="http://nazir.test/courses/c-1"');
+    expect(html).toContain('href="http://nazir.test"');
     expect(html).toContain('target="_blank"');
     expect(html).toContain("Nizam’da aç: köşk nazımı, Nûruosmaniye Köşkü");
     expect(html).toContain("Nazır’da aç: müderris, Emsile ve Bina");

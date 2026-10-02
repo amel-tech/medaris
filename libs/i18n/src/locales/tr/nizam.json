@@ -578,7 +578,7 @@
   },
   "NoAccess": {
     "title": "Bu bölüm için izniniz yok",
-    "body": "Bu bölümün izni hesabınıza verilmemiş. İzinleri Medaris başnazımı verir; gerekirse {name}’dan isteyin.",
+    "body": "Bu bölümün izni hesabınıza verilmemiş. İzinleri Medaris başnazımı verir; gerekirse şu kişiden isteyin: {name}.",
     "bodyGeneric": "Bu bölümün izni hesabınıza verilmemiş. İzinleri Medaris başnazımı verir; gerekirse ondan isteyin.",
     "account": "Giriş yaptığınız hesap:",
     "back": "Ana sayfaya dön"
