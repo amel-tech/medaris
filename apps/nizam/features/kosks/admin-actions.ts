@@ -33,6 +33,17 @@ export const hideKosk = async (
   return result;
 };
 
+/** "Köşkü pasife al" (nizam 20): the köşk is passive and its nazımları are off the post. */
+export const deactivateKosk = async (
+  id: string
+): Promise<AuthenticatedActionResult<KoskDirectoryItemResponse>> => {
+  const result = await authenticatedAction((api) =>
+    api.kosks.deactivateKosk({ id })
+  );
+  if (result.success) revalidatePath("/", "layout");
+  return result;
+};
+
 /** "Geri al" (nizam 09): a hidden köşk is listed again. */
 export const restoreKosk = async (
   id: string

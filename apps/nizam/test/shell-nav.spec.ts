@@ -179,6 +179,7 @@ describe("where the viewer is", () => {
     expect(isActive("/", "/")).toBe(true);
     expect(isActive("/", "/kosks")).toBe(false);
     expect(isActive("/kosks/a", "/kosks/a/courses/c/edit")).toBe(true);
+    expect(isActive("/kosks/a/dersler", "/kosks/a/dersler")).toBe(true);
     expect(isActive("/kosks", "/kosks-other")).toBe(false);
   });
 
@@ -192,12 +193,20 @@ describe("where the viewer is", () => {
     expect(activeEntryId(entries, "/unrelated")).toBeNull();
   });
 
+  it("draws Dersler selected on a course's own pages (nizam/53)", () => {
+    expect(studentsPathAlias("/kosks/a/courses/c")).toBe("/kosks/a/dersler");
+    expect(studentsPathAlias("/kosks/a/courses/c/edit")).toBe(
+      "/kosks/a/dersler"
+    );
+    expect(studentsPathAlias("/kosks/a/courses/new")).toBe("/kosks/a/dersler");
+  });
+
   it("draws Talebeler selected on a course's roster (nizam/57)", () => {
     expect(studentsPathAlias("/kosks/a/courses/c/students")).toBe(
       "/kosks/a/talebeler"
     );
-    expect(studentsPathAlias("/kosks/a/courses/c/edit")).toBe(
-      "/kosks/a/courses/c/edit"
+    expect(studentsPathAlias("/kosks/a/basvurular")).toBe(
+      "/kosks/a/basvurular"
     );
   });
 

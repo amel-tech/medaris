@@ -44,6 +44,10 @@ import {
   type KoskStatusFilter,
 } from "./dto/kosk-admin.dto";
 import { KOSK_LEVELS, type KoskLevel } from "./dto/kosk-field-rules";
+import {
+  KoskCourseRosterResponse,
+  KoskOverviewResponse,
+} from "./dto/kosk-overview.dto";
 import { byExistingKosk } from "./kosk.controller";
 import { KoskAdminService } from "./kosk-admin.service";
 
@@ -141,6 +145,61 @@ export class KoskAdminController {
       page: page < 1 ? 1 : page,
       limit: Math.min(Math.max(limit, 1), MAX_PAGE_SIZE),
     });
+  }
+
+  @ApiOperation({
+    summary: "The Medaris yönetimi's page of one köşk (numbers and facts)",
+    description:
+      "nizam/20. Course counts by status, the talebe enrolled (hidden courses left out), waiting applications, the nazımları held now and the medreses with a hosting right. For the köşk's nazımları and the başnazım.",
+    operationId: "getKoskOverview",
+  })
+  @ApiOkResponse({ type: KoskOverviewResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Get(":id/overview")
+  @Authz(SCOPES.EDIT, byExistingKosk)
+  overview(
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<KoskOverviewResponse> {
+    return this.admin.overview(id);
+  }
+
+  @ApiOperation({
+    summary: "Every course of the köşk for the Dersler table",
+    description:
+      "nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show.",
+    operationId: "getKoskCourseRoster",
+  })
+  @ApiOkResponse({ type: KoskCourseRosterResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Get(":id/course-roster")
+  @Authz(SCOPES.EDIT, byExistingKosk)
+  courseRoster(
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<KoskCourseRosterResponse> {
+    return this.admin.courseRoster(id);
+  }
+
+  @ApiOperation({
+    summary: "Take a köşk out of service (Köşkü pasife al, SYSTEM_ADMIN only)",
+    description:
+      "nizam/20. The köşk becomes passive and its nazımları are taken off the post; nothing is hidden or deleted, and adding a nazım makes it active again. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log, naming the nazımları removed.",
+    operationId: "deactivateKosk",
+  })
+  @ApiOkResponse({ type: KoskDirectoryItemResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @ApiConflictResponse({ description: "KOSK_ALREADY_PASSIVE" })
+  // Exempt: SYSTEM_ADMIN's, checked by the service, like adding nazımları.
+  @AuthzExempt()
+  @Post(":id/deactivate")
+  @HttpCode(HttpStatus.OK)
+  deactivate(
+    @Req() request: AuthenticatedUserRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<KoskDirectoryItemResponse> {
+    return this.admin.deactivate(request.user, id);
   }
 
   @ApiOperation({
