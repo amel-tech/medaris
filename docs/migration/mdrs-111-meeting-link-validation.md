@@ -40,6 +40,12 @@
 
 - `pnpm nx affected -t typecheck test build lint module-boundaries
   --base=70d9aea --skip-nx-cache`: green for all 7 affected projects.
+  `70d9aea` is the MDRS-110 commit before the stack was rebuilt and is no
+  longer on this branch; its counterpart is `6df5d549`. Re-measured on
+  2026-10-02 against the MDRS-111 commit:
+  `pnpm nx show projects --affected --base=6df5d549 --head=3208038f` →
+  `["nizam-web","tedrisat","i18n","landing-web","tedris-web","services","utils"]`
+  (7 projects). The gate itself was not re-run at that point.
 - `course.e2e.spec.ts`: the three new cases (`http://` and `ftp://` on
   course create, `http://` on lesson PATCH) pass; the existing
   `https://meet.google.com/…` and `https://zoom.us/…` round-trip still passes.
