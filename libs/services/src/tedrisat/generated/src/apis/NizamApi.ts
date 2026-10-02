@@ -16,12 +16,15 @@
 import * as runtime from '../runtime';
 import type {
   AppointMedarisNazimDto,
+  AssignInactiveScopeDto,
   ChiefNazimResponse,
   CreatePermissionGroupDto,
   DeletePermissionGroupDto,
   DismissMedarisNazimDto,
   GivenItemResponse,
   GroupUserResponse,
+  InactiveScopeResponse,
+  InactiveScopeType,
   MedarisNazimResponse,
   PermissionCatalogResponse,
   PermissionGroupResponse,
@@ -31,6 +34,8 @@ import type {
 import {
     AppointMedarisNazimDtoFromJSON,
     AppointMedarisNazimDtoToJSON,
+    AssignInactiveScopeDtoFromJSON,
+    AssignInactiveScopeDtoToJSON,
     ChiefNazimResponseFromJSON,
     ChiefNazimResponseToJSON,
     CreatePermissionGroupDtoFromJSON,
@@ -43,6 +48,10 @@ import {
     GivenItemResponseToJSON,
     GroupUserResponseFromJSON,
     GroupUserResponseToJSON,
+    InactiveScopeResponseFromJSON,
+    InactiveScopeResponseToJSON,
+    InactiveScopeTypeFromJSON,
+    InactiveScopeTypeToJSON,
     MedarisNazimResponseFromJSON,
     MedarisNazimResponseToJSON,
     PermissionCatalogResponseFromJSON,
@@ -59,6 +68,12 @@ export interface AppointMedarisNazimRequest {
     appointMedarisNazimDto: AppointMedarisNazimDto;
 }
 
+export interface AssignInactiveScopeRequest {
+    type: string;
+    id: string;
+    assignInactiveScopeDto: AssignInactiveScopeDto;
+}
+
 export interface CreatePermissionGroupRequest {
     createPermissionGroupDto: CreatePermissionGroupDto;
 }
@@ -71,6 +86,10 @@ export interface DeletePermissionGroupRequest {
 export interface DismissMedarisNazimRequest {
     userId: string;
     dismissMedarisNazimDto: DismissMedarisNazimDto;
+}
+
+export interface GetInactiveScopesRequest {
+    type?: InactiveScopeType;
 }
 
 export interface GetMedarisNazimGivenRequest {
@@ -89,6 +108,11 @@ export interface SetMedarisNazimGrantsRequest {
 export interface UpdatePermissionGroupRequest {
     id: string;
     updatePermissionGroupDto: UpdatePermissionGroupDto;
+}
+
+export interface ViewInactiveScopeRequest {
+    type: string;
+    id: string;
 }
 
 /**
@@ -140,6 +164,67 @@ export class NizamApi extends runtime.BaseAPI {
     async appointMedarisNazim(requestParameters: AppointMedarisNazimRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MedarisNazimResponse> {
         const response = await this.appointMedarisNazimRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * nizam/14 \'Başmüderris ata\' / \'Köşk nazımı ata\' / \'Müderris ata\'. The scope is active again. 404 (INACTIVE_SCOPE_NOT_FOUND) when it has a manager already, is hidden or does not exist. Written to the audit log.
+     * Give a passive scope its manager
+     */
+    async assignInactiveScopeRaw(requestParameters: AssignInactiveScopeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['type'] == null) {
+            throw new runtime.RequiredError(
+                'type',
+                'Required parameter "type" was null or undefined when calling assignInactiveScope().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling assignInactiveScope().'
+            );
+        }
+
+        if (requestParameters['assignInactiveScopeDto'] == null) {
+            throw new runtime.RequiredError(
+                'assignInactiveScopeDto',
+                'Required parameter "assignInactiveScopeDto" was null or undefined when calling assignInactiveScope().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/inactive-scopes/{type}/{id}/assign`;
+        urlPath = urlPath.replace(`{${"type"}}`, encodeURIComponent(String(requestParameters['type'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: AssignInactiveScopeDtoToJSON(requestParameters['assignInactiveScopeDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * nizam/14 \'Başmüderris ata\' / \'Köşk nazımı ata\' / \'Müderris ata\'. The scope is active again. 404 (INACTIVE_SCOPE_NOT_FOUND) when it has a manager already, is hidden or does not exist. Written to the audit log.
+     * Give a passive scope its manager
+     */
+    async assignInactiveScope(requestParameters: AssignInactiveScopeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.assignInactiveScopeRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -327,6 +412,46 @@ export class NizamApi extends runtime.BaseAPI {
      */
     async getChiefNazim(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ChiefNazimResponse> {
         const response = await this.getChiefNazimRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/14. Only scopes that once had a manager and have none now, oldest first; hidden ones are left out. `reason` says whether the last term ran out or somebody took it away.
+     * Köşks, medreses and courses with no manager
+     */
+    async getInactiveScopesRaw(requestParameters: GetInactiveScopesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<InactiveScopeResponse>>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['type'] != null) {
+            queryParameters['type'] = requestParameters['type'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/inactive-scopes`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(InactiveScopeResponseFromJSON));
+    }
+
+    /**
+     * nizam/14. Only scopes that once had a manager and have none now, oldest first; hidden ones are left out. `reason` says whether the last term ran out or somebody took it away.
+     * Köşks, medreses and courses with no manager
+     */
+    async getInactiveScopes(requestParameters: GetInactiveScopesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<InactiveScopeResponse>> {
+        const response = await this.getInactiveScopesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -630,6 +755,57 @@ export class NizamApi extends runtime.BaseAPI {
     async updatePermissionGroup(requestParameters: UpdatePermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PermissionGroupResponse> {
         const response = await this.updatePermissionGroupRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * nizam/14 \'İçeriği gör\'. Writes one audit row (`inactive_scope.view`) per call; the content itself is the web app\'s page.
+     * Record that a passive scope\'s content was opened
+     */
+    async viewInactiveScopeRaw(requestParameters: ViewInactiveScopeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['type'] == null) {
+            throw new runtime.RequiredError(
+                'type',
+                'Required parameter "type" was null or undefined when calling viewInactiveScope().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling viewInactiveScope().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/inactive-scopes/{type}/{id}/view`;
+        urlPath = urlPath.replace(`{${"type"}}`, encodeURIComponent(String(requestParameters['type'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * nizam/14 \'İçeriği gör\'. Writes one audit row (`inactive_scope.view`) per call; the content itself is the web app\'s page.
+     * Record that a passive scope\'s content was opened
+     */
+    async viewInactiveScope(requestParameters: ViewInactiveScopeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.viewInactiveScopeRaw(requestParameters, initOverrides);
     }
 
 }
