@@ -113,6 +113,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": ""
           }
         },
         "security": [
