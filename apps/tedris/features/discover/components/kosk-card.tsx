@@ -2,11 +2,13 @@ import type { KoskResponse } from "@medaris/services/tedrisat";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Card } from "@medaris/ui/mds/card";
-import type { getTranslations } from "next-intl/server";
 import { koskLevelLabel } from "~/features/courses/components/labels";
+import type { LooseTranslator } from "~/lib/i18n/loose";
 import { FollowButton } from "./follow-button";
 
-type Translate = Awaited<ReturnType<typeof getTranslations>>;
+// Typed by what the card calls, not by the whole catalogue: whether this file's
+// `t(...)` hit TS2589 depended on what else the program checked first (MDRS-166).
+type Translate = LooseTranslator;
 
 /**
  * A köşk on Keşfet (MDRS-159, design tedris/02): its mark, name and ilim
