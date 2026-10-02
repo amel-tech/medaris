@@ -79,13 +79,18 @@ not re-run in a browser.
 ## What was not verified
 
 - `GET /users/lookup` and a named başnazım against a real Keycloak: the
-  `tedrisat-admin` service-account client does not exist in the shared dev
-  realm and its secret is a human task. Covered with a faked fetch in unit and
-  e2e tests. Locally the route answers 503 and chief-nazim answers null.
-  **To do by a person:** create a confidential client (e.g. `tedrisat-admin`)
-  with "Service accounts roles" on, give its service account the
-  `realm-management` roles `view-users` and `query-users`, set the two env
-  keys. The `config/keycloak/` provisioning package was not extended: its
+  `tedrisat-admin` service-account client did not exist in the shared dev
+  realm when this package was written. Covered with a faked fetch in unit and
+  e2e tests. Unconfigured, the route answers 503 and chief-nazim answers null.
+  **Done on 2026-10-02:** a confidential `tedrisat-admin` client (service
+  accounts only) now exists in `amel-tech-dev`, its secret kept outside the
+  repository. Its service account holds the `realm-management` roles
+  `view-users`, `query-users` and `view-realm`. Measured with the client's own
+  token: `GET /users?email=…&exact=true` answered 200 with the first two, but
+  `GET /roles/SYSTEM_ADMIN/users` answered 403 until `view-realm` was added,
+  then 200. With the two env keys set, nizam/06 named the başnazım from
+  Keycloak in a real sign-in (PR #138). Other environments need the same
+  client and keys. The `config/keycloak/` provisioning package was not extended: its
   validator refuses a client with only a service-account flow, and changing it
   is outside this package.
 - SYSTEM_ADMIN-only behaviour (lookup as SYSTEM_ADMIN, the named başnazım on
