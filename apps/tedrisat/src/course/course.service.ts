@@ -55,6 +55,7 @@ import {
   IPlannedSession,
   IsoWeekday,
   IWeeklyPattern,
+  placeInWeeks,
   WeeklyPatternInvalid,
 } from "./domain/weekly-pattern";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
@@ -601,7 +602,17 @@ export class CourseService {
     courseId: string,
     pattern: SessionPatternInput
   ): Promise<{ timeZone: string; sessions: IPlannedSession[] }> {
-    return this.planSessions(courseId, pattern);
+    const courseZone = await this.courseRepo.findTimeZone(courseId);
+    if (courseZone === null) throw new CourseNotFoundError(courseId);
+    const { timeZone, sessions } = this.expand(pattern, courseZone);
+    const numbers = placeInWeeks(
+      sessions,
+      await this.courseRepo.datedWeeks(courseId, courseZone)
+    );
+    return {
+      timeZone,
+      sessions: sessions.map((s, i) => ({ ...s, weekNumber: numbers[i] })),
+    };
   }
 
   /** Expands the pattern and inserts every session in one transaction. */
@@ -622,15 +633,6 @@ export class CourseService {
       },
     });
     return { ...result, timeZone };
-  }
-
-  private async planSessions(
-    courseId: string,
-    pattern: SessionPatternInput
-  ): Promise<{ timeZone: string; sessions: IPlannedSession[] }> {
-    const courseZone = await this.courseRepo.findTimeZone(courseId);
-    if (courseZone === null) throw new CourseNotFoundError(courseId);
-    return this.expand(pattern, courseZone);
   }
 
   /** The pattern in its own zone, or the course's when it names none. */

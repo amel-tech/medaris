@@ -61,7 +61,11 @@ import { IPurgeCounts, purgeCourses, recordDeletion, Tx } from "./course-purge";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import { LessonType } from "./domain/lesson-type.enum";
-import { localDateOf, placeInWeeks } from "./domain/weekly-pattern";
+import {
+  type IDatedWeek,
+  localDateOf,
+  placeInWeeks,
+} from "./domain/weekly-pattern";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { CourseVersionConflictError } from "./errors/course-version-conflict.error";
 import { LessonAlreadyCancelledError } from "./errors/lesson-already-cancelled.error";
@@ -962,6 +966,41 @@ export class CourseRepository implements ICourseRepository {
   }
 
   /**
+   * The weeks that already hold dated sessions, each with its earliest
+   * session's date in the course's zone (nizam/55). Shared by the preview and
+   * the write so both number a session the same way.
+   */
+  async datedWeeks(
+    courseId: string,
+    timeZone: string,
+    executor?: Pick<DatabaseService["db"], "select">
+  ): Promise<IDatedWeek[]> {
+    const dated = await (executor ?? this.db)
+      .select({
+        weekNumber: courseWeeks.weekNumber,
+        scheduledAt: lessons.scheduledAt,
+      })
+      .from(lessons)
+      .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
+      .where(
+        and(
+          eq(courseWeeks.courseId, courseId),
+          isNull(courseWeeks.archivedAt),
+          isNull(lessons.archivedAt),
+          isNull(lessons.cancelledAt),
+          isNotNull(lessons.scheduledAt)
+        )
+      );
+    const firstDay = new Map<number, string>();
+    for (const row of dated) {
+      const day = localDateOf(row.scheduledAt as Date, timeZone);
+      const held = firstDay.get(row.weekNumber);
+      if (held === undefined || day < held) firstDay.set(row.weekNumber, day);
+    }
+    return [...firstDay].map(([weekNumber, from]) => ({ weekNumber, from }));
+  }
+
+  /**
    * A weekly pattern's sessions (MDRS-109), through the same session-level
    * path as `createLesson`: one transaction that bumps the course version
    * first, so a whole-course PUT loaded before it is refused rather than
@@ -998,31 +1037,9 @@ export class CourseRepository implements ICourseRepository {
       // A session goes into the week its date falls in (nizam/55), counted
       // from the weeks that already hold dated sessions; the pattern's own
       // numbering applies only when the course has none.
-      const dated = await tx
-        .select({
-          weekNumber: courseWeeks.weekNumber,
-          scheduledAt: lessons.scheduledAt,
-        })
-        .from(lessons)
-        .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
-        .where(
-          and(
-            eq(courseWeeks.courseId, courseId),
-            isNull(courseWeeks.archivedAt),
-            isNull(lessons.archivedAt),
-            isNull(lessons.cancelledAt),
-            isNotNull(lessons.scheduledAt)
-          )
-        );
-      const firstDay = new Map<number, string>();
-      for (const row of dated) {
-        const day = localDateOf(row.scheduledAt as Date, course.timeZone);
-        const held = firstDay.get(row.weekNumber);
-        if (held === undefined || day < held) firstDay.set(row.weekNumber, day);
-      }
       const numbers = placeInWeeks(
         drafted,
-        [...firstDay].map(([weekNumber, from]) => ({ weekNumber, from }))
+        await this.datedWeeks(courseId, course.timeZone, tx)
       );
       const planned = drafted.map((s, i) => ({
         ...s,
