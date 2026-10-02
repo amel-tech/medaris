@@ -59,11 +59,12 @@ a number the Linux lane takes.
 
 ## Size
 
-81 files change against the base: 21 are the regenerated client and the OpenAPI
-document, 60 are written by hand (tedrisat 21 source files and 5 specs, nizam-web
-24 files and 3 specs, 3 message files, 6 e2e files, this note). That is at the limit of 60, not over it, and
-the three screens depend on each other (the hand-over window reuses the picker
-and the gate of the other two), so no screen was moved to another package.
+82 files change against the base: 21 are the regenerated client and the OpenAPI
+document, 61 are written by hand (tedrisat 21 source files and 5 specs, nizam-web
+24 files and 3 specs, 3 message files, 7 e2e files, this note). That is one over
+the 60 the plan allows. The three screens depend on each other (the hand-over
+window, Pasif kapsamlar and İzinler share the e-mail picker, the gate and the
+audit trail), so no screen was moved to another package.
 
 ## Decisions
 
