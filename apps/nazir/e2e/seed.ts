@@ -15,6 +15,8 @@ import pg from "pg";
  */
 export interface NazirFixture {
   madrasah: { id: string; name: string };
+  /** the köşk both courses are in */
+  koskId: string;
   first: { id: string; title: string; koskName: string };
   second: { id: string; title: string };
   /** the numbers the menu badges should show */
@@ -129,6 +131,7 @@ export async function seedPortal(roles: NazirRoles): Promise<NazirFixture> {
 
   return {
     madrasah,
+    koskId,
     first,
     second,
     expected: {
