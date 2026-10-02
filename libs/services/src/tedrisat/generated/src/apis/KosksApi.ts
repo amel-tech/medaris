@@ -19,6 +19,7 @@ import type {
   GrantHostingRightDto,
   HostingCoursesAction,
   HostingRightResponse,
+  KoskDecksResponse,
   KoskManagedBy,
   KoskResponse,
   PaginatedKoskResponse,
@@ -33,6 +34,8 @@ import {
     HostingCoursesActionToJSON,
     HostingRightResponseFromJSON,
     HostingRightResponseToJSON,
+    KoskDecksResponseFromJSON,
+    KoskDecksResponseToJSON,
     KoskManagedByFromJSON,
     KoskManagedByToJSON,
     KoskResponseFromJSON,
@@ -65,9 +68,16 @@ export interface GetAllKosksRequest {
     limit?: number;
     managedBy?: KoskManagedBy;
     madrasahId?: string;
+    level?: GetAllKosksLevelEnum;
+    field?: string;
+    q?: string;
 }
 
 export interface GetKoskByIdRequest {
+    id: string;
+}
+
+export interface GetKoskDecksRequest {
     id: string;
 }
 
@@ -318,6 +328,18 @@ export class KosksApi extends runtime.BaseAPI {
             queryParameters['madrasahId'] = requestParameters['madrasahId'];
         }
 
+        if (requestParameters['level'] != null) {
+            queryParameters['level'] = requestParameters['level'];
+        }
+
+        if (requestParameters['field'] != null) {
+            queryParameters['field'] = requestParameters['field'];
+        }
+
+        if (requestParameters['q'] != null) {
+            queryParameters['q'] = requestParameters['q'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
         if (this.configuration && this.configuration.accessToken) {
@@ -388,6 +410,86 @@ export class KosksApi extends runtime.BaseAPI {
      */
     async getKoskById(requestParameters: GetKoskByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
         const response = await this.getKoskByIdRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk\'s existence is never denied to them here, `GET /kosks/:id` answers that.
+     * Get the köşk\'s decks (MDRS-159)
+     */
+    async getKoskDecksRaw(requestParameters: GetKoskDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskDecksResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getKoskDecks().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/decks`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskDecksResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk\'s existence is never denied to them here, `GET /kosks/:id` answers that.
+     * Get the köşk\'s decks (MDRS-159)
+     */
+    async getKoskDecks(requestParameters: GetKoskDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskDecksResponse> {
+        const response = await this.getKoskDecksRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Open to callers with no token. The distinct `field` values of the köşks the public list holds, alphabetical: the chips of Keşfet (MDRS-159).
+     * List the ilim alanı of the listed köşks
+     */
+    async getKoskFieldsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<string>>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/fields`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse<any>(response);
+    }
+
+    /**
+     * Open to callers with no token. The distinct `field` values of the köşks the public list holds, alphabetical: the chips of Keşfet (MDRS-159).
+     * List the ilim alanı of the listed köşks
+     */
+    async getKoskFields(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<string>> {
+        const response = await this.getKoskFieldsRaw(initOverrides);
         return await response.value();
     }
 
@@ -702,3 +804,14 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
 }
+
+/**
+ * @export
+ */
+export const GetAllKosksLevelEnum = {
+    All: 'ALL',
+    Beginner: 'BEGINNER',
+    Intermediate: 'INTERMEDIATE',
+    Advanced: 'ADVANCED'
+} as const;
+export type GetAllKosksLevelEnum = typeof GetAllKosksLevelEnum[keyof typeof GetAllKosksLevelEnum];

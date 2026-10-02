@@ -1,7 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { and, eq, inArray, isNotNull, isNull, max, ne, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
-import { holdsIn, syncMuderrisAssignments } from "../database/role-assignments";
+import {
+  holdsIn,
+  isHeld,
+  syncMuderrisAssignments,
+} from "../database/role-assignments";
 import { auditLog } from "../database/schema/audit.schema";
 import {
   courseMuderris,
@@ -12,6 +16,7 @@ import {
   lessons,
 } from "../database/schema/course.schema";
 import { kosks } from "../database/schema/kosk.schema";
+import { madrasahs } from "../database/schema/madrasah.schema";
 import {
   ASSIGNED_ROLES,
   roleAssignments,
@@ -67,12 +72,83 @@ const enrollmentOf = (
   userId: string | null
 ) => (userId === null ? sql`false` : eq(column, userId));
 
+/**
+ * The earliest session still ahead that stands (a cancelled one does not
+ * count), with the number of the week it falls in (MDRS-159).
+ */
+export function nextSessionOf(
+  weeks: {
+    weekNumber: number;
+    lessons: { scheduledAt: Date | null; cancelledAt: Date | null }[];
+  }[],
+  now: Date
+): { at: Date; weekNumber: number } | null {
+  let next: { at: Date; weekNumber: number } | null = null;
+  for (const week of weeks) {
+    for (const lesson of week.lessons) {
+      const at = lesson.scheduledAt;
+      if (at === null || lesson.cancelledAt !== null || at <= now) continue;
+      if (next === null || at < next.at) {
+        next = { at, weekNumber: week.weekNumber };
+      }
+    }
+  }
+  return next;
+}
+
 @Injectable()
 export class CourseRepository implements ICourseRepository {
   constructor(private readonly databaseService: DatabaseService) {}
 
   private get db() {
     return this.databaseService.db;
+  }
+
+  /**
+   * The medrese each course is opened by, by id, and the courses' imams as
+   * `courseId:userId` keys (MDRS-159): two small reads over the course ids,
+   * not a wider join.
+   */
+  private async madrasahsAndImamsOf(
+    rows: { id: string; madrasahId: string | null }[]
+  ): Promise<{ madrasahName: Map<string, string>; imamKeys: Set<string> }> {
+    const madrasahIds = [
+      ...new Set(rows.flatMap((r) => (r.madrasahId ? [r.madrasahId] : []))),
+    ];
+    const [madrasahRows, imamRows]: [
+      { id: string; name: string }[],
+      { courseId: string | null; userId: string }[],
+    ] = await Promise.all([
+      madrasahIds.length === 0
+        ? Promise.resolve([])
+        : this.db
+            .select({ id: madrasahs.id, name: madrasahs.name })
+            .from(madrasahs)
+            .where(inArray(madrasahs.id, madrasahIds)),
+      rows.length === 0
+        ? Promise.resolve([])
+        : this.db
+            .select({
+              courseId: roleAssignments.scopeId,
+              userId: roleAssignments.userId,
+            })
+            .from(roleAssignments)
+            .where(
+              and(
+                eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS),
+                eq(roleAssignments.isImam, true),
+                inArray(
+                  roleAssignments.scopeId,
+                  rows.map((r) => r.id)
+                ),
+                isHeld()
+              )
+            ),
+    ]);
+    return {
+      madrasahName: new Map(madrasahRows.map((m) => [m.id, m.name])),
+      imamKeys: new Set(imamRows.map((i) => `${i.courseId}:${i.userId}`)),
+    };
   }
 
   async findSummariesByKosk(
@@ -101,6 +177,9 @@ export class CourseRepository implements ICourseRepository {
       },
     });
 
+    const { madrasahName, imamKeys } = await this.madrasahsAndImamsOf(rows);
+    const now = new Date();
+
     return rows.map((row) => {
       const { weeks, resources, enrollments: enr, ...course } = row;
       return {
@@ -108,8 +187,19 @@ export class CourseRepository implements ICourseRepository {
         weekCount: weeks.length,
         lessonCount: weeks.reduce((sum, w) => sum + w.lessons.length, 0),
         resourceCount: resources.length,
-        muderris: row.muderris,
+        muderris: row.muderris.map((m) => ({
+          ...m,
+          isImam: m.userId !== null && imamKeys.has(`${row.id}:${m.userId}`),
+        })),
         enrollment: enr[0] ?? null,
+        madrasah:
+          row.madrasahId && madrasahName.has(row.madrasahId)
+            ? {
+                id: row.madrasahId,
+                name: madrasahName.get(row.madrasahId) as string,
+              }
+            : null,
+        nextSessionAt: nextSessionOf(weeks, now)?.at ?? null,
       };
     });
   }
@@ -145,11 +235,17 @@ export class CourseRepository implements ICourseRepository {
     return { ...course, enrollment: enr[0] ?? null };
   }
 
-  async findEnrolledByUser(userId: string): Promise<IEnrolledCourse[]> {
+  async findEnrolledByUser(
+    userId: string,
+    includePending = false
+  ): Promise<IEnrolledCourse[]> {
+    const now = new Date();
     const rows = await this.db.query.enrollments.findMany({
       where: and(
         eq(enrollments.userId, userId),
-        ne(enrollments.status, EnrollmentStatus.PENDING)
+        includePending
+          ? undefined
+          : ne(enrollments.status, EnrollmentStatus.PENDING)
       ),
       with: {
         course: {
@@ -159,7 +255,7 @@ export class CourseRepository implements ICourseRepository {
               where: (w, { isNull }) => isNull(w.archivedAt),
               with: {
                 lessons: {
-                  columns: { id: true },
+                  columns: { id: true, scheduledAt: true, cancelledAt: true },
                   where: (l, { isNull }) => isNull(l.archivedAt),
                 },
               },
@@ -170,32 +266,43 @@ export class CourseRepository implements ICourseRepository {
           },
         },
       },
+      orderBy: (e, { asc }) => [asc(e.createdAt)],
     });
 
     // A hidden course drops out of its talebe's list too (MDRS-124); the
     // enrollment row stays, so restoring the course brings it back.
-    return rows
-      .filter((row) => row.course.archivedAt === null)
-      .map((row) => {
-        const { kosk, weeks, muderris, ...course } = row.course;
-        return {
-          ...course,
-          koskName: kosk.name,
-          weekCount: weeks.length,
-          lessonCount: weeks.reduce((sum, w) => sum + w.lessons.length, 0),
-          muderris,
-          enrollment: {
-            userId: row.userId,
-            courseId: row.courseId,
-            studentName: row.studentName,
-            studentEmail: row.studentEmail,
-            progress: row.progress,
-            status: row.status,
-            createdAt: row.createdAt,
-            updatedAt: row.updatedAt,
-          },
-        };
-      });
+    const live = rows.filter((row) => row.course.archivedAt === null);
+    const { madrasahName, imamKeys } = await this.madrasahsAndImamsOf(
+      live.map((row) => row.course)
+    );
+    return live.map((row) => {
+      const { kosk, weeks, muderris, ...course } = row.course;
+      return {
+        ...course,
+        koskName: kosk.name,
+        madrasahName: course.madrasahId
+          ? (madrasahName.get(course.madrasahId) ?? null)
+          : null,
+        weekCount: weeks.length,
+        lessonCount: weeks.reduce((sum, w) => sum + w.lessons.length, 0),
+        muderris: muderris.map((m) => ({
+          ...m,
+          isImam: m.userId !== null && imamKeys.has(`${course.id}:${m.userId}`),
+        })),
+        nextSession: nextSessionOf(weeks, now),
+        enrollment: {
+          userId: row.userId,
+          courseId: row.courseId,
+          studentName: row.studentName,
+          studentEmail: row.studentEmail,
+          progress: row.progress,
+          status: row.status,
+          completedAt: row.completedAt,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+        },
+      };
+    });
   }
 
   async create(course: ICreateCourse): Promise<ICourseDetail> {
@@ -1004,7 +1111,16 @@ export class CourseRepository implements ICourseRepository {
   ): Promise<IEnrollment | null> {
     return this.db
       .update(enrollments)
-      .set({ status, updatedAt: new Date() })
+      .set({
+        status,
+        // Kept when it is already completed, so marking it again does not
+        // move the date the team gave (MDRS-159).
+        completedAt:
+          status === EnrollmentStatus.COMPLETED
+            ? sql`coalesce(${enrollments.completedAt}, now())`
+            : null,
+        updatedAt: new Date(),
+      })
       .where(
         and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId))
       )

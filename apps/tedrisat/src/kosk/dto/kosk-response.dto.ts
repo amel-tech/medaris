@@ -5,16 +5,27 @@ export class KoskResponse {
   id!: string;
 
   @ApiProperty({
+    type: String,
+    nullable: true,
     description:
-      "Who created the köşk. Grants nothing since MDRS-126 — see managerIds",
+      "Who created the köşk. Grants nothing since MDRS-126 — see managerIds. Null for a caller with no token (MDRS-160): a person's id is not for the public.",
   })
-  ownerId!: string;
+  ownerId!: string | null;
 
   @ApiProperty({
     type: [String],
-    description: "Who manages the köşk, oldest first; never empty (MDRS-126)",
+    description:
+      "Who manages the köşk, oldest first; never empty for a signed-in caller (MDRS-126). Empty for a caller with no token (MDRS-160), who gets `managerName` instead.",
   })
   managerIds!: string[];
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      'The name of the köşk\'s oldest manager, shown as "Köşk nazımı" (MDRS-160). Null when that person has no name on file. Open to everyone, signed in or not.',
+  })
+  managerName!: string | null;
 
   @ApiProperty({ example: "Süleymaniye Köşkü" })
   name!: string;

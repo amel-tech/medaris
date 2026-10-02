@@ -45,6 +45,8 @@ import {
   IMadrasahCourse,
   IMadrasahDirectoryFilter,
   IMadrasahDirectoryItem,
+  IMadrasahExplore,
+  IMadrasahExploreFilter,
   IMadrasahHeadMuderris,
   IMadrasahOverview,
   IMadrasahStatusCounts,
@@ -519,6 +521,126 @@ export class MadrasahRepository {
       )
       .orderBy(enrollments.userId);
     return rows.map((r) => r.userId);
+  }
+
+  /**
+   * The medreses Keşfet lists (MDRS-159), each with its listed courses and its
+   * başmüderris. A course is listed when it is published, not hidden, and in a
+   * köşk the public list holds. `level` and `field` keep the medreses that have
+   * a listed course in a köşk of that level or ilim alanı (a medrese has no
+   * level of its own); `q` matches the medrese's name, handle or description,
+   * or the name of its başmüderris. Not paginated: there are few medreses, and
+   * the filters run over the whole set.
+   */
+  async findExplore({
+    q,
+    level,
+    field,
+    madrasahId,
+  }: IMadrasahExploreFilter = {}): Promise<IMadrasahExplore[]> {
+    const rows = await this.db
+      .select()
+      .from(madrasahs)
+      .where(madrasahId ? eq(madrasahs.id, madrasahId) : undefined)
+      .orderBy(asc(madrasahs.name), asc(madrasahs.id));
+    if (rows.length === 0) return [];
+    const ids = rows.map((m) => m.id);
+
+    const [courseRows, heads] = await Promise.all([
+      this.db
+        .select({
+          id: courses.id,
+          title: courses.title,
+          coverHue: courses.coverHue,
+          madrasahId: courses.madrasahId,
+          koskLevel: kosks.level,
+          koskField: kosks.field,
+        })
+        .from(courses)
+        .innerJoin(kosks, eq(kosks.id, courses.koskId))
+        .where(
+          and(
+            inArray(courses.madrasahId, ids),
+            eq(courses.status, CourseStatus.PUBLISHED),
+            isNull(courses.archivedAt),
+            eq(kosks.isPrivate, false),
+            isNull(kosks.archivedAt)
+          )
+        )
+        .orderBy(asc(courses.title), asc(courses.id)),
+      this.headMuderrisNames(ids),
+    ]);
+
+    const words = (q ?? "")
+      .toLocaleLowerCase("tr")
+      .split(/\s+/)
+      .filter(Boolean);
+    const result: IMadrasahExplore[] = [];
+    for (const m of rows) {
+      const own = courseRows.filter((c) => c.madrasahId === m.id);
+      if (level && !own.some((c) => c.koskLevel === level)) continue;
+      if (field && !own.some((c) => c.koskField === field)) continue;
+      const headMuderrisName = heads.get(m.id) ?? null;
+      const haystack = [m.name, m.handle, m.description, headMuderrisName]
+        .join(" ")
+        .toLocaleLowerCase("tr");
+      if (!words.every((w) => haystack.includes(w))) continue;
+      result.push({
+        id: m.id,
+        handle: m.handle,
+        name: m.name,
+        headMuderrisName,
+        courseCount: own.length,
+        courses: own.map((c) => ({
+          id: c.id,
+          title: c.title,
+          coverHue: c.coverHue,
+        })),
+      });
+    }
+    return result;
+  }
+
+  /** The oldest held başmüderris grant of each medrese, as a display name. */
+  private async headMuderrisNames(ids: string[]): Promise<Map<string, string>> {
+    const grants = await this.db
+      .select({
+        scopeId: roleAssignments.scopeId,
+        userId: roleAssignments.userId,
+      })
+      .from(roleAssignments)
+      .where(
+        and(
+          eq(roleAssignments.role, NAZIR_ROLE),
+          inArray(roleAssignments.scopeId, ids),
+          isHeld()
+        )
+      )
+      .orderBy(asc(roleAssignments.createdAt), asc(roleAssignments.userId));
+    const firstByScope = new Map<string, string>();
+    for (const g of grants) {
+      if (g.scopeId && !firstByScope.has(g.scopeId)) {
+        firstByScope.set(g.scopeId, g.userId);
+      }
+    }
+    if (firstByScope.size === 0) return new Map();
+    const people = await this.db
+      .select({
+        id: users.id,
+        given: users.givenName,
+        family: users.familyName,
+      })
+      .from(users)
+      .where(inArray(users.id, [...new Set(firstByScope.values())]));
+    const nameOf = new Map(
+      people.map((p) => [p.id, [p.given, p.family].filter(Boolean).join(" ")])
+    );
+    const names = new Map<string, string>();
+    for (const [scopeId, userId] of firstByScope) {
+      const name = nameOf.get(userId);
+      if (name) names.set(scopeId, name);
+    }
+    return names;
   }
 
   /**

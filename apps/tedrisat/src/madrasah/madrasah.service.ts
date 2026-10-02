@@ -9,6 +9,8 @@ import {
   IMadrasahDirectory,
   IMadrasahDirectoryFilter,
   IMadrasahDirectoryItem,
+  IMadrasahExplore,
+  IMadrasahExploreFilter,
   IMadrasahOverview,
   IMadrasahWithNazirs,
   IPaginatedMadrasahs,
@@ -70,6 +72,13 @@ export class MadrasahService {
       throw new MadrasahNotFoundError(id);
     }
     return this.madrasahRepo.findOverview(id, userId);
+  }
+
+  /** The medrese cards of Keşfet (MDRS-159). */
+  async findExplore(
+    filter: IMadrasahExploreFilter
+  ): Promise<IMadrasahExplore[]> {
+    return this.madrasahRepo.findExplore(filter);
   }
 
   async exists(id: string): Promise<boolean> {

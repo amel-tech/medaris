@@ -38,7 +38,9 @@ import {
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
+import { maskKoskForAnonymous } from "./anonymous-mask";
 import { CreateKoskDto } from "./dto/create-kosk.dto";
+import { KoskDecksResponse } from "./dto/kosk-deck-response.dto";
 import { KoskManagedBy } from "./dto/kosk-managed-by.enum";
 import { KoskResponse } from "./dto/kosk-response.dto";
 import { PaginatedKoskResponse } from "./dto/paginated-kosk-response.dto";
@@ -51,6 +53,13 @@ import {
 import { KoskService } from "./kosk.service";
 
 const MAX_PAGE_SIZE = 50;
+
+const KOSK_LEVELS = {
+  ALL: "ALL",
+  BEGINNER: "BEGINNER",
+  INTERMEDIATE: "INTERMEDIATE",
+  ADVANCED: "ADVANCED",
+};
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -114,6 +123,25 @@ export class KoskController {
     format: "uuid",
     description: "Only the köşks affiliated with this medrese (MDRS-122)",
   })
+  @ApiQuery({
+    name: "level",
+    required: false,
+    enum: ["ALL", "BEGINNER", "INTERMEDIATE", "ADVANCED"],
+    description: "Only the köşks of this level (MDRS-159)",
+  })
+  @ApiQuery({
+    name: "field",
+    required: false,
+    type: String,
+    description: "Only the köşks of this ilim alanı, exactly (MDRS-159)",
+  })
+  @ApiQuery({
+    name: "q",
+    required: false,
+    type: String,
+    description:
+      "Only the köşks whose name, handle, description or field contain every word (MDRS-159)",
+  })
   @ApiOkResponse({ type: PaginatedKoskResponse })
   // No `@Authz`: a paginated list has no single resource to authorize. The
   // visibility rule lives in the query, which is the only place it can live
@@ -130,7 +158,11 @@ export class KoskController {
     @Query("managedBy", new ParseEnumPipe(KoskManagedBy, { optional: true }))
     managedBy?: KoskManagedBy,
     @Query("madrasahId", new ParseUUIDPipe({ optional: true }))
-    madrasahId?: string
+    madrasahId?: string,
+    @Query("level", new ParseEnumPipe(KOSK_LEVELS, { optional: true }))
+    level?: string,
+    @Query("field") field?: string,
+    @Query("q") q?: string
   ): Promise<PaginatedKoskResponse> {
     const userId = request.user?.sub ?? null;
     if (managedBy === KoskManagedBy.ME && userId === null) {
@@ -138,10 +170,31 @@ export class KoskController {
     }
     const safePage = page < 1 ? 1 : page;
     const safeLimit = Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
-    return this.koskService.findAll(userId, safePage, safeLimit, {
+    const page_ = await this.koskService.findAll(userId, safePage, safeLimit, {
       managedByCaller: managedBy === KoskManagedBy.ME,
       madrasahId,
+      level,
+      // A repeated query key arrives as an array; only a single value is read.
+      field: typeof field === "string" ? field.trim() || undefined : undefined,
+      q: typeof q === "string" ? q.slice(0, 100) : undefined,
     });
+    return userId === null
+      ? { ...page_, items: page_.items.map(maskKoskForAnonymous) }
+      : page_;
+  }
+
+  @ApiOperation({
+    summary: "List the ilim alanı of the listed köşks",
+    description:
+      "Open to callers with no token. The distinct `field` values of the köşks the public list holds, alphabetical: the chips of Keşfet (MDRS-159).",
+    operationId: "getKoskFields",
+  })
+  @ApiOkResponse({ type: String, isArray: true })
+  // Declared before `:id` so `fields` is not read as an id.
+  @AuthzPublic()
+  @Get("fields")
+  async listFields(): Promise<string[]> {
+    return this.koskService.listFields();
   }
 
   @ApiOperation({
@@ -159,7 +212,26 @@ export class KoskController {
     @Req() request: PublicRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskResponse> {
-    return this.koskService.findById(id, request.user?.sub ?? null);
+    const userId = request.user?.sub ?? null;
+    const kosk = await this.koskService.findById(id, userId);
+    return userId === null ? maskKoskForAnonymous(kosk) : kosk;
+  }
+
+  @ApiOperation({
+    summary: "Get the köşk's decks (MDRS-159)",
+    description:
+      "The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk's existence is never denied to them here, `GET /kosks/:id` answers that.",
+    operationId: "getKoskDecks",
+  })
+  @ApiOkResponse({ type: KoskDecksResponse })
+  @ApiNotFoundResponse()
+  @Authz(SCOPES.VIEW, byExistingKosk)
+  @Get(":id/decks")
+  async findDecks(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<KoskDecksResponse> {
+    return this.koskService.findDecks(id, request.user.sub);
   }
 
   @ApiOperation({
