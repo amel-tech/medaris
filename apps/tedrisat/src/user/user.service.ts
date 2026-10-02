@@ -10,12 +10,14 @@ import { UserNotFoundError } from "./errors/user-not-found.error";
 import { TokenClaims } from "./interfaces/token-claims.interface";
 import { IUser, IUserSettings, UserRepository } from "./user.repository";
 import { identityFromClaims } from "./user-identity";
+import { IUserProfile, UserProfileRepository } from "./user-profile.repository";
 import { UserSyncService } from "./user-sync.service";
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly users: UserRepository,
+    private readonly profiles: UserProfileRepository,
     private readonly userSync: UserSyncService,
     private readonly koskService: KoskService,
     private readonly courseRepo: CourseRepository,
@@ -35,8 +37,9 @@ export class UserService {
       this.courseRepo.findTaughtBy(user.id),
     ]);
 
+    const profile = await this.profiles.findById(user.id);
     return {
-      ...toProfile(user),
+      ...toProfile(user, profile),
       roles: {
         systemAdmin: this.authz.isSystemAdmin(claims),
         // No medrese→nazır table exists in tedrisat yet; see
@@ -55,6 +58,16 @@ export class UserService {
     if (dto.locale !== undefined) settings.locale = dto.locale;
     if (Object.keys(settings).length > 0) {
       await this.users.updateSettings(user.id, settings);
+    }
+    // The names are the person's own words, kept apart from the token's so the
+    // next sync cannot undo them (MDRS-166).
+    if (dto.givenName !== undefined || dto.familyName !== undefined) {
+      await this.profiles.upsert(user.id, {
+        ...(dto.givenName !== undefined && { givenName: dto.givenName.trim() }),
+        ...(dto.familyName !== undefined && {
+          familyName: dto.familyName.trim(),
+        }),
+      });
     }
     return this.getMe(claims);
   }
@@ -106,13 +119,16 @@ export class UserService {
   }
 }
 
-function toProfile(user: IUser): Omit<MeResponse, "roles"> {
+function toProfile(
+  user: IUser,
+  profile: IUserProfile | null
+): Omit<MeResponse, "roles"> {
   return {
     id: user.id,
     email: user.email,
     emailVerified: user.emailVerified,
-    givenName: user.givenName,
-    familyName: user.familyName,
+    givenName: profile?.givenName ?? user.givenName,
+    familyName: profile?.familyName ?? user.familyName,
     timeZone: user.timeZone,
     locale: user.locale,
     createdAt: user.createdAt,

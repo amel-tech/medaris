@@ -13,6 +13,19 @@ export class KoskAlreadyHiddenError extends ConflictError {
   }
 }
 
+/** Taking a köşk out of service that is out of service already (nizam/20). */
+export class KoskAlreadyPassiveError extends ConflictError {
+  static readonly code = "KOSK_ALREADY_PASSIVE";
+
+  constructor(koskId: string, context?: ErrorContext) {
+    super(
+      KoskAlreadyPassiveError.code,
+      `Köşk ${koskId} is passive already`,
+      context
+    );
+  }
+}
+
 /** Restoring a köşk that is not hidden (MDRS-174). */
 export class KoskNotHiddenError extends ConflictError {
   static readonly code = "KOSK_NOT_HIDDEN";

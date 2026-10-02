@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { expect, type Page, test } from "@playwright/test";
 import { type DeckFixture, seedDecks } from "./deck-seed";
 import { pgClient } from "./pg-client";
+import { signInAsTalebe } from "./sign-in";
 
 /**
  * Designs tedris/25 (Desteler), 26 (Desteleri keşfet), 27 (Deste oluştur), 28
@@ -30,13 +31,7 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
-const signIn = async (page: Page) => {
-  await page.goto("/tr/auth/signin");
-  await page.locator("#username").fill(talebe.email as string);
-  await page.locator("#password").fill(talebe.password as string);
-  await page.locator("button[type=submit]").click();
-  await page.waitForURL(/localhost:4000/);
-};
+const signIn = signInAsTalebe;
 
 /** Text that is on screen: a streamed page keeps a hidden copy of itself in the DOM until it swaps. */
 const shown = (page: Page, text: string) =>

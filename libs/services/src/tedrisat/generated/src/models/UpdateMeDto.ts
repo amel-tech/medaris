@@ -20,6 +20,18 @@ import { mapValues } from '../runtime';
  */
 export interface UpdateMeDto {
     /**
+     * 
+     * @type {string}
+     * @memberof UpdateMeDto
+     */
+    givenName?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateMeDto
+     */
+    familyName?: string;
+    /**
      * IANA time zone
      * @type {string}
      * @memberof UpdateMeDto
@@ -50,6 +62,8 @@ export function UpdateMeDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean
     }
     return {
         
+        'givenName': json['givenName'] == null ? undefined : json['givenName'],
+        'familyName': json['familyName'] == null ? undefined : json['familyName'],
         'timeZone': json['timeZone'] == null ? undefined : json['timeZone'],
         'locale': json['locale'] == null ? undefined : json['locale'],
     };
@@ -66,6 +80,8 @@ export function UpdateMeDtoToJSONTyped(value?: UpdateMeDto | null, ignoreDiscrim
 
     return {
         
+        'givenName': value['givenName'],
+        'familyName': value['familyName'],
         'timeZone': value['timeZone'],
         'locale': value['locale'],
     };

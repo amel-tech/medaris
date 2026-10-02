@@ -23,6 +23,7 @@ import {
   atTime,
   cardStatus,
   countCards,
+  dueNow,
   fullDateTime,
   percentOf,
   SAMPLE_CARDS,
@@ -53,6 +54,7 @@ export function DeckOwnerOverview({
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const counts = countCards(cards);
+  const due = dueNow(cards);
   const pct = percentOf(counts.mastered, counts.total);
 
   const changePublication = async (kind: "request" | "withdraw") => {
@@ -144,10 +146,8 @@ export function DeckOwnerOverview({
               </li>
             ))}
           </ul>
-          {counts.learning > 0 ? (
-            <p className="mds-body-sm">
-              {t("dueToday", { count: counts.learning })}
-            </p>
+          {due > 0 ? (
+            <p className="mds-body-sm">{t("dueToday", { count: due })}</p>
           ) : null}
         </section>
 

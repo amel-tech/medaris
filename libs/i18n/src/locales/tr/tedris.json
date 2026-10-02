@@ -65,22 +65,6 @@
   "DataTable": {
     "noResults": "Sonuç bulunamadı."
   },
-  "FlashCardContent": {
-    "card": "Kart",
-    "flip": "Çevir",
-    "flipTooltip": "Kartı çevirin",
-    "markAsMemorized": "Hafızaya Alındı Olarak İşaretle",
-    "markAsMemorizedTooltip": "Ezbere alındı olarak işaretle",
-    "markAsToReviewLater": "Daha sonra incelemek üzere işaretle.",
-    "repeat": "Tekrarlamak",
-    "updating": "Guncelleniyor..."
-  },
-  "FlashCardList": {
-    "noCardsFound": "Henüz hiçbir kart bulunamadı."
-  },
-  "HomePage": {
-    "greeting": "Selamünaleyküm!"
-  },
   "KoskPage": {
     "kosks": "Köşkler",
     "uncategorized": "Diğer",
@@ -472,7 +456,8 @@
   },
   "AccountPage": {
     "pageTitle": "Hesap",
-    "pageSubtitle": "Görevlerin, adın, saat dilimin ve takvim tercihlerin.",
+    "pageSubtitle": "Adın, saat dilimin ve takvim tercihlerin.",
+    "pageSubtitleRoles": "Görevlerin, adın, saat dilimin ve takvim tercihlerin.",
     "title": "Görevlerin ve izinlerin",
     "intro": "Her görev bir kapsamda geçerlidir. Görevi ve süresini, onu atayan kişi değiştirir.",
     "whereIntro": "Köşk ve ders işlerini Tedris’te değil, görevinin uygulamasında yaparsın: köşk nazımı Nizam’da, müderris Nazır’da.",
@@ -616,7 +601,7 @@
     "register": "Kayıt ol",
     "greeting": "Selâmün aleyküm, {name}",
     "greetingAnon": "Selâmün aleyküm",
-    "nextIntro": "Sıradaki celsen: {when}.",
+    "nextIntro": "Sıradaki celsen {when}.",
     "noNext": "Planlı bir celsen görünmüyor.",
     "nextTitle": "Sıradaki celse",
     "liveBadge": "Canlı ders",

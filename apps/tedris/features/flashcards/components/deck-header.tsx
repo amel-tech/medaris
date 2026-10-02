@@ -20,6 +20,8 @@ export interface DeckHeaderProps {
   tab: "overview" | "cards";
   /** the buttons on the right of the title block */
   actions: ReactNode;
+  /** where the breadcrumb starts when it is not Desteler: Keşfet for a visitor (design tedris/32) */
+  root?: { label: string; href: string };
 }
 
 /**
@@ -36,6 +38,7 @@ export function DeckHeader({
   cardCount,
   tab,
   actions,
+  root,
 }: DeckHeaderProps) {
   const t = useTranslations("tedris.Decks");
   const locale = useLocale();
@@ -44,7 +47,7 @@ export function DeckHeader({
     <header className="flex flex-col gap-4">
       <Breadcrumb
         label={t("breadcrumbLabel")}
-        items={[{ label: t("title"), href: "/decks" }, deck.title]}
+        items={[root ?? { label: t("title"), href: "/decks" }, deck.title]}
       />
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
         <div className="flex min-inline-0 flex-col gap-3">

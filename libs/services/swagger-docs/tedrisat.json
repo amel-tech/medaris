@@ -138,6 +138,138 @@
         ]
       }
     },
+    "/kosks/{id}/overview": {
+      "get": {
+        "description": "nizam/20. Course counts by status, the talebe enrolled (hidden courses left out), waiting applications, the nazımları held now and the medreses with a hosting right. For the köşk's nazımları and the başnazım.",
+        "operationId": "getKoskOverview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskOverviewResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The Medaris yönetimi's page of one köşk (numbers and facts)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/course-roster": {
+      "get": {
+        "description": "nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show.",
+        "operationId": "getKoskCourseRoster",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskCourseRosterResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every course of the köşk for the Dersler table",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/deactivate": {
+      "post": {
+        "description": "nizam/20. The köşk becomes passive and its nazımları are taken off the post; nothing is hidden or deleted, and adding a nazım makes it active again. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log, naming the nazımları removed.",
+        "operationId": "deactivateKosk",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskDirectoryItemResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "KOSK_ALREADY_PASSIVE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a köşk out of service (Köşkü pasife al, SYSTEM_ADMIN only)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
     "/kosks/{id}/nazims": {
       "get": {
         "description": "nizam/25. The köşk's nazımları and the Medaris başnazımı read it; nobody changes the list from here.",
@@ -697,6 +829,47 @@
           }
         ],
         "summary": "List the ilim alanı of the listed köşks",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/followed/courses": {
+      "get": {
+        "description": "Published courses of the köşks the caller follows, newest first, leaving out the courses they already applied to or are in (MDRS-165): Ana sayfa's \"Takip ettiğin köşklerden\".",
+        "operationId": "getFollowedKoskCourses",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "At most this many; 4 by default, 12 at most.",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FollowedKoskCourseResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Courses of the köşks the caller follows",
         "tags": [
           "kosks"
         ]
@@ -2176,6 +2349,49 @@
           }
         ],
         "summary": "List pending enrollment requests for a köşk (owner only)",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/stats": {
+      "get": {
+        "description": "nizam/53: talebe enrolled, applications waiting, completions and how many weeks have begun. For the course team: the köşk manager and the course's müderrisler.",
+        "operationId": "getCourseStats",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseStatsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The numbers of a course's overview (course team)",
         "tags": [
           "courses"
         ]
@@ -3705,6 +3921,46 @@
         ]
       }
     },
+    "/flashcard/decks/{id}/due": {
+      "get": {
+        "description": "The cards of the deck that wait for a repeat, most overdue first, then a few the caller has not started (MDRS-165). Each card carries the caller's own progress.",
+        "operationId": "getFlashcardStudyRound",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardStudyRoundResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such deck, or a private deck owned by another user — deliberately the same answer"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get today's study round of a deck",
+        "tags": [
+          "flashcard-cards"
+        ]
+      }
+    },
     "/flashcard/decks/{deckId}/cards": {
       "post": {
         "description": "Creates multiple flashcards within a specified deck. All cards will be assigned to the same deck and author.",
@@ -4112,6 +4368,47 @@
           }
         ],
         "summary": "Get the caller's decks with their progress",
+        "tags": [
+          "flashcard-decks"
+        ]
+      }
+    },
+    "/flashcard/decks/due": {
+      "get": {
+        "description": "The decks of the caller's collection with something to study (MDRS-165): first the ones with cards waiting for a repeat, most first, then the decks of other people that grew since the caller collected them.",
+        "operationId": "getFlashcardDecksDueToday",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "At most this many decks; 3 by default, 10 at most.",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FlashcardDeckSummaryResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The decks to study today",
         "tags": [
           "flashcard-decks"
         ]
@@ -5261,6 +5558,200 @@
         "summary": "Issue a new calendar-feed URL; the previous one stops working",
         "tags": [
           "me"
+        ]
+      }
+    },
+    "/kosk-applications": {
+      "post": {
+        "description": "The application waits as PENDING for Medaris management.",
+        "operationId": "createKoskApplication",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateKoskApplicationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskApplicationResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Apply to open a köşk",
+        "tags": [
+          "kosk-applications"
+        ]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "listNotifications",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "`unread` leaves out what the caller has read. Default `all`.",
+            "schema": {
+              "enum": [
+                "all",
+                "unread"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 50; default 20.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedNotificationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A cursor this server did not issue (INVALID_NOTIFICATION_CURSOR)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's notifications, newest first",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/unread-count": {
+      "get": {
+        "description": "`unread` is what the bell announces; `total` is the \"all\" tab's count.",
+        "operationId": "getNotificationCounts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationCountsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "How many notifications the caller has, and how many are unread",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/read-all": {
+      "post": {
+        "operationId": "markAllNotificationsRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadAllNotificationsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark every unread notification of the caller read",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/{id}/read": {
+      "post": {
+        "description": "Idempotent: a notification already read keeps its `readAt`.",
+        "operationId": "markNotificationRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such notification, or it is another person's (NOTIFICATION_NOT_FOUND)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark one notification read",
+        "tags": [
+          "notifications"
         ]
       }
     },
@@ -6579,6 +7070,111 @@
         ]
       }
     },
+    "/me/public-profile": {
+      "get": {
+        "operationId": "getMyPublicProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyPublicProfileResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's public profile, every field and every switch",
+        "tags": [
+          "me"
+        ]
+      },
+      "patch": {
+        "description": "Only the fields sent change. The künye must be non-empty and unique regardless of case.",
+        "operationId": "updateMyPublicProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePublicProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyPublicProfileResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The künye is taken (KUNYE_TAKEN)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change the caller's public profile",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/users/{id}/public-profile": {
+      "get": {
+        "operationId": "getUserPublicProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProfileResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The person has not chosen a künye yet."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Another person's public profile, filtered to what they show",
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/users": {
       "get": {
         "description": "Returns zero or one user. Callable by SYSTEM_ADMIN and köşk managers.",
@@ -6932,6 +7528,235 @@
           "limit",
           "counts",
           "fields"
+        ]
+      },
+      "KoskCourseCountsResponse": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "number",
+            "description": "Every course, hidden ones too"
+          },
+          "published": {
+            "type": "number",
+            "description": "Published and not hidden"
+          },
+          "draft": {
+            "type": "number",
+            "description": "Drafts that are not hidden"
+          },
+          "hidden": {
+            "type": "number",
+            "description": "Hidden, whatever their status was"
+          }
+        },
+        "required": [
+          "all",
+          "published",
+          "draft",
+          "hidden"
+        ]
+      },
+      "KoskOverviewMadrasahResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "KoskOverviewResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskStatus"
+              }
+            ]
+          },
+          "since": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Since when it is hidden or passive; null while active"
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the köşk was opened"
+          },
+          "openedBy": {
+            "nullable": true,
+            "description": "Who opened it (the köşk's creator)",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskPersonResponse"
+              }
+            ]
+          },
+          "courses": {
+            "$ref": "#/components/schemas/KoskCourseCountsResponse"
+          },
+          "students": {
+            "type": "number",
+            "description": "Distinct talebe enrolled in the köşk's courses; hidden courses do not count"
+          },
+          "pendingApplications": {
+            "type": "number",
+            "description": "Applications waiting for a decision in courses that are not hidden"
+          },
+          "nazimCount": {
+            "type": "number",
+            "description": "Köşk nazımları held now"
+          },
+          "hostingMadrasahs": {
+            "description": "The medreses that hold a hosting right here, oldest first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskOverviewMadrasahResponse"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "openedAt",
+          "courses",
+          "students",
+          "pendingApplications",
+          "nazimCount",
+          "hostingMadrasahs"
+        ]
+      },
+      "KoskCourseStatus": {
+        "type": "string",
+        "enum": [
+          "PUBLISHED",
+          "DRAFT",
+          "HIDDEN"
+        ],
+        "description": "HIDDEN wins over PUBLISHED and DRAFT"
+      },
+      "KoskCourseMuderrisResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "isImam": {
+            "type": "boolean",
+            "description": "The course's imam"
+          }
+        },
+        "required": [
+          "name",
+          "isImam"
+        ]
+      },
+      "KoskCourseRowResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "coverHue": {
+            "type": "number",
+            "example": 220
+          },
+          "weekCount": {
+            "type": "number",
+            "description": "Weeks the programme still has"
+          },
+          "madrasah": {
+            "nullable": true,
+            "description": "The medrese that opened the course; null for the köşk's own",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskOverviewMadrasahResponse"
+              }
+            ]
+          },
+          "status": {
+            "description": "HIDDEN wins over PUBLISHED and DRAFT",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskCourseStatus"
+              }
+            ]
+          },
+          "hiddenAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "muderris": {
+            "description": "In the order the course lists them; the imam is flagged",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskCourseMuderrisResponse"
+            }
+          },
+          "studentCount": {
+            "type": "number",
+            "description": "Enrolled talebe (applications do not count)"
+          },
+          "pendingCount": {
+            "type": "number",
+            "description": "Applications waiting for a decision"
+          },
+          "bannedCount": {
+            "type": "number",
+            "description": "Talebe barred from this course or from the whole köşk, counted once each"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "coverHue",
+          "weekCount",
+          "status",
+          "createdAt",
+          "muderris",
+          "studentCount",
+          "pendingCount",
+          "bannedCount"
+        ]
+      },
+      "KoskCourseRosterResponse": {
+        "type": "object",
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/KoskCourseCountsResponse"
+          },
+          "items": {
+            "description": "Every course, newest first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskCourseRowResponse"
+            }
+          }
+        },
+        "required": [
+          "counts",
+          "items"
         ]
       },
       "KoskNazimGranterRole": {
@@ -7340,6 +8165,46 @@
           "total",
           "page",
           "limit"
+        ]
+      },
+      "FollowedKoskCourseResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "koskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "koskName": {
+            "type": "string"
+          },
+          "coverHue": {
+            "type": "number",
+            "description": "The cover's hue, 0–360."
+          },
+          "muderrisName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The first müderris by the order the course lists them in."
+          },
+          "muderrisIsImam": {
+            "type": "boolean",
+            "description": "That müderris is the course's imam."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "koskId",
+          "koskName",
+          "coverHue",
+          "muderrisIsImam"
         ]
       },
       "KoskDeckResponse": {
@@ -9493,6 +10358,38 @@
           "courseTitle"
         ]
       },
+      "CourseStatsResponse": {
+        "type": "object",
+        "properties": {
+          "enrolledCount": {
+            "type": "number",
+            "description": "Talebe with an active seat (Kayıtlı talebe)"
+          },
+          "pendingCount": {
+            "type": "number",
+            "description": "Applications waiting for a decision"
+          },
+          "completedCount": {
+            "type": "number",
+            "description": "Talebe who completed the course"
+          },
+          "weekCount": {
+            "type": "number",
+            "description": "Weeks the programme has"
+          },
+          "startedWeekCount": {
+            "type": "number",
+            "description": "Weeks that have begun: one of their live lessons is dated now or earlier (Devam eden hafta)"
+          }
+        },
+        "required": [
+          "enrolledCount",
+          "pendingCount",
+          "completedCount",
+          "weekCount",
+          "startedWeekCount"
+        ]
+      },
       "BanScope": {
         "type": "string",
         "enum": [
@@ -10789,6 +11686,16 @@
           },
           "userId": {
             "type": "string"
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the card is due again (MDRS-165); null for a card nobody rated, which is due now if it is LEARNING."
+          },
+          "intervalDays": {
+            "type": "number",
+            "description": "The days between the last two reviews; 0 before the first."
           }
         },
         "required": [
@@ -10841,6 +11748,30 @@
           "authorId"
         ]
       },
+      "FlashcardStudyRoundResponse": {
+        "type": "object",
+        "properties": {
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FlashcardResponse"
+            }
+          },
+          "dueCount": {
+            "type": "number",
+            "description": "How many of `cards` are repeats that are due."
+          },
+          "newCount": {
+            "type": "number",
+            "description": "How many of `cards` are cards the caller has not started."
+          }
+        },
+        "required": [
+          "cards",
+          "dueCount",
+          "newCount"
+        ]
+      },
       "CreateFlashcardDto": {
         "type": "object",
         "properties": {
@@ -10867,6 +11798,15 @@
           "contentBack"
         ]
       },
+      "ReviewRating": {
+        "type": "string",
+        "enum": [
+          "HARD",
+          "MEDIUM",
+          "EASY"
+        ],
+        "description": "How hard the talebe found the card (MDRS-165). HARD and MEDIUM keep it LEARNING, EASY masters it; each sets when it is due again."
+      },
       "CreateFlashcardProgressDto": {
         "type": "object",
         "properties": {
@@ -10879,12 +11819,20 @@
               "NEW",
               "LEARNING",
               "MASTERED"
+            ],
+            "description": "The state to record. Required unless `rating` is sent; with a rating the server derives the state and the next review time and ignores this."
+          },
+          "rating": {
+            "description": "How hard the talebe found the card (MDRS-165). HARD and MEDIUM keep it LEARNING, EASY masters it; each sets when it is due again.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReviewRating"
+              }
             ]
           }
         },
         "required": [
-          "flashcardId",
-          "status"
+          "flashcardId"
         ]
       },
       "UpdateFlashcardDto": {
@@ -11189,7 +12137,7 @@
           },
           "dueCount": {
             "type": "number",
-            "description": "Cards waiting for a repeat today. The progress table keeps no review time, so this is the learning count until a scheduler exists."
+            "description": "Cards waiting for a repeat now (MDRS-165): started, and their review time has come, or they never got one while learning."
           },
           "addedSinceCollectedCount": {
             "type": "number",
@@ -11821,6 +12769,199 @@
           "url",
           "webcalUrl",
           "createdAt"
+        ]
+      },
+      "CreateKoskApplicationDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "example": "Davutpaşa Köşkü"
+          },
+          "field": {
+            "type": "string",
+            "enum": [
+              "ARABIC_LANGUAGE_SCIENCES",
+              "RHETORIC",
+              "FIQH",
+              "USUL_AL_FIQH",
+              "HADITH",
+              "QURAN_SCIENCES",
+              "TAFSIR",
+              "AQEEDAH_KALAM",
+              "SEERAH",
+              "LOGIC",
+              "OTHER"
+            ]
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 3000
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true,
+            "example": "+90 532 000 00 00"
+          }
+        },
+        "required": [
+          "name",
+          "field",
+          "summary",
+          "reason",
+          "email"
+        ]
+      },
+      "KoskApplicationResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "REJECTED"
+            ],
+            "example": "PENDING"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ]
+      },
+      "NotificationResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "ENROLLMENT_APPROVED",
+              "ENROLLMENT_REJECTED",
+              "REMOVED_FROM_COURSE",
+              "COURSE_ACCESS_REMOVED",
+              "SESSION_RESCHEDULED",
+              "SESSION_CANCELLED",
+              "SESSION_ADDED",
+              "KOSK_APPLICATION_RESULT",
+              "DECK_PUBLISH_RESULT"
+            ],
+            "description": "What happened. The sentence is not stored: the client words it from this key and `params`, in the reader's language."
+          },
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "COURSE",
+              "SESSION",
+              "DECK",
+              "KOSK"
+            ],
+            "nullable": true,
+            "description": "What the notification leads to. For a SESSION, `params.courseId` names its course."
+          },
+          "targetId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "courseTitle": "Bina ve İzhar Şerhi",
+              "source": "Beyazıt Köşkü"
+            },
+            "description": "Flat values the sentence is filled from (course title, session time, reason, who or where it came from)."
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the caller read it; null while unread."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "targetType",
+          "targetId",
+          "params",
+          "readAt",
+          "createdAt"
+        ]
+      },
+      "PaginatedNotificationResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Pass as `cursor` for the next page; null on the last page. Opaque."
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "NotificationCountsResponse": {
+        "type": "object",
+        "properties": {
+          "unread": {
+            "type": "number",
+            "example": 3,
+            "description": "Unread — the bell and the tab."
+          },
+          "total": {
+            "type": "number",
+            "example": 6,
+            "description": "Every notification the caller has."
+          }
+        },
+        "required": [
+          "unread",
+          "total"
+        ]
+      },
+      "ReadAllNotificationsResponse": {
+        "type": "object",
+        "properties": {
+          "updated": {
+            "type": "number",
+            "example": 3,
+            "description": "How many were unread and are read now."
+          }
+        },
+        "required": [
+          "updated"
         ]
       },
       "ScheduleSessionResponse": {
@@ -13291,6 +14432,16 @@
       "UpdateMeDto": {
         "type": "object",
         "properties": {
+          "givenName": {
+            "type": "string",
+            "maxLength": 100,
+            "example": "Zeynep Betül"
+          },
+          "familyName": {
+            "type": "string",
+            "maxLength": 100,
+            "example": "Karahanlı"
+          },
           "timeZone": {
             "type": "string",
             "nullable": true,
@@ -13304,6 +14455,169 @@
             "description": "BCP 47 language tag"
           }
         }
+      },
+      "ProfileVisibility": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "boolean",
+            "description": "Ad ve soyad"
+          },
+          "city": {
+            "type": "boolean"
+          },
+          "about": {
+            "type": "boolean",
+            "description": "Hakkında"
+          },
+          "courses": {
+            "type": "boolean",
+            "description": "Derslerin"
+          }
+        },
+        "required": [
+          "fullName",
+          "city",
+          "about",
+          "courses"
+        ]
+      },
+      "MyPublicProfileResponse": {
+        "type": "object",
+        "properties": {
+          "kunye": {
+            "type": "string",
+            "nullable": true,
+            "description": "İlmî künye. Null until the person chooses one."
+          },
+          "gender": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "FEMALE",
+              "MALE"
+            ]
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "about": {
+            "type": "string",
+            "nullable": true
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The name from the account, as shown on Hesap"
+          },
+          "courses": {
+            "description": "Titles of the published courses the caller is enrolled in or has completed",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/ProfileVisibility"
+          }
+        },
+        "required": [
+          "fullName",
+          "courses",
+          "visibility"
+        ]
+      },
+      "UpdateProfileVisibilityDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "boolean"
+          },
+          "city": {
+            "type": "boolean"
+          },
+          "about": {
+            "type": "boolean"
+          },
+          "courses": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdatePublicProfileDto": {
+        "type": "object",
+        "properties": {
+          "kunye": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "İlmî künye"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "FEMALE",
+              "MALE"
+            ],
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 80
+          },
+          "about": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 1000
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/UpdateProfileVisibilityDto"
+          }
+        }
+      },
+      "PublicProfileResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kunye": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "FEMALE",
+              "MALE"
+            ]
+          },
+          "fullName": {
+            "type": "string",
+            "description": "Present only while the owner shows it"
+          },
+          "city": {
+            "type": "string",
+            "description": "Present only while the owner shows it"
+          },
+          "about": {
+            "type": "string",
+            "description": "Present only while the owner shows it"
+          },
+          "courses": {
+            "description": "Present only while the owner shows it",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "kunye"
+        ]
       },
       "UserSummaryResponse": {
         "type": "object",

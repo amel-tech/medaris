@@ -21,6 +21,7 @@ import type {
   CreateFlashcardProgressDto,
   FlashcardProgressResponse,
   FlashcardResponse,
+  FlashcardStudyRoundResponse,
   UpdateFlashcardDto,
 } from '../models/index';
 import {
@@ -36,6 +37,8 @@ import {
     FlashcardProgressResponseToJSON,
     FlashcardResponseFromJSON,
     FlashcardResponseToJSON,
+    FlashcardStudyRoundResponseFromJSON,
+    FlashcardStudyRoundResponseToJSON,
     UpdateFlashcardDtoFromJSON,
     UpdateFlashcardDtoToJSON,
 } from '../models/index';
@@ -67,6 +70,10 @@ export interface GetFlashcardByDeckIdRequest {
 export interface GetFlashcardByIdRequest {
     id: string;
     include?: Array<GetFlashcardByIdIncludeEnum>;
+}
+
+export interface GetFlashcardStudyRoundRequest {
+    id: string;
 }
 
 export interface GetSampleFileRequest {
@@ -390,6 +397,50 @@ export class FlashcardCardsApi extends runtime.BaseAPI {
      */
     async getFlashcardById(requestParameters: GetFlashcardByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FlashcardResponse> {
         const response = await this.getFlashcardByIdRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The cards of the deck that wait for a repeat, most overdue first, then a few the caller has not started (MDRS-165). Each card carries the caller\'s own progress.
+     * Get today\'s study round of a deck
+     */
+    async getFlashcardStudyRoundRaw(requestParameters: GetFlashcardStudyRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FlashcardStudyRoundResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getFlashcardStudyRound().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/flashcard/decks/{id}/due`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FlashcardStudyRoundResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The cards of the deck that wait for a repeat, most overdue first, then a few the caller has not started (MDRS-165). Each card carries the caller\'s own progress.
+     * Get today\'s study round of a deck
+     */
+    async getFlashcardStudyRound(requestParameters: GetFlashcardStudyRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FlashcardStudyRoundResponse> {
+        const response = await this.getFlashcardStudyRoundRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

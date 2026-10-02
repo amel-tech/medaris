@@ -572,6 +572,7 @@ const KNOWN: Record<string, string> = {
   KOSK_NAZIM_UNKNOWN_ACCOUNT: "errors.unknownAccount",
   KOSK_ALREADY_HIDDEN: "errors.alreadyHidden",
   KOSK_NOT_HIDDEN: "errors.notHidden",
+  KOSK_ALREADY_PASSIVE: "errors.alreadyPassive",
   KOSK_NOT_FOUND: "errors.notFound",
   GRANT_EXPIRY_INVALID: "errors.endPast",
   AUTHZ_FORBIDDEN: "errors.forbidden",

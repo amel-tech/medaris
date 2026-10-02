@@ -151,7 +151,7 @@ export interface FlashcardDeckSummaryResponse {
      */
     newCount: number;
     /**
-     * Cards waiting for a repeat today. The progress table keeps no review time, so this is the learning count until a scheduler exists.
+     * Cards waiting for a repeat now (MDRS-165): started, and their review time has come, or they never got one while learning.
      * @type {number}
      * @memberof FlashcardDeckSummaryResponse
      */

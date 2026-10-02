@@ -5,6 +5,8 @@ import {
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { CardIncludeEnum } from "./domain/card-include.enum";
+import { FlashcardProgressStatus } from "./domain/flashcard-progress-status.enum";
+import { scheduleReview } from "./domain/review-schedule";
 import { CreateFlashcardDto } from "./dto/create-flashcard.dto";
 import { CreateFlashcardProgressDto } from "./dto/create-flashcard-progress.dto";
 import { CardNotFoundError } from "./errors/card-not-found.error";
@@ -13,8 +15,20 @@ import {
   ICreateFlashcard,
   IFlashcard,
   IFlashcardProgress,
+  IStudyCard,
   IUpdateFlashcard,
 } from "./flashcard.repository.interface";
+
+/** The most repeats and the most unstarted cards one study round holds. */
+export const STUDY_DUE_LIMIT = 50;
+export const STUDY_NEW_LIMIT = 10;
+
+export interface StudyRound {
+  /** Due cards first, then the cards never studied. */
+  cards: IStudyCard[];
+  dueCount: number;
+  newCount: number;
+}
 
 const validIncludes = new Set<string>(Object.values(CardIncludeEnum));
 
@@ -42,7 +56,7 @@ export class FlashcardService {
 
   async findByDeckId(
     deckId: string,
-    userId: string,
+    userId: string | null,
     include?: string[]
   ): Promise<IFlashcard[]> {
     return this.cardRepo.findByDeckId(deckId, userId, toIncludeSet(include));
@@ -140,12 +154,66 @@ export class FlashcardService {
     // parameter outright — its metatype is the native `Array`. Measured: an
     // extra `userId` in a body element is neither stripped nor rejected and
     // arrives in `data`.
-    const progressWithUser = progress.map((data) => ({
-      ...data,
-      userId,
-    }));
+    const now = new Date();
+    const rated = progress.filter((p) => p.rating !== undefined);
+    const previous = new Map(
+      (
+        await this.cardRepo.findProgress(
+          userId,
+          rated.map((p) => p.flashcardId)
+        )
+      ).map((row) => [row.flashcardId, row.intervalDays])
+    );
+
+    const progressWithUser = progress.map((data) => {
+      if (data.rating !== undefined) {
+        // The server decides the state and the next time: a client that sends
+        // both gets the rating's answer, so a stale status cannot win.
+        const next = scheduleReview(
+          data.rating,
+          previous.get(data.flashcardId) ?? 0,
+          now
+        );
+        return {
+          flashcardId: data.flashcardId,
+          status: next.status,
+          dueAt: next.dueAt,
+          reviewedAt: now,
+          intervalDays: next.intervalDays,
+          userId,
+        };
+      }
+      // A bare status (the old toggle): no schedule, so a LEARNING card is due
+      // now and a MASTERED one is not scheduled at all.
+      return {
+        flashcardId: data.flashcardId,
+        status: data.status ?? FlashcardProgressStatus.NEW,
+        dueAt: null,
+        reviewedAt: now,
+        intervalDays: 0,
+        userId,
+      };
+    });
 
     return this.cardRepo.replaceManyProgress(progressWithUser);
+  }
+
+  /**
+   * Today's study round of a deck for the caller (MDRS-165): the cards waiting
+   * for a repeat, then a few the caller has not started, so a deck nobody has
+   * opened yet is still something to study. The deck's visibility is the
+   * route's `@Authz`; this only reads the caller's own progress.
+   */
+  async studyRound(deckId: string, userId: string): Promise<StudyRound> {
+    const { due, fresh } = await this.cardRepo.findStudyQueue(deckId, userId, {
+      due: STUDY_DUE_LIMIT,
+      fresh: STUDY_NEW_LIMIT,
+    });
+    return {
+      cards: [...due, ...fresh],
+      dueCount: due.length,
+      newCount: fresh.length,
+    };
   }
 
   /**

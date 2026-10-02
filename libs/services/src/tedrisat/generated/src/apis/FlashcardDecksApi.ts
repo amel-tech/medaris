@@ -67,6 +67,10 @@ export interface GetFlashcardDeckByIdRequest {
     include?: Array<number>;
 }
 
+export interface GetFlashcardDecksDueTodayRequest {
+    limit?: number;
+}
+
 export interface ReplaceFlashcardDeckRequest {
     id: string;
     createFlashcardDeckDto: CreateFlashcardDeckDto;
@@ -464,6 +468,46 @@ export class FlashcardDecksApi extends runtime.BaseAPI {
      */
     async getFlashcardDeckSummaries(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<FlashcardDeckSummaryResponse>> {
         const response = await this.getFlashcardDeckSummariesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The decks of the caller\'s collection with something to study (MDRS-165): first the ones with cards waiting for a repeat, most first, then the decks of other people that grew since the caller collected them.
+     * The decks to study today
+     */
+    async getFlashcardDecksDueTodayRaw(requestParameters: GetFlashcardDecksDueTodayRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<FlashcardDeckSummaryResponse>>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/flashcard/decks/due`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(FlashcardDeckSummaryResponseFromJSON));
+    }
+
+    /**
+     * The decks of the caller\'s collection with something to study (MDRS-165): first the ones with cards waiting for a repeat, most first, then the decks of other people that grew since the caller collected them.
+     * The decks to study today
+     */
+    async getFlashcardDecksDueToday(requestParameters: GetFlashcardDecksDueTodayRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<FlashcardDeckSummaryResponse>> {
+        const response = await this.getFlashcardDecksDueTodayRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

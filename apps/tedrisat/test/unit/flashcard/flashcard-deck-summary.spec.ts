@@ -10,7 +10,10 @@ import {
   FlashcardDeckService,
   normalizeTags,
 } from "../../../src/flashcard/flashcard-deck.service";
-import { DeckListRow } from "../../../src/flashcard/flashcard-deck-summary.repository";
+import {
+  DeckListRow,
+  DeckProgressStats,
+} from "../../../src/flashcard/flashcard-deck-summary.repository";
 import {
   collectionKindOf,
   FlashcardDeckSummaryService,
@@ -44,6 +47,7 @@ describe("toDeckSummary", () => {
     cardCount: 18,
     masteredCount: 6,
     learningCount: 7,
+    dueCount: 3,
     addedSinceCollectedCount: 4,
   };
 
@@ -54,7 +58,7 @@ describe("toDeckSummary", () => {
       masteredCount: 6,
       learningCount: 7,
       newCount: 5,
-      dueCount: 7,
+      dueCount: 3,
     });
   });
 
@@ -178,6 +182,71 @@ describe("FlashcardDeckSummaryService", () => {
     const service = new FlashcardDeckSummaryService(repo as never);
     const result = await service.summarize(ME);
     expect(result.map((d) => d.id)).toEqual(["own", "col"]);
+  });
+
+  describe("dueToday", () => {
+    const serviceWith = (
+      own: DeckListRow[],
+      collected: DeckListRow[],
+      stats: Record<string, Partial<DeckProgressStats>>
+    ) => {
+      const repo = {
+        findOwn: vi.fn().mockResolvedValue(own),
+        findCollected: vi.fn().mockResolvedValue(collected),
+        findStats: vi.fn().mockResolvedValue(
+          new Map(
+            Object.entries(stats).map(([id, s]) => [
+              id,
+              {
+                cardCount: 10,
+                masteredCount: 0,
+                learningCount: 0,
+                dueCount: 0,
+                addedSinceCollectedCount: 0,
+                ...s,
+              },
+            ])
+          )
+        ),
+      };
+      return new FlashcardDeckSummaryService(repo as never);
+    };
+
+    it("lists decks with cards waiting first, the most waiting first, then decks that grew", async () => {
+      const service = serviceWith(
+        [row({ id: "few" }), row({ id: "many" }), row({ id: "quiet" })],
+        [row({ id: "grown", authorId: "o", collectedAt: new Date() })],
+        {
+          few: { dueCount: 2 },
+          many: { dueCount: 14 },
+          grown: { addedSinceCollectedCount: 5 },
+        }
+      );
+      expect((await service.dueToday(ME, 10)).map((d) => d.id)).toEqual([
+        "many",
+        "few",
+        "grown",
+      ]);
+    });
+
+    it("does not call a caller's own deck new just because it was never studied", async () => {
+      const service = serviceWith([row({ id: "mine" })], [], {
+        mine: { addedSinceCollectedCount: 9 },
+      });
+      expect(await service.dueToday(ME, 10)).toEqual([]);
+    });
+
+    it("stops at the limit", async () => {
+      const service = serviceWith(
+        [row({ id: "a" }), row({ id: "b" }), row({ id: "c" })],
+        [],
+        { a: { dueCount: 1 }, b: { dueCount: 2 }, c: { dueCount: 3 } }
+      );
+      expect((await service.dueToday(ME, 2)).map((d) => d.id)).toEqual([
+        "c",
+        "b",
+      ]);
+    });
   });
 });
 

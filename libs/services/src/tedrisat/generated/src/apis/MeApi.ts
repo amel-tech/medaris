@@ -22,8 +22,11 @@ import type {
   MyEffectivePermissionsResponse,
   MyGrantsResponse,
   MyPermissionsResponse,
+  MyPublicProfileResponse,
   MyRolesResponse,
+  PublicProfileResponse,
   UpdateMeDto,
+  UpdatePublicProfileDto,
 } from '../models/index';
 import {
     CalendarFeedLinkResponseFromJSON,
@@ -40,14 +43,28 @@ import {
     MyGrantsResponseToJSON,
     MyPermissionsResponseFromJSON,
     MyPermissionsResponseToJSON,
+    MyPublicProfileResponseFromJSON,
+    MyPublicProfileResponseToJSON,
     MyRolesResponseFromJSON,
     MyRolesResponseToJSON,
+    PublicProfileResponseFromJSON,
+    PublicProfileResponseToJSON,
     UpdateMeDtoFromJSON,
     UpdateMeDtoToJSON,
+    UpdatePublicProfileDtoFromJSON,
+    UpdatePublicProfileDtoToJSON,
 } from '../models/index';
+
+export interface GetUserPublicProfileRequest {
+    id: string;
+}
 
 export interface UpdateMeRequest {
     updateMeDto: UpdateMeDto;
+}
+
+export interface UpdateMyPublicProfileRequest {
+    updatePublicProfileDto: UpdatePublicProfileDto;
 }
 
 /**
@@ -264,6 +281,40 @@ export class MeApi extends runtime.BaseAPI {
     }
 
     /**
+     * The caller\'s public profile, every field and every switch
+     */
+    async getMyPublicProfileRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyPublicProfileResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/me/public-profile`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MyPublicProfileResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The caller\'s public profile, every field and every switch
+     */
+    async getMyPublicProfile(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyPublicProfileResponse> {
+        const response = await this.getMyPublicProfileRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Which roles the caller holds, and in how many scopes
      */
     async getMyRolesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyRolesResponse>> {
@@ -294,6 +345,48 @@ export class MeApi extends runtime.BaseAPI {
      */
     async getMyRoles(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyRolesResponse> {
         const response = await this.getMyRolesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Another person\'s public profile, filtered to what they show
+     */
+    async getUserPublicProfileRaw(requestParameters: GetUserPublicProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PublicProfileResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getUserPublicProfile().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/users/{id}/public-profile`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PublicProfileResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Another person\'s public profile, filtered to what they show
+     */
+    async getUserPublicProfile(requestParameters: GetUserPublicProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicProfileResponse> {
+        const response = await this.getUserPublicProfileRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -374,6 +467,52 @@ export class MeApi extends runtime.BaseAPI {
      */
     async updateMe(requestParameters: UpdateMeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeResponse> {
         const response = await this.updateMeRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Only the fields sent change. The künye must be non-empty and unique regardless of case.
+     * Change the caller\'s public profile
+     */
+    async updateMyPublicProfileRaw(requestParameters: UpdateMyPublicProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyPublicProfileResponse>> {
+        if (requestParameters['updatePublicProfileDto'] == null) {
+            throw new runtime.RequiredError(
+                'updatePublicProfileDto',
+                'Required parameter "updatePublicProfileDto" was null or undefined when calling updateMyPublicProfile().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/me/public-profile`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdatePublicProfileDtoToJSON(requestParameters['updatePublicProfileDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MyPublicProfileResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Only the fields sent change. The künye must be non-empty and unique regardless of case.
+     * Change the caller\'s public profile
+     */
+    async updateMyPublicProfile(requestParameters: UpdateMyPublicProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyPublicProfileResponse> {
+        const response = await this.updateMyPublicProfileRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

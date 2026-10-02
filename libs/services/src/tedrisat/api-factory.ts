@@ -7,6 +7,7 @@ import {
   FlashcardDeckLabelApi,
   FlashcardDecksApi,
   FlashcardlabelApi,
+  KoskApplicationsApi,
   KosksApi,
   LessonsApi,
   MadrasahsApi,
@@ -43,6 +44,7 @@ export type {
   CreateFlashcardDto,
   CreateFlashcardLabelDto,
   CreateFlashcardLabelingDto,
+  CreateKoskApplicationDto,
   CreateKoskDto,
   CreateLessonDto,
   CreateMuderrisDto,
@@ -68,7 +70,10 @@ export type {
   FlashcardDeckSummaryResponse,
   FlashcardLabelingResponse,
   FlashcardLabelResponse,
+  FlashcardProgressResponse,
   FlashcardResponse,
+  FlashcardStudyRoundResponse,
+  FollowedKoskCourseResponse,
   GivenItemResponse,
   GivenKind,
   GrantResponse,
@@ -76,6 +81,7 @@ export type {
   HostingCoursesAction,
   HostingOpenCourseResponse,
   HostingRightResponse,
+  KoskApplicationResponse,
   KoskResponse,
   LabelStatsResponse,
   LessonMutationResponse,
@@ -92,6 +98,7 @@ export type {
   MyEffectivePermissionsResponse,
   MyGrantsResponse,
   MyPermissionsResponse,
+  MyPublicProfileResponse,
   MyRolesResponse,
   NazimGroupResponse,
   NazimPermissionResponse,
@@ -106,6 +113,8 @@ export type {
   PermissionCatalogResponse,
   PermissionGroupResponse,
   PermissionGroupScope,
+  ProfileVisibility,
+  PublicProfileResponse,
   ReadAllNotificationsResponse,
   RemoveEnrollmentDto,
   ReplaceCourseDto,
@@ -119,8 +128,11 @@ export type {
   UpdateFlashcardDto,
   UpdateKoskDto,
   UpdateLessonDto,
+  UpdateMeDto,
   UpdatePermissionGroupDto,
+  UpdateProfileVisibilityDto,
   UpdateProgressDto,
+  UpdatePublicProfileDto,
   UserSummaryResponse,
   UsersPolicy,
   WeekResponse,
@@ -139,6 +151,7 @@ import { EnrollmentResponseStatusEnum } from "./generated/src/models/EnrollmentR
 // Re-export enum constants (they are used at runtime as values)
 import { FlashcardResponseTypeEnum } from "./generated/src/models/FlashcardResponse";
 import { FlashcardType } from "./generated/src/models/FlashcardType";
+import { ReviewRating } from "./generated/src/models/ReviewRating";
 import { TeamSettableEnrollmentStatus } from "./generated/src/models/TeamSettableEnrollmentStatus";
 
 export {
@@ -146,6 +159,7 @@ export {
   DeckPublishStatus,
   DeckSource,
   FlashcardType,
+  ReviewRating,
   FlashcardResponseTypeEnum,
   CreateFlashcardDtoTypeEnum,
   CreateLessonDtoTypeEnum,
@@ -179,6 +193,8 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     cards: new FlashcardCardsApi(configuration),
     service: new TedrisatServiceApi(configuration),
     kosks: new KosksApi(configuration),
+    // "Köşk açma başvurusu" (MDRS-166).
+    koskApplications: new KoskApplicationsApi(configuration),
     // The medrese layer (MDRS-106); tedris' medrese page reads it (MDRS-122).
     madrasahs: new MadrasahsApi(configuration),
     courses: new CoursesApi(configuration),
