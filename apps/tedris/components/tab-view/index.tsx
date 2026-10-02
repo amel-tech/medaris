@@ -14,6 +14,10 @@ const ownsItsMain = (pathname: string) =>
   pathname.startsWith("/kosks") ||
   pathname.startsWith("/discover") ||
   pathname.startsWith("/my-courses") ||
+  pathname.startsWith("/schedule") ||
+  (pathname.startsWith("/decks") && !pathname.startsWith("/decks/study")) ||
+  pathname.startsWith("/account/calendar") ||
+  pathname === "/home" ||
   /^\/courses\/[^/]+\/lessons\//.test(pathname);
 
 export const TabView = ({ children }: { children: React.ReactNode }) => {

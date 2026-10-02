@@ -831,7 +831,8 @@
     "tabs": {
       "applications": "Başvurular",
       "enrolled": "Kayıtlı",
-      "completed": "Tamamlayanlar"
+      "completed": "Tamamlayanlar",
+      "removed": "Erişimi kaldırılanlar"
     },
     "applicationsNote": "Bu derse kayıt için onayınız gerekiyor. Onayladığınız talebe celselere ve ders kayıtlarına hemen erişir; reddettiğiniz talebe yeniden başvurabilir.",
     "applicationsNoteOpen": "Bu ders onay istemiyor; talebeler başvurur başvurmaz kaydolur.",
@@ -912,8 +913,12 @@
       "handleTaken": "Bu kısa ad başka bir medresede kullanılıyor.",
       "notFound": "Bu medrese artık yok.",
       "notHidden": "Bu medrese zaten gizli değil.",
-      "forbidden": "Bunu yapma izniniz yok."
-    }
+      "forbidden": "Bunu yapma izniniz yok.",
+      "delegationsChanged": "Başmüderrisin verdikleri değişmiş; listeyi yeniden okuyup seçimleri tekrar yapın.",
+      "expiryInvalid": "Bitiş tarihi geçmişte."
+    },
+    "change": "Başmüderrisi değiştir",
+    "changeLabel": "Başmüderrisi değiştir: {name}"
   },
   "HeadPicker": {
     "label": "Başmüderris",
@@ -958,8 +963,39 @@
     "submit": "Başmüderris ata",
     "close": "Kapat",
     "saved": "Başmüderris atandı",
-    "savedBody": "{head}, {name} medresesinin başmüderrisi oldu.",
-    "failed": "Başmüderris atanamadı"
+    "savedBody": "{name} için başmüderris {head} oldu.",
+    "failed": "Başmüderris atanamadı",
+    "titleChange": "Başmüderrisi değiştir",
+    "introChange": " şu an bu medresenin başmüderrisi. Yeni başmüderris onun yerine geçer ve medreseyi Nazır uygulamasından yönetir.",
+    "requiredNote": "* zorunlu alan",
+    "newHeadLabel": "Yeni başmüderris",
+    "chosenNoteChange": "Atandığında yeni başmüderris olur; eski başmüderrisin görevi biter.",
+    "sameHead": "Bu kişi zaten bu medresenin başmüderrisi.",
+    "endLabel": "Görev bitişi (isteğe bağlı)",
+    "endHelp": "Boş bırakırsanız görev siz değiştirene dek sürer. Süre dolup ardıl atanmazsa medrese Pasif kapsamlar’da görünür.",
+    "endPast": "Bitiş tarihi bugünden sonra olmalı.",
+    "submitChange": "Değiştir",
+    "answersNeeded": "Her satır için seçim yapılmadan başmüderris değiştirilemez.",
+    "changed": "Başmüderris değiştirildi",
+    "changedBody": "{name} için başmüderris {head} oldu.",
+    "changeFailed": "Başmüderris değiştirilemedi",
+    "unknownPerson": "Adı bilinmiyor",
+    "groupName": "{name} grubu",
+    "noEnd": "süresiz",
+    "untilDate": "{date} tarihine dek",
+    "givenOn": "verildi {date}",
+    "handedOnHeading": " şu kişilere rol ve izin vermişti. Her biri için ne olacağını seçin.",
+    "nothingHandedOn": "Başmüderrisin başkalarına verdiği bir izin ya da rol yok.",
+    "personLegend": "{person} için karar",
+    "groupsSummary": "{names} {count, plural, one {grubu} other {grupları}}",
+    "permissionsSummary": "{count, plural, one {1 izin} other {# izin}}: {names}",
+    "alsoSummary": "ayrıca {text}",
+    "takeOver": "Devral",
+    "drop": "Düşür",
+    "answersNote": "Devral: izin yerinde kalır, veren siz olursunuz. Düşür: izin geri alınır.",
+    "loadFailedTitle": "Liste okunamadı",
+    "loadFailed": "Başmüderrisin verdikleri şu an okunamıyor. Biraz sonra yeniden deneyin.",
+    "retry": "Yeniden dene"
   },
   "HostingPage": {
     "title": "Barındırma hakları",
@@ -1140,6 +1176,26 @@
         "short": "Platform politikalarını değiştir",
         "help": "Kayıt ve ders kaydı politikalarını platform genelinde daraltır."
       }
+    },
+    "courseShort": {
+      "course_edit": "ders düzenleme",
+      "session_manage": "celseler",
+      "session_live_link": "canlı yayın",
+      "week_hide": "hafta ve celse gizleme",
+      "course_settings": "ders ayarları",
+      "course_publish": "yayımlama",
+      "course_view_unpublished": "taslak dersi görme",
+      "enrollment_decide": "başvurular",
+      "enrollment_remove": "talebe çıkarma",
+      "enrollment_complete": "tamamladı sayma",
+      "recording_manage": "ders kayıtları",
+      "recording_upload": "kayıt yükleme",
+      "recording_watch_restricted": "kısıtlı kayıtları izleme",
+      "session_view_content": "celse içeriği",
+      "ban_course": "ders yasağı",
+      "ban_lift_course": "yasağı kaldırma",
+      "deck_manage_course": "ders destesi",
+      "course_nazir_assign": "ders nazırı atama"
     },
     "course": {
       "course_edit": "Dersi düzenle: başlık, tanıtım, müfredat, saat dilimi",
@@ -1659,6 +1715,294 @@
       "notFound": "Bu köşk artık yok.",
       "forbidden": "Bunu yapma izniniz yok."
     }
+  },
+  "KoskGrantsPage": {
+    "title": "İzinler",
+    "intro": "Bu köşkün medrese dışı derslerinde ders nazırı atar, atadığınız kişilere izin verirsiniz. Verdiğiniz izin, kendi izinlerinizi aşamaz.",
+    "assign": "Ders nazırı ata",
+    "madrasahNote": "Medrese derslerinde izni medrese kadrosu verir; burada yönetilmezler. Bu köşkte medreselere ait dersler: {courses}.",
+    "heading": "Atanmış ders nazırları",
+    "count": "{count} kişi",
+    "caption": "Atanmış ders nazırları",
+    "empty": "Henüz ders nazırı yok.",
+    "columns": {
+      "person": "Ders nazırı",
+      "course": "Ders",
+      "permissions": "İzinler",
+      "end": "Bitiş",
+      "giver": "Veren",
+      "actions": "İşlemler"
+    },
+    "permissionCount": "{count} izin",
+    "never": "Süresiz",
+    "sameDay": "Görev ve izinler aynı gün biter.",
+    "you": "(siz)",
+    "unknownPerson": "Adı bilinmiyor",
+    "edit": "İzinleri düzenle",
+    "editLabel": "İzinleri düzenle: {name}",
+    "revoke": "Görevden al",
+    "revokeLabel": "Görevden al: {name}",
+    "loadFailedTitle": "Ders nazırları yüklenemedi",
+    "loadFailed": "Ders nazırları şu an okunamıyor. Biraz sonra yeniden deneyin.",
+    "retry": "Yeniden dene",
+    "errors": {
+      "generic": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
+      "exceeds": "Kendinizde olmayan bir izni veremezsiniz.",
+      "unknownPermission": "Bu izin derslerde verilemez.",
+      "courseInvalid": "Bu ders, bu köşkün medrese dışı derslerinden biri değil.",
+      "exists": "Bu kişi bu dersin ders nazırı zaten.",
+      "notFound": "Bu ders nazırı artık yok.",
+      "expiryInvalid": "Bitiş tarihi geçmişte.",
+      "unknownAccount": "Bu hesap bulunamadı.",
+      "forbidden": "Bunu yapma izniniz yok."
+    }
+  },
+  "KoskGrantDialog": {
+    "eyebrow": "Köşk",
+    "titleAssign": "Ders nazırı ata",
+    "titleEdit": "İzinleri düzenle",
+    "close": "Kapat",
+    "cancel": "Vazgeç",
+    "save": "Kaydet",
+    "unknownPerson": "Adı bilinmiyor",
+    "cardLine": "Ders nazırı · {course} · Veren: {by} · {date}",
+    "personLabel": "Ders nazırı",
+    "chosenTitle": "Seçilen ders nazırı",
+    "chosenNote": "Kaydedince bu derste ders nazırı olur ve seçtiğiniz izinleri alır.",
+    "courseLabel": "Ders",
+    "courseHelp": "Yalnız medrese dışı dersler listelenir.",
+    "coursePlaceholder": "Ders seçin",
+    "permissionsHeading": "İzinler",
+    "endLabel": "Bitiş tarihi (isteğe bağlı)",
+    "endHelp": "Görev ve izinler aynı gün biter. Boş bırakırsanız süresiz olur.",
+    "endPast": "Bitiş tarihi bugünden sonra olmalı.",
+    "auditNote": "Verdiğiniz izin, kendi izinlerinizi aşamaz. Verilen ve geri alınan her izin denetim kaydına yazılır.",
+    "summary": "{count} izin seçili",
+    "failed": "İzinler kaydedilemedi",
+    "assignFailed": "Ders nazırı atanamadı",
+    "saved": "İzinler kaydedildi",
+    "savedBody": "{name} için izinler güncellendi.",
+    "assigned": "Ders nazırı atandı",
+    "assignedBody": "{name} ders nazırı oldu."
+  },
+  "KoskRevokeDialog": {
+    "title": "Görevden al",
+    "intro": "{name}, {course} dersindeki ders nazırlığından alınacak.",
+    "effect": "Görev ve bütün izinleri aynı anda biter.",
+    "submit": "Görevden al",
+    "cancel": "Vazgeç",
+    "close": "Kapat",
+    "auditNote": "Görevden alma denetim kaydına yazılır.",
+    "failed": "Görevden alınamadı",
+    "revoked": "Görevden alındı",
+    "revokedBody": "{name} artık {course} dersinin ders nazırı değil."
+  },
+  "InactivePage": {
+    "title": "Pasif kapsamlar",
+    "intro": "Son yöneticisi görevden alınan ya da görev süresi dolan köşk, medrese ve dersler.",
+    "noticeTitle": "Yönetici atandığında kapsam yeniden etkin olur",
+    "noticeBody": "Pasif bir kapsamı yalnız Medaris başnazımı ve izni olan Medaris nazımları açabilir; her açış denetim kaydına yazılır.",
+    "heading": "Yöneticisi olmayan kapsamlar",
+    "count": "{count} kapsam",
+    "filterLegend": "Kapsam türü",
+    "filters": {
+      "ALL": "Tümü",
+      "KOSK": "Köşk",
+      "MADRASAH": "Medrese",
+      "COURSE": "Ders"
+    },
+    "caption": "Yöneticisi olmayan kapsamlar",
+    "columns": {
+      "scope": "Kapsam",
+      "reason": "Neden",
+      "since": "Ne zamandır",
+      "last": "Son yönetici",
+      "actions": "İşlemler"
+    },
+    "kinds": {
+      "KOSK": "Köşk",
+      "MADRASAH": "Medrese",
+      "COURSE": "Ders"
+    },
+    "kindInKosk": "{kind} · {kosk}",
+    "reasons": {
+      "KOSK_EXPIRED": "Son köşk nazımının görev süresi doldu",
+      "KOSK_REMOVED": "Son köşk nazımı görevden alındı",
+      "MADRASAH_EXPIRED": "Başmüderrisin görev süresi doldu",
+      "MADRASAH_REMOVED": "Başmüderris görevden alındı",
+      "COURSE_EXPIRED": "Son müderrisin görev süresi doldu",
+      "COURSE_REMOVED": "Son müderris görevden alındı"
+    },
+    "removers": {
+      "SYSTEM_ADMIN": "Medaris başnazımı",
+      "MEDARIS_NAZIM": "Medaris nazımı",
+      "KOSK_NAZIM": "köşk nazımı"
+    },
+    "removedByRole": "{name}, {role}",
+    "daysPassive": "{count} gündür",
+    "lastRoles": {
+      "KOSK_NAZIM": "Köşk nazımı",
+      "MEDRESE_BASMUDERRIS": "Başmüderris",
+      "MUDERRIS": "Müderris"
+    },
+    "imam": "İmam",
+    "assign": {
+      "KOSK": "Köşk nazımı ata",
+      "MADRASAH": "Başmüderris ata",
+      "COURSE": "Müderris ata"
+    },
+    "assignLabel": "{action}: {name}",
+    "view": "İçeriği gör",
+    "viewLabel": "İçeriği gör: {name}",
+    "viewFailed": "İçerik açılamadı",
+    "empty": "Yöneticisi olmayan kapsam yok.",
+    "unknownPerson": "Adı bilinmiyor",
+    "loadFailedTitle": "Pasif kapsamlar yüklenemedi",
+    "loadFailed": "Pasif kapsamlar şu an okunamıyor. Biraz sonra yeniden deneyin.",
+    "retry": "Yeniden dene",
+    "errors": {
+      "generic": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
+      "notFound": "Bu kapsam artık pasif değil.",
+      "expiryInvalid": "Bitiş tarihi geçmişte.",
+      "unknownAccount": "Bu hesap bulunamadı.",
+      "forbidden": "Bunu yapma izniniz yok."
+    }
+  },
+  "InactiveAssignDialog": {
+    "title": {
+      "KOSK": "Köşk nazımı ata",
+      "MADRASAH": "Başmüderris ata",
+      "COURSE": "Müderris ata"
+    },
+    "intro": {
+      "KOSK": "{name} için bir köşk nazımı seçin. Atadığınızda köşk yeniden etkin olur.",
+      "MADRASAH": "{name} için bir başmüderris seçin. Atadığınızda medrese yeniden etkin olur.",
+      "COURSE": "{name} için bir müderris seçin. Atadığınızda ders yeniden etkin olur."
+    },
+    "personLabel": {
+      "KOSK": "Köşk nazımı",
+      "MADRASAH": "Başmüderris",
+      "COURSE": "Müderris"
+    },
+    "chosenTitle": {
+      "KOSK": "Seçilen köşk nazımı",
+      "MADRASAH": "Seçilen başmüderris",
+      "COURSE": "Seçilen müderris"
+    },
+    "chosenNote": {
+      "KOSK": "Atandığında köşk nazımı olur.",
+      "MADRASAH": "Atandığında başmüderris olur.",
+      "COURSE": "Atandığında dersin müderrisi ve imamı olur."
+    },
+    "submit": {
+      "KOSK": "Köşk nazımı ata",
+      "MADRASAH": "Başmüderris ata",
+      "COURSE": "Müderris ata"
+    },
+    "endLabel": "Görev bitişi (isteğe bağlı)",
+    "endHelp": "Boş bırakırsanız görev siz değiştirene dek sürer.",
+    "endPast": "Bitiş tarihi bugünden sonra olmalı.",
+    "cancel": "Vazgeç",
+    "close": "Kapat",
+    "auditNote": "Atama denetim kaydına yazılır.",
+    "failed": "Atama yapılamadı",
+    "saved": "Atandı",
+    "savedBody": {
+      "KOSK": "{person}, {name} için köşk nazımı olarak atandı.",
+      "MADRASAH": "{person}, {name} için başmüderris olarak atandı.",
+      "COURSE": "{person}, {name} için müderris olarak atandı."
+    }
+  },
+  "AllBansPage": {
+    "intro": "Medaris'te ders ve köşk düzeyinde konan bütün yasaklar, gerekçeleriyle. Bir yasağı yalnız onu koyan kademe ya da daha üst bir kademe kaldırır; kaldırırken gerekçe yazılır.",
+    "searchLabel": "Kişi ara",
+    "searchPlaceholder": "Kişi adı ya da e-posta ara",
+    "scopeLegend": "Kapsam",
+    "scopeAll": "Tümü",
+    "summary": {
+      "ACTIVE": "{count} etkin yasak",
+      "LIFTED": "{count} kaldırılan yasak"
+    },
+    "caption": {
+      "ACTIVE": "Bütün köşklerdeki etkin yasaklar",
+      "LIFTED": "Bütün köşklerde kaldırılan yasaklar"
+    },
+    "emptyFiltered": "Bu süzgece uyan yasak yok",
+    "more": "Daha fazla göster",
+    "extend": "Yasağı genişlet",
+    "extendLabel": "Yasağı genişlet: {name}"
+  },
+  "ExtendDialog": {
+    "title": "Yasağı genişlet",
+    "close": "Kapat",
+    "info": "<b>{name}</b> adlı talebe {kosk} içindeki hiçbir derse başvuramaz hâle gelecek; ders yasağı da yürürlükte kalır.",
+    "requiredNote": "zorunlu alan",
+    "reasonLabel": "Genişletme gerekçesi",
+    "reasonHelp": "Gerekçe, yasağı kaldıracak kademeye görünür; talebeye hiçbir zaman gösterilmez.",
+    "reasonRequired": "Bir gerekçe yazın.",
+    "cancel": "Vazgeç",
+    "submit": "Yasağı genişlet",
+    "extended": "Yasak genişletildi",
+    "extendedBody": "{name} artık {kosk} içindeki hiçbir derse başvuramaz.",
+    "failed": "Yasak genişletilemedi"
+  },
+  "RemoveDialog": {
+    "title": "Dersten çıkar",
+    "close": "Kapat",
+    "body": "<b>{name}</b> adlı talebe {course} dersinden çıkarılacak. Celselere, toplantı bağlantılarına, ders kayıtlarına ve ders destesine erişimi kalkar; dersin celseleri takviminden de düşer. Kendi destesine kopyaladığı kartlar kendisinde kalır.",
+    "info": "Talebe yeniden başvurabilir. Yeniden başvurmasını da engellemek gerekiyorsa “Yasakla”yı kullanın.",
+    "requiredNote": "zorunlu alan",
+    "reasonLabel": "Çıkarma gerekçesi",
+    "reasonHelp": "Gerekçe, Erişimi kaldırılanlar sekmesinde ders kadrosuna görünür.",
+    "cancel": "Vazgeç",
+    "submit": "Dersten çıkar",
+    "removed": "Talebe dersten çıkarıldı",
+    "removedBody": "{name} Erişimi kaldırılanlar sekmesine taşındı.",
+    "failed": "Talebe dersten çıkarılamadı"
+  },
+  "StudentsRoster": {
+    "searchLabel": "Talebe ara",
+    "searchPlaceholder": "Ada ya da e-postaya göre ara…",
+    "rosterHelp": "İlerlemeyi talebe kendisi girer; dersi tamamladığını ders kadrosu onaylar.",
+    "removedNote": "Ders kadrosunun dersten çıkardığı talebeler, gerekçeleriyle. Çıkarılan talebe yeniden başvurabilir.",
+    "columns": {
+      "student": "Talebe",
+      "email": "E-posta",
+      "joined": "Kayıt tarihi",
+      "progress": "İlerleme",
+      "actions": "İşlemler",
+      "removedAt": "Çıkarılma",
+      "reason": "Gerekçe",
+      "removedBy": "Çıkaran"
+    },
+    "captionEnrolled": "{course} dersine kayıtlı talebeler",
+    "captionCompleted": "{course} dersini tamamlayan talebeler",
+    "captionRemoved": "{course} dersinden erişimi kaldırılan talebeler",
+    "progressLabel": "Talebenin girdiği ilerleme: {name}",
+    "progressDone": "tamamlandı",
+    "complete": "Tamamladı say",
+    "completeLabel": "Tamamladı say: {name}",
+    "reopen": "Yeniden aç",
+    "reopenLabel": "Yeniden aç: {name}",
+    "remove": "Dersten çıkar",
+    "removeLabel": "Dersten çıkar: {name}",
+    "ban": "Yasakla",
+    "banLabel": "Yasakla: {name}",
+    "lift": "Yasağı kaldır",
+    "liftLabel": "Yasağı kaldır: {name}",
+    "banned": "Yasaklı",
+    "bannedCourse": "Yasaklı · Bu ders",
+    "bannedKosk": "Yasaklı · Köşk",
+    "showing": "{total} talebeden {shown} tanesi gösteriliyor",
+    "more": "Daha fazla göster",
+    "emptySearch": "Aramaya uyan talebe yok",
+    "emptyRemoved": "Erişimi kaldırılan talebe yok",
+    "unnamed": "Adsız talebe",
+    "completed": "Talebe Tamamlayanlar'a taşındı",
+    "completedBody": "{name} dersi tamamladı.",
+    "reopened": "Kayıt yeniden açıldı",
+    "reopenedBody": "{name} yeniden Kayıtlı sekmesinde.",
+    "actionFailed": "İşlem tamamlanamadı"
   },
   "KoskManage": {
     "title": "Köşk",

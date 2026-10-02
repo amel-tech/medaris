@@ -8,6 +8,8 @@ import { FlashcardBulkService } from "./flashcard-bulk.service";
 import { FlashcardDeckController } from "./flashcard-deck.controller";
 import { FlashcardDeckRepository } from "./flashcard-deck.repository";
 import { FlashcardDeckService } from "./flashcard-deck.service";
+import { FlashcardDeckSummaryRepository } from "./flashcard-deck-summary.repository";
+import { FlashcardDeckSummaryService } from "./flashcard-deck-summary.service";
 
 @Module({
   imports: [AuthGuardModule, ExcelModule],
@@ -17,6 +19,8 @@ import { FlashcardDeckService } from "./flashcard-deck.service";
     FlashcardRepository,
     FlashcardDeckService,
     FlashcardDeckRepository,
+    FlashcardDeckSummaryRepository,
+    FlashcardDeckSummaryService,
     FlashcardBulkService,
     DatabaseService,
   ],

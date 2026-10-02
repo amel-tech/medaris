@@ -1,335 +1,75 @@
 "use client";
 
-import {
-  ArrowRightIcon,
-  BookmarkSimpleIcon,
-  CardsIcon,
-  GlobeIcon,
-  LockIcon,
-  StarIcon,
-  StudentIcon,
-  TrashIcon,
-} from "@medaris/icons";
 import type {
   FlashcardDeckResponse,
+  FlashcardDeckSummaryResponse,
   FlashcardResponse,
 } from "@medaris/services/tedrisat";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@medaris/ui/components/alert-dialog";
-import { Badge } from "@medaris/ui/components/badge";
-
-import { Button } from "@medaris/ui/components/button";
-import { toastHelper } from "@medaris/ui/lib/toast-helper";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Button } from "@medaris/ui/mds/button";
+import { Icon } from "@medaris/ui/mds/icon";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
-import {
-  addDeckToCollection,
-  deleteDeck,
-  removeDeckFromCollection,
-  setDeckVisibility,
-} from "~/features/flashcards/actions";
-import { SampleCards } from "~/features/flashcards/components/sample-cards";
+import { countCards } from "../deck-model";
+import { DeckEditDialog } from "./deck-edit-dialog";
+import { DeckHeader } from "./deck-header";
+import { DeckOwnerOverview } from "./deck-owner-overview";
+import { DeckReaderView } from "./deck-reader-view";
 
-const MOCK_TAGS = ["arabic", "hadith"];
-const MOCK_AUTHOR = "Imam Yousef";
-const MOCK_RATING = 0;
-const MOCK_STUDENTS = 0;
+export interface DeckDetailPageProps {
+  deck: FlashcardDeckResponse;
+  cards: FlashcardResponse[];
+  isOwner: boolean;
+  /** the caller has the deck in their collection */
+  inCollection: boolean;
+  /** the caller's own decks, for "Kendi desteme kopyala" */
+  ownDecks: FlashcardDeckSummaryResponse[];
+  /** the route `/decks/[id]/edit`: the edit dialog is open over the page */
+  editing?: boolean;
+}
 
+/**
+ * `/decks/[id]` (design tedris/28 for the author, 31 for anyone else who may
+ * read the deck). Which of the two is the viewer's relation to the deck, not a
+ * flag a client could set: the API refuses the author's writes to everyone
+ * else regardless of what is drawn here.
+ */
 export function DeckDetailPage({
   deck,
   cards,
-  isInCollection: initialIsInCollection,
-  isOwner = false,
-}: {
-  deck: FlashcardDeckResponse;
-  cards: FlashcardResponse[];
-  isInCollection: boolean;
-  isOwner?: boolean;
-}) {
-  const t = useTranslations("tedris");
-  const router = useRouter();
-  const [isInCollection, setIsInCollection] = useState(initialIsInCollection);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isPublic, setIsPublic] = useState(deck.isPublic);
-  const cardCount = cards.length;
-  const sampleCards = cards.slice(0, 8);
-  const tags = MOCK_TAGS;
-  const author = MOCK_AUTHOR;
-  const rating = MOCK_RATING;
-  const students = MOCK_STUDENTS;
-
-  const handleRemoveDeckFromCollection = async () => {
-    const result = await removeDeckFromCollection(deck.id);
-    if (result.success) {
-      setIsInCollection(false);
-      toastHelper.success({
-        title: t("DeckCard.removedFromCollection"),
-        description: t("DeckCard.removedFromCollectionDescription"),
-      });
-    } else {
-      toastHelper.error({
-        title: t("DeckCard.error"),
-        description: t("DeckCard.errorDescription", {
-          action: "removing",
-          preposition: "from",
-        }),
-      });
-    }
-  };
-
-  const handleAddDeckToCollection = async () => {
-    const result = await addDeckToCollection(deck.id);
-    if (result.success) {
-      setIsInCollection(true);
-      toastHelper.success({
-        title: t("DeckCard.addedToCollection"),
-        description: t("DeckCard.addedToCollectionDescription"),
-      });
-    } else {
-      toastHelper.error({
-        title: t("DeckCard.error"),
-        description: t("DeckCard.errorDescription", {
-          action: "adding",
-          preposition: "to",
-        }),
-      });
-    }
-    setIsProcessing(false);
-  };
-
-  const handleDelete = async () => {
-    setIsProcessing(true);
-    const result = await deleteDeck(deck.id);
-    if (result.success) {
-      toastHelper.success({
-        title: t("DeckCard.deckDeleted"),
-        description: t("DeckCard.deckDeletedDescription"),
-      });
-      router.push("/decks");
-    } else {
-      toastHelper.error({
-        title: t("DeckCard.deleteError"),
-        description: t("DeckCard.deleteErrorDescription"),
-      });
-      setIsProcessing(false);
-    }
-  };
-
-  const handleToggleVisibility = async () => {
-    setIsProcessing(true);
-    const result = await setDeckVisibility(deck.id, !isPublic);
-    if (result.success) {
-      setIsPublic(result.data);
-      toastHelper.success({
-        title: t("DeckDetailClient.visibilityChanged"),
-        description: result.data
-          ? t("DeckDetailClient.madePublic")
-          : t("DeckDetailClient.madePrivate"),
-      });
-    } else {
-      toastHelper.error({
-        title: t("DeckDetailClient.visibilityError"),
-        // The API's own reason only for a 400, as in create-deck-button-dialog:
-        // the same field carries "fetch failed" and token errors otherwise.
-        // `"status" in result`, not `result.success`: tedris compiles with
-        // `strict: false`, which does not narrow this union.
-        description:
-          "status" in result && result.status === 400
-            ? result.error
-            : t("DeckDetailClient.visibilityError"),
-      });
-    }
-    setIsProcessing(false);
-  };
-
-  const handleToggleCollection = async () => {
-    setIsProcessing(true);
-
-    if (isInCollection) {
-      await handleRemoveDeckFromCollection();
-    } else {
-      await handleAddDeckToCollection();
-    }
-
-    setIsProcessing(false);
-  };
-
+  isOwner,
+  inCollection,
+  ownDecks,
+  editing = false,
+}: DeckDetailPageProps) {
+  const t = useTranslations("tedris.Decks");
+  if (!isOwner) {
+    return (
+      <DeckReaderView
+        deck={deck}
+        cards={cards}
+        inCollection={inCollection}
+        ownDecks={ownDecks}
+      />
+    );
+  }
   return (
-    <div className="mx-auto px-4 pb-8">
-      <div className="mb-8">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-4">{deck.title}</h1>
-
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium">
-                {author.charAt(0).toUpperCase()}
-              </div>
-              <span className="text-md text-muted-foreground">
-                {t("DeckDetailClient.by")} {author}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-6 mb-4">
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <CardsIcon size={16} />
-                <span>
-                  {cardCount} {t("DeckDetailClient.cards")}
-                </span>
-              </div>
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <StarIcon size={16} />
-                <span>
-                  {rating} {t("DeckDetailClient.rating")}
-                </span>
-              </div>
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <StudentIcon size={16} />
-                <span>
-                  {students} {t("DeckDetailClient.students")}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-3 mt-6">
-            {cardCount > 0 ? (
-              <Link href={`/decks/study/${deck.id}`}>
-                <Button size="lg" className="gap-2">
-                  {t("DeckDetailClient.practiceNow")}
-                  <ArrowRightIcon size={20} />
-                </Button>
-              </Link>
-            ) : (
-              <Button size="lg" className="gap-2" disabled>
-                {t("DeckDetailClient.practiceNow")}
-                <ArrowRightIcon size={20} />
-              </Button>
-            )}
-            <Button
-              size="lg"
-              variant={isInCollection ? "default" : "outline"}
-              className="gap-2"
-              onClick={handleToggleCollection}
-              disabled={isProcessing}
-            >
-              <BookmarkSimpleIcon
-                size={20}
-                weight={isInCollection ? "fill" : "regular"}
-              />
-              {isProcessing
-                ? isInCollection
-                  ? t("DeckDetailClient.removing")
-                  : t("DeckDetailClient.adding")
-                : isInCollection
-                  ? t("DeckDetailClient.removeFromCollection")
-                  : t("DeckDetailClient.addToMyCollection")}
-            </Button>
-            {isOwner && (
-              <Button
-                size="lg"
-                variant="outline"
-                className="gap-2"
-                onClick={handleToggleVisibility}
-                disabled={isProcessing}
-              >
-                {isPublic ? <LockIcon size={20} /> : <GlobeIcon size={20} />}
-                {isPublic
-                  ? t("DeckDetailClient.makePrivate")
-                  : t("DeckDetailClient.makePublic")}
-              </Button>
-            )}
-            {isOwner && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="gap-2"
-                    disabled={isProcessing}
-                  >
-                    <TrashIcon size={20} />
-                    {t("DeckCard.deleteDeck")}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      {t("DeckCard.deleteConfirmTitle")}
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {t("DeckCard.deleteConfirmDescription", {
-                        title: deck.title,
-                      })}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>
-                      {t("DeckCard.cancel")}
-                    </AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete}>
-                      {t("DeckCard.delete")}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-          </div>
-        </div>
-
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-4">
-            {tags.map((tag) => (
-              <Badge key={tag} variant="secondary">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        {deck.description && (
-          <div className="mb-8">
-            <p className="text-muted-foreground leading-relaxed">
-              {deck.description}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {cardCount > 0 ? (
-        <div className="mt-12">
-          <h2 className="text-2xl font-semibold mb-6">
-            {t("DeckDetailClient.sampleCards")}
-          </h2>
-          <SampleCards cards={sampleCards} />
-        </div>
-      ) : (
-        <div className="mt-12">
-          <h2 className="text-2xl font-semibold mb-6">
-            {t("DeckDetailClient.sampleCards")}
-          </h2>
-          <div className="flex flex-col items-center justify-center py-12 px-4 bg-muted rounded-lg border-2 border-dashed">
-            <CardsIcon size={48} className="text-muted-foreground mb-4" />
-            <p className="text-lg font-medium text-foreground mb-2">
-              {t("DeckDetailClient.noCardsInDeck")}
-            </p>
-            <p className="text-sm text-muted-foreground text-center max-w-md">
-              {t("DeckDetailClient.noCardsDescription")}
-            </p>
-          </div>
-        </div>
-      )}
-    </div>
+    <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
+      <DeckHeader
+        deck={deck}
+        isOwner
+        cardCount={countCards(cards).total}
+        tab="overview"
+        actions={
+          <Button
+            href={`/decks/study/${deck.id}`}
+            size="large"
+            iconLeft={<Icon name="play" />}
+          >
+            {t("study")}
+          </Button>
+        }
+      />
+      <DeckOwnerOverview deck={deck} cards={cards} />
+      {editing ? <DeckEditDialog deck={deck} open /> : null}
+    </main>
   );
 }

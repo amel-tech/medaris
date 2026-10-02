@@ -1,4 +1,8 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
+import { GrantExpiryInvalidError } from "../assignment/admin/errors";
+import { checkGrantExpiry } from "../assignment/admin/grant-plan";
+import { KeycloakAdminService } from "../keycloak-admin/keycloak-admin.service";
+import type { HeadDelegationResponse } from "./dto/set-head-muderris.dto";
 import { MadrasahHandleTakenError } from "./errors/madrasah-handle-taken.error";
 import { MadrasahNotFoundError } from "./errors/madrasah-not-found.error";
 import { MadrasahNotHiddenError } from "./errors/madrasah-not-hidden.error";
@@ -42,7 +46,14 @@ function isUniqueViolation(error: unknown): boolean {
  */
 @Injectable()
 export class MadrasahService {
-  constructor(private readonly madrasahRepo: MadrasahRepository) {}
+  private readonly logger = new Logger(MadrasahService.name);
+
+  // Must stay value imports: `import type` erases them from
+  // `design:paramtypes` and Nest can no longer inject them.
+  constructor(
+    private readonly madrasahRepo: MadrasahRepository,
+    private readonly keycloak: KeycloakAdminService
+  ) {}
 
   async findAll(page: number, limit: number): Promise<IPaginatedMadrasahs> {
     const offset = (page - 1) * limit;
@@ -157,18 +168,87 @@ export class MadrasahService {
     return { items, total, page, limit, counts, passive };
   }
 
-  /** Makes `userId` the medrese's başmüderris; a passive medrese is active again. */
+  /**
+   * Makes `userId` the medrese's başmüderris; a passive medrese is active
+   * again. `options.decisions` answers what the outgoing başmüderris handed on
+   * (nizam/22), `options.endsAt` is the new one's "Görev bitişi".
+   */
   async setHeadMuderris(
     madrasahId: string,
     userId: string,
-    actorId: string
+    actorId: string,
+    options: {
+      endsAt?: Date | null;
+      decisions?: Array<{
+        kind: "ROLE" | "GRANT";
+        id: string;
+        action: "TAKE_OVER" | "DROP";
+      }>;
+    } = {}
   ): Promise<IMadrasahDirectoryItem> {
+    if (checkGrantExpiry(options.endsAt ?? null, null, new Date()) === "past") {
+      throw new GrantExpiryInvalidError("The end date is in the past");
+    }
     if (
-      !(await this.madrasahRepo.setHeadMuderris(madrasahId, userId, actorId))
+      !(await this.madrasahRepo.setHeadMuderris(
+        madrasahId,
+        userId,
+        actorId,
+        options
+      ))
     ) {
       throw new MadrasahNotFoundError(madrasahId);
     }
     return this.directoryItem(madrasahId);
+  }
+
+  /**
+   * What the sitting başmüderris handed on (nizam/22's "şu kişilere rol ve
+   * izin vermişti"), named. `exceptUserId` is the person about to take over.
+   */
+  async headDelegations(
+    madrasahId: string,
+    exceptUserId?: string
+  ): Promise<HeadDelegationResponse[]> {
+    if (!(await this.madrasahRepo.exists(madrasahId))) {
+      throw new MadrasahNotFoundError(madrasahId);
+    }
+    const rows = await this.madrasahRepo.headDelegations(
+      madrasahId,
+      exceptUserId
+    );
+    const ids = [...new Set(rows.map((r) => r.userId))];
+    const people = await this.madrasahRepo.people(ids);
+    const missing = ids.filter((id) => !people.has(id));
+    if (missing.length > 0 && this.keycloak.isConfigured()) {
+      const found = await Promise.allSettled(
+        missing.map((id) => this.keycloak.findById(id))
+      );
+      found.forEach((result, i) => {
+        if (result.status === "fulfilled" && result.value) {
+          people.set(missing[i], result.value);
+        } else if (result.status === "rejected") {
+          this.logger.warn(`No directory name for ${missing[i]}`);
+        }
+      });
+    }
+    return rows.map((r) => {
+      const person = people.get(r.userId);
+      const name = [person?.givenName, person?.familyName]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      return {
+        kind: r.kind,
+        id: r.id,
+        role: r.role,
+        permission: r.permission,
+        groupName: r.groupName,
+        to: { id: r.userId, name: name || null, email: person?.email ?? null },
+        grantedAt: r.grantedAt,
+        expiresAt: r.expiresAt,
+      };
+    });
   }
 
   /** "Geri al": a hidden medrese is listed again. */

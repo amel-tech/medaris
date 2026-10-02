@@ -19,9 +19,11 @@ import { DatabaseModule } from "./database/database.module";
 import { FlashcardModule } from "./flashcard/flashcard.module";
 import { FlashcardLabelModule } from "./flashcard/flashcard-label.module";
 import { HostingModule } from "./hosting/hosting.module";
+import { InactiveScopeModule } from "./inactive-scope/inactive-scope.module";
 import { KoskModule } from "./kosk/kosk.module";
 import { MadrasahModule } from "./madrasah/madrasah.module";
 import { NotificationModule } from "./notification/notification.module";
+import { ScheduleModule } from "./schedule/schedule.module";
 import { UserModule } from "./user/user.module";
 
 @Module({
@@ -48,7 +50,9 @@ import { UserModule } from "./user/user.module";
     CourseModule,
     CalendarFeedModule,
     NotificationModule,
+    ScheduleModule,
     AssignmentModule,
+    InactiveScopeModule,
     ArchiveModule,
     BanModule,
     UserModule,

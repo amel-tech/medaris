@@ -73,12 +73,13 @@ export class FlashcardService {
     user: AuthenticatedUser,
     cardId: string
   ): Promise<string> {
-    const [row] = await this.cardRepo.findVisibilityByIds([cardId]);
+    const [row] = await this.cardRepo.findVisibilityByIds([cardId], user.sub);
     if (!row) throw new CardNotFoundError(cardId);
     if (
       !this.authz.isSystemAdmin(user) &&
       row.authorId !== user.sub &&
-      !row.isPublic
+      !row.isPublic &&
+      !row.sharedWithViewer
     ) {
       throw new CardNotFoundError(cardId);
     }
@@ -163,7 +164,7 @@ export class FlashcardService {
     if (this.authz.isSystemAdmin(user)) return;
 
     const cardIds = [...new Set(progress.map((p) => p.flashcardId))];
-    const rows = await this.cardRepo.findVisibilityByIds(cardIds);
+    const rows = await this.cardRepo.findVisibilityByIds(cardIds, user.sub);
     const byCard = new Map(rows.map((r) => [r.cardId, r]));
 
     for (const cardId of cardIds) {
@@ -171,7 +172,7 @@ export class FlashcardService {
       if (!row) throw new CardNotFoundError(cardId);
       // No context: GlobalExceptionFilter serialises it into the response,
       // and the parent deck id of a private card is not the caller's to see.
-      if (row.authorId !== user.sub && !row.isPublic) {
+      if (row.authorId !== user.sub && !row.isPublic && !row.sharedWithViewer) {
         throw new AuthzForbiddenError();
       }
     }

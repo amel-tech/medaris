@@ -16,15 +16,21 @@
 import * as runtime from '../runtime';
 import type {
   CreateFlashcardDeckDto,
+  FlashcardDeckExploreResponse,
   FlashcardDeckResponse,
+  FlashcardDeckSummaryResponse,
   FlashcardDeckUserResponse,
   UpdateFlashcardDeckDto,
 } from '../models/index';
 import {
     CreateFlashcardDeckDtoFromJSON,
     CreateFlashcardDeckDtoToJSON,
+    FlashcardDeckExploreResponseFromJSON,
+    FlashcardDeckExploreResponseToJSON,
     FlashcardDeckResponseFromJSON,
     FlashcardDeckResponseToJSON,
+    FlashcardDeckSummaryResponseFromJSON,
+    FlashcardDeckSummaryResponseToJSON,
     FlashcardDeckUserResponseFromJSON,
     FlashcardDeckUserResponseToJSON,
     UpdateFlashcardDeckDtoFromJSON,
@@ -47,6 +53,10 @@ export interface DeleteFlashcardDeckUserRequest {
     id: string;
 }
 
+export interface ExploreFlashcardDecksRequest {
+    cardType?: ExploreFlashcardDecksCardTypeEnum;
+}
+
 export interface GetAllFlashcardDecksRequest {
     isPublic?: boolean;
     include?: Array<number>;
@@ -62,9 +72,17 @@ export interface ReplaceFlashcardDeckRequest {
     createFlashcardDeckDto: CreateFlashcardDeckDto;
 }
 
+export interface RequestFlashcardDeckPublicationRequest {
+    id: string;
+}
+
 export interface UpdateFlashcardDeckRequest {
     id: string;
     updateFlashcardDeckDto: UpdateFlashcardDeckDto;
+}
+
+export interface WithdrawFlashcardDeckPublicationRequest {
+    id: string;
 }
 
 /**
@@ -248,6 +266,46 @@ export class FlashcardDecksApi extends runtime.BaseAPI {
     }
 
     /**
+     * The decks of the courses, köşks and medreses the caller is enrolled in, and the decks Medaris published, each marked with whether the caller has it in the collection.
+     * Discover decks to collect
+     */
+    async exploreFlashcardDecksRaw(requestParameters: ExploreFlashcardDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FlashcardDeckExploreResponse>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['cardType'] != null) {
+            queryParameters['cardType'] = requestParameters['cardType'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/flashcard/decks/explore`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FlashcardDeckExploreResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The decks of the courses, köşks and medreses the caller is enrolled in, and the decks Medaris published, each marked with whether the caller has it in the collection.
+     * Discover decks to collect
+     */
+    async exploreFlashcardDecks(requestParameters: ExploreFlashcardDecksRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FlashcardDeckExploreResponse> {
+        const response = await this.exploreFlashcardDecksRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Retrieves all flashcard decks that are either public or owned by the user, with optional includes for related data such as tags.
      * Get all flashcard decks visible to the user
      */
@@ -374,6 +432,42 @@ export class FlashcardDecksApi extends runtime.BaseAPI {
     }
 
     /**
+     * The caller\'s own decks followed by the decks of other people they collected, each with the card counts and the caller\'s progress through them, so a list page makes one request instead of one per deck.
+     * Get the caller\'s decks with their progress
+     */
+    async getFlashcardDeckSummariesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<FlashcardDeckSummaryResponse>>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/flashcard/decks/summary`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(FlashcardDeckSummaryResponseFromJSON));
+    }
+
+    /**
+     * The caller\'s own decks followed by the decks of other people they collected, each with the card counts and the caller\'s progress through them, so a list page makes one request instead of one per deck.
+     * Get the caller\'s decks with their progress
+     */
+    async getFlashcardDeckSummaries(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<FlashcardDeckSummaryResponse>> {
+        const response = await this.getFlashcardDeckSummariesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Replaces all properties of an existing flashcard deck with new values. This is a complete replacement operation.
      * Replace a flashcard deck completely
      */
@@ -424,6 +518,50 @@ export class FlashcardDecksApi extends runtime.BaseAPI {
      */
     async replaceFlashcardDeck(requestParameters: ReplaceFlashcardDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<FlashcardDeckResponse>> {
         const response = await this.replaceFlashcardDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Marks a private deck as waiting for Medaris to review it. The deck stays private until it is published.
+     * Ask for a deck to be published
+     */
+    async requestFlashcardDeckPublicationRaw(requestParameters: RequestFlashcardDeckPublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FlashcardDeckResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling requestFlashcardDeckPublication().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/flashcard/decks/{id}/publish-request`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FlashcardDeckResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Marks a private deck as waiting for Medaris to review it. The deck stays private until it is published.
+     * Ask for a deck to be published
+     */
+    async requestFlashcardDeckPublication(requestParameters: RequestFlashcardDeckPublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FlashcardDeckResponse> {
+        const response = await this.requestFlashcardDeckPublicationRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -481,4 +619,57 @@ export class FlashcardDecksApi extends runtime.BaseAPI {
         return await response.value();
     }
 
+    /**
+     * Cancels the request for review, or turns a published deck private again.
+     * Withdraw a publication request, or take a public deck back
+     */
+    async withdrawFlashcardDeckPublicationRaw(requestParameters: WithdrawFlashcardDeckPublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FlashcardDeckResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling withdrawFlashcardDeckPublication().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/flashcard/decks/{id}/publish-request`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FlashcardDeckResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Cancels the request for review, or turns a published deck private again.
+     * Withdraw a publication request, or take a public deck back
+     */
+    async withdrawFlashcardDeckPublication(requestParameters: WithdrawFlashcardDeckPublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FlashcardDeckResponse> {
+        const response = await this.withdrawFlashcardDeckPublicationRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
 }
+
+/**
+ * @export
+ */
+export const ExploreFlashcardDecksCardTypeEnum = {
+    Vocabulary: 'VOCABULARY',
+    Hadeeth: 'HADEETH'
+} as const;
+export type ExploreFlashcardDecksCardTypeEnum = typeof ExploreFlashcardDecksCardTypeEnum[keyof typeof ExploreFlashcardDecksCardTypeEnum];

@@ -54,6 +54,8 @@ export interface IFlashcardVisibility {
   deckId: string;
   authorId: string;
   isPublic: boolean;
+  /** The deck belongs to a course, köşk or medrese the asked-about user is in. */
+  sharedWithViewer: boolean;
 }
 
 export interface IFlashcardRepository {
@@ -84,7 +86,10 @@ export interface IFlashcardRepository {
    * result are cards that do not exist; the caller decides whether that is a
    * 404 or a deny, because this projection deliberately does not.
    */
-  findVisibilityByIds(cardIds: string[]): Promise<IFlashcardVisibility[]>;
+  findVisibilityByIds(
+    cardIds: string[],
+    viewerId?: string
+  ): Promise<IFlashcardVisibility[]>;
   createMany(cards: ICreateFlashcard[]): Promise<IFlashcard[]>;
   update(id: string, updates: IUpdateFlashcard): Promise<IFlashcard | null>;
   delete(id: string): Promise<boolean>;
