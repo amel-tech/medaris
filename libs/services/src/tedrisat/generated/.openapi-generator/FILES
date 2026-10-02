@@ -22,6 +22,7 @@ src/index.ts
 src/models/AddKoskNazimsDto.ts
 src/models/AgendaStepDto.ts
 src/models/AgendaStepResponse.ts
+src/models/AllBansListResponse.ts
 src/models/AppointMedarisNazimDto.ts
 src/models/ArchiveImpactResponse.ts
 src/models/ArchiveItemResponse.ts
@@ -75,6 +76,8 @@ src/models/EffectivePermissionGroup.ts
 src/models/EnrolledCourseResponse.ts
 src/models/EnrollmentBanResponse.ts
 src/models/EnrollmentResponse.ts
+src/models/ExtendBanDto.ts
+src/models/ExtendBanScope.ts
 src/models/FieldError.ts
 src/models/FlashcardCreateLabelResponse.ts
 src/models/FlashcardDeckCreateLabelResponse.ts
@@ -174,6 +177,8 @@ src/models/PersonRef.ts
 src/models/PlannedSessionResponse.ts
 src/models/ReadAllNotificationsResponse.ts
 src/models/RemoveEnrollmentDto.ts
+src/models/RemovedByResponse.ts
+src/models/RemovedEnrollmentResponse.ts
 src/models/ReplaceCourseDto.ts
 src/models/ResourceResponse.ts
 src/models/RoleSummary.ts

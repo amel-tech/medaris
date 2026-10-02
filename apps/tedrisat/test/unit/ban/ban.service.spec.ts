@@ -41,6 +41,7 @@ const entry = (over: Partial<IBanEntry> = {}): IBanEntry => ({
   courseTitle: "Emsile",
   madrasahName: null,
   extendedFromCourseTitle: null,
+  koskName: "Nûruosmaniye Köşkü",
   ...over,
 });
 
@@ -252,6 +253,128 @@ describe("BanService (MDRS-177)", () => {
         [false, true],
         [true, false],
       ]);
+    });
+  });
+
+  describe("listAll (MDRS-178)", () => {
+    const filter = { status: "ACTIVE" as const, limit: 50, offset: 0 };
+    const allRepo = (rows: IBanEntry[], platform = true) => ({
+      listAll: vi.fn().mockResolvedValue({ items: rows, total: rows.length }),
+      counts: vi.fn().mockResolvedValue({ active: 12, lifted: 3, recent: 3 }),
+      holdsPlatformRole: vi.fn().mockResolvedValue(platform),
+    });
+
+    it("is for Medaris administration only", async () => {
+      const { service, repo } = build(
+        [ASSIGNED_ROLES.KOSK_NAZIM],
+        allRepo([], false)
+      );
+      await expect(service.listAll({ sub: "n1" }, filter)).rejects.toThrow(
+        BanForbiddenError
+      );
+      expect(repo.listAll).not.toHaveBeenCalled();
+    });
+
+    it("lets the başnazım and a Medaris nazımı in, with platform-wide counts", async () => {
+      const rows = [entry(), entry({ id: "k", scope: "KOSK", courseId: null })];
+      const nazim = build([], allRepo(rows));
+      const list = await nazim.service.listAll({ sub: "m" }, filter);
+      expect(nazim.repo.counts).toHaveBeenCalledWith(null, expect.any(Date));
+      expect(list).toMatchObject({
+        total: 2,
+        activeCount: 12,
+        liftedCount: 3,
+        recentCount: 3,
+      });
+      const admin = build([], allRepo([], false), true);
+      await expect(
+        admin.service.listAll({ sub: "a" }, filter)
+      ).resolves.toMatchObject({ total: 0 });
+    });
+
+    it("offers widening only where no köşk ban of that person stands in that köşk", async () => {
+      const rows = [
+        entry({ id: "a", userId: "u1" }),
+        entry({ id: "b", userId: "u2" }),
+        entry({ id: "c", userId: "u2", scope: "KOSK", courseId: null }),
+        entry({ id: "d", userId: "u1", koskId: "other-kosk" }),
+      ];
+      const { service } = build([], allRepo(rows));
+      const list = await service.listAll({ sub: "m" }, filter);
+      expect(list.items.map((i) => [i.id, i.viewerMayExtend])).toEqual([
+        ["a", true],
+        ["b", false],
+        ["c", false],
+        ["d", true],
+      ]);
+    });
+  });
+
+  describe("extend (MDRS-178)", () => {
+    const dto = {
+      scope: "KOSK",
+      reason: "  Köşkün başka derslerine başvurdu. ",
+    };
+
+    it("opens a köşk ban from the course ban for a köşk nazımı", async () => {
+      const { service, repo } = build([ASSIGNED_ROLES.KOSK_NAZIM]);
+      await service.extend({ sub: "n1" }, BAN_ID, dto);
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scope: "KOSK",
+          courseId: null,
+          userId: TALEBE,
+          extendedFromCourseId: COURSE,
+          extendedFromBanId: BAN_ID,
+          reason: "Köşkün başka derslerine başvurdu.",
+          bannedTier: 3,
+        })
+      );
+    });
+
+    it("refuses a müderris, a stranger, a köşk ban and a lifted ban", async () => {
+      const refused = async (
+        roles: string[],
+        found: IBanEntry,
+        error: new (...args: never[]) => Error
+      ) => {
+        const { service, repo } = build(roles, {
+          findById: vi.fn().mockResolvedValue(found),
+        });
+        await expect(service.extend({ sub: "x" }, BAN_ID, dto)).rejects.toThrow(
+          error
+        );
+        expect(repo.create).not.toHaveBeenCalled();
+      };
+      await refused([ASSIGNED_ROLES.MUDERRIS], entry(), BanForbiddenError);
+      await refused([], entry(), BanForbiddenError);
+      await refused(
+        [ASSIGNED_ROLES.KOSK_NAZIM],
+        entry({ scope: "KOSK", courseId: null }),
+        BanTargetInvalidError
+      );
+      await refused(
+        [ASSIGNED_ROLES.KOSK_NAZIM],
+        entry({ liftedAt: new Date(), liftedBy: "m" }),
+        BanAlreadyLiftedError
+      );
+    });
+
+    it("answers an unknown ban 404", async () => {
+      const { service } = build([], {
+        findById: vi.fn().mockResolvedValue(null),
+      });
+      await expect(service.extend({ sub: "a" }, BAN_ID, dto)).rejects.toThrow(
+        BanNotFoundError
+      );
+    });
+
+    it("lets the başnazım widen as SYSTEM_ADMIN", async () => {
+      const { service, repo } = build([], {}, true);
+      await service.extend({ sub: "a1" }, BAN_ID, dto);
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ bannedRole: "SYSTEM_ADMIN", bannedTier: 4 })
+      );
     });
   });
 
