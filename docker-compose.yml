@@ -320,6 +320,7 @@ services:
       NEXTAUTH_SECRET: ${NAZIR__NEXTAUTH_SECRET:?set NAZIR__NEXTAUTH_SECRET in .env}
       API_MOCKING: ${NAZIR__API_MOCKING:-${WEB__API_MOCKING:-disabled}}
       TEDRISAT_API_BASE_URL: http://tedrisat:3001
+      TEDRIS_URL: ${NAZIR__TEDRIS_URL:-}
     depends_on:
       - tedrisat
 
