@@ -11,11 +11,15 @@
   ],
   "type": "module",
   "scripts": {
-    "clean": "rm -rf .turbo node_modules dist .tsbuild",
-    "typecheck": "tsc -b tsconfig.json"
+    "clean": "rm -rf .turbo node_modules dist .tsbuild coverage",
+    "typecheck": "tsc -b tsconfig.json",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest"
   },
   "devDependencies": {
-    "typescript": "catalog:"
+    "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "private": true
 }
