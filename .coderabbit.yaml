@@ -281,23 +281,24 @@ reviews:
 
         CHAIN 1 — Drizzle schema → SQL migration. NO CI check covers this chain;
         you are the only one. The schema of record is apps/tedrisat/src/database/
-        schema/ — seven files (course, example, flashcard, flashcard-deck,
-        flashcard-deck-label, flashcard-label, kosk) declaring 19 tables and 6
+        schema/ — six files (course, flashcard, flashcard-deck,
+        flashcard-deck-label, flashcard-label, kosk) declaring 18 tables and 6
         pgEnums — and the migrations under apps/tedrisat/src/database/migrations/
-        (0000_chunky_viper.sql … 0013_label_schema_drift.sql). drizzle.config.ts
+        (0000_chunky_viper.sql … 0014_drop_orphan_tables.sql). drizzle.config.ts
         wires schema `./src/database/schema/*` to out `./src/database/migrations`.
 
-        WATCH THE IMPORT ALIAS. Five of the seven schema files import `pgTable as
+        WATCH THE IMPORT ALIAS. Five of the six schema files import `pgTable as
         table` and declare `export const kosks = table("kosks", …)`; only
-        example.schema.ts and flashcard-label.schema.ts call `pgTable(` directly. A
-        grep for `pgTable(` finds 4 of 19 tables. Match `= table(` and
+        flashcard-label.schema.ts calls `pgTable(` directly. A grep for `pgTable(`
+        finds 3 of 18 tables. Match `= table(` and
         `= pgTable(` together, or read the files.
 
         - A pgTable/pgEnum change — new table, added/removed column, changed type,
           nullability, default, `references()`, index — with NO new `.sql` under
           migrations in the same PR is drift. High severity: the deployed database
-          will not have what the code now selects. (MDRS-78 tracks four tables that
-          were already drifted; do not re-report those unless the PR touches them.)
+          will not have what the code now selects. (MDRS-78 closed the last
+          table-level drift with 0014; `app.e2e.spec.ts` now fails if the migrated
+          database and the schema disagree on the set of tables.)
         - `drizzle-kit generate` writes three things at once: the numbered `.sql`, a
           `meta/NNNN_snapshot.json`, and an entry in `meta/_journal.json`. A new
           `.sql` with NO new journal entry was hand-written and the migration runner
