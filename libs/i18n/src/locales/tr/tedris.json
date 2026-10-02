@@ -893,24 +893,5 @@
     "importRowErrors": "{count} satırda sorun var; hiçbir kart eklenmedi.",
     "importRow": "Satır {row}",
     "importFailedTitle": "Dosya içe aktarılamadı"
-  },
-  "RecordingsTab": {
-    "empty": "Bu derste henüz yayımlanmış ders kaydı yok.",
-    "errorTitle": "Ders kayıtları yüklenemedi",
-    "errorText": "Ders kayıtlarına şu an ulaşamadık. Biraz sonra yeniden dene.",
-    "retry": "Yeniden dene",
-    "playerPlaceholder": "Ders kaydı burada oynar",
-    "allTitle": "Bütün ders kayıtları",
-    "allHint": "Haftalara göre, yeniden eskiye",
-    "weekLabel": "Hafta {number}",
-    "minutes": "{count} dk",
-    "preparing": "Hazırlanıyor",
-    "preparingHint": "Hazır olunca burada oynar",
-    "public": "Herkese açık",
-    "inPlayer": "Oynatıcıda",
-    "play": "Oynat",
-    "playLabel": "Oynat: {title}",
-    "open": "Ders kaydını aç",
-    "openLabel": ": {title} (yeni sekmede açılır)"
   }
 }

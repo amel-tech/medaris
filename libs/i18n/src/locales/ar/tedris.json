@@ -893,24 +893,5 @@
     "importRowErrors": "في {count} سطر مشكلة؛ ولم تُضف أي بطاقة.",
     "importRow": "السطر {row}",
     "importFailedTitle": "تعذّر استيراد الملف"
-  },
-  "RecordingsTab": {
-    "empty": "لم يُنشر أي تسجيل لهذا الدرس بعد.",
-    "errorTitle": "تعذّر تحميل التسجيلات",
-    "errorText": "تعذّر الوصول إلى التسجيلات الآن. حاول مرة أخرى بعد قليل.",
-    "retry": "أعد المحاولة",
-    "playerPlaceholder": "يُعرض التسجيل هنا",
-    "allTitle": "كل التسجيلات",
-    "allHint": "حسب الأسبوع، الأحدث أولًا",
-    "weekLabel": "الأسبوع {number}",
-    "minutes": "{count} د",
-    "preparing": "قيد الإعداد",
-    "preparingHint": "يُعرض هنا عند جاهزيته",
-    "public": "متاح للجميع",
-    "inPlayer": "في المشغّل",
-    "play": "تشغيل",
-    "playLabel": "تشغيل: {title}",
-    "open": "فتح التسجيل",
-    "openLabel": ": {title} (يُفتح في تبويب جديد)"
   }
 }

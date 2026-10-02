@@ -47,7 +47,7 @@ const RecordingsList = ({
   recordings: RecordingResponse[];
   timeZone: string;
 }) => {
-  const t = useTranslations("tedris.RecordingsTab");
+  const t = useTranslations("tedrisLearn.RecordingsTab");
   const locale = useLocale();
   const [selectedId, setSelectedId] = useState<string | null>(
     () => firstPlayable(recordings)?.id ?? null

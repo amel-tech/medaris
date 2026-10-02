@@ -12,7 +12,7 @@ import { useTransition } from "react";
  * the page again. Not the empty state: an empty list is a fact, this is not.
  */
 export const RecordingsFailed = () => {
-  const t = useTranslations("tedris.RecordingsTab");
+  const t = useTranslations("tedrisLearn.RecordingsTab");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   return (
