@@ -20,6 +20,7 @@ import type {
   DeletePermissionGroupDto,
   DismissMadrasahNazirDto,
   MadrasahBadgeCountsResponse,
+  MadrasahCourseKoskResponse,
   MadrasahCourseListItemResponse,
   MadrasahDirectoryItemResponse,
   MadrasahDirectoryResponse,
@@ -33,8 +34,10 @@ import type {
   MadrasahResponse,
   MadrasahSettingsResponse,
   MadrasahStatusFilter,
+  OpenMadrasahCourseDto,
   PaginatedMadrasahResponse,
   SetHeadMuderrisDto,
+  SetMadrasahCourseMuderrisDto,
   SetMadrasahNazirPermissionsDto,
   UpdateMadrasahDto,
   UpdateMadrasahPermissionGroupDto,
@@ -51,6 +54,8 @@ import {
     DismissMadrasahNazirDtoToJSON,
     MadrasahBadgeCountsResponseFromJSON,
     MadrasahBadgeCountsResponseToJSON,
+    MadrasahCourseKoskResponseFromJSON,
+    MadrasahCourseKoskResponseToJSON,
     MadrasahCourseListItemResponseFromJSON,
     MadrasahCourseListItemResponseToJSON,
     MadrasahDirectoryItemResponseFromJSON,
@@ -77,10 +82,14 @@ import {
     MadrasahSettingsResponseToJSON,
     MadrasahStatusFilterFromJSON,
     MadrasahStatusFilterToJSON,
+    OpenMadrasahCourseDtoFromJSON,
+    OpenMadrasahCourseDtoToJSON,
     PaginatedMadrasahResponseFromJSON,
     PaginatedMadrasahResponseToJSON,
     SetHeadMuderrisDtoFromJSON,
     SetHeadMuderrisDtoToJSON,
+    SetMadrasahCourseMuderrisDtoFromJSON,
+    SetMadrasahCourseMuderrisDtoToJSON,
     SetMadrasahNazirPermissionsDtoFromJSON,
     SetMadrasahNazirPermissionsDtoToJSON,
     UpdateMadrasahDtoFromJSON,
@@ -137,6 +146,8 @@ export interface GetMadrasahByIdRequest {
 
 export interface GetMadrasahCoursesRequest {
     id: string;
+    koskId?: string;
+    status?: GetMadrasahCoursesStatusEnum;
 }
 
 export interface GetMadrasahDirectoryRequest {
@@ -144,6 +155,10 @@ export interface GetMadrasahDirectoryRequest {
     page?: number;
     limit?: number;
     q?: string;
+}
+
+export interface GetMadrasahHostingKosksRequest {
+    id: string;
 }
 
 export interface GetMadrasahNazirGrantsRequest {
@@ -180,6 +195,16 @@ export interface HideMadrasahRequest {
     id: string;
 }
 
+export interface HideMadrasahCourseRequest {
+    id: string;
+    courseId: string;
+}
+
+export interface OpenMadrasahCourseRequest {
+    id: string;
+    openMadrasahCourseDto: OpenMadrasahCourseDto;
+}
+
 export interface RemoveMadrasahNazirRequest {
     id: string;
     userId: string;
@@ -188,6 +213,12 @@ export interface RemoveMadrasahNazirRequest {
 
 export interface RestoreMadrasahRequest {
     id: string;
+}
+
+export interface SetMadrasahCourseMuderrisRequest {
+    id: string;
+    courseId: string;
+    setMadrasahCourseMuderrisDto: SetMadrasahCourseMuderrisDto;
 }
 
 export interface SetMadrasahHeadMuderrisRequest {
@@ -668,8 +699,8 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * nazir/04\'s \"Politikaların uygulandığı dersler\": drafts and published courses, a hidden one not, by title, each with its köşk and müderrisler (the imam marked).
-     * The medrese\'s courses for its settings screen (its başmüderris)
+     * nazir/07\'s table and nazir/04\'s \"Politikaların uygulandığı dersler\": drafts and published courses, a hidden one not, by title. Each with its köşk, the enrolled and the waiting talebe, and its müderrisler (the imam marked, with the account and e-mail a change of the list needs). `koskId` and `status` narrow the list.
+     * The medrese\'s courses (its başmüderris)
      */
     async getMadrasahCoursesRaw(requestParameters: GetMadrasahCoursesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<MadrasahCourseListItemResponse>>> {
         if (requestParameters['id'] == null) {
@@ -680,6 +711,14 @@ export class MadrasahsApi extends runtime.BaseAPI {
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['koskId'] != null) {
+            queryParameters['koskId'] = requestParameters['koskId'];
+        }
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -703,8 +742,8 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * nazir/04\'s \"Politikaların uygulandığı dersler\": drafts and published courses, a hidden one not, by title, each with its köşk and müderrisler (the imam marked).
-     * The medrese\'s courses for its settings screen (its başmüderris)
+     * nazir/07\'s table and nazir/04\'s \"Politikaların uygulandığı dersler\": drafts and published courses, a hidden one not, by title. Each with its köşk, the enrolled and the waiting talebe, and its müderrisler (the imam marked, with the account and e-mail a change of the list needs). `koskId` and `status` narrow the list.
+     * The medrese\'s courses (its başmüderris)
      */
     async getMadrasahCourses(requestParameters: GetMadrasahCoursesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<MadrasahCourseListItemResponse>> {
         const response = await this.getMadrasahCoursesRaw(requestParameters, initOverrides);
@@ -760,6 +799,50 @@ export class MadrasahsApi extends runtime.BaseAPI {
      */
     async getMadrasahDirectory(requestParameters: GetMadrasahDirectoryRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahDirectoryResponse> {
         const response = await this.getMadrasahDirectoryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nazir/07\'s \"Ders açabileceğiniz köşkler\" and nazir/08\'s köşk choice: the köşks that hold a hosting right for the medrese, by name, each with its ilim alanı and how many courses the medrese has there. A köşk that is hidden is not listed.
+     * The köşks the medrese may open courses in (its başmüderris)
+     */
+    async getMadrasahHostingKosksRaw(requestParameters: GetMadrasahHostingKosksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<MadrasahCourseKoskResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getMadrasahHostingKosks().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/hosting-kosks`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(MadrasahCourseKoskResponseFromJSON));
+    }
+
+    /**
+     * nazir/07\'s \"Ders açabileceğiniz köşkler\" and nazir/08\'s köşk choice: the köşks that hold a hosting right for the medrese, by name, each with its ilim alanı and how many courses the medrese has there. A köşk that is hidden is not listed.
+     * The köşks the medrese may open courses in (its başmüderris)
+     */
+    async getMadrasahHostingKosks(requestParameters: GetMadrasahHostingKosksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<MadrasahCourseKoskResponse>> {
+        const response = await this.getMadrasahHostingKosksRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1132,6 +1215,111 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
+     * nazir/18\'s \"Gizle\". The course leaves the medrese\'s list, the köşk\'s page, the talebe\'s calendar and every search; nothing is deleted, and it is listed in the medrese\'s archive, where `POST /archive/course/:id/restore` brings it back by kademe. 409 (MADRASAH_COURSE_ALREADY_HIDDEN) when it is hidden. Written to the audit log.
+     * Hide a course of the medrese (its başmüderris)
+     */
+    async hideMadrasahCourseRaw(requestParameters: HideMadrasahCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling hideMadrasahCourse().'
+            );
+        }
+
+        if (requestParameters['courseId'] == null) {
+            throw new runtime.RequiredError(
+                'courseId',
+                'Required parameter "courseId" was null or undefined when calling hideMadrasahCourse().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/courses/{courseId}/hide`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"courseId"}}`, encodeURIComponent(String(requestParameters['courseId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * nazir/18\'s \"Gizle\". The course leaves the medrese\'s list, the köşk\'s page, the talebe\'s calendar and every search; nothing is deleted, and it is listed in the medrese\'s archive, where `POST /archive/course/:id/restore` brings it back by kademe. 409 (MADRASAH_COURSE_ALREADY_HIDDEN) when it is hidden. Written to the audit log.
+     * Hide a course of the medrese (its başmüderris)
+     */
+    async hideMadrasahCourse(requestParameters: HideMadrasahCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.hideMadrasahCourseRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * nazir/08\'s \"Dersi aç\". The course is a DRAFT in a köşk the medrese holds a hosting right in, with its müderrisler and imam; a lone müderris is the imam, with several `imamUserId` is required. The medrese\'s policies are applied on the server: \"Kayıt her zaman onaylı\" makes the course wait for approval and \"Kapalı ders zorunlu\" makes it closed, whatever is sent. The müderrisler are found with `GET /users/lookup`; one the app and the realm do not know is a 404 (MUDERRIS_UNKNOWN_USER). 403 (HOSTING_RIGHT_REQUIRED) when the köşk gave the medrese no right. Written to the audit log.
+     * Open a course of the medrese (its başmüderris)
+     */
+    async openMadrasahCourseRaw(requestParameters: OpenMadrasahCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahCourseListItemResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling openMadrasahCourse().'
+            );
+        }
+
+        if (requestParameters['openMadrasahCourseDto'] == null) {
+            throw new runtime.RequiredError(
+                'openMadrasahCourseDto',
+                'Required parameter "openMadrasahCourseDto" was null or undefined when calling openMadrasahCourse().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/courses`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: OpenMadrasahCourseDtoToJSON(requestParameters['openMadrasahCourseDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahCourseListItemResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nazir/08\'s \"Dersi aç\". The course is a DRAFT in a köşk the medrese holds a hosting right in, with its müderrisler and imam; a lone müderris is the imam, with several `imamUserId` is required. The medrese\'s policies are applied on the server: \"Kayıt her zaman onaylı\" makes the course wait for approval and \"Kapalı ders zorunlu\" makes it closed, whatever is sent. The müderrisler are found with `GET /users/lookup`; one the app and the realm do not know is a 404 (MUDERRIS_UNKNOWN_USER). 403 (HOSTING_RIGHT_REQUIRED) when the köşk gave the medrese no right. Written to the audit log.
+     * Open a course of the medrese (its başmüderris)
+     */
+    async openMadrasahCourse(requestParameters: OpenMadrasahCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahCourseListItemResponse> {
+        const response = await this.openMadrasahCourseRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * nazir/15\'s \"Görevden al\", in one transaction. `decisions` answers every person `…/grants` lists, once and nobody else: TAKE_OVER leaves what the nazır gave them in place under the caller\'s name, DROP revokes it. The nazır\'s own appointment and permissions in the medrese are revoked. Written to the audit log.
      * Dismiss a nazır of the medrese (its başmüderris)
      */
@@ -1233,6 +1421,68 @@ export class MadrasahsApi extends runtime.BaseAPI {
      */
     async restoreMadrasah(requestParameters: RestoreMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahDirectoryItemResponse> {
         const response = await this.restoreMadrasahRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nazir/17\'s \"Kaydet\", in one transaction: the müderrisler listed are the course\'s müderrisler and `imamUserId` is its imam; an account that leaves the list loses its MUDERRIS role. A müderris shown by name alone, with no account, is left as it is. A köşk\'s nazım cannot do this. The course\'s version moves, so an editor that opened it earlier gets 409 on save. Written to the audit log. 404 (MADRASAH_COURSE_NOT_FOUND) for a course that is not the medrese\'s or is hidden.
+     * Replace a course\'s müderrisler (its başmüderris)
+     */
+    async setMadrasahCourseMuderrisRaw(requestParameters: SetMadrasahCourseMuderrisRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahCourseListItemResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling setMadrasahCourseMuderris().'
+            );
+        }
+
+        if (requestParameters['courseId'] == null) {
+            throw new runtime.RequiredError(
+                'courseId',
+                'Required parameter "courseId" was null or undefined when calling setMadrasahCourseMuderris().'
+            );
+        }
+
+        if (requestParameters['setMadrasahCourseMuderrisDto'] == null) {
+            throw new runtime.RequiredError(
+                'setMadrasahCourseMuderrisDto',
+                'Required parameter "setMadrasahCourseMuderrisDto" was null or undefined when calling setMadrasahCourseMuderris().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/courses/{courseId}/muderrises`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"courseId"}}`, encodeURIComponent(String(requestParameters['courseId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetMadrasahCourseMuderrisDtoToJSON(requestParameters['setMadrasahCourseMuderrisDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahCourseListItemResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nazir/17\'s \"Kaydet\", in one transaction: the müderrisler listed are the course\'s müderrisler and `imamUserId` is its imam; an account that leaves the list loses its MUDERRIS role. A müderris shown by name alone, with no account, is left as it is. A köşk\'s nazım cannot do this. The course\'s version moves, so an editor that opened it earlier gets 409 on save. Written to the audit log. 404 (MADRASAH_COURSE_NOT_FOUND) for a course that is not the medrese\'s or is hidden.
+     * Replace a course\'s müderrisler (its başmüderris)
+     */
+    async setMadrasahCourseMuderris(requestParameters: SetMadrasahCourseMuderrisRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahCourseListItemResponse> {
+        const response = await this.setMadrasahCourseMuderrisRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1532,3 +1782,11 @@ export const ExploreMadrasahsLevelEnum = {
     Advanced: 'ADVANCED'
 } as const;
 export type ExploreMadrasahsLevelEnum = typeof ExploreMadrasahsLevelEnum[keyof typeof ExploreMadrasahsLevelEnum];
+/**
+ * @export
+ */
+export const GetMadrasahCoursesStatusEnum = {
+    Draft: 'DRAFT',
+    Published: 'PUBLISHED'
+} as const;
+export type GetMadrasahCoursesStatusEnum = typeof GetMadrasahCoursesStatusEnum[keyof typeof GetMadrasahCoursesStatusEnum];

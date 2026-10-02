@@ -1238,7 +1238,7 @@
     },
     "/madrasahs/{id}/courses": {
       "get": {
-        "description": "nazir/04's \"Politikaların uygulandığı dersler\": drafts and published courses, a hidden one not, by title, each with its köşk and müderrisler (the imam marked).",
+        "description": "nazir/07's table and nazir/04's \"Politikaların uygulandığı dersler\": drafts and published courses, a hidden one not, by title. Each with its köşk, the enrolled and the waiting talebe, and its müderrisler (the imam marked, with the account and e-mail a change of the list needs). `koskId` and `status` narrow the list.",
         "operationId": "getMadrasahCourses",
         "parameters": [
           {
@@ -1246,6 +1246,27 @@
             "required": true,
             "in": "path",
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "koskId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "DRAFT",
+                "PUBLISHED"
+              ],
               "type": "string"
             }
           }
@@ -1276,7 +1297,61 @@
             "bearer": []
           }
         ],
-        "summary": "The medrese's courses for its settings screen (its başmüderris)",
+        "summary": "The medrese's courses (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      },
+      "post": {
+        "description": "nazir/08's \"Dersi aç\". The course is a DRAFT in a köşk the medrese holds a hosting right in, with its müderrisler and imam; a lone müderris is the imam, with several `imamUserId` is required. The medrese's policies are applied on the server: \"Kayıt her zaman onaylı\" makes the course wait for approval and \"Kapalı ders zorunlu\" makes it closed, whatever is sent. The müderrisler are found with `GET /users/lookup`; one the app and the realm do not know is a 404 (MUDERRIS_UNKNOWN_USER). 403 (HOSTING_RIGHT_REQUIRED) when the köşk gave the medrese no right. Written to the audit log.",
+        "operationId": "openMadrasahCourse",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenMadrasahCourseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahCourseListItemResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "COURSE_IMAM_REQUIRED, COURSE_IMAM_NOT_LISTED or MUDERRIS_DUPLICATE_USER"
+          },
+          "403": {
+            "description": "HOSTING_RIGHT_REQUIRED"
+          },
+          "404": {
+            "description": "Also MUDERRIS_UNKNOWN_USER"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Open a course of the medrese (its başmüderris)",
         "tags": [
           "madrasahs"
         ]
@@ -5763,6 +5838,163 @@
         ]
       }
     },
+    "/madrasahs/{id}/hosting-kosks": {
+      "get": {
+        "description": "nazir/07's \"Ders açabileceğiniz köşkler\" and nazir/08's köşk choice: the köşks that hold a hosting right for the medrese, by name, each with its ilim alanı and how many courses the medrese has there. A köşk that is hidden is not listed.",
+        "operationId": "getMadrasahHostingKosks",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MadrasahCourseKoskResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The köşks the medrese may open courses in (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/courses/{courseId}/muderrises": {
+      "put": {
+        "description": "nazir/17's \"Kaydet\", in one transaction: the müderrisler listed are the course's müderrisler and `imamUserId` is its imam; an account that leaves the list loses its MUDERRIS role. A müderris shown by name alone, with no account, is left as it is. A köşk's nazım cannot do this. The course's version moves, so an editor that opened it earlier gets 409 on save. Written to the audit log. 404 (MADRASAH_COURSE_NOT_FOUND) for a course that is not the medrese's or is hidden.",
+        "operationId": "setMadrasahCourseMuderris",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "courseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetMadrasahCourseMuderrisDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahCourseListItemResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "COURSE_IMAM_REQUIRED, COURSE_IMAM_NOT_LISTED or MUDERRIS_DUPLICATE_USER"
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "MADRASAH_COURSE_NOT_FOUND or MUDERRIS_UNKNOWN_USER"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace a course's müderrisler (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/courses/{courseId}/hide": {
+      "post": {
+        "description": "nazir/18's \"Gizle\". The course leaves the medrese's list, the köşk's page, the talebe's calendar and every search; nothing is deleted, and it is listed in the medrese's archive, where `POST /archive/course/:id/restore` brings it back by kademe. 409 (MADRASAH_COURSE_ALREADY_HIDDEN) when it is hidden. Written to the audit log.",
+        "operationId": "hideMadrasahCourse",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "courseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "MADRASAH_COURSE_NOT_FOUND"
+          },
+          "409": {
+            "description": "MADRASAH_COURSE_ALREADY_HIDDEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Hide a course of the medrese (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
     "/kosks/{id}/archive": {
       "get": {
         "description": "Newest hidden first: the köşk's courses, weeks, sessions and decks, and the same of the medrese courses it hosts. A köşk manager or SYSTEM_ADMIN. There is no delete here; the başnazım deletes from the platform archive.",
@@ -7472,6 +7704,38 @@
           }
         }
       },
+      "MadrasahCourseListMuderrisResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "isImam": {
+            "type": "boolean"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Null for a müderris shown by name alone, with no account"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true,
+            "description": "Null until that person has signed in once"
+          }
+        },
+        "required": [
+          "name",
+          "isImam",
+          "userId",
+          "email"
+        ]
+      },
       "MadrasahCourseListItemResponse": {
         "type": "object",
         "properties": {
@@ -7496,10 +7760,32 @@
               "PUBLISHED"
             ]
           },
+          "requiresApproval": {
+            "type": "boolean",
+            "description": "As stored, after the medrese's policy: enrollments wait for approval"
+          },
+          "closed": {
+            "type": "boolean",
+            "description": "Kapalı ders, as stored, after the medrese's policy. Nothing in the API reads it yet"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the course was opened (\"bugün açıldı\")"
+          },
+          "studentCount": {
+            "type": "number",
+            "description": "Enrolled talebe; pending applications and completions are not counted"
+          },
+          "pendingCount": {
+            "type": "number",
+            "description": "Applications waiting for approval (\"N onay bekliyor\")"
+          },
           "muderris": {
+            "description": "In list order; the imam is marked",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/MadrasahCourseMuderrisResponse"
+              "$ref": "#/components/schemas/MadrasahCourseListMuderrisResponse"
             }
           }
         },
@@ -7509,6 +7795,11 @@
           "koskId",
           "koskName",
           "status",
+          "requiresApproval",
+          "closed",
+          "createdAt",
+          "studentCount",
+          "pendingCount",
           "muderris"
         ]
       },
@@ -12057,6 +12348,102 @@
         },
         "required": [
           "permissions"
+        ]
+      },
+      "MadrasahCourseKoskResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Nûruosmaniye Köşkü"
+          },
+          "field": {
+            "type": "string",
+            "nullable": true,
+            "example": "Arapça dil ilimleri",
+            "description": "The köşk's ilim alanı"
+          },
+          "courseCount": {
+            "type": "number",
+            "description": "The medrese's courses in this köşk that are not hidden, drafts included (\"medresenin burada 1 dersi var\")"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "field",
+          "courseCount"
+        ]
+      },
+      "OpenMadrasahCourseDto": {
+        "type": "object",
+        "properties": {
+          "koskId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A köşk the medrese holds a hosting right in"
+          },
+          "title": {
+            "type": "string",
+            "example": "Maksûd şerhi",
+            "minLength": 2,
+            "maxLength": 200
+          },
+          "muderrisUserIds": {
+            "minItems": 1,
+            "maxItems": 20,
+            "description": "The müderrisler' accounts, found with `GET /users/lookup`, in the order they are shown",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "imamUserId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The course's imam, one of `muderrisUserIds`. Left out, a lone müderris is the imam; with several it is required"
+          },
+          "closedCourse": {
+            "type": "boolean",
+            "description": "Kapalı ders. On whatever is sent when the medrese's policy requires it"
+          },
+          "requiresApproval": {
+            "type": "boolean",
+            "description": "Kayıt onayı gereksin. On whatever is sent when the medrese's policy is \"Kayıt her zaman onaylı\""
+          }
+        },
+        "required": [
+          "koskId",
+          "title",
+          "muderrisUserIds"
+        ]
+      },
+      "SetMadrasahCourseMuderrisDto": {
+        "type": "object",
+        "properties": {
+          "muderrisUserIds": {
+            "minItems": 1,
+            "maxItems": 20,
+            "description": "Every müderris the course is to have, in the order they are shown; the last one cannot be left out",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "imamUserId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The course's imam, one of `muderrisUserIds`. Left out, a lone müderris is the imam; with several it is required"
+          }
+        },
+        "required": [
+          "muderrisUserIds"
         ]
       },
       "ArchiveItemType": {

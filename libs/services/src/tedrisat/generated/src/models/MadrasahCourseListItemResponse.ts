@@ -13,13 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
-import type { MadrasahCourseMuderrisResponse } from './MadrasahCourseMuderrisResponse';
+import type { MadrasahCourseListMuderrisResponse } from './MadrasahCourseListMuderrisResponse';
 import {
-    MadrasahCourseMuderrisResponseFromJSON,
-    MadrasahCourseMuderrisResponseFromJSONTyped,
-    MadrasahCourseMuderrisResponseToJSON,
-    MadrasahCourseMuderrisResponseToJSONTyped,
-} from './MadrasahCourseMuderrisResponse';
+    MadrasahCourseListMuderrisResponseFromJSON,
+    MadrasahCourseListMuderrisResponseFromJSONTyped,
+    MadrasahCourseListMuderrisResponseToJSON,
+    MadrasahCourseListMuderrisResponseToJSONTyped,
+} from './MadrasahCourseListMuderrisResponse';
 
 /**
  * 
@@ -58,11 +58,41 @@ export interface MadrasahCourseListItemResponse {
      */
     status: MadrasahCourseListItemResponseStatusEnum;
     /**
-     * 
-     * @type {Array<MadrasahCourseMuderrisResponse>}
+     * As stored, after the medrese's policy: enrollments wait for approval
+     * @type {boolean}
      * @memberof MadrasahCourseListItemResponse
      */
-    muderris: Array<MadrasahCourseMuderrisResponse>;
+    requiresApproval: boolean;
+    /**
+     * Kapalı ders, as stored, after the medrese's policy. Nothing in the API reads it yet
+     * @type {boolean}
+     * @memberof MadrasahCourseListItemResponse
+     */
+    closed: boolean;
+    /**
+     * When the course was opened ("bugün açıldı")
+     * @type {Date}
+     * @memberof MadrasahCourseListItemResponse
+     */
+    createdAt: Date;
+    /**
+     * Enrolled talebe; pending applications and completions are not counted
+     * @type {number}
+     * @memberof MadrasahCourseListItemResponse
+     */
+    studentCount: number;
+    /**
+     * Applications waiting for approval ("N onay bekliyor")
+     * @type {number}
+     * @memberof MadrasahCourseListItemResponse
+     */
+    pendingCount: number;
+    /**
+     * In list order; the imam is marked
+     * @type {Array<MadrasahCourseListMuderrisResponse>}
+     * @memberof MadrasahCourseListItemResponse
+     */
+    muderris: Array<MadrasahCourseListMuderrisResponse>;
 }
 
 
@@ -85,6 +115,11 @@ export function instanceOfMadrasahCourseListItemResponse(value: object): value i
     if (!('koskId' in value) || value['koskId'] === undefined) return false;
     if (!('koskName' in value) || value['koskName'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
+    if (!('requiresApproval' in value) || value['requiresApproval'] === undefined) return false;
+    if (!('closed' in value) || value['closed'] === undefined) return false;
+    if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
+    if (!('studentCount' in value) || value['studentCount'] === undefined) return false;
+    if (!('pendingCount' in value) || value['pendingCount'] === undefined) return false;
     if (!('muderris' in value) || value['muderris'] === undefined) return false;
     return true;
 }
@@ -104,7 +139,12 @@ export function MadrasahCourseListItemResponseFromJSONTyped(json: any, ignoreDis
         'koskId': json['koskId'],
         'koskName': json['koskName'],
         'status': json['status'],
-        'muderris': ((json['muderris'] as Array<any>).map(MadrasahCourseMuderrisResponseFromJSON)),
+        'requiresApproval': json['requiresApproval'],
+        'closed': json['closed'],
+        'createdAt': (new Date(json['createdAt'])),
+        'studentCount': json['studentCount'],
+        'pendingCount': json['pendingCount'],
+        'muderris': ((json['muderris'] as Array<any>).map(MadrasahCourseListMuderrisResponseFromJSON)),
     };
 }
 
@@ -124,7 +164,12 @@ export function MadrasahCourseListItemResponseToJSONTyped(value?: MadrasahCourse
         'koskId': value['koskId'],
         'koskName': value['koskName'],
         'status': value['status'],
-        'muderris': ((value['muderris'] as Array<any>).map(MadrasahCourseMuderrisResponseToJSON)),
+        'requiresApproval': value['requiresApproval'],
+        'closed': value['closed'],
+        'createdAt': ((value['createdAt']).toISOString()),
+        'studentCount': value['studentCount'],
+        'pendingCount': value['pendingCount'],
+        'muderris': ((value['muderris'] as Array<any>).map(MadrasahCourseListMuderrisResponseToJSON)),
     };
 }
 
