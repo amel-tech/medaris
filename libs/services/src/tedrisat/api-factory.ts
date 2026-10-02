@@ -54,9 +54,11 @@ export type {
   EnrollmentResponse,
   FlashcardCreateLabelResponse,
   FlashcardDeckCreateLabelResponse,
+  FlashcardDeckExploreResponse,
   FlashcardDeckLabelingResponse,
   FlashcardDeckLabelResponse,
   FlashcardDeckResponse,
+  FlashcardDeckSummaryResponse,
   FlashcardLabelingResponse,
   FlashcardLabelResponse,
   FlashcardResponse,
@@ -103,12 +105,20 @@ import {
 } from "./generated/src/models/CreateCourseDto";
 import { CreateFlashcardDtoTypeEnum } from "./generated/src/models/CreateFlashcardDto";
 import { CreateLessonDtoTypeEnum } from "./generated/src/models/CreateLessonDto";
+import { DeckCollectionKind } from "./generated/src/models/DeckCollectionKind";
+import { DeckPublishStatus } from "./generated/src/models/DeckPublishStatus";
+import { DeckSource } from "./generated/src/models/DeckSource";
 import { EnrollmentResponseStatusEnum } from "./generated/src/models/EnrollmentResponse";
 // Re-export enum constants (they are used at runtime as values)
 import { FlashcardResponseTypeEnum } from "./generated/src/models/FlashcardResponse";
+import { FlashcardType } from "./generated/src/models/FlashcardType";
 import { TeamSettableEnrollmentStatus } from "./generated/src/models/TeamSettableEnrollmentStatus";
 
 export {
+  DeckCollectionKind,
+  DeckPublishStatus,
+  DeckSource,
+  FlashcardType,
   FlashcardResponseTypeEnum,
   CreateFlashcardDtoTypeEnum,
   CreateLessonDtoTypeEnum,

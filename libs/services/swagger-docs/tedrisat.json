@@ -3010,6 +3010,79 @@
         ]
       }
     },
+    "/flashcard/decks/summary": {
+      "get": {
+        "description": "The caller's own decks followed by the decks of other people they collected, each with the card counts and the caller's progress through them, so a list page makes one request instead of one per deck.",
+        "operationId": "getFlashcardDeckSummaries",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FlashcardDeckSummaryResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the caller's decks with their progress",
+        "tags": [
+          "flashcard-decks"
+        ]
+      }
+    },
+    "/flashcard/decks/explore": {
+      "get": {
+        "description": "The decks of the courses, köşks and medreses the caller is enrolled in, and the decks Medaris published, each marked with whether the caller has it in the collection.",
+        "operationId": "exploreFlashcardDecks",
+        "parameters": [
+          {
+            "name": "cardType",
+            "required": false,
+            "in": "query",
+            "description": "Leaves out decks of the other kind.",
+            "schema": {
+              "enum": [
+                "VOCABULARY",
+                "HADEETH"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardDeckExploreResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Discover decks to collect",
+        "tags": [
+          "flashcard-decks"
+        ]
+      }
+    },
     "/flashcard/decks/{id}": {
       "get": {
         "description": "Retrieves a single flashcard deck by its ID with optional includes for related data such as tags.",
@@ -3362,6 +3435,96 @@
           }
         ],
         "summary": "Delete a flashcard deck from user's collection",
+        "tags": [
+          "flashcard-decks"
+        ]
+      }
+    },
+    "/flashcard/decks/{id}/publish-request": {
+      "post": {
+        "description": "Marks a private deck as waiting for Medaris to review it. The deck stays private until it is published.",
+        "operationId": "requestFlashcardDeckPublication",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardDeckResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Deck belongs to another user"
+          },
+          "404": {
+            "description": "Deck not found"
+          },
+          "409": {
+            "description": "The deck already waits for review or is already public"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ask for a deck to be published",
+        "tags": [
+          "flashcard-decks"
+        ]
+      },
+      "delete": {
+        "description": "Cancels the request for review, or turns a published deck private again.",
+        "operationId": "withdrawFlashcardDeckPublication",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardDeckResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Deck belongs to another user"
+          },
+          "404": {
+            "description": "Deck not found"
+          },
+          "409": {
+            "description": "The deck is private already"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Withdraw a publication request, or take a public deck back",
         "tags": [
           "flashcard-decks"
         ]
@@ -8079,31 +8242,225 @@
         "type": "object",
         "properties": {}
       },
+      "FlashcardType": {
+        "type": "string",
+        "enum": [
+          "VOCABULARY",
+          "HADEETH"
+        ]
+      },
+      "DeckPublishStatus": {
+        "type": "string",
+        "enum": [
+          "PRIVATE",
+          "PENDING",
+          "PUBLISHED"
+        ]
+      },
       "FlashcardDeckResponse": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string"
+          },
           "title": {
-            "type": "string",
-            "example": "Colours - Vocabulary Deck"
+            "type": "string"
           },
           "isPublic": {
             "type": "boolean"
-          },
-          "id": {
-            "type": "string"
           },
           "authorId": {
             "type": "string"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
+          },
+          "cardType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FlashcardType"
+              }
+            ]
+          },
+          "publishStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeckPublishStatus"
+              }
+            ]
+          },
+          "publishRequestedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "tags": {
+            "description": "Empty for everyone but the author.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
+          "id",
           "title",
           "isPublic",
+          "authorId",
+          "cardType",
+          "publishStatus",
+          "tags"
+        ]
+      },
+      "DeckSource": {
+        "type": "string",
+        "enum": [
+          "OWN",
+          "COLLECTION"
+        ],
+        "description": "OWN: the caller wrote it. COLLECTION: somebody else did."
+      },
+      "DeckCollectionKind": {
+        "type": "string",
+        "enum": [
+          "COURSE",
+          "KOSK",
+          "MADRASAH",
+          "PUBLIC"
+        ],
+        "description": "Where a deck of somebody else's comes from; null for the caller's own decks."
+      },
+      "FlashcardDeckSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorId": {
+            "type": "string"
+          },
+          "isMine": {
+            "type": "boolean",
+            "description": "The caller wrote this deck."
+          },
+          "cardType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FlashcardType"
+              }
+            ]
+          },
+          "publishStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeckPublishStatus"
+              }
+            ]
+          },
+          "publishRequestedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "description": "OWN: the caller wrote it. COLLECTION: somebody else did.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeckSource"
+              }
+            ]
+          },
+          "collectionKind": {
+            "nullable": true,
+            "description": "Where a deck of somebody else's comes from; null for the caller's own decks.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeckCollectionKind"
+              }
+            ]
+          },
+          "inCollection": {
+            "type": "boolean",
+            "description": "The caller has the deck in the collection."
+          },
+          "contextTitle": {
+            "type": "string",
+            "nullable": true,
+            "description": "The course, köşk or medrese the deck belongs to, by name; null for a public deck."
+          },
+          "muderrisName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The course's first müderris, for a course deck."
+          },
+          "cardCount": {
+            "type": "number"
+          },
+          "masteredCount": {
+            "type": "number",
+            "description": "Cards the caller has mastered."
+          },
+          "learningCount": {
+            "type": "number",
+            "description": "Cards the caller is learning."
+          },
+          "newCount": {
+            "type": "number",
+            "description": "Cards the caller has not started."
+          },
+          "dueCount": {
+            "type": "number",
+            "description": "Cards waiting for a repeat today. The progress table keeps no review time, so this is the learning count until a scheduler exists."
+          },
+          "addedSinceCollectedCount": {
+            "type": "number",
+            "description": "Cards written after the caller collected the deck; always 0 for the caller's own."
+          }
+        },
+        "required": [
           "id",
-          "authorId"
+          "title",
+          "authorId",
+          "isMine",
+          "cardType",
+          "publishStatus",
+          "source",
+          "inCollection",
+          "cardCount",
+          "masteredCount",
+          "learningCount",
+          "newCount",
+          "dueCount",
+          "addedSinceCollectedCount"
+        ]
+      },
+      "FlashcardDeckExploreResponse": {
+        "type": "object",
+        "properties": {
+          "courseDecks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FlashcardDeckSummaryResponse"
+            }
+          },
+          "publicDecks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FlashcardDeckSummaryResponse"
+            }
+          }
+        },
+        "required": [
+          "courseDecks",
+          "publicDecks"
         ]
       },
       "CreateFlashcardDeckDto": {
@@ -8114,15 +8471,33 @@
             "example": "Colours - Vocabulary Deck"
           },
           "isPublic": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": false
+          },
+          "cardType": {
+            "default": "VOCABULARY",
+            "description": "What the deck's cards are; fixed once the deck exists.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FlashcardType"
+              }
+            ]
+          },
+          "tags": {
+            "maxItems": 20,
+            "description": "Free labels, trimmed and de-duplicated by the server. Only the author reads them back.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 1000
           }
         },
         "required": [
-          "title",
-          "isPublic"
+          "title"
         ]
       },
       "FlashcardDeckUserResponse": {
@@ -8153,10 +8528,20 @@
             "example": "Colours - Vocabulary Deck"
           },
           "isPublic": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": false
+          },
+          "tags": {
+            "maxItems": 20,
+            "description": "Free labels, trimmed and de-duplicated by the server. Only the author reads them back.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 1000
           }
         }
       },
