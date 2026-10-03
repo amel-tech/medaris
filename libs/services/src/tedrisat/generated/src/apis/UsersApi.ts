@@ -26,6 +26,10 @@ export interface FindUserByEmailRequest {
     email: string;
 }
 
+export interface LookupUserRequest {
+    email: string;
+}
+
 /**
  * 
  */
@@ -75,6 +79,53 @@ export class UsersApi extends runtime.BaseAPI {
      */
     async findUserByEmail(requestParameters: FindUserByEmailRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<UserSummaryResponse>> {
         const response = await this.findUserByEmailRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Searches Keycloak, so a person who has never opened the app is found too. Returns zero or one user. Callable by SYSTEM_ADMIN and anyone who holds a role; every search is written to the audit log. 503 when the directory is not configured or does not answer.
+     * Find a user in the realm by exact e-mail address
+     */
+    async lookupUserRaw(requestParameters: LookupUserRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<UserSummaryResponse>>> {
+        if (requestParameters['email'] == null) {
+            throw new runtime.RequiredError(
+                'email',
+                'Required parameter "email" was null or undefined when calling lookupUser().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['email'] != null) {
+            queryParameters['email'] = requestParameters['email'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/users/lookup`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(UserSummaryResponseFromJSON));
+    }
+
+    /**
+     * Searches Keycloak, so a person who has never opened the app is found too. Returns zero or one user. Callable by SYSTEM_ADMIN and anyone who holds a role; every search is written to the audit log. 503 when the directory is not configured or does not answer.
+     * Find a user in the realm by exact e-mail address
+     */
+    async lookupUser(requestParameters: LookupUserRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<UserSummaryResponse>> {
+        const response = await this.lookupUserRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

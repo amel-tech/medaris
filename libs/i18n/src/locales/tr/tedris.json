@@ -529,5 +529,89 @@
         "bodyReason": "{outcome, select, approved {{deckTitle} destesi herkese açıldı.} unpublished {{deckTitle} destesi yayından kaldırıldı.} other {{deckTitle} destesini herkese açma isteğin reddedildi.}} Gerekçe: {reason}"
       }
     }
+  },
+  "AccountPage": {
+    "pageTitle": "Hesap",
+    "pageSubtitle": "Görevlerin, adın, saat dilimin ve takvim tercihlerin.",
+    "title": "Görevlerin ve izinlerin",
+    "intro": "Her görev bir kapsamda geçerlidir. Görevi ve süresini, onu atayan kişi değiştirir.",
+    "whereIntro": "Köşk ve ders işlerini Tedris’te değil, görevinin uygulamasında yaparsın: köşk nazımı Nizam’da, müderris Nazır’da.",
+    "tasks": "Görevlerin",
+    "imam": "İmam",
+    "self": "Kendin",
+    "unknownPerson": "Bilinmiyor",
+    "noExpiry": "Süresiz",
+    "columns": {
+      "role": "Görev",
+      "scope": "Kapsam",
+      "grantor": "Atayan",
+      "expires": "Süre",
+      "actions": "İşlemler"
+    },
+    "open": {
+      "nizam": "Nizam’da aç",
+      "nazir": "Nazır’da aç"
+    },
+    "courseBadge": {
+      "published": "Yayında",
+      "draft": "Taslak",
+      "hidden": "Gizli"
+    },
+    "roles": {
+      "MEDARIS_NAZIM": "Medaris nazımı",
+      "KOSK_NAZIM": "Köşk nazımı",
+      "MEDRESE_BASMUDERRIS": "Medrese başmüderrisi",
+      "MEDRESE_NAZIR": "Medrese nazırı",
+      "MUDERRIS": "Müderris",
+      "DERS_NAZIR": "Ders nazırı"
+    },
+    "grantedRole": "Verilen izinler",
+    "permissionsTitle": "Etkin izinlerin",
+    "permissionsIntro": "İzinler görevlerinden gelir. Sana verilen bir izni başkasına veremezsin; köşk nazımlığından ve müderrislikten gelen izni kendi kapsamında, kendi izinlerini aşmadan verebilirsin.",
+    "eachScope": {
+      "MUDERRIS": "Müderris olduğun derslerin her birinde geçerli: {names}.",
+      "default": "{role} olduğun her kapsamda geçerli: {names}."
+    },
+    "defaultsNote": {
+      "KOSK_NAZIM": "Köşk nazımının varsayılan izinleri. Köşkteki medrese derslerinde dersi açmak ve müderris listesi medresenindir.",
+      "MUDERRIS": "Müderrisin varsayılan izinleri. Ders kadrosu, derse kayıtlı talebenin adını ve e-postasını varsayılan görür; bu ayrı bir izin değildir."
+    },
+    "loadFailedTitle": "Görevlerin yüklenemedi",
+    "loadFailed": "Görevlerin ve izinlerin şu an okunamadı. Sayfayı yenileyerek yeniden dene.",
+    "permissions": {
+      "kosk_manage": "Köşkü düzenle, gizle ya da geri al",
+      "kosk_hosting": "Barındırma hakkı ver ya da geri al",
+      "course_open_standalone": "Medrese dışı ders aç; müderrisleri ve imamı seç",
+      "course_manage_all": "Köşkteki derslerin içeriğini, celselerini, ders kayıtlarını ve başvurularını yönet",
+      "ban_manage_kosk": "Ders ve köşk düzeyinde yasakla ya da yasağı gerekçeyle kaldır; ders yasağını köşke genişlet",
+      "deck_manage_kosk": "Köşk destesini aç ve düzenle",
+      "course_nazir_assign_kosk": "Köşkün medrese dışı derslerinde ders nazırı ata ve izin ver, kendi izinlerini aşmadan",
+      "user_lookup": "E-postayla kullanıcı bul",
+      "course_edit": "Dersi düzenle: başlık, tanıtım, müfredat, saat dilimi",
+      "session_manage": "Celse ekle, tarihini değiştir, iptal et; toplantı bağlantısını gir",
+      "session_live_link": "Canlı yayın bağlantısını celseye ekle",
+      "week_hide": "Hafta ve celse gizle, geri al",
+      "course_settings": "Ders ayarlarını ve kapalı ders bayrağını değiştir",
+      "course_publish": "Dersi yayımla ya da taslağa çek",
+      "course_view_unpublished": "Taslak ya da gizli dersi gör",
+      "enrollment_decide": "Başvuruyu onayla ya da reddet",
+      "enrollment_remove": "Talebeyi gerekçeyle dersten çıkar",
+      "enrollment_complete": "Talebeyi dersi tamamlamış say",
+      "recording_manage": "Ders kaydı ekle, adlandır, gizle; görünürlüğünü değiştir",
+      "recording_upload": "Ders kaydı yükle",
+      "recording_watch_restricted": "Yalnız kayıtlılara açık ders kayıtlarını izle",
+      "session_view_content": "Celse içeriğini ve toplantı bağlantılarını gör",
+      "ban_course": "Talebeyi dersten yasakla (dersin yasak listesini görmeyi kapsar)",
+      "ban_lift_course": "Ders yasağını gerekçeyle kaldır",
+      "deck_manage_course": "Ders destesini aç ve düzenle",
+      "course_nazir_assign": "Ders nazırı ata; izin ya da grup ver, kendi izinlerini aşmadan",
+      "permission_group_define": "İzin grubu tanımla"
+    },
+    "permissionNotes": {
+      "course_manage_all": "İçerik okumaların denetim kaydına yazılır.",
+      "course_nazir_assign_kosk": "Medrese derslerinde izni medrese kadrosu verir.",
+      "user_lookup": "Her arama denetim kaydına yazılır.",
+      "ban_lift_course": "Üst kademenin koyduğu yasağı kaldıramazsın."
+    }
   }
 }

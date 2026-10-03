@@ -22,7 +22,7 @@ export default function AppLayout({
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="container">
+      <SidebarInset className="max-w-[80rem]">
         <header className="flex h-16 shrink-0 items-center gap-2">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
