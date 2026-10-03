@@ -196,19 +196,76 @@ export class CourseDetailResponse extends CourseBase {
   contentLocked!: boolean;
 }
 
+export class SummaryMuderrisResponse extends MuderrisResponse {
+  @ApiProperty({
+    description: "The course's imam among its müderrisler (MDRS-133)",
+  })
+  isImam!: boolean;
+}
+
+export class CourseMadrasahResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty() name!: string;
+}
+
 export class CourseSummaryResponse extends CourseBase {
   @ApiProperty() weekCount!: number;
   @ApiProperty() lessonCount!: number;
   @ApiProperty() resourceCount!: number;
-  @ApiProperty({ type: [MuderrisResponse] }) muderris!: MuderrisResponse[];
+  @ApiProperty({ type: [SummaryMuderrisResponse] })
+  muderris!: SummaryMuderrisResponse[];
   @ApiPropertyOptional({ type: EnrollmentResponse })
   enrollment!: EnrollmentResponse | null;
+  @ApiPropertyOptional({
+    type: CourseMadrasahResponse,
+    nullable: true,
+    description: "The medrese that opened the course in this köşk (MDRS-159).",
+  })
+  madrasah!: CourseMadrasahResponse | null;
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+    description:
+      "The earliest session still ahead that has not been cancelled; null when none is scheduled (MDRS-159). The meeting link is never part of a summary.",
+  })
+  nextSessionAt!: Date | null;
+}
+
+export class MyEnrollmentResponse extends EnrollmentResponse {
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+    description:
+      "When the course team marked the course completed (MDRS-159); null for any other status.",
+  })
+  completedAt!: Date | null;
+}
+
+export class NextSessionResponse {
+  @ApiProperty({ type: Date }) at!: Date;
+  @ApiProperty({ description: "Number of the week the session falls in" })
+  weekNumber!: number;
 }
 
 export class EnrolledCourseResponse extends CourseBase {
   @ApiProperty() koskName!: string;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: "The medrese that opened the course, or null (MDRS-159).",
+  })
+  madrasahName!: string | null;
   @ApiProperty() weekCount!: number;
   @ApiProperty() lessonCount!: number;
-  @ApiProperty({ type: [MuderrisResponse] }) muderris!: MuderrisResponse[];
-  @ApiProperty({ type: EnrollmentResponse }) enrollment!: EnrollmentResponse;
+  @ApiProperty({ type: [SummaryMuderrisResponse] })
+  muderris!: SummaryMuderrisResponse[];
+  @ApiPropertyOptional({
+    type: NextSessionResponse,
+    nullable: true,
+    description:
+      "The earliest session still ahead that has not been cancelled (MDRS-159); null when none is scheduled.",
+  })
+  nextSession!: NextSessionResponse | null;
+  @ApiProperty({ type: MyEnrollmentResponse })
+  enrollment!: MyEnrollmentResponse;
 }

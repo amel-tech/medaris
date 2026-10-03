@@ -13,20 +13,27 @@
  */
 
 import { mapValues } from '../runtime';
-import type { MuderrisResponse } from './MuderrisResponse';
+import type { SummaryMuderrisResponse } from './SummaryMuderrisResponse';
 import {
-    MuderrisResponseFromJSON,
-    MuderrisResponseFromJSONTyped,
-    MuderrisResponseToJSON,
-    MuderrisResponseToJSONTyped,
-} from './MuderrisResponse';
-import type { EnrollmentResponse } from './EnrollmentResponse';
+    SummaryMuderrisResponseFromJSON,
+    SummaryMuderrisResponseFromJSONTyped,
+    SummaryMuderrisResponseToJSON,
+    SummaryMuderrisResponseToJSONTyped,
+} from './SummaryMuderrisResponse';
+import type { MyEnrollmentResponse } from './MyEnrollmentResponse';
 import {
-    EnrollmentResponseFromJSON,
-    EnrollmentResponseFromJSONTyped,
-    EnrollmentResponseToJSON,
-    EnrollmentResponseToJSONTyped,
-} from './EnrollmentResponse';
+    MyEnrollmentResponseFromJSON,
+    MyEnrollmentResponseFromJSONTyped,
+    MyEnrollmentResponseToJSON,
+    MyEnrollmentResponseToJSONTyped,
+} from './MyEnrollmentResponse';
+import type { NextSessionResponse } from './NextSessionResponse';
+import {
+    NextSessionResponseFromJSON,
+    NextSessionResponseFromJSONTyped,
+    NextSessionResponseToJSON,
+    NextSessionResponseToJSONTyped,
+} from './NextSessionResponse';
 
 /**
  * 
@@ -161,6 +168,12 @@ export interface EnrolledCourseResponse {
      */
     koskName: string;
     /**
+     * The medrese that opened the course, or null (MDRS-159).
+     * @type {string}
+     * @memberof EnrolledCourseResponse
+     */
+    madrasahName?: string | null;
+    /**
      * 
      * @type {number}
      * @memberof EnrolledCourseResponse
@@ -174,16 +187,22 @@ export interface EnrolledCourseResponse {
     lessonCount: number;
     /**
      * 
-     * @type {Array<MuderrisResponse>}
+     * @type {Array<SummaryMuderrisResponse>}
      * @memberof EnrolledCourseResponse
      */
-    muderris: Array<MuderrisResponse>;
+    muderris: Array<SummaryMuderrisResponse>;
+    /**
+     * The earliest session still ahead that has not been cancelled (MDRS-159); null when none is scheduled.
+     * @type {NextSessionResponse}
+     * @memberof EnrolledCourseResponse
+     */
+    nextSession?: NextSessionResponse | null;
     /**
      * 
-     * @type {EnrollmentResponse}
+     * @type {MyEnrollmentResponse}
      * @memberof EnrolledCourseResponse
      */
-    enrollment: EnrollmentResponse;
+    enrollment: MyEnrollmentResponse;
 }
 
 
@@ -264,10 +283,12 @@ export function EnrolledCourseResponseFromJSONTyped(json: any, ignoreDiscriminat
         'createdAt': (new Date(json['createdAt'])),
         'updatedAt': (new Date(json['updatedAt'])),
         'koskName': json['koskName'],
+        'madrasahName': json['madrasahName'] == null ? undefined : json['madrasahName'],
         'weekCount': json['weekCount'],
         'lessonCount': json['lessonCount'],
-        'muderris': ((json['muderris'] as Array<any>).map(MuderrisResponseFromJSON)),
-        'enrollment': EnrollmentResponseFromJSON(json['enrollment']),
+        'muderris': ((json['muderris'] as Array<any>).map(SummaryMuderrisResponseFromJSON)),
+        'nextSession': json['nextSession'] == null ? undefined : NextSessionResponseFromJSON(json['nextSession']),
+        'enrollment': MyEnrollmentResponseFromJSON(json['enrollment']),
     };
 }
 
@@ -303,10 +324,12 @@ export function EnrolledCourseResponseToJSONTyped(value?: EnrolledCourseResponse
         'createdAt': ((value['createdAt']).toISOString()),
         'updatedAt': ((value['updatedAt']).toISOString()),
         'koskName': value['koskName'],
+        'madrasahName': value['madrasahName'],
         'weekCount': value['weekCount'],
         'lessonCount': value['lessonCount'],
-        'muderris': ((value['muderris'] as Array<any>).map(MuderrisResponseToJSON)),
-        'enrollment': EnrollmentResponseToJSON(value['enrollment']),
+        'muderris': ((value['muderris'] as Array<any>).map(SummaryMuderrisResponseToJSON)),
+        'nextSession': NextSessionResponseToJSON(value['nextSession']),
+        'enrollment': MyEnrollmentResponseToJSON(value['enrollment']),
     };
 }
 
