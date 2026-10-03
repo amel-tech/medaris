@@ -14,6 +14,7 @@ import {
   RELATIONS,
   ROLE_DEFAULT_PERMISSIONS,
   relationCodes,
+  rolesConferring,
   SCOPE_TYPES,
   type ScopeRef,
 } from "../../src";
@@ -766,6 +767,104 @@ describe("what must not be held, one case for each rule a mutation could drop (r
       P.DECK_CREATE_CARD,
     ]) {
       expect(codes, code).not.toContain(code);
+    }
+  });
+});
+
+describe("which roles confer a permission (MDRS-205)", () => {
+  const confer = (
+    facts: IAuthzFacts,
+    roles: IHeldRole[],
+    wanted: PermissionCode[],
+    grants: IHeldGrantCodes[] = []
+  ) => rolesConferring(facts, roles, grants, wanted).sort();
+
+  it("names the role whose own defaults hold the code, and no other held beside it", () => {
+    // A medrese nazırı holds nothing by default; the müderris of the course holds ban.course.
+    expect(
+      confer(
+        courseFacts({ medrese: true }),
+        [
+          role(ASSIGNED_ROLES.MEDRESE_NAZIR, madrasah()),
+          role(ASSIGNED_ROLES.MUDERRIS, course()),
+        ],
+        [P.BAN_COURSE]
+      )
+    ).toEqual([ASSIGNED_ROLES.MUDERRIS]);
+  });
+
+  it("names every role that holds it, the köşk nazımı and the başmüderris of a medrese course alike", () => {
+    expect(
+      confer(
+        courseFacts({ medrese: true }),
+        [
+          role(ASSIGNED_ROLES.KOSK_NAZIM, kosk()),
+          role(ASSIGNED_ROLES.MEDRESE_BASMUDERRIS, madrasah()),
+          role(ASSIGNED_ROLES.MEDRESE_NAZIR, madrasah()),
+        ],
+        [P.BAN_COURSE]
+      )
+    ).toEqual([ASSIGNED_ROLES.KOSK_NAZIM, ASSIGNED_ROLES.MEDRESE_BASMUDERRIS]);
+  });
+
+  it("counts a grant for the role that covers it, and for a role held elsewhere not at all", () => {
+    const roles = [
+      role(ASSIGNED_ROLES.DERS_NAZIR, course()),
+      role(ASSIGNED_ROLES.MEDRESE_NAZIR, madrasah(OTHER_MADRASAH)),
+    ];
+    const given = [grant(course(), [P.BAN_COURSE])];
+    expect(
+      confer(courseFacts({ medrese: true }), roles, [P.BAN_COURSE], given)
+    ).toEqual([ASSIGNED_ROLES.DERS_NAZIR]);
+    // Without the grant a ders nazırı holds nothing.
+    expect(
+      confer(courseFacts({ medrese: true }), roles, [P.BAN_COURSE])
+    ).toEqual([]);
+  });
+
+  it("a Medaris nazımı holding a platform code confers it, and holds no course code by it", () => {
+    const roles = [role(ASSIGNED_ROLES.MEDARIS_NAZIM, platform)];
+    const given = [grant(platform, [P.PLATFORM_BAN_SCOPED])];
+    expect(
+      confer(courseFacts(), roles, [P.PLATFORM_BAN_SCOPED], given)
+    ).toEqual([ASSIGNED_ROLES.MEDARIS_NAZIM]);
+    expect(confer(courseFacts(), roles, [P.BAN_COURSE], given)).toEqual([]);
+  });
+
+  it("names nobody for a role that has run out, and for a scope off the chain", () => {
+    const ended = new Date(Date.now() - 1000);
+    expect(
+      confer(
+        courseFacts(),
+        [role(ASSIGNED_ROLES.MUDERRIS, course(), ended)],
+        [P.BAN_COURSE]
+      )
+    ).toEqual([]);
+    expect(
+      confer(
+        courseFacts(),
+        [role(ASSIGNED_ROLES.MUDERRIS, course(OTHER_COURSE))],
+        [P.BAN_COURSE]
+      )
+    ).toEqual([]);
+  });
+
+  it("agrees with effectivePermissions: some role confers it exactly when it is held", () => {
+    const facts = courseFacts({ medrese: true });
+    const roles = [
+      role(ASSIGNED_ROLES.MUDERRIS, course()),
+      role(ASSIGNED_ROLES.MEDARIS_NAZIM, platform),
+    ];
+    const given = [grant(platform, [P.PLATFORM_BAN_SCOPED])];
+    for (const code of [
+      P.BAN_COURSE,
+      P.PLATFORM_BAN_SCOPED,
+      P.MADRASAH_BAN,
+      P.BAN_MANAGE_KOSK,
+    ]) {
+      expect(confer(facts, roles, [code], given).length > 0, code).toBe(
+        held(facts, roles, given).has(code)
+      );
     }
   });
 });
