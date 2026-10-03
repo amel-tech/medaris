@@ -51,6 +51,8 @@ function Content({ profile }: PublicProfilePageProps) {
   const [errors, setErrors] = useState<ProfileErrors>({});
   const [kunyeTaken, setKunyeTaken] = useState(false);
   const [pending, startTransition] = useTransition();
+  // A visibility PATCH is in flight: every switch waits for it.
+  const [switching, setSwitching] = useState(false);
 
   const set = <K extends keyof ProfileDraft>(
     key: K,
@@ -95,24 +97,32 @@ function Content({ profile }: PublicProfilePageProps) {
   };
 
   const toggle = (field: HideableField, on: boolean) => {
+    // One switch saves at a time. A second flip while the first is in flight
+    // would let a refusal of the first roll the whole object back over the
+    // second, and the preview would stop matching what is stored.
+    if (switching) return;
     const before = visibility;
     // Optimistic: the preview follows at once and a refusal rolls it back.
     setVisibility({ ...before, [field]: on });
-    void saveVisibility({ [field]: on }).then((res) => {
-      if (res.success === true) return;
-      setVisibility(before);
-      toaster.notify({
-        tone: "error",
-        title: t("switchFailed"),
-        description: t("errorHint"),
-      });
-    });
+    setSwitching(true);
+    void saveVisibility({ [field]: on })
+      .then((res) => {
+        if (res.success === true) return;
+        setVisibility(before);
+        toaster.notify({
+          tone: "error",
+          title: t("switchFailed"),
+          description: t("errorHint"),
+        });
+      })
+      .finally(() => setSwitching(false));
   };
 
   const switchFor = (field: HideableField) => (
     <Switch
       label={t("showToEveryone")}
       checked={visibility[field]}
+      disabled={switching}
       onCheckedChange={(on) => toggle(field, on)}
       className="shrink-0"
     />

@@ -103,3 +103,11 @@ export const koskListEmptyState = (me: Me): KoskListEmptyState =>
   me && me.roles.manages.length === 0 && me.roles.nazirOf.length > 0
     ? "nazir"
     : "none";
+
+/**
+ * "Yeni Köşk" — `POST /kosks` is SYSTEM_ADMIN only since 2026-10-02:
+ * `CREATE_KOSK` is on no köşk row, so only the realm bypass passes, and a
+ * köşk manager would get a 403.
+ */
+export const mayCreateKosk = (me: Me): boolean =>
+  Boolean(me?.roles.systemAdmin);

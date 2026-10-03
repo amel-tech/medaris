@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { desc, eq, InferSelectModel, or, sql } from "drizzle-orm";
+import type { Tx } from "../course/course-purge";
 import { DatabaseService } from "../database/database.service";
 import { users } from "../database/schema/user.schema";
 import { UserIdentity } from "./interfaces/token-claims.interface";
@@ -91,11 +92,13 @@ export class UserRepository {
     return rows[0] ?? null;
   }
 
+  /** `executor` is the caller's transaction when the write must commit with others. */
   async updateSettings(
     id: string,
-    settings: IUserSettings
+    settings: IUserSettings,
+    executor: DatabaseService["db"] | Tx = this.db
   ): Promise<IUser | null> {
-    const rows = await this.db
+    const rows = await executor
       .update(users)
       .set(settings)
       .where(eq(users.id, id))
