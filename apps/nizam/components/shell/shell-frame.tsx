@@ -15,11 +15,11 @@ import { Fragment, type ReactNode } from "react";
 import { locales } from "~/lib/i18n/routing";
 import {
   activeEntryId,
+  coursePathAlias,
   currentKoskId,
   isBarePath,
   type ShellVariant,
   stripLocale,
-  studentsPathAlias,
 } from "~/lib/shell-nav";
 
 export interface ShellModel {
@@ -114,7 +114,7 @@ export function ShellFrame({
       path: i.path.replace(":kosk", koskId ?? ""),
     }))
   );
-  const activeId = activeEntryId(entries, studentsPathAlias(here));
+  const activeId = activeEntryId(entries, coursePathAlias(here));
   const activeItem = groups
     .flatMap((g) => g.items.map((i) => ({ key: `${g.id}.${i.id}`, item: i })))
     .find((e) => e.key === activeId)?.item;

@@ -594,6 +594,14 @@ describe("Genel bakış (nizam 53)", () => {
     expect(html).toContain("Celse planla");
   });
 
+  it("sends Bütün celseler to the course's own Celseler, a page that exists (MDRS-211)", () => {
+    const html = view();
+    expect(html).toMatch(
+      /<a[^>]*href="\/tr\/kosks\/k1\/courses\/c1\/sessions"[^>]*>Bütün celseler<\/a>/
+    );
+    expect(html).not.toContain("/kosks/k1/celseler");
+  });
+
   it("lists the müderris with the imam marked (criterion 6)", () => {
     const html = view({
       course: {

@@ -592,6 +592,11 @@
     "account": "Signed in as:",
     "back": "Back to the home page"
   },
+  "PageNotFound": {
+    "title": "Page not found",
+    "body": "There is no page at this address. Check the address or carry on from the home page.",
+    "back": "Back to the home page"
+  },
   "BansPage": {
     "title": "Bans",
     "intro": "Bans placed in {kosk} and its courses, with their reasons. A ban is lifted only by the kademe that placed it or a higher one, and lifting takes a reason.",

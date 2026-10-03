@@ -592,6 +592,11 @@
     "account": "Giriş yaptığınız hesap:",
     "back": "Ana sayfaya dön"
   },
+  "PageNotFound": {
+    "title": "Sayfa bulunamadı",
+    "body": "Bu adreste bir sayfa yok. Adresi denetleyin ya da ana sayfadan devam edin.",
+    "back": "Ana sayfaya dön"
+  },
   "BansPage": {
     "title": "Yasaklamalar",
     "intro": "{kosk} içinde ve derslerinde konan yasaklar, gerekçeleriyle. Bir yasağı yalnız onu koyan kademe ya da daha üst bir kademe kaldırır; kaldırırken gerekçe yazılır.",

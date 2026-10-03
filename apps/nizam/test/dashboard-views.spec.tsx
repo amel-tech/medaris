@@ -419,6 +419,14 @@ describe("a köşk nazımı's home page (nizam 02)", () => {
     expect(html).toContain("/tr/kosks/k1/courses/c1/sessions");
   });
 
+  it("links no page that is not built: the köşk-wide Celseler, Talebeler and Ders kayıtları (MDRS-211)", () => {
+    expect(html).not.toMatch(
+      /\/kosks\/k1\/(celseler|talebeler|ders-kayitlari)/
+    );
+    // the applications card keeps its "Tümünü gör", to a page that exists
+    expect(html).toContain('href="/tr/kosks/k1/basvurular"');
+  });
+
   it("draws the newest application with Onayla and Reddet that name the talebe and the course", () => {
     expect(html).toContain("Rümeysa Nur Karaca");
     expect(html).toContain("Bugün 10:02");

@@ -196,6 +196,13 @@ const koskGeneral: NavGroup = {
   ],
 };
 
+/**
+ * The köşk's menu (nizam 52) holds only pages that exist. The design also
+ * draws Celseler, Talebeler and Ders kayıtları for the whole köşk; those are
+ * later-phase screens with no route yet, so they stay out of the menu until
+ * they are built rather than answer 404 (MDRS-211). A course's own sessions
+ * and roster are reached from the course.
+ */
 const koskGroups: NavGroup[] = [
   koskGeneral,
   {
@@ -206,18 +213,6 @@ const koskGroups: NavGroup[] = [
         label: "courses",
         path: "/kosks/:kosk/dersler",
         icon: "courses",
-      },
-      {
-        id: "sessions",
-        label: "sessions",
-        path: "/kosks/:kosk/celseler",
-        icon: "calendar",
-      },
-      {
-        id: "students",
-        label: "students",
-        path: "/kosks/:kosk/talebeler",
-        icon: "users",
       },
       {
         id: "applications",
@@ -232,12 +227,6 @@ const koskGroups: NavGroup[] = [
         label: "courseRequests",
         path: "/kosks/:kosk/ders-talepleri",
         icon: "edit",
-      },
-      {
-        id: "enrollments",
-        label: "enrollments",
-        path: "/kosks/:kosk/ders-kayitlari",
-        icon: "video",
       },
       {
         id: "decks",
@@ -419,14 +408,11 @@ export function activeEntryId(
 }
 
 /**
- * A course's roster, `/kosks/:id/courses/:courseId/students`, is the köşk's
- * Talebeler (nizam 57 draws that item selected); the nav's own path for it is
- * the köşk-wide list.
+ * A course's pages (overview nizam/53, editor, Celseler nizam/56, Talebeler
+ * nizam/57) are the köşk's Dersler: the köşk-wide Celseler and Talebeler are
+ * not in the menu yet (MDRS-211), so Dersler is drawn selected.
  */
-export function studentsPathAlias(current: string): string {
-  const m = /^\/kosks\/([^/]+)\/courses\/[^/]+\/students\/?$/.exec(current);
-  if (m) return `/kosks/${m[1]}/talebeler`;
-  // A course's own pages (overview nizam/53, editor) are the köşk's Dersler.
+export function coursePathAlias(current: string): string {
   const course = /^\/kosks\/([^/]+)\/courses(\/|$)/.exec(current);
   return course ? `/kosks/${course[1]}/dersler` : current;
 }
