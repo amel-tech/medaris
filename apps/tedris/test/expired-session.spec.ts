@@ -30,11 +30,17 @@ vi.mock("next-auth/react", () => ({
   getSession: async () => mocks.session,
 }));
 vi.mock("next/navigation", () => ({ usePathname: () => mocks.pathname }));
-vi.mock("next-intl", () => ({ useLocale: () => "tr" }));
+vi.mock("next-intl", () => ({
+  useLocale: () => "tr",
+  useTranslations: () => (key: string) => key,
+}));
 vi.mock("~/lib/viewer-time-zone", () => ({
   syncViewerTimeZone: async () => undefined,
 }));
-vi.mock("@medaris/ui/components/sonner", () => ({ Toaster: () => null }));
+vi.mock("@medaris/ui/components/sonner", () => ({
+  DismissStaleSonnerToasts: () => null,
+  Toaster: () => null,
+}));
 
 const refreshFailed = {
   user: { name: "E2E Sistem Admin" },
