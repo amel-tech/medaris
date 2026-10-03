@@ -55,6 +55,7 @@ src/models/CourseStatsResponse.ts
 src/models/CourseSummaryResponse.ts
 src/models/CreateBanDto.ts
 src/models/CreateCourseDto.ts
+src/models/CreateDeckProposalDto.ts
 src/models/CreateFlashcardDeckDto.ts
 src/models/CreateFlashcardDeckLabelDto.ts
 src/models/CreateFlashcardDeckLabelingDto.ts
@@ -63,6 +64,7 @@ src/models/CreateFlashcardLabelDto.ts
 src/models/CreateFlashcardLabelingDto.ts
 src/models/CreateFlashcardProgressDto.ts
 src/models/CreateKoskApplicationDto.ts
+src/models/CreateKoskDeckDto.ts
 src/models/CreateKoskDto.ts
 src/models/CreateKoskGrantDto.ts
 src/models/CreateLessonDto.ts
@@ -73,9 +75,17 @@ src/models/CreateResourceDto.ts
 src/models/CreateSessionBatchDto.ts
 src/models/CreateWeekDto.ts
 src/models/CreateWeekLessonDto.ts
+src/models/CreatedIdResponse.ts
 src/models/DeckCollectionKind.ts
 src/models/DeckLabelStatsResponse.ts
+src/models/DeckPersonResponse.ts
+src/models/DeckProposalResponse.ts
+src/models/DeckPublishRequestListResponse.ts
+src/models/DeckPublishRequestResponse.ts
 src/models/DeckPublishStatus.ts
+src/models/DeckRequestCardResponse.ts
+src/models/DeckRequestCardsResponse.ts
+src/models/DeckRequestStatus.ts
 src/models/DeckSource.ts
 src/models/DeletePermissionGroupDto.ts
 src/models/DismissAction.ts
@@ -167,6 +177,8 @@ src/models/MadrasahResponse.ts
 src/models/MadrasahStatus.ts
 src/models/MadrasahStatusCountsResponse.ts
 src/models/MadrasahStatusFilter.ts
+src/models/ManagedKoskDeckResponse.ts
+src/models/ManagedKoskDecksResponse.ts
 src/models/ManagedKoskRef.ts
 src/models/MeResponse.ts
 src/models/MeRolesResponse.ts
@@ -207,6 +219,7 @@ src/models/RecordingProvider.ts
 src/models/RecordingResponse.ts
 src/models/RecordingStatus.ts
 src/models/RecordingVisibility.ts
+src/models/RejectReasonDto.ts
 src/models/RemoveEnrollmentDto.ts
 src/models/RemovedByResponse.ts
 src/models/RemovedEnrollmentResponse.ts

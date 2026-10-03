@@ -63,7 +63,9 @@ export function DeckHeader({
                     ? t("statusPUBLISHED")
                     : deck.publishStatus === "PENDING"
                       ? t("statusPENDING")
-                      : t("statusPRIVATE")
+                      : deck.publishStatus === "REJECTED"
+                        ? t("statusREJECTED")
+                        : t("statusPRIVATE")
                 }
               />
             ) : (

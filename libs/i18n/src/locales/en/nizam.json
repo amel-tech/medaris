@@ -2856,5 +2856,217 @@
       "link": "The meeting link must start with https://. Copy the link again from the platform.",
       "time": "Enter the date and the time."
     }
+  },
+  "DeckRequestsPage": {
+    "title": "Deck publish requests",
+    "intro": "Members ask to make their own decks public; you publish them.",
+    "noticeTitle": "A published deck is open to everyone",
+    "notice": "Visitors who have not signed in also see and study the deck; the author's name is not shown. The owner can make it private again whenever they like, without your approval.",
+    "tabsLabel": "Request status",
+    "tabs": {
+      "PENDING": "Waiting",
+      "DECIDED": "Answered"
+    },
+    "empty": {
+      "PENDING": "No deck publish request is waiting for an answer.",
+      "DECIDED": "No request has been answered yet."
+    },
+    "loadFailedTitle": "Requests could not be read",
+    "loadFailed": "The deck publish requests cannot be fetched right now. Try again in a moment.",
+    "loadMore": "Show more",
+    "retry": "Try again",
+    "cardsFailed": "The cards could not be read.",
+    "noCards": "This deck has no cards yet.",
+    "front": "Front",
+    "back": "Back",
+    "detailEyebrow": "PUBLISH REQUEST",
+    "status": {
+      "PENDING": "Waiting for an answer",
+      "PUBLISHED": "Published",
+      "REJECTED": "Refused"
+    },
+    "outcome": {
+      "PENDING": "Waiting",
+      "PUBLISHED": "Published",
+      "REJECTED": "Refused"
+    },
+    "owner": "Owner",
+    "cards": "Cards",
+    "cardType": "Card type",
+    "requestedAt": "Requested",
+    "cardTypes": {
+      "VOCABULARY": "Vocabulary",
+      "HADEETH": "Hadith"
+    },
+    "cardCount": "{count, plural, one {# memorisation card} other {# memorisation cards}}",
+    "sampleHeading": "Sample cards",
+    "allCards": "All cards",
+    "auditNote": "The deck is private until it is published; looking at its cards is written to the audit log.",
+    "allCardsCount": "All cards: {count, plural, one {# memorisation card} other {# memorisation cards}}",
+    "publishNote": "Once published, the deck is visible to everyone on the Explore decks page; the author's name is not shown.",
+    "publish": "Publish",
+    "reject": "Refuse",
+    "rejectReasonTitle": "Reason for refusal",
+    "unknownPerson": "Member with no name",
+    "published": "Deck published",
+    "publishedBody": "{title} is now public; its owner was told.",
+    "rejected": "Request refused",
+    "rejectedBody": "{title} stays private; the reason was passed on to its owner.",
+    "answerFailed": "The answer could not be saved",
+    "errors": {
+      "generic": "The action could not be completed. Try again in a moment.",
+      "requestAnswered": "This request was answered or withdrawn a moment ago.",
+      "requestGone": "This request no longer exists.",
+      "proposalAnswered": "This proposal was answered a moment ago.",
+      "proposalGone": "This proposal no longer exists.",
+      "deckGone": "This deck no longer exists or is hidden already.",
+      "forbidden": "You may not do this."
+    }
+  },
+  "DeckReject": {
+    "close": "Close",
+    "cancel": "Cancel",
+    "submit": "Refuse",
+    "requiredNote": "required field",
+    "reasonLabel": "Reason for refusal",
+    "reasonRequired": "Write a reason.",
+    "request": {
+      "title": "Refuse the publish request",
+      "body": "The deck stays private. The reason reaches its owner in a notification, and they may ask again.",
+      "help": "The owner will read this reason."
+    },
+    "proposal": {
+      "title": "Refuse the proposal",
+      "body": "The proposal is closed. The proposer reads the reason in their notifications.",
+      "help": "The proposer will read this reason."
+    }
+  },
+  "KoskDecksPage": {
+    "title": "Köşk decks",
+    "intro": "The decks of {kosk} are open to talebe enrolled in any of its courses. You add the cards; talebe study the deck and copy the cards they want into their own decks.",
+    "loadFailedTitle": "Decks could not be read",
+    "loadFailed": "The köşk's decks cannot be fetched right now. Try again in a moment.",
+    "open": "Open a köşk deck",
+    "proposalsHeading": "Müderris proposals",
+    "proposalsWaiting": "{count, plural, one {# proposal waits for your answer} other {# proposals wait for your answer}}",
+    "proposalsNote": "Accepting opens the “Open a köşk deck” form filled in with the proposal's name and description; you open the deck and add its cards. If you refuse, the proposer reads your reason in their notifications.",
+    "proposedBy": "Proposed by {name}",
+    "accept": "Accept",
+    "acceptLabel": "Accept the proposal {title}",
+    "refuse": "Refuse",
+    "refuseLabel": "Refuse the proposal {title}",
+    "unknownPerson": "müderris with no name",
+    "decksHeading": "Decks",
+    "decksCount": "{count, plural, one {# deck} other {# decks}}",
+    "caption": "Decks of {kosk}",
+    "empty": "This köşk has no deck yet.",
+    "columns": {
+      "deck": "Deck",
+      "cards": "Memorisation cards",
+      "changed": "Last changed",
+      "actions": "Actions"
+    },
+    "cardTypes": {
+      "VOCABULARY": "Vocabulary",
+      "HADEETH": "Hadith"
+    },
+    "editCards": "Edit cards",
+    "editCardsLabel": "Edit the cards of {title}",
+    "hide": "Hide",
+    "hideLabel": "Hide the deck {title}",
+    "hideTitle": "Hide this deck?",
+    "hideBody": "{title} will be hidden from the talebe of {kosk}; nothing is deleted. You can bring it back from the archive whenever you like.",
+    "hideConfirm": "Hide",
+    "cancel": "Cancel",
+    "close": "Close",
+    "hidden": "Deck hidden",
+    "hiddenBody": "{title} moved to the köşk's archive.",
+    "proposalRefused": "Proposal refused",
+    "proposalRefusedBody": "The reason for {title} was passed on to the müderris.",
+    "actionFailed": "That could not be done",
+    "errors": {
+      "generic": "The action could not be completed. Try again in a moment.",
+      "requestAnswered": "This request was answered or withdrawn a moment ago.",
+      "requestGone": "This request no longer exists.",
+      "proposalAnswered": "This proposal was answered a moment ago.",
+      "proposalGone": "This proposal no longer exists.",
+      "deckGone": "This deck no longer exists or is hidden already.",
+      "forbidden": "You may not do this."
+    },
+    "introNoName": "Köşk decks are open to the students enrolled in any course of the köşk.",
+    "loadMore": "Show more",
+    "retry": "Try again"
+  },
+  "KoskDeckForm": {
+    "title": "Open a köşk deck",
+    "intro": "A köşk deck is open to talebe enrolled in any course of {kosk}. You add its cards after opening it.",
+    "breadcrumbLabel": "Breadcrumb",
+    "breadcrumbRoot": "Köşk decks",
+    "breadcrumbCurrent": "Open a köşk deck",
+    "requiredNote": "required field",
+    "proposalTitle": "Opening from a müderris proposal",
+    "proposalBody": "Proposal <b>{title}</b> · {name} · {course} · {date}. The name and description came as proposed; you may change them. Opening the deck accepts the proposal.",
+    "unknownPerson": "müderris with no name",
+    "nameLabel": "Deck name",
+    "nameHelp": "The köşk's talebe see this name.",
+    "titleRequired": "Write a deck name.",
+    "descriptionLabel": "Description",
+    "descriptionHelp": "Optional. Shown under the name in the deck list.",
+    "typeLabel": "Card type",
+    "types": {
+      "VOCABULARY": {
+        "label": "Vocabulary",
+        "description": "An Arabic word or pattern on the front, its meaning and note on the back."
+      },
+      "HADEETH": {
+        "label": "Hadith",
+        "description": "A passage of the hadith on the front, its full text and source on the back."
+      }
+    },
+    "visibleTitle": "Who sees it",
+    "visibleBody": "Talebe enrolled in any course of {kosk}; {count, plural, one {# talebe} other {# talebe}} right now. They study the deck and copy the cards they want into their own decks; they cannot add or change cards.",
+    "cancel": "Cancel",
+    "submit": "Open the deck",
+    "laterTitle": "Cards come later",
+    "laterBody": "After you open the deck, use “Edit cards” on its row to type the cards into the table one by one or import them from a file.",
+    "import": {
+      "csv": {
+        "title": "Import from a CSV file",
+        "body": "You can export the cards as CSV."
+      },
+      "xls": {
+        "title": "Import from an Excel file",
+        "body": "You can export the cards as Excel."
+      }
+    },
+    "previewFront": "FRONT",
+    "previewBack": "BACK",
+    "preview": {
+      "vocabulary": {
+        "front": "دَعَا يَدْعُو دُعَاءً",
+        "back": "He called, calls, to call. Defective, wāw-type: the lām of the verb is wāw.",
+        "note": "A vocabulary card looks like this; the example changes with the type you choose."
+      },
+      "hadith": {
+        "front": "إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ",
+        "back": "Deeds are judged by intentions. (Bukhārī, Bad’ al-waḥy 1)",
+        "note": "A hadith card looks like this; the example changes with the type you choose."
+      }
+    },
+    "failed": "The deck could not be opened",
+    "opened": "Deck opened",
+    "openedBody": "{title} is among the köşk's decks; you can add its cards now.",
+    "errors": {
+      "generic": "The action could not be completed. Try again in a moment.",
+      "requestAnswered": "This request was answered or withdrawn a moment ago.",
+      "requestGone": "This request no longer exists.",
+      "proposalAnswered": "This proposal was answered a moment ago; the deck was not opened.",
+      "proposalGone": "This proposal no longer exists; the deck was not opened.",
+      "deckGone": "This deck no longer exists or is hidden already.",
+      "forbidden": "You are not a nazım of this köşk."
+    },
+    "loadFailedTitle": "The köşk could not be read",
+    "loadFailed": "The köşk and its decks cannot be fetched right now. Try again in a moment.",
+    "retry": "Try again"
   }
 }
