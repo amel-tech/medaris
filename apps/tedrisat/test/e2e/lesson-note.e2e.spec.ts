@@ -575,6 +575,7 @@ describe("a talebe's private notes (MDRS-150, e2e)", () => {
     it.each([
       ["an empty body", { body: "" }],
       ["a body past the limit", { body: "a".repeat(LESSON_NOTE_BODY_MAX + 1) }],
+      ["a null body", { body: null }],
       ["a negative position", { offsetSeconds: -5 }],
       ["a key the DTO does not know", { lessonId: ABSENT_ID }],
     ])("refuses %s on edit and changes nothing", async (_label, body) => {

@@ -16,6 +16,7 @@ import {
 import { flashcards } from "../../src/database/schema/flashcard.schema";
 import { decks } from "../../src/database/schema/flashcard-deck.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
+import { lessonNotes } from "../../src/database/schema/lesson-note.schema";
 import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
 import { FlashcardType } from "../../src/flashcard/domain/flashcard-type.enum";
@@ -780,6 +781,28 @@ describe("Archive (e2e)", () => {
         "session",
         "week",
       ]);
+    });
+
+    it("deletes a hidden week and a hidden session together with the notes written on them", async () => {
+      await db()
+        .insert(lessonNotes)
+        .values([
+          { lessonId: sessionOfHiddenWeek, authorId: STUDENT_ID, body: "a" },
+          { lessonId: hiddenSession, authorId: STUDENT_ID, body: "b" },
+          { lessonId: liveSession, authorId: STUDENT_ID, body: "kalır" },
+        ]);
+
+      await http()
+        .delete(`/archive/week/${hiddenWeek}`)
+        .set("Authorization", auth(ADMIN_ID))
+        .expect(204);
+      await http()
+        .delete(`/archive/session/${hiddenSession}`)
+        .set("Authorization", auth(ADMIN_ID))
+        .expect(204);
+
+      const left = await db().select().from(lessonNotes);
+      expect(left.map((n) => n.body)).toEqual(["kalır"]);
     });
 
     it("deletes a hidden köşk with its courses", async () => {
