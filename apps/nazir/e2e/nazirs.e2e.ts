@@ -22,10 +22,9 @@ let extra: NazirsFixture | undefined;
 
 test.beforeAll(async () => {
   if (!BASMUDERRIS.sub) return;
-  base = await seedPortal({
-    basmuderris: BASMUDERRIS.sub,
-    medreseNazir: MEDRESE_NAZIR.sub,
-  });
+  // MEDRESE_NAZIR is seated by the one spec that signs in as them: holding
+  // nothing, they would be a second row, and the band would count two.
+  base = await seedPortal({ basmuderris: BASMUDERRIS.sub });
 });
 
 test.afterAll(async () => {
@@ -58,10 +57,11 @@ const open = async (page: Page) => {
   ).toBeVisible();
 };
 
-const rowOf = (page: Page, text: string) =>
+/** The row of a nazır by the name in its first cell: a giver's name is in other rows too. */
+const rowOf = (page: Page, name: string) =>
   page
     .locator("[data-testid=nazirs] tbody tr:visible")
-    .filter({ hasText: text });
+    .filter({ has: page.locator("th", { hasText: name }) });
 
 test("nazir/05 — the table shows each nazır with their groups, extra permissions, end and giver, in the order they were appointed (criteria 1, 4)", async ({
   as,
@@ -212,7 +212,11 @@ test("nazir/05 — an address no account has says so, and nobody is appointed", 
 test("nazir/05 — a medrese nazır is refused: a notice, no table and no way to appoint (criterion 5)", async ({
   as,
 }) => {
-  test.skip(!(ready() && canSignIn(MEDRESE_NAZIR)), "no medrese nazır account");
+  test.skip(
+    !(ready() && canSignIn(MEDRESE_NAZIR) && MEDRESE_NAZIR.sub),
+    "no medrese nazır account"
+  );
+  await extra?.seat(MEDRESE_NAZIR.sub ?? "");
   const page = await as("MEDRESE_NAZIR");
   await open(page);
   await expect(page.getByText("Bu sayfaya izniniz yok")).toBeVisible();
