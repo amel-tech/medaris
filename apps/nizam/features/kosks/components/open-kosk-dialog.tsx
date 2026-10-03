@@ -33,8 +33,12 @@ import { NazimPicker } from "./nazim-picker";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** called with the new köşk's name once it is saved */
-  onOpened?: (name: string) => void;
+  /** called with the new köşk's name and id once it is saved */
+  onOpened?: (name: string, id: string) => void;
+  /** what the form starts with: a köşk application's values (nizam/15 "Köşkü aç") */
+  initial?: Partial<Pick<OpenKoskForm, "name" | "field" | "description">>;
+  /** the nazımları the form starts with: the applicant */
+  initialPeople?: PickedUser[];
 }
 
 type Touched = Partial<Record<"name" | "handle" | "field" | "level", boolean>>;
@@ -47,7 +51,13 @@ type Touched = Partial<Record<"name" | "handle" | "field" | "level", boolean>>;
  * field. The scrim does not close it, so typed input is not lost to a stray
  * click, and a failure keeps it open. The name has the focus.
  */
-export function OpenKoskDialog({ open, onOpenChange, onOpened }: Props) {
+export function OpenKoskDialog({
+  open,
+  onOpenChange,
+  onOpened,
+  initial,
+  initialPeople,
+}: Props) {
   const t = useTranslations("nizam.OpenKoskDialog");
   const tp = useTranslations("nizam.KoskNazimPicker");
   const [form, setForm] = useState<OpenKoskForm>(emptyOpenForm);
@@ -59,10 +69,14 @@ export function OpenKoskDialog({ open, onOpenChange, onOpened }: Props) {
   const nameRef = useRef<HTMLElement | null>(null);
 
   // A new opening starts from a clean form.
+  // Read through a ref: a new `initial` object on every render of the parent
+  // must not reset what the person is typing.
+  const start = useRef({ initial, initialPeople });
+  start.current = { initial, initialPeople };
   useEffect(() => {
     if (open) {
-      setForm(emptyOpenForm());
-      setPeople([]);
+      setForm({ ...emptyOpenForm(), ...start.current.initial });
+      setPeople(start.current.initialPeople ?? []);
       setTouched({});
       setSent(false);
       setTaken(false);
@@ -104,7 +118,7 @@ export function OpenKoskDialog({ open, onOpenChange, onOpened }: Props) {
     toast.success(t("saved"), {
       description: t("savedBody", { name: result.data.name }),
     });
-    onOpened?.(result.data.name);
+    onOpened?.(result.data.name, result.data.id);
     onOpenChange(false);
   };
 

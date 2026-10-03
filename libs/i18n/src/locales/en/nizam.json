@@ -2938,6 +2938,16 @@
       "title": "Refuse the proposal",
       "body": "The proposal is closed. The proposer reads the reason in their notifications.",
       "help": "The proposer will read this reason."
+    },
+    "application": {
+      "title": "Refuse the application",
+      "body": "The application closes. The applicant reads the reason in their notifications.",
+      "help": "The applicant will read this reason."
+    },
+    "courseRequest": {
+      "title": "Refuse the request",
+      "body": "The request closes. The medrese's head müderris sees the reason.",
+      "help": "The head müderris will read this reason."
     }
   },
   "KoskDecksPage": {
@@ -3066,5 +3076,251 @@
     "loadFailedTitle": "The köşk could not be read",
     "loadFailed": "The köşk and its decks cannot be fetched right now. Try again in a moment.",
     "retry": "Try again"
+  },
+  "KoskApplicationsPage": {
+    "title": "Köşk applications",
+    "intro": "Decide the applications members send from Tedris to open a köşk: open the köşk, or refuse with a reason.",
+    "tabsLabel": "Application status",
+    "tabs": {
+      "PENDING": "Waiting",
+      "DECIDED": "Answered"
+    },
+    "empty": {
+      "PENDING": "No köşk application is waiting for a decision.",
+      "DECIDED": "No application has been answered."
+    },
+    "loadFailedTitle": "Applications could not be read",
+    "loadFailed": "The köşk applications cannot be fetched right now. Try again in a moment.",
+    "retry": "Try again",
+    "detailFailed": "The application's details could not be read.",
+    "detailEyebrow": "KÖŞK APPLICATION",
+    "status": {
+      "PENDING": "Waiting for a decision",
+      "APPROVED": "Accepted",
+      "REJECTED": "Refused"
+    },
+    "outcome": {
+      "PENDING": "Waiting",
+      "APPROVED": "Accepted",
+      "REJECTED": "Refused"
+    },
+    "unknownPerson": "Member with no known name",
+    "field": "Field",
+    "sentAt": "Sent",
+    "sameField": "Köşks in this field",
+    "sameFieldNone": "None yet",
+    "summary": "Short description",
+    "reason": "Why this köşk",
+    "applicant": "Applicant",
+    "applicantName": "Name",
+    "roles": "Roles",
+    "noRoles": "No role yet",
+    "roleNames": {
+      "MEDARIS_NAZIM": "Medaris nazım",
+      "KOSK_NAZIM": "Köşk nazım",
+      "MEDRESE_BASMUDERRIS": "Head müderris of a medrese",
+      "MEDRESE_NAZIR": "Nazır of a medrese",
+      "MUDERRIS": "Müderris",
+      "DERS_NAZIR": "Nazır of a course"
+    },
+    "email": "E-mail",
+    "phone": "Phone",
+    "phoneMissing": "Not given",
+    "contactNote": "Seeing the contact details is written to the audit log.",
+    "openNote": "The open-a-köşk form opens with the application's name, field and description; once the köşk is open the application counts as accepted.",
+    "open": "Open the köşk",
+    "reject": "Refuse",
+    "rejectReasonTitle": "Reason for refusal",
+    "approved": "Application accepted",
+    "approvedBody": "{name} is open; the applicant was told.",
+    "rejected": "Application refused",
+    "rejectedBody": "The application for {name} was refused; the reason reached the applicant.",
+    "answerFailed": "The decision could not be saved",
+    "errors": {
+      "generic": "The action could not be completed. Try again in a moment.",
+      "answered": "This application was answered a moment ago.",
+      "gone": "This application is gone.",
+      "courseGone": "This course was not found in this köşk.",
+      "locked": "This setting is closed by a platform policy.",
+      "forbidden": "You may not do this."
+    }
+  },
+  "AuditPage": {
+    "title": "Audit log",
+    "intro": "A read-only record of who read or changed what. Records cannot be deleted or edited.",
+    "export": "Export",
+    "noticeTitle": "Only you can see this log",
+    "notice": "Köşk nazıms and medrese and course staff cannot see it; personal data is given only as far as a request needs (KVKK).",
+    "filtersLabel": "Audit log filters",
+    "filters": {
+      "actor": "Person",
+      "actorPlaceholder": "Name or e-mail",
+      "type": "What they did",
+      "allTypes": "All",
+      "scope": "Scope",
+      "allScopes": "All scopes",
+      "range": "Date",
+      "from": "From",
+      "to": "To"
+    },
+    "types": {
+      "CONTENT_READ": "Content read",
+      "PRIVATE_DECK_READ": "Private deck read",
+      "PERSONAL_DATA_READ": "Personal data read",
+      "USER_LOOKUP": "User lookup",
+      "GRANT": "Permission given or taken back",
+      "ROLE_CHANGE": "Role change",
+      "POLICY_CHANGE": "Policy change",
+      "BAN": "Ban and lifting a ban",
+      "HIDE": "Hiding and restoring",
+      "HOSTING": "Hosting right",
+      "TAKEOVER": "Take over or drop",
+      "APPEAL": "Appeal and its decision",
+      "PERMANENT_BAN": "Permanent ban request and decision",
+      "PERMANENT_DELETE": "Permanent deletion",
+      "EXPORT": "Export",
+      "OTHER": "Other action"
+    },
+    "scopes": {
+      "PLATFORM": "Platform",
+      "KOSK": "Köşks",
+      "MADRASAH": "Medreses"
+    },
+    "scopeKinds": {
+      "PLATFORM": "Platform",
+      "KOSK": "Köşk",
+      "MADRASAH": "Medrese"
+    },
+    "ranges": {
+      "ALL": "All time",
+      "24h": "Last 24 hours",
+      "7d": "Last 7 days",
+      "30d": "Last 30 days",
+      "custom": "Pick a range"
+    },
+    "day": {
+      "today": "Today",
+      "yesterday": "Yesterday"
+    },
+    "columns": {
+      "record": "Record",
+      "actor": "Who",
+      "action": "What they did",
+      "scope": "Scope"
+    },
+    "roles": {
+      "MEDARIS_NAZIM": "Medaris nazım",
+      "KOSK_NAZIM": "Köşk nazım",
+      "MEDRESE_BASMUDERRIS": "Head müderris of a medrese",
+      "MEDRESE_NAZIR": "Nazır of a medrese",
+      "MUDERRIS": "Müderris",
+      "DERS_NAZIR": "Nazır of a course"
+    },
+    "unknownPerson": "Member with no known name",
+    "empty": "No record matches these filters.",
+    "loadFailedTitle": "The log could not be read",
+    "loadFailed": "The audit log cannot be fetched right now. Try again in a moment.",
+    "retry": "Try again",
+    "moreFailedTitle": "Older records could not be read",
+    "moreFailed": "Older records cannot be fetched right now. Try again in a moment.",
+    "older": "Show older ones",
+    "retention": "Records are kept for [KVKK retention period]."
+  },
+  "PlatformSettingsPage": {
+    "title": "Platform settings",
+    "intro": "A policy closes a permission; the scopes below cannot open it again.",
+    "policiesHeading": "Policies",
+    "policies": {
+      "ALWAYS_REQUIRE_APPROVAL": {
+        "title": "Enrolment is always approved",
+        "body": "No enrolment in any course is automatic; each one waits for the course team's approval."
+      },
+      "RECORDINGS_NEVER_PUBLIC": {
+        "title": "Recordings cannot be made public",
+        "body": "No köşk's or course's recording can be opened to people who are not enrolled."
+      }
+    },
+    "ownScopes": "Already applied in their own scope: {names}",
+    "instantNote": "Every change takes effect at once and is written to the audit log.",
+    "combineHeading": "How policies combine",
+    "steps": {
+      "roleDefault": "A role's default permissions are the start.",
+      "platform": "A platform policy closes the permission it names everywhere.",
+      "kosk": "A köşk may narrow further with its own policy.",
+      "madrasah": "A medrese may narrow within its own scope.",
+      "course": "A course sets the narrowest scope with its own settings."
+    },
+    "combineWarning": "A permission granted from above overrides the policy below.",
+    "scopedHeading": "Köşk and medrese policies",
+    "scopedEmpty": "No köşk or medrese applies a policy of its own.",
+    "columns": {
+      "scope": "Scope",
+      "policy": "Policy",
+      "by": "Switched on by",
+      "at": "Date"
+    },
+    "scopeKinds": {
+      "KOSK": "Köşk",
+      "MADRASAH": "Medrese"
+    },
+    "unknownPerson": "Member with no known name",
+    "unknownBy": "Not recorded",
+    "turnedOn": "Policy switched on",
+    "turnedOff": "Policy switched off",
+    "saveFailed": "The policy could not be saved",
+    "loadFailedTitle": "The settings could not be read",
+    "loadFailed": "The platform settings cannot be fetched right now. Try again in a moment.",
+    "retry": "Try again",
+    "errors": {
+      "generic": "The action could not be completed. Try again in a moment.",
+      "forbidden": "You may not do this."
+    }
+  },
+  "CourseRequestsPage": {
+    "title": "Course requests",
+    "intro": "The courses outside a medrese that medreses ask this köşk to open.",
+    "tabsLabel": "Request status",
+    "tabs": {
+      "PENDING": "Waiting",
+      "DECIDED": "Answered"
+    },
+    "empty": {
+      "PENDING": "No course request is waiting for a decision.",
+      "DECIDED": "No request has been answered."
+    },
+    "loadFailedTitle": "Requests could not be read",
+    "loadFailed": "The course requests cannot be fetched right now. Try again in a moment.",
+    "retry": "Try again",
+    "detailEyebrow": "OUTSIDE-MEDRESE COURSE REQUEST",
+    "status": {
+      "PENDING": "Waiting for a decision",
+      "ACCEPTED": "Accepted",
+      "REJECTED": "Refused"
+    },
+    "outcome": {
+      "PENDING": "Waiting",
+      "ACCEPTED": "Accepted",
+      "REJECTED": "Refused"
+    },
+    "kosk": "Köşk asked to open it",
+    "madrasah": "Medrese",
+    "sentAt": "Sent",
+    "sender": "Sent by",
+    "reason": "Reason",
+    "answerNote": "When you accept, the open-a-course form opens with the request's name; once the course is open the request counts as accepted. When you refuse, the head müderris sees the reason.",
+    "accept": "Accept",
+    "reject": "Refuse",
+    "rejectReasonTitle": "Reason for refusal",
+    "unknownPerson": "Member with no known name",
+    "rejected": "Request refused",
+    "rejectedBody": "The request for {title} was refused; the reason reached the head müderris.",
+    "answerFailed": "The decision could not be saved",
+    "errors": {
+      "generic": "The action could not be completed. Try again in a moment.",
+      "answered": "This request was answered a moment ago.",
+      "gone": "This request is gone.",
+      "courseGone": "This course was not found in this köşk.",
+      "forbidden": "You may not do this."
+    }
   }
 }
