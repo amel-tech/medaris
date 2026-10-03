@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 
 // `setRequestLocale` needs Next's server-component runtime; the page's
 // output, not the locale plumbing, is what is under test here.
-vi.mock("next-intl/server", () => ({ setRequestLocale: () => {} }));
+vi.mock("next-intl/server", () => ({
+  setRequestLocale: () => {},
+  getTranslations: async () => (key: string) => key,
+}));
 
 describe("Kayıt ol opens Keycloak's registration form (MDRS-101)", () => {
   it("asks Keycloak for registration with prompt=create", () => {
@@ -37,7 +40,9 @@ describe("Kayıt ol opens Keycloak's registration form (MDRS-101)", () => {
       params: Promise.resolve({ locale: "tr" }),
     });
 
-    expect(element.props).toEqual({
+    // The page is the system's chrome, then the entry.
+    const entry = element.props.children[1];
+    expect(entry.props).toEqual({
       intent: "register",
       callbackUrl: "/tr/start",
     });

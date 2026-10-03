@@ -1,10 +1,14 @@
 "use client";
 
-import { signIn, useSession } from "next-auth/react";
-import { useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useEffect, useRef } from "react";
 // Deep import, not the `../auth` barrel: that barrel reaches `next/headers`
 // through `get-access-token`, which throws in a client bundle.
 import { REFRESH_ACCESS_TOKEN_ERROR } from "../auth/refresh-error";
+import {
+  browserKeycloakEntryDeps,
+  enterKeycloak,
+} from "./sign-in-coordination";
 
 export interface RefreshErrorRedirectProps {
   /**
@@ -43,9 +47,28 @@ export const RefreshErrorRedirect = ({ locale }: RefreshErrorRedirectProps) => {
   // reason `AccessTokenJwt` exists beside `createAccessTokenReader`.
   const error = (session as { error?: unknown } | null)?.error;
 
+  // The session is broadcast to every tab, so every tab sees the failure at
+  // once. `enterKeycloak` lets one of them go to Keycloak and has the others
+  // wait for the session it brings back: parallel round trips overwrite each
+  // other's state cookie and end on the "Giriş yapılamadı" box.
+  const current = useRef(error);
+  current.current = error;
+  const started = useRef(false);
+
   useEffect(() => {
-    if (error !== REFRESH_ACCESS_TOKEN_ERROR) return;
-    signIn("keycloak", { redirect: true }, { ui_locales: locale });
+    if (error !== REFRESH_ACCESS_TOKEN_ERROR || started.current) return;
+    started.current = true;
+    void enterKeycloak(
+      { intent: "signin", callbackUrl: window.location.href, locale },
+      null,
+      browserKeycloakEntryDeps({
+        // Another tab's round trip renewed the session and the broadcast
+        // cleared the error here: nothing left to do.
+        cancelled: () => current.current !== REFRESH_ACCESS_TOKEN_ERROR,
+      })
+    ).finally(() => {
+      started.current = false;
+    });
   }, [error, locale]);
 
   return null;
