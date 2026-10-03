@@ -1,6 +1,7 @@
 .gitignore
 .npmignore
 README.md
+src/apis/ArchiveApi.ts
 src/apis/CalendarApi.ts
 src/apis/CoursesApi.ts
 src/apis/FlashcardCardsApi.ts
@@ -19,6 +20,13 @@ src/apis/index.ts
 src/index.ts
 src/models/AgendaStepDto.ts
 src/models/AgendaStepResponse.ts
+src/models/ArchiveImpactResponse.ts
+src/models/ArchiveItemResponse.ts
+src/models/ArchiveItemType.ts
+src/models/ArchiveRestoreResponse.ts
+src/models/ArchiveScopeRefResponse.ts
+src/models/ArchiveScopesResponse.ts
+src/models/ArchiverResponse.ts
 src/models/AssignedCourseInfo.ts
 src/models/AssignmentResponse.ts
 src/models/BulkFlashcardErrorContext.ts
@@ -86,6 +94,7 @@ src/models/MyRolesResponse.ts
 src/models/NazirMadrasahRef.ts
 src/models/NotificationCountsResponse.ts
 src/models/NotificationResponse.ts
+src/models/PaginatedArchiveResponse.ts
 src/models/PaginatedKoskResponse.ts
 src/models/PaginatedMadrasahResponse.ts
 src/models/PaginatedNotificationResponse.ts

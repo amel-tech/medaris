@@ -16,6 +16,9 @@ export const decks = table("decks", {
   title: text("title").notNull(),
   description: text("description"),
   isPublic: boolean("is_public").default(false).notNull(),
+  // Hidden (MDRS-173); see `kosks.archived_at`. Null while shown.
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  archivedBy: uuid("archived_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

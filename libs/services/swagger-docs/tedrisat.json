@@ -3803,6 +3803,362 @@
         ]
       }
     },
+    "/kosks/{id}/archive": {
+      "get": {
+        "description": "Newest hidden first: the köşk's courses, weeks, sessions and decks, and the same of the medrese courses it hosts. A köşk manager or SYSTEM_ADMIN. There is no delete here; the başnazım deletes from the platform archive.",
+        "operationId": "listKoskArchive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "kosk",
+                "madrasah",
+                "course",
+                "week",
+                "session",
+                "recording",
+                "deck"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 50; default 10.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedArchiveResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a manager of this köşk."
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What is hidden in a köşk",
+        "tags": [
+          "archive"
+        ]
+      }
+    },
+    "/archive": {
+      "get": {
+        "description": "Newest hidden first, across every köşk and medrese. The Medaris başnazımı (SYSTEM_ADMIN) only.",
+        "operationId": "listArchive",
+        "parameters": [
+          {
+            "name": "koskId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "madrasahId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "kosk",
+                "madrasah",
+                "course",
+                "week",
+                "session",
+                "recording",
+                "deck"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedArchiveResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not the başnazım."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What is hidden on the whole platform",
+        "tags": [
+          "archive"
+        ]
+      }
+    },
+    "/archive/scopes": {
+      "get": {
+        "description": "Options for the platform archive's scope filter. SYSTEM_ADMIN only.",
+        "operationId": "getArchiveScopes",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveScopesResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The köşks and medreses that hold something hidden",
+        "tags": [
+          "archive"
+        ]
+      }
+    },
+    "/archive/{type}/{id}/restore": {
+      "post": {
+        "description": "A köşk manager restores courses, weeks and sessions of their köşk; SYSTEM_ADMIN restores anything. A week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).",
+        "operationId": "restoreArchiveItem",
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveRestoreResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "ARCHIVE_PARENT_HIDDEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Bring a hidden item back (Geri al)",
+        "tags": [
+          "archive"
+        ]
+      }
+    },
+    "/archive/{type}/{id}/impact": {
+      "get": {
+        "description": "The counts the confirmation shows. SYSTEM_ADMIN only.",
+        "operationId": "getArchiveImpact",
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveImpactResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What deleting a hidden item for real would take with it",
+        "tags": [
+          "archive"
+        ]
+      }
+    },
+    "/archive/{type}/{id}": {
+      "delete": {
+        "description": "The item and everything under it, in one transaction, with an audit entry that names the caller. Only a hidden item can be deleted. SYSTEM_ADMIN only; irreversible.",
+        "operationId": "deleteArchiveItem",
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a hidden item for real (Kalıcı olarak sil)",
+        "tags": [
+          "archive"
+        ]
+      }
+    },
     "/me": {
       "get": {
         "operationId": "getMe",
@@ -7376,6 +7732,293 @@
             "description": "Null when nobody holds the role or the directory is not reachable"
           }
         }
+      },
+      "ArchiveItemType": {
+        "type": "string",
+        "enum": [
+          "kosk",
+          "madrasah",
+          "course",
+          "week",
+          "session",
+          "recording",
+          "deck"
+        ]
+      },
+      "ArchiverResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Null when the account never signed in to tedrisat."
+          },
+          "role": {
+            "type": "string",
+            "nullable": true,
+            "description": "The role the hider holds or held where the item sits (KOSK_NAZIM, MEDRESE_BASMUDERRIS, MEDRESE_NAZIR, MUDERRIS, DERS_NAZIR); null for SYSTEM_ADMIN or when none is on record. The client words it."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "role"
+        ]
+      },
+      "ArchiveItemResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ArchiveItemType"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "The hidden thing's own title or name."
+          },
+          "koskId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "koskName": {
+            "type": "string",
+            "nullable": true
+          },
+          "madrasahId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "madrasahName": {
+            "type": "string",
+            "nullable": true
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "The course a week or a session belongs to."
+          },
+          "courseTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "weekNumber": {
+            "type": "number",
+            "nullable": true,
+            "description": "Of a week, and of the week a session is in."
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "weekCount": {
+            "type": "number",
+            "nullable": true,
+            "description": "Of a course: its live weeks."
+          },
+          "sessionCount": {
+            "type": "number",
+            "nullable": true,
+            "description": "Of a week: its live sessions."
+          },
+          "studentCount": {
+            "type": "number",
+            "nullable": true,
+            "description": "Of a course: its enrolled talebe."
+          },
+          "archivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "archivedBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ArchiverResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "title",
+          "koskId",
+          "koskName",
+          "madrasahId",
+          "madrasahName",
+          "courseId",
+          "courseTitle",
+          "weekNumber",
+          "scheduledAt",
+          "weekCount",
+          "sessionCount",
+          "studentCount",
+          "archivedAt",
+          "archivedBy"
+        ]
+      },
+      "PaginatedArchiveResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArchiveItemResponse"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "All hidden items matching, not just this page."
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit"
+        ]
+      },
+      "ArchiveScopeRefResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "ArchiveScopesResponse": {
+        "type": "object",
+        "properties": {
+          "kosks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArchiveScopeRefResponse"
+            }
+          },
+          "madrasahs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArchiveScopeRefResponse"
+            }
+          }
+        },
+        "required": [
+          "kosks",
+          "madrasahs"
+        ]
+      },
+      "ArchiveRestoreResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ArchiveItemType"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "title"
+        ]
+      },
+      "ArchiveImpactResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ArchiveItemType"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "courses": {
+            "type": "number",
+            "description": "Courses that go with it (a köşk's)."
+          },
+          "weeks": {
+            "type": "number",
+            "description": "Weeks, hidden or not."
+          },
+          "sessions": {
+            "type": "number",
+            "description": "Sessions (lessons), hidden or not."
+          },
+          "students": {
+            "type": "number",
+            "description": "Enrollments, with each talebe's progress."
+          },
+          "recordings": {
+            "type": "number",
+            "description": "Lesson recordings; 0 until recordings are stored."
+          },
+          "followers": {
+            "type": "number",
+            "description": "Followers of a köşk."
+          },
+          "cards": {
+            "type": "number",
+            "description": "Flashcards of a deck."
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "title",
+          "courses",
+          "weeks",
+          "sessions",
+          "students",
+          "recordings",
+          "followers",
+          "cards"
+        ]
       },
       "NazirMadrasahRef": {
         "type": "object",

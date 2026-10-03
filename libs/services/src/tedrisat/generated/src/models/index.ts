@@ -2,6 +2,13 @@
 /* eslint-disable */
 export * from './AgendaStepDto';
 export * from './AgendaStepResponse';
+export * from './ArchiveImpactResponse';
+export * from './ArchiveItemResponse';
+export * from './ArchiveItemType';
+export * from './ArchiveRestoreResponse';
+export * from './ArchiveScopeRefResponse';
+export * from './ArchiveScopesResponse';
+export * from './ArchiverResponse';
 export * from './AssignedCourseInfo';
 export * from './AssignmentResponse';
 export * from './BulkFlashcardErrorContext';
@@ -69,6 +76,7 @@ export * from './MyRolesResponse';
 export * from './NazirMadrasahRef';
 export * from './NotificationCountsResponse';
 export * from './NotificationResponse';
+export * from './PaginatedArchiveResponse';
 export * from './PaginatedKoskResponse';
 export * from './PaginatedMadrasahResponse';
 export * from './PaginatedNotificationResponse';

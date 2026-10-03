@@ -1,4 +1,5 @@
 import {
+  ArchiveIcon,
   BookOpenIcon,
   CalendarBlankIcon,
   PencilSimpleIcon,
@@ -84,6 +85,14 @@ export async function KoskDetailPage({
                   </Button>
                 }
               />
+            )}
+            {abilities.edit && (
+              <Button asChild variant="outline" size="lg" className="gap-2">
+                <Link href={`/kosks/${kosk.id}/arsiv`}>
+                  <ArchiveIcon className="w-5 h-5" />
+                  {t("KoskDetail.archive")}
+                </Link>
+              </Button>
             )}
             {abilities.openCourse && (
               <Button

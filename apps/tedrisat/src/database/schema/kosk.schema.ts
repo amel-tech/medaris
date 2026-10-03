@@ -43,6 +43,11 @@ export const kosks = table("kosks", {
   // passive köşk, it is unattended. Null while active.
   passiveSince: timestamp("passive_since", { withTimezone: true }),
   passiveReason: text("passive_reason"),
+  // Hidden (MDRS-173): nothing is deleted, the platform archive lists it and
+  // the same people can bring it back. `archivedBy` is the account that hid
+  // it — not a foreign key, like every other user column. Null while shown.
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  archivedBy: uuid("archived_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -97,6 +97,8 @@ export const courseWeeks = table("course_weeks", {
   // that its archived lessons — and whatever points at them — survive. A
   // DELETE here is refused while the week holds any lesson (MDRS-124).
   archivedAt: timestamp("archived_at", { withTimezone: true }),
+  // Who hid it (MDRS-173); null for rows archived before the column existed.
+  archivedBy: uuid("archived_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -131,6 +133,8 @@ export const lessons = table(
     // MDRS-124 decision). Recordings and calendar events will reference lesson
     // ids.
     archivedAt: timestamp("archived_at", { withTimezone: true }),
+    // Who hid it (MDRS-173); null for rows archived before the column existed.
+    archivedBy: uuid("archived_by"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
