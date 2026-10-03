@@ -1,6 +1,10 @@
 "use server";
 
-import type { BanListResponse, BanResponse } from "@medaris/services/tedrisat";
+import type {
+  AllBansListResponse,
+  BanListResponse,
+  BanResponse,
+} from "@medaris/services/tedrisat";
 import { revalidatePath } from "next/cache";
 import {
   type AuthenticatedActionResult,
@@ -36,6 +40,38 @@ export const liftBan = async (
 ): Promise<AuthenticatedActionResult<BanResponse>> => {
   const result = await authenticatedAction((api) =>
     api.bans.liftBan({ banId, liftBanDto: { reason } })
+  );
+  if (result.success) revalidatePath("/", "layout");
+  return result;
+};
+
+/** One page of every köşk's bans for Medaris administration (nizam 48). */
+export const loadAllBans = async (query: {
+  status: "ACTIVE" | "LIFTED";
+  scope?: "COURSE" | "KOSK";
+  q?: string;
+  offset?: number;
+}): Promise<AuthenticatedActionResult<AllBansListResponse>> =>
+  authenticatedAction((api) =>
+    api.bans.listAllBans({
+      status: query.status,
+      scope: query.scope,
+      q: query.q?.trim() || undefined,
+      offset: query.offset,
+      limit: 20,
+    })
+  );
+
+/** "Yasağı genişlet" (nizam 48): moves a course ban up to the whole köşk. */
+export const extendBan = async (
+  banId: string,
+  reason: string
+): Promise<AuthenticatedActionResult<BanResponse>> => {
+  const result = await authenticatedAction((api) =>
+    api.bans.extendBan({
+      banId,
+      extendBanDto: { scope: "KOSK", reason },
+    })
   );
   if (result.success) revalidatePath("/", "layout");
   return result;

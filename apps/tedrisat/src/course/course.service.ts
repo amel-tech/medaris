@@ -23,6 +23,7 @@ import {
   ILessonMutation,
   IMuderris,
   IPendingEnrollment,
+  IRemovedEnrollment,
   IReplaceCourse,
   IRosterEnrollment,
   ISessionBatchResult,
@@ -572,6 +573,11 @@ export class CourseService {
         ban: ban ? { id: ban.id, scope: ban.scope } : null,
       };
     });
+  }
+
+  /** The talebe the team took out, with the reasons (MDRS-178). */
+  findRemovedEnrollments(courseId: string): Promise<IRemovedEnrollment[]> {
+    return this.courseRepo.findRemovedEnrollments(courseId);
   }
 
   /**
