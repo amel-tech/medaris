@@ -5,9 +5,13 @@ import {
   type CourseSummaryResponse,
   type CreateKoskDto,
   createServerTedrisatAPIs,
+  KoskManagedBy,
   type KoskResponse,
+  type MeResponse,
   type PaginatedKoskResponse,
   type PendingEnrollmentResponse,
+  type RemovedEnrollmentResponse,
+  type RosterEnrollmentResponse,
   type UpdateKoskDto,
 } from "@medaris/services/tedrisat";
 import { revalidatePath } from "next/cache";
@@ -18,7 +22,11 @@ import {
   authenticatedAction,
 } from "~/lib/authenticated-action";
 
-export const getKosks = async (
+/**
+ * The köşks the caller manages, a page at a time (MDRS-108). nizam is where a
+ * köşk is run, so its list is never the whole catalogue — tedris lists that.
+ */
+export const getManagedKosks = async (
   page = 1,
   limit = 12
 ): Promise<PaginatedKoskResponse> => {
@@ -28,7 +36,11 @@ export const getKosks = async (
       accessToken,
       env.TEDRISAT_API_BASE_URL
     );
-    return await kosks.getAllKosks({ page, limit });
+    return await kosks.getAllKosks({
+      page,
+      limit,
+      managedBy: KoskManagedBy.Me,
+    });
   } catch (error) {
     console.error("Error fetching köşks:", error);
     return { items: [], total: 0, page, limit };
@@ -120,5 +132,61 @@ export const getPendingEnrollments = async (
   } catch (error) {
     console.error("Error fetching pending enrollments:", error);
     return [];
+  }
+};
+
+/**
+ * A course's roster for its team (MDRS-105). Null when tedrisat refused or
+ * could not answer — a caller who is not on the course team gets 403.
+ */
+export const getCourseEnrollments = async (
+  courseId: string
+): Promise<RosterEnrollmentResponse[] | null> => {
+  try {
+    const accessToken = await getAccessToken();
+    const { courses } = await createServerTedrisatAPIs(
+      accessToken,
+      env.TEDRISAT_API_BASE_URL
+    );
+    return await courses.getCourseEnrollments({ id: courseId });
+  } catch (error) {
+    console.error("Error fetching course enrollments:", error);
+    return null;
+  }
+};
+
+/**
+ * The talebe a course's team took out, with the reasons (MDRS-178). Empty when
+ * tedrisat could not answer: the tab then shows no one rather than failing the
+ * page the rest of which was read.
+ */
+export const getRemovedEnrollments = async (
+  courseId: string
+): Promise<RemovedEnrollmentResponse[]> => {
+  try {
+    const accessToken = await getAccessToken();
+    const { courses } = await createServerTedrisatAPIs(
+      accessToken,
+      env.TEDRISAT_API_BASE_URL
+    );
+    return await courses.getRemovedEnrollments({ id: courseId });
+  } catch (error) {
+    console.error("Error fetching the removed enrollments:", error);
+    return [];
+  }
+};
+
+/** The signed-in caller with their roles (MDRS-104); null on failure. */
+export const getMe = async (): Promise<MeResponse | null> => {
+  try {
+    const accessToken = await getAccessToken();
+    const { me } = await createServerTedrisatAPIs(
+      accessToken,
+      env.TEDRISAT_API_BASE_URL
+    );
+    return await me.getMe();
+  } catch (error) {
+    console.error("Error fetching the current user:", error);
+    return null;
   }
 };

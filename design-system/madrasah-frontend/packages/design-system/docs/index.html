@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><title>Madrasah Design System</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="../src/css/index.css">
+<style>
+body{max-width:1080px;margin:0 auto;padding:48px 32px 96px}
+h1{font:var(--fw-extrabold) var(--fs-33)/var(--lh-tight) var(--font-ui);letter-spacing:var(--tracking-display);margin:0}
+.lede{font:var(--fw-regular) var(--fs-16)/1.6 var(--font-ui);color:var(--muted);margin:10px 0 0;max-width:var(--reading-max)}
+h2{font:var(--fw-bold) var(--fs-19)/1.25 var(--font-ui);letter-spacing:var(--tracking-heading);margin:44px 0 4px}
+.sub{font:var(--fw-regular) var(--fs-13-5)/1.5 var(--font-ui);color:var(--muted);margin:0 0 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:12px}
+.card{display:block;border:1px solid var(--line);border-radius:var(--r-10);padding:15px 16px;text-decoration:none;color:inherit;transition:var(--transition-hover)}
+.card:hover{border-color:#cbd5e1;background:var(--surface-alt);text-decoration:none}
+.card b{display:block;font:var(--fw-semibold) var(--fs-14)/1.3 var(--font-ui);margin-bottom:3px}
+.card span{font:var(--fw-regular) var(--fs-12)/1.45 var(--font-ui);color:var(--muted)}
+.big{grid-column:span 2}
+.fp{display:inline-flex;align-items:center;gap:8px;margin-top:18px;font:var(--fw-regular) var(--fs-12)/1 var(--font-mono);color:var(--muted);background:var(--surface-sunken);padding:7px 12px;border-radius:var(--r-pill)}
+.note{border:1px solid var(--line);border-radius:var(--r-10);padding:16px 18px;margin-top:16px;background:var(--surface-alt);font:var(--fw-regular) var(--fs-13-5)/var(--lh-body) var(--font-ui);color:var(--slate-600);max-width:var(--reading-max)}
+.note b{font-weight:var(--fw-semibold);color:var(--ink)}
+code{font:var(--fw-regular) var(--fs-12-5)/1 var(--font-mono);background:var(--surface-sunken);padding:2px 6px;border-radius:var(--r-2)}
+</style>
+</head><body>
+
+<h1>Madrasah Design System</h1>
+<p class="lede">Medaris / Online Madrasah'ın tasarım sistemi — <b>Tedris</b> (talebe) ve <b>Nizam</b> (müderris) uygulamalarının paylaştığı tokenlar, kurallar ve React componentleri.</p>
+<div class="fp" id="fp">MANIFEST.json okunuyor…</div>
+
+<h2>Önce bunları okuyun</h2>
+<p class="sub">Sırayla. Üçü bir arada, UI yazmak için gereken brifingin tamamı.</p>
+<div class="grid">
+  <a class="card big" href="../GUIDE.md"><b>GUIDE.md</b><span>Ürün bağlamı, terminoloji sözlüğü, içerik ve görsel temeller, ikonografi</span></a>
+  <a class="card" href="../DESIGN_RULES.md"><b>DESIGN_RULES.md</b><span>Uygulanabilir kurallar — UI yazmadan önce</span></a>
+  <a class="card" href="../SYNC.md"><b>SYNC.md</b><span>Sync sözleşmesi ve takım akışı</span></a>
+  <a class="card" href="../PROMPTS.md"><b>PROMPTS.md</b><span>İki yön için hazır prompt'lar + repo CLAUDE.md kuralları</span></a>
+  <a class="card" href="../README.md"><b>README.md</b><span>Paketi tüketme: import, Tailwind, nx target'ları</span></a>
+</div>
+
+<h2>Referans ekranlar</h2>
+<p class="sub">Gerçek componentlerden kurulu, tıklanabilir. Yeni bir ekrana buradan başlayın — boş dosyadan değil.</p>
+<div class="grid">
+  <a class="card" href="kits/tedris/index.html"><b>Tedris — talebe</b><span>Öğrenme · Kurs · Canlı ders</span></a>
+  <a class="card" href="kits/nizam/index.html"><b>Nizam — müderris</b><span>Desteler · Köşkler · Kursu Düzenle</span></a>
+</div>
+
+<h2>Componentler</h2>
+<p class="sub">Her component yanında <code>.d.ts</code> (proplar) ve <code>.prompt.md</code> (ne zaman kullanılır) taşır.</p>
+<div class="grid">
+  <a class="card" href="../src/components/brand/brand.card.html"><b>brand</b><span>Icon · Logo · CoverPattern</span></a>
+  <a class="card" href="../src/components/core/core.card.html"><b>core</b><span>Button · IconButton · Badge · Pill · Avatar · Card · Progress</span></a>
+  <a class="card" href="../src/components/forms/forms.card.html"><b>forms</b><span>Field · Input · Textarea · Select · CheckboxRow</span></a>
+  <a class="card" href="../src/components/navigation/navigation.card.html"><b>navigation</b><span>Breadcrumb · Tabs · SidebarItem</span></a>
+  <a class="card" href="../src/components/data/data.card.html"><b>data</b><span>DataTable · WeekAccordion · LessonRow</span></a>
+  <a class="card" href="../src/components/feedback/feedback.card.html"><b>feedback</b><span>Dialog · Toast</span></a>
+</div>
+
+<h2>Temeller</h2>
+<p class="sub">Tokenların ekranda ne olduğu. Değerler <code>tokens/tokens.json</code>'dan üretilir.</p>
+<div class="grid" id="foundations"></div>
+
+<div class="note">
+  <b>Bu paket iki tarafta da aynı dosyalardır.</b> Tokenları ve componentleri repoda
+  düzenleyebilirsiniz — küçük ve bariz değişiklikler için doğru olan da bu. Değişiklik bir
+  sonraki pull-back'te tasarım dosyasına geri alınır ve referans ekranlar ona göre
+  yenilenir (bkz. SYNC.md §4).
+  <br><br>
+  Salt-okunur olan yalnızca <b>üretilen</b> dosyalar: <code>src/css/*.css</code>,
+  <code>src/tokens.ts</code>, <code>src/tailwind-preset.js</code>,
+  <code>docs/ds-components.jsx</code>. Onları elle düzenlemek lokalde çalışır ve bir
+  sonraki generator çalıştırmasında sessizce geri alınır — <code>tokens.json</code>'ı
+  düzenleyip yeniden üretin.
+</div>
+
+<script>
+const F = {
+  Renkler: ["color-brand","color-neutrals","color-surfaces","color-accents","color-status","color-lesson-types","color-platforms"],
+  Tipografi: ["type-display","type-body","type-eyebrow","type-arabic","type-weights","type-tracking"],
+  Spacing: ["space-scale","space-layout","space-padding"],
+  Marka: ["radii","elevation","motion","cover-hues"],
+};
+const NAMES = {
+  "color-brand":"Marka & mürekkep","color-neutrals":"Nötrler & hairline","color-surfaces":"Yüzeyler",
+  "color-accents":"Vurgular","color-status":"Durum","color-lesson-types":"Ders türleri","color-platforms":"Toplantı platformları",
+  "type-display":"Display & başlıklar","type-body":"Gövde & meta","type-eyebrow":"Eyebrow etiketler",
+  "type-arabic":"Arapça — Amiri","type-weights":"Ağırlıklar","type-tracking":"Tracking",
+  "space-scale":"Space ölçeği","space-layout":"Layout genişlikleri","space-padding":"Kart padding",
+  "radii":"Köşe yarıçapları","elevation":"Elevation","motion":"Hareket","cover-hues":"Kapak tonları",
+};
+document.getElementById("foundations").innerHTML = Object.entries(F).map(([group, items]) =>
+  items.map(f => `<a class="card" href="foundations/${f}.html"><b>${NAMES[f]}</b><span>${group}</span></a>`).join("")
+).join("");
+
+fetch("../MANIFEST.json").then(r => r.json()).then(m => {
+  document.getElementById("fp").textContent =
+    `${m.name} ${m.version} · ${m.fingerprint} · ${m.fileCount} dosya`;
+}).catch(() => { document.getElementById("fp").remove(); });
+</script>
+</body></html>

@@ -1,0 +1,23 @@
+/* Loaded after @medaris/ui/medaris.css.
+
+   The pages still on the shadcn kit pull in Tailwind's preflight through
+   @medaris/ui/globals.css, and preflight sets `a { text-decoration: inherit }`.
+   The unified design underlines links in running text (the system's base.css
+   sets only their thickness and offset and relies on the browser's underline),
+   so inside the system's own text classes the underline is written back.
+   Links in the shadcn bodies, which carry Tailwind classes, are left as they
+   were. This file goes when the last page leaves the shadcn kit. */
+@layer base {
+  :where(
+      .mds-body,
+      .mds-body-sm,
+      .mds-caption,
+      .mds-help,
+      .mds-error,
+      .mds-choice__label,
+      .mds-alert
+    )
+    a:not(.mds-btn) {
+    text-decoration-line: underline;
+  }
+}

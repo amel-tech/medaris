@@ -6,9 +6,9 @@ import {
   SelectValue,
 } from "@medaris/ui/components/select";
 import { Skeleton } from "@medaris/ui/components/skeleton";
+import type { DataTableColumnDef as ColumnDef } from "@medaris/ui/lib/data-table-features";
 import { cn } from "@medaris/ui/lib/utils";
 import type { RowData } from "@tanstack/react-table";
-import type { LegacyColumnDef as ColumnDef } from "@tanstack/react-table/legacy";
 import type React from "react";
 
 export const EditableSelect: React.FC<{

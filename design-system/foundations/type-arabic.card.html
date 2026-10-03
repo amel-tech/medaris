@@ -1,0 +1,16 @@
+<!-- @dsCard group="Foundations" viewport="820x300" name="Arabic + Latin" subtitle="IBM Plex Sans Arabic against IBM Plex Sans — one superfamily, so a gloss sits under an ayah without a seam" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:24px;background:var(--background-white)}
+.pair{max-width:640px;padding:20px 24px;border:1px solid var(--border-neutral-primary);border-radius:var(--radius-m);background:var(--background-neutral-primary)}
+.ar{font-family:var(--font-arabic);font-size:28px;font-weight:500;line-height:1.9;color:var(--text-neutral-primary);margin:0 0 12px;text-align:right}
+.tr{font-family:var(--font-ui);font-size:16px;line-height:1.6;color:var(--text-neutral-secondary);margin:0}
+.ref{font-family:var(--font-mono);font-size:11px;color:var(--text-neutral-disabled);margin-top:12px}
+.note{margin-top:16px;font-family:var(--font-ui);font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:640px}
+</style></head><body>
+<div class="pair">
+  <p class="ar" dir="rtl">اقْرَأْ بِاسْمِ رَبِّكَ الَّذِي خَلَقَ</p>
+  <p class="tr">Yaratan Rabbinin adıyla oku.</p>
+  <p class="ref">96:1 · --font-arabic / --font-ui</p>
+</div>
+<p class="note">Arabic runs at 1.9 leading, not 1.5: the script needs the room and looks starved at body leading. Cairo also covers Arabic and is the fallback, but Plex Arabic shares the Latin's proportions, so a bilingual card stays optically level. Always set <code>dir="rtl"</code> on the Arabic element itself, never on a shared ancestor.</p>
+</body></html>

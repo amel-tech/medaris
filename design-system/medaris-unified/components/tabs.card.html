@@ -1,0 +1,93 @@
+<!-- @dsCard group="Navigation" viewport="1100x820" name="Tabs & breadcrumb" subtitle="Ink tabs over a lâciverd underline, counts in a pill, a compact row for Nizam's lists; the breadcrumb says where the URL is, and at 390 keeps only the way back" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:var(--space-8);background:var(--background-neutral-page);font-family:var(--font-ui);color:var(--text-neutral-default);display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:var(--space-8);align-items:start}
+.col{display:flex;flex-direction:column;gap:var(--space-5);min-inline-size:0}
+.block{display:flex;flex-direction:column;gap:var(--space-3)}
+.sheet{display:flex;flex-direction:column;gap:var(--space-4);padding:var(--space-5) var(--space-6);background:var(--background-neutral-surface);border:var(--border-width-thin) solid var(--border-neutral-subtle);border-radius:var(--radius-surface)}
+.panel{font-size:var(--fs-body-sm);color:var(--text-neutral-muted)}
+.demo-hover{color:var(--text-neutral-default);background:var(--background-neutral-hover)}
+.demo-focus{outline:var(--ring-focus-outline);outline-offset:var(--ring-focus-offset);box-shadow:var(--ring-focus)}
+.demo-link-hover{color:var(--text-neutral-default);text-decoration:underline}
+.states{display:grid;grid-template-columns:repeat(4,auto);justify-content:start;gap:var(--space-6)}
+.state{display:flex;flex-direction:column;gap:var(--space-2)}
+.phone{margin:0}
+.phone iframe{display:block;inline-size:390px;block-size:300px;border:var(--border-width-thin) solid var(--border-neutral-subtle);border-radius:var(--radius-surface);background:var(--background-neutral-page)}
+.notes{display:flex;flex-direction:column;gap:var(--space-2)}
+.note{margin:0;font-size:var(--fs-caption);line-height:var(--lh-body);color:var(--text-neutral-subtle)}
+</style></head><body>
+<div class="col">
+  <div class="block">
+    <p class="mds-eyebrow">Yol izi</p>
+    <div class="sheet">
+      <nav class="mds-breadcrumb" aria-label="Sayfa yolu"><ol class="mds-breadcrumb__list">
+        <li class="mds-breadcrumb__item"><a class="mds-breadcrumb__link" href="#"><bdi>Köşkler</bdi></a><span class="mds-breadcrumb__sep" aria-hidden="true">/</span></li>
+        <li class="mds-breadcrumb__item"><a class="mds-breadcrumb__link" href="#"><span class="mds-breadcrumb__back" aria-hidden="true"></span><bdi>Nûruosmaniye Köşkü</bdi></a><span class="mds-breadcrumb__sep" aria-hidden="true">/</span></li>
+        <li class="mds-breadcrumb__item"><span class="mds-breadcrumb__current" aria-current="page"><bdi>Emsile ve Bina</bdi></span></li>
+      </ol></nav>
+      <nav class="mds-breadcrumb" aria-label="Ayarlar yolu"><ol class="mds-breadcrumb__list">
+        <li class="mds-breadcrumb__item"><a class="mds-breadcrumb__link demo-link-hover" href="#"><span class="mds-breadcrumb__back" aria-hidden="true"></span><bdi>Nûruosmaniye Köşkü</bdi></a><span class="mds-breadcrumb__sep" aria-hidden="true">/</span></li>
+        <li class="mds-breadcrumb__item"><span class="mds-breadcrumb__text">Ayarlar</span><span class="mds-breadcrumb__sep" aria-hidden="true">/</span></li>
+        <li class="mds-breadcrumb__item"><span class="mds-breadcrumb__current" aria-current="page">Bildirim tercihleri</span></li>
+      </ol></nav>
+      <p class="note" lang="en">Links are muted and underline on hover (the second row's first link). “Ayarlar” has no page of its own, so it is plain text. The current page is ink at 500 and never a link.</p>
+    </div>
+  </div>
+  <div class="block">
+    <p class="mds-eyebrow">Sekmeler · bir ders, görünümlere bölünmüş</p>
+    <div class="sheet">
+      <div class="mds-tabs" role="tablist" aria-label="Ders bölümleri">
+        <button type="button" class="mds-tab" role="tab" id="ders-tab-genel" aria-controls="ders-panel-genel" aria-selected="true" tabindex="0">Genel</button>
+        <button type="button" class="mds-tab" role="tab" id="ders-tab-talebeler" aria-controls="ders-panel-talebeler" aria-selected="false" tabindex="-1">Talebeler<span class="mds-tab__count">28</span></button>
+        <button type="button" class="mds-tab" role="tab" id="ders-tab-celseler" aria-controls="ders-panel-celseler" aria-selected="false" tabindex="-1">Celseler<span class="mds-tab__count">12</span></button>
+        <button type="button" class="mds-tab" role="tab" id="ders-tab-kayitlar" aria-controls="ders-panel-kayitlar" aria-selected="false" tabindex="-1">Ders kayıtları<span class="mds-tab__count">4</span></button>
+      </div>
+      <div class="panel" role="tabpanel" id="ders-panel-genel" aria-labelledby="ders-tab-genel" tabindex="0"><bdi>Emsile ve Bina</bdi> · 28 talebe · Cumartesi 21:00 İstanbul</div>
+    </div>
+  </div>
+  <div class="block">
+    <p class="mds-eyebrow">Durumlar</p>
+    <div class="sheet">
+      <div class="states">
+        <div class="state"><span class="mds-caption">Olağan</span><div class="mds-tabs" role="presentation"><span class="mds-tab">Celseler<span class="mds-tab__count">12</span></span></div></div>
+        <div class="state"><span class="mds-caption">Üzerinde</span><div class="mds-tabs" role="presentation"><span class="mds-tab demo-hover">Celseler<span class="mds-tab__count">12</span></span></div></div>
+        <div class="state"><span class="mds-caption">Seçili</span><div class="mds-tabs" role="presentation"><span class="mds-tab is-active">Celseler<span class="mds-tab__count">12</span></span></div></div>
+        <div class="state"><span class="mds-caption">Odakta</span><div class="mds-tabs" role="presentation"><span class="mds-tab demo-focus">Celseler<span class="mds-tab__count">12</span></span></div></div>
+      </div>
+      <p class="note" lang="en">Only the underline is lâciverd. The selected tab's words stay in ink at 600, and its count takes a lâciverd tint.</p>
+    </div>
+  </div>
+  <div class="block">
+    <p class="mds-eyebrow">Sıkı bölge · duruma göre süzülmüş bir Nizam listesi</p>
+    <div class="sheet" data-density="compact">
+      <div class="mds-tabs" role="tablist" aria-label="Ders durumları">
+        <button type="button" class="mds-tab" role="tab" aria-selected="true">Tümü<span class="mds-tab__count">7</span></button>
+        <button type="button" class="mds-tab" role="tab" aria-selected="false" tabindex="-1">Yayında<span class="mds-tab__count">4</span></button>
+        <button type="button" class="mds-tab" role="tab" aria-selected="false" tabindex="-1">Taslak<span class="mds-tab__count">2</span></button>
+        <button type="button" class="mds-tab" role="tab" aria-selected="false" tabindex="-1">Gizli<span class="mds-tab__count">1</span></button>
+      </div>
+      <p class="note" lang="en">Inside <code>data-density="compact"</code> each tab is 32px, not 40.</p>
+    </div>
+  </div>
+</div>
+<div class="col">
+  <figure class="block phone">
+    <figcaption class="mds-eyebrow">Aynı sayfa başı, 390’da</figcaption>
+    <iframe title="Aynı sayfa başı, 390 genişliğinde" srcdoc="<!doctype html><html lang='tr'><head><meta charset='utf-8'><link rel='stylesheet' href='../styles.css'><style>body{margin:0;padding:var(--space-4);background:var(--background-neutral-page);display:flex;flex-direction:column;gap:var(--space-3)}.lead{color:var(--text-neutral-muted)}</style></head><body><nav class='mds-breadcrumb' aria-label='Sayfa yolu'><ol class='mds-breadcrumb__list'><li class='mds-breadcrumb__item'><a class='mds-breadcrumb__link' href='#'><bdi>Köşkler</bdi></a><span class='mds-breadcrumb__sep' aria-hidden='true'>/</span></li><li class='mds-breadcrumb__item'><a class='mds-breadcrumb__link' href='#'><span class='mds-breadcrumb__back' aria-hidden='true'></span><bdi>Nûruosmaniye Köşkü</bdi></a><span class='mds-breadcrumb__sep' aria-hidden='true'>/</span></li><li class='mds-breadcrumb__item'><span class='mds-breadcrumb__current' aria-current='page'><bdi>Emsile ve Bina</bdi></span></li></ol></nav><h1 class='mds-h2'>Emsile ve Bina</h1><p class='mds-body-sm lead'>Sarf · 12 hafta · Müderris Abdülhamit Karaosmanoğlu</p><div class='mds-tabs' role='tablist' aria-label='Ders bölümleri'><button type='button' class='mds-tab' role='tab' aria-selected='true'>Genel</button><button type='button' class='mds-tab' role='tab' aria-selected='false' tabindex='-1'>Talebeler<span class='mds-tab__count'>28</span></button><button type='button' class='mds-tab' role='tab' aria-selected='false' tabindex='-1'>Celseler<span class='mds-tab__count'>12</span></button><button type='button' class='mds-tab' role='tab' aria-selected='false' tabindex='-1'>Ders kayıtları<span class='mds-tab__count'>4</span></button></div><p class='mds-body-sm'>Emsile, Arapça fiil çekimlerinin ilk kitabıdır. Bu derste Bina ile birlikte okunur.</p></body></html>"></iframe>
+  </figure>
+  <div class="block">
+    <p class="mds-eyebrow">Bağlantı kipi · her sekme kendi sayfası</p>
+    <div class="sheet">
+      <nav class="mds-tabs" aria-label="Köşk bölümleri">
+        <a class="mds-tab" href="#">Dersler<span class="mds-tab__count">7</span></a>
+        <a class="mds-tab" href="#" aria-current="page">Müderrisler<span class="mds-tab__count">4</span></a>
+        <a class="mds-tab" href="#">Köşk ayarları</a>
+      </nav>
+      <p class="note" lang="en">When the views are separate pages, the row is a <code>&lt;nav&gt;</code> of links with <code>aria-current="page"</code>.</p>
+    </div>
+  </div>
+  <div class="notes" lang="en">
+    <p class="note">At 390 the breadcrumb keeps only the parent, as a back link with its arrow. The page's own <code>h1</code> says where you are.</p>
+    <p class="note">A row wider than the phone scrolls inside itself; the page never scrolls sideways. Four tabs is the practical ceiling.</p>
+  </div>
+</div>
+</body></html>

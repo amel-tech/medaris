@@ -8,7 +8,8 @@
 | Workflow | `.github/workflows/teskilat-api.yaml` |
 | GHCR image | `ghcr.io/amel-tech/medaris-teskilat-api` |
 | Container port | `3002` |
-| Coolify webhook secret | `TESKILAT_SERVICE_COOLIFY_WEBHOOK` (repo secret — **not yet set**) |
+| Coolify application | `teskilat-service` — uuid `hswgow0040s8k0wg8oggcos4`, project *Medaris*, environment `development`, server `mdrs2` (`45.147.47.108`), `https://api-teskilat-dev.medaris.net` |
+| Coolify webhook secret | `TESKILAT_SERVICE_COOLIFY_WEBHOOK` (repo secret — set 2026-09-15/16) |
 | Deploy token | `COOLIFY_DEPLOY_TOKEN` (org secret — present) |
 
 The image name is not hardcoded: the workflow sets
@@ -68,18 +69,20 @@ credentials, not app configuration, and they reach no teskilat container.
 
 ## 1. How a release tag becomes an image tag
 
-`docker/metadata-action` is configured with three tag rules:
+`docker/metadata-action` is configured with four tag rules:
 
 ```yaml
 type=match,pattern=teskilat-v(.+),group=1
 type=raw,value=latest,enable=${{ github.event_name == 'release' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
 type=sha
+type=raw,value=stable,enable=${{ github.event_name == 'release' && github.event.release.prerelease == false }}
 ```
 
 | Trigger | Tags produced |
 |---|---|
-| Release created, tag `teskilat-v0.1.1` | `0.1.1`, `latest`, `sha-<short>` |
-| Release created, tag `teskilat-something-without-v` | `latest`, `sha-<short>` — **no version tag** |
+| Full release published, tag `teskilat-v0.1.1` | `0.1.1`, `latest`, `sha-<short>`, `stable` |
+| Full release published, tag `teskilat-something-without-v` | `latest`, `sha-<short>`, `stable` — **no version tag** |
+| Pre-release created, tag `teskilat-v<semver>-rc.1` | `<semver>-rc.1`, `latest`, `sha-<short>` — **no `stable`**, so production is untouched and the deploy goes to development |
 | `workflow_dispatch` / `workflow_call` on `main` | `latest`, `sha-<short>` |
 | `workflow_dispatch` / `workflow_call` on any other branch | `sha-<short>` only |
 
@@ -115,27 +118,50 @@ version tag** — only `latest` and `sha-…`. Always tag releases as `teskilat-
 MDRS-16 rewrote this gate. The old form enumerated allowed events
 (`== 'workflow_dispatch' || == 'workflow_call' || startsWith(…)`), which is a
 trap: inside a reusable workflow the `github` context is the **caller's**, so
-`github.event_name` is never `'workflow_call'`. It only worked because the
-dispatcher is `workflow_dispatch`-only today; the moment anything calls this
-workflow from a `push`, the old gate would have skipped the deploy silently and
-reported success.
+`github.event_name` is never `'workflow_call'`. It only worked while the
+dispatcher was `workflow_dispatch`-only; since MDRS-86 `cd-development.yaml`
+calls this workflow on every push to `main`, so under the old gate
+`github.event_name` would be `'push'`, no clause would match, and every deploy
+would have been skipped silently and reported success.
 
-> As of this writing the repository has **no git tags and no releases**
-> (`gh api repos/amel-tech/medaris/tags` and `.../releases` are both empty), so
-> the only tags any first deploy can produce are `latest` and `sha-<short>`.
+> The 43 historical tags MDRS-9 preserved were pushed on 2026-09-22
+> (`gh api --paginate repos/amel-tech/medaris/tags --jq '.[].name' | wc -l` →
+> `43`), so release-please finally has a release anchor per component. The
+> repository still has **no releases** (`gh api repos/amel-tech/medaris/releases
+> --jq 'length'` → `0`), so no deploy has yet produced a `<semver>` or `stable`
+> tag; every image in GHCR is from a `latest` / `sha-<short>` run.
 
 ---
 
 ## 2. Normal deploy
 
-Either:
+Two channels (MDRS-87), told apart by the event that started the run:
 
-* **Release path** — create a GitHub release tagged `teskilat-v<semver>`. The
-  workflow builds, pushes, and calls the Coolify webhook.
-* **Manual path** — Actions → **Teskilat API** → *Run workflow*.
-* **Fan-out path** — Actions → **Deploy Affected** → *Run workflow* with
-  `dry_run: false`. It calls this workflow only when `nx affected` reports
-  `teskilat`, which includes every change to a lib this app depends on.
+| Channel | Coolify application | Pulls | Started by | Webhook secret |
+|---|---|---|---|---|
+| development | the `development` one in the header | `latest` | any *development* path below | `TESKILAT_SERVICE_COOLIFY_WEBHOOK` |
+| production | its twin in the `production` environment | `stable` | *Release path* below, full releases only | `TESKILAT_SERVICE_PROD_COOLIFY_WEBHOOK` |
+
+Release-please is not part of the development channel: its release PRs stay
+open until someone decides to ship, and merging one is the production trigger.
+
+* **Release path (production)** — merge the release-please PR for `teskilat` (or
+  create a GitHub release tagged `teskilat-v<semver>` by hand). The workflow
+  builds, pushes `<semver>` + `latest` + `sha-…` + `stable`, and calls the
+  **production** webhook. A **pre-release** does none of that: `stable` is
+  guarded on `github.event.release.prerelease == false`, so an `-rc` build
+  goes to development like any other `main` build. `latest` moving on a full
+  release is harmless: the release commit
+  is the head of `main`, so development receives the build it would anyway.
+* **Automatic path (development)** — every push to `main` runs **CD
+  (development)** (`.github/workflows/cd-development.yaml`), which calls this
+  workflow when `nx affected` lists this app — including for a change to a lib
+  it depends on. Nothing to click; the run appears under the dispatcher's name.
+* **Manual path (development)** — Actions → **Teskilat API** → *Run workflow* on `main`.
+* **Fan-out path, by hand (development)** — Actions → **CD (development)** → *Run workflow*
+  with `dry_run: false` (default `true` only reports). Same dispatcher, same
+  affected computation; useful to redeploy after a Coolify-side change with
+  no commit.
 
 Each run writes the digest and the exact tag list to its job summary
 ("Record pushed image"). **That summary is the rollback record** — copy the
@@ -163,19 +189,37 @@ You can always address an old build by its immutable digest:
 
 ### 3.2 Re-point the deployment
 
-Which of the two paths applies depends on how the Coolify service is
-configured, and that cannot be read from this repository.
+Read from Coolify through its API on 2026-09-15 (MDRS-86), not assumed: the
+`teskilat-service` application has build pack `dockerimage`, so Coolify never builds
+from git and the GHCR image is exactly what runs.
 
-**TODO(verify against Coolify):** determine whether the `Teskilat API` service pulls
-`ghcr.io/amel-tech/medaris-teskilat-api:latest` or a pinned tag/digest. Record the
-answer here. Everything below assumes one or the other.
+Configuration and the running container are two different facts, so both are
+recorded here:
+
+| | Value | How it was verified |
+|---|---|---|
+| Coolify configuration (what the next deploy pulls) | `ghcr.io/amel-tech/medaris-teskilat-api:latest`, health check `/health:3002` on | `GET /api/v1/applications/<uuid>` after the `PATCH`, 2026-09-20 |
+| Running container | `latest` as pushed by the first `main` run (`sha-5d52210`) — deployment `no2adzkoffgtovymmkaz9k9k` finished, `running:healthy`, `https://api-teskilat-dev.medaris.net/health` → 200 | Coolify deployment status + the public endpoint, 2026-09-20 |
+| Rollback value | `ghcr.io/amel-tech/madrasah-backend-teskilat-api:teskilat-dev`; or, to stay on `medaris` images, the previous `sha-<short>` tag (`sha-29f145e` was the first verified one) | — |
+
+
+`latest` is deliberate: it is the tag every workflow run on the default branch
+and every release already moves, so `development` follows `main` without a
+tag of its own, and a future `production` environment pins `<semver>` instead.
+Path B below is therefore the live path; Path A is what a pinned environment
+would use.
+
 
 **Path A — the service pulls a pinned tag or digest.**
 Edit the image reference in the Coolify service configuration to the previous
 tag/digest and redeploy from the Coolify UI.
-**TODO(verify against Coolify):** exact field name and screen.
+The two fields are **Docker Image** and **Docker Image Tag** on the application's
+*General* tab; through the API they are `docker_registry_image_name` and
+`docker_registry_image_tag` on `PATCH /api/v1/applications/hswgow0040s8k0wg8oggcos4`.
 
-**Path B — the service pulls `:latest`.**
+**Path B — the application pulls a moving tag (`latest` for development, `stable` for production).**
+The commands below say `latest`; for production substitute `stable` and the
+production webhook secret.
 Move `latest` back to the old digest, then fire the same webhook the workflow
 uses. No rebuild, so the bytes are provably the ones that worked:
 
@@ -197,9 +241,12 @@ curl --fail-with-body --silent --show-error \
 ```
 
 `$COOLIFY_WEBHOOK` is the value of the `TESKILAT_SERVICE_COOLIFY_WEBHOOK` repo secret.
-**TODO(verify against Coolify):** whether this webhook forces a fresh pull or
-only restarts the existing container. If it only restarts, the rollback also
-needs a pull step in Coolify.
+Its value is Coolify's deploy endpoint for this application,
+`https://coolify.medaris.net/api/v1/deploy?uuid=hswgow0040s8k0wg8oggcos4&force=false` — a
+*deploy*, not a restart, so for a `dockerimage` application it re-resolves the
+tag before starting the container. **TODO(verify against Coolify):** confirm on
+the first MDRS-86 deploy that the digest Coolify runs afterwards is the one the
+workflow pushed; until then treat "re-pull" as documented, not measured.
 
 ### 3.3 What NOT to do
 
@@ -228,8 +275,8 @@ exist, `nest build` emits `dist/src/main.js` here.
 Then confirm the deployed service, not just the image:
 
 * Coolify shows the service healthy and the container restarted within the last
-  few minutes. **TODO(verify against Coolify):** the service's URL and where its
-  logs are.
+  few minutes. The service answers at `https://api-teskilat-dev.medaris.net`; its logs are on
+  the application's *Logs* tab in Coolify, and in `docker logs` on `mdrs2`.
 * The running container reports the digest you intended:
 
 ```bash
@@ -286,11 +333,12 @@ If someone reports "the docs are 404 on teskilat", the container log carries
 and the answer is to read the schema from a non-production run, not to change a
 flag.
 
-Enforced in two independent places — `apps/teskilat/src/config/swagger-env.ts`
-via the config factory, and again in `mountSwagger`
+Enforced in two independent places — the config factory
+(`apps/teskilat/src/config/config.ts`, through the shared resolver in
+`libs/common/src/config/swagger-production.config.ts`), and again in `mountSwagger`
 (`apps/teskilat/src/swagger.ts`) against the environment as it is at mount time,
 so a stale config value cannot mount the UI on its own. Covered by
-`apps/teskilat/test/unit/swagger-env.spec.ts` (the resolver) and
+`apps/teskilat/test/unit/swagger-policy.spec.ts` (the resolver) and
 `apps/teskilat/test/e2e/swagger.e2e.spec.ts`, which boots the application and
 asserts `GET /docs` and `GET /docs-json` → 404 with the flag on — including the
 case where the compiled config says `enabled: true` and only the live
@@ -301,17 +349,21 @@ cases are not vacuous.
 
 ## 6. Known blockers
 
-1. **`TESKILAT_SERVICE_COOLIFY_WEBHOOK` is not set.** The repository has zero repo secrets; only the org
-   secret `COOLIFY_DEPLOY_TOKEN` exists. Until the webhook secret is added, the
-   deploy step fails fast with an explicit error (MDRS-16 added that guard —
-   previously the `curl` swallowed every failure and the job went green while
-   nothing deployed). The value lives in Coolify and must be copied by someone
-   with access.
-2. **Image build.** `apps/teskilat/Dockerfile` was rewritten from the old
-   npm + `turbo.json` form to a staged pnpm-workspace build under a separate
-   issue, and lands alongside this runbook. The workflow's `context: .` +
-   `file: ./apps/teskilat/Dockerfile` pair is unchanged and correct — verified
-   by running exactly that pair locally
-   (`docker build -f apps/teskilat/Dockerfile .` from the repo root). Still
-   confirm a green run of `.github/workflows/teskilat-api.yaml` before relying on the
-   push/deploy half, which cannot be exercised locally.
+Both items this section carried are closed by MDRS-86 and kept as history:
+
+1. **Webhook secret** — `TESKILAT_SERVICE_COOLIFY_WEBHOOK` was set by hand (teskilat
+   2026-09-15, tedrisat 2026-09-16); the deploy step's guard no longer fires.
+2. **Image build in CI** — first real run from a branch on 2026-09-15/16 (image
+   `sha-29f145e`, deployed and verified through `/health`), then run
+   `35535864998` from `main` at `5d52210` on 2026-09-20 pushed `latest`, and
+   the application was switched to it (§3.2). The very first attempt, run
+   `35003840022`, failed before building with *Cache export is not supported
+   for the docker driver* — the missing `docker/setup-buildx-action` step
+   MDRS-86 added to all six image workflows.
+
+**Still open (MDRS-87).** `TESKILAT_SERVICE_PROD_COOLIFY_WEBHOOK` is not set, and the Coolify
+`production` application it points at does not exist yet. Until both do, a
+release pushes `<semver>` + `latest` + `sha-…` + `stable` to GHCR and then the
+*Deploy to Coolify* step exits 1 naming that secret: GHCR is updated,
+production is untouched, the run is red. It never falls back to the
+development webhook.

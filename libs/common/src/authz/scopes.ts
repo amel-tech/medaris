@@ -29,6 +29,10 @@ export const SCOPES = {
   VIEW_DETAILS: "view_details",
   EDIT: "edit",
   DELETE: "delete",
+  // Hide / restore (MDRS-124). What the people who run things have instead of
+  // DELETE: the row stays, reads stop returning it, and the same people can
+  // bring it back. `DELETE` itself is on no role row — SYSTEM_ADMIN only.
+  ARCHIVE: "archive",
   ENROLL: "enroll",
   // Öğrenci & kayıt
   MANAGE_ENROLLMENTS: "manage_enrollments",
@@ -65,6 +69,11 @@ export const SCOPES = {
   CREATE_KOSK: "create_kosk",
   MANAGE_COURSES: "manage_courses",
   MANAGE_KOSK: "manage_kosk",
+  // Add or remove a köşk's managers (MDRS-126). Its own scope rather than
+  // EDIT, which a nazır of the köşk's medrese also holds: a nazır who could
+  // make themselves a manager would gain KOSK_MANAGER on the köşk's courses,
+  // which PRD §4.1 keeps out of a nazır's reach.
+  MANAGE_KOSK_MANAGERS: "manage_kosk_managers",
   // Medrese yönetimi
   CREATE_MADRASAH: "create_madrasah",
   MANAGE_MADRASAH: "manage_madrasah",
@@ -102,9 +111,14 @@ export type Entity = (typeof ENTITIES)[keyof typeof ENTITIES];
  *  authenticated caller may act here" — for example, anyone viewing a
  *  public deck. It is not a fallback: `AuthzService.can` treats a `null`
  *  result from the resolver as a hard deny, so a resolver must return
- *  `PUBLIC` on purpose to open a resource. Anonymous (unauthenticated)
- *  access is not modelled by this role; it requires a separate
- *  `@Public` mechanism that is out of scope for the initial cut. */
+ *  `PUBLIC` on purpose to open a resource.
+ *
+ *  `ANONYMOUS` is the other half of the plan's overloaded `GUEST`: a caller
+ *  with no token at all (MDRS-45). It is kept apart from `PUBLIC` on purpose
+ *  — `PUBLIC` rows carry scopes such as `CREATE_PRIVATE_DECK` that need an
+ *  identity to act on — and it does NOT inherit the `PUBLIC` row. Only
+ *  `RoleResolver.resolveAnonymous` returns it, and only for a handler marked
+ *  `@AuthzPublic()`. */
 export const ROLES = {
   SYSTEM_ADMIN: "SYSTEM_ADMIN",
   MADRASAH_NAZIR: "MADRASAH_NAZIR",
@@ -114,8 +128,14 @@ export const ROLES = {
   PENDING: "PENDING",
   DECK_OWNER: "DECK_OWNER",
   PUBLIC: "PUBLIC",
+  ANONYMOUS: "ANONYMOUS",
 } as const;
 export type Role = (typeof ROLES)[keyof typeof ROLES];
+
+/** The only role `RoleResolver.resolveAnonymous` may return. Narrowed in the
+ *  type so a resolver cannot hand an anonymous caller `PUBLIC` — and with it
+ *  every scope that assumes an identity. */
+export type AnonymousRole = typeof ROLES.ANONYMOUS;
 
 /** Sub-type of a `flashcard-deck` resource. Resolved from the deck's row
  *  by `RoleResolver`; not part of the request payload. */

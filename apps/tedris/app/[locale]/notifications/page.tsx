@@ -1,0 +1,28 @@
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import { NotificationsPage } from "~/features/notifications/components/notifications-page";
+import { getNotificationsOverview } from "~/features/notifications/reads";
+
+// Behind the sign-in middleware (not in `publicPages`), and per caller.
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("tedris.NotificationsPage");
+  return { title: t("title") };
+}
+
+export default async function Page() {
+  const overview = await getNotificationsOverview();
+  return (
+    <NotificationsPage
+      initial={
+        overview && {
+          items: overview.first.items,
+          nextCursor: overview.first.nextCursor,
+          counts: overview.counts,
+        }
+      }
+      now={new Date().toISOString()}
+    />
+  );
+}

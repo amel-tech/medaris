@@ -398,3 +398,37 @@ The blocker on the `deck_label_stats.label_id` unique index (recorded against
 the `LIMIT 1` fix in `mdrs-63-bulk-export-authz.md`) is gone with it: the index
 can now name a column that exists. It is still not added here, because a unique
 index is a claim about existing rows that wants its own issue.
+
+## Follow-up 5 closed — label ownership on `POST /labeling` (MDRS-81, 2026-09-17)
+
+The `assertOwner` call item 5 describes is already on `main`: PR #69 added it to
+both `flashcardLabeling` and `deckLabeling`, ahead of the target check, during
+the MDRS-58 review. What PR #69 did not add was evidence that holds against a
+real database, and migration `0013` above is what made that evidence possible.
+MDRS-81 supplies it.
+
+**The PUBLIC-scope question from items 3 and 5 is answered owner-only.** A caller
+may not apply someone else's label, PUBLIC or not. This is the reversible
+direction: allowing PUBLIC labels to be shared later only adds a rule, and it
+belongs in the MDRS-41/MDRS-43 scope model if it is ever wanted.
+
+What pins it:
+
+- `flashcard-label.e2e.spec.ts`, block *Labeling — label ownership*: a stranger
+  attaching a card, and then a deck, to the owner's **PUBLIC** label gets a 403
+  with `FLASHCARD_LABEL_FORBIDDEN` / `FLASHCARD_DECK_LABEL_FORBIDDEN`. No
+  labeling row is written, and the owner's `usageCount` stays at 0. The target
+  is a PUBLIC deck, so the target check lets the request through and only the
+  label check can refuse it. A third case has the owner apply both labels and
+  checks for one row each and `usageCount` 1, which shows that the zeros above
+  mean a refusal and not a counter that never moves.
+- `flashcard-label-readers.spec.ts` mocked `flashcardLabeling`,
+  `updateLabelStats` and `createLabelStats`, and asserted that they were not
+  called. After the transaction rewrite the service calls none of the three; its
+  only write is `labelAndCountUsage`. Those assertions therefore held whatever
+  the service did. The mocks and assertions now name `labelAndCountUsage`.
+
+Measured fail-closed on 2026-09-17: with both
+`assertOwner(newLabeling.labelId, …)` lines deleted, 4 of the 53 tests in the two
+files fail (the two new e2e refusals and the two unit refusals). With the lines
+restored, all 53 pass.

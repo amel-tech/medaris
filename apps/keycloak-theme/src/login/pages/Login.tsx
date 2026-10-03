@@ -1,28 +1,19 @@
-import { Button } from "@medaris/ui/components/button";
-import { Checkbox } from "@medaris/ui/components/checkbox";
-import { Input } from "@medaris/ui/components/input";
-import { Label } from "@medaris/ui/components/label";
-import { Separator } from "@medaris/ui/components/separator";
-import { cn } from "@medaris/ui/lib/utils";
+import { LoginForm } from "@medaris/ui/giris";
+import { Alert } from "@medaris/ui/mds/alert";
+import { Button } from "@medaris/ui/mds/button";
 import { kcSanitize } from "keycloakify/lib/kcSanitize";
-import { getKcClsx } from "keycloakify/login/lib/kcClsx";
-import { clsx } from "keycloakify/tools/clsx";
-import { useState } from "react";
-import { FieldContainer } from "../components/FieldContainer";
-import { PasswordWrapper } from "../components/PasswordWrapper";
 import type { I18n } from "../i18n";
 import type { KcContext } from "../KcContext";
 import type { ExtendedPageProps } from "../types/PageProps";
 
+/**
+ * `login.ftl` (canvas medaris/01). Everything Keycloak-specific is read here
+ * and handed to `LoginForm` as plain props: the form never sees `kcContext`.
+ */
 export default function Login(
   props: ExtendedPageProps<Extract<KcContext, { pageId: "login.ftl" }>, I18n>
 ) {
-  const { kcContext, i18n, doUseDefaultCss, Template, classes } = props;
-
-  const { kcClsx } = getKcClsx({
-    doUseDefaultCss,
-    classes,
-  });
+  const { kcContext, i18n, Template, classes } = props;
 
   const {
     social,
@@ -33,14 +24,35 @@ export default function Login(
     auth,
     registrationDisabled,
     messagesPerField,
+    message,
   } = kcContext;
 
   const { msg, msgStr, advancedMsg } = i18n;
 
-  const [isLoginButtonDisabled, setIsLoginButtonDisabled] = useState(false);
-
-  const displayRegisterationNodes =
+  const showRegister =
     realm.password && realm.registrationAllowed && !registrationDisabled;
+
+  const credentialError = messagesPerField.existsError("username", "password");
+
+  // Keycloak sends its reason as `message`; without one, the field's own error
+  // is the reason. Either way it is one Alert at the top, and both fields are
+  // marked invalid, as the canvas has it.
+  const alertNode = credentialError ? (
+    <Alert
+      tone="error"
+      title={
+        <span
+          dangerouslySetInnerHTML={{
+            __html: kcSanitize(
+              message?.type === "error"
+                ? message.summary
+                : messagesPerField.getFirstError("username", "password")
+            ),
+          }}
+        />
+      }
+    />
+  ) : undefined;
 
   return (
     <Template
@@ -48,253 +60,90 @@ export default function Login(
       i18n={i18n}
       doUseDefaultCss={false}
       classes={classes}
-      displayMessage={!messagesPerField.existsError("username", "password")}
+      alertNode={alertNode}
+      displayMessage={!credentialError}
       headerNode={advancedMsg("loginAccountTitle")}
       headerSubNode={advancedMsg("loginAccountSubtitle")}
-      displayInfo={displayRegisterationNodes}
+      displayInfo={showRegister}
       infoNode={
-        <div id="kc-registration-container" className="text-center">
-          <div id="kc-registration">
-            <span className="text-sm text-gray-600">
-              {msg("noAccount")}{" "}
-              <a
-                tabIndex={0}
-                href={url.registrationUrl}
-                className="text-brand-primary hover:underline font-medium"
-              >
-                {msg("doRegister")}
-              </a>
-            </span>
-          </div>
-        </div>
-      }
-      socialProvidersNode={
         <>
-          {realm.password &&
-            social?.providers !== undefined &&
-            social.providers.length !== 0 && (
-              <div
-                id="kc-social-providers"
-                className={kcClsx("kcFormSocialAccountSectionClass")}
-              >
-                <Separator
-                  label={msgStr("identity-provider-login-label")}
-                  className="my-4"
-                />
-                <ul
-                  className={cn(
-                    kcClsx(
-                      "kcFormSocialAccountListClass",
-                      social.providers.length > 3 &&
-                        "kcFormSocialAccountListGridClass"
-                    ),
-                    "flex flex-col gap-2"
-                  )}
-                >
-                  {social.providers.map((...[p, , providers]) => (
-                    <li key={p.alias}>
-                      <a href={p.loginUrl}>
-                        <Button
-                          variant="outline"
-                          id={`social-${p.alias}`}
-                          className={cn(
-                            kcClsx(
-                              "kcFormSocialAccountListButtonClass",
-                              providers.length > 3 &&
-                                "kcFormSocialAccountGridItem"
-                            ),
-                            "w-full"
-                          )}
-                          type="button"
-                          size="sm"
-                        >
-                          <span
-                            className={clsx(
-                              kcClsx("kcFormSocialAccountNameClass"),
-                              p.iconClasses && "kc-social-icon-text"
-                            )}
-                            dangerouslySetInnerHTML={{
-                              __html: kcSanitize(p.displayName),
-                            }}
-                          ></span>
-                        </Button>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+          {msg("noAccount")}{" "}
+          <a id="kc-registration" href={url.registrationUrl}>
+            {msg("doRegister")}
+          </a>
         </>
       }
     >
-      {displayRegisterationNodes && (
-        <div className="mx-auto flex flex-row gap-1 w-fit bg-gray-100 border border-gray-200 rounded-lg overflow-hidden font-medium text-sm mb-8 p-1">
-          {" "}
-          <a href={url.registrationUrl}>
-            <div className="py-2 px-4 rounded-md text-gray-600 hover:text-gray-800 hover:bg-gray-50 transition-all duration-200">
-              {msg("doRegister")}
-            </div>{" "}
-          </a>
-          <div className="py-2 px-4 rounded-md bg-brand-primary text-white shadow-sm">
-            {" "}
-            {msg("doLogIn")}
-          </div>
-        </div>
-      )}
+      {realm.password ? (
+        <LoginForm
+          action={url.loginAction}
+          requiredNote={msg("requiredFields")}
+          usernameLabel={
+            !realm.loginWithEmailAllowed
+              ? msg("username")
+              : !realm.registrationEmailAsUsername
+                ? msg("usernameOrEmail")
+                : msg("email")
+          }
+          passwordLabel={msg("password")}
+          showPasswordLabel={msgStr("showPassword")}
+          username={login.username ?? ""}
+          usernameHidden={usernameHidden}
+          invalid={credentialError}
+          forgotPassword={
+            realm.resetPasswordAllowed
+              ? {
+                  href: url.loginResetCredentialsUrl,
+                  label: msg("doForgotPassword"),
+                }
+              : undefined
+          }
+          rememberMe={
+            realm.rememberMe && !usernameHidden
+              ? {
+                  name: "rememberMe",
+                  label: msg("rememberMe"),
+                  defaultChecked: !!login.rememberMe,
+                }
+              : undefined
+          }
+          submitLabel={msg("doLogIn")}
+          submittingLabel={msgStr("loginSubmitting")}
+        >
+          <input
+            type="hidden"
+            id="id-hidden-input"
+            name="credentialId"
+            value={auth.selectedCredential}
+          />
+        </LoginForm>
+      ) : null}
 
-      <div id="kc-form">
-        <div id="kc-form-wrapper">
-          {realm.password && (
-            <form
-              id="kc-form-login"
-              onSubmit={() => {
-                setIsLoginButtonDisabled(true);
-                return true;
-              }}
-              action={url.loginAction}
-              method="post"
-              className="flex flex-col gap-5"
-            >
-              {!usernameHidden && (
-                <FieldContainer>
-                  {" "}
-                  {/* Modüler field container */}
-                  <Label htmlFor="username" className="text-gray-600">
-                    {!realm.loginWithEmailAllowed
-                      ? msg("username")
-                      : !realm.registrationEmailAsUsername
-                        ? msg("usernameOrEmail")
-                        : msg("email")}
-                  </Label>
-                  <Input
-                    tabIndex={0}
-                    type="text"
-                    name="username"
-                    defaultValue={login.username ?? ""}
-                    id="username"
-                    placeholder={
-                      !realm.loginWithEmailAllowed
-                        ? msgStr("username")
-                        : !realm.registrationEmailAsUsername
-                          ? msgStr("usernameOrEmail")
-                          : msgStr("email")
-                    }
-                    autoComplete="username"
-                    className={cn(
-                      messagesPerField.existsError("username", "password") &&
-                        "border border-error-secondary !text-error-primary placeholder:text-error-primary"
-                    )}
-                  />
-                  {messagesPerField.existsError("username", "password") && (
-                    <span
-                      id="input-error"
-                      className="text-error-secondary"
-                      aria-live="polite"
-                      dangerouslySetInnerHTML={{
-                        __html: kcSanitize(
-                          messagesPerField.getFirstError("username", "password")
-                        ),
-                      }}
-                    />
-                  )}
-                </FieldContainer>
-              )}
-
-              <FieldContainer>
-                {" "}
-                {/* Modüler field container */}
-                <Label
-                  htmlFor="password"
-                  className={cn(kcClsx("kcLabelClass"), "text-gray-600")}
-                >
-                  {msg("password")}
-                </Label>
-                <PasswordWrapper
-                  kcClsx={kcClsx}
-                  i18n={i18n}
-                  passwordInputId="password"
-                >
-                  <Input
-                    type="password"
-                    tabIndex={0}
-                    id="password"
-                    name="password"
-                    autoComplete="current-password"
-                    aria-invalid={messagesPerField.existsError(
-                      "username",
-                      "password"
-                    )}
-                    placeholder={msgStr("password")}
-                    className={cn(
-                      "w-full pr-10",
-                      messagesPerField.existsError("username", "password") &&
-                        "border border-error-secondary !text-error-primary placeholder:text-error-primary"
-                    )}
-                  />
-                </PasswordWrapper>
-                {usernameHidden &&
-                  messagesPerField.existsError("username", "password") && (
-                    <span
-                      id="input-error"
-                      className="text-error-secondary"
-                      aria-live="polite"
-                      dangerouslySetInnerHTML={{
-                        __html: kcSanitize(
-                          messagesPerField.getFirstError("username", "password")
-                        ),
-                      }}
-                    />
-                  )}
-              </FieldContainer>
-
-              <div className="flex flex-row justify-between items-center gap-2">
-                <div id="kc-form-options" className="flex flex-row gap-2">
-                  {realm.rememberMe && !usernameHidden && (
-                    <div className="flex flex-row gap-2 items-center">
-                      <Checkbox
-                        name="rememberMe"
-                        id="rememberMe"
-                        defaultChecked={!!login.rememberMe}
-                      />
-                      <Label htmlFor="rememberMe" className="text-sm">
-                        {msg("rememberMe")}
-                      </Label>
-                    </div>
-                  )}
-                </div>
-                <div className="flex justify-end">
-                  {realm.resetPasswordAllowed && (
-                    <a
-                      tabIndex={0}
-                      href={url.loginResetCredentialsUrl}
-                      className="text-brand-primary hover:underline text-sm"
-                    >
-                      {msg("doForgotPassword")}
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              <div id="kc-form-buttons" className="flex flex-col gap-2">
-                <input
-                  type="hidden"
-                  id="id-hidden-input"
-                  name="credentialId"
-                  value={auth.selectedCredential}
-                />
+      {realm.password &&
+      social?.providers !== undefined &&
+      social.providers.length !== 0 ? (
+        <div id="kc-social-providers" className="flex flex-col gap-3">
+          <p className="mds-caption">{msg("identity-provider-login-label")}</p>
+          <ul className="flex flex-col gap-2">
+            {social.providers.map((provider) => (
+              <li key={provider.alias}>
                 <Button
-                  tabIndex={0}
-                  disabled={isLoginButtonDisabled}
-                  className="w-full bg-brand-primary text-white h-[48px] hover:bg-brand-primary/90 disabled:opacity-50 font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
-                  type="submit"
+                  href={provider.loginUrl}
+                  id={`social-${provider.alias}`}
+                  variant="outline"
+                  fullWidth
                 >
-                  {msgStr("doLogIn")}
+                  <span
+                    dangerouslySetInnerHTML={{
+                      __html: kcSanitize(provider.displayName),
+                    }}
+                  />
                 </Button>
-              </div>
-            </form>
-          )}
+              </li>
+            ))}
+          </ul>
         </div>
-      </div>
+      ) : null}
     </Template>
   );
 }

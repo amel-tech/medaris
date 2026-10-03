@@ -99,6 +99,223 @@
       "when": 1789505527780,
       "tag": "0013_label_schema_drift",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790600353671,
+      "tag": "0014_drop_orphan_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790600862460,
+      "tag": "0015_lesson_archive_course_version",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790601713927,
+      "tag": "0016_users",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790602509202,
+      "tag": "0017_madrasahs",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790603700261,
+      "tag": "0018_hide_instead_of_delete",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790604498513,
+      "tag": "0019_lesson_duration_minutes_course_time_zone",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790620770376,
+      "tag": "0020_calendar_feed_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790621287827,
+      "tag": "0021_kosk_managers",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790866643841,
+      "tag": "0022_kosk_listed_by_default",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790866643864,
+      "tag": "0023_role_assignments",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790866643865,
+      "tag": "0024_role_assignments_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790866643866,
+      "tag": "0025_drop_superseded_role_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790900224601,
+      "tag": "0026_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1790907262497,
+      "tag": "0027_permission_groups_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1790910640310,
+      "tag": "0028_archive_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1790913540176,
+      "tag": "0029_session_cancellation",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1790914266857,
+      "tag": "0030_bans",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790932155082,
+      "tag": "0031_kesfet",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790950266993,
+      "tag": "0032_madrasah_archive_hosting_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790950379254,
+      "tag": "0033_permission_groups_course_wide",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790950480845,
+      "tag": "0034_kosk_policies",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790966122608,
+      "tag": "0036_decks_summary",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790967082621,
+      "tag": "0037_flashcard_review_schedule",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790969495913,
+      "tag": "0038_profile_and_kosk_application",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790971045895,
+      "tag": "0039_revoked_enrollment",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1790972623120,
+      "tag": "0041_lesson_recordings",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1790978792429,
+      "tag": "0042_course_closed_cover_label",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1790986989893,
+      "tag": "0043_deck_review_and_proposals",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1790993647795,
+      "tag": "0044_platform_admin",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1791004862496,
+      "tag": "0045_madrasah_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1791008686926,
+      "tag": "0046_madrasah_bans_offsite_requests",
+      "breakpoints": true
     }
   ]
 }

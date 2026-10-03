@@ -1,0 +1,165 @@
+{
+  "$comment": "Glyph masks the class layers draw from assets/icons.svg. Each request is {layer, selector, glyph}: layer is components.css or medrese.css, glyph a symbol id in the sprite. tools/design-system/icons.mjs writes one mask-image rule per request into that layer's 'Glyph masks (generated)' section; the component's own section sets size, colour and mask repeat, position and size.",
+  "masks": [
+    {
+      "layer": "components.css",
+      "selector": ".mds-alert__icon",
+      "glyph": "info"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-alert--error .mds-alert__icon",
+      "glyph": "warning"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-alert--success .mds-alert__icon",
+      "glyph": "check"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-alert--warning .mds-alert__icon",
+      "glyph": "warning"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-appbar__menu-icon",
+      "glyph": "menu"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-breadcrumb__back",
+      "glyph": "arrowLeft"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-btn__spinner",
+      "glyph": "spinner"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-check::after",
+      "glyph": "check"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-dialog__close::before",
+      "glyph": "close"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-progress__check",
+      "glyph": "check"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-select::after",
+      "glyph": "chevronDown"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-sheet__close-icon",
+      "glyph": "close"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-table th[aria-sort=\"ascending\"] .mds-table__sort-icon",
+      "glyph": "chevronUp"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-table th[aria-sort=\"descending\"] .mds-table__sort-icon",
+      "glyph": "chevronDown"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-table__sort-icon",
+      "glyph": "chevronsUpDown"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-toast__close::before",
+      "glyph": "close"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-toast--error .mds-toast__icon",
+      "glyph": "warning"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-toast--info .mds-toast__icon",
+      "glyph": "info"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-toast--success .mds-toast__icon",
+      "glyph": "check"
+    },
+    {
+      "layer": "components.css",
+      "selector": ".mds-toast--warning .mds-toast__icon",
+      "glyph": "warning"
+    },
+    {
+      "layer": "medrese.css",
+      "selector": ".mds-join__link::after",
+      "glyph": "externalLink"
+    },
+    {
+      "layer": "medrese.css",
+      "selector": ".mds-join__reveal > summary::before",
+      "glyph": "chevronDown"
+    },
+    {
+      "layer": "medrese.css",
+      "selector": ".mds-join__status--locked::before",
+      "glyph": "lock"
+    },
+    {
+      "layer": "medrese.css",
+      "selector": ".mds-lesson-row__lock",
+      "glyph": "lock"
+    },
+    {
+      "layer": "medrese.css",
+      "selector": ".mds-lesson-row--document .mds-lesson-row__medallion::before",
+      "glyph": "doc"
+    },
+    {
+      "layer": "medrese.css",
+      "selector": ".mds-lesson-row--live .mds-lesson-row__medallion::before",
+      "glyph": "video"
+    },
+    {
+      "layer": "medrese.css",
+      "selector": ".mds-lesson-row--quiz .mds-lesson-row__medallion::before",
+      "glyph": "quiz"
+    },
+    {
+      "layer": "medrese.css",
+      "selector": ".mds-lesson-row--video .mds-lesson-row__medallion::before",
+      "glyph": "playCircle"
+    },
+    {
+      "layer": "medrese.css",
+      "selector": ".mds-lesson-row.is-done .mds-lesson-row__medallion::before",
+      "glyph": "check"
+    },
+    {
+      "layer": "medrese.css",
+      "selector": ".mds-week__chevron",
+      "glyph": "chevronDown"
+    },
+    {
+      "layer": "medrese.css",
+      "selector": ".mds-week.is-done .mds-week__medallion::before",
+      "glyph": "check"
+    },
+    {
+      "layer": "medrese.css",
+      "selector": ".mds-week.is-locked .mds-week__medallion::before",
+      "glyph": "lock"
+    }
+  ]
+}

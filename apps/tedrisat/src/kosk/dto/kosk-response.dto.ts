@@ -4,8 +4,28 @@ export class KoskResponse {
   @ApiProperty()
   id!: string;
 
-  @ApiProperty()
-  ownerId!: string;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      "Who created the köşk. Grants nothing since MDRS-126 — see managerIds. Null for a caller with no token (MDRS-160): a person's id is not for the public.",
+  })
+  ownerId!: string | null;
+
+  @ApiProperty({
+    type: [String],
+    description:
+      "Who manages the köşk, oldest first; never empty for a signed-in caller (MDRS-126). Empty for a caller with no token (MDRS-160), who gets `managerName` instead.",
+  })
+  managerIds!: string[];
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      'The name of the köşk\'s oldest manager, shown as "Köşk nazımı" (MDRS-160). Null when that person has no name on file. Open to everyone, signed in or not.',
+  })
+  managerName!: string | null;
 
   @ApiProperty({ example: "Süleymaniye Köşkü" })
   name!: string;
@@ -19,7 +39,11 @@ export class KoskResponse {
   @ApiProperty({ example: 215 })
   coverHue!: number;
 
-  @ApiProperty({ example: true })
+  @ApiProperty({
+    example: false,
+    description:
+      "Unlisted (MDRS-122): in no list or search, opened by its link to signed-in callers only, and every enrollment in its courses waits for approval.",
+  })
   isPrivate!: boolean;
 
   @ApiPropertyOptional({ type: String, example: "Tefsir & Hadis" })
@@ -30,6 +54,26 @@ export class KoskResponse {
 
   @ApiProperty({ type: [String], example: ["Tefsir", "Hadis"] })
   tags!: string[];
+
+  @ApiProperty({
+    example: false,
+    description: "Köşk-wide policy (MDRS-174): enrollment always waits",
+  })
+  alwaysRequireApproval!: boolean;
+
+  @ApiProperty({
+    example: false,
+    description: "Köşk-wide policy (MDRS-174): no recording is made public",
+  })
+  recordingsNeverPublic!: boolean;
+
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+    description:
+      "Since when the köşk is hidden (MDRS-174); null while it is shown. Only its nazımları and SYSTEM_ADMIN can read a hidden köşk.",
+  })
+  archivedAt!: Date | null;
 
   @ApiProperty({ example: false })
   verified!: boolean;

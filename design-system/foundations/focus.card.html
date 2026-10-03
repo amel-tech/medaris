@@ -1,0 +1,15 @@
+<!-- @dsCard group="Foundations" viewport="820x280" name="Focus rings" subtitle="The extracted ring is neutral grey — the one token in the system with an open question against it" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:28px;background:var(--background-white);font-family:var(--font-ui)}
+.row{display:flex;gap:36px;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:10px}
+.k{font-family:var(--font-mono);font-size:10px;color:var(--text-neutral-tertiary)}
+.note{margin-top:24px;font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:740px}
+</style></head><body>
+<div class="row">
+  <div class="col"><span class="k">--ring-focus</span><input class="mds-input is-focus" style="width:200px" value="Değer" readonly></div>
+  <div class="col"><span class="k">--ring-focus-error</span><input class="mds-input is-error is-focus" style="width:200px" value="Değer" readonly></div>
+  <div class="col"><span class="k">--ring-focus-brand · proposed</span><input class="mds-input" style="width:200px;box-shadow:var(--ring-focus-brand);border-color:var(--sky-400)" value="Değer" readonly></div>
+</div>
+<p class="note">The Figma file's focus effect is <code>0 0 0 3px #E5E5E5</code> — a grey ring, three pixels, no offset. Against the white page behind it that is a measured <b>1.26:1</b> — not a visible focus indicator for anyone who needs one, and short of the 3:1 WCAG 2.2 <i>Focus Appearance</i> asks for. It is recorded verbatim because that is what the file says. <code>--ring-focus-brand</code> sits beside it as the proposed replacement — <code>sky-600</code>, 4.10:1 on white and 3.91:1 on the page. Adopting it is a design decision, not a refactor.</p>
+</body></html>

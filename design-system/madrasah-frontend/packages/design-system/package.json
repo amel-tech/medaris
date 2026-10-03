@@ -1,0 +1,113 @@
+{
+  "name": "@medaris/design-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Madrasah design tokens, rules and React components for Tedris (talebe) and Nizam (müderris).",
+  "sideEffects": [
+    "*.css"
+  ],
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./components": "./src/components/index.ts",
+    "./brand": "./src/components/brand/index.ts",
+    "./core": "./src/components/core/index.ts",
+    "./forms": "./src/components/forms/index.ts",
+    "./navigation": "./src/components/navigation/index.ts",
+    "./data": "./src/components/data/index.ts",
+    "./feedback": "./src/components/feedback/index.ts",
+    "./css": "./src/css/index.css",
+    "./css/*": "./src/css/*",
+    "./tailwind-preset": "./src/tailwind-preset.js",
+    "./tokens.json": "./tokens/tokens.json",
+    "./DESIGN_RULES.md": "./DESIGN_RULES.md",
+    "./docs": "./docs/index.html",
+    "./GUIDE.md": "./GUIDE.md",
+    "./SYNC.md": "./SYNC.md",
+    "./PROMPTS.md": "./PROMPTS.md"
+  },
+  "publishConfig": {
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      },
+      "./components": {
+        "types": "./dist/components/index.d.ts",
+        "import": "./dist/components/index.js",
+        "require": "./dist/components/index.cjs"
+      },
+      "./brand": {
+        "types": "./dist/components/brand/index.d.ts",
+        "import": "./dist/components/brand/index.js",
+        "require": "./dist/components/brand/index.cjs"
+      },
+      "./core": {
+        "types": "./dist/components/core/index.d.ts",
+        "import": "./dist/components/core/index.js",
+        "require": "./dist/components/core/index.cjs"
+      },
+      "./forms": {
+        "types": "./dist/components/forms/index.d.ts",
+        "import": "./dist/components/forms/index.js",
+        "require": "./dist/components/forms/index.cjs"
+      },
+      "./navigation": {
+        "types": "./dist/components/navigation/index.d.ts",
+        "import": "./dist/components/navigation/index.js",
+        "require": "./dist/components/navigation/index.cjs"
+      },
+      "./data": {
+        "types": "./dist/components/data/index.d.ts",
+        "import": "./dist/components/data/index.js",
+        "require": "./dist/components/data/index.cjs"
+      },
+      "./feedback": {
+        "types": "./dist/components/feedback/index.d.ts",
+        "import": "./dist/components/feedback/index.js",
+        "require": "./dist/components/feedback/index.cjs"
+      },
+      "./css": "./dist/css/index.css",
+      "./css/*": "./dist/css/*",
+      "./tailwind-preset": "./dist/tailwind-preset.js",
+      "./tokens.json": "./tokens/tokens.json"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "docs",
+    "tokens",
+    "DESIGN_RULES.md",
+    "GUIDE.md",
+    "PROMPTS.md",
+    "SYNC.md",
+    "README.md",
+    "MANIFEST.json"
+  ],
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0"
+  },
+  "scripts": {
+    "build:tokens": "node tools/build-tokens.mjs",
+    "build:docs": "node tools/build-docs.mjs",
+    "build:dist": "tsup",
+    "manifest": "node tools/manifest.mjs",
+    "manifest:check": "node tools/manifest.mjs --check",
+    "build": "npm run build:tokens && npm run build:docs && npm run manifest",
+    "release": "npm run build:tokens && npm run build:docs && npm run build:dist && npm run manifest"
+  }
+}

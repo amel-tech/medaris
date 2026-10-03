@@ -10,12 +10,15 @@
     "build-keycloak-theme": "vite build && keycloakify build",
     "build:keycloak": "keycloakify build",
     "run-keycloak": "docker run -p 127.0.0.1:8080:8080 -e KC_BOOTSTRAP_ADMIN_USERNAME=admin -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin -v \"$(pwd)/dist_keycloak/keycloak-theme-for-kc-all-other-versions.jar:/opt/keycloak/providers/keycloak-theme.jar\" quay.io/keycloak/keycloak:26.3.2 start-dev",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "license": "MIT",
   "keywords": [],
   "dependencies": {
     "@medaris/icons": "workspace:*",
+    "@medaris/tokens": "workspace:*",
     "@medaris/ui": "workspace:*",
     "keycloakify": "catalog:",
     "react": "catalog:",
@@ -23,15 +26,19 @@
     "tailwindcss": "catalog:"
   },
   "devDependencies": {
+    "@playwright/test": "catalog:",
     "@storybook/react": "catalog:",
     "@storybook/react-vite": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "happy-dom": "catalog:",
     "storybook": "catalog:",
+    "testcontainers": "catalog:",
     "typescript": "catalog:",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "vitest": "catalog:"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "*",

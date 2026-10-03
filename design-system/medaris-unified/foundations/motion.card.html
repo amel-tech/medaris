@@ -1,0 +1,46 @@
+<!-- @dsCard group="Foundations" viewport="820x580" name="Motion" subtitle="Two durations and one easing. Only colour, the switch knob and a disclosure move; nothing enters, lifts or scales. Reduced motion is one global rule (MDS-MOT-01)." -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.f-tok{font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--text-neutral-muted);overflow-wrap:anywhere}
+.f-top{display:grid;grid-template-columns:minmax(0,1fr) 200px;gap:var(--space-8);align-items:start}
+.f-durs{display:flex;flex-direction:column;gap:var(--space-4);margin:0;padding:0;list-style:none}
+.f-durs li{display:flex;flex-direction:column;gap:var(--space-1)}
+.f-durs i{display:block;inline-size:calc(var(--f-ms) * 2px);max-inline-size:100%;block-size:8px;border-radius:var(--radius-full);background:var(--border-brand-default)}
+.f-curve{display:flex;flex-direction:column;gap:var(--space-2)}
+.f-curve svg{inline-size:160px;block-size:160px;overflow:visible;color:var(--text-brand-default)}
+.f-curve .f-axis{stroke:var(--border-neutral-control)}
+.f-moves{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-5)}
+.f-move{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-2);padding:var(--space-4);border:var(--border-width-thin) solid var(--border-neutral-subtle);border-radius:var(--radius-surface);background:var(--background-neutral-surface)}
+.f-chev{display:inline-flex;align-items:center;gap:var(--space-2);font-family:var(--font-reading);font-size:var(--fs-h5);font-weight:var(--weight-semibold)}
+.f-chev .mds-icon{color:var(--text-neutral-subtle);rotate:180deg}
+.f-never{font-size:var(--fs-body-sm);line-height:var(--lh-body)}
+</style></head><body>
+<section class="f-sec">
+<div class="f-top">
+<div class="f-sec">
+<header class="f-head"><h2 class="mds-h5">İki süre</h2></header>
+<ul class="f-durs">
+<li><code class="f-tok">--duration-fast · 120ms</code><i style="--f-ms: 120"></i><span class="mds-caption">Bir denetim yanıt verir: üzerine gelme, basma, işaretleme.</span></li>
+<li><code class="f-tok">--duration-base · 180ms</code><i style="--f-ms: 180"></i><span class="mds-caption">Bir açılır bölüm açılır, bir iletişim kutusu belirir.</span></li>
+</ul>
+</div>
+<div class="f-curve">
+<svg viewBox="0 0 160 160" role="img" aria-label="Hız eğrisi: cubic-bezier(0.2, 0, 0, 1)"><path class="f-axis" d="M0 0V160H160" fill="none" stroke-width="1"/><path d="M0 160C32 160 0 0 160 0" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+<code class="f-tok">--ease-standard</code><span class="mds-caption">cubic-bezier(0.2, 0, 0, 1): hızlı başlar, yumuşak durur.</span>
+</div>
+</div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Yalnızca bunlar hareket eder</h2></header>
+<div class="f-moves">
+<div class="f-move"><button type="button" class="mds-btn mds-btn--secondary">Taslağa al</button><code class="f-tok">--transition-colors</code><span class="mds-caption">Renk, zemin ve kenar: 120ms.</span></div>
+<div class="f-move"><label class="mds-choice"><input type="checkbox" role="switch" class="mds-switch" checked><span class="mds-choice__text"><span class="mds-choice__label">Metinde harekeler</span></span></label><code class="f-tok">translate</code><span class="mds-caption">Anahtarın düğmesi kayar; Arapçada aynalanır.</span></div>
+<div class="f-move"><span class="f-chev"><svg class="mds-icon" aria-hidden="true"><use href="../assets/icons.svg#chevronDown"/></svg>3. hafta</span><code class="f-tok">--transition-disclosure</code><span class="mds-caption">Ok döner, bölüm açılır: 180ms.</span></div>
+</div>
+<p class="f-never">Hiçbir şey sayfaya girmez, kalkmaz, büyümez, zıplamaz ya da kaydırınca belirmez. <code>prefers-reduced-motion</code> tek bir genel kuraldır (<code>tokens/base.css</code>): her geçiş ve canlandırma 0.01ms olur.</p>
+</section>
+</body></html>

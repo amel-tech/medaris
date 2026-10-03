@@ -1,4 +1,7 @@
 {
+  "legal": {
+    "privacyNotice": "إشعار الخصوصية"
+  },
   "locales": {
     "ar": "العربية",
     "en": "English",

@@ -1,0 +1,18 @@
+<!-- @dsCard group="Foundations" viewport="820x260" name="Elevation" subtitle="Seven shadows, all neutral black at low alpha — depth is never a brand signal" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:28px;background:var(--background-neutral-primary);font-family:var(--font-ui)}
+.grid{display:flex;gap:16px;flex-wrap:wrap}
+.b{width:96px;height:72px;background:var(--background-white);border-radius:var(--radius-s);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;color:var(--text-neutral-tertiary)}
+.note{margin-top:22px;font-size:12px;color:var(--text-neutral-tertiary);line-height:1.6;max-width:700px}
+</style></head><body>
+<div class="grid">
+<div class="b" style="box-shadow:var(--shadow-2xs)">2xs</div>
+<div class="b" style="box-shadow:var(--shadow-xs)">xs</div>
+<div class="b" style="box-shadow:var(--shadow-sm)">sm</div>
+<div class="b" style="box-shadow:var(--shadow-md)">md</div>
+<div class="b" style="box-shadow:var(--shadow-lg)">lg</div>
+<div class="b" style="box-shadow:var(--shadow-xl)">xl</div>
+<div class="b" style="box-shadow:var(--shadow-2xl)">2xl</div>
+</div>
+<p class="note">Three of these are enough in practice: <b>xs</b> for a resting card, <b>md</b> for anything that hovers over the page (tooltip, dropdown), <b>xl</b> for a modal. The rest exist because the source file has them. An earlier generation of shadow tokens in the same file was tinted blue and red; those are not carried forward.</p>
+</body></html>

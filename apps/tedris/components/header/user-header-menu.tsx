@@ -17,14 +17,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@medaris/ui/components/dropdown-menu";
+import NextLink from "next/link";
 import { useSession } from "next-auth/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { UserAvatar } from "~/features/user-avatar";
-import { keycloakSignOut } from "~/lib/keycloak-logout";
+import { authPages } from "~/lib/auth_pages";
+import { Link } from "~/lib/i18n/navigation";
 import Version from "./version";
 
-export const UserHeaderMenu = () => {
+type UserHeaderMenuProps = {
+  /** KEYCLOAK_ISSUER from the server; the avatar host check runs client-side. */
+  imageIssuer: string;
+};
+
+export const UserHeaderMenu = ({ imageIssuer }: UserHeaderMenuProps) => {
   const t = useTranslations("tedris");
+  const locale = useLocale();
   const { data: session, status } = useSession();
 
   if (status === "loading") {
@@ -35,7 +43,7 @@ export const UserHeaderMenu = () => {
     <DropdownMenu>
       <DropdownMenuTrigger>
         <div className="flex items-center gap-2 cursor-pointer select-none hover:bg-gray-100 rounded-md">
-          <UserAvatar user={session?.user} />
+          <UserAvatar user={session?.user} imageIssuer={imageIssuer} />
           <div className="flex flex-col text-left">
             <p className="text-sm whitespace-nowrap">{session?.user?.name}</p>
             <p className="text-xs whitespace-nowrap text-neutral-tertiary">
@@ -60,11 +68,13 @@ export const UserHeaderMenu = () => {
             {t("UserHeaderMenu.profile")}
           </p>
         </DropdownMenuItem>
-        <DropdownMenuItem disabled>
-          <GearIcon className="text-neutral-primary" />
-          <p className="text-neutral-primary text-sm">
-            {t("UserHeaderMenu.accountSettings")}
-          </p>
+        <DropdownMenuItem asChild>
+          <Link href="/account">
+            <GearIcon className="text-neutral-primary" />
+            <p className="text-neutral-primary text-sm">
+              {t("UserHeaderMenu.accountSettings")}
+            </p>
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem disabled>
           <QuestionIcon className="text-neutral-primary" />
@@ -73,14 +83,13 @@ export const UserHeaderMenu = () => {
           </p>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={() => keycloakSignOut(session?.idToken)}
-          className="cursor-pointer"
-        >
-          <SignOutIcon className="text-neutral-primary" />
-          <p className="text-neutral-primary text-sm">
-            {t("UserHeaderMenu.signOut")}
-          </p>
+        <DropdownMenuItem asChild>
+          <NextLink href={`/${locale}${authPages.signOut}`} prefetch={false}>
+            <SignOutIcon className="text-neutral-primary" />
+            <p className="text-neutral-primary text-sm">
+              {t("UserHeaderMenu.signOut")}
+            </p>
+          </NextLink>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem>

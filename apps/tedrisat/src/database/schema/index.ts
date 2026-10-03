@@ -1,13 +1,21 @@
+export * from "./audit.schema";
+export * from "./ban.schema";
+export * from "./calendar-feed.schema";
 export * from "./course.schema";
-// Kept exported so the drizzle-orm client built in database.service.ts still
-// carries the `examples` table. drizzle-kit finds it via drizzle.config.ts's
-// `./src/database/schema/*` file glob regardless of this line, so dropping the
-// re-export alone would take the table out of the runtime schema while
-// `drizzle-kit generate` still saw it — the half-state example.schema.ts's
-// header guards against. See example.schema.ts for why it outlives its module.
-export * from "./example.schema";
+export * from "./course-request.schema";
+export * from "./deck-proposal.schema";
 export * from "./flashcard.schema";
 export * from "./flashcard-deck.schema";
 export * from "./flashcard-deck-label.schema";
+export * from "./flashcard-enums.schema";
 export * from "./flashcard-label.schema";
 export * from "./kosk.schema";
+export * from "./kosk-application.schema";
+export * from "./madrasah.schema";
+export * from "./notification.schema";
+export * from "./offsite-course-request.schema";
+export * from "./permission.schema";
+export * from "./platform-policy.schema";
+export * from "./role-assignment.schema";
+export * from "./user.schema";
+export * from "./user-profile.schema";

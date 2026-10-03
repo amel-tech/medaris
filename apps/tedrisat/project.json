@@ -3,6 +3,12 @@
   "name": "tedrisat",
   "tags": ["scope:app", "platform:node", "type:app"],
   "targets": {
-    "lint": {}
+    "lint": {},
+    "test": {
+      "inputs": ["default", "^production", "{workspaceRoot}/tools/keycloak/**"]
+    },
+    "test:e2e": {
+      "inputs": ["default", "^production", "{workspaceRoot}/tools/keycloak/**"]
+    }
   }
 }

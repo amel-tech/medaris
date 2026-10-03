@@ -29,9 +29,11 @@ import { ENTITIES, Entity, ROLES, Role, SCOPES, Scope } from "./scopes";
  * plan §4 in full, kept complete on purpose rather than trimmed to what
  * `TedrisatRoleResolver` currently wires up — the unwired rows are where
  * the next resolver work (nazır tables, ijazah tables) lands. As of this
- * port, 9 of the 19 rows below are unreachable because no `RoleResolver`
- * implementation can produce that role for that entity yet; each is
- * marked `// UNREACHABLE` with the reason. An unreachable row denies
+ * port, 9 of the 19 rows below were unreachable because no `RoleResolver`
+ * implementation could produce that role for that entity yet; MDRS-106 made
+ * the two MADRASAH_NAZIR rows on `kosk` and `madrasah` reachable, leaving 7,
+ * each marked `// UNREACHABLE` with the reason. MDRS-134 removed the `kosk`
+ * one with the köşk affiliation it depended on, leaving 18 rows. An unreachable row denies
  * everyone but SYSTEM_ADMIN today — it grants nothing until its resolver
  * exists, so keeping it here is behaviour-neutral. `MATRIX.ijazah` is the
  * one to read carefully: it has no `PUBLIC` row at all, and
@@ -42,12 +44,17 @@ import { ENTITIES, Entity, ROLES, Role, SCOPES, Scope } from "./scopes";
 export const MATRIX: Record<Entity, Partial<Record<Role, Scope[]>>> = {
   // Plan §4.1 — Course. All five rows are reachable: `resolveCourseRole`
   // returns KOSK_MANAGER, MUDERRIS, ENROLLED, PENDING or PUBLIC.
+  //
+  // `DELETE` is on no row (MDRS-124): the owner decided on 26 September that
+  // nobody who runs a köşk or teaches a course deletes anything — they hide
+  // it (`ARCHIVE`), and only SYSTEM_ADMIN deletes, through the realm bypass.
+  // Plan §4.1 granted DELETE to KOSK_MANAGER and MUDERRIS; that is withdrawn.
   [ENTITIES.COURSE]: {
     [ROLES.KOSK_MANAGER]: [
       SCOPES.VIEW,
       SCOPES.VIEW_DETAILS,
       SCOPES.EDIT,
-      SCOPES.DELETE,
+      SCOPES.ARCHIVE,
       SCOPES.MANAGE_ENROLLMENTS,
       SCOPES.ASSIGN_MUDERRIS,
       SCOPES.ASSIGN_HOMEWORK,
@@ -68,7 +75,6 @@ export const MATRIX: Record<Entity, Partial<Record<Role, Scope[]>>> = {
       SCOPES.VIEW,
       SCOPES.VIEW_DETAILS,
       SCOPES.EDIT,
-      SCOPES.DELETE,
       SCOPES.MANAGE_ENROLLMENTS,
       SCOPES.ASSIGN_HOMEWORK,
       SCOPES.GRADE_HOMEWORK,
@@ -94,38 +100,57 @@ export const MATRIX: Record<Entity, Partial<Record<Role, Scope[]>>> = {
       SCOPES.REQUEST_MUTALA_CHECK,
     ],
     [ROLES.PENDING]: [SCOPES.VIEW],
-    // Anyone authenticated can request enrollment in a course that exists.
-    [ROLES.PUBLIC]: [SCOPES.ENROLL],
+    // Anyone authenticated may open a course's page — its description and
+    // programme — and request enrollment (MDRS-103, following the owner's
+    // 26 September decision recorded on MDRS-43: the course page is public,
+    // the lessons are not). `VIEW` is the page; the content (meeting links,
+    // agendas, kaynak, resource URLs) is `VIEW_DETAILS`, which starts at
+    // ENROLLED. `CourseService.present` strips it for everyone below that
+    // line. Pending the matrix discussion; role model v2 (MDRS-135) replaces
+    // this row with a permission catalogue.
+    [ROLES.PUBLIC]: [SCOPES.VIEW, SCOPES.ENROLL],
+    // No token at all (MDRS-122): the course page — the same filtered body a
+    // signed-in stranger gets, because `CourseService.present` strips the
+    // content for anyone without `VIEW_DETAILS`. Not ENROLL: applying needs an
+    // account. `resolveAnonymous` answers 404 for a DRAFT or hidden course and
+    // for any course of an unlisted (`is_private`) köşk before this row is read.
+    [ROLES.ANONYMOUS]: [SCOPES.VIEW],
   },
 
   // Plan §4.3 — Kosk
   [ENTITIES.KOSK]: {
-    // UNREACHABLE (MDRS-41): `resolveKoskRole` only ever returns
-    // KOSK_MANAGER or PUBLIC — the nazır→kosk FK this role depends on
-    // has not landed. Kept per plan §4.3 for when it does.
-    [ROLES.MADRASAH_NAZIR]: [SCOPES.VIEW, SCOPES.EDIT, SCOPES.MANAGE_COURSES],
+    // No MADRASAH_NAZIR row (MDRS-134). MDRS-106 gave a nazır of the köşk's
+    // medrese VIEW, EDIT and MANAGE_COURSES here through `kosks.madrasah_id`;
+    // role model v2 (MDRS-133) links a medrese to a köşk only by a hosting
+    // right, which gives the medrese no power over the köşk.
+    // No `DELETE` (MDRS-124): deleting a köşk is SYSTEM_ADMIN's alone.
+    // `MANAGE_KOSK_MANAGERS` (MDRS-126) is on this row only — see scopes.ts.
     [ROLES.KOSK_MANAGER]: [
       SCOPES.VIEW,
       SCOPES.EDIT,
-      SCOPES.DELETE,
       SCOPES.MANAGE_COURSES,
+      SCOPES.MANAGE_KOSK_MANAGERS,
     ],
     // Anyone authenticated may view a köşk. `CREATE_KOSK` is
     // intentionally absent from every role except the SYSTEM_ADMIN
     // realm bypass: only platform admins may open new köşks and assign
     // their owner. KOSK_MANAGER status flows from that assignment.
     [ROLES.PUBLIC]: [SCOPES.VIEW],
+    // No token (MDRS-122): the köşk's page and its shelf of courses. An
+    // unlisted köşk (`is_private`) is opened by link to signed-in callers
+    // only; `resolveAnonymous` answers it with the same 404 as a missing one.
+    [ROLES.ANONYMOUS]: [SCOPES.VIEW],
   },
 
   // Plan §4.4 — Madrasah
   [ENTITIES.MADRASAH]: {
-    // UNREACHABLE (MDRS-41): `TedrisatRoleResolver` returns PUBLIC
-    // unconditionally for `madrasah` until the nazır tables land — see
-    // the TODO(authz) on `resolve()`. Kept per plan §4.4.
+    // Reachable since MDRS-106: `resolveMadrasahRole` returns it to a user
+    // listed in `madrasah_nazirs`. `DELETE` is deliberately absent — plan
+    // §4.4 granted it, the owner withdrew it on 26 September (MDRS-124):
+    // only SYSTEM_ADMIN deletes a medrese, through the realm bypass.
     [ROLES.MADRASAH_NAZIR]: [
       SCOPES.VIEW,
       SCOPES.EDIT,
-      SCOPES.DELETE,
       SCOPES.MANAGE_MADRASAH,
       SCOPES.MANAGE_KOSK,
       SCOPES.MANAGE_DONATIONS,
@@ -137,6 +162,9 @@ export const MATRIX: Record<Entity, Partial<Record<Role, Scope[]>>> = {
       SCOPES.VIEW_MADRASAH_ANALYTICS,
     ],
     [ROLES.PUBLIC]: [SCOPES.VIEW, SCOPES.DONATE],
+    // No token (MDRS-122): the medrese's page and the list. Not DONATE —
+    // a donation needs a donor.
+    [ROLES.ANONYMOUS]: [SCOPES.VIEW],
   },
 
   // Plan §4.2 — Flashcard deck. The 5 variants from the plan
@@ -185,6 +213,12 @@ export const MATRIX: Record<Entity, Partial<Record<Role, Scope[]>>> = {
     // and "any authenticated caller may create a private deck for
     // themselves".
     [ROLES.PUBLIC]: [SCOPES.VIEW, SCOPES.CREATE_PRIVATE_DECK],
+    // ANONYMOUS = no token at all (MDRS-45, PRD:76 "public decks" for the
+    // Guest persona). Reading a public deck and nothing else: it does not
+    // inherit the PUBLIC row, because creating a deck needs an author.
+    // `resolveAnonymous` answers 404 for a private deck before this row is
+    // read, so VIEW here never reaches one.
+    [ROLES.ANONYMOUS]: [SCOPES.VIEW],
   },
 
   // Plan §4.6 — Ijazah.

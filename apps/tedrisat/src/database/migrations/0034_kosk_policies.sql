@@ -1,0 +1,2 @@
+ALTER TABLE "kosks" ADD COLUMN "always_require_approval" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "kosks" ADD COLUMN "recordings_never_public" boolean DEFAULT false NOT NULL;

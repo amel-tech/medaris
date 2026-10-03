@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# config/keycloak/scripts/dry-run <env> — MDRS-97.
+#
+# What `provision <env>` would do, without writing anything: validates the
+# package, reads the realm back and prints, per part, `in sync`,
+# `would create` or `would update` with the settings that differ. Exits 0
+# whether or not there are differences; `verify` is the one that fails on them.
+
+PREFIX=dry-run
+# shellcheck source=./lib/core.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/core.sh"
+require_tools curl jq
+read_env_arg "${1:-}"
+
+"$SCRIPTS_DIR/validate" "$ENV_NAME" >/dev/null || exit 1
+
+echo "dry-run: $ENV_NAME -> realm $KC_REALM on ${KC_URL:-http://localhost:8080} (nothing is written)"
+run_plan plan
+echo "dry-run: $DIFFERENCES difference(s) would be applied"

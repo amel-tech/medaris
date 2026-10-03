@@ -1,7 +1,9 @@
+import { resolveSwaggerEnabled } from "@medaris/common";
 import * as pkg from "../../package.json";
 import { resolveDatabaseSsl } from "./database-ssl";
+import { readKeycloakAdminConfig } from "./keycloak-admin-env";
 import { readSecurityEnv } from "./security-env";
-import { resolveSwaggerEnabled } from "./swagger-env";
+import { readTedrisWebUrl } from "./tedris-web-url";
 import { assertBulkThrottleEnv } from "./throttle-env";
 
 const version = pkg.version || "0.0.1";
@@ -44,13 +46,23 @@ export default () => {
       serviceVersion: version,
     },
     swagger: {
-      enabled: resolveSwaggerEnabled(process.env),
+      // Throws in production unless SWAGGER_ALLOW_IN_PRODUCTION=true (MDRS-33);
+      // the policy is documented in libs/common's swagger-production.config.ts.
+      enabled: resolveSwaggerEnabled(
+        { policy: "throw-unless-opted-in", service: "@medaris/tedrisat" },
+        process.env
+      ),
       endpoint: process.env.SWAGGER_PATH || "/docs",
     },
     autoMigrations: {
       enabled: process.env.AUTO_MIGRATIONS_ENABLED === "true" || false,
       migrationsFolder:
         process.env.AUTO_MIGRATIONS_FOLDER || "./src/database/migrations",
+    },
+    tedrisWeb: {
+      // Base of the session-page links in calendar entries (MDRS-117); null
+      // when unset, and those routes answer 503.
+      url: readTedrisWebUrl(process.env),
     },
     keycloak: {
       jwksUrl: security.jwksUrl,
@@ -59,6 +71,9 @@ export default () => {
       allowedClients: security.allowedClients,
       cacheTtl: process.env.KEYCLOAK_CACHE_TTL || "86400",
       notFoundCacheTtl: process.env.KEYCLOAK_NOT_FOUND_CACHE_TTL || "120",
+      // Service account that reads the realm's users (MDRS-169); null when
+      // unset, and the routes that need it answer 503.
+      admin: readKeycloakAdminConfig(process.env),
     },
   };
 };

@@ -1,0 +1,69 @@
+<!-- @dsCard group="Foundations" viewport="820x1100" name="Focus ring" subtitle="One ring, two bands: a 2px gap in paper (ink at night), then a 2px lapis ring. At least 5.38:1 by day and 7.07:1 by night, on ink, paper and red alike (MDS-A11Y-01)." -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{padding:var(--space-8)}
+.f-sec{display:flex;flex-direction:column;gap:var(--space-4);min-inline-size:0}
+.f-sec + .f-sec{margin-block-start:var(--space-6);padding-block-start:var(--space-6);border-block-start:var(--border-width-thin) solid var(--border-neutral-subtle)}
+code{white-space:nowrap}
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3)}
+.f-tok{font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--text-neutral-muted);overflow-wrap:anywhere}
+.f-anatomy{display:grid;grid-template-columns:240px minmax(0,1fr);gap:var(--space-8);align-items:center;padding:var(--space-6);border:var(--border-width-thin) solid var(--border-neutral-subtle);border-radius:var(--radius-surface);background:var(--background-neutral-surface)}
+.f-big{display:grid;place-items:center;justify-self:center;inline-size:144px;block-size:56px;margin:18px;border-radius:12px;background:var(--background-action-bold);color:var(--text-neutral-on-bold);font-size:var(--fs-h4);font-weight:var(--weight-semibold);box-shadow:0 0 0 8px var(--ring-focus-gap),0 0 0 16px var(--ring-focus-color)}
+.f-parts{display:flex;flex-direction:column;gap:var(--space-3);margin:0;padding:0;list-style:none}
+.f-parts li{display:grid;grid-template-columns:24px minmax(0,1fr);gap:var(--space-3);font-size:var(--fs-body-sm);line-height:var(--lh-body)}
+.f-parts b{display:grid;place-items:center;inline-size:24px;block-size:24px;border-radius:var(--radius-full);background:var(--background-neutral-sunken);font-size:var(--fs-caption)}
+.f-fills{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-6) var(--space-4)}
+.f-fill{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-3);min-inline-size:0}
+.f-fill > :first-child{margin:4px}
+.f-ring{outline:var(--ring-focus-outline);outline-offset:var(--ring-focus-offset);box-shadow:var(--ring-focus)}
+.f-field{inline-size:150px;border-color:var(--border-neutral-strong)}
+.f-hover{background:var(--background-neutral-hover)}
+.f-primary-hover{background:var(--background-action-bold-hover)}
+.f-destructive-hover{border-color:var(--background-error-bold);background:var(--background-error-bold);color:var(--text-neutral-on-bold)}
+.f-fill .mds-caption{font-variant-numeric:lining-nums tabular-nums}
+.f-dialog{display:grid;grid-template-columns:260px minmax(0,1fr);gap:var(--space-6);align-items:center}
+.f-sheet{display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-5);border-radius:var(--radius-surface);background:var(--background-neutral-surface);box-shadow:var(--elevation-modal)}
+.f-sheet__body{padding:var(--space-3);border-radius:var(--radius-mark);outline:2px solid var(--ring-focus-color);outline-offset:-4px;font-size:var(--fs-body-sm);color:var(--text-neutral-muted)}
+.f-rules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-2) var(--space-6);margin:0;padding:0;list-style:none;font-size:var(--fs-caption);line-height:1.45;color:var(--text-neutral-muted)}
+</style></head><body>
+<section class="f-sec">
+<div class="f-anatomy">
+<span class="f-big" aria-hidden="true">Kaydet</span>
+<ol class="f-parts">
+<li><b>1</b><span><code>--ring-focus-gap</code>, 2px: gündüz kâğıt, gece mürekkep. Dolu bir denetime karşı ≥ 3:1, bu yüzden halka mürekkep ve kırmızı dolguda da okunur.</span></li>
+<li><b>2</b><span><code>--ring-focus-color</code>, 2px lâciverd. Her zemine karşı ≥ 3:1: gündüz en az 5,38:1, gece 7,07:1.</span></li>
+<li><b>3</b><span><code>outline: var(--ring-focus-outline)</code>: saydam bir çerçeve. Zorlanmış renk kipi gölgeyi boyamaz, çerçeveyi boyar; halka orada da görünür.</span></li>
+</ol>
+</div>
+<p class="mds-caption">Çizim 4 kat büyütüldü. <code>tokens/base.css</code> halkayı her <code>:focus-visible</code> öğesine çizer; bileşen onu yeniden çizmez.</p>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Her dolguda</h2><p class="mds-caption">Denetimin rengine karşı iki banttan iyi olanı; gündüz · gece.</p></header>
+<!-- The ratios are copied from contrast.md; when verify-contrast.mjs --write changes it, change them here too. -->
+<div class="f-fills">
+<div class="f-fill"><button type="button" class="mds-btn mds-btn--outline f-ring">Vazgeç</button><code class="f-tok">neutral-surface</code><span class="mds-caption">halka 6,69:1 · 7,77:1</span></div>
+<div class="f-fill"><button type="button" class="mds-btn mds-btn--secondary f-ring">Taslağa al</button><code class="f-tok">neutral-sunken</code><span class="mds-caption">halka 5,84:1 · 8,89:1</span></div>
+<div class="f-fill"><input class="mds-input f-ring f-field" aria-label="Ad soyad" value="Ahmed Hüsrev"><code class="f-tok">neutral-field</code><span class="mds-caption">halka 6,69:1 · 8,41:1</span></div>
+<div class="f-fill"><button type="button" class="mds-btn mds-btn--ghost f-ring f-hover">Düzenle</button><code class="f-tok">neutral-hover</code><span class="mds-caption">halka 5,38:1 · 7,07:1</span></div>
+<div class="f-fill"><button type="button" class="mds-btn mds-btn--primary f-ring">Kaydet</button><code class="f-tok">action-bold</code><span class="mds-caption">boşluk 16,60:1 · 14,43:1</span></div>
+<div class="f-fill"><button type="button" class="mds-btn mds-btn--primary f-ring f-primary-hover">Kaydet</button><code class="f-tok">action-bold-hover</code><span class="mds-caption">boşluk 12,85:1 · 16,93:1</span></div>
+<div class="f-fill"><button type="button" class="mds-btn mds-btn--destructive f-ring">Kalıcı olarak sil</button><code class="f-tok">error-subtle</code><span class="mds-caption">halka 6,00:1 · 7,33:1</span></div>
+<div class="f-fill"><button type="button" class="mds-btn mds-btn--destructive f-ring f-destructive-hover">Kalıcı olarak sil</button><code class="f-tok">error-bold</code><span class="mds-caption">boşluk 7,88:1 · 8,48:1</span></div>
+</div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">İletişim kutusunda</h2><p class="mds-caption">Modal katmanın dışına halka çizilmez.</p></header>
+<div class="f-dialog">
+<div class="f-sheet" role="img" aria-label="Kayan gövdesi odakta bir iletişim kutusu"><p class="mds-h3">Kayıt koşulları</p><div class="f-sheet__body">Kayan gövde odaklanınca halkasını kendi içine, kenarından 2px içeri çizer.</div></div>
+<p class="mds-caption">Halka dışarıda olsaydı, perdenin altındaki sayfanın üstüne düşer ve gündüz 3:1'in altında kalırdı. İçeride, yüzeyin üstünde: gündüz 6,69:1, gece 7,77:1.</p>
+</div>
+</section>
+<section class="f-sec">
+<header class="f-head"><h2 class="mds-h5">Kurallar</h2></header>
+<ul class="f-rules">
+<li>Kendi gölgesi olan bir durum (geçersiz alan, işaretli radyo) <code>:focus-visible</code>'da halkayı iç gölgeden sonra ekler.</li>
+<li>Halkadan önce bir yükselti gölgesi yazılmaz: ilk gölge üstte boyanır ve halkayı karartır.</li>
+<li>Tek halka var: hata için ayrı bir halka yok.</li>
+<li><code>check.mjs</code> Tab ile her odaklanabilir öğeye gider; halka boyanmıyorsa düşer.</li>
+</ul>
+</section>
+</body></html>

@@ -1,0 +1,111 @@
+/* Medaris — semantic colour roles.
+   Extracted verbatim from "Online Medrese UI UX.fig" → variable collection "color" → semantic/*.
+   Four roles (background, text, border, icon) x seven tones. Product code uses only these;
+   the primitives in colors.css exist so this file has something to point at. */
+:root {
+  /* background */
+  --background-neutral-primary: var(--slate-50);
+  --background-neutral-secondary: var(--slate-100);
+  --background-neutral-tertiary: var(--slate-200);
+  --background-neutral-disabled: var(--slate-300);
+  --background-neutral-inverse-primary: var(--slate-900);
+  --background-neutral-inverse-secondary: var(--slate-800);
+  --background-neutral-inverse-tertiary: var(--slate-700);
+  --background-brand-primary: var(--sky-900);
+  --background-brand-secondary: var(--sky-700);
+  --background-brand-tertiary: var(--sky-100);
+  --background-success-base: var(--green-500);
+  --background-success-bold: var(--green-600);
+  --background-success-subtle: var(--green-100);
+  --background-warning-base: var(--yellow-400);
+  --background-warning-bold: var(--yellow-500);
+  --background-warning-subtle: var(--yellow-100);
+  --background-error-base: var(--red-500);
+  --background-error-bold: var(--red-600);
+  --background-error-subtle: var(--red-100);
+  --background-info-base: var(--blue-600);
+  --background-info-bold: var(--blue-700);
+  --background-info-subtle: var(--blue-100);
+  --background-black: var(--black);
+  --background-white: var(--white);
+
+  /* text */
+  --text-neutral-primary: var(--gray-900);
+  --text-neutral-secondary: var(--gray-800);
+  --text-neutral-tertiary: var(--gray-600);
+  --text-neutral-disabled: var(--gray-500);
+  --text-neutral-inverse-primary: var(--gray-100);
+  --text-neutral-inverse-secondary: var(--gray-200);
+  --text-neutral-inverse-tertiary: var(--gray-300);
+  --text-brand-primary: var(--sky-900);
+  --text-brand-secondary: var(--sky-800);
+  --text-brand-inverse: var(--sky-100);
+  --text-success-primary: var(--green-700);
+  --text-success-secondary: var(--green-600);
+  --text-success-inverse: var(--green-50);
+  --text-warning-primary: var(--yellow-500);
+  --text-warning-secondary: var(--yellow-400);
+  --text-warning-inverse: var(--yellow-50);
+  --text-error-primary: var(--red-600);
+  --text-error-secondary: var(--red-500);
+  --text-error-inverse: var(--red-50);
+  --text-info-primary: var(--blue-600);
+  --text-info-secondary: var(--blue-500);
+  --text-info-inverse: var(--blue-50);
+  --text-black: var(--black);
+  --text-white: var(--white);
+
+  /* border */
+  --border-neutral-primary: var(--gray-200);
+  --border-neutral-secondary: var(--gray-300);
+  --border-neutral-tertiary: var(--gray-400);
+  --border-neutral-inverse-primary: var(--gray-800);
+  --border-neutral-inverse-secondary: var(--gray-700);
+  --border-neutral-inverse-tertiary: var(--gray-600);
+  --border-brand-primary: var(--sky-900);
+  --border-brand-secondary: var(--sky-800);
+  --border-brand-inverse: var(--sky-100);
+  --border-success-primary: var(--green-700);
+  --border-success-secondary: var(--green-600);
+  --border-success-inverse: var(--green-50);
+  --border-warning-primary: var(--yellow-500);
+  --border-warning-secondary: var(--yellow-400);
+  --border-warning-inverse: var(--yellow-50);
+  --border-error-primary: var(--red-700);
+  --border-error-secondary: var(--red-600);
+  --border-error-inverse: var(--red-50);
+  --border-info-primary: var(--blue-700);
+  --border-info-secondary: var(--blue-600);
+  --border-info-inverse: var(--blue-50);
+
+  /* icon */
+  --icon-neutral-primary: var(--gray-900);
+  --icon-neutral-secondary: var(--gray-800);
+  --icon-neutral-tertiary: var(--gray-600);
+  --icon-neutral-disabled: var(--gray-500);
+  --icon-neutral-inverse-primary: var(--gray-100);
+  --icon-neutral-inverse-secondary: var(--gray-200);
+  --icon-neutral-inverse-tertiary: var(--gray-300);
+  --icon-brand-primary: var(--sky-900);
+  --icon-brand-secondary: var(--sky-800);
+  --icon-brand-inverse: var(--sky-100);
+  --icon-success-primary: var(--green-700);
+  --icon-success-secondary: var(--green-600);
+  --icon-success-inverse: var(--green-50);
+  --icon-warning-primary: var(--yellow-500);
+  --icon-warning-secondary: var(--yellow-400);
+  --icon-warning-inverse: var(--yellow-50);
+  --icon-error-primary: var(--red-600);
+  --icon-error-secondary: var(--red-500);
+  --icon-error-inverse: var(--red-50);
+  --icon-info-primary: var(--blue-600);
+  --icon-info-secondary: var(--blue-500);
+  --icon-info-inverse: var(--blue-50);
+
+  /* Aliases for the names most code reaches for first */
+  --background: var(--background-neutral-primary);
+  --foreground: var(--text-neutral-primary);
+  --accent: var(--background-brand-primary);
+  --muted: var(--background-neutral-secondary);
+  --muted-foreground: var(--text-neutral-tertiary);
+}

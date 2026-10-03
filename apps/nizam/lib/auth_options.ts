@@ -13,6 +13,7 @@ import type { JWT } from "next-auth/jwt";
 import KeycloakProvider from "next-auth/providers/keycloak";
 import { env } from "~/env";
 import { authCookies } from "~/lib/auth_cookies";
+import { authPages } from "~/lib/auth_pages";
 
 /**
  * Takes a token, and returns a new token with updated `accessToken`. If an
@@ -87,6 +88,9 @@ const authOptions: AuthOptions = {
     }),
   ],
   cookies: authCookies,
+  // MDRS-101: our own pages instead of NextAuth's English ones. The middleware
+  // passes the same object to `withAuth`.
+  pages: authPages,
   callbacks: {
     /**
      * Lets the sign-out navigation reach Keycloak's end-session endpoint.

@@ -1,0 +1,81 @@
+import {
+  createServerTedrisatAPIs,
+  ResponseError,
+} from "@medaris/services/tedrisat";
+import { getErrorMessage } from "@medaris/services/utils";
+import { env } from "~/env";
+import { getAccessToken } from "~/lib/auth_options";
+
+// Infer the API client type so intellisense recognizes the 'api' parameter.
+type ApiClient = Awaited<ReturnType<typeof createServerTedrisatAPIs>>;
+
+/** Result type for actions: success with data, or failure with server error message. */
+export type AuthenticatedActionResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: string; errorBody?: unknown };
+
+/**
+ * Wrapper for Server Actions that require authentication.
+ * Returns a result object instead of throwing so the client can show server error messages
+ * (Next.js omits thrown error messages in production).
+ */
+export async function authenticatedAction<T>(
+  action: (api: ApiClient) => Promise<T>
+): Promise<AuthenticatedActionResult<T>> {
+  const accessToken = await getAccessToken();
+
+  if (!accessToken) {
+    return { success: false, error: "Unauthorized: No access token found" };
+  }
+
+  const api = await createServerTedrisatAPIs(
+    accessToken,
+    env.TEDRISAT_API_BASE_URL
+  );
+
+  try {
+    const data = await action(api);
+    return { success: true, data };
+  } catch (error) {
+    if (error instanceof ResponseError) {
+      try {
+        const errorBody = await error.response.json();
+        return { success: false, error: getErrorMessage(errorBody), errorBody };
+      } catch {
+        return {
+          success: false,
+          error: error.response.statusText || "Request failed",
+        };
+      }
+    }
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred.",
+    };
+  }
+}
+
+/** The API's error code of a failed call ("AUTHZ_FORBIDDEN"), or "" when it sent none. */
+export const errorCodeOf = (errorBody: unknown): string =>
+  errorBody && typeof errorBody === "object" && "code" in errorBody
+    ? String((errorBody as { code: unknown }).code)
+    : "";
+
+/**
+ * What a server action hands the browser: the data, or only the API's code.
+ * The server's message (which can name internals) never reaches the page; the
+ * page words a failure itself from the code.
+ */
+export type ActionOutcome<T> =
+  | { success: true; data: T }
+  | { success: false; code: string };
+
+export const outcomeOf = <T>(
+  result: AuthenticatedActionResult<T>
+): ActionOutcome<T> =>
+  result.success
+    ? result
+    : { success: false, code: errorCodeOf(result.errorBody) };

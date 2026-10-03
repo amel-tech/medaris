@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { BAN_SCOPES, type BanScope } from "../../database/schema/ban.schema";
 import { CourseLevel } from "../domain/course-level.enum";
 import { CourseStatus } from "../domain/course-status.enum";
 import { EnrollmentStatus } from "../domain/enrollment-status.enum";
@@ -9,19 +10,60 @@ export class AgendaStepResponse {
   @ApiProperty({ example: "Açılış ve geçen haftanın özeti" }) title!: string;
 }
 
+const CONTENT_FIELD =
+  "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.";
+
 export class LessonResponse {
   @ApiProperty() id!: string;
   @ApiProperty() weekId!: string;
   @ApiProperty() title!: string;
   @ApiProperty({ enum: LessonType }) type!: LessonType;
-  @ApiPropertyOptional({ type: String }) duration!: string | null;
-  @ApiPropertyOptional({ type: String }) kaynak!: string | null;
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description: "Length of the lesson in minutes; null when not set.",
+  })
+  durationMinutes!: number | null;
+  // `kaynak`, `meetingUrl` and `agenda` are course content (MDRS-103): a
+  // course response leaves the keys out for a caller without `view_details`.
+  @ApiPropertyOptional({ type: String, description: CONTENT_FIELD })
+  kaynak?: string | null;
   @ApiPropertyOptional({ type: Date }) scheduledAt!: Date | null;
-  @ApiPropertyOptional({ type: String }) meetingUrl!: string | null;
-  @ApiPropertyOptional({ type: [AgendaStepResponse] })
-  agenda!: AgendaStepResponse[] | null;
+  @ApiPropertyOptional({ type: String, description: CONTENT_FIELD })
+  meetingUrl?: string | null;
+  @ApiPropertyOptional({
+    type: [AgendaStepResponse],
+    description: CONTENT_FIELD,
+  })
+  agenda?: AgendaStepResponse[] | null;
   @ApiProperty() isPreview!: boolean;
   @ApiProperty() orderIndex!: number;
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+    description:
+      "When the session was cancelled (MDRS-158); null while it stands. It stays in the programme, marked.",
+  })
+  cancelledAt!: Date | null;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description:
+      "The session that makes up for a cancelled one; null when there is none.",
+  })
+  replacementLessonId!: string | null;
+  @ApiPropertyOptional({ type: String, description: CONTENT_FIELD })
+  cancelReason?: string | null;
+}
+
+/** A lesson written through a session-level endpoint (MDRS-95). */
+export class LessonMutationResponse extends LessonResponse {
+  @ApiProperty({
+    description:
+      "The course version this write produced; send it with the next PUT " +
+      "/courses/:id or PATCH /lessons/:id.",
+  })
+  courseVersion!: number;
 }
 
 export class WeekResponse {
@@ -43,6 +85,10 @@ export class MuderrisResponse {
   @ApiPropertyOptional({ type: String }) bio!: string | null;
   @ApiProperty() avatarHue!: number;
   @ApiProperty() orderIndex!: number;
+  @ApiProperty({
+    description: "The course's imam among its müderrisler (MDRS-133)",
+  })
+  isImam!: boolean;
 }
 
 export class ResourceResponse {
@@ -51,7 +97,8 @@ export class ResourceResponse {
   @ApiProperty() name!: string;
   @ApiPropertyOptional({ type: String }) meta!: string | null;
   @ApiPropertyOptional({ type: String }) type!: string | null;
-  @ApiPropertyOptional({ type: String }) url!: string | null;
+  @ApiPropertyOptional({ type: String, description: CONTENT_FIELD })
+  url?: string | null;
   @ApiProperty() orderIndex!: number;
 }
 
@@ -77,6 +124,40 @@ export class EnrollmentResponse {
   @ApiProperty() updatedAt!: Date;
 }
 
+export class EnrollmentBanResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty({ enum: Object.values(BAN_SCOPES), enumName: "BanScope" })
+  scope!: BanScope;
+}
+
+export class RosterEnrollmentResponse extends EnrollmentResponse {
+  @ApiProperty({
+    type: () => EnrollmentBanResponse,
+    nullable: true,
+    description:
+      "The open ban that bars the talebe from this course (MDRS-177): its id and scope, never its reason. Null when none.",
+  })
+  ban!: EnrollmentBanResponse | null;
+}
+
+export class RemovedByResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty({ type: String, nullable: true }) name!: string | null;
+}
+
+/** A talebe the course team took out, with the reason (MDRS-178). */
+export class RemovedEnrollmentResponse {
+  @ApiProperty({ format: "uuid" }) userId!: string;
+  @ApiProperty({ type: String, nullable: true }) name!: string | null;
+  @ApiProperty({ type: String, nullable: true }) email!: string | null;
+  @ApiProperty({ description: "The team's reason for taking them out." })
+  reason!: string;
+  @ApiProperty({ description: "Percent complete when they were taken out." })
+  progress!: number;
+  @ApiProperty({ type: String, format: "date-time" }) removedAt!: Date;
+  @ApiProperty({ type: () => RemovedByResponse }) removedBy!: RemovedByResponse;
+}
+
 export class PendingEnrollmentResponse extends EnrollmentResponse {
   @ApiProperty() courseTitle!: string;
 }
@@ -96,31 +177,136 @@ class CourseBase {
   @ApiProperty({ enum: CourseStatus }) status!: CourseStatus;
   @ApiProperty() grantsCertificate!: boolean;
   @ApiProperty() requiresApproval!: boolean;
+  @ApiProperty({
+    description:
+      "Closed course (MDRS-176): its content and recordings are never opened to everyone; recordings marked PUBLIC are read by the course team and the enrolled talebe only.",
+  })
+  isClosed!: boolean;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: "The word printed on the cover; null when none.",
+  })
+  coverLabel!: string | null;
+  @ApiProperty({
+    example: "Europe/Istanbul",
+    description:
+      "IANA time zone the course's sessions are authored in (MDRS-110).",
+  })
+  timeZone!: string;
+  @ApiProperty({
+    description:
+      "Optimistic-concurrency token. Send it back with PUT /courses/:id and " +
+      "PATCH /lessons/:id; a stale value is refused with 409.",
+  })
+  version!: number;
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+    description:
+      "When the köşk manager hid the course (MDRS-124); null while it is live. Only the köşk manager and SYSTEM_ADMIN ever see a non-null value.",
+  })
+  archivedAt!: Date | null;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: "Who hid the course; null while it is live.",
+  })
+  archivedBy!: string | null;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
 }
 
+export class CourseDetailMadrasahResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty() name!: string;
+}
+
 export class CourseDetailResponse extends CourseBase {
+  @ApiPropertyOptional({
+    type: CourseDetailMadrasahResponse,
+    nullable: true,
+    description:
+      "The medrese that opened the course (MDRS-161); null when none, absent on a write's answer.",
+  })
+  madrasah?: CourseDetailMadrasahResponse | null;
   @ApiProperty({ type: [WeekResponse] }) weeks!: WeekResponse[];
   @ApiProperty({ type: [MuderrisResponse] }) muderris!: MuderrisResponse[];
   @ApiProperty({ type: [ResourceResponse] }) resources!: ResourceResponse[];
   @ApiPropertyOptional({ type: EnrollmentResponse })
   enrollment!: EnrollmentResponse | null;
+  @ApiProperty({
+    description:
+      "True when the caller may not read the course's content and every content field was left out — the client shows the locked state (MDRS-103).",
+  })
+  contentLocked!: boolean;
+}
+
+export class SummaryMuderrisResponse extends MuderrisResponse {}
+
+export class CourseMadrasahResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty() name!: string;
 }
 
 export class CourseSummaryResponse extends CourseBase {
   @ApiProperty() weekCount!: number;
   @ApiProperty() lessonCount!: number;
   @ApiProperty() resourceCount!: number;
-  @ApiProperty({ type: [MuderrisResponse] }) muderris!: MuderrisResponse[];
+  @ApiProperty({ type: [SummaryMuderrisResponse] })
+  muderris!: SummaryMuderrisResponse[];
   @ApiPropertyOptional({ type: EnrollmentResponse })
   enrollment!: EnrollmentResponse | null;
+  @ApiPropertyOptional({
+    type: CourseMadrasahResponse,
+    nullable: true,
+    description: "The medrese that opened the course in this köşk (MDRS-159).",
+  })
+  madrasah!: CourseMadrasahResponse | null;
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+    description:
+      "The earliest session still ahead that has not been cancelled; null when none is scheduled (MDRS-159). The meeting link is never part of a summary.",
+  })
+  nextSessionAt!: Date | null;
+}
+
+export class MyEnrollmentResponse extends EnrollmentResponse {
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+    description:
+      "When the course team marked the course completed (MDRS-159); null for any other status.",
+  })
+  completedAt!: Date | null;
+}
+
+export class NextSessionResponse {
+  @ApiProperty({ type: Date }) at!: Date;
+  @ApiProperty({ description: "Number of the week the session falls in" })
+  weekNumber!: number;
 }
 
 export class EnrolledCourseResponse extends CourseBase {
   @ApiProperty() koskName!: string;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: "The medrese that opened the course, or null (MDRS-159).",
+  })
+  madrasahName!: string | null;
   @ApiProperty() weekCount!: number;
   @ApiProperty() lessonCount!: number;
-  @ApiProperty({ type: [MuderrisResponse] }) muderris!: MuderrisResponse[];
-  @ApiProperty({ type: EnrollmentResponse }) enrollment!: EnrollmentResponse;
+  @ApiProperty({ type: [SummaryMuderrisResponse] })
+  muderris!: SummaryMuderrisResponse[];
+  @ApiPropertyOptional({
+    type: NextSessionResponse,
+    nullable: true,
+    description:
+      "The earliest session still ahead that has not been cancelled (MDRS-159); null when none is scheduled.",
+  })
+  nextSession!: NextSessionResponse | null;
+  @ApiProperty({ type: MyEnrollmentResponse })
+  enrollment!: MyEnrollmentResponse;
 }

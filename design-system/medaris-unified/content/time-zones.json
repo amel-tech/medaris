@@ -1,0 +1,22 @@
+{
+  "$comment": "Short list for the time-zone Select (B13, C6). The Select lists the course's zone, the viewer's detected zone, then 'first' and 'short' — each zone once — and last 'Diğer…', which opens every IANA zone Intl.supportedValuesOf('timeZone') returns. A zone's name in copy ('21:00 İstanbul') is its city from 'cities'. DRAFT — where talebe live is the owner's data; the diaspora list is not verified. Rules: MDS-NUM-01.",
+  "fields": {
+    "first": "the zone the short list starts with",
+    "short": "the rest of the short list, in order",
+    "cities": "the Turkish city name for each listed zone, used in the option label and in copy",
+    "otherLabel": "the last option, which opens the full list"
+  },
+  "first": "Europe/Istanbul",
+  "short": ["Europe/Berlin", "Europe/Amsterdam", "Europe/Brussels", "Europe/Paris", "Europe/Vienna", "Europe/London", "America/New_York"],
+  "cities": {
+    "Europe/Istanbul": "İstanbul",
+    "Europe/Berlin": "Berlin",
+    "Europe/Amsterdam": "Amsterdam",
+    "Europe/Brussels": "Brüksel",
+    "Europe/Paris": "Paris",
+    "Europe/Vienna": "Viyana",
+    "Europe/London": "Londra",
+    "America/New_York": "New York"
+  },
+  "otherLabel": "Diğer…"
+}

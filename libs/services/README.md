@@ -81,7 +81,7 @@ way (for example a service-to-service call with its own credential):
 import { createTedrisatAPIs } from '@medaris/services/tedrisat'
 
 const { decks } = createTedrisatAPIs({
-  baseUrl: process.env.NEXT_PUBLIC_TEDRISAT_API_BASE_URL!,
+  baseUrl, // from the server — the web apps declare no NEXT_PUBLIC_* key (MDRS-86)
   token,
 })
 ```

@@ -1,0 +1,24 @@
+:root {
+  --r-2: 4px;
+  --r-3: 5px;
+  --r-4: 6px;
+  --r-5: 7px;
+  --r-6: 8px;
+  --r-7: 9px;
+  --r-8: 10px;
+  --r-9: 11px;
+  --r-10: 12px;
+  --r-11: 13px;
+  --r-12: 14px;
+  --r-14: 16px;
+  --r-16: 18px;
+  --r-pill: 999px;
+  --r-input: var(--r-4);
+  --r-button: var(--r-8);
+  --r-button-nizam: var(--r-9);
+  --r-card: var(--r-12);
+  --r-panel: var(--r-14);
+  --r-avatar-square: var(--r-4);
+  --r-badge: var(--r-pill);
+  --r-status-chip: var(--r-3);
+}

@@ -1,0 +1,36 @@
+/*
+ * @medaris/tokens — corner radii and border widths. HAND-AUTHORED:
+ * scripts/process-tokens.js rewrites theme/main.css only and never touches
+ * this file.
+ *
+ * Source: Figma variable collection "size" in `Online Medrese UI UX.fig`
+ * (export 2026-09-04), read through the committed mirror
+ * design-system/tokens/borders.css (MDRS-92). Verbatim px. The component
+ * layer uses them as: xxs mini controls, xs inputs and nav items, s buttons
+ * and badges, m cards and dialogs, l large surfaces, xl hero panels, full
+ * avatars and pills.
+ *
+ * Named --corner-radius-* and --border-weight-*, not Tailwind's --radius-*
+ * and --border-width-*, on purpose. The Figma names collide there:
+ * --radius-xs / --radius-xl already exist with other values (and libs/ui
+ * sets --radius-xl itself), --radius-full would replace rounded-full's
+ * calc(infinity * 1px), and --border-width-s / -l would make border-s and
+ * border-l emit a second, all-sides rule (measured on tailwindcss 4.3.3;
+ * test/tailwind-defaults.spec.ts). Use them as rounded-(--corner-radius-m),
+ * border-(length:--border-weight-m) or var(--corner-radius-m);
+ * libs/ui/styles/theme.css maps its own --radius-* names onto them.
+ */
+@theme {
+  --corner-radius-xxs: 4px;
+  --corner-radius-xs: 6px;
+  --corner-radius-s: 8px;
+  --corner-radius-m: 12px;
+  --corner-radius-l: 20px;
+  --corner-radius-xl: 30px;
+  --corner-radius-full: 999px;
+
+  --border-weight-xs: 0.5px;
+  --border-weight-s: 1px;
+  --border-weight-m: 2px;
+  --border-weight-l: 4px;
+}

@@ -80,9 +80,16 @@ describe("AuthzService.can", () => {
       await expect(
         svc.can(user(), { entity: ENTITIES.COURSE, id: "c-1" }, SCOPES.ENROLL)
       ).resolves.toBe(true);
-      // VIEW is not granted to PUBLIC on course
+      // VIEW (the course page) is PUBLIC since MDRS-103; the content is not
       await expect(
         svc.can(user(), { entity: ENTITIES.COURSE, id: "c-1" }, SCOPES.VIEW)
+      ).resolves.toBe(true);
+      await expect(
+        svc.can(
+          user(),
+          { entity: ENTITIES.COURSE, id: "c-1" },
+          SCOPES.VIEW_DETAILS
+        )
       ).resolves.toBe(false);
     });
 
@@ -144,6 +151,69 @@ describe("AuthzService.can", () => {
           SCOPES.MANAGE_PRIVATE_DECK
         )
       ).resolves.toBe(true);
+    });
+  });
+
+  describe("canAnonymous — a caller with no token (MDRS-45)", () => {
+    const deck: ResourceRef = { entity: ENTITIES.FLASHCARD_DECK, id: "d-1" };
+
+    it("refuses when the resolver has no resolveAnonymous at all (fail-closed)", async () => {
+      const svc = new AuthzService(resolverReturning(ROLES.PUBLIC));
+      await expect(svc.canAnonymous(deck, SCOPES.VIEW)).resolves.toBe(false);
+    });
+
+    it("grants VIEW on a deck the resolver opens as ANONYMOUS", async () => {
+      const svc = new AuthzService({
+        resolve: vi.fn(),
+        resolveAnonymous: vi.fn().mockResolvedValue(ROLES.ANONYMOUS),
+      });
+      await expect(svc.canAnonymous(deck, SCOPES.VIEW)).resolves.toBe(true);
+    });
+
+    it("does not inherit the PUBLIC row — an anonymous caller may not create a deck", async () => {
+      const svc = new AuthzService({
+        resolve: vi.fn(),
+        resolveAnonymous: vi.fn().mockResolvedValue(ROLES.ANONYMOUS),
+      });
+      await expect(
+        svc.canAnonymous(deck, SCOPES.CREATE_PRIVATE_DECK)
+      ).resolves.toBe(false);
+    });
+
+    it("refuses a resolver that answers PUBLIC for an anonymous caller", async () => {
+      // Past the type narrowing, as a plain-JS resolver or a cast would be.
+      const svc = new AuthzService({
+        resolve: vi.fn(),
+        resolveAnonymous: vi
+          .fn()
+          .mockResolvedValue(ROLES.PUBLIC as unknown as typeof ROLES.ANONYMOUS),
+      });
+      await expect(svc.canAnonymous(deck, SCOPES.VIEW)).resolves.toBe(false);
+    });
+
+    it("refuses an entity with no ANONYMOUS row even when the resolver opens it", async () => {
+      const svc = new AuthzService({
+        resolve: vi.fn(),
+        resolveAnonymous: vi.fn().mockResolvedValue(ROLES.ANONYMOUS),
+      });
+      await expect(
+        svc.canAnonymous({ entity: ENTITIES.IJAZAH, id: "i-1" }, SCOPES.VIEW)
+      ).resolves.toBe(false);
+    });
+
+    it("grants an opened course VIEW but not ENROLL — applying needs an account (MDRS-122)", async () => {
+      const svc = new AuthzService({
+        resolve: vi.fn(),
+        resolveAnonymous: vi.fn().mockResolvedValue(ROLES.ANONYMOUS),
+      });
+      const course = { entity: ENTITIES.COURSE, id: "c-1" };
+      await expect(svc.canAnonymous(course, SCOPES.VIEW)).resolves.toBe(true);
+      await expect(svc.canAnonymous(course, SCOPES.ENROLL)).resolves.toBe(
+        false
+      );
+      await expect(svc.canAnonymous(course, SCOPES.VIEW_DETAILS)).resolves.toBe(
+        false
+      );
     });
   });
 

@@ -41,6 +41,8 @@ Nx project names are not always the directory names — commands take the **proj
 
 Libraries live in `libs/` and resolve as `@medaris/*`: `common`, `hooks`, `i18n`, `icons`, `services`, `tokens`, `types`, `ui`, `utils`.
 
+`design-system/` is not a package. It is a byte-for-byte mirror of the **Medaris Design System** project on claude.ai/design — tokens, component specs, rendered cards and the three open accessibility decisions — for people and agents who cannot reach that project. Read it through the `medaris-design-system` skill in `.claude/skills/`, which prefers the live project when the session can reach it and explains how the mirror is refreshed. Nothing builds from it, Biome does not format it, and edits belong in the claude.ai/design project, not here. A subdirectory with its own `PROVENANCE.md` (today `design-system/madrasah-frontend/`) is the opposite direction: a design exported from another claude.ai/design project, parked here verbatim until it is pulled into the canonical one — the skill's §6 describes that route.
+
 **`libs/common` must be built before either Nest app will start** — without it they fail at boot with `TS2307`. `pnpm build` handles the ordering, and `nx run tedrisat:dev` does too via `dependsOn: ["^build"]`.
 
 ## Commands
@@ -66,11 +68,11 @@ Nx runs with `neverConnectToCloud: true` — no remote cache, no analytics. CI t
 
 ### Test coverage, stated honestly
 
-`pnpm test` reports three projects, but only two of them run real tests: **295 tests across 21 suites, all in `tedrisat` and `teskilat`** (293 / 19 and 2 / 2). The third, `tedris-web`, executes `echo 'Tests not implemented'`, which Nx counts as a pass. **Frontend test coverage is zero.**
+`pnpm test` reports five projects, but only four of them run real tests: **514 tests across 34 suites, all in backend and shared packages** — `tedrisat` 382 / 23, `env` 57 / 2, `common` 51 / 5, `teskilat` 24 / 4 (measured with `pnpm nx run-many -t test --skip-nx-cache`). The fifth, `tedris-web`, executes `echo 'Tests not implemented'`, which Nx counts as a pass. **Frontend test coverage is zero.**
 
 Those tests run on **Vitest**; MDRS-20 moved them off Jest at an unchanged count — 91 across 10 suites as measured then, before MDRS-35 added tedrisat's 15-test `test/unit/config.spec.ts` — and no Jest dependency or config file remains. It did **not** close the frontend gap — there was no frontend spec to migrate, and scaffolding a runner with nothing to run would only have produced a target that passes vacuously. Writing the first frontend specs, with the `@nx/vite` + `jsdom` setup they need, is tracked separately. See [`docs/migration/mdrs-20-jest-to-vitest.md`](docs/migration/mdrs-20-jest-to-vitest.md).
 
-Seven of tedrisat's nineteen suites are the `test/e2e/*.e2e.spec.ts` files: `apps/tedrisat/vitest.config.ts` matches them too, so **`pnpm test` needs a running Docker daemon** — those suites start a Testcontainers `postgres:17-alpine`. `pnpm --filter @medaris/tedrisat test:e2e` runs the same seven under `apps/tedrisat/vitest.integration.config.ts` rather than adding coverage.
+Twenty-four of tedrisat's forty-seven suites are the `test/e2e/*.e2e.spec.ts` files: `apps/tedrisat/vitest.config.ts` matches them too, so **`pnpm test` needs a running Docker daemon** — those suites start a Testcontainers `postgres:17-alpine`, `keycloak-audience.e2e.spec.ts` also a `quay.io/keycloak/keycloak:26.3.2`, and `keycloak-smtp.e2e.spec.ts` (MDRS-98) that Keycloak plus an `axllent/mailpit:v1.27`; both run `tools/keycloak/setup-realm.sh`, which needs `curl` and `jq` on the host. `pnpm --filter @medaris/tedrisat test:e2e` runs the same twenty-four under `apps/tedrisat/vitest.integration.config.ts` rather than adding coverage.
 
 ## Toolchain
 

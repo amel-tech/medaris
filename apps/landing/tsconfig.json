@@ -17,9 +17,9 @@
     "paths": {
       "@/*": ["./*"],
       "~/env": ["./env.ts"],
-      "~/features/*": ["./sections/*"],
       "~/components/*": ["./components/*"],
-      "~/lib/*": ["./lib/*"]
+      "~/lib/*": ["./lib/*"],
+      "~/content/*": ["./content/*"]
     },
     "moduleDetection": "auto",
     "noUncheckedIndexedAccess": false,
@@ -36,16 +36,16 @@
     "next.config.js",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", ".next/**"],
+  "exclude": ["node_modules", ".next/**", "vitest.config.ts"],
   "references": [
     {
       "path": "../../libs/i18n"
     },
     {
-      "path": "../../libs/icons"
+      "path": "../../libs/ui"
     },
     {
-      "path": "../../libs/ui"
+      "path": "../../libs/utils"
     }
   ]
 }

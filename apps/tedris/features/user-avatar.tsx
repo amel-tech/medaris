@@ -4,8 +4,10 @@ import { isOptimizableImageSrc } from "~/lib/image-hosts";
 
 type UserAvatar = {
   user?: BaseUser;
+  /** KEYCLOAK_ISSUER, read on the server at request time (see image-hosts.ts). */
+  imageIssuer?: string;
 };
-export const UserAvatar = ({ user }: UserAvatar) => {
+export const UserAvatar = ({ user, imageIssuer }: UserAvatar) => {
   const initials = `${user.name}`
     .split(" ")
     .map((name) => name.charAt(0))
@@ -14,7 +16,9 @@ export const UserAvatar = ({ user }: UserAvatar) => {
   // MDRS-38: `user.image` is whatever the identity provider put in the
   // profile, so it can point outside the next.config.js allow-list. Render the
   // initials instead of letting the optimizer answer 400 into an <img>.
-  const avatarSrc = isOptimizableImageSrc(user.image) ? user.image : null;
+  const avatarSrc = isOptimizableImageSrc(user.image, imageIssuer)
+    ? user.image
+    : null;
 
   return (
     <div className="border border-gray-300 rounded-sm h-9 w-9 overflow-hidden">

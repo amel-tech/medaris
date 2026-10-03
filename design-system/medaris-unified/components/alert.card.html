@@ -1,0 +1,24 @@
+<!-- @dsCard group="Feedback" viewport="760x724" name="Alert" subtitle="Five tones on their tints: the glyph and the title carry the tone, the words stay in ink. Neutral explains or restricts, info reports news, success confirms, warning asks the reader to act, error reports a failure" -->
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:var(--space-6);background:var(--background-neutral-page);font-family:var(--font-ui);color:var(--text-neutral-default)}
+.sec{display:flex;flex-direction:column;gap:var(--space-3);max-inline-size:600px}
+.sec + .sec{margin-block-start:var(--space-8)}
+.ar{max-inline-size:420px}
+.note{margin:var(--space-6) 0 0;font-size:var(--fs-caption);color:var(--text-neutral-subtle);line-height:var(--lh-body);max-inline-size:640px}
+</style></head><body>
+<section class="sec" aria-labelledby="s-tone">
+  <p class="mds-eyebrow" id="s-tone">Tonlar</p>
+  <div class="mds-alert mds-alert--neutral" role="status"><span class="mds-alert__icon" aria-hidden="true"></span><div>Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Derse kaydolduğunda görebilirsin.</div></div>
+  <div class="mds-alert mds-alert--info" role="status"><span class="mds-alert__icon" aria-hidden="true"></span><div><p class="mds-alert__title">Ders kaydı işleniyor</p>Bu birkaç saat sürebilir; ders kaydı hazır olunca bu sayfada görünür.</div></div>
+  <div class="mds-alert mds-alert--success" role="status"><span class="mds-alert__icon" aria-hidden="true"></span><div><p class="mds-alert__title">Celse planlandı</p>Kayıtlı 12 talebe celseyi takviminde görecek.</div></div>
+  <div class="mds-alert mds-alert--warning" role="status"><span class="mds-alert__icon" aria-hidden="true"></span><div><p class="mds-alert__title">Cumartesi celsesinin toplantı bağlantısı eksik</p>Talebeler bağlantı olmadan celseye katılamaz. Celse başlamadan ekleyin.</div></div>
+  <div class="mds-alert mds-alert--error" role="alert"><span class="mds-alert__icon" aria-hidden="true"></span><div><p class="mds-alert__title">Değişiklikler kaydedilemedi</p>İnternet bağlantısı kesildi. Yeniden bağlandığınızda tekrar deneyin.</div></div>
+</section>
+<section class="sec" aria-labelledby="s-ar">
+  <p class="mds-eyebrow" id="s-ar">Arapça arayüzde</p>
+  <div class="ar" lang="ar" dir="rtl">
+    <div class="mds-alert mds-alert--error" role="alert"><span class="mds-alert__icon" aria-hidden="true"></span><div><p class="mds-alert__title">لم يتم تسجيل الدخول</p>البريد الإلكتروني أو كلمة المرور غير صحيحة.</div></div>
+  </div>
+</section>
+<p class="note" lang="en">Only the glyph and the title take the tone; the words stay in ink on the tint. Every pair passes AA in both themes (contrast.md, "Text on tints"). Error is <code>role="alert"</code>; every other tone is <code>role="status"</code>. The glyph is a mask from the sprite, so the markup draws no icon. In an Arabic region the alert mirrors with no extra class.</p>
+</body></html>

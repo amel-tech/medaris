@@ -1,0 +1,35 @@
+<!-- @dsCard group="Data display" viewport="760x260" name="Avatar, progress, skeleton" subtitle="Identity, completion and the loading state that stands in for both" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:24px;background:var(--background-white);font-family:var(--font-ui)}
+.h{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-neutral-disabled);margin:0 0 10px}
+.row{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.stack{display:flex}
+.stack .mds-avatar{margin-left:-10px;box-shadow:0 0 0 2px var(--background-white)}
+.stack .mds-avatar:first-child{margin-left:0}
+.pw{max-width:280px;margin-bottom:8px}
+.pl{display:flex;justify-content:space-between;font-size:12px;color:var(--text-neutral-tertiary);margin-bottom:6px}
+.sk{max-width:300px}
+</style></head><body>
+<p class="h">Avatar — 32 / 40 / 56, initials when there is no photo</p>
+<div class="row">
+  <span class="mds-avatar mds-avatar--sm">AH</span>
+  <span class="mds-avatar">ZK</span>
+  <span class="mds-avatar mds-avatar--lg">MF</span>
+  <span class="stack" style="margin-left:16px"><span class="mds-avatar mds-avatar--sm">AH</span><span class="mds-avatar mds-avatar--sm">ZK</span><span class="mds-avatar mds-avatar--sm">MF</span><span class="mds-avatar mds-avatar--sm" style="background:var(--background-neutral-tertiary);color:var(--text-neutral-tertiary)">+9</span></span>
+</div>
+<p class="h">Progress</p>
+<div class="pw">
+  <div class="pl"><span>Bakara sûresi</span><span>72%</span></div>
+  <div class="mds-progress"><div class="mds-progress__bar" style="width:72%"></div></div>
+</div>
+<div class="pw" style="margin-bottom:22px">
+  <div class="pl"><span>Nisâ sûresi</span><span>18%</span></div>
+  <div class="mds-progress"><div class="mds-progress__bar" style="width:18%"></div></div>
+</div>
+<p class="h">Skeleton</p>
+<div class="sk">
+  <div class="mds-skeleton" style="height:14px;width:60%;margin-bottom:8px"></div>
+  <div class="mds-skeleton" style="height:12px;width:90%;margin-bottom:6px"></div>
+  <div class="mds-skeleton" style="height:12px;width:75%"></div>
+</div>
+</body></html>

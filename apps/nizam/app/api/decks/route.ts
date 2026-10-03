@@ -6,6 +6,11 @@ import { getAccessToken } from "~/lib/auth_options";
 export async function GET() {
   try {
     const accessToken = await getAccessToken();
+    if (!accessToken) {
+      // No usable token — a failed refresh, not a server fault. Say 401 so the
+      // caller can send the visitor to sign in instead of reading a 500.
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const { decks } = await createServerTedrisatAPIs(
       accessToken,
       env.TEDRISAT_API_BASE_URL

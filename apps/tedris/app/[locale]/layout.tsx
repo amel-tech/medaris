@@ -9,8 +9,10 @@ import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { Header } from "~/components/header/header";
+import { LegalFooter } from "~/components/legal-footer";
 import { ClientProviders } from "~/components/providers/client-providers";
 import { TabView } from "~/components/tab-view";
+import { auth } from "~/lib/auth_options";
 import { routing } from "~/lib/i18n/routing";
 
 export const metadata: Metadata = {
@@ -32,14 +34,22 @@ export default async function LocaleLayout({
   }
 
   setRequestLocale(locale);
+  const signedIn = Boolean(await auth());
 
   return (
     <html lang="tr" className="min-h-svh h-full">
-      <body className={`${inter.className} h-full flex flex-col`}>
+      {/* Browser extensions (e.g. ColorZilla's `cz-shortcut-listen`) inject
+          attributes on <body> before hydration; only this node's attributes
+          are exempted, children are still checked. */}
+      <body
+        className={`${inter.className} h-full flex flex-col`}
+        suppressHydrationWarning
+      >
         <NextIntlClientProvider>
           <ClientProviders>
             <Header />
-            <TabView>{children}</TabView>
+            <TabView signedIn={signedIn}>{children}</TabView>
+            <LegalFooter />
           </ClientProviders>
         </NextIntlClientProvider>
       </body>

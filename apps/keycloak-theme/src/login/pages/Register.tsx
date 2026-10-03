@@ -1,13 +1,7 @@
-import { Button } from "@medaris/ui/components/button";
-import { Checkbox } from "@medaris/ui/components/checkbox";
-import { Label } from "@medaris/ui/components/label";
-import { cn } from "@medaris/ui/lib/utils";
-import { kcSanitize } from "keycloakify/lib/kcSanitize";
-import { getKcClsx, type KcClsx } from "keycloakify/login/lib/kcClsx";
-import type { UserProfileFormFieldsProps } from "keycloakify/login/UserProfileFormFieldsProps";
-import type { JSX } from "keycloakify/tools/JSX";
-import type { LazyOrNot } from "keycloakify/tools/LazyOrNot";
-import { useState } from "react";
+import { RegisterForm } from "@medaris/ui/giris";
+import { Checkbox } from "@medaris/ui/mds/checkbox";
+import { Html } from "../components/Html";
+import { privacyNoticeLabel } from "../components/privacyNoticeLabel";
 import type { I18n } from "../i18n";
 import type { KcContext } from "../KcContext";
 import type { ExtendedPageProps } from "../types/PageProps";
@@ -15,44 +9,63 @@ import type { ExtendedPageProps } from "../types/PageProps";
 type RegisterProps = ExtendedPageProps<
   Extract<KcContext, { pageId: "register.ftl" }>,
   I18n
-> & {
-  UserProfileFormFields: LazyOrNot<
-    (props: UserProfileFormFieldsProps) => JSX.Element
-  >;
-  doMakeUserConfirmPassword: boolean;
-};
+>;
 
+/** The user-profile attributes this page draws, in the order the canvas lays them out. */
+export const REGISTER_ATTRIBUTES = [
+  "firstName",
+  "lastName",
+  "username",
+  "email",
+  "privacyNoticeRead",
+] as const;
+
+const PRIVACY_NEW_TAB_NOTE_ID = "privacy-notice-new-tab";
+
+/**
+ * `register.ftl` (canvas medaris/03). The realm's user profile declares exactly
+ * the attributes in `REGISTER_ATTRIBUTES` (`test/register.spec.tsx` reads
+ * `config/keycloak/user-profile.json` and fails if one is added without this
+ * page drawing it), so the form is those fields and not a loop over whatever
+ * the profile holds. Password and its repeat are Keycloak's `password` and
+ * `password-confirm`; `registrationEmailAsUsername` is off, so the user name is
+ * its own field (canvas rule 44).
+ */
 export default function Register(props: RegisterProps) {
-  const {
-    kcContext,
-    i18n,
-    doUseDefaultCss,
-    Template,
-    classes,
-    UserProfileFormFields,
-    doMakeUserConfirmPassword,
-  } = props;
-
-  const { kcClsx } = getKcClsx({
-    doUseDefaultCss,
-    classes,
-  });
+  const { kcContext, i18n, Template, classes } = props;
 
   const {
     messageHeader,
     url,
     messagesPerField,
-    recaptchaRequired,
-    recaptchaVisible,
-    recaptchaSiteKey,
-    recaptchaAction,
     termsAcceptanceRequired,
+    profile,
+    passwordPolicies,
   } = kcContext;
 
   const { msg, msgStr, advancedMsg } = i18n;
 
-  const [isFormSubmittable, setIsFormSubmittable] = useState(false);
-  const [areTermsAccepted, setAreTermsAccepted] = useState(false);
+  const attribute = (name: (typeof REGISTER_ATTRIBUTES)[number]) =>
+    profile.attributesByName[name];
+
+  const text = (name: "firstName" | "lastName" | "username" | "email") => {
+    const field = attribute(name);
+    return {
+      name,
+      label: advancedMsg(field?.displayName ?? `\${${name}}`),
+      defaultValue: field?.value ?? "",
+      error: messagesPerField.existsError(name) ? (
+        <Html html={messagesPerField.get(name)} />
+      ) : undefined,
+    };
+  };
+
+  const minLength = passwordPolicies?.length ?? 10;
+
+  const privacy = attribute("privacyNoticeRead");
+  const privacyOption = privacy?.annotations.inputOptionLabels
+    ? (Object.keys(privacy.annotations.inputOptionLabels)[0] ?? "yes")
+    : "yes";
 
   return (
     <Template
@@ -71,153 +84,84 @@ export default function Register(props: RegisterProps) {
           : advancedMsg("registerSubtitle")
       }
       displayMessage={messagesPerField.exists("global")}
-      displayRequiredFields={false}
-    >
-      <div className="mx-auto flex flex-row gap-1 w-fit bg-[#f5f5f5] border border-gray-200 rounded-lg overflow-hidden font-medium text-sm mb-8 p-1">
-        <div className="py-2 px-4 rounded-md bg-brand-primary text-white shadow-sm">
-          {msg("doRegister")}
-        </div>
-        <a href={url.loginUrl}>
-          <div className="py-2 px-4 rounded-md text-gray-600 hover:text-gray-800 hover:bg-gray-50 transition-all duration-200">
+      displayInfo
+      infoNode={
+        <>
+          {msg("haveAccount")}{" "}
+          <a id="kc-login" href={url.loginUrl}>
             {msg("doLogIn")}
-          </div>
-        </a>
-      </div>
-
-      <form
-        id="kc-register-form"
-        className="flex flex-col gap-5"
+          </a>
+        </>
+      }
+    >
+      <RegisterForm
         action={url.registrationAction}
-        method="post"
+        requiredNote={msg("requiredFields")}
+        firstName={text("firstName")}
+        lastName={text("lastName")}
+        username={text("username")}
+        email={{ ...text("email"), help: msg("emailVerifyHelp") }}
+        password={{
+          name: "password",
+          label: msg("password"),
+          showLabel: msgStr("showPassword"),
+          error: messagesPerField.existsError("password") ? (
+            <Html html={messagesPerField.get("password")} />
+          ) : undefined,
+        }}
+        passwordConfirm={{
+          name: "password-confirm",
+          label: msg("passwordConfirm"),
+          showLabel: msgStr("showPasswordConfirm"),
+          error: messagesPerField.existsError("password-confirm") ? (
+            <Html html={messagesPerField.get("password-confirm")} />
+          ) : undefined,
+        }}
+        passwordMinLength={minLength}
+        ruleLabels={{
+          length: msg("passwordRuleLength", String(minLength)),
+          notEmail: msg("passwordRuleNotEmail"),
+          notUsername: msg("passwordRuleNotUsername"),
+          met: msgStr("passwordRuleMet"),
+        }}
+        errors={{
+          required: msg("error-user-attribute-required"),
+          passwordTooShort: msg("passwordTooShort", String(minLength)),
+          passwordRules: msg("passwordRulesUnmet"),
+          passwordMismatch: msg("passwordMismatch"),
+          privacy: msg("privacyNoticeRequired"),
+        }}
+        privacy={{
+          name: "privacyNoticeRead",
+          id: `privacyNoticeRead-${privacyOption}`,
+          value: privacyOption,
+          label: privacy
+            ? privacyNoticeLabel(
+                i18n,
+                privacy,
+                privacyOption,
+                PRIVACY_NEW_TAB_NOTE_ID
+              )
+            : msg("privacyNoticeTitle"),
+          newTabNote: msg("privacyNoticeNewTab"),
+          newTabNoteId: PRIVACY_NEW_TAB_NOTE_ID,
+          error: messagesPerField.existsError("privacyNoticeRead") ? (
+            <Html html={messagesPerField.get("privacyNoticeRead")} />
+          ) : undefined,
+          defaultChecked: privacy?.values?.includes(privacyOption) ?? false,
+        }}
+        submitLabel={msg("doRegister")}
+        submittingLabel={msgStr("formSubmitting")}
       >
-        <UserProfileFormFields
-          kcContext={kcContext}
-          i18n={i18n}
-          kcClsx={kcClsx}
-          onIsFormSubmittableValueChange={setIsFormSubmittable}
-          doMakeUserConfirmPassword={doMakeUserConfirmPassword}
-        />
-        {termsAcceptanceRequired && (
-          <TermsAcceptance
-            i18n={i18n}
-            kcClsx={kcClsx}
-            messagesPerField={messagesPerField}
-            areTermsAccepted={areTermsAccepted}
-            onAreTermsAcceptedValueChange={setAreTermsAccepted}
-          />
-        )}
-        {recaptchaRequired &&
-          (recaptchaVisible || recaptchaAction === undefined) && (
-            <div className="form-group">
-              <div className="flex flex-col gap-2">
-                <div
-                  className="g-recaptcha w-full"
-                  data-sitekey={recaptchaSiteKey}
-                  data-action={recaptchaAction}
-                ></div>
-              </div>
-            </div>
-          )}
-        <div className="flex flex-col gap-4">
-          {recaptchaRequired &&
-          !recaptchaVisible &&
-          recaptchaAction !== undefined ? (
-            <div id="kc-form-buttons">
-              <Button
-                size="lg"
-                className={cn(
-                  "w-full bg-brand-primary text-white h-[48px] hover:bg-brand-primary/90 font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md",
-                  "g-recaptcha"
-                )}
-                data-sitekey={recaptchaSiteKey}
-                data-callback={() => {
-                  (
-                    document.getElementById(
-                      "kc-register-form"
-                    ) as HTMLFormElement
-                  ).submit();
-                }}
-                data-action={recaptchaAction}
-                type="submit"
-              >
-                {msg("doRegister")}
-              </Button>
-            </div>
-          ) : (
-            <div id="kc-form-buttons">
-              <Button
-                size="lg"
-                disabled={
-                  !isFormSubmittable ||
-                  (termsAcceptanceRequired && !areTermsAccepted)
-                }
-                className="w-full bg-brand-primary text-white h-[48px] hover:bg-brand-primary/90 disabled:opacity-50 font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
-                type="submit"
-              >
-                {msgStr("doRegister")}
-              </Button>
-            </div>
-          )}
-        </div>
-      </form>
-    </Template>
-  );
-}
-
-function TermsAcceptance(props: {
-  i18n: I18n;
-  kcClsx: KcClsx;
-  messagesPerField: Pick<KcContext["messagesPerField"], "existsError" | "get">;
-  areTermsAccepted: boolean;
-  onAreTermsAcceptedValueChange: (areTermsAccepted: boolean) => void;
-}) {
-  const {
-    i18n,
-    messagesPerField,
-    areTermsAccepted,
-    onAreTermsAcceptedValueChange,
-  } = props;
-
-  const { msg } = i18n;
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <Label className="text-gray-600">{msg("termsTitle")}</Label>
-        <div id="kc-registration-terms-text" className="text-gray-600">
-          {msg("termsText")}
-        </div>
-      </div>
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-row gap-2 items-center">
+        {termsAcceptanceRequired ? (
           <Checkbox
             id="termsAccepted"
             name="termsAccepted"
-            checked={areTermsAccepted}
-            onCheckedChange={(checked) =>
-              onAreTermsAcceptedValueChange(!!checked)
-            }
-            aria-invalid={messagesPerField.existsError("termsAccepted")}
-            className={cn(
-              messagesPerField.existsError("termsAccepted") &&
-                "border-error-secondary"
-            )}
+            label={msg("acceptTerms")}
+            description={msg("termsText")}
           />
-          <Label htmlFor="termsAccepted" className="text-sm">
-            {msg("acceptTerms")}
-          </Label>
-        </div>
-        {messagesPerField.existsError("termsAccepted") && (
-          <span
-            id="input-error-terms-accepted"
-            className="text-error-secondary text-sm"
-            aria-live="polite"
-            dangerouslySetInnerHTML={{
-              __html: kcSanitize(messagesPerField.get("termsAccepted")),
-            }}
-          />
-        )}
-      </div>
-    </div>
+        ) : null}
+      </RegisterForm>
+    </Template>
   );
 }
