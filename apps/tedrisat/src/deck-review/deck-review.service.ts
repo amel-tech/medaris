@@ -5,6 +5,7 @@ import {
   PERMISSIONS,
 } from "@medaris/common";
 import { Injectable, Logger } from "@nestjs/common";
+import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { DeckPublishStatus } from "../flashcard/domain/deck-publish-status.enum";
 import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
 import { KoskService } from "../kosk/kosk.service";
@@ -213,7 +214,12 @@ export class DeckReviewService {
       throw new KoskDeckNotFoundError(deckId);
     }
     await this.assertKoskNazim(user, deck.koskId);
-    if (!(await this.repo.hideDeck(deckId, user.sub))) {
+    // The başnazım hides as the platform, the köşk's nazımı as the köşk: the
+    // level a restore is then compared with (MDRS-135).
+    const level = this.authz.isSystemAdmin(user)
+      ? SCOPE_TYPES.PLATFORM
+      : SCOPE_TYPES.KOSK;
+    if (!(await this.repo.hideDeck(deckId, user.sub, level))) {
       throw new KoskDeckNotFoundError(deckId);
     }
   }

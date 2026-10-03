@@ -7,7 +7,15 @@ import {
   type PermissionCode,
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
+import { ArchiveRestoreLevelError } from "../archive/errors/archive-errors";
+import {
+  actingLevel,
+  type HideLevel,
+  hiderLevelOf,
+  mayRestoreAt,
+} from "../archive/hide-level";
 import { BanService } from "../ban/ban.service";
+import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { KoskForbiddenError } from "../kosk/errors/kosk-forbidden.error";
 import { KoskService } from "../kosk/kosk.service";
 import {
@@ -592,7 +600,9 @@ export class CourseService {
     const replaced = await this.courseRepo.replace(
       id,
       user.sub,
-      withCanonicalTimeZone(data)
+      withCanonicalTimeZone(data),
+      // The weeks and sessions the save drops are hidden at the saver's level.
+      await this.courseLevel(user, id)
     );
     return this.present(replaced, user, { audit: false });
   }
@@ -699,9 +709,13 @@ export class CourseService {
   /** Hides the lesson; nothing attached to it is deleted (MDRS-124). */
   async archiveLesson(
     lessonId: string,
-    actorId: string | null = null
+    user: AuthenticatedUser
   ): Promise<ILessonMutation> {
-    return this.courseRepo.archiveLesson(lessonId, actorId);
+    const courseId = await this.courseRepo.findLessonCourseId(lessonId);
+    const level = courseId
+      ? await this.courseLevel(user, courseId)
+      : SCOPE_TYPES.COURSE;
+    return this.courseRepo.archiveLesson(lessonId, user.sub, level);
   }
 
   // ---- weekly pattern → sessions (MDRS-109) ----
@@ -772,13 +786,59 @@ export class CourseService {
   // manager) for hide and restore, `DELETE` (SYSTEM_ADMIN only — it is on no
   // role row) for the real delete. Nothing is re-checked here.
 
-  async archive(id: string, userId: string): Promise<void> {
-    if (!(await this.courseRepo.archive(id, userId))) {
+  /**
+   * The level the caller hides and restores a course at: the köşk's nazımı hides
+   * as the köşk (`course.hide`, theirs by role default), a başmüderris or a
+   * nazır given `madrasah.course_hide` as the medrese, the başnazım as the
+   * platform; whoever merely runs the course acts at the course.
+   */
+  private courseLevel(
+    user: AuthenticatedUser,
+    courseId: string
+  ): Promise<HideLevel> {
+    return actingLevel(
+      this.authz,
+      user,
+      { entity: ENTITIES.COURSE, id: courseId },
+      [
+        { level: SCOPE_TYPES.KOSK, codes: [PERMISSIONS.COURSE_HIDE] },
+        {
+          level: SCOPE_TYPES.MADRASAH,
+          codes: [PERMISSIONS.MADRASAH_COURSE_HIDE],
+        },
+      ],
+      SCOPE_TYPES.COURSE
+    );
+  }
+
+  async archive(id: string, user: AuthenticatedUser): Promise<void> {
+    const level = await this.courseLevel(user, id);
+    if (!(await this.courseRepo.archive(id, user.sub, level))) {
       throw new CourseNotFoundError(id);
     }
   }
 
-  async restore(id: string): Promise<void> {
+  /**
+   * Brings a hidden course back, by the level that hid it or one above it
+   * (MDRS-135, the ban rule): a medrese's başmüderris cannot bring back what the
+   * köşk's nazımı hid, and the other way round it can be done. A course hidden
+   * before the level was recorded counts as hidden at the lowest level that
+   * could have hidden it. Restoring a shown course changes nothing.
+   */
+  async restore(id: string, user: AuthenticatedUser): Promise<void> {
+    const state = await this.courseRepo.findHideState(id);
+    if (!state) throw new CourseNotFoundError(id);
+    if (state.archivedAt !== null) {
+      const restorer = await this.courseLevel(user, id);
+      const hiddenAt = hiderLevelOf({
+        type: "course",
+        madrasahId: state.madrasahId,
+        archivedLevel: state.archivedLevel,
+      });
+      if (!mayRestoreAt(restorer, hiddenAt)) {
+        throw new ArchiveRestoreLevelError(hiddenAt, restorer);
+      }
+    }
     if (!(await this.courseRepo.restore(id))) {
       throw new CourseNotFoundError(id);
     }

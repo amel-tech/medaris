@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { and, asc, eq, inArray, isNull, type SQL, sql } from "drizzle-orm";
+import type { HideLevel } from "../archive/hide-level";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { DatabaseService } from "../database/database.service";
 import { isHeld } from "../database/role-assignments";
@@ -294,7 +295,8 @@ export class HostingRepository {
     koskId: string,
     madrasahId: string,
     coursesAction: CoursesAction,
-    actorId: string
+    actorId: string,
+    level: HideLevel
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
       const revoked = await tx
@@ -319,6 +321,7 @@ export class HostingRepository {
           .set({
             archivedAt: now,
             archivedBy: actorId,
+            archivedLevel: level,
             version: sql`${courses.version} + 1`,
             updatedAt: now,
           })

@@ -32,6 +32,8 @@ import {
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
+import { actingLevel } from "../archive/hide-level";
+import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { AuthorizedRequest } from "../kosk/interfaces/authorized-request.interface";
 import { byExistingKosk } from "../kosk/kosk.controller";
 import {
@@ -126,7 +128,7 @@ export class HostingController {
   @ApiOperation({
     summary: "Withdraw a medrese's hosting right",
     description:
-      "`coursesAction` decides what becomes of the medrese's courses in this köşk: KEEP leaves them as they are, HIDE hides each (they come back from the archive). The medrese can open no new course here. Written to the audit log.",
+      "`coursesAction` decides what becomes of the medrese's courses in this köşk: KEEP leaves them as they are, HIDE hides each (they come back from the archive, by the level the caller acts at: the köşk's nazımı hides at the köşk's level, a Medaris nazımı or SYSTEM_ADMIN at the platform's, so the medrese's own başmüderris cannot bring them back). The medrese can open no new course here. Written to the audit log.",
     operationId: "revokeKoskHostingRight",
   })
   @ApiQuery({
@@ -151,6 +153,27 @@ export class HostingController {
     @Query("coursesAction", new ParseEnumPipe(COURSES_ACTIONS))
     coursesAction: CoursesAction
   ): Promise<void> {
-    await this.hosting.revoke(id, madrasahId, coursesAction, request.user.sub);
+    // The courses it hides are hidden at the level the caller acts at, so that
+    // the medrese's own head cannot bring back what the köşk hid (MDRS-135).
+    const level = await actingLevel(
+      this.authz,
+      request.user,
+      { entity: ENTITIES.KOSK, id },
+      [
+        {
+          level: SCOPE_TYPES.PLATFORM,
+          codes: [PERMISSIONS.PLATFORM_HOSTING_GRANT],
+        },
+        { level: SCOPE_TYPES.KOSK, codes: [PERMISSIONS.KOSK_HOSTING] },
+      ],
+      SCOPE_TYPES.KOSK
+    );
+    await this.hosting.revoke(
+      id,
+      madrasahId,
+      coursesAction,
+      request.user.sub,
+      level
+    );
   }
 }

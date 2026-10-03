@@ -14,6 +14,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import type { HideLevel } from "../archive/hide-level";
 import { DatabaseService } from "../database/database.service";
 import {
   holdsIn,
@@ -429,7 +430,8 @@ export class CourseRepository implements ICourseRepository {
   async replace(
     id: string,
     userId: string,
-    data: IReplaceCourse
+    data: IReplaceCourse,
+    level?: HideLevel
   ): Promise<ICourseDetail> {
     const {
       weeks = [],
@@ -619,7 +621,12 @@ export class CourseRepository implements ICourseRepository {
       if (unclaimedLessonIds.size) {
         await tx
           .update(lessons)
-          .set({ archivedAt: now, archivedBy: userId, updatedAt: now })
+          .set({
+            archivedAt: now,
+            archivedBy: userId,
+            archivedLevel: level ?? null,
+            updatedAt: now,
+          })
           .where(inArray(lessons.id, [...unclaimedLessonIds]));
       }
 
@@ -629,7 +636,12 @@ export class CourseRepository implements ICourseRepository {
       if (weeksToArchive.length) {
         await tx
           .update(courseWeeks)
-          .set({ archivedAt: now, archivedBy: userId, updatedAt: now })
+          .set({
+            archivedAt: now,
+            archivedBy: userId,
+            archivedLevel: level ?? null,
+            updatedAt: now,
+          })
           .where(inArray(courseWeeks.id, weeksToArchive));
       }
     });
@@ -954,7 +966,8 @@ export class CourseRepository implements ICourseRepository {
 
   async archiveLesson(
     lessonId: string,
-    actorId: string | null = null
+    actorId: string | null = null,
+    level?: HideLevel
   ): Promise<ILessonMutation> {
     return this.db.transaction(async (tx) => {
       const courseId = await this.findLiveLessonCourseId(tx, lessonId);
@@ -962,7 +975,12 @@ export class CourseRepository implements ICourseRepository {
       const now = new Date();
       const [row] = await tx
         .update(lessons)
-        .set({ archivedAt: now, archivedBy: actorId, updatedAt: now })
+        .set({
+          archivedAt: now,
+          archivedBy: actorId,
+          archivedLevel: level ?? null,
+          updatedAt: now,
+        })
         .where(and(eq(lessons.id, lessonId), isNull(lessons.archivedAt)))
         .returning();
       // Archived by a concurrent request between the read and the lock.
@@ -1227,13 +1245,18 @@ export class CourseRepository implements ICourseRepository {
    * hide unawares. Hiding a hidden course changes nothing — not the first
    * stamp, not the version. Null when no such course exists.
    */
-  async archive(id: string, userId: string): Promise<ICourse | null> {
+  async archive(
+    id: string,
+    userId: string,
+    level: HideLevel
+  ): Promise<ICourse | null> {
     const now = new Date();
     const [row] = await this.db
       .update(courses)
       .set({
         archivedAt: now,
         archivedBy: userId,
+        archivedLevel: level,
         version: sql`${courses.version} + 1`,
         updatedAt: now,
       })
@@ -1249,12 +1272,26 @@ export class CourseRepository implements ICourseRepository {
       .set({
         archivedAt: null,
         archivedBy: null,
+        archivedLevel: null,
         version: sql`${courses.version} + 1`,
         updatedAt: new Date(),
       })
       .where(and(eq(courses.id, id), isNotNull(courses.archivedAt)))
       .returning();
     return row ?? this.findCourseRow(id);
+  }
+
+  async findHideState(id: string) {
+    const [row] = await this.db
+      .select({
+        archivedAt: courses.archivedAt,
+        archivedLevel: courses.archivedLevel,
+        madrasahId: courses.madrasahId,
+      })
+      .from(courses)
+      .where(eq(courses.id, id))
+      .limit(1);
+    return row ?? null;
   }
 
   private async findCourseRow(id: string): Promise<ICourse | null> {

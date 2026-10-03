@@ -289,21 +289,23 @@ export class KoskAdminController {
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskDirectoryItemResponse> {
-    return this.admin.hide(id, request.user.sub);
+    return this.admin.hide(id, request.user);
   }
 
   @ApiOperation({
-    summary: "Bring a hidden köşk back (SYSTEM_ADMIN only)",
+    summary: "Bring a hidden köşk back (by the level that hid it, or above)",
     description:
-      'nizam/09 "Geri al". 409 (KOSK_NOT_HIDDEN) when it is not hidden. Written to the audit log.',
+      'nizam/09 "Geri al". By the kademe rule the bans follow: the level that hid it or any level above it (the köşk\'s own nazımı for what they hid, the Medaris administration for anything); 403 ARCHIVE_RESTORE_LEVEL names both levels otherwise. 409 (KOSK_NOT_HIDDEN) when it is not hidden. Written to the audit log.',
+
     operationId: "restoreKosk",
   })
   @ApiOkResponse({ type: KoskDirectoryItemResponse })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @ApiConflictResponse({ description: "KOSK_NOT_HIDDEN" })
-  // Exempt: SYSTEM_ADMIN's, checked by the service — the same decision the
-  // archive makes for a köşk (`archive/kosk/:id/restore`).
+  // Exempt: the service decides, because the level the caller acts at is what
+  // the rule needs (the başnazım and `platform.kosk_edit` as the platform, the
+  // köşk's nazımı as the köşk), and then compares it with the one that hid.
   @AuthzExempt()
   @Post(":id/restore")
   @HttpCode(HttpStatus.OK)

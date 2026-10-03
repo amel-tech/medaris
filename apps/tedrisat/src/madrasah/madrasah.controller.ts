@@ -1,10 +1,12 @@
 import {
   ASSIGNED_ROLES,
+  type AuthenticatedUser,
   AuthGuard,
   Authz,
   AuthzGuard,
   AuthzPublic,
   type AuthzResolve,
+  AuthzService,
   ENTITIES,
   PERMISSIONS,
   SelfGrantGuard,
@@ -40,8 +42,10 @@ import {
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
+import { actingLevel } from "../archive/hide-level";
 import { CourseStatus } from "../course/domain/course-status.enum";
 import { PublicRequest } from "../course/interfaces/authorized-request.interface";
+import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { AuthorizedRequest } from "../kosk/interfaces/authorized-request.interface";
 import { maskMadrasahForAnonymous } from "./anonymous-mask";
 import { CreateMadrasahDto } from "./dto/create-madrasah.dto";
@@ -123,8 +127,30 @@ const anyMadrasah: AuthzResolve = () => ({
 export class MadrasahController {
   constructor(
     private readonly madrasahService: MadrasahService,
-    private readonly selfGrant: SelfGrantGuard
+    private readonly selfGrant: SelfGrantGuard,
+    private readonly authz: AuthzService
   ) {}
+
+  /**
+   * The level the caller hides and restores a medrese at: the başnazım and a
+   * Medaris nazımı holding `platform.madrasah_edit` as the platform, the
+   * medrese's başmüderris (`madrasah.hide`) as the medrese.
+   */
+  private hideLevel(user: AuthenticatedUser, madrasahId: string) {
+    return actingLevel(
+      this.authz,
+      user,
+      { entity: ENTITIES.MADRASAH, id: madrasahId },
+      [
+        {
+          level: SCOPE_TYPES.PLATFORM,
+          codes: [PERMISSIONS.PLATFORM_MADRASAH_EDIT],
+        },
+        { level: SCOPE_TYPES.MADRASAH, codes: [PERMISSIONS.MADRASAH_HIDE] },
+      ],
+      SCOPE_TYPES.MADRASAH
+    );
+  }
 
   @ApiOperation({
     summary: "Get a paginated list of medreses",
@@ -405,13 +431,17 @@ export class MadrasahController {
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahDirectoryItemResponse> {
-    return this.madrasahService.hide(id, request.user.sub);
+    return this.madrasahService.hide(
+      id,
+      request.user.sub,
+      await this.hideLevel(request.user, id)
+    );
   }
 
   @ApiOperation({
-    summary: "Bring a hidden medrese back (SYSTEM_ADMIN only)",
+    summary: "Bring a hidden medrese back (by the level that hid it, or above)",
     description:
-      "The courses hidden with it come back too. 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.",
+      "The courses hidden with it come back too. By the kademe rule the bans follow: the level that hid it or any level above it (the medrese's başmüderris for what they hid, the Medaris administration for anything); 403 ARCHIVE_RESTORE_LEVEL names both levels otherwise. 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.",
     operationId: "restoreMadrasah",
   })
   @ApiOkResponse({ type: MadrasahDirectoryItemResponse })
@@ -420,12 +450,19 @@ export class MadrasahController {
   @ApiConflictResponse({ description: "MADRASAH_NOT_HIDDEN" })
   @Post(":id/restore")
   @HttpCode(HttpStatus.OK)
-  @Authz(PERMISSIONS.PLATFORM_MADRASAH_EDIT, byExistingMadrasah)
+  @Authz(
+    [PERMISSIONS.MADRASAH_HIDE, PERMISSIONS.PLATFORM_MADRASAH_EDIT],
+    byExistingMadrasah
+  )
   async restore(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahDirectoryItemResponse> {
-    return this.madrasahService.restore(id, request.user.sub);
+    return this.madrasahService.restore(
+      id,
+      request.user.sub,
+      await this.hideLevel(request.user, id)
+    );
   }
 
   @ApiOperation({

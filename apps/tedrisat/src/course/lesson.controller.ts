@@ -391,6 +391,6 @@ export class LessonController {
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<LessonMutationResponse> {
-    return this.courseService.archiveLesson(id, request.user.sub);
+    return this.courseService.archiveLesson(id, request.user);
   }
 }

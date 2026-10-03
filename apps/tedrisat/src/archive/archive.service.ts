@@ -1,6 +1,6 @@
 import { AuthenticatedUser, AuthzService } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
-import { BAN_TIERS, type BanRole, mayLift, tierOfRole } from "../ban/ban-tier";
+import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
 import { KoskService } from "../kosk/kosk.service";
 import { MadrasahService } from "../madrasah/madrasah.service";
@@ -18,7 +18,9 @@ import {
   ArchiveForbiddenError,
   ArchiveItemNotFoundError,
   ArchiveParentHiddenError,
+  ArchiveRestoreLevelError,
 } from "./errors/archive-errors";
+import { type HideLevel, hiderLevelOf, mayRestoreAt } from "./hide-level";
 
 export interface IArchiveEntry extends IArchiveItem {
   archiver: IArchiver | null;
@@ -57,29 +59,13 @@ export interface IMadrasahArchivePage extends IArchivePage {
 }
 
 /**
- * The kademe of whoever hid an item, as `tierOfRole` ranks roles. A hider who
- * holds no role where the item sits is the Medaris administration (the
- * SYSTEM_ADMIN realm role leaves no row), the highest; an item hidden before
- * hiders were recorded names nobody, the lowest, so anyone allowed to restore
- * it may.
+ * The level the caller restores at, for an item: the başnazım is the platform,
+ * the item's köşk nazımı the köşk, the item's medrese başmüderris the medrese,
+ * and everyone else nothing (null). A restore is by the level that hid the item
+ * or any above it (`mayRestoreAt`), so the same row of the ladder that was
+ * recorded when it was hidden decides.
  */
-export function hiderTier(
-  item: Pick<IArchiveItem, "archivedBy">,
-  archiver: Pick<IArchiver, "role"> | null
-): number {
-  if (item.archivedBy === null) return BAN_TIERS.COURSE;
-  return archiver?.role
-    ? tierOfRole(archiver.role as BanRole)
-    : BAN_TIERS.PLATFORM;
-}
-
-/**
- * How the caller reaches the restore of an item: "open" for the başnazım and
- * the item's köşk nazımı, who restore whatever sits there; "head" for the
- * item's medrese başmüderris, whose restore the kademe rule limits; null for
- * everyone else.
- */
-type RestoreRoute = "open" | "head" | null;
+type RestoreRoute = HideLevel | null;
 
 /**
  * The archive (MDRS-173): what nazımlar hid, listed, restored and, for the
@@ -153,7 +139,7 @@ export class ArchiveService {
     const items = await Promise.all(
       page.items.map(async (entry) => ({
         ...entry,
-        canRestore: await this.canRestore(user, entry, entry.archiver, once),
+        canRestore: await this.canRestore(user, entry, once),
       }))
     );
     const count = (type: ArchiveItemType) => counted.get(type) ?? 0;
@@ -277,11 +263,12 @@ export class ArchiveService {
   }
 
   /**
-   * The başnazım restores anything, a köşk nazımı what sits in their köşk, and
-   * a medrese's başmüderris what sits in their medrese unless a higher kademe
-   * hid it (nazir/12, "yalnız o kademe ya da üstü geri alabilir"). The kademe
-   * rule is the medrese side's only: the köşk path was open before it and is
-   * left as it was.
+   * Who may bring an item back: the başnazım, a köşk nazımı for what sits in
+   * their köşk, a medrese's başmüderris for what sits in their medrese, and
+   * then only by the kademe rule: the level that hid it or one above
+   * (`ArchiveRestoreLevelError` names both levels otherwise). An item hidden
+   * before the level was recorded counts as hidden at the lowest level that
+   * could have hidden it.
    */
   private async assertMayRestore(
     user: AuthenticatedUser,
@@ -289,30 +276,19 @@ export class ArchiveService {
   ): Promise<void> {
     const route = await this.restoreRoute(user, item, (_key, ask) => ask());
     if (route === null) throw new ArchiveForbiddenError();
-    if (route === "head") {
-      const archiver =
-        (await this.repo.archivers([item])).get(`${item.type}:${item.id}`) ??
-        null;
-      if (!mayLift(BAN_TIERS.MADRASAH, hiderTier(item, archiver))) {
-        throw new ArchiveForbiddenError(
-          "A higher kademe hid this; only that kademe or above brings it back"
-        );
-      }
+    const hiddenAt = hiderLevelOf(item);
+    if (!mayRestoreAt(route, hiddenAt)) {
+      throw new ArchiveRestoreLevelError(hiddenAt, route);
     }
   }
 
   private async canRestore(
     user: AuthenticatedUser,
     item: IArchiveItem,
-    archiver: IArchiver | null,
     once: (key: string, ask: () => Promise<boolean>) => Promise<boolean>
   ): Promise<boolean> {
     const route = await this.restoreRoute(user, item, once);
-    return (
-      route === "open" ||
-      (route === "head" &&
-        mayLift(BAN_TIERS.MADRASAH, hiderTier(item, archiver)))
-    );
+    return route !== null && mayRestoreAt(route, hiderLevelOf(item));
   }
 
   private async restoreRoute(
@@ -320,7 +296,7 @@ export class ArchiveService {
     item: IArchiveItem,
     once: (key: string, ask: () => Promise<boolean>) => Promise<boolean>
   ): Promise<RestoreRoute> {
-    if (this.authz.isSystemAdmin(user)) return "open";
+    if (this.authz.isSystemAdmin(user)) return SCOPE_TYPES.PLATFORM;
     if (
       KOSK_SCOPED.includes(item.type) &&
       item.koskId !== null &&
@@ -328,7 +304,7 @@ export class ArchiveService {
         this.koskService.isManager(item.koskId as string, user.sub)
       ))
     ) {
-      return "open";
+      return SCOPE_TYPES.KOSK;
     }
     if (
       MADRASAH_SCOPED.includes(item.type) &&
@@ -337,7 +313,7 @@ export class ArchiveService {
         this.madrasahService.isNazir(item.madrasahId as string, user.sub)
       ))
     ) {
-      return "head";
+      return SCOPE_TYPES.MADRASAH;
     }
     return null;
   }

@@ -8,8 +8,10 @@ import {
   ROLES,
 } from "@medaris/common";
 import { Injectable, Logger } from "@nestjs/common";
+import { actingLevel, type IHideStep } from "../archive/hide-level";
 import { GrantExpiryInvalidError } from "../assignment/admin/errors";
 import { checkGrantExpiry } from "../assignment/admin/grant-plan";
+import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { KeycloakAdminService } from "../keycloak-admin/keycloak-admin.service";
 import type { CreateKoskDto } from "./dto/create-kosk.dto";
 import type {
@@ -67,6 +69,12 @@ const nameOf = (row: IPersonRow | undefined): string | null => {
  * alone, like the medrese screens before them; a köşk's nazımları read their
  * own table and nazım list and may hide their köşk.
  */
+/** How a köşk is hidden and restored: the platform's `platform.kosk_edit`, or the köşk's own `kosk.manage`. */
+const KOSK_HIDE_LADDER: readonly IHideStep[] = [
+  { level: SCOPE_TYPES.PLATFORM, codes: [PERMISSIONS.PLATFORM_KOSK_EDIT] },
+  { level: SCOPE_TYPES.KOSK, codes: [PERMISSIONS.KOSK_MANAGE] },
+];
+
 @Injectable()
 export class KoskAdminService {
   private readonly logger = new Logger(KoskAdminService.name);
@@ -210,9 +218,16 @@ export class KoskAdminService {
   /** `@Authz([kosk.manage, platform.kosk_edit])` on the route decided who may; this writes. */
   async hide(
     koskId: string,
-    actorId: string
+    user: AuthenticatedUser
   ): Promise<KoskDirectoryItemResponse> {
-    const outcome = await this.repo.hide(koskId, actorId);
+    const level = await actingLevel(
+      this.authz,
+      user,
+      { entity: ENTITIES.KOSK, id: koskId },
+      KOSK_HIDE_LADDER,
+      SCOPE_TYPES.KOSK
+    );
+    const outcome = await this.repo.hide(koskId, user.sub, level);
     if (outcome === "no-kosk") throw new KoskNotFoundError(koskId);
     if (outcome === "already-hidden") throw new KoskAlreadyHiddenError(koskId);
     return this.presentOne(koskId);
@@ -222,12 +237,22 @@ export class KoskAdminService {
     user: AuthenticatedUser,
     koskId: string
   ): Promise<KoskDirectoryItemResponse> {
-    await this.requirePlatform(
+    // The başnazım and a Medaris nazımı holding `platform.kosk_edit` act as the
+    // platform, the köşk's own nazımı as the köşk; the repository then refuses
+    // a restore by a lower level than the one that hid it.
+    const level = await actingLevel(
+      this.authz,
       user,
-      PERMISSIONS.PLATFORM_KOSK_EDIT,
-      "bring a hidden köşk back"
+      { entity: ENTITIES.KOSK, id: koskId },
+      KOSK_HIDE_LADDER,
+      null
     );
-    const outcome = await this.repo.restore(koskId, user.sub);
+    if (level === null) {
+      throw new AuthzForbiddenError(
+        `Only the köşk's nazımı, the Medaris başnazımı and a Medaris nazımı holding ${PERMISSIONS.PLATFORM_KOSK_EDIT} may bring a hidden köşk back`
+      );
+    }
+    const outcome = await this.repo.restore(koskId, user.sub, level);
     if (outcome === "no-kosk") throw new KoskNotFoundError(koskId);
     if (outcome === "not-hidden") throw new KoskNotHiddenError(koskId);
     return this.presentOne(koskId);

@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import type { HideLevel } from "../../archive/hide-level";
 import { displayNameOf } from "../../assignment/assignment.service";
 import { UserDirectoryService } from "../../assignment/user-directory.service";
 import { MuderrisUnknownUserError } from "../../course/errors/muderris-unknown-user.error";
@@ -145,9 +146,15 @@ export class MadrasahCourseService {
   async hide(
     madrasahId: string,
     courseId: string,
-    actorId: string
+    actorId: string,
+    level: HideLevel
   ): Promise<void> {
-    const result = await this.repo.hideCourse(madrasahId, courseId, actorId);
+    const result = await this.repo.hideCourse(
+      madrasahId,
+      courseId,
+      actorId,
+      level
+    );
     if (result === "not-found") {
       throw new MadrasahCourseNotFoundError(madrasahId, courseId);
     }

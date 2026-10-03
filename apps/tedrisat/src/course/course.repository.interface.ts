@@ -1,3 +1,4 @@
+import type { HideLevel } from "../archive/hide-level";
 import type { IPurgeCounts } from "./course-purge";
 import { CourseLevel } from "./domain/course-level.enum";
 import { CourseStatus } from "./domain/course-status.enum";
@@ -409,10 +410,22 @@ export interface ICourseRepository {
   replace(
     id: string,
     userId: string,
-    data: IReplaceCourse
+    data: IReplaceCourse,
+    /** The level the saver acts at, recorded on the weeks and sessions the save hides. */
+    level?: HideLevel
   ): Promise<ICourseDetail>;
-  archive(id: string, userId: string): Promise<ICourse | null>;
+  archive(
+    id: string,
+    userId: string,
+    level: HideLevel
+  ): Promise<ICourse | null>;
   restore(id: string): Promise<ICourse | null>;
+  /** What a restore needs to know of a course: whether it is hidden, at which level, and its medrese. */
+  findHideState(id: string): Promise<{
+    archivedAt: Date | null;
+    archivedLevel: HideLevel | null;
+    madrasahId: string | null;
+  } | null>;
   /** SYSTEM_ADMIN's delete: the course, its children and an audit entry. */
   purge(id: string, actorId: string): Promise<IPurgeCounts | null>;
   /** The course a lesson belongs to, archived or not; null if no such lesson. */
@@ -429,7 +442,8 @@ export interface ICourseRepository {
   ): Promise<ILessonMutation>;
   archiveLesson(
     lessonId: string,
-    actorId?: string | null
+    actorId?: string | null,
+    level?: HideLevel
   ): Promise<ILessonMutation>;
   /** Marks the session cancelled, keeping its slot (MDRS-176). */
   cancelLesson(

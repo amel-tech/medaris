@@ -181,7 +181,7 @@ POST /madrasahs/:id/hide -> madrasah.hide | platform.madrasah_edit on byExisting
 POST /madrasahs/:id/nazirs/:userId -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
 POST /madrasahs/:id/offsite-course-requests -> madrasah.offsite_course_request on byExistingMadrasah
 POST /madrasahs/:id/permission-groups -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
-POST /madrasahs/:id/restore -> platform.madrasah_edit on byExistingMadrasah
+POST /madrasahs/:id/restore -> madrasah.hide | platform.madrasah_edit on byExistingMadrasah
 POST /me/calendar-feed -> no AuthzGuard
 POST /nizam/deck-publish-requests/:id/approve -> no AuthzGuard
 POST /nizam/deck-publish-requests/:id/reject -> no AuthzGuard

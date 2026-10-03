@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import type { HideLevel } from "../archive/hide-level";
 import { GrantExpiryInvalidError } from "../assignment/admin/errors";
 import { checkGrantExpiry } from "../assignment/admin/grant-plan";
 import { KeycloakAdminService } from "../keycloak-admin/keycloak-admin.service";
@@ -279,9 +280,10 @@ export class MadrasahService {
   /** "Medreseyi gizle" (nazir/12): out of every list, its courses with it; nothing is deleted. */
   async hide(
     madrasahId: string,
-    actorId: string
+    actorId: string,
+    level: HideLevel
   ): Promise<IMadrasahDirectoryItem> {
-    const result = await this.madrasahRepo.hide(madrasahId, actorId);
+    const result = await this.madrasahRepo.hide(madrasahId, actorId, level);
     if (result === "not-found") throw new MadrasahNotFoundError(madrasahId);
     if (result === "already-hidden") {
       throw new MadrasahAlreadyHiddenError(madrasahId);
@@ -292,9 +294,10 @@ export class MadrasahService {
   /** "Geri al": a hidden medrese is listed again. */
   async restore(
     madrasahId: string,
-    actorId: string
+    actorId: string,
+    level: HideLevel
   ): Promise<IMadrasahDirectoryItem> {
-    const result = await this.madrasahRepo.restore(madrasahId, actorId);
+    const result = await this.madrasahRepo.restore(madrasahId, actorId, level);
     if (result === "not-found") throw new MadrasahNotFoundError(madrasahId);
     if (result === "not-hidden") throw new MadrasahNotHiddenError(madrasahId);
     return this.directoryItem(madrasahId);

@@ -8,8 +8,8 @@ import {
 
 /**
  * "Geri al" (`POST /archive/:type/:id/restore`): the API decides by kademe, so
- * a refusal is its code (ARCHIVE_FORBIDDEN, ARCHIVE_ITEM_NOT_FOUND,
- * ARCHIVE_PARENT_HIDDEN) and the page words it.
+ * a refusal is its code (ARCHIVE_FORBIDDEN, ARCHIVE_RESTORE_LEVEL,
+ * ARCHIVE_ITEM_NOT_FOUND, ARCHIVE_PARENT_HIDDEN) and the page words it.
  */
 export async function restoreItem(
   type: string,

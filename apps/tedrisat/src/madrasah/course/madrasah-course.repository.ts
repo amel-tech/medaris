@@ -9,6 +9,7 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
+import type { HideLevel } from "../../archive/hide-level";
 import { DatabaseService } from "../../database/database.service";
 import {
   isHeld,
@@ -310,12 +311,14 @@ export class MadrasahCourseRepository {
    * Hides a course of the medrese (nazir/18): `archived_at` and `archived_by`
    * are stamped and the version moves, as `CourseRepository.archive` does, and
    * nothing is deleted. The first hider's stamp is never overwritten, so the
-   * kademe rule of the archive keeps judging the one who hid it first.
+   * kademe rule of the archive keeps judging the one who hid it first, at the
+   * level they acted at (`level`, MDRS-135).
    */
   async hideCourse(
     madrasahId: string,
     courseId: string,
-    actorId: string
+    actorId: string,
+    level: HideLevel
   ): Promise<HideMadrasahCourseResult> {
     return this.db.transaction(async (tx) => {
       const [course] = await tx
@@ -333,6 +336,7 @@ export class MadrasahCourseRepository {
         .set({
           archivedAt: now,
           archivedBy: actorId,
+          archivedLevel: level,
           version: sql`${courses.version} + 1`,
           updatedAt: now,
         })

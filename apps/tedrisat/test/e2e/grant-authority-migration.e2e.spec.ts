@@ -54,7 +54,9 @@ describe("0047_mdrs_135_grant_authority migration (e2e)", () => {
     ) as { entries: { tag: string }[] };
     const tags = journal.entries.map((e) => e.tag);
     const target = tags.indexOf(TARGET);
-    expect(target).toBe(tags.length - 1);
+    // 0047 is in the journal, and exactly the ones before it are applied first
+    // (later migrations have their own specs).
+    expect(target).toBeGreaterThan(0);
     for (const tag of tags.slice(0, target)) {
       await run(join(MIGRATIONS, `${tag}.sql`));
     }

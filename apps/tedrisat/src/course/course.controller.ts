@@ -304,7 +304,7 @@ export class CourseController {
   @ApiOperation({
     summary: "Hide a course (Gizle)",
     description:
-      "The köşk manager's way to take a course down: nothing is deleted, every list leaves it out, and it answers 404 to everyone but the köşk manager and SYSTEM_ADMIN until it is restored (MDRS-124).",
+      "The köşk manager's way to take a course down: nothing is deleted, every list leaves it out, and it answers 404 to everyone but the köşk manager and SYSTEM_ADMIN until it is restored (MDRS-124). The level the caller acts at is recorded with the hide (köşk, medrese, or platform for SYSTEM_ADMIN) and decides who may restore it (MDRS-135).",
     operationId: "archiveCourse",
   })
   @ApiOkResponse({ type: CourseDetailResponse })
@@ -320,12 +320,14 @@ export class CourseController {
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseDetailResponse> {
-    await this.courseService.archive(id, request.user.sub);
+    await this.courseService.archive(id, request.user);
     return this.courseService.viewDetail(id, request.user, { audit: false });
   }
 
   @ApiOperation({
     summary: "Restore a hidden course (Geri al)",
+    description:
+      "By kademe (MDRS-135): the level that hid the course, or any level above it (course < medrese < köşk < platform). A lower level answers 403 (ARCHIVE_RESTORE_LEVEL), naming the level that hid it and the caller's. A course hidden before the level was recorded counts as the lowest level that could have hidden it.",
     operationId: "restoreCourse",
   })
   @ApiOkResponse({ type: CourseDetailResponse })
@@ -341,7 +343,7 @@ export class CourseController {
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseDetailResponse> {
-    await this.courseService.restore(id);
+    await this.courseService.restore(id, request.user);
     return this.courseService.viewDetail(id, request.user, { audit: false });
   }
 

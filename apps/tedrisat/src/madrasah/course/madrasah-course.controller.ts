@@ -3,6 +3,7 @@ import {
   AuthGuard,
   Authz,
   AuthzGuard,
+  AuthzService,
   ENTITIES,
   PERMISSIONS,
   SelfGrantGuard,
@@ -32,6 +33,7 @@ import {
   ApiOperation,
   ApiTags,
 } from "@nestjs/swagger";
+import { SCOPE_TYPES } from "../../database/schema/scope-type.schema";
 import { AuthorizedRequest } from "../../kosk/interfaces/authorized-request.interface";
 import { MadrasahCourseListItemResponse } from "../dto/madrasah-settings.dto";
 import { byExistingMadrasah } from "../madrasah.controller";
@@ -62,7 +64,8 @@ import { MadrasahCourseService } from "./madrasah-course.service";
 export class MadrasahCourseController {
   constructor(
     private readonly courses: MadrasahCourseService,
-    private readonly selfGrant: SelfGrantGuard
+    private readonly selfGrant: SelfGrantGuard,
+    private readonly authz: AuthzService
   ) {}
 
   @ApiOperation({
@@ -165,7 +168,13 @@ export class MadrasahCourseController {
     @Param("id", ParseUUIDPipe) id: string,
     @Param("courseId", ParseUUIDPipe) courseId: string
   ): Promise<void> {
-    await this.courses.hide(id, courseId, request.user.sub);
+    // The başnazım hides as the platform, everyone else who holds
+    // `madrasah.course_hide` as the medrese: a köşk nazımı hides a medrese's
+    // course through `POST /courses/:id/archive`, at the köşk's level.
+    const level = this.authz.isSystemAdmin(request.user)
+      ? SCOPE_TYPES.PLATFORM
+      : SCOPE_TYPES.MADRASAH;
+    await this.courses.hide(id, courseId, request.user.sub, level);
   }
 
   @ApiOperation({

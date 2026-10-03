@@ -171,7 +171,7 @@ export class ArchiveController {
   @ApiOperation({
     summary: "Bring a hidden item back (Geri al)",
     description:
-      "A köşk manager restores courses, weeks and sessions of their köşk; SYSTEM_ADMIN restores anything. A week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).",
+      "By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. A köşk manager restores courses, weeks, sessions and decks of their köşk, a medrese's başmüderris what sits in their medrese, SYSTEM_ADMIN anything; a lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both. A week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).",
     operationId: "restoreArchiveItem",
   })
   @ApiOkResponse({ type: ArchiveRestoreResponse })
