@@ -27,6 +27,9 @@
 @import "./mds/components.css" layer(components);
 @import "./mds/medrese.css" layer(components);
 
+/* Base UI data-* twins of the native state selectors, and the open list. */
+@import "./mds/baseui.css" layer(components);
+
 /* Utilities read the tokens; nothing is written to :root. */
 @import "@medaris/tokens/tailwind.css";
 
