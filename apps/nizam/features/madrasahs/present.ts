@@ -1,5 +1,6 @@
 import type {
   CreateMadrasahDto,
+  HeadDelegationResponse,
   MadrasahDirectoryItemResponse,
   MadrasahStatus,
   MadrasahStatusFilter,
@@ -239,6 +240,8 @@ const KNOWN: Record<string, string> = {
   MADRASAH_HANDLE_TAKEN: "errors.handleTaken",
   MADRASAH_NOT_FOUND: "errors.notFound",
   MADRASAH_NOT_HIDDEN: "errors.notHidden",
+  DISMISS_DECISIONS_INCOMPLETE: "errors.delegationsChanged",
+  GRANT_EXPIRY_INVALID: "errors.expiryInvalid",
   AUTHZ_FORBIDDEN: "errors.forbidden",
 };
 
@@ -281,4 +284,51 @@ export function pickedUser(user: {
     name: name || user.email || "",
     email: user.email ?? null,
   };
+}
+
+/** One person's share of what a başmüderris handed on: every role, group and permission given to them. */
+export interface PersonHandOn {
+  person: HeadDelegationResponse["to"];
+  items: HeadDelegationResponse[];
+}
+
+type Answers = Readonly<Record<string, "TAKE_OVER" | "DROP" | undefined>>;
+
+/**
+ * The hand-ons by the person they went to, in the order they first appear:
+ * the başnazım decides once for each person (nizam/22), the API still takes an
+ * answer for every item.
+ */
+export function groupByPerson(
+  items: readonly HeadDelegationResponse[]
+): PersonHandOn[] {
+  const groups = new Map<string, PersonHandOn>();
+  for (const item of items) {
+    const found = groups.get(item.to.id);
+    if (found) found.items.push(item);
+    else groups.set(item.to.id, { person: item.to, items: [item] });
+  }
+  return [...groups.values()];
+}
+
+/** Every item of a person gets that person's answer. */
+export function personDecisions(
+  groups: readonly PersonHandOn[],
+  answers: Answers
+) {
+  return groups.flatMap((g) =>
+    g.items.map((item) => ({
+      kind: item.kind,
+      id: item.id,
+      action: answers[g.person.id] as "TAKE_OVER" | "DROP",
+    }))
+  );
+}
+
+/** The confirm button stays off until every person has an answer. */
+export function personsReady(
+  groups: readonly PersonHandOn[],
+  answers: Answers
+): boolean {
+  return groups.every((g) => answers[g.person.id] !== undefined);
 }
