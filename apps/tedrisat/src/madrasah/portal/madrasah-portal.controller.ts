@@ -1,4 +1,4 @@
-import { AuthGuard, Authz, AuthzGuard, SCOPES } from "@medaris/common";
+import { AuthGuard, Authz, AuthzGuard, PERMISSIONS } from "@medaris/common";
 import {
   Controller,
   DefaultValuePipe,
@@ -35,9 +35,9 @@ const STUDENT_STATES = [EnrollmentStatus.ENROLLED, EnrollmentStatus.COMPLETED];
 
 /**
  * The nazır portal's talebe list (nazir/10) and Pano (nazir/01), under
- * `/madrasahs/:id`. The medrese's başmüderris and SYSTEM_ADMIN call these; a
- * nazır of the medrese is not on the matrix row that holds `MANAGE_MADRASAH`,
- * so gets 403.
+ * `/madrasahs/:id`. The medrese's başmüderris and SYSTEM_ADMIN call these by
+ * role default, and a nazır of the medrese once given `madrasah.students_view`;
+ * a nazır with no grant gets 403.
  */
 @ApiTags("madrasahs")
 @ApiBearerAuth()
@@ -65,7 +65,7 @@ export class MadrasahPortalController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/students")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_STUDENTS_VIEW, byExistingMadrasah)
   students(
     @Param("id", ParseUUIDPipe) id: string,
     @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -115,7 +115,7 @@ export class MadrasahPortalController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/dashboard")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_STUDENTS_VIEW, byExistingMadrasah)
   dashboard(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string

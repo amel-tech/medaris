@@ -1,11 +1,11 @@
 import {
+  ASSIGNED_ROLES,
   AUTHZ_KEY,
   AUTHZ_PUBLIC_KEY,
   type AuthzMeta,
   ENTITIES,
-  MATRIX,
-  ROLES,
-  SCOPES,
+  PERMISSIONS,
+  type PermissionCode,
 } from "@medaris/common";
 import { describe, expect, it } from "vitest";
 import { MadrasahController } from "../../../src/madrasah/madrasah.controller";
@@ -14,6 +14,7 @@ import {
   planSettingsUpdate,
 } from "../../../src/madrasah/madrasah-settings";
 import { MadrasahNazirController } from "../../../src/madrasah/nazir/madrasah-nazir.controller";
+import { permissionsOf, rolesHolding } from "../../helpers/authz-holders";
 
 /**
  * MDRS-184: what saving nazir/04 changes, and who may call the routes behind
@@ -74,41 +75,49 @@ describe("planSettingsUpdate", () => {
 });
 
 describe("authorization of the nazir/04 and nazir/05 routes", () => {
-  const routes: Array<[string, (...args: never[]) => unknown, string]> = [
+  // What each route asks for. The nazır routes take either the medrese's own
+  // permission or the Medaris nazımı's, which the platform gives (MDRS-135).
+  const NAZIR_APPOINT: readonly PermissionCode[] = [
+    PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+    PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT,
+  ];
+  const routes: Array<
+    [string, (...args: never[]) => unknown, readonly PermissionCode[]]
+  > = [
     [
       "GET settings",
       MadrasahController.prototype.getSettings,
-      SCOPES.MANAGE_MADRASAH,
+      [PERMISSIONS.MADRASAH_SETTINGS_EDIT],
     ],
     [
       "PATCH settings",
       MadrasahController.prototype.updateSettings,
-      SCOPES.MANAGE_MADRASAH,
+      [PERMISSIONS.MADRASAH_SETTINGS_EDIT],
     ],
     [
       "GET courses",
       MadrasahController.prototype.findCourses,
-      SCOPES.MANAGE_MADRASAH,
+      [
+        PERMISSIONS.MADRASAH_COURSE_OPEN,
+        PERMISSIONS.MADRASAH_COURSE_HIDE,
+        PERMISSIONS.MADRASAH_MUDERRIS_MANAGE,
+      ],
     ],
-    [
-      "GET nazirs",
-      MadrasahNazirController.prototype.list,
-      SCOPES.MANAGE_MADRASAH,
-    ],
+    ["GET nazirs", MadrasahNazirController.prototype.list, NAZIR_APPOINT],
     [
       "POST nazirs/:userId",
       MadrasahNazirController.prototype.addNazir,
-      SCOPES.INVITE_NAZIR,
+      NAZIR_APPOINT,
     ],
     [
       "GET nazirs/:userId/grants",
       MadrasahNazirController.prototype.grants,
-      SCOPES.REMOVE_NAZIR,
+      NAZIR_APPOINT,
     ],
     [
       "DELETE nazirs/:userId",
       MadrasahNazirController.prototype.removeNazir,
-      SCOPES.REMOVE_NAZIR,
+      NAZIR_APPOINT,
     ],
   ];
 
@@ -120,13 +129,13 @@ describe("authorization of the nazir/04 and nazir/05 routes", () => {
 
   it.each(
     routes
-  )("%s needs a scope only a medrese's başmüderris holds", (_name, handler, scope) => {
+  )("%s needs a permission only a medrese's başmüderris holds by default", (_name, handler, permission) => {
     const meta = Reflect.getMetadata(AUTHZ_KEY, handler) as AuthzMeta;
-    expect(meta.scope).toBe(scope);
-    const holders = Object.entries(MATRIX[ENTITIES.MADRASAH])
-      .filter(([, scopes]) => scopes?.includes(meta.scope))
-      .map(([role]) => role);
-    // A stranger (PUBLIC) and a caller with no token (ANONYMOUS) get 403.
-    expect(holders).toEqual([ROLES.MADRASAH_NAZIR]);
+    expect(permissionsOf(meta)).toEqual(permission);
+    // A stranger (PUBLIC) and a caller with no token (ANONYMOUS) get 403; a
+    // medrese nazırı and a Medaris nazımı hold it only through a grant.
+    expect(rolesHolding(permissionsOf(meta), ENTITIES.MADRASAH)).toEqual([
+      ASSIGNED_ROLES.MEDRESE_BASMUDERRIS,
+    ]);
   });
 });

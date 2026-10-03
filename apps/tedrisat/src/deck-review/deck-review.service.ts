@@ -1,4 +1,9 @@
-import { AuthenticatedUser, AuthzService } from "@medaris/common";
+import {
+  AuthenticatedUser,
+  AuthzService,
+  ENTITIES,
+  PERMISSIONS,
+} from "@medaris/common";
 import { Injectable, Logger } from "@nestjs/common";
 import { DeckPublishStatus } from "../flashcard/domain/deck-publish-status.enum";
 import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
@@ -43,7 +48,7 @@ export interface ICreateKoskDeck {
  * requests (nizam/16) and a köşk nazımı's own decks, the müderris proposals
  * and the Gizle action (nizam/30 and 35).
  *
- * Authorization is here, not in `@Authz`: the matrix has no entity for either
+ * Authorization is here, not in `@Authz`: the engine has no entity for either
  * question. Reviewing publish requests is the Medaris başnazımı's
  * (SYSTEM_ADMIN) alone, since `platform.deck_publish` is not enforced
  * anywhere yet; a köşk's decks are its nazımları's and the başnazım's.
@@ -68,7 +73,7 @@ export class DeckReviewService {
     status: "PENDING" | "DECIDED",
     paging: IPaging
   ): Promise<{ items: IPublishRequest[]; counts: IRequestCounts }> {
-    this.assertChief(user);
+    await this.assertChief(user);
     const [items, counts] = await Promise.all([
       this.repo.listRequests(status, paging.limit, paging.offset),
       this.repo.countRequests(),
@@ -88,7 +93,7 @@ export class DeckReviewService {
     items: { id: string; front: string; back: string }[];
     total: number;
   }> {
-    this.assertChief(user);
+    await this.assertChief(user);
     const deck = await this.requireRequest(deckId);
     const total = await this.repo.countCards(deckId);
     await this.repo.audit({
@@ -110,7 +115,7 @@ export class DeckReviewService {
   }
 
   async approve(user: AuthenticatedUser, deckId: string): Promise<void> {
-    this.assertChief(user);
+    await this.assertChief(user);
     const deck = await this.requireRequest(deckId);
     if (!(await this.repo.approve(deckId, user.sub))) {
       throw new DeckRequestNotPendingError(deckId);
@@ -126,7 +131,7 @@ export class DeckReviewService {
     deckId: string,
     reason: string
   ): Promise<void> {
-    this.assertChief(user);
+    await this.assertChief(user);
     const deck = await this.requireRequest(deckId);
     const trimmed = reason.trim();
     if (!(await this.repo.reject(deckId, user.sub, trimmed))) {
@@ -270,12 +275,21 @@ export class DeckReviewService {
 
   // ---- decisions ----
 
-  private assertChief(user: AuthenticatedUser): void {
-    if (!this.authz.isSystemAdmin(user)) {
-      throw new DeckReviewForbiddenError(
-        "Only the Medaris başnazımı may review deck publish requests"
-      );
+  /** The başnazım, or a Medaris nazımı holding `platform.deck_publish` (MDRS-135). */
+  private async assertChief(user: AuthenticatedUser): Promise<void> {
+    if (this.authz.isSystemAdmin(user)) return;
+    if (
+      await this.authz.can(
+        user,
+        { entity: ENTITIES.FLASHCARD_DECK, id: "any" },
+        PERMISSIONS.PLATFORM_DECK_PUBLISH
+      )
+    ) {
+      return;
     }
+    throw new DeckReviewForbiddenError(
+      "Only the Medaris başnazımı and a Medaris nazımı holding platform.deck_publish may review deck publish requests"
+    );
   }
 
   private async assertKoskNazim(

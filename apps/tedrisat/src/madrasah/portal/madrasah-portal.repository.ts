@@ -291,9 +291,8 @@ export class MadrasahPortalRepository {
   }
 
   /**
-   * Where the caller holds the roles the course matrix lets decide an
-   * application (`MANAGE_ENROLLMENTS`): MUDERRIS of a course, KOSK_NAZIM of a
-   * köşk. SYSTEM_ADMIN is the service's to add: it is a realm role.
+   * Where the caller holds the roles whose defaults decide an application
+   * (`enrollment.decide`): MUDERRIS of a course, KOSK_NAZIM of a köşk. SYSTEM_ADMIN is the service's to add: it is a realm role.
    */
   async decidingScopes(userId: string): Promise<IDecidingScopes> {
     const rows = await this.db

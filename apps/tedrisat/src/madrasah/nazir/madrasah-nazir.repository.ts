@@ -262,7 +262,12 @@ export class MadrasahNazirRepository {
     madrasahId: string,
     nazirId: string,
     actorId: string,
-    wanted: { scopes: IWantedScope[]; expiresAt: Date | null }
+    wanted: {
+      scopes: IWantedScope[];
+      expiresAt: Date | null;
+      /** The level of the authority the giver acts under (MDRS-135). */
+      authority: ScopeType;
+    }
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
       const [madrasah] = await tx
@@ -379,6 +384,7 @@ export class MadrasahNazirRepository {
             userId: nazirId,
             ...row,
             grantedBy: actorId,
+            authorityScopeType: wanted.authority,
             expiresAt,
           }))
         );

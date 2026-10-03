@@ -29,10 +29,7 @@ import {
 } from "@nestjs/swagger";
 import { BAN_SCOPES, type BanScope } from "../database/schema/ban.schema";
 import { AuthenticatedUserRequest } from "../user/interfaces/authenticated-user-request.interface";
-import {
-  BanService,
-  type IAllBansList,
-} from "./ban.service";
+import { BanService, type IAllBansList } from "./ban.service";
 import { presentBan, presentList, presentMadrasahBan } from "./ban-present";
 import {
   AllBansListResponse,
@@ -54,7 +51,7 @@ const presentAll = (list: IAllBansList): AllBansListResponse => ({
 
 /**
  * Bans (MDRS-177, screens nizam/41 and nizam/42). Like `ArchiveController`,
- * no `AuthzGuard`: the matrix has no ban entity, and `BanService` makes the
+ * no `AuthzGuard`: the engine has no ban entity, and `BanService` makes the
  * one decision every route shares, the kademe rule.
  *
  * The reason of a ban is returned here, to people who place and lift bans,

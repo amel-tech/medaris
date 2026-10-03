@@ -37,8 +37,8 @@ function personOf(
 /**
  * The medrese's nazırs (nazir/05 and nazir/15): the MEDRESE_NAZIR appointments
  * and what hangs on them in the medrese. Reached through
- * `MadrasahNazirController`, whose `@Authz` scopes decide who may call it —
- * the medrese's başmüderris and SYSTEM_ADMIN; nothing here re-checks the
+ * `MadrasahNazirController`, whose `@Authz` permissions decide who may call it —
+ * the medrese's başmüderris and SYSTEM_ADMIN, or a nazır given the permission; nothing here re-checks the
  * caller. A nazır holds nothing until someone gives it (nazir/06).
  */
 @Injectable()

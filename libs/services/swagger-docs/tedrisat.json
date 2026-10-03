@@ -2674,7 +2674,7 @@
             }
           },
           "403": {
-            "description": "No `edit` on the course, or the save changes the müderris list without `assign_muderris` — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN)."
+            "description": "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN)."
           },
           "404": {
             "description": "No such course, or a müderris row links an account that has never signed in (MUDERRIS_UNKNOWN_USER)."

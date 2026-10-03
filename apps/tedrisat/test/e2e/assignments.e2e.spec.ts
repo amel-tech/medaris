@@ -428,19 +428,33 @@ describe("Assignments (e2e)", () => {
       );
       expect(muderris.permissions).toContain("course.publish");
       expect(muderris.permissions).not.toContain("kosk.manage");
-      // BASMUDERRIS has no defaults and no grants: no empty group.
-      expect(
-        groups.find((g) => g.role === "MEDRESE_BASMUDERRIS")
-      ).toBeUndefined();
-      // The köşk grant, with no role there, is its own group.
-      const grantOnly = groups.find((g) => g.role === null);
-      expect(grantOnly).toMatchObject({
-        scopeType: "kosk",
-        permissions: ["kosk.manage"],
-      });
+      // The permission to give permissions is a rule the screens state, not a
+      // line they print (MDRS-135).
+      expect(muderris.permissions).not.toContain("permission.grant");
+      // A başmüderris holds the medrese's own defaults (MDRS-135 §3): they were
+      // empty before the catalogue, so there was no group to show.
+      const head = groups.find((g) => g.role === "MEDRESE_BASMUDERRIS");
+      expect(head.permissions).toContain("madrasah.course_open");
+      expect(head.permissions).not.toContain("permission.grant");
+      expect(head.permissions).not.toContain("kosk.manage");
+      // The köşk grant has no role of this person's in the köşk or above it, and
+      // a permission never outlasts its role (MDRS-135): it counts for nothing,
+      // here as in the engine, so it is no group and no line.
+      expect(groups.find((g) => g.role === null)).toBeUndefined();
+      expect(groups.flatMap((g) => g.permissions).includes("kosk.manage")).toBe(
+        false
+      );
     });
 
     it("effective permissions: a group's unknown code never reaches the answer", async () => {
+      // A ders nazırı holds nothing but what is given (MDRS-135 §3), so the
+      // group's one known code is the whole of the group.
+      await assignRole(databaseService.db, {
+        userId: TALEBE_ID,
+        role: ASSIGNED_ROLES.DERS_NAZIR,
+        scopeId: publishedId,
+        grantedBy: MUDERRIS_ID,
+      });
       await databaseService.db.insert(permissionGrants).values({
         userId: TALEBE_ID,
         scopeType: "course",
@@ -451,7 +465,7 @@ describe("Assignments (e2e)", () => {
       const res = await get("/me/effective-permissions", TALEBE_ID).expect(200);
       expect(res.body.groups).toEqual([
         expect.objectContaining({
-          role: null,
+          role: "DERS_NAZIR",
           permissions: ["enrollment.decide"],
         }),
       ]);

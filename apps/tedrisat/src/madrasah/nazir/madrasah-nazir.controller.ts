@@ -1,4 +1,4 @@
-import { AuthGuard, Authz, AuthzGuard, SCOPES } from "@medaris/common";
+import { AuthGuard, Authz, AuthzGuard, PERMISSIONS } from "@medaris/common";
 import {
   Body,
   Controller,
@@ -35,8 +35,9 @@ import { MadrasahNazirService } from "./madrasah-nazir.service";
 /**
  * The medrese's nazırs (nazir/05, nazir/15): the MEDRESE_NAZIR appointments
  * under `/madrasahs/:id/nazirs`. The medrese's başmüderris and SYSTEM_ADMIN
- * manage them; a nazır of the medrese is not on the matrix yet, so the roster
- * is a 403 to them like every other matrix-guarded route.
+ * manage them, and so does a Medaris nazımı given `platform.madrasah_nazir_grant`;
+ * a nazır of the medrese holds `madrasah.nazir_appoint` only if it was given
+ * and is a 403 otherwise, like every other guarded route.
  */
 @ApiTags("madrasahs")
 @ApiBearerAuth()
@@ -55,7 +56,13 @@ export class MadrasahNazirController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/nazirs")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(
+    [
+      PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT,
+    ],
+    byExistingMadrasah
+  )
   list(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahNazirResponse[]> {
@@ -72,7 +79,13 @@ export class MadrasahNazirController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Post(":id/nazirs/:userId")
-  @Authz(SCOPES.INVITE_NAZIR, byExistingMadrasah)
+  @Authz(
+    [
+      PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT,
+    ],
+    byExistingMadrasah
+  )
   addNazir(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -91,7 +104,13 @@ export class MadrasahNazirController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/nazirs/:userId/grants")
-  @Authz(SCOPES.REMOVE_NAZIR, byExistingMadrasah)
+  @Authz(
+    [
+      PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT,
+    ],
+    byExistingMadrasah
+  )
   grants(
     @Param("id", ParseUUIDPipe) id: string,
     @Param("userId", ParseUUIDPipe) userId: string
@@ -111,7 +130,13 @@ export class MadrasahNazirController {
   @ApiNotFoundResponse()
   @Delete(":id/nazirs/:userId")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Authz(SCOPES.REMOVE_NAZIR, byExistingMadrasah)
+  @Authz(
+    [
+      PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT,
+    ],
+    byExistingMadrasah
+  )
   async removeNazir(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,

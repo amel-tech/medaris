@@ -51,7 +51,7 @@ const clampLimit = (limit: number) =>
 
 /**
  * The archive of hidden things (MDRS-173, screens nizam/28 and nizam/29).
- * Like `NizamController`, no `AuthzGuard`: the matrix has no archive entity,
+ * Like `NizamController`, no `AuthzGuard`: the engine has no archive entity,
  * so `ArchiveService` makes the one decision every route shares — the Medaris
  * başnazımı (SYSTEM_ADMIN), or for a köşk's own contents, a manager of it.
  */

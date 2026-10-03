@@ -2,7 +2,7 @@ import {
   AuthenticatedUser,
   AuthzService,
   ENTITIES,
-  SCOPES,
+  PERMISSIONS,
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { BanService } from "../ban/ban.service";
@@ -163,11 +163,10 @@ export class CourseService {
     // which is what the `ARCHIVE` scope says.
     if (
       course.archivedAt !== null &&
-      !(await this.authz.can(
-        user,
-        { entity: ENTITIES.COURSE, id },
-        SCOPES.ARCHIVE
-      ))
+      !(await this.authz.can(user, { entity: ENTITIES.COURSE, id }, [
+        PERMISSIONS.COURSE_HIDE,
+        PERMISSIONS.MADRASAH_COURSE_HIDE,
+      ]))
     ) {
       throw new CourseNotFoundError(id);
     }
@@ -181,7 +180,7 @@ export class CourseService {
       !(await this.authz.can(
         user,
         { entity: ENTITIES.COURSE, id },
-        SCOPES.EDIT
+        PERMISSIONS.COURSE_EDIT
       ))
     ) {
       throw new CourseNotFoundError(id);
@@ -211,9 +210,9 @@ export class CourseService {
 
   /**
    * The content rule alone, for a detail the caller is already allowed. A
-   * caller with no token (MDRS-122) never reads content: the ANONYMOUS row
-   * holds no `VIEW_DETAILS`, so they get exactly the body a signed-in
-   * stranger gets.
+   * caller with no token (MDRS-122) never reads content: the anonymous
+   * codes hold no `course.view_details`, so they get exactly the body a
+   * signed-in stranger gets.
    */
   async present(
     course: ICourseDetail,
@@ -224,7 +223,7 @@ export class CourseService {
     const mayReadContent = await this.authz.can(
       user,
       { entity: ENTITIES.COURSE, id: course.id },
-      SCOPES.VIEW_DETAILS
+      PERMISSIONS.COURSE_VIEW_DETAILS
     );
     if (!mayReadContent) return withoutContent(course);
 
@@ -234,9 +233,11 @@ export class CourseService {
         courseId: course.id,
         details: {
           title: course.title,
-          // Who read it, as far as today's model can say. Role model v2
-          // (MDRS-135) will name the permission the read went through.
+          // Who read it: the başnazım through the realm bypass, anyone else
+          // through the permission named here (a köşk nazımı's course
+          // permissions, a başmüderris's, a grant).
           systemAdmin: this.authz.isSystemAdmin(user),
+          permission: PERMISSIONS.COURSE_VIEW_DETAILS,
         },
       });
     }
@@ -411,11 +412,12 @@ export class CourseService {
   }
 
   // ---- course writes (MDRS-105) ----
-  // Authorization is the matrix's, on CourseController: `EDIT` for the
-  // course's fields and syllabus — the köşk manager and the course's
-  // müderrisler — and, inside a whole-course save, `ASSIGN_MUDERRIS` for the
-  // müderris list, which only the köşk manager holds. The `assertCourseOwner`
-  // that narrowed every write to the köşk manager is gone.
+  // Authorization is the engine's, on CourseController: `course.edit` for the
+  // course's fields and syllabus — the köşk nazımı and the course's
+  // müderrisler — and, inside a whole-course save, `course.open_standalone`
+  // (or the medrese's `madrasah.muderris_manage`) for the müderris list, which
+  // a müderris does not hold. The `assertCourseOwner` that narrowed every write
+  // to the köşk manager is gone.
 
   async create(
     koskId: string,
@@ -456,8 +458,9 @@ export class CourseService {
   }
 
   /**
-   * The whole-course save. A caller with `EDIT` but not `ASSIGN_MUDERRIS` —
-   * a müderris — may save everything but the müderris list: if the list in
+   * The whole-course save. A caller with `course.edit` but not the permission
+   * to choose müderrisler — a müderris — may save everything but the müderris
+   * list: if the list in
    * the payload differs from the stored one in any way the save would write,
    * the save is refused whole with 403 before anything is written.
    *
@@ -482,11 +485,10 @@ export class CourseService {
     const current = await this.courseRepo.findMuderris(id);
     if (
       muderrisListChanged(current, next) &&
-      !(await this.authz.can(
-        user,
-        { entity: ENTITIES.COURSE, id },
-        SCOPES.ASSIGN_MUDERRIS
-      ))
+      !(await this.authz.can(user, { entity: ENTITIES.COURSE, id }, [
+        PERMISSIONS.COURSE_OPEN_STANDALONE,
+        PERMISSIONS.MADRASAH_MUDERRIS_MANAGE,
+      ]))
     ) {
       throw new MuderrisAssignmentForbiddenError(id);
     }
@@ -519,7 +521,7 @@ export class CourseService {
   }
 
   // ---- session-level writes (MDRS-95) ----
-  // Authorization for these three is `@Authz(SCOPES.EDIT, …)` on
+  // Authorization for these three is `@Authz(PERMISSIONS.COURSE_EDIT, …)` on
   // LessonController, resolved against the lesson's parent course, so no
   // ownership assertion is repeated here.
 
@@ -557,7 +559,7 @@ export class CourseService {
   /**
    * Replaces the muderris list and picks the imam (MDRS-176, nizam/33). The
    * list is never empty and the imam is one of its accounts. Authorization is
-   * `ASSIGN_MUDERRIS` on the route.
+   * `course.open_standalone` (or `madrasah.muderris_manage`) on the route.
    */
   async setMuderris(
     courseId: string,
@@ -607,7 +609,7 @@ export class CourseService {
   }
 
   // ---- weekly pattern → sessions (MDRS-109) ----
-  // Authorized by `@Authz(SCOPES.EDIT, …)` on LessonController, like the
+  // Authorized by `@Authz(SESSION_MANAGE, …)` on LessonController, like the
   // three writes above.
 
   /** The sessions a pattern would create; nothing is written. */
@@ -741,7 +743,7 @@ export class CourseService {
   }
 
   // ---- the course team's enrollment actions (MDRS-105) ----
-  // Authorization is `@Authz(SCOPES.MANAGE_ENROLLMENTS, …)` on
+  // Authorization is `@Authz(ENROLLMENT_DECIDE, …)` on
   // CourseController: the köşk manager and the course's müderrisler. Nothing
   // narrows it further here.
 

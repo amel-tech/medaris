@@ -7,7 +7,6 @@ import { MadrasahAlreadyHiddenError } from "./errors/madrasah-already-hidden.err
 import { MadrasahHandleTakenError } from "./errors/madrasah-handle-taken.error";
 import { MadrasahNotFoundError } from "./errors/madrasah-not-found.error";
 import { MadrasahNotHiddenError } from "./errors/madrasah-not-hidden.error";
-import { NazirNotFoundError } from "./errors/nazir-not-found.error";
 import { MadrasahRepository } from "./madrasah.repository";
 import {
   ICreateMadrasah,
@@ -47,7 +46,7 @@ function isUniqueViolation(error: unknown): boolean {
 
 /**
  * The medrese layer (MDRS-106, ADR-003). Every method here is reached through
- * `MadrasahController`, whose `@Authz` scopes decide who may call it; nothing
+ * `MadrasahController`, whose `@Authz` permissions decide who may call it; nothing
  * here re-checks the caller's role.
  */
 @Injectable()

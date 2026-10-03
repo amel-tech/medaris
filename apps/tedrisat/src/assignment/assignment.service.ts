@@ -141,6 +141,18 @@ export class AssignmentService {
         ? null
         : (names.get(scopeKey(type, id))?.name ?? null);
 
+    const courseParents = new Map<
+      string,
+      { koskId: string; madrasahId: string | null }
+    >();
+    for (const [key, named] of names) {
+      if (named.course && key.startsWith(`${SCOPE_TYPES.COURSE}:`)) {
+        courseParents.set(key.slice(SCOPE_TYPES.COURSE.length + 1), {
+          koskId: named.course.koskId,
+          madrasahId: named.course.madrasahId,
+        });
+      }
+    }
     const built = buildEffectivePermissions(
       assignmentRows.map((r) => ({
         role: r.role,
@@ -156,7 +168,8 @@ export class AssignmentService {
           ? [g.permission]
           : (groups.get(g.groupId ?? "")?.permissions ?? [])
         ).filter(isPermissionCode),
-      }))
+      })),
+      (courseId) => courseParents.get(courseId) ?? null
     );
     return {
       groups: built.map((group) => ({

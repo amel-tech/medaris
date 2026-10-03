@@ -416,6 +416,9 @@ export class PermissionAdminRepository {
           permission: "permission" in item ? item.permission : null,
           groupId: "groupId" in item ? item.groupId : null,
           grantedBy: actorId,
+          // The başnazım is the one who gives a Medaris nazımı their
+          // permissions: the platform's authority, above every policy.
+          authorityScopeType: SCOPE_TYPES.PLATFORM,
           expiresAt: wanted.expiresAt,
         }))
       );
@@ -896,6 +899,7 @@ export class PermissionAdminRepository {
               permission,
               groupId: null,
               grantedBy: row.grantedBy,
+              authorityScopeType: row.authorityScopeType,
               expiresAt: row.expiresAt,
             }))
           );

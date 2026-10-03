@@ -7,7 +7,7 @@ import {
   byParam,
   ENTITIES,
   forNew,
-  SCOPES,
+  PERMISSIONS,
 } from "@medaris/common";
 import {
   Body,
@@ -173,7 +173,7 @@ export class FlashcardDeckController {
       "No such deck, or a private deck owned by another user — deliberately the same answer",
   })
   @IncludeApiQuery(DeckIncludeEnum)
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.FLASHCARD_DECK))
+  @Authz(PERMISSIONS.DECK_VIEW, byParam(ENTITIES.FLASHCARD_DECK))
   // MDRS-45: a public deck is readable with no token (PRD:76). An anonymous
   // caller is decided by `resolveAnonymous` — ANONYMOUS for a public deck,
   // the same 404 as a missing deck for a private one — and a token that is
@@ -185,7 +185,7 @@ export class FlashcardDeckController {
     @Param("id", ParseUUIDPipe) deckId: string,
     @IncludeQuery() include?: string[]
   ): Promise<FlashcardDeckResponse> {
-    // `@Authz(VIEW)` above is what decides: `resolveDeckRole` answers
+    // `@Authz(deck.view)` above is what decides: `resolveDeckRole` answers
     // DECK_OWNER for the author and PUBLIC for a public deck, and raises the
     // same `DeckNotFoundError` for a missing deck and for somebody else's
     // private one (MDRS-43 AC-4). `findReadable` still re-reads the rule
@@ -251,7 +251,7 @@ export class FlashcardDeckController {
   // all" — `CREATE_PRIVATE_DECK` sits on the FLASHCARD_DECK PUBLIC row, so
   // every authenticated caller may. `isPublic` on the body stays legal here
   // and only here: visibility is the author's decision at creation time.
-  @Authz(SCOPES.CREATE_PRIVATE_DECK, forNew(ENTITIES.FLASHCARD_DECK))
+  @Authz(PERMISSIONS.DECK_CREATE_PRIVATE, forNew(ENTITIES.FLASHCARD_DECK))
   @Post()
   async create(
     @Req() request: AuthorizedRequest,
@@ -278,7 +278,7 @@ export class FlashcardDeckController {
   // Hole #1 in the MDRS-43 brief: a deck you may not read is a deck you may
   // not collect. `VIEW` is the right scope rather than an owner scope —
   // collecting somebody else's PUBLIC deck is what this route is for.
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.FLASHCARD_DECK))
+  @Authz(PERMISSIONS.DECK_VIEW, byParam(ENTITIES.FLASHCARD_DECK))
   @Post(":id/collections")
   async addToUserCollection(
     @Req() request: AuthorizedRequest,
@@ -286,7 +286,7 @@ export class FlashcardDeckController {
   ): Promise<FlashcardDeckUserResponse> {
     const userId = request.user.sub;
     // The MDRS-63 `assertReadable` stopgap that used to stand here is now the
-    // `@Authz(VIEW)` above — same rule, declared instead of called. The second
+    // `@Authz(deck.view)` above — same rule, declared instead of called. The second
     // half of the fix is in `findAllByUser`'s predicate: this door was only
     // ever half the hole, because the sibling GET /collections route read the
     // `decksUsers` join with no visibility filter of its own.
@@ -306,7 +306,7 @@ export class FlashcardDeckController {
     description: "The deck already waits for review or is already public",
   })
   // The author's call, like every write on the deck: the scope that edits it.
-  @Authz(SCOPES.MANAGE_PRIVATE_DECK, byParam(ENTITIES.FLASHCARD_DECK))
+  @Authz(PERMISSIONS.DECK_MANAGE_PRIVATE, byParam(ENTITIES.FLASHCARD_DECK))
   @Post(":id/publish-request")
   async requestPublication(
     @Param("id", ParseUUIDPipe) deckId: string
@@ -327,13 +327,13 @@ export class FlashcardDeckController {
   @ApiOkResponse({ type: FlashcardDeckResponse, isArray: true })
   @ApiNotFoundResponse({ description: "Deck not found" })
   @ApiForbiddenResponse({ description: "Deck belongs to another user" })
-  @Authz(SCOPES.MANAGE_PRIVATE_DECK, byParam(ENTITIES.FLASHCARD_DECK))
+  @Authz(PERMISSIONS.DECK_MANAGE_PRIVATE, byParam(ENTITIES.FLASHCARD_DECK))
   @Put(":id")
   async replace(
     @Param("id", ParseUUIDPipe) deckId: string,
     @Body() deckDto: CreateFlashcardDeckDto
   ): Promise<FlashcardDeckResponse> {
-    // `MANAGE_PRIVATE_DECK` is on the DECK_OWNER row and no other, so the
+    // `deck.manage_private` is held by DECK_OWNER and no other, so the
     // guard above is the `assertOwner` this used to call. That matters beyond
     // this handler: `resolveDeckRole` checks `authorId` before `isPublic`, and
     // its soundness rests on nobody but the author being able to flip the
@@ -360,7 +360,7 @@ export class FlashcardDeckController {
   @ApiOkResponse({ type: FlashcardDeckResponse })
   @ApiNotFoundResponse({ description: "Deck not found" })
   @ApiForbiddenResponse({ description: "Deck belongs to another user" })
-  @Authz(SCOPES.MANAGE_PRIVATE_DECK, byParam(ENTITIES.FLASHCARD_DECK))
+  @Authz(PERMISSIONS.DECK_MANAGE_PRIVATE, byParam(ENTITIES.FLASHCARD_DECK))
   @Patch(":id")
   async updateDeck(
     @Param("id", ParseUUIDPipe) deckId: string,
@@ -388,7 +388,7 @@ export class FlashcardDeckController {
   @ApiOkResponse()
   @ApiNotFoundResponse({ description: "Deck not found" })
   @ApiForbiddenResponse({ description: "Deck belongs to another user" })
-  @Authz(SCOPES.MANAGE_PRIVATE_DECK, byParam(ENTITIES.FLASHCARD_DECK))
+  @Authz(PERMISSIONS.DECK_MANAGE_PRIVATE, byParam(ENTITIES.FLASHCARD_DECK))
   @Delete(":id")
   async delete(@Param("id", ParseUUIDPipe) deckId: string): Promise<boolean> {
     // MDRS-83 added the delete affordance to tedris behind a client-side
@@ -409,7 +409,7 @@ export class FlashcardDeckController {
   @ApiNotFoundResponse({ description: "Deck not found" })
   @ApiForbiddenResponse({ description: "Deck belongs to another user" })
   @ApiConflictResponse({ description: "The deck is private already" })
-  @Authz(SCOPES.MANAGE_PRIVATE_DECK, byParam(ENTITIES.FLASHCARD_DECK))
+  @Authz(PERMISSIONS.DECK_MANAGE_PRIVATE, byParam(ENTITIES.FLASHCARD_DECK))
   @Delete(":id/publish-request")
   async withdrawPublication(
     @Param("id", ParseUUIDPipe) deckId: string

@@ -3,7 +3,7 @@ import {
   Authz,
   AuthzGuard,
   AuthzService,
-  SCOPES,
+  PERMISSIONS,
 } from "@medaris/common";
 import {
   Body,
@@ -66,7 +66,10 @@ export class HostingController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/hosting-rights")
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(
+    [PERMISSIONS.KOSK_HOSTING, PERMISSIONS.PLATFORM_HOSTING_GRANT],
+    byExistingKosk
+  )
   list(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<HostingRightResponse[]> {
@@ -83,7 +86,10 @@ export class HostingController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Post(":id/hosting-rights")
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(
+    [PERMISSIONS.KOSK_HOSTING, PERMISSIONS.PLATFORM_HOSTING_GRANT],
+    byExistingKosk
+  )
   grant(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -114,7 +120,10 @@ export class HostingController {
   @ApiNotFoundResponse()
   @Delete(":id/hosting-rights/:madrasahId")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(
+    [PERMISSIONS.KOSK_HOSTING, PERMISSIONS.PLATFORM_HOSTING_GRANT],
+    byExistingKosk
+  )
   async revoke(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,

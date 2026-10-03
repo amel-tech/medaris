@@ -1,4 +1,4 @@
-import { AuthGuard, Authz, AuthzGuard, SCOPES } from "@medaris/common";
+import { AuthGuard, Authz, AuthzGuard, PERMISSIONS } from "@medaris/common";
 import {
   Body,
   Controller,
@@ -36,7 +36,7 @@ import { KoskGrantsService } from "./kosk-grants.service";
 
 /**
  * The köşk's İzinler page (MDRS-172, nizam/38): ders nazırları of its
- * medrese-free courses and the course permissions they hold. `@Authz(EDIT)`
+ * medrese-free courses and the course permissions they hold. `@Authz(course_nazir.assign_kosk)`
  * lets a nazım of the köşk and the başnazım in; the service limits what they
  * may give to what they hold themselves.
  */
@@ -57,7 +57,7 @@ export class KoskGrantsController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/grants")
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(PERMISSIONS.COURSE_NAZIR_ASSIGN_KOSK, byExistingKosk)
   list(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string
@@ -77,7 +77,7 @@ export class KoskGrantsController {
   @ApiNotFoundResponse()
   @ApiConflictResponse({ description: "COURSE_NAZIR_EXISTS" })
   @Post(":id/grants")
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(PERMISSIONS.COURSE_NAZIR_ASSIGN_KOSK, byExistingKosk)
   create(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -97,7 +97,7 @@ export class KoskGrantsController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Patch(":id/grants/:grantId")
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(PERMISSIONS.COURSE_NAZIR_ASSIGN_KOSK, byExistingKosk)
   update(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -118,7 +118,7 @@ export class KoskGrantsController {
   @ApiNotFoundResponse()
   @Delete(":id/grants/:grantId")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(PERMISSIONS.COURSE_NAZIR_ASSIGN_KOSK, byExistingKosk)
   async revoke(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,

@@ -40,7 +40,7 @@ import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, pagingOf } from "./paging";
 
 /**
  * The başnazım's review of deck publish requests (MDRS-180, nizam/16). No
- * `AuthzGuard`: the matrix has no entity for a request, so `DeckReviewService`
+ * `AuthzGuard`: the engine has no entity for a request, so `DeckReviewService`
  * makes the one decision every route shares.
  */
 @ApiTags("nizam")

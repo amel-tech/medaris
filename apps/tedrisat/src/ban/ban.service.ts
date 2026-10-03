@@ -95,7 +95,7 @@ interface IStanding {
  * Bans (MDRS-177, screens nizam/41 and nizam/42): a talebe barred from a
  * course or a whole köşk, lifted again with a reason.
  *
- * Authorization is here, not in `@Authz`: the matrix has no ban entity and
+ * Authorization is here, not in `@Authz`: the engine has no ban entity and
  * the decision is the kademe rule, which needs the ban in hand. The standing
  * of the caller is the highest-ranked role they hold where the ban sits;
  * SYSTEM_ADMIN is the top of the ladder (`ban-tier.ts`).

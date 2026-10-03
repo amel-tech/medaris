@@ -1,4 +1,4 @@
-import { AuthGuard, Authz, AuthzGuard, SCOPES } from "@medaris/common";
+import { AuthGuard, Authz, AuthzGuard, PERMISSIONS } from "@medaris/common";
 import {
   Body,
   Controller,
@@ -42,8 +42,10 @@ import { MadrasahCourseService } from "./madrasah-course.service";
  * under `/madrasahs/:id/offsite-course-requests`; the list itself is
  * `GET /madrasahs/:id/courses` on
  * `MadrasahController`. The medrese's başmüderris and SYSTEM_ADMIN call these;
- * a nazır of the medrese, a köşk's nazım and a course's müderris are not on
- * the matrix row that holds `MANAGE_MADRASAH`, so they get 403.
+ * a nazır of the medrese holds the permission of each route only if it was
+ * given (`madrasah.course_open`, `madrasah.muderris_manage`,
+ * `madrasah.course_hide`, `madrasah.offsite_course_request`); a köşk's nazım
+ * and a course's müderris hold none of them, so they get 403.
  */
 @ApiTags("madrasahs")
 @ApiBearerAuth()
@@ -62,7 +64,7 @@ export class MadrasahCourseController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/hosting-kosks")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_COURSE_OPEN, byExistingMadrasah)
   hostingKosks(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahCourseKoskResponse[]> {
@@ -83,7 +85,7 @@ export class MadrasahCourseController {
   @ApiForbiddenResponse({ description: "HOSTING_RIGHT_REQUIRED" })
   @ApiNotFoundResponse({ description: "Also MUDERRIS_UNKNOWN_USER" })
   @Post(":id/courses")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_COURSE_OPEN, byExistingMadrasah)
   open(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -108,7 +110,7 @@ export class MadrasahCourseController {
     description: "MADRASAH_COURSE_NOT_FOUND or MUDERRIS_UNKNOWN_USER",
   })
   @Put(":id/courses/:courseId/muderrises")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_MUDERRIS_MANAGE, byExistingMadrasah)
   setMuderris(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -130,7 +132,7 @@ export class MadrasahCourseController {
   @ApiConflictResponse({ description: "MADRASAH_COURSE_ALREADY_HIDDEN" })
   @Post(":id/courses/:courseId/hide")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_COURSE_HIDE, byExistingMadrasah)
   async hide(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -150,7 +152,7 @@ export class MadrasahCourseController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse({ description: "The medrese or the köşk" })
   @Post(":id/offsite-course-requests")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_OFFSITE_COURSE_REQUEST, byExistingMadrasah)
   requestOffsite(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -169,7 +171,7 @@ export class MadrasahCourseController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/offsite-course-requests")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_OFFSITE_COURSE_REQUEST, byExistingMadrasah)
   offsiteRequests(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<OffsiteCourseRequestResponse[]> {

@@ -40,6 +40,8 @@ function serviceWith(
     exists: vi.fn().mockResolvedValue(exists),
   } as unknown as KoskService;
   const authz = {
+    // Nobody here holds `platform.deck_publish` by a grant: the başnazım alone.
+    can: async () => false,
     isSystemAdmin: (u: { realm_access?: { roles?: string[] } }) =>
       u.realm_access?.roles?.includes("SYSTEM_ADMIN") ?? false,
   } as unknown as AuthzService;

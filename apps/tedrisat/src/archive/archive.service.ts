@@ -85,7 +85,7 @@ type RestoreRoute = "open" | "head" | null;
  * The archive (MDRS-173): what nazımlar hid, listed, restored and, for the
  * Medaris başnazımı alone, deleted for real.
  *
- * Authorization is here, not in `@Authz`: the matrix has no archive entity,
+ * Authorization is here, not in `@Authz`: the engine has no archive entity,
  * and the question is the same everywhere — SYSTEM_ADMIN (the başnazım), or
  * for what sits in a köşk, a manager of that köşk. Anything else is
  * `ArchiveForbiddenError`.

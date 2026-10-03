@@ -3,7 +3,7 @@ import {
   Authz,
   AuthzExempt,
   AuthzGuard,
-  SCOPES,
+  PERMISSIONS,
 } from "@medaris/common";
 import {
   Body,
@@ -108,7 +108,7 @@ export class KoskAdminController {
   @ApiOkResponse({ type: KoskDirectoryResponse })
   @ApiForbiddenResponse()
   // Exempt: who may see which rows is the service's decision (`scopeOf`) — a
-  // table has no single köşk for the matrix to judge.
+  // table has no single köşk for the engine to judge.
   @AuthzExempt()
   @Get("directory")
   directory(
@@ -157,7 +157,10 @@ export class KoskAdminController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/overview")
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(
+    [PERMISSIONS.KOSK_MANAGE, PERMISSIONS.PLATFORM_KOSK_EDIT],
+    byExistingKosk
+  )
   overview(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskOverviewResponse> {
@@ -174,7 +177,10 @@ export class KoskAdminController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/course-roster")
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(
+    [PERMISSIONS.KOSK_MANAGE, PERMISSIONS.PLATFORM_KOSK_EDIT],
+    byExistingKosk
+  )
   courseRoster(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskCourseRosterResponse> {
@@ -212,7 +218,10 @@ export class KoskAdminController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/nazims")
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(
+    [PERMISSIONS.KOSK_MANAGE, PERMISSIONS.PLATFORM_KOSK_EDIT],
+    byExistingKosk
+  )
   listNazims(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string
@@ -232,9 +241,10 @@ export class KoskAdminController {
     description: "No such köşk, or an account the directory does not know",
   })
   @ApiConflictResponse({ description: "KOSK_NAZIM_EXISTS" })
-  // Exempt: the matrix has no "appoint a köşk nazımı" scope — a köşk's own
-  // nazımları may add managers by `POST /kosks/:id/managers/:userId`, while
-  // this screen is the Medaris yönetimi's, so the service asks for SYSTEM_ADMIN.
+  // Exempt: this screen is the Medaris yönetimi's and has no köşk to judge yet
+  // when it opens one, so the service asks the engine for
+  // `platform.kosk_nazim_manage` (the başnazım passes); a köşk's own nazımları
+  // add managers by `POST /kosks/:id/managers/:userId`.
   @AuthzExempt()
   @Post(":id/nazims")
   addNazims(
@@ -257,7 +267,10 @@ export class KoskAdminController {
   @ApiConflictResponse({ description: "KOSK_ALREADY_HIDDEN" })
   @Post(":id/hide")
   @HttpCode(HttpStatus.OK)
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(
+    [PERMISSIONS.KOSK_MANAGE, PERMISSIONS.PLATFORM_KOSK_EDIT],
+    byExistingKosk
+  )
   hide(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string

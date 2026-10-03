@@ -1,4 +1,4 @@
-import type { AuthzService } from "@medaris/common";
+import { type AuthzService, PERMISSIONS } from "@medaris/common";
 import { describe, expect, it, vi } from "vitest";
 import {
   PermissionGroupEmptyError,
@@ -11,7 +11,6 @@ import type { PermissionAdminRepository } from "../../../src/assignment/admin/pe
 import { NazirCourseScopeError } from "../../../src/madrasah/errors/nazir-course-scope.error";
 import { NazirNotFoundError } from "../../../src/madrasah/errors/nazir-not-found.error";
 import { PermissionNotGivableError } from "../../../src/madrasah/errors/permission-not-givable.error";
-import type { MadrasahService } from "../../../src/madrasah/madrasah.service";
 import type { MadrasahNazirRepository } from "../../../src/madrasah/nazir/madrasah-nazir.repository";
 import type { MadrasahNazirService } from "../../../src/madrasah/nazir/madrasah-nazir.service";
 import {
@@ -71,18 +70,22 @@ function build(
     find: vi.fn().mockResolvedValue({ user: { id: NAZIR } }),
     ...parts.nazirs,
   };
-  const madrasahs = {
-    isNazir: vi.fn().mockImplementation(async (_m, id) => id === "a2"),
-  };
+  // The engine: a başmüderris (a2) holds `permission.grant` in their medrese by
+  // role default, and nobody here holds the Medaris nazımı's own permission.
   const authz = {
     isSystemAdmin: (u: { realm_access?: { roles?: string[] } }) =>
       u.realm_access?.roles?.includes("SYSTEM_ADMIN") ?? false,
+    can: vi
+      .fn()
+      .mockImplementation(
+        async (u: { sub: string }, _resource: unknown, code: string) =>
+          u.sub === "a2" && code === PERMISSIONS.PERMISSION_GRANT
+      ),
   };
   const service = new MadrasahPermissionService(
     repo as unknown as MadrasahNazirRepository,
     nazirs as unknown as MadrasahNazirService,
     groups as unknown as PermissionAdminRepository,
-    madrasahs as unknown as MadrasahService,
     authz as unknown as AuthzService
   );
   return { service, repo, groups, nazirs };
@@ -101,10 +104,12 @@ describe("the dictionary", () => {
   it("lets the başmüderris and the başnazım give everything and a stranger nothing", async () => {
     const { service } = build();
     const head = await service.catalog(HEAD, M);
-    expect(head.madrasah).toHaveLength(10);
-    expect(head.course).toHaveLength(20);
-    expect(head.givable).toHaveLength(30);
-    expect((await service.catalog(ADMIN, M)).givable).toHaveLength(30);
+    // The ten medrese and twenty course permissions of nazir/06, and the
+    // owner's one more of each (1 October).
+    expect(head.madrasah).toHaveLength(11);
+    expect(head.course).toHaveLength(21);
+    expect(head.givable).toHaveLength(32);
+    expect((await service.catalog(ADMIN, M)).givable).toHaveLength(32);
     expect((await service.catalog(STRANGER, M)).givable).toEqual([]);
   });
 });
@@ -255,6 +260,9 @@ describe("giving a nazır their permissions", () => {
     );
     expect(repo.heldRoles).toHaveBeenCalledWith(M, NAZIR);
     expect(repo.setPermissions).toHaveBeenCalledWith(M, NAZIR, "a2", {
+      // A başmüderris gives from the `permission.grant` their role holds, as the
+      // medrese's authority (MDRS-135): below the platform, above a course.
+      authority: "madrasah",
       scopes: [
         {
           scopeType: "madrasah",

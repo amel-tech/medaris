@@ -451,7 +451,7 @@ export class CourseRepository implements ICourseRepository {
         .from(courseMuderris)
         .where(eq(courseMuderris.courseId, id));
       // Ids are compared lowercased, the way `muderrisListChanged` compares
-      // them before the ASSIGN_MUDERRIS check. Postgres returns uuids in
+      // them before the check on the müderris list. Postgres returns uuids in
       // lowercase and `@IsUUID()` accepts uppercase, so an exact match here
       // would delete and re-insert a row the check called unchanged — with
       // every field the payload left out, `userId` included, reset.

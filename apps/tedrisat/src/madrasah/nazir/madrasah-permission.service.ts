@@ -1,4 +1,9 @@
-import { type AuthenticatedUser, AuthzService } from "@medaris/common";
+import {
+  type AuthenticatedUser,
+  AuthzService,
+  ENTITIES,
+  PERMISSIONS,
+} from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import type { UsersPolicy } from "../../assignment/admin/dto/permission-admin.dto";
 import {
@@ -18,11 +23,13 @@ import {
   MADRASAH_COURSE_CATALOG,
   MADRASAH_COURSE_CODES,
 } from "../../assignment/permission-catalog";
-import { SCOPE_TYPES } from "../../database/schema/role-assignment.schema";
+import {
+  SCOPE_TYPES,
+  type ScopeType,
+} from "../../database/schema/role-assignment.schema";
 import { NazirCourseScopeError } from "../errors/nazir-course-scope.error";
 import { NazirNotFoundError } from "../errors/nazir-not-found.error";
 import { PermissionNotGivableError } from "../errors/permission-not-givable.error";
-import { MadrasahService } from "../madrasah.service";
 import type { MadrasahNazirResponse } from "./dto/madrasah-nazir.dto";
 import type {
   CreateMadrasahPermissionGroupDto,
@@ -79,10 +86,11 @@ function presentGroup(
 /**
  * What the medrese's başmüderris gives its nazırs and the groups they give it
  * through (MDRS-185, nazir/06 and nazir/16). Reached through
- * `MadrasahPermissionController`, whose `@Authz` scope lets the başmüderris and
- * SYSTEM_ADMIN in; the writes here check that again, because a nazır who is
- * mapped onto the matrix one day must still not hand on what they were given.
- * Nothing reads a grant to decide a request: `AuthzGuard` stays role-based.
+ * `MadrasahPermissionController`, whose `@Authz` permission lets the
+ * başmüderris, SYSTEM_ADMIN and a Medaris nazımı given it in; the writes here
+ * check that again from the engine, because a nazır who holds
+ * `madrasah.nazir_appoint` by a grant must still not hand on what they were
+ * given: only a role's own `permission.grant` gives permissions.
  */
 @Injectable()
 export class MadrasahPermissionService {
@@ -90,18 +98,44 @@ export class MadrasahPermissionService {
     private readonly repo: MadrasahNazirRepository,
     private readonly nazirs: MadrasahNazirService,
     private readonly groups: PermissionAdminRepository,
-    private readonly madrasahs: MadrasahService,
     private readonly authz: AuthzService
   ) {}
+
+  /**
+   * The level the caller gives permissions at in this medrese, or null: the
+   * başnazım gives as the platform; a başmüderris gives in their medrese from
+   * the `permission.grant` their role holds (never a grant — what you were
+   * given you cannot give on); a Medaris nazımı holding
+   * `platform.madrasah_nazir_grant` gives as the platform, within their own
+   * authority. Asked of the engine, so the screens, the guard and this check
+   * cannot disagree.
+   */
+  private async authorityOf(
+    user: AuthenticatedUser,
+    madrasahId: string
+  ): Promise<ScopeType | null> {
+    if (this.authz.isSystemAdmin(user)) return SCOPE_TYPES.PLATFORM;
+    const resource = { entity: ENTITIES.MADRASAH, id: madrasahId };
+    if (await this.authz.can(user, resource, PERMISSIONS.PERMISSION_GRANT)) {
+      return SCOPE_TYPES.MADRASAH;
+    }
+    if (
+      await this.authz.can(
+        user,
+        resource,
+        PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT
+      )
+    ) {
+      return SCOPE_TYPES.PLATFORM;
+    }
+    return null;
+  }
 
   private async mayGive(
     user: AuthenticatedUser,
     madrasahId: string
   ): Promise<boolean> {
-    return (
-      this.authz.isSystemAdmin(user) ||
-      (await this.madrasahs.isNazir(madrasahId, user.sub))
-    );
+    return (await this.authorityOf(user, madrasahId)) !== null;
   }
 
   /** The caller's id, after checking they may give permissions in the medrese. */
@@ -277,7 +311,10 @@ export class MadrasahPermissionService {
       }
     }
 
+    const authority =
+      (await this.authorityOf(user, madrasahId)) ?? SCOPE_TYPES.MADRASAH;
     await this.repo.setPermissions(madrasahId, id, actor, {
+      authority,
       scopes: wantedScopes({
         madrasahId,
         group,
