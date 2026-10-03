@@ -27,12 +27,15 @@ export interface ISelfGrantWhat {
 /**
  * No one names themselves into more than they hold (MDRS-135, review B1/M4).
  *
- * The ceiling rule says a granter gives at most what their own role default
- * covers, and grantees never hand on what they were given. A path that lets the
- * caller be the one it names gets around both: the Medaris nazımı with one
- * platform permission appoints themselves the nazır of a medrese and gives
- * themselves every medrese and course permission; a köşk nazımı seats
- * themselves as a ders nazırı and the seat outlives their own dismissal.
+ * Grantees never hand on what they were given, and a köşk nazımı gives at most
+ * the course permissions its role covers. A path that lets the caller be the
+ * one it names gets around both: a Medaris nazımı with one platform permission
+ * appoints themselves the nazır of a medrese and gives themselves every medrese
+ * and course permission; a köşk nazımı seats themselves as a ders nazırı and
+ * the seat outlives their own dismissal. (What a Medaris nazımı may give to
+ * someone else is a separate decision, the owner's of MDRS-209: everything
+ * grantable, with every grant audited and listed to the başnazım. Naming
+ * themselves stays refused.)
  *
  * SYSTEM_ADMIN is not asked. Everyone else may name themselves only into what
  * they already hold in the scope: a başmüderris who teaches a course of their

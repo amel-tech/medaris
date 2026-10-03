@@ -24,6 +24,7 @@ export const AUDIT_TYPE_RULES = {
     like: [
       "medaris_nazim.%",
       "kosk.nazim.%",
+      "madrasah_nazir.%",
       "madrasah.head_muderris.%",
       "course.muderris_update",
       "course_nazir.%",

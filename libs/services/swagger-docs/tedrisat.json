@@ -17530,19 +17530,28 @@
           "permissions"
         ]
       },
+      "GivenItemKind": {
+        "type": "string",
+        "enum": [
+          "ROLE",
+          "GRANT",
+          "GROUP"
+        ]
+      },
       "GivenItemResponse": {
         "type": "object",
         "properties": {
           "kind": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/GivenKind"
+                "$ref": "#/components/schemas/GivenItemKind"
               }
             ]
           },
           "id": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "The role row, the grant row or, for a GROUP, the permission group"
           },
           "role": {
             "type": "string",
@@ -17557,7 +17566,31 @@
             "nullable": true
           },
           "to": {
-            "$ref": "#/components/schemas/NazimPersonResponse"
+            "nullable": true,
+            "description": "Who it went to; null for a GROUP, which goes to no one yet",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NazimPersonResponse"
+              }
+            ]
+          },
+          "groupPermissions": {
+            "nullable": true,
+            "description": "The codes a GROUP carries now; null for a role or a grant",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "groupAction": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "create",
+              "update"
+            ],
+            "description": "For a GROUP: whether the person defined it or last changed it; null otherwise"
           },
           "scopeType": {
             "type": "string"
@@ -17574,6 +17607,8 @@
           "permission",
           "groupName",
           "to",
+          "groupPermissions",
+          "groupAction",
           "scopeType",
           "scopeName"
         ]

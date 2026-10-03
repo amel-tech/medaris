@@ -2,6 +2,7 @@ import {
   AuthGuard,
   Authz,
   AuthzGuard,
+  AuthzService,
   ENTITIES,
   PERMISSIONS,
   SelfGrantGuard,
@@ -30,6 +31,7 @@ import {
   ApiOperation,
   ApiTags,
 } from "@nestjs/swagger";
+import { SCOPE_TYPES } from "../../database/schema/role-assignment.schema";
 import { AuthorizedRequest } from "../../kosk/interfaces/authorized-request.interface";
 import { byExistingMadrasah } from "../madrasah.controller";
 import {
@@ -53,7 +55,8 @@ import { MadrasahNazirService } from "./madrasah-nazir.service";
 export class MadrasahNazirController {
   constructor(
     private readonly nazirs: MadrasahNazirService,
-    private readonly selfGrant: SelfGrantGuard
+    private readonly selfGrant: SelfGrantGuard,
+    private readonly authz: AuthzService
   ) {}
 
   @ApiOperation({
@@ -109,7 +112,18 @@ export class MadrasahNazirController {
       { always: true },
       "madrasah.nazir.appoint"
     );
-    return this.nazirs.appoint(id, userId, request.user.sub);
+    // The level the caller acts at, for the audit row and the başnazım's list:
+    // the başnazım and a Medaris nazımı holding the permission act as the
+    // platform, the medrese's own başmüderris (or a nazır given the permission)
+    // as the medrese.
+    const authority = (await this.authz.can(
+      request.user,
+      { entity: ENTITIES.MADRASAH, id },
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT
+    ))
+      ? SCOPE_TYPES.PLATFORM
+      : SCOPE_TYPES.MADRASAH;
+    return this.nazirs.appoint(id, userId, request.user.sub, authority);
   }
 
   @ApiOperation({

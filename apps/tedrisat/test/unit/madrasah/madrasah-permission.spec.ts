@@ -137,6 +137,7 @@ describe("defining a group", () => {
       scopeType: "madrasah",
       scopeId: M,
       permissions: ["madrasah.ban", "ban.course"],
+      authority: "madrasah",
     });
     expect(groups.nameTaken).toHaveBeenCalledWith("Yasak ve itiraz", M);
   });
@@ -193,6 +194,7 @@ describe("changing and deleting a group", () => {
       name: "Kayıt ve talebe işleri",
       permissions: ["course.edit"],
       usersPolicy: "keep",
+      authority: "madrasah",
     });
   });
 
@@ -207,6 +209,7 @@ describe("changing and deleting a group", () => {
       name: "Kadro",
       permissions: ["course.edit", "session.manage"],
       usersPolicy: null,
+      authority: "madrasah",
     });
   });
 
@@ -220,11 +223,21 @@ describe("changing and deleting a group", () => {
       used.service.deleteGroup(HEAD, M, G, undefined)
     ).rejects.toBeInstanceOf(UsersPolicyRequiredError);
     await used.service.deleteGroup(HEAD, M, G, "revoke");
-    expect(used.groups.deleteGroup).toHaveBeenCalledWith("a2", G, "revoke");
+    expect(used.groups.deleteGroup).toHaveBeenCalledWith(
+      "a2",
+      G,
+      "revoke",
+      "madrasah"
+    );
 
     const free = build();
     await free.service.deleteGroup(HEAD, M, G, undefined);
-    expect(free.groups.deleteGroup).toHaveBeenCalledWith("a2", G, null);
+    expect(free.groups.deleteGroup).toHaveBeenCalledWith(
+      "a2",
+      G,
+      null,
+      "madrasah"
+    );
   });
 
   it("does not know another medrese's group, the platform's, or a missing one", async () => {

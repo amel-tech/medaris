@@ -1,5 +1,6 @@
 import type {
   GivenItemResponse,
+  GivenKind,
   MedarisNazimResponse,
   PermissionCatalogResponse,
   PermissionGroupResponse,
@@ -298,6 +299,19 @@ export type DismissAnswer = "TAKE_OVER" | "DROP";
 export const givenKey = (item: Pick<GivenItemResponse, "kind" | "id">) =>
   `${item.kind}:${item.id}`;
 
+/** A role or a grant: what a dismissal asks an answer for. */
+export type DecisionItem = GivenItemResponse & { kind: GivenKind };
+
+/** What the person handed on and the başnazım must decide about, in the order listed. */
+export const decisionItems = (
+  items: readonly GivenItemResponse[]
+): DecisionItem[] =>
+  items.filter((item): item is DecisionItem => item.kind !== "GROUP");
+
+/** The permission groups the person defined or changed: shown, never asked about. */
+export const groupItems = (items: readonly GivenItemResponse[]) =>
+  items.filter((item) => item.kind === "GROUP");
+
 /** The confirm button is off until every item has an answer (_kurallar 14, 15). */
 export function dismissReady(
   items: readonly Pick<GivenItemResponse, "kind" | "id">[],
@@ -307,7 +321,7 @@ export function dismissReady(
 }
 
 export function dismissDecisions(
-  items: readonly Pick<GivenItemResponse, "kind" | "id">[],
+  items: readonly Pick<DecisionItem, "kind" | "id">[],
   answers: Readonly<Record<string, DismissAnswer | undefined>>
 ) {
   return items.map((item) => ({

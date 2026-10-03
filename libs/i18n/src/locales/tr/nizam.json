@@ -1333,7 +1333,15 @@
     "dismissedBody": "{name} artık Medaris nazımı değil.",
     "loadFailedTitle": "Liste okunamadı",
     "loadFailed": "Bu kişinin verdikleri şu an okunamıyor. Biraz sonra yeniden deneyin.",
-    "retry": "Yeniden dene"
+    "retry": "Yeniden dene",
+    "groupsQuestion": "Bu kişi {count} izin grubu tanımlamış ya da değiştirmiş. Gruplar yerinde kalır; kimin neyi tuttuğu değişmez.",
+    "groupLine": "{action}",
+    "groupLineScoped": "{action} · {scope}",
+    "groupAction": {
+      "create": "Tanımladı",
+      "update": "Değiştirdi"
+    },
+    "groupsNote": "Grubun içeriği denetim kaydında, önceki ve sonraki haliyle durur."
   },
   "UsersPolicyDialog": {
     "titleUsers": "Bu grubu {count} kişi kullanıyor",

@@ -108,9 +108,14 @@ export class MadrasahPermissionService {
    * başnazım gives as the platform; a başmüderris gives in their medrese from
    * the `permission.grant` their role holds (never a grant — what you were
    * given you cannot give on); a Medaris nazımı holding
-   * `platform.madrasah_nazir_grant` gives as the platform, within their own
-   * authority. Asked of the engine, so the screens, the guard and this check
-   * cannot disagree.
+   * `platform.madrasah_nazir_grant` gives as the platform, and may give every
+   * grantable medrese and course permission whatever they hold themselves
+   * (owner decision, MDRS-209: "Hepsi, her grant denetlenip başnazıma
+   * gösterilsin"): there is no ceiling at their own empty default, and in
+   * return every grant, group change and appointment is written to the audit
+   * log with its level and is listed to the başnazım under what they handed
+   * on. Asked of the engine, so the screens, the guard and this check cannot
+   * disagree.
    */
   private async authorityOf(
     user: AuthenticatedUser,
@@ -140,15 +145,19 @@ export class MadrasahPermissionService {
     return (await this.authorityOf(user, madrasahId)) !== null;
   }
 
-  /** The caller's id, after checking they may give permissions in the medrese. */
+  /**
+   * The caller's id and the level they give at, after checking they may give
+   * permissions in the medrese. The level goes into the audit row of every
+   * grant and group change, so the başnazım can tell a Medaris nazımı's gifts
+   * (the platform) from the başmüderris's (the medrese).
+   */
   private async actor(
     user: AuthenticatedUser,
     madrasahId: string
-  ): Promise<string> {
-    if (!(await this.mayGive(user, madrasahId))) {
-      throw new PermissionNotGivableError();
-    }
-    return user.sub;
+  ): Promise<{ id: string; authority: ScopeType }> {
+    const authority = await this.authorityOf(user, madrasahId);
+    if (authority === null) throw new PermissionNotGivableError();
+    return { id: user.sub, authority };
   }
 
   // ---- the dictionary and the groups -------------------------------------
@@ -177,7 +186,7 @@ export class MadrasahPermissionService {
     madrasahId: string,
     dto: CreateMadrasahPermissionGroupDto
   ): Promise<MadrasahPermissionGroupResponse> {
-    const actor = await this.actor(user, madrasahId);
+    const { id: actor, authority } = await this.actor(user, madrasahId);
     const name = dto.name.trim();
     const permissions = this.groupCodes(
       dto.permissions,
@@ -191,6 +200,7 @@ export class MadrasahPermissionService {
       scopeType: SCOPE_TYPES.MADRASAH,
       scopeId: madrasahId,
       permissions,
+      authority,
     });
     return presentGroup(await this.mustFindGroup(madrasahId, id));
   }
@@ -201,7 +211,7 @@ export class MadrasahPermissionService {
     groupId: string,
     dto: UpdateMadrasahPermissionGroupDto
   ): Promise<MadrasahPermissionGroupResponse> {
-    const actor = await this.actor(user, madrasahId);
+    const { id: actor, authority } = await this.actor(user, madrasahId);
     const group = await this.mustFindGroup(madrasahId, groupId);
     const name = dto.name?.trim() ?? group.name;
     const permissions = dto.permissions
@@ -220,6 +230,7 @@ export class MadrasahPermissionService {
       name,
       permissions,
       usersPolicy: dto.usersPolicy ?? null,
+      authority,
     });
     return presentGroup(await this.mustFindGroup(madrasahId, groupId));
   }
@@ -230,12 +241,17 @@ export class MadrasahPermissionService {
     groupId: string,
     usersPolicy: UsersPolicy | undefined
   ): Promise<void> {
-    const actor = await this.actor(user, madrasahId);
+    const { id: actor, authority } = await this.actor(user, madrasahId);
     const group = await this.mustFindGroup(madrasahId, groupId);
     if (group.userCount > 0 && !usersPolicy) {
       throw new UsersPolicyRequiredError(group.userCount);
     }
-    await this.groups.deleteGroup(actor, groupId, usersPolicy ?? null);
+    await this.groups.deleteGroup(
+      actor,
+      groupId,
+      usersPolicy ?? null,
+      authority
+    );
   }
 
   /** A live group of this medrese; another medrese's, the platform's and a missing one are all not found. */
@@ -287,7 +303,7 @@ export class MadrasahPermissionService {
     userId: string,
     dto: SetMadrasahNazirPermissionsDto
   ): Promise<MadrasahNazirResponse> {
-    const actor = await this.actor(user, madrasahId);
+    const { id: actor } = await this.actor(user, madrasahId);
     const id = userId.toLowerCase();
     await this.mustBeNazir(madrasahId, id);
     // Nobody gives themselves permissions: the person the caller names is

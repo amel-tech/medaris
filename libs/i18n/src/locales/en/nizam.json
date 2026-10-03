@@ -1333,7 +1333,15 @@
     "dismissedBody": "{name} is no longer a Medaris nazim.",
     "loadFailedTitle": "The list could not be read",
     "loadFailed": "What this person gave cannot be read right now. Try again in a moment.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "groupsQuestion": "This person defined or changed {count} permission group(s). The groups stay as they are; what each holder has does not change.",
+    "groupLine": "{action}",
+    "groupLineScoped": "{action} · {scope}",
+    "groupAction": {
+      "create": "Defined",
+      "update": "Changed"
+    },
+    "groupsNote": "The group's codes, before and after, are in the audit log."
   },
   "UsersPolicyDialog": {
     "titleUsers": "{count, plural, one {# person uses this group} other {# people use this group}}",

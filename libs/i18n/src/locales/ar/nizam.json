@@ -1333,7 +1333,15 @@
     "dismissedBody": "لم يعد {name} ناظر مدارس.",
     "loadFailedTitle": "تعذّرت قراءة القائمة",
     "loadFailed": "تعذّرت قراءة ما منحه هذا الشخص الآن. أعيدوا المحاولة بعد قليل.",
-    "retry": "إعادة المحاولة"
+    "retry": "إعادة المحاولة",
+    "groupsQuestion": "عرّف هذا الشخص أو عدّل {count} من مجموعات الصلاحيات. تبقى المجموعات كما هي ولا يتغير ما يملكه كل صاحب صلاحية.",
+    "groupLine": "{action}",
+    "groupLineScoped": "{action} · {scope}",
+    "groupAction": {
+      "create": "عرّف",
+      "update": "عدّل"
+    },
+    "groupsNote": "محتوى المجموعة قبل التعديل وبعده محفوظ في سجل التدقيق."
   },
   "UsersPolicyDialog": {
     "titleUsers": "يستخدم هذه المجموعة {count} شخص",

@@ -107,9 +107,11 @@ prints nothing). The rollback is `src/database/rollbacks/0047_mdrs_135_grant_aut
 
 - A başmüderris gives from the `permission.grant` their role holds (a role default, never a grant), as
   the medrese's authority. The başnazım gives as the platform. A Medaris nazımı holding
-  `platform.madrasah_nazir_grant` gives a medrese nazırı its permissions, as the platform. What
-  "within their own authority" caps that at is an open owner question (see "Open questions"). All three go through `MadrasahPermissionService.authorityOf`, which asks the
-  engine. A medrese nazırı, a ders nazırı and a grantee of any kind cannot give.
+  `platform.madrasah_nazir_grant` gives a medrese nazırı its permissions, as the platform, and may give
+  **every grantable medrese and course permission whatever they hold themselves**: their own default is
+  empty and there is no ceiling at it (owner, MDRS-209, see "Decided by the owner"). All three go
+  through `MadrasahPermissionService.authorityOf`, which asks the engine. A medrese nazırı, a ders
+  nazırı and a grantee of any kind cannot give, and nobody may name themselves (`SelfGrantGuard`).
 - A köşk nazımı's ceiling for ders nazırları is `course.manage_all` opening `COURSE_CATALOG`; the rule
   (`kosk-grants-rules.ts`) is unchanged and its grants now record `authority = kosk`.
 - Groups are read at decision time with their items, so a change to a group in use reaches every
@@ -426,32 +428,71 @@ appeals, admission rules, YouTube, the ban moves above, week hiding) or to the l
 kept grantable because nazir/06 and nizam/13 print them: removing one would change the 10, 20 and 11, 21
 the screens count.
 
+## Decided by the owner
+
+**What a Medaris nazımı may hand on (MDRS-209, 3 October).** The question was what "within their
+authority" caps a Medaris nazımı holding `platform.madrasah_nazir_grant` at: only what they hold
+themselves (nothing: their own default is empty and a grantee never hands on a grant), or everything the
+catalogue lists. The owner's answer: **"Hepsi, her grant denetlenip başnazıma gösterilsin."** So:
+
+- There is no allow-list and no ceiling at their own default: they may give every grantable medrese
+  and course permission, to a nazır, in a group, and appoint nazırs.
+- In return every such act is written to `audit_log` with the level the giver acted at, and listed to the
+  başnazım under `GET /nizam/medaris-nazims/:id/given`.
+- Naming themselves stays refused (`SelfGrantGuard`).
+- The other callers' limits are unchanged: a başmüderris gives at the medrese's level and only in their
+  own medrese, a nazır holding `madrasah.nazir_appoint` by a grant, a ders nazırı and a Medaris nazımı
+  without the permission cannot give, a code outside the medrese and course lists is refused to everyone.
+
+What was already true and what was added for it, path by path:
+
+| Path a Medaris nazımı can use | Audit row (a) | Listed to the başnazım (b) |
+| --- | --- | --- |
+| `PUT /madrasahs/:id/nazirs/:userId/permissions` | `permission.grant` and `permission.revoke` existed; the grant row now carries the ids of the grants written (`grants: [{ id, permission, groupId, scopeType, scopeId }]`) and `authority`, the revoke row `grantIds` and `authority` | already: every grant row is `granted_by` the actor, so `heldGivenBy` lists it (GRANT items) |
+| `POST /madrasahs/:id/nazirs/:userId` (appoint) | `madrasah_nazir.appoint` existed with the user only; it now carries `role`, `roleAssignmentId`, `scopeType`, `scopeId` and `authority` | already: the seat is `granted_by` the actor (ROLE item) |
+| `DELETE …/nazirs/:userId` (dismiss) | `madrasah_nazir.dismiss` existed | n/a |
+| `POST`, `PATCH`, `DELETE /madrasahs/:id/permission-groups` | `permission_group.create/update/delete` existed; each now carries `authority`, update and delete the group's `scopeType` and `scopeId`, and `holderIds` (who held the group when it changed or went) | **added:** a GROUP item per live group the person defined or last changed, with its codes and whether they defined or changed it (`groupAction`); `GivenItemResponse.to` is null for it |
+| `POST /kosks/:id/nazims` (admin route) | `kosk.nazim.add` existed | already (ROLE item) |
+| `POST`, `DELETE /kosks/:id/managers/:userId` | **added:** neither wrote an audit row; they now write `kosk.nazim.add` / `kosk.nazim.remove` with `authority` | already (ROLE item) |
+| `PUT /madrasahs/:id/head-muderris`, `inactive_scope.assign` | `madrasah.head_muderris.set`, `inactive_scope.assign` existed | already (ROLE item) |
+| `POST /kosks/:id/hosting-rights` | `hosting_right.grant` existed, now with `grantedByRole` `MEDARIS_NAZIM` (review L11) | not in `given`: a hosting right is neither a role nor a permission; the köşk's hosting list names the granter and their level |
+
+Two more changes so the başnazım can find these rows: `madrasah_nazir.*` is typed as a role change on
+the audit page (it was "other", visible only under "Tümü"), and the dismissal dialog lists the groups
+beside the roles and grants, asking no answer for them: a group is not a right the person holds, and what
+its holders hold is theirs. Dismissing a Medaris nazımı leaves the groups they defined or changed as they
+are.
+
+Tests: `authz-engine.e2e.spec.ts` › "what a Medaris nazımı hands on: all of it, on the record, listed to
+the başnazım (MDRS-209)" (five cases: every grantable code to a nazır holding none of them, an
+appointment, the admin-route köşk nazımı, a group defined, changed and deleted, the other callers'
+limits), and the köşk manager and hosting cases of "review fixes". Each fails with the source change put
+back.
+
 ## Open questions
 
-1. **What does "within their authority" cap a Medaris nazımı at?** Read as "only what they hold
-   themselves" it leaves them nothing to give: their own role default is empty and a grantee never
-   hands on what was granted. Read as "any medrese or course code the catalogue lists" it lets a Medaris
-   nazımı with one platform permission hand a nazır every permission of a medrese, as the platform,
-   which also beats the medrese's and the köşk's policies. The self-grant guard stops the person naming
-   themselves; it does not stop naming an accomplice. Until the owner says, there is no ceiling on this
-   path and `authz-engine.e2e.spec.ts` carries an `it.todo` for it.
-2. **Bans through the catalogue.** To read bans from the codes someone has to say: may a başmüderris ban
+1. **Bans through the catalogue.** To read bans from the codes someone has to say: may a başmüderris ban
    in a course of their medrese (the catalogue says yes, `ban.course` is in their defaults; the route
    says no, MDRS-133)? Which code lifts a köşk-level, a medrese-level and a platform-level ban (the
    catalogue has `ban.lift_course` only for the course; `ban.manage_kosk`, `madrasah.ban` and
    `platform.ban_scoped` each say "ban or lift")? What does a Medaris nazımı holding only
    `platform.ban_scoped` do about a course ban? Does `platform.ban_account` (a closed account) need
    anything the ban tables have?
-3. **Who may look people up.** `user.lookup` is tagged for the köşk and the course; a Medaris nazımı
+2. **Who may look people up.** `user.lookup` is tagged for the köşk and the course; a Medaris nazımı
    cannot hold it, yet needs it to appoint a köşk nazımı, and a medrese nazırı given
    `madrasah.nazir_appoint` needs it to appoint a nazır.
-4. **Roster reads and the audit** (the decision above): audit them, or keep them as management views?
-5. **A policy's outcome at enrolment.** A grant from above a policy lets one person switch the ability
+3. **Roster reads and the audit** (the decision above): audit them, or keep them as management views?
+4. **A policy's outcome at enrolment.** A grant from above a policy lets one person switch the ability
    off, but `CourseService.enroll` still forces approval under the policy; widening a person changes
    what they may set, not what their course then does. Making it do so needs a stored override.
-6. **`setting.recordings_public`** has nothing to guard until a route writes a recording's visibility.
+5. **`setting.recordings_public`** has nothing to guard until a route writes a recording's visibility.
 
 ## Needs review
+
+- **A shipped sentence now says the opposite of the decision.** `nizam.json`
+  `PermissionCatalog.permissions.platform_madrasah_nazir_grant.help` reads "Medrese nazırına, kendi
+  izinleriyle sınırlı olarak izin verir." (limited to their own permissions), from the design. The owner
+  decided there is no such limit (MDRS-209). The sentence is the design's, so it is not changed here.
 
 - The wording of `deck.propose_kosk` ("Köşk destesi öner") and the en/ar of the two new codes.
 - `course.hide` has no sentence in the canvases; it is deliberately unlisted. Whether a medrese

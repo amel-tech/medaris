@@ -14,10 +14,12 @@ import { NazimsView } from "~/features/permissions/components/nazims-view";
 import {
   catalogFor,
   codeKey,
+  type DecisionItem,
   DISMISS_OPENS_AT,
   dayIn,
   dayInputValue,
   daysLeft,
+  decisionItems,
   dismissDecisions,
   dismissOpen,
   dismissReady,
@@ -27,6 +29,7 @@ import {
   extrasToSend,
   formatDay,
   givenKey,
+  groupItems,
   groupNameError,
   keepAllowed,
   needsUsersQuestion,
@@ -266,10 +269,10 @@ describe("the dismissal question (nizam 11, _kurallar 14, 15)", () => {
   const items = [
     { kind: "ROLE", id: "r1" },
     { kind: "GRANT", id: "g1" },
-  ] as GivenItemResponse[];
+  ] as DecisionItem[];
 
   it("is ready only when every item has an answer", () => {
-    const [role, grant] = items as [GivenItemResponse, GivenItemResponse];
+    const [role, grant] = items as [DecisionItem, DecisionItem];
     expect(dismissReady(items, {})).toBe(false);
     expect(dismissReady(items, { [givenKey(role)]: "DROP" })).toBe(false);
     const all = {
@@ -285,6 +288,21 @@ describe("the dismissal question (nizam 11, _kurallar 14, 15)", () => {
 
   it("is ready at once when the person handed nothing on", () => {
     expect(dismissReady([], {})).toBe(true);
+  });
+
+  it("asks nothing about a group the person defined or changed: it is listed, not decided", () => {
+    const given = [
+      { kind: "ROLE", id: "r1" },
+      { kind: "GROUP", id: "p1", groupName: "Kadro", groupAction: "update" },
+      { kind: "GRANT", id: "g1" },
+    ] as GivenItemResponse[];
+    expect(decisionItems(given).map(givenKey)).toEqual(["ROLE:r1", "GRANT:g1"]);
+    expect(groupItems(given).map((g) => g.groupName)).toEqual(["Kadro"]);
+    const all = { "ROLE:r1": "DROP", "GRANT:g1": "DROP" } as const;
+    expect(dismissReady(decisionItems(given), all)).toBe(true);
+    expect(
+      dismissDecisions(decisionItems(given), all).map((d) => d.kind)
+    ).toEqual(["ROLE", "GRANT"]);
   });
 });
 
