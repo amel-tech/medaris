@@ -3,12 +3,14 @@ import {
   and,
   desc,
   eq,
+  gte,
   inArray,
   isNotNull,
   isNull,
   max,
   ne,
   notInArray,
+  or,
   sql,
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -36,6 +38,7 @@ import {
 import { users } from "../database/schema/user.schema";
 import {
   ICourse,
+  ICourseBadgeCounts,
   ICourseDetail,
   ICourseRef,
   ICourseRepository,
@@ -1321,6 +1324,48 @@ export class CourseRepository implements ICourseRepository {
     return rows;
   }
 
+  /**
+   * The counts behind the nazır portal's course menu (MDRS-183). A session
+   * "misses its link" when it is live, still ahead, not cancelled, belongs to
+   * a week and a lesson nobody hid, and its `meeting_url` is null or only
+   * whitespace. A session already under way is not counted: a link added now
+   * would come too late for it.
+   */
+  async getBadgeCounts(courseId: string): Promise<ICourseBadgeCounts> {
+    const [[pending], [missing]] = await Promise.all([
+      this.db
+        .select({ value: sql<number>`count(*)`.mapWith(Number) })
+        .from(enrollments)
+        .where(
+          and(
+            eq(enrollments.courseId, courseId),
+            eq(enrollments.status, EnrollmentStatus.PENDING)
+          )
+        ),
+      this.db
+        .select({ value: sql<number>`count(*)`.mapWith(Number) })
+        .from(lessons)
+        .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
+        .where(
+          and(
+            eq(courseWeeks.courseId, courseId),
+            isNull(courseWeeks.archivedAt),
+            isNull(lessons.archivedAt),
+            isNull(lessons.cancelledAt),
+            eq(lessons.type, LessonType.LIVE),
+            gte(lessons.scheduledAt, sql`now()`),
+            or(
+              isNull(lessons.meetingUrl),
+              sql`btrim(${lessons.meetingUrl}) = ''`
+            )
+          )
+        ),
+    ]);
+    return {
+      missingMeetingLinks: missing?.value ?? 0,
+      pendingApplications: pending?.value ?? 0,
+    };
+  }
   /**
    * Moves an enrollment to `status`, but only while it is still in
    * `expectedStatus`, the one the caller read: null when it is not (or is

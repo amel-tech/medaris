@@ -10,6 +10,7 @@ import { NazirNotFoundError } from "./errors/nazir-not-found.error";
 import { MadrasahRepository } from "./madrasah.repository";
 import {
   ICreateMadrasah,
+  IMadrasahBadgeCounts,
   IMadrasahDirectory,
   IMadrasahDirectoryFilter,
   IMadrasahDirectoryItem,
@@ -102,6 +103,14 @@ export class MadrasahService {
     filter: IMadrasahExploreFilter
   ): Promise<IMadrasahExplore[]> {
     return this.madrasahRepo.findExplore(filter);
+  }
+
+  /** The nazır portal's menu badges (MDRS-183); not-found for an unknown medrese. */
+  async getBadgeCounts(id: string): Promise<IMadrasahBadgeCounts> {
+    if (!(await this.madrasahRepo.exists(id))) {
+      throw new MadrasahNotFoundError(id);
+    }
+    return this.madrasahRepo.getBadgeCounts(id);
   }
 
   async exists(id: string): Promise<boolean> {

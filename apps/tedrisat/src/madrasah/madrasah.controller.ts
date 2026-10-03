@@ -42,6 +42,7 @@ import { PublicRequest } from "../course/interfaces/authorized-request.interface
 import { AuthorizedRequest } from "../kosk/interfaces/authorized-request.interface";
 import { maskMadrasahForAnonymous } from "./anonymous-mask";
 import { CreateMadrasahDto } from "./dto/create-madrasah.dto";
+import { MadrasahBadgeCountsResponse } from "./dto/madrasah-badge-counts-response.dto";
 import {
   MADRASAH_STATUS_FILTERS,
   MadrasahDirectoryItemResponse,
@@ -260,6 +261,27 @@ export class MadrasahController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahOverviewResponse> {
     return this.madrasahService.findOverview(id, request.user?.sub ?? null);
+  }
+
+  @ApiOperation({
+    summary: "Get the counts behind the nazır portal's menu badges",
+    description:
+      "For the medrese's nazırs (MDRS-183): the pending enrollment requests across its courses, and how many courses hold one. A hidden course is not counted. Unread notifications are the caller's own and come from `GET /notifications/unread-count`.",
+    operationId: "getMadrasahBadgeCounts",
+  })
+  @ApiOkResponse({ type: MadrasahBadgeCountsResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  // `VIEW_MADRASAH_ANALYTICS` rather than `VIEW`, which every caller holds:
+  // these are figures about the medrese's own applicants. It is read-only and
+  // sits on the MADRASAH_NAZIR row alone, which makes it the narrowest scope
+  // that already names the people who run the portal.
+  @Get(":id/badge-counts")
+  @Authz(SCOPES.VIEW_MADRASAH_ANALYTICS, byExistingMadrasah)
+  async getBadgeCounts(
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<MadrasahBadgeCountsResponse> {
+    return this.madrasahService.getBadgeCounts(id);
   }
 
   @ApiOperation({

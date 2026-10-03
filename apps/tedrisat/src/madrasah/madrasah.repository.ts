@@ -50,6 +50,7 @@ import {
   ICreateMadrasahWithHead,
   IHeadDelegation,
   IMadrasah,
+  IMadrasahBadgeCounts,
   IMadrasahCourse,
   IMadrasahDirectoryFilter,
   IMadrasahDirectoryItem,
@@ -988,6 +989,35 @@ export class MadrasahRepository {
         ? []
         : [{ courseId: r.courseId, status: r.status }]
     );
+  }
+
+  /**
+   * The counts behind the nazır portal's menu badges (MDRS-183): the PENDING
+   * enrollments across the medrese's courses, and how many courses hold one.
+   * A hidden course is left out, as `findPendingByKosk` leaves it out of the
+   * köşk's list (MDRS-124). The aggregate has no GROUP BY, so it always
+   * returns one row; the fallback only satisfies the type.
+   */
+  async getBadgeCounts(madrasahId: string): Promise<IMadrasahBadgeCounts> {
+    const [row] = await this.db
+      .select({
+        pendingApplications: sql<number>`count(*)`.mapWith(Number),
+        coursesWithPendingApplications:
+          sql<number>`count(distinct ${enrollments.courseId})`.mapWith(Number),
+      })
+      .from(enrollments)
+      .innerJoin(courses, eq(courses.id, enrollments.courseId))
+      .where(
+        and(
+          eq(courses.madrasahId, madrasahId),
+          isNull(courses.archivedAt),
+          eq(enrollments.status, EnrollmentStatus.PENDING)
+        )
+      );
+    return {
+      pendingApplications: row?.pendingApplications ?? 0,
+      coursesWithPendingApplications: row?.coursesWithPendingApplications ?? 0,
+    };
   }
 
   /** The earliest session still ahead, per course; archived ones do not count. */

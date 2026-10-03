@@ -1,3 +1,191 @@
 {
-  "nazir-namespace-placeholder": "nazır"
+  "Auth": {
+    "redirectingTitle": "Giriş sayfasına yönlendiriliyorsunuz",
+    "redirectingDescription": "Yönlendirme başlamazsa aşağıdaki düğmeyle devam edebilirsiniz.",
+    "continue": "Devam et",
+    "errorTitle": "Giriş yapılamadı",
+    "errorDescription": "Giriş sırasında bir sorun oluştu. Lütfen tekrar deneyin.",
+    "accessDenied": "Bu hesabın giriş izni yok.",
+    "configurationError": "Giriş hizmeti şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
+    "retry": "Tekrar dene",
+    "backHome": "Ana sayfaya dön",
+    "signOutTitle": "Çıkış yapmak istiyor musunuz?",
+    "signOutDescription": "Bu tarayıcıda Medaris’ten çıkarsınız. Görevleriniz ve tercihleriniz hesabınızda kalır.",
+    "signOutConfirm": "Çıkış yap",
+    "signOutBusy": "Çıkış yapılıyor",
+    "signOutCancel": "Vazgeç"
+  },
+  "NotFound": {
+    "title": "Sayfa bulunamadı",
+    "text": "Aradığınız sayfa taşınmış, kaldırılmış ya da görev alanınızın dışında olabilir.",
+    "back": "Ana sayfaya dön"
+  },
+  "Shell": {
+    "appName": "Nazır",
+    "navLabel": "Ana menü",
+    "menu": "Menü",
+    "close": "Kapat",
+    "scopeChange": "Kapsam değiştir: {name}",
+    "scopeMenu": "Kapsamlar",
+    "scopeMedrese": "Medrese",
+    "scopeCourses": "Dersler",
+    "scopeNote": "Yalnız görev aldığınız medrese ve dersler listelenir.",
+    "imam": "dersin imamı",
+    "bell": "Bildirimler",
+    "bellUnread": "Bildirimler, {count} okunmamış",
+    "accountHint": "ayarlar",
+    "countUnread": "okunmamış",
+    "countCoursesWithApplications": "derste bekleyen başvuru",
+    "countMissingLinks": "bağlantısı eksik",
+    "countApplications": "bekleyen başvuru",
+    "placeholder": "Bu sayfa henüz hazır değil.",
+    "loadingLabel": "Yükleniyor",
+    "loadFailedTitle": "Görevleriniz okunamadı",
+    "loadFailed": "Görevleriniz şu an okunamadı. Birkaç saniye sonra yeniden deneyin.",
+    "retry": "Yeniden dene",
+    "errorTitle": "Sayfa açılamadı",
+    "errorText": "Sayfa açılırken bir sorun çıktı. Yeniden deneyin; sürerse birkaç dakika sonra tekrar bakın."
+  },
+  "Roles": {
+    "MEDARIS_NAZIM": "Medaris nazımı",
+    "KOSK_NAZIM": "Köşk nazımı",
+    "MEDRESE_BASMUDERRIS": "Medrese başmüderrisi",
+    "MEDRESE_NAZIR": "Medrese nazırı",
+    "MUDERRIS": "Müderris",
+    "DERS_NAZIR": "Ders nazırı",
+    "STUDENT": "Talebe"
+  },
+  "Nav": {
+    "sections": {
+      "general": "Genel",
+      "medrese": "Medrese",
+      "ders": "Ders",
+      "management": "Yönetim"
+    },
+    "general": {
+      "pano": "Pano",
+      "notifications": "Bildirimler"
+    },
+    "medrese": {
+      "courses": "Dersler",
+      "students": "Talebeler",
+      "nazirs": "Medrese nazırları",
+      "bans": "Yasaklamalar",
+      "appeals": "İtirazlar",
+      "archive": "Arşiv",
+      "rules": "Kabul kuralları",
+      "settings": "Medrese ayarları"
+    },
+    "ders": {
+      "overview": "Genel bakış",
+      "curriculum": "Müfredat",
+      "sessions": "Celseler",
+      "students": "Talebeler",
+      "recordings": "Ders kayıtları",
+      "deck": "Ders destesi",
+      "bans": "Yasaklamalar",
+      "archive": "Arşiv",
+      "nazirs": "Ders nazırları",
+      "settings": "Ders ayarları"
+    }
+  },
+  "NoAccess": {
+    "title": "Bu portala erişiminiz yok",
+    "text": "Nazır, medrese ve ders görevlilerinin portalıdır. Hesabınızda bir medrese ya da ders görevi yok; görev aldığınızda bu portal açılır.",
+    "account": "Giriş yaptığınız hesap:",
+    "back": "Tedris’e dön"
+  },
+  "Account": {
+    "pageTitle": "Hesap ve ayarlar",
+    "pageSubtitle": "Görevleriniz, izinleriniz, saat diliminiz ve diliniz.",
+    "tasksTitle": "Görevleriniz",
+    "tasksIntro": "Her görev bir kapsamda geçerlidir. Görevi ve süresini, onu atayan kişi değiştirir.",
+    "noNazirNote": "Medrese nazırlığınız ya da ders nazırlığınız yok.",
+    "imam": "Dersin imamı",
+    "self": "Kendiniz",
+    "unknownPerson": "Bilinmiyor",
+    "noExpiry": "Süresiz",
+    "columns": {
+      "role": "Görev",
+      "scope": "Kapsam",
+      "grantor": "Atayan",
+      "expires": "Süre"
+    },
+    "scopeBadge": {
+      "active": "Etkin",
+      "published": "Yayında",
+      "draft": "Taslak",
+      "hidden": "Gizli"
+    },
+    "permissionsTitle": "Etkin izinleriniz",
+    "permissionsIntro": "İzinler görevlerinizden ve size verilen izin gruplarından gelir. Size verilen bir izni başkasına veremezsiniz; görevinizden gelen izni kendi kapsamınızda verebilirsiniz.",
+    "permissionsEmpty": "Görevlerinizden gelen ya da size verilmiş bir izin henüz yok.",
+    "grantedRole": "Verilen izinler",
+    "eachScope": {
+      "MUDERRIS": "Müderris olduğunuz derslerin her birinde geçerli: {names}.",
+      "default": "{role} olduğunuz her kapsamda geçerli: {names}."
+    },
+    "expiryNone": "Bitiş: süresiz.",
+    "expiryAt": "Bitiş: {date}.",
+    "expiryEarliest": "En yakın bitiş: {date}.",
+    "defaultsNote": {
+      "KOSK_NAZIM": "Köşk nazımının varsayılan izinleri. Köşkteki medrese derslerinde dersi açmak ve müderris listesi medresenindir.",
+      "MUDERRIS": "Müderrisin varsayılan izinleri. Ders kadrosu, derse kayıtlı talebenin adını ve e-postasını varsayılan görür; bu ayrı bir izin değildir."
+    },
+    "permissions": {
+      "kosk_manage": "Köşkü düzenle, gizle ya da geri al",
+      "kosk_hosting": "Barındırma hakkı ver ya da geri al",
+      "course_open_standalone": "Medrese dışı ders aç; müderrisleri ve imamı seç",
+      "course_manage_all": "Köşkteki derslerin içeriğini, celselerini, ders kayıtlarını ve başvurularını yönet",
+      "ban_manage_kosk": "Ders ve köşk düzeyinde yasakla ya da yasağı gerekçeyle kaldır; ders yasağını köşke genişlet",
+      "deck_manage_kosk": "Köşk destesini aç ve düzenle",
+      "course_nazir_assign_kosk": "Köşkün medrese dışı derslerinde ders nazırı ata ve izin ver, kendi izinlerinizi aşmadan",
+      "user_lookup": "E-postayla kullanıcı bul",
+      "course_edit": "Dersi düzenle: başlık, tanıtım, müfredat, saat dilimi",
+      "session_manage": "Celse ekle, tarihini değiştir, iptal et; toplantı bağlantısını gir",
+      "session_live_link": "Canlı yayın bağlantısını celseye ekle",
+      "week_hide": "Hafta ve celse gizle, geri al",
+      "course_settings": "Ders ayarlarını ve kapalı ders bayrağını değiştir",
+      "course_publish": "Dersi yayımla ya da taslağa çek",
+      "course_view_unpublished": "Taslak ya da gizli dersi gör",
+      "enrollment_decide": "Başvuruyu onayla ya da reddet",
+      "enrollment_remove": "Talebeyi gerekçeyle dersten çıkar",
+      "enrollment_complete": "Talebeyi dersi tamamlamış say",
+      "recording_manage": "Ders kaydı ekle, adlandır, gizle; görünürlüğünü değiştir",
+      "recording_upload": "Ders kaydı yükle",
+      "recording_watch_restricted": "Yalnız kayıtlılara açık ders kayıtlarını izle",
+      "session_view_content": "Celse içeriğini ve toplantı bağlantılarını gör",
+      "ban_course": "Talebeyi dersten yasakla (dersin yasak listesini görmeyi kapsar)",
+      "ban_lift_course": "Ders yasağını gerekçeyle kaldır",
+      "deck_manage_course": "Ders destesini aç ve düzenle",
+      "course_nazir_assign": "Ders nazırı ata; izin ya da grup ver, kendi izinlerinizi aşmadan",
+      "permission_group_define": "İzin grubu tanımla"
+    },
+    "permissionNotes": {
+      "course_manage_all": "İçerik okumaların denetim kaydına yazılır.",
+      "course_nazir_assign_kosk": "Medrese derslerinde izni medrese kadrosu verir.",
+      "user_lookup": "Her arama denetim kaydına yazılır.",
+      "ban_lift_course": "Üst kademenin koyduğu yasağı kaldıramazsınız."
+    },
+    "loadFailedTitle": "Görevleriniz yüklenemedi",
+    "loadFailed": "Görevleriniz ve izinleriniz şu an okunamadı. Sayfayı yenileyerek yeniden deneyin.",
+    "timeTitle": "Saat ve dil",
+    "timeZone": "Saat dilimi",
+    "timeZoneHelp": "Celse saatleri bu saat diliminde gösterilir. Seçtiğiniz an kaydedilir.",
+    "timeZoneOther": "Diğer…",
+    "timeZoneOtherLabel": "Diğer saat dilimleri",
+    "timeZoneSaved": "Saat diliminiz kaydedildi.",
+    "timeZoneFailedTitle": "Saat dilimi kaydedilemedi",
+    "timeZoneFailed": "Seçiminiz kaydedilemedi; önceki saat diliminiz geçerli. Yeniden deneyin.",
+    "timeZoneUnreadable": "Saat diliminiz şu an okunamadı. Sayfayı yenileyerek yeniden deneyin.",
+    "language": "Dil",
+    "languageValue": "Türkçe",
+    "languageHelp": "Medaris şimdilik yalnız Türkçe görünür.",
+    "accountTitle": "Hesap",
+    "email": "E-posta",
+    "emailHelp": "Salt okunur. Hesabınıza kayıtlı adres; buradan değiştirilemez.",
+    "signOut": "Çıkış yap",
+    "signOutBusy": "Çıkış yapılıyor",
+    "signOutNote": "Bu tarayıcıda Medaris’ten çıkarsınız. Görevleriniz ve tercihleriniz hesabınızda kalır."
+  }
 }
