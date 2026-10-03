@@ -852,6 +852,80 @@ describe("Permission admin (e2e)", () => {
         expect(grant.revokedBy).toBe(ADMIN);
         expect(grant.revokedAt).not.toBeNull();
       });
+
+      it("lists what the person made for themselves and revokes it with the appointment (review H4)", async () => {
+        await post("/nizam/medaris-nazims", {
+          userId: HASAN,
+          permissions: [],
+        }).expect(201);
+        const [kosk] = await db
+          .insert(kosks)
+          .values({ ownerId: KOSK_OWNER, name: "Nûruosmaniye Köşkü" })
+          .returning();
+        // Rows no route lets a Medaris nazımı write any more (the self-grant
+        // guard), as an older database or a script could have left them: a
+        // köşk seat and a grant he gave himself, and a seat he gave Rabia.
+        await assignRole(db, {
+          userId: HASAN,
+          role: ASSIGNED_ROLES.KOSK_NAZIM,
+          scopeId: kosk.id,
+          grantedBy: HASAN,
+        });
+        await db.insert(permissionGrants).values({
+          userId: HASAN,
+          scopeType: "kosk",
+          scopeId: kosk.id,
+          permission: "course.edit",
+          grantedBy: HASAN,
+        });
+        await assignRole(db, {
+          userId: RABIA,
+          role: ASSIGNED_ROLES.KOSK_NAZIM,
+          scopeId: kosk.id,
+          grantedBy: HASAN,
+        });
+
+        const given = (
+          await get(`/nizam/medaris-nazims/${HASAN}/given`).expect(200)
+        ).body as Array<{ id: string; kind: string; to: { id: string } }>;
+        expect(given).toHaveLength(3);
+        expect(given.filter((g) => g.to.id === HASAN)).toHaveLength(2);
+
+        // An answer is owed for what went to others only; the rest is revoked.
+        const toRabia = given.find((g) => g.to.id === RABIA);
+        await del(`/nizam/medaris-nazims/${HASAN}`, {
+          decisions: [{ kind: "ROLE", id: toRabia?.id, action: "TAKE_OVER" }],
+        }).expect(204);
+
+        expect(
+          await db
+            .select()
+            .from(roleAssignments)
+            .where(
+              and(
+                eq(roleAssignments.userId, HASAN),
+                isNull(roleAssignments.revokedAt)
+              )
+            )
+        ).toEqual([]);
+        expect(
+          await db
+            .select()
+            .from(permissionGrants)
+            .where(
+              and(
+                eq(permissionGrants.userId, HASAN),
+                isNull(permissionGrants.revokedAt)
+              )
+            )
+        ).toEqual([]);
+        // Rabia kept hers, now under the başnazım's name.
+        const [kept] = await db
+          .select()
+          .from(roleAssignments)
+          .where(eq(roleAssignments.id, toRabia?.id ?? ""));
+        expect(kept).toMatchObject({ grantedBy: ADMIN, revokedAt: null });
+      });
     });
   });
 

@@ -217,7 +217,12 @@ export class PermissionAdminRepository {
     return row?.title ?? null;
   }
 
-  /** Everything the person handed on that is still held (nizam/11's dismissal question). */
+  /**
+   * Everything the person handed on that is still held (nizam/11's dismissal
+   * question), including what they gave themselves: a row the person made for
+   * themselves is theirs to answer for like any other, and leaving it out let a
+   * self-made seat outlive the dismissal (review H4).
+   */
   async heldGivenBy(userId: string, db: Tx | DatabaseService["db"] = this.db) {
     const roles = await db
       .select({
@@ -228,13 +233,7 @@ export class PermissionAdminRepository {
         scopeId: roleAssignments.scopeId,
       })
       .from(roleAssignments)
-      .where(
-        and(
-          eq(roleAssignments.grantedBy, userId),
-          ne(roleAssignments.userId, userId),
-          isHeld()
-        )
-      )
+      .where(and(eq(roleAssignments.grantedBy, userId), isHeld()))
       .orderBy(asc(roleAssignments.createdAt), asc(roleAssignments.id));
     const grants = await db
       .select({
@@ -246,13 +245,7 @@ export class PermissionAdminRepository {
         scopeId: permissionGrants.scopeId,
       })
       .from(permissionGrants)
-      .where(
-        and(
-          eq(permissionGrants.grantedBy, userId),
-          ne(permissionGrants.userId, userId),
-          grantHeld()
-        )
-      )
+      .where(and(eq(permissionGrants.grantedBy, userId), grantHeld()))
       .orderBy(asc(permissionGrants.createdAt), asc(permissionGrants.id));
     const rows: IGivenRow[] = [
       ...roles.map((r) => ({
@@ -497,14 +490,22 @@ export class PermissionAdminRepository {
       const given = await this.heldGivenBy(userId, tx);
       const key = (kind: string, id: string) => `${kind}:${id}`;
       const decided = new Map(decisions.map((d) => [key(d.kind, d.id), d]));
+      // What the person made for themselves is not handed to anyone: it is
+      // revoked whatever the answer, so it needs none (an answer to it, which
+      // the listing invites, is accepted and ignored).
+      const forOthers = given.filter((g) => g.userId !== userId);
+      const known = new Set(given.map((g) => key(g.kind, g.id)));
       const complete =
         decided.size === decisions.length &&
-        decided.size === given.length &&
-        given.every((g) => decided.has(key(g.kind, g.id)));
+        forOthers.every((g) => decided.has(key(g.kind, g.id))) &&
+        [...decided.keys()].every((k) => known.has(k));
       if (!complete) throw new DismissDecisionsError();
 
       for (const item of given) {
-        const action = decided.get(key(item.kind, item.id))?.action;
+        const action =
+          item.userId === userId
+            ? "DROP"
+            : decided.get(key(item.kind, item.id))?.action;
         const take = action === "TAKE_OVER";
         if (item.kind === "ROLE") {
           await tx
@@ -547,12 +548,13 @@ export class PermissionAdminRepository {
         entity: "user",
         entityId: userId,
         details: {
-          tookOver: given.filter(
+          tookOver: forOthers.filter(
             (g) => decided.get(key(g.kind, g.id))?.action === "TAKE_OVER"
           ).length,
-          dropped: given.filter(
+          dropped: forOthers.filter(
             (g) => decided.get(key(g.kind, g.id))?.action === "DROP"
           ).length,
+          selfMade: given.length - forOthers.length,
         },
       });
     });
