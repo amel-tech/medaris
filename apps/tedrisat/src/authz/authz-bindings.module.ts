@@ -1,5 +1,6 @@
 import { ROLE_RESOLVER } from "@medaris/common";
 import { Global, Module } from "@nestjs/common";
+import { BanModule } from "../ban/ban.module";
 import { CourseModule } from "../course/course.module";
 import { FlashcardModule } from "../flashcard/flashcard.module";
 import { KoskModule } from "../kosk/kosk.module";
@@ -24,7 +25,13 @@ import { TedrisatRoleResolver } from "./tedrisat-role-resolver.service";
  */
 @Global()
 @Module({
-  imports: [KoskModule, MadrasahModule, CourseModule, FlashcardModule],
+  imports: [
+    KoskModule,
+    MadrasahModule,
+    CourseModule,
+    FlashcardModule,
+    BanModule,
+  ],
   providers: [
     {
       provide: ROLE_RESOLVER,

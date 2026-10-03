@@ -1,4 +1,5 @@
 export * from "./audit.schema";
+export * from "./ban.schema";
 export * from "./calendar-feed.schema";
 export * from "./course.schema";
 export * from "./flashcard.schema";

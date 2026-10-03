@@ -2,6 +2,7 @@
 .npmignore
 README.md
 src/apis/ArchiveApi.ts
+src/apis/BansApi.ts
 src/apis/CalendarApi.ts
 src/apis/CoursesApi.ts
 src/apis/FlashcardCardsApi.ts
@@ -29,6 +30,10 @@ src/models/ArchiveScopesResponse.ts
 src/models/ArchiverResponse.ts
 src/models/AssignedCourseInfo.ts
 src/models/AssignmentResponse.ts
+src/models/BanListResponse.ts
+src/models/BanPersonResponse.ts
+src/models/BanResponse.ts
+src/models/BanScope.ts
 src/models/BulkFlashcardErrorContext.ts
 src/models/BulkFlashcardErrorResponse.ts
 src/models/BulkFlashcardResponse.ts
@@ -37,6 +42,7 @@ src/models/CalendarFeedStatusResponse.ts
 src/models/ChiefNazimResponse.ts
 src/models/CourseDetailResponse.ts
 src/models/CourseSummaryResponse.ts
+src/models/CreateBanDto.ts
 src/models/CreateCourseDto.ts
 src/models/CreateFlashcardDeckDto.ts
 src/models/CreateFlashcardDeckLabelDto.ts
@@ -56,6 +62,7 @@ src/models/CreateWeekLessonDto.ts
 src/models/DeckLabelStatsResponse.ts
 src/models/EffectivePermissionGroup.ts
 src/models/EnrolledCourseResponse.ts
+src/models/EnrollmentBanResponse.ts
 src/models/EnrollmentResponse.ts
 src/models/FieldError.ts
 src/models/FlashcardCreateLabelResponse.ts
@@ -76,6 +83,7 @@ src/models/KoskResponse.ts
 src/models/LabelStatsResponse.ts
 src/models/LessonMutationResponse.ts
 src/models/LessonResponse.ts
+src/models/LiftBanDto.ts
 src/models/MadrasahCourseMuderrisResponse.ts
 src/models/MadrasahCourseResponse.ts
 src/models/MadrasahHeadMuderrisResponse.ts
@@ -107,6 +115,7 @@ src/models/RemoveEnrollmentDto.ts
 src/models/ReplaceCourseDto.ts
 src/models/ResourceResponse.ts
 src/models/RoleSummary.ts
+src/models/RosterEnrollmentResponse.ts
 src/models/RowError.ts
 src/models/ScopeRefResponse.ts
 src/models/SessionBatchLessonResponse.ts

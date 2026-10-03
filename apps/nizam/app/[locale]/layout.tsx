@@ -32,7 +32,7 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body className={inter.className}>
         <NextIntlClientProvider>
           <ClientProviders>
