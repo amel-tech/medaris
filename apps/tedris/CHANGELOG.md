@@ -1,5 +1,48 @@
 # Changelog
 
+## [2.1.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.0.0...tedris-web-v2.1.0) (2026-10-03)
+
+
+### Features
+
+* **nizam-web, tedrisat:** MDRS-176 course, curriculum and session screens for nizam ([#169](https://github.com/amel-tech/medaris/issues/169)) ([a99bba6](https://github.com/amel-tech/medaris/commit/a99bba684db60374da56057ae8d476a292d9bbe3))
+* **nizam-web, tedrisat:** MDRS-180 deck publish requests, köşk decks and open-a-deck ([#172](https://github.com/amel-tech/medaris/issues/172)) ([fdcad98](https://github.com/amel-tech/medaris/commit/fdcad989a0b2baea2c81bb9d1fd29a35d3db9b24))
+* **tedris-web, i18n:** MDRS-229 show the YouTube live chat under the live stream ([#189](https://github.com/amel-tech/medaris/issues/189)) ([3865ac9](https://github.com/amel-tech/medaris/commit/3865ac9964e510a617ba25ee8b697bd3f0406108))
+* **tedris-web, tedrisat, ui:** bring tedris in line with the Tedris screens design ([#179](https://github.com/amel-tech/medaris/issues/179)) ([c1ebc07](https://github.com/amel-tech/medaris/commit/c1ebc077d1aeb0d38430a313b667c4079a94f454))
+* **tedris-web, tedrisat:** MDRS-160 read köşks, medreses and Keşfet with no account ([#148](https://github.com/amel-tech/medaris/issues/148)) ([9424e11](https://github.com/amel-tech/medaris/commit/9424e11e6eb51b4935223f7648fbc961956d1fb3))
+* **tedris-web, tedrisat:** MDRS-164 deck screens for list, explore, create, detail, reader and edit ([#158](https://github.com/amel-tech/medaris/issues/158)) ([9fe1cfb](https://github.com/amel-tech/medaris/commit/9fe1cfbe562d5f0c2a09624e1a0b814e8ddfb38e))
+* **tedris-web:** MDRS-101 launch wave 2 in tedris ([#119](https://github.com/amel-tech/medaris/issues/119)) ([3849224](https://github.com/amel-tech/medaris/commit/38492248c014b5142662aac09b809a92ed18578b))
+* **tedris-web:** MDRS-156 sign-out confirmation, application dialog, draft preview and system pages ([#145](https://github.com/amel-tech/medaris/issues/145)) ([484cdbb](https://github.com/amel-tech/medaris/commit/484cdbb12f7350df75df463e5a5f93e2d6cffc42))
+* **tedris-web:** MDRS-159 discover, kosk page and my courses screens ([#147](https://github.com/amel-tech/medaris/issues/147)) ([cc4dacf](https://github.com/amel-tech/medaris/commit/cc4dacffe24124025ead90aec9df234a13424e64))
+* **tedris-web:** MDRS-161 draw the course page in its five states ([#154](https://github.com/amel-tech/medaris/issues/154)) ([228a15b](https://github.com/amel-tech/medaris/commit/228a15bbbcb32ad24cebb27cf560f281550df80b))
+* **tedris-web:** MDRS-162 live, ended and locked session pages and the recordings tab ([#159](https://github.com/amel-tech/medaris/issues/159)) ([4063386](https://github.com/amel-tech/medaris/commit/40633868cadee5a66e1a244a660b152ca5eed5d5))
+* **tedris-web:** MDRS-163 add Programım, the calendar subscription and the member phone menu ([#151](https://github.com/amel-tech/medaris/issues/151)) ([16fdab5](https://github.com/amel-tech/medaris/commit/16fdab5f2418207b3da3fd2f9dbd6715abb775c2))
+* **tedris-web:** MDRS-165 Ana sayfa sections, study round with review schedule, signed-out deck ([#156](https://github.com/amel-tech/medaris/issues/156)) ([91c8cfc](https://github.com/amel-tech/medaris/commit/91c8cfc6669cab59fafcceaf7d6c9a8d65372ff7))
+* **tedris-web:** MDRS-166 account, public profile and köşk application screens ([#157](https://github.com/amel-tech/medaris/issues/157)) ([b138b0d](https://github.com/amel-tech/medaris/commit/b138b0db47f4a6e238a9bdc4fd28f3d4ff2f17c5))
+* **tedrisat, common, nizam-web, tedris-web:** MDRS-134 role model v2 on top of launch wave 3 ([#129](https://github.com/amel-tech/medaris/issues/129)) ([d07d26d](https://github.com/amel-tech/medaris/commit/d07d26d0c375e0404cec8f96f55e4482942f4d8c))
+* **tedrisat, common, tedris-web:** MDRS-103 hide lesson content from callers who are not enrolled ([#124](https://github.com/amel-tech/medaris/issues/124)) ([bbb8ab3](https://github.com/amel-tech/medaris/commit/bbb8ab37b019c8be4a466022536effd16f73e465))
+* **tedrisat, common, tedris-web:** MDRS-122 open köşk, medrese and course pages to guests ([#127](https://github.com/amel-tech/medaris/issues/127)) ([28e68e5](https://github.com/amel-tech/medaris/commit/28e68e5eb701a91336702f7e9b28f6491b644613))
+* **tedrisat, nizam-web, tedris-web:** MDRS-105 course team on the matrix, müderris as accounts ([#125](https://github.com/amel-tech/medaris/issues/125)) ([5ceb93a](https://github.com/amel-tech/medaris/commit/5ceb93a73039c936743d83a939d89fb3f8eceb7b))
+* **tedrisat, tedris-web, nizam-web:** MDRS-110 lesson minutes and viewer time zones ([#114](https://github.com/amel-tech/medaris/issues/114)) ([d0a791a](https://github.com/amel-tech/medaris/commit/d0a791a4c63ae637dee53afa44657e0105630490))
+* **tedrisat, tedris-web, nizam-web:** MDRS-169 assignment foundation and Nazir access screens ([#138](https://github.com/amel-tech/medaris/issues/138)) ([efd93c5](https://github.com/amel-tech/medaris/commit/efd93c5d18269df946835d3a5007c98166ba1fd8))
+* **tedrisat, tedris-web, ui:** MDRS-167 add the notification foundation and the notifications page ([#135](https://github.com/amel-tech/medaris/issues/135)) ([977d19b](https://github.com/amel-tech/medaris/commit/977d19be2be8f8e79f3cc9bf997cb538c4a040a7))
+* **tedrisat, tedris-web:** MDRS-157 add the medrese foundation and the medrese page ([#136](https://github.com/amel-tech/medaris/issues/136)) ([6d49464](https://github.com/amel-tech/medaris/commit/6d494640991d0ed8a0d6cc36297e8be5cbba84e8))
+* **tedrisat, tedris-web:** MDRS-158 add the session foundation and the session page ([#141](https://github.com/amel-tech/medaris/issues/141)) ([ad88934](https://github.com/amel-tech/medaris/commit/ad889340ba177f2ee083f5292599e27437152efb))
+* **tedrisat, tedris-web:** MDRS-43 close the deck, card, köşk and course authorization holes ([#122](https://github.com/amel-tech/medaris/issues/122)) ([f49e1b4](https://github.com/amel-tech/medaris/commit/f49e1b4dca294b4f0f1089671f4ead5c181cb81a))
+* **tedrisat:** MDRS-213 notify talebe of enrolment, session and access changes ([#184](https://github.com/amel-tech/medaris/issues/184)) ([f9b2cc2](https://github.com/amel-tech/medaris/commit/f9b2cc2f9ba699da3bf94225a8d1323c6e899310))
+
+
+### Bug Fixes
+
+* **tedris-web, i18n:** MDRS-217 render lang and dir from the locale on Arabic pages ([#187](https://github.com/amel-tech/medaris/issues/187)) ([c9624f7](https://github.com/amel-tech/medaris/commit/c9624f7d29536b09addd5297a4f9c0ee2175e9af))
+* **tedris-web, nizam-web, nazir-web, services:** MDRS-210 sign out of every app at once ([#183](https://github.com/amel-tech/medaris/issues/183)) ([54700f2](https://github.com/amel-tech/medaris/commit/54700f2fef07fbfcd7327b04deef2469c3d344e6))
+* **tedris-web, nizam-web, nazir-web, services:** MDRS-231 log a failed token refresh as a summary ([#194](https://github.com/amel-tech/medaris/issues/194)) ([901e515](https://github.com/amel-tech/medaris/commit/901e515e93b44297a2c051f311eed50c542d976f))
+* **tedris-web, services, i18n:** MDRS-216 keep an expired session on a public page a visitor ([#195](https://github.com/amel-tech/medaris/issues/195)) ([24affc9](https://github.com/amel-tech/medaris/commit/24affc9c03ca635ee3941587dc46da8f3b668b90))
+* **tedris-web, services:** stop parallel sign-ins from ending on the auth error box ([#180](https://github.com/amel-tech/medaris/issues/180)) ([b451266](https://github.com/amel-tech/medaris/commit/b451266cc8c6709a16225bce5ac401a8557164f7))
+* **tedris-web:** draw the top bar's account link as the bell's icon button ([#185](https://github.com/amel-tech/medaris/issues/185)) ([4a0ea8d](https://github.com/amel-tech/medaris/commit/4a0ea8dae2b850239fcdf74139305e0b22194b70))
+* **tedris-web:** MDRS-43 follow-ups and a render-spec timeout ([#128](https://github.com/amel-tech/medaris/issues/128)) ([27a77cb](https://github.com/amel-tech/medaris/commit/27a77cb77babb6ca0300d24c3824fc239c66291c))
+* **ui, tedris-web, nizam-web, nazir-web:** MDRS-214 close stale toasts on navigation ([#188](https://github.com/amel-tech/medaris/issues/188)) ([593acab](https://github.com/amel-tech/medaris/commit/593acab26431f82c953d1e6a6f4b1689a36f6381))
+
 ## [2.0.0](https://github.com/amel-tech/medaris/compare/tedris-web-v1.9.0...tedris-web-v2.0.0) (2026-09-28)
 
 
