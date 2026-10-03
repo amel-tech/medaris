@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
-import { getCourse } from "~/features/courses/actions";
+import { getCourse, getKosk } from "~/features/courses/actions";
 import { LessonLocked } from "~/features/courses/components/lesson-locked";
-import { LessonPage } from "~/features/courses/components/lesson-page";
+import { SessionPage } from "~/features/courses/components/session-page";
 import { lessonLockReason } from "~/features/courses/lesson-lock";
+import { getSession } from "~/features/courses/public-reads";
 import { auth } from "~/lib/auth_options";
 
 export default async function Page({
@@ -11,13 +12,11 @@ export default async function Page({
   params: Promise<{ courseId: string; lessonId: string }>;
 }) {
   const { courseId, lessonId } = await params;
-  const course = await getCourse(courseId);
-  if (!course) notFound();
-
-  const lesson = course.weeks
-    .flatMap((w) => w.lessons)
-    .find((l) => l.id === lessonId);
-  if (!lesson) notFound();
+  const [course, session] = await Promise.all([
+    getCourse(courseId),
+    getSession(courseId, lessonId),
+  ]);
+  if (!course || !session) notFound();
 
   // MDRS-103: the API leaves the content out for anyone who may not read it
   // and says so with `contentLocked`, so this page decides nothing about
@@ -31,12 +30,20 @@ export default async function Page({
       <LessonLocked
         courseId={course.id}
         courseTitle={course.title}
-        lessonId={lesson.id}
-        lessonTitle={lesson.title}
+        lessonId={session.id}
+        lessonTitle={session.title}
         reason={reason}
       />
     );
   }
 
-  return <LessonPage course={course} lessonId={lessonId} />;
+  const kosk = await getKosk(course.koskId);
+  return (
+    <SessionPage
+      course={course}
+      session={session}
+      koskName={kosk?.name ?? null}
+      now={new Date()}
+    />
+  );
 }

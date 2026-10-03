@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   index,
   integer,
@@ -129,6 +130,20 @@ export const lessons = table(
     agenda: jsonb("agenda").$type<{ time: string; title: string }[]>(),
     isPreview: boolean("is_preview").default(false).notNull(),
     orderIndex: integer("order_index").default(0).notNull(),
+    // Cancellation of a live session (MDRS-158). A cancelled session stays in
+    // the programme and keeps its slot, marked rather than removed: talebe
+    // see "İptal edildi" there, and the calendar feed can say so. The reason
+    // is course content (`view_details`), like the meeting link. Whether it
+    // is happening, over or still ahead is never stored — it follows from
+    // `scheduled_at` and `duration_minutes`.
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    cancelReason: text("cancel_reason"),
+    // The session that makes up for the cancelled one. SET NULL: a replacement
+    // that is later removed leaves the cancellation standing without a link.
+    replacementLessonId: uuid("replacement_lesson_id").references(
+      (): AnyPgColumn => lessons.id,
+      { onDelete: "set null" }
+    ),
     // Removing a lesson hides it; it never deletes it (MDRS-95, following the
     // MDRS-124 decision). Recordings and calendar events will reference lesson
     // ids.

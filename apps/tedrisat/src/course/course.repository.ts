@@ -589,6 +589,9 @@ export class CourseRepository implements ICourseRepository {
       agenda: row.agenda,
       isPreview: row.isPreview,
       orderIndex: row.orderIndex,
+      cancelledAt: row.cancelledAt,
+      cancelReason: row.cancelReason,
+      replacementLessonId: row.replacementLessonId,
       courseVersion,
     };
   }
@@ -1025,6 +1028,25 @@ export class CourseRepository implements ICourseRepository {
       )
       .returning();
     return deleted.length > 0;
+  }
+
+  /**
+   * The course's imam among its müderrisler (MDRS-133): the holder of the one
+   * held MUDERRIS grant flagged `is_imam`, which the partial unique index
+   * allows at most once per course.
+   */
+  async findImamUserId(courseId: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ userId: roleAssignments.userId })
+      .from(roleAssignments)
+      .where(
+        and(
+          holdsIn(ASSIGNED_ROLES.MUDERRIS, courseId),
+          eq(roleAssignments.isImam, true)
+        )
+      )
+      .limit(1);
+    return row?.userId ?? null;
   }
 
   /** True if `userId` holds MUDERRIS on the course (MDRS-134). */

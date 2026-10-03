@@ -24,11 +24,11 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { authPages } from "~/lib/auth_pages";
 import { enrollInCourse } from "../actions";
+import { nextLiveLesson, upcomingLiveLesson } from "../live-lessons";
 import { AddToCalendarMenu } from "./add-to-calendar";
 import { CoverPlaceholder, HueAvatar } from "./cover";
 import { levelLabel } from "./labels";
 import { LeaveCourse } from "./leave-course";
-import { nextLiveLesson, upcomingLiveLesson } from "./lesson-page";
 import { SyllabusModal, WeekModule } from "./syllabus";
 
 const initials = (name: string) =>

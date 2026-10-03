@@ -113,6 +113,10 @@ src/models/SessionBatchLessonResponse.ts
 src/models/SessionBatchPreviewResponse.ts
 src/models/SessionBatchResponse.ts
 src/models/SessionBatchWeekResponse.ts
+src/models/SessionMuderrisResponse.ts
+src/models/SessionRefResponse.ts
+src/models/SessionResponse.ts
+src/models/SessionStatus.ts
 src/models/SetEnrollmentStatusDto.ts
 src/models/TaughtCourseRef.ts
 src/models/TeamSettableEnrollmentStatus.ts
