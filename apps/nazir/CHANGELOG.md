@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.2.1](https://github.com/amel-tech/medaris/compare/nazir-web-v0.2.0...nazir-web-v0.2.1) (2026-10-03)
+
+
+### Features
+
+* **nazir-web:** MDRS-183 ship the Nazır shell with access gate, scope picker and account page (2/2) ([#153](https://github.com/amel-tech/medaris/issues/153)) ([9befe90](https://github.com/amel-tech/medaris/commit/9befe90e49fce1c9c8e6d7ebe0a7a3b7c99d67c6))
+* **nazir-web:** MDRS-184 ship the Nazır medrese settings and nazır management screens ([#160](https://github.com/amel-tech/medaris/issues/160)) ([7f51a9c](https://github.com/amel-tech/medaris/commit/7f51a9c8fe5bbd3ddb2f360f4e57cc3ec161476d))
+* **nazir-web:** MDRS-185 ship the Nazır permission editing, permission group and archive screens ([#167](https://github.com/amel-tech/medaris/issues/167)) ([7f3471c](https://github.com/amel-tech/medaris/commit/7f3471c62247fd01ca9146a4d723fddbd3c98d3b))
+* **nazir-web:** MDRS-186 ship the Nazır courses, open-course and müderris screens ([#168](https://github.com/amel-tech/medaris/issues/168)) ([342cbb6](https://github.com/amel-tech/medaris/commit/342cbb63be3d4bf43527b0a84e85b08051ce7af2))
+* **nazir-web:** MDRS-187 ship the Nazır students, bans, offsite request and dashboard screens (2/2) ([#171](https://github.com/amel-tech/medaris/issues/171)) ([cd36d70](https://github.com/amel-tech/medaris/commit/cd36d70687fcfa08b09535f05a4d344de8915d26))
+
+
+### Bug Fixes
+
+* **tedris-web, nizam-web, nazir-web, services:** MDRS-210 sign out of every app at once ([#183](https://github.com/amel-tech/medaris/issues/183)) ([54700f2](https://github.com/amel-tech/medaris/commit/54700f2fef07fbfcd7327b04deef2469c3d344e6))
+* **tedris-web, nizam-web, nazir-web, services:** MDRS-231 log a failed token refresh as a summary ([#194](https://github.com/amel-tech/medaris/issues/194)) ([901e515](https://github.com/amel-tech/medaris/commit/901e515e93b44297a2c051f311eed50c542d976f))
+* **ui, tedris-web, nizam-web, nazir-web:** MDRS-214 close stale toasts on navigation ([#188](https://github.com/amel-tech/medaris/issues/188)) ([593acab](https://github.com/amel-tech/medaris/commit/593acab26431f82c953d1e6a6f4b1689a36f6381))
+
 ## [0.2.0](https://github.com/amel-tech/medaris/compare/nazir-web-v0.1.6...nazir-web-v0.2.0) (2026-09-28)
 
 
