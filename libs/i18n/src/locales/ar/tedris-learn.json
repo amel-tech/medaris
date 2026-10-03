@@ -1,0 +1,58 @@
+{
+  "Home": {
+    "continueTitle": "أكمل من حيث توقفت",
+    "decksTitle": "المجموعات المطلوب دراستها اليوم",
+    "followedTitle": "من الأروقة التي تتابعها",
+    "sectionFailed": "تعذّرت قراءة هذا القسم الآن.",
+    "retry": "أعد المحاولة",
+    "emptyCourses": "ليس لديك درس جارٍ. يمكنك أن تجد درسًا في صفحة الاستكشاف.",
+    "emptyDecks": "لا توجد مجموعة للدراسة اليوم. تصفّح مجموعتك في صفحة المجموعات.",
+    "emptyFollowed": "لا توجد دروس جديدة في الأروقة التي تتابعها.",
+    "nextSessionShort": "الجلسة القادمة",
+    "studyDeck": "ادرس: {title}"
+  },
+  "Study": {
+    "title": "الدراسة",
+    "subtitleDue": "{deck} · {count} بطاقة بانتظار المراجعة اليوم",
+    "subtitleNew": "{deck} · {count} بطاقة جديدة",
+    "subtitleAll": "{deck} · {count} بطاقة",
+    "finish": "إنهاء الدراسة",
+    "round": "هذه الجولة: {done} / {total} بطاقة",
+    "cardOf": "البطاقة {n} / {total}",
+    "showBack": "أظهر الوجه الخلفي",
+    "difficulty": "ما مدى صعوبتها؟",
+    "hard": "صعبة",
+    "medium": "متوسطة",
+    "easy": "سهلة",
+    "saveFailedTitle": "لم يُحفظ تقدّمك",
+    "saveFailedText": "تبقى البطاقة مكانها. أعد المحاولة.",
+    "nothingTitle": "انتهيت لهذا اليوم",
+    "nothingText": "لا توجد بطاقة بانتظار المراجعة اليوم. عُد غدًا.",
+    "doneTitle": "انتهت الجولة",
+    "doneText": "درست {count} بطاقة.",
+    "backToDeck": "العودة إلى المجموعة"
+  },
+  "PublicDeck": {
+    "note": "إن درست دون تسجيل الدخول فلن يُحفظ تقدّمك.",
+    "signIn": "سجّل الدخول للحفظ"
+  },
+  "RecordingsTab": {
+    "empty": "لم يُنشر أي تسجيل لهذا الدرس بعد.",
+    "errorTitle": "تعذّر تحميل التسجيلات",
+    "errorText": "تعذّر الوصول إلى التسجيلات الآن. حاول مرة أخرى بعد قليل.",
+    "retry": "أعد المحاولة",
+    "playerPlaceholder": "يُعرض التسجيل هنا",
+    "allTitle": "كل التسجيلات",
+    "allHint": "حسب الأسبوع، الأحدث أولًا",
+    "weekLabel": "الأسبوع {number}",
+    "minutes": "{count} د",
+    "preparing": "قيد الإعداد",
+    "preparingHint": "يُعرض هنا عند جاهزيته",
+    "public": "متاح للجميع",
+    "inPlayer": "في المشغّل",
+    "play": "تشغيل",
+    "playLabel": "تشغيل: {title}",
+    "open": "فتح التسجيل",
+    "openLabel": ": {title} (يُفتح في تبويب جديد)"
+  }
+}

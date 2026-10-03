@@ -13,13 +13,20 @@
  */
 
 import { mapValues } from '../runtime';
-import type { MuderrisResponse } from './MuderrisResponse';
+import type { SummaryMuderrisResponse } from './SummaryMuderrisResponse';
 import {
-    MuderrisResponseFromJSON,
-    MuderrisResponseFromJSONTyped,
-    MuderrisResponseToJSON,
-    MuderrisResponseToJSONTyped,
-} from './MuderrisResponse';
+    SummaryMuderrisResponseFromJSON,
+    SummaryMuderrisResponseFromJSONTyped,
+    SummaryMuderrisResponseToJSON,
+    SummaryMuderrisResponseToJSONTyped,
+} from './SummaryMuderrisResponse';
+import type { CourseMadrasahResponse } from './CourseMadrasahResponse';
+import {
+    CourseMadrasahResponseFromJSON,
+    CourseMadrasahResponseFromJSONTyped,
+    CourseMadrasahResponseToJSON,
+    CourseMadrasahResponseToJSONTyped,
+} from './CourseMadrasahResponse';
 import type { EnrollmentResponse } from './EnrollmentResponse';
 import {
     EnrollmentResponseFromJSON,
@@ -119,6 +126,18 @@ export interface CourseSummaryResponse {
      */
     requiresApproval: boolean;
     /**
+     * Closed course (MDRS-176): its content and recordings are never opened to everyone; recordings marked PUBLIC are read by the course team and the enrolled talebe only.
+     * @type {boolean}
+     * @memberof CourseSummaryResponse
+     */
+    isClosed: boolean;
+    /**
+     * The word printed on the cover; null when none.
+     * @type {string}
+     * @memberof CourseSummaryResponse
+     */
+    coverLabel?: string | null;
+    /**
      * IANA time zone the course's sessions are authored in (MDRS-110).
      * @type {string}
      * @memberof CourseSummaryResponse
@@ -174,16 +193,28 @@ export interface CourseSummaryResponse {
     resourceCount: number;
     /**
      * 
-     * @type {Array<MuderrisResponse>}
+     * @type {Array<SummaryMuderrisResponse>}
      * @memberof CourseSummaryResponse
      */
-    muderris: Array<MuderrisResponse>;
+    muderris: Array<SummaryMuderrisResponse>;
     /**
      * 
      * @type {EnrollmentResponse}
      * @memberof CourseSummaryResponse
      */
     enrollment?: EnrollmentResponse;
+    /**
+     * The medrese that opened the course in this köşk (MDRS-159).
+     * @type {CourseMadrasahResponse}
+     * @memberof CourseSummaryResponse
+     */
+    madrasah?: CourseMadrasahResponse | null;
+    /**
+     * The earliest session still ahead that has not been cancelled; null when none is scheduled (MDRS-159). The meeting link is never part of a summary.
+     * @type {Date}
+     * @memberof CourseSummaryResponse
+     */
+    nextSessionAt?: Date | null;
 }
 
 
@@ -221,6 +252,7 @@ export function instanceOfCourseSummaryResponse(value: object): value is CourseS
     if (!('status' in value) || value['status'] === undefined) return false;
     if (!('grantsCertificate' in value) || value['grantsCertificate'] === undefined) return false;
     if (!('requiresApproval' in value) || value['requiresApproval'] === undefined) return false;
+    if (!('isClosed' in value) || value['isClosed'] === undefined) return false;
     if (!('timeZone' in value) || value['timeZone'] === undefined) return false;
     if (!('version' in value) || value['version'] === undefined) return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
@@ -256,6 +288,8 @@ export function CourseSummaryResponseFromJSONTyped(json: any, ignoreDiscriminato
         'status': json['status'],
         'grantsCertificate': json['grantsCertificate'],
         'requiresApproval': json['requiresApproval'],
+        'isClosed': json['isClosed'],
+        'coverLabel': json['coverLabel'] == null ? undefined : json['coverLabel'],
         'timeZone': json['timeZone'],
         'version': json['version'],
         'archivedAt': json['archivedAt'] == null ? undefined : (new Date(json['archivedAt'])),
@@ -265,8 +299,10 @@ export function CourseSummaryResponseFromJSONTyped(json: any, ignoreDiscriminato
         'weekCount': json['weekCount'],
         'lessonCount': json['lessonCount'],
         'resourceCount': json['resourceCount'],
-        'muderris': ((json['muderris'] as Array<any>).map(MuderrisResponseFromJSON)),
+        'muderris': ((json['muderris'] as Array<any>).map(SummaryMuderrisResponseFromJSON)),
         'enrollment': json['enrollment'] == null ? undefined : EnrollmentResponseFromJSON(json['enrollment']),
+        'madrasah': json['madrasah'] == null ? undefined : CourseMadrasahResponseFromJSON(json['madrasah']),
+        'nextSessionAt': json['nextSessionAt'] == null ? undefined : (new Date(json['nextSessionAt'])),
     };
 }
 
@@ -295,6 +331,8 @@ export function CourseSummaryResponseToJSONTyped(value?: CourseSummaryResponse |
         'status': value['status'],
         'grantsCertificate': value['grantsCertificate'],
         'requiresApproval': value['requiresApproval'],
+        'isClosed': value['isClosed'],
+        'coverLabel': value['coverLabel'],
         'timeZone': value['timeZone'],
         'version': value['version'],
         'archivedAt': value['archivedAt'] === null ? null : ((value['archivedAt'] as any)?.toISOString()),
@@ -304,8 +342,10 @@ export function CourseSummaryResponseToJSONTyped(value?: CourseSummaryResponse |
         'weekCount': value['weekCount'],
         'lessonCount': value['lessonCount'],
         'resourceCount': value['resourceCount'],
-        'muderris': ((value['muderris'] as Array<any>).map(MuderrisResponseToJSON)),
+        'muderris': ((value['muderris'] as Array<any>).map(SummaryMuderrisResponseToJSON)),
         'enrollment': EnrollmentResponseToJSON(value['enrollment']),
+        'madrasah': CourseMadrasahResponseToJSON(value['madrasah']),
+        'nextSessionAt': value['nextSessionAt'] === null ? null : ((value['nextSessionAt'] as any)?.toISOString()),
     };
 }
 

@@ -58,7 +58,7 @@ export interface SessionBatchLessonResponse {
      */
     durationMinutes?: number | null;
     /**
-     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103).
+     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.
      * @type {string}
      * @memberof SessionBatchLessonResponse
      */
@@ -70,13 +70,13 @@ export interface SessionBatchLessonResponse {
      */
     scheduledAt?: Date;
     /**
-     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103).
+     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.
      * @type {string}
      * @memberof SessionBatchLessonResponse
      */
     meetingUrl?: string;
     /**
-     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103).
+     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.
      * @type {Array<AgendaStepResponse>}
      * @memberof SessionBatchLessonResponse
      */
@@ -106,7 +106,7 @@ export interface SessionBatchLessonResponse {
      */
     replacementLessonId?: string | null;
     /**
-     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103).
+     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.
      * @type {string}
      * @memberof SessionBatchLessonResponse
      */

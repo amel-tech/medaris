@@ -300,6 +300,7 @@ services:
       API_MOCKING: ${NIZAM__API_MOCKING:-${WEB__API_MOCKING:-disabled}}
       TEDRISAT_API_BASE_URL: http://tedrisat:3001
       NAZIR_URL: ${NIZAM__NAZIR_URL:-}
+      TEDRIS_URL: ${NIZAM__TEDRIS_URL:-}
     depends_on:
       - tedrisat
 

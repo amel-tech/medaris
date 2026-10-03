@@ -13,20 +13,27 @@
  */
 
 import { mapValues } from '../runtime';
-import type { MuderrisResponse } from './MuderrisResponse';
+import type { SummaryMuderrisResponse } from './SummaryMuderrisResponse';
 import {
-    MuderrisResponseFromJSON,
-    MuderrisResponseFromJSONTyped,
-    MuderrisResponseToJSON,
-    MuderrisResponseToJSONTyped,
-} from './MuderrisResponse';
-import type { EnrollmentResponse } from './EnrollmentResponse';
+    SummaryMuderrisResponseFromJSON,
+    SummaryMuderrisResponseFromJSONTyped,
+    SummaryMuderrisResponseToJSON,
+    SummaryMuderrisResponseToJSONTyped,
+} from './SummaryMuderrisResponse';
+import type { MyEnrollmentResponse } from './MyEnrollmentResponse';
 import {
-    EnrollmentResponseFromJSON,
-    EnrollmentResponseFromJSONTyped,
-    EnrollmentResponseToJSON,
-    EnrollmentResponseToJSONTyped,
-} from './EnrollmentResponse';
+    MyEnrollmentResponseFromJSON,
+    MyEnrollmentResponseFromJSONTyped,
+    MyEnrollmentResponseToJSON,
+    MyEnrollmentResponseToJSONTyped,
+} from './MyEnrollmentResponse';
+import type { NextSessionResponse } from './NextSessionResponse';
+import {
+    NextSessionResponseFromJSON,
+    NextSessionResponseFromJSONTyped,
+    NextSessionResponseToJSON,
+    NextSessionResponseToJSONTyped,
+} from './NextSessionResponse';
 
 /**
  * 
@@ -119,6 +126,18 @@ export interface EnrolledCourseResponse {
      */
     requiresApproval: boolean;
     /**
+     * Closed course (MDRS-176): its content and recordings are never opened to everyone; recordings marked PUBLIC are read by the course team and the enrolled talebe only.
+     * @type {boolean}
+     * @memberof EnrolledCourseResponse
+     */
+    isClosed: boolean;
+    /**
+     * The word printed on the cover; null when none.
+     * @type {string}
+     * @memberof EnrolledCourseResponse
+     */
+    coverLabel?: string | null;
+    /**
      * IANA time zone the course's sessions are authored in (MDRS-110).
      * @type {string}
      * @memberof EnrolledCourseResponse
@@ -161,6 +180,12 @@ export interface EnrolledCourseResponse {
      */
     koskName: string;
     /**
+     * The medrese that opened the course, or null (MDRS-159).
+     * @type {string}
+     * @memberof EnrolledCourseResponse
+     */
+    madrasahName?: string | null;
+    /**
      * 
      * @type {number}
      * @memberof EnrolledCourseResponse
@@ -174,16 +199,22 @@ export interface EnrolledCourseResponse {
     lessonCount: number;
     /**
      * 
-     * @type {Array<MuderrisResponse>}
+     * @type {Array<SummaryMuderrisResponse>}
      * @memberof EnrolledCourseResponse
      */
-    muderris: Array<MuderrisResponse>;
+    muderris: Array<SummaryMuderrisResponse>;
+    /**
+     * The earliest session still ahead that has not been cancelled (MDRS-159); null when none is scheduled.
+     * @type {NextSessionResponse}
+     * @memberof EnrolledCourseResponse
+     */
+    nextSession?: NextSessionResponse | null;
     /**
      * 
-     * @type {EnrollmentResponse}
+     * @type {MyEnrollmentResponse}
      * @memberof EnrolledCourseResponse
      */
-    enrollment: EnrollmentResponse;
+    enrollment: MyEnrollmentResponse;
 }
 
 
@@ -221,6 +252,7 @@ export function instanceOfEnrolledCourseResponse(value: object): value is Enroll
     if (!('status' in value) || value['status'] === undefined) return false;
     if (!('grantsCertificate' in value) || value['grantsCertificate'] === undefined) return false;
     if (!('requiresApproval' in value) || value['requiresApproval'] === undefined) return false;
+    if (!('isClosed' in value) || value['isClosed'] === undefined) return false;
     if (!('timeZone' in value) || value['timeZone'] === undefined) return false;
     if (!('version' in value) || value['version'] === undefined) return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
@@ -257,6 +289,8 @@ export function EnrolledCourseResponseFromJSONTyped(json: any, ignoreDiscriminat
         'status': json['status'],
         'grantsCertificate': json['grantsCertificate'],
         'requiresApproval': json['requiresApproval'],
+        'isClosed': json['isClosed'],
+        'coverLabel': json['coverLabel'] == null ? undefined : json['coverLabel'],
         'timeZone': json['timeZone'],
         'version': json['version'],
         'archivedAt': json['archivedAt'] == null ? undefined : (new Date(json['archivedAt'])),
@@ -264,10 +298,12 @@ export function EnrolledCourseResponseFromJSONTyped(json: any, ignoreDiscriminat
         'createdAt': (new Date(json['createdAt'])),
         'updatedAt': (new Date(json['updatedAt'])),
         'koskName': json['koskName'],
+        'madrasahName': json['madrasahName'] == null ? undefined : json['madrasahName'],
         'weekCount': json['weekCount'],
         'lessonCount': json['lessonCount'],
-        'muderris': ((json['muderris'] as Array<any>).map(MuderrisResponseFromJSON)),
-        'enrollment': EnrollmentResponseFromJSON(json['enrollment']),
+        'muderris': ((json['muderris'] as Array<any>).map(SummaryMuderrisResponseFromJSON)),
+        'nextSession': json['nextSession'] == null ? undefined : NextSessionResponseFromJSON(json['nextSession']),
+        'enrollment': MyEnrollmentResponseFromJSON(json['enrollment']),
     };
 }
 
@@ -296,6 +332,8 @@ export function EnrolledCourseResponseToJSONTyped(value?: EnrolledCourseResponse
         'status': value['status'],
         'grantsCertificate': value['grantsCertificate'],
         'requiresApproval': value['requiresApproval'],
+        'isClosed': value['isClosed'],
+        'coverLabel': value['coverLabel'],
         'timeZone': value['timeZone'],
         'version': value['version'],
         'archivedAt': value['archivedAt'] === null ? null : ((value['archivedAt'] as any)?.toISOString()),
@@ -303,10 +341,12 @@ export function EnrolledCourseResponseToJSONTyped(value?: EnrolledCourseResponse
         'createdAt': ((value['createdAt']).toISOString()),
         'updatedAt': ((value['updatedAt']).toISOString()),
         'koskName': value['koskName'],
+        'madrasahName': value['madrasahName'],
         'weekCount': value['weekCount'],
         'lessonCount': value['lessonCount'],
-        'muderris': ((value['muderris'] as Array<any>).map(MuderrisResponseToJSON)),
-        'enrollment': EnrollmentResponseToJSON(value['enrollment']),
+        'muderris': ((value['muderris'] as Array<any>).map(SummaryMuderrisResponseToJSON)),
+        'nextSession': NextSessionResponseToJSON(value['nextSession']),
+        'enrollment': MyEnrollmentResponseToJSON(value['enrollment']),
     };
 }
 

@@ -139,7 +139,8 @@
 .mds-badge--secondary   { background: var(--background-neutral-sunken); color: var(--text-neutral-muted); }
 .mds-badge--outline     { background: transparent; border-style: dashed; border-color: var(--border-neutral-control); color: var(--text-neutral-muted); }
 .mds-badge--ghost       { background: transparent; padding-inline: 0; color: var(--text-neutral-subtle); }
-.mds-badge--destructive { background: var(--background-error-subtle); color: var(--text-error-default); }
+.mds-badge--destructive,
+.mds-badge--error       { background: var(--background-error-subtle); color: var(--text-error-default); }
 .mds-badge--brand       { background: var(--background-brand-subtle); color: var(--text-brand-default); }
 .mds-badge--live        { background: var(--background-live-subtle); color: var(--text-live-default); }
 .mds-badge--success     { background: var(--background-success-subtle); color: var(--text-success-default); }

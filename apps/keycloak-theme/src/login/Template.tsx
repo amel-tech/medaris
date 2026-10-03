@@ -1,18 +1,30 @@
-import { CheckIcon, InfoIcon, WarningCircleIcon, XIcon } from "@medaris/icons";
-import { Alert, AlertDescription } from "@medaris/ui/components/alert";
-import { Badge } from "@medaris/ui/components/badge";
-import { Button } from "@medaris/ui/components/button";
-import { cn } from "@medaris/ui/lib/utils";
+import { textFontsHref } from "@medaris/tokens/medaris-fonts";
+import { AuthCard } from "@medaris/ui/giris";
+import { Alert } from "@medaris/ui/mds/alert";
+import { Button } from "@medaris/ui/mds/button";
 import { kcSanitize } from "keycloakify/lib/kcSanitize";
 import { getKcClsx } from "keycloakify/login/lib/kcClsx";
 import { useInitialize } from "keycloakify/login/Template.useInitialize";
 import { useSetClassName } from "keycloakify/tools/useSetClassName";
 import { useEffect } from "react";
-import BackgroundImage from "./assets/background.png";
 import type { I18n } from "./i18n";
 import type { KcContext } from "./KcContext";
 import type { ExtendedTemplateProps } from "./types/TemplateProps";
 
+const ALERT_TONE = {
+  error: "error",
+  success: "success",
+  warning: "warning",
+  info: "info",
+} as const;
+
+/**
+ * The shell of every sign-in page: the document's title and `<html>` class,
+ * Keycloak's own initialisation, and `AuthCard` from `@medaris/ui/giris` for
+ * everything visible (canvas medaris/01..14, rule 44). Keycloak's message
+ * becomes an `Alert` in the card; the "try another way" form and the social
+ * providers sit under the page's own content.
+ */
 export default function Template(
   props: ExtendedTemplateProps<KcContext, I18n>
 ) {
@@ -22,6 +34,7 @@ export default function Template(
     displayRequiredFields = false,
     headerNode,
     headerSubNode,
+    alertNode,
     socialProvidersNode = null,
     infoNode = null,
     documentTitle,
@@ -50,7 +63,7 @@ export default function Template(
 
   useSetClassName({
     qualifiedName: "body",
-    className: bodyClassName ?? cn(kcClsx("kcBodyClass"), "!bg-none"),
+    className: bodyClassName ?? kcClsx("kcBodyClass"),
   });
 
   const { isReadyToRender } = useInitialize({ kcContext, doUseDefaultCss });
@@ -59,232 +72,76 @@ export default function Template(
     return null;
   }
 
+  const showAttemptedUsername =
+    auth?.showUsername && !auth.showResetCredentials;
+
+  // App-initiated actions should not see warning messages about the need to
+  // complete the action during login.
+  const alert =
+    alertNode ??
+    (displayMessage &&
+    message !== undefined &&
+    (message.type !== "warning" || !isAppInitiatedAction) ? (
+      <Alert
+        tone={ALERT_TONE[message.type]}
+        title={
+          <span
+            dangerouslySetInnerHTML={{ __html: kcSanitize(message.summary) }}
+          />
+        }
+      />
+    ) : undefined);
+
   return (
-    <div className={cn(kcClsx("kcLoginClass"), "min-h-screen flex")}>
-      <div className="flex-1 flex items-center justify-center p-4 md:p-8">
-        <div className="w-full max-w-md">
-          <div
-            className={cn(
-              kcClsx("kcFormCardClass"),
-              "bg-white rounded-xl border-0 p-6 md:p-8"
-            )}
-          >
-            <div className="block md:hidden mb-4">
-              <div className="flex justify-center">
-                <img
-                  src={BackgroundImage}
-                  alt=""
-                  className="h-16 w-auto object-contain"
-                />
-              </div>
-            </div>
-            <header className={cn(kcClsx("kcFormHeaderClass"), "mb-6 md:mb-8")}>
-              {(() => {
-                const node = !(
-                  auth !== undefined &&
-                  auth.showUsername &&
-                  !auth.showResetCredentials
-                ) ? (
-                  <div className="text-center mb-4">
-                    <h1
-                      id="kc-page-title"
-                      className="font-bold text-gray-900 mb-2 text-[24px] md:text-[30px]"
-                    >
-                      {headerNode}
-                    </h1>
-                    {headerSubNode && (
-                      <p
-                        className="text-sm text-black font-light text-[14px] md:text-[16px]"
-                        id="kc-page-subtitle"
-                      >
-                        {headerSubNode}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div
-                    id="kc-username"
-                    className={cn(
-                      kcClsx("kcFormGroupClass"),
-                      "mb-6 p-4 bg-gray-50 rounded-lg border"
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {/* Not a <label>: it labels no control, it just prints
-                            the username Keycloak already attempted. */}
-                        <span
-                          id="kc-attempted-username"
-                          className="text-sm font-medium text-gray-700"
-                        >
-                          {auth.attemptedUsername}
-                        </span>
-                        <Badge variant="secondary" className="text-xs">
-                          {msg("username")}
-                        </Badge>
-                      </div>
-                      <Button variant="ghost" size="sm" asChild>
-                        <a
-                          id="reset-login"
-                          href={url.loginRestartFlowUrl}
-                          aria-label={msgStr("restartLoginTooltip")}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <div className="flex items-center gap-2">
-                            <i className={kcClsx("kcResetFlowIcon")}></i>
-                            <span className="text-xs">
-                              {msg("restartLoginTooltip")}
-                            </span>
-                          </div>
-                        </a>
-                      </Button>
-                    </div>
-                  </div>
-                );
-
-                if (displayRequiredFields) {
-                  return (
-                    <div className={kcClsx("kcContentWrapperClass")}>
-                      <div
-                        className={cn(kcClsx("kcLabelWrapperClass"), "mb-4")}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Badge variant="destructive" className="text-xs">
-                            *
-                          </Badge>
-                          <p className="text-sm text-gray-600">
-                            {msg("requiredFields")}
-                          </p>
-                        </div>
-                      </div>
-                      {node}
-                    </div>
-                  );
-                }
-
-                return node;
-              })()}
-            </header>
-            <div id="kc-content">
-              <div id="kc-content-wrapper">
-                {/* App-initiated actions should not see warning messages about the need to complete the action during login. */}
-                {displayMessage &&
-                  message !== undefined &&
-                  (message.type !== "warning" || !isAppInitiatedAction) && (
-                    <Alert
-                      variant={
-                        message.type === "error" ? "destructive" : "default"
-                      }
-                      className={cn(
-                        "mb-6 flex flex-row items-center",
-                        message.type === "success" &&
-                          "border-green-200 bg-green-50",
-                        message.type === "warning" &&
-                          "border-yellow-200 bg-yellow-50",
-                        message.type === "info" && "border-blue-200 bg-blue-50"
-                      )}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div>
-                          {message.type === "success" && (
-                            <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
-                              <CheckIcon className="w-3 h-3 text-green-600" />
-                            </div>
-                          )}
-                          {message.type === "warning" && (
-                            <div className="w-5 h-5 rounded-full bg-yellow-100 flex items-center justify-center">
-                              <WarningCircleIcon className="w-3 h-3 text-yellow-600" />
-                            </div>
-                          )}
-                          {message.type === "error" && (
-                            <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center">
-                              <XIcon className="w-3 h-3 text-red-600" />
-                            </div>
-                          )}
-                          {message.type === "info" && (
-                            <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center">
-                              <InfoIcon className="w-3 h-3 text-blue-600" />
-                            </div>
-                          )}
-                        </div>
-                        <AlertDescription
-                          className={cn(
-                            "text-sm flex-1",
-                            message.type === "error" && "text-red-800",
-                            message.type === "success" && "text-green-800",
-                            message.type === "warning" && "text-yellow-800",
-                            message.type === "info" && "text-blue-800"
-                          )}
-                          dangerouslySetInnerHTML={{
-                            __html: kcSanitize(message.summary),
-                          }}
-                        />
-                      </div>
-                    </Alert>
-                  )}
-
-                {children}
-
-                {auth !== undefined && auth.showTryAnotherWayLink && (
-                  <form
-                    id="kc-select-try-another-way-form"
-                    action={url.loginAction}
-                    method="post"
-                    className="mt-6"
-                  >
-                    <div className={kcClsx("kcFormGroupClass")}>
-                      <input type="hidden" name="tryAnotherWay" value="on" />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="w-full text-blue-600 hover:text-blue-800"
-                        onClick={() => {
-                          const form =
-                            document.forms[
-                              "kc-select-try-another-way-form" as never
-                            ];
-                          if (form) {
-                            form.submit();
-                          }
-                          return false;
-                        }}
-                      >
-                        {msg("doTryAnotherWay")}
-                      </Button>
-                    </div>
-                  </form>
-                )}
-
-                {socialProvidersNode}
-
-                {displayInfo && (
-                  <div
-                    id="kc-info"
-                    className={cn(
-                      kcClsx("kcSignUpClass"),
-                      "mt-8 p-4 bg-gray-50 rounded-lg"
-                    )}
-                  >
-                    <div
-                      id="kc-info-wrapper"
-                      className={kcClsx("kcInfoAreaWrapperClass")}
-                    >
-                      {infoNode}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      {/* Right side - Image/Branding */}
-      <div
-        id="kc-header"
-        className={cn("hidden md:flex flex-1 items-center relative")}
+    <>
+      {/* The faces load from a <link> with preconnect, not an @import in the
+          stylesheet (canvas rule 39); React puts them in the document head. */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossOrigin="anonymous"
+      />
+      <link rel="stylesheet" href={textFontsHref} precedence="default" />
+      <AuthCard
+        title={headerNode}
+        subtitle={
+          headerSubNode ??
+          (showAttemptedUsername ? (
+            <>
+              <bdi className="mds-mono" dir="ltr" id="kc-attempted-username">
+                {auth.attemptedUsername}
+              </bdi>{" "}
+              <a id="reset-login" href={url.loginRestartFlowUrl}>
+                {msg("restartLoginTooltip")}
+              </a>
+            </>
+          ) : undefined)
+        }
+        alert={alert}
+        footer={displayInfo ? infoNode : undefined}
       >
-        <img src={BackgroundImage} alt="" />
-      </div>
-    </div>
+        {displayRequiredFields ? (
+          <p className="mds-caption">{msg("requiredFields")}</p>
+        ) : null}
+
+        {children}
+
+        {auth?.showTryAnotherWayLink ? (
+          <form
+            id="kc-select-try-another-way-form"
+            action={url.loginAction}
+            method="post"
+          >
+            <input type="hidden" name="tryAnotherWay" value="on" />
+            <Button type="submit" variant="ghost" fullWidth>
+              {msg("doTryAnotherWay")}
+            </Button>
+          </form>
+        ) : null}
+
+        {socialProvidersNode}
+      </AuthCard>
+    </>
   );
 }

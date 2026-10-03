@@ -54,6 +54,8 @@ import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
 import { LessonMutationResponse } from "./dto/course-response.dto";
 import { CreateWeekLessonDto } from "./dto/create-lesson.dto";
+import { CancelLessonDto } from "./dto/muderris-list.dto";
+import { RecordingResponse } from "./dto/recording-response.dto";
 import {
   CreateSessionBatchDto,
   SessionBatchPreviewResponse,
@@ -192,6 +194,7 @@ export class LessonController {
       sessionPageUrl: sessionPageUrl(webUrl, course.id, lesson.id),
       locale: locale ?? CALENDAR_LOCALES.tr,
       now: new Date(),
+      cancelled: lesson.cancelledAt != null,
     });
 
     return new StreamableFile(Buffer.from(ics, "utf8"), {
@@ -226,6 +229,28 @@ export class LessonController {
       sessionId,
       request.user ?? null
     );
+  }
+
+  @ApiOperation({
+    summary: "The course's lesson recordings, newest week first",
+    description:
+      "Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162).",
+    operationId: "listCourseRecordings",
+  })
+  @ApiOkResponse({ type: [RecordingResponse] })
+  @ApiNotFoundResponse({
+    description:
+      "No such course, or it is a draft, hidden or in an unlisted köşk to this caller (COURSE_NOT_FOUND).",
+  })
+  @Authz(SCOPES.VIEW, byParam(ENTITIES.COURSE))
+  @AuthzPublic()
+  @Header("Cache-Control", "private, no-store")
+  @Get("courses/:id/recordings")
+  async listRecordings(
+    @Req() request: PublicRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<RecordingResponse[]> {
+    return this.courseService.listRecordings(id, request.user ?? null);
   }
 
   @ApiOperation({
@@ -320,6 +345,36 @@ export class LessonController {
   ): Promise<LessonMutationResponse> {
     const { version, ...changes } = dto;
     return this.courseService.updateLesson(id, version, changes);
+  }
+
+  @ApiOperation({
+    summary: "Cancel a live session; it keeps its slot, marked cancelled",
+    description:
+      "The session stays in the programme as 'İptal edildi' (MDRS-158); its meeting link is no longer shown. The reason is course content. Written to `audit_log` (MDRS-176).",
+    operationId: "cancelLesson",
+  })
+  @ApiOkResponse({ type: LessonMutationResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @ApiConflictResponse({
+    description:
+      "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), or the session is cancelled already (LESSON_ALREADY_CANCELLED).",
+  })
+  @Post("lessons/:id/cancel")
+  @HttpCode(HttpStatus.OK)
+  @Authz(SCOPES.EDIT, byLessonCourse)
+  @UsePipes(new MedarisValidationPipe({ transform: true }))
+  async cancel(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: CancelLessonDto
+  ): Promise<LessonMutationResponse> {
+    return this.courseService.cancelLesson(
+      id,
+      dto.version,
+      dto.reason?.trim() || null,
+      request.user.sub
+    );
   }
 
   @ApiOperation({

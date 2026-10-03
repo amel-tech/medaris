@@ -114,6 +114,24 @@ describe("buildProgramme (MDRS-158)", () => {
     expect(result.weeks[0].rows.map((r) => r.state)).toEqual(["done", "done"]);
   });
 
+  it("marks the row of a session on air as live, and only that one", () => {
+    const onAir = buildProgramme(
+      course(
+        week(
+          1,
+          lesson("air", { scheduledAt: at(-14), durationMinutes: 60 }),
+          lesson("later", { scheduledAt: at(60 * 24) })
+        )
+      ),
+      NOW
+    );
+    expect(onAir.weeks[0].rows.map((r) => [r.state, r.live])).toEqual([
+      ["current", true],
+      ["default", false],
+    ]);
+    expect(result.weeks[1].rows.every((r) => !r.live)).toBe(true);
+  });
+
   it("counts only the sessions that stand, and their minutes", () => {
     const { sessionCount, minutes } = result.weeks[1];
     expect(sessionCount).toBe(2);

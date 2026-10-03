@@ -1,4 +1,7 @@
-import type { MadrasahCourseResponseEnrollmentStatusEnum } from "@medaris/services/tedrisat";
+import type {
+  EnrollmentResponseStatusEnum,
+  MadrasahCourseResponseEnrollmentStatusEnum,
+} from "@medaris/services/tedrisat";
 
 export type EnrollmentBadge = {
   variant: "brand" | "warning" | "success";
@@ -12,7 +15,11 @@ export type EnrollmentBadge = {
  * course's staff have not approved the application.
  */
 export const enrollmentBadge = (
-  status: MadrasahCourseResponseEnrollmentStatusEnum | null | undefined
+  status:
+    | MadrasahCourseResponseEnrollmentStatusEnum
+    | EnrollmentResponseStatusEnum
+    | null
+    | undefined
 ): EnrollmentBadge | null => {
   switch (status) {
     case "ENROLLED":

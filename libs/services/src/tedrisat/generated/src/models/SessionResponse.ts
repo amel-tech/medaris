@@ -20,6 +20,13 @@ import {
     SessionMuderrisResponseToJSON,
     SessionMuderrisResponseToJSONTyped,
 } from './SessionMuderrisResponse';
+import type { SessionRecordingResponse } from './SessionRecordingResponse';
+import {
+    SessionRecordingResponseFromJSON,
+    SessionRecordingResponseFromJSONTyped,
+    SessionRecordingResponseToJSON,
+    SessionRecordingResponseToJSONTyped,
+} from './SessionRecordingResponse';
 import type { SessionStatus } from './SessionStatus';
 import {
     SessionStatusFromJSON,
@@ -145,6 +152,18 @@ export interface SessionResponse {
      */
     meetingUrl?: string;
     /**
+     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103). The embeddable stream, sent only while the session is LIVE and only when one was set.
+     * @type {string}
+     * @memberof SessionResponse
+     */
+    liveStreamUrl?: string | null;
+    /**
+     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103). The session's recording, or null when it has none. Its `url` is null while it is PROCESSING.
+     * @type {SessionRecordingResponse}
+     * @memberof SessionResponse
+     */
+    recording?: SessionRecordingResponse | null;
+    /**
      * The standing (not cancelled) session before this one.
      * @type {SessionRefResponse}
      * @memberof SessionResponse
@@ -214,6 +233,8 @@ export function SessionResponseFromJSONTyped(json: any, ignoreDiscriminator: boo
         'kaynak': json['kaynak'] == null ? undefined : json['kaynak'],
         'agenda': json['agenda'] == null ? undefined : ((json['agenda'] as Array<any>).map(AgendaStepResponseFromJSON)),
         'meetingUrl': json['meetingUrl'] == null ? undefined : json['meetingUrl'],
+        'liveStreamUrl': json['liveStreamUrl'] == null ? undefined : json['liveStreamUrl'],
+        'recording': json['recording'] == null ? undefined : SessionRecordingResponseFromJSON(json['recording']),
         'previous': json['previous'] == null ? undefined : SessionRefResponseFromJSON(json['previous']),
         'next': json['next'] == null ? undefined : SessionRefResponseFromJSON(json['next']),
         'muderris': ((json['muderris'] as Array<any>).map(SessionMuderrisResponseFromJSON)),
@@ -248,6 +269,8 @@ export function SessionResponseToJSONTyped(value?: SessionResponse | null, ignor
         'kaynak': value['kaynak'],
         'agenda': value['agenda'] == null ? undefined : ((value['agenda'] as Array<any>).map(AgendaStepResponseToJSON)),
         'meetingUrl': value['meetingUrl'],
+        'liveStreamUrl': value['liveStreamUrl'],
+        'recording': SessionRecordingResponseToJSON(value['recording']),
         'previous': SessionRefResponseToJSON(value['previous']),
         'next': SessionRefResponseToJSON(value['next']),
         'muderris': ((value['muderris'] as Array<any>).map(SessionMuderrisResponseToJSON)),

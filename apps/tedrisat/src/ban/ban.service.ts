@@ -1,13 +1,15 @@
 import { AuthenticatedUser, AuthzService } from "@medaris/common";
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { CourseNotFoundError } from "../course/errors/course-not-found.error";
 import { BAN_SCOPES, type BanScope } from "../database/schema/ban.schema";
 import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
 import { KoskService } from "../kosk/kosk.service";
+import { NotificationService } from "../notification/notification.service";
 import {
   BanRepository,
   type IBan,
   type IBanEntry,
+  type IBanFilter,
   type IRoleScopes,
 } from "./ban.repository";
 import {
@@ -21,7 +23,12 @@ import {
   SYSTEM_ADMIN_ROLE,
   tierOfRole,
 } from "./ban-tier";
-import type { BanStatus, CreateBanDto, LiftBanDto } from "./dto/ban.dto";
+import type {
+  BanStatus,
+  CreateBanDto,
+  ExtendBanDto,
+  LiftBanDto,
+} from "./dto/ban.dto";
 import {
   BanActiveError,
   BanAlreadyLiftedError,
@@ -46,6 +53,14 @@ export interface IBanList {
   recentCount: number;
 }
 
+export interface IAllBansList extends IBanList {
+  total: number;
+}
+
+/** Who a widened ban belongs to: one person in one köşk. */
+const widenedKey = (e: Pick<IBanEntry, "userId" | "koskId">) =>
+  `${e.userId}:${e.koskId}`;
+
 interface IStanding {
   role: BanRole;
   tier: BanTier;
@@ -62,12 +77,15 @@ interface IStanding {
  */
 @Injectable()
 export class BanService {
+  private readonly logger = new Logger(BanService.name);
+
   // Must stay value imports: `import type` erases them from
   // `design:paramtypes` and Nest can no longer inject them.
   constructor(
     private readonly repo: BanRepository,
     private readonly koskService: KoskService,
-    private readonly authz: AuthzService
+    private readonly authz: AuthzService,
+    private readonly notifications: NotificationService
   ) {}
 
   /** Bars a talebe from a course or its köşk; a second request for the same bar is the first. */
@@ -104,7 +122,7 @@ export class BanService {
       );
     }
 
-    const { ban } = await this.repo.create({
+    const { ban, created } = await this.repo.create({
       userId: dto.userId,
       koskId: course.koskId,
       courseId: scope === BAN_SCOPES.COURSE ? course.id : null,
@@ -116,6 +134,7 @@ export class BanService {
       bannedRole: standing.role,
       bannedTier: standing.tier,
     });
+    if (created) await this.announce(ban.id, user.sub);
     return this.view(ban.id, standing.tier, new Set());
   }
 
@@ -144,7 +163,7 @@ export class BanService {
     const widened = new Set(
       (open ?? entries)
         .filter((e) => e.scope === BAN_SCOPES.KOSK)
-        .map((e) => e.userId)
+        .map(widenedKey)
     );
     return {
       items: entries.map((e) => this.annotate(e, standing.tier, widened)),
@@ -152,6 +171,87 @@ export class BanService {
       liftedCount: counts.lifted,
       recentCount: counts.recent,
     };
+  }
+
+  /**
+   * Every köşk's bans for Medaris administration (MDRS-178, screen nizam/48):
+   * the başnazım and the Medaris nazımı. Counts are platform-wide, whatever
+   * the filter.
+   */
+  async listAll(
+    user: AuthenticatedUser,
+    filter: IBanFilter
+  ): Promise<IAllBansList> {
+    const standing = await this.platformStanding(user);
+    if (!standing) {
+      throw new BanForbiddenError("Only Medaris administration sees all bans");
+    }
+    const [{ items, total }, counts, open] = await Promise.all([
+      this.repo.listAll(filter),
+      this.repo.counts(null, new Date(Date.now() - RECENT_MS)),
+      filter.status === "ACTIVE"
+        ? undefined
+        : this.repo.listAll({
+            status: "ACTIVE",
+            scope: BAN_SCOPES.KOSK,
+            limit: 1000,
+            offset: 0,
+          }),
+    ]);
+    const widened = new Set(
+      (open?.items ?? items)
+        .filter((e) => e.scope === BAN_SCOPES.KOSK)
+        .map(widenedKey)
+    );
+    return {
+      items: items.map((e) => this.annotate(e, standing.tier, widened)),
+      total,
+      activeCount: counts.active,
+      liftedCount: counts.lifted,
+      recentCount: counts.recent,
+    };
+  }
+
+  /**
+   * Moves a course ban up to the whole köşk (MDRS-178, "Yasağı genişlet" and
+   * "Köşkten de yasakla"): a new KOSK ban for the same person with its own
+   * reason, the course ban left standing. The köşk's nazım and above may.
+   */
+  async extend(
+    user: AuthenticatedUser,
+    banId: string,
+    dto: ExtendBanDto
+  ): Promise<IBanView> {
+    const ban = await this.repo.findById(banId);
+    if (!ban) throw new BanNotFoundError(banId);
+    if (ban.liftedAt) throw new BanAlreadyLiftedError(banId);
+    if (ban.scope !== BAN_SCOPES.COURSE) {
+      throw new BanTargetInvalidError("Only a course ban can be widened");
+    }
+    const standing = await this.standingFor(user, ban);
+    if (
+      !standing ||
+      !MAY_BAN_ROLES.includes(standing.role) ||
+      !mayBanKosk(standing.tier)
+    ) {
+      throw new BanForbiddenError(
+        "Only a köşk nazımı or above may widen a ban to the whole köşk"
+      );
+    }
+    const { ban: widened, created } = await this.repo.create({
+      userId: ban.userId,
+      koskId: ban.koskId,
+      courseId: null,
+      scope: BAN_SCOPES.KOSK,
+      extendedFromCourseId: ban.courseId,
+      extendedFromBanId: ban.id,
+      reason: dto.reason.trim(),
+      bannedBy: user.sub,
+      bannedRole: standing.role,
+      bannedTier: standing.tier,
+    });
+    if (created) await this.announce(widened.id, user.sub);
+    return this.view(widened.id, standing.tier, new Set());
   }
 
   /** Lifts a ban with a reason, if the caller's kademe reaches the one that placed it. */
@@ -179,6 +279,46 @@ export class BanService {
     });
     if (!lifted) throw new BanAlreadyLiftedError(banId);
     return this.view(banId, standing.tier, new Set());
+  }
+
+  /**
+   * Tells the köşk's nazımları and the Medaris nazımları of a new ban
+   * (MDRS-179), all but the one who placed it. A notification that cannot be
+   * written never undoes the ban: the failure is logged and the ban stands.
+   */
+  private async announce(banId: string, actorId: string): Promise<void> {
+    try {
+      const entry = await this.repo.findEntry(banId);
+      if (!entry) return;
+      const recipients = (await this.repo.nazimRecipients(entry.koskId)).filter(
+        (id) => id !== actorId
+      );
+      if (recipients.length === 0) return;
+      const person = (p: { name: string | null; email: string | null }) =>
+        p.name ?? p.email ?? "";
+      const params = {
+        source: entry.koskName ?? "",
+        koskName: entry.koskName ?? "",
+        courseTitle: entry.courseTitle ?? entry.extendedFromCourseTitle ?? "",
+        talebeName: person(entry.user),
+        actorName: person(entry.bannerPerson),
+        reason: entry.reason,
+      };
+      await this.notifications.notify(
+        ...recipients.map((userId) => ({
+          userId,
+          type:
+            entry.scope === BAN_SCOPES.KOSK
+              ? ("KOSK_BAN_PLACED" as const)
+              : ("COURSE_BAN_PLACED" as const),
+          targetType: "KOSK" as const,
+          targetId: entry.koskId,
+          params,
+        }))
+      );
+    } catch (error) {
+      this.logger.error(`Could not notify of ban ${banId}`, error);
+    }
   }
 
   /** Whether an open ban bars the person from the course. */
@@ -224,7 +364,7 @@ export class BanService {
         isOpen &&
         entry.scope === BAN_SCOPES.COURSE &&
         mayBanKosk(viewerTier) &&
-        !widened.has(entry.userId),
+        !widened.has(widenedKey(entry)),
     };
   }
 
@@ -247,6 +387,18 @@ export class BanService {
       courseId,
       madrasahId: course?.madrasahId ?? null,
     });
+  }
+
+  /** The standing of Medaris administration, or null for anyone else. */
+  private async platformStanding(
+    user: AuthenticatedUser
+  ): Promise<IStanding | null> {
+    if (this.authz.isSystemAdmin(user)) {
+      return { role: SYSTEM_ADMIN_ROLE, tier: tierOfRole(SYSTEM_ADMIN_ROLE) };
+    }
+    return (await this.repo.holdsPlatformRole(user.sub, "MEDARIS_NAZIM"))
+      ? { role: "MEDARIS_NAZIM", tier: tierOfRole("MEDARIS_NAZIM") }
+      : null;
   }
 
   private async standing(

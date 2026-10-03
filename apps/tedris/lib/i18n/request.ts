@@ -29,7 +29,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
   const messages = await resolveMessagesForLang(
     locale,
     // Load only app-specific namespaces. This prevents using cross-app locale strings.
-    ["common", "tedris"]
+    ["common", "tedris", "tedrisAccount", "tedrisLearn"]
   );
 
   // Without a zone next-intl formats server-rendered dates in the server's

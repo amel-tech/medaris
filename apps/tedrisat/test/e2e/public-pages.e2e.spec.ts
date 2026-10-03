@@ -16,6 +16,7 @@ import {
   ASSIGNED_ROLES,
   madrasahKoskHosting,
 } from "../../src/database/schema/role-assignment.schema";
+import { users } from "../../src/database/schema/user.schema";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
   assignRole,
@@ -42,15 +43,9 @@ const ABSENT_ID = "00000000-0000-4000-8000-000000000000";
 const MEETING_URL = "https://meet.google.com/abc-defg-hij";
 const RESOURCE_URL = "https://files.medaris.test/serh.pdf";
 const KAYNAK = "Şerh · s. 1-4";
-const CONTENT_MARKERS = [
-  "meetingUrl",
-  "agenda",
-  "kaynak",
-  '"url"',
-  MEETING_URL,
-  RESOURCE_URL,
-  KAYNAK,
-];
+// The sample session (isPreview) keeps its source line and agenda (MDRS-161),
+// so only the link and the resource urls are markers here.
+const CONTENT_MARKERS = ["meetingUrl", '"url"', MEETING_URL, RESOURCE_URL];
 
 describe("Public köşk, medrese and course pages (MDRS-122, e2e)", () => {
   let app: INestApplication;
@@ -111,17 +106,31 @@ describe("Public köşk, medrese and course pages (MDRS-122, e2e)", () => {
       .returning();
     await db()
       .insert(lessons)
-      .values({
-        weekId: week.id,
-        title: "Canlı halka",
-        type: LessonType.LIVE,
-        durationMinutes: 60,
-        scheduledAt: new Date("2026-10-05T18:00:00Z"),
-        meetingUrl: MEETING_URL,
-        kaynak: KAYNAK,
-        agenda: [{ time: "21:00", title: "Açılış" }],
-        isPreview: true,
-      });
+      .values([
+        {
+          weekId: week.id,
+          title: "Canlı halka",
+          type: LessonType.LIVE,
+          durationMinutes: 60,
+          scheduledAt: new Date("2026-10-05T18:00:00Z"),
+          meetingUrl: MEETING_URL,
+          kaynak: KAYNAK,
+          agenda: [{ time: "21:00", title: "Açılış" }],
+          isPreview: true,
+          orderIndex: 0,
+        },
+        {
+          weekId: week.id,
+          title: "Kapalı halka",
+          type: LessonType.LIVE,
+          durationMinutes: 60,
+          scheduledAt: new Date("2026-10-12T18:00:00Z"),
+          meetingUrl: MEETING_URL,
+          kaynak: "Gizli kaynak",
+          agenda: [{ time: "21:00", title: "Gizli adım" }],
+          orderIndex: 1,
+        },
+      ]);
     await db().insert(courseResources).values({
       courseId: course.id,
       name: "Şerh",
@@ -261,6 +270,67 @@ describe("Public köşk, medrese and course pages (MDRS-122, e2e)", () => {
     });
   });
 
+  describe("masking for a caller with no token (MDRS-160)", () => {
+    beforeEach(async () => {
+      await db().insert(users).values({
+        id: MANAGER_ID,
+        givenName: "Abdülhamit",
+        familyName: "Karaosmanoğlu",
+      });
+    });
+
+    it("names the köşk's manager and hides who that is, on the page and in the list", async () => {
+      const page = await http().get(`/kosks/${listedKoskId}`).expect(200);
+      expect(page.body).toMatchObject({
+        ownerId: null,
+        managerIds: [],
+        managerName: "Abdülhamit Karaosmanoğlu",
+      });
+      const list = await http().get("/kosks").expect(200);
+      expect(list.body.items[0]).toMatchObject({
+        ownerId: null,
+        managerIds: [],
+        managerName: "Abdülhamit Karaosmanoğlu",
+      });
+      expect(JSON.stringify([page.body, list.body])).not.toContain(MANAGER_ID);
+    });
+
+    it("leaves the ids to a signed-in caller", async () => {
+      const page = await http()
+        .get(`/kosks/${listedKoskId}`)
+        .set("Authorization", as(STRANGER_ID))
+        .expect(200);
+      expect(page.body).toMatchObject({
+        ownerId: MANAGER_ID,
+        managerIds: [MANAGER_ID],
+        managerName: "Abdülhamit Karaosmanoğlu",
+      });
+    });
+
+    it("gives a null name when the manager has none on file", async () => {
+      await db().delete(users);
+      const page = await http().get(`/kosks/${listedKoskId}`).expect(200);
+      expect(page.body.managerName).toBeNull();
+    });
+
+    it("hides who created a medrese and who its nazırs are, and keeps them for a signed-in caller", async () => {
+      const anonymous = await http()
+        .get(`/madrasahs/${madrasahId}`)
+        .expect(200);
+      expect(anonymous.body).toMatchObject({ createdBy: null, nazirIds: [] });
+      const list = await http().get("/madrasahs").expect(200);
+      expect(list.body.items[0]).toMatchObject({
+        createdBy: null,
+        nazirIds: [],
+      });
+      const signedIn = await http()
+        .get(`/madrasahs/${madrasahId}`)
+        .set("Authorization", as(STRANGER_ID))
+        .expect(200);
+      expect(signedIn.body.createdBy).toBe(MANAGER_ID);
+    });
+  });
+
   describe("köşk's courses", () => {
     it("lists the published courses with no token — no draft, no hidden course, no enrollment", async () => {
       const res = await http()
@@ -300,6 +370,17 @@ describe("Public köşk, medrese and course pages (MDRS-122, e2e)", () => {
         durationMinutes: 60,
       });
       expectNoContent(res.body);
+      // The sample session (tedris/05) keeps its source line and agenda; the
+      // next one keeps nothing, and neither carries the link.
+      const [sample, closed] = res.body.weeks[0].lessons;
+      expect(sample).toMatchObject({
+        isPreview: true,
+        kaynak: KAYNAK,
+        agenda: [{ time: "21:00", title: "Açılış" }],
+      });
+      expect(JSON.stringify(res.body)).not.toContain("Gizli");
+      expect(closed).not.toHaveProperty("kaynak");
+      expect(closed).not.toHaveProperty("agenda");
     });
 
     it("answers a draft, a hidden course and any course of an unlisted köşk as not found", async () => {
