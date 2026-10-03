@@ -72,14 +72,14 @@ export interface CoursesFixture {
 const rowOf = (row: Record<string, unknown>): CourseRow => ({
   status: row.status as string,
   requiresApproval: row.requires_approval as boolean,
-  closed: row.closed as boolean,
+  closed: row.is_closed as boolean,
   archivedAt: (row.archived_at as Date | null) ?? null,
   madrasahId: (row.madrasah_id as string | null) ?? null,
   koskId: row.kosk_id as string,
 });
 
 const COLUMNS =
-  "status, requires_approval, closed, archived_at, madrasah_id, kosk_id";
+  "status, requires_approval, is_closed, archived_at, madrasah_id, kosk_id";
 
 export async function seedCourses(
   base: NazirFixture,

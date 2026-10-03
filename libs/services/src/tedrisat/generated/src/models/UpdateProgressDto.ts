@@ -41,7 +41,8 @@ export interface UpdateProgressDto {
 export const UpdateProgressDtoStatusEnum = {
     Pending: 'PENDING',
     Enrolled: 'ENROLLED',
-    Completed: 'COMPLETED'
+    Completed: 'COMPLETED',
+    Revoked: 'REVOKED'
 } as const;
 export type UpdateProgressDtoStatusEnum = typeof UpdateProgressDtoStatusEnum[keyof typeof UpdateProgressDtoStatusEnum];
 

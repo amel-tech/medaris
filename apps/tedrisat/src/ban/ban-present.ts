@@ -27,6 +27,7 @@ const shared = (b: IBanView | IMadrasahBanView): SharedFields => ({
   user: person(b.user),
   scope: b.scope,
   koskId: b.koskId,
+  koskName: b.koskName,
   courseId: b.courseId,
   courseTitle: b.courseTitle,
   madrasahName: b.madrasahName,

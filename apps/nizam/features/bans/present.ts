@@ -63,21 +63,28 @@ const DAY_MS = 24 * 3_600_000;
 export const isRecent = (ban: Pick<BanResponse, "createdAt">, now: Date) =>
   now.getTime() - new Date(ban.createdAt).getTime() < DAY_MS;
 
-/** "Ders" or "Köşk", and what it names: the course, or the köşk (and where it was widened from). */
+/**
+ * "Ders" or "Köşk", and what it names: the course, or the köşk (and where it
+ * was widened from). `withKosk` adds the köşk's name under a course ban, as
+ * the Medaris-wide list does (nizam 48: "ders · köşk · medrese").
+ */
 export function scopeParts(
   ban: Pick<
     BanResponse,
     "scope" | "courseTitle" | "madrasahName" | "extendedFromCourseTitle"
   >,
   koskName: string,
-  t: Messages
+  t: Messages,
+  withKosk = false
 ): { label: string; detail: string[] } {
   if (ban.scope === "COURSE") {
     return {
       label: t("scope.COURSE"),
-      detail: [ban.courseTitle, ban.madrasahName].filter((x): x is string =>
-        Boolean(x)
-      ),
+      detail: [
+        ban.courseTitle,
+        withKosk ? koskName : null,
+        ban.madrasahName,
+      ].filter((x): x is string => Boolean(x)),
     };
   }
   return {
@@ -109,6 +116,40 @@ export function banErrorKey(errorBody: unknown): string {
       : "";
   return KNOWN[code] ?? "errors.generic";
 }
+
+/** The scopes the Medaris-wide list can be narrowed to; "" is "Tümü". */
+export const SCOPE_FILTERS = ["", "COURSE", "KOSK"] as const;
+export type ScopeFilter = (typeof SCOPE_FILTERS)[number];
+
+/** Narrows a chip's value to a known filter; anything else is "Tümü". */
+export const asScopeFilter = (value: string | null): ScopeFilter =>
+  (SCOPE_FILTERS as readonly string[]).includes(value ?? "")
+    ? ((value ?? "") as ScopeFilter)
+    : "";
+
+/**
+ * What a row of the Medaris-wide list offers (nizam 48): "Yasağı kaldır" where
+ * the viewer's kademe reaches the ban's, "Yasağı genişlet" on an open course
+ * ban nobody has widened yet. A köşk ban (the widest scope modelled) has no
+ * widen, a lifted one nothing at all. The server decides both flags; this only
+ * reads them.
+ */
+export function rowActions(
+  ban: Pick<
+    BanResponse,
+    "scope" | "liftedAt" | "viewerMayLift" | "viewerMayExtend"
+  >
+): { lift: boolean; extend: boolean } {
+  const open = ban.liftedAt === null || ban.liftedAt === undefined;
+  return {
+    lift: open && ban.viewerMayLift,
+    extend: open && ban.scope === "COURSE" && ban.viewerMayExtend,
+  };
+}
+
+/** The offset of the next page, or null when everything is loaded ("Daha fazla göster"). */
+export const nextOffset = (loaded: number, total: number): number | null =>
+  loaded < total ? loaded : null;
 
 /**
  * The next live session still to come, which a barred talebe may know the

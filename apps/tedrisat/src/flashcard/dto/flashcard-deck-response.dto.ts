@@ -1,11 +1,16 @@
-import { ApiProperty, ApiPropertyOptional, OmitType } from "@nestjs/swagger";
-import { CreateFlashcardDeckDto } from "./create-flashcard-deck.dto";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { DeckPublishStatus } from "../domain/deck-publish-status.enum";
+import { FlashcardType } from "../domain/flashcard-type.enum";
 
-export class FlashcardDeckResponse extends OmitType(CreateFlashcardDeckDto, [
-  "description",
-] as const) {
+export class FlashcardDeckResponse {
   @ApiProperty()
   id!: string;
+
+  @ApiProperty()
+  title!: string;
+
+  @ApiProperty()
+  isPublic!: boolean;
 
   // Published so a client can predict the 403 the deck-scoped bulk/export
   // routes now return to a non-author (MDRS-63) and hide those affordances,
@@ -16,6 +21,23 @@ export class FlashcardDeckResponse extends OmitType(CreateFlashcardDeckDto, [
   @ApiProperty()
   authorId!: string;
 
+  // Published as it always was (an optional string): the köşk and nizam apps
+  // read it under that type, and `null` on the wire is read as absent.
   @ApiPropertyOptional({ type: String })
   description!: string | null;
+
+  @ApiProperty({ enum: FlashcardType, enumName: "FlashcardType" })
+  cardType!: FlashcardType;
+
+  @ApiProperty({ enum: DeckPublishStatus, enumName: "DeckPublishStatus" })
+  publishStatus!: DeckPublishStatus;
+
+  @ApiPropertyOptional({ type: Date, nullable: true })
+  publishRequestedAt!: Date | null;
+
+  @ApiProperty({
+    type: [String],
+    description: "Empty for everyone but the author.",
+  })
+  tags!: string[];
 }

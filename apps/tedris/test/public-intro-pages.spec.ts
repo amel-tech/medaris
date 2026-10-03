@@ -11,11 +11,16 @@ vi.mock("next-intl", async () => {
   const { resources } = await import("@medaris/i18n");
   return {
     useLocale: () => "tr",
-    useTranslations: (namespace: string) => (key: string) =>
-      [...namespace.split("."), ...key.split(".")].reduce<unknown>(
-        (node, part) => (node as Record<string, unknown>)?.[part],
-        resources.tr
-      ),
+    useTranslations: (namespace: string) => {
+      const read = (key: string) =>
+        [...namespace.split("."), ...key.split(".")].reduce<unknown>(
+          (node, part) => (node as Record<string, unknown>)?.[part],
+          resources.tr
+        );
+      return Object.assign((key: string) => read(key), {
+        rich: (key: string) => read(key),
+      });
+    },
   };
 });
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh() {} }) }));
@@ -61,7 +66,7 @@ describe("course page sticky card (MDRS-122)", () => {
 
   it("asks a signed-out visitor to sign in, and comes back to this course", async () => {
     const html = await renderCard({ signedIn: false });
-    expect(html).toContain(`>${tr.signInToApply}</a>`);
+    expect(html).toContain(tr.signInToApply);
     expect(html).toContain(
       `callbackUrl=${encodeURIComponent(`/courses/${COURSE_ID}`)}`
     );
@@ -74,7 +79,7 @@ describe("course page sticky card (MDRS-122)", () => {
     );
     expect(
       await renderCard({ signedIn: true, approvalRequired: true })
-    ).toContain(`>${tr.requestEnroll}</button>`);
+    ).toContain(`>${tr.apply}</button>`);
   });
 
   it("has the new key in every locale", () => {

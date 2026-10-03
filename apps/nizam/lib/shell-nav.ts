@@ -187,7 +187,7 @@ const koskGroups: NavGroup[] = [
       {
         id: "courses",
         label: "courses",
-        path: "/kosks/:kosk",
+        path: "/kosks/:kosk/dersler",
         icon: "courses",
       },
       {
@@ -225,8 +225,7 @@ const koskGroups: NavGroup[] = [
       {
         id: "decks",
         label: "decks",
-        // the decks page that exists today; the köşk's own list (nizam/53) replaces it
-        path: "/decks",
+        path: "/kosks/:kosk/desteler",
         icon: "cards",
       },
       {
@@ -338,7 +337,7 @@ export function isActive(path: string, current: string): boolean {
   return b === a || b.startsWith(`${a}/`);
 }
 
-/** Whether a path inside the köşk's page is the most specific entry for it (Dersler is `/kosks/:kosk` and would match every sibling). */
+/** Whether a path inside the köşk's page is the most specific entry for it (`/kosks/:kosk` is the page of the nazım's köşk and would match every sibling). */
 export function activeEntryId(
   entries: { id: string; path: string }[],
   current: string
@@ -359,5 +358,8 @@ export function activeEntryId(
  */
 export function studentsPathAlias(current: string): string {
   const m = /^\/kosks\/([^/]+)\/courses\/[^/]+\/students\/?$/.exec(current);
-  return m ? `/kosks/${m[1]}/talebeler` : current;
+  if (m) return `/kosks/${m[1]}/talebeler`;
+  // A course's own pages (overview nizam/53, editor) are the köşk's Dersler.
+  const course = /^\/kosks\/([^/]+)\/courses(\/|$)/.exec(current);
+  return course ? `/kosks/${course[1]}/dersler` : current;
 }

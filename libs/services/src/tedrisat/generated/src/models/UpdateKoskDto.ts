@@ -75,6 +75,18 @@ export interface UpdateKoskDto {
      * @memberof UpdateKoskDto
      */
     tags?: Array<string>;
+    /**
+     * Köşk-wide policy (MDRS-174): every enrollment in any course of the köşk waits for approval, whatever the course says.
+     * @type {boolean}
+     * @memberof UpdateKoskDto
+     */
+    alwaysRequireApproval?: boolean;
+    /**
+     * Köşk-wide policy (MDRS-174): no recording of the köşk is opened to everyone or uploaded to YouTube. Stored for the recording model; nothing reads it yet.
+     * @type {boolean}
+     * @memberof UpdateKoskDto
+     */
+    recordingsNeverPublic?: boolean;
 }
 
 
@@ -104,6 +116,8 @@ export function UpdateKoskDtoFromJSONTyped(json: any, ignoreDiscriminator: boole
         'field': json['field'] == null ? undefined : json['field'],
         'level': json['level'] == null ? undefined : KoskLevelFromJSON(json['level']),
         'tags': json['tags'] == null ? undefined : json['tags'],
+        'alwaysRequireApproval': json['alwaysRequireApproval'] == null ? undefined : json['alwaysRequireApproval'],
+        'recordingsNeverPublic': json['recordingsNeverPublic'] == null ? undefined : json['recordingsNeverPublic'],
     };
 }
 
@@ -126,6 +140,8 @@ export function UpdateKoskDtoToJSONTyped(value?: UpdateKoskDto | null, ignoreDis
         'field': value['field'],
         'level': KoskLevelToJSON(value['level']),
         'tags': value['tags'],
+        'alwaysRequireApproval': value['alwaysRequireApproval'],
+        'recordingsNeverPublic': value['recordingsNeverPublic'],
     };
 }
 

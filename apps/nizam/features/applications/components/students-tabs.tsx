@@ -1,11 +1,13 @@
 "use client";
 
-import type { RosterEnrollmentResponse } from "@medaris/services/tedrisat";
+import type {
+  RemovedEnrollmentResponse,
+  RosterEnrollmentResponse,
+} from "@medaris/services/tedrisat";
 import type { TableSort } from "@medaris/ui/mds/table";
 import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { CourseRoster } from "~/features/kosks/components/course-roster";
 import {
   type ApplicationRow,
   type Messages,
@@ -14,15 +16,17 @@ import {
 } from "../present";
 import { useDecisions } from "../use-decisions";
 import { ApplicationsTable } from "./applications-table";
+import { RemovedTable } from "./removed-table";
+import { RosterTable } from "./roster-table";
 
-type Tab = "applications" | "enrolled" | "completed";
+type Tab = "applications" | "enrolled" | "completed" | "removed";
 
 /**
  * The tabs of a course's Talebeler page (nizam 57): Başvurular first, where the
  * waiting applications are decided; Kayıtlı and Tamamlayanlar keep the roster
- * of MDRS-105 and its ban windows (MDRS-177). Counts come from the lists, so a
- * decision moves the numbers with the rows. "Erişimi kaldırılanlar" is not
- * drawn: tedrisat keeps no record of who was taken out to list.
+ * of MDRS-105 and its ban windows (MDRS-177) as nizam 58 draws them, and
+ * Erişimi kaldırılanlar lists who the course team took out and why (MDRS-178).
+ * Counts come from the lists, so a decision moves the numbers with the rows.
  */
 export function StudentsTabs({
   koskId,
@@ -32,6 +36,7 @@ export function StudentsTabs({
   requiresApproval,
   applications,
   roster,
+  removed,
   mayBanKosk,
   nextSessionAt,
 }: {
@@ -43,6 +48,8 @@ export function StudentsTabs({
   applications: ApplicationRow[];
   /** enrolled and completed talebe: the roster without the waiting ones */
   roster: RosterEnrollmentResponse[];
+  /** the talebe the team took out, newest first */
+  removed: RemovedEnrollmentResponse[];
   mayBanKosk: boolean;
   nextSessionAt: string | null;
 }) {
@@ -65,20 +72,23 @@ export function StudentsTabs({
   const enrolled = roster.filter((e) => e.status === "ENROLLED");
   const completed = roster.filter((e) => e.status === "COMPLETED");
 
-  const roster_ = (list: RosterEnrollmentResponse[], empty: string) =>
-    list.length === 0 ? (
-      <p className="mds-caption">{empty}</p>
-    ) : (
-      <CourseRoster
-        koskId={koskId}
-        koskName={koskName}
-        courseId={courseId}
-        courseTitle={courseTitle}
-        enrollments={list}
-        mayBanKosk={mayBanKosk}
-        nextSessionAt={nextSessionAt}
-      />
-    );
+  const rosterTable = (
+    variant: "enrolled" | "completed",
+    list: RosterEnrollmentResponse[],
+    empty: string
+  ) => (
+    <RosterTable
+      variant={variant}
+      koskId={koskId}
+      koskName={koskName}
+      courseId={courseId}
+      courseTitle={courseTitle}
+      list={list}
+      mayBanKosk={mayBanKosk}
+      nextSessionAt={nextSessionAt}
+      empty={empty}
+    />
+  );
 
   return (
     <Tabs
@@ -101,6 +111,11 @@ export function StudentsTabs({
           label: t("tabs.completed"),
           count: completed.length,
         },
+        {
+          value: "removed",
+          label: t("tabs.removed"),
+          count: removed.length,
+        },
       ]}
     >
       <TabsPanel value="applications" className="flex flex-col gap-4 pbs-4">
@@ -119,10 +134,13 @@ export function StudentsTabs({
         />
       </TabsPanel>
       <TabsPanel value="enrolled" className="pbs-4">
-        {roster_(enrolled, t("emptyEnrolled"))}
+        {rosterTable("enrolled", enrolled, t("emptyEnrolled"))}
       </TabsPanel>
       <TabsPanel value="completed" className="pbs-4">
-        {roster_(completed, t("emptyCompleted"))}
+        {rosterTable("completed", completed, t("emptyCompleted"))}
+      </TabsPanel>
+      <TabsPanel value="removed" className="pbs-4">
+        <RemovedTable list={removed} courseTitle={courseTitle} />
       </TabsPanel>
     </Tabs>
   );

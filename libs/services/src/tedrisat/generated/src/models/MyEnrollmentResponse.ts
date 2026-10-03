@@ -82,7 +82,8 @@ export interface MyEnrollmentResponse {
 export const MyEnrollmentResponseStatusEnum = {
     Pending: 'PENDING',
     Enrolled: 'ENROLLED',
-    Completed: 'COMPLETED'
+    Completed: 'COMPLETED',
+    Revoked: 'REVOKED'
 } as const;
 export type MyEnrollmentResponseStatusEnum = typeof MyEnrollmentResponseStatusEnum[keyof typeof MyEnrollmentResponseStatusEnum];
 

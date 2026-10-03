@@ -4,18 +4,18 @@ import { Client } from "pg";
 import { useDatabaseForThisFile } from "../helpers/test-app.helper";
 
 /**
- * MDRS-187: migration 0036 adds the medrese-wide ban scope, the table of
+ * MDRS-187: migration 0046 adds the medrese-wide ban scope, the table of
  * permanent-ban requests and the table of requests for a course outside a
  * medrese, without touching a ban that exists before it; its rollback takes
  * them off again. Like the other migration specs, the schema is built file by
- * file so that rows can exist BEFORE 0036 runs — and 0036 runs in a
+ * file so that rows can exist BEFORE 0046 runs — and 0046 runs in a
  * transaction of its own, as drizzle's migrator runs it on a database that
  * already holds 0030: a new enum value cannot be named in the transaction that
  * adds it, which is why the checks on `bans` compare the scope as text.
  */
 const MIGRATIONS = join(__dirname, "../../src/database/migrations");
 const ROLLBACKS = join(__dirname, "../../src/database/rollbacks");
-const TARGET = "0036_madrasah_bans_offsite_requests";
+const TARGET = "0046_madrasah_bans_offsite_requests";
 
 const statementsOf = (file: string): string[] =>
   readFileSync(file, "utf8")
@@ -23,7 +23,7 @@ const statementsOf = (file: string): string[] =>
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 
-describe("0036_madrasah_bans_offsite_requests migration (e2e)", () => {
+describe("0046_madrasah_bans_offsite_requests migration (e2e)", () => {
   let client: Client;
 
   const run = async (file: string) => {
@@ -136,7 +136,7 @@ describe("0036_madrasah_bans_offsite_requests migration (e2e)", () => {
     );
     expect(restored).toEqual([{ scope: "COURSE" }, { scope: "KOSK" }]);
 
-    // And forward again: the rollback leaves exactly the state 0036 expects.
+    // And forward again: the rollback leaves exactly the state 0046 expects.
     await runInOneTransaction(join(MIGRATIONS, `${TARGET}.sql`));
     expect(await scopes()).toEqual(["COURSE", "KOSK", "MADRASAH"]);
   });
