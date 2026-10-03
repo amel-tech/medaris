@@ -19,6 +19,17 @@ const mocks = vi.hoisted(() => ({
 vi.mock("next-intl", async (orig) =>
   (await import("./intl-mock")).intlMock(await orig())
 );
+// The header reads its search placeholder on the server (MDRS-217).
+vi.mock("next-intl/server", async () => {
+  const { resources } = await import("@medaris/i18n");
+  return {
+    getTranslations: async (namespace: string) => (key: string) =>
+      [...namespace.split("."), ...key.split(".")].reduce<unknown>(
+        (node, part) => (node as Record<string, unknown>)?.[part],
+        resources.tr
+      ),
+  };
+});
 vi.mock("next-auth/react", () => ({
   useSession: () => ({
     data: mocks.clientSession,
