@@ -12,7 +12,10 @@ import {
   enrollments,
 } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
-import { madrasahs } from "../../src/database/schema/madrasah.schema";
+import {
+  madrasahSettings,
+  madrasahs,
+} from "../../src/database/schema/madrasah.schema";
 import {
   permissionGrants,
   permissionGroupItems,
@@ -1073,6 +1076,114 @@ describe("The permission engine (MDRS-135, e2e)", () => {
       await patch(NAZIM_ID, `/courses/${otherCourse.id}`).expect(403);
       await get(NAZIM_ID, `/courses/${otherCourse.id}/enrollments`).expect(403);
       letThrough(await patch(NAZIM_ID, `/courses/${ownCourse}`));
+    });
+  });
+
+  describe("the abilities the engine knows are asked on a course save (review H3)", () => {
+    const atOwnCourse = () => ({ type: SCOPE_TYPES.COURSE, id: ownCourse });
+
+    it("publishing needs course.publish and the settings need course.settings, not just course.edit", async () => {
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.COURSE_EDIT },
+        { grantedBy: NAZIM_ID }
+      );
+      letThrough(
+        await patch(DERS_ID, `/courses/${ownCourse}`, { title: "Yeni ad" })
+      );
+      await patch(DERS_ID, `/courses/${ownCourse}`, { status: "DRAFT" }).expect(
+        403
+      );
+      await patch(DERS_ID, `/courses/${ownCourse}`, {
+        requiresApproval: true,
+      }).expect(403);
+
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.COURSE_PUBLISH },
+        { grantedBy: NAZIM_ID }
+      );
+      await patch(DERS_ID, `/courses/${ownCourse}`, { status: "DRAFT" }).expect(
+        200
+      );
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.COURSE_SETTINGS },
+        { grantedBy: NAZIM_ID }
+      );
+      await patch(DERS_ID, `/courses/${ownCourse}`, {
+        requiresApproval: true,
+      }).expect(200);
+    });
+
+    it("a grant of course.view_unpublished shows a draft to its holder and to no one else", async () => {
+      await db()
+        .update(courses)
+        .set({ status: CourseStatus.DRAFT })
+        .where(eq(courses.id, ownCourse));
+      await get(TALEBE_ID, `/courses/${ownCourse}`).expect(404);
+      await get(DERS_ID, `/courses/${ownCourse}`).expect(404);
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.COURSE_VIEW_UNPUBLISHED },
+        { grantedBy: NAZIM_ID }
+      );
+      await get(DERS_ID, `/courses/${ownCourse}`).expect(200);
+      await get(TALEBE_ID, `/courses/${ownCourse}`).expect(404);
+    });
+
+    it("the medrese's 'closed course required' holds on an update, and a grant from the platform widens one person", async () => {
+      await db().insert(madrasahSettings).values({
+        madrasahId,
+        policyClosedCourseRequired: true,
+        updatedBy: HEAD_ID,
+      });
+      await db()
+        .update(courses)
+        .set({ isClosed: true })
+        .where(eq(courses.id, medreseCourse));
+      await assignRole(db(), {
+        userId: NEWCOMER_ID,
+        role: ASSIGNED_ROLES.DERS_NAZIR,
+        scopeId: medreseCourse,
+        grantedBy: HEAD_ID,
+      });
+      const atMedreseCourse = { type: SCOPE_TYPES.COURSE, id: medreseCourse };
+      // Made at its own level: the policy above it still closes the ability.
+      for (const permission of [
+        PERMISSIONS.COURSE_EDIT,
+        PERMISSIONS.COURSE_SETTINGS,
+      ]) {
+        await grant(
+          NEWCOMER_ID,
+          atMedreseCourse,
+          { permission },
+          { grantedBy: HEAD_ID }
+        );
+      }
+      const refused = await patch(NEWCOMER_ID, `/courses/${medreseCourse}`, {
+        isClosed: false,
+      }).expect(409);
+      expect(refused.body.code).toBe("PLATFORM_POLICY_LOCKED");
+      // The same grant made by an authority above the medrese opens it.
+      await db()
+        .update(permissionGrants)
+        .set({ authorityScopeType: SCOPE_TYPES.PLATFORM })
+        .where(eq(permissionGrants.userId, NEWCOMER_ID));
+      await patch(NEWCOMER_ID, `/courses/${medreseCourse}`, {
+        isClosed: false,
+      }).expect(200);
+      // Nobody else is widened: the başmüderris still cannot open it again.
+      await patch(HEAD_ID, `/courses/${medreseCourse}`, {
+        isClosed: true,
+      }).expect(200);
+      await patch(HEAD_ID, `/courses/${medreseCourse}`, {
+        isClosed: false,
+      }).expect(409);
     });
   });
 

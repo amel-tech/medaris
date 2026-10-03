@@ -1,14 +1,19 @@
 import {
   AuthenticatedUser,
+  AuthzForbiddenError,
   AuthzService,
   ENTITIES,
   PERMISSIONS,
+  type PermissionCode,
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { BanService } from "../ban/ban.service";
 import { KoskForbiddenError } from "../kosk/errors/kosk-forbidden.error";
 import { KoskService } from "../kosk/kosk.service";
-import { PlatformPolicyService } from "../platform-policy/platform-policy.service";
+import {
+  PlatformPolicyLockedError,
+  PlatformPolicyService,
+} from "../platform-policy/platform-policy.service";
 import { CourseRepository } from "./course.repository";
 import {
   ICourse,
@@ -178,11 +183,10 @@ export class CourseService {
     // while this read "köşk manager only") and SYSTEM_ADMIN.
     if (
       course.status === CourseStatus.DRAFT &&
-      !(await this.authz.can(
-        user,
-        { entity: ENTITIES.COURSE, id },
-        PERMISSIONS.COURSE_EDIT
-      ))
+      !(await this.authz.can(user, { entity: ENTITIES.COURSE, id }, [
+        PERMISSIONS.COURSE_EDIT,
+        PERMISSIONS.COURSE_VIEW_UNPUBLISHED,
+      ]))
     ) {
       throw new CourseNotFoundError(id);
     }
@@ -470,8 +474,12 @@ export class CourseService {
     user: AuthenticatedUser,
     updates: IUpdateCourse
   ): Promise<ICourse> {
-    await this.getDetail(id, user);
-    await this.platformPolicies.assertCourseMayChange(updates);
+    const stored = await this.getDetail(id, user);
+    // A PATCH names the fields it means to set: a switch-off it carries is
+    // refused while a policy holds the rule on, even when the stored value is
+    // already off (a policy that came on later), as the platform policy always
+    // did.
+    await this.assertMayChangeSettings(id, user, stored, updates, true);
     const updated = await this.courseRepo.update(
       id,
       withCanonicalTimeZone(updates)
@@ -480,6 +488,71 @@ export class CourseService {
       throw new CourseNotFoundError(id);
     }
     return updated;
+  }
+
+  /**
+   * The fields of a save that need more than `course.edit` (MDRS-135, review
+   * H3): publishing or unpublishing needs `course.publish`; the enrollment and
+   * openness settings need `course.settings`; switching "requires approval" or
+   * "closed" off needs the ability a policy on the köşk, the medrese or the
+   * platform may have closed (`setting.approval_off`, `setting.course_open`).
+   * The engine decides, so a grant from an authority above the policy opens
+   * the ability for the person it was made to, and no other.
+   *
+   * A ability a policy closes answers 409 PLATFORM_POLICY_LOCKED, as the
+   * platform policy always did; a missing `course.publish` or `course.settings`
+   * is a plain 403.
+   */
+  private async assertMayChangeSettings(
+    id: string,
+    user: AuthenticatedUser,
+    stored: Pick<ICourse, "status" | "requiresApproval" | "isClosed">,
+    change: {
+      status?: CourseStatus;
+      requiresApproval?: boolean;
+      isClosed?: boolean;
+    },
+    /** A PATCH: a field it carries is a change. A whole-course save: only a field that differs from what is stored. */
+    carried: boolean
+  ): Promise<void> {
+    const resource = { entity: ENTITIES.COURSE, id };
+    const needs: PermissionCode[] = [];
+    if (change.status !== undefined && change.status !== stored.status) {
+      needs.push(PERMISSIONS.COURSE_PUBLISH);
+    }
+    const approval =
+      change.requiresApproval !== undefined &&
+      (carried || change.requiresApproval !== stored.requiresApproval);
+    const closed =
+      change.isClosed !== undefined &&
+      (carried || change.isClosed !== stored.isClosed);
+    if (approval || closed) needs.push(PERMISSIONS.COURSE_SETTINGS);
+    for (const code of needs) {
+      if (!(await this.authz.can(user, resource, code))) {
+        throw new AuthzForbiddenError(
+          `This change needs the permission ${code}`,
+          { courseId: id, permission: code }
+        );
+      }
+    }
+    if (approval && change.requiresApproval === false) {
+      if (
+        !(await this.authz.can(
+          user,
+          resource,
+          PERMISSIONS.SETTING_APPROVAL_OFF
+        ))
+      ) {
+        throw new PlatformPolicyLockedError("ALWAYS_REQUIRE_APPROVAL");
+      }
+    }
+    if (closed && change.isClosed === false) {
+      if (
+        !(await this.authz.can(user, resource, PERMISSIONS.SETTING_COURSE_OPEN))
+      ) {
+        throw new PlatformPolicyLockedError("CLOSED_COURSE_REQUIRED");
+      }
+    }
   }
 
   /**
@@ -500,12 +573,10 @@ export class CourseService {
     data: IReplaceCourse
   ): Promise<ICourseDetailView> {
     const stored = await this.getDetail(id, user); // a hidden course is not saved by a müderris
-    // The whole-course save carries every field, so only a switch-off of a
-    // stored "requires approval" is refused; an unrelated save of a course
-    // that never required it must still go through.
-    if (stored.requiresApproval) {
-      await this.platformPolicies.assertCourseMayChange(data);
-    }
+    // The whole-course save carries every field, so only a field that differs
+    // from what is stored is a change; an unrelated save of a course must still
+    // go through.
+    await this.assertMayChangeSettings(id, user, stored, data, false);
     const next = data.muderris ?? [];
     const current = await this.courseRepo.findMuderris(id);
     if (
