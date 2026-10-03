@@ -491,6 +491,19 @@ export interface ICourseRepository {
     courseId: string;
     details: Record<string, unknown>;
   }): Promise<void>;
+  /**
+   * One `audit_log` row for a read of a roster (the talebe list with e-mail
+   * addresses, its numbers, who was taken out, the requests waiting) by someone
+   * who is neither an enrolled talebe nor one of the course's müderrisler
+   * (MDRS-135; owner, d-1003-09). The entity is the course, or the köşk for the
+   * köşk-wide list of requests.
+   */
+  recordRosterRead(entry: {
+    actorId: string;
+    entity: "course" | "kosk";
+    entityId: string;
+    details: Record<string, unknown>;
+  }): Promise<void>;
   findPendingByKosk(koskId: string): Promise<IPendingEnrollment[]>;
   /** The counts behind the course menu's badges (MDRS-183). */
   getBadgeCounts(courseId: string): Promise<ICourseBadgeCounts>;

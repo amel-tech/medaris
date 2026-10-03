@@ -16,7 +16,9 @@ interface AuditTypeRule {
 export const AUDIT_TYPE_RULES = {
   CONTENT_READ: { like: ["course.content_read"] },
   PRIVATE_DECK_READ: { like: ["deck.private-read"] },
-  PERSONAL_DATA_READ: { like: ["kosk_application.contact_read"] },
+  PERSONAL_DATA_READ: {
+    like: ["kosk_application.contact_read", "course.roster_read"],
+  },
   USER_LOOKUP: { like: ["user.lookup"] },
   TAKEOVER: { like: ["permission.take_over", "permission.drop"] },
   GRANT: { like: ["permission.%", "permission_group.%"] },

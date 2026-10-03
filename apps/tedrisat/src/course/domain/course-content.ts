@@ -86,6 +86,22 @@ export function isCourseParticipant(
   return isEnrolledTalebe(course, userId) || isCourseMuderris(course, userId);
 }
 
+/**
+ * What `audit_log.action` says of a read of a roster: the talebe list with
+ * e-mail addresses, the numbers behind it, who was taken out, the requests
+ * waiting. Written for everyone but the course's enrolled talebe and müderrisler
+ * (MDRS-135).
+ */
+export const ROSTER_READ_ACTION = "course.roster_read";
+
+/** Which roster a row of `ROSTER_READ_ACTION` is about (its `details.via`). */
+export type RosterRead =
+  | "enrollments"
+  | "removed"
+  | "stats"
+  | "badge-counts"
+  | "pending";
+
 /** The caller's own row says ENROLLED or COMPLETED (PENDING is not enrolled). */
 export function isEnrolledTalebe(
   course: ICourseDetail,

@@ -66,6 +66,7 @@ import {
   IUpdateLesson,
 } from "./course.repository.interface";
 import { IPurgeCounts, purgeCourses, recordDeletion, Tx } from "./course-purge";
+import { ROSTER_READ_ACTION } from "./domain/course-content";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import { LessonType } from "./domain/lesson-type.enum";
@@ -1572,6 +1573,21 @@ export class CourseRepository implements ICourseRepository {
       action: "course.content_read",
       entity: "course",
       entityId: entry.courseId,
+      details: entry.details,
+    });
+  }
+
+  async recordRosterRead(entry: {
+    actorId: string;
+    entity: "course" | "kosk";
+    entityId: string;
+    details: Record<string, unknown>;
+  }): Promise<void> {
+    await this.db.insert(auditLog).values({
+      actorId: entry.actorId,
+      action: ROSTER_READ_ACTION,
+      entity: entry.entity,
+      entityId: entry.entityId,
       details: entry.details,
     });
   }

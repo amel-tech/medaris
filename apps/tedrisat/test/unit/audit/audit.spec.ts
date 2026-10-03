@@ -26,6 +26,7 @@ describe("the kind of an audit row", () => {
     ["course.content_read", "CONTENT_READ"],
     ["deck.private-read", "PRIVATE_DECK_READ"],
     ["kosk_application.contact_read", "PERSONAL_DATA_READ"],
+    ["course.roster_read", "PERSONAL_DATA_READ"],
     ["user.lookup", "USER_LOOKUP"],
     ["permission.grant", "GRANT"],
     ["permission_group.delete", "GRANT"],

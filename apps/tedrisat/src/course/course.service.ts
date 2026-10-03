@@ -48,6 +48,7 @@ import {
 import {
   isCourseMuderris,
   isEnrolledTalebe,
+  type RosterRead,
   withContent,
   withoutContent,
 } from "./domain/course-content";
@@ -269,10 +270,63 @@ export class CourseService {
     course: ICourseDetail,
     user: AuthenticatedUser
   ): Promise<boolean> {
-    if (isCourseMuderris(course, user.sub)) return false;
-    if (!isEnrolledTalebe(course, user.sub)) return true;
+    return this.readerIsAudited(course.id, user, {
+      muderris: isCourseMuderris(course, user.sub),
+      enrolled: isEnrolledTalebe(course, user.sub),
+    });
+  }
+
+  /** The rule behind `readIsAudited`, for a reader whose standing is already known. */
+  private async readerIsAudited(
+    courseId: string,
+    user: AuthenticatedUser,
+    standing: { muderris: boolean; enrolled: boolean }
+  ): Promise<boolean> {
+    if (standing.muderris) return false;
+    if (!standing.enrolled) return true;
     if (this.authz.isSystemAdmin(user)) return true;
-    return this.courseRepo.holdsRoleOnCourse(user.sub, course.id);
+    return this.courseRepo.holdsRoleOnCourse(user.sub, courseId);
+  }
+
+  /**
+   * A read of a course's roster goes on the record like a read of its content
+   * (MDRS-135; owner, d-1003-09 "Kayda alınsın"): the talebe list carries names
+   * and e-mail addresses, and its numbers, its removals and its waiting requests
+   * are the same list summarised. The rule is the content read's: the course's
+   * müderrisler and its enrolled talebe are not written; everyone else is, the
+   * başnazım through the realm bypass included, and an enrolled talebe who also
+   * holds a role in the course's chain.
+   *
+   * Call it after the caller is authorized and before the data is read. The row
+   * is awaited, so a write that fails fails the read instead of leaving it
+   * unrecorded.
+   */
+  async auditRosterRead(
+    courseId: string,
+    user: AuthenticatedUser,
+    via: RosterRead
+  ): Promise<void> {
+    const [muderris, enrollment] = await Promise.all([
+      this.courseRepo.isMuderris(courseId, user.sub),
+      this.courseRepo.findEnrollment(user.sub, courseId),
+    ]);
+    const audited = await this.readerIsAudited(courseId, user, {
+      muderris,
+      enrolled:
+        enrollment?.status === EnrollmentStatus.ENROLLED ||
+        enrollment?.status === EnrollmentStatus.COMPLETED,
+    });
+    if (!audited) return;
+    await this.courseRepo.recordRosterRead({
+      actorId: user.sub,
+      entity: "course",
+      entityId: courseId,
+      details: {
+        via,
+        systemAdmin: this.authz.isSystemAdmin(user),
+        permission: PERMISSIONS.COURSE_STAFF_READ,
+      },
+    });
   }
 
   /**
@@ -892,9 +946,21 @@ export class CourseService {
 
   async findPendingEnrollments(
     koskId: string,
-    userId: string
+    user: AuthenticatedUser
   ): Promise<IPendingEnrollment[]> {
-    await this.koskService.assertManager(koskId, userId); // köşk managers only
+    await this.koskService.assertManager(koskId, user.sub); // köşk managers only
+    // The köşk-wide list belongs to no one course, so it has no müderris and
+    // no enrolled talebe to leave out: every read of it is written.
+    await this.courseRepo.recordRosterRead({
+      actorId: user.sub,
+      entity: "kosk",
+      entityId: koskId,
+      details: {
+        via: "pending" satisfies RosterRead,
+        systemAdmin: this.authz.isSystemAdmin(user),
+        permission: PERMISSIONS.COURSE_MANAGE_ALL,
+      },
+    });
     return this.courseRepo.findPendingByKosk(koskId);
   }
 

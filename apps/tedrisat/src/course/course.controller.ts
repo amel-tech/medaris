@@ -406,7 +406,7 @@ export class CourseController {
     @Req() request: AuthorizedRequest,
     @Param("koskId", ParseUUIDPipe) koskId: string
   ): Promise<PendingEnrollmentResponse[]> {
-    return this.courseService.findPendingEnrollments(koskId, request.user.sub);
+    return this.courseService.findPendingEnrollments(koskId, request.user);
   }
 
   @ApiOperation({
@@ -423,8 +423,10 @@ export class CourseController {
   @Authz(PERMISSIONS.COURSE_STAFF_READ, byExistingCourse)
   @Get("courses/:id/stats")
   async stats(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseStatsResponse> {
+    await this.courseService.auditRosterRead(id, request.user, "stats");
     return this.statsRepo.stats(id, new Date());
   }
 
@@ -440,8 +442,10 @@ export class CourseController {
   @Authz(PERMISSIONS.COURSE_STAFF_READ, byParam(ENTITIES.COURSE))
   @Get("courses/:id/enrollments")
   async enrollments(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<RosterEnrollmentResponse[]> {
+    await this.courseService.auditRosterRead(id, request.user, "enrollments");
     return this.courseService.findEnrollments(id);
   }
 
@@ -457,8 +461,10 @@ export class CourseController {
   @Authz(PERMISSIONS.COURSE_STAFF_READ, byParam(ENTITIES.COURSE))
   @Get("courses/:id/enrollments/removed")
   async removedEnrollments(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<RemovedEnrollmentResponse[]> {
+    await this.courseService.auditRosterRead(id, request.user, "removed");
     return this.courseService.findRemovedEnrollments(id);
   }
 
@@ -477,8 +483,10 @@ export class CourseController {
   @Authz(PERMISSIONS.COURSE_STAFF_READ, byExistingCourse)
   @Get("courses/:id/badge-counts")
   async badgeCounts(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseBadgeCountsResponse> {
+    await this.courseService.auditRosterRead(id, request.user, "badge-counts");
     return this.courseService.getBadgeCounts(id);
   }
 
