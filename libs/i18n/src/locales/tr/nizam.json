@@ -848,5 +848,202 @@
     "cancel": "Vazgeç",
     "busy": "Çıkış yapılıyor",
     "failed": "Çıkış yapılamadı. Yeniden deneyin."
+  },
+  "MadrasahsPage": {
+    "title": "Medreseler",
+    "intro": "Bir medrese, başmüderrisiyle birlikte açılır. Başmüderris medresesini Nazır uygulamasından yönetir.",
+    "open": "Medrese aç",
+    "heading": "Bütün medreseler",
+    "archive": "Arşiv",
+    "tabsLabel": "Durum süzgeci",
+    "tabs": {
+      "ALL": "Tümü",
+      "ACTIVE": "Etkin",
+      "PASSIVE": "Pasif",
+      "HIDDEN": "Gizli"
+    },
+    "searchLabel": "Medrese ara",
+    "searchPlaceholder": "Medrese ya da başmüderris ara",
+    "caption": {
+      "ALL": "Bütün medreseler",
+      "ACTIVE": "Etkin medreseler",
+      "PASSIVE": "Pasif medreseler",
+      "HIDDEN": "Gizli medreseler"
+    },
+    "columns": {
+      "madrasah": "Medrese",
+      "head": "Başmüderris",
+      "courses": "Ders",
+      "hosting": "Barındırma hakkı",
+      "status": "Durum",
+      "actions": "İşlemler"
+    },
+    "status": {
+      "ACTIVE": "Etkin",
+      "PASSIVE": "Pasif",
+      "HIDDEN": "Gizli"
+    },
+    "since": "{dateAblative} beri",
+    "termEnded": "Görev süresi {dateLocative} doldu",
+    "unassigned": "Atanmamış",
+    "unknownPerson": "Adı bilinmiyor",
+    "noHosting": "Yok",
+    "restore": "Geri al",
+    "restoreLabel": "Geri al: {name}",
+    "assign": "Başmüderris ata",
+    "assignLabel": "Başmüderris ata: {name}",
+    "restored": "Geri alındı",
+    "restoredBody": "{name} yeniden listelerde.",
+    "restoreFailed": "Geri alınamadı",
+    "passiveTitleOne": "{name} pasif",
+    "passiveTitleMany": "{count} medrese pasif",
+    "passiveBodyOne": "Başmüderrisin görev süresi {dateLocative} doldu. Medresenin sayfası ziyaretçilere, içeriği kayıtlı talebelere de kapalıdır; bir başmüderris atadığınızda yeniden açılır.",
+    "passiveBodyMany": "{names}. Pasif bir medresenin sayfası ziyaretçilere, içeriği kayıtlı talebelere de kapalıdır; bir başmüderris atadığınızda yeniden açılır.",
+    "footnote": "Gizlenen medrese, dersleriyle birlikte talebelerin ve ziyaretçilerin gördüğü bütün listelerden çıkar. Arşiv’den geri alınır ya da kalıcı olarak silinir.",
+    "emptyAll": "Henüz medrese yok.",
+    "emptySearch": "Aramaya uyan medrese yok.",
+    "emptyStatus": "Bu durumda medrese yok.",
+    "showing": "Toplam {total} medrese, {shown} tanesi gösteriliyor",
+    "loadFailedTitle": "Medreseler yüklenemedi",
+    "loadFailed": "Medrese listesi şu an okunamıyor. Biraz sonra yeniden deneyin.",
+    "retry": "Yeniden dene",
+    "errors": {
+      "generic": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
+      "handleTaken": "Bu kısa ad başka bir medresede kullanılıyor.",
+      "notFound": "Bu medrese artık yok.",
+      "notHidden": "Bu medrese zaten gizli değil.",
+      "forbidden": "Bunu yapma izniniz yok."
+    }
+  },
+  "HeadPicker": {
+    "label": "Başmüderris",
+    "help": "Kayıtlı hesabın e-posta adresini eksiksiz yazın; her arama denetim kaydına yazılır.",
+    "placeholder": "ad.soyad@example.com",
+    "notFound": "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.",
+    "failed": "Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.",
+    "searching": "Aranıyor",
+    "chosenTitle": "Seçilen başmüderris",
+    "chosen": "{name} seçildi",
+    "remove": "Seçimi kaldır: {name}"
+  },
+  "OpenMadrasahDialog": {
+    "title": "Medrese aç",
+    "intro": "Medrese, başmüderrisiyle birlikte açılır. Ders açabilmesi için bir köşkte barındırma hakkı alması gerekir.",
+    "requiredNote": "zorunlu alan",
+    "nameLabel": "Ad",
+    "nameHelp": "Talebeler ve ziyaretçiler bu adı görür.",
+    "handleLabel": "Kısa ad",
+    "handleHelp": "Medrese adresinde kullanılır; küçük harf, rakam ve tire içerebilir.",
+    "descriptionLabel": "Açıklama",
+    "descriptionHelp": "Medrese sayfasında görünür.",
+    "chosenNote": "Medrese açıldığında başmüderris olur ve medresesini Nazır uygulamasından yönetir.",
+    "cancel": "Vazgeç",
+    "submit": "Medrese aç",
+    "close": "Kapat",
+    "saved": "Medrese açıldı",
+    "savedBody": "{name} açıldı; başmüderrisi {head}.",
+    "failed": "Medrese açılamadı",
+    "errors": {
+      "nameRequired": "Bir ad yazın.",
+      "nameShort": "Ad en az 2 harf olmalı.",
+      "handleInvalid": "Kısa ad yalnız küçük harf, rakam ve tire içerebilir; 2 ile 60 karakter olmalı, tireyle başlamamalı ya da bitmemeli.",
+      "handleTaken": "@{handle} başka bir medresede kullanılıyor."
+    }
+  },
+  "AssignHeadDialog": {
+    "title": "Başmüderris ata",
+    "intro": "{name} için bir başmüderris seçin. Atadığınızda medrese yeniden açılır ve başmüderris medresesini Nazır uygulamasından yönetir.",
+    "chosenNote": "Atandığında başmüderris olur; medrese pasifse yeniden etkin olur.",
+    "cancel": "Vazgeç",
+    "submit": "Başmüderris ata",
+    "close": "Kapat",
+    "saved": "Başmüderris atandı",
+    "savedBody": "{head}, {name} medresesinin başmüderrisi oldu.",
+    "failed": "Başmüderris atanamadı"
+  },
+  "HostingPage": {
+    "title": "Barındırma hakları",
+    "settings": "Köşk ayarları",
+    "breadcrumbLabel": "Sayfa yolu",
+    "intro": "{koskLocative} barındırma hakkı olan medreseler. Bu hak, medreseye köşk üzerinde hiçbir yetki vermez.",
+    "grant": "Barındırma hakkı ver",
+    "tabsLabel": "Köşk ayarları bölümleri",
+    "tabs": {
+      "general": "Genel",
+      "nazims": "Köşk nazımları",
+      "hosting": "Barındırma hakları"
+    },
+    "caption": "{koskLocative} barındırma hakkı olan medreseler",
+    "unknownKosk": "Bu köşk",
+    "unknownKoskLocative": "Bu köşkte",
+    "columns": {
+      "madrasah": "Medrese",
+      "grantedBy": "Veren",
+      "grantedAt": "Tarih",
+      "openCourses": "Açık ders",
+      "actions": "İşlemler"
+    },
+    "head": "Başmüderris {name}",
+    "noHead": "Başmüderris yok",
+    "unknownPerson": "Adı bilinmiyor",
+    "roles": {
+      "SYSTEM_ADMIN": "Medaris başnazımı",
+      "KOSK_NAZIM": "Köşk nazımı"
+    },
+    "published": "{count} yayında",
+    "draft": "{count} taslak",
+    "revoke": "Barındırma hakkını geri al",
+    "revokeLabel": "Barındırma hakkını geri al: {name}",
+    "footnote": "Barındırma hakkı geri alınınca medrese bu köşkte yeni ders açamaz. Açık dersleri kapanmaz; onlara ne olacağını siz seçersiniz.",
+    "empty": "Henüz barındırma hakkı yok",
+    "loadFailedTitle": "Barındırma hakları yüklenemedi",
+    "loadFailed": "Barındırma hakları şu an okunamıyor. Biraz sonra yeniden deneyin.",
+    "retry": "Yeniden dene",
+    "errors": {
+      "generic": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
+      "notHeld": "Bu medresenin bu köşkte barındırma hakkı yok.",
+      "madrasahGone": "Bu medrese artık yok ya da gizli.",
+      "koskGone": "Bu köşk artık yok.",
+      "forbidden": "Bunu yapma izniniz yok."
+    }
+  },
+  "GrantDialog": {
+    "title": "Barındırma hakkı ver",
+    "intro": "Seçtiğiniz medrese bu köşkte ders açabilir. Hak, medreseye köşk üzerinde hiçbir yetki vermez.",
+    "madrasahLabel": "Medrese",
+    "placeholder": "Bir medrese seçin",
+    "none": "Barındırma hakkı verilebilecek başka medrese yok.",
+    "loadFailedTitle": "Medreseler yüklenemedi",
+    "loadFailed": "Medrese listesi şu an okunamıyor. Biraz sonra yeniden deneyin.",
+    "cancel": "Vazgeç",
+    "submit": "Barındırma hakkı ver",
+    "close": "Kapat",
+    "granted": "Barındırma hakkı verildi",
+    "grantedBody": "{name} bu köşkte ders açabilir.",
+    "failed": "Barındırma hakkı verilemedi"
+  },
+  "RevokeDialog": {
+    "title": "Barındırma hakkını geri al",
+    "intro": "<b>{name}</b>, {koskLocative} yeni ders açamayacak. {count, plural, =0 {Medresenin bu köşkte açık dersi yok.} other {Medresenin bu köşkteki {countWord} açık dersi kapanmaz; onlara ne olacağını seçin.}}",
+    "coursesLegend": "Açık dersler",
+    "keep": "Dersler sürsün",
+    "keepDesc": "{count, plural, one {Ders bu köşkte sürer; talebeler bir değişiklik görmez. Medrese bu dersi yürütmeye devam eder.} other {{countWordCap} ders de bu köşkte sürer; talebeler bir değişiklik görmez. Medrese bu dersleri yürütmeye devam eder.}}",
+    "hide": "Dersleri gizle",
+    "hideDesc": "{count, plural, one {Ders listelerden çıkar;} other {{countWordCap} ders de listelerden çıkar;}} {students, plural, =0 {} other {{students} talebe celselere ve ders kayıtlarına erişemez. }}Hiçbir şey silinmez; Arşiv’den geri alabilirsiniz.",
+    "courseStatus": {
+      "PUBLISHED": "Yayında",
+      "DRAFT": "Taslak"
+    },
+    "students": "{count} talebe",
+    "noStudents": "Henüz talebe yok",
+    "imam": "{name}, imam",
+    "noOpenCourses": "Seçilecek bir şey yok: hak geri alınınca medrese bu köşkte yeni ders açamaz.",
+    "auditNote": "Seçiminiz denetim kaydına yazılır.",
+    "cancel": "Vazgeç",
+    "submit": "Barındırma hakkını geri al",
+    "close": "Kapat",
+    "revoked": "Barındırma hakkı geri alındı",
+    "revokedBody": "{name} bu köşkte yeni ders açamaz.",
+    "failed": "Geri alınamadı"
   }
 }
