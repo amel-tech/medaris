@@ -42,6 +42,13 @@ import {
 } from "../present";
 import { TeamPicker } from "./team-picker";
 
+/**
+ * One toast id for the whole "Dersi aç" action (MDRS-214): a retry that
+ * succeeds replaces the earlier "Ders açılamadı" instead of leaving it on top
+ * of Dersler, where it reads as "the course was not opened".
+ */
+const TOAST_ID = "courses:create";
+
 interface Props {
   kosk: KoskResponse;
   /** A medrese's course request (nizam/39 "Kabul et"): it names the course and is accepted with it. */
@@ -133,6 +140,7 @@ export function CourseCreateForm({ kosk, request }: Props) {
     if (!created.success) {
       setSaving(false);
       toast.error(t("failed"), {
+        id: TOAST_ID,
         description: t(
           `errors.api.${courseErrorKey(created.errorBody)}` as never
         ),
@@ -151,6 +159,7 @@ export function CourseCreateForm({ kosk, request }: Props) {
     setSaving(false);
     if (!sessions.success) {
       toast.error(t("sessionsFailed"), {
+        id: TOAST_ID,
         description: t("sessionsFailedBody", { name: title.trim() }),
         duration: Number.POSITIVE_INFINITY,
       });
@@ -158,6 +167,7 @@ export function CourseCreateForm({ kosk, request }: Props) {
       return;
     }
     toast.success(t("created"), {
+      id: TOAST_ID,
       description: t("createdBody", { name: title.trim() }),
     });
     router.push(`${base}/dersler`);

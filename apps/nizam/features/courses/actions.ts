@@ -3,6 +3,7 @@
 import type {
   CourseDetailResponse,
   LessonMutationResponse,
+  LiveStreamResponse,
   MuderrisListResponse,
   ReplaceCourseDto,
   SetMuderrisDto,
@@ -67,6 +68,27 @@ export const patchLesson = async (
 ): Promise<AuthenticatedActionResult<LessonMutationResponse>> => {
   const result = await authenticatedAction((api) =>
     api.lessons.updateLesson({ id: lessonId, updateLessonDto: body })
+  );
+  if (result.success) revalidateCourse(koskId, courseId);
+  return result;
+};
+
+/**
+ * "Canlı yayın" (nizam 56, MDRS-228): sets the session's YouTube stream link,
+ * or clears it with `null`. tedrisat normalises the link and asks
+ * `session.live_link`; the course version is not involved.
+ */
+export const setLiveStream = async (
+  koskId: string,
+  courseId: string,
+  lessonId: string,
+  liveStreamUrl: string | null
+): Promise<AuthenticatedActionResult<LiveStreamResponse>> => {
+  const result = await authenticatedAction((api) =>
+    api.lessons.setLessonLiveStream({
+      id: lessonId,
+      setLiveStreamDto: { liveStreamUrl },
+    })
   );
   if (result.success) revalidateCourse(koskId, courseId);
   return result;

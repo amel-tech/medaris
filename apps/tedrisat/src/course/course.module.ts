@@ -1,5 +1,6 @@
 import { AuthGuardModule } from "@medaris/common";
 import { Module } from "@nestjs/common";
+import { AssignmentModule } from "../assignment/assignment.module";
 import { BanModule } from "../ban/ban.module";
 import { DatabaseService } from "../database/database.service";
 import { KoskModule } from "../kosk/kosk.module";
@@ -8,10 +9,13 @@ import { PlatformPolicyModule } from "../platform-policy/platform-policy.module"
 import { CourseController } from "./course.controller";
 import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
+import { CourseAccessService } from "./course-access.service";
 import { CourseNotificationRepository } from "./course-notification.repository";
 import { CourseNotifier } from "./course-notifier";
 import { CourseStatsRepository } from "./course-stats.repository";
 import { LessonController } from "./lesson.controller";
+import { LiveStreamController } from "./live-stream.controller";
+import { LiveStreamService } from "./live-stream.service";
 import { RecordingRepository } from "./recording.repository";
 
 @Module({
@@ -21,11 +25,14 @@ import { RecordingRepository } from "./recording.repository";
     BanModule,
     PlatformPolicyModule,
     NotificationModule,
+    AssignmentModule,
   ],
-  controllers: [CourseController, LessonController],
+  controllers: [CourseController, LessonController, LiveStreamController],
   providers: [
     CourseService,
     CourseRepository,
+    CourseAccessService,
+    LiveStreamService,
     RecordingRepository,
     CourseStatsRepository,
     CourseNotifier,

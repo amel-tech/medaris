@@ -472,7 +472,7 @@
     "invalidEmail": "Geçerli bir e-posta girin.",
     "managerOnly": "Müderris listesini yalnız köşk yöneticisi değiştirebilir.",
     "errorAssignmentForbidden": "Müderris listesini yalnız köşk yöneticisi değiştirebilir; hiçbir değişiklik kaydedilmedi.",
-    "errorUnknownUser": "Eklenen hesaplardan biri Medaris'e hiç giriş yapmamış.",
+    "errorUnknownUser": "Seçtiğiniz müderrislerden birinin hesabı bulunamadı. Listeyi denetleyip yeniden deneyin.",
     "errorDuplicateUser": "Aynı kişi listede iki kez var.",
     "errorLookupForbidden": "Kişi aramayı yalnız köşk yöneticileri yapabilir.",
     "errorEnrollmentState": "Bu kayıt bu işleme uygun durumda değil; sayfayı yenileyin.",
@@ -2468,7 +2468,7 @@
     "savedBody": "{name} dersinin müderris listesi kaydedildi.",
     "errors": {
       "versionConflict": "Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi. Sayfayı yenileyip yeniden deneyin.",
-      "unknownUser": "Bu kişi uygulamaya henüz hiç giriş yapmamış; ilk girişinden sonra müderris olarak eklenebilir.",
+      "unknownUser": "Seçtiğiniz müderrislerden birinin hesabı bulunamadı. Listeyi denetleyip yeniden deneyin.",
       "duplicateUser": "Aynı kişi listede iki kez yer alıyor.",
       "listInvalid": "Dersin en az bir müderrisi olmalı ve imam listedekilerden biri olmalı.",
       "alreadyCancelled": "Bu celse zaten iptal edilmiş.",
@@ -2548,7 +2548,7 @@
       "duration": "Celse süresi 1 ile 1440 dakika arasında olmalı.",
       "api": {
         "versionConflict": "Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi. Sayfayı yenileyip yeniden deneyin.",
-        "unknownUser": "Bu kişi uygulamaya henüz hiç giriş yapmamış; ilk girişinden sonra müderris olarak eklenebilir.",
+        "unknownUser": "Seçtiğiniz müderrislerden birinin hesabı bulunamadı. Listeyi denetleyip yeniden deneyin.",
         "duplicateUser": "Aynı kişi listede iki kez yer alıyor.",
         "listInvalid": "Dersin en az bir müderrisi olmalı ve imam listedekilerden biri olmalı.",
         "alreadyCancelled": "Bu celse zaten iptal edilmiş.",
@@ -2613,7 +2613,7 @@
     "hide": "Dersi gizle",
     "errors": {
       "versionConflict": "Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi. Sayfayı yenileyip yeniden deneyin.",
-      "unknownUser": "Bu kişi uygulamaya henüz hiç giriş yapmamış; ilk girişinden sonra müderris olarak eklenebilir.",
+      "unknownUser": "Seçtiğiniz müderrislerden birinin hesabı bulunamadı. Listeyi denetleyip yeniden deneyin.",
       "duplicateUser": "Aynı kişi listede iki kez yer alıyor.",
       "listInvalid": "Dersin en az bir müderrisi olmalı ve imam listedekilerden biri olmalı.",
       "alreadyCancelled": "Bu celse zaten iptal edilmiş.",
@@ -2700,7 +2700,7 @@
       "link": "Toplantı bağlantısı https:// ile başlamalı. Bağlantıyı platformdan yeniden kopyalayın.",
       "api": {
         "versionConflict": "Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi. Sayfayı yenileyip yeniden deneyin.",
-        "unknownUser": "Bu kişi uygulamaya henüz hiç giriş yapmamış; ilk girişinden sonra müderris olarak eklenebilir.",
+        "unknownUser": "Seçtiğiniz müderrislerden birinin hesabı bulunamadı. Listeyi denetleyip yeniden deneyin.",
         "duplicateUser": "Aynı kişi listede iki kez yer alıyor.",
         "listInvalid": "Dersin en az bir müderrisi olmalı ve imam listedekilerden biri olmalı.",
         "alreadyCancelled": "Bu celse zaten iptal edilmiş.",
@@ -2775,7 +2775,7 @@
       "link": "Toplantı bağlantısı https:// ile başlamalı. Bağlantıyı platformdan yeniden kopyalayın.",
       "api": {
         "versionConflict": "Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi. Sayfayı yenileyip yeniden deneyin.",
-        "unknownUser": "Bu kişi uygulamaya henüz hiç giriş yapmamış; ilk girişinden sonra müderris olarak eklenebilir.",
+        "unknownUser": "Seçtiğiniz müderrislerden birinin hesabı bulunamadı. Listeyi denetleyip yeniden deneyin.",
         "duplicateUser": "Aynı kişi listede iki kez yer alıyor.",
         "listInvalid": "Dersin en az bir müderrisi olmalı ve imam listedekilerden biri olmalı.",
         "alreadyCancelled": "Bu celse zaten iptal edilmiş.",
@@ -2851,7 +2851,7 @@
     "cancelledBody": "{name} iptal edildi.",
     "errors": {
       "versionConflict": "Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi. Sayfayı yenileyip yeniden deneyin.",
-      "unknownUser": "Bu kişi uygulamaya henüz hiç giriş yapmamış; ilk girişinden sonra müderris olarak eklenebilir.",
+      "unknownUser": "Seçtiğiniz müderrislerden birinin hesabı bulunamadı. Listeyi denetleyip yeniden deneyin.",
       "duplicateUser": "Aynı kişi listede iki kez yer alıyor.",
       "listInvalid": "Dersin en az bir müderrisi olmalı ve imam listedekilerden biri olmalı.",
       "alreadyCancelled": "Bu celse zaten iptal edilmiş.",
@@ -2860,6 +2860,32 @@
       "generic": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin.",
       "link": "Toplantı bağlantısı https:// ile başlamalı. Bağlantıyı platformdan yeniden kopyalayın.",
       "time": "Tarihi ve saati girin."
+    },
+    "stream": {
+      "column": "Canlı yayın",
+      "set": "Eklendi",
+      "missing": "Eklenmedi",
+      "add": "Canlı yayın ekle",
+      "update": "Canlı yayını güncelle",
+      "addLabel": "{when} celsesine canlı yayın bağlantısı ekle",
+      "updateLabel": "{when} celsesinin canlı yayın bağlantısını güncelle",
+      "formTitle": "{when} celsesinin canlı yayın bağlantısı",
+      "formLabel": "Canlı yayın bağlantısı",
+      "formHelp": "YouTube’da yayını “yerleştirmeye izin ver” açık olarak başlatın; bağlantı celse canlıyken talebelere görünür.",
+      "remove": "Bağlantıyı kaldır",
+      "saved": "Canlı yayın bağlantısı kaydedildi",
+      "removed": "Canlı yayın bağlantısı kaldırıldı",
+      "problems": {
+        "empty": "Yayının YouTube bağlantısını girin.",
+        "channel": "Bu bir kanal bağlantısı; yayının kendi bağlantısı gerekir. YouTube Studio’daki yayın sayfasının adresini ya da yayının izleme bağlantısını yapıştırın.",
+        "notYoutube": "Canlı yayın yalnız YouTube’dan eklenebilir.",
+        "notHttps": "Bağlantı https:// ile başlamalı.",
+        "noVideo": "Bu bağlantıda bir yayın bulunamadı. YouTube Studio’daki yayın sayfasının adresini ya da yayının izleme bağlantısını yapıştırın."
+      },
+      "errors": {
+        "notLive": "Yalnız canlı celselere yayın bağlantısı eklenebilir.",
+        "cancelled": "Bu celse iptal edilmiş; yayın bağlantısı değiştirilemez."
+      }
     }
   },
   "DeckRequestsPage": {

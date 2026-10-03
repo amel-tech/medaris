@@ -203,6 +203,7 @@ src/models/LabelStatsResponse.ts
 src/models/LessonMutationResponse.ts
 src/models/LessonResponse.ts
 src/models/LiftBanDto.ts
+src/models/LiveStreamResponse.ts
 src/models/MadrasahArchiveCountsResponse.ts
 src/models/MadrasahArchiveItemResponse.ts
 src/models/MadrasahBadgeCountsResponse.ts
@@ -320,6 +321,7 @@ src/models/SessionResponse.ts
 src/models/SessionStatus.ts
 src/models/SetEnrollmentStatusDto.ts
 src/models/SetHeadMuderrisDto.ts
+src/models/SetLiveStreamDto.ts
 src/models/SetMadrasahCourseMuderrisDto.ts
 src/models/SetMadrasahNazirPermissionsDto.ts
 src/models/SetMuderrisDto.ts

@@ -5,6 +5,7 @@ import {
   SCOPES,
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
+import { UserDirectoryService } from "../assignment/user-directory.service";
 import { BanService } from "../ban/ban.service";
 import { KoskForbiddenError } from "../kosk/errors/kosk-forbidden.error";
 import { KoskService } from "../kosk/kosk.service";
@@ -100,7 +101,8 @@ export class CourseService {
     private readonly banService: BanService,
     private readonly recordingRepo: RecordingRepository,
     private readonly platformPolicies: PlatformPolicyService,
-    private readonly notifier: CourseNotifier
+    private readonly notifier: CourseNotifier,
+    private readonly directory: UserDirectoryService
   ) {}
 
   /**
@@ -509,8 +511,10 @@ export class CourseService {
   /**
    * A müderris row links an account (MDRS-105) — that link is what makes the
    * person MUDERRIS on the course. Each account at most once, and every
-   * account this save links anew must have signed in at least once, so that
-   * a mistyped id cannot hand the role to whoever signs in under it later.
+   * account this save links anew must be a real one, in the users table or in
+   * the realm (MDRS-218: a teacher who has not signed in yet can be named, as
+   * in nazir's "Dersi aç"), so that a mistyped id cannot hand the role to
+   * whoever signs in under it later.
    */
   private async assertMuderrisLinks(
     current: readonly IMuderris[],
@@ -520,8 +524,7 @@ export class CourseService {
     if (duplicate) throw new MuderrisDuplicateUserError(duplicate);
     const linking = newlyLinkedUserIds(current, next);
     if (linking.length === 0) return;
-    const known = new Set(await this.courseRepo.findKnownUserIds(linking));
-    const unknown = linking.find((userId) => !known.has(userId));
+    const [unknown] = await this.directory.findUnknownAccounts(linking);
     if (unknown) throw new MuderrisUnknownUserError(unknown);
   }
 
