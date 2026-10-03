@@ -15,17 +15,284 @@
 
 import * as runtime from '../runtime';
 import type {
+  AppointMedarisNazimDto,
   ChiefNazimResponse,
+  CreatePermissionGroupDto,
+  DeletePermissionGroupDto,
+  DismissMedarisNazimDto,
+  GivenItemResponse,
+  GroupUserResponse,
+  MedarisNazimResponse,
+  PermissionCatalogResponse,
+  PermissionGroupResponse,
+  SetNazimGrantsDto,
+  UpdatePermissionGroupDto,
 } from '../models/index';
 import {
+    AppointMedarisNazimDtoFromJSON,
+    AppointMedarisNazimDtoToJSON,
     ChiefNazimResponseFromJSON,
     ChiefNazimResponseToJSON,
+    CreatePermissionGroupDtoFromJSON,
+    CreatePermissionGroupDtoToJSON,
+    DeletePermissionGroupDtoFromJSON,
+    DeletePermissionGroupDtoToJSON,
+    DismissMedarisNazimDtoFromJSON,
+    DismissMedarisNazimDtoToJSON,
+    GivenItemResponseFromJSON,
+    GivenItemResponseToJSON,
+    GroupUserResponseFromJSON,
+    GroupUserResponseToJSON,
+    MedarisNazimResponseFromJSON,
+    MedarisNazimResponseToJSON,
+    PermissionCatalogResponseFromJSON,
+    PermissionCatalogResponseToJSON,
+    PermissionGroupResponseFromJSON,
+    PermissionGroupResponseToJSON,
+    SetNazimGrantsDtoFromJSON,
+    SetNazimGrantsDtoToJSON,
+    UpdatePermissionGroupDtoFromJSON,
+    UpdatePermissionGroupDtoToJSON,
 } from '../models/index';
+
+export interface AppointMedarisNazimRequest {
+    appointMedarisNazimDto: AppointMedarisNazimDto;
+}
+
+export interface CreatePermissionGroupRequest {
+    createPermissionGroupDto: CreatePermissionGroupDto;
+}
+
+export interface DeletePermissionGroupRequest {
+    id: string;
+    deletePermissionGroupDto: DeletePermissionGroupDto;
+}
+
+export interface DismissMedarisNazimRequest {
+    userId: string;
+    dismissMedarisNazimDto: DismissMedarisNazimDto;
+}
+
+export interface GetMedarisNazimGivenRequest {
+    userId: string;
+}
+
+export interface GetPermissionGroupUsersRequest {
+    id: string;
+}
+
+export interface SetMedarisNazimGrantsRequest {
+    userId: string;
+    setNazimGrantsDto: SetNazimGrantsDto;
+}
+
+export interface UpdatePermissionGroupRequest {
+    id: string;
+    updatePermissionGroupDto: UpdatePermissionGroupDto;
+}
 
 /**
  * 
  */
 export class NizamApi extends runtime.BaseAPI {
+
+    /**
+     * nizam/12. The appointment and the permissions end together at `expiresAt`. Written to the audit log.
+     * Appoint a Medaris nazımı and give them their permissions
+     */
+    async appointMedarisNazimRaw(requestParameters: AppointMedarisNazimRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MedarisNazimResponse>> {
+        if (requestParameters['appointMedarisNazimDto'] == null) {
+            throw new runtime.RequiredError(
+                'appointMedarisNazimDto',
+                'Required parameter "appointMedarisNazimDto" was null or undefined when calling appointMedarisNazim().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/medaris-nazims`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: AppointMedarisNazimDtoToJSON(requestParameters['appointMedarisNazimDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MedarisNazimResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/12. The appointment and the permissions end together at `expiresAt`. Written to the audit log.
+     * Appoint a Medaris nazımı and give them their permissions
+     */
+    async appointMedarisNazim(requestParameters: AppointMedarisNazimRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MedarisNazimResponse> {
+        const response = await this.appointMedarisNazimRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/13. The name is not blank and not used by another live group, whatever its case. Written to the audit log.
+     * Create a permission group
+     */
+    async createPermissionGroupRaw(requestParameters: CreatePermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PermissionGroupResponse>> {
+        if (requestParameters['createPermissionGroupDto'] == null) {
+            throw new runtime.RequiredError(
+                'createPermissionGroupDto',
+                'Required parameter "createPermissionGroupDto" was null or undefined when calling createPermissionGroup().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/permission-groups`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreatePermissionGroupDtoToJSON(requestParameters['createPermissionGroupDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PermissionGroupResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/13. The name is not blank and not used by another live group, whatever its case. Written to the audit log.
+     * Create a permission group
+     */
+    async createPermissionGroup(requestParameters: CreatePermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PermissionGroupResponse> {
+        const response = await this.createPermissionGroupRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/13. While people hold the group, `usersPolicy` is required: `keep` turns its permissions into single ones for each of them, `revoke` takes them away. Written to the audit log.
+     * Delete a permission group
+     */
+    async deletePermissionGroupRaw(requestParameters: DeletePermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling deletePermissionGroup().'
+            );
+        }
+
+        if (requestParameters['deletePermissionGroupDto'] == null) {
+            throw new runtime.RequiredError(
+                'deletePermissionGroupDto',
+                'Required parameter "deletePermissionGroupDto" was null or undefined when calling deletePermissionGroup().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/permission-groups/{id}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+            body: DeletePermissionGroupDtoToJSON(requestParameters['deletePermissionGroupDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * nizam/13. While people hold the group, `usersPolicy` is required: `keep` turns its permissions into single ones for each of them, `revoke` takes them away. Written to the audit log.
+     * Delete a permission group
+     */
+    async deletePermissionGroup(requestParameters: DeletePermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deletePermissionGroupRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * nizam/11. `decisions` answers every item `…/given` lists: TAKE_OVER leaves the right in place under the başnazım\'s name, DROP revokes it. The appointment and the platform permissions are revoked. Written to the audit log.
+     * Dismiss a Medaris nazımı
+     */
+    async dismissMedarisNazimRaw(requestParameters: DismissMedarisNazimRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling dismissMedarisNazim().'
+            );
+        }
+
+        if (requestParameters['dismissMedarisNazimDto'] == null) {
+            throw new runtime.RequiredError(
+                'dismissMedarisNazimDto',
+                'Required parameter "dismissMedarisNazimDto" was null or undefined when calling dismissMedarisNazim().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/medaris-nazims/{userId}`;
+        urlPath = urlPath.replace(`{${"userId"}}`, encodeURIComponent(String(requestParameters['userId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+            body: DismissMedarisNazimDtoToJSON(requestParameters['dismissMedarisNazimDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * nizam/11. `decisions` answers every item `…/given` lists: TAKE_OVER leaves the right in place under the başnazım\'s name, DROP revokes it. The appointment and the platform permissions are revoked. Written to the audit log.
+     * Dismiss a Medaris nazımı
+     */
+    async dismissMedarisNazim(requestParameters: DismissMedarisNazimRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.dismissMedarisNazimRaw(requestParameters, initOverrides);
+    }
 
     /**
      * Any signed-in caller: the \'no access\' screen names who to ask. `displayName` is null when nobody holds the role or the directory cannot be reached.
@@ -60,6 +327,308 @@ export class NizamApi extends runtime.BaseAPI {
      */
     async getChiefNazim(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ChiefNazimResponse> {
         const response = await this.getChiefNazimRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/11\'s dismissal question: the roles and permissions this person gave to others that are still held.
+     * What a Medaris nazımı has handed on
+     */
+    async getMedarisNazimGivenRaw(requestParameters: GetMedarisNazimGivenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<GivenItemResponse>>> {
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling getMedarisNazimGiven().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/medaris-nazims/{userId}/given`;
+        urlPath = urlPath.replace(`{${"userId"}}`, encodeURIComponent(String(requestParameters['userId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(GivenItemResponseFromJSON));
+    }
+
+    /**
+     * nizam/11\'s dismissal question: the roles and permissions this person gave to others that are still held.
+     * What a Medaris nazımı has handed on
+     */
+    async getMedarisNazimGiven(requestParameters: GetMedarisNazimGivenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<GivenItemResponse>> {
+        const response = await this.getMedarisNazimGivenRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/11. Held appointments only, in the order they were made; one whose end has passed is not listed. Each carries its groups and single platform permissions.
+     * The Medaris nazımları in office (SYSTEM_ADMIN only)
+     */
+    async getMedarisNazimsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<MedarisNazimResponse>>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/medaris-nazims`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(MedarisNazimResponseFromJSON));
+    }
+
+    /**
+     * nizam/11. Held appointments only, in the order they were made; one whose end has passed is not listed. Each carries its groups and single platform permissions.
+     * The Medaris nazımları in office (SYSTEM_ADMIN only)
+     */
+    async getMedarisNazims(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<MedarisNazimResponse>> {
+        const response = await this.getMedarisNazimsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/12 and 13: the platform\'s permissions in their five sections and the course permissions a course-scoped group may carry. Codes only; the sentences under them are the web app\'s.
+     * The permission catalog (SYSTEM_ADMIN only)
+     */
+    async getPermissionCatalogRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PermissionCatalogResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/permissions`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PermissionCatalogResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/12 and 13: the platform\'s permissions in their five sections and the course permissions a course-scoped group may carry. Codes only; the sentences under them are the web app\'s.
+     * The permission catalog (SYSTEM_ADMIN only)
+     */
+    async getPermissionCatalog(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PermissionCatalogResponse> {
+        const response = await this.getPermissionCatalogRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The people who hold a permission group
+     */
+    async getPermissionGroupUsersRaw(requestParameters: GetPermissionGroupUsersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<GroupUserResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getPermissionGroupUsers().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/permission-groups/{id}/users`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(GroupUserResponseFromJSON));
+    }
+
+    /**
+     * The people who hold a permission group
+     */
+    async getPermissionGroupUsers(requestParameters: GetPermissionGroupUsersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<GroupUserResponse>> {
+        const response = await this.getPermissionGroupUsersRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/13. The platform\'s groups and the course groups, each with its permissions and how many people hold it.
+     * The permission groups (SYSTEM_ADMIN only)
+     */
+    async getPermissionGroupsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<PermissionGroupResponse>>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/permission-groups`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(PermissionGroupResponseFromJSON));
+    }
+
+    /**
+     * nizam/13. The platform\'s groups and the course groups, each with its permissions and how many people hold it.
+     * The permission groups (SYSTEM_ADMIN only)
+     */
+    async getPermissionGroups(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<PermissionGroupResponse>> {
+        const response = await this.getPermissionGroupsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/12. Replaces the group and the single permissions with the ones sent; what stays keeps its giver and date. The end may not be after the appointment\'s. Written to the audit log.
+     * Set a Medaris nazımı\'s platform permissions
+     */
+    async setMedarisNazimGrantsRaw(requestParameters: SetMedarisNazimGrantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MedarisNazimResponse>> {
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling setMedarisNazimGrants().'
+            );
+        }
+
+        if (requestParameters['setNazimGrantsDto'] == null) {
+            throw new runtime.RequiredError(
+                'setNazimGrantsDto',
+                'Required parameter "setNazimGrantsDto" was null or undefined when calling setMedarisNazimGrants().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/medaris-nazims/{userId}/grants`;
+        urlPath = urlPath.replace(`{${"userId"}}`, encodeURIComponent(String(requestParameters['userId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetNazimGrantsDtoToJSON(requestParameters['setNazimGrantsDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MedarisNazimResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/12. Replaces the group and the single permissions with the ones sent; what stays keeps its giver and date. The end may not be after the appointment\'s. Written to the audit log.
+     * Set a Medaris nazımı\'s platform permissions
+     */
+    async setMedarisNazimGrants(requestParameters: SetMedarisNazimGrantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MedarisNazimResponse> {
+        const response = await this.setMedarisNazimGrantsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/13. Changing the permissions while people hold the group needs `usersPolicy`: they keep what it gave them as single permissions, or lose it; either way they no longer hold the group. Written to the audit log.
+     * Rename a permission group or change its permissions
+     */
+    async updatePermissionGroupRaw(requestParameters: UpdatePermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PermissionGroupResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling updatePermissionGroup().'
+            );
+        }
+
+        if (requestParameters['updatePermissionGroupDto'] == null) {
+            throw new runtime.RequiredError(
+                'updatePermissionGroupDto',
+                'Required parameter "updatePermissionGroupDto" was null or undefined when calling updatePermissionGroup().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/permission-groups/{id}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdatePermissionGroupDtoToJSON(requestParameters['updatePermissionGroupDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PermissionGroupResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/13. Changing the permissions while people hold the group needs `usersPolicy`: they keep what it gave them as single permissions, or lose it; either way they no longer hold the group. Written to the audit log.
+     * Rename a permission group or change its permissions
+     */
+    async updatePermissionGroup(requestParameters: UpdatePermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PermissionGroupResponse> {
+        const response = await this.updatePermissionGroupRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

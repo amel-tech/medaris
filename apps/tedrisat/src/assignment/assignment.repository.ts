@@ -68,7 +68,8 @@ export interface IPersonName {
   email: string | null;
 }
 
-function grantHeld(): SQL {
+/** A grant is held while it is neither revoked nor past its end. */
+export function grantHeld(): SQL {
   return and(
     isNull(permissionGrants.revokedAt),
     or(
