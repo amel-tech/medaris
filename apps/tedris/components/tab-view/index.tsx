@@ -16,9 +16,10 @@ const ownsItsMain = (pathname: string) =>
   pathname.startsWith("/my-courses") ||
   pathname.startsWith("/schedule") ||
   pathname.startsWith("/decks") ||
-  pathname.startsWith("/account/calendar") ||
+  pathname.startsWith("/account") ||
+  pathname.startsWith("/notifications") ||
   pathname === "/home" ||
-  /^\/courses\/[^/]+\/lessons\//.test(pathname);
+  /^\/courses\/[^/]+(\/|$)/.test(pathname);
 
 /**
  * `signedIn` false: a visitor is shown only the tab that is theirs (Öğrenme,
@@ -82,7 +83,10 @@ export const TabView = ({
       {ownsItsMain(pathname) ? (
         children
       ) : (
-        <main className="mx-auto w-full max-w-[80rem] py-2 grow-1">
+        <main
+          data-legacy-main
+          className="mx-auto w-full max-w-[80rem] py-2 grow-1"
+        >
           {children}
         </main>
       )}

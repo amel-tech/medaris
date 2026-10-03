@@ -53,6 +53,7 @@ export function SessionJoinLive({
   labels,
   calendar,
   recordingsHref,
+  headingLevel,
 }: {
   renderedAt: string;
   startsAt: string;
@@ -74,6 +75,8 @@ export function SessionJoinLive({
   calendar?: CalendarLabels;
   /** where "Ders kayıtlarına git" goes once the celse is over; absent without a recording */
   recordingsHref?: string;
+  /** set where the card names its celse (Ana sayfa: 3); the session page's own h1 already does */
+  headingLevel?: 2 | 3 | 4;
 }) {
   const [now, setNow] = useState(() => new Date(renderedAt));
   useEffect(() => {
@@ -107,8 +110,9 @@ export function SessionJoinLive({
         )
       : undefined;
 
+  // Not on a live celse: the design's live card has only the way in.
   const addToCalendar =
-    calendar && (state === "upcoming" || state === "live") ? (
+    calendar && state === "upcoming" ? (
       <CalendarMenu
         text
         courseId={courseId}
@@ -126,6 +130,8 @@ export function SessionJoinLive({
       timeZone={timeZone}
       courseTimeZone={courseTimeZone}
       state={state}
+      title={headingLevel ? title : undefined}
+      headingLevel={headingLevel}
       platform={meetingUrl ? platform : undefined}
       host={platformHost}
       href={meetingUrl}

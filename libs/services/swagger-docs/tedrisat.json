@@ -2567,11 +2567,19 @@
     },
     "/courses/enrolled": {
       "get": {
-        "description": "Enrolled and completed courses, oldest enrollment first, each with its next standing session. `includePending=true` adds the requests still waiting for approval (MDRS-159), marked by `enrollment.status`.",
+        "description": "Enrolled and completed courses, oldest enrollment first, each with its next standing session. `includePending=true` adds the requests still waiting for approval (MDRS-159), and `includeRevoked=true` the courses whose access was withdrawn (Derslerim's \"Erişiminin kaldırıldığı dersler\"), each marked by `enrollment.status`.",
         "operationId": "getEnrolledCourses",
         "parameters": [
           {
             "name": "includePending",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "includeRevoked",
             "required": false,
             "in": "query",
             "schema": {

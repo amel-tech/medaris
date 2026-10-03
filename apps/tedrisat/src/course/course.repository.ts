@@ -8,7 +8,6 @@ import {
   isNotNull,
   isNull,
   max,
-  ne,
   notInArray,
   or,
   sql,
@@ -278,19 +277,20 @@ export class CourseRepository implements ICourseRepository {
 
   async findEnrolledByUser(
     userId: string,
-    includePending = false
+    includePending = false,
+    includeRevoked = false
   ): Promise<IEnrolledCourse[]> {
     const now = new Date();
+    // A revoked seat is not a course the talebe is in (MDRS-161); Derslerim
+    // asks for it on its own, to list it apart.
+    const left = [
+      ...(includePending ? [] : [EnrollmentStatus.PENDING]),
+      ...(includeRevoked ? [] : [EnrollmentStatus.REVOKED]),
+    ];
     const rows = await this.db.query.enrollments.findMany({
       where: and(
         eq(enrollments.userId, userId),
-        // A revoked seat is not a course the talebe is in (MDRS-161).
-        includePending
-          ? ne(enrollments.status, EnrollmentStatus.REVOKED)
-          : notInArray(enrollments.status, [
-              EnrollmentStatus.PENDING,
-              EnrollmentStatus.REVOKED,
-            ])
+        left.length > 0 ? notInArray(enrollments.status, left) : undefined
       ),
       with: {
         course: {

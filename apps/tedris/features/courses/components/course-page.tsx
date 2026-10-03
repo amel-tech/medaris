@@ -17,6 +17,7 @@ import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Fragment, useState } from "react";
+import { courseCover } from "~/features/courses/course-cover";
 import {
   courseTotals,
   courseViewState,
@@ -143,7 +144,7 @@ export const CoursePage = ({
   ].filter((part) => part !== null);
 
   return (
-    <div className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
+    <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
       {preview && (
         <Alert tone="neutral" title={t("previewBannerTitle")}>
           {t("previewBannerText")}
@@ -159,76 +160,125 @@ export const CoursePage = ({
         ]}
       />
 
-      <div className="grid items-start gap-8 grid-cols-[minmax(0,1fr)_var(--layout-aside)] max-md:grid-cols-1">
-        <div className="flex min-inline-0 flex-col gap-section">
-          <div className="flex items-start gap-6 max-md:flex-col">
-            <div className="shrink-0 inline-[165px] max-md:inline-[7.5rem]">
-              <CoverPattern
-                seed={course.id}
-                size="lg"
-                label={course.category ?? ""}
-              />
-            </div>
-            <div className="flex min-inline-0 flex-col gap-3">
-              {preview && (
-                <Badge variant="outline" className="self-start">
-                  {t("draftBadge")}
-                </Badge>
-              )}
-              <h1 className="mds-h1" dir="auto">
-                {course.title}
-              </h1>
-              {(course.description ?? course.subtitle) ? (
-                <div className="mds-reading" dir="auto">
-                  {(course.description ?? course.subtitle ?? "")
-                    .split(/\n{2,}/)
-                    .filter(Boolean)
-                    .map((paragraph) => (
-                      <p key={paragraph}>{paragraph}</p>
-                    ))}
-                </div>
-              ) : null}
-              <p className="mds-body-sm">
-                {meta.map((part, i) => (
-                  <Fragment key={part.key}>
-                    {part}
-                    {i < meta.length - 1 ? (
-                      <span className="mds-sep" aria-hidden="true">
-                        ·
-                      </span>
-                    ) : null}
-                  </Fragment>
-                ))}
-              </p>
-              {course.muderris.length > 0 ? (
-                <p className="mds-body-sm">
-                  {course.muderris.length > 1 ? t("teachers") : t("teacher")}:{" "}
-                  {joinNames(
-                    course.muderris.map((m) => m.name),
-                    locale
-                  ).map((part, i) => {
-                    if (part.type === "literal")
-                      return <Fragment key={`l${i}`}>{part.value}</Fragment>;
-                    const m = course.muderris.find(
-                      (x) => x.name === part.value
-                    );
-                    return (
-                      <Fragment key={m?.id ?? part.value}>
-                        <bdi>{part.value}</bdi>
-                        {m?.title ? (
-                          <>
-                            {" "}
-                            <Badge variant="secondary">{m.title}</Badge>
-                          </>
-                        ) : null}
-                      </Fragment>
-                    );
-                  })}
-                </p>
-              ) : null}
-            </div>
+      {/* Three grid items, not two columns: on a phone the course's cards come
+          between its header and its tabs (design tedris/05, telefon). */}
+      <div className="grid items-start gap-x-8 gap-y-section grid-cols-[minmax(0,1fr)_var(--layout-aside)] max-md:grid-cols-1">
+        <div className="flex items-start gap-6 max-md:flex-col md:col-start-1 md:row-start-1">
+          <div className="shrink-0 inline-[165px] max-md:inline-[7.5rem]">
+            <CoverPattern {...courseCover(course)} size="lg" />
           </div>
-
+          <div className="flex min-inline-0 flex-col gap-3">
+            {preview && (
+              <Badge variant="outline" className="self-start">
+                {t("draftBadge")}
+              </Badge>
+            )}
+            <h1 className="mds-h1" dir="auto">
+              {course.title}
+            </h1>
+            {(course.description ?? course.subtitle) ? (
+              <div className="mds-reading" dir="auto">
+                {(course.description ?? course.subtitle ?? "")
+                  .split(/\n{2,}/)
+                  .filter(Boolean)
+                  .map((paragraph) => (
+                    <p key={paragraph}>{paragraph}</p>
+                  ))}
+              </div>
+            ) : null}
+            <p className="mds-body-sm">
+              {meta.map((part, i) => (
+                <Fragment key={part.key}>
+                  {part}
+                  {i < meta.length - 1 ? (
+                    <span className="mds-sep" aria-hidden="true">
+                      ·
+                    </span>
+                  ) : null}
+                </Fragment>
+              ))}
+            </p>
+            {course.muderris.length === 1 ? (
+              // Design tedris/12: one müderris is named with their initials and title.
+              <div className="flex flex-wrap items-center gap-2">
+                <Avatar name={course.muderris[0].name} size="sm" decorative />
+                <span className="mds-body-sm">
+                  {t("teacher")} <bdi>{course.muderris[0].name}</bdi>
+                </span>
+                {course.muderris[0].title ? (
+                  <Badge variant="secondary">{course.muderris[0].title}</Badge>
+                ) : null}
+              </div>
+            ) : course.muderris.length > 1 ? (
+              <p className="mds-body-sm">
+                {t("teachers")}:{" "}
+                {joinNames(
+                  course.muderris.map((m) => m.name),
+                  locale
+                ).map((part, i) => {
+                  if (part.type === "literal")
+                    return <Fragment key={`l${i}`}>{part.value}</Fragment>;
+                  const m = course.muderris.find((x) => x.name === part.value);
+                  return (
+                    <Fragment key={m?.id ?? part.value}>
+                      <bdi>{part.value}</bdi>
+                      {m?.title ? (
+                        <>
+                          {" "}
+                          <Badge variant="secondary">{m.title}</Badge>
+                        </>
+                      ) : null}
+                    </Fragment>
+                  );
+                })}
+              </p>
+            ) : null}
+          </div>
+        </div>
+        {preview ? (
+          <aside className="sticky inset-bs-[calc(var(--layout-topbar)+var(--space-6))] md:col-start-2 md:row-start-1 md:row-span-2 max-md:static">
+            <Card
+              title={t("previewCardTitle")}
+              headingLevel={2}
+              action={<Badge variant="outline">{t("previewCardBadge")}</Badge>}
+            >
+              <p className="mds-body-sm mbs-3">{t("previewCardText")}</p>
+              {firstSession && (
+                <div className="mbs-3">
+                  <p className="mds-eyebrow">{t("firstSession")}</p>
+                  <p className="mds-body-sm mds-num">
+                    <time dateTime={firstSession.toISOString()}>
+                      {formatFirstSession(firstSession, locale, zone)}
+                    </time>
+                  </p>
+                </div>
+              )}
+              {nazirUrl && (
+                <Button
+                  href={nazirUrl}
+                  variant="secondary"
+                  fullWidth
+                  className="mbs-4"
+                  aria-label={t("backToEditingLabel", { title: course.title })}
+                >
+                  {t("backToEditing")}
+                </Button>
+              )}
+            </Card>
+          </aside>
+        ) : (
+          <div className="sticky inset-bs-[calc(var(--layout-topbar)+var(--space-6))] md:col-start-2 md:row-start-1 md:row-span-2 max-md:static">
+            <CourseAside
+              course={course}
+              state={state}
+              now={now}
+              approvalRequired={approvalRequired}
+              signInHref={signInHref}
+              registerHref={registerHref}
+            />
+          </div>
+        )}
+        <div className="flex min-inline-0 flex-col gap-section md:col-start-1 md:row-start-2">
           <Tabs
             tabs={tabs}
             value={tab}
@@ -355,51 +405,7 @@ export const CoursePage = ({
             </section>
           ) : null}
         </div>
-
-        {preview ? (
-          <aside className="sticky inset-bs-[calc(var(--layout-topbar)+var(--space-6))] max-md:static">
-            <Card
-              title={t("previewCardTitle")}
-              headingLevel={2}
-              action={<Badge variant="outline">{t("previewCardBadge")}</Badge>}
-            >
-              <p className="mds-body-sm mbs-3">{t("previewCardText")}</p>
-              {firstSession && (
-                <div className="mbs-3">
-                  <p className="mds-eyebrow">{t("firstSession")}</p>
-                  <p className="mds-body-sm mds-num">
-                    <time dateTime={firstSession.toISOString()}>
-                      {formatFirstSession(firstSession, locale, zone)}
-                    </time>
-                  </p>
-                </div>
-              )}
-              {nazirUrl && (
-                <Button
-                  href={nazirUrl}
-                  variant="secondary"
-                  fullWidth
-                  className="mbs-4"
-                  aria-label={t("backToEditingLabel", { title: course.title })}
-                >
-                  {t("backToEditing")}
-                </Button>
-              )}
-            </Card>
-          </aside>
-        ) : (
-          <div className="sticky inset-bs-[calc(var(--layout-topbar)+var(--space-6))] max-md:static">
-            <CourseAside
-              course={course}
-              state={state}
-              now={now}
-              approvalRequired={approvalRequired}
-              signInHref={signInHref}
-              registerHref={registerHref}
-            />
-          </div>
-        )}
       </div>
-    </div>
+    </main>
   );
 };

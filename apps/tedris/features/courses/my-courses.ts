@@ -10,6 +10,8 @@ export interface MyCourseSections {
   ongoing: EnrolledCourseResponse[];
   applications: EnrolledCourseResponse[];
   completed: EnrolledCourseResponse[];
+  /** design tedris/20 "erişimi kaldırıldı": listed apart, with no way in */
+  revoked: EnrolledCourseResponse[];
 }
 
 export const splitMyCourses = (
@@ -19,6 +21,7 @@ export const splitMyCourses = (
     ongoing: [],
     applications: [],
     completed: [],
+    revoked: [],
   };
   for (const course of courses) {
     switch (course.enrollment.status) {
@@ -30,6 +33,9 @@ export const splitMyCourses = (
         break;
       case "COMPLETED":
         sections.completed.push(course);
+        break;
+      case "REVOKED":
+        sections.revoked.push(course);
         break;
     }
   }

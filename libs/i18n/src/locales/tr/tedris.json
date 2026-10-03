@@ -45,9 +45,9 @@
     "actionFailed": "İşlem tamamlanamadı. Biraz sonra yeniden dene.",
     "withdrawing": "Geri çekiliyor...",
     "leaveCourse": "Dersten ayrıl",
-    "leaveTitle": "Dersten ayrılmak istiyor musunuz?",
+    "leaveTitle": "Dersten ayrıl",
     "leaveDescription": "Kaydınız ve ilerlemeniz silinir. İsterseniz daha sonra yeniden kayıt olabilirsiniz.",
-    "leaveConfirm": "Ayrıl",
+    "leaveConfirm": "Dersten ayrıl",
     "leaveCancel": "Vazgeç",
     "left": "Dersten ayrıldınız.",
     "signInToApply": "Başvurmak için giriş yap",
@@ -120,7 +120,15 @@
     "minuteUnit": "dk",
     "weeksCount": "{count} hafta",
     "sessionsCount": "{count} celse",
-    "hoursCount": "{count} saat"
+    "hoursCount": "{count} saat",
+    "minutes": "{minutes} dk",
+    "moreActions": "Diğer işlemler",
+    "moreActionsFor": "Diğer işlemler: {title}",
+    "completedTitle": "Bu dersi tamamladın.",
+    "completedNote": "Ders kadrosu {date} onayladı. Ders sürerken celselere ve ders kayıtlarına erişimin sürer.",
+    "openSession": "Celse sayfasını aç",
+    "leaveBody": "<b>{title}</b> dersinden ayrılacaksın. Celselere, toplantı bağlantılarına, ders kayıtlarına ve ders destesine erişimin kalkar; dersin celseleri takviminden de düşer.",
+    "leaveBodyCards": "Kendi destene kopyaladığın kartlar sende kalır. İstersen derse yeniden başvurabilirsin."
   },
   "DataTable": {
     "noResults": "Sonuç bulunamadı."
@@ -242,7 +250,9 @@
     "goDiscover": "Keşfet'e git",
     "loadErrorTitle": "Derslerin yüklenemedi",
     "loadError": "Derslerin şu an okunamadı.",
-    "retry": "Yeniden dene"
+    "retry": "Yeniden dene",
+    "revokedTitle": "Erişiminin kaldırıldığı dersler",
+    "revokedCount": "{count} ders"
   },
   "SessionTime": {
     "istanbul": "İstanbul",
@@ -349,13 +359,13 @@
     "description": {
       "signIn": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Giriş yapıp derse kaydolduğunda görebilirsin.",
       "apply": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Derse kaydolduğunda görebilirsin.",
-      "pending": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Başvurun onaylandığında görebilirsin.",
+      "pending": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Derse kaydolduğunda görebilirsin.",
       "revoked": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Bu derse erişimin kaldırıldı."
     },
     "signIn": "Giriş yap",
     "apply": "Kayıt başvurusu yap",
-    "pending": "Başvurun onay bekliyor",
-    "teachers": "Müderris {names}"
+    "teachers": "Müderris {names}",
+    "pendingNote": "Başvurun onaylanınca bu celseye katılabilirsin."
   },
   "MadrasahPage": {
     "kosks": "Köşkler",
@@ -521,7 +531,10 @@
     "liveStreamTitle": "Canlı yayın",
     "liveStreamPlaceholder": "Canlı yayın burada oynar",
     "liveStreamOpen": "Yayını aç",
-    "liveStreamText": "Yayını buradan izleyebilirsin. Soru sormak ve konuşmaya katılmak için celseye katıl."
+    "liveStreamText": "Yayını buradan izleyebilirsin. Soru sormak ve konuşmaya katılmak için celseye katıl.",
+    "noReplacement": "Müderris yeni bir zaman belirlerse onu Programım’da görürsün.",
+    "recordingCardTitle": "Ders kaydı",
+    "noRecording": "Bu celsede henüz ders kaydı yok."
   },
   "AccountPage": {
     "pageTitle": "Hesap",
@@ -683,7 +696,9 @@
     "account": "Hesabım",
     "roleTalebe": "Talebe",
     "accountLabel": "Hesabım: {name}",
-    "notifications": "Bildirimler"
+    "notifications": "Bildirimler",
+    "homeLabel": "Medaris Tedris, ana sayfa",
+    "liveIntro": "{course} celsesi şu an canlı."
   },
   "SchedulePage": {
     "pageTitle": "Programım",
@@ -699,7 +714,6 @@
     "week": "Hafta {week}",
     "minutes": "{count} dk",
     "statusScheduled": "Planlandı",
-    "statusLive": "Canlı",
     "statusEnded": "Sona erdi",
     "statusCancelled": "İptal edildi",
     "noLink": "Toplantı bağlantısı henüz eklenmedi.",

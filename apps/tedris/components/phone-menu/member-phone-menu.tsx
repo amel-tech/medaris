@@ -8,7 +8,13 @@ import { NavItem } from "@medaris/ui/mds/nav-item";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "~/lib/i18n/navigation";
 
-type Section = "home" | "discover" | "courses" | "schedule" | "decks" | null;
+export type Section =
+  | "home"
+  | "discover"
+  | "courses"
+  | "schedule"
+  | "decks"
+  | null;
 
 const SECTION_PREFIXES: [Section, RegExp][] = [
   ["home", /^\/(home)?$/],
@@ -30,13 +36,24 @@ export const sectionOf = (pathname: string): Section =>
  * tedris/16 is its confirmation). The Dialog, its focus on the close button and
  * its closing when the window passes 768 px are the kit's `AppBar`.
  */
-export function MemberPhoneMenu({ name }: { name: string }) {
+export function MemberPhoneMenu({
+  name,
+  section: sectionProp,
+  title: titleProp,
+}: {
+  name: string;
+  /** the place, when the address alone cannot tell it (a course page) */
+  section?: Section;
+  /** the bar's name, when it is the page's own (a course or a celse) */
+  title?: string;
+}) {
   const t = useTranslations("tedris.PhoneMenu");
   const locale = useLocale();
   const pathname = usePathname();
-  const section = sectionOf(pathname);
+  const section = sectionProp !== undefined ? sectionProp : sectionOf(pathname);
   const title =
-    section === "discover"
+    titleProp ??
+    (section === "discover"
       ? t("discover")
       : section === "courses"
         ? t("courses")
@@ -44,7 +61,7 @@ export function MemberPhoneMenu({ name }: { name: string }) {
           ? t("schedule")
           : section === "decks"
             ? t("decks")
-            : t("home");
+            : t("home"));
 
   const item = (key: Exclude<Section, null>, href: string, label: string) => (
     <NavItem href={`/${locale}${href}`} active={section === key}>

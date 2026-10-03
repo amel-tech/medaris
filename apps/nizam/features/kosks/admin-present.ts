@@ -9,7 +9,11 @@ import type {
   UpdateKoskDto,
 } from "@medaris/services/tedrisat";
 import type { BadgeVariant } from "@medaris/ui/mds/badge";
-import type { CoverTone } from "@medaris/ui/mds/cover-pattern";
+import {
+  type CoverTone,
+  TONE_HUE,
+  toneOfHue,
+} from "@medaris/ui/mds/cover-pattern";
 import type { IconName } from "@medaris/ui/mds/icon";
 import { cleanHandle, HANDLE_PATTERN } from "../madrasahs/present";
 import { KOSK_FORM_LIMITS } from "./kosk-form";
@@ -200,28 +204,8 @@ export const COVER_TONES: CoverTone[] = [
   "murekkep",
 ];
 
-/** The hue each cover name is stored as. `coverHue` is a number, the design names four. */
-export const TONE_HUE: Record<CoverTone, number> = {
-  laciverd: 250,
-  bordo: 20,
-  zumrut: 155,
-  murekkep: 285,
-};
-
-/** The cover name nearest to a stored hue (a köşk made before the names keeps looking like itself). */
-export function toneOfHue(hue: number): CoverTone {
-  const distance = (a: number, b: number) => {
-    const d = Math.abs(a - b) % 360;
-    return Math.min(d, 360 - d);
-  };
-  let best: CoverTone = "laciverd";
-  for (const tone of COVER_TONES) {
-    if (distance(hue, TONE_HUE[tone]) < distance(hue, TONE_HUE[best])) {
-      best = tone;
-    }
-  }
-  return best;
-}
+/** The hue table and the nearest-tone rule live with the cover itself, shared with tedris. */
+export { TONE_HUE, toneOfHue };
 
 // ---- the fixed lists -------------------------------------------------------------
 

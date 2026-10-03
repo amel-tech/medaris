@@ -133,12 +133,21 @@ describe("Programım (design tedris/21)", () => {
     expect(html).toContain('data-menu="Takvime ekle: Mehmûz fiiller"');
   });
 
-  it("marks a running session Canlı and a finished one Sona erdi", async () => {
-    const live = s({ id: "a", startsAt: new Date("2026-10-01T06:30:00Z") });
+  it("marks a running session Şu an canlı with the way in, and a finished one Sona erdi (tedris/21)", async () => {
+    const live = s({
+      id: "a",
+      startsAt: new Date("2026-10-01T06:30:00Z"),
+      meetingUrl: "https://zoom.us/j/9",
+    });
     const over = s({ id: "b", startsAt: new Date("2026-10-01T04:00:00Z") });
     const html = await render([over, live]);
-    expect(html).toContain(">Canlı<");
+    expect(html).toContain("mds-badge--live");
+    expect(html).toContain("Şu an canlı");
     expect(html).toContain(">Sona erdi<");
+    // A live row has no calendar menu; it has the join link instead.
+    expect(html).not.toContain('data-menu="Takvime ekle');
+    expect(html).toContain('href="https://zoom.us/j/9"');
+    expect(html).toContain("Celseye katıl");
   });
 
   it("offers the next seven days, and the way back once it has moved on", async () => {

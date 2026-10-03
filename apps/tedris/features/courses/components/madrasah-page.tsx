@@ -12,6 +12,7 @@ import { Icon } from "@medaris/ui/mds/icon";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import { AnonymousInvite } from "~/components/anonymous-invite";
+import { courseCover } from "~/features/courses/course-cover";
 import { joinRun } from "../join-run";
 import { enrollmentBadge } from "../madrasah-enrollment";
 import { formatNextSession } from "../next-session";
@@ -53,13 +54,7 @@ const CourseCard = ({
       className="flex flex-col"
       href={`/courses/${course.id}`}
       title={course.title}
-      media={
-        <CoverPattern
-          seed={course.id}
-          size="sm"
-          label={course.category ?? ""}
-        />
-      }
+      media={<CoverPattern {...courseCover(course)} size="sm" />}
       action={
         badge ? (
           <Badge
