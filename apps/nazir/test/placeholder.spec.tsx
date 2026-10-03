@@ -19,11 +19,11 @@ vi.mock("next-intl/server", () => ({
 const props = (bolum: string) => ({ params: Promise.resolve({ bolum }) });
 
 /**
- * The medrese's sections that have a page of their own (MDRS-184, MDRS-185): a
- * static route folder wins over the placeholder's `[bolum]`, so these never
- * reach it.
+ * The medrese's sections that have a page of their own (MDRS-184, MDRS-185,
+ * MDRS-187): a static route folder wins over the placeholder's `[bolum]`, so
+ * these never reach it.
  */
-const BUILT = ["nazirlar", "ayarlar", "arsiv"];
+const BUILT = ["nazirlar", "ayarlar", "arsiv", "talebeler", "yasaklamalar"];
 
 /** The pages no package has built yet: one placeholder per kind of scope. */
 describe("the shared placeholder under a medrese", () => {
@@ -91,10 +91,8 @@ describe("the shared placeholder under a course", () => {
 });
 
 describe("the scope's own pages", () => {
-  it("are placeholders named Pano and Genel bakış until their packages arrive", async () => {
-    const pano = (await import("../app/medrese/[medreseId]/page")).default();
+  it("are placeholders named Genel bakış and Bildirimler until their packages arrive", async () => {
     const overview = (await import("../app/ders/[dersId]/page")).default();
-    expect(textOf(await html(pano))).toMatch(/^Pano /);
     expect(textOf(await html(overview))).toMatch(/^Genel bakış /);
     const bell = (await import("../app/(global)/bildirimler/page")).default();
     expect(textOf(await html(bell))).toMatch(/^Bildirimler /);
