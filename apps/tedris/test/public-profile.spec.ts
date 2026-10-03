@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import type { MyPublicProfileResponse } from "@medaris/services/tedrisat";
-import { createElement } from "react";
+import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   hiddenFields,
@@ -156,6 +156,34 @@ describe("Herkese açık profil (design tedris/35)", () => {
     expect(mocks.notify).toHaveBeenCalledWith(
       expect.objectContaining({ tone: "error" })
     );
+  });
+
+  it("holds every switch while one is saving, so a refusal cannot roll back a later flip", async () => {
+    let refuse: (res: unknown) => void = () => {};
+    mocks.saveVisibility.mockReturnValueOnce(
+      new Promise((resolve) => {
+        refuse = resolve;
+      })
+    );
+    const host = await mount(profile());
+    await flip(host, 1); // city: on, PATCH still in flight
+    expect(switches(host).every((s) => s.hasAttribute("data-disabled"))).toBe(
+      true
+    );
+    // A second flip in that window is not sent and does not move the preview.
+    await flip(host, 3);
+    expect(mocks.saveVisibility).toHaveBeenCalledTimes(1);
+    expect(switches(host)[3].getAttribute("aria-checked")).toBe("false");
+
+    // The first PATCH is refused: only its own switch goes back, and the
+    // switches are free again.
+    await act(async () => refuse({ success: false, error: "no" }));
+    await settle();
+    expect(switches(host)[1].getAttribute("aria-checked")).toBe("false");
+    expect(switches(host).some((s) => s.hasAttribute("data-disabled"))).toBe(
+      false
+    );
+    expect(mocks.notify).toHaveBeenCalledTimes(1);
   });
 
   it("does not call the API with an empty künye (criterion 5)", async () => {

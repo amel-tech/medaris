@@ -1,9 +1,11 @@
 import { INestApplication } from "@nestjs/common";
 import request from "supertest";
+import { vi } from "vitest";
 import { DatabaseService } from "../../src/database/database.service";
 import { courses, enrollments } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { users } from "../../src/database/schema/user.schema";
+import { UserProfileRepository } from "../../src/user/user-profile.repository";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
   COURSE_TREE_TABLES,
@@ -105,6 +107,44 @@ describe("Profile and köşk application (e2e)", () => {
         .set(as(ZEYNEP))
         .send({ familyName: "" })
         .expect(400);
+    });
+
+    it("leaves the settings alone when the name write fails: one request, one outcome", async () => {
+      await request(server())
+        .patch("/me")
+        .set(as(ZEYNEP))
+        .send({ timeZone: "Europe/Berlin" })
+        .expect(200);
+
+      const upsert = vi
+        .spyOn(app.get(UserProfileRepository), "upsert")
+        .mockRejectedValueOnce(new Error("connection reset"));
+      try {
+        await request(server())
+          .patch("/me")
+          .set(as(ZEYNEP))
+          .send({
+            timeZone: "America/New_York",
+            locale: "en",
+            givenName: "Zeynep Betül",
+          })
+          .expect(500);
+        expect(upsert).toHaveBeenCalledTimes(1);
+      } finally {
+        upsert.mockRestore();
+      }
+
+      const [row] = await databaseService.db.select().from(users);
+      expect(row.timeZone).toBe("Europe/Berlin");
+      expect(row.locale).not.toBe("en");
+      await request(server())
+        .get("/me")
+        .set(as(ZEYNEP))
+        .expect(200)
+        .expect(({ body }) => {
+          expect(body.timeZone).toBe("Europe/Berlin");
+          expect(body.givenName).toBe("Zeynep");
+        });
     });
 
     it("still saves a time zone alone", async () => {

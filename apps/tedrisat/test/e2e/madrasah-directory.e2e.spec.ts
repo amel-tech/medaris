@@ -249,6 +249,14 @@ describe("Medrese directory (e2e)", () => {
       expect(none.body.items).toHaveLength(0);
     });
 
+    it("reads a repeated q as no search instead of failing", async () => {
+      const res = await http()
+        .get("/madrasahs/directory?q=zeyr&q=vefa")
+        .set("Authorization", auth(ADMIN_ID))
+        .expect(200);
+      expect(res.body.total).toBe(3);
+    });
+
     it("pages", async () => {
       const res = await http()
         .get("/madrasahs/directory?limit=2&page=2")
@@ -286,6 +294,16 @@ describe("Medrese directory (e2e)", () => {
       expect(list.body.total).toBe(2);
       await http().get(`/madrasahs/${hidden}/overview`).expect(404);
       await http().get(`/madrasahs/${active}/overview`).expect(200);
+    });
+
+    it("closes a hidden medrese's own read, for a caller with no token and for the başnazım alike", async () => {
+      await http().get(`/madrasahs/${hidden}`).expect(404);
+      await http()
+        .get(`/madrasahs/${hidden}`)
+        .set("Authorization", auth(ADMIN_ID))
+        .expect(404);
+      await http().get(`/madrasahs/${active}`).expect(200);
+      await http().get(`/madrasahs/${passive}`).expect(200);
     });
   });
 

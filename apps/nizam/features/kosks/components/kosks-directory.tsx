@@ -75,6 +75,10 @@ export function KosksDirectory({ directory, filters, viewerId, chief }: Props) {
   const [opening, setOpening] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const searched = useRef(filters.q);
+  // The filters the page is on or is heading to. `filters` only changes once
+  // the server has answered, so a tab, a chip or the pause in typing that
+  // builds on it meanwhile would undo the navigation still on its way.
+  const heading = useRef(filters);
 
   // The search follows the URL when it is changed from outside (back button).
   useEffect(() => {
@@ -82,22 +86,30 @@ export function KosksDirectory({ directory, filters, viewerId, chief }: Props) {
     searched.current = filters.q;
   }, [filters.q]);
 
-  const go = (next: DirectoryFilters, replace = false) =>
+  useEffect(() => {
+    heading.current = filters;
+  }, [filters]);
+
+  const go = (next: DirectoryFilters, replace = false) => {
+    heading.current = next;
     startTransition(() => {
       const href = `/${locale}${directoryPath(next)}`;
       if (replace) router.replace(href);
       else router.push(href);
     });
+  };
+  const change = (patch: Partial<DirectoryFilters>) =>
+    go(withFilter(heading.current, patch));
 
   // Typing navigates after a pause, so a name is one request, not one per key.
   useEffect(() => {
     if (search.trim() === searched.current.trim()) return;
     const timer = setTimeout(() => {
       searched.current = search;
-      go(withFilter(filters, { q: search.trim() }), true);
+      go(withFilter(heading.current, { q: search.trim() }), true);
     }, SEARCH_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [search, filters]);
+  }, [search]);
 
   const refresh = () => startTransition(() => router.refresh());
 
@@ -304,9 +316,7 @@ export function KosksDirectory({ directory, filters, viewerId, chief }: Props) {
           label={t("tabsLabel")}
           locale={locale}
           value={filters.status}
-          onChange={(next) =>
-            go(withFilter(filters, { status: next as KoskStatusFilter }))
-          }
+          onChange={(next) => change({ status: next as KoskStatusFilter })}
           tabs={STATUS_TABS.map((value) => ({
             value,
             label: t(`tabs.${value}`),
@@ -349,14 +359,12 @@ export function KosksDirectory({ directory, filters, viewerId, chief }: Props) {
                           })),
                         ]}
                         onChange={(next) =>
-                          go(
-                            withFilter(filters, {
-                              level:
-                                !next || next === ALL
-                                  ? undefined
-                                  : (next as KoskLevel),
-                            })
-                          )
+                          change({
+                            level:
+                              !next || next === ALL
+                                ? undefined
+                                : (next as KoskLevel),
+                          })
                         }
                       />
                     </div>
@@ -368,11 +376,9 @@ export function KosksDirectory({ directory, filters, viewerId, chief }: Props) {
                       options={fieldChoices}
                       value={filters.field ?? ALL}
                       onChange={(next) =>
-                        go(
-                          withFilter(filters, {
-                            field: !next || next === ALL ? undefined : next,
-                          })
-                        )
+                        change({
+                          field: !next || next === ALL ? undefined : next,
+                        })
                       }
                     />
                     <ChoiceChips
@@ -384,11 +390,9 @@ export function KosksDirectory({ directory, filters, viewerId, chief }: Props) {
                       }))}
                       value={filters.listing}
                       onChange={(next) =>
-                        go(
-                          withFilter(filters, {
-                            listing: (next ?? "ALL") as KoskListingFilter,
-                          })
-                        )
+                        change({
+                          listing: (next ?? "ALL") as KoskListingFilter,
+                        })
                       }
                     />
                   </div>

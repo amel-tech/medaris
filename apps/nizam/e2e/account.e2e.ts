@@ -172,7 +172,7 @@ test("nizam/36 — 'Çıkış yap' asks once, then ends the session and returns 
   await page.getByRole("link", { name: "Çıkış yap" }).click();
   await expect(page).toHaveURL(/\/tr\/auth\/signout/);
   await page.getByRole("button", { name: "Çıkış yap" }).click();
-  await page.waitForURL(/auth\/signin|realms\/|\/tr(\/)?$/);
+  await page.waitForURL(/^.*(?:auth\/signin|realms\/|\/tr\/?$)/);
   await page.goto("/tr/hesap");
   await expect(page).toHaveURL(/auth\/signin|realms\//);
 });

@@ -303,7 +303,8 @@ export class KoskRepository implements IKoskRepository {
   /**
    * The published courses of the köşks `userId` follows, newest first, leaving
    * out the ones they already applied to or are in (a talebe is not invited to
-   * a course they have). Hidden courses and hidden köşks are not offered.
+   * a course they have). Hidden courses, hidden köşks and unlisted köşks
+   * (`is_private`, MDRS-122: in no list, for anyone) are not offered.
    */
   async findFollowedCourses(
     userId: string,
@@ -338,6 +339,7 @@ export class KoskRepository implements IKoskRepository {
       .where(
         and(
           eq(koskFollowers.userId, userId),
+          eq(kosks.isPrivate, false),
           isNull(kosks.archivedAt),
           eq(courses.status, CourseStatus.PUBLISHED),
           isNull(courses.archivedAt),
