@@ -7,9 +7,8 @@ import { type NazirFixture, seedPortal } from "./seed";
  * Design nazir/06 (İzinleri düzenle / İzin ver) against the running app and API
  * with real Keycloak sign-ins (MDRS-185). Giving permissions is the medrese
  * başmüderris's; what a MEDRESE_NAZIR meets on the page is nazir/05's spec. The
- * window opens on 4 Ekim 2026 on the viewer's clock, and the real clock of a run
- * before that day is behind it, so each spec fixes the browser's clock on the
- * side of the gate it is about. Permissions are records the API keeps; nothing
+ * 4 Ekim 2026 version gate is gone (MDRS-215); the specs still pin the
+ * browser's clock so dates on the page are stable. Permissions are records the API keeps; nothing
  * the API decides reads them yet, so the specs read them back from the database.
  * Abdullah holds nothing ("İzin ver"); Ümmügülsüm holds a group that ends.
  */
@@ -67,7 +66,7 @@ const choose = async (page: Page, select: string, option: string) => {
 const tick = (page: Page, sentence: string) =>
   editor(page).getByRole("checkbox", { name: sentence });
 
-test("nazir/06 — before 4 Ekim 'İzin ver' and 'İzinleri düzenle' are off, and nothing is said about why", async ({
+test("nazir/06 — 'İzin ver' and 'İzinleri düzenle' are on whatever the date (MDRS-215: no version gate)", async ({
   as,
 }) => {
   test.skip(!ready(), "no medrese başmüderris");
@@ -75,13 +74,12 @@ test("nazir/06 — before 4 Ekim 'İzin ver' and 'İzinleri düzenle' are off, a
   await open(page, BEFORE);
   await expect(
     page.getByRole("button", { name: `İzin ver: ${extra?.abdullah.name}` })
-  ).toBeDisabled();
+  ).toBeEnabled();
   await expect(
     page.getByRole("button", {
       name: `İzinleri düzenle: ${extra?.ummugulsum.name}`,
     })
-  ).toBeDisabled();
-  await expect(page.getByText(/4 Ekim|sürüm/i)).toHaveCount(0);
+  ).toBeEnabled();
 });
 
 test("nazir/06 — 'İzin ver': a group and one extra permission are saved, and the row shows the group chip and 'Ayrıca 1 izin' (criteria 1, 4, 5)", async ({

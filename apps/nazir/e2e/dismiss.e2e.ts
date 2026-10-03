@@ -5,9 +5,9 @@ import { type NazirFixture, seedPortal } from "./seed";
 
 /**
  * Design nazir/15 (Görevden al) against the running app and API with real
- * Keycloak sign-ins (MDRS-184). The window opens on 4 Ekim 2026 on the
- * viewer's clock, and the real clock of a run before that day is behind it, so
- * each spec fixes the browser's clock on the side of the gate it is about.
+ * Keycloak sign-ins (MDRS-184). The 4 Ekim 2026 version gate is gone
+ * (MDRS-215); the specs still pin the browser's clock so dates on the page are
+ * stable.
  * Fatma is the nazır who gave things away (Abdullah's role, a permission to
  * Ayşe, a role in a course to Hatice); Ümmügülsüm gave nothing.
  */
@@ -52,16 +52,15 @@ const AFTER = "2026-10-05T10:00:00+03:00";
 const dismissButton = (page: Page, name?: string) =>
   page.getByRole("button", { name: `Görevden al: ${name}` });
 
-test("nazir/15 — before 4 Ekim 'Görevden al' is off on every row, and nothing is said about why", async ({
+test("nazir/15 — 'Görevden al' is on on every row, whatever the date (MDRS-215: no version gate)", async ({
   as,
 }) => {
   test.skip(!ready(), "no medrese başmüderris");
   const page = await as("MEDRESE_BASMUDERRIS");
   await open(page, BEFORE);
   for (const nazir of [extra?.fatma, extra?.ummugulsum, extra?.abdullah]) {
-    await expect(dismissButton(page, nazir?.name)).toBeDisabled();
+    await expect(dismissButton(page, nazir?.name)).toBeEnabled();
   }
-  await expect(page.getByText(/4 Ekim|sürüm/i)).toHaveCount(0);
 });
 
 test("nazir/15 — after the gate it asks about each person the nazır gave something to, with nothing chosen and the button off until every row has an answer (criterion 1)", async ({
