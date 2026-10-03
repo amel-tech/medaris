@@ -179,8 +179,32 @@ const medarisGroups: NavGroup[] = [
   chiefOnly("audit", ["bans"]),
 ];
 
+/**
+ * A köşk nazımı's Ana sayfa is their köşk's (nizam 02): it sits in the köşk's
+ * path so the menu and the scope picker stay on that köşk.
+ */
+const koskGeneral: NavGroup = {
+  id: "general",
+  items: [
+    {
+      id: "home",
+      label: "home",
+      path: "/kosks/:kosk/ana-sayfa",
+      icon: "home",
+    },
+    ...general.items.filter((item) => item.id !== "home"),
+  ],
+};
+
+/**
+ * The köşk's menu (nizam 52) holds only pages that exist. The design also
+ * draws Celseler, Talebeler and Ders kayıtları for the whole köşk; those are
+ * later-phase screens with no route yet, so they stay out of the menu until
+ * they are built rather than answer 404 (MDRS-211). A course's own sessions
+ * and roster are reached from the course.
+ */
 const koskGroups: NavGroup[] = [
-  general,
+  koskGeneral,
   {
     id: "kosk",
     items: [
@@ -189,18 +213,6 @@ const koskGroups: NavGroup[] = [
         label: "courses",
         path: "/kosks/:kosk/dersler",
         icon: "courses",
-      },
-      {
-        id: "sessions",
-        label: "sessions",
-        path: "/kosks/:kosk/celseler",
-        icon: "calendar",
-      },
-      {
-        id: "students",
-        label: "students",
-        path: "/kosks/:kosk/talebeler",
-        icon: "users",
       },
       {
         id: "applications",
@@ -215,12 +227,6 @@ const koskGroups: NavGroup[] = [
         label: "courseRequests",
         path: "/kosks/:kosk/ders-talepleri",
         icon: "edit",
-      },
-      {
-        id: "enrollments",
-        label: "enrollments",
-        path: "/kosks/:kosk/ders-kayitlari",
-        icon: "video",
       },
       {
         id: "decks",
@@ -260,6 +266,56 @@ const koskGroups: NavGroup[] = [
     ],
   },
 ];
+
+/**
+ * The platform permissions behind a Medaris nazımı's menu items (nizam 05: "İzni
+ * olmayan menü öğeleri DOM'da bulunmaz"). An item that is not listed is open to
+ * every nazım: the home page, the bell and the account are no one's gift.
+ */
+const ITEM_PERMISSIONS: Record<string, readonly string[]> = {
+  madrasahs: [
+    "platform.madrasah_create",
+    "platform.head_muderris_manage",
+    "platform.madrasah_edit",
+    "platform.madrasah_nazir_grant",
+  ],
+  kosks: [
+    "platform.kosk_create",
+    "platform.kosk_nazim_manage",
+    "platform.kosk_edit",
+    "platform.hosting_grant",
+  ],
+  "kosk-applications": ["platform.kosk_application_decide"],
+  "deck-requests": ["platform.deck_publish"],
+  appeals: ["platform.appeal_decide"],
+  "permanent-bans": ["platform.ban_account"],
+  bans: ["platform.ban_scoped", "platform.ban_account"],
+  "audit-log": ["platform.audit_read"],
+  inactive: ["platform.inactive_scopes_manage"],
+  youtube: ["platform.youtube_manage"],
+  "platform-settings": ["platform.policy_edit"],
+};
+
+/**
+ * A Medaris nazımı's groups cut to what their permissions open; a group left
+ * with no item goes. `held` is `null` when the permissions could not be read:
+ * then nothing is hidden, and tedrisat refuses what is not theirs.
+ */
+export function filterByPermissions(
+  groups: NavGroup[],
+  held: ReadonlySet<string> | null
+): NavGroup[] {
+  if (!held) return groups;
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        const needs = ITEM_PERMISSIONS[item.id];
+        return !needs || needs.some((code) => held.has(code));
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
+}
 
 /** The groups of a variant's nav, in the order of its canvas; none has no nav. */
 export function navGroups(variant: ShellVariant): NavGroup[] {
@@ -352,14 +408,11 @@ export function activeEntryId(
 }
 
 /**
- * A course's roster, `/kosks/:id/courses/:courseId/students`, is the köşk's
- * Talebeler (nizam 57 draws that item selected); the nav's own path for it is
- * the köşk-wide list.
+ * A course's pages (overview nizam/53, editor, Celseler nizam/56, Talebeler
+ * nizam/57) are the köşk's Dersler: the köşk-wide Celseler and Talebeler are
+ * not in the menu yet (MDRS-211), so Dersler is drawn selected.
  */
-export function studentsPathAlias(current: string): string {
-  const m = /^\/kosks\/([^/]+)\/courses\/[^/]+\/students\/?$/.exec(current);
-  if (m) return `/kosks/${m[1]}/talebeler`;
-  // A course's own pages (overview nizam/53, editor) are the köşk's Dersler.
+export function coursePathAlias(current: string): string {
   const course = /^\/kosks\/([^/]+)\/courses(\/|$)/.exec(current);
   return course ? `/kosks/${course[1]}/dersler` : current;
 }

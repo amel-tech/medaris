@@ -33,6 +33,7 @@ import {
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiBody,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
@@ -58,6 +59,7 @@ import {
 import { CourseStatsResponse } from "./dto/course-stats.dto";
 import { CreateCourseDto } from "./dto/create-course.dto";
 import {
+  RejectEnrollmentDto,
   RemoveEnrollmentDto,
   SetEnrollmentStatusDto,
 } from "./dto/enrollment-actions.dto";
@@ -171,10 +173,11 @@ export class CourseController {
   @ApiOperation({
     summary: "List the courses the current talebe is enrolled in",
     description:
-      "Enrolled and completed courses, oldest enrollment first, each with its next standing session. `includePending=true` adds the requests still waiting for approval (MDRS-159), marked by `enrollment.status`.",
+      'Enrolled and completed courses, oldest enrollment first, each with its next standing session. `includePending=true` adds the requests still waiting for approval (MDRS-159), and `includeRevoked=true` the courses whose access was withdrawn (Derslerim\'s "Erişiminin kaldırıldığı dersler"), each marked by `enrollment.status`.',
     operationId: "getEnrolledCourses",
   })
   @ApiQuery({ name: "includePending", required: false, type: Boolean })
+  @ApiQuery({ name: "includeRevoked", required: false, type: Boolean })
   @ApiOkResponse({ type: EnrolledCourseResponse, isArray: true })
   // Exempt: no resource in the request. The rows are the caller's own
   // enrollments, selected by `sub`, so there is nothing for a scope to name.
@@ -183,11 +186,14 @@ export class CourseController {
   async findEnrolled(
     @Req() request: AuthorizedRequest,
     @Query("includePending", new DefaultValuePipe(false), ParseBoolPipe)
-    includePending: boolean
+    includePending: boolean,
+    @Query("includeRevoked", new DefaultValuePipe(false), ParseBoolPipe)
+    includeRevoked: boolean
   ): Promise<EnrolledCourseResponse[]> {
     return this.courseService.findEnrolledCourses(
       request.user.sub,
-      includePending
+      includePending,
+      includeRevoked
     );
   }
 
@@ -513,14 +519,17 @@ export class CourseController {
   @Authz(PERMISSIONS.ENROLLMENT_DECIDE, byParam(ENTITIES.COURSE))
   @Post("courses/:id/enrollments/:userId/approve")
   async approveEnrollment(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("userId", ParseUUIDPipe) userId: string
   ): Promise<EnrollmentResponse> {
-    return this.courseService.approveEnrollment(id, userId);
+    return this.courseService.approveEnrollment(id, userId, request.user.sub);
   }
 
   @ApiOperation({
     summary: "Reject a pending enrollment, deleting it (course team)",
+    description:
+      "The body is optional: a `reason` (nizam/02, Ret gerekçesi) is kept with the refusal in the audit log as `enrollment.reject`.",
     operationId: "rejectEnrollment",
   })
   @ApiOkResponse({ type: Boolean })
@@ -528,12 +537,20 @@ export class CourseController {
   // Same permission as approve: the catalogue does not distinguish granting a
   // seat from refusing one.
   @Authz(PERMISSIONS.ENROLLMENT_DECIDE, byParam(ENTITIES.COURSE))
+  @ApiBody({ type: RejectEnrollmentDto, required: false })
   @Delete("courses/:id/enrollments/:userId")
   async rejectEnrollment(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
-    @Param("userId", ParseUUIDPipe) userId: string
+    @Param("userId", ParseUUIDPipe) userId: string,
+    @Body() dto?: RejectEnrollmentDto
   ): Promise<boolean> {
-    return this.courseService.rejectEnrollment(id, userId);
+    return this.courseService.rejectEnrollment(
+      id,
+      userId,
+      request.user.sub,
+      dto?.reason
+    );
   }
 
   @ApiOperation({

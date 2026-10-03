@@ -1,0 +1,110 @@
+"use client";
+
+import { Avatar } from "@medaris/ui/mds/avatar";
+import { Button } from "@medaris/ui/mds/button";
+import { Icon } from "@medaris/ui/mds/icon";
+import { Logo } from "@medaris/ui/mds/logo";
+import { NavItem } from "@medaris/ui/mds/nav-item";
+import { useLocale, useTranslations } from "next-intl";
+import { usePathname } from "~/lib/i18n/navigation";
+import { inviteHrefs } from "~/lib/invite-hrefs";
+import { type Section, sectionOf } from "./member-phone-menu";
+import { isHomePath } from "./phone-menu";
+
+/**
+ * The top bar at 768 and up, as every Tedris screen of the canvas draws it:
+ * the Medaris wordmark, the five places (Ana sayfa, Keşfet, Derslerim,
+ * Programım, Desteler), then the bell and the person's initials as the way to
+ * Hesap. A visitor gets Ana sayfa and Keşfet, then Giriş yap and Kayıt ol.
+ * Below 768 the phone AppBar takes its place.
+ *
+ * `section` overrides the place worked out from the address, for the pages
+ * whose place depends on who is looking (a course page is Derslerim's for its
+ * talebe and Keşfet's for everyone else).
+ */
+export function DesktopBar({
+  signedIn,
+  name = "",
+  section: sectionProp,
+}: {
+  signedIn: boolean;
+  name?: string;
+  section?: Section;
+}) {
+  const t = useTranslations("tedris.PhoneMenu");
+  const locale = useLocale();
+  const pathname = usePathname();
+  const section =
+    sectionProp !== undefined
+      ? sectionProp
+      : signedIn
+        ? sectionOf(pathname)
+        : isHomePath(pathname)
+          ? "home"
+          : "discover";
+  const hrefs = inviteHrefs(locale, pathname === "/" ? "/home" : pathname);
+
+  const item = (key: Exclude<Section, null>, href: string, label: string) => (
+    <NavItem href={`/${locale}${href}`} active={section === key}>
+      {label}
+    </NavItem>
+  );
+
+  return (
+    <header
+      data-system-chrome
+      className="sticky inset-bs-0 z-[2] flex block-topbar items-center gap-6 px-gutter bg-neutral-surface border-be border-neutral-subtle font-ui max-md:hidden"
+    >
+      <a
+        href={`/${locale}/home`}
+        aria-label={t("homeLabel")}
+        aria-current={section === "home" ? "page" : undefined}
+      >
+        <Logo wordmark />
+      </a>
+      <nav aria-label={t("navLabel")} className="flex items-center gap-1">
+        {item("home", "/home", t("home"))}
+        {item("discover", "/discover", t("discover"))}
+        {signedIn ? (
+          <>
+            {item("courses", "/my-courses", t("courses"))}
+            {item("schedule", "/schedule", t("schedule"))}
+            {item("decks", "/decks", t("decks"))}
+          </>
+        ) : null}
+      </nav>
+      <div className="ms-auto flex items-center gap-2">
+        {signedIn ? (
+          <>
+            <a
+              className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
+              href={`/${locale}/notifications`}
+              aria-label={t("notifications")}
+            >
+              <Icon name="bell" />
+            </a>
+            {/* The bell's ghost icon button, not `.mds-nav-user`: that is the
+                sidebar's footer row, with a top border, padding and a hover
+                fill as tall as the bar. */}
+            <a
+              className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
+              href={`/${locale}/account`}
+            >
+              <Avatar name={name} size="sm" decorative />
+              <span className="mds-visually-hidden">{t("account")}</span>
+            </a>
+          </>
+        ) : (
+          <>
+            <Button variant="ghost" href={hrefs.signIn}>
+              {t("signIn")}
+            </Button>
+            <Button variant="secondary" href={hrefs.register}>
+              {t("register")}
+            </Button>
+          </>
+        )}
+      </div>
+    </header>
+  );
+}

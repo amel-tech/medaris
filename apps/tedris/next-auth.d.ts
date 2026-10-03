@@ -90,5 +90,7 @@ declare module "next-auth/jwt" {
     error?: string;
     accessToken?: string;
     idToken?: string;
+    /** Epoch ms when Keycloak last confirmed the SSO session (MDRS-210); see `checkKeycloakSession`. */
+    ssoCheckedAt?: number;
   }
 }

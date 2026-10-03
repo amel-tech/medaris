@@ -6,11 +6,14 @@ import {
   inArray,
   isNotNull,
   isNull,
+  ne,
+  notExists,
   or,
   type SQL,
   sql,
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { DatabaseService } from "../database/database.service";
 import { isHeld } from "../database/role-assignments";
 import { auditLog } from "../database/schema/audit.schema";
@@ -90,6 +93,14 @@ export interface IBanFilter {
   q?: string;
   limit: number;
   offset: number;
+}
+
+/** A course a new ban took from the talebe, as the notification names it. */
+export interface IBarredSeat {
+  userId: string;
+  courseId: string;
+  courseTitle: string;
+  koskName: string | null;
 }
 
 export interface ICourseRef {
@@ -436,6 +447,78 @@ export class BanRepository {
         )
       );
     return rows.map((r) => r.userId);
+  }
+
+  /**
+   * The courses a ban has just taken from its talebe (MDRS-213): those where
+   * they hold a seat (ENROLLED or COMPLETED) and that the ban covers, less any
+   * an older open ban already barred them from, so widening a course ban to
+   * the köşk does not tell them of that course twice. A lifted or unknown ban
+   * takes nothing.
+   */
+  async seatsNewlyBarred(banId: string): Promise<IBarredSeat[]> {
+    const [ban] = await this.db
+      .select()
+      .from(bans)
+      .where(and(eq(bans.id, banId), open()))
+      .limit(1);
+    if (!ban) return [];
+    const covered =
+      ban.scope === BAN_SCOPES.COURSE && ban.courseId
+        ? eq(courses.id, ban.courseId)
+        : ban.scope === BAN_SCOPES.KOSK && ban.koskId
+          ? eq(courses.koskId, ban.koskId)
+          : ban.scope === BAN_SCOPES.MADRASAH && ban.madrasahId
+            ? eq(courses.madrasahId, ban.madrasahId)
+            : null;
+    if (!covered) return [];
+    const older = alias(bans, "older_ban");
+    return this.db
+      .select({
+        userId: enrollments.userId,
+        courseId: courses.id,
+        courseTitle: courses.title,
+        koskName: kosks.name,
+      })
+      .from(enrollments)
+      .innerJoin(courses, eq(courses.id, enrollments.courseId))
+      .leftJoin(kosks, eq(kosks.id, courses.koskId))
+      .where(
+        and(
+          eq(enrollments.userId, ban.userId),
+          inArray(enrollments.status, [
+            EnrollmentStatus.ENROLLED,
+            EnrollmentStatus.COMPLETED,
+          ]),
+          covered,
+          notExists(
+            this.db
+              .select({ id: older.id })
+              .from(older)
+              .where(
+                and(
+                  eq(older.userId, ban.userId),
+                  isNull(older.liftedAt),
+                  ne(older.id, ban.id),
+                  or(
+                    and(
+                      eq(older.scope, BAN_SCOPES.COURSE),
+                      eq(older.courseId, courses.id)
+                    ),
+                    and(
+                      eq(older.scope, BAN_SCOPES.KOSK),
+                      eq(older.koskId, courses.koskId)
+                    ),
+                    and(
+                      eq(older.scope, BAN_SCOPES.MADRASAH),
+                      eq(older.madrasahId, courses.madrasahId)
+                    )
+                  )
+                )
+              )
+          )
+        )
+      );
   }
 
   /** Whether the person holds a platform-wide role (Medaris nazımı). */

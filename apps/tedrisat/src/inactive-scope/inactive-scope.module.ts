@@ -16,5 +16,6 @@ import { InactiveScopeService } from "./inactive-scope.service";
   ],
   controllers: [InactiveScopeController],
   providers: [InactiveScopeService, InactiveScopeRepository],
+  exports: [InactiveScopeService],
 })
 export class InactiveScopeModule {}

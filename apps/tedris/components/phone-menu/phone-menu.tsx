@@ -24,7 +24,7 @@ export const isHomePath = (pathname: string): boolean =>
  * Drawn below 768 only; the kit's CSS hides the bar above that and closes an
  * open sheet when the window widens.
  */
-export function PhoneMenu() {
+export function PhoneMenu({ title }: { title?: string } = {}) {
   const t = useTranslations("tedris");
   const locale = useLocale();
   const pathname = usePathname();
@@ -34,7 +34,7 @@ export function PhoneMenu() {
   return (
     <AppBar
       logo={<Logo size="sm" wordmark />}
-      title={home ? t("PhoneMenu.home") : t("PhoneMenu.discover")}
+      title={title ?? (home ? t("PhoneMenu.home") : t("PhoneMenu.discover"))}
       menuLabel={t("PhoneMenu.menu")}
       navLabel={t("PhoneMenu.navLabel")}
       closeLabel={t("PhoneMenu.close")}

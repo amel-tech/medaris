@@ -21,10 +21,13 @@ export async function generateMetadata(): Promise<Metadata> {
  */
 export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ secili?: string | string[] }>;
 }) {
   const { locale } = await params;
+  const { secili } = await searchParams;
   setRequestLocale(locale);
   const applications = await getPendingKoskApplications();
   if (applications === "forbidden") forbidden();
@@ -33,6 +36,7 @@ export default async function Page({
     <div className="mx-auto w-full max-w-[80rem] px-gutter py-8">
       <ApplicationsView
         initial={applications === "not-found" ? null : applications}
+        initialSelectedId={typeof secili === "string" ? secili : null}
       />
     </div>
   );

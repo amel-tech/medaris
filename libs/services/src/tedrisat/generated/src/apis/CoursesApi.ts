@@ -24,6 +24,7 @@ import type {
   EnrollmentResponse,
   MuderrisListResponse,
   PendingEnrollmentResponse,
+  RejectEnrollmentDto,
   RemoveEnrollmentDto,
   RemovedEnrollmentResponse,
   ReplaceCourseDto,
@@ -52,6 +53,8 @@ import {
     MuderrisListResponseToJSON,
     PendingEnrollmentResponseFromJSON,
     PendingEnrollmentResponseToJSON,
+    RejectEnrollmentDtoFromJSON,
+    RejectEnrollmentDtoToJSON,
     RemoveEnrollmentDtoFromJSON,
     RemoveEnrollmentDtoToJSON,
     RemovedEnrollmentResponseFromJSON,
@@ -115,6 +118,7 @@ export interface GetCoursesByKoskRequest {
 
 export interface GetEnrolledCoursesRequest {
     includePending?: boolean;
+    includeRevoked?: boolean;
 }
 
 export interface GetPendingEnrollmentsRequest {
@@ -132,6 +136,7 @@ export interface LeaveCourseRequest {
 export interface RejectEnrollmentRequest {
     id: string;
     userId: string;
+    rejectEnrollmentDto?: RejectEnrollmentDto;
 }
 
 export interface RemoveEnrollmentRequest {
@@ -640,7 +645,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Enrolled and completed courses, oldest enrollment first, each with its next standing session. `includePending=true` adds the requests still waiting for approval (MDRS-159), marked by `enrollment.status`.
+     * Enrolled and completed courses, oldest enrollment first, each with its next standing session. `includePending=true` adds the requests still waiting for approval (MDRS-159), and `includeRevoked=true` the courses whose access was withdrawn (Derslerim\'s \"Erişiminin kaldırıldığı dersler\"), each marked by `enrollment.status`.
      * List the courses the current talebe is enrolled in
      */
     async getEnrolledCoursesRaw(requestParameters: GetEnrolledCoursesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<EnrolledCourseResponse>>> {
@@ -648,6 +653,10 @@ export class CoursesApi extends runtime.BaseAPI {
 
         if (requestParameters['includePending'] != null) {
             queryParameters['includePending'] = requestParameters['includePending'];
+        }
+
+        if (requestParameters['includeRevoked'] != null) {
+            queryParameters['includeRevoked'] = requestParameters['includeRevoked'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -671,7 +680,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Enrolled and completed courses, oldest enrollment first, each with its next standing session. `includePending=true` adds the requests still waiting for approval (MDRS-159), marked by `enrollment.status`.
+     * Enrolled and completed courses, oldest enrollment first, each with its next standing session. `includePending=true` adds the requests still waiting for approval (MDRS-159), and `includeRevoked=true` the courses whose access was withdrawn (Derslerim\'s \"Erişiminin kaldırıldığı dersler\"), each marked by `enrollment.status`.
      * List the courses the current talebe is enrolled in
      */
     async getEnrolledCourses(requestParameters: GetEnrolledCoursesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<EnrolledCourseResponse>> {
@@ -814,6 +823,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * The body is optional: a `reason` (nizam/02, Ret gerekçesi) is kept with the refusal in the audit log as `enrollment.reject`.
      * Reject a pending enrollment, deleting it (course team)
      */
     async rejectEnrollmentRaw(requestParameters: RejectEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<boolean>> {
@@ -835,6 +845,8 @@ export class CoursesApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        headerParameters['Content-Type'] = 'application/json';
+
         if (this.configuration && this.configuration.accessToken) {
             // oauth required
             headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
@@ -850,6 +862,7 @@ export class CoursesApi extends runtime.BaseAPI {
             method: 'DELETE',
             headers: headerParameters,
             query: queryParameters,
+            body: RejectEnrollmentDtoToJSON(requestParameters['rejectEnrollmentDto']),
         }, initOverrides);
 
         if (this.isJsonMime(response.headers.get('content-type'))) {
@@ -860,6 +873,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * The body is optional: a `reason` (nizam/02, Ret gerekçesi) is kept with the refusal in the audit log as `enrollment.reject`.
      * Reject a pending enrollment, deleting it (course team)
      */
     async rejectEnrollment(requestParameters: RejectEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {

@@ -1,6 +1,8 @@
 import "@medaris/ui/medaris.css";
 import { textFontsHref } from "@medaris/tokens/medaris-fonts";
+import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
+import { PhoneChrome } from "~/components/phone-menu/phone-chrome";
 
 /**
  * The account page is on the unified design system (MDRS-169) while the rest
@@ -8,7 +10,12 @@ import type { ReactNode } from "react";
  * load here, with the segment, until the shell moves — the arrangement the
  * medrese and notification pages already use.
  */
-export default function AccountLayout({ children }: { children: ReactNode }) {
+export default async function AccountLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const t = await getTranslations("tedris.PhoneMenu");
   return (
     <>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -18,6 +25,7 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
         crossOrigin="anonymous"
       />
       <link rel="stylesheet" href={textFontsHref} precedence="default" />
+      <PhoneChrome section={null} title={t("account")} />
       {children}
     </>
   );

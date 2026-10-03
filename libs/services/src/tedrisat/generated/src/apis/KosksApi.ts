@@ -24,11 +24,13 @@ import type {
   CreateKoskDto,
   CreateKoskGrantDto,
   CreatedIdResponse,
+  DashboardSessionTab,
   FollowedKoskCourseResponse,
   GrantHostingRightDto,
   HostingCoursesAction,
   HostingRightResponse,
   KoskCourseRosterResponse,
+  KoskDashboardResponse,
   KoskDecksResponse,
   KoskDirectoryItemResponse,
   KoskDirectoryResponse,
@@ -65,6 +67,8 @@ import {
     CreateKoskGrantDtoToJSON,
     CreatedIdResponseFromJSON,
     CreatedIdResponseToJSON,
+    DashboardSessionTabFromJSON,
+    DashboardSessionTabToJSON,
     FollowedKoskCourseResponseFromJSON,
     FollowedKoskCourseResponseToJSON,
     GrantHostingRightDtoFromJSON,
@@ -75,6 +79,8 @@ import {
     HostingRightResponseToJSON,
     KoskCourseRosterResponseFromJSON,
     KoskCourseRosterResponseToJSON,
+    KoskDashboardResponseFromJSON,
+    KoskDashboardResponseToJSON,
     KoskDecksResponseFromJSON,
     KoskDecksResponseToJSON,
     KoskDirectoryItemResponseFromJSON,
@@ -175,6 +181,11 @@ export interface GetKoskByIdRequest {
 
 export interface GetKoskCourseRosterRequest {
     id: string;
+}
+
+export interface GetKoskDashboardRequest {
+    id: string;
+    sessions?: DashboardSessionTab;
 }
 
 export interface GetKoskDecksRequest {
@@ -979,6 +990,54 @@ export class KosksApi extends runtime.BaseAPI {
      */
     async getKoskCourseRoster(requestParameters: GetKoskCourseRosterRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskCourseRosterResponse> {
         const response = await this.getKoskCourseRosterRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk\'s nazımları and the başnazım.
+     * A köşk nazımı\'s home page (numbers, celse table, applications)
+     */
+    async getKoskDashboardRaw(requestParameters: GetKoskDashboardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskDashboardResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getKoskDashboard().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['sessions'] != null) {
+            queryParameters['sessions'] = requestParameters['sessions'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/dashboard`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskDashboardResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk\'s nazımları and the başnazım.
+     * A köşk nazımı\'s home page (numbers, celse table, applications)
+     */
+    async getKoskDashboard(requestParameters: GetKoskDashboardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskDashboardResponse> {
+        const response = await this.getKoskDashboardRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

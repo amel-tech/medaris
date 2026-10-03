@@ -22,17 +22,23 @@ export async function generateMetadata(): Promise<Metadata> {
  */
 export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ secili?: string | string[] }>;
 }) {
   const { locale } = await params;
+  const { secili } = await searchParams;
   setRequestLocale(locale);
   const requests = await getPendingDeckRequests();
   if (requests === "forbidden") forbidden();
 
   return (
     <div className="mx-auto w-full max-w-[80rem] px-gutter py-8">
-      <DeckRequestsView initial={requests === "not-found" ? null : requests} />
+      <DeckRequestsView
+        initial={requests === "not-found" ? null : requests}
+        initialSelectedId={typeof secili === "string" ? secili : null}
+      />
     </div>
   );
 }

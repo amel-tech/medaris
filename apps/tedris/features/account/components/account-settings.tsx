@@ -242,6 +242,7 @@ function SignOutCard() {
   return (
     <Card>
       <div className="flex flex-col items-start gap-4">
+        <h2 className="mds-visually-hidden">{t("signOutTitle")}</h2>
         <p className="mds-body-sm">{t("signOutText")}</p>
         <Button
           variant="secondary"

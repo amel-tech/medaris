@@ -114,6 +114,33 @@ describe("buildProgramme (MDRS-158)", () => {
     expect(result.weeks[0].rows.map((r) => r.state)).toEqual(["done", "done"]);
   });
 
+  it("puts the celse on air first, even when an earlier week holds one still ahead", () => {
+    const mixed = buildProgramme(
+      course(
+        week(1, lesson("ahead", { scheduledAt: at(60 * 24) })),
+        week(5, lesson("onAir", { scheduledAt: at(-14), durationMinutes: 60 }))
+      ),
+      NOW
+    );
+    expect(mixed.nextLessonId).toBe("onAir");
+    expect(mixed.weeks.map((w) => w.state)).toEqual(["default", "active"]);
+    expect(mixed.weeks[1].rows[0]).toMatchObject({
+      state: "current",
+      live: true,
+    });
+  });
+
+  it("picks the nearest celse by time, not by week order", () => {
+    const outOfOrder = buildProgramme(
+      course(
+        week(1, lesson("late", { scheduledAt: at(60 * 24 * 3) })),
+        week(2, lesson("soon", { scheduledAt: at(60) }))
+      ),
+      NOW
+    );
+    expect(outOfOrder.nextLessonId).toBe("soon");
+  });
+
   it("marks the row of a session on air as live, and only that one", () => {
     const onAir = buildProgramme(
       course(

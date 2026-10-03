@@ -187,6 +187,17 @@ describe("NoAccess (nizam 06)", () => {
     expect(html).toContain("Ana sayfaya dön");
   });
 
+  it("is not the screen for a path no page answers (MDRS-211)", async () => {
+    const { PageNotFound } = await import("~/components/errors/page-not-found");
+    const html = renderToStaticMarkup(await PageNotFound({ locale: "tr" }));
+    expect(html).toContain("Sayfa bulunamadı");
+    expect(html).toContain("Bu adreste bir sayfa yok.");
+    expect(html).toContain('href="/tr"');
+    expect(html).toContain("Ana sayfaya dön");
+    expect(html).not.toContain("izniniz yok");
+    expect(html).not.toContain("başnazım");
+  });
+
   it("falls back to the general sentence when no name is known", async () => {
     chiefName = null;
     sessionEmail = null;

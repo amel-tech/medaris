@@ -10,6 +10,7 @@ import {
   courseSpan,
   courseTotals,
   courseViewState,
+  dateWithLocative,
   hasEnded,
   isRunning,
   nextSession,
@@ -143,6 +144,17 @@ describe("nextSession (tedris/12, criterion 3)", () => {
     expect(afterSoon?.lesson.id).toBe("makeup");
   });
 
+  it("is the celse on air when asked for it (the course card, tedris/16)", () => {
+    const c = course([
+      week(4, [lesson("onAir", "2026-10-03T08:50:00Z")]),
+      week(5, [lesson("tomorrow", "2026-10-04T18:00:00Z")]),
+    ]);
+    expect(nextSession(c, NOW)?.lesson.id).toBe("tomorrow");
+    expect(nextSession(c, NOW, { includeRunning: true })?.lesson.id).toBe(
+      "onAir"
+    );
+  });
+
   it("is null when nothing is ahead", () => {
     expect(
       nextSession(course([week(1, [lesson("p", "2026-09-01T18:00:00Z")])]), NOW)
@@ -211,10 +223,10 @@ describe("days and words", () => {
   it("writes the time of an application: today with the clock, else the date", () => {
     expect(
       sentAt(Date.parse("2026-10-03T07:02:00Z"), NOW, "tr", ZONE, "bugün")
-    ).toBe("bugün 10:02");
+    ).toBe("bugün 10:02’de");
     expect(
       sentAt(Date.parse("2026-10-01T07:02:00Z"), NOW, "tr", ZONE, "bugün")
-    ).toBe("1 Ekim 10:02");
+    ).toBe("1 Ekim 10:02’de");
   });
 });
 
@@ -229,5 +241,13 @@ describe("parseProgress (tedris/12: 0 to 100, whole numbers)", () => {
     for (const bad of ["", "101", "-1", "5.5", "abc", "1e2", "1000"]) {
       expect(parseProgress(bad)).toBeNull();
     }
+  });
+});
+
+describe("dateWithLocative (tedris/12, tamamladı)", () => {
+  it("adds the Turkish locative to the year, and leaves other locales alone", () => {
+    const at = Date.parse("2026-09-28T09:00:00Z");
+    expect(dateWithLocative(at, "tr", ZONE)).toBe("28 Eylül 2026’da");
+    expect(dateWithLocative(at, "en", ZONE)).toBe("September 28, 2026");
   });
 });

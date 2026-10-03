@@ -341,11 +341,17 @@ export class LessonController {
   @Authz(PERMISSIONS.SESSION_MANAGE, byLessonCourse)
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   async update(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: UpdateLessonDto
   ): Promise<LessonMutationResponse> {
     const { version, ...changes } = dto;
-    return this.courseService.updateLesson(id, version, changes);
+    return this.courseService.updateLesson(
+      id,
+      version,
+      changes,
+      request.user.sub
+    );
   }
 
   @ApiOperation({

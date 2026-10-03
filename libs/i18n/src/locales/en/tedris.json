@@ -45,9 +45,9 @@
     "actionFailed": "The action could not be completed. Try again in a moment.",
     "withdrawing": "Withdrawing...",
     "leaveCourse": "Leave course",
-    "leaveTitle": "Leave this course?",
+    "leaveTitle": "Leave the course",
     "leaveDescription": "Your enrollment and progress are deleted. You can enroll again later.",
-    "leaveConfirm": "Leave",
+    "leaveConfirm": "Leave the course",
     "leaveCancel": "Cancel",
     "left": "You left the course.",
     "signInToApply": "Sign in to apply",
@@ -120,7 +120,15 @@
     "minuteUnit": "min",
     "weeksCount": "{count} weeks",
     "sessionsCount": "{count} sessions",
-    "hoursCount": "{count} hours"
+    "hoursCount": "{count} hours",
+    "minutes": "{minutes} min",
+    "moreActions": "More actions",
+    "moreActionsFor": "More actions: {title}",
+    "completedTitle": "You have completed this course.",
+    "completedNote": "The course team confirmed it on {date}. While the course runs you keep access to its sessions and recordings.",
+    "openSession": "Open the session page",
+    "leaveBody": "You are about to leave <b>{title}</b>. You lose access to its sessions, meeting links, recordings and deck, and its sessions drop out of your calendar.",
+    "leaveBodyCards": "The cards you copied into your own decks stay with you. You can apply to the course again."
   },
   "DataTable": {
     "noResults": "No results."
@@ -242,7 +250,9 @@
     "goDiscover": "Go to Discover",
     "loadErrorTitle": "Your courses could not be loaded",
     "loadError": "Your courses could not be read right now.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "revokedTitle": "Courses you no longer have access to",
+    "revokedCount": "{count} courses"
   },
   "SessionTime": {
     "istanbul": "Istanbul",
@@ -349,13 +359,13 @@
     "description": {
       "signIn": "A session's content, meeting links and recordings are open to enrolled students. Sign in and enroll to see them.",
       "apply": "A session's content, meeting links and recordings are open to enrolled students. You can see them once you enroll.",
-      "pending": "A session's content, meeting links and recordings are open to enrolled students. You can see them once your application is approved.",
+      "pending": "A session's content, meeting links and recordings are open to enrolled students. You can see them once you enroll.",
       "revoked": "A session's content, meeting links and recordings are open to enrolled students. Your access to this course was withdrawn."
     },
     "signIn": "Sign in",
     "apply": "Apply to enroll",
-    "pending": "Your application is awaiting approval",
-    "teachers": "Müderris {names}"
+    "teachers": "Müderris {names}",
+    "pendingNote": "Once your application is approved you can join this session."
   },
   "MadrasahPage": {
     "kosks": "Köşks",
@@ -414,12 +424,11 @@
       "applicationResult": "The result of your applications",
       "applicationResultText": "“Your application was approved” or “Your application was rejected”; if a reason was written, you see it too.",
       "removed": "Being removed from a course",
-      "removedText": "“You were removed from the course”; you can apply again if you wish.",
+      "removedText": "“You were removed from the course”, with the reason the course team wrote.",
       "accessRemoved": "Your access to a course being removed",
       "accessRemovedText": "“Your access to this course was removed.”",
       "rescheduled": "A session's time changing",
-      "cancelled": "A session being cancelled, and its make-up session",
-      "added": "Lesson recordings added to your courses",
+      "cancelled": "A session being cancelled",
       "kosk": "The result of your application to open a köşk",
       "koskText": "If it is rejected, you see the reason.",
       "deck": "The result of your request to make a deck public",
@@ -521,7 +530,10 @@
     "liveStreamTitle": "Live stream",
     "liveStreamPlaceholder": "The live stream plays here",
     "liveStreamOpen": "Open the stream",
-    "liveStreamText": "You can watch the stream here. To ask questions and join the conversation, join the session."
+    "liveStreamText": "You can watch the stream here. To ask questions and join the conversation, join the session.",
+    "noReplacement": "If the müderris sets a new time, you will see it in My schedule.",
+    "recordingCardTitle": "Recording",
+    "noRecording": "This session has no recording yet."
   },
   "AccountPage": {
     "pageTitle": "Account",
@@ -684,7 +696,9 @@
     "account": "My account",
     "roleTalebe": "Student",
     "accountLabel": "My account: {name}",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "homeLabel": "Medaris Tedris, home",
+    "liveIntro": "{course} is live now."
   },
   "SchedulePage": {
     "pageTitle": "My schedule",
@@ -700,7 +714,6 @@
     "week": "Week {week}",
     "minutes": "{count} min",
     "statusScheduled": "Scheduled",
-    "statusLive": "Live",
     "statusEnded": "Ended",
     "statusCancelled": "Cancelled",
     "noLink": "No meeting link has been added yet.",

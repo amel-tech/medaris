@@ -16,8 +16,8 @@ import { auth } from "~/lib/auth_options";
 import { routing } from "~/lib/i18n/routing";
 
 export const metadata: Metadata = {
-  title: "Tedris - Online Madrasah",
-  description: "Online Madrasah Project",
+  title: "Medaris Tedris",
+  description: "Medaris Tedris",
 };
 
 export default async function LocaleLayout({

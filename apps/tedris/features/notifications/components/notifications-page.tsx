@@ -252,7 +252,7 @@ export function NotificationsPage({ initial, now }: NotificationsPageProps) {
   };
 
   return (
-    <div className="mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
+    <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-2">
           <h1 className="mds-h1">{t("title")}</h1>
@@ -299,7 +299,7 @@ export function NotificationsPage({ initial, now }: NotificationsPageProps) {
         </div>
         <NotificationAside />
       </div>
-    </div>
+    </main>
   );
 }
 

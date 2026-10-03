@@ -23,7 +23,13 @@ export async function generateMetadata(): Promise<Metadata> {
 
 type Search = Record<string, string | string[] | undefined>;
 
-async function Directory({ filters }: { filters: DirectoryFilters }) {
+async function Directory({
+  filters,
+  open,
+}: {
+  filters: DirectoryFilters;
+  open: boolean;
+}) {
   const [directory, me] = await Promise.all([
     getKoskDirectory(filters),
     getMe(),
@@ -36,6 +42,7 @@ async function Directory({ filters }: { filters: DirectoryFilters }) {
         filters={filters}
         viewerId={me?.id ?? null}
         chief={me?.roles.systemAdmin ?? false}
+        initialOpen={open}
       />
       <TaughtCourses courses={taughtElsewhere(me)} />
     </>
@@ -59,12 +66,15 @@ export default async function Page({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const filters = filtersFromParams(await searchParams);
+  const search = await searchParams;
+  const filters = filtersFromParams(search);
+  // the home page's "Köşk aç" is `?ac=1`
+  const open = search.ac === "1";
 
   return (
     <div className="mx-auto w-full max-w-[80rem]">
       <Suspense fallback={<DirectorySkeleton />}>
-        <Directory filters={filters} />
+        <Directory filters={filters} open={open} />
       </Suspense>
     </div>
   );

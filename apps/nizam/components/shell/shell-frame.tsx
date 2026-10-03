@@ -15,11 +15,11 @@ import { Fragment, type ReactNode } from "react";
 import { locales } from "~/lib/i18n/routing";
 import {
   activeEntryId,
+  coursePathAlias,
   currentKoskId,
   isBarePath,
   type ShellVariant,
   stripLocale,
-  studentsPathAlias,
 } from "~/lib/shell-nav";
 
 export interface ShellModel {
@@ -54,6 +54,9 @@ export interface ShellModel {
     kosk: string;
   };
 }
+
+/** A köşk's home page, `/kosks/:id/ana-sayfa`. */
+const HOME_OF_KOSK = /^\/kosks\/[^/]+\/ana-sayfa\/?$/;
 
 /** Where the person row goes: "Hesap ve ayarlar" (nizam/36, 47), where "Çıkış yap" asks its one confirmation. */
 const ACCOUNT_PATH = "/hesap";
@@ -111,7 +114,7 @@ export function ShellFrame({
       path: i.path.replace(":kosk", koskId ?? ""),
     }))
   );
-  const activeId = activeEntryId(entries, studentsPathAlias(here));
+  const activeId = activeEntryId(entries, coursePathAlias(here));
   const activeItem = groups
     .flatMap((g) => g.items.map((i) => ({ key: `${g.id}.${i.id}`, item: i })))
     .find((e) => e.key === activeId)?.item;
@@ -145,7 +148,10 @@ export function ShellFrame({
         options={model.kosks.map((k) => ({
           value: k.id,
           label: k.name,
-          href: `/${locale}/kosks/${k.id}`,
+          // on a köşk's home page the switch keeps the page (nizam 02)
+          href: HOME_OF_KOSK.test(here)
+            ? `/${locale}/kosks/${k.id}/ana-sayfa`
+            : `/${locale}/kosks/${k.id}`,
         }))}
         caption={model.labels.kosk}
         actionLabel={model.labels.switchKosk}

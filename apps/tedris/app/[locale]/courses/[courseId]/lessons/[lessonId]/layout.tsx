@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { PhoneChrome } from "~/components/phone-menu/phone-chrome";
 import { ToastHost } from "~/components/toast-host";
+import { loadCourse } from "~/features/courses/load-course";
 import { getSession } from "~/features/courses/public-reads";
 
 /**
@@ -18,6 +20,18 @@ export default async function SessionLayout({
   params: Promise<{ courseId: string; lessonId: string }>;
 }) {
   const { courseId, lessonId } = await params;
-  if (!(await getSession(courseId, lessonId))) notFound();
-  return <ToastHost>{children}</ToastHost>;
+  const [session, course] = await Promise.all([
+    getSession(courseId, lessonId),
+    loadCourse(courseId),
+  ]);
+  if (!session) notFound();
+  return (
+    <>
+      <PhoneChrome
+        section={course?.enrollment ? "courses" : "discover"}
+        title={session.title}
+      />
+      <ToastHost>{children}</ToastHost>
+    </>
+  );
 }

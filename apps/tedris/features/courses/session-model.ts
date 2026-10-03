@@ -95,12 +95,22 @@ export const buildProgramme = (
   const standingLive = (week: WeekResponse) =>
     week.lessons.filter((l) => isLive(l) && !l.cancelledAt);
 
-  const next =
-    course.weeks
-      .flatMap(standingLive)
-      .find((l) => stateOfLesson(l, now) !== "ended") ?? null;
+  // The celse on air now, or else the nearest one still ahead — by time, not
+  // by week order, so a live celse is never skipped for a later week's.
+  const standingAll = course.weeks.flatMap(standingLive);
+  const running = standingAll.find((l) => stateOfLesson(l, now) === "live");
+  const ahead = standingAll
+    .filter((l) => stateOfLesson(l, now) === "upcoming" && l.scheduledAt)
+    .sort(
+      (a, b) =>
+        (a.scheduledAt as Date).getTime() - (b.scheduledAt as Date).getTime()
+    )[0];
+  const next = running ?? ahead ?? null;
+  const activeWeekId = next
+    ? (course.weeks.find((w) => w.lessons.some((l) => l.id === next.id))?.id ??
+      null)
+    : null;
 
-  let activeSeen = false;
   const weeks = course.weeks.map((week): ProgrammeWeek => {
     const standing = standingLive(week);
     const done =
@@ -108,10 +118,7 @@ export const buildProgramme = (
       standing.every((l) => stateOfLesson(l, now) === "ended");
     let state: WeekState = "default";
     if (done) state = "done";
-    else if (!activeSeen && standing.length > 0) {
-      state = "active";
-      activeSeen = true;
-    }
+    else if (week.id === activeWeekId) state = "active";
     const firstAhead = standing
       .map((l) => l.scheduledAt)
       .filter((at): at is Date => at != null)

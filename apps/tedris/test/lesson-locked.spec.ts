@@ -192,11 +192,12 @@ describe("tedris/19 renders (MDRS-162)", () => {
     expect(html).toContain(tr.apply);
   });
 
-  it("shows the pending state as a disabled control", async () => {
+  it("shows the pending state as a badge and a note, with no button (tedris/18)", async () => {
     const html = await render("pending");
     expect(html).toContain(tr.description.pending);
-    expect(html).toMatch(/<button[^>]*disabled[^>]*>/);
-    expect(html).toContain(tr.pending);
+    expect(html).toContain("mds-badge--warning");
+    expect(html).toContain(resources.tr.tedris.CoursePage.pendingApproval);
+    expect(html).toContain(tr.pendingNote);
   });
 
   it("offers a REVOKED caller no button, only the lock", async () => {

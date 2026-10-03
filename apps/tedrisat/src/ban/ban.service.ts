@@ -160,7 +160,10 @@ export class BanService {
       bannedRole: standing.role,
       bannedTier: standing.tier,
     });
-    if (created) await this.announce(ban.id, user.sub);
+    if (created) {
+      await this.announce(ban.id, user.sub);
+      await this.tellBarred(ban.id);
+    }
     return this.view(ban.id, standing.tier, new Set());
   }
 
@@ -277,7 +280,10 @@ export class BanService {
       bannedRole: standing.role,
       bannedTier: standing.tier,
     });
-    if (created) await this.announce(widened.id, user.sub);
+    if (created) {
+      await this.announce(widened.id, user.sub);
+      await this.tellBarred(widened.id);
+    }
     return this.view(widened.id, standing.tier, new Set());
   }
 
@@ -342,6 +348,33 @@ export class BanService {
       );
     } catch (error) {
       this.logger.error(`Could not notify of ban ${banId}`, error);
+    }
+  }
+
+  /**
+   * Tells the talebe of each course a new ban has taken from them (MDRS-213).
+   * They read what changed, "erişimin kaldırıldı", never "yasak"
+   * (MDS-VOICE-05), and never the reason, which is for those who lift the ban.
+   * A notification that cannot be written never undoes the ban.
+   */
+  private async tellBarred(banId: string): Promise<void> {
+    try {
+      const seats = await this.repo.seatsNewlyBarred(banId);
+      if (seats.length === 0) return;
+      await this.notifications.notify(
+        ...seats.map((seat) => ({
+          userId: seat.userId,
+          type: "COURSE_ACCESS_REMOVED" as const,
+          targetType: "COURSE" as const,
+          targetId: seat.courseId,
+          params: {
+            courseTitle: seat.courseTitle,
+            ...(seat.koskName ? { source: seat.koskName } : {}),
+          },
+        }))
+      );
+    } catch (error) {
+      this.logger.error(`Could not tell the talebe of ban ${banId}`, error);
     }
   }
 
@@ -420,7 +453,7 @@ export class BanService {
       );
     }
 
-    const { ban } = await this.repo.create({
+    const { ban, created } = await this.repo.create({
       userId: dto.userId,
       koskId: course?.koskId ?? null,
       madrasahId: scope === BAN_SCOPES.MADRASAH ? madrasahId : null,
@@ -432,6 +465,7 @@ export class BanService {
       bannedRole: standing.role,
       bannedTier: standing.tier,
     });
+    if (created) await this.tellBarred(ban.id);
     return this.madrasahView(ban.id, user, madrasahId);
   }
 
@@ -460,7 +494,7 @@ export class BanService {
         "Only a medrese nazır or above may widen a ban to the medrese"
       );
     }
-    const { ban: wide } = await this.repo.create({
+    const { ban: wide, created } = await this.repo.create({
       userId: ban.userId,
       koskId: null,
       madrasahId,
@@ -472,6 +506,7 @@ export class BanService {
       bannedRole: standing.role,
       bannedTier: standing.tier,
     });
+    if (created) await this.tellBarred(wide.id);
     return this.madrasahView(wide.id, user, madrasahId);
   }
 

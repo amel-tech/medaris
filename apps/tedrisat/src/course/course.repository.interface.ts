@@ -202,6 +202,16 @@ export interface ICourseBadgeCounts {
   pendingApplications: number;
 }
 
+/** A pending request the course team refused (MDRS-182, nizam/02). */
+export interface IRejectEnrollment {
+  userId: string;
+  courseId: string;
+  /** Who refused it: a köşk manager, a müderris or SYSTEM_ADMIN. */
+  actorId: string;
+  /** The team's reason, when it gave one; kept in `audit_log`. */
+  reason: string | null;
+}
+
 /** A talebe taken out of a course by its team (MDRS-105). */
 export interface IRemoveEnrollment {
   userId: string;
@@ -388,7 +398,8 @@ export interface ICourseRepository {
   ): Promise<ICourseDetail | null>;
   findEnrolledByUser(
     userId: string,
-    includePending?: boolean
+    includePending?: boolean,
+    includeRevoked?: boolean
   ): Promise<IEnrolledCourse[]>;
   create(course: ICreateCourse): Promise<ICourseDetail>;
   findKoskId(id: string): Promise<string | null>;
@@ -515,6 +526,8 @@ export interface ICourseRepository {
   findEnrollmentsByCourse(courseId: string): Promise<IEnrollment[]>;
   /** Deletes the enrollment and audits the reason, in one transaction. */
   removeEnrollment(entry: IRemoveEnrollment): Promise<boolean>;
+  /** Deletes a still-pending request and audits the refusal, in one transaction. */
+  rejectEnrollment(entry: IRejectEnrollment): Promise<boolean>;
   findRemovedEnrollments(courseId: string): Promise<IRemovedEnrollment[]>;
   /** The row moves only while it still has `expectedStatus`; else null. */
   setEnrollmentStatus(

@@ -1,6 +1,9 @@
 name: Traceability
 
-# Every PR must name the Linear issue it implements (MDRS-49).
+# Reports whether a PR names a Linear issue (MDRS-49). Since 3 October 2026 it
+# no longer requires one: work is described in the PR body, not in Linear. The
+# job stays because `Traceability` is a required check in the "main protection"
+# ruleset — see tools/ci/assert-traceability.mjs.
 #
 # Why this is its own workflow file and not a job in ci.yaml — two reasons, both
 # concrete:
@@ -62,5 +65,5 @@ jobs:
           sparse-checkout: tools/ci/assert-traceability.mjs
           sparse-checkout-cone-mode: false
 
-      - name: Assert the PR names its Linear issue
+      - name: Report the PR's Linear issue, if any
         run: node tools/ci/assert-traceability.mjs
