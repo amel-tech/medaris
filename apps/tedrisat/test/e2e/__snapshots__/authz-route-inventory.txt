@@ -55,6 +55,7 @@ GET /kosks/:id -> kosk.view on kosk (public)
 GET /kosks/:id/archive -> no AuthzGuard
 GET /kosks/:id/course-requests -> no AuthzGuard
 GET /kosks/:id/course-roster -> kosk.manage | platform.kosk_edit on byExistingKosk
+GET /kosks/:id/dashboard -> kosk.manage | platform.kosk_edit on byExistingKosk
 GET /kosks/:id/decks -> kosk.view on byExistingKosk
 GET /kosks/:id/decks/manage -> no AuthzGuard
 GET /kosks/:id/grants -> course_nazir.assign_kosk on byExistingKosk
@@ -100,6 +101,7 @@ GET /me/upcoming-lessons -> no AuthzGuard
 GET /nizam/audit-log -> no AuthzGuard
 GET /nizam/audit-log/export -> no AuthzGuard
 GET /nizam/chief-nazim -> no AuthzGuard
+GET /nizam/dashboard -> no AuthzGuard
 GET /nizam/deck-publish-requests -> no AuthzGuard
 GET /nizam/deck-publish-requests/:id/cards -> no AuthzGuard
 GET /nizam/inactive-scopes -> no AuthzGuard

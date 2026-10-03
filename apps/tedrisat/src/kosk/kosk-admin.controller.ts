@@ -196,7 +196,12 @@ export class KoskAdminController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/dashboard")
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  // Authorized like the köşk overview: the köşk's nazımları and, by the platform
+  // permission, a Medaris nazımı; the başnazım passes by the bypass.
+  @Authz(
+    [PERMISSIONS.KOSK_MANAGE, PERMISSIONS.PLATFORM_KOSK_EDIT],
+    byExistingKosk
+  )
   koskDashboard(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
