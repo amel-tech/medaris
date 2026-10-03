@@ -7,7 +7,7 @@ ban with its reason, a başmüderris holding `ban.course` was refused by the cou
 `ban.*` code changed nothing. This moves every ban action onto the catalogue. Every number below sits
 next to the command that printed it; commands run from the repository root unless a `cd` says otherwise.
 
-## The owner's answers
+## Decided by the owner
 
 1. **A başmüderris MAY ban in its medrese's courses.** "The catalogue is right, the route is wrong."
 2. **The permission to ban at a level also lifts bans at that level.** `ban.course`, `ban.manage_kosk`,
@@ -16,6 +16,13 @@ next to the command that printed it; commands run from the repository root unles
 3. **A Medaris nazımı holding only `platform.ban_scoped` may NOT impose or lift a course ban**; the
    başnazım (SYSTEM_ADMIN) can. His words: "Başnazım zaten atabilir ban ama medaris nazımı atamaz." A
    course ban belongs to the course-level authorities and those above them.
+4. **`madrasah.ban` reaches a single course of its medrese** (decision d-1004-06, his word: **"kapsar"**,
+   it covers it). A medrese nazırı holding `madrasah.ban` MAY place and lift a ban on one course of its own
+   medrese, not only the medrese-wide ban. This was this note's open question about the nazır; it is one row
+   of `ban-codes.ts` (`madrasah.ban` in the course row, for placing and for lifting). It is held only where
+   the medrese is on the chain, so it reaches no other medrese's course and no course the köşk keeps for
+   itself, and no köşk-level or platform-level ban; its tier is the medrese's, so a müderris's and the
+   başmüderris's course bans are liftable by it and a köşk nazımı's or Medaris administration's are not.
 
 ## What decides what
 
@@ -29,14 +36,14 @@ memory from one read, not one decision per row.
 
 | Action | Asked at | Takes (any one of) |
 | --- | --- | --- |
-| place a COURSE ban (`POST /courses/:id/bans`, `POST /madrasahs/:id/bans` scope COURSE) | the course | `ban.course`, `ban.manage_kosk` |
+| place a COURSE ban (`POST /courses/:id/bans`, `POST /madrasahs/:id/bans` scope COURSE) | the course | `ban.course`, `ban.manage_kosk`, and `madrasah.ban` (held only through the course's own medrese) |
 | place a KOSK ban, and widen a course ban to the köşk (`POST /bans/:id/extend`) | the köşk | `ban.manage_kosk`, `platform.ban_scoped` |
 | place a MADRASAH ban (`POST /madrasahs/:id/bans`), and widen a course ban to the medrese (`POST /bans/:id/escalate`) | the medrese | `madrasah.ban`, `platform.ban_scoped` |
 | lift a ban (`POST /bans/:id/lift`), by the ban's scope | the course / köşk / medrese | the same as placing it, and `ban.lift_course` for a course ban |
 | ask for a permanent ban (`POST /bans/:id/permanent-request`) | the medrese | `madrasah.permanent_ban_request` |
 | read a köşk's bans (`GET /kosks/:id/bans`) | the köşk | `ban.manage_kosk`, `platform.ban_scoped`, `platform.ban_account` |
 | read every ban (`GET /bans`) | the platform | `platform.ban_scoped`, `platform.ban_account` |
-| the medrese's own routes (`GET`, `POST /madrasahs/:id/bans`) | the medrese | their `@Authz` is unchanged: `madrasah.ban` or `platform.ban_scoped`; a course ban from there then takes the course row |
+| the medrese's own routes (`GET`, `POST /madrasahs/:id/bans`) | the medrese | their `@Authz` is unchanged: `madrasah.ban` or `platform.ban_scoped`; a course ban from there then takes the course row, which `madrasah.ban` is in and `platform.ban_scoped` is not |
 
 The başnazım, a realm role, bypasses the table as everywhere else. **The kademe** (`ban-tier.ts`, `BAN_TIERS`:
 course 1 < medrese 2 < köşk 3 < platform 4) orders only: the standing a decision returns is the highest
@@ -58,16 +65,17 @@ Measured, not read: the new table of `test/e2e/ban-catalogue.e2e.spec.ts` was ru
 $ cd apps/tedrisat && git checkout 2ea15145 -- src/ban src/authz   # the pre-change ban code
 $ ./node_modules/.bin/vitest run --config ./vitest.integration.config.ts test/e2e/ban-catalogue.e2e.spec.ts
  Test Files  1 failed (1)
-      Tests  29 failed | 76 passed (105)
+      Tests  35 failed | 73 passed (108)
 $ git checkout HEAD -- src/ban src/authz                          # put it back
 ```
 
-The 29 are exactly the rows below: a Medaris nazımı with no grant, with only `platform.ban_scoped`, or with
-only `platform.ban_account` placing a course ban, a köşk ban, widening to the köşk or the medrese, lifting
-a course ban or a köşk ban, and reading the lists; a ders nazırı or a medrese nazırı with no grant placing,
-lifting, widening or asking for a permanent ban; the başmüderris placing a course ban on the course route;
-the grants of `ban.course`, `madrasah.ban` and `madrasah.permanent_ban_request` doing something; and the
-medrese's own people being protected as targets on the course route.
+(That was 29 of 105 before the owner's d-1004-06; the three tests it added make it 35 of 108.) The flips are:
+a Medaris nazımı with no grant, with only `platform.ban_scoped`, or with only `platform.ban_account`
+placing a course ban, a köşk ban, widening to the köşk or the medrese, lifting a course ban or a köşk ban,
+and reading the lists; a ders nazırı or a medrese nazırı with no grant placing, lifting, widening or asking
+for a permanent ban; the başmüderris, and a nazır holding `madrasah.ban`, placing a course ban on the course
+route; the grants of `ban.course`, `madrasah.ban` and `madrasah.permanent_ban_request` doing something; and
+the medrese's own people being protected as targets on the course route.
 
 | | Before (main) | Now |
 | --- | --- | --- |
@@ -77,7 +85,7 @@ medrese's own people being protected as targets on the course route.
 | **a Medaris nazımı with `platform.ban_account`** | everything | reads the lists (it is the platform's own scope, not built: MDRS-197); acts on nothing |
 | **a ders nazırı, no grant** | placed course bans | cannot; with `ban.course` it can (tier 1), with `ban.lift_course` it can lift only |
 | **a medrese nazırı, no grant** | lifted, widened and asked for a permanent ban by ban id | cannot |
-| **a medrese nazırı with `madrasah.ban`** | the same, and course bans through the medrese route | the medrese's level: a medrese-wide ban, widening a course ban to the medrese, lifting a medrese-wide ban. A **course** ban, to place or to lift, now needs `ban.course` or `ban.lift_course` as well (a course code given at the medrese reaches all its courses) |
+| **a medrese nazırı with `madrasah.ban`** | the same, by role: the medrese-wide ban, widening, and course bans through the medrese route | the same, by grant: the medrese-wide ban, widening a course ban to the medrese, and (d-1004-06) a ban on a single course of its own medrese, to place and to lift, at the medrese's tier. Nothing is lost; what it had by role it now has by the grant (and on `POST /courses/:id/bans` too, which refused it), and a nazır with no grant has none |
 | **a medrese nazırı with `madrasah.permanent_ban_request`** | had no effect | may ask Medaris administration for a permanent ban |
 | `ban.manage_kosk`, `ban.course`, `ban.lift_course`, `madrasah.permanent_ban_request`, `platform.ban_account` | no reference outside the catalogue | asked (`ban-codes.ts`); 16 of the 21 unasked grantable codes of the MDRS-135 note are left |
 | **the medrese's başmüderris and nazırı as the target** of a ban from `POST /courses/:id/bans` in a medrese's course | could be barred from the course route (only the medrese route protected them) | protected on both routes |
@@ -95,7 +103,7 @@ and is lifted by the başnazım (or by a Medaris nazımı holding a course code 
 ```
 $ cd apps/tedrisat && ./node_modules/.bin/vitest run --config ./vitest.integration.config.ts test/e2e/ban-catalogue.e2e.spec.ts
  Test Files  1 passed (1)
-      Tests  105 passed (105)
+      Tests  108 passed (108)
 ```
 
 `ban-catalogue.e2e.spec.ts` is the table, on the real routes and the real guard with minted tokens: every
@@ -111,9 +119,9 @@ route then answers, who cannot be barred, and the audit rows.
 
 ```
 $ cd apps/tedrisat && ./node_modules/.bin/vitest run test/unit/ban test/unit/authz/tedrisat-authz-context.spec.ts
-   ban-authority.spec.ts (15)      the decision table, one actor per row, by place
+   ban-authority.spec.ts (16)      the decision table, one actor per row, by place
    ban.service.spec.ts (30)        the service, with the standing the catalogue computes
-   ban-madrasah.service.spec.ts (10)
+   ban-madrasah.service.spec.ts (12)
    ban-tier.spec.ts (4)            ordering only
    tedrisat-authz-context.spec.ts (10), one of them the two statements of `holdings`
 $ cd libs/common && ./node_modules/.bin/vitest run
@@ -125,29 +133,40 @@ $ cd apps/tedrisat && ./node_modules/.bin/vitest run --config ./vitest.integrati
 ```
 
 Each of these fails with the old behaviour put back (`ban-catalogue.e2e.spec.ts`, `ban.e2e.spec.ts` and
-`madrasah-ban.e2e.spec.ts`, 163 tests, run with one change to the source at a time and the change reverted):
+`madrasah-ban.e2e.spec.ts`, 166 tests, and `test/unit/ban`, 62, run with one change to the source at a time
+and the change reverted; the first row was run before d-1004-06 on 163 e2e tests):
 
-| Change put back | Failing tests |
+| Change put back | Failing e2e / unit tests |
 | --- | --- |
-| the old role list in place of the catalogue (`MUDERRIS`, `DERS_NAZIR`, `KOSK_NAZIM`, `MEDARIS_NAZIM` stand for anything) | 80 of 163 |
-| `platform.ban_scoped` also places a course ban | 2 |
-| `platform.ban_scoped` also lifts a course ban | 3 |
+| the old role list in place of the catalogue (`MUDERRIS`, `DERS_NAZIR`, `KOSK_NAZIM`, `MEDARIS_NAZIM` stand for anything) | 80 of 163 / (not run) |
+| `platform.ban_scoped` also places a course ban | 9 / 2 |
+| `platform.ban_scoped` also lifts a course ban | 3 / 3 |
 | the standing is the highest role held, not the highest role that confers the permission | 1 (and the unit specs) |
-| the kademe is not compared (`mayLift` always true) | 6 |
-| a Medaris nazımı loses the köşk's and the medrese's level (`platform.ban_scoped` out of the köşk row) | 6 |
-| `madrasah.ban` also lifts a course ban | 2 |
+| the kademe is not compared (`mayLift` always true) | 8 / 7 |
+| a Medaris nazımı loses the köşk's and the medrese's level (`platform.ban_scoped` out of the köşk row) | 6 (before d-1004-06) |
+| **`madrasah.ban` does not reach a course ban** (out of both course rows) | 13 / 4 |
+| `madrasah.ban` places a course ban but does not lift it | 3 / 4 |
+| a medrese-scoped permission reaches another medrese's course (`BanAuthority` moves a medrese role and grant onto the course's own medrese) | 7 / 2 |
+| `madrasah.ban` also in the köşk row | 0 / 0 |
+
+The last row is an equivalent change, and says something true: `madrasah.ban` is tagged for a medrese, so the
+engine never holds it at a köşk place and the row could not widen it; "no köşk-level ban for a nazır" is a
+property of the chain, which the row above breaks for courses and the table pins for the köşk.
+(`madrasah.ban` also lifting a course ban, which was a failing row here before d-1004-06, is now the rule.)
 
 ```
-$ cd apps/tedrisat && ./node_modules/.bin/vitest run          # unit + e2e + the Keycloak-container specs, once, at e56d9794
+$ cd apps/tedrisat && ./node_modules/.bin/vitest run          # unit + e2e + the Keycloak-container specs, once, at aa530cfe
  Test Files  136 passed (136)
-      Tests  2101 passed (2101)
-   Duration  753.07s
+      Tests  2107 passed (2107)
+   Duration  976.85s
 $ git diff 2ea15145 HEAD -- apps/tedrisat/test/e2e/__snapshots__ | wc -l
 0
 $ grep -rnE '\b(MAY_BAN_ROLES|MAY_MODERATE_ROLES|MADRASAH_WIDE_ROLES|mayBanKosk|standingAmong|holdsPlatformRole|rolesOf)\b' apps/tedrisat/src/ban apps/tedrisat/test/unit/ban apps/tedrisat/test/e2e | wc -l
 0
-$ tsc: libs/common (-p), libs/services, libs/ui, libs/i18n, libs/utils (-b), apps/tedrisat (--noEmit -p), apps/nizam, nazir, tedris (-b --force)
-rc=0 for every one
+$ cd libs/common && tsc --noEmit -p tsconfig.json; cd apps/tedrisat && tsc --noEmit --incremental false -p tsconfig.json
+rc=0 for both (after d-1004-06; the web apps' type-check, run before it, was rc=0 for libs/services, libs/ui,
+libs/i18n, libs/utils, apps/nizam, nazir and tedris with `tsc -b --force`, and only the generated client's
+descriptions changed since)
 $ pnpm run openapi:tedrisat && node tools/ci/assert-openapi-spec-fresh.mjs
 ✔ openapi spec freshness: 165 paths, identical to what the exporter writes today (info.version excluded by design).
 ```
@@ -157,7 +176,7 @@ The route inventory is unchanged on purpose (0 lines): no guard moved. The ban r
 two) because what a by-ban-id route asks depends on the ban in hand; `BanService` decides each one through
 `BanAuthority`, and `ban-codes.ts` is the one place that says what each asks. The `apps/nazir`, `apps/nizam`
 and `apps/tedris` unit suites were not re-run: nothing in them depends on the API's behaviour, only on the
-generated client, whose spec changed in route descriptions alone (18 lines, no route or schema).
+generated client, whose spec changed in route descriptions alone (no route or schema).
 
 ## Not done, and what to look at
 
@@ -167,16 +186,14 @@ generated client, whose spec changed in route descriptions alone (18 lines, no r
   screens' counts (nazir/06, nizam/13) and strand grants of it, so it stays.
 - **The sentences of `ban.course` and `madrasah.ban`** ("Talebeyi dersten yasakla (dersin yasak listesini
   görmeyi kapsar)", "Medrese düzeyinde yasakla; ders yasağını medreseye genişlet") are the canvases' and do
-  not say they also lift, as `ban.manage_kosk` and `platform.ban_scoped` already do. Not edited; the owner
-  decides the wording (tr, en, ar).
+  not say they also lift, as `ban.manage_kosk` and `platform.ban_scoped` already do; `madrasah.ban`'s now
+  also undersells it (it places and lifts a ban on a course of the medrese). Not edited; the owner decides
+  the wording (tr, en, ar).
 - **"Dersin yasak listesini görmeyi kapsar"** (inside `ban.course`'s sentence): there is no per-course ban
   list route; the lists are the köşk's, the medrese's and the Medaris one.
 - **`platform.ban_account`** reads and nothing else: the account ban (the account closes) is MDRS-197.
 - **Not built, as told:** a platform ban scope or the Keycloak disable (MDRS-197), device recognition
   (MDRS-125), appeals (MDRS-139).
-- **A nazır with `madrasah.ban` only** loses what main gave by role (placing and lifting course bans
-  through the medrese route). That is the strict reading of "the permission at a level lifts at that
-  level"; reading `madrasah.ban` as reaching the medrese's courses too is one row of `ban-codes.ts`.
 - The nazır and nizam screens read `viewerMayLift`, `viewerMayExtend`, `viewerMayEscalate` and
   `viewerMayRequestPermanent` from the API and need no change; the error codes (`BAN_FORBIDDEN`,
   `BAN_LIFT_FORBIDDEN`) are the same, and a `BAN_FORBIDDEN` body now names the permissions it asked in
