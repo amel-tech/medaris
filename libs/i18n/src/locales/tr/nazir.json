@@ -720,5 +720,295 @@
     "already": "Bu ders zaten gizli; liste yenilendi.",
     "alreadyTitle": "Ders zaten gizli",
     "failedTitle": "Ders gizlenemedi"
+  },
+  "Students": {
+    "title": "Talebeler",
+    "subtitle": "{nameGenitive} bir dersine kayıtlı olan ya da bir dersini tamamlayan herkes; liste, medrese derslerine yapılan kayıtlardan kendiliğinden oluşur.",
+    "subtitleUnnamed": "Medresenin bir dersine kayıtlı olan ya da bir dersini tamamlayan herkes; liste, medrese derslerine yapılan kayıtlardan kendiliğinden oluşur.",
+    "filters": {
+      "label": "Talebeleri süz",
+      "search": "Talebe ara",
+      "course": {
+        "label": "Ders",
+        "all": "Bütün dersler"
+      },
+      "status": {
+        "label": "Durum",
+        "all": "Bütün durumlar",
+        "ENROLLED": "Devam ediyor",
+        "COMPLETED": "Tamamladı"
+      }
+    },
+    "counter": "{count} talebe",
+    "caption": "Medrese talebeleri",
+    "columns": {
+      "student": "Talebe",
+      "email": "E-posta",
+      "ongoing": "Devam ettiği dersler",
+      "completed": "Tamamladığı dersler",
+      "first": "İlk kayıt",
+      "actions": "İşlemler"
+    },
+    "none": "Yok",
+    "ban": "Yasakla",
+    "banLabel": "Yasakla: {name}",
+    "note": "Talebenin medrese dışındaki dersleri bu listede yer almaz.",
+    "pager": {
+      "label": "Talebe sayfaları",
+      "range": "Sayfa {page} / {pages} · {total} talebeden {from}–{to}",
+      "previous": "Önceki",
+      "next": "Sonraki"
+    },
+    "empty": "Bu medresenin derslerine kayıtlı talebe henüz yok.",
+    "emptyFiltered": "Bu süzgece uyan talebe yok.",
+    "clearFilters": "Süzgeçleri temizle",
+    "loadFailedTitle": "Talebeler okunamadı",
+    "loadFailed": "Talebeler şu an okunamadı. Birkaç saniye sonra yeniden deneyin."
+  },
+  "Bans": {
+    "title": "Yasaklamalar",
+    "intro": "Medresede ve medrese derslerinde süren yasaklar; her yasak gerekçesi, yasaklayanı ve tarihiyle görünür.",
+    "ban": "Yasakla",
+    "kademe": {
+      "title": "Yasağı, koyan kademe ya da üstü kaldırır",
+      "text": "Köşk nazımının ve Medaris yönetiminin koyduğu yasakları kaldıramazsınız; medreseye genişletebilirsiniz."
+    },
+    "tabsLabel": "Yasak durumu",
+    "tabs": {
+      "ACTIVE": "Etkin",
+      "LIFTED": "Kaldırılan"
+    },
+    "filters": {
+      "label": "Yasakları süz",
+      "search": "Kişi ara",
+      "scope": {
+        "label": "Kapsam",
+        "all": "Bütün kapsamlar",
+        "madrasah": "Medrese düzeyi"
+      }
+    },
+    "caption": {
+      "ACTIVE": "Etkin yasaklar",
+      "LIFTED": "Kaldırılan yasaklar"
+    },
+    "columns": {
+      "person": "Kişi",
+      "scope": "Kapsam",
+      "reason": "Gerekçe",
+      "bannedBy": "Yasaklayan",
+      "when": "Tarih",
+      "liftedBy": "Kaldıran",
+      "actions": "İşlemler"
+    },
+    "new": "Yeni",
+    "permanentPending": "Kalıcı yasak talebi bekliyor",
+    "scope": {
+      "COURSE": "Ders",
+      "MADRASAH": "Medrese"
+    },
+    "madrasahScope": "{nameGenitive} bütün dersleri",
+    "madrasahScopeUnnamed": "Medresenin bütün dersleri",
+    "extendedFrom": "{course} dersinden genişletildi",
+    "admin": "Medaris yönetimi",
+    "you": "{role} (siz)",
+    "lift": "Yasağı kaldır",
+    "liftLabel": "Yasağı kaldır: {name}",
+    "escalate": "Medreseden de yasakla",
+    "escalateLabel": "Medreseden de yasakla: {name}",
+    "permanent": "Kalıcı yasak talebi aç",
+    "permanentLabel": "Kalıcı yasak talebi aç: {name}",
+    "platformOnly": "Bu yasağı yalnız Medaris yönetimi kaldırabilir.",
+    "higherOnly": "Bu yasağı yalnız onu koyan kademe ya da üstü kaldırabilir.",
+    "empty": {
+      "ACTIVE": "Etkin yasak yok.",
+      "LIFTED": "Kaldırılan yasak yok."
+    },
+    "emptyFiltered": "Bu süzgece uyan yasak yok.",
+    "clearFilters": "Süzgeçleri temizle",
+    "loadFailedTitle": "Yasaklar okunamadı",
+    "loadFailed": "Yasaklar şu an okunamadı. Birkaç saniye sonra yeniden deneyin.",
+    "errors": {
+      "BAN_FORBIDDEN": "Bu yasağı koymak için yetkiniz yok.",
+      "BAN_LIFT_FORBIDDEN": "Bu yasağı yalnız onu koyan kademe ya da üstü kaldırabilir.",
+      "BAN_ALREADY_LIFTED": "Bu yasak zaten kaldırılmış; liste yenilendi.",
+      "BAN_NOT_FOUND": "Bu yasak artık yok; liste yenilendi.",
+      "BAN_TARGET_INVALID": "Bu kişi yasaklanamaz: kendinizi ya da medreseyi veya dersi yürüten birini yasaklayamazsınız.",
+      "BAN_NOT_ESCALATABLE": "Bu yasak medreseye genişletilemez; liste yenilendi.",
+      "BAN_PERMANENT_REQUEST_EXISTS": "Bu yasak için kalıcı yasak talebi zaten açılmış; liste yenilendi.",
+      "BAN_PERMANENT_REQUEST_INVALID": "Bu yasak için kalıcı yasak talebi açılamaz.",
+      "COURSE_NOT_FOUND": "Bu ders artık yok ya da medresenin dersi değil. Sayfayı yenileyip yeniden seçin.",
+      "VALIDATION_ERROR": "Gerekçeyi denetleyip yeniden deneyin."
+    }
+  },
+  "BanDialog": {
+    "title": "Yasakla",
+    "intro": "Yasak hemen geçerli olur. Talebe seçtiğiniz kapsamdaki celselere, ders kayıtlarına ve içeriğe erişemez; yeniden başvuramaz, dersten de ayrılamaz.",
+    "required": "zorunlu alan",
+    "personLabel": "Kişinin e-posta adresi",
+    "scopeLegend": "Yasağın kapsamı",
+    "courseDesc": "Bu dersin celselerine, ders kayıtlarına ve içeriğine erişemez.",
+    "madrasah": "Medrese düzeyi",
+    "madrasahDesc": "Medresenin bütün derslerine erişemez ve başvuramaz.",
+    "coursesFailed": "Dersler okunamadı; yalnız medrese düzeyinde yasaklayabilirsiniz.",
+    "reasonLabel": "Yasaklama gerekçesi",
+    "reasonHelp": "Gerekçeyi yasağı görenler ve kaldıracak kişi okur; talebe görmez.",
+    "reasonRequired": "Bir gerekçe yazın.",
+    "cancel": "Vazgeç",
+    "submit": "Yasakla",
+    "saved": "Yasak kaydedildi",
+    "savedCourse": "{name} artık “{course}” dersine erişemez.",
+    "savedMadrasah": "{name} artık medresenin hiçbir dersine erişemez.",
+    "failedTitle": "Yasak konamadı"
+  },
+  "Reasons": {
+    "required": "zorunlu alan",
+    "reasonRequired": "Bir gerekçe yazın.",
+    "cancel": "Vazgeç",
+    "summary": {
+      "scope": "Kapsam",
+      "bannedBy": "Yasaklayan",
+      "reason": "Gerekçe"
+    },
+    "lift": {
+      "title": "Yasağı kaldır",
+      "bodyCourse": "Yasak kalkınca talebe “{course}” dersine yeniden başvurabilir.",
+      "bodyMadrasah": "Medrese düzeyindeki yasak kalkar; derslere ayrıca konmuş yasaklar sürer.",
+      "label": "Kaldırma gerekçesi",
+      "help": "Kaldırma, bu gerekçe ve adınızla kaydedilir.",
+      "submit": "Yasağı kaldır",
+      "done": "Yasak kaldırıldı",
+      "doneBody": "{name} için yasak kalktı.",
+      "failedTitle": "Yasak kaldırılamadı"
+    },
+    "escalate": {
+      "title": "Medreseden de yasakla",
+      "body": "Talebe medresenin bütün derslerine erişemez ve başvuramaz. “{course}” dersindeki yasak da sürer.",
+      "label": "Yasaklama gerekçesi",
+      "help": "Gerekçeyi yasağı görenler ve kaldıracak kişi okur; talebe görmez.",
+      "submit": "Medreseden de yasakla",
+      "done": "Medreseden de yasaklandı",
+      "doneBody": "{name} artık medresenin hiçbir dersine erişemez.",
+      "failedTitle": "Medreseden yasaklanamadı"
+    },
+    "permanent": {
+      "title": "Kalıcı yasak talebi aç",
+      "body": "Talep Medaris yönetimine gider. Karar verilene kadar yasak olduğu gibi sürer.",
+      "label": "Talep gerekçesi",
+      "help": "Gerekçeyi Medaris yönetimi okur; talebe görmez.",
+      "submit": "Talebi aç",
+      "done": "Kalıcı yasak talebi açıldı",
+      "doneBody": "Talep Medaris yönetimine iletildi; karar verilene kadar yasak sürer.",
+      "failedTitle": "Talep açılamadı"
+    }
+  },
+  "Offsite": {
+    "title": "Medrese dışı ders talebi",
+    "breadcrumb": "Sayfa yolu",
+    "intro": "Medreseye bağlı olmayan bir dersi kendiniz açamazsınız; bir köşkte açılmasını buradan isteyebilirsiniz.",
+    "required": "zorunlu alan",
+    "kosk": {
+      "label": "Köşk",
+      "placeholder": "Köşk seçin",
+      "help": "Bu form medreseye bağlı olmayacak dersler içindir; medrese dersini barındırma hakkı olan köşklerde “Medrese dersi aç” ile kendiniz açarsınız.",
+      "required": "Bir köşk seçin."
+    },
+    "name": "Ders adı",
+    "nameHelp": "Önerdiğiniz ad; dersi açan değiştirebilir.",
+    "reason": "Gerekçe",
+    "reasonHelp": "Dersin neden medrese dışında açılması gerektiğini ve önerdiğiniz müderrisleri yazın.",
+    "reasonProblems": {
+      "required": "Bir gerekçe yazın.",
+      "long": "Gerekçe en çok {max} karakter olabilir."
+    },
+    "cancel": "Vazgeç",
+    "submit": "Talebi gönder",
+    "sending": "Talep gönderiliyor",
+    "afterTitle": "Talepten sonra",
+    "after": {
+      "oneNamed": "Talep {koskGenitive} nazımına gider; Medaris yönetimi talebi görür.",
+      "one": "Talep seçtiğiniz köşkün nazımına gider; Medaris yönetimi talebi görür.",
+      "two": "Kabul edilirse dersi köşk nazımı açar ve müderrislerini seçer.",
+      "three": "Ders bu medreseye bağlı olmaz: medrese derslerinde görünmez, talebeleri medresenin talebesi sayılmaz."
+    },
+    "sent": "Talep gönderildi",
+    "sentBody": "“{title}” talebiniz {koskGenitive} nazımına iletildi.",
+    "failedTitle": "Talep gönderilemedi",
+    "errors": {
+      "kosk": "Bu köşk artık yok. Köşk listesi yenilendi; yeniden seçin.",
+      "invalid": "Ders adını ve gerekçeyi denetleyip yeniden deneyin."
+    },
+    "loadFailedTitle": "Köşkler okunamadı",
+    "loadFailed": "Köşk listesi şu an okunamadı. Birkaç saniye sonra yeniden deneyin.",
+    "noKoskTitle": "Talep gönderilecek köşk yok",
+    "noKosk": "Listelenen bir köşk yok; talep bir köşkün nazımına gideceği için şimdilik gönderilemez.",
+    "back": "Derslere dön"
+  },
+  "Pano": {
+    "title": "Pano",
+    "greeting": "Selâmün aleyküm, {name} Hoca.",
+    "greetingBare": "Selâmün aleyküm.",
+    "summary": "Önümüzdeki 7 günde {sessions} celse var; {applications} başvuru onayınızı bekliyor.",
+    "open": "Medrese dersi aç",
+    "scopesTitle": "Kapsamlarınız",
+    "scopesHint": "Görev aldığınız medrese ve dersler",
+    "madrasah": {
+      "nazirs": "{count} medrese nazırı",
+      "courses": "{courses} medrese dersi · {kosks} köşkte barındırma hakkı"
+    },
+    "students": "{kosk} · {count} talebe",
+    "sessions": {
+      "title": "Yaklaşan celseler",
+      "hint": "Önümüzdeki 7 gün",
+      "caption": "Önümüzdeki 7 günün celseleri",
+      "columns": {
+        "course": "Ders",
+        "time": "Zaman",
+        "platform": "Platform",
+        "status": "Durum",
+        "actions": "İşlemler"
+      },
+      "week": "Hafta {number}",
+      "planned": "Planlandı",
+      "noLink": "Bağlantısı eksik",
+      "edit": "Düzenle",
+      "editLabel": "Düzenle: {title}",
+      "empty": "Önümüzdeki 7 günde celse yok.",
+      "unknownPlatform": "Bilinmeyen platform"
+    },
+    "applications": {
+      "title": "Bekleyen başvurular",
+      "hint": "{count} başvuru · {courses} derste",
+      "caption": "Bekleyen başvurular",
+      "columns": {
+        "student": "Talebe · ders",
+        "at": "Başvuru",
+        "actions": "İşlemler"
+      },
+      "approve": "Onayla",
+      "approveLabel": "Onayla: {name}",
+      "reject": "Reddet",
+      "rejectLabel": "Reddet: {name}",
+      "more": "En yeni {count} başvuru gösteriliyor.",
+      "empty": "Bekleyen başvuru yok.",
+      "approved": "Başvuru onaylandı",
+      "approvedBody": "{name}, “{course}” dersine kabul edildi.",
+      "rejected": "Başvuru reddedildi",
+      "rejectedBody": "{name} için “{course}” başvurusu reddedildi.",
+      "failedTitle": "Başvuru işlenemedi",
+      "errors": {
+        "gone": "Bu başvuru artık yok; liste yenilendi."
+      },
+      "rejectTitle": "Başvuru reddedilsin mi?",
+      "rejectBody": "{name} adlı talebenin “{course}” dersine başvurusu reddedilecek. Ret için gerekçe alınmaz.",
+      "rejectCancel": "Vazgeç"
+    },
+    "hosts": {
+      "title": "Barındırma hakkı olan köşkler",
+      "text": "Medrese dersleri yalnız bu köşklerde açılır. Barındırma hakkını köşkün nazımı ya da Medaris yönetimi verir ve geri alır.",
+      "none": "Henüz hiçbir köşk medresenize barındırma hakkı vermedi. Hak verilince köşk burada listelenir.",
+      "offsite": "Medrese dışı ders talebi gönder"
+    },
+    "loadFailedTitle": "Pano okunamadı",
+    "loadFailed": "Pano şu an okunamadı. Birkaç saniye sonra yeniden deneyin."
   }
 }

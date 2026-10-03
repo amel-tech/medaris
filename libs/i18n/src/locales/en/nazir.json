@@ -720,5 +720,295 @@
     "already": "This course is already hidden; the list was refreshed.",
     "alreadyTitle": "Course already hidden",
     "failedTitle": "The course could not be hidden"
+  },
+  "Students": {
+    "title": "Talebe",
+    "subtitle": "Everyone enrolled in a course of {name}, or who has completed one; the list builds itself from the enrolments in the medrese’s courses.",
+    "subtitleUnnamed": "Everyone enrolled in a course of the medrese, or who has completed one; the list builds itself from the enrolments in the medrese’s courses.",
+    "filters": {
+      "label": "Filter the talebe",
+      "search": "Search talebe",
+      "course": {
+        "label": "Course",
+        "all": "All courses"
+      },
+      "status": {
+        "label": "State",
+        "all": "All states",
+        "ENROLLED": "In progress",
+        "COMPLETED": "Completed"
+      }
+    },
+    "counter": "{count, plural, one {# talebe} other {# talebe}}",
+    "caption": "Medrese talebe",
+    "columns": {
+      "student": "Talebe",
+      "email": "E-mail",
+      "ongoing": "Courses in progress",
+      "completed": "Courses completed",
+      "first": "First enrolled",
+      "actions": "Actions"
+    },
+    "none": "None",
+    "ban": "Bar",
+    "banLabel": "Bar: {name}",
+    "note": "The talebe’s courses outside the medrese are not in this list.",
+    "pager": {
+      "label": "Talebe pages",
+      "range": "Page {page} / {pages} · {from}–{to} of {total} talebe",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "empty": "Nobody is enrolled in this medrese’s courses yet.",
+    "emptyFiltered": "No talebe match this filter.",
+    "clearFilters": "Clear the filters",
+    "loadFailedTitle": "The talebe could not be read",
+    "loadFailed": "The talebe could not be read right now. Try again in a few seconds."
+  },
+  "Bans": {
+    "title": "Bans",
+    "intro": "Bans in force in the medrese and its courses; each shows its reason, who placed it and when.",
+    "ban": "Bar",
+    "kademe": {
+      "title": "A ban is lifted by the kademe that placed it, or a higher one",
+      "text": "You cannot lift bans placed by a köşk’s nazım or by Medaris administration; you can widen them to the medrese."
+    },
+    "tabsLabel": "Ban status",
+    "tabs": {
+      "ACTIVE": "Active",
+      "LIFTED": "Lifted"
+    },
+    "filters": {
+      "label": "Filter the bans",
+      "search": "Search people",
+      "scope": {
+        "label": "Scope",
+        "all": "All scopes",
+        "madrasah": "Medrese level"
+      }
+    },
+    "caption": {
+      "ACTIVE": "Active bans",
+      "LIFTED": "Lifted bans"
+    },
+    "columns": {
+      "person": "Person",
+      "scope": "Scope",
+      "reason": "Reason",
+      "bannedBy": "Barred by",
+      "when": "Date",
+      "liftedBy": "Lifted by",
+      "actions": "Actions"
+    },
+    "new": "New",
+    "permanentPending": "Permanent-ban request pending",
+    "scope": {
+      "COURSE": "Course",
+      "MADRASAH": "Medrese"
+    },
+    "madrasahScope": "All courses of {name}",
+    "madrasahScopeUnnamed": "All courses of the medrese",
+    "extendedFrom": "Widened from {course}",
+    "admin": "Medaris administration",
+    "you": "{role} (you)",
+    "lift": "Lift ban",
+    "liftLabel": "Lift ban: {name}",
+    "escalate": "Bar from the medrese too",
+    "escalateLabel": "Bar from the medrese too: {name}",
+    "permanent": "Open a permanent-ban request",
+    "permanentLabel": "Open a permanent-ban request: {name}",
+    "platformOnly": "Only Medaris administration can lift this ban.",
+    "higherOnly": "Only the kademe that placed this ban, or a higher one, can lift it.",
+    "empty": {
+      "ACTIVE": "No active bans.",
+      "LIFTED": "No lifted bans."
+    },
+    "emptyFiltered": "No bans match this filter.",
+    "clearFilters": "Clear the filters",
+    "loadFailedTitle": "The bans could not be read",
+    "loadFailed": "The bans could not be read right now. Try again in a few seconds.",
+    "errors": {
+      "BAN_FORBIDDEN": "You may not place this ban.",
+      "BAN_LIFT_FORBIDDEN": "Only the kademe that placed this ban, or a higher one, can lift it.",
+      "BAN_ALREADY_LIFTED": "This ban has already been lifted; the list was refreshed.",
+      "BAN_NOT_FOUND": "This ban no longer exists; the list was refreshed.",
+      "BAN_TARGET_INVALID": "This person cannot be barred: you cannot bar yourself, or someone who runs the medrese or the course.",
+      "BAN_NOT_ESCALATABLE": "This ban cannot be widened to the medrese; the list was refreshed.",
+      "BAN_PERMANENT_REQUEST_EXISTS": "A permanent-ban request is already open for this ban; the list was refreshed.",
+      "BAN_PERMANENT_REQUEST_INVALID": "A permanent-ban request cannot be opened for this ban.",
+      "COURSE_NOT_FOUND": "This course no longer exists or is not the medrese’s. Refresh the page and choose again.",
+      "VALIDATION_ERROR": "Check the reason and try again."
+    }
+  },
+  "BanDialog": {
+    "title": "Bar",
+    "intro": "The ban takes effect at once. The talebe can no longer reach the sessions, recordings and content in the scope you choose; they cannot apply again or leave the course.",
+    "required": "required field",
+    "personLabel": "The person’s e-mail address",
+    "scopeLegend": "Scope of the ban",
+    "courseDesc": "Cannot reach this course’s sessions, recordings and content.",
+    "madrasah": "Medrese level",
+    "madrasahDesc": "Cannot reach or apply to any course of the medrese.",
+    "coursesFailed": "The courses could not be read; you can only bar at medrese level.",
+    "reasonLabel": "Reason for the ban",
+    "reasonHelp": "Whoever sees the ban and whoever lifts it reads the reason; the talebe does not.",
+    "reasonRequired": "Write a reason.",
+    "cancel": "Cancel",
+    "submit": "Bar",
+    "saved": "Ban saved",
+    "savedCourse": "{name} can no longer reach “{course}”.",
+    "savedMadrasah": "{name} can no longer reach any course of the medrese.",
+    "failedTitle": "The ban could not be placed"
+  },
+  "Reasons": {
+    "required": "required field",
+    "reasonRequired": "Write a reason.",
+    "cancel": "Cancel",
+    "summary": {
+      "scope": "Scope",
+      "bannedBy": "Barred by",
+      "reason": "Reason"
+    },
+    "lift": {
+      "title": "Lift ban",
+      "bodyCourse": "Once lifted, the talebe can apply to “{course}” again.",
+      "bodyMadrasah": "The medrese-level ban is lifted; bans placed on single courses stay.",
+      "label": "Reason for lifting",
+      "help": "Lifting is recorded with this reason and your name.",
+      "submit": "Lift ban",
+      "done": "Ban lifted",
+      "doneBody": "The ban on {name} is lifted.",
+      "failedTitle": "The ban could not be lifted"
+    },
+    "escalate": {
+      "title": "Bar from the medrese too",
+      "body": "The talebe cannot reach or apply to any course of the medrese. The ban on “{course}” stays.",
+      "label": "Reason for the ban",
+      "help": "Whoever sees the ban and whoever lifts it reads the reason; the talebe does not.",
+      "submit": "Bar from the medrese too",
+      "done": "Barred from the medrese too",
+      "doneBody": "{name} can no longer reach any course of the medrese.",
+      "failedTitle": "The medrese ban could not be placed"
+    },
+    "permanent": {
+      "title": "Open a permanent-ban request",
+      "body": "The request goes to Medaris administration. Until it is decided the ban stays as it is.",
+      "label": "Reason for the request",
+      "help": "Medaris administration reads the reason; the talebe does not.",
+      "submit": "Open the request",
+      "done": "Permanent-ban request opened",
+      "doneBody": "The request went to Medaris administration; the ban stays until it is decided.",
+      "failedTitle": "The request could not be opened"
+    }
+  },
+  "Offsite": {
+    "title": "Off-medrese course request",
+    "breadcrumb": "Breadcrumb",
+    "intro": "You cannot open a course that does not belong to the medrese yourself; you can ask for it to be opened in a köşk here.",
+    "required": "required field",
+    "kosk": {
+      "label": "Köşk",
+      "placeholder": "Choose a köşk",
+      "help": "This form is for courses that will not belong to the medrese; in a köşk that hosts the medrese you open a medrese course yourself with “Open a medrese course”.",
+      "required": "Choose a köşk."
+    },
+    "name": "Course name",
+    "nameHelp": "The name you suggest; whoever opens the course can change it.",
+    "reason": "Reason",
+    "reasonHelp": "Write why the course should be opened outside the medrese and which müderrisler you suggest.",
+    "reasonProblems": {
+      "required": "Write a reason.",
+      "long": "The reason can be at most {max} characters."
+    },
+    "cancel": "Cancel",
+    "submit": "Send the request",
+    "sending": "Sending the request",
+    "afterTitle": "After the request",
+    "after": {
+      "oneNamed": "The request goes to the nazım of {kosk}; Medaris administration sees it.",
+      "one": "The request goes to the nazım of the köşk you chose; Medaris administration sees it.",
+      "two": "If it is accepted, the köşk’s nazım opens the course and chooses its müderrisler.",
+      "three": "The course does not belong to this medrese: it does not show among the medrese’s courses and its talebe are not the medrese’s talebe."
+    },
+    "sent": "Request sent",
+    "sentBody": "Your request for “{title}” went to the nazım of {kosk}.",
+    "failedTitle": "The request could not be sent",
+    "errors": {
+      "kosk": "This köşk no longer exists. The list was refreshed; choose again.",
+      "invalid": "Check the course name and the reason and try again."
+    },
+    "loadFailedTitle": "The köşks could not be read",
+    "loadFailed": "The list of köşks could not be read right now. Try again in a few seconds.",
+    "noKoskTitle": "No köşk to send a request to",
+    "noKosk": "No köşk is listed; the request goes to a köşk’s nazım, so it cannot be sent for now.",
+    "back": "Back to the courses"
+  },
+  "Pano": {
+    "title": "Pano",
+    "greeting": "Selâmün aleyküm, {name} Hoca.",
+    "greetingBare": "Selâmün aleyküm.",
+    "summary": "In the next 7 days there {sessions, plural, one {is # session} other {are # sessions}}; {applications, plural, one {# application is} other {# applications are}} waiting for your approval.",
+    "open": "Open a medrese course",
+    "scopesTitle": "Your scopes",
+    "scopesHint": "The medrese and courses where you hold a role",
+    "madrasah": {
+      "nazirs": "{count, plural, one {# medrese nazır} other {# medrese nazırs}}",
+      "courses": "{courses, plural, one {# medrese course} other {# medrese courses}} · hosting right at {kosks, plural, one {# köşk} other {# köşks}}"
+    },
+    "students": "{kosk} · {count, plural, one {# talebe} other {# talebe}}",
+    "sessions": {
+      "title": "Upcoming sessions",
+      "hint": "Next 7 days",
+      "caption": "Sessions in the next 7 days",
+      "columns": {
+        "course": "Course",
+        "time": "Time",
+        "platform": "Platform",
+        "status": "State",
+        "actions": "Actions"
+      },
+      "week": "Week {number}",
+      "planned": "Planned",
+      "noLink": "Link missing",
+      "edit": "Edit",
+      "editLabel": "Edit: {title}",
+      "empty": "No sessions in the next 7 days.",
+      "unknownPlatform": "Unknown platform"
+    },
+    "applications": {
+      "title": "Pending applications",
+      "hint": "{count, plural, one {# application} other {# applications}} · in {courses, plural, one {# course} other {# courses}}",
+      "caption": "Pending applications",
+      "columns": {
+        "student": "Talebe · course",
+        "at": "Applied",
+        "actions": "Actions"
+      },
+      "approve": "Approve",
+      "approveLabel": "Approve: {name}",
+      "reject": "Reject",
+      "rejectLabel": "Reject: {name}",
+      "more": "The newest {count} applications are shown.",
+      "empty": "No applications are waiting.",
+      "approved": "Application approved",
+      "approvedBody": "{name} was accepted into “{course}”.",
+      "rejected": "Application rejected",
+      "rejectedBody": "The application of {name} to “{course}” was rejected.",
+      "failedTitle": "The application could not be processed",
+      "errors": {
+        "gone": "This application no longer exists; the list was refreshed."
+      },
+      "rejectTitle": "Reject this application?",
+      "rejectBody": "{name}’s application to “{course}” will be rejected. No reason is taken for a rejection.",
+      "rejectCancel": "Cancel"
+    },
+    "hosts": {
+      "title": "Köşks with a hosting right",
+      "text": "Medrese courses are opened only in these köşks. The köşk’s nazım or Medaris administration gives and withdraws the hosting right.",
+      "none": "No köşk has given your medrese a hosting right yet. Once one does, it is listed here.",
+      "offsite": "Send an off-medrese course request"
+    },
+    "loadFailedTitle": "The Pano could not be read",
+    "loadFailed": "The Pano could not be read right now. Try again in a few seconds."
   }
 }
