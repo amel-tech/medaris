@@ -183,6 +183,13 @@
       "when": 1790866643866,
       "tag": "0025_drop_superseded_role_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790900224601,
+      "tag": "0026_notifications",
+      "breakpoints": true
     }
   ]
 }

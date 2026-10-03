@@ -12,7 +12,7 @@ export const TabView = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       <div className="border-b border-b-gray-300 mb-8">
-        <div className="flex gap-4 container mx-auto">
+        <div className="flex gap-4 mx-auto w-full max-w-[80rem]">
           <Link
             href="/home"
             className={cn(
@@ -47,7 +47,9 @@ export const TabView = ({ children }: { children: React.ReactNode }) => {
           </Link>
         </div>
       </div>
-      <main className="container mx-auto py-2 grow-1 h-full">{children}</main>
+      <main className="mx-auto w-full max-w-[80rem] py-2 grow-1">
+        {children}
+      </main>
     </>
   );
 };

@@ -294,7 +294,9 @@
     "talebe": "طالبي"
   },
   "UserNotifications": {
-    "noNewNotifications": "لا توجد إشعارات جديدة"
+    "noNewNotifications": "لا توجد إشعارات جديدة",
+    "label": "الإشعارات",
+    "labelUnread": "الإشعارات، {count} غير مقروءة"
   },
   "Version": {
     "appVersion": "إصدار التطبيق"
@@ -392,5 +394,95 @@
   "MadrasahPage": {
     "kosks": "الأكشاك",
     "noKosks": "لا توجد أكشاك مُدرَجة في هذه المدرسة."
+  },
+  "NotificationsPage": {
+    "title": "الإشعارات",
+    "subtitle": "أخبار طلباتك ودروسك.",
+    "markAllRead": "تحديد الكل كمقروء",
+    "tabsLabel": "تصفية الإشعارات",
+    "tabAll": "الكل",
+    "tabUnread": "غير المقروءة",
+    "listLabel": "قائمة الإشعارات",
+    "groupToday": "اليوم",
+    "groupYesterday": "أمس",
+    "groupEarlier": "سابقًا",
+    "new": "جديد",
+    "menuLabel": "إجراءات أخرى: {title}",
+    "menuMarkRead": "تحديد كمقروء",
+    "emptyTitle": "لا توجد إشعارات",
+    "emptyUnreadTitle": "لا توجد إشعارات غير مقروءة",
+    "errorTitle": "تعذّر تحميل الإشعارات",
+    "errorText": "حدث خطأ ما. حاول مرة أخرى بعد قليل.",
+    "retry": "إعادة المحاولة",
+    "loadMore": "عرض المزيد",
+    "loadingMore": "جارٍ التحميل",
+    "markReadFailedTitle": "تعذّر تحديده كمقروء.",
+    "markReadFailedText": "ما زال الإشعار غير مقروء. حاول مرة أخرى.",
+    "markAllFailedTitle": "تعذّر تحديد الإشعارات كمقروءة.",
+    "markAllFailedText": "لم يتغيّر شيء. حاول مرة أخرى.",
+    "markAllDone": "تم تحديد كل الإشعارات كمقروءة.",
+    "undo": "تراجع",
+    "unknownTitle": "إشعار",
+    "aside": {
+      "title": "ما الذي يصلك من إشعارات",
+      "applicationResult": "نتيجة طلباتك",
+      "applicationResultText": "«تمت الموافقة على طلبك» أو «تم رفض طلبك»؛ وإن كُتب سبب الرفض فستراه أيضًا.",
+      "removed": "إخراجك من درس",
+      "removedText": "«تم إخراجك من الدرس»؛ ويمكنك التقديم عليه مجددًا إن شئت.",
+      "accessRemoved": "إزالة وصولك إلى درس",
+      "accessRemovedText": "«تمت إزالة وصولك إلى هذا الدرس.»",
+      "rescheduled": "تغيّر موعد الجلسة",
+      "cancelled": "إلغاء الجلسة وجلسة التعويض",
+      "added": "تسجيلات الدروس المضافة إلى دروسك",
+      "kosk": "نتيجة طلبك لفتح كُشك",
+      "koskText": "إن رُفض طلبك فستراه مع السبب.",
+      "deck": "نتيجة طلبك لإتاحة المجموعة للجميع",
+      "deckText": "إن رُفض الطلب أو أُلغي النشر لاحقًا فسترى السبب."
+    },
+    "types": {
+      "SESSION_CANCELLED": {
+        "title": "أُلغيت الجلسة",
+        "body": "أُلغيت جلسة {courseTitle} المقررة في {sessionAt}.",
+        "bodyMakeup": "أُلغيت جلسة {courseTitle} المقررة في {sessionAt}. جلسة التعويض: {makeupAt}."
+      },
+      "SESSION_RESCHEDULED": {
+        "title": "تغيّر موعد الجلسة",
+        "body": "نُقلت جلسة من {courseTitle} إلى {sessionAt}.",
+        "bodyPrevious": "نُقلت جلسة {courseTitle} المقررة في {previousAt} إلى {sessionAt}."
+      },
+      "SESSION_ADDED": {
+        "title": "تسجيل درس جديد",
+        "body": "أُضيف تسجيل درس إلى جلسة {sessionLabel} من {courseTitle}.",
+        "bodyNoSession": "أُضيف تسجيل درس إلى {courseTitle}."
+      },
+      "ENROLLMENT_APPROVED": {
+        "title": "تمت الموافقة على طلبك",
+        "body": "تمت الموافقة على تسجيلك في {courseTitle}."
+      },
+      "ENROLLMENT_REJECTED": {
+        "title": "تم رفض طلبك",
+        "body": "تم رفض طلبك للانضمام إلى {courseTitle}.",
+        "bodyReason": "تم رفض طلبك للانضمام إلى {courseTitle}. السبب: {reason}"
+      },
+      "REMOVED_FROM_COURSE": {
+        "title": "تم إخراجك من درس",
+        "body": "تم إخراجك من {courseTitle}.",
+        "bodyReason": "تم إخراجك من {courseTitle}. السبب: {reason}"
+      },
+      "COURSE_ACCESS_REMOVED": {
+        "title": "تمت إزالة وصولك",
+        "body": "تمت إزالة وصولك إلى {courseTitle}."
+      },
+      "KOSK_APPLICATION_RESULT": {
+        "title": "{outcome, select, approved {تمت الموافقة على طلب الكُشك} other {تم رفض طلب الكُشك}}",
+        "body": "{outcome, select, approved {تمت الموافقة على طلبك لفتح {koskName}.} other {تم رفض طلبك لفتح {koskName}.}}",
+        "bodyReason": "تم رفض طلبك لفتح {koskName}. السبب: {reason}"
+      },
+      "DECK_PUBLISH_RESULT": {
+        "title": "{outcome, select, approved {نُشرت المجموعة} unpublished {أُلغي نشر المجموعة} other {رُفض طلب نشر المجموعة}}",
+        "body": "{outcome, select, approved {أصبحت {deckTitle} متاحة للجميع.} unpublished {أُلغي نشر {deckTitle}.} other {رُفض طلبك لإتاحة {deckTitle} للجميع.}}",
+        "bodyReason": "{outcome, select, approved {أصبحت {deckTitle} متاحة للجميع.} unpublished {أُلغي نشر {deckTitle}.} other {رُفض طلبك لإتاحة {deckTitle} للجميع.}} السبب: {reason}"
+      }
+    }
   }
 }
