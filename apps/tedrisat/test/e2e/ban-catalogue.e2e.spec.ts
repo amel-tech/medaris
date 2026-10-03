@@ -273,7 +273,14 @@ describe("Bans from the permission catalogue (MDRS-205, e2e)", () => {
     ])("%s: %i", async (_who, sub, status) => {
       const res = await banInCourse(sub);
       expect(res.status).toBe(status);
-      if (status === refused) expect(res.body.code).toBe("BAN_FORBIDDEN");
+      if (status === refused) {
+        expect(res.body.code).toBe("BAN_FORBIDDEN");
+        // The refusal names the permission it asked for.
+        expect(res.body.context.permission).toEqual([
+          "ban.course",
+          "ban.manage_kosk",
+        ]);
+      }
       expect(await db().select().from(bans)).toHaveLength(
         status === created ? 1 : 0
       );
