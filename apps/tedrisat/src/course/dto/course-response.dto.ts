@@ -37,6 +37,22 @@ export class LessonResponse {
   agenda?: AgendaStepResponse[] | null;
   @ApiProperty() isPreview!: boolean;
   @ApiProperty() orderIndex!: number;
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+    description:
+      "When the session was cancelled (MDRS-158); null while it stands. It stays in the programme, marked.",
+  })
+  cancelledAt!: Date | null;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description:
+      "The session that makes up for a cancelled one; null when there is none.",
+  })
+  replacementLessonId!: string | null;
+  @ApiPropertyOptional({ type: String, description: CONTENT_FIELD })
+  cancelReason?: string | null;
 }
 
 /** A lesson written through a session-level endpoint (MDRS-95). */

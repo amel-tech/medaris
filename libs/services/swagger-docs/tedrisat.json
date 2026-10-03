@@ -1715,6 +1715,54 @@
         ]
       }
     },
+    "/courses/{courseId}/sessions/{sessionId}": {
+      "get": {
+        "description": "Open to callers with no token, like the course page (MDRS-122), and filtered the same way: `meetingUrl`, `agenda`, `kaynak` and `cancelReason` are sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. `status` is derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED after the session's length (60 minutes when it has none), LIVE while it runs, SCHEDULED before. `meetingUrl` is null for a cancelled or finished session. `previous` and `next` are the neighbouring live sessions in programme order, cancelled ones skipped. A content read by anyone who is neither enrolled nor a müderris is recorded in `audit_log`, as on `GET /courses/:id` (MDRS-158).",
+        "operationId": "getSession",
+        "parameters": [
+          {
+            "name": "courseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such course or session, the session is not a live one, or the course is a draft, hidden or in an unlisted köşk to this caller (LESSON_NOT_FOUND, COURSE_NOT_FOUND)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One live session: its status, cancellation, neighbours and link",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
     "/courses/{courseId}/weeks/{weekId}/lessons": {
       "post": {
         "operationId": "createLesson",
@@ -5492,6 +5540,21 @@
           },
           "orderIndex": {
             "type": "number"
+          },
+          "cancelledAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the session was cancelled (MDRS-158); null while it stands. It stays in the programme, marked."
+          },
+          "replacementLessonId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The session that makes up for a cancelled one; null when there is none."
+          },
+          "cancelReason": {
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
           }
         },
         "required": [
@@ -6095,6 +6158,189 @@
           "progress"
         ]
       },
+      "SessionStatus": {
+        "type": "string",
+        "enum": [
+          "SCHEDULED",
+          "LIVE",
+          "ENDED",
+          "CANCELLED"
+        ]
+      },
+      "SessionRefResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "weekNumber": {
+            "type": "number",
+            "description": "The week the session sits in."
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SessionStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "weekNumber",
+          "status"
+        ]
+      },
+      "SessionMuderrisResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "isImam": {
+            "type": "boolean",
+            "description": "True for the course's imam, the müderris the page badges."
+          }
+        },
+        "required": [
+          "name",
+          "isImam"
+        ]
+      },
+      "SessionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "weekNumber": {
+            "type": "number",
+            "description": "The week the session sits in."
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SessionStatus"
+              }
+            ]
+          },
+          "courseId": {
+            "type": "string"
+          },
+          "weekId": {
+            "type": "string"
+          },
+          "weekTitle": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "Length in minutes; null when the müderris set none."
+          },
+          "cancelledAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "cancelReason": {
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+          },
+          "replacementSessionId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The session that makes up for a cancelled one; null when there is none or it is no longer in the programme."
+          },
+          "replacement": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SessionRefResponse"
+              }
+            ]
+          },
+          "kaynak": {
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+          },
+          "agenda": {
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgendaStepResponse"
+            }
+          },
+          "meetingUrl": {
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103). Null once the session is cancelled or over: there is nothing left to join."
+          },
+          "previous": {
+            "nullable": true,
+            "description": "The standing (not cancelled) session before this one.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SessionRefResponse"
+              }
+            ]
+          },
+          "next": {
+            "nullable": true,
+            "description": "The standing (not cancelled) session after this one.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SessionRefResponse"
+              }
+            ]
+          },
+          "muderris": {
+            "description": "The course's müderrisler: public, like on the course page.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionMuderrisResponse"
+            }
+          },
+          "contentLocked": {
+            "type": "boolean",
+            "description": "True when the caller lacks `view_details` and the content fields were removed."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "weekNumber",
+          "status",
+          "courseId",
+          "weekId",
+          "weekTitle",
+          "muderris",
+          "contentLocked"
+        ]
+      },
       "CreateWeekLessonDto": {
         "type": "object",
         "properties": {
@@ -6201,6 +6447,21 @@
           },
           "orderIndex": {
             "type": "number"
+          },
+          "cancelledAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the session was cancelled (MDRS-158); null while it stands. It stays in the programme, marked."
+          },
+          "replacementLessonId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The session that makes up for a cancelled one; null when there is none."
+          },
+          "cancelReason": {
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
           },
           "courseVersion": {
             "type": "number",
@@ -6448,6 +6709,21 @@
           },
           "orderIndex": {
             "type": "number"
+          },
+          "cancelledAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the session was cancelled (MDRS-158); null while it stands. It stays in the programme, marked."
+          },
+          "replacementLessonId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The session that makes up for a cancelled one; null when there is none."
+          },
+          "cancelReason": {
+            "type": "string",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
           },
           "weekNumber": {
             "type": "number"

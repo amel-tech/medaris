@@ -1,3 +1,5 @@
+"use client";
+
 import { Accordion } from "@base-ui/react/accordion";
 import {
   Children,

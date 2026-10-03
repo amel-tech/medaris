@@ -94,6 +94,24 @@ export interface LessonMutationResponse {
      */
     orderIndex: number;
     /**
+     * When the session was cancelled (MDRS-158); null while it stands. It stays in the programme, marked.
+     * @type {Date}
+     * @memberof LessonMutationResponse
+     */
+    cancelledAt?: Date | null;
+    /**
+     * The session that makes up for a cancelled one; null when there is none.
+     * @type {string}
+     * @memberof LessonMutationResponse
+     */
+    replacementLessonId?: string | null;
+    /**
+     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103).
+     * @type {string}
+     * @memberof LessonMutationResponse
+     */
+    cancelReason?: string;
+    /**
      * The course version this write produced; send it with the next PUT /courses/:id or PATCH /lessons/:id.
      * @type {number}
      * @memberof LessonMutationResponse
@@ -149,6 +167,9 @@ export function LessonMutationResponseFromJSONTyped(json: any, ignoreDiscriminat
         'agenda': json['agenda'] == null ? undefined : ((json['agenda'] as Array<any>).map(AgendaStepResponseFromJSON)),
         'isPreview': json['isPreview'],
         'orderIndex': json['orderIndex'],
+        'cancelledAt': json['cancelledAt'] == null ? undefined : (new Date(json['cancelledAt'])),
+        'replacementLessonId': json['replacementLessonId'] == null ? undefined : json['replacementLessonId'],
+        'cancelReason': json['cancelReason'] == null ? undefined : json['cancelReason'],
         'courseVersion': json['courseVersion'],
     };
 }
@@ -175,6 +196,9 @@ export function LessonMutationResponseToJSONTyped(value?: LessonMutationResponse
         'agenda': value['agenda'] == null ? undefined : ((value['agenda'] as Array<any>).map(AgendaStepResponseToJSON)),
         'isPreview': value['isPreview'],
         'orderIndex': value['orderIndex'],
+        'cancelledAt': value['cancelledAt'] === null ? null : ((value['cancelledAt'] as any)?.toISOString()),
+        'replacementLessonId': value['replacementLessonId'],
+        'cancelReason': value['cancelReason'],
         'courseVersion': value['courseVersion'],
     };
 }

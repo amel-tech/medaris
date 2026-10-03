@@ -204,6 +204,13 @@
       "when": 1790910640310,
       "tag": "0028_archive_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1790913540176,
+      "tag": "0029_session_cancellation",
+      "breakpoints": true
     }
   ]
 }
