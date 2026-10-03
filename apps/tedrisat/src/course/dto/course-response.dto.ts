@@ -10,7 +10,7 @@ export class AgendaStepResponse {
 }
 
 const CONTENT_FIELD =
-  "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).";
+  "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.";
 
 export class LessonResponse {
   @ApiProperty() id!: string;
@@ -201,7 +201,19 @@ class CourseBase {
   @ApiProperty() updatedAt!: Date;
 }
 
+export class CourseDetailMadrasahResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty() name!: string;
+}
+
 export class CourseDetailResponse extends CourseBase {
+  @ApiPropertyOptional({
+    type: CourseDetailMadrasahResponse,
+    nullable: true,
+    description:
+      "The medrese that opened the course (MDRS-161); null when none, absent on a write's answer.",
+  })
+  madrasah?: CourseDetailMadrasahResponse | null;
   @ApiProperty({ type: [WeekResponse] }) weeks!: WeekResponse[];
   @ApiProperty({ type: [MuderrisResponse] }) muderris!: MuderrisResponse[];
   @ApiProperty({ type: [ResourceResponse] }) resources!: ResourceResponse[];

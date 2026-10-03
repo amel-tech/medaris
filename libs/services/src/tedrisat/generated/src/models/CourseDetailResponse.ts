@@ -41,6 +41,13 @@ import {
     WeekResponseToJSON,
     WeekResponseToJSONTyped,
 } from './WeekResponse';
+import type { CourseDetailMadrasahResponse } from './CourseDetailMadrasahResponse';
+import {
+    CourseDetailMadrasahResponseFromJSON,
+    CourseDetailMadrasahResponseFromJSONTyped,
+    CourseDetailMadrasahResponseToJSON,
+    CourseDetailMadrasahResponseToJSONTyped,
+} from './CourseDetailMadrasahResponse';
 
 /**
  * 
@@ -169,6 +176,12 @@ export interface CourseDetailResponse {
      */
     updatedAt: Date;
     /**
+     * The medrese that opened the course (MDRS-161); null when none, absent on a write's answer.
+     * @type {CourseDetailMadrasahResponse}
+     * @memberof CourseDetailResponse
+     */
+    madrasah?: CourseDetailMadrasahResponse | null;
+    /**
      * 
      * @type {Array<WeekResponse>}
      * @memberof CourseDetailResponse
@@ -276,6 +289,7 @@ export function CourseDetailResponseFromJSONTyped(json: any, ignoreDiscriminator
         'archivedBy': json['archivedBy'] == null ? undefined : json['archivedBy'],
         'createdAt': (new Date(json['createdAt'])),
         'updatedAt': (new Date(json['updatedAt'])),
+        'madrasah': json['madrasah'] == null ? undefined : CourseDetailMadrasahResponseFromJSON(json['madrasah']),
         'weeks': ((json['weeks'] as Array<any>).map(WeekResponseFromJSON)),
         'muderris': ((json['muderris'] as Array<any>).map(MuderrisResponseFromJSON)),
         'resources': ((json['resources'] as Array<any>).map(ResourceResponseFromJSON)),
@@ -315,6 +329,7 @@ export function CourseDetailResponseToJSONTyped(value?: CourseDetailResponse | n
         'archivedBy': value['archivedBy'],
         'createdAt': ((value['createdAt']).toISOString()),
         'updatedAt': ((value['updatedAt']).toISOString()),
+        'madrasah': CourseDetailMadrasahResponseToJSON(value['madrasah']),
         'weeks': ((value['weeks'] as Array<any>).map(WeekResponseToJSON)),
         'muderris': ((value['muderris'] as Array<any>).map(MuderrisResponseToJSON)),
         'resources': ((value['resources'] as Array<any>).map(ResourceResponseToJSON)),
