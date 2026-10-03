@@ -1,5 +1,46 @@
 # Changelog
 
+## [0.2.1](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.0...nizam-web-v0.2.1) (2026-10-03)
+
+
+### Features
+
+* **nizam-web, landing-web, i18n:** MDRS-101 launch wave 2 in nizam, landing and the shared libs ([#120](https://github.com/amel-tech/medaris/issues/120)) ([5f0f694](https://github.com/amel-tech/medaris/commit/5f0f694c0251c7924492b7c4441958ab711ec030))
+* **nizam-web, tedrisat:** MDRS-170 Medreseler, Medrese aç and hosting rights ([#146](https://github.com/amel-tech/medaris/issues/146)) ([8edb314](https://github.com/amel-tech/medaris/commit/8edb31419bac776486f87ec13304fa719fd14029))
+* **nizam-web, tedrisat:** MDRS-171 Medaris nazims, grant permissions and permission groups ([#149](https://github.com/amel-tech/medaris/issues/149)) ([f6c5844](https://github.com/amel-tech/medaris/commit/f6c5844d7d2e388de480094c9bd5044bd4cdf7c5))
+* **nizam-web, tedrisat:** MDRS-172 koesk grants, inactive scopes and head muderris hand-over ([#155](https://github.com/amel-tech/medaris/issues/155)) ([707e36c](https://github.com/amel-tech/medaris/commit/707e36c60252f3d859906ec6404a49e20e5b0979))
+* **nizam-web, tedrisat:** MDRS-174 kosk management screens and admin endpoints ([#150](https://github.com/amel-tech/medaris/issues/150)) ([e8bd949](https://github.com/amel-tech/medaris/commit/e8bd949cc1348920b770ec877b1a9547534916c4))
+* **nizam-web, tedrisat:** MDRS-175 köşk view, Dersler and the course overview ([#165](https://github.com/amel-tech/medaris/issues/165)) ([321eb7a](https://github.com/amel-tech/medaris/commit/321eb7a1465b117572972cd9e07319cef532e4df))
+* **nizam-web, tedrisat:** MDRS-176 course, curriculum and session screens for nizam ([#169](https://github.com/amel-tech/medaris/issues/169)) ([a99bba6](https://github.com/amel-tech/medaris/commit/a99bba684db60374da56057ae8d476a292d9bbe3))
+* **nizam-web, tedrisat:** MDRS-178 Yasaklamalar for Medaris administration and Talebeler Kayıtlı ([#161](https://github.com/amel-tech/medaris/issues/161)) ([1366bcf](https://github.com/amel-tech/medaris/commit/1366bcf972e49dbf2698f476f1ecc34fb0e3b3c8))
+* **nizam-web, tedrisat:** MDRS-180 deck publish requests, köşk decks and open-a-deck ([#172](https://github.com/amel-tech/medaris/issues/172)) ([fdcad98](https://github.com/amel-tech/medaris/commit/fdcad989a0b2baea2c81bb9d1fd29a35d3db9b24))
+* **nizam-web, tedrisat:** MDRS-181 kosk applications, platform policies, audit log, course requests ([#173](https://github.com/amel-tech/medaris/issues/173)) ([7217ea4](https://github.com/amel-tech/medaris/commit/7217ea4a81b3a0298bded8c1259c52105efb1e03))
+* **nizam-web, tedrisat:** MDRS-182 chief nazim, kosk nazim and Medaris nazim dashboards ([#176](https://github.com/amel-tech/medaris/issues/176)) ([86de75e](https://github.com/amel-tech/medaris/commit/86de75ed653316f5572bdde8e3a296aad618b675))
+* **nizam-web:** MDRS-168 Nizam shell, role menus, applications and students tabs ([#144](https://github.com/amel-tech/medaris/issues/144)) ([79f92c5](https://github.com/amel-tech/medaris/commit/79f92c558a137efc7f4eefc3c5a12448ab2db61a))
+* **nizam-web:** MDRS-177 add the ban foundation: Yasaklamalar page and ban and lift dialogs ([#142](https://github.com/amel-tech/medaris/issues/142)) ([21827ef](https://github.com/amel-tech/medaris/commit/21827ef9463478d4e2035bbe2a6db568c535fb2e))
+* **nizam-web:** MDRS-179 notifications and account pages with the unread bell ([#166](https://github.com/amel-tech/medaris/issues/166)) ([b7deaa0](https://github.com/amel-tech/medaris/commit/b7deaa0217b1263c6c8088491d0488fad49687e6))
+* **tedris-web, tedrisat, ui:** bring tedris in line with the Tedris screens design ([#179](https://github.com/amel-tech/medaris/issues/179)) ([c1ebc07](https://github.com/amel-tech/medaris/commit/c1ebc077d1aeb0d38430a313b667c4079a94f454))
+* **tedris-web:** MDRS-161 draw the course page in its five states ([#154](https://github.com/amel-tech/medaris/issues/154)) ([228a15b](https://github.com/amel-tech/medaris/commit/228a15bbbcb32ad24cebb27cf560f281550df80b))
+* **tedrisat, common, nizam-web, tedris-web:** MDRS-134 role model v2 on top of launch wave 3 ([#129](https://github.com/amel-tech/medaris/issues/129)) ([d07d26d](https://github.com/amel-tech/medaris/commit/d07d26d0c375e0404cec8f96f55e4482942f4d8c))
+* **tedrisat, common, tedris-web:** MDRS-122 open köşk, medrese and course pages to guests ([#127](https://github.com/amel-tech/medaris/issues/127)) ([28e68e5](https://github.com/amel-tech/medaris/commit/28e68e5eb701a91336702f7e9b28f6491b644613))
+* **tedrisat, nizam-web, tedris-web:** MDRS-105 course team on the matrix, müderris as accounts ([#125](https://github.com/amel-tech/medaris/issues/125)) ([5ceb93a](https://github.com/amel-tech/medaris/commit/5ceb93a73039c936743d83a939d89fb3f8eceb7b))
+* **tedrisat, nizam-web, utils:** MDRS-111 validate and normalise meeting links ([#115](https://github.com/amel-tech/medaris/issues/115)) ([b5b56a3](https://github.com/amel-tech/medaris/commit/b5b56a3b1566c0fb339eef2724a5e236d9949a08))
+* **tedrisat, nizam-web, utils:** MDRS-228 set a session's live stream link in nizam ([#190](https://github.com/amel-tech/medaris/issues/190)) ([b9d3ea5](https://github.com/amel-tech/medaris/commit/b9d3ea5cbe0d51c7d3806db525100fad3f383449))
+* **tedrisat, nizam-web:** MDRS-108 list the köşks you manage, show only buttons you may press ([#126](https://github.com/amel-tech/medaris/issues/126)) ([2a8e53a](https://github.com/amel-tech/medaris/commit/2a8e53aee9b32c8a05d08c2a9036926baf872e0a))
+* **tedrisat, nizam-web:** MDRS-173 add the archive foundation and the archive screens ([#140](https://github.com/amel-tech/medaris/issues/140)) ([28d998f](https://github.com/amel-tech/medaris/commit/28d998faaa8631104f1bc10ffdcbc86fc57b96a3))
+* **tedrisat, tedris-web, nizam-web:** MDRS-110 lesson minutes and viewer time zones ([#114](https://github.com/amel-tech/medaris/issues/114)) ([d0a791a](https://github.com/amel-tech/medaris/commit/d0a791a4c63ae637dee53afa44657e0105630490))
+* **tedrisat, tedris-web, nizam-web:** MDRS-169 assignment foundation and Nazir access screens ([#138](https://github.com/amel-tech/medaris/issues/138)) ([efd93c5](https://github.com/amel-tech/medaris/commit/efd93c5d18269df946835d3a5007c98166ba1fd8))
+
+
+### Bug Fixes
+
+* **nizam-web:** MDRS-211 hide unbuilt köşk pages and tell a missing page from no permission ([#181](https://github.com/amel-tech/medaris/issues/181)) ([e74e044](https://github.com/amel-tech/medaris/commit/e74e044d39c7271a1042b6f4081ee02ee3862715))
+* **nizam-web:** MDRS-230 mark each route's html with its own lang and dir ([#193](https://github.com/amel-tech/medaris/issues/193)) ([5dd1001](https://github.com/amel-tech/medaris/commit/5dd10018add195d529e4213252c14fc56b1ed48f))
+* **tedris-web, nizam-web, nazir-web, services:** MDRS-210 sign out of every app at once ([#183](https://github.com/amel-tech/medaris/issues/183)) ([54700f2](https://github.com/amel-tech/medaris/commit/54700f2fef07fbfcd7327b04deef2469c3d344e6))
+* **tedris-web, nizam-web, nazir-web, services:** MDRS-231 log a failed token refresh as a summary ([#194](https://github.com/amel-tech/medaris/issues/194)) ([901e515](https://github.com/amel-tech/medaris/commit/901e515e93b44297a2c051f311eed50c542d976f))
+* **tedrisat, nizam-web:** MDRS-95 keep lesson ids stable and refuse stale course saves ([#110](https://github.com/amel-tech/medaris/issues/110)) ([1488acd](https://github.com/amel-tech/medaris/commit/1488acd9bd19ee1ee7ca70e321a66dc708204a6c))
+* **ui, tedris-web, nizam-web, nazir-web:** MDRS-214 close stale toasts on navigation ([#188](https://github.com/amel-tech/medaris/issues/188)) ([593acab](https://github.com/amel-tech/medaris/commit/593acab26431f82c953d1e6a6f4b1689a36f6381))
+
 ## [0.2.0](https://github.com/amel-tech/medaris/compare/nizam-web-v0.1.12...nizam-web-v0.2.0) (2026-09-28)
 
 
