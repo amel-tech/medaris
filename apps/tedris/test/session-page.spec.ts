@@ -41,6 +41,11 @@ vi.mock("next-intl/server", () => ({
 vi.mock("~/lib/i18n/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
+// The live chat is a client component with its own spec; here only where it is mounted.
+vi.mock("~/features/courses/components/live-chat", () => ({
+  LiveChat: ({ streamUrl }: { streamUrl: string }) =>
+    createElement("div", { "data-live-chat": streamUrl }),
+}));
 // The programme is an async server component with its own spec below.
 vi.mock("~/features/courses/components/session-programme", () => ({
   SessionProgramme: () => null,
@@ -289,6 +294,25 @@ describe("session page, live (design tedris/16, MDRS-162)", () => {
     expect(html).not.toContain("<iframe");
     expect(html).toContain("Canlı yayın burada oynar");
     expect(html).toContain('href="https://example.org/x"');
+  });
+
+  it("puts the live chat under a YouTube stream (MDRS-229)", async () => {
+    const html = await render(live());
+    expect(html).toContain(
+      'data-live-chat="https://www.youtube.com/watch?v=live123abc"'
+    );
+    expect(html.indexOf("Yayını buradan izleyebilirsin.")).toBeLessThan(
+      html.indexOf("data-live-chat")
+    );
+  });
+
+  it("has no chat for a stream it cannot frame, nor without a stream", async () => {
+    expect(
+      await render(live({ liveStreamUrl: "https://example.org/x" }))
+    ).not.toContain("data-live-chat");
+    expect(await render(live({ liveStreamUrl: null }))).not.toContain(
+      "data-live-chat"
+    );
   });
 
   it("draws no player when the API sent no stream (tedris/16 §3)", async () => {

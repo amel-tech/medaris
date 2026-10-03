@@ -531,6 +531,10 @@
     "liveStreamPlaceholder": "Canlı yayın burada oynar",
     "liveStreamOpen": "Yayını aç",
     "liveStreamText": "Yayını buradan izleyebilirsin. Soru sormak ve konuşmaya katılmak için celseye katıl.",
+    "liveChatTitle": "Canlı sohbet",
+    "liveChatShow": "Sohbeti göster",
+    "liveChatHide": "Gizle",
+    "liveChatText": "Sohbet YouTube'dan gelir ve YouTube'da görünür. Yazmak için bu tarayıcıda YouTube'a giriş yapmış olmalısın.",
     "noReplacement": "Müderris yeni bir zaman belirlerse onu Programım’da görürsün.",
     "recordingCardTitle": "Ders kaydı",
     "noRecording": "Bu celsede henüz ders kaydı yok."

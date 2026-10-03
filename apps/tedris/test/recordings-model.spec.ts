@@ -4,6 +4,7 @@ import {
   embedUrlOf,
   firstPlayable,
   groupByWeek,
+  liveChatUrlOf,
   liveEmbedUrlOf,
   recordingAction,
   recordingsTabPath,
@@ -78,6 +79,56 @@ describe("embedUrlOf (MDRS-162)", () => {
     expect(liveEmbedUrlOf("https://www.youtube.com/watch?v=live123abc")).toBe(
       "https://www.youtube-nocookie.com/embed/live123abc"
     );
+  });
+});
+
+describe("liveChatUrlOf (MDRS-229)", () => {
+  const opts = { host: "tedris.medaris.app", dark: false };
+
+  it("builds YouTube's chat from the video id, for this page's host", () => {
+    const url = new URL(
+      liveChatUrlOf("https://www.youtube.com/live/ybHyHDBiRoE?si=x", opts) ?? ""
+    );
+    expect(url.origin + url.pathname).toBe("https://www.youtube.com/live_chat");
+    expect(url.searchParams.get("v")).toBe("ybHyHDBiRoE");
+    expect(url.searchParams.get("embed_domain")).toBe("tedris.medaris.app");
+    expect(url.searchParams.has("si")).toBe(false);
+    expect(url.searchParams.has("dark_theme")).toBe(false);
+  });
+
+  it("asks for the dark chat on a dark page", () => {
+    const url = liveChatUrlOf("https://youtu.be/ybHyHDBiRoE", {
+      ...opts,
+      dark: true,
+    });
+    expect(new URL(url ?? "").searchParams.get("dark_theme")).toBe("1");
+  });
+
+  it("accepts every link the player accepts", () => {
+    for (const link of [
+      "https://www.youtube.com/watch?v=ybHyHDBiRoE",
+      "https://m.youtube.com/live/ybHyHDBiRoE",
+      "https://www.youtube.com/embed/ybHyHDBiRoE",
+      "https://youtu.be/ybHyHDBiRoE",
+    ]) {
+      expect(liveChatUrlOf(link, opts), link).toContain("v=ybHyHDBiRoE");
+    }
+  });
+
+  it("gives no chat for a link without a video id, another host, or no host", () => {
+    expect(
+      liveChatUrlOf("https://www.youtube.com/@medaris/live", opts)
+    ).toBeNull();
+    expect(
+      liveChatUrlOf("https://example.org/live/ybHyHDBiRoE", opts)
+    ).toBeNull();
+    expect(
+      liveChatUrlOf("http://www.youtube.com/live/ybHyHDBiRoE", opts)
+    ).toBeNull();
+    expect(liveChatUrlOf(null, opts)).toBeNull();
+    expect(
+      liveChatUrlOf("https://youtu.be/ybHyHDBiRoE", { host: "", dark: false })
+    ).toBeNull();
   });
 });
 
