@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/amel-tech/medaris/compare/teskilat-v0.2.0...teskilat-v0.2.1) (2026-10-03)
+
+
+### Bug Fixes
+
+* **tedrisat, teskilat:** MDRS-129 report the configured environment on /health ([#116](https://github.com/amel-tech/medaris/issues/116)) ([11a3392](https://github.com/amel-tech/medaris/commit/11a3392be5f36b8c4847deb6e8ebe5062392fe36))
+
 ## [0.2.0](https://github.com/amel-tech/medaris/compare/teskilat-v0.1.1...teskilat-v0.2.0) (2026-09-28)
 
 
