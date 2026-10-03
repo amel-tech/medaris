@@ -2860,6 +2860,32 @@
       "generic": "That could not be completed. Try again in a moment.",
       "link": "The meeting link must start with https://. Copy the link again from the platform.",
       "time": "Enter the date and the time."
+    },
+    "stream": {
+      "column": "Live stream",
+      "set": "Added",
+      "missing": "Not added",
+      "add": "Add live stream",
+      "update": "Update live stream",
+      "addLabel": "Add a live stream link to the session on {when}",
+      "updateLabel": "Update the live stream link of the session on {when}",
+      "formTitle": "Live stream link of the session on {when}",
+      "formLabel": "Live stream link",
+      "formHelp": "Start the stream on YouTube with “Allow embedding” turned on; talebe see the link while the session is live.",
+      "remove": "Remove link",
+      "saved": "Live stream link saved",
+      "removed": "Live stream link removed",
+      "problems": {
+        "empty": "Enter the stream’s YouTube link.",
+        "channel": "This is a channel link; the stream’s own link is needed. Paste the address of the stream’s page in YouTube Studio or the stream’s watch link.",
+        "notYoutube": "A live stream can only be added from YouTube.",
+        "notHttps": "The link must start with https://.",
+        "noVideo": "No stream was found in this link. Paste the address of the stream’s page in YouTube Studio or the stream’s watch link."
+      },
+      "errors": {
+        "notLive": "Only live sessions can take a stream link.",
+        "cancelled": "This session is cancelled; its stream link cannot be changed."
+      }
     }
   },
   "DeckRequestsPage": {

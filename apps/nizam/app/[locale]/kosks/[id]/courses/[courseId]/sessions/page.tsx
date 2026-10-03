@@ -5,7 +5,11 @@ import { env } from "~/env";
 import { CourseLoadFailed } from "~/features/courses/components/course-load-failed";
 import { SessionsView } from "~/features/courses/components/sessions-view";
 import { recordingCounts } from "~/features/courses/present";
-import { getRecordings, readCourseScope } from "~/features/courses/reads";
+import {
+  getLiveStreams,
+  getRecordings,
+  readCourseScope,
+} from "~/features/courses/reads";
 
 // Behind the sign-in middleware, and per caller.
 export const dynamic = "force-dynamic";
@@ -26,9 +30,10 @@ export default async function Page({
 }) {
   const { locale, id, courseId } = await params;
   setRequestLocale(locale);
-  const [scope, recordings] = await Promise.all([
+  const [scope, recordings, liveStreams] = await Promise.all([
     readCourseScope(id, courseId),
     getRecordings(courseId),
+    getLiveStreams(courseId),
   ]);
   if (scope.kind === "missing") notFound();
   if (scope.kind === "denied") forbidden();
@@ -40,6 +45,7 @@ export default async function Page({
         kosk={{ id: scope.kosk.id, name: scope.kosk.name }}
         course={scope.course}
         recordings={Object.fromEntries(recordingCounts(recordings))}
+        liveStreams={liveStreams}
         tedrisUrl={env.TEDRIS_URL || null}
       />
     </div>

@@ -20,6 +20,7 @@ vi.mock("~/features/courses/actions", () => ({
   readCourse: vi.fn(),
   patchCourse: vi.fn(),
   patchLesson: vi.fn(),
+  setLiveStream: vi.fn(),
   cancelSession: vi.fn(),
   saveCurriculum: vi.fn(),
 }));
@@ -296,6 +297,7 @@ describe("Celseler (nizam 56)", () => {
         kosk={{ id: "k1", name: "N" }}
         course={course}
         recordings={{ l1: 2 }}
+        liveStreams={null}
         tedrisUrl={null}
       />
     );
