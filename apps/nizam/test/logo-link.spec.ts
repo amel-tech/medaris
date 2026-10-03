@@ -10,13 +10,18 @@ const appDir = join(__dirname, "..", "app");
 
 describe("nizam's logo link (MDRS-101)", () => {
   it("points at a page that exists under [locale]", () => {
-    const page = join(
+    const dir = join(
       appDir,
       "[locale]",
-      ...homeHref.split("/").filter(Boolean),
-      "page.tsx"
+      ...homeHref.split("/").filter(Boolean)
     );
-    expect(existsSync(page)).toBe(true);
+    const groups = existsSync(dir)
+      ? readdirSync(dir, { withFileTypes: true })
+          .filter((entry) => entry.isDirectory() && /^\(.+\)$/.test(entry.name))
+          .map((entry) => join(dir, entry.name, "page.tsx"))
+      : [];
+    const pages = [join(dir, "page.tsx"), ...groups];
+    expect(pages.some((page) => existsSync(page))).toBe(true);
   });
 
   it("is open to every visitor, signed in or not", () => {
