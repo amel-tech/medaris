@@ -12,6 +12,7 @@ import {
 import { CourseNotFoundError } from "../../../src/course/errors/course-not-found.error";
 import { ASSIGNED_ROLES } from "../../../src/database/schema/role-assignment.schema";
 import type { KoskService } from "../../../src/kosk/kosk.service";
+import type { NotificationService } from "../../../src/notification/notification.service";
 
 const KOSK = "b0000000-0000-4000-8000-0000000000aa";
 const COURSE = "b0000000-0000-4000-8000-0000000000bb";
@@ -58,14 +59,17 @@ function build(
     findById: vi.fn().mockResolvedValue(entry()),
     lift: vi.fn().mockResolvedValue({ id: BAN_ID }),
     isBarredFromCourse: vi.fn().mockResolvedValue(false),
+    nazimRecipients: vi.fn().mockResolvedValue(["n1", "m1"]),
     ...repo,
   };
+  const notify = vi.fn().mockResolvedValue(undefined);
   const service = new BanService(
     full as unknown as BanRepository,
     { exists: vi.fn().mockResolvedValue(true) } as unknown as KoskService,
-    { isSystemAdmin: () => admin } as unknown as AuthzService
+    { isSystemAdmin: () => admin } as unknown as AuthzService,
+    { notify } as unknown as NotificationService
   );
-  return { service, repo: full };
+  return { service, repo: full, notify };
 }
 
 const dto = { userId: TALEBE, scope: "COURSE", reason: "  Hakaret.  " };
@@ -84,6 +88,55 @@ describe("BanService (MDRS-177)", () => {
           extendedFromCourseId: null,
         })
       );
+    });
+
+    it("tells the nazımları of a new course ban, but not the one who placed it", async () => {
+      const { service, notify } = build([ASSIGNED_ROLES.MUDERRIS]);
+      await service.create({ sub: "m1" }, COURSE, dto);
+      expect(notify).toHaveBeenCalledTimes(1);
+      const sent = notify.mock.calls[0];
+      expect(sent).toHaveLength(1);
+      expect(sent[0]).toMatchObject({
+        userId: "n1",
+        type: "COURSE_BAN_PLACED",
+        targetType: "KOSK",
+        targetId: KOSK,
+        params: {
+          source: "Nûruosmaniye Köşkü",
+          courseTitle: "Emsile",
+          talebeName: TALEBE,
+          actorName: "m1",
+          reason: "r",
+        },
+      });
+    });
+
+    it("words a whole-köşk ban as KOSK_BAN_PLACED", async () => {
+      const { service, notify } = build([ASSIGNED_ROLES.KOSK_NAZIM], {
+        findEntry: vi.fn().mockResolvedValue(entry({ scope: "KOSK" })),
+      });
+      await service.create({ sub: "m1" }, COURSE, { ...dto, scope: "KOSK" });
+      expect(notify.mock.calls[0][0]).toMatchObject({
+        type: "KOSK_BAN_PLACED",
+      });
+    });
+
+    it("stays silent for a second request that placed nothing new", async () => {
+      const { service, notify } = build([ASSIGNED_ROLES.MUDERRIS], {
+        create: vi
+          .fn()
+          .mockResolvedValue({ ban: { id: BAN_ID }, created: false }),
+      });
+      await service.create({ sub: "m1" }, COURSE, dto);
+      expect(notify).not.toHaveBeenCalled();
+    });
+
+    it("keeps the ban when the notification cannot be written", async () => {
+      const { service, notify } = build([ASSIGNED_ROLES.MUDERRIS]);
+      notify.mockRejectedValue(new Error("db down"));
+      await expect(
+        service.create({ sub: "m1" }, COURSE, dto)
+      ).resolves.toMatchObject({ id: BAN_ID });
     });
 
     it("refuses an unknown course", async () => {

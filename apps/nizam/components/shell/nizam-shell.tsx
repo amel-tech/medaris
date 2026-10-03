@@ -5,11 +5,16 @@ import {
   getManagedKosks,
   getPendingEnrollments,
 } from "~/features/kosks/actions";
+import { bellLabel } from "~/features/notifications/notification-view";
+import { getUnreadNotificationCount } from "~/features/notifications/reads";
 import { auth } from "~/lib/auth_options";
 import { navGroups, roleLabelKey, shellVariant } from "~/lib/shell-nav";
 import { ShellFrame, type ShellModel } from "./shell-frame";
 
-type Messages = (key: string) => string;
+type Messages = (
+  key: string,
+  values?: Record<string, string | number>
+) => string;
 
 /** The most köşks one nazım's scope picker lists; tedrisat caps a page at this many. */
 const MAX_KOSKS = 50;
@@ -44,6 +49,9 @@ export async function NizamShell({
     getMyAssignments(),
   ]);
   const variant = shellVariant(me);
+  // The bell's name and the menu badge say how many are unread; a person with
+  // no menu has no bell to name.
+  const unread = variant === "none" ? 0 : await getUnreadNotificationCount();
 
   const kosks =
     variant === "kosk"
@@ -69,8 +77,8 @@ export async function NizamShell({
       label: t(`items.${item.label}`),
       path: item.path,
       icon: item.icon,
-      // notifications have no source yet (nizam/46, 47): drawn without a badge
       counts: item.countKey === "applications" ? applications : undefined,
+      count: item.countKey === "notifications" ? unread : undefined,
       countLabel: item.countLabel ? t(`countLabels.${item.countLabel}`) : "",
     })),
   }));
@@ -90,7 +98,10 @@ export async function NizamShell({
       close: t("close"),
       switchKosk: t("switchKosk"),
       userLink: t("userLink"),
-      bell: t("bell"),
+      bell: bellLabel(unread, {
+        plain: t("bell"),
+        unread: (count) => t("bellUnread", { count }),
+      }),
       kosk: t("roles.kosk"),
     },
   };

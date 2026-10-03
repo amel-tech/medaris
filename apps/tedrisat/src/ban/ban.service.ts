@@ -1,9 +1,10 @@
 import { AuthenticatedUser, AuthzService } from "@medaris/common";
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { CourseNotFoundError } from "../course/errors/course-not-found.error";
 import { BAN_SCOPES, type BanScope } from "../database/schema/ban.schema";
 import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
 import { KoskService } from "../kosk/kosk.service";
+import { NotificationService } from "../notification/notification.service";
 import {
   BanRepository,
   type IBan,
@@ -76,12 +77,15 @@ interface IStanding {
  */
 @Injectable()
 export class BanService {
+  private readonly logger = new Logger(BanService.name);
+
   // Must stay value imports: `import type` erases them from
   // `design:paramtypes` and Nest can no longer inject them.
   constructor(
     private readonly repo: BanRepository,
     private readonly koskService: KoskService,
-    private readonly authz: AuthzService
+    private readonly authz: AuthzService,
+    private readonly notifications: NotificationService
   ) {}
 
   /** Bars a talebe from a course or its köşk; a second request for the same bar is the first. */
@@ -118,7 +122,7 @@ export class BanService {
       );
     }
 
-    const { ban } = await this.repo.create({
+    const { ban, created } = await this.repo.create({
       userId: dto.userId,
       koskId: course.koskId,
       courseId: scope === BAN_SCOPES.COURSE ? course.id : null,
@@ -130,6 +134,7 @@ export class BanService {
       bannedRole: standing.role,
       bannedTier: standing.tier,
     });
+    if (created) await this.announce(ban.id, user.sub);
     return this.view(ban.id, standing.tier, new Set());
   }
 
@@ -233,7 +238,7 @@ export class BanService {
         "Only a köşk nazımı or above may widen a ban to the whole köşk"
       );
     }
-    const { ban: widened } = await this.repo.create({
+    const { ban: widened, created } = await this.repo.create({
       userId: ban.userId,
       koskId: ban.koskId,
       courseId: null,
@@ -245,6 +250,7 @@ export class BanService {
       bannedRole: standing.role,
       bannedTier: standing.tier,
     });
+    if (created) await this.announce(widened.id, user.sub);
     return this.view(widened.id, standing.tier, new Set());
   }
 
@@ -273,6 +279,46 @@ export class BanService {
     });
     if (!lifted) throw new BanAlreadyLiftedError(banId);
     return this.view(banId, standing.tier, new Set());
+  }
+
+  /**
+   * Tells the köşk's nazımları and the Medaris nazımları of a new ban
+   * (MDRS-179), all but the one who placed it. A notification that cannot be
+   * written never undoes the ban: the failure is logged and the ban stands.
+   */
+  private async announce(banId: string, actorId: string): Promise<void> {
+    try {
+      const entry = await this.repo.findEntry(banId);
+      if (!entry) return;
+      const recipients = (await this.repo.nazimRecipients(entry.koskId)).filter(
+        (id) => id !== actorId
+      );
+      if (recipients.length === 0) return;
+      const person = (p: { name: string | null; email: string | null }) =>
+        p.name ?? p.email ?? "";
+      const params = {
+        source: entry.koskName ?? "",
+        koskName: entry.koskName ?? "",
+        courseTitle: entry.courseTitle ?? entry.extendedFromCourseTitle ?? "",
+        talebeName: person(entry.user),
+        actorName: person(entry.bannerPerson),
+        reason: entry.reason,
+      };
+      await this.notifications.notify(
+        ...recipients.map((userId) => ({
+          userId,
+          type:
+            entry.scope === BAN_SCOPES.KOSK
+              ? ("KOSK_BAN_PLACED" as const)
+              : ("COURSE_BAN_PLACED" as const),
+          targetType: "KOSK" as const,
+          targetId: entry.koskId,
+          params,
+        }))
+      );
+    } catch (error) {
+      this.logger.error(`Could not notify of ban ${banId}`, error);
+    }
   }
 
   /** Whether an open ban bars the person from the course. */
