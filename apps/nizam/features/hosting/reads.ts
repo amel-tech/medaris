@@ -33,17 +33,32 @@ export const getHostingRights = async (
   }
 };
 
-/** The medreses "Barındırma hakkı ver" can pick from: the open list, hidden ones left out by the API. */
-export const MADRASAH_OPTIONS_LIMIT = 50;
+/** The API clamps `limit` to this; the options are read a page at a time. */
+export const MADRASAH_OPTIONS_PAGE_SIZE = 50;
 
+/**
+ * The medreses "Barındırma hakkı ver" can pick from: the whole open list,
+ * hidden ones left out by the API. Every page is read, so the köşks that
+ * already hold the right cannot push a medrese out of the picker or turn it
+ * into the "none left" sentence. Null if any page fails.
+ */
 export const getMadrasahOptions = async (): Promise<
   MadrasahResponse[] | null
 > => {
   try {
-    const page = await (await api()).madrasahs.getAllMadrasahs({
-      limit: MADRASAH_OPTIONS_LIMIT,
-    });
-    return page.items;
+    const { madrasahs } = await api();
+    const options: MadrasahResponse[] = [];
+    for (let page = 1; ; page += 1) {
+      const read = await madrasahs.getAllMadrasahs({
+        page,
+        limit: MADRASAH_OPTIONS_PAGE_SIZE,
+      });
+      options.push(...read.items);
+      // An empty page ends it too, so a total that never fills cannot loop.
+      if (read.items.length === 0 || options.length >= read.total) {
+        return options;
+      }
+    }
   } catch (error) {
     console.error("Error fetching the medreses:", error);
     return null;

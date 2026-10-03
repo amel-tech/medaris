@@ -22,7 +22,8 @@ is not linked to stack #130 until the tedris lane (26, 29–36) is merged in.
   hosting köşks, per-status counts and the passive medreses the warning names.
   One SQL statement with correlated subqueries per page. The open
   `GET /madrasahs` now leaves hidden medreses out, and a hidden medrese's
-  `/overview` answers 404.
+  `/overview` and `GET /madrasahs/:id` answer 404 (`findOpenById`; the writes
+  that return the medrese they changed still read it with `findById`).
 - `POST /madrasahs` now takes `headMuderrisUserId` (required) and an optional
   `handle` (made from the name, numbered when taken); medrese and başmüderris
   grant are one transaction with an `audit_log` row.
@@ -53,9 +54,10 @@ opened inside a dialog sat under the dialog's viewport and could not be clicked
   dialog on a passive row is the same picker in a small dialog; nizam/22 (a later
   package) may replace it.
 - `[locale]/kosks/[id]/ayarlar/barindirma` (+ `loading`): the table, "Barındırma
-  hakkı ver" (a Select of the open medrese list, the ones holding the right left
-  out) and the withdrawal dialog with the open courses and the two answers. No
-  answer is preselected; with no open course there is no question and KEEP is sent.
+  hakkı ver" (a Select of the whole open medrese list, read page by page, the
+  ones holding the right left out) and the withdrawal dialog with the open
+  courses and the two answers. No answer is preselected; with no open course
+  there is no question and KEEP is sent.
 - i18n: `MadrasahsPage`, `HeadPicker`, `OpenMadrasahDialog`, `AssignHeadDialog`,
   `HostingPage`, `GrantDialog`, `RevokeDialog` in tr, en and ar.
 
@@ -75,22 +77,47 @@ opened inside a dialog sat under the dialog's viewport and could not be clicked
 
 ## Verified
 
-- tedrisat against a real Postgres: `madrasah-directory.e2e.spec.ts` (22),
-  `hosting.e2e.spec.ts` (18), `madrasah-archive-migration.e2e.spec.ts` (migration
-  and rollback), `madrasah.e2e.spec.ts` adjusted; unit specs for the handle.
-- nizam-web: vitest (`madrasahs.spec.tsx`, `hosting.spec.tsx`) and Playwright
-  `e2e/madrasahs.e2e.ts` (12 specs) against the running API, a private Postgres
-  database and the real Keycloak with the `e2e-*` accounts: counts equal the
-  database's, passive/hidden/active rows, restore, appoint (real directory
-  lookup through `tedrisat-admin`), open (audit row per search, 409 under its
-  field), 403 for a Medaris nazımı and for another köşk, grant, withdraw with
-  KEEP and HIDE, Escape and "Vazgeç". Screens were compared with the canvas
-  PNGs at 1440 px and 390 px.
+- tedrisat against a real Postgres, run from `apps/tedrisat` on the head of this
+  fix (Docker, one Testcontainers Postgres):
+
+  ```
+  ./node_modules/.bin/vitest run -c vitest.integration.config.ts \
+    test/e2e/madrasah-directory.e2e.spec.ts test/e2e/hosting.e2e.spec.ts \
+    test/e2e/madrasah.e2e.spec.ts test/e2e/public-pages.e2e.spec.ts
+  ```
+
+  ```
+   ✓ test/e2e/hosting.e2e.spec.ts (18 tests)
+   ✓ test/e2e/madrasah-directory.e2e.spec.ts (24 tests)
+   ✓ test/e2e/madrasah.e2e.spec.ts (22 tests)
+   ✓ test/e2e/public-pages.e2e.spec.ts (30 tests)
+   Test Files  4 passed (4)
+        Tests  94 passed (94)
+  ```
+
+  `madrasah-archive-migration.e2e.spec.ts` (migration and rollback) and the unit
+  specs for the handle were not re-run for this note; the CI `Verify` job passed
+  on the head before this fix (`f29a2808`).
+- nizam-web unit specs, from `apps/nizam`:
+  `./node_modules/.bin/vitest run test/hosting-reads.spec.ts test/hosting.spec.tsx`
+  gives `Test Files  2 passed (2)`, `Tests  23 passed (23)` (the picker's four
+  and `hosting.spec.tsx`'s 19). `madrasahs.spec.tsx` was not re-run for this note.
+- nizam-web Playwright `e2e/madrasahs.e2e.ts`: the count is re-counted with
+  `./node_modules/.bin/playwright test --list e2e/madrasahs.e2e.ts` from
+  `apps/nizam`, which ends `Total: 12 tests in 1 file`. The run itself (against
+  the running API, a private Postgres database and the real Keycloak with the
+  `e2e-*` accounts) was not repeated for this note; its checks, as done when the
+  package was written: counts equal the database's, passive/hidden/active rows,
+  restore, appoint (real directory lookup through `tedrisat-admin`), open (audit
+  row per search, 409 under its field), 403 for a Medaris nazımı and for another
+  köşk, grant, withdraw with KEEP and HIDE, Escape and "Vazgeç". Screens were
+  compared with the canvas PNGs at 1440 px and 390 px.
 
 ## Not verified / not done
 
-- The list shows at most 50 medreses (a "{n} tanesi gösteriliyor" line says so);
-  no paging. "Barındırma hakkı ver" offers the first 50 of the open list.
+- The Medreseler table shows at most 50 medreses (a "{n} tanesi gösteriliyor"
+  line says so); no paging. "Barındırma hakkı ver" is not capped: it reads every
+  page of the open list (`getMadrasahOptions`).
 - Nothing yet stops a medrese without a right from opening a course in a köşk,
   and a passive medrese's page is not closed to visitors: the banner's
   sentences are the design's, the behaviour is not part of this package.
