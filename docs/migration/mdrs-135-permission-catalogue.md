@@ -214,6 +214,14 @@ $ grep -rnE '\bSCOPES\b|\bMATRIX\b' apps/tedrisat/src apps/tedrisat/test libs/co
 ```
 
 All 105 are migrated, none is left on a scope, and `SCOPES`, `MATRIX` and `auth-matrix.ts` are gone.
+
+Main then moved (`b451266c`) and brought one more handler on the old API: `GET /kosks/:id/dashboard`
+(MDRS-182, #176) came with `@Authz(SCOPES.EDIT, byExistingKosk)`. It asks what the köşk overview asks,
+`kosk.manage | platform.kosk_edit` (3d4e20e0), so the count is now 106 and `SCOPES` and `MATRIX` are
+still at 0. `GET /nizam/dashboard` has no `AuthzGuard` on purpose (the catalogue has no platform
+entity and no code for "open the Medaris home page"; the service asks for the role and cuts the page to
+the platform permissions held), and the route inventory lists both. Nothing else in main's nine
+commits (notifications, migration boot, the tedris and the sign-out work) asks who may do what.
 `@Authz` takes a catalogue code or a list (any one will do). The guard is unchanged: undecorated
 handlers still fall through, and `AuthzWiringAssertion` still refuses to boot a guarded handler that is
 neither decorated nor `@AuthzExempt`/`@AuthzPublic`.
@@ -352,6 +360,33 @@ $ pnpm run openapi:tedrisat && git diff --stat cd36d706 HEAD -- libs/services
 ```
 
 (the one OpenAPI line is a description that named `assign_muderris`; the generated client is unchanged.)
+
+After the hide kademe, the roster audit and the merge with main (`b451266c`), at `b3d04b55`:
+
+```
+$ cd libs/common && ./node_modules/.bin/vitest run
+ Test Files  10 passed (10)
+      Tests  140 passed (140)
+$ cd apps/tedrisat && ./node_modules/.bin/vitest run          # one run, on the merged tree
+ Test Files  1 failed | 133 passed (134)
+      Tests  1 failed | 1974 passed (1975)
+   Duration  863.23s
+$ cd apps/tedrisat && ./node_modules/.bin/vitest run test/e2e/madrasah-directory.e2e.spec.ts
+ Test Files  1 passed (1)
+      Tests  25 passed (25)
+$ cd apps/nizam && ./node_modules/.bin/vitest run      # Tests  615 passed (615)
+$ cd apps/nazir && ./node_modules/.bin/vitest run      # Tests  653 passed (653)
+$ cd apps/tedris && ./node_modules/.bin/vitest run     # Tests  5 failed | 582 passed (587)
+$ tsc: libs/common, libs/services, libs/ui (-b), apps/tedrisat, nizam, nazir, tedris: rc=0
+$ node tools/ci/assert-openapi-spec-fresh.mjs
+✔ openapi spec freshness: 165 paths, identical to what the exporter writes today
+```
+
+The one tedrisat failure was `madrasah-directory.e2e.spec.ts` › "answers 409 … 403 for anyone else", which
+asserted the old rule (the hidden medrese's own başmüderris refused); it is rewritten for the kademe rule
+in `b3d04b55` and passes, so the tree is 1 file and 1 test over the run above. The five `apps/tedris`
+failures are all `test/auth-entry.spec.ts` (`localStorage.clear` on an undefined `localStorage` under
+Node 26), a file this branch does not touch and which is identical to main's.
 The migration spec was written after the full run began and so is not in its 121 files; it passed
 on its own, as above. The suites above ran after the last source change.
 
