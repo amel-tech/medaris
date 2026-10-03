@@ -65,22 +65,6 @@
   "DataTable": {
     "noResults": "No results."
   },
-  "FlashCardContent": {
-    "card": "Card",
-    "flip": "Flip",
-    "flipTooltip": "Flip the card",
-    "markAsMemorized": "Mark as Memorized",
-    "markAsMemorizedTooltip": "Mark as memorized",
-    "markAsToReviewLater": "Mark as to review later",
-    "repeat": "Repeat",
-    "updating": "Updating..."
-  },
-  "FlashCardList": {
-    "noCardsFound": "No cards found yet."
-  },
-  "HomePage": {
-    "greeting": "Assalamu alaikum!"
-  },
   "KoskPage": {
     "kosks": "Köşkler",
     "uncategorized": "Diğer",

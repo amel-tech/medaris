@@ -96,7 +96,9 @@ src/models/FlashcardLabelResponse.ts
 src/models/FlashcardLabelingResponse.ts
 src/models/FlashcardProgressResponse.ts
 src/models/FlashcardResponse.ts
+src/models/FlashcardStudyRoundResponse.ts
 src/models/FlashcardType.ts
+src/models/FollowedKoskCourseResponse.ts
 src/models/GivenItemResponse.ts
 src/models/GivenKind.ts
 src/models/GrantHostingRightDto.ts
@@ -196,6 +198,7 @@ src/models/RemovedByResponse.ts
 src/models/RemovedEnrollmentResponse.ts
 src/models/ReplaceCourseDto.ts
 src/models/ResourceResponse.ts
+src/models/ReviewRating.ts
 src/models/RoleSummary.ts
 src/models/RosterEnrollmentResponse.ts
 src/models/RowError.ts

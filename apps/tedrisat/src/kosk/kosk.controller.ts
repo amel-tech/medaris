@@ -42,6 +42,7 @@ import {
 import { AuthenticatedUserRequest } from "../user/interfaces/authenticated-user-request.interface";
 import { maskKoskForAnonymous } from "./anonymous-mask";
 import { CreateKoskDto } from "./dto/create-kosk.dto";
+import { FollowedKoskCourseResponse } from "./dto/followed-course-response.dto";
 import { KoskDecksResponse } from "./dto/kosk-deck-response.dto";
 import { KoskManagedBy } from "./dto/kosk-managed-by.enum";
 import { KoskResponse } from "./dto/kosk-response.dto";
@@ -199,6 +200,34 @@ export class KoskController {
   @Get("fields")
   async listFields(): Promise<string[]> {
     return this.koskService.listFields();
+  }
+
+  @ApiOperation({
+    summary: "Courses of the köşks the caller follows",
+    description:
+      'Published courses of the köşks the caller follows, newest first, leaving out the courses they already applied to or are in (MDRS-165): Ana sayfa\'s "Takip ettiğin köşklerden".',
+    operationId: "getFollowedKoskCourses",
+  })
+  @ApiQuery({
+    name: "limit",
+    required: false,
+    type: Number,
+    description: "At most this many; 4 by default, 12 at most.",
+  })
+  @ApiOkResponse({ type: FollowedKoskCourseResponse, isArray: true })
+  // Exempt: the rows are chosen by the caller's own `sub` in the query, and no
+  // resource is named in the request. Declared before `:id` so `followed` is
+  // not read as an id.
+  @AuthzExempt()
+  @Get("followed/courses")
+  async findFollowedCourses(
+    @Req() request: AuthorizedRequest,
+    @Query("limit", new DefaultValuePipe(4), ParseIntPipe) limit: number
+  ): Promise<FollowedKoskCourseResponse[]> {
+    return this.koskService.findFollowedCourses(
+      request.user.sub,
+      Math.min(Math.max(limit, 1), 12)
+    );
   }
 
   @ApiOperation({

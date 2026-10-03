@@ -90,6 +90,22 @@ export const countCards = (cards: FlashcardResponse[]): CardCounts => {
   return counts;
 };
 
+/**
+ * How many of the cards wait for a repeat at `now` (MDRS-165): started, and
+ * their review time has come, or never set while learning. The same rule the
+ * API counts `dueCount` with, read off the progress rows the page already has.
+ */
+export const dueNow = (
+  cards: FlashcardResponse[],
+  now: Date = new Date()
+): number =>
+  cards.filter((card) => {
+    const progress = card.progress?.[0];
+    if (!progress || progress.status === "NEW") return false;
+    if (progress.dueAt) return new Date(progress.dueAt) <= now;
+    return progress.status === "LEARNING";
+  }).length;
+
 export const SAMPLE_CARDS = 6;
 export const READER_PAGE = 6;
 
@@ -318,7 +334,7 @@ const lastVowel = (word: string): string =>
   [...word].reverse().find((c) => TR_VOWELS.includes(c)) ?? "e";
 
 /** How a Turkish number is last said, whose vowel and final sound the suffix follows. */
-const trNumberWord = (n: number): string => {
+export const trNumberWord = (n: number): string => {
   if (n === 0) return "sıfır";
   const ones = [
     "",

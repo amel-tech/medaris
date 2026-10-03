@@ -12,6 +12,7 @@ import { Header } from "~/components/header/header";
 import { LegalFooter } from "~/components/legal-footer";
 import { ClientProviders } from "~/components/providers/client-providers";
 import { TabView } from "~/components/tab-view";
+import { auth } from "~/lib/auth_options";
 import { routing } from "~/lib/i18n/routing";
 
 export const metadata: Metadata = {
@@ -33,6 +34,7 @@ export default async function LocaleLayout({
   }
 
   setRequestLocale(locale);
+  const signedIn = Boolean(await auth());
 
   return (
     <html lang="tr" className="min-h-svh h-full">
@@ -46,7 +48,7 @@ export default async function LocaleLayout({
         <NextIntlClientProvider>
           <ClientProviders>
             <Header />
-            <TabView>{children}</TabView>
+            <TabView signedIn={signedIn}>{children}</TabView>
             <LegalFooter />
           </ClientProviders>
         </NextIntlClientProvider>

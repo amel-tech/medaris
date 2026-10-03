@@ -837,6 +837,47 @@
         ]
       }
     },
+    "/kosks/followed/courses": {
+      "get": {
+        "description": "Published courses of the köşks the caller follows, newest first, leaving out the courses they already applied to or are in (MDRS-165): Ana sayfa's \"Takip ettiğin köşklerden\".",
+        "operationId": "getFollowedKoskCourses",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "At most this many; 4 by default, 12 at most.",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FollowedKoskCourseResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Courses of the köşks the caller follows",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
     "/kosks/{id}": {
       "get": {
         "description": "Open to callers with no token (MDRS-122), except for an unlisted köşk (`isPrivate`), which answers them with the same 404 as a köşk that does not exist. A signed-in caller opens an unlisted köşk by its link.",
@@ -3695,6 +3736,46 @@
         ]
       }
     },
+    "/flashcard/decks/{id}/due": {
+      "get": {
+        "description": "The cards of the deck that wait for a repeat, most overdue first, then a few the caller has not started (MDRS-165). Each card carries the caller's own progress.",
+        "operationId": "getFlashcardStudyRound",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardStudyRoundResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such deck, or a private deck owned by another user — deliberately the same answer"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get today's study round of a deck",
+        "tags": [
+          "flashcard-cards"
+        ]
+      }
+    },
     "/flashcard/decks/{deckId}/cards": {
       "post": {
         "description": "Creates multiple flashcards within a specified deck. All cards will be assigned to the same deck and author.",
@@ -4102,6 +4183,47 @@
           }
         ],
         "summary": "Get the caller's decks with their progress",
+        "tags": [
+          "flashcard-decks"
+        ]
+      }
+    },
+    "/flashcard/decks/due": {
+      "get": {
+        "description": "The decks of the caller's collection with something to study (MDRS-165): first the ones with cards waiting for a repeat, most first, then the decks of other people that grew since the caller collected them.",
+        "operationId": "getFlashcardDecksDueToday",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "At most this many decks; 3 by default, 10 at most.",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FlashcardDeckSummaryResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The decks to study today",
         "tags": [
           "flashcard-decks"
         ]
@@ -7717,6 +7839,46 @@
           "limit"
         ]
       },
+      "FollowedKoskCourseResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "koskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "koskName": {
+            "type": "string"
+          },
+          "coverHue": {
+            "type": "number",
+            "description": "The cover's hue, 0–360."
+          },
+          "muderrisName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The first müderris by the order the course lists them in."
+          },
+          "muderrisIsImam": {
+            "type": "boolean",
+            "description": "That müderris is the course's imam."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "koskId",
+          "koskName",
+          "coverHue",
+          "muderrisIsImam"
+        ]
+      },
       "KoskDeckResponse": {
         "type": "object",
         "properties": {
@@ -11074,6 +11236,16 @@
           },
           "userId": {
             "type": "string"
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the card is due again (MDRS-165); null for a card nobody rated, which is due now if it is LEARNING."
+          },
+          "intervalDays": {
+            "type": "number",
+            "description": "The days between the last two reviews; 0 before the first."
           }
         },
         "required": [
@@ -11126,6 +11298,30 @@
           "authorId"
         ]
       },
+      "FlashcardStudyRoundResponse": {
+        "type": "object",
+        "properties": {
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FlashcardResponse"
+            }
+          },
+          "dueCount": {
+            "type": "number",
+            "description": "How many of `cards` are repeats that are due."
+          },
+          "newCount": {
+            "type": "number",
+            "description": "How many of `cards` are cards the caller has not started."
+          }
+        },
+        "required": [
+          "cards",
+          "dueCount",
+          "newCount"
+        ]
+      },
       "CreateFlashcardDto": {
         "type": "object",
         "properties": {
@@ -11152,6 +11348,15 @@
           "contentBack"
         ]
       },
+      "ReviewRating": {
+        "type": "string",
+        "enum": [
+          "HARD",
+          "MEDIUM",
+          "EASY"
+        ],
+        "description": "How hard the talebe found the card (MDRS-165). HARD and MEDIUM keep it LEARNING, EASY masters it; each sets when it is due again."
+      },
       "CreateFlashcardProgressDto": {
         "type": "object",
         "properties": {
@@ -11164,12 +11369,20 @@
               "NEW",
               "LEARNING",
               "MASTERED"
+            ],
+            "description": "The state to record. Required unless `rating` is sent; with a rating the server derives the state and the next review time and ignores this."
+          },
+          "rating": {
+            "description": "How hard the talebe found the card (MDRS-165). HARD and MEDIUM keep it LEARNING, EASY masters it; each sets when it is due again.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReviewRating"
+              }
             ]
           }
         },
         "required": [
-          "flashcardId",
-          "status"
+          "flashcardId"
         ]
       },
       "UpdateFlashcardDto": {
@@ -11474,7 +11687,7 @@
           },
           "dueCount": {
             "type": "number",
-            "description": "Cards waiting for a repeat today. The progress table keeps no review time, so this is the learning count until a scheduler exists."
+            "description": "Cards waiting for a repeat now (MDRS-165): started, and their review time has come, or they never got one while learning."
           },
           "addedSinceCollectedCount": {
             "type": "number",
