@@ -12,10 +12,8 @@ import {
   isEmailLike,
   nazirErrorKey,
   nazirRows,
-  PERMISSION_WINDOW_OPENS_AT,
   permissionLabel,
   permissionsLine,
-  permissionWindowOpen,
   personName,
   pickedPerson,
 } from "~/features/nazirs/nazirs";
@@ -56,26 +54,6 @@ const group = (name: string, id = name) => ({ id, name, permissions: [] });
 const grant = (code: string) => ({
   code,
   grantedAt: new Date("2026-09-12T09:00:00Z"),
-});
-
-describe("the version gate of 'Görevden al' and 'İzinleri düzenle'", () => {
-  it("opens on 4 Ekim 2026 at midnight in Istanbul and not a moment before", () => {
-    expect(new Date(PERMISSION_WINDOW_OPENS_AT).toISOString()).toBe(
-      "2026-10-03T21:00:00.000Z"
-    );
-    expect(permissionWindowOpen(Date.parse("2026-10-02T09:00:00+03:00"))).toBe(
-      false
-    );
-    expect(permissionWindowOpen(Date.parse("2026-10-03T23:59:59+03:00"))).toBe(
-      false
-    );
-    expect(permissionWindowOpen(Date.parse("2026-10-04T00:00:00+03:00"))).toBe(
-      true
-    );
-    expect(permissionWindowOpen(Date.parse("2026-12-01T00:00:00+03:00"))).toBe(
-      true
-    );
-  });
 });
 
 describe("permission sentences", () => {

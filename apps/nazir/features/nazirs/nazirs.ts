@@ -16,19 +16,6 @@ import type { Messages } from "~/lib/i18n/messages";
  * banner shows, what the table rows say, and the state machine of the dismissal.
  */
 
-/**
- * The window to dismiss a nazır and to hand out permissions ("Görevden al",
- * "İzinleri düzenle", "İzin ver") opens on 4 Ekim 2026, 00:00 in Istanbul (the
- * version gate, _kurallar 15); the screen never says why. One constant for
- * both, so that opening the window is a one-line change.
- */
-export const PERMISSION_WINDOW_OPENS_AT = Date.parse(
-  "2026-10-04T00:00:00+03:00"
-);
-
-export const permissionWindowOpen = (now: number): boolean =>
-  now >= PERMISSION_WINDOW_OPENS_AT;
-
 export type Person = Pick<NazimPersonResponse, "name" | "email">;
 
 /** The name, else the address, else `fallback`. */
