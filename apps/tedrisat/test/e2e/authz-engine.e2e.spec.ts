@@ -18,6 +18,7 @@ import {
   permissionGroupItems,
   permissionGroups,
 } from "../../src/database/schema/permission.schema";
+import { platformPolicies } from "../../src/database/schema/platform-policy.schema";
 import {
   ASSIGNED_ROLES,
   roleAssignments,
@@ -961,6 +962,117 @@ describe("The permission engine (MDRS-135, e2e)", () => {
         madrasahId: otherMadrasahId,
       }).expect(201);
       expect(byNazim.body.grantedBy.role).toBe("KOSK_NAZIM");
+    });
+  });
+
+  describe("what the loader reads from the database (review T4, T5, T10)", () => {
+    const passivate = () =>
+      db()
+        .update(roleAssignments)
+        .set({ revokedAt: new Date(), revokedBy: NAZIM_ID })
+        .where(
+          and(
+            eq(roleAssignments.scopeId, ownCourse),
+            eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
+          )
+        );
+
+    it("a deleted group stops carrying its permissions", async () => {
+      const groupId = await makeGroup("Kadro", [
+        PERMISSIONS.MADRASAH_STUDENTS_VIEW,
+      ]);
+      await grant(
+        NAZIR_ID,
+        { type: SCOPE_TYPES.MADRASAH, id: madrasahId },
+        { groupId }
+      );
+      await get(NAZIR_ID, `/madrasahs/${madrasahId}/students`).expect(200);
+      await db()
+        .update(permissionGroups)
+        .set({ deletedAt: new Date() })
+        .where(eq(permissionGroups.id, groupId));
+      await get(NAZIR_ID, `/madrasahs/${madrasahId}/students`).expect(403);
+    });
+
+    it("an 'every course' grant counts in the courses where its holder has a role, and nowhere else", async () => {
+      await grant(
+        DERS_ID,
+        { type: SCOPE_TYPES.COURSE, id: null },
+        { permission: PERMISSIONS.COURSE_EDIT },
+        { grantedBy: NAZIM_ID }
+      );
+      letThrough(await patch(DERS_ID, `/courses/${ownCourse}`));
+      // No role of theirs is on that course's chain.
+      await patch(DERS_ID, `/courses/${medreseCourse}`).expect(403);
+      // And someone with no role at all holds nothing from it.
+      await grant(
+        NEWCOMER_ID,
+        { type: SCOPE_TYPES.COURSE, id: null },
+        { permission: PERMISSIONS.COURSE_EDIT },
+        { grantedBy: NAZIM_ID }
+      );
+      await patch(NEWCOMER_ID, `/courses/${ownCourse}`).expect(403);
+    });
+
+    it("a platform policy that is on closes the ability for everyone below, and off leaves it", async () => {
+      const resource = { entity: "course" as const, id: ownCourse };
+      const open = async () =>
+        (await authz.effective(user(MUDERRIS_ID), resource))?.codes.has(
+          PERMISSIONS.SETTING_APPROVAL_OFF
+        );
+      expect(await open()).toBe(true);
+      await db()
+        .insert(platformPolicies)
+        .values({ key: "ALWAYS_REQUIRE_APPROVAL", enabled: true });
+      expect(await open()).toBe(false);
+      await db()
+        .update(platformPolicies)
+        .set({ enabled: false })
+        .where(eq(platformPolicies.key, "ALWAYS_REQUIRE_APPROVAL"));
+      expect(await open()).toBe(true);
+    });
+
+    it("the başnazım opening a passive course's content is on the record", async () => {
+      await passivate();
+      await get(ADMIN_ID, `/courses/${ownCourse}/enrollments`).expect(200);
+      const rows = await db()
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.action, "scope.passive_open"));
+      expect(rows.map((row) => row.actorId)).toEqual([ADMIN_ID]);
+    });
+
+    it("a Medaris nazımı without the grant cannot open a köşk", async () => {
+      await db().insert(roleAssignments).values({
+        userId: MEDARIS_ID,
+        role: ASSIGNED_ROLES.MEDARIS_NAZIM,
+        scopeType: SCOPE_TYPES.PLATFORM,
+        scopeId: null,
+        grantedBy: ADMIN_ID,
+      });
+      await post(MEDARIS_ID, "/kosks", { name: "Yeni Köşk" }).expect(403);
+    });
+
+    it("a köşk nazımı holds nothing in a sibling köşk or in its courses", async () => {
+      const [other] = await db()
+        .insert(kosks)
+        .values({ ownerId: OTHER_HEAD_ID, name: "İkinci Köşk" })
+        .returning();
+      const [otherCourse] = await db()
+        .insert(courses)
+        .values({
+          koskId: other.id,
+          authorId: OTHER_HEAD_ID,
+          title: "Öteki köşkün dersi",
+          status: CourseStatus.PUBLISHED,
+        })
+        .returning();
+      await patch(NAZIM_ID, `/kosks/${other.id}`, {
+        name: "Ele geçirildi",
+      }).expect(403);
+      await patch(NAZIM_ID, `/courses/${otherCourse.id}`).expect(403);
+      await get(NAZIM_ID, `/courses/${otherCourse.id}/enrollments`).expect(403);
+      letThrough(await patch(NAZIM_ID, `/courses/${ownCourse}`));
     });
   });
 

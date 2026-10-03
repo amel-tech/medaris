@@ -384,3 +384,114 @@ describe("AuthzService.can", () => {
     });
   });
 });
+
+describe("the decision and its audit rows (review T5, T8, L1)", () => {
+  const passive = { type: SCOPE_TYPES.COURSE, id: COURSE } as const;
+  const management = emptyContext({
+    chain: [passive, platform],
+    passiveScope: passive,
+    roles: [{ role: ASSIGNED_ROLES.MEDARIS_NAZIM, scope: platform }],
+    grants: [
+      {
+        scope: platform,
+        codes: [PERMISSIONS.PLATFORM_INACTIVE_SCOPES_MANAGE],
+        authority: "platform",
+      },
+    ],
+  });
+
+  it("computes, for every code of the catalogue, the same answer for the screens as for the route", async () => {
+    const ctx = emptyContext({
+      chain: [
+        { type: SCOPE_TYPES.COURSE, id: COURSE },
+        { type: SCOPE_TYPES.KOSK, id: KOSK },
+        platform,
+      ],
+      roles: [
+        {
+          role: ASSIGNED_ROLES.DERS_NAZIR,
+          scope: { type: SCOPE_TYPES.COURSE, id: COURSE },
+        },
+        {
+          role: ASSIGNED_ROLES.KOSK_NAZIM,
+          scope: { type: SCOPE_TYPES.KOSK, id: KOSK },
+        },
+      ],
+      grants: [
+        {
+          scope: { type: SCOPE_TYPES.COURSE, id: COURSE },
+          codes: [PERMISSIONS.COURSE_EDIT, PERMISSIONS.BAN_COURSE],
+          authority: null,
+        },
+      ],
+    });
+    const svc = service(resolverReturning(RELATIONS.ENROLLED), loaderOf(ctx));
+    const effective = await svc.effective(user(), course);
+    for (const code of Object.values(PERMISSIONS)) {
+      await expect(svc.can(user(), course, code), code).resolves.toBe(
+        effective?.codes.has(code) ?? false
+      );
+    }
+  });
+
+  it("writes the passive-open row for the başnazım's content read, and for no page view", async () => {
+    const audit = auditSink();
+    const svc = service(
+      resolverReturning(RELATIONS.PUBLIC),
+      loaderOf(
+        emptyContext({ chain: [passive, platform], passiveScope: passive })
+      ),
+      audit
+    );
+    const admin = user("admin", ["SYSTEM_ADMIN"]);
+    await svc.can(admin, course, PERMISSIONS.COURSE_VIEW);
+    expect(audit.record).not.toHaveBeenCalled();
+    await svc.can(admin, course, PERMISSIONS.COURSE_EDIT);
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: "admin",
+        action: "scope.passive_open",
+        entityId: COURSE,
+      })
+    );
+  });
+
+  it("writes nothing when platform management only views the page of a passive course (L1)", async () => {
+    const audit = auditSink();
+    const svc = service(
+      resolverReturning(RELATIONS.PUBLIC),
+      loaderOf(management),
+      audit
+    );
+    await expect(
+      svc.can(user("nazim"), course, PERMISSIONS.COURSE_VIEW)
+    ).resolves.toBe(true);
+    expect(audit.record).not.toHaveBeenCalled();
+    await expect(
+      svc.can(user("nazim"), course, PERMISSIONS.COURSE_STAFF_READ)
+    ).resolves.toBe(true);
+    expect(audit.record).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails the decision when the audit row cannot be written, and never allows it unrecorded", async () => {
+    const audit = { record: vi.fn().mockRejectedValue(new Error("db down")) };
+    const svc = service(
+      resolverReturning(RELATIONS.PUBLIC),
+      loaderOf(management),
+      audit
+    );
+    await expect(
+      svc.can(user("nazim"), course, PERMISSIONS.COURSE_STAFF_READ)
+    ).rejects.toThrow("db down");
+    const admin = user("admin", ["SYSTEM_ADMIN"]);
+    await expect(
+      service(
+        resolverReturning(RELATIONS.PUBLIC),
+        loaderOf(
+          emptyContext({ chain: [passive, platform], passiveScope: passive })
+        ),
+        audit
+      ).can(admin, course, PERMISSIONS.COURSE_EDIT)
+    ).rejects.toThrow("db down");
+  });
+});

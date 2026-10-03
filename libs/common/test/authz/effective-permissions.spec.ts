@@ -1,6 +1,7 @@
 import {
   ASSIGNED_ROLES,
   authorityAbove,
+  ENTITIES,
   effectivePermissions,
   type IAuthzFacts,
   type IHeldGrantCodes,
@@ -12,6 +13,7 @@ import {
   POLICY_KEYS,
   RELATIONS,
   ROLE_DEFAULT_PERMISSIONS,
+  relationCodes,
   SCOPE_TYPES,
   type ScopeRef,
 } from "../../src";
@@ -652,6 +654,118 @@ describe("what implies reading the roster and the content (review M1)", () => {
       const codes = held(courseFacts({ medrese }), [role(r, scope)]);
       expect(codes.has(P.COURSE_STAFF_READ), r).toBe(true);
       expect(codes.has(P.COURSE_VIEW_DETAILS), r).toBe(true);
+    }
+  });
+});
+
+describe("what must not be held, one case for each rule a mutation could drop (review T3, T6)", () => {
+  it("a köşk role does not keep a medrese-scoped grant alive: a köşk is not above a medrese", () => {
+    const codes = held(
+      courseFacts({ medrese: true }),
+      [role(ASSIGNED_ROLES.MEDARIS_NAZIM, platform)],
+      []
+    );
+    expect(codes.has(P.MADRASAH_BAN)).toBe(false);
+    const viaKosk = held(
+      courseFacts({ medrese: true }),
+      [role(ASSIGNED_ROLES.MEDRESE_NAZIR, kosk())],
+      [grant(madrasah(), [P.MADRASAH_BAN])]
+    );
+    expect(viaKosk.has(P.MADRASAH_BAN)).toBe(false);
+  });
+
+  it("a grant stored at the platform for a course code is not honoured: the code is not held there", () => {
+    const codes = held(
+      courseFacts(),
+      [role(ASSIGNED_ROLES.MEDARIS_NAZIM, platform)],
+      [grant(platform, [P.COURSE_EDIT])]
+    );
+    expect(codes.has(P.COURSE_EDIT)).toBe(false);
+  });
+
+  it("a grant at another course is not held in this one", () => {
+    const codes = held(
+      courseFacts(),
+      [role(ASSIGNED_ROLES.DERS_NAZIR, course())],
+      [grant(course(OTHER_COURSE), [P.COURSE_EDIT])]
+    );
+    expect(codes.has(P.COURSE_EDIT)).toBe(false);
+  });
+
+  it("a grant that carries a code no grant may carry is ignored", () => {
+    const codes = held(
+      courseFacts(),
+      [role(ASSIGNED_ROLES.KOSK_NAZIM, kosk())],
+      [grant(kosk(), [P.PERMISSION_GRANT])]
+    );
+    // The role's own default is the only way to hold it.
+    expect(
+      held(
+        courseFacts(),
+        [role(ASSIGNED_ROLES.DERS_NAZIR, course())],
+        [grant(course(), [P.PERMISSION_GRANT, P.COURSE_HIDE])]
+      ).has(P.PERMISSION_GRANT)
+    ).toBe(false);
+    expect(
+      held(
+        courseFacts(),
+        [role(ASSIGNED_ROLES.DERS_NAZIR, course())],
+        [grant(course(), [P.COURSE_HIDE])]
+      ).has(P.COURSE_HIDE)
+    ).toBe(false);
+    expect(codes.has(P.PERMISSION_GRANT)).toBe(true);
+  });
+
+  it("a role or a grant that ends exactly now is no longer held", () => {
+    const now = new Date("2026-10-03T12:00:00Z");
+    expect(
+      effectivePermissions(
+        courseFacts(),
+        [role(ASSIGNED_ROLES.MUDERRIS, course(), now)],
+        [],
+        now
+      ).codes.has(P.COURSE_EDIT)
+    ).toBe(false);
+    expect(
+      effectivePermissions(
+        courseFacts(),
+        [role(ASSIGNED_ROLES.DERS_NAZIR, course())],
+        [grant(course(), [P.COURSE_EDIT], null, now)],
+        now
+      ).codes.has(P.COURSE_EDIT)
+    ).toBe(false);
+    expect(
+      effectivePermissions(
+        courseFacts(),
+        [role(ASSIGNED_ROLES.MUDERRIS, course(), new Date(now.getTime() + 1))],
+        [],
+        now
+      ).codes.has(P.COURSE_EDIT)
+    ).toBe(true);
+  });
+
+  it("a köşk-scoped grant of the medrese's work does not count in a medrese course, and does in a köşk's own", () => {
+    const grants = [grant(kosk(), [P.COURSE_OPEN_STANDALONE])];
+    const roles = [role(ASSIGNED_ROLES.MEDARIS_NAZIM, platform)];
+    expect(
+      held(courseFacts({ medrese: true }), roles, grants).has(
+        P.COURSE_OPEN_STANDALONE
+      )
+    ).toBe(false);
+    expect(
+      held(courseFacts(), roles, grants).has(P.COURSE_OPEN_STANDALONE)
+    ).toBe(true);
+  });
+
+  it("a public deck may be viewed and a private one created, and never managed, by any caller", () => {
+    const codes = relationCodes(ENTITIES.FLASHCARD_DECK, RELATIONS.PUBLIC);
+    expect(codes).toEqual([P.DECK_VIEW, P.DECK_CREATE_PRIVATE]);
+    for (const code of [
+      P.DECK_MANAGE_CARDS,
+      P.DECK_MANAGE_PRIVATE,
+      P.DECK_CREATE_CARD,
+    ]) {
+      expect(codes, code).not.toContain(code);
     }
   });
 });

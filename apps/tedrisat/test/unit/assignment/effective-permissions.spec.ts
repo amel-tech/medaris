@@ -64,9 +64,15 @@ describe("buildEffectivePermissions (MDRS-169)", () => {
       [{ role: "MUDERRIS", ...courseA }],
       [{ ...courseB, codes: [PERMISSIONS.COURSE_EDIT] }]
     );
-    expect(
-      groups.find((g) => g.role === "MUDERRIS")?.permissions
-    ).not.toContain(PERMISSIONS.KOSK_MANAGE);
+    // The müderris of course A holds exactly what the role gives there, and
+    // nothing from course B's grant (the assertion here once named
+    // `kosk.manage`, which nothing in the test granted, so it could not fail:
+    // review T6).
+    const muderris = groups.find((g) => g.role === "MUDERRIS");
+    expect(muderris?.permissions).toEqual([
+      ...roleCodesAt("MUDERRIS", "course"),
+    ]);
+    expect(muderris?.scopes.map((s) => s.id)).toEqual(["c1"]);
     // And, as in the engine, it counts for nothing: no role held here covers
     // course B, and a permission never outlasts its role (MDRS-135).
     expect(groups.find((g) => g.scopes.some((s) => s.id === "c2"))).toBe(
