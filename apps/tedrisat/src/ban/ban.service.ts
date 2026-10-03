@@ -1,4 +1,4 @@
-import { AuthenticatedUser, AuthzService } from "@medaris/common";
+import { AuthenticatedUser, type PermissionCode } from "@medaris/common";
 import { Injectable, Logger } from "@nestjs/common";
 import { CourseNotFoundError } from "../course/errors/course-not-found.error";
 import { BAN_SCOPES, type BanScope } from "../database/schema/ban.schema";
@@ -12,20 +12,28 @@ import {
   type IBanFilter,
 } from "./ban.repository";
 import {
+  BanAuthority,
+  coursePlace,
+  type IBanHoldings,
+  type IBanPlace,
+  koskPlace,
+  madrasahPlace,
+  PLATFORM_PLACE,
+  placeOfBan,
+} from "./ban-authority";
+import {
+  IMPOSE_CODES,
+  LIFT_CODES,
+  PERMANENT_REQUEST_CODES,
+  READ_ALL_BANS_CODES,
+  READ_KOSK_BANS_CODES,
+} from "./ban-codes";
+import {
   BAN_TIERS,
-  type BanRole,
-  type BanTier,
-  highestRole,
   type IBanScopes,
-  type IHeldAssignment,
-  MADRASAH_WIDE_ROLES,
-  MAY_BAN_ROLES,
-  MAY_MODERATE_ROLES,
-  mayBanKosk,
   mayLift,
-  SYSTEM_ADMIN_ROLE,
-  standingAmong,
-  tierOfRole,
+  RUNS_COURSE_ROLES,
+  RUNS_MADRASAH_ROLES,
 } from "./ban-tier";
 import type {
   BanStatus,
@@ -86,19 +94,16 @@ export interface IMadrasahBanList {
   recentCount: number;
 }
 
-interface IStanding {
-  role: BanRole;
-  tier: BanTier;
-}
-
 /**
  * Bans (MDRS-177, screens nizam/41 and nizam/42): a talebe barred from a
  * course or a whole köşk, lifted again with a reason.
  *
- * Authorization is here, not in `@Authz`: the engine has no ban entity and
- * the decision is the kademe rule, which needs the ban in hand. The standing
- * of the caller is the highest-ranked role they hold where the ban sits;
- * SYSTEM_ADMIN is the top of the ladder (`ban-tier.ts`).
+ * Authorization is here, not in `@Authz`: the engine has no ban entity, and
+ * what a route asks depends on the ban in hand (its scope and where it sits).
+ * Since MDRS-205 every decision is the catalogue's (`ban-codes.ts`, asked of the
+ * engine by `BanAuthority`); the kademe (`ban-tier.ts`) only orders who may lift
+ * whom, by the rank of the highest role that confers the permission used.
+ * SYSTEM_ADMIN bypasses the catalogue and is the top of the ladder.
  */
 @Injectable()
 export class BanService {
@@ -109,8 +114,8 @@ export class BanService {
   constructor(
     private readonly repo: BanRepository,
     private readonly koskService: KoskService,
-    private readonly authz: AuthzService,
-    private readonly notifications: NotificationService
+    private readonly notifications: NotificationService,
+    private readonly authority: BanAuthority
   ) {}
 
   /** Bars a talebe from a course or its köşk; a second request for the same bar is the first. */
@@ -127,21 +132,31 @@ export class BanService {
       madrasahId: course.madrasahId,
     };
 
-    const standing = await this.standing(user, scopes);
-    if (!standing || !MAY_BAN_ROLES.includes(standing.role)) {
-      throw new BanForbiddenError("You may not bar talebe from this course");
-    }
     const scope = dto.scope as BanScope;
-    if (scope === BAN_SCOPES.KOSK && !mayBanKosk(standing.tier)) {
+    const held = await this.authority.holdingsOf(user);
+    const standing = this.authority.standing(
+      held,
+      scope === BAN_SCOPES.KOSK
+        ? koskPlace(course.koskId)
+        : coursePlace(course),
+      IMPOSE_CODES[scope]
+    );
+    if (!standing) {
       throw new BanForbiddenError(
-        "Only a köşk nazımı or above may bar a talebe from the whole köşk"
+        scope === BAN_SCOPES.KOSK
+          ? "You may not bar a talebe from the whole köşk"
+          : "You may not bar talebe from this course",
+        { permission: [...IMPOSE_CODES[scope]] }
       );
     }
     if (dto.userId === user.sub) {
       throw new BanTargetInvalidError("You cannot bar yourself");
     }
     const targetRoles = await this.repo.rolesHeld(dto.userId, scopes);
-    if (targetRoles.some((r) => MAY_BAN_ROLES.includes(r))) {
+    const protectedRoles = course.madrasahId
+      ? RUNS_MADRASAH_ROLES
+      : RUNS_COURSE_ROLES;
+    if (targetRoles.some((r) => protectedRoles.includes(r))) {
       throw new BanTargetInvalidError(
         "Someone who runs this course cannot be barred from it"
       );
@@ -164,10 +179,13 @@ export class BanService {
       await this.announce(ban.id, user.sub);
       await this.tellBarred(ban.id);
     }
-    return this.view(ban.id, standing.tier, new Set());
+    return this.view(ban.id, held, new Set());
   }
 
-  /** A köşk's bans for its nazım (and the başnazım), with the counts the tabs show. */
+  /**
+   * A köşk's bans for those the catalogue lets read them (`ban.manage_kosk`,
+   * `platform.ban_scoped`, `platform.ban_account`), with the counts the tabs show.
+   */
   async listForKosk(
     user: AuthenticatedUser,
     koskId: string,
@@ -176,13 +194,13 @@ export class BanService {
     if (!(await this.koskService.exists(koskId))) {
       throw new KoskNotFoundError(koskId);
     }
-    const standing = await this.standing(user, {
-      koskId,
-      courseId: null,
-      madrasahId: null,
-    });
-    if (!standing || standing.tier < BAN_TIERS.KOSK) {
-      throw new BanForbiddenError("You are not a nazım of this köşk");
+    const held = await this.authority.holdingsOf(user);
+    if (
+      !this.authority.standing(held, koskPlace(koskId), READ_KOSK_BANS_CODES)
+    ) {
+      throw new BanForbiddenError("You may not see this köşk's bans", {
+        permission: [...READ_KOSK_BANS_CODES],
+      });
     }
     const [entries, counts, open] = await Promise.all([
       this.repo.listByKosk(koskId, status),
@@ -195,7 +213,7 @@ export class BanService {
         .map(widenedKey)
     );
     return {
-      items: entries.map((e) => this.annotate(e, standing.tier, widened)),
+      items: entries.map((e) => this.annotate(e, held, widened)),
       activeCount: counts.active,
       liftedCount: counts.lifted,
       recentCount: counts.recent,
@@ -204,16 +222,18 @@ export class BanService {
 
   /**
    * Every köşk's bans for Medaris administration (MDRS-178, screen nizam/48):
-   * the başnazım and the Medaris nazımı. Counts are platform-wide, whatever
-   * the filter.
+   * the başnazım and a Medaris nazımı holding `platform.ban_scoped` or
+   * `platform.ban_account`. Counts are platform-wide, whatever the filter.
    */
   async listAll(
     user: AuthenticatedUser,
     filter: IBanFilter
   ): Promise<IAllBansList> {
-    const standing = await this.platformStanding(user);
-    if (!standing) {
-      throw new BanForbiddenError("Only Medaris administration sees all bans");
+    const held = await this.authority.holdingsOf(user);
+    if (!this.authority.standing(held, PLATFORM_PLACE, READ_ALL_BANS_CODES)) {
+      throw new BanForbiddenError("Only Medaris administration sees all bans", {
+        permission: [...READ_ALL_BANS_CODES],
+      });
     }
     const [{ items, total }, counts, open] = await Promise.all([
       this.repo.listAll(filter),
@@ -233,7 +253,7 @@ export class BanService {
         .map(widenedKey)
     );
     return {
-      items: items.map((e) => this.annotate(e, standing.tier, widened)),
+      items: items.map((e) => this.annotate(e, held, widened)),
       total,
       activeCount: counts.active,
       liftedCount: counts.lifted,
@@ -244,7 +264,8 @@ export class BanService {
   /**
    * Moves a course ban up to the whole köşk (MDRS-178, "Yasağı genişlet" and
    * "Köşkten de yasakla"): a new KOSK ban for the same person with its own
-   * reason, the course ban left standing. The köşk's nazım and above may.
+   * reason, the course ban left standing. Whoever may bar from the whole köşk
+   * may (`ban.manage_kosk`, `platform.ban_scoped`).
    */
   async extend(
     user: AuthenticatedUser,
@@ -257,15 +278,18 @@ export class BanService {
     if (ban.scope !== BAN_SCOPES.COURSE) {
       throw new BanTargetInvalidError("Only a course ban can be widened");
     }
-    const standing = await this.standingFor(user, ban);
-    if (
-      !standing ||
-      !MAY_BAN_ROLES.includes(standing.role) ||
-      !mayBanKosk(standing.tier)
-    ) {
-      throw new BanForbiddenError(
-        "Only a köşk nazımı or above may widen a ban to the whole köşk"
-      );
+    const held = await this.authority.holdingsOf(user);
+    const standing = ban.koskId
+      ? this.authority.standing(
+          held,
+          koskPlace(ban.koskId),
+          IMPOSE_CODES[BAN_SCOPES.KOSK]
+        )
+      : null;
+    if (!standing) {
+      throw new BanForbiddenError("You may not widen a ban to the whole köşk", {
+        permission: [...IMPOSE_CODES[BAN_SCOPES.KOSK]],
+      });
     }
     const { ban: widened, created } = await this.repo.create({
       userId: ban.userId,
@@ -284,10 +308,14 @@ export class BanService {
       await this.announce(widened.id, user.sub);
       await this.tellBarred(widened.id);
     }
-    return this.view(widened.id, standing.tier, new Set());
+    return this.view(widened.id, held, new Set());
   }
 
-  /** Lifts a ban with a reason, if the caller's kademe reaches the one that placed it. */
+  /**
+   * Lifts a ban with a reason. The caller needs the permission to ban at the
+   * ban's level (`ban-codes.ts`), and their kademe must reach the one that
+   * placed it: the level that placed it, or any level above.
+   */
   async lift(
     user: AuthenticatedUser,
     banId: string,
@@ -297,7 +325,11 @@ export class BanService {
     if (!ban) throw new BanNotFoundError(banId);
     if (ban.liftedAt) throw new BanAlreadyLiftedError(banId);
 
-    const standing = await this.standingFor(user, ban);
+    const held = await this.authority.holdingsOf(user);
+    const place = placeOfBan(ban, await this.madrasahOf(ban));
+    const standing = place
+      ? this.authority.standing(held, place, LIFT_CODES[ban.scope])
+      : null;
     if (!standing || !mayLift(standing.tier, ban.bannedTier)) {
       throw new BanLiftForbiddenError(banId);
     }
@@ -307,7 +339,7 @@ export class BanService {
       role: standing.role,
     });
     if (!lifted) throw new BanAlreadyLiftedError(banId);
-    return this.view(banId, standing.tier, new Set());
+    return this.view(banId, held, new Set());
   }
 
   /**
@@ -380,8 +412,8 @@ export class BanService {
 
   /**
    * A medrese's bans for its nazırs (nazir/11), with the counts the tabs show
-   * and, per row, what the caller's kademe lets them do. The controller has
-   * already authorized the caller against the medrese.
+   * and, per row, what the caller's permissions and kademe let them do. The
+   * controller has already authorized the caller against the medrese.
    */
   async listForMadrasah(
     user: AuthenticatedUser,
@@ -392,12 +424,11 @@ export class BanService {
       this.repo.listByMadrasah(madrasahId, query.status, query),
       this.repo.countsByMadrasah(madrasahId, new Date(Date.now() - RECENT_MS)),
       this.repo.openMadrasahBanUsers(madrasahId),
-      this.repo.rolesOf(user.sub),
+      this.authority.holdingsOf(user),
     ]);
-    const admin = this.authz.isSystemAdmin(user);
     return {
       items: entries.map((e) =>
-        this.annotateMadrasah(e, madrasahId, held, admin, widened)
+        this.annotateMadrasah(e, madrasahId, held, widened)
       ),
       activeCount: counts.active,
       liftedCount: counts.lifted,
@@ -408,8 +439,11 @@ export class BanService {
   /**
    * Bars a talebe from one of the medrese's courses or from the whole medrese
    * (nazir/10 and nazir/11 "Yasakla"); a second request for the same bar is the
-   * first. A medrese nazır's ban is the medrese's kademe: a köşk nazımı lifts
-   * it, a course's müderris does not.
+   * first. A medrese-wide ban takes `madrasah.ban` (or `platform.ban_scoped`);
+   * a ban from one course takes the course's own permission (`ban.course`),
+   * which the başmüderris holds in its medrese's courses and a Medaris nazımı
+   * holding only `platform.ban_scoped` does not. A medrese nazır's ban is the
+   * medrese's kademe: a köşk nazımı lifts it, a course's müderris does not.
    */
   async createInMadrasah(
     user: AuthenticatedUser,
@@ -431,23 +465,25 @@ export class BanService {
       madrasahId,
     };
 
-    const standing = await this.standing(
-      user,
-      scopes,
-      scope === BAN_SCOPES.MADRASAH ? MADRASAH_WIDE_ROLES : MAY_MODERATE_ROLES
-    );
+    const held = await this.authority.holdingsOf(user);
+    const place: IBanPlace =
+      scope === BAN_SCOPES.MADRASAH || !course
+        ? madrasahPlace(madrasahId)
+        : coursePlace(course);
+    const standing = this.authority.standing(held, place, IMPOSE_CODES[scope]);
     if (!standing) {
       throw new BanForbiddenError(
         scope === BAN_SCOPES.MADRASAH
-          ? "Only a medrese nazır or above may bar a talebe from the whole medrese"
-          : "You may not bar talebe in this medrese"
+          ? "You may not bar a talebe from the whole medrese"
+          : "You may not bar talebe from this course",
+        { permission: [...IMPOSE_CODES[scope]] }
       );
     }
     if (dto.userId === user.sub) {
       throw new BanTargetInvalidError("You cannot bar yourself");
     }
     const targetRoles = await this.repo.rolesHeld(dto.userId, scopes);
-    if (targetRoles.some((r) => MAY_MODERATE_ROLES.includes(r))) {
+    if (targetRoles.some((r) => RUNS_MADRASAH_ROLES.includes(r))) {
       throw new BanTargetInvalidError(
         "Someone who runs this medrese or course cannot be barred from it"
       );
@@ -466,7 +502,7 @@ export class BanService {
       bannedTier: standing.tier,
     });
     if (created) await this.tellBarred(ban.id);
-    return this.madrasahView(ban.id, user, madrasahId);
+    return this.madrasahView(ban.id, held, madrasahId);
   }
 
   /**
@@ -488,11 +524,16 @@ export class BanService {
       throw new BanNotEscalatableError(banId);
     }
 
-    const standing = await this.standingFor(user, ban, MADRASAH_WIDE_ROLES);
+    const held = await this.authority.holdingsOf(user);
+    const standing = this.authority.standing(
+      held,
+      madrasahPlace(madrasahId),
+      IMPOSE_CODES[BAN_SCOPES.MADRASAH]
+    );
     if (!standing) {
-      throw new BanForbiddenError(
-        "Only a medrese nazır or above may widen a ban to the medrese"
-      );
+      throw new BanForbiddenError("You may not widen a ban to the medrese", {
+        permission: [...IMPOSE_CODES[BAN_SCOPES.MADRASAH]],
+      });
     }
     const { ban: wide, created } = await this.repo.create({
       userId: ban.userId,
@@ -507,7 +548,7 @@ export class BanService {
       bannedTier: standing.tier,
     });
     if (created) await this.tellBarred(wide.id);
-    return this.madrasahView(wide.id, user, madrasahId);
+    return this.madrasahView(wide.id, held, madrasahId);
   }
 
   /**
@@ -537,11 +578,16 @@ export class BanService {
       );
     }
 
-    const standing = await this.standingFor(user, ban, MADRASAH_WIDE_ROLES);
+    const held = await this.authority.holdingsOf(user);
+    const standing = this.authority.standing(
+      held,
+      madrasahPlace(madrasahId),
+      PERMANENT_REQUEST_CODES
+    );
     if (!standing) {
-      throw new BanForbiddenError(
-        "Only a medrese nazır or above may ask for a permanent ban"
-      );
+      throw new BanForbiddenError("You may not ask for a permanent ban", {
+        permission: [...PERMANENT_REQUEST_CODES],
+      });
     }
     const created = await this.repo.requestPermanent({
       banId,
@@ -550,7 +596,7 @@ export class BanService {
       role: standing.role,
     });
     if (!created) throw new BanPermanentRequestExistsError(banId);
-    return this.madrasahView(banId, user, madrasahId);
+    return this.madrasahView(banId, held, madrasahId);
   }
 
   /** Whether an open ban bars the person from the course. */
@@ -575,91 +621,86 @@ export class BanService {
 
   private async view(
     banId: string,
-    viewerTier: BanTier,
+    held: IBanHoldings,
     widened: Set<string>
   ): Promise<IBanView> {
     const entry = await this.repo.findEntry(banId);
     if (!entry) throw new BanNotFoundError(banId);
-    return this.annotate(entry, viewerTier, widened);
+    return this.annotate(entry, held, widened);
+  }
+
+  /** What the caller may do to an open ban, from what they hold at the place it sits. */
+  private mayLiftEntry(entry: IBanEntry, held: IBanHoldings): boolean {
+    if (entry.liftedAt !== null) return false;
+    const place = placeOfBan(entry, entry.placeMadrasahId);
+    const standing = place
+      ? this.authority.standing(held, place, LIFT_CODES[entry.scope])
+      : null;
+    return standing !== null && mayLift(standing.tier, entry.bannedTier);
   }
 
   private annotate(
     entry: IBanEntry,
-    viewerTier: BanTier,
+    held: IBanHoldings,
     widened: Set<string>
   ): IBanView {
     const isOpen = entry.liftedAt === null;
     return {
       ...entry,
-      viewerMayLift: isOpen && mayLift(viewerTier, entry.bannedTier),
+      viewerMayLift: this.mayLiftEntry(entry, held),
       viewerMayExtend:
         isOpen &&
         entry.scope === BAN_SCOPES.COURSE &&
-        mayBanKosk(viewerTier) &&
-        !widened.has(widenedKey(entry)),
+        entry.koskId !== null &&
+        !widened.has(widenedKey(entry)) &&
+        this.authority.standing(
+          held,
+          koskPlace(entry.koskId),
+          IMPOSE_CODES[BAN_SCOPES.KOSK]
+        ) !== null,
     };
   }
 
   private async madrasahView(
     banId: string,
-    user: AuthenticatedUser,
+    held: IBanHoldings,
     madrasahId: string
   ): Promise<IMadrasahBanView> {
-    const [entry, widened, held] = await Promise.all([
+    const [entry, widened] = await Promise.all([
       this.repo.findEntry(banId),
       this.repo.openMadrasahBanUsers(madrasahId),
-      this.repo.rolesOf(user.sub),
     ]);
     if (!entry) throw new BanNotFoundError(banId);
-    return this.annotateMadrasah(
-      entry,
-      madrasahId,
-      held,
-      this.authz.isSystemAdmin(user),
-      widened
-    );
+    return this.annotateMadrasah(entry, madrasahId, held, widened);
   }
 
   /**
-   * The medrese list's version of `annotate`: the caller's kademe is looked up
-   * per row, over the roles they hold, since a ban's course and köşk differ
-   * from row to row.
+   * The medrese list's version of `annotate`: each action is asked of the
+   * catalogue for the row, over what the caller holds, so a nazır given only
+   * `madrasah.ban` sees a medrese-wide ban liftable and a course ban not.
    */
   private annotateMadrasah(
     entry: IBanEntry,
     madrasahId: string,
-    held: readonly IHeldAssignment[],
-    admin: boolean,
+    held: IBanHoldings,
     widened: Set<string>
   ): IMadrasahBanView {
-    const scopes = {
-      koskId: entry.koskId,
-      courseId: entry.courseId,
-      madrasahId,
-    };
-    const tier = (allowed: readonly BanRole[]): BanTier | null => {
-      const role = admin
-        ? SYSTEM_ADMIN_ROLE
-        : standingAmong(held, scopes, allowed);
-      return role ? tierOfRole(role) : null;
-    };
     const isOpen = entry.liftedAt === null;
-    const actsForMadrasah = tier(MADRASAH_WIDE_ROLES) !== null;
-    const lifter = tier(MAY_MODERATE_ROLES);
+    const at = (codes: readonly PermissionCode[]) =>
+      this.authority.standing(held, madrasahPlace(madrasahId), codes) !== null;
     return {
       ...entry,
-      viewerMayLift:
-        isOpen && lifter !== null && mayLift(lifter, entry.bannedTier),
+      viewerMayLift: this.mayLiftEntry(entry, held),
       viewerMayEscalate:
         isOpen &&
         entry.scope === BAN_SCOPES.COURSE &&
-        actsForMadrasah &&
+        at(IMPOSE_CODES[BAN_SCOPES.MADRASAH]) &&
         !widened.has(entry.userId),
       viewerMayRequestPermanent:
         isOpen &&
         entry.bannedTier < BAN_TIERS.PLATFORM &&
         entry.permanentRequestedAt === null &&
-        actsForMadrasah,
+        at(PERMANENT_REQUEST_CODES),
     };
   }
 
@@ -668,51 +709,5 @@ export class BanService {
     if (ban.madrasahId) return ban.madrasahId;
     if (!ban.courseId) return null;
     return (await this.repo.findCourse(ban.courseId))?.madrasahId ?? null;
-  }
-
-  /** The caller's highest standing where the ban sits, among the roles given. */
-  private async standingFor(
-    user: AuthenticatedUser,
-    ban: IBan,
-    allowed: readonly BanRole[] = MAY_MODERATE_ROLES
-  ): Promise<IStanding | null> {
-    return this.standing(
-      user,
-      {
-        koskId: ban.koskId,
-        courseId: ban.courseId,
-        madrasahId: await this.madrasahOf(ban),
-      },
-      allowed
-    );
-  }
-
-  /** The standing of Medaris administration, or null for anyone else. */
-  private async platformStanding(
-    user: AuthenticatedUser
-  ): Promise<IStanding | null> {
-    if (this.authz.isSystemAdmin(user)) {
-      return { role: SYSTEM_ADMIN_ROLE, tier: tierOfRole(SYSTEM_ADMIN_ROLE) };
-    }
-    return (await this.repo.holdsPlatformRole(user.sub, "MEDARIS_NAZIM"))
-      ? { role: "MEDARIS_NAZIM", tier: tierOfRole("MEDARIS_NAZIM") }
-      : null;
-  }
-
-  private async standing(
-    user: AuthenticatedUser,
-    scopes: IBanScopes,
-    allowed: readonly BanRole[] = MAY_BAN_ROLES
-  ): Promise<IStanding | null> {
-    if (this.authz.isSystemAdmin(user)) {
-      return { role: SYSTEM_ADMIN_ROLE, tier: tierOfRole(SYSTEM_ADMIN_ROLE) };
-    }
-    const held = await this.repo.rolesHeld(user.sub, scopes);
-    // Only the roles that may moderate count: a medrese nazır's higher kademe
-    // must not hide the müderris role the same person also holds.
-    const role = highestRole(
-      held.filter((r) => allowed.includes(r)).map((r) => ({ role: r }))
-    );
-    return role ? { role, tier: tierOfRole(role) } : null;
   }
 }

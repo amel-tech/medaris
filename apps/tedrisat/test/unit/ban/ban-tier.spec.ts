@@ -1,22 +1,15 @@
 import {
   BAN_TIERS,
   highestRole,
-  type IHeldAssignment,
-  MADRASAH_WIDE_ROLES,
-  MAY_BAN_ROLES,
-  MAY_MODERATE_ROLES,
-  mayBanKosk,
   mayLift,
+  RUNS_COURSE_ROLES,
+  RUNS_MADRASAH_ROLES,
   SYSTEM_ADMIN_ROLE,
-  standingAmong,
   tierOfRole,
 } from "../../../src/ban/ban-tier";
-import {
-  ASSIGNED_ROLES,
-  SCOPE_TYPES,
-} from "../../../src/database/schema/role-assignment.schema";
+import { ASSIGNED_ROLES } from "../../../src/database/schema/role-assignment.schema";
 
-describe("ban tiers (MDRS-177)", () => {
+describe("ban tiers (MDRS-177, ordering only since MDRS-205)", () => {
   it("ranks the roles the way the designs read them", () => {
     expect(tierOfRole(ASSIGNED_ROLES.MUDERRIS)).toBe(BAN_TIERS.COURSE);
     expect(tierOfRole(ASSIGNED_ROLES.DERS_NAZIR)).toBe(BAN_TIERS.COURSE);
@@ -46,106 +39,19 @@ describe("ban tiers (MDRS-177)", () => {
     ).toBe(ASSIGNED_ROLES.KOSK_NAZIM);
   });
 
-  it("keeps a medrese nazır out of the roles that may ban in a köşk", () => {
-    expect(MAY_BAN_ROLES).not.toContain(ASSIGNED_ROLES.MEDRESE_NAZIR);
-    expect(MAY_BAN_ROLES).toContain(ASSIGNED_ROLES.MUDERRIS);
-  });
-
-  it("allows banning a whole köşk from the köşk nazımı up", () => {
-    expect(mayBanKosk(BAN_TIERS.COURSE)).toBe(false);
-    expect(mayBanKosk(BAN_TIERS.KOSK)).toBe(true);
-    expect(mayBanKosk(BAN_TIERS.PLATFORM)).toBe(true);
-  });
-
-  it("lets the medrese's own roles act on a ban beside those who ban (MDRS-187)", () => {
-    for (const role of MAY_BAN_ROLES) {
-      expect(MAY_MODERATE_ROLES).toContain(role);
+  it("protects those who run a course from a ban, and the medrese's own roles in a medrese's courses", () => {
+    for (const role of [
+      ASSIGNED_ROLES.MUDERRIS,
+      ASSIGNED_ROLES.DERS_NAZIR,
+      ASSIGNED_ROLES.KOSK_NAZIM,
+      ASSIGNED_ROLES.MEDARIS_NAZIM,
+      SYSTEM_ADMIN_ROLE,
+    ]) {
+      expect(RUNS_COURSE_ROLES).toContain(role);
+      expect(RUNS_MADRASAH_ROLES).toContain(role);
     }
-    expect(MAY_MODERATE_ROLES).toContain(ASSIGNED_ROLES.MEDRESE_NAZIR);
-    expect(MAY_MODERATE_ROLES).toContain(ASSIGNED_ROLES.MEDRESE_BASMUDERRIS);
-  });
-
-  it("keeps acting for the whole medrese to its nazırs and Medaris administration", () => {
-    expect([...MADRASAH_WIDE_ROLES].sort()).toEqual(
-      [
-        ASSIGNED_ROLES.MEDRESE_NAZIR,
-        ASSIGNED_ROLES.MEDRESE_BASMUDERRIS,
-        ASSIGNED_ROLES.MEDARIS_NAZIM,
-        SYSTEM_ADMIN_ROLE,
-      ].sort()
-    );
-  });
-
-  describe("standingAmong", () => {
-    const held = (
-      role: IHeldAssignment["role"],
-      scopeType: IHeldAssignment["scopeType"],
-      scopeId: string | null
-    ): IHeldAssignment => ({ role, scopeType, scopeId });
-    const here = { koskId: "k1", courseId: "c1", madrasahId: "m1" };
-
-    it("counts a role held platform-wide, or in the köşk, the course or the medrese where the ban sits", () => {
-      const among = (h: IHeldAssignment) =>
-        standingAmong([h], here, MAY_MODERATE_ROLES);
-      expect(
-        among(held(ASSIGNED_ROLES.MEDARIS_NAZIM, SCOPE_TYPES.PLATFORM, null))
-      ).toBe(ASSIGNED_ROLES.MEDARIS_NAZIM);
-      expect(
-        among(held(ASSIGNED_ROLES.KOSK_NAZIM, SCOPE_TYPES.KOSK, "k1"))
-      ).toBe(ASSIGNED_ROLES.KOSK_NAZIM);
-      expect(
-        among(held(ASSIGNED_ROLES.MUDERRIS, SCOPE_TYPES.COURSE, "c1"))
-      ).toBe(ASSIGNED_ROLES.MUDERRIS);
-      expect(
-        among(held(ASSIGNED_ROLES.MEDRESE_NAZIR, SCOPE_TYPES.MADRASAH, "m1"))
-      ).toBe(ASSIGNED_ROLES.MEDRESE_NAZIR);
-    });
-
-    it("ignores a role held somewhere else, and one that may not act", () => {
-      expect(
-        standingAmong(
-          [
-            held(ASSIGNED_ROLES.KOSK_NAZIM, SCOPE_TYPES.KOSK, "k2"),
-            held(ASSIGNED_ROLES.MUDERRIS, SCOPE_TYPES.COURSE, "c2"),
-            held(ASSIGNED_ROLES.MEDRESE_NAZIR, SCOPE_TYPES.MADRASAH, "m2"),
-          ],
-          here,
-          MAY_MODERATE_ROLES
-        )
-      ).toBeNull();
-      // A medrese-less köşk course has no medrese for a medrese role to bear on.
-      expect(
-        standingAmong(
-          [held(ASSIGNED_ROLES.MEDRESE_NAZIR, SCOPE_TYPES.MADRASAH, "m1")],
-          { koskId: "k1", courseId: "c1", madrasahId: null },
-          MAY_MODERATE_ROLES
-        )
-      ).toBeNull();
-      expect(
-        standingAmong(
-          [held(ASSIGNED_ROLES.KOSK_NAZIM, SCOPE_TYPES.KOSK, "k1")],
-          here,
-          MADRASAH_WIDE_ROLES
-        )
-      ).toBeNull();
-    });
-
-    it("takes the highest of those that bear", () => {
-      expect(
-        standingAmong(
-          [
-            held(ASSIGNED_ROLES.MUDERRIS, SCOPE_TYPES.COURSE, "c1"),
-            held(
-              ASSIGNED_ROLES.MEDRESE_BASMUDERRIS,
-              SCOPE_TYPES.MADRASAH,
-              "m1"
-            ),
-            held(ASSIGNED_ROLES.KOSK_NAZIM, SCOPE_TYPES.KOSK, "k1"),
-          ],
-          here,
-          MAY_MODERATE_ROLES
-        )
-      ).toBe(ASSIGNED_ROLES.KOSK_NAZIM);
-    });
+    expect(RUNS_COURSE_ROLES).not.toContain(ASSIGNED_ROLES.MEDRESE_NAZIR);
+    expect(RUNS_MADRASAH_ROLES).toContain(ASSIGNED_ROLES.MEDRESE_NAZIR);
+    expect(RUNS_MADRASAH_ROLES).toContain(ASSIGNED_ROLES.MEDRESE_BASMUDERRIS);
   });
 });

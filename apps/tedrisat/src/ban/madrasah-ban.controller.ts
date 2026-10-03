@@ -41,8 +41,10 @@ import {
  * medrese gave `madrasah.ban` (or a Medaris nazımı holding
  * `platform.ban_scoped`); a MEDRESE_NAZIR with no grant gets 403 here. Lifting,
  * widening and asking for a permanent ban are `BanController`'s routes by ban
- * id, and `BanService` makes their decision from the roles held — the ban
- * tiers keep their own rule and are not yet read from the catalogue.
+ * id. Every one of them is decided by `BanService` from the catalogue
+ * (MDRS-205, `ban-codes.ts`): this guard only lets in those who hold a
+ * medrese-level ban permission, and a ban from one course still takes the
+ * course's own `ban.course`.
  */
 @ApiTags("bans")
 @ApiBearerAuth()
@@ -56,7 +58,7 @@ export class MadrasahBanController {
   @ApiOperation({
     summary: "A medrese's bans, open or lifted (Yasaklamalar)",
     description:
-      "Newest first, with the counts the tabs show: the medrese-wide bans and the bans on the medrese's courses, hidden ones included. A köşk's own ban of the whole köşk is the köşk's list and is not here. `scope` narrows to the medrese-wide or the course bans, `courseId` to one course's. Each row says what the caller's kademe lets them do: `viewerMayLift`, `viewerMayEscalate`, `viewerMayRequestPermanent`.",
+      "Newest first, with the counts the tabs show: the medrese-wide bans and the bans on the medrese's courses, hidden ones included. A köşk's own ban of the whole köşk is the köşk's list and is not here. `scope` narrows to the medrese-wide or the course bans, `courseId` to one course's. Each row says what the caller may do, from the catalogue and the kademe: `viewerMayLift`, `viewerMayEscalate`, `viewerMayRequestPermanent`.",
     operationId: "listMadrasahBans",
   })
   @ApiQuery({ name: "status", required: false, enum: BAN_STATUSES })
@@ -102,7 +104,7 @@ export class MadrasahBanController {
     summary:
       "Bar a talebe from a course of the medrese, or from all of it (Yasakla)",
     description:
-      "Takes effect at once: the talebe cannot apply, apply again or leave, and loses the course's content, in the one course or in every course of the medrese. The ban is the medrese's kademe: a köşk nazımı or Medaris administration lifts it, a müderris does not. Barring someone already barred in that scope returns the standing ban. 404 for a course that is not the medrese's. The reason is kept for those who see and lift bans and never sent to the talebe.",
+      "Takes effect at once: the talebe cannot apply, apply again or leave, and loses the course's content, in the one course or in every course of the medrese. A medrese-wide ban takes `madrasah.ban` or `platform.ban_scoped`; a ban from one course takes `ban.course` in it, which the başmüderris holds and a Medaris nazımı holding only `platform.ban_scoped` does not. The ban is the medrese's kademe: a köşk nazımı or Medaris administration lifts it, a müderris does not. Barring someone already barred in that scope returns the standing ban. 404 for a course that is not the medrese's. The reason is kept for those who see and lift bans and never sent to the talebe.",
     operationId: "createMadrasahBan",
   })
   @ApiCreatedResponse({ type: MadrasahBanResponse })

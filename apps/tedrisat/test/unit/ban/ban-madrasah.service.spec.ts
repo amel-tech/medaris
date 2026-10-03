@@ -1,12 +1,15 @@
-import type { AuthzService } from "@medaris/common";
+import {
+  type IHeldGrantCodes,
+  type IHeldRole,
+  PERMISSIONS,
+  SCOPE_TYPES,
+} from "@medaris/common";
 import type { BanRepository, IBanEntry } from "../../../src/ban/ban.repository";
 import { BanService } from "../../../src/ban/ban.service";
-import type { IHeldAssignment } from "../../../src/ban/ban-tier";
-import {
-  ASSIGNED_ROLES,
-  SCOPE_TYPES,
-} from "../../../src/database/schema/role-assignment.schema";
+import { ASSIGNED_ROLES } from "../../../src/database/schema/role-assignment.schema";
 import type { KoskService } from "../../../src/kosk/kosk.service";
+import type { NotificationService } from "../../../src/notification/notification.service";
+import { authorityOf, grantOf, heldRole } from "../../helpers/ban-holdings";
 
 const MADRASAH = "b1000000-0000-4000-8000-0000000000aa";
 const KOSK = "b1000000-0000-4000-8000-0000000000bb";
@@ -34,29 +37,27 @@ const entry = (over: Partial<IBanEntry> = {}): IBanEntry => ({
   lifterPerson: null,
   courseTitle: "Emsile",
   madrasahName: "Süleymaniye Medresesi",
+  placeMadrasahId: MADRASAH,
   extendedFromCourseTitle: null,
   permanentRequestedAt: null,
   ...over,
 });
 
-const held = (
-  role: IHeldAssignment["role"],
-  scopeType: IHeldAssignment["scopeType"],
-  scopeId: string | null
-): IHeldAssignment => ({ role, scopeType, scopeId });
+const where = { koskId: KOSK, courseId: COURSE, madrasahId: MADRASAH };
+const as = (role: IHeldRole["role"]) => heldRole(role, where);
 
-const head = held(
-  ASSIGNED_ROLES.MEDRESE_BASMUDERRIS,
-  SCOPE_TYPES.MADRASAH,
-  MADRASAH
-);
-const koskNazim = held(ASSIGNED_ROLES.KOSK_NAZIM, SCOPE_TYPES.KOSK, KOSK);
+const head = as(ASSIGNED_ROLES.MEDRESE_BASMUDERRIS);
+const koskNazim = as(ASSIGNED_ROLES.KOSK_NAZIM);
 
-/** The flags `listForMadrasah` gives each of the rows, for a caller who holds `roles`. */
+/** The flags `listForMadrasah` gives each of the rows, for a caller who holds `roles` and `grants`. */
 async function flags(
   rows: IBanEntry[],
-  roles: IHeldAssignment[],
-  { admin = false, widened = [] as string[] } = {}
+  roles: IHeldRole[],
+  {
+    admin = false,
+    widened = [] as string[],
+    grants = [] as IHeldGrantCodes[],
+  } = {}
 ) {
   const repo = {
     listByMadrasah: vi.fn().mockResolvedValue(rows),
@@ -64,12 +65,12 @@ async function flags(
       .fn()
       .mockResolvedValue({ active: rows.length, lifted: 0, recent: 0 }),
     openMadrasahBanUsers: vi.fn().mockResolvedValue(new Set(widened)),
-    rolesOf: vi.fn().mockResolvedValue(roles),
   };
   const service = new BanService(
     repo as unknown as BanRepository,
     {} as KoskService,
-    { isSystemAdmin: () => admin } as unknown as AuthzService
+    {} as NotificationService,
+    authorityOf(roles, grants, admin)
   );
   const list = await service.listForMadrasah({ sub: "viewer" }, MADRASAH, {
     status: "ACTIVE",
@@ -132,9 +133,7 @@ describe("BanService.listForMadrasah (MDRS-187)", () => {
   it("gives a köşk nazım or a müderris alone no say over the medrese as a whole", async () => {
     const [course] = await flags(rows, [koskNazim]);
     expect(course).toEqual([true, false, false]);
-    const [asMuderris] = await flags(rows, [
-      held(ASSIGNED_ROLES.MUDERRIS, SCOPE_TYPES.COURSE, COURSE),
-    ]);
+    const [asMuderris] = await flags(rows, [as(ASSIGNED_ROLES.MUDERRIS)]);
     expect(asMuderris).toEqual([true, false, false]);
   });
 
@@ -166,5 +165,86 @@ describe("BanService.listForMadrasah (MDRS-187)", () => {
       [true, true, false],
       [false, false, false],
     ]);
+  });
+});
+
+describe("BanService.listForMadrasah from the catalogue (MDRS-205)", () => {
+  const rows = [
+    entry({ id: "course" }),
+    entry({
+      id: "wide",
+      userId: "u4",
+      scope: "MADRASAH",
+      koskId: null,
+      madrasahId: MADRASAH,
+      courseId: null,
+      bannedRole: "MEDRESE_BASMUDERRIS",
+      bannedTier: 2,
+    }),
+  ];
+  const nazir = as(ASSIGNED_ROLES.MEDRESE_NAZIR);
+  const medarisNazim = as(ASSIGNED_ROLES.MEDARIS_NAZIM);
+  const at = { type: SCOPE_TYPES.MADRASAH, id: MADRASAH } as const;
+
+  it("gives a medrese nazırı with no grant nothing, though its role reaches the medrese", async () => {
+    expect(await flags(rows, [nazir])).toEqual([
+      [false, false, false],
+      [false, false, false],
+    ]);
+  });
+
+  it("lets madrasah.ban lift and widen at the medrese's level, but not lift a course ban, and ask for nothing permanent", async () => {
+    expect(
+      await flags(rows, [nazir], {
+        grants: [grantOf([PERMISSIONS.MADRASAH_BAN], at)],
+      })
+    ).toEqual([
+      [false, true, false],
+      [true, false, false],
+    ]);
+  });
+
+  it("lets madrasah.permanent_ban_request ask on its own, and ban.course lift a course ban", async () => {
+    expect(
+      await flags(rows, [nazir], {
+        grants: [
+          grantOf(
+            [
+              PERMISSIONS.MADRASAH_PERMANENT_BAN_REQUEST,
+              PERMISSIONS.BAN_COURSE,
+            ],
+            at
+          ),
+        ],
+      })
+    ).toEqual([
+      [true, false, true],
+      [false, false, true],
+    ]);
+  });
+
+  it("lets a Medaris nazımı with platform.ban_scoped lift and widen at the medrese's level, never lift a course ban", async () => {
+    expect(
+      await flags(rows, [medarisNazim], {
+        grants: [grantOf([PERMISSIONS.PLATFORM_BAN_SCOPED])],
+      })
+    ).toEqual([
+      [false, true, false],
+      [true, false, false],
+    ]);
+    // With no grant it holds nothing at all.
+    expect(await flags(rows, [medarisNazim])).toEqual([
+      [false, false, false],
+      [false, false, false],
+    ]);
+  });
+
+  it("does not raise a müderris to the nazır's tier because the same person is a medrese nazırı too", async () => {
+    // The nazırı confers nothing; only the müderris does, at tier 1, so a ban the
+    // medrese's level placed (tier 2) stays out of reach.
+    const placedByHead = entry({ id: "by-head", bannedTier: 2 });
+    expect(
+      await flags([placedByHead], [nazir, as(ASSIGNED_ROLES.MUDERRIS)])
+    ).toEqual([[false, false, false]]);
   });
 });
