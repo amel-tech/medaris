@@ -1,6 +1,9 @@
 "use client";
 
-import type { CourseDetailResponse } from "@medaris/services/tedrisat";
+import type {
+  CourseDetailResponse,
+  RecordingResponse,
+} from "@medaris/services/tedrisat";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
@@ -23,6 +26,7 @@ import {
 import { firstSessionAt, formatFirstSession, isPreview } from "../preview";
 import { CourseAside } from "./course-aside";
 import { CourseProgramme, SAMPLE_ANCHOR } from "./course-programme";
+import { RecordingsTab } from "./recordings-tab";
 
 const joinNames = (names: string[], locale: string) =>
   new Intl.ListFormat(locale, { type: "conjunction" }).formatToParts(names);
@@ -41,6 +45,8 @@ export const CoursePage = ({
   nazirUrl = null,
   signInHref = `/auth/signin?callbackUrl=${encodeURIComponent(`/courses/${course.id}`)}`,
   registerHref = "/auth/register",
+  recordings = [],
+  initialTab,
   now: nowProp,
 }: {
   course: CourseDetailResponse;
@@ -59,12 +65,19 @@ export const CoursePage = ({
   nazirUrl?: string | null;
   signInHref?: string;
   registerHref?: string;
+  /**
+   * The recordings this caller may see (`GET /courses/:id/recordings`, MDRS-162):
+   * the API has already left out what they may not. Null when the read
+   * failed: the tab then offers a retry instead of the empty state.
+   */
+  recordings?: RecordingResponse[] | null;
+  /** The tab the page opens on: `?tab=kayitlar` from a session page. */
+  initialTab?: string;
   /** The instant the page is drawn at, for tests. */
   now?: number;
 }) => {
   const t = useTranslations("tedris.CoursePage");
   const locale = useLocale();
-  const [tab, setTab] = useState("mufredat");
   const [now] = useState(() => nowProp ?? Date.now());
   // Design tedris/14: a draft is shown to those who may edit it, as a preview.
   const preview = isPreview(course);
@@ -84,10 +97,22 @@ export const CoursePage = ({
 
   const tabs = [
     { value: "mufredat", label: t("tabCurriculum") },
-    { value: "kayitlar", label: t("tabRecordings") },
+    {
+      value: "kayitlar",
+      label: t("tabRecordings"),
+      ...(recordings && recordings.length > 0
+        ? { count: recordings.length }
+        : {}),
+    },
     ...(seat ? [{ value: "deste", label: t("tabDeck") }] : []),
     { value: "muderrisler", label: t("tabTeachers") },
   ];
+
+  const [tab, setTab] = useState(
+    tabs.some((candidate) => candidate.value === initialTab)
+      ? (initialTab as string)
+      : "mufredat"
+  );
 
   const typeLabel = (type: string) =>
     ({
@@ -221,7 +246,7 @@ export const CoursePage = ({
               <CourseProgramme course={course} state={state} now={now} />
             </TabsPanel>
             <TabsPanel value="kayitlar" className="pbs-4">
-              <EmptyState>{t("recordingsEmpty")}</EmptyState>
+              <RecordingsTab recordings={recordings} timeZone={zone} />
             </TabsPanel>
             {seat ? (
               <TabsPanel value="deste" className="pbs-4">

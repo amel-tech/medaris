@@ -54,6 +54,7 @@ import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
 import { LessonMutationResponse } from "./dto/course-response.dto";
 import { CreateWeekLessonDto } from "./dto/create-lesson.dto";
+import { RecordingResponse } from "./dto/recording-response.dto";
 import {
   CreateSessionBatchDto,
   SessionBatchPreviewResponse,
@@ -227,6 +228,28 @@ export class LessonController {
       sessionId,
       request.user ?? null
     );
+  }
+
+  @ApiOperation({
+    summary: "The course's lesson recordings, newest week first",
+    description:
+      "Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162).",
+    operationId: "listCourseRecordings",
+  })
+  @ApiOkResponse({ type: [RecordingResponse] })
+  @ApiNotFoundResponse({
+    description:
+      "No such course, or it is a draft, hidden or in an unlisted köşk to this caller (COURSE_NOT_FOUND).",
+  })
+  @Authz(SCOPES.VIEW, byParam(ENTITIES.COURSE))
+  @AuthzPublic()
+  @Header("Cache-Control", "private, no-store")
+  @Get("courses/:id/recordings")
+  async listRecordings(
+    @Req() request: PublicRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<RecordingResponse[]> {
+    return this.courseService.listRecordings(id, request.user ?? null);
   }
 
   @ApiOperation({

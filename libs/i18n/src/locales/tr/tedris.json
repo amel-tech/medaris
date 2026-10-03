@@ -104,13 +104,13 @@
     "lockedMark": ", kilitli",
     "lessonLocked": "Kilitli",
     "lessonCurrent": "Sıradaki",
+    "lessonCurrentLive": "Sıradaki · Şu an canlı",
     "cancelledBadge": "İptal edildi",
     "sampleHeading": "Örnek celse",
     "sampleMark": "Örnek celse",
     "sampleIntro": "Bu celseyi kaydolmadan izleyebilir, celse akışını ve kaynaklarını okuyabilirsin.",
     "agendaHeading": "Celse akışı",
     "sourceHeading": "Kaynaklar",
-    "recordingsEmpty": "Ders kayıtları, celse sayfalarında yayımlanır. Bu derste henüz yayımlanmış kayıt yok.",
     "deckEmpty": "Bu derse bağlı bir deste yok.",
     "teachers": "Müderrisler",
     "typeLive": "Canlı ders",
@@ -346,17 +346,16 @@
     "backToDecks": "Destelere dön"
   },
   "LessonLocked": {
-    "title": "Bu ders kayıtlı talebelere açık",
     "description": {
-      "signIn": "Dersin içeriğini, toplantı bağlantısını ve kaynaklarını görmek için giriş yapın.",
-      "apply": "Dersin içeriği, toplantı bağlantısı ve kaynakları kursa kayıtlı talebelere açılır. Kursun programını kurs sayfasında görebilirsiniz.",
-      "pending": "Başvurunuz köşk yöneticisine iletildi. Onaylandığında dersin içeriği burada açılır."
+      "signIn": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Giriş yapıp derse kaydolduğunda görebilirsin.",
+      "apply": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Derse kaydolduğunda görebilirsin.",
+      "pending": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Başvurun onaylandığında görebilirsin.",
+      "revoked": "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Bu derse erişimin kaldırıldı."
     },
     "signIn": "Giriş yap",
-    "apply": "Başvur",
-    "applying": "Gönderiliyor...",
+    "apply": "Kayıt başvurusu yap",
     "pending": "Başvurun onay bekliyor",
-    "backToCourse": "Kurs sayfasına dön"
+    "teachers": "Müderris {names}"
   },
   "MadrasahPage": {
     "kosks": "Köşkler",
@@ -511,8 +510,18 @@
     "opensOn": "{date} tarihinde açılır",
     "weekEmpty": "Bu hafta için henüz celse eklenmedi.",
     "rowCurrent": "Sıradaki",
+    "rowCurrentLive": "Sıradaki · Şu an canlı",
     "rowDone": ", sona erdi",
-    "rowCancelled": "İptal edildi"
+    "rowCancelled": "İptal edildi",
+    "recordingsGo": "Ders kayıtlarına git",
+    "elapsed": "{minutes} dakikadır sürüyor",
+    "recordingPlaceholder": "Ders kaydı burada oynar",
+    "recordingOpen": "Ders kaydını aç",
+    "recordingKind": "Ders kaydı",
+    "liveStreamTitle": "Canlı yayın",
+    "liveStreamPlaceholder": "Canlı yayın burada oynar",
+    "liveStreamOpen": "Yayını aç",
+    "liveStreamText": "Yayını buradan izleyebilirsin. Soru sormak ve konuşmaya katılmak için celseye katıl."
   },
   "AccountPage": {
     "pageTitle": "Hesap",

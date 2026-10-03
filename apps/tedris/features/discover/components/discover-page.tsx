@@ -4,6 +4,7 @@ import { Card } from "@medaris/ui/mds/card";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { getLocale, getTranslations } from "next-intl/server";
 import { AnonymousInvite } from "~/components/anonymous-invite";
+import type { LooseTranslator } from "~/lib/i18n/loose";
 import {
   type DiscoverQuery,
   discoverHref,
@@ -25,7 +26,8 @@ const Pagination = ({
 }: {
   query: DiscoverQuery;
   total: number;
-  t: Awaited<ReturnType<typeof getTranslations>>;
+  // Narrow on purpose: the full translator type hits TS2589 here (MDRS-162).
+  t: LooseTranslator;
 }) => {
   const pages = pageCount(total);
   if (pages <= 1) return null;

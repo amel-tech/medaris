@@ -11,6 +11,7 @@ import {
   courseTotals,
   courseViewState,
   hasEnded,
+  isRunning,
   nextSession,
   parseProgress,
   relativeDay,
@@ -174,6 +175,19 @@ describe("hasEnded", () => {
     const l = lesson("a", "2026-10-03T08:30:00Z", { durationMinutes: 45 });
     expect(hasEnded(l, Date.parse("2026-10-03T09:10:00Z"))).toBe(false);
     expect(hasEnded(l, Date.parse("2026-10-03T09:15:00Z"))).toBe(true);
+  });
+});
+
+describe("isRunning (tedris/16)", () => {
+  const l = lesson("a", "2026-10-03T08:46:00Z", { durationMinutes: 60 });
+  it("is on air between the start and the end", () => {
+    expect(isRunning(l, NOW)).toBe(true);
+    expect(isRunning(l, Date.parse("2026-10-03T08:45:00Z"))).toBe(false);
+    expect(isRunning(l, Date.parse("2026-10-03T09:46:00Z"))).toBe(false);
+  });
+  it("is never a cancelled or unscheduled session", () => {
+    expect(isRunning({ ...l, cancelledAt: new Date(NOW) }, NOW)).toBe(false);
+    expect(isRunning(lesson("b", null), NOW)).toBe(false);
   });
 });
 

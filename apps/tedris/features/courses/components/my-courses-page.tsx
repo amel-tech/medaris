@@ -9,6 +9,7 @@ import { Icon } from "@medaris/ui/mds/icon";
 import { Progress } from "@medaris/ui/mds/progress";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
+import type { LooseTranslator } from "~/lib/i18n/loose";
 import { joinRun } from "../join-run";
 import {
   formatLongDate,
@@ -17,7 +18,8 @@ import {
 } from "../my-courses";
 import { ApplicationRow } from "./application-row";
 
-type Translate = Awaited<ReturnType<typeof getTranslations>>;
+// Narrow on purpose: the full translator type hits TS2589 here (MDRS-162).
+type Translate = LooseTranslator;
 
 const SectionHead = ({
   id,

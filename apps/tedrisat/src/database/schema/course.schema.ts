@@ -10,12 +10,18 @@ import {
   pgTable as table,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { CourseLevel } from "../../course/domain/course-level.enum";
 import { CourseStatus } from "../../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../course/domain/enrollment-status.enum";
 import { LessonType } from "../../course/domain/lesson-type.enum";
+import {
+  RecordingProvider,
+  RecordingStatus,
+  RecordingVisibility,
+} from "../../course/domain/recording";
 import { kosks } from "./kosk.schema";
 import { madrasahs } from "./madrasah.schema";
 
@@ -24,6 +30,15 @@ export const courseLevel = pgEnum("course_level", CourseLevel);
 export const courseStatus = pgEnum("course_status", CourseStatus);
 export const lessonType = pgEnum("lesson_type", LessonType);
 export const enrollmentStatus = pgEnum("enrollment_status", EnrollmentStatus);
+export const recordingProvider = pgEnum(
+  "recording_provider",
+  RecordingProvider
+);
+export const recordingVisibility = pgEnum(
+  "recording_visibility",
+  RecordingVisibility
+);
+export const recordingStatus = pgEnum("recording_status", RecordingStatus);
 
 // Tables
 //
@@ -127,6 +142,10 @@ export const lessons = table(
     // backward compatibility with the original migration.
     scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
     meetingUrl: text("meeting_url"),
+    // The embeddable stream a LIVE session is watched on (MDRS-162), apart
+    // from `meeting_url`, which is where talebe join and speak. Course
+    // content, like the meeting link.
+    liveStreamUrl: text("live_stream_url"),
     agenda: jsonb("agenda").$type<{ time: string; title: string }[]>(),
     isPreview: boolean("is_preview").default(false).notNull(),
     orderIndex: integer("order_index").default(0).notNull(),
@@ -267,3 +286,30 @@ export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
     references: [courses.id],
   }),
 }));
+
+// The recording of one live session (MDRS-162): at most one per lesson, a link
+// to where it is hosted rather than a file. `url` stays null while the status
+// is PROCESSING, the "Hazırlanıyor" row of tedris/24. Reading it follows the
+// course's content rule unless `visibility` is PUBLIC. RESTRICT like every
+// foreign key here; `course/course-purge.ts` removes these before the lessons.
+export const lessonRecordings = table(
+  "lesson_recordings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    lessonId: uuid("lesson_id")
+      .references(() => lessons.id, { onDelete: "restrict" })
+      .notNull(),
+    title: text("title").notNull(),
+    provider: recordingProvider().default(RecordingProvider.OTHER).notNull(),
+    url: text("url"),
+    durationMinutes: integer("duration_minutes"),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }),
+    visibility: recordingVisibility()
+      .default(RecordingVisibility.ENROLLED)
+      .notNull(),
+    status: recordingStatus().default(RecordingStatus.PROCESSING).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("lesson_recordings_lesson_id_idx").on(t.lessonId)]
+);
