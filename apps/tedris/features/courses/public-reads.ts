@@ -1,9 +1,11 @@
 import {
   type CourseDetailResponse,
   createServerTedrisatAPIs,
+  type KoskDecksResponse,
   type KoskResponse,
   type MadrasahOverviewResponse,
   type MadrasahResponse,
+  type RecordingResponse,
   type SessionResponse,
 } from "@medaris/services/tedrisat";
 import { cache } from "react";
@@ -85,6 +87,32 @@ export const getSession = cache(
     )
 );
 
+/**
+ * The course's recordings for this caller (MDRS-162): everything for someone
+ * who may read the course's content, only the public ones for anyone else.
+ * Null when the read fails, so the tab can say it failed and offer a retry
+ * rather than claim there are none.
+ */
+export const getRecordings = (
+  courseId: string
+): Promise<RecordingResponse[] | null> =>
+  orNull(async () =>
+    (await viewerApi()).lessons.listCourseRecordings({ id: courseId })
+  );
+
 /** Whether the visitor has a usable token — what tedrisat will see. */
 export const isSignedIn = async (): Promise<boolean> =>
   Boolean(await getAccessToken());
+
+/**
+ * The köşk's decks for the signed-in caller (MDRS-159), or null for a visitor
+ * with no token and when the read fails: either way the page leaves the block
+ * out. `accessible` is the API's word on whether the caller belongs to the
+ * köşk.
+ */
+export const getKoskDecks = async (
+  id: string
+): Promise<KoskDecksResponse | null> => {
+  if (!(await isSignedIn())) return null;
+  return orNull(async () => (await viewerApi()).kosks.getKoskDecks({ id }));
+};

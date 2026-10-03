@@ -15,17 +15,623 @@
 
 import * as runtime from '../runtime';
 import type {
+  AppointMedarisNazimDto,
+  ApproveKoskApplicationDto,
+  AssignInactiveScopeDto,
+  AuditPageResponse,
+  AuditScopeKind,
+  AuditType,
   ChiefNazimResponse,
+  CreatePermissionGroupDto,
+  DeckPublishRequestListResponse,
+  DeckRequestCardsResponse,
+  DeckRequestStatus,
+  DeletePermissionGroupDto,
+  DismissMedarisNazimDto,
+  GivenItemResponse,
+  GroupUserResponse,
+  InactiveScopeResponse,
+  InactiveScopeType,
+  KoskApplicationDetailResponse,
+  KoskApplicationListResponse,
+  MedarisNazimResponse,
+  PermissionCatalogResponse,
+  PermissionGroupResponse,
+  PlatformPolicyKey,
+  PlatformPolicyListResponse,
+  RejectReasonDto,
+  ScopedPolicyListResponse,
+  SetNazimGrantsDto,
+  SetPlatformPolicyDto,
+  UpdatePermissionGroupDto,
 } from '../models/index';
 import {
+    AppointMedarisNazimDtoFromJSON,
+    AppointMedarisNazimDtoToJSON,
+    ApproveKoskApplicationDtoFromJSON,
+    ApproveKoskApplicationDtoToJSON,
+    AssignInactiveScopeDtoFromJSON,
+    AssignInactiveScopeDtoToJSON,
+    AuditPageResponseFromJSON,
+    AuditPageResponseToJSON,
+    AuditScopeKindFromJSON,
+    AuditScopeKindToJSON,
+    AuditTypeFromJSON,
+    AuditTypeToJSON,
     ChiefNazimResponseFromJSON,
     ChiefNazimResponseToJSON,
+    CreatePermissionGroupDtoFromJSON,
+    CreatePermissionGroupDtoToJSON,
+    DeckPublishRequestListResponseFromJSON,
+    DeckPublishRequestListResponseToJSON,
+    DeckRequestCardsResponseFromJSON,
+    DeckRequestCardsResponseToJSON,
+    DeckRequestStatusFromJSON,
+    DeckRequestStatusToJSON,
+    DeletePermissionGroupDtoFromJSON,
+    DeletePermissionGroupDtoToJSON,
+    DismissMedarisNazimDtoFromJSON,
+    DismissMedarisNazimDtoToJSON,
+    GivenItemResponseFromJSON,
+    GivenItemResponseToJSON,
+    GroupUserResponseFromJSON,
+    GroupUserResponseToJSON,
+    InactiveScopeResponseFromJSON,
+    InactiveScopeResponseToJSON,
+    InactiveScopeTypeFromJSON,
+    InactiveScopeTypeToJSON,
+    KoskApplicationDetailResponseFromJSON,
+    KoskApplicationDetailResponseToJSON,
+    KoskApplicationListResponseFromJSON,
+    KoskApplicationListResponseToJSON,
+    MedarisNazimResponseFromJSON,
+    MedarisNazimResponseToJSON,
+    PermissionCatalogResponseFromJSON,
+    PermissionCatalogResponseToJSON,
+    PermissionGroupResponseFromJSON,
+    PermissionGroupResponseToJSON,
+    PlatformPolicyKeyFromJSON,
+    PlatformPolicyKeyToJSON,
+    PlatformPolicyListResponseFromJSON,
+    PlatformPolicyListResponseToJSON,
+    RejectReasonDtoFromJSON,
+    RejectReasonDtoToJSON,
+    ScopedPolicyListResponseFromJSON,
+    ScopedPolicyListResponseToJSON,
+    SetNazimGrantsDtoFromJSON,
+    SetNazimGrantsDtoToJSON,
+    SetPlatformPolicyDtoFromJSON,
+    SetPlatformPolicyDtoToJSON,
+    UpdatePermissionGroupDtoFromJSON,
+    UpdatePermissionGroupDtoToJSON,
 } from '../models/index';
+
+export interface AppointMedarisNazimRequest {
+    appointMedarisNazimDto: AppointMedarisNazimDto;
+}
+
+export interface ApproveDeckPublishRequestRequest {
+    id: string;
+}
+
+export interface ApproveKoskApplicationRequest {
+    id: string;
+    approveKoskApplicationDto: ApproveKoskApplicationDto;
+}
+
+export interface AssignInactiveScopeRequest {
+    type: string;
+    id: string;
+    assignInactiveScopeDto: AssignInactiveScopeDto;
+}
+
+export interface CreatePermissionGroupRequest {
+    createPermissionGroupDto: CreatePermissionGroupDto;
+}
+
+export interface DeletePermissionGroupRequest {
+    id: string;
+    deletePermissionGroupDto: DeletePermissionGroupDto;
+}
+
+export interface DismissMedarisNazimRequest {
+    userId: string;
+    dismissMedarisNazimDto: DismissMedarisNazimDto;
+}
+
+export interface ExportAuditLogRequest {
+    actor?: string;
+    type?: AuditType;
+    scope?: AuditScopeKind;
+    from?: Date;
+    to?: Date;
+}
+
+export interface GetInactiveScopesRequest {
+    type?: InactiveScopeType;
+}
+
+export interface GetKoskApplicationRequest {
+    id: string;
+}
+
+export interface GetMedarisNazimGivenRequest {
+    userId: string;
+}
+
+export interface GetPermissionGroupUsersRequest {
+    id: string;
+}
+
+export interface ListAuditLogRequest {
+    actor?: string;
+    type?: AuditType;
+    scope?: AuditScopeKind;
+    from?: Date;
+    to?: Date;
+    cursor?: string;
+}
+
+export interface ListDeckPublishRequestsRequest {
+    status?: DeckRequestStatus;
+    page?: number;
+    limit?: number;
+}
+
+export interface ListKoskApplicationsRequest {
+    status?: ListKoskApplicationsStatusEnum;
+}
+
+export interface ReadDeckPublishRequestCardsRequest {
+    id: string;
+    all?: boolean;
+}
+
+export interface RejectDeckPublishRequestRequest {
+    id: string;
+    rejectReasonDto: RejectReasonDto;
+}
+
+export interface RejectKoskApplicationRequest {
+    id: string;
+    rejectReasonDto: RejectReasonDto;
+}
+
+export interface SetMedarisNazimGrantsRequest {
+    userId: string;
+    setNazimGrantsDto: SetNazimGrantsDto;
+}
+
+export interface SetPlatformPolicyRequest {
+    key: PlatformPolicyKey;
+    setPlatformPolicyDto: SetPlatformPolicyDto;
+}
+
+export interface UpdatePermissionGroupRequest {
+    id: string;
+    updatePermissionGroupDto: UpdatePermissionGroupDto;
+}
+
+export interface ViewInactiveScopeRequest {
+    type: string;
+    id: string;
+}
 
 /**
  * 
  */
 export class NizamApi extends runtime.BaseAPI {
+
+    /**
+     * nizam/12. The appointment and the permissions end together at `expiresAt`. Written to the audit log.
+     * Appoint a Medaris nazımı and give them their permissions
+     */
+    async appointMedarisNazimRaw(requestParameters: AppointMedarisNazimRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MedarisNazimResponse>> {
+        if (requestParameters['appointMedarisNazimDto'] == null) {
+            throw new runtime.RequiredError(
+                'appointMedarisNazimDto',
+                'Required parameter "appointMedarisNazimDto" was null or undefined when calling appointMedarisNazim().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/medaris-nazims`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: AppointMedarisNazimDtoToJSON(requestParameters['appointMedarisNazimDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MedarisNazimResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/12. The appointment and the permissions end together at `expiresAt`. Written to the audit log.
+     * Appoint a Medaris nazımı and give them their permissions
+     */
+    async appointMedarisNazim(requestParameters: AppointMedarisNazimRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MedarisNazimResponse> {
+        const response = await this.appointMedarisNazimRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The deck becomes public and its owner is told. 409 (DECK_REQUEST_NOT_PENDING) when it was answered or withdrawn meanwhile.
+     * Publish the deck (Yayımla)
+     */
+    async approveDeckPublishRequestRaw(requestParameters: ApproveDeckPublishRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling approveDeckPublishRequest().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/deck-publish-requests/{id}/approve`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The deck becomes public and its owner is told. 409 (DECK_REQUEST_NOT_PENDING) when it was answered or withdrawn meanwhile.
+     * Publish the deck (Yayımla)
+     */
+    async approveDeckPublishRequest(requestParameters: ApproveDeckPublishRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.approveDeckPublishRequestRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Open the köşk first (`POST /kosks` with the application\'s values); this marks the application Kabul edildi and tells the applicant. 409 (KOSK_APPLICATION_DECIDED) when it was answered already.
+     * Accept the application with the köşk opened from it (Köşkü aç)
+     */
+    async approveKoskApplicationRaw(requestParameters: ApproveKoskApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling approveKoskApplication().'
+            );
+        }
+
+        if (requestParameters['approveKoskApplicationDto'] == null) {
+            throw new runtime.RequiredError(
+                'approveKoskApplicationDto',
+                'Required parameter "approveKoskApplicationDto" was null or undefined when calling approveKoskApplication().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/kosk-applications/{id}/approve`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ApproveKoskApplicationDtoToJSON(requestParameters['approveKoskApplicationDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Open the köşk first (`POST /kosks` with the application\'s values); this marks the application Kabul edildi and tells the applicant. 409 (KOSK_APPLICATION_DECIDED) when it was answered already.
+     * Accept the application with the köşk opened from it (Köşkü aç)
+     */
+    async approveKoskApplication(requestParameters: ApproveKoskApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.approveKoskApplicationRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * nizam/14 \'Başmüderris ata\' / \'Köşk nazımı ata\' / \'Müderris ata\'. The scope is active again. 404 (INACTIVE_SCOPE_NOT_FOUND) when it has a manager already, is hidden or does not exist. Written to the audit log.
+     * Give a passive scope its manager
+     */
+    async assignInactiveScopeRaw(requestParameters: AssignInactiveScopeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['type'] == null) {
+            throw new runtime.RequiredError(
+                'type',
+                'Required parameter "type" was null or undefined when calling assignInactiveScope().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling assignInactiveScope().'
+            );
+        }
+
+        if (requestParameters['assignInactiveScopeDto'] == null) {
+            throw new runtime.RequiredError(
+                'assignInactiveScopeDto',
+                'Required parameter "assignInactiveScopeDto" was null or undefined when calling assignInactiveScope().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/inactive-scopes/{type}/{id}/assign`;
+        urlPath = urlPath.replace(`{${"type"}}`, encodeURIComponent(String(requestParameters['type'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: AssignInactiveScopeDtoToJSON(requestParameters['assignInactiveScopeDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * nizam/14 \'Başmüderris ata\' / \'Köşk nazımı ata\' / \'Müderris ata\'. The scope is active again. 404 (INACTIVE_SCOPE_NOT_FOUND) when it has a manager already, is hidden or does not exist. Written to the audit log.
+     * Give a passive scope its manager
+     */
+    async assignInactiveScope(requestParameters: AssignInactiveScopeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.assignInactiveScopeRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * nizam/13. The name is not blank and not used by another live group, whatever its case. Written to the audit log.
+     * Create a permission group
+     */
+    async createPermissionGroupRaw(requestParameters: CreatePermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PermissionGroupResponse>> {
+        if (requestParameters['createPermissionGroupDto'] == null) {
+            throw new runtime.RequiredError(
+                'createPermissionGroupDto',
+                'Required parameter "createPermissionGroupDto" was null or undefined when calling createPermissionGroup().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/permission-groups`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreatePermissionGroupDtoToJSON(requestParameters['createPermissionGroupDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PermissionGroupResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/13. The name is not blank and not used by another live group, whatever its case. Written to the audit log.
+     * Create a permission group
+     */
+    async createPermissionGroup(requestParameters: CreatePermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PermissionGroupResponse> {
+        const response = await this.createPermissionGroupRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/13. While people hold the group, `usersPolicy` is required: `keep` turns its permissions into single ones for each of them, `revoke` takes them away. Written to the audit log.
+     * Delete a permission group
+     */
+    async deletePermissionGroupRaw(requestParameters: DeletePermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling deletePermissionGroup().'
+            );
+        }
+
+        if (requestParameters['deletePermissionGroupDto'] == null) {
+            throw new runtime.RequiredError(
+                'deletePermissionGroupDto',
+                'Required parameter "deletePermissionGroupDto" was null or undefined when calling deletePermissionGroup().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/permission-groups/{id}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+            body: DeletePermissionGroupDtoToJSON(requestParameters['deletePermissionGroupDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * nizam/13. While people hold the group, `usersPolicy` is required: `keep` turns its permissions into single ones for each of them, `revoke` takes them away. Written to the audit log.
+     * Delete a permission group
+     */
+    async deletePermissionGroup(requestParameters: DeletePermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deletePermissionGroupRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * nizam/11. `decisions` answers every item `…/given` lists: TAKE_OVER leaves the right in place under the başnazım\'s name, DROP revokes it. The appointment and the platform permissions are revoked. Written to the audit log.
+     * Dismiss a Medaris nazımı
+     */
+    async dismissMedarisNazimRaw(requestParameters: DismissMedarisNazimRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling dismissMedarisNazim().'
+            );
+        }
+
+        if (requestParameters['dismissMedarisNazimDto'] == null) {
+            throw new runtime.RequiredError(
+                'dismissMedarisNazimDto',
+                'Required parameter "dismissMedarisNazimDto" was null or undefined when calling dismissMedarisNazim().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/medaris-nazims/{userId}`;
+        urlPath = urlPath.replace(`{${"userId"}}`, encodeURIComponent(String(requestParameters['userId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+            body: DismissMedarisNazimDtoToJSON(requestParameters['dismissMedarisNazimDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * nizam/11. `decisions` answers every item `…/given` lists: TAKE_OVER leaves the right in place under the başnazım\'s name, DROP revokes it. The appointment and the platform permissions are revoked. Written to the audit log.
+     * Dismiss a Medaris nazımı
+     */
+    async dismissMedarisNazim(requestParameters: DismissMedarisNazimRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.dismissMedarisNazimRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * The same filters as the list, without paging (at most 10 000 records). The export is itself written to the trail as `audit.export`.
+     * The filtered records as a CSV file
+     */
+    async exportAuditLogRaw(requestParameters: ExportAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<object>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['actor'] != null) {
+            queryParameters['actor'] = requestParameters['actor'];
+        }
+
+        if (requestParameters['type'] != null) {
+            queryParameters['type'] = requestParameters['type'];
+        }
+
+        if (requestParameters['scope'] != null) {
+            queryParameters['scope'] = requestParameters['scope'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = (requestParameters['from'] as any).toISOString();
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = (requestParameters['to'] as any).toISOString();
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/audit-log/export`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse<any>(response);
+    }
+
+    /**
+     * The same filters as the list, without paging (at most 10 000 records). The export is itself written to the trail as `audit.export`.
+     * The filtered records as a CSV file
+     */
+    async exportAuditLog(requestParameters: ExportAuditLogRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<object> {
+        const response = await this.exportAuditLogRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
 
     /**
      * Any signed-in caller: the \'no access\' screen names who to ask. `displayName` is null when nobody holds the role or the directory cannot be reached.
@@ -63,4 +669,876 @@ export class NizamApi extends runtime.BaseAPI {
         return await response.value();
     }
 
+    /**
+     * nizam/14. Only scopes that once had a manager and have none now, oldest first; hidden ones are left out. `reason` says whether the last term ran out or somebody took it away.
+     * Köşks, medreses and courses with no manager
+     */
+    async getInactiveScopesRaw(requestParameters: GetInactiveScopesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<InactiveScopeResponse>>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['type'] != null) {
+            queryParameters['type'] = requestParameters['type'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/inactive-scopes`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(InactiveScopeResponseFromJSON));
+    }
+
+    /**
+     * nizam/14. Only scopes that once had a manager and have none now, oldest first; hidden ones are left out. `reason` says whether the last term ran out or somebody took it away.
+     * Köşks, medreses and courses with no manager
+     */
+    async getInactiveScopes(requestParameters: GetInactiveScopesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<InactiveScopeResponse>> {
+        const response = await this.getInactiveScopesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The applicant\'s e-mail and phone are personal data: every read is written to the audit trail (`kosk_application.contact_read`) before the details are returned.
+     * One application with the applicant\'s contact details
+     */
+    async getKoskApplicationRaw(requestParameters: GetKoskApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskApplicationDetailResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getKoskApplication().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/kosk-applications/{id}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskApplicationDetailResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The applicant\'s e-mail and phone are personal data: every read is written to the audit trail (`kosk_application.contact_read`) before the details are returned.
+     * One application with the applicant\'s contact details
+     */
+    async getKoskApplication(requestParameters: GetKoskApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskApplicationDetailResponse> {
+        const response = await this.getKoskApplicationRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/11\'s dismissal question: the roles and permissions this person gave to others that are still held.
+     * What a Medaris nazımı has handed on
+     */
+    async getMedarisNazimGivenRaw(requestParameters: GetMedarisNazimGivenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<GivenItemResponse>>> {
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling getMedarisNazimGiven().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/medaris-nazims/{userId}/given`;
+        urlPath = urlPath.replace(`{${"userId"}}`, encodeURIComponent(String(requestParameters['userId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(GivenItemResponseFromJSON));
+    }
+
+    /**
+     * nizam/11\'s dismissal question: the roles and permissions this person gave to others that are still held.
+     * What a Medaris nazımı has handed on
+     */
+    async getMedarisNazimGiven(requestParameters: GetMedarisNazimGivenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<GivenItemResponse>> {
+        const response = await this.getMedarisNazimGivenRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/11. Held appointments only, in the order they were made; one whose end has passed is not listed. Each carries its groups and single platform permissions.
+     * The Medaris nazımları in office (SYSTEM_ADMIN only)
+     */
+    async getMedarisNazimsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<MedarisNazimResponse>>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/medaris-nazims`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(MedarisNazimResponseFromJSON));
+    }
+
+    /**
+     * nizam/11. Held appointments only, in the order they were made; one whose end has passed is not listed. Each carries its groups and single platform permissions.
+     * The Medaris nazımları in office (SYSTEM_ADMIN only)
+     */
+    async getMedarisNazims(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<MedarisNazimResponse>> {
+        const response = await this.getMedarisNazimsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/12 and 13: the platform\'s permissions in their five sections and the course permissions a course-scoped group may carry. Codes only; the sentences under them are the web app\'s.
+     * The permission catalog (SYSTEM_ADMIN only)
+     */
+    async getPermissionCatalogRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PermissionCatalogResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/permissions`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PermissionCatalogResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/12 and 13: the platform\'s permissions in their five sections and the course permissions a course-scoped group may carry. Codes only; the sentences under them are the web app\'s.
+     * The permission catalog (SYSTEM_ADMIN only)
+     */
+    async getPermissionCatalog(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PermissionCatalogResponse> {
+        const response = await this.getPermissionCatalogRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The people who hold a permission group
+     */
+    async getPermissionGroupUsersRaw(requestParameters: GetPermissionGroupUsersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<GroupUserResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getPermissionGroupUsers().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/permission-groups/{id}/users`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(GroupUserResponseFromJSON));
+    }
+
+    /**
+     * The people who hold a permission group
+     */
+    async getPermissionGroupUsers(requestParameters: GetPermissionGroupUsersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<GroupUserResponse>> {
+        const response = await this.getPermissionGroupUsersRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/13. The platform\'s groups and the course groups, each with its permissions and how many people hold it.
+     * The permission groups (SYSTEM_ADMIN only)
+     */
+    async getPermissionGroupsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<PermissionGroupResponse>>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/permission-groups`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(PermissionGroupResponseFromJSON));
+    }
+
+    /**
+     * nizam/13. The platform\'s groups and the course groups, each with its permissions and how many people hold it.
+     * The permission groups (SYSTEM_ADMIN only)
+     */
+    async getPermissionGroups(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<PermissionGroupResponse>> {
+        const response = await this.getPermissionGroupsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Filters combine. Fifty records a page; pass `nextCursor` as `cursor` for the older ones. Köşk nazımları, başmüderrisler and everyone else get 403.
+     * The audit trail, newest first
+     */
+    async listAuditLogRaw(requestParameters: ListAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AuditPageResponse>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['actor'] != null) {
+            queryParameters['actor'] = requestParameters['actor'];
+        }
+
+        if (requestParameters['type'] != null) {
+            queryParameters['type'] = requestParameters['type'];
+        }
+
+        if (requestParameters['scope'] != null) {
+            queryParameters['scope'] = requestParameters['scope'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = (requestParameters['from'] as any).toISOString();
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = (requestParameters['to'] as any).toISOString();
+        }
+
+        if (requestParameters['cursor'] != null) {
+            queryParameters['cursor'] = requestParameters['cursor'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/audit-log`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AuditPageResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Filters combine. Fifty records a page; pass `nextCursor` as `cursor` for the older ones. Köşk nazımları, başmüderrisler and everyone else get 403.
+     * The audit trail, newest first
+     */
+    async listAuditLog(requestParameters: ListAuditLogRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AuditPageResponse> {
+        const response = await this.listAuditLogRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The members\' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı (SYSTEM_ADMIN) only.
+     * Deck publish requests (Bekleyen / Karara bağlanan)
+     */
+    async listDeckPublishRequestsRaw(requestParameters: ListDeckPublishRequestsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckPublishRequestListResponse>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/deck-publish-requests`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => DeckPublishRequestListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The members\' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı (SYSTEM_ADMIN) only.
+     * Deck publish requests (Bekleyen / Karara bağlanan)
+     */
+    async listDeckPublishRequests(requestParameters: ListDeckPublishRequestsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckPublishRequestListResponse> {
+        const response = await this.listDeckPublishRequestsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Waiting ones oldest first, answered ones newest first, with both tab counts. No contact detail is in the list.
+     * Köşk applications (Bekleyen / Karara bağlanan)
+     */
+    async listKoskApplicationsRaw(requestParameters: ListKoskApplicationsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskApplicationListResponse>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/kosk-applications`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskApplicationListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Waiting ones oldest first, answered ones newest first, with both tab counts. No contact detail is in the list.
+     * Köşk applications (Bekleyen / Karara bağlanan)
+     */
+    async listKoskApplications(requestParameters: ListKoskApplicationsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskApplicationListResponse> {
+        const response = await this.listKoskApplicationsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The platform policies and who applies them on their own
+     */
+    async listPlatformPoliciesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformPolicyListResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/platform-policies`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlatformPolicyListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The platform policies and who applies them on their own
+     */
+    async listPlatformPolicies(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformPolicyListResponse> {
+        const response = await this.listPlatformPoliciesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * \'Köşk ve medrese politikaları\' of nizam/19. Medreses have no policy settings of their own yet, so only köşks are listed.
+     * The köşks that apply a policy on their own
+     */
+    async listScopedPoliciesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ScopedPolicyListResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/scoped-policies`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ScopedPolicyListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * \'Köşk ve medrese politikaları\' of nizam/19. Medreses have no policy settings of their own yet, so only köşks are listed.
+     * The köşks that apply a policy on their own
+     */
+    async listScopedPolicies(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ScopedPolicyListResponse> {
+        const response = await this.listScopedPoliciesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Three sample cards, or every card with `all=true`. The deck is private until it is published, so each read is written to the audit log (`deck.private-read`) before the cards are returned.
+     * The cards of a requested deck
+     */
+    async readDeckPublishRequestCardsRaw(requestParameters: ReadDeckPublishRequestCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckRequestCardsResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling readDeckPublishRequestCards().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['all'] != null) {
+            queryParameters['all'] = requestParameters['all'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/deck-publish-requests/{id}/cards`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => DeckRequestCardsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Three sample cards, or every card with `all=true`. The deck is private until it is published, so each read is written to the audit log (`deck.private-read`) before the cards are returned.
+     * The cards of a requested deck
+     */
+    async readDeckPublishRequestCards(requestParameters: ReadDeckPublishRequestCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckRequestCardsResponse> {
+        const response = await this.readDeckPublishRequestCardsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The deck stays private, the reason goes to its owner, who may ask again. The reason is required.
+     * Refuse the request (Reddet)
+     */
+    async rejectDeckPublishRequestRaw(requestParameters: RejectDeckPublishRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling rejectDeckPublishRequest().'
+            );
+        }
+
+        if (requestParameters['rejectReasonDto'] == null) {
+            throw new runtime.RequiredError(
+                'rejectReasonDto',
+                'Required parameter "rejectReasonDto" was null or undefined when calling rejectDeckPublishRequest().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/deck-publish-requests/{id}/reject`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RejectReasonDtoToJSON(requestParameters['rejectReasonDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The deck stays private, the reason goes to its owner, who may ask again. The reason is required.
+     * Refuse the request (Reddet)
+     */
+    async rejectDeckPublishRequest(requestParameters: RejectDeckPublishRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.rejectDeckPublishRequestRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * The reason is required and goes to the applicant in their notifications. 409 (KOSK_APPLICATION_DECIDED) when it was answered already.
+     * Refuse the application (Reddet)
+     */
+    async rejectKoskApplicationRaw(requestParameters: RejectKoskApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling rejectKoskApplication().'
+            );
+        }
+
+        if (requestParameters['rejectReasonDto'] == null) {
+            throw new runtime.RequiredError(
+                'rejectReasonDto',
+                'Required parameter "rejectReasonDto" was null or undefined when calling rejectKoskApplication().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/kosk-applications/{id}/reject`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RejectReasonDtoToJSON(requestParameters['rejectReasonDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The reason is required and goes to the applicant in their notifications. 409 (KOSK_APPLICATION_DECIDED) when it was answered already.
+     * Refuse the application (Reddet)
+     */
+    async rejectKoskApplication(requestParameters: RejectKoskApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.rejectKoskApplicationRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * nizam/12. Replaces the group and the single permissions with the ones sent; what stays keeps its giver and date. The end may not be after the appointment\'s. Written to the audit log.
+     * Set a Medaris nazımı\'s platform permissions
+     */
+    async setMedarisNazimGrantsRaw(requestParameters: SetMedarisNazimGrantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MedarisNazimResponse>> {
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling setMedarisNazimGrants().'
+            );
+        }
+
+        if (requestParameters['setNazimGrantsDto'] == null) {
+            throw new runtime.RequiredError(
+                'setNazimGrantsDto',
+                'Required parameter "setNazimGrantsDto" was null or undefined when calling setMedarisNazimGrants().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/medaris-nazims/{userId}/grants`;
+        urlPath = urlPath.replace(`{${"userId"}}`, encodeURIComponent(String(requestParameters['userId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetNazimGrantsDtoToJSON(requestParameters['setNazimGrantsDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MedarisNazimResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/12. Replaces the group and the single permissions with the ones sent; what stays keeps its giver and date. The end may not be after the appointment\'s. Written to the audit log.
+     * Set a Medaris nazımı\'s platform permissions
+     */
+    async setMedarisNazimGrants(requestParameters: SetMedarisNazimGrantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MedarisNazimResponse> {
+        const response = await this.setMedarisNazimGrantsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * In force at once and written to the audit trail as `platform_policy.change`. While \'Kayıt her zaman onaylı\' is on every enrolment waits for approval; while \'Ders kayıtları herkese açılamaz\' is on no recording is shown to people outside the course; a köşk cannot switch either rule off (409 PLATFORM_POLICY_LOCKED).
+     * Switch a platform policy on or off
+     */
+    async setPlatformPolicyRaw(requestParameters: SetPlatformPolicyRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformPolicyListResponse>> {
+        if (requestParameters['key'] == null) {
+            throw new runtime.RequiredError(
+                'key',
+                'Required parameter "key" was null or undefined when calling setPlatformPolicy().'
+            );
+        }
+
+        if (requestParameters['setPlatformPolicyDto'] == null) {
+            throw new runtime.RequiredError(
+                'setPlatformPolicyDto',
+                'Required parameter "setPlatformPolicyDto" was null or undefined when calling setPlatformPolicy().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/platform-policies/{key}`;
+        urlPath = urlPath.replace(`{${"key"}}`, encodeURIComponent(String(requestParameters['key'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetPlatformPolicyDtoToJSON(requestParameters['setPlatformPolicyDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlatformPolicyListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * In force at once and written to the audit trail as `platform_policy.change`. While \'Kayıt her zaman onaylı\' is on every enrolment waits for approval; while \'Ders kayıtları herkese açılamaz\' is on no recording is shown to people outside the course; a köşk cannot switch either rule off (409 PLATFORM_POLICY_LOCKED).
+     * Switch a platform policy on or off
+     */
+    async setPlatformPolicy(requestParameters: SetPlatformPolicyRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformPolicyListResponse> {
+        const response = await this.setPlatformPolicyRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/13. Changing the permissions while people hold the group needs `usersPolicy`: they keep what it gave them as single permissions, or lose it; either way they no longer hold the group. Written to the audit log.
+     * Rename a permission group or change its permissions
+     */
+    async updatePermissionGroupRaw(requestParameters: UpdatePermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PermissionGroupResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling updatePermissionGroup().'
+            );
+        }
+
+        if (requestParameters['updatePermissionGroupDto'] == null) {
+            throw new runtime.RequiredError(
+                'updatePermissionGroupDto',
+                'Required parameter "updatePermissionGroupDto" was null or undefined when calling updatePermissionGroup().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/permission-groups/{id}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdatePermissionGroupDtoToJSON(requestParameters['updatePermissionGroupDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PermissionGroupResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/13. Changing the permissions while people hold the group needs `usersPolicy`: they keep what it gave them as single permissions, or lose it; either way they no longer hold the group. Written to the audit log.
+     * Rename a permission group or change its permissions
+     */
+    async updatePermissionGroup(requestParameters: UpdatePermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PermissionGroupResponse> {
+        const response = await this.updatePermissionGroupRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/14 \'İçeriği gör\'. Writes one audit row (`inactive_scope.view`) per call; the content itself is the web app\'s page.
+     * Record that a passive scope\'s content was opened
+     */
+    async viewInactiveScopeRaw(requestParameters: ViewInactiveScopeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['type'] == null) {
+            throw new runtime.RequiredError(
+                'type',
+                'Required parameter "type" was null or undefined when calling viewInactiveScope().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling viewInactiveScope().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/inactive-scopes/{type}/{id}/view`;
+        urlPath = urlPath.replace(`{${"type"}}`, encodeURIComponent(String(requestParameters['type'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * nizam/14 \'İçeriği gör\'. Writes one audit row (`inactive_scope.view`) per call; the content itself is the web app\'s page.
+     * Record that a passive scope\'s content was opened
+     */
+    async viewInactiveScope(requestParameters: ViewInactiveScopeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.viewInactiveScopeRaw(requestParameters, initOverrides);
+    }
+
 }
+
+/**
+ * @export
+ */
+export const ListKoskApplicationsStatusEnum = {
+    Pending: 'PENDING',
+    Decided: 'DECIDED'
+} as const;
+export type ListKoskApplicationsStatusEnum = typeof ListKoskApplicationsStatusEnum[keyof typeof ListKoskApplicationsStatusEnum];

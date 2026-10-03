@@ -1,8 +1,18 @@
+import { DeckPublishStatus } from "./domain/deck-publish-status.enum";
+import { FlashcardType } from "./domain/flashcard-type.enum";
+
 export interface IFlashcardDeck {
   id: string;
   authorId: string;
   title: string;
   isPublic: boolean;
+  cardType: FlashcardType;
+  publishStatus: DeckPublishStatus;
+  publishRequestedAt: Date | null;
+  tags: string[];
+  courseId: string | null;
+  koskId: string | null;
+  madrasahId: string | null;
   createdAt: Date;
   updatedAt: Date;
   description: string | null;
@@ -11,13 +21,17 @@ export interface IFlashcardDeck {
 export interface ICreateFlashcardDeck {
   authorId: string;
   title: string;
-  isPublic: boolean;
+  /** Absent means private; the new web form never sends it (MDRS-164). */
+  isPublic?: boolean;
+  cardType?: FlashcardType;
+  tags?: string[];
   description?: string;
 }
 
 export interface IUpdateFlashcardDeck {
   title?: string;
   isPublic?: boolean;
+  tags?: string[];
   description?: string;
 }
 
@@ -48,6 +62,11 @@ export interface IFlashcardDeckOwnership {
 export interface IFlashcardDeckVisibility {
   authorId: string;
   isPublic: boolean;
+  /**
+   * The deck belongs to a course, köşk or medrese the asked-about user is
+   * enrolled in (`deckSharedWith`). Always false when no user was named.
+   */
+  sharedWithViewer: boolean;
 }
 
 export interface IFlashcardDeckRepository {
@@ -71,7 +90,10 @@ export interface IFlashcardDeckRepository {
    * request; neither may pay for the unbounded `description` text `findById`
    * carries back.
    */
-  findVisibility(id: string): Promise<IFlashcardDeckVisibility | null>;
+  findVisibility(
+    id: string,
+    viewerId?: string
+  ): Promise<IFlashcardDeckVisibility | null>;
   findAll(include?: Set<string>): Promise<IFlashcardDeck[]>;
   findAllVisibleToUser(
     userId: string,
@@ -88,6 +110,12 @@ export interface IFlashcardDeckRepository {
   ): Promise<IFlashcardDeckUserCollectionItem>;
 
   // UPDATE
+  /** PENDING with a time, or PRIVATE with none; `isPublic` is untouched. */
+  setPublishRequest(
+    id: string,
+    publishStatus: DeckPublishStatus,
+    requestedAt: Date | null
+  ): Promise<IFlashcardDeck | null>;
   update(
     id: string,
     updates: IUpdateFlashcardDeck

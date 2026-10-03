@@ -1,0 +1,58 @@
+{
+  "Home": {
+    "continueTitle": "Kaldığın yerden devam et",
+    "decksTitle": "Bugün çalışılacak desteler",
+    "followedTitle": "Takip ettiğin köşklerden",
+    "sectionFailed": "Bu bölüm şu an okunamadı.",
+    "retry": "Yeniden dene",
+    "emptyCourses": "Devam eden dersin yok. Keşfet’ten bir ders bulabilirsin.",
+    "emptyDecks": "Bugün çalışacak deste yok. Desteler sayfasından koleksiyonuna bakabilirsin.",
+    "emptyFollowed": "Takip ettiğin köşklerde yeni ders yok.",
+    "nextSessionShort": "Sonraki celse",
+    "studyDeck": "Çalış: {title}"
+  },
+  "Study": {
+    "title": "Çalışma",
+    "subtitleDue": "{deck} · Bugün tekrar bekleyen {count} kart",
+    "subtitleNew": "{deck} · {count} yeni kart",
+    "subtitleAll": "{deck} · {count} kart",
+    "finish": "Çalışmayı bitir",
+    "round": "Bu tur: {done} / {total} kart",
+    "cardOf": "Kart {n} / {total}",
+    "showBack": "Arka yüzü göster",
+    "difficulty": "Ne kadar zordu?",
+    "hard": "Zor",
+    "medium": "Orta",
+    "easy": "Kolay",
+    "saveFailedTitle": "İlerlemen kaydedilemedi",
+    "saveFailedText": "Kart yerinde duruyor. Yeniden dene.",
+    "nothingTitle": "Bugün için bitti",
+    "nothingText": "Bugün tekrar bekleyen kartın yok. Yarın yeniden bak.",
+    "doneTitle": "Tur bitti",
+    "doneText": "{count} kartı çalıştın.",
+    "backToDeck": "Desteye dön"
+  },
+  "PublicDeck": {
+    "note": "Giriş yapmadan çalışırsan ilerlemen kaydedilmez.",
+    "signIn": "Kaydetmek için giriş yap"
+  },
+  "RecordingsTab": {
+    "empty": "Bu derste henüz yayımlanmış ders kaydı yok.",
+    "errorTitle": "Ders kayıtları yüklenemedi",
+    "errorText": "Ders kayıtlarına şu an ulaşamadık. Biraz sonra yeniden dene.",
+    "retry": "Yeniden dene",
+    "playerPlaceholder": "Ders kaydı burada oynar",
+    "allTitle": "Bütün ders kayıtları",
+    "allHint": "Haftalara göre, yeniden eskiye",
+    "weekLabel": "Hafta {number}",
+    "minutes": "{count} dk",
+    "preparing": "Hazırlanıyor",
+    "preparingHint": "Hazır olunca burada oynar",
+    "public": "Herkese açık",
+    "inPlayer": "Oynatıcıda",
+    "play": "Oynat",
+    "playLabel": "Oynat: {title}",
+    "open": "Ders kaydını aç",
+    "openLabel": ": {title} (yeni sekmede açılır)"
+  }
+}

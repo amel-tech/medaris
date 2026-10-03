@@ -29,7 +29,12 @@ export interface IArchivePage {
 }
 
 /** What a köşk manager may bring back: the contents of their own köşk. */
-const KOSK_SCOPED: readonly ArchiveItemType[] = ["course", "week", "session"];
+const KOSK_SCOPED: readonly ArchiveItemType[] = [
+  "course",
+  "week",
+  "session",
+  "deck",
+];
 
 /**
  * The archive (MDRS-173): what nazımlar hid, listed, restored and, for the

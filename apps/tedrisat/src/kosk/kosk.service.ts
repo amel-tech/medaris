@@ -1,5 +1,8 @@
 import { Injectable } from "@nestjs/common";
+import { AuditService } from "../audit/audit.service";
+import { PlatformPolicyService } from "../platform-policy/platform-policy.service";
 import { KoskForbiddenError } from "./errors/kosk-forbidden.error";
+import { KoskHandleTakenError } from "./errors/kosk-handle-taken.error";
 import { KoskLastManagerError } from "./errors/kosk-last-manager.error";
 import { KoskManagerNotFoundError } from "./errors/kosk-manager-not-found.error";
 import { KoskManagerUnknownUserError } from "./errors/kosk-manager-unknown-user.error";
@@ -7,9 +10,12 @@ import { KoskNotFoundError } from "./errors/kosk-not-found.error";
 import { KoskRepository } from "./kosk.repository";
 import {
   ICreateKosk,
+  IFollowedKoskCourse,
   IKosk,
+  IKoskDecks,
   IKoskListFilter,
   IKoskRef,
+  IKoskVisibility,
   IKoskWithStats,
   IManagerActor,
   IPaginatedKosks,
@@ -18,7 +24,13 @@ import {
 
 @Injectable()
 export class KoskService {
-  constructor(private readonly koskRepo: KoskRepository) {}
+  // Must stay value imports: `import type` erases them from
+  // `design:paramtypes` and Nest can no longer inject them.
+  constructor(
+    private readonly koskRepo: KoskRepository,
+    private readonly platformPolicies: PlatformPolicyService,
+    private readonly audit: AuditService
+  ) {}
 
   /**
    * A page of köşks. `managedByCaller` (`GET /kosks?managedBy=me`, MDRS-108)
@@ -37,18 +49,48 @@ export class KoskService {
     {
       managedByCaller = false,
       madrasahId,
-    }: { managedByCaller?: boolean; madrasahId?: string } = {}
+      level,
+      field,
+      q,
+    }: {
+      managedByCaller?: boolean;
+      madrasahId?: string;
+      level?: string;
+      field?: string;
+      q?: string;
+    } = {}
   ): Promise<IPaginatedKosks> {
     const offset = (page - 1) * limit;
     const filter: IKoskListFilter = {
       ...(managedByCaller && userId !== null ? { managerId: userId } : {}),
       ...(madrasahId !== undefined ? { madrasahId } : {}),
+      ...(level !== undefined ? { level } : {}),
+      ...(field !== undefined ? { field } : {}),
+      ...(q !== undefined && q.trim() !== "" ? { q: q.trim() } : {}),
     };
     const [items, total] = await Promise.all([
       this.koskRepo.findAll(userId, limit, offset, filter),
       this.koskRepo.count(filter),
     ]);
     return { items, total, page, limit };
+  }
+
+  /** The ilim alanı Keşfet offers as chips (MDRS-159). */
+  async listFields(): Promise<string[]> {
+    return this.koskRepo.listFields();
+  }
+
+  /** The köşk's decks for a caller who belongs to it (MDRS-159). */
+  async findDecks(koskId: string, userId: string): Promise<IKoskDecks> {
+    return this.koskRepo.findDecks(koskId, userId);
+  }
+
+  /** Courses of the köşks the caller follows, for Ana sayfa (MDRS-165). */
+  async findFollowedCourses(
+    userId: string,
+    limit: number
+  ): Promise<IFollowedKoskCourse[]> {
+    return this.koskRepo.findFollowedCourses(userId, limit);
   }
 
   async findById(id: string, userId: string | null): Promise<IKoskWithStats> {
@@ -93,7 +135,18 @@ export class KoskService {
   }
 
   async create(newKosk: ICreateKosk): Promise<IKosk> {
+    await this.assertHandleFree(newKosk.handle);
     return this.koskRepo.create(newKosk);
+  }
+
+  /** 409 when a typed short name belongs to another köşk (nizam/10). */
+  async assertHandleFree(
+    handle: string | null | undefined,
+    exceptId?: string
+  ): Promise<void> {
+    if (handle && (await this.koskRepo.handleTaken(handle, exceptId))) {
+      throw new KoskHandleTakenError(handle);
+    }
   }
 
   /**
@@ -102,8 +155,13 @@ export class KoskService {
    * köşk with the same 404 as a missing one, and enrolment reads it because
    * every request to join a course of an unlisted köşk waits for approval.
    */
-  async findVisibility(id: string): Promise<{ isPrivate: boolean } | null> {
+  async findVisibility(id: string): Promise<IKoskVisibility | null> {
     return this.koskRepo.findVisibility(id);
+  }
+
+  /** True when another köşk already uses this short name (MDRS-174). */
+  async handleTaken(handle: string, exceptId?: string): Promise<boolean> {
+    return this.koskRepo.handleTaken(handle, exceptId);
   }
 
   /** True if a köşk with this id exists. */
@@ -154,10 +212,34 @@ export class KoskService {
    * Authorization is `@Authz(SCOPES.EDIT, …)` on `KoskController.update`: the
    * köşk's managers. A medrese has no say over a köşk since MDRS-134.
    */
-  async update(id: string, updates: IUpdateKosk): Promise<IKosk> {
+  async update(
+    id: string,
+    updates: IUpdateKosk,
+    actorId?: string
+  ): Promise<IKosk> {
+    await this.assertHandleFree(updates.handle, id);
+    // A platform policy that is on cannot be switched off from below (MDRS-181).
+    await this.platformPolicies.assertKoskMayChange(updates);
     const updated = await this.koskRepo.update(id, updates);
     if (!updated) {
       throw new KoskNotFoundError(id);
+    }
+    const touchesPolicy =
+      updates.alwaysRequireApproval !== undefined ||
+      updates.recordingsNeverPublic !== undefined;
+    if (actorId && touchesPolicy) {
+      // The platform settings page says who switched a köşk's rule on and when.
+      await this.audit.record({
+        actorId,
+        action: "kosk.policy_change",
+        entity: "kosk",
+        entityId: id,
+        details: {
+          name: updated.name,
+          alwaysRequireApproval: updated.alwaysRequireApproval,
+          recordingsNeverPublic: updated.recordingsNeverPublic,
+        },
+      });
     }
     return updated;
   }

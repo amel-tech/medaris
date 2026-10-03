@@ -12,10 +12,15 @@ import {
   AlertDialogTrigger,
 } from "@medaris/ui/components/alert-dialog";
 import { toast } from "@medaris/ui/components/sonner";
+import { Button } from "@medaris/ui/mds/button";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useTransition } from "react";
-import { leaveCourse } from "../actions";
+import { courseActionErrorKey } from "../action-error";
+import { leaveCourse, withdrawEnrollment } from "../actions";
+
+/** The withdraw button's id: the application window hands focus to it (design tedris/07). */
+export const WITHDRAW_BUTTON_ID = "withdraw-request";
 
 /**
  * The talebe's own way out of a course (MDRS-105): withdraw a request that
@@ -37,9 +42,21 @@ export const LeaveCourse = ({
 
   const leave = () =>
     startTransition(async () => {
-      const res = await leaveCourse(courseId);
+      const res =
+        mode === "withdraw"
+          ? await withdrawEnrollment(courseId)
+          : await leaveCourse(courseId);
       if (res.success === false) {
-        toast.error(res.error);
+        // The page was drawn, so the course exists: a 404 here means the
+        // enrollment is gone or settled elsewhere (an application approved in
+        // the meantime), not that the course vanished.
+        toast.error(
+          t(
+            `CoursePage.${res.status === 404 ? "actionConflict" : courseActionErrorKey(res.status)}`
+          )
+        );
+        // A stale page: draw what the enrollment is now.
+        if (res.status === 404 || res.status === 409) router.refresh();
         return;
       }
       toast.success(
@@ -53,14 +70,17 @@ export const LeaveCourse = ({
 
   if (mode === "withdraw") {
     return (
-      <button
-        type="button"
+      <Button
+        id={WITHDRAW_BUTTON_ID}
+        variant="secondary"
+        fullWidth
+        className="mbs-3"
         onClick={leave}
-        disabled={pending}
-        className={linkClass}
+        loading={pending}
+        loadingLabel={t("CoursePage.withdrawing")}
       >
         {t("CoursePage.withdrawRequest")}
-      </button>
+      </Button>
     );
   }
 

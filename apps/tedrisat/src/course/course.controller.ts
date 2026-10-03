@@ -31,6 +31,7 @@ import {
   UsePipes,
 } from "@nestjs/common";
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -43,6 +44,7 @@ import {
 } from "@nestjs/swagger";
 import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
+import { CourseStatsRepository } from "./course-stats.repository";
 import { CourseBadgeCountsResponse } from "./dto/course-badge-counts-response.dto";
 import {
   CourseDetailResponse,
@@ -50,13 +52,16 @@ import {
   EnrolledCourseResponse,
   EnrollmentResponse,
   PendingEnrollmentResponse,
+  RemovedEnrollmentResponse,
   RosterEnrollmentResponse,
 } from "./dto/course-response.dto";
+import { CourseStatsResponse } from "./dto/course-stats.dto";
 import { CreateCourseDto } from "./dto/create-course.dto";
 import {
   RemoveEnrollmentDto,
   SetEnrollmentStatusDto,
 } from "./dto/enrollment-actions.dto";
+import { MuderrisListResponse, SetMuderrisDto } from "./dto/muderris-list.dto";
 import { ReplaceCourseDto } from "./dto/replace-course.dto";
 import { UpdateCourseDto } from "./dto/update-course.dto";
 import { UpdateProgressDto } from "./dto/update-progress.dto";
@@ -96,7 +101,10 @@ const byExistingCourse: AuthzResolve = async (req, moduleRef) => {
 @UseGuards(AuthGuard, AuthzGuard)
 @Controller()
 export class CourseController {
-  constructor(private readonly courseService: CourseService) {}
+  constructor(
+    private readonly courseService: CourseService,
+    private readonly statsRepo: CourseStatsRepository
+  ) {}
 
   @ApiOperation({
     summary: "List the courses that belong to a köşk",
@@ -161,17 +169,25 @@ export class CourseController {
 
   @ApiOperation({
     summary: "List the courses the current talebe is enrolled in",
+    description:
+      "Enrolled and completed courses, oldest enrollment first, each with its next standing session. `includePending=true` adds the requests still waiting for approval (MDRS-159), marked by `enrollment.status`.",
     operationId: "getEnrolledCourses",
   })
+  @ApiQuery({ name: "includePending", required: false, type: Boolean })
   @ApiOkResponse({ type: EnrolledCourseResponse, isArray: true })
   // Exempt: no resource in the request. The rows are the caller's own
   // enrollments, selected by `sub`, so there is nothing for a scope to name.
   @AuthzExempt()
   @Get("courses/enrolled")
   async findEnrolled(
-    @Req() request: AuthorizedRequest
+    @Req() request: AuthorizedRequest,
+    @Query("includePending", new DefaultValuePipe(false), ParseBoolPipe)
+    includePending: boolean
   ): Promise<EnrolledCourseResponse[]> {
-    return this.courseService.findEnrolledCourses(request.user.sub);
+    return this.courseService.findEnrolledCourses(
+      request.user.sub,
+      includePending
+    );
   }
 
   @ApiOperation({
@@ -250,6 +266,34 @@ export class CourseController {
     @Body() courseDto: ReplaceCourseDto
   ): Promise<CourseDetailResponse> {
     return this.courseService.replace(id, request.user, courseDto);
+  }
+
+  @ApiOperation({
+    summary: "Replace a course's müderris list and pick its imam",
+    description:
+      "Partial update for the 'Müderrisleri düzenle' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `assign_muderris`; the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.",
+    operationId: "setCourseMuderris",
+  })
+  @ApiOkResponse({ type: MuderrisListResponse })
+  @ApiBadRequestResponse({
+    description:
+      "Empty list, an imam outside the list (MUDERRIS_LIST_INVALID), or the same account twice (MUDERRIS_DUPLICATE_USER).",
+  })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @ApiConflictResponse({
+    description:
+      "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT).",
+  })
+  @Authz(SCOPES.ASSIGN_MUDERRIS, byParam(ENTITIES.COURSE))
+  @Put("courses/:id/muderris")
+  @UsePipes(new MedarisValidationPipe({ transform: true }))
+  async setMuderris(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: SetMuderrisDto
+  ): Promise<MuderrisListResponse> {
+    return this.courseService.setMuderris(id, request.user, dto);
   }
 
   @ApiOperation({
@@ -354,6 +398,25 @@ export class CourseController {
   }
 
   @ApiOperation({
+    summary: "The numbers of a course's overview (course team)",
+    description:
+      "nizam/53: talebe enrolled, applications waiting, completions and how many weeks have begun. For the course team: the köşk manager and the course's müderrisler.",
+    operationId: "getCourseStats",
+  })
+  @ApiOkResponse({ type: CourseStatsResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  // `byExistingCourse`: SYSTEM_ADMIN bypasses the resolver, so a missing
+  // course must answer 404 here and not an empty count.
+  @Authz(SCOPES.MANAGE_ENROLLMENTS, byExistingCourse)
+  @Get("courses/:id/stats")
+  async stats(
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<CourseStatsResponse> {
+    return this.statsRepo.stats(id, new Date());
+  }
+
+  @ApiOperation({
     summary: "List a course's enrollments — requests, talebe and completions",
     description:
       "For the course team: the köşk manager and the course's müderrisler (MDRS-105). Requests first, then active seats, then completions.",
@@ -368,6 +431,23 @@ export class CourseController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<RosterEnrollmentResponse[]> {
     return this.courseService.findEnrollments(id);
+  }
+
+  @ApiOperation({
+    summary: "Talebe the team took out of the course, with the reasons",
+    description:
+      "For the course team (MDRS-178, Erişimi kaldırılanlar): who was taken out by `POST …/remove`, by whom, when and why, newest first. Read from the audit log; a talebe may have applied again since.",
+    operationId: "getRemovedEnrollments",
+  })
+  @ApiOkResponse({ type: RemovedEnrollmentResponse, isArray: true })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
+  @Get("courses/:id/enrollments/removed")
+  async removedEnrollments(
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<RemovedEnrollmentResponse[]> {
+    return this.courseService.findRemovedEnrollments(id);
   }
 
   @ApiOperation({
@@ -461,7 +541,7 @@ export class CourseController {
   @ApiOperation({
     summary: "Take a talebe out of a course, with a reason (course team)",
     description:
-      "Deletes the enrollment and keeps the reason in the audit log (MDRS-105). It is not a ban: the talebe may apply again. Only an active seat — reject a request, reopen a completion first.",
+      "Turns the enrollment REVOKED and keeps the reason in the audit log (MDRS-105, MDRS-161). The talebe sees the public page and nothing the enrolled hold, and does not apply again on their own; approving the seat reinstates them. Not a ban. Only an active seat — reject a request, reopen a completion first.",
     operationId: "removeEnrollment",
   })
   @ApiOkResponse({ type: Boolean })
@@ -492,13 +572,14 @@ export class CourseController {
     summary:
       "Leave a course, or withdraw a request still awaiting approval (the current talebe)",
     description:
-      "Deletes the caller's own enrollment; they may apply again (MDRS-105). A completed course is not left (ENROLLMENT_STATE_CONFLICT).",
+      "Deletes the caller's own enrollment; they may apply again (MDRS-105). A completed course, or a seat the course team revoked, is not left (ENROLLMENT_STATE_CONFLICT).",
     operationId: "leaveCourse",
   })
   @ApiOkResponse({ type: Boolean })
   @ApiNotFoundResponse()
   @ApiConflictResponse({
-    description: "The enrollment is completed (ENROLLMENT_STATE_CONFLICT).",
+    description:
+      "The enrollment is completed or revoked (ENROLLMENT_STATE_CONFLICT).",
   })
   // The caller's own row, selected by `sub`. `VIEW` is on every COURSE row,
   // PENDING and PUBLIC included, so this only says "the course exists and
@@ -511,6 +592,27 @@ export class CourseController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<boolean> {
     return this.courseService.leave(request.user.sub, id);
+  }
+
+  @ApiOperation({
+    summary: "Withdraw a request still awaiting approval (the current talebe)",
+    description:
+      "Deletes the caller's own PENDING enrollment. Once it is approved (or when there is none) this is a 404 (ENROLLMENT_NOT_FOUND): leaving an approved seat is `DELETE /courses/{id}/enrollment`.",
+    operationId: "withdrawEnrollment",
+  })
+  @ApiOkResponse({ type: Boolean })
+  @ApiNotFoundResponse({
+    description:
+      "No enrollment, or it is no longer pending (ENROLLMENT_NOT_FOUND).",
+  })
+  // Same scope as `leave`: the caller's own row, selected by `sub`.
+  @Authz(SCOPES.VIEW, byParam(ENTITIES.COURSE))
+  @Delete("courses/:id/enroll")
+  async withdraw(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<boolean> {
+    return this.courseService.withdraw(request.user.sub, id);
   }
 
   @ApiOperation({

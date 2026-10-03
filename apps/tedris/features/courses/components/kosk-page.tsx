@@ -1,252 +1,305 @@
-import {
-  BookOpenIcon as BookOpen,
-  CalendarBlankIcon as CalendarBlank,
-  LockIcon as Lock,
-  MadrasahLogoIcon,
-  PlayCircleIcon as PlayCircle,
-  PlusIcon as Plus,
-} from "@medaris/icons/ssr";
 import type {
   CourseSummaryResponse,
+  KoskDecksResponse,
   KoskResponse,
 } from "@medaris/services/tedrisat";
-import { Breadcrumbs } from "@medaris/ui/components/breadcrumb";
-import { cn } from "@medaris/ui/lib/utils";
+import { Alert } from "@medaris/ui/mds/alert";
+import { Avatar } from "@medaris/ui/mds/avatar";
+import { Badge } from "@medaris/ui/mds/badge";
+import { Breadcrumb } from "@medaris/ui/mds/breadcrumb";
+import { Button } from "@medaris/ui/mds/button";
+import { Card } from "@medaris/ui/mds/card";
+import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
+import { EmptyState } from "@medaris/ui/mds/empty-state";
+import { Icon } from "@medaris/ui/mds/icon";
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
-import { CoverPlaceholder, HueAvatar } from "./cover";
-import { levelLabel } from "./labels";
+import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
+import { AnonymousInvite } from "~/components/anonymous-invite";
+import { FollowButton } from "~/features/discover/components/follow-button";
+import { joinRun } from "../join-run";
+import { enrollmentBadge } from "../madrasah-enrollment";
+import { formatNextSession } from "../next-session";
+import { koskLevelLabel } from "./labels";
 
-export const KoskPage = async ({
-  kosk,
-  courses,
-}: {
-  kosk: KoskResponse;
-  courses: CourseSummaryResponse[];
-}) => {
-  const t = await getTranslations("tedris");
+type Translate = Awaited<ReturnType<typeof getTranslations>>;
 
-  const categories = Array.from(
-    courses.reduce((map, c) => {
-      const key = c.category ?? t("KoskPage.uncategorized");
-      map.set(key, (map.get(key) ?? 0) + 1);
-      return map;
-    }, new Map<string, number>())
+const muderrisLine = (course: CourseSummaryResponse, t: Translate) =>
+  course.muderris.length === 0 ? null : (
+    <>
+      {t("KoskPage.muderris")}{" "}
+      {joinRun(
+        course.muderris.map((m) => (
+          <span key={m.id} style={{ whiteSpace: "nowrap" }}>
+            <bdi>{m.name}</bdi>
+            {m.isImam ? `, ${t("KoskPage.imam")}` : ""}
+          </span>
+        ))
+      )}
+    </>
   );
-
-  return (
-    <div className="pb-16">
-      {/* Breadcrumb */}
-      <Breadcrumbs
-        className="mb-5"
-        linkComponent={Link}
-        items={[
-          { label: t("TabView.learning"), href: "/learning" },
-          { label: t("KoskPage.kosks"), href: "/learning" },
-          { label: kosk.name },
-        ]}
-      />
-
-      {/* Köşk header card */}
-      <div className="mb-7 grid grid-cols-[auto_1fr_auto] items-center gap-6 rounded-2xl border bg-gradient-to-b from-slate-50 to-white p-6">
-        <div className="relative">
-          <div
-            className="grid size-24 place-items-center rounded-2xl border"
-            style={{ background: `oklch(0.95 0.05 ${kosk.coverHue})` }}
-          >
-            <MadrasahLogoIcon size={56} />
-          </div>
-          {kosk.isPrivate && (
-            <span className="absolute -bottom-1.5 -right-1.5 inline-flex items-center gap-1 rounded-full border bg-white px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-              <Lock size={11} /> {t("KoskPage.private")}
-            </span>
-          )}
-        </div>
-
-        <div>
-          <div className="mb-1.5 flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold tracking-tight">{kosk.name}</h1>
-            {kosk.handle && (
-              <span className="text-sm text-muted-foreground">
-                {kosk.handle}
-              </span>
-            )}
-          </div>
-          {kosk.description && (
-            <p className="mb-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              {kosk.description}
-            </p>
-          )}
-        </div>
-
-        <div className="flex gap-7 border-l pl-6">
-          {[
-            {
-              label: t("KoskPage.courses"),
-              value: kosk.courseCount ?? courses.length,
-            },
-            { label: t("KoskPage.students"), value: "—" },
-          ].map((s) => (
-            <div key={s.label} className="min-w-14 text-center">
-              <div className="text-2xl font-bold tracking-tight">{s.value}</div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">
-                {s.label}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Sidebar + grid */}
-      <div className="grid grid-cols-[200px_1fr] gap-7">
-        <aside>
-          <div className="mb-2.5 pl-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-            {t("KoskPage.categories")}
-          </div>
-          <ul className="flex flex-col gap-0.5">
-            <li className="flex items-center justify-between rounded-lg bg-slate-100 px-2.5 py-2 text-sm font-semibold">
-              <span>{t("KoskPage.allCourses")}</span>
-              <span className="text-[11px] text-slate-400">
-                {courses.length}
-              </span>
-            </li>
-            {categories.map(([cat, count]) => (
-              <li
-                key={cat}
-                className="flex items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground"
-              >
-                <span>{cat}</span>
-                <span className="text-[11px] text-slate-400">{count}</span>
-              </li>
-            ))}
-          </ul>
-        </aside>
-
-        <main className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {courses.map((course) => (
-            <CourseCard key={course.id} course={course} t={t} />
-          ))}
-          {courses.length === 0 && (
-            <p className="col-span-full py-12 text-center text-sm text-muted-foreground">
-              {t("KoskPage.noCourses")}
-            </p>
-          )}
-        </main>
-      </div>
-    </div>
-  );
-};
 
 const CourseCard = ({
   course,
   t,
+  locale,
+  timeZone,
 }: {
   course: CourseSummaryResponse;
-  t: Awaited<ReturnType<typeof getTranslations>>;
+  t: Translate;
+  locale: string;
+  timeZone: string;
 }) => {
-  const muderris = course.muderris?.[0];
-  const progress = course.enrollment?.progress ?? 0;
-  const enrolled = Boolean(course.enrollment);
-  const completed = course.enrollment?.status === "COMPLETED";
-
+  const badge = enrollmentBadge(course.enrollment?.status);
+  const next = course.nextSessionAt
+    ? formatNextSession(course.nextSessionAt, locale, timeZone)
+    : "";
   return (
-    <Link
+    <Card
+      className="flex flex-col"
       href={`/courses/${course.id}`}
-      className="flex h-full flex-col overflow-hidden rounded-2xl border bg-white transition-colors hover:border-slate-300"
-    >
-      <div className="p-2.5">
-        <CoverPlaceholder
-          hue={course.coverHue}
-          label={course.category ?? undefined}
-          className="h-32"
+      title={course.title}
+      media={
+        <CoverPattern
+          seed={course.id}
+          size="sm"
+          label={course.category ?? ""}
         />
-      </div>
-      <div className="flex flex-1 flex-col px-4 pb-4">
-        <div className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground">
-          <span className="font-semibold">{course.category}</span>
-          {course.category && (
-            <span className="size-[3px] rounded-full bg-slate-300" />
-          )}
-          <span>{levelLabel(course.level, t as never)}</span>
-        </div>
-
-        <h3 className="text-base font-semibold leading-snug tracking-tight">
-          {course.title}
-        </h3>
-        {course.subtitle && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            {course.subtitle}
-          </p>
-        )}
-
-        {muderris && (
-          <div className="mt-3 flex items-center gap-2">
-            <HueAvatar
-              name={initials(muderris.name)}
-              hue={muderris.avatarHue}
-              size={22}
-            />
-            <span className="text-xs">{muderris.name}</span>
-          </div>
-        )}
-
-        <div className="mt-3 flex gap-3.5 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <CalendarBlank size={13} />{" "}
-            {t("KoskPage.weeksCount", { count: course.weekCount })}
+      }
+      action={
+        badge ? (
+          <Badge
+            variant={badge.variant}
+            icon={
+              badge.variant === "warning" ? (
+                <Icon name="clock" size="sm" />
+              ) : undefined
+            }
+          >
+            {t(`KoskPage.${badge.labelKey}`)}
+          </Badge>
+        ) : null
+      }
+      footer={
+        next && course.nextSessionAt ? (
+          <span>
+            {t("KoskPage.nextSession")}{" "}
+            <time dateTime={new Date(course.nextSessionAt).toISOString()}>
+              {next}
+            </time>
           </span>
-          <span className="inline-flex items-center gap-1">
-            <PlayCircle size={13} />{" "}
-            {t("KoskPage.lessonsCount", { count: course.lessonCount })}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <BookOpen size={13} />{" "}
-            {t("KoskPage.resourcesCount", { count: course.resourceCount })}
-          </span>
-        </div>
-
-        <div className="mt-auto pt-3.5">
-          {enrolled ? (
-            <>
-              <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className={cn(
-                    "h-full rounded-full",
-                    completed ? "bg-green-600" : "bg-blue-700"
-                  )}
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <div className="mt-1.5 flex justify-between text-[11px]">
-                <span
-                  className={
-                    completed
-                      ? "font-medium text-green-600"
-                      : "font-medium text-muted-foreground"
-                  }
-                >
-                  {completed
-                    ? t("KoskPage.completed")
-                    : t("KoskPage.percentComplete", { percent: progress })}
-                </span>
-              </div>
-            </>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700">
-              <Plus size={13} /> {t("KoskPage.enroll")}
+        ) : (
+          <span>{t("KoskPage.noNextSession")}</span>
+        )
+      }
+    >
+      <div className="mds-card__body flex grow flex-col gap-2">
+        {course.madrasah ? (
+          <p className="flex items-start gap-2">
+            <Icon name="medrese" size="sm" className="mbs-1 flex-none" />
+            <span>
+              <Link href={`/madrasahs/${course.madrasah.id}`}>
+                <bdi>{course.madrasah.name}</bdi>
+              </Link>{" "}
+              {t("KoskPage.madrasahCourse")}
             </span>
-          )}
-        </div>
+          </p>
+        ) : null}
+        <p dir="auto">{muderrisLine(course, t)}</p>
       </div>
-    </Link>
+    </Card>
   );
 };
 
-const initials = (name: string) =>
-  name
-    .split(" ")
-    .filter(Boolean)
-    .slice(-2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase();
+/**
+ * A köşk's page (MDRS-159, design tedris/04): who it is, its courses with the
+ * medrese that opened each and the next session, and, for the talebe it
+ * belongs to, its decks. Open to signed-out visitors (MDRS-122), who get no
+ * follow button and no decks.
+ */
+export const KoskPage = async ({
+  kosk,
+  courses,
+  decks,
+  signedIn,
+}: {
+  kosk: KoskResponse;
+  courses: CourseSummaryResponse[];
+  decks: KoskDecksResponse | null;
+  signedIn: boolean;
+}) => {
+  const t = await getTranslations("tedris");
+  const locale = await getLocale();
+  const timeZone = await getTimeZone();
+  const level = koskLevelLabel(kosk.level, t as never, "KoskPage");
+
+  return (
+    <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
+      <div className="flex min-inline-0 flex-col gap-stack">
+        <Breadcrumb
+          items={[
+            { label: t("KoskPage.discover"), href: "/discover" },
+            { label: kosk.name },
+          ]}
+        />
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+          <div className="flex flex-nowrap items-start gap-4">
+            <Avatar entity size="lg" name={kosk.name} decorative />
+            <div className="flex min-inline-0 flex-col gap-2">
+              <p className="mds-eyebrow">{t("KoskPage.eyebrow")}</p>
+              <h1 className="mds-h1" dir="auto">
+                {kosk.name}
+              </h1>
+              <p className="mds-body-sm flex flex-wrap items-center gap-x-3 gap-y-1">
+                {kosk.field ? (
+                  <Badge variant="secondary">{kosk.field}</Badge>
+                ) : null}
+                <span>
+                  {level ? (
+                    <>
+                      {level}
+                      <span className="mds-sep" aria-hidden="true">
+                        ·
+                      </span>
+                    </>
+                  ) : null}
+                  {t("KoskPage.coursesCount", { count: kosk.courseCount })}
+                </span>
+                {kosk.isPrivate ? (
+                  <Badge variant="outline">{t("KoskPage.private")}</Badge>
+                ) : null}
+              </p>
+              {kosk.managerName ? (
+                <p className="mds-body-sm">
+                  {t("KoskPage.manager", { name: kosk.managerName })}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          {signedIn ? (
+            <FollowButton
+              size="regular"
+              koskId={kosk.id}
+              koskName={kosk.name}
+              following={kosk.isFollowing}
+              labels={{
+                follow: t("KoskPage.follow"),
+                following: t("KoskPage.following"),
+                failed: t("KoskPage.followFailed"),
+              }}
+            />
+          ) : null}
+        </div>
+        {kosk.description ? (
+          <div className="mds-reading" dir="auto">
+            <p>{kosk.description}</p>
+          </div>
+        ) : null}
+      </div>
+
+      <section
+        className="flex min-inline-0 flex-col gap-3"
+        aria-labelledby="kosk-courses"
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+          <h2 className="mds-h2" id="kosk-courses">
+            {t("KoskPage.coursesTitle")}
+          </h2>
+          <span className="mds-caption">{t("KoskPage.coursesHint")}</span>
+        </div>
+        {courses.length === 0 ? (
+          <EmptyState>{t("KoskPage.noCoursesYet")}</EmptyState>
+        ) : (
+          <div className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))]">
+            {courses.map((course) => (
+              <CourseCard
+                key={course.id}
+                course={course}
+                t={t}
+                locale={locale}
+                timeZone={timeZone}
+              />
+            ))}
+          </div>
+        )}
+        {signedIn ? null : (
+          <AnonymousInvite
+            t={t}
+            locale={locale}
+            variant="apply"
+            callbackPath={`/kosks/${kosk.id}`}
+            className="mds-body-sm"
+          />
+        )}
+      </section>
+
+      {decks?.accessible ? (
+        <section
+          className="flex min-inline-0 flex-col gap-3"
+          aria-labelledby="kosk-decks"
+        >
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+            <h2 className="mds-h2" id="kosk-decks">
+              {t("KoskPage.decksTitle")}
+            </h2>
+            <span className="mds-caption">{t("KoskPage.decksHint")}</span>
+          </div>
+          {decks.decks.length === 0 ? (
+            <EmptyState>{t("KoskPage.decksEmpty")}</EmptyState>
+          ) : (
+            <div className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))]">
+              {decks.decks.map((deck) => (
+                <Card
+                  key={deck.id}
+                  className="flex flex-col"
+                  href={`/decks/${deck.id}`}
+                  title={
+                    <span className="flex items-center gap-3">
+                      <Avatar entity decorative name={deck.title} />
+                      <span>{deck.title}</span>
+                    </span>
+                  }
+                  footer={
+                    deck.inCollection ? (
+                      <span>{t("KoskPage.inCollection")}</span>
+                    ) : null
+                  }
+                >
+                  <p className="mds-card__body grow">
+                    {t("KoskPage.deckMeta")}
+                    <span className="mds-sep" aria-hidden="true">
+                      ·
+                    </span>
+                    {t("KoskPage.cardsCount", { count: deck.cardCount })}
+                  </p>
+                </Card>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
+    </main>
+  );
+};
+
+/**
+ * The köşk could not be read (design tedris/04): an Alert in the page with a
+ * way to try again, not the generic error page and not a "no such köşk".
+ */
+export const KoskLoadError = async ({ koskId }: { koskId: string }) => {
+  const t = await getTranslations("tedris");
+  return (
+    <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
+      <Breadcrumb
+        items={[{ label: t("KoskPage.discover"), href: "/discover" }]}
+      />
+      <Alert tone="error" title={t("KoskPage.loadErrorTitle")}>
+        <p>{t("KoskPage.loadError")}</p>
+        <p className="mbs-3">
+          <Button variant="outline" size="small" href={`/kosks/${koskId}`}>
+            {t("KoskPage.retry")}
+          </Button>
+        </p>
+      </Alert>
+    </main>
+  );
+};

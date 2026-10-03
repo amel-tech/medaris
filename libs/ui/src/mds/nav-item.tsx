@@ -1,4 +1,10 @@
-import type { AnchorHTMLAttributes, ReactNode } from "react";
+import type {
+  AnchorHTMLAttributes,
+  ComponentType,
+  ElementType,
+  ReactNode,
+  Ref,
+} from "react";
 import { cx } from "./cx";
 import { formatNumber, usePageLocale } from "./locale";
 
@@ -13,6 +19,17 @@ export interface NavItemProps
   countLabel?: string;
   trailing?: ReactNode;
   locale?: string;
+  /**
+   * The element that draws the link, for an app whose router navigates on the
+   * client (`next/link`): without it the item is a plain `<a>` and every
+   * followed link is a full document load. It receives the item's own props.
+   */
+  linkComponent?: ComponentType<
+    AnchorHTMLAttributes<HTMLAnchorElement> & {
+      href: string;
+      ref?: Ref<HTMLAnchorElement>;
+    }
+  >;
 }
 
 /** `.mds-nav-item`. A link, never a button: routing is by URL. The same item in the sidebar and in the AppBar's sheet. */
@@ -24,13 +41,15 @@ export function NavItem({
   countLabel,
   trailing,
   locale,
+  linkComponent,
   children,
   className,
   ...rest
 }: NavItemProps) {
   const { ref, lang } = usePageLocale<HTMLAnchorElement>(locale);
+  const Tag: ElementType = linkComponent ?? "a";
   return (
-    <a
+    <Tag
       ref={ref}
       className={cx("mds-nav-item", className)}
       href={href}
@@ -50,6 +69,6 @@ export function NavItem({
       {trailing ? (
         <span className="mds-nav-item__trailing">{trailing}</span>
       ) : null}
-    </a>
+    </Tag>
   );
 }

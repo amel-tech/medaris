@@ -26,17 +26,23 @@ export interface KoskResponse {
      */
     id: string;
     /**
-     * Who created the köşk. Grants nothing since MDRS-126 — see managerIds
+     * Who created the köşk. Grants nothing since MDRS-126 — see managerIds. Null for a caller with no token (MDRS-160): a person's id is not for the public.
      * @type {string}
      * @memberof KoskResponse
      */
-    ownerId: string;
+    ownerId: string | null;
     /**
-     * Who manages the köşk, oldest first; never empty (MDRS-126)
+     * Who manages the köşk, oldest first; never empty for a signed-in caller (MDRS-126). Empty for a caller with no token (MDRS-160), who gets `managerName` instead.
      * @type {Array<string>}
      * @memberof KoskResponse
      */
     managerIds: Array<string>;
+    /**
+     * The name of the köşk's oldest manager, shown as "Köşk nazımı" (MDRS-160). Null when that person has no name on file. Open to everyone, signed in or not.
+     * @type {string}
+     * @memberof KoskResponse
+     */
+    managerName: string | null;
     /**
      * 
      * @type {string}
@@ -85,6 +91,24 @@ export interface KoskResponse {
      * @memberof KoskResponse
      */
     tags: Array<string>;
+    /**
+     * Köşk-wide policy (MDRS-174): enrollment always waits
+     * @type {boolean}
+     * @memberof KoskResponse
+     */
+    alwaysRequireApproval: boolean;
+    /**
+     * Köşk-wide policy (MDRS-174): no recording is made public
+     * @type {boolean}
+     * @memberof KoskResponse
+     */
+    recordingsNeverPublic: boolean;
+    /**
+     * Since when the köşk is hidden (MDRS-174); null while it is shown. Only its nazımları and SYSTEM_ADMIN can read a hidden köşk.
+     * @type {Date}
+     * @memberof KoskResponse
+     */
+    archivedAt?: Date | null;
     /**
      * 
      * @type {boolean}
@@ -160,10 +184,13 @@ export function instanceOfKoskResponse(value: object): value is KoskResponse {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('ownerId' in value) || value['ownerId'] === undefined) return false;
     if (!('managerIds' in value) || value['managerIds'] === undefined) return false;
+    if (!('managerName' in value) || value['managerName'] === undefined) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('coverHue' in value) || value['coverHue'] === undefined) return false;
     if (!('isPrivate' in value) || value['isPrivate'] === undefined) return false;
     if (!('tags' in value) || value['tags'] === undefined) return false;
+    if (!('alwaysRequireApproval' in value) || value['alwaysRequireApproval'] === undefined) return false;
+    if (!('recordingsNeverPublic' in value) || value['recordingsNeverPublic'] === undefined) return false;
     if (!('verified' in value) || value['verified'] === undefined) return false;
     if (!('featured' in value) || value['featured'] === undefined) return false;
     if (!('rating' in value) || value['rating'] === undefined) return false;
@@ -191,6 +218,7 @@ export function KoskResponseFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'id': json['id'],
         'ownerId': json['ownerId'],
         'managerIds': json['managerIds'],
+        'managerName': json['managerName'],
         'name': json['name'],
         'handle': json['handle'] == null ? undefined : json['handle'],
         'description': json['description'] == null ? undefined : json['description'],
@@ -199,6 +227,9 @@ export function KoskResponseFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'field': json['field'] == null ? undefined : json['field'],
         'level': json['level'] == null ? undefined : json['level'],
         'tags': json['tags'],
+        'alwaysRequireApproval': json['alwaysRequireApproval'],
+        'recordingsNeverPublic': json['recordingsNeverPublic'],
+        'archivedAt': json['archivedAt'] == null ? undefined : (new Date(json['archivedAt'])),
         'verified': json['verified'],
         'featured': json['featured'],
         'rating': json['rating'],
@@ -227,6 +258,7 @@ export function KoskResponseToJSONTyped(value?: KoskResponse | null, ignoreDiscr
         'id': value['id'],
         'ownerId': value['ownerId'],
         'managerIds': value['managerIds'],
+        'managerName': value['managerName'],
         'name': value['name'],
         'handle': value['handle'],
         'description': value['description'],
@@ -235,6 +267,9 @@ export function KoskResponseToJSONTyped(value?: KoskResponse | null, ignoreDiscr
         'field': value['field'],
         'level': value['level'],
         'tags': value['tags'],
+        'alwaysRequireApproval': value['alwaysRequireApproval'],
+        'recordingsNeverPublic': value['recordingsNeverPublic'],
+        'archivedAt': value['archivedAt'] === null ? null : ((value['archivedAt'] as any)?.toISOString()),
         'verified': value['verified'],
         'featured': value['featured'],
         'rating': value['rating'],

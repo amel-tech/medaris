@@ -1,6 +1,7 @@
 import { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
+import { asSystemAdmin } from "../helpers/system-admin.helper";
 import {
   createTestApp,
   OTHER_USER_ID,
@@ -61,6 +62,7 @@ const prop = (ics: string, name: string) =>
 
 describe("GET /lessons/:id/calendar.ics (e2e)", () => {
   let app: INestApplication;
+  let adminApp: INestApplication;
   let otherApp: INestApplication;
   let dbUtils: TestDatabaseUtils;
   let koskId: string;
@@ -69,14 +71,16 @@ describe("GET /lessons/:id/calendar.ics (e2e)", () => {
     // Read by the config factory when AppModule is first imported.
     process.env.TEDRIS_WEB_URL = `${WEB_URL}/`;
     app = await createTestApp({ authUserId: TEST_USER_ID });
+    adminApp = await createTestApp();
     otherApp = await createTestApp({ authUserId: OTHER_USER_ID });
     dbUtils = new TestDatabaseUtils(app.get(DatabaseService));
   });
 
   beforeEach(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
-    const kosk = await request(app.getHttpServer())
+    const kosk = await request(adminApp.getHttpServer())
       .post("/kosks")
+      .set("Authorization", asSystemAdmin(TEST_USER_ID))
       .send({ name: "Süleymaniye Köşkü" })
       .expect(201);
     koskId = kosk.body.id;
@@ -85,6 +89,7 @@ describe("GET /lessons/:id/calendar.ics (e2e)", () => {
   afterAll(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
     await app.close();
+    await adminApp.close();
     await otherApp.close();
     delete process.env.TEDRIS_WEB_URL;
   });
@@ -131,8 +136,8 @@ describe("GET /lessons/:id/calendar.ics (e2e)", () => {
     const page = `${WEB_URL}/courses/${detail.id}/lessons/${lesson.id}`;
     expect(prop(ics, "UID")).toBe(`lesson-${lesson.id}@medaris.app`);
     expect(prop(ics, "SEQUENCE")).toBe(String(detail.version));
-    expect(prop(ics, "DTSTART")).toBe("20261001T180000Z");
-    expect(prop(ics, "DTEND")).toBe("20261001T190000Z");
+    expect(ics).toContain("DTSTART;TZID=Europe/Istanbul:20261001T210000");
+    expect(ics).toContain("DTEND;TZID=Europe/Istanbul:20261001T220000");
     expect(prop(ics, "SUMMARY")).toBe("Bina ve İzhar Şerhi — Açılış halkası");
     expect(prop(ics, "URL")).toBe(page);
     expect(prop(ics, "LOCATION")).toBe(page);
@@ -158,7 +163,7 @@ describe("GET /lessons/:id/calendar.ics (e2e)", () => {
     expect(Number(prop(after, "SEQUENCE"))).toBeGreaterThan(
       Number(prop(before, "SEQUENCE"))
     );
-    expect(prop(after, "DTSTART")).toBe("20261002T173000Z");
+    expect(after).toContain("DTSTART;TZID=Europe/Istanbul:20261002T203000");
   });
 
   it("writes the description in the requested language and refuses an unknown one", async () => {

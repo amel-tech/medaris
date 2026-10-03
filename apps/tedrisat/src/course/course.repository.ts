@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import {
   and,
+  desc,
   eq,
   gte,
   inArray,
@@ -8,11 +9,17 @@ import {
   isNull,
   max,
   ne,
+  notInArray,
   or,
   sql,
 } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { DatabaseService } from "../database/database.service";
-import { holdsIn, syncMuderrisAssignments } from "../database/role-assignments";
+import {
+  holdsIn,
+  isHeld,
+  syncMuderrisAssignments,
+} from "../database/role-assignments";
 import { auditLog } from "../database/schema/audit.schema";
 import {
   courseMuderris,
@@ -23,6 +30,7 @@ import {
   lessons,
 } from "../database/schema/course.schema";
 import { kosks } from "../database/schema/kosk.schema";
+import { madrasahs } from "../database/schema/madrasah.schema";
 import {
   ASSIGNED_ROLES,
   roleAssignments,
@@ -44,6 +52,7 @@ import {
   ILessonMutation,
   IMuderris,
   IPendingEnrollment,
+  IRemovedEnrollment,
   IRemoveEnrollment,
   IReplaceCourse,
   ISessionBatchResult,
@@ -55,8 +64,14 @@ import { IPurgeCounts, purgeCourses, recordDeletion, Tx } from "./course-purge";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import { LessonType } from "./domain/lesson-type.enum";
+import {
+  type IDatedWeek,
+  localDateOf,
+  placeInWeeks,
+} from "./domain/weekly-pattern";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { CourseVersionConflictError } from "./errors/course-version-conflict.error";
+import { LessonAlreadyCancelledError } from "./errors/lesson-already-cancelled.error";
 import { LessonNotFoundError } from "./errors/lesson-not-found.error";
 import { WeekNotFoundError } from "./errors/week-not-found.error";
 
@@ -79,12 +94,83 @@ const enrollmentOf = (
   userId: string | null
 ) => (userId === null ? sql`false` : eq(column, userId));
 
+/**
+ * The earliest session still ahead that stands (a cancelled one does not
+ * count), with the number of the week it falls in (MDRS-159).
+ */
+export function nextSessionOf(
+  weeks: {
+    weekNumber: number;
+    lessons: { scheduledAt: Date | null; cancelledAt: Date | null }[];
+  }[],
+  now: Date
+): { at: Date; weekNumber: number } | null {
+  let next: { at: Date; weekNumber: number } | null = null;
+  for (const week of weeks) {
+    for (const lesson of week.lessons) {
+      const at = lesson.scheduledAt;
+      if (at === null || lesson.cancelledAt !== null || at <= now) continue;
+      if (next === null || at < next.at) {
+        next = { at, weekNumber: week.weekNumber };
+      }
+    }
+  }
+  return next;
+}
+
 @Injectable()
 export class CourseRepository implements ICourseRepository {
   constructor(private readonly databaseService: DatabaseService) {}
 
   private get db() {
     return this.databaseService.db;
+  }
+
+  /**
+   * The medrese each course is opened by, by id, and the courses' imams as
+   * `courseId:userId` keys (MDRS-159): two small reads over the course ids,
+   * not a wider join.
+   */
+  private async madrasahsAndImamsOf(
+    rows: { id: string; madrasahId: string | null }[]
+  ): Promise<{ madrasahName: Map<string, string>; imamKeys: Set<string> }> {
+    const madrasahIds = [
+      ...new Set(rows.flatMap((r) => (r.madrasahId ? [r.madrasahId] : []))),
+    ];
+    const [madrasahRows, imamRows]: [
+      { id: string; name: string }[],
+      { courseId: string | null; userId: string }[],
+    ] = await Promise.all([
+      madrasahIds.length === 0
+        ? Promise.resolve([])
+        : this.db
+            .select({ id: madrasahs.id, name: madrasahs.name })
+            .from(madrasahs)
+            .where(inArray(madrasahs.id, madrasahIds)),
+      rows.length === 0
+        ? Promise.resolve([])
+        : this.db
+            .select({
+              courseId: roleAssignments.scopeId,
+              userId: roleAssignments.userId,
+            })
+            .from(roleAssignments)
+            .where(
+              and(
+                eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS),
+                eq(roleAssignments.isImam, true),
+                inArray(
+                  roleAssignments.scopeId,
+                  rows.map((r) => r.id)
+                ),
+                isHeld()
+              )
+            ),
+    ]);
+    return {
+      madrasahName: new Map(madrasahRows.map((m) => [m.id, m.name])),
+      imamKeys: new Set(imamRows.map((i) => `${i.courseId}:${i.userId}`)),
+    };
   }
 
   async findSummariesByKosk(
@@ -113,6 +199,9 @@ export class CourseRepository implements ICourseRepository {
       },
     });
 
+    const { madrasahName, imamKeys } = await this.madrasahsAndImamsOf(rows);
+    const now = new Date();
+
     return rows.map((row) => {
       const { weeks, resources, enrollments: enr, ...course } = row;
       return {
@@ -120,8 +209,19 @@ export class CourseRepository implements ICourseRepository {
         weekCount: weeks.length,
         lessonCount: weeks.reduce((sum, w) => sum + w.lessons.length, 0),
         resourceCount: resources.length,
-        muderris: row.muderris,
+        muderris: row.muderris.map((m) => ({
+          ...m,
+          isImam: m.userId !== null && imamKeys.has(`${row.id}:${m.userId}`),
+        })),
         enrollment: enr[0] ?? null,
+        madrasah:
+          row.madrasahId && madrasahName.has(row.madrasahId)
+            ? {
+                id: row.madrasahId,
+                name: madrasahName.get(row.madrasahId) as string,
+              }
+            : null,
+        nextSessionAt: nextSessionOf(weeks, now)?.at ?? null,
       };
     });
   }
@@ -154,14 +254,39 @@ export class CourseRepository implements ICourseRepository {
 
     if (!row) return null;
     const { enrollments: enr, ...course } = row;
-    return { ...course, enrollment: enr[0] ?? null };
+    const { madrasahName, imamKeys } = await this.madrasahsAndImamsOf([row]);
+    return {
+      ...course,
+      muderris: row.muderris.map((m) => ({
+        ...m,
+        isImam: m.userId !== null && imamKeys.has(`${row.id}:${m.userId}`),
+      })),
+      enrollment: enr[0] ?? null,
+      madrasah:
+        row.madrasahId && madrasahName.has(row.madrasahId)
+          ? {
+              id: row.madrasahId,
+              name: madrasahName.get(row.madrasahId) as string,
+            }
+          : null,
+    };
   }
 
-  async findEnrolledByUser(userId: string): Promise<IEnrolledCourse[]> {
+  async findEnrolledByUser(
+    userId: string,
+    includePending = false
+  ): Promise<IEnrolledCourse[]> {
+    const now = new Date();
     const rows = await this.db.query.enrollments.findMany({
       where: and(
         eq(enrollments.userId, userId),
-        ne(enrollments.status, EnrollmentStatus.PENDING)
+        // A revoked seat is not a course the talebe is in (MDRS-161).
+        includePending
+          ? ne(enrollments.status, EnrollmentStatus.REVOKED)
+          : notInArray(enrollments.status, [
+              EnrollmentStatus.PENDING,
+              EnrollmentStatus.REVOKED,
+            ])
       ),
       with: {
         course: {
@@ -171,7 +296,7 @@ export class CourseRepository implements ICourseRepository {
               where: (w, { isNull }) => isNull(w.archivedAt),
               with: {
                 lessons: {
-                  columns: { id: true },
+                  columns: { id: true, scheduledAt: true, cancelledAt: true },
                   where: (l, { isNull }) => isNull(l.archivedAt),
                 },
               },
@@ -182,32 +307,43 @@ export class CourseRepository implements ICourseRepository {
           },
         },
       },
+      orderBy: (e, { asc }) => [asc(e.createdAt)],
     });
 
     // A hidden course drops out of its talebe's list too (MDRS-124); the
     // enrollment row stays, so restoring the course brings it back.
-    return rows
-      .filter((row) => row.course.archivedAt === null)
-      .map((row) => {
-        const { kosk, weeks, muderris, ...course } = row.course;
-        return {
-          ...course,
-          koskName: kosk.name,
-          weekCount: weeks.length,
-          lessonCount: weeks.reduce((sum, w) => sum + w.lessons.length, 0),
-          muderris,
-          enrollment: {
-            userId: row.userId,
-            courseId: row.courseId,
-            studentName: row.studentName,
-            studentEmail: row.studentEmail,
-            progress: row.progress,
-            status: row.status,
-            createdAt: row.createdAt,
-            updatedAt: row.updatedAt,
-          },
-        };
-      });
+    const live = rows.filter((row) => row.course.archivedAt === null);
+    const { madrasahName, imamKeys } = await this.madrasahsAndImamsOf(
+      live.map((row) => row.course)
+    );
+    return live.map((row) => {
+      const { kosk, weeks, muderris, ...course } = row.course;
+      return {
+        ...course,
+        koskName: kosk.name,
+        madrasahName: course.madrasahId
+          ? (madrasahName.get(course.madrasahId) ?? null)
+          : null,
+        weekCount: weeks.length,
+        lessonCount: weeks.reduce((sum, w) => sum + w.lessons.length, 0),
+        muderris: muderris.map((m) => ({
+          ...m,
+          isImam: m.userId !== null && imamKeys.has(`${course.id}:${m.userId}`),
+        })),
+        nextSession: nextSessionOf(weeks, now),
+        enrollment: {
+          userId: row.userId,
+          courseId: row.courseId,
+          studentName: row.studentName,
+          studentEmail: row.studentEmail,
+          progress: row.progress,
+          status: row.status,
+          completedAt: row.completedAt,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+        },
+      };
+    });
   }
 
   async create(course: ICreateCourse): Promise<ICourseDetail> {
@@ -311,8 +447,15 @@ export class CourseRepository implements ICourseRepository {
         .select({ id: courseMuderris.id })
         .from(courseMuderris)
         .where(eq(courseMuderris.courseId, id));
+      // Ids are compared lowercased, the way `muderrisListChanged` compares
+      // them before the ASSIGN_MUDERRIS check. Postgres returns uuids in
+      // lowercase and `@IsUUID()` accepts uppercase, so an exact match here
+      // would delete and re-insert a row the check called unchanged — with
+      // every field the payload left out, `userId` included, reset.
       const muderrisKeep = new Set(
-        muderris.map((m) => m.id).filter((x): x is string => Boolean(x))
+        muderris
+          .map((m) => m.id?.toLowerCase())
+          .filter((x): x is string => Boolean(x))
       );
       const muderrisToDelete = existingMuderris
         .filter((e) => !muderrisKeep.has(e.id))
@@ -333,11 +476,12 @@ export class CourseRepository implements ICourseRepository {
           avatarHue: m.avatarHue,
           orderIndex: i,
         };
-        if (m.id && existingMuderrisIds.has(m.id)) {
+        const muderrisId = m.id?.toLowerCase();
+        if (muderrisId && existingMuderrisIds.has(muderrisId)) {
           await tx
             .update(courseMuderris)
             .set(values)
-            .where(eq(courseMuderris.id, m.id));
+            .where(eq(courseMuderris.id, muderrisId));
         } else {
           await tx.insert(courseMuderris).values(values);
         }
@@ -638,6 +782,127 @@ export class CourseRepository implements ICourseRepository {
     });
   }
 
+  async cancelLesson(
+    lessonId: string,
+    expectedVersion: number,
+    reason: string | null,
+    actorId: string
+  ): Promise<ILessonMutation> {
+    return this.db.transaction(async (tx) => {
+      const courseId = await this.findLiveLessonCourseId(tx, lessonId);
+      const courseVersion = await this.bumpVersion(
+        tx,
+        courseId,
+        expectedVersion
+      );
+      const now = new Date();
+      const [row] = await tx
+        .update(lessons)
+        .set({
+          cancelledAt: now,
+          cancelReason: reason,
+          updatedAt: now,
+        })
+        .where(and(eq(lessons.id, lessonId), isNull(lessons.cancelledAt)))
+        .returning();
+      if (!row) throw new LessonAlreadyCancelledError(lessonId);
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "lesson.cancel",
+        entity: "lesson",
+        entityId: lessonId,
+        details: { courseId, reason },
+      });
+      return this.toLessonMutation(row, courseVersion);
+    });
+  }
+
+  async setMuderris(
+    courseId: string,
+    expectedVersion: number,
+    list: { userId: string; name: string; title?: string }[],
+    imamUserId: string,
+    actorId: string
+  ): Promise<{ muderris: IMuderris[]; courseVersion: number }> {
+    return this.db.transaction(async (tx) => {
+      const courseVersion = await this.bumpVersion(
+        tx,
+        courseId,
+        expectedVersion
+      );
+      const existing = await tx
+        .select()
+        .from(courseMuderris)
+        .where(eq(courseMuderris.courseId, courseId));
+      const keep = new Set(list.map((m) => m.userId.toLowerCase()));
+      const dropped = existing.filter(
+        (e) => e.userId === null || !keep.has(e.userId.toLowerCase())
+      );
+      if (dropped.length) {
+        await tx.delete(courseMuderris).where(
+          inArray(
+            courseMuderris.id,
+            dropped.map((d) => d.id)
+          )
+        );
+      }
+      for (const [i, m] of list.entries()) {
+        const row = existing.find(
+          (e) => e.userId?.toLowerCase() === m.userId.toLowerCase()
+        );
+        if (row) {
+          await tx
+            .update(courseMuderris)
+            .set({ orderIndex: i })
+            .where(eq(courseMuderris.id, row.id));
+        } else {
+          await tx.insert(courseMuderris).values({
+            courseId,
+            userId: m.userId,
+            name: m.name,
+            title: m.title ?? null,
+            orderIndex: i,
+          });
+        }
+      }
+      await syncMuderrisAssignments(tx, courseId, actorId);
+      const seat = holdsIn(ASSIGNED_ROLES.MUDERRIS, courseId);
+      await tx
+        .update(roleAssignments)
+        .set({ isImam: false })
+        .where(and(seat, eq(roleAssignments.isImam, true)));
+      await tx
+        .update(roleAssignments)
+        .set({ isImam: true })
+        .where(and(seat, eq(roleAssignments.userId, imamUserId)));
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "course.muderris_update",
+        entity: "course",
+        entityId: courseId,
+        details: {
+          before: existing.map((e) => e.userId),
+          after: list.map((m) => m.userId),
+          imamUserId,
+        },
+      });
+      const rows = await tx
+        .select()
+        .from(courseMuderris)
+        .where(eq(courseMuderris.courseId, courseId))
+        .orderBy(courseMuderris.orderIndex, courseMuderris.id);
+      return {
+        muderris: rows.map((r) => ({
+          ...r,
+          isImam:
+            r.userId !== null &&
+            r.userId.toLowerCase() === imamUserId.toLowerCase(),
+        })),
+        courseVersion,
+      };
+    });
+  }
+
   async updateLesson(
     lessonId: string,
     expectedVersion: number,
@@ -712,6 +977,41 @@ export class CourseRepository implements ICourseRepository {
   }
 
   /**
+   * The weeks that already hold dated sessions, each with its earliest
+   * session's date in the course's zone (nizam/55). Shared by the preview and
+   * the write so both number a session the same way.
+   */
+  async datedWeeks(
+    courseId: string,
+    timeZone: string,
+    executor?: Pick<DatabaseService["db"], "select">
+  ): Promise<IDatedWeek[]> {
+    const dated = await (executor ?? this.db)
+      .select({
+        weekNumber: courseWeeks.weekNumber,
+        scheduledAt: lessons.scheduledAt,
+      })
+      .from(lessons)
+      .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
+      .where(
+        and(
+          eq(courseWeeks.courseId, courseId),
+          isNull(courseWeeks.archivedAt),
+          isNull(lessons.archivedAt),
+          isNull(lessons.cancelledAt),
+          isNotNull(lessons.scheduledAt)
+        )
+      );
+    const firstDay = new Map<number, string>();
+    for (const row of dated) {
+      const day = localDateOf(row.scheduledAt as Date, timeZone);
+      const held = firstDay.get(row.weekNumber);
+      if (held === undefined || day < held) firstDay.set(row.weekNumber, day);
+    }
+    return [...firstDay].map(([weekNumber, from]) => ({ weekNumber, from }));
+  }
+
+  /**
    * A weekly pattern's sessions (MDRS-109), through the same session-level
    * path as `createLesson`: one transaction that bumps the course version
    * first, so a whole-course PUT loaded before it is refused rather than
@@ -728,7 +1028,7 @@ export class CourseRepository implements ICourseRepository {
         .select({ timeZone: courses.timeZone })
         .from(courses)
         .where(eq(courses.id, courseId));
-      const planned = batch.plan(course.timeZone);
+      const drafted = batch.plan(course.timeZone);
       const liveWeeks = await tx
         .select({
           id: courseWeeks.id,
@@ -744,6 +1044,18 @@ export class CourseRepository implements ICourseRepository {
           )
         )
         .orderBy(courseWeeks.weekNumber, courseWeeks.orderIndex);
+
+      // A session goes into the week its date falls in (nizam/55), counted
+      // from the weeks that already hold dated sessions; the pattern's own
+      // numbering applies only when the course has none.
+      const numbers = placeInWeeks(
+        drafted,
+        await this.datedWeeks(courseId, course.timeZone, tx)
+      );
+      const planned = drafted.map((s, i) => ({
+        ...s,
+        weekNumber: numbers[i],
+      }));
 
       // Two live weeks may share a number; the first in syllabus order wins.
       const byNumber = new Map<number, ISessionBatchWeek>();
@@ -854,12 +1166,14 @@ export class CourseRepository implements ICourseRepository {
     status: CourseStatus;
     archived: boolean;
     koskIsPrivate: boolean;
+    koskHidden: boolean;
   } | null> {
     const rows = await this.db
       .select({
         status: courses.status,
         archivedAt: courses.archivedAt,
         koskIsPrivate: kosks.isPrivate,
+        koskArchivedAt: kosks.archivedAt,
       })
       .from(courses)
       .innerJoin(kosks, eq(kosks.id, courses.koskId))
@@ -871,6 +1185,7 @@ export class CourseRepository implements ICourseRepository {
       status: row.status,
       archived: row.archivedAt !== null,
       koskIsPrivate: row.koskIsPrivate,
+      koskHidden: row.koskArchivedAt !== null,
     };
   }
 
@@ -1051,27 +1366,53 @@ export class CourseRepository implements ICourseRepository {
       pendingApplications: pending?.value ?? 0,
     };
   }
-
+  /**
+   * Moves an enrollment to `status`, but only while it is still in
+   * `expectedStatus`, the one the caller read: null when it is not (or is
+   * gone), so a concurrent removal that turned it REVOKED is not written over.
+   */
   async setEnrollmentStatus(
     userId: string,
     courseId: string,
-    status: EnrollmentStatus
+    status: EnrollmentStatus,
+    expectedStatus: EnrollmentStatus
   ): Promise<IEnrollment | null> {
     return this.db
       .update(enrollments)
-      .set({ status, updatedAt: new Date() })
+      .set({
+        status,
+        // Kept when it is already completed, so marking it again does not
+        // move the date the team gave (MDRS-159).
+        completedAt:
+          status === EnrollmentStatus.COMPLETED
+            ? sql`coalesce(${enrollments.completedAt}, now())`
+            : null,
+        updatedAt: new Date(),
+      })
       .where(
-        and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId))
+        and(
+          eq(enrollments.userId, userId),
+          eq(enrollments.courseId, courseId),
+          eq(enrollments.status, expectedStatus)
+        )
       )
       .returning()
       .then((result) => result[0] || null);
   }
 
-  async deleteEnrollment(userId: string, courseId: string): Promise<boolean> {
+  async deleteEnrollment(
+    userId: string,
+    courseId: string,
+    onlyStatus?: EnrollmentStatus
+  ): Promise<boolean> {
     const deleted = await this.db
       .delete(enrollments)
       .where(
-        and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId))
+        and(
+          eq(enrollments.userId, userId),
+          eq(enrollments.courseId, courseId),
+          onlyStatus ? eq(enrollments.status, onlyStatus) : undefined
+        )
       )
       .returning();
     return deleted.length > 0;
@@ -1169,11 +1510,18 @@ export class CourseRepository implements ICourseRepository {
 
   /** The course's müderris rows in display order (MDRS-105). */
   async findMuderris(courseId: string): Promise<IMuderris[]> {
-    return this.db
+    const { imamKeys } = await this.madrasahsAndImamsOf([
+      { id: courseId, madrasahId: null },
+    ]);
+    const rows = await this.db
       .select()
       .from(courseMuderris)
       .where(eq(courseMuderris.courseId, courseId))
       .orderBy(courseMuderris.orderIndex, courseMuderris.id);
+    return rows.map((m) => ({
+      ...m,
+      isImam: m.userId !== null && imamKeys.has(`${courseId}:${m.userId}`),
+    }));
   }
 
   /**
@@ -1208,16 +1556,18 @@ export class CourseRepository implements ICourseRepository {
 
   /**
    * Takes a talebe out of a course with the team's reason (MDRS-105): the
-   * enrollment row goes and one `enrollment.remove` row lands in
-   * `audit_log`, in one transaction, so the reason cannot be lost while the
-   * seat is. Not a ban — nothing stops the talebe from applying again.
-   * Only an enrollment still in `expectedStatus` is removed; false when there
+   * enrollment turns REVOKED (MDRS-161, design tedris/13) and one
+   * `enrollment.remove` row lands in `audit_log`, in one transaction, so the
+   * reason cannot be lost while the seat is. The row stays so the talebe's
+   * page can say so; progress is kept. Not a ban — a ban is MDRS-177's.
+   * Only an enrollment still in `expectedStatus` is revoked; false when there
    * was none (a concurrent leave, reject or completion got there first).
    */
   async removeEnrollment(entry: IRemoveEnrollment): Promise<boolean> {
     return this.db.transaction(async (tx) => {
-      const [removed] = await tx
-        .delete(enrollments)
+      const [before] = await tx
+        .select()
+        .from(enrollments)
         .where(
           and(
             eq(enrollments.userId, entry.userId),
@@ -1225,36 +1575,115 @@ export class CourseRepository implements ICourseRepository {
             eq(enrollments.status, entry.expectedStatus)
           )
         )
-        .returning();
-      if (!removed) return false;
+        .for("update");
+      if (!before) return false;
+      await tx
+        .update(enrollments)
+        .set({
+          status: EnrollmentStatus.REVOKED,
+          completedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(enrollments.userId, entry.userId),
+            eq(enrollments.courseId, entry.courseId)
+          )
+        );
       await tx.insert(auditLog).values({
         actorId: entry.actorId,
         action: "enrollment.remove",
         entity: "course",
         entityId: entry.courseId,
         details: {
-          userId: removed.userId,
+          userId: before.userId,
+          studentName: before.studentName,
+          studentEmail: before.studentEmail,
           reason: entry.reason,
-          status: removed.status,
-          progress: removed.progress,
-          enrolledAt: removed.createdAt.toISOString(),
+          status: before.status,
+          progress: before.progress,
+          enrolledAt: before.createdAt.toISOString(),
         },
       });
       return true;
     });
   }
 
+  /**
+   * The talebe the team took out of a course, newest first (MDRS-178,
+   * "Erişimi kaldırılanlar"): the `enrollment.remove` rows of the audit log.
+   * Names come from the row itself when it kept them, else from `users`.
+   */
+  async findRemovedEnrollments(
+    courseId: string
+  ): Promise<IRemovedEnrollment[]> {
+    const target = alias(users, "removed_target");
+    const actor = alias(users, "removed_actor");
+    const rows = await this.db
+      .select({
+        id: auditLog.id,
+        actorId: auditLog.actorId,
+        details: auditLog.details,
+        createdAt: auditLog.createdAt,
+        targetGiven: target.givenName,
+        targetFamily: target.familyName,
+        targetEmail: target.email,
+        actorGiven: actor.givenName,
+        actorFamily: actor.familyName,
+      })
+      .from(auditLog)
+      .leftJoin(
+        target,
+        sql`${target.id}::text = ${auditLog.details}->>'userId'`
+      )
+      .leftJoin(actor, eq(actor.id, auditLog.actorId))
+      .where(
+        and(
+          eq(auditLog.action, "enrollment.remove"),
+          eq(auditLog.entityId, courseId)
+        )
+      )
+      .orderBy(desc(auditLog.createdAt), desc(auditLog.id));
+    const full = (g: string | null, f: string | null) =>
+      [g, f].filter(Boolean).join(" ").trim() || null;
+    return rows.map((r) => {
+      const d = r.details as Record<string, unknown>;
+      const text = (v: unknown) => (typeof v === "string" ? v : null);
+      return {
+        userId: String(d.userId ?? ""),
+        name: text(d.studentName) ?? full(r.targetGiven, r.targetFamily),
+        email: text(d.studentEmail) ?? r.targetEmail,
+        reason: text(d.reason) ?? "",
+        progress: typeof d.progress === "number" ? d.progress : 0,
+        removedAt: r.createdAt,
+        removedBy: {
+          id: r.actorId,
+          name: full(r.actorGiven, r.actorFamily),
+        },
+      };
+    });
+  }
+
+  /**
+   * Records progress only while the enrollment is still in `expectedStatus`,
+   * the one the caller read: null when it is not (or is gone). The status is
+   * never written here, so a stale write cannot turn a REVOKED seat back.
+   */
   async updateProgress(
     userId: string,
     courseId: string,
     progress: number,
-    status: EnrollmentStatus
+    expectedStatus: EnrollmentStatus
   ): Promise<IEnrollment | null> {
     return this.db
       .update(enrollments)
-      .set({ progress, status, updatedAt: new Date() })
+      .set({ progress, updatedAt: new Date() })
       .where(
-        and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId))
+        and(
+          eq(enrollments.userId, userId),
+          eq(enrollments.courseId, courseId),
+          eq(enrollments.status, expectedStatus)
+        )
       )
       .returning()
       .then((result) => result[0] || null);

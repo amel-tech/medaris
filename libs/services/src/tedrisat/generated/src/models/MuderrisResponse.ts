@@ -67,6 +67,12 @@ export interface MuderrisResponse {
      * @memberof MuderrisResponse
      */
     orderIndex: number;
+    /**
+     * The course's imam among its müderrisler (MDRS-133)
+     * @type {boolean}
+     * @memberof MuderrisResponse
+     */
+    isImam: boolean;
 }
 
 /**
@@ -78,6 +84,7 @@ export function instanceOfMuderrisResponse(value: object): value is MuderrisResp
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('avatarHue' in value) || value['avatarHue'] === undefined) return false;
     if (!('orderIndex' in value) || value['orderIndex'] === undefined) return false;
+    if (!('isImam' in value) || value['isImam'] === undefined) return false;
     return true;
 }
 
@@ -99,6 +106,7 @@ export function MuderrisResponseFromJSONTyped(json: any, ignoreDiscriminator: bo
         'bio': json['bio'] == null ? undefined : json['bio'],
         'avatarHue': json['avatarHue'],
         'orderIndex': json['orderIndex'],
+        'isImam': json['isImam'],
     };
 }
 
@@ -121,6 +129,7 @@ export function MuderrisResponseToJSONTyped(value?: MuderrisResponse | null, ign
         'bio': value['bio'],
         'avatarHue': value['avatarHue'],
         'orderIndex': value['orderIndex'],
+        'isImam': value['isImam'],
     };
 }
 

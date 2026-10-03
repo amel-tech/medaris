@@ -29,10 +29,17 @@ const translate = Object.assign(lookup, {
     return createElement(Fragment, null, parts[0], when(parts[1]), parts[2]);
   },
 });
+vi.mock("@medaris/ui/mds/toast", () => ({
+  useToaster: () => ({ notify: () => "", dismiss: () => {} }),
+}));
 vi.mock("next-intl/server", () => ({
   getTranslations: async () => translate,
   getLocale: async () => "tr",
   getTimeZone: async () => "Europe/Istanbul",
+}));
+// The calendar menu routes through next-intl's navigation, which needs a mounted app router.
+vi.mock("~/lib/i18n/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
 }));
 // The programme is an async server component with its own spec below.
 vi.mock("~/features/courses/components/session-programme", () => ({
@@ -249,5 +256,131 @@ describe("session page strings", () => {
         keys
       );
     }
+  });
+});
+
+describe("session page, live (design tedris/16, MDRS-162)", () => {
+  const live = (over: Record<string, unknown> = {}) =>
+    session({
+      status: "LIVE",
+      startsAt: at(-14),
+      liveStreamUrl: "https://www.youtube.com/watch?v=live123abc",
+      ...over,
+    });
+
+  it("says it is live and for how long it has been running", async () => {
+    const html = await render(live());
+    expect(html).toContain("Şu an canlı");
+    expect(html).toContain("14 dakikadır sürüyor");
+    expect(html).toContain("Celseye katıl");
+  });
+
+  it("frames the stream from the video id alone, and says what it is", async () => {
+    const html = await render(live());
+    expect(html).toContain(
+      'src="https://www.youtube-nocookie.com/embed/live123abc"'
+    );
+    expect(html).toContain("Canlı yayın");
+    expect(html).toContain("Yayını buradan izleyebilirsin.");
+  });
+
+  it("links a stream that cannot be framed instead of framing it", async () => {
+    const html = await render(live({ liveStreamUrl: "https://example.org/x" }));
+    expect(html).not.toContain("<iframe");
+    expect(html).toContain("Canlı yayın burada oynar");
+    expect(html).toContain('href="https://example.org/x"');
+  });
+
+  it("draws no player when the API sent no stream (tedris/16 §3)", async () => {
+    const none = await render(live({ liveStreamUrl: null }));
+    expect(none).not.toContain("Canlı yayın");
+    expect(none).not.toContain("<iframe");
+    const locked = await render(live({ liveStreamUrl: undefined }));
+    expect(locked).not.toContain("<iframe");
+  });
+});
+
+describe("session page, ended with a recording (design tedris/17, MDRS-162)", () => {
+  const recording = (over: Record<string, unknown> = {}) => ({
+    id: "r1",
+    title: "Mezîd fiiller ve bâblar: celse kaydı",
+    provider: "YOUTUBE",
+    url: "https://youtu.be/rec456abc",
+    durationMinutes: 58,
+    recordedAt: new Date("2026-09-26T18:00:00Z"),
+    visibility: "ENROLLED",
+    status: "READY",
+    ...over,
+  });
+  const ended = (over: Record<string, unknown> = {}) =>
+    session({
+      status: "ENDED",
+      startsAt: at(-26 * 60),
+      meetingUrl: null,
+      recording: recording(),
+      ...over,
+    });
+
+  it("shows the player with the recording's title and its date and length", async () => {
+    const html = await render(ended());
+    expect(html).toContain("Mezîd fiiller ve bâblar: celse kaydı");
+    expect(html).toContain(
+      'src="https://www.youtube-nocookie.com/embed/rec456abc"'
+    );
+    expect(html).toContain("Ders kaydı");
+    expect(html).toContain("26 Eylül 2026 Cumartesi");
+    expect(html).toContain("58 dk");
+  });
+
+  it("says the session is over and links the recordings tab", async () => {
+    const html = await render(ended());
+    expect(html).toContain("Sona erdi");
+    expect(html).toContain("Ders kayıtlarına git");
+    expect(html).toContain('href="/courses/c1?tab=kayitlar"');
+    expect(html).not.toContain("Celseye katıl");
+  });
+
+  it("frames a Drive recording through its preview", async () => {
+    const html = await render(
+      ended({
+        recording: recording({
+          provider: "DRIVE",
+          url: "https://drive.google.com/file/d/abcDEF123456/view?usp=sharing",
+        }),
+      })
+    );
+    expect(html).toContain(
+      'src="https://drive.google.com/file/d/abcDEF123456/preview"'
+    );
+  });
+
+  it("opens a recording that cannot be framed at its host", async () => {
+    const html = await render(
+      ended({
+        recording: recording({
+          provider: "OTHER",
+          url: "https://example.org/kayit",
+        }),
+      })
+    );
+    expect(html).not.toContain("<iframe");
+    expect(html).toContain("Ders kaydı burada oynar");
+    expect(html).toContain('href="https://example.org/kayit"');
+    expect(html).toContain("Ders kaydını aç");
+  });
+
+  it("draws no player while the recording is being prepared, but still links the tab", async () => {
+    const html = await render(
+      ended({ recording: recording({ status: "PROCESSING", url: null }) })
+    );
+    expect(html).not.toContain("<iframe");
+    expect(html).not.toContain("Mezîd fiiller ve bâblar: celse kaydı");
+    expect(html).toContain('href="/courses/c1?tab=kayitlar"');
+  });
+
+  it("draws neither player nor link when there is no recording", async () => {
+    const html = await render(ended({ recording: null }));
+    expect(html).not.toContain("<iframe");
+    expect(html).not.toContain("Ders kayıtlarına git");
   });
 });

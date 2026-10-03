@@ -7,6 +7,7 @@ import { Breadcrumb } from "../src/mds/breadcrumb";
 import { Card } from "../src/mds/card";
 import { CoverPattern, coverTone } from "../src/mds/cover-pattern";
 import { EmptyState } from "../src/mds/empty-state";
+import { usePageLocale } from "../src/mds/locale";
 import { NavItem } from "../src/mds/nav-item";
 import { NavSection } from "../src/mds/nav-section";
 import { PlatformChip } from "../src/mds/platform-chip";
@@ -208,6 +209,66 @@ describe("Stat", () => {
     expect(cued?.querySelector(".mds-stat__value")?.textContent).toBe(
       "Arttı1.234"
     );
+  });
+});
+
+describe("usePageLocale", () => {
+  function Probe({ locale }: { locale?: string }) {
+    const { ref, lang } = usePageLocale<HTMLSpanElement>(locale);
+    return <span ref={ref} data-lang={lang} />;
+  }
+  const langOf = (host: HTMLElement) =>
+    host.querySelector("[data-lang]")?.getAttribute("data-lang");
+
+  it("takes the prop, else the nearest lang, else tr-TR", async () => {
+    expect(langOf(await render(<Probe />))).toBe("tr-TR");
+    expect(
+      langOf(
+        await render(
+          <div lang="ar">
+            <Probe />
+          </div>
+        )
+      )
+    ).toBe("ar");
+    expect(
+      langOf(
+        await render(
+          <div lang="ar">
+            <Probe locale="en-US" />
+          </div>
+        )
+      )
+    ).toBe("en-US");
+  });
+
+  it("returns the canonical form of a valid tag", async () => {
+    expect(langOf(await render(<Probe locale="tr-tr" />))).toBe("tr-TR");
+  });
+
+  it("skips a tag the runtime rejects, so no consumer reaches Intl with it", async () => {
+    // `tr_TR` and an empty string both make Intl throw a RangeError.
+    expect(() => new Intl.DateTimeFormat("tr_TR")).toThrow(RangeError);
+    expect(
+      langOf(
+        await render(
+          <div lang="tr_TR">
+            <Probe />
+          </div>
+        )
+      )
+    ).toBe("tr-TR");
+    // A bad prop falls through to the nearest lang, then to the default.
+    expect(
+      langOf(
+        await render(
+          <div lang="en-US">
+            <Probe locale="tr_TR" />
+          </div>
+        )
+      )
+    ).toBe("en-US");
+    expect(langOf(await render(<Probe locale="" />))).toBe("tr-TR");
   });
 });
 

@@ -50,6 +50,8 @@ export interface IMuderris {
   bio: string | null;
   avatarHue: number;
   orderIndex: number;
+  /** Whether the account is the course's imam (MDRS-133). */
+  isImam: boolean;
 }
 
 export interface IResource {
@@ -77,6 +79,10 @@ export interface ICourse {
   status: CourseStatus;
   grantsCertificate: boolean;
   requiresApproval: boolean;
+  /** Content and recordings never public (MDRS-176). */
+  isClosed: boolean;
+  /** The word printed on the cover; null when none (MDRS-176). */
+  coverLabel: string | null;
   /** IANA zone the sessions are authored in (MDRS-110). */
   timeZone: string;
   /** Optimistic-concurrency token; bumped by every course or syllabus write. */
@@ -90,6 +96,8 @@ export interface ICourse {
 }
 
 export interface ICourseDetail extends ICourse {
+  /** The medrese that opened the course, or null; read by `findDetailById` (MDRS-161). */
+  madrasah?: { id: string; name: string } | null;
   weeks: IWeek[];
   muderris: IMuderris[];
   resources: IResource[];
@@ -136,14 +144,22 @@ export interface ICourseSummary extends ICourse {
   resourceCount: number;
   muderris: IMuderris[];
   enrollment: IEnrollment | null;
+  /** The medrese the course is opened by, or null (MDRS-159). */
+  madrasah: { id: string; name: string } | null;
+  /** The earliest standing session still ahead, or null (MDRS-159). */
+  nextSessionAt: Date | null;
 }
 
 export interface IEnrolledCourse extends ICourse {
   koskName: string;
+  /** The medrese that opened the course, or null (MDRS-159). */
+  madrasahName: string | null;
   weekCount: number;
   lessonCount: number;
   muderris: IMuderris[];
-  enrollment: IEnrollment;
+  /** The next standing session, or null when none is scheduled ahead. */
+  nextSession: { at: Date; weekNumber: number } | null;
+  enrollment: IEnrollment & { completedAt: Date | null };
 }
 
 export interface IEnrollment {
@@ -160,6 +176,17 @@ export interface IEnrollment {
 /** An enrollment on the team's roster, with the ban that bars the talebe, if any (MDRS-177). */
 export interface IRosterEnrollment extends IEnrollment {
   ban: { id: string; scope: "COURSE" | "KOSK" } | null;
+}
+
+/** A talebe the team took out of a course, from the audit log (MDRS-178). */
+export interface IRemovedEnrollment {
+  userId: string;
+  name: string | null;
+  email: string | null;
+  reason: string;
+  progress: number;
+  removedAt: Date;
+  removedBy: { id: string; name: string | null };
 }
 
 export interface IPendingEnrollment extends IEnrollment {
@@ -243,6 +270,8 @@ export interface ICreateCourse {
   status?: CourseStatus;
   grantsCertificate?: boolean;
   requiresApproval?: boolean;
+  isClosed?: boolean;
+  coverLabel?: string | null;
   timeZone?: string;
   weeks?: ICreateWeek[];
   muderris?: ICreateMuderris[];
@@ -261,6 +290,8 @@ export interface IUpdateCourse {
   status?: CourseStatus;
   grantsCertificate?: boolean;
   requiresApproval?: boolean;
+  isClosed?: boolean;
+  coverLabel?: string | null;
   timeZone?: string;
 }
 
@@ -296,7 +327,13 @@ export interface ILessonMutation extends ILesson {
 /** One session of a weekly-pattern batch (MDRS-109), already expanded. */
 export interface IBatchSession {
   scheduledAt: Date;
-  /** The course week it goes into; created as "Hafta N" when missing. */
+  /** Its calendar date in the pattern's zone, "YYYY-MM-DD". */
+  localDate: string;
+  /**
+   * The week the pattern numbers it into; the repository places it against
+   * the course's own weeks by date (nizam/55) and creates "Hafta N" when
+   * that week is missing.
+   */
   weekNumber: number;
 }
 
@@ -348,7 +385,10 @@ export interface ICourseRepository {
     id: string,
     userId: string | null
   ): Promise<ICourseDetail | null>;
-  findEnrolledByUser(userId: string): Promise<IEnrolledCourse[]>;
+  findEnrolledByUser(
+    userId: string,
+    includePending?: boolean
+  ): Promise<IEnrolledCourse[]>;
   create(course: ICreateCourse): Promise<ICourseDetail>;
   findKoskId(id: string): Promise<string | null>;
   /** The user holding the course's imam grant, or null (MDRS-133). */
@@ -358,6 +398,7 @@ export interface ICourseRepository {
     status: CourseStatus;
     archived: boolean;
     koskIsPrivate: boolean;
+    koskHidden: boolean;
   } | null>;
   update(id: string, updates: IUpdateCourse): Promise<ICourse | null>;
   replace(
@@ -385,6 +426,24 @@ export interface ICourseRepository {
     lessonId: string,
     actorId?: string | null
   ): Promise<ILessonMutation>;
+  /** Marks the session cancelled, keeping its slot (MDRS-176). */
+  cancelLesson(
+    lessonId: string,
+    expectedVersion: number,
+    reason: string | null,
+    actorId: string
+  ): Promise<ILessonMutation>;
+  /**
+   * Replaces the muderris list and picks the imam, in one transaction, and
+   * writes the change to `audit_log` (MDRS-176).
+   */
+  setMuderris(
+    courseId: string,
+    expectedVersion: number,
+    list: { userId: string; name: string; title?: string }[],
+    imamUserId: string,
+    actorId: string
+  ): Promise<{ muderris: IMuderris[]; courseVersion: number }>;
   /** The course's IANA zone; null if there is no such course. */
   findTimeZone(courseId: string): Promise<string | null>;
   /** Inserts every session of `batch` in one transaction (MDRS-109). */
@@ -418,16 +477,25 @@ export interface ICourseRepository {
   findEnrollmentsByCourse(courseId: string): Promise<IEnrollment[]>;
   /** Deletes the enrollment and audits the reason, in one transaction. */
   removeEnrollment(entry: IRemoveEnrollment): Promise<boolean>;
+  findRemovedEnrollments(courseId: string): Promise<IRemovedEnrollment[]>;
+  /** The row moves only while it still has `expectedStatus`; else null. */
   setEnrollmentStatus(
     userId: string,
     courseId: string,
-    status: EnrollmentStatus
+    status: EnrollmentStatus,
+    expectedStatus: EnrollmentStatus
   ): Promise<IEnrollment | null>;
-  deleteEnrollment(userId: string, courseId: string): Promise<boolean>;
+  /** With `onlyStatus`, the row goes only while it still has that status. */
+  deleteEnrollment(
+    userId: string,
+    courseId: string,
+    onlyStatus?: EnrollmentStatus
+  ): Promise<boolean>;
+  /** Writes progress only while the row still has `expectedStatus`; else null. */
   updateProgress(
     userId: string,
     courseId: string,
     progress: number,
-    status: EnrollmentStatus
+    expectedStatus: EnrollmentStatus
   ): Promise<IEnrollment | null>;
 }

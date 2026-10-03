@@ -15,6 +15,7 @@ import { isHeld } from "../database/role-assignments";
 import { auditLog } from "../database/schema/audit.schema";
 import { BAN_SCOPES, type BanScope, bans } from "../database/schema/ban.schema";
 import { courses, enrollments } from "../database/schema/course.schema";
+import { kosks } from "../database/schema/kosk.schema";
 import { madrasahs } from "../database/schema/madrasah.schema";
 import { roleAssignments } from "../database/schema/role-assignment.schema";
 import { users } from "../database/schema/user.schema";
@@ -52,6 +53,7 @@ export interface IBanEntry extends IBan {
   courseTitle: string | null;
   madrasahName: string | null;
   extendedFromCourseTitle: string | null;
+  koskName: string | null;
 }
 
 export interface INewBan {
@@ -64,6 +66,18 @@ export interface INewBan {
   bannedBy: string;
   bannedRole: BanRole;
   bannedTier: number;
+  /** the course ban this one widens (MDRS-178); the audit row says `ban.extend` */
+  extendedFromBanId?: string;
+}
+
+/** Which bans the Medaris-wide list shows (MDRS-178, screen nizam/48). */
+export interface IBanFilter {
+  status: BanStatus;
+  scope?: BanScope;
+  /** matched against the person's name and e-mail */
+  q?: string;
+  limit: number;
+  offset: number;
 }
 
 export interface ICourseRef {
@@ -239,10 +253,11 @@ export class BanRepository {
       if (inserted) {
         await tx.insert(auditLog).values({
           actorId: entry.bannedBy,
-          action: "ban.create",
+          action: entry.extendedFromBanId ? "ban.extend" : "ban.create",
           entity: "ban",
           entityId: inserted.id,
           details: {
+            extendedFromBanId: entry.extendedFromBanId ?? null,
             userId: entry.userId,
             scope: entry.scope,
             koskId: entry.koskId,
@@ -331,14 +346,103 @@ export class BanRepository {
     return entry ?? null;
   }
 
-  private async entries(where: SQL, order: SQL): Promise<IBanEntry[]> {
+  /**
+   * Every köşk's bans for Medaris administration (MDRS-178), one page of them
+   * and how many match in all.
+   */
+  async listAll(
+    filter: IBanFilter
+  ): Promise<{ items: IBanEntry[]; total: number }> {
+    const conditions: SQL[] = [
+      filter.status === "ACTIVE"
+        ? isNull(bans.liftedAt)
+        : isNotNull(bans.liftedAt),
+    ];
+    if (filter.scope) conditions.push(eq(bans.scope, filter.scope));
+    const needle = filter.q?.trim();
+    if (needle) {
+      const like = `%${needle.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+      conditions.push(
+        sql`exists (
+          select 1 from ${users} u
+          where u.id = ${bans.userId}
+            and (concat_ws(' ', u.given_name, u.family_name) ilike ${like}
+              or u.email ilike ${like})
+        )`
+      );
+    }
+    const where = and(...conditions) as SQL;
+    const [items, [count]] = await Promise.all([
+      this.entries(
+        where,
+        filter.status === "ACTIVE" ? desc(bans.createdAt) : desc(bans.liftedAt),
+        { limit: filter.limit, offset: filter.offset }
+      ),
+      this.db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(bans)
+        .where(where),
+    ]);
+    return { items, total: count?.total ?? 0 };
+  }
+
+  /**
+   * Who is told of a ban in a köşk (MDRS-179): the köşk's nazımları and every
+   * Medaris nazımı, each once. The başnazım is a Keycloak realm role, not a
+   * row here, so is not reached.
+   */
+  async nazimRecipients(koskId: string): Promise<string[]> {
+    const rows = await this.db
+      .selectDistinct({ userId: roleAssignments.userId })
+      .from(roleAssignments)
+      .where(
+        and(
+          isHeld(),
+          or(
+            and(
+              eq(roleAssignments.role, "KOSK_NAZIM"),
+              eq(roleAssignments.scopeType, "kosk"),
+              eq(roleAssignments.scopeId, koskId)
+            ),
+            and(
+              eq(roleAssignments.role, "MEDARIS_NAZIM"),
+              eq(roleAssignments.scopeType, "platform")
+            )
+          )
+        )
+      );
+    return rows.map((r) => r.userId);
+  }
+
+  /** Whether the person holds a platform-wide role (Medaris nazımı). */
+  async holdsPlatformRole(userId: string, role: BanRole): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: roleAssignments.id })
+      .from(roleAssignments)
+      .where(
+        and(
+          eq(roleAssignments.userId, userId),
+          eq(roleAssignments.scopeType, "platform"),
+          eq(roleAssignments.role, role as "MEDARIS_NAZIM"),
+          isHeld()
+        )
+      )
+      .limit(1);
+    return rows.length > 0;
+  }
+
+  private async entries(
+    where: SQL,
+    order: SQL,
+    page?: { limit: number; offset: number }
+  ): Promise<IBanEntry[]> {
     const target = alias(users, "ban_target");
     const banner = alias(users, "ban_banner");
     const lifter = alias(users, "ban_lifter");
     const course = alias(courses, "ban_course");
     const widened = alias(courses, "ban_widened");
     const seat = alias(enrollments, "ban_seat");
-    const rows = await this.db
+    const query = this.db
       .select({
         ban: bans,
         targetGiven: target.givenName,
@@ -355,6 +459,7 @@ export class BanRepository {
         courseTitle: course.title,
         madrasahName: madrasahs.name,
         widenedTitle: widened.title,
+        koskName: kosks.name,
       })
       .from(bans)
       .leftJoin(target, eq(target.id, bans.userId))
@@ -363,6 +468,7 @@ export class BanRepository {
       .leftJoin(course, eq(course.id, bans.courseId))
       .leftJoin(widened, eq(widened.id, bans.extendedFromCourseId))
       .leftJoin(madrasahs, eq(madrasahs.id, course.madrasahId))
+      .leftJoin(kosks, eq(kosks.id, bans.koskId))
       .leftJoin(
         seat,
         and(
@@ -374,7 +480,11 @@ export class BanRepository {
         )
       )
       .where(where)
-      .orderBy(order, desc(bans.id));
+      .orderBy(order, desc(bans.id))
+      .$dynamic();
+    const rows = await (page
+      ? query.limit(page.limit).offset(page.offset)
+      : query);
 
     return rows.map((r) => ({
       ...(r.ban as IBan),
@@ -398,12 +508,16 @@ export class BanRepository {
       courseTitle: r.courseTitle,
       madrasahName: r.madrasahName,
       extendedFromCourseTitle: r.widenedTitle,
+      koskName: r.koskName,
     }));
   }
 
-  /** Open and lifted counts, and open bans placed since `since`, for one köşk. */
+  /**
+   * Open and lifted counts, and open bans placed since `since`, for one köşk,
+   * or for every köşk when `koskId` is null (MDRS-178).
+   */
   async counts(
-    koskId: string,
+    koskId: string | null,
     since: Date
   ): Promise<{ active: number; lifted: number; recent: number }> {
     const [row] = await this.db
@@ -413,7 +527,7 @@ export class BanRepository {
         recent: sql<number>`count(*) filter (where ${bans.liftedAt} is null and ${bans.createdAt} > ${since})::int`,
       })
       .from(bans)
-      .where(eq(bans.koskId, koskId));
+      .where(koskId === null ? undefined : eq(bans.koskId, koskId));
     return {
       active: row?.active ?? 0,
       lifted: row?.lifted ?? 0,

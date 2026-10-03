@@ -70,7 +70,12 @@ export function Select({
         </BaseSelect.Trigger>
       </span>
       <BaseSelect.Portal>
-        <BaseSelect.Positioner sideOffset={4} alignItemWithTrigger={false}>
+        {/* above a dialog's scrim and viewport (z-index 61), as the scope picker's list is */}
+        <BaseSelect.Positioner
+          sideOffset={4}
+          alignItemWithTrigger={false}
+          className="mds-popup-positioner"
+        >
           <BaseSelect.Popup className="mds-popup">
             <BaseSelect.List>
               {items.map((o) => (

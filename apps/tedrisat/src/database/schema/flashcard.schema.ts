@@ -1,7 +1,8 @@
 import { relations } from "drizzle-orm";
 import {
+  index,
+  integer,
   jsonb,
-  pgEnum,
   primaryKey,
   pgTable as table,
   text,
@@ -9,14 +10,11 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { FlashcardProgressStatus } from "../../flashcard/domain/flashcard-progress-status.enum";
-import { FlashcardType } from "../../flashcard/domain/flashcard-type.enum";
 import { decks } from "./flashcard-deck.schema";
-
-export const flashcardType = pgEnum("flashcard_type", FlashcardType);
-export const flashcardProgressStatus = pgEnum(
-  "flashcard_user_status",
-  FlashcardProgressStatus
-);
+import {
+  flashcardProgressStatus,
+  flashcardType,
+} from "./flashcard-enums.schema";
 
 // Tables
 export const flashcards = table("flashcards", {
@@ -41,8 +39,18 @@ export const flashcardProgress = table(
     status: flashcardProgressStatus()
       .default(FlashcardProgressStatus.NEW)
       .notNull(),
+    // The review schedule (MDRS-165): when the card is next due, when it was
+    // last rated and how many days the last gap was. `dueAt` is null for a
+    // row written without a rating (the old "memorised" toggle): such a LEARNING
+    // card is due now, such a MASTERED one is never due.
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    intervalDays: integer("interval_days").default(0).notNull(),
   },
-  (table) => [primaryKey({ columns: [table.userId, table.flashcardId] })]
+  (table) => [
+    primaryKey({ columns: [table.userId, table.flashcardId] }),
+    index("flashcard_progress_user_due_idx").on(table.userId, table.dueAt),
+  ]
 );
 
 // ORM Relations

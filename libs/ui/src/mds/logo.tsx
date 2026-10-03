@@ -23,6 +23,8 @@ export interface LogoProps extends HTMLAttributes<HTMLSpanElement> {
   wordmark?: boolean;
   /** under the wordmark and in the accessible name; defaults to the app's display name, except at lg */
   subtitle?: string;
+  /** the مدارس lockup under the wordmark: on at lg, off when the page has its own title (the sign-in card) */
+  arabic?: boolean;
 }
 
 /**
@@ -38,6 +40,7 @@ export function Logo({
   subtitle = size === "lg" || app === undefined || app === "landing"
     ? undefined
     : appNames[app],
+  arabic = size === "lg",
   className,
   ...rest
 }: LogoProps) {
@@ -102,7 +105,7 @@ export function Logo({
           <span className="mds-logo__word" lang="en" dir="ltr">
             Medaris
           </span>
-          {size === "lg" && (
+          {size === "lg" && arabic && (
             <svg
               className="mds-logo__arabic"
               viewBox={ARABIC_VIEWBOX}

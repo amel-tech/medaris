@@ -3,6 +3,7 @@ import { Form } from "@base-ui/react/form";
 import {
   type FormEvent,
   type ReactNode,
+  type Ref,
   type RefObject,
   useId,
   useRef,
@@ -155,16 +156,22 @@ export function DialogTrigger({ children }: { children: React.ReactElement }) {
   return <BaseDialog.Trigger render={children} />;
 }
 
-/** "Vazgeç": a ghost button that closes the nearest `Dialog` and never submits. */
+/**
+ * "Vazgeç": a ghost button that closes the nearest `Dialog` and never submits.
+ * A `ref` lets a confirmation start its focus here (canvas rule 13).
+ */
 export function DialogClose({
   children = "Vazgeç",
   className,
+  ref,
 }: {
   children?: ReactNode;
   className?: string;
+  ref?: Ref<HTMLButtonElement>;
 }) {
   return (
     <BaseDialog.Close
+      ref={ref}
       className={cx("mds-btn mds-btn--regular mds-btn--ghost", className)}
     >
       {children}

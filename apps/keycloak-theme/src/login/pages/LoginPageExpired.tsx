@@ -1,17 +1,13 @@
-import { Button } from "@medaris/ui/components/button";
-import {
-  primaryButtonClassName,
-  secondaryButtonClassName,
-} from "../components/styles";
+import { AuthMessage } from "@medaris/ui/giris";
 import type { I18n } from "../i18n";
 import type { KcContext } from "../KcContext";
 import type { ExtendedPageProps } from "../types/PageProps";
 
 /**
- * `login-page-expired.ftl` — the sign-in or registration form sat open too
- * long, or the back button replayed it. Offers both ways out as buttons
- * instead of Keycloak's two "click here" sentences. Placeholder layout until
- * MDRS-127's design.
+ * `login-page-expired.ftl` (canvas medaris/13): the sign-in or registration
+ * form sat open too long, or the back button replayed it. One way on, which
+ * starts the flow again; Keycloak's second link ("continue") resubmits a
+ * stale form and is not offered.
  */
 export default function LoginPageExpired(
   props: ExtendedPageProps<
@@ -31,20 +27,17 @@ export default function LoginPageExpired(
       i18n={i18n}
       doUseDefaultCss={false}
       classes={classes}
+      displayMessage={false}
       headerNode={msg("pageExpiredTitle")}
     >
-      <div className="flex flex-col gap-3">
-        <Button asChild className={primaryButtonClassName}>
-          <a id="loginRestartLink" href={url.loginRestartFlowUrl}>
-            {msg("restartLoginTooltip")}
-          </a>
-        </Button>
-        <Button asChild variant="outline" className={secondaryButtonClassName}>
-          <a id="loginContinueLink" href={url.loginAction}>
-            {msg("doContinue")}
-          </a>
-        </Button>
-      </div>
+      <AuthMessage
+        paragraphs={[msg("pageExpiredBody1"), msg("pageExpiredBody2")]}
+        action={{
+          href: url.loginRestartFlowUrl,
+          label: msg("pageExpiredRetry"),
+          id: "loginRestartLink",
+        }}
+      />
     </Template>
   );
 }

@@ -36,10 +36,17 @@ export const permissionGroups = table(
   },
   (t) => [
     index("permission_groups_scope_idx").on(t.scopeType, t.scopeId),
+    // Platform groups carry no scope id; köşk and medrese groups must; a
+    // course group may name one course or, without an id, every course.
     check(
       "permission_groups_scope_id_present",
-      sql`(${t.scopeType} = 'platform') = (${t.scopeId} is null)`
+      sql`(${t.scopeType} = 'platform' and ${t.scopeId} is null) or (${t.scopeType} in ('kosk', 'madrasah') and ${t.scopeId} is not null) or ${t.scopeType} = 'course'`
     ),
+    // A name is used once among the live groups no scope id narrows (the
+    // platform's and every-course ones), whatever its case (MDRS-171).
+    uniqueIndex("permission_groups_name_idx")
+      .on(sql`lower(${t.name})`)
+      .where(sql`${t.deletedAt} is null and ${t.scopeId} is null`),
   ]
 );
 
@@ -91,9 +98,10 @@ export const permissionGrants = table(
       "permission_grants_permission_xor_group",
       sql`(${t.permission} is null) <> (${t.groupId} is null)`
     ),
+    // A course grant without an id is held in every course (MDRS-171).
     check(
       "permission_grants_scope_id_present",
-      sql`(${t.scopeType} = 'platform') = (${t.scopeId} is null)`
+      sql`(${t.scopeType} = 'platform' and ${t.scopeId} is null) or (${t.scopeType} in ('kosk', 'madrasah') and ${t.scopeId} is not null) or ${t.scopeType} = 'course'`
     ),
     check(
       "permission_grants_revocation_complete",

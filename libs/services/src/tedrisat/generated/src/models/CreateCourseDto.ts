@@ -114,6 +114,18 @@ export interface CreateCourseDto {
      */
     requiresApproval?: boolean;
     /**
+     * Closed course (MDRS-176): its content and recordings are never opened to everyone; recordings marked PUBLIC are read by the course team and the enrolled talebe only.
+     * @type {boolean}
+     * @memberof CreateCourseDto
+     */
+    isClosed?: boolean;
+    /**
+     * The word printed on the cover.
+     * @type {string}
+     * @memberof CreateCourseDto
+     */
+    coverLabel?: string;
+    /**
      * 
      * @type {Array<CreateWeekDto>}
      * @memberof CreateCourseDto
@@ -184,6 +196,8 @@ export function CreateCourseDtoFromJSONTyped(json: any, ignoreDiscriminator: boo
         'status': json['status'] == null ? undefined : json['status'],
         'grantsCertificate': json['grantsCertificate'] == null ? undefined : json['grantsCertificate'],
         'requiresApproval': json['requiresApproval'] == null ? undefined : json['requiresApproval'],
+        'isClosed': json['isClosed'] == null ? undefined : json['isClosed'],
+        'coverLabel': json['coverLabel'] == null ? undefined : json['coverLabel'],
         'weeks': json['weeks'] == null ? undefined : ((json['weeks'] as Array<any>).map(CreateWeekDtoFromJSON)),
         'muderris': json['muderris'] == null ? undefined : ((json['muderris'] as Array<any>).map(CreateMuderrisDtoFromJSON)),
         'resources': json['resources'] == null ? undefined : ((json['resources'] as Array<any>).map(CreateResourceDtoFromJSON)),
@@ -213,6 +227,8 @@ export function CreateCourseDtoToJSONTyped(value?: CreateCourseDto | null, ignor
         'status': value['status'],
         'grantsCertificate': value['grantsCertificate'],
         'requiresApproval': value['requiresApproval'],
+        'isClosed': value['isClosed'],
+        'coverLabel': value['coverLabel'],
         'weeks': value['weeks'] == null ? undefined : ((value['weeks'] as Array<any>).map(CreateWeekDtoToJSON)),
         'muderris': value['muderris'] == null ? undefined : ((value['muderris'] as Array<any>).map(CreateMuderrisDtoToJSON)),
         'resources': value['resources'] == null ? undefined : ((value['resources'] as Array<any>).map(CreateResourceDtoToJSON)),

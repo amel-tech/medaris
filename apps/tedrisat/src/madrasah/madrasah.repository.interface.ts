@@ -7,6 +7,8 @@ export interface IMadrasah {
   createdBy: string;
   passiveSince: Date | null;
   passiveReason: string | null;
+  archivedAt: Date | null;
+  archivedBy: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -68,6 +70,18 @@ export interface IMadrasahKoskRef {
   name: string;
 }
 
+/** One thing the outgoing başmüderris handed on and that is still held (nizam/22). */
+export interface IHeadDelegation {
+  kind: "ROLE" | "GRANT";
+  id: string;
+  userId: string;
+  role: string | null;
+  permission: string | null;
+  groupName: string | null;
+  grantedAt: Date;
+  expiresAt: Date | null;
+}
+
 /** What the nazır portal's menu badges count for one medrese (MDRS-183). */
 export interface IMadrasahBadgeCounts {
   /** PENDING enrollments across the medrese's courses. */
@@ -88,4 +102,71 @@ export interface IMadrasahOverview {
   headMuderris: IMadrasahHeadMuderris | null;
   courses: IMadrasahCourse[];
   kosks: IMadrasahKoskRef[];
+}
+
+/** The medrese's state, hidden first (MDRS-170). */
+export type MadrasahStatus = "ACTIVE" | "PASSIVE" | "HIDDEN";
+export type MadrasahStatusFilter = "ALL" | MadrasahStatus;
+
+export interface IMadrasahDirectoryItem {
+  id: string;
+  handle: string;
+  name: string;
+  coverHue: number;
+  status: MadrasahStatus;
+  since: Date | null;
+  headMuderris: { id: string; name: string | null } | null;
+  courseCount: number;
+  hostingKosks: { id: string; name: string }[];
+}
+
+export interface IMadrasahDirectoryFilter {
+  status: MadrasahStatusFilter;
+  q?: string;
+}
+
+export interface IMadrasahStatusCounts {
+  all: number;
+  active: number;
+  passive: number;
+  hidden: number;
+}
+
+export interface IPassiveMadrasah {
+  id: string;
+  name: string;
+  since: Date;
+}
+
+export interface IMadrasahDirectory {
+  items: IMadrasahDirectoryItem[];
+  total: number;
+  page: number;
+  limit: number;
+  counts: IMadrasahStatusCounts;
+  passive: IPassiveMadrasah[];
+}
+
+/** What opening a medrese needs: the medrese and the person who heads it. */
+export interface ICreateMadrasahWithHead extends ICreateMadrasah {
+  headMuderrisUserId: string;
+}
+
+export type RestoreMadrasahResult = "restored" | "not-found" | "not-hidden";
+/** A medrese as Keşfet lists it (MDRS-159). */
+export interface IMadrasahExplore {
+  id: string;
+  handle: string;
+  name: string;
+  headMuderrisName: string | null;
+  courseCount: number;
+  courses: { id: string; title: string; coverHue: number }[];
+}
+
+/** Narrows the medrese list of Keşfet (MDRS-159). */
+export interface IMadrasahExploreFilter {
+  q?: string;
+  level?: string;
+  field?: string;
+  madrasahId?: string;
 }

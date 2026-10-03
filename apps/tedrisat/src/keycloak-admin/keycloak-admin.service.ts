@@ -88,6 +88,15 @@ export class KeycloakAdminService {
     return user ? toDirectoryUser(user) : null;
   }
 
+  /** The account with this id, or null when the realm has none (MDRS-171). */
+  async findById(id: string): Promise<IDirectoryUser | null> {
+    const found = await this.get<IKeycloakUserRepresentation | null>(
+      `/users/${encodeURIComponent(id)}`,
+      { missingIs: null }
+    );
+    return found ? toDirectoryUser(found) : null;
+  }
+
   /** The accounts that hold a realm role, or [] when the role does not exist. */
   async findByRealmRole(role: string): Promise<IDirectoryUser[]> {
     const found = await this.get<IKeycloakUserRepresentation[]>(
