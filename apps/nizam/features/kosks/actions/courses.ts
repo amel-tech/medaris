@@ -99,13 +99,20 @@ export const approveEnrollment = async (
   return result;
 };
 
+/** Refuses a waiting application; the reason is optional (nizam/02) and kept with the refusal. */
 export const rejectEnrollment = async (
   koskId: string,
   courseId: string,
-  userId: string
+  userId: string,
+  reason?: string
 ): Promise<AuthenticatedActionResult<boolean>> => {
+  const trimmed = reason?.trim();
   const result = await authenticatedAction((api) =>
-    api.courses.rejectEnrollment({ id: courseId, userId })
+    api.courses.rejectEnrollment({
+      id: courseId,
+      userId,
+      rejectEnrollmentDto: trimmed ? { reason: trimmed } : {},
+    })
   );
   if (result.success) revalidateEnrollments(koskId, courseId);
   return result;

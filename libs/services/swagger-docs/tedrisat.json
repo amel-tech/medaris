@@ -181,6 +181,57 @@
         ]
       }
     },
+    "/kosks/{id}/dashboard": {
+      "get": {
+        "description": "nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk's nazımları and the başnazım.",
+        "operationId": "getKoskDashboard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sessions",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/DashboardSessionTab"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskDashboardResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A köşk nazımı's home page (numbers, celse table, applications)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
     "/kosks/{id}/course-roster": {
       "get": {
         "description": "nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show.",
@@ -3228,6 +3279,7 @@
     },
     "/courses/{id}/enrollments/{userId}": {
       "delete": {
+        "description": "The body is optional: a `reason` (nizam/02, Ret gerekçesi) is kept with the refusal in the audit log as `enrollment.reject`.",
         "operationId": "rejectEnrollment",
         "parameters": [
           {
@@ -3247,6 +3299,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectEnrollmentDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "",
@@ -9719,6 +9781,37 @@
         ]
       }
     },
+    "/nizam/dashboard": {
+      "get": {
+        "description": "One read for the whole page: the greeting's name, what waits for a decision, the platform numbers and the newest rows of each queue. A Medaris nazımı gets the same page cut down to what their permissions open: a count or a list they may not see is null. Anyone else is refused.",
+        "operationId": "getNizamDashboard",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NizamDashboardResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The Medaris başnazımı's and Medaris nazımı's home page",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
     "/me": {
       "get": {
         "operationId": "getMe",
@@ -10346,6 +10439,291 @@
           "pendingApplications",
           "nazimCount",
           "hostingMadrasahs"
+        ]
+      },
+      "DashboardSessionTab": {
+        "type": "string",
+        "enum": [
+          "UPCOMING",
+          "PAST",
+          "CANCELLED"
+        ]
+      },
+      "KoskDashboardCountsResponse": {
+        "type": "object",
+        "properties": {
+          "courses": {
+            "type": "number",
+            "description": "Courses that are not hidden"
+          },
+          "students": {
+            "type": "number",
+            "description": "Distinct talebe enrolled in the köşk's courses; hidden courses do not count"
+          },
+          "upcomingSessions": {
+            "type": "number",
+            "description": "Live sessions starting in the next seven days (Yaklaşan celse)"
+          },
+          "pendingApplications": {
+            "type": "number",
+            "description": "Applications waiting in courses that are not hidden"
+          }
+        },
+        "required": [
+          "courses",
+          "students",
+          "upcomingSessions",
+          "pendingApplications"
+        ]
+      },
+      "KoskDashboardSessionCountsResponse": {
+        "type": "object",
+        "properties": {
+          "upcoming": {
+            "type": "number",
+            "description": "Starting in the next seven days, not cancelled"
+          },
+          "past": {
+            "type": "number",
+            "description": "Already started, not cancelled"
+          },
+          "cancelled": {
+            "type": "number",
+            "description": "Cancelled, whenever they were to be held"
+          }
+        },
+        "required": [
+          "upcoming",
+          "past",
+          "cancelled"
+        ]
+      },
+      "DashboardSessionMuderrisResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "isImam": {
+            "type": "boolean",
+            "description": "The course's imam"
+          }
+        },
+        "required": [
+          "name",
+          "isImam"
+        ]
+      },
+      "KoskDashboardSessionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "courseCoverHue": {
+            "type": "number",
+            "description": "The course's cover hue: the colour square beside its title"
+          },
+          "weekNumber": {
+            "type": "number",
+            "description": "'Hafta 5': the week the session belongs to"
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true
+          },
+          "meetingUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Where talebe join. The köşk nazımı is the course team, so it is shown; null: no link yet (Bağlantı eksik)."
+          },
+          "isMakeup": {
+            "type": "boolean",
+            "description": "It makes up for a cancelled session (telafi)"
+          },
+          "studentCount": {
+            "type": "number",
+            "description": "Talebe enrolled in the course"
+          },
+          "cancelled": {
+            "type": "boolean",
+            "description": "Cancelled (İptal edildi)"
+          },
+          "madrasahName": {
+            "type": "string",
+            "nullable": true
+          },
+          "muderris": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardSessionMuderrisResponse"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "courseTitle",
+          "courseCoverHue",
+          "weekNumber",
+          "scheduledAt",
+          "isMakeup",
+          "studentCount",
+          "cancelled",
+          "muderris"
+        ]
+      },
+      "KoskDashboardApplicationResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "studentName": {
+            "type": "string",
+            "nullable": true
+          },
+          "studentEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "requestedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "courseId",
+          "courseTitle",
+          "requestedAt"
+        ]
+      },
+      "KoskDashboardMuderrisResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "courseCount": {
+            "type": "number",
+            "description": "Courses of this köşk they teach"
+          },
+          "studentCount": {
+            "type": "number",
+            "description": "Distinct talebe enrolled in those courses"
+          },
+          "madrasahName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The medrese they teach for, when one of their courses has it"
+          }
+        },
+        "required": [
+          "name",
+          "courseCount",
+          "studentCount"
+        ]
+      },
+      "KoskDashboardResponse": {
+        "type": "object",
+        "properties": {
+          "koskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "koskName": {
+            "type": "string"
+          },
+          "greetingName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The viewer's given name for the greeting; null when unknown"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/KoskDashboardCountsResponse"
+          },
+          "sessionCounts": {
+            "$ref": "#/components/schemas/KoskDashboardSessionCountsResponse"
+          },
+          "missingLinkCount": {
+            "type": "number",
+            "description": "Sessions in the next seven days with no meeting link: the alert's reason"
+          },
+          "firstMissingLink": {
+            "nullable": true,
+            "description": "The soonest of them: the alert names its course and day; null when none",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskDashboardSessionResponse"
+              }
+            ]
+          },
+          "tab": {
+            "description": "Which tab `sessions` is the list of",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DashboardSessionTab"
+              }
+            ]
+          },
+          "sessions": {
+            "description": "UPCOMING: the next seven days, soonest first; PAST and CANCELLED: the latest twenty, newest first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskDashboardSessionResponse"
+            }
+          },
+          "latestApplications": {
+            "description": "The newest waiting applications, five at most",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskDashboardApplicationResponse"
+            }
+          },
+          "muderris": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskDashboardMuderrisResponse"
+            }
+          }
+        },
+        "required": [
+          "koskId",
+          "koskName",
+          "counts",
+          "sessionCounts",
+          "missingLinkCount",
+          "tab",
+          "sessions",
+          "latestApplications",
+          "muderris"
         ]
       },
       "KoskCourseStatus": {
@@ -13955,6 +14333,17 @@
           "missingMeetingLinks",
           "pendingApplications"
         ]
+      },
+      "RejectEnrollmentDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Bu ders için ön koşul sağlanmıyor.",
+            "maxLength": 500,
+            "description": "Why the request is refused (nizam/02: optional). Kept in the audit log; blank counts as none."
+          }
+        }
       },
       "TeamSettableEnrollmentStatus": {
         "type": "string",
@@ -19736,6 +20125,306 @@
         },
         "required": [
           "courseId"
+        ]
+      },
+      "DashboardViewer": {
+        "type": "string",
+        "enum": [
+          "CHIEF",
+          "MEDARIS_NAZIM"
+        ]
+      },
+      "DashboardCanResponse": {
+        "type": "object",
+        "properties": {
+          "openKosk": {
+            "type": "boolean",
+            "description": "The viewer may open a köşk (the başnazım only): the page shows the 'Köşk aç' button."
+          }
+        },
+        "required": [
+          "openKosk"
+        ]
+      },
+      "DashboardPendingTotalsResponse": {
+        "type": "object",
+        "properties": {
+          "koskApplications": {
+            "type": "number",
+            "nullable": true
+          },
+          "deckPublishRequests": {
+            "type": "number",
+            "nullable": true
+          },
+          "appeals": {
+            "type": "number",
+            "nullable": true,
+            "description": "İtirazlar: the appeal model comes with a later phase, so the count is 0 for a viewer who would see it"
+          },
+          "permanentBanRequests": {
+            "type": "number",
+            "nullable": true,
+            "description": "Kalıcı yasak talepleri: the request model comes with a later phase, so the count is 0 for a viewer who would see it"
+          }
+        }
+      },
+      "DashboardPlatformCountsResponse": {
+        "type": "object",
+        "properties": {
+          "kosk": {
+            "type": "number",
+            "description": "Köşks that are not hidden"
+          },
+          "unlistedKosk": {
+            "type": "number",
+            "description": "Of them, the unlisted ones (Listelenmeyen)"
+          },
+          "madrasah": {
+            "type": "number",
+            "description": "Medreses that are not hidden"
+          },
+          "inactiveMadrasah": {
+            "type": "number",
+            "description": "Of them, the passive ones (no başmüderris)"
+          },
+          "course": {
+            "type": "number",
+            "nullable": true,
+            "description": "Courses that are not hidden; null: not shown to a nazım"
+          },
+          "inactiveCourse": {
+            "type": "number",
+            "nullable": true
+          },
+          "enrolledStudents": {
+            "type": "number",
+            "nullable": true,
+            "description": "Distinct talebe enrolled in a course that is not hidden; null: not shown to a nazım"
+          }
+        },
+        "required": [
+          "kosk",
+          "unlistedKosk",
+          "madrasah",
+          "inactiveMadrasah"
+        ]
+      },
+      "NizamDashboardApplicationResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Davutpaşa Köşkü"
+          },
+          "field": {
+            "type": "string",
+            "example": "AQEEDAH_KALAM"
+          },
+          "applicantName": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "field",
+          "createdAt"
+        ]
+      },
+      "DashboardDeckRequestResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "ownerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "cardCount": {
+            "type": "number"
+          },
+          "requestedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "cardCount",
+          "requestedAt"
+        ]
+      },
+      "DashboardInactiveScopeResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InactiveScopeType"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "koskName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The köşk of a course; null for a köşk or a medrese"
+          },
+          "reason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InactiveEndReason"
+              }
+            ]
+          },
+          "since": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "name",
+          "reason",
+          "since"
+        ]
+      },
+      "DashboardBanResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userName": {
+            "type": "string",
+            "nullable": true
+          },
+          "scope": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BanScope"
+              }
+            ]
+          },
+          "courseTitle": {
+            "type": "string",
+            "nullable": true,
+            "description": "The course of a course ban; null for a köşk ban"
+          },
+          "koskName": {
+            "type": "string",
+            "nullable": true
+          },
+          "bannedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "reason",
+          "createdAt"
+        ]
+      },
+      "NizamDashboardResponse": {
+        "type": "object",
+        "properties": {
+          "viewer": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DashboardViewer"
+              }
+            ]
+          },
+          "greetingName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The viewer's given name for the greeting; null when unknown"
+          },
+          "can": {
+            "$ref": "#/components/schemas/DashboardCanResponse"
+          },
+          "pendingTotals": {
+            "$ref": "#/components/schemas/DashboardPendingTotalsResponse"
+          },
+          "platformCounts": {
+            "$ref": "#/components/schemas/DashboardPlatformCountsResponse"
+          },
+          "latestApplications": {
+            "nullable": true,
+            "description": "The newest waiting applications, three at most; null: not shown",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NizamDashboardApplicationResponse"
+            }
+          },
+          "latestDeckRequests": {
+            "nullable": true,
+            "description": "The newest waiting deck requests, three at most; null: not shown",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardDeckRequestResponse"
+            }
+          },
+          "inactiveScopes": {
+            "nullable": true,
+            "description": "Passive scopes, oldest first, three at most; null: not shown",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardInactiveScopeResponse"
+            }
+          },
+          "inactiveScopeCount": {
+            "type": "number",
+            "nullable": true,
+            "description": "How many passive scopes there are in all; null: not shown"
+          },
+          "latestBans": {
+            "nullable": true,
+            "description": "The newest open bans, three at most; null: not shown",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardBanResponse"
+            }
+          }
+        },
+        "required": [
+          "viewer",
+          "can",
+          "pendingTotals",
+          "platformCounts"
         ]
       },
       "NazirMadrasahRef": {

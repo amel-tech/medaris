@@ -29,10 +29,7 @@ import {
 } from "@nestjs/swagger";
 import { BAN_SCOPES, type BanScope } from "../database/schema/ban.schema";
 import { AuthenticatedUserRequest } from "../user/interfaces/authenticated-user-request.interface";
-import {
-  BanService,
-  type IAllBansList,
-} from "./ban.service";
+import { BanService, type IAllBansList } from "./ban.service";
 import { presentBan, presentList, presentMadrasahBan } from "./ban-present";
 import {
   AllBansListResponse,

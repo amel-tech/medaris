@@ -35,6 +35,7 @@ import type {
   KoskApplicationDetailResponse,
   KoskApplicationListResponse,
   MedarisNazimResponse,
+  NizamDashboardResponse,
   PermissionCatalogResponse,
   PermissionGroupResponse,
   PlatformPolicyKey,
@@ -86,6 +87,8 @@ import {
     KoskApplicationListResponseToJSON,
     MedarisNazimResponseFromJSON,
     MedarisNazimResponseToJSON,
+    NizamDashboardResponseFromJSON,
+    NizamDashboardResponseToJSON,
     PermissionCatalogResponseFromJSON,
     PermissionCatalogResponseToJSON,
     PermissionGroupResponseFromJSON,
@@ -830,6 +833,42 @@ export class NizamApi extends runtime.BaseAPI {
      */
     async getMedarisNazims(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<MedarisNazimResponse>> {
         const response = await this.getMedarisNazimsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * One read for the whole page: the greeting\'s name, what waits for a decision, the platform numbers and the newest rows of each queue. A Medaris nazımı gets the same page cut down to what their permissions open: a count or a list they may not see is null. Anyone else is refused.
+     * The Medaris başnazımı\'s and Medaris nazımı\'s home page
+     */
+    async getNizamDashboardRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<NizamDashboardResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/dashboard`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => NizamDashboardResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * One read for the whole page: the greeting\'s name, what waits for a decision, the platform numbers and the newest rows of each queue. A Medaris nazımı gets the same page cut down to what their permissions open: a count or a list they may not see is null. Anyone else is refused.
+     * The Medaris başnazımı\'s and Medaris nazımı\'s home page
+     */
+    async getNizamDashboard(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<NizamDashboardResponse> {
+        const response = await this.getNizamDashboardRaw(initOverrides);
         return await response.value();
     }
 
