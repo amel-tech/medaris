@@ -1,9 +1,12 @@
 import {
+  ASSIGNED_ROLES,
   AuthGuard,
   Authz,
   AuthzExempt,
   AuthzGuard,
+  ENTITIES,
   PERMISSIONS,
+  SelfGrantGuard,
 } from "@medaris/common";
 import {
   Body,
@@ -64,7 +67,10 @@ const MAX_TEXT_LENGTH = 100;
 @UseGuards(AuthGuard, AuthzGuard)
 @Controller("kosks")
 export class KoskAdminController {
-  constructor(private readonly admin: KoskAdminService) {}
+  constructor(
+    private readonly admin: KoskAdminService,
+    private readonly selfGrant: SelfGrantGuard
+  ) {}
 
   @ApiOperation({
     summary: "Every köşk for the table of nizam/09",
@@ -247,11 +253,19 @@ export class KoskAdminController {
   // add managers by `POST /kosks/:id/managers/:userId`.
   @AuthzExempt()
   @Post(":id/nazims")
-  addNazims(
+  async addNazims(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: AddKoskNazimsDto
   ): Promise<KoskNazimResponse[]> {
+    // A Medaris nazımı does not seat themselves as a köşk's nazımı.
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      dto.userIds,
+      { entity: ENTITIES.KOSK, id },
+      { role: ASSIGNED_ROLES.KOSK_NAZIM, always: true },
+      "kosk.nazims.add"
+    );
     return this.admin.addNazims(request.user, id, dto);
   }
 

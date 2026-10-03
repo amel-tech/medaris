@@ -3,6 +3,7 @@ import {
   AuthzService,
   ENTITIES,
   PERMISSIONS,
+  SelfGrantGuard,
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import type { UsersPolicy } from "../../assignment/admin/dto/permission-admin.dto";
@@ -98,7 +99,8 @@ export class MadrasahPermissionService {
     private readonly repo: MadrasahNazirRepository,
     private readonly nazirs: MadrasahNazirService,
     private readonly groups: PermissionAdminRepository,
-    private readonly authz: AuthzService
+    private readonly authz: AuthzService,
+    private readonly selfGrant: SelfGrantGuard
   ) {}
 
   /**
@@ -288,6 +290,15 @@ export class MadrasahPermissionService {
     const actor = await this.actor(user, madrasahId);
     const id = userId.toLowerCase();
     await this.mustBeNazir(madrasahId, id);
+    // Nobody gives themselves permissions: the person the caller names is
+    // never the caller (a person who is no nazır is still not found above).
+    await this.selfGrant.assertNotSelf(
+      user,
+      [id],
+      { entity: ENTITIES.MADRASAH, id: madrasahId },
+      { always: true },
+      "madrasah.nazir.permissions"
+    );
 
     this.checkCodes(dto.permissions, ANY_CODE);
     const group = dto.groupId

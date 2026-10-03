@@ -560,7 +560,16 @@ describe("The permission engine (MDRS-135, e2e)", () => {
       ).not.toBe(403);
     });
 
-    it("may give a medrese nazırı permissions only with the permission to, and within their authority", async () => {
+    // The ceiling on what a Medaris nazımı may give ("within their authority",
+    // owner decision of 3 October) is an open question: read as "only what they
+    // hold themselves" it leaves them nothing to give, since their own role
+    // default is empty and a grantee never hands on what was granted. Until the
+    // owner says what their authority covers, nothing here pretends to test it.
+    it.todo(
+      "a Medaris nazımı gives a medrese nazırı only permissions within their authority (owner's question: what does their authority cover?)"
+    );
+
+    it("may give a medrese nazırı permissions only with the permission to", async () => {
       await put(
         MEDARIS_ID,
         `/madrasahs/${madrasahId}/nazirs/${NAZIR_ID}/permissions`,
@@ -593,6 +602,189 @@ describe("The permission engine (MDRS-135, e2e)", () => {
         grantedBy: MEDARIS_ID,
         authorityScopeType: SCOPE_TYPES.PLATFORM,
       });
+    });
+  });
+
+  describe("naming yourself into more than you hold (review B1, M4)", () => {
+    const platform = { type: SCOPE_TYPES.PLATFORM, id: null } as const;
+    const selfGrantAudits = () =>
+      db()
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.action, "permission.self_grant_refused"));
+
+    beforeEach(async () => {
+      await db().insert(roleAssignments).values({
+        userId: MEDARIS_ID,
+        role: ASSIGNED_ROLES.MEDARIS_NAZIM,
+        scopeType: SCOPE_TYPES.PLATFORM,
+        scopeId: null,
+        grantedBy: ADMIN_ID,
+      });
+    });
+
+    it("a Medaris nazımı with the permission cannot make themselves a medrese nazır, nor give themselves permissions", async () => {
+      await grant(
+        MEDARIS_ID,
+        platform,
+        { permission: PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT },
+        { grantedBy: ADMIN_ID }
+      );
+
+      const appoint = await post(
+        MEDARIS_ID,
+        `/madrasahs/${madrasahId}/nazirs/${MEDARIS_ID}`
+      ).expect(403);
+      expect(appoint.body.code).toBe("SELF_GRANT_REFUSED");
+      // Someone else seated them as a nazır (the başmüderris, say): giving
+      // themselves permissions is still refused.
+      await assignRole(db(), {
+        userId: MEDARIS_ID,
+        role: ASSIGNED_ROLES.MEDRESE_NAZIR,
+        scopeId: madrasahId,
+        grantedBy: HEAD_ID,
+      });
+      const give = await put(
+        MEDARIS_ID,
+        `/madrasahs/${madrasahId}/nazirs/${MEDARIS_ID}/permissions`,
+        { permissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW] }
+      ).expect(403);
+      expect(give.body.code).toBe("SELF_GRANT_REFUSED");
+
+      // Nothing was written, and both attempts are on the record.
+      // The only nazır row is the one the başmüderris wrote, not the caller.
+      expect(
+        (
+          await db()
+            .select()
+            .from(roleAssignments)
+            .where(
+              and(
+                eq(roleAssignments.userId, MEDARIS_ID),
+                eq(roleAssignments.role, ASSIGNED_ROLES.MEDRESE_NAZIR)
+              )
+            )
+        ).map((row) => row.grantedBy)
+      ).toEqual([HEAD_ID]);
+      expect(
+        await db()
+          .select()
+          .from(permissionGrants)
+          .where(
+            and(
+              eq(permissionGrants.userId, MEDARIS_ID),
+              eq(permissionGrants.scopeType, SCOPE_TYPES.MADRASAH)
+            )
+          )
+      ).toHaveLength(0);
+      const audits = await selfGrantAudits();
+      expect(audits.map((row) => row.actorId)).toEqual([
+        MEDARIS_ID,
+        MEDARIS_ID,
+      ]);
+      expect(audits.map((row) => row.details)).toMatchObject([
+        { route: "madrasah.nazir.appoint" },
+        { route: "madrasah.nazir.permissions" },
+      ]);
+    });
+
+    it("the same Medaris nazımı appoints someone else, so the refusal is about the person named", async () => {
+      await grant(
+        MEDARIS_ID,
+        platform,
+        { permission: PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT },
+        { grantedBy: ADMIN_ID }
+      );
+      await post(
+        MEDARIS_ID,
+        `/madrasahs/${madrasahId}/nazirs/${NEWCOMER_ID}`
+      ).expect(201);
+      expect(await selfGrantAudits()).toHaveLength(0);
+    });
+
+    it("a Medaris nazımı cannot seat themselves köşk nazımı or başmüderris, and can name another", async () => {
+      await grant(
+        MEDARIS_ID,
+        platform,
+        { permission: PERMISSIONS.PLATFORM_KOSK_NAZIM_MANAGE },
+        { grantedBy: ADMIN_ID }
+      );
+      await grant(
+        MEDARIS_ID,
+        platform,
+        { permission: PERMISSIONS.PLATFORM_HEAD_MUDERRIS_MANAGE },
+        { grantedBy: ADMIN_ID }
+      );
+      const kosk = await post(MEDARIS_ID, `/kosks/${koskId}/nazims`, {
+        userIds: [MEDARIS_ID],
+      }).expect(403);
+      expect(kosk.body.code).toBe("SELF_GRANT_REFUSED");
+      const head = await put(
+        MEDARIS_ID,
+        `/madrasahs/${madrasahId}/head-muderris`,
+        { userId: MEDARIS_ID }
+      ).expect(403);
+      expect(head.body.code).toBe("SELF_GRANT_REFUSED");
+      await post(MEDARIS_ID, `/kosks/${koskId}/nazims`, {
+        userIds: [NEWCOMER_ID],
+      }).expect(201);
+      expect(await selfGrantAudits()).toHaveLength(2);
+    });
+
+    it("a köşk nazımı cannot seat themselves as ders nazırı", async () => {
+      const res = await post(NAZIM_ID, `/kosks/${koskId}/grants`, {
+        userId: NAZIM_ID,
+        courseId: ownCourse,
+        permissions: [PERMISSIONS.COURSE_EDIT],
+      }).expect(403);
+      expect(res.body.code).toBe("SELF_GRANT_REFUSED");
+    });
+
+    it("a nazır given only 'open a course' cannot name themselves müderris, a başmüderris can name themselves", async () => {
+      await grant(
+        NAZIR_ID,
+        { type: SCOPE_TYPES.MADRASAH, id: madrasahId },
+        { permission: PERMISSIONS.MADRASAH_COURSE_OPEN }
+      );
+      const open = await post(NAZIR_ID, `/madrasahs/${madrasahId}/courses`, {
+        koskId,
+        title: "Kendi dersim",
+        muderrisUserIds: [NAZIR_ID],
+      }).expect(403);
+      expect(open.body.code).toBe("SELF_GRANT_REFUSED");
+
+      // The başmüderris holds every course permission in the medrese already.
+      await put(
+        HEAD_ID,
+        `/madrasahs/${madrasahId}/courses/${medreseCourse}/muderrises`,
+        { muderrisUserIds: [HEAD_ID] }
+      ).expect(200);
+    });
+
+    it("a nazır holding 'appoint nazırs' by a grant cannot hand permissions on", async () => {
+      await assignRole(db(), {
+        userId: NEWCOMER_ID,
+        role: ASSIGNED_ROLES.MEDRESE_NAZIR,
+        scopeId: madrasahId,
+        grantedBy: HEAD_ID,
+      });
+      await grant(
+        NAZIR_ID,
+        { type: SCOPE_TYPES.MADRASAH, id: madrasahId },
+        { permission: PERMISSIONS.MADRASAH_NAZIR_APPOINT }
+      );
+      const res = await put(
+        NAZIR_ID,
+        `/madrasahs/${madrasahId}/nazirs/${NEWCOMER_ID}/permissions`,
+        { permissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW] }
+      ).expect(403);
+      expect(res.body.code).toBe("PERMISSION_NOT_GIVABLE");
+      expect(
+        await db()
+          .select()
+          .from(permissionGrants)
+          .where(eq(permissionGrants.userId, NEWCOMER_ID))
+      ).toHaveLength(0);
     });
   });
 

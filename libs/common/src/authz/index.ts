@@ -14,3 +14,4 @@ export * from "./relations";
 export * from "./resolvers";
 export * from "./role-resolver.interface";
 export * from "./scopes";
+export * from "./self-grant.guard";

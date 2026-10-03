@@ -19,6 +19,7 @@ export type {
   IHeldRole,
   IPermissionMeta,
   IPolicyOn,
+  ISelfGrantWhat,
   PermissionCode,
   PolicyKey,
   Relation,
@@ -76,6 +77,8 @@ export {
   roleCodesAt,
   roleCoversScope,
   SCOPE_TYPES,
+  SelfGrantGuard,
+  SelfGrantRefusedError,
 } from "./authz";
 export * from "./bootstrap/setupMiddleware";
 export * from "./config";

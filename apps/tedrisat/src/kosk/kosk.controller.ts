@@ -1,4 +1,5 @@
 import {
+  ASSIGNED_ROLES,
   AuthGuard,
   Authz,
   AuthzExempt,
@@ -11,6 +12,7 @@ import {
   ENTITIES,
   forNew,
   PERMISSIONS,
+  SelfGrantGuard,
 } from "@medaris/common";
 import {
   Body,
@@ -95,7 +97,8 @@ export class KoskController {
   constructor(
     private readonly koskService: KoskService,
     private readonly authz: AuthzService,
-    private readonly koskAdmin: KoskAdminService
+    private readonly koskAdmin: KoskAdminService,
+    private readonly selfGrant: SelfGrantGuard
   ) {}
 
   /** Who is changing the managers, for the check under the köşk lock. */
@@ -302,6 +305,15 @@ export class KoskController {
     // With `managerUserIds` this is nizam/10: the başnazım opens the köşk
     // for the nazımları they named and is not one of them.
     const { managerUserIds, ...fields } = koskDto;
+    if (managerUserIds) {
+      await this.selfGrant.assertNotSelf(
+        request.user,
+        managerUserIds,
+        { entity: ENTITIES.KOSK, id: "new" },
+        { role: ASSIGNED_ROLES.KOSK_NAZIM, always: true },
+        "kosk.create.nazims"
+      );
+    }
     const created = managerUserIds
       ? await this.koskAdmin.createWithNazims(request.user, koskDto)
       : await this.koskService.create({ ownerId, ...fields });

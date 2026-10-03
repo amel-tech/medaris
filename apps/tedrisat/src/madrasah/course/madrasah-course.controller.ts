@@ -1,4 +1,12 @@
-import { AuthGuard, Authz, AuthzGuard, PERMISSIONS } from "@medaris/common";
+import {
+  ASSIGNED_ROLES,
+  AuthGuard,
+  Authz,
+  AuthzGuard,
+  ENTITIES,
+  PERMISSIONS,
+  SelfGrantGuard,
+} from "@medaris/common";
 import {
   Body,
   Controller,
@@ -52,7 +60,10 @@ import { MadrasahCourseService } from "./madrasah-course.service";
 @UseGuards(AuthGuard, AuthzGuard)
 @Controller("madrasahs")
 export class MadrasahCourseController {
-  constructor(private readonly courses: MadrasahCourseService) {}
+  constructor(
+    private readonly courses: MadrasahCourseService,
+    private readonly selfGrant: SelfGrantGuard
+  ) {}
 
   @ApiOperation({
     summary: "The köşks the medrese may open courses in (its başmüderris)",
@@ -86,11 +97,20 @@ export class MadrasahCourseController {
   @ApiNotFoundResponse({ description: "Also MUDERRIS_UNKNOWN_USER" })
   @Post(":id/courses")
   @Authz(PERMISSIONS.MADRASAH_COURSE_OPEN, byExistingMadrasah)
-  open(
+  async open(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: OpenMadrasahCourseDto
   ): Promise<MadrasahCourseListItemResponse> {
+    // Naming yourself müderris is for someone who already holds every course
+    // permission in the medrese (its başmüderris), not for a grantee.
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      dto.muderrisUserIds,
+      { entity: ENTITIES.MADRASAH, id },
+      { role: ASSIGNED_ROLES.MUDERRIS },
+      "madrasah.course.open"
+    );
     return this.courses.open(id, dto, request.user.sub);
   }
 
@@ -111,12 +131,19 @@ export class MadrasahCourseController {
   })
   @Put(":id/courses/:courseId/muderrises")
   @Authz(PERMISSIONS.MADRASAH_MUDERRIS_MANAGE, byExistingMadrasah)
-  setMuderris(
+  async setMuderris(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("courseId", ParseUUIDPipe) courseId: string,
     @Body() dto: SetMadrasahCourseMuderrisDto
   ): Promise<MadrasahCourseListItemResponse> {
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      dto.muderrisUserIds,
+      { entity: ENTITIES.MADRASAH, id },
+      { role: ASSIGNED_ROLES.MUDERRIS },
+      "madrasah.course.muderris"
+    );
     return this.courses.setMuderris(id, courseId, dto, request.user.sub);
   }
 

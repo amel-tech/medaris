@@ -1,4 +1,5 @@
 import {
+  ASSIGNED_ROLES,
   AuthGuard,
   Authz,
   AuthzGuard,
@@ -6,6 +7,7 @@ import {
   type AuthzResolve,
   ENTITIES,
   PERMISSIONS,
+  SelfGrantGuard,
 } from "@medaris/common";
 import {
   Body,
@@ -119,7 +121,10 @@ const anyMadrasah: AuthzResolve = () => ({
 @UseGuards(AuthGuard, AuthzGuard)
 @Controller("madrasahs")
 export class MadrasahController {
-  constructor(private readonly madrasahService: MadrasahService) {}
+  constructor(
+    private readonly madrasahService: MadrasahService,
+    private readonly selfGrant: SelfGrantGuard
+  ) {}
 
   @ApiOperation({
     summary: "Get a paginated list of medreses",
@@ -309,6 +314,13 @@ export class MadrasahController {
     @Req() request: AuthorizedRequest,
     @Body() dto: CreateMadrasahDto
   ): Promise<MadrasahResponse> {
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      [dto.headMuderrisUserId],
+      { entity: ENTITIES.MADRASAH, id: "new" },
+      { role: ASSIGNED_ROLES.MEDRESE_BASMUDERRIS, always: true },
+      "madrasah.create.head"
+    );
     return this.madrasahService.open({
       ...dto,
       createdBy: request.user.sub,
@@ -352,6 +364,13 @@ export class MadrasahController {
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: SetHeadMuderrisDto
   ): Promise<MadrasahDirectoryItemResponse> {
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      [dto.userId],
+      { entity: ENTITIES.MADRASAH, id },
+      { role: ASSIGNED_ROLES.MEDRESE_BASMUDERRIS, always: true },
+      "madrasah.head_muderris.set"
+    );
     return this.madrasahService.setHeadMuderris(
       id,
       dto.userId.toLowerCase(),

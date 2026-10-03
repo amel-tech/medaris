@@ -3,6 +3,7 @@ import { DiscoveryModule } from "@nestjs/core";
 import { AuthzGuard } from "./authz.guard";
 import { AuthzService } from "./authz.service";
 import { AuthzWiringAssertion } from "./authz-wiring.assertion";
+import { SelfGrantGuard } from "./self-grant.guard";
 
 /**
  * Provides {@link AuthzService} (the permission decision) and {@link AuthzGuard}
@@ -24,7 +25,7 @@ import { AuthzWiringAssertion } from "./authz-wiring.assertion";
 @Global()
 @Module({
   imports: [DiscoveryModule],
-  providers: [AuthzService, AuthzGuard, AuthzWiringAssertion],
-  exports: [AuthzService, AuthzGuard],
+  providers: [AuthzService, AuthzGuard, AuthzWiringAssertion, SelfGrantGuard],
+  exports: [AuthzService, AuthzGuard, SelfGrantGuard],
 })
 export class AuthzModule {}

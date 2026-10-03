@@ -1,4 +1,11 @@
-import { AuthGuard, Authz, AuthzGuard, PERMISSIONS } from "@medaris/common";
+import {
+  AuthGuard,
+  Authz,
+  AuthzGuard,
+  ENTITIES,
+  PERMISSIONS,
+  SelfGrantGuard,
+} from "@medaris/common";
 import {
   Body,
   Controller,
@@ -44,7 +51,10 @@ import { MadrasahNazirService } from "./madrasah-nazir.service";
 @UseGuards(AuthGuard, AuthzGuard)
 @Controller("madrasahs")
 export class MadrasahNazirController {
-  constructor(private readonly nazirs: MadrasahNazirService) {}
+  constructor(
+    private readonly nazirs: MadrasahNazirService,
+    private readonly selfGrant: SelfGrantGuard
+  ) {}
 
   @ApiOperation({
     summary: "The medrese's nazırs (its başmüderris)",
@@ -86,11 +96,19 @@ export class MadrasahNazirController {
     ],
     byExistingMadrasah
   )
-  addNazir(
+  async addNazir(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("userId", ParseUUIDPipe) userId: string
   ): Promise<MadrasahNazirResponse> {
+    // Nobody appoints themselves a nazır, whatever route let them in.
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      [userId],
+      { entity: ENTITIES.MADRASAH, id },
+      { always: true },
+      "madrasah.nazir.appoint"
+    );
     return this.nazirs.appoint(id, userId, request.user.sub);
   }
 

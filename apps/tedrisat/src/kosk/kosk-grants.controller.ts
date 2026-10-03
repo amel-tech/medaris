@@ -1,4 +1,11 @@
-import { AuthGuard, Authz, AuthzGuard, PERMISSIONS } from "@medaris/common";
+import {
+  AuthGuard,
+  Authz,
+  AuthzGuard,
+  ENTITIES,
+  PERMISSIONS,
+  SelfGrantGuard,
+} from "@medaris/common";
 import {
   Body,
   Controller,
@@ -45,7 +52,10 @@ import { KoskGrantsService } from "./kosk-grants.service";
 @UseGuards(AuthGuard, AuthzGuard)
 @Controller("kosks")
 export class KoskGrantsController {
-  constructor(private readonly service: KoskGrantsService) {}
+  constructor(
+    private readonly service: KoskGrantsService,
+    private readonly selfGrant: SelfGrantGuard
+  ) {}
 
   @ApiOperation({
     summary: "The köşk's ders nazırları and what they may do",
@@ -78,11 +88,20 @@ export class KoskGrantsController {
   @ApiConflictResponse({ description: "COURSE_NAZIR_EXISTS" })
   @Post(":id/grants")
   @Authz(PERMISSIONS.COURSE_NAZIR_ASSIGN_KOSK, byExistingKosk)
-  create(
+  async create(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: CreateKoskGrantDto
   ): Promise<KoskGrantsResponse> {
+    // A köşk nazımı already holds every course permission in the köşk; a post
+    // they seat themselves in would only outlive their own dismissal.
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      [dto.userId],
+      { entity: ENTITIES.KOSK, id },
+      { always: true },
+      "kosk.grants.create"
+    );
     return this.service.create(request.user, id, dto);
   }
 

@@ -1,4 +1,8 @@
-import { type AuthzService, PERMISSIONS } from "@medaris/common";
+import {
+  type AuthzService,
+  PERMISSIONS,
+  SelfGrantGuard,
+} from "@medaris/common";
 import { describe, expect, it, vi } from "vitest";
 import {
   PermissionGroupEmptyError,
@@ -86,7 +90,10 @@ function build(
     repo as unknown as MadrasahNazirRepository,
     nazirs as unknown as MadrasahNazirService,
     groups as unknown as PermissionAdminRepository,
-    authz as unknown as AuthzService
+    authz as unknown as AuthzService,
+    // The real guard over the same engine stub: it asks `isSystemAdmin` and,
+    // for a path that is not `always`, `effective`, which nothing here uses.
+    new SelfGrantGuard(authz as unknown as AuthzService)
   );
   return { service, repo, groups, nazirs };
 }

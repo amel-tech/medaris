@@ -1,8 +1,11 @@
 import {
+  ASSIGNED_ROLES,
   AuthenticatedUser,
   AuthzForbiddenError,
   AuthzService,
+  ENTITIES,
   ROLES,
+  SelfGrantGuard,
 } from "@medaris/common";
 import { Injectable, Logger } from "@nestjs/common";
 import { GrantExpiryInvalidError } from "../assignment/admin/errors";
@@ -48,7 +51,8 @@ export class InactiveScopeService {
     private readonly repo: InactiveScopeRepository,
     private readonly authz: AuthzService,
     private readonly keycloak: KeycloakAdminService,
-    private readonly madrasahService: MadrasahService
+    private readonly madrasahService: MadrasahService,
+    private readonly selfGrant: SelfGrantGuard
   ) {}
 
   private async actor(user: AuthenticatedUser): Promise<string> {
@@ -196,6 +200,31 @@ export class InactiveScopeService {
     }
     await this.mustBeInactive(type, id);
     const userId = dto.userId.toLowerCase();
+    // Platform management attends a passive scope for someone else: it does
+    // not seat itself in the post.
+    await this.selfGrant.assertNotSelf(
+      user,
+      [userId],
+      {
+        entity:
+          type === "MADRASAH"
+            ? ENTITIES.MADRASAH
+            : type === "KOSK"
+              ? ENTITIES.KOSK
+              : ENTITIES.COURSE,
+        id,
+      },
+      {
+        role:
+          type === "MADRASAH"
+            ? ASSIGNED_ROLES.MEDRESE_BASMUDERRIS
+            : type === "KOSK"
+              ? ASSIGNED_ROLES.KOSK_NAZIM
+              : ASSIGNED_ROLES.MUDERRIS,
+        always: true,
+      },
+      "inactive_scope.assign"
+    );
     const people = await this.resolvePeople([userId]);
     if (!people.has(userId)) throw new KoskNazimUnknownAccountError(userId);
     if (type === "MADRASAH") {
