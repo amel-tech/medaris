@@ -2,6 +2,7 @@ import configuration from "../../src/config/config";
 import { resolveDatabaseSsl } from "../../src/config/database-ssl";
 import { requireDbPassword } from "../../src/config/security-env";
 import { resolveSwaggerOauthRedirectOrigin } from "../../src/config/swagger-oauth-redirect";
+import { DEFAULT_MIGRATIONS_FOLDER } from "../../src/database/migrations-folder";
 
 // RFC 2606 `.invalid`, not the deployed host (MDRS-89). These are string
 // fixtures — nothing here dereferences them — but a production hostname sitting
@@ -252,6 +253,37 @@ describe("tedrisat configuration", () => {
       expect(
         (enabled as { rejectUnauthorized: boolean }).rejectUnauthorized
       ).toBe(true);
+    });
+  });
+
+  describe("auto migrations (MDRS-219)", () => {
+    it("defaults to the database module's own migrations folder", () => {
+      setCompleteSecurityEnv();
+      process.env.AUTO_MIGRATIONS_ENABLED = "true";
+      delete process.env.AUTO_MIGRATIONS_FOLDER;
+
+      expect(configuration().autoMigrations).toEqual({
+        enabled: true,
+        migrationsFolder: DEFAULT_MIGRATIONS_FOLDER,
+      });
+    });
+
+    it("keeps AUTO_MIGRATIONS_FOLDER as an override", () => {
+      setCompleteSecurityEnv();
+      process.env.AUTO_MIGRATIONS_FOLDER = "/srv/tedrisat/migrations";
+
+      expect(configuration().autoMigrations.migrationsFolder).toBe(
+        "/srv/tedrisat/migrations"
+      );
+    });
+
+    it("stays off unless AUTO_MIGRATIONS_ENABLED is exactly 'true'", () => {
+      setCompleteSecurityEnv();
+      delete process.env.AUTO_MIGRATIONS_ENABLED;
+      expect(configuration().autoMigrations.enabled).toBe(false);
+
+      process.env.AUTO_MIGRATIONS_ENABLED = "1";
+      expect(configuration().autoMigrations.enabled).toBe(false);
     });
   });
 });
