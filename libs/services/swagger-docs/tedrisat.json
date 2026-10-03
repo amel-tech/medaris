@@ -2736,7 +2736,7 @@
     },
     "/bans/{banId}/lift": {
       "post": {
-        "description": "Only the kademe that placed the ban, or a higher one: a Medaris nazımı's ban is lifted by Medaris administration alone. The reason and the lifter's name are kept with the ban.",
+        "description": "Only the kademe that placed the ban, or a higher one: a Medaris nazımı's ban is lifted by Medaris administration alone. The reason and the lifter's name are kept with the ban. A medrese's nazır and başmüderris lift bans in the medrese's courses and over the medrese (MDRS-187).",
         "operationId": "liftBan",
         "parameters": [
           {
@@ -2785,6 +2785,251 @@
           }
         ],
         "summary": "Lift a ban with a reason (Yasağı kaldır)",
+        "tags": [
+          "bans"
+        ]
+      }
+    },
+    "/bans/{banId}/escalate": {
+      "post": {
+        "description": "For an open course ban in a course of a medrese: a second ban beside the first, which stays, barring the talebe from every course of the medrese, present and future. A medrese nazır or above of that medrese; a köşk nazımı or a müderris is not one. The person already barred from the medrese gets that ban back. 409 (BAN_NOT_ESCALATABLE) for any other ban.",
+        "operationId": "escalateBan",
+        "parameters": [
+          {
+            "name": "banId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BanReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahBanResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": "BAN_FORBIDDEN"
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "BAN_ALREADY_LIFTED or BAN_NOT_ESCALATABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Widen a course ban to the whole medrese (Medreseden de yasakla)",
+        "tags": [
+          "bans"
+        ]
+      }
+    },
+    "/bans/{banId}/permanent-request": {
+      "post": {
+        "description": "Records the medrese's request, with its reason, for Medaris administration. Nothing is decided here: the ban stands as it was, and deciding the request is a later phase. A medrese nazır or above, on an open ban in a course of the medrese or over the medrese itself that Medaris administration did not place. One request per ban (409 BAN_PERMANENT_REQUEST_EXISTS).",
+        "operationId": "requestPermanentBan",
+        "parameters": [
+          {
+            "name": "banId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BanReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahBanResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": "BAN_FORBIDDEN"
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "BAN_ALREADY_LIFTED, BAN_PERMANENT_REQUEST_INVALID or BAN_PERMANENT_REQUEST_EXISTS"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ask for a ban to be made permanent (Kalıcı yasak talebi aç)",
+        "tags": [
+          "bans"
+        ]
+      }
+    },
+    "/madrasahs/{id}/bans": {
+      "get": {
+        "description": "Newest first, with the counts the tabs show: the medrese-wide bans and the bans on the medrese's courses, hidden ones included. A köşk's own ban of the whole köşk is the köşk's list and is not here. `scope` narrows to the medrese-wide or the course bans, `courseId` to one course's. Each row says what the caller's kademe lets them do: `viewerMayLift`, `viewerMayEscalate`, `viewerMayRequestPermanent`.",
+        "operationId": "listMadrasahBans",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "ACTIVE",
+                "LIFTED"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "COURSE",
+                "MADRASAH"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "courseId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahBanListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A medrese's bans, open or lifted (Yasaklamalar)",
+        "tags": [
+          "bans"
+        ]
+      },
+      "post": {
+        "description": "Takes effect at once: the talebe cannot apply, apply again or leave, and loses the course's content, in the one course or in every course of the medrese. The ban is the medrese's kademe: a köşk nazımı or Medaris administration lifts it, a müderris does not. Barring someone already barred in that scope returns the standing ban. 404 for a course that is not the medrese's. The reason is kept for those who see and lift bans and never sent to the talebe.",
+        "operationId": "createMadrasahBan",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMadrasahBanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahBanResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "BAN_FORBIDDEN"
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Bar a talebe from a course of the medrese, or from all of it (Yasakla)",
         "tags": [
           "bans"
         ]
@@ -5995,6 +6240,234 @@
         ]
       }
     },
+    "/madrasahs/{id}/offsite-course-requests": {
+      "post": {
+        "description": "nazir/09's \"Talebi gönder\": the köşk, a suggested name and the reason, kept with the medrese that sent them. It creates no course and adds nothing to the medrese's list: the köşk's nazım reads the request and, on accepting it, opens the course, which stays a köşk course. The request is PENDING until then. Any köşk that is not hidden, whether or not the medrese holds a hosting right there. Written to the audit log.",
+        "operationId": "requestOffsiteCourse",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOffsiteCourseRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffsiteCourseRequestResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "The medrese or the köşk"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ask a köşk to open a course outside the medrese (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      },
+      "get": {
+        "description": "Newest first, each with its köşk, its sender and its status. The köşk side's list of requests it received is the köşk nazımı's own screen (nizam/39), not this one.",
+        "operationId": "getOffsiteCourseRequests",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OffsiteCourseRequestResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The medrese's requests for a course outside it (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/students": {
+      "get": {
+        "description": "nazir/10: everyone enrolled in, or who completed, a course of the medrese that is not hidden — derived from the enrollments, never stored; a talebe's courses outside the medrese are not here. Newest first by first enrollment, 10 a page by default. `q` matches the name or the e-mail address, `courseId` keeps the talebe who attend or finished that course and `status` those holding an enrollment in that state (in that course when it is given); each row still lists all of the talebe's courses in the medrese.",
+        "operationId": "getMadrasahStudents",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "courseId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "ENROLLED",
+                "COMPLETED"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahStudentsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The medrese's talebe, a page at a time (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/dashboard": {
+      "get": {
+        "description": "nazir/01 in one read: the medrese's nazır and course counts, the köşks it holds a hosting right in, its live sessions in the next 7 days, and its pending applications (newest 50, with the whole count). The scope cards of the courses the caller teaches come from `GET /me/assignments`, and the greeting's name from `GET /me`. Each pending application says whether the caller may decide it (`viewerMayDecide`): the course routes that approve and reject answer the course team, the köşk's nazım and the başnazım alone.",
+        "operationId": "getMadrasahDashboard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahDashboardResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What the medrese's Pano shows (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
     "/kosks/{id}/archive": {
       "get": {
         "description": "Newest hidden first: the köşk's courses, weeks, sessions and decks, and the same of the medrese courses it hosts. A köşk manager or SYSTEM_ADMIN. There is no delete here; the başnazım deletes from the platform archive.",
@@ -9048,7 +9521,8 @@
         "type": "string",
         "enum": [
           "COURSE",
-          "KOSK"
+          "KOSK",
+          "MADRASAH"
         ]
       },
       "EnrollmentBanResponse": {
@@ -9901,12 +10375,12 @@
             "description": "The talebe to bar."
           },
           "scope": {
-            "description": "COURSE bars the talebe from this course alone; KOSK from every course of its köşk, and they may not apply again. KOSK is the köşk nazımı's and above.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/BanScope"
-              }
-            ]
+            "type": "string",
+            "enum": [
+              "COURSE",
+              "KOSK"
+            ],
+            "description": "COURSE bars the talebe from this course alone; KOSK from every course of its köşk, and they may not apply again. KOSK is the köşk nazımı's and above."
           },
           "reason": {
             "type": "string",
@@ -9963,7 +10437,9 @@
           },
           "koskId": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "nullable": true,
+            "description": "Null for a MADRASAH ban, which belongs to no single köşk."
           },
           "courseId": {
             "type": "string",
@@ -9982,7 +10458,7 @@
             "type": "string",
             "format": "uuid",
             "nullable": true,
-            "description": "For a KOSK ban widened from a course: that course. Null otherwise."
+            "description": "For a KOSK or MADRASAH ban widened from a course: that course. Null otherwise."
           },
           "extendedFromCourseTitle": {
             "type": "string",
@@ -10090,6 +10566,203 @@
           }
         },
         "required": [
+          "reason"
+        ]
+      },
+      "BanReasonDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "example": "Başka derslerde de aynı davranış sürdü.",
+            "description": "Why. Kept with the new ban or the request, for whoever reads it later. Required, and not blank."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "MadrasahBanResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user": {
+            "$ref": "#/components/schemas/BanPersonResponse"
+          },
+          "scope": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BanScope"
+              }
+            ]
+          },
+          "koskId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Null for a MADRASAH ban, which belongs to no single köşk."
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "courseTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "madrasahName": {
+            "type": "string",
+            "nullable": true
+          },
+          "extendedFromCourseId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "For a KOSK or MADRASAH ban widened from a course: that course. Null otherwise."
+          },
+          "extendedFromCourseTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string"
+          },
+          "bannedBy": {
+            "$ref": "#/components/schemas/BanPersonResponse"
+          },
+          "bannedRole": {
+            "type": "string",
+            "description": "The role the banner acted in (KOSK_NAZIM, MUDERRIS, DERS_NAZIR, MEDRESE_NAZIR, MEDRESE_BASMUDERRIS, MEDARIS_NAZIM or SYSTEM_ADMIN). The client words it."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "liftedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "liftedBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BanPersonResponse"
+              }
+            ]
+          },
+          "liftReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "viewerMayLift": {
+            "type": "boolean",
+            "description": "Whether the caller's kademe reaches the ban's: false means the row shows no lift button (the server refuses with 403 all the same)."
+          },
+          "viewerMayEscalate": {
+            "type": "boolean",
+            "description": "Whether the caller may widen this course ban to the whole medrese (`POST /bans/:banId/escalate`): a medrese nazır or above, on an open course ban in a course of the medrese, with no open medrese-wide ban for the person."
+          },
+          "viewerMayRequestPermanent": {
+            "type": "boolean",
+            "description": "Whether the caller may ask for the ban to be permanent (`POST /bans/:banId/permanent-request`): a medrese nazır or above, on an open ban that is not Medaris administration's own and has no request yet."
+          },
+          "permanentRequestedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the medrese asked for the ban to be permanent; null when it has not. The request is not decided yet: deciding is Medaris administration's, a later phase."
+          }
+        },
+        "required": [
+          "id",
+          "user",
+          "scope",
+          "koskId",
+          "courseId",
+          "courseTitle",
+          "madrasahName",
+          "extendedFromCourseId",
+          "extendedFromCourseTitle",
+          "reason",
+          "bannedBy",
+          "bannedRole",
+          "createdAt",
+          "liftedAt",
+          "liftedBy",
+          "liftReason",
+          "viewerMayLift",
+          "viewerMayEscalate",
+          "viewerMayRequestPermanent",
+          "permanentRequestedAt"
+        ]
+      },
+      "MadrasahBanListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahBanResponse"
+            }
+          },
+          "activeCount": {
+            "type": "number",
+            "description": "Open bans of the medrese."
+          },
+          "liftedCount": {
+            "type": "number",
+            "description": "Lifted bans of the medrese."
+          },
+          "recentCount": {
+            "type": "number",
+            "description": "Open bans placed in the last 24 hours."
+          }
+        },
+        "required": [
+          "items",
+          "activeCount",
+          "liftedCount",
+          "recentCount"
+        ]
+      },
+      "CreateMadrasahBanDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The talebe to bar."
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "COURSE",
+              "MADRASAH"
+            ],
+            "description": "COURSE bars the talebe from one course of the medrese, named in `courseId`; MADRASAH from every course of the medrese, present and future."
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Required for COURSE, and a course of this medrese. Ignored for MADRASAH."
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "example": "Celselerde başka talebelere hakaret.",
+            "description": "Read by whoever sees the ban and by whoever lifts it; never sent to the talebe. Required, and not blank."
+          }
+        },
+        "required": [
+          "userId",
+          "scope",
           "reason"
         ]
       },
@@ -12444,6 +13117,340 @@
         },
         "required": [
           "muderrisUserIds"
+        ]
+      },
+      "CreateOffsiteCourseRequestDto": {
+        "type": "object",
+        "properties": {
+          "koskId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The köşk the medrese asks to open the course. Any köşk that is not hidden: this is for courses that will not belong to the medrese, so the medrese's hosting rights are neither required nor looked at"
+          },
+          "title": {
+            "type": "string",
+            "example": "Erbaîn-i Nevevî okumaları",
+            "minLength": 2,
+            "maxLength": 200,
+            "description": "The name suggested; whoever opens the course may change it"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "example": "Medresemizde bu metni okutan bir ders yok; müderrisliğini ben üstlenmek isterim.",
+            "description": "Why the course should open outside the medrese, and the müderrisler proposed. Required, and not blank"
+          }
+        },
+        "required": [
+          "koskId",
+          "title",
+          "reason"
+        ]
+      },
+      "OffsiteCourseRequestResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "madrasahId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "koskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "koskName": {
+            "type": "string",
+            "example": "Nûruosmaniye Köşkü"
+          },
+          "title": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ACCEPTED",
+              "REJECTED"
+            ],
+            "description": "PENDING when sent. The köşk side accepts or rejects it in its own screens (nizam/39); until then it stays PENDING"
+          },
+          "requestedById": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The account that sent it"
+          },
+          "requestedByName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Null when the account never signed in to tedrisat"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "madrasahId",
+          "koskId",
+          "koskName",
+          "title",
+          "reason",
+          "status",
+          "requestedById",
+          "requestedByName",
+          "createdAt"
+        ]
+      },
+      "MadrasahStudentCourseResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "example": "Bina ve İzhar Şerhi"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "For a completed course, when the course team marked it completed; null for a course still ongoing, and for a completion recorded before the date was kept"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "completedAt"
+        ]
+      },
+      "MadrasahStudentResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "example": "Sümeyye Nur Ekincioğlu"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "firstEnrolledAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The earliest enrollment in any course of the medrese: \"İlk kayıt\""
+          },
+          "ongoingCourses": {
+            "description": "\"Devam ettiği dersler\": the courses of the medrese they are enrolled in, by title",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahStudentCourseResponse"
+            }
+          },
+          "completedCourses": {
+            "description": "\"Tamamladığı dersler\": by title; empty is \"Yok\"",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahStudentCourseResponse"
+            }
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "email",
+          "firstEnrolledAt",
+          "ongoingCourses",
+          "completedCourses"
+        ]
+      },
+      "MadrasahStudentsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahStudentResponse"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Talebe matching the filters, over every page: \"48 talebe\""
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit"
+        ]
+      },
+      "DashboardSessionResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string",
+            "example": "İsâgûcî ile mantığa giriş"
+          },
+          "courseCoverHue": {
+            "type": "number",
+            "description": "For the course's colour swatch"
+          },
+          "koskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "koskName": {
+            "type": "string",
+            "example": "Fatih Köşkü"
+          },
+          "weekNumber": {
+            "type": "number",
+            "example": 2,
+            "description": "\"Hafta 2\""
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "meetingHost": {
+            "type": "string",
+            "nullable": true,
+            "example": "meet.google.com",
+            "description": "The host of the session's meeting link, never the link: the client names the platform from it. Null when the session has no link (\"bağlantısı eksik\")"
+          }
+        },
+        "required": [
+          "lessonId",
+          "courseId",
+          "courseTitle",
+          "courseCoverHue",
+          "koskId",
+          "koskName",
+          "weekNumber",
+          "scheduledAt",
+          "meetingHost"
+        ]
+      },
+      "DashboardApplicationResponse": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "studentName": {
+            "type": "string",
+            "nullable": true
+          },
+          "studentEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "appliedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "viewerMayDecide": {
+            "type": "boolean",
+            "description": "Whether the caller may approve or reject this application with `POST /courses/:id/enrollments/:userId/approve` and `DELETE /courses/:id/enrollments/:userId`: the course's müderris, its köşk's nazım, or the başnazım. A başmüderris who is none of these gets 403 from those routes, so the row shows no buttons for them"
+          }
+        },
+        "required": [
+          "courseId",
+          "courseTitle",
+          "userId",
+          "studentName",
+          "studentEmail",
+          "appliedAt",
+          "viewerMayDecide"
+        ]
+      },
+      "MadrasahDashboardResponse": {
+        "type": "object",
+        "properties": {
+          "nazirCount": {
+            "type": "number",
+            "description": "\"{n} medrese nazırı\": the nazırs held, the başmüderris not among them"
+          },
+          "courseCount": {
+            "type": "number",
+            "description": "\"{n} medrese dersi\": the medrese's courses that are not hidden, drafts included"
+          },
+          "hostingKosks": {
+            "description": "\"Barındırma hakkı olan köşkler\": the same list as `GET /madrasahs/:id/hosting-kosks`",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahCourseKoskResponse"
+            }
+          },
+          "upcomingSessions": {
+            "description": "\"Yaklaşan celseler\": the live sessions of the medrese's published courses in the next 7 days, soonest first. Cancelled and hidden sessions, and hidden and draft courses, are left out, so the count in the greeting is this array's length",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardSessionResponse"
+            }
+          },
+          "pendingApplicationCount": {
+            "type": "number",
+            "description": "Every pending application across the medrese's courses; the greeting's \"{m} başvuru\". `pendingApplications` carries at most 50 of them"
+          },
+          "pendingCourseCount": {
+            "type": "number",
+            "description": "In how many courses they wait: \"{n} başvuru · {m} derste\""
+          },
+          "pendingApplications": {
+            "description": "\"Bekleyen başvurular\": newest first, at most 50. The count above is the true number when there are more",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardApplicationResponse"
+            }
+          }
+        },
+        "required": [
+          "nazirCount",
+          "courseCount",
+          "hostingKosks",
+          "upcomingSessions",
+          "pendingApplicationCount",
+          "pendingCourseCount",
+          "pendingApplications"
         ]
       },
       "ArchiveItemType": {

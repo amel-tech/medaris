@@ -17,11 +17,13 @@ import * as runtime from '../runtime';
 import type {
   CreateMadrasahDto,
   CreateMadrasahPermissionGroupDto,
+  CreateOffsiteCourseRequestDto,
   DeletePermissionGroupDto,
   DismissMadrasahNazirDto,
   MadrasahBadgeCountsResponse,
   MadrasahCourseKoskResponse,
   MadrasahCourseListItemResponse,
+  MadrasahDashboardResponse,
   MadrasahDirectoryItemResponse,
   MadrasahDirectoryResponse,
   MadrasahExploreResponse,
@@ -34,6 +36,8 @@ import type {
   MadrasahResponse,
   MadrasahSettingsResponse,
   MadrasahStatusFilter,
+  MadrasahStudentsResponse,
+  OffsiteCourseRequestResponse,
   OpenMadrasahCourseDto,
   PaginatedMadrasahResponse,
   SetHeadMuderrisDto,
@@ -48,6 +52,8 @@ import {
     CreateMadrasahDtoToJSON,
     CreateMadrasahPermissionGroupDtoFromJSON,
     CreateMadrasahPermissionGroupDtoToJSON,
+    CreateOffsiteCourseRequestDtoFromJSON,
+    CreateOffsiteCourseRequestDtoToJSON,
     DeletePermissionGroupDtoFromJSON,
     DeletePermissionGroupDtoToJSON,
     DismissMadrasahNazirDtoFromJSON,
@@ -58,6 +64,8 @@ import {
     MadrasahCourseKoskResponseToJSON,
     MadrasahCourseListItemResponseFromJSON,
     MadrasahCourseListItemResponseToJSON,
+    MadrasahDashboardResponseFromJSON,
+    MadrasahDashboardResponseToJSON,
     MadrasahDirectoryItemResponseFromJSON,
     MadrasahDirectoryItemResponseToJSON,
     MadrasahDirectoryResponseFromJSON,
@@ -82,6 +90,10 @@ import {
     MadrasahSettingsResponseToJSON,
     MadrasahStatusFilterFromJSON,
     MadrasahStatusFilterToJSON,
+    MadrasahStudentsResponseFromJSON,
+    MadrasahStudentsResponseToJSON,
+    OffsiteCourseRequestResponseFromJSON,
+    OffsiteCourseRequestResponseToJSON,
     OpenMadrasahCourseDtoFromJSON,
     OpenMadrasahCourseDtoToJSON,
     PaginatedMadrasahResponseFromJSON,
@@ -150,6 +162,10 @@ export interface GetMadrasahCoursesRequest {
     status?: GetMadrasahCoursesStatusEnum;
 }
 
+export interface GetMadrasahDashboardRequest {
+    id: string;
+}
+
 export interface GetMadrasahDirectoryRequest {
     status?: MadrasahStatusFilter;
     page?: number;
@@ -191,6 +207,19 @@ export interface GetMadrasahSettingsRequest {
     id: string;
 }
 
+export interface GetMadrasahStudentsRequest {
+    id: string;
+    page?: number;
+    limit?: number;
+    q?: string;
+    courseId?: string;
+    status?: GetMadrasahStudentsStatusEnum;
+}
+
+export interface GetOffsiteCourseRequestsRequest {
+    id: string;
+}
+
 export interface HideMadrasahRequest {
     id: string;
 }
@@ -209,6 +238,11 @@ export interface RemoveMadrasahNazirRequest {
     id: string;
     userId: string;
     dismissMadrasahNazirDto: DismissMadrasahNazirDto;
+}
+
+export interface RequestOffsiteCourseRequest {
+    id: string;
+    createOffsiteCourseRequestDto: CreateOffsiteCourseRequestDto;
 }
 
 export interface RestoreMadrasahRequest {
@@ -751,6 +785,50 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
+     * nazir/01 in one read: the medrese\'s nazır and course counts, the köşks it holds a hosting right in, its live sessions in the next 7 days, and its pending applications (newest 50, with the whole count). The scope cards of the courses the caller teaches come from `GET /me/assignments`, and the greeting\'s name from `GET /me`. Each pending application says whether the caller may decide it (`viewerMayDecide`): the course routes that approve and reject answer the course team, the köşk\'s nazım and the başnazım alone.
+     * What the medrese\'s Pano shows (its başmüderris)
+     */
+    async getMadrasahDashboardRaw(requestParameters: GetMadrasahDashboardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahDashboardResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getMadrasahDashboard().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/dashboard`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahDashboardResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nazir/01 in one read: the medrese\'s nazır and course counts, the köşks it holds a hosting right in, its live sessions in the next 7 days, and its pending applications (newest 50, with the whole count). The scope cards of the courses the caller teaches come from `GET /me/assignments`, and the greeting\'s name from `GET /me`. Each pending application says whether the caller may decide it (`viewerMayDecide`): the course routes that approve and reject answer the course team, the köşk\'s nazım and the başnazım alone.
+     * What the medrese\'s Pano shows (its başmüderris)
+     */
+    async getMadrasahDashboard(requestParameters: GetMadrasahDashboardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahDashboardResponse> {
+        const response = await this.getMadrasahDashboardRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * nizam/07: hidden and passive medreses too, each with its başmüderris, course count and hosting köşks, and the per-status counts the tabs show. The open list above leaves hidden medreses out; this one is the başnazım\'s.
      * Every medrese for the platform\'s table (SYSTEM_ADMIN only)
      */
@@ -1171,6 +1249,114 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
+     * nazir/10: everyone enrolled in, or who completed, a course of the medrese that is not hidden — derived from the enrollments, never stored; a talebe\'s courses outside the medrese are not here. Newest first by first enrollment, 10 a page by default. `q` matches the name or the e-mail address, `courseId` keeps the talebe who attend or finished that course and `status` those holding an enrollment in that state (in that course when it is given); each row still lists all of the talebe\'s courses in the medrese.
+     * The medrese\'s talebe, a page at a time (its başmüderris)
+     */
+    async getMadrasahStudentsRaw(requestParameters: GetMadrasahStudentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahStudentsResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getMadrasahStudents().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['q'] != null) {
+            queryParameters['q'] = requestParameters['q'];
+        }
+
+        if (requestParameters['courseId'] != null) {
+            queryParameters['courseId'] = requestParameters['courseId'];
+        }
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/students`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahStudentsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nazir/10: everyone enrolled in, or who completed, a course of the medrese that is not hidden — derived from the enrollments, never stored; a talebe\'s courses outside the medrese are not here. Newest first by first enrollment, 10 a page by default. `q` matches the name or the e-mail address, `courseId` keeps the talebe who attend or finished that course and `status` those holding an enrollment in that state (in that course when it is given); each row still lists all of the talebe\'s courses in the medrese.
+     * The medrese\'s talebe, a page at a time (its başmüderris)
+     */
+    async getMadrasahStudents(requestParameters: GetMadrasahStudentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahStudentsResponse> {
+        const response = await this.getMadrasahStudentsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Newest first, each with its köşk, its sender and its status. The köşk side\'s list of requests it received is the köşk nazımı\'s own screen (nizam/39), not this one.
+     * The medrese\'s requests for a course outside it (its başmüderris)
+     */
+    async getOffsiteCourseRequestsRaw(requestParameters: GetOffsiteCourseRequestsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<OffsiteCourseRequestResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getOffsiteCourseRequests().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/offsite-course-requests`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(OffsiteCourseRequestResponseFromJSON));
+    }
+
+    /**
+     * Newest first, each with its köşk, its sender and its status. The köşk side\'s list of requests it received is the köşk nazımı\'s own screen (nizam/39), not this one.
+     * The medrese\'s requests for a course outside it (its başmüderris)
+     */
+    async getOffsiteCourseRequests(requestParameters: GetOffsiteCourseRequestsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<OffsiteCourseRequestResponse>> {
+        const response = await this.getOffsiteCourseRequestsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * nazir/12\'s \"Medreseyi gizle\". The medrese leaves every list and its page closes, and so do its courses, all at once; nothing is deleted. The köşks that host its courses stay. Only the Medaris administration brings it back (`POST …/restore`). 409 (MADRASAH_ALREADY_HIDDEN) when it is hidden. Written to the audit log.
      * Hide a medrese (its başmüderris)
      */
@@ -1378,6 +1564,60 @@ export class MadrasahsApi extends runtime.BaseAPI {
      */
     async removeMadrasahNazir(requestParameters: RemoveMadrasahNazirRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.removeMadrasahNazirRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * nazir/09\'s \"Talebi gönder\": the köşk, a suggested name and the reason, kept with the medrese that sent them. It creates no course and adds nothing to the medrese\'s list: the köşk\'s nazım reads the request and, on accepting it, opens the course, which stays a köşk course. The request is PENDING until then. Any köşk that is not hidden, whether or not the medrese holds a hosting right there. Written to the audit log.
+     * Ask a köşk to open a course outside the medrese (its başmüderris)
+     */
+    async requestOffsiteCourseRaw(requestParameters: RequestOffsiteCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OffsiteCourseRequestResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling requestOffsiteCourse().'
+            );
+        }
+
+        if (requestParameters['createOffsiteCourseRequestDto'] == null) {
+            throw new runtime.RequiredError(
+                'createOffsiteCourseRequestDto',
+                'Required parameter "createOffsiteCourseRequestDto" was null or undefined when calling requestOffsiteCourse().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/offsite-course-requests`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateOffsiteCourseRequestDtoToJSON(requestParameters['createOffsiteCourseRequestDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => OffsiteCourseRequestResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nazir/09\'s \"Talebi gönder\": the köşk, a suggested name and the reason, kept with the medrese that sent them. It creates no course and adds nothing to the medrese\'s list: the köşk\'s nazım reads the request and, on accepting it, opens the course, which stays a köşk course. The request is PENDING until then. Any köşk that is not hidden, whether or not the medrese holds a hosting right there. Written to the audit log.
+     * Ask a köşk to open a course outside the medrese (its başmüderris)
+     */
+    async requestOffsiteCourse(requestParameters: RequestOffsiteCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OffsiteCourseRequestResponse> {
+        const response = await this.requestOffsiteCourseRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**
@@ -1790,3 +2030,11 @@ export const GetMadrasahCoursesStatusEnum = {
     Published: 'PUBLISHED'
 } as const;
 export type GetMadrasahCoursesStatusEnum = typeof GetMadrasahCoursesStatusEnum[keyof typeof GetMadrasahCoursesStatusEnum];
+/**
+ * @export
+ */
+export const GetMadrasahStudentsStatusEnum = {
+    Enrolled: 'ENROLLED',
+    Completed: 'COMPLETED'
+} as const;
+export type GetMadrasahStudentsStatusEnum = typeof GetMadrasahStudentsStatusEnum[keyof typeof GetMadrasahStudentsStatusEnum];

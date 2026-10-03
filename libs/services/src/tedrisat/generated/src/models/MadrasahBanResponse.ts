@@ -31,125 +31,137 @@ import {
 /**
  * 
  * @export
- * @interface BanResponse
+ * @interface MadrasahBanResponse
  */
-export interface BanResponse {
+export interface MadrasahBanResponse {
     /**
      * 
      * @type {string}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
     id: string;
     /**
      * 
      * @type {BanPersonResponse}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
     user: BanPersonResponse;
     /**
      * 
      * @type {BanScope}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
     scope: BanScope;
     /**
      * Null for a MADRASAH ban, which belongs to no single köşk.
      * @type {string}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
     koskId: string | null;
     /**
      * 
      * @type {string}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
     courseId: string | null;
     /**
      * 
      * @type {string}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
     courseTitle: string | null;
     /**
      * 
      * @type {string}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
     madrasahName: string | null;
     /**
      * For a KOSK or MADRASAH ban widened from a course: that course. Null otherwise.
      * @type {string}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
     extendedFromCourseId: string | null;
     /**
      * 
      * @type {string}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
     extendedFromCourseTitle: string | null;
     /**
      * 
      * @type {string}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
     reason: string;
     /**
      * 
      * @type {BanPersonResponse}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
     bannedBy: BanPersonResponse;
     /**
      * The role the banner acted in (KOSK_NAZIM, MUDERRIS, DERS_NAZIR, MEDRESE_NAZIR, MEDRESE_BASMUDERRIS, MEDARIS_NAZIM or SYSTEM_ADMIN). The client words it.
      * @type {string}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
     bannedRole: string;
     /**
      * 
      * @type {Date}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
     createdAt: Date;
     /**
      * 
      * @type {Date}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
     liftedAt: Date | null;
     /**
      * 
      * @type {BanPersonResponse}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
     liftedBy: BanPersonResponse | null;
     /**
      * 
      * @type {string}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
     liftReason: string | null;
     /**
      * Whether the caller's kademe reaches the ban's: false means the row shows no lift button (the server refuses with 403 all the same).
      * @type {boolean}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
     viewerMayLift: boolean;
     /**
-     * Whether the caller may widen this course ban to the whole köşk: a köşk nazımı or above, on an open course ban with no open köşk ban for the person.
+     * Whether the caller may widen this course ban to the whole medrese (`POST /bans/:banId/escalate`): a medrese nazır or above, on an open course ban in a course of the medrese, with no open medrese-wide ban for the person.
      * @type {boolean}
-     * @memberof BanResponse
+     * @memberof MadrasahBanResponse
      */
-    viewerMayExtend: boolean;
+    viewerMayEscalate: boolean;
+    /**
+     * Whether the caller may ask for the ban to be permanent (`POST /bans/:banId/permanent-request`): a medrese nazır or above, on an open ban that is not Medaris administration's own and has no request yet.
+     * @type {boolean}
+     * @memberof MadrasahBanResponse
+     */
+    viewerMayRequestPermanent: boolean;
+    /**
+     * When the medrese asked for the ban to be permanent; null when it has not. The request is not decided yet: deciding is Medaris administration's, a later phase.
+     * @type {Date}
+     * @memberof MadrasahBanResponse
+     */
+    permanentRequestedAt: Date | null;
 }
 
 
 
 /**
- * Check if a given object implements the BanResponse interface.
+ * Check if a given object implements the MadrasahBanResponse interface.
  */
-export function instanceOfBanResponse(value: object): value is BanResponse {
+export function instanceOfMadrasahBanResponse(value: object): value is MadrasahBanResponse {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('user' in value) || value['user'] === undefined) return false;
     if (!('scope' in value) || value['scope'] === undefined) return false;
@@ -167,15 +179,17 @@ export function instanceOfBanResponse(value: object): value is BanResponse {
     if (!('liftedBy' in value) || value['liftedBy'] === undefined) return false;
     if (!('liftReason' in value) || value['liftReason'] === undefined) return false;
     if (!('viewerMayLift' in value) || value['viewerMayLift'] === undefined) return false;
-    if (!('viewerMayExtend' in value) || value['viewerMayExtend'] === undefined) return false;
+    if (!('viewerMayEscalate' in value) || value['viewerMayEscalate'] === undefined) return false;
+    if (!('viewerMayRequestPermanent' in value) || value['viewerMayRequestPermanent'] === undefined) return false;
+    if (!('permanentRequestedAt' in value) || value['permanentRequestedAt'] === undefined) return false;
     return true;
 }
 
-export function BanResponseFromJSON(json: any): BanResponse {
-    return BanResponseFromJSONTyped(json, false);
+export function MadrasahBanResponseFromJSON(json: any): MadrasahBanResponse {
+    return MadrasahBanResponseFromJSONTyped(json, false);
 }
 
-export function BanResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): BanResponse {
+export function MadrasahBanResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): MadrasahBanResponse {
     if (json == null) {
         return json;
     }
@@ -198,15 +212,17 @@ export function BanResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'liftedBy': BanPersonResponseFromJSON(json['liftedBy']),
         'liftReason': json['liftReason'],
         'viewerMayLift': json['viewerMayLift'],
-        'viewerMayExtend': json['viewerMayExtend'],
+        'viewerMayEscalate': json['viewerMayEscalate'],
+        'viewerMayRequestPermanent': json['viewerMayRequestPermanent'],
+        'permanentRequestedAt': (json['permanentRequestedAt'] == null ? null : new Date(json['permanentRequestedAt'])),
     };
 }
 
-export function BanResponseToJSON(json: any): BanResponse {
-    return BanResponseToJSONTyped(json, false);
+export function MadrasahBanResponseToJSON(json: any): MadrasahBanResponse {
+    return MadrasahBanResponseToJSONTyped(json, false);
 }
 
-export function BanResponseToJSONTyped(value?: BanResponse | null, ignoreDiscriminator: boolean = false): any {
+export function MadrasahBanResponseToJSONTyped(value?: MadrasahBanResponse | null, ignoreDiscriminator: boolean = false): any {
     if (value == null) {
         return value;
     }
@@ -230,7 +246,9 @@ export function BanResponseToJSONTyped(value?: BanResponse | null, ignoreDiscrim
         'liftedBy': BanPersonResponseToJSON(value['liftedBy']),
         'liftReason': value['liftReason'],
         'viewerMayLift': value['viewerMayLift'],
-        'viewerMayExtend': value['viewerMayExtend'],
+        'viewerMayEscalate': value['viewerMayEscalate'],
+        'viewerMayRequestPermanent': value['viewerMayRequestPermanent'],
+        'permanentRequestedAt': ((value['permanentRequestedAt'] as any).toISOString()),
     };
 }
 

@@ -16,24 +16,46 @@
 import * as runtime from '../runtime';
 import type {
   BanListResponse,
+  BanReasonDto,
   BanResponse,
   CreateBanDto,
+  CreateMadrasahBanDto,
   LiftBanDto,
+  MadrasahBanListResponse,
+  MadrasahBanResponse,
 } from '../models/index';
 import {
     BanListResponseFromJSON,
     BanListResponseToJSON,
+    BanReasonDtoFromJSON,
+    BanReasonDtoToJSON,
     BanResponseFromJSON,
     BanResponseToJSON,
     CreateBanDtoFromJSON,
     CreateBanDtoToJSON,
+    CreateMadrasahBanDtoFromJSON,
+    CreateMadrasahBanDtoToJSON,
     LiftBanDtoFromJSON,
     LiftBanDtoToJSON,
+    MadrasahBanListResponseFromJSON,
+    MadrasahBanListResponseToJSON,
+    MadrasahBanResponseFromJSON,
+    MadrasahBanResponseToJSON,
 } from '../models/index';
 
 export interface CreateBanRequest {
     courseId: string;
     createBanDto: CreateBanDto;
+}
+
+export interface CreateMadrasahBanRequest {
+    id: string;
+    createMadrasahBanDto: CreateMadrasahBanDto;
+}
+
+export interface EscalateBanRequest {
+    banId: string;
+    banReasonDto: BanReasonDto;
 }
 
 export interface LiftBanRequest {
@@ -44,6 +66,18 @@ export interface LiftBanRequest {
 export interface ListKoskBansRequest {
     koskId: string;
     status?: ListKoskBansStatusEnum;
+}
+
+export interface ListMadrasahBansRequest {
+    id: string;
+    status?: ListMadrasahBansStatusEnum;
+    scope?: ListMadrasahBansScopeEnum;
+    courseId?: string;
+}
+
+export interface RequestPermanentBanRequest {
+    banId: string;
+    banReasonDto: BanReasonDto;
 }
 
 /**
@@ -106,7 +140,115 @@ export class BansApi extends runtime.BaseAPI {
     }
 
     /**
-     * Only the kademe that placed the ban, or a higher one: a Medaris nazımı\'s ban is lifted by Medaris administration alone. The reason and the lifter\'s name are kept with the ban.
+     * Takes effect at once: the talebe cannot apply, apply again or leave, and loses the course\'s content, in the one course or in every course of the medrese. The ban is the medrese\'s kademe: a köşk nazımı or Medaris administration lifts it, a müderris does not. Barring someone already barred in that scope returns the standing ban. 404 for a course that is not the medrese\'s. The reason is kept for those who see and lift bans and never sent to the talebe.
+     * Bar a talebe from a course of the medrese, or from all of it (Yasakla)
+     */
+    async createMadrasahBanRaw(requestParameters: CreateMadrasahBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahBanResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling createMadrasahBan().'
+            );
+        }
+
+        if (requestParameters['createMadrasahBanDto'] == null) {
+            throw new runtime.RequiredError(
+                'createMadrasahBanDto',
+                'Required parameter "createMadrasahBanDto" was null or undefined when calling createMadrasahBan().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/bans`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateMadrasahBanDtoToJSON(requestParameters['createMadrasahBanDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahBanResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Takes effect at once: the talebe cannot apply, apply again or leave, and loses the course\'s content, in the one course or in every course of the medrese. The ban is the medrese\'s kademe: a köşk nazımı or Medaris administration lifts it, a müderris does not. Barring someone already barred in that scope returns the standing ban. 404 for a course that is not the medrese\'s. The reason is kept for those who see and lift bans and never sent to the talebe.
+     * Bar a talebe from a course of the medrese, or from all of it (Yasakla)
+     */
+    async createMadrasahBan(requestParameters: CreateMadrasahBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahBanResponse> {
+        const response = await this.createMadrasahBanRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * For an open course ban in a course of a medrese: a second ban beside the first, which stays, barring the talebe from every course of the medrese, present and future. A medrese nazır or above of that medrese; a köşk nazımı or a müderris is not one. The person already barred from the medrese gets that ban back. 409 (BAN_NOT_ESCALATABLE) for any other ban.
+     * Widen a course ban to the whole medrese (Medreseden de yasakla)
+     */
+    async escalateBanRaw(requestParameters: EscalateBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahBanResponse>> {
+        if (requestParameters['banId'] == null) {
+            throw new runtime.RequiredError(
+                'banId',
+                'Required parameter "banId" was null or undefined when calling escalateBan().'
+            );
+        }
+
+        if (requestParameters['banReasonDto'] == null) {
+            throw new runtime.RequiredError(
+                'banReasonDto',
+                'Required parameter "banReasonDto" was null or undefined when calling escalateBan().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/bans/{banId}/escalate`;
+        urlPath = urlPath.replace(`{${"banId"}}`, encodeURIComponent(String(requestParameters['banId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BanReasonDtoToJSON(requestParameters['banReasonDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahBanResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * For an open course ban in a course of a medrese: a second ban beside the first, which stays, barring the talebe from every course of the medrese, present and future. A medrese nazır or above of that medrese; a köşk nazımı or a müderris is not one. The person already barred from the medrese gets that ban back. 409 (BAN_NOT_ESCALATABLE) for any other ban.
+     * Widen a course ban to the whole medrese (Medreseden de yasakla)
+     */
+    async escalateBan(requestParameters: EscalateBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahBanResponse> {
+        const response = await this.escalateBanRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Only the kademe that placed the ban, or a higher one: a Medaris nazımı\'s ban is lifted by Medaris administration alone. The reason and the lifter\'s name are kept with the ban. A medrese\'s nazır and başmüderris lift bans in the medrese\'s courses and over the medrese (MDRS-187).
      * Lift a ban with a reason (Yasağı kaldır)
      */
     async liftBanRaw(requestParameters: LiftBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BanResponse>> {
@@ -151,7 +293,7 @@ export class BansApi extends runtime.BaseAPI {
     }
 
     /**
-     * Only the kademe that placed the ban, or a higher one: a Medaris nazımı\'s ban is lifted by Medaris administration alone. The reason and the lifter\'s name are kept with the ban.
+     * Only the kademe that placed the ban, or a higher one: a Medaris nazımı\'s ban is lifted by Medaris administration alone. The reason and the lifter\'s name are kept with the ban. A medrese\'s nazır and başmüderris lift bans in the medrese\'s courses and over the medrese (MDRS-187).
      * Lift a ban with a reason (Yasağı kaldır)
      */
     async liftBan(requestParameters: LiftBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BanResponse> {
@@ -207,6 +349,116 @@ export class BansApi extends runtime.BaseAPI {
         return await response.value();
     }
 
+    /**
+     * Newest first, with the counts the tabs show: the medrese-wide bans and the bans on the medrese\'s courses, hidden ones included. A köşk\'s own ban of the whole köşk is the köşk\'s list and is not here. `scope` narrows to the medrese-wide or the course bans, `courseId` to one course\'s. Each row says what the caller\'s kademe lets them do: `viewerMayLift`, `viewerMayEscalate`, `viewerMayRequestPermanent`.
+     * A medrese\'s bans, open or lifted (Yasaklamalar)
+     */
+    async listMadrasahBansRaw(requestParameters: ListMadrasahBansRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahBanListResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listMadrasahBans().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['scope'] != null) {
+            queryParameters['scope'] = requestParameters['scope'];
+        }
+
+        if (requestParameters['courseId'] != null) {
+            queryParameters['courseId'] = requestParameters['courseId'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/bans`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahBanListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Newest first, with the counts the tabs show: the medrese-wide bans and the bans on the medrese\'s courses, hidden ones included. A köşk\'s own ban of the whole köşk is the köşk\'s list and is not here. `scope` narrows to the medrese-wide or the course bans, `courseId` to one course\'s. Each row says what the caller\'s kademe lets them do: `viewerMayLift`, `viewerMayEscalate`, `viewerMayRequestPermanent`.
+     * A medrese\'s bans, open or lifted (Yasaklamalar)
+     */
+    async listMadrasahBans(requestParameters: ListMadrasahBansRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahBanListResponse> {
+        const response = await this.listMadrasahBansRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Records the medrese\'s request, with its reason, for Medaris administration. Nothing is decided here: the ban stands as it was, and deciding the request is a later phase. A medrese nazır or above, on an open ban in a course of the medrese or over the medrese itself that Medaris administration did not place. One request per ban (409 BAN_PERMANENT_REQUEST_EXISTS).
+     * Ask for a ban to be made permanent (Kalıcı yasak talebi aç)
+     */
+    async requestPermanentBanRaw(requestParameters: RequestPermanentBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahBanResponse>> {
+        if (requestParameters['banId'] == null) {
+            throw new runtime.RequiredError(
+                'banId',
+                'Required parameter "banId" was null or undefined when calling requestPermanentBan().'
+            );
+        }
+
+        if (requestParameters['banReasonDto'] == null) {
+            throw new runtime.RequiredError(
+                'banReasonDto',
+                'Required parameter "banReasonDto" was null or undefined when calling requestPermanentBan().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/bans/{banId}/permanent-request`;
+        urlPath = urlPath.replace(`{${"banId"}}`, encodeURIComponent(String(requestParameters['banId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BanReasonDtoToJSON(requestParameters['banReasonDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahBanResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Records the medrese\'s request, with its reason, for Medaris administration. Nothing is decided here: the ban stands as it was, and deciding the request is a later phase. A medrese nazır or above, on an open ban in a course of the medrese or over the medrese itself that Medaris administration did not place. One request per ban (409 BAN_PERMANENT_REQUEST_EXISTS).
+     * Ask for a ban to be made permanent (Kalıcı yasak talebi aç)
+     */
+    async requestPermanentBan(requestParameters: RequestPermanentBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahBanResponse> {
+        const response = await this.requestPermanentBanRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
 }
 
 /**
@@ -217,3 +469,19 @@ export const ListKoskBansStatusEnum = {
     Lifted: 'LIFTED'
 } as const;
 export type ListKoskBansStatusEnum = typeof ListKoskBansStatusEnum[keyof typeof ListKoskBansStatusEnum];
+/**
+ * @export
+ */
+export const ListMadrasahBansStatusEnum = {
+    Active: 'ACTIVE',
+    Lifted: 'LIFTED'
+} as const;
+export type ListMadrasahBansStatusEnum = typeof ListMadrasahBansStatusEnum[keyof typeof ListMadrasahBansStatusEnum];
+/**
+ * @export
+ */
+export const ListMadrasahBansScopeEnum = {
+    Course: 'COURSE',
+    Madrasah: 'MADRASAH'
+} as const;
+export type ListMadrasahBansScopeEnum = typeof ListMadrasahBansScopeEnum[keyof typeof ListMadrasahBansScopeEnum];
