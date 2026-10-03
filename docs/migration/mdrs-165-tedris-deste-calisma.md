@@ -48,17 +48,68 @@ Web (tedris-web)
   (and back) for a deck they cannot read, which says nothing about whether it exists.
 - The deck overview's "Bugün N kart tekrar bekliyor" now counts the same way the API does.
 - New message namespace `tedrisLearn` (tedris catalogue is at the TS2589 edge: 729
-  keys; 17 stale keys of the old study screen and `HomePage` were removed).
+  keys before this package, 719 after; the 10 stale keys of the old study screen and
+  `HomePage` were removed and the new keys went into their own file, 30 of them).
+  Counted as leaf strings (`tr` shown; `en` and `ar` hold the same 719 and 30 at the
+  package commit `254c36c3`), before and after it:
+
+  ```
+  $ for r in '254c36c3^' 254c36c3; do git show "$r:libs/i18n/src/locales/tr/tedris.json" | jq '[paths(scalars)] | length'; done
+  729
+  719
+  $ git show 254c36c3:libs/i18n/src/locales/tr/tedris-learn.json | jq '[paths(scalars)] | length'
+  30
+  $ git diff 254c36c3^ 254c36c3 -- libs/i18n/src/locales/tr/tedris.json | grep -cE '^-\s+"[^"]+": "'
+  10
+  ```
 - Client regenerated (`pnpm openapi:tedrisat`).
 
 ## What was verified
 
+Case counts are `it(`/`test(` calls at the head of this branch; a count says how many
+cases the file holds, not that they pass.
+
 - tedrisat: new unit specs (schedule, due-today, rating in `replaceManyProgress`) and
-  `flashcard-study.e2e.spec.ts` (14 cases, real Postgres and guard).
+  `flashcard-study.e2e.spec.ts` (real Postgres and guard):
+
+  ```
+  $ grep -cE '^\s*it\(' apps/tedrisat/test/e2e/flashcard-study.e2e.spec.ts
+  14
+  ```
+
+  Run for the unlisted-köşk fix (this spec file only, Postgres in local Docker):
+
+  ```
+  $ cd apps/tedrisat && ./node_modules/.bin/vitest run --config vitest.integration.config.ts test/e2e/flashcard-study.e2e.spec.ts
+   Test Files  1 passed (1)
+        Tests  14 passed (14)
+  ```
 - tedris-web: unit specs for the model, study session, public view and home sections;
-  Playwright `learn.e2e.ts` (16 cases) against the running app and API with a real
-  session; the existing `decks.e2e.ts` was re-run (25 of 26 on the first run; the
-  one that failed passed alone: flaky).
+  Playwright `learn.e2e.ts` against the running app and API with a real session, and
+  the existing `decks.e2e.ts` re-run:
+
+  ```
+  $ grep -cE '^\s*test\(' apps/tedris/e2e/learn.e2e.ts apps/tedris/e2e/decks.e2e.ts
+  apps/tedris/e2e/learn.e2e.ts:16
+  apps/tedris/e2e/decks.e2e.ts:26
+  ```
+
+  The Playwright runs were not repeated for this record (they need the running app,
+  the API and a minted session), and no log of the earlier runs was kept. What the
+  author saw then: `decks.e2e.ts` passed 25 of its 26 cases on the first run, and the
+  one that failed passed when run alone (flaky).
+- Biome ratchet (`tools/ci/biome-baseline.json`, 71 to 70 warnings, infos stay 22).
+  `biome ci . --reporter=json` on the parent of the package commit (`git archive
+  254c36c3^`) and on this head, summaries:
+
+  ```
+  parent of 254c36c3: errors 0, warnings 71, infos 22
+  this head:          errors 0, warnings 70, infos 22
+  ```
+
+  Comparing the two diagnostics lists, the one warning that went is
+  `lint/correctness/noUnusedImports` in `apps/tedris/app/[locale]/decks/study/page.tsx`,
+  a file this package deleted. Nothing was added.
 - Phone width (390) was looked at for Ana sayfa and Çalışma.
 
 ## What was not verified
