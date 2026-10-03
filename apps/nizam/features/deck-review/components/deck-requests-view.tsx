@@ -22,9 +22,12 @@ import {
   rejectDeckRequest,
 } from "../actions";
 import {
+  countsAfterLeaving,
   deckFailureKey,
   isGone,
   longDateTime,
+  mergeById,
+  nextPage,
   shortDateTime,
 } from "../present";
 import { RejectDialog } from "./reject-dialog";
@@ -63,6 +66,7 @@ export function DeckRequestsView({ initial }: Props) {
   });
   const [failed, setFailed] = useState(initial === null);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(
     initial?.items[0]?.id ?? null
   );
@@ -73,6 +77,8 @@ export function DeckRequestsView({ initial }: Props) {
 
   const items = lists[tab] ?? [];
   const selected = items.find((r) => r.id === selectedId) ?? null;
+  // Every request of the tab, not the page: more are left while fewer are shown.
+  const total = tab === "PENDING" ? counts.pending : counts.decided;
 
   const load = useCallback(
     async (next: Tab) => {
@@ -102,6 +108,34 @@ export function DeckRequestsView({ initial }: Props) {
     },
     [t]
   );
+
+  /** "Daha fazla göster": the next page of this tab, added below what is shown. */
+  const loadMore = async () => {
+    const from = tab;
+    setLoadingMore(true);
+    let result: Awaited<ReturnType<typeof loadDeckRequests>> | null = null;
+    try {
+      result = await loadDeckRequests(from, nextPage(items.length));
+    } catch {
+      result = null;
+    }
+    setLoadingMore(false);
+    if (!result?.success) {
+      toast.error(t("loadFailedTitle"), {
+        description: t("loadFailed"),
+        duration: Number.POSITIVE_INFINITY,
+      });
+      return;
+    }
+    setLists((current) => ({
+      ...current,
+      [from]: mergeById(current[from] ?? [], result.data.items),
+    }));
+    setCounts({
+      pending: result.data.pendingCount,
+      decided: result.data.decidedCount,
+    });
+  };
 
   const changeTab = (next: Tab) => {
     setTab(next);
@@ -141,19 +175,20 @@ export function DeckRequestsView({ initial }: Props) {
     );
   };
 
-  /** The request is answered: it leaves the waiting list and the next one is selected. */
-  const settle = (id: string) => {
+  /**
+   * The request leaves the waiting list and the next one is selected. Answered
+   * is true only for an answer this screen made; a request that is gone does
+   * not become one more "Karara bağlanan".
+   */
+  const settle = (id: string, answered: boolean) => {
     const rest = (lists.PENDING ?? []).filter((r) => r.id !== id);
     setLists({ PENDING: rest });
-    setCounts((c) => ({
-      pending: Math.max(0, c.pending - 1),
-      decided: c.decided + 1,
-    }));
+    setCounts((c) => countsAfterLeaving(c, answered));
     setSelectedId(rest[0]?.id ?? null);
   };
 
   const fail = (body: unknown, id: string) => {
-    if (isGone(body)) settle(id);
+    if (isGone(body)) settle(id, false);
     toast.error(t("answerFailed"), {
       description: t(deckFailureKey(body) as never),
       duration: Number.POSITIVE_INFINITY,
@@ -172,7 +207,7 @@ export function DeckRequestsView({ initial }: Props) {
     toast.success(t("published"), {
       description: t("publishedBody", { title: selected.title }),
     });
-    settle(selected.id);
+    settle(selected.id, true);
   };
 
   const reject = async (reason: string): Promise<boolean> => {
@@ -185,7 +220,7 @@ export function DeckRequestsView({ initial }: Props) {
     toast.success(t("rejected"), {
       description: t("rejectedBody", { title: selected.title }),
     });
-    settle(selected.id);
+    settle(selected.id, true);
     return true;
   };
 
@@ -422,12 +457,24 @@ export function DeckRequestsView({ initial }: Props) {
             <EmptyState>{t(`empty.${tab}`)}</EmptyState>
           ) : (
             <div className="grid gap-grid lg:grid-cols-[22rem_1fr]">
-              <ul
-                className="m-0 flex list-none flex-col gap-1 self-start rounded-surface border border-neutral-subtle p-2"
-                data-testid="deck-request-list"
-              >
-                {items.map(listItem)}
-              </ul>
+              <div className="flex flex-col gap-3 self-start">
+                <ul
+                  className="m-0 flex list-none flex-col gap-1 rounded-surface border border-neutral-subtle p-2"
+                  data-testid="deck-request-list"
+                >
+                  {items.map(listItem)}
+                </ul>
+                {items.length < total ? (
+                  <Button
+                    variant="outline"
+                    loading={loadingMore}
+                    onClick={() => void loadMore()}
+                    data-testid="more-requests"
+                  >
+                    {t("loadMore")}
+                  </Button>
+                ) : null}
+              </div>
               {detail()}
             </div>
           )}

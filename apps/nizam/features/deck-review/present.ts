@@ -17,6 +17,40 @@ export const CARD_TYPES: readonly FlashcardType[] = ["VOCABULARY", "HADEETH"];
 
 export const isBlank = (value: string): boolean => value.trim() === "";
 
+/** Rows in one read of a list; the API's own default, asked for out loud so both sides agree. */
+export const DECK_PAGE_SIZE = 12;
+
+/**
+ * The page "Daha fazla göster" asks for: the first page that holds a row not
+ * loaded yet. A row that left the list (answered, hidden) pulls the rows after
+ * it forward, so counting loaded rows rather than clicks never skips one.
+ */
+export const nextPage = (loaded: number, size = DECK_PAGE_SIZE): number =>
+  Math.floor(loaded / size) + 1;
+
+/** The rows already shown, then the ones of the page that are not among them. */
+export const mergeById = <T extends { id: string }>(
+  shown: readonly T[],
+  incoming: readonly T[]
+): T[] => {
+  const known = new Set(shown.map((row) => row.id));
+  return [...shown, ...incoming.filter((row) => !known.has(row.id))];
+};
+
+/**
+ * The tab counts after a waiting request leaves the list. Only an answer this
+ * screen made moves a request into "Karara bağlanan": one that is gone (deleted,
+ * withdrawn, or answered by someone else) leaves that count to the next read
+ * of the tab.
+ */
+export const countsAfterLeaving = (
+  counts: { pending: number; decided: number },
+  answered: boolean
+): { pending: number; decided: number } => ({
+  pending: Math.max(0, counts.pending - 1),
+  decided: answered ? counts.decided + 1 : counts.decided,
+});
+
 /** "29 Eyl 21:10" — the day and minute a request or proposal came, in the viewer's zone. */
 export function shortDateTime(
   at: Date | string,

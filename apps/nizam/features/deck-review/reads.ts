@@ -7,6 +7,7 @@ import {
 } from "@medaris/services/tedrisat";
 import { env } from "~/env";
 import { getAccessToken } from "~/lib/auth_options";
+import { DECK_PAGE_SIZE } from "./present";
 
 /**
  * Server-side first reads of the deck screens (MDRS-180). Not a `"use server"`
@@ -32,6 +33,8 @@ export const getPendingDeckRequests = async (): Promise<
   try {
     return await (await api()).nizam.listDeckPublishRequests({
       status: "PENDING",
+      page: 1,
+      limit: DECK_PAGE_SIZE,
     });
   } catch (error) {
     const refused = refusal(error);
@@ -45,7 +48,11 @@ export const getManagedKoskDecks = async (
   koskId: string
 ): Promise<DeckRead<ManagedKoskDecksResponse>> => {
   try {
-    return await (await api()).kosks.getManagedKoskDecks({ id: koskId });
+    return await (await api()).kosks.getManagedKoskDecks({
+      id: koskId,
+      page: 1,
+      limit: DECK_PAGE_SIZE,
+    });
   } catch (error) {
     const refused = refusal(error);
     if (refused) return refused;

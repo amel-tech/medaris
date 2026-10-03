@@ -1653,6 +1653,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "decks_publish_decided_at_idx": {
+          "name": "decks_publish_decided_at_idx",
+          "columns": [
+            {
+              "expression": "publish_decided_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {

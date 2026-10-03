@@ -74,6 +74,9 @@ export const decks = table(
     index("decks_kosk_id_idx").on(table.koskId),
     index("decks_course_id_idx").on(table.courseId),
     index("decks_madrasah_id_idx").on(table.madrasahId),
+    // The answered requests of nizam/16 are read newest answer first
+    // (`DeckReviewRepository.listRequests`).
+    index("decks_publish_decided_at_idx").on(table.publishDecidedAt),
   ]
 );
 

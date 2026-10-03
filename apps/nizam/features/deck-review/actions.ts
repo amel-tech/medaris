@@ -6,18 +6,36 @@ import type {
   DeckRequestCardsResponse,
   DeckRequestStatus,
   FlashcardType,
+  ManagedKoskDecksResponse,
 } from "@medaris/services/tedrisat";
 import { revalidatePath } from "next/cache";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
 } from "~/lib/authenticated-action";
+import { DECK_PAGE_SIZE } from "./present";
 
-/** One tab of the publish requests (nizam 16). */
+/** One page of one tab of the publish requests (nizam 16). */
 export const loadDeckRequests = async (
-  status: DeckRequestStatus
+  status: DeckRequestStatus,
+  page = 1
 ): Promise<AuthenticatedActionResult<DeckPublishRequestListResponse>> =>
-  authenticatedAction((api) => api.nizam.listDeckPublishRequests({ status }));
+  authenticatedAction((api) =>
+    api.nizam.listDeckPublishRequests({ status, page, limit: DECK_PAGE_SIZE })
+  );
+
+/** One page of a köşk's decks and of its waiting proposals (nizam 30). */
+export const loadManagedKoskDecks = async (
+  koskId: string,
+  page = 1
+): Promise<AuthenticatedActionResult<ManagedKoskDecksResponse>> =>
+  authenticatedAction((api) =>
+    api.kosks.getManagedKoskDecks({
+      id: koskId,
+      page,
+      limit: DECK_PAGE_SIZE,
+    })
+  );
 
 /**
  * The sample cards of a request, or every card with `all`. Each call is a

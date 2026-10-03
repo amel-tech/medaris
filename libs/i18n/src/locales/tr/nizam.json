@@ -2873,6 +2873,7 @@
     },
     "loadFailedTitle": "İstekler okunamadı",
     "loadFailed": "Deste yayın istekleri şu anda alınamıyor. Biraz sonra yeniden deneyin.",
+    "loadMore": "Daha fazla göster",
     "retry": "Tekrar dene",
     "cardsFailed": "Kartlar okunamadı.",
     "noCards": "Bu destede henüz kart yok.",
@@ -2993,6 +2994,7 @@
       "forbidden": "Bu işlem için izniniz yok."
     },
     "introNoName": "Köşk desteleri, köşkün herhangi bir dersine kayıtlı talebelere açıktır.",
+    "loadMore": "Daha fazla göster",
     "retry": "Yeniden dene"
   },
   "KoskDeckForm": {

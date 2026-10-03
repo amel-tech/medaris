@@ -118,6 +118,8 @@ export interface GetPermissionGroupUsersRequest {
 
 export interface ListDeckPublishRequestsRequest {
     status?: DeckRequestStatus;
+    page?: number;
+    limit?: number;
 }
 
 export interface ReadDeckPublishRequestCardsRequest {
@@ -723,7 +725,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * The members\' requests to make a deck public, oldest waiting first, or the answered ones, newest first. Both tab counts come with the page. The Medaris başnazımı (SYSTEM_ADMIN) only.
+     * The members\' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı (SYSTEM_ADMIN) only.
      * Deck publish requests (Bekleyen / Karara bağlanan)
      */
     async listDeckPublishRequestsRaw(requestParameters: ListDeckPublishRequestsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckPublishRequestListResponse>> {
@@ -731,6 +733,14 @@ export class NizamApi extends runtime.BaseAPI {
 
         if (requestParameters['status'] != null) {
             queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -754,7 +764,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * The members\' requests to make a deck public, oldest waiting first, or the answered ones, newest first. Both tab counts come with the page. The Medaris başnazımı (SYSTEM_ADMIN) only.
+     * The members\' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı (SYSTEM_ADMIN) only.
      * Deck publish requests (Bekleyen / Karara bağlanan)
      */
     async listDeckPublishRequests(requestParameters: ListDeckPublishRequestsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckPublishRequestListResponse> {

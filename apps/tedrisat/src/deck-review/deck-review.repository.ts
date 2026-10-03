@@ -122,7 +122,8 @@ export class DeckReviewRepository {
 
   async listRequests(
     status: "PENDING" | "DECIDED",
-    limit: number
+    limit: number,
+    offset: number
   ): Promise<IPublishRequest[]> {
     const pending = status === "PENDING";
     const rows = await this.db
@@ -161,7 +162,8 @@ export class DeckReviewRepository {
         pending ? asc(decks.publishRequestedAt) : desc(decks.publishDecidedAt),
         asc(decks.id)
       )
-      .limit(limit);
+      .limit(limit)
+      .offset(offset);
     return rows.map((r) => ({
       id: r.id,
       title: r.title,
@@ -292,7 +294,11 @@ export class DeckReviewRepository {
 
   // ---- köşk decks (nizam/30, 35) ----
 
-  async listKoskDecks(koskId: string): Promise<IKoskDeck[]> {
+  async listKoskDecks(
+    koskId: string,
+    limit: number,
+    offset: number
+  ): Promise<IKoskDeck[]> {
     return this.db
       .select({
         id: decks.id,
@@ -304,7 +310,18 @@ export class DeckReviewRepository {
       })
       .from(decks)
       .where(and(eq(decks.koskId, koskId), isNull(decks.archivedAt)))
-      .orderBy(desc(decks.updatedAt), asc(decks.id));
+      .orderBy(desc(decks.updatedAt), asc(decks.id))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  /** Every shown deck of the köşk, whatever page is read. */
+  async countKoskDecks(koskId: string): Promise<number> {
+    const [row] = await this.db
+      .select({ n: sql<number>`count(*)`.mapWith(Number) })
+      .from(decks)
+      .where(and(eq(decks.koskId, koskId), isNull(decks.archivedAt)));
+    return row?.n ?? 0;
   }
 
   /**
@@ -372,7 +389,11 @@ export class DeckReviewRepository {
 
   // ---- proposals ----
 
-  async listPendingProposals(koskId: string): Promise<IDeckProposal[]> {
+  async listPendingProposals(
+    koskId: string,
+    limit: number,
+    offset: number
+  ): Promise<IDeckProposal[]> {
     const rows = await this.db
       .select({
         id: deckProposals.id,
@@ -397,7 +418,9 @@ export class DeckReviewRepository {
           eq(deckProposals.status, "PENDING")
         )
       )
-      .orderBy(asc(deckProposals.createdAt), asc(deckProposals.id));
+      .orderBy(asc(deckProposals.createdAt), asc(deckProposals.id))
+      .limit(limit)
+      .offset(offset);
     return rows.map((r) => ({
       id: r.id,
       koskId: r.koskId,
@@ -412,6 +435,20 @@ export class DeckReviewRepository {
       status: r.status,
       createdAt: r.createdAt,
     }));
+  }
+
+  /** Every proposal of the köşk nobody has answered, whatever page is read. */
+  async countPendingProposals(koskId: string): Promise<number> {
+    const [row] = await this.db
+      .select({ n: sql<number>`count(*)`.mapWith(Number) })
+      .from(deckProposals)
+      .where(
+        and(
+          eq(deckProposals.koskId, koskId),
+          eq(deckProposals.status, "PENDING")
+        )
+      );
+    return row?.n ?? 0;
   }
 
   async findProposal(koskId: string, id: string) {

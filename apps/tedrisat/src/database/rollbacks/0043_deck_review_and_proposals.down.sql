@@ -7,6 +7,7 @@
 -- those back to PRIVATE first or the old code will not know the value.
 UPDATE "decks" SET "publish_status" = 'PRIVATE' WHERE "publish_status" = 'REJECTED';--> statement-breakpoint
 DROP TABLE "deck_proposals";--> statement-breakpoint
+DROP INDEX "decks_publish_decided_at_idx";--> statement-breakpoint
 ALTER TABLE "decks" DROP COLUMN "publish_decided_at";--> statement-breakpoint
 ALTER TABLE "decks" DROP COLUMN "publish_decided_by";--> statement-breakpoint
 ALTER TABLE "decks" DROP COLUMN "publish_reject_reason";

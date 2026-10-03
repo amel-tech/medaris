@@ -9,6 +9,7 @@ import {
   Param,
   ParseBoolPipe,
   ParseEnumPipe,
+  ParseIntPipe,
   ParseUUIDPipe,
   Post,
   Query,
@@ -35,6 +36,7 @@ import {
   type DeckRequestStatus,
   RejectReasonDto,
 } from "./dto/deck-review.dto";
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, pagingOf } from "./paging";
 
 /**
  * The başnazım's review of deck publish requests (MDRS-180, nizam/16). No
@@ -51,7 +53,7 @@ export class NizamDeckRequestsController {
   @ApiOperation({
     summary: "Deck publish requests (Bekleyen / Karara bağlanan)",
     description:
-      "The members' requests to make a deck public, oldest waiting first, or the answered ones, newest first. Both tab counts come with the page. The Medaris başnazımı (SYSTEM_ADMIN) only.",
+      "The members' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı (SYSTEM_ADMIN) only.",
     operationId: "listDeckPublishRequests",
   })
   @ApiQuery({
@@ -59,6 +61,13 @@ export class NizamDeckRequestsController {
     required: false,
     enum: DECK_REQUEST_STATUSES,
     enumName: "DeckRequestStatus",
+  })
+  @ApiQuery({ name: "page", required: false, type: Number })
+  @ApiQuery({
+    name: "limit",
+    required: false,
+    type: Number,
+    description: `1 to ${MAX_PAGE_SIZE}; default ${DEFAULT_PAGE_SIZE}.`,
   })
   @ApiOkResponse({ type: DeckPublishRequestListResponse })
   @ApiForbiddenResponse()
@@ -70,11 +79,15 @@ export class NizamDeckRequestsController {
       new DefaultValuePipe("PENDING"),
       new ParseEnumPipe(DECK_REQUEST_STATUSES)
     )
-    status: DeckRequestStatus
+    status: DeckRequestStatus,
+    @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query("limit", new DefaultValuePipe(DEFAULT_PAGE_SIZE), ParseIntPipe)
+    limit: number
   ): Promise<DeckPublishRequestListResponse> {
     const { items, counts } = await this.review.listRequests(
       request.user,
-      status
+      status,
+      pagingOf(page, limit)
     );
     return {
       items,

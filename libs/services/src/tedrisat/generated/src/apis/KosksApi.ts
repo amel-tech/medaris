@@ -190,6 +190,8 @@ export interface GetKoskOverviewRequest {
 
 export interface GetManagedKoskDecksRequest {
     id: string;
+    page?: number;
+    limit?: number;
 }
 
 export interface GrantKoskHostingRightRequest {
@@ -1165,7 +1167,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * The shown köşk decks with their card counts and the müderris proposals nobody has answered. A nazım of the köşk or SYSTEM_ADMIN.
+     * The shown köşk decks with their card counts and the müderris proposals nobody has answered. `page` and `limit` cut both lists; `decksTotal` and `proposalsTotal` count every one. A nazım of the köşk or SYSTEM_ADMIN.
      * A köşk\'s decks and the proposals waiting for an answer
      */
     async getManagedKoskDecksRaw(requestParameters: GetManagedKoskDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ManagedKoskDecksResponse>> {
@@ -1177,6 +1179,14 @@ export class KosksApi extends runtime.BaseAPI {
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -1200,7 +1210,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * The shown köşk decks with their card counts and the müderris proposals nobody has answered. A nazım of the köşk or SYSTEM_ADMIN.
+     * The shown köşk decks with their card counts and the müderris proposals nobody has answered. `page` and `limit` cut both lists; `decksTotal` and `proposalsTotal` count every one. A nazım of the köşk or SYSTEM_ADMIN.
      * A köşk\'s decks and the proposals waiting for an answer
      */
     async getManagedKoskDecks(requestParameters: GetManagedKoskDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ManagedKoskDecksResponse> {

@@ -7107,7 +7107,7 @@
     },
     "/nizam/deck-publish-requests": {
       "get": {
-        "description": "The members' requests to make a deck public, oldest waiting first, or the answered ones, newest first. Both tab counts come with the page. The Medaris başnazımı (SYSTEM_ADMIN) only.",
+        "description": "The members' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı (SYSTEM_ADMIN) only.",
         "operationId": "listDeckPublishRequests",
         "parameters": [
           {
@@ -7116,6 +7116,23 @@
             "in": "query",
             "schema": {
               "$ref": "#/components/schemas/DeckRequestStatus"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 50; default 12.",
+            "schema": {
+              "type": "number"
             }
           }
         ],
@@ -7286,7 +7303,7 @@
     },
     "/kosks/{id}/decks/manage": {
       "get": {
-        "description": "The shown köşk decks with their card counts and the müderris proposals nobody has answered. A nazım of the köşk or SYSTEM_ADMIN.",
+        "description": "The shown köşk decks with their card counts and the müderris proposals nobody has answered. `page` and `limit` cut both lists; `decksTotal` and `proposalsTotal` count every one. A nazım of the köşk or SYSTEM_ADMIN.",
         "operationId": "getManagedKoskDecks",
         "parameters": [
           {
@@ -7295,6 +7312,23 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 50; default 12.",
+            "schema": {
+              "type": "number"
             }
           }
         ],
@@ -15235,11 +15269,21 @@
             "items": {
               "$ref": "#/components/schemas/DeckProposalResponse"
             }
+          },
+          "decksTotal": {
+            "type": "number",
+            "description": "Every shown deck of the köşk, not the page"
+          },
+          "proposalsTotal": {
+            "type": "number",
+            "description": "Every proposal nobody has answered, not the page"
           }
         },
         "required": [
           "decks",
-          "proposals"
+          "proposals",
+          "decksTotal",
+          "proposalsTotal"
         ]
       },
       "CreateKoskDeckDto": {
