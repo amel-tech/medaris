@@ -14,7 +14,9 @@ const KOSK = "d7000000-0000-4000-8000-0000000000a1";
 const MADRASAH = "d7000000-0000-4000-8000-0000000000a2";
 const COURSE = "d7000000-0000-4000-8000-0000000000a3";
 
-type Answers = Partial<Record<"facts" | "roles" | "grants" | "managers" | "policies", unknown[][]>>;
+type Answers = Partial<
+  Record<"facts" | "roles" | "grants" | "managers" | "policies", unknown[][]>
+>;
 
 const which = (text: string) => {
   if (text.includes('"platform_policies"')) return "policies";
@@ -56,7 +58,10 @@ describe("TedrisatAuthzContext", () => {
     const { loader } = build({
       facts: [[KOSK, MADRASAH, false, false, false, false, false]],
     });
-    const ctx = await loader.load(USER, { entity: ENTITIES.COURSE, id: COURSE });
+    const ctx = await loader.load(USER, {
+      entity: ENTITIES.COURSE,
+      id: COURSE,
+    });
     expect(ctx.chain).toEqual([
       { type: "course", id: COURSE },
       { type: "madrasah", id: MADRASAH },
@@ -70,8 +75,15 @@ describe("TedrisatAuthzContext", () => {
     const { loader } = build({
       facts: [[KOSK, null, false, false, null, null, null]],
     });
-    const ctx = await loader.load(USER, { entity: ENTITIES.COURSE, id: COURSE });
-    expect(ctx.chain.map((s) => s.type)).toEqual(["course", "kosk", "platform"]);
+    const ctx = await loader.load(USER, {
+      entity: ENTITIES.COURSE,
+      id: COURSE,
+    });
+    expect(ctx.chain.map((s) => s.type)).toEqual([
+      "course",
+      "kosk",
+      "platform",
+    ]);
     expect(ctx.madrasahCourse).toBe(false);
   });
 
@@ -80,12 +92,19 @@ describe("TedrisatAuthzContext", () => {
       facts: [[KOSK, MADRASAH, true, false, false, true, true]],
       policies: [["RECORDINGS_NEVER_PUBLIC"], ["SOMETHING_ELSE"]],
     });
-    const ctx = await loader.load(USER, { entity: ENTITIES.COURSE, id: COURSE });
+    const ctx = await loader.load(USER, {
+      entity: ENTITIES.COURSE,
+      id: COURSE,
+    });
     expect(ctx.policies).toEqual(
       expect.arrayContaining([
         { key: "RECORDINGS_NEVER_PUBLIC", level: "platform", scopeId: null },
         { key: "ALWAYS_REQUIRE_APPROVAL", level: "kosk", scopeId: KOSK },
-        { key: "RECORDINGS_NEVER_PUBLIC", level: "madrasah", scopeId: MADRASAH },
+        {
+          key: "RECORDINGS_NEVER_PUBLIC",
+          level: "madrasah",
+          scopeId: MADRASAH,
+        },
         { key: "CLOSED_COURSE_REQUIRED", level: "madrasah", scopeId: MADRASAH },
       ])
     );
@@ -102,7 +121,10 @@ describe("TedrisatAuthzContext", () => {
         [COURSE, "MUDERRIS", 2, 1],
       ],
     });
-    const ctx = await loader.load(USER, { entity: ENTITIES.COURSE, id: COURSE });
+    const ctx = await loader.load(USER, {
+      entity: ENTITIES.COURSE,
+      id: COURSE,
+    });
     expect(ctx.passiveScope).toEqual({ type: "kosk", id: KOSK });
   });
 
@@ -137,7 +159,10 @@ describe("TedrisatAuthzContext", () => {
         ["g2", "course", COURSE, "session.manage", null, null],
       ],
     });
-    const ctx = await loader.load(USER, { entity: ENTITIES.COURSE, id: COURSE });
+    const ctx = await loader.load(USER, {
+      entity: ENTITIES.COURSE,
+      id: COURSE,
+    });
     expect(ctx.roles).toEqual([
       { role: "MEDRESE_NAZIR", scope: { type: "madrasah", id: MADRASAH } },
     ]);
