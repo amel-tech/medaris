@@ -27,7 +27,10 @@ Package stack-32, designs tedris/16, 17, 19 and 24. Built on stack-31.
 
 ## Verified
 
-- tedrisat: `recording.spec.ts` (8), `recordings.e2e.spec.ts` (9, real Postgres; list order, visibility per caller, PROCESSING without link, archived lesson, 404s, stream only while LIVE, locked body without keys).
+- tedrisat: `recording.spec.ts` (8), `recordings.e2e.spec.ts` (10, real Postgres; list order, visibility per caller, PROCESSING without link, archived lesson, 404s, stream only while LIVE, locked body without keys, PUBLIC recording of a sample session for a locked caller). Counts re-taken on head `2545ee10`, from `apps/tedrisat` (the `it.each` of the e2e spec expands to two cases, so 9 `it` blocks make 10 tests):
+  - `./node_modules/.bin/vitest run test/unit/course/recording.spec.ts` prints `Tests  8 passed (8)`.
+  - `./node_modules/.bin/vitest list --config ./vitest.integration.config.ts test/e2e/recordings.e2e.spec.ts 2>/dev/null | grep -c "^test/e2e/recordings.e2e.spec.ts >"` prints `10` (it collects the cases without running them; it needs `libs/common` built first: `cd libs/common && ./node_modules/.bin/tsc -p tsconfig.json`).
+  - The 10 e2e cases were not re-run here (Testcontainers); the CI `Verify` job passed on the head `2545ee10`.
 - tedris-web: `recordings-model`, `recordings-tab`, `session-page` (live/ended), `lesson-locked`, `course-page-states` specs; kit `SessionJoin` elapsed text.
 - Real browser against a throwaway DB (:5437, API :3101, web :4100), signed in through Keycloak: 16 (frame, "15 dakikadır sürüyor"), 17 (player, link to the tab), 24 (count 5, Oynat swaps the player, Drive opens in a new tab with `noopener`, PROCESSING has no action, visitor sees one), 19 (locked body, HTML holds no meeting link, agenda or stream). Screens in `local_docs/ekranlar/_kontrol/stack-32/`.
 

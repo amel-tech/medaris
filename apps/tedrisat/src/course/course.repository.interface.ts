@@ -468,10 +468,12 @@ export interface ICourseRepository {
   /** Deletes the enrollment and audits the reason, in one transaction. */
   removeEnrollment(entry: IRemoveEnrollment): Promise<boolean>;
   findRemovedEnrollments(courseId: string): Promise<IRemovedEnrollment[]>;
+  /** The row moves only while it still has `expectedStatus`; else null. */
   setEnrollmentStatus(
     userId: string,
     courseId: string,
-    status: EnrollmentStatus
+    status: EnrollmentStatus,
+    expectedStatus: EnrollmentStatus
   ): Promise<IEnrollment | null>;
   /** With `onlyStatus`, the row goes only while it still has that status. */
   deleteEnrollment(
@@ -479,10 +481,11 @@ export interface ICourseRepository {
     courseId: string,
     onlyStatus?: EnrollmentStatus
   ): Promise<boolean>;
+  /** Writes progress only while the row still has `expectedStatus`; else null. */
   updateProgress(
     userId: string,
     courseId: string,
     progress: number,
-    status: EnrollmentStatus
+    expectedStatus: EnrollmentStatus
   ): Promise<IEnrollment | null>;
 }
