@@ -97,7 +97,9 @@ describe("codes and messages", () => {
         expect(entry?.title, `${lang} ${code}`).toBeTruthy();
         expect(entry?.short, `${lang} ${code}`).toBeTruthy();
       }
-      expect(Object.keys(catalog.course)).toHaveLength(18);
+      // The 18 course permissions of nizam/13 and the owner's 1 October entry
+      // "propose a köşk deck".
+      expect(Object.keys(catalog.course)).toHaveLength(19);
     }
   });
 });

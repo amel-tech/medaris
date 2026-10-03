@@ -1196,6 +1196,7 @@
       "ban_course": "course bans",
       "ban_lift_course": "lifting bans",
       "deck_manage_course": "course deck",
+      "deck_propose_kosk": "köşk deck proposal",
       "course_nazir_assign": "appointing course nazırs"
     },
     "course": {
@@ -1216,6 +1217,7 @@
       "ban_course": "Ban a talebe from the course (includes seeing the course's ban list)",
       "ban_lift_course": "Lift a course ban, with a reason",
       "deck_manage_course": "Create and edit the course's deck",
+      "deck_propose_kosk": "Propose a köşk deck",
       "course_nazir_assign": "Appoint a course nazır; grant a permission or a group, within your own permissions"
     }
   },
@@ -2098,6 +2100,7 @@
       "ban_course": "Ban a talebe from the course (includes seeing the course's ban list)",
       "ban_lift_course": "Lift a course ban, with a reason",
       "deck_manage_course": "Create and edit the course's deck",
+      "deck_propose_kosk": "Propose a köşk deck",
       "course_nazir_assign": "Appoint a course nazır; grant a permission or a group, within your own permissions",
       "permission_group_define": "Define a permission group"
     },
