@@ -105,7 +105,7 @@ export interface RequestPermanentBanRequest {
 export class BansApi extends runtime.BaseAPI {
 
     /**
-     * Takes effect at once: the talebe cannot enroll, apply again or leave, and loses the course\'s content. A COURSE ban takes `ban.course` in the course (its müderris, its başmüderris and the köşk\'s nazımı hold it; a ders nazırı and a medrese nazırı only if given it; a Medaris nazımı holding only `platform.ban_scoped` does not, the başnazım does). A KOSK ban, placed from this course, takes `ban.manage_kosk` in the köşk or `platform.ban_scoped`. Barring someone already barred in that scope returns the standing ban. The reason is kept for those who see and lift bans and never sent to the talebe.
+     * Takes effect at once: the talebe cannot enroll, apply again or leave, and loses the course\'s content. A COURSE ban takes `ban.course` in the course (its müderris, its başmüderris and the köşk\'s nazımı hold it; a ders nazırı only if given it) or, in a medrese\'s course, `madrasah.ban` of that medrese (its başmüderris holds it; a nazır only if given it); a Medaris nazımı holding only `platform.ban_scoped` has neither, the başnazım does. A KOSK ban, placed from this course, takes `ban.manage_kosk` in the köşk or `platform.ban_scoped`. Barring someone already barred in that scope returns the standing ban. The reason is kept for those who see and lift bans and never sent to the talebe.
      * Bar a talebe from a course or its köşk (Yasakla)
      */
     async createBanRaw(requestParameters: CreateBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BanResponse>> {
@@ -150,7 +150,7 @@ export class BansApi extends runtime.BaseAPI {
     }
 
     /**
-     * Takes effect at once: the talebe cannot enroll, apply again or leave, and loses the course\'s content. A COURSE ban takes `ban.course` in the course (its müderris, its başmüderris and the köşk\'s nazımı hold it; a ders nazırı and a medrese nazırı only if given it; a Medaris nazımı holding only `platform.ban_scoped` does not, the başnazım does). A KOSK ban, placed from this course, takes `ban.manage_kosk` in the köşk or `platform.ban_scoped`. Barring someone already barred in that scope returns the standing ban. The reason is kept for those who see and lift bans and never sent to the talebe.
+     * Takes effect at once: the talebe cannot enroll, apply again or leave, and loses the course\'s content. A COURSE ban takes `ban.course` in the course (its müderris, its başmüderris and the köşk\'s nazımı hold it; a ders nazırı only if given it) or, in a medrese\'s course, `madrasah.ban` of that medrese (its başmüderris holds it; a nazır only if given it); a Medaris nazımı holding only `platform.ban_scoped` has neither, the başnazım does. A KOSK ban, placed from this course, takes `ban.manage_kosk` in the köşk or `platform.ban_scoped`. Barring someone already barred in that scope returns the standing ban. The reason is kept for those who see and lift bans and never sent to the talebe.
      * Bar a talebe from a course or its köşk (Yasakla)
      */
     async createBan(requestParameters: CreateBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BanResponse> {
@@ -159,7 +159,7 @@ export class BansApi extends runtime.BaseAPI {
     }
 
     /**
-     * Takes effect at once: the talebe cannot apply, apply again or leave, and loses the course\'s content, in the one course or in every course of the medrese. A medrese-wide ban takes `madrasah.ban` or `platform.ban_scoped`; a ban from one course takes `ban.course` in it, which the başmüderris holds and a Medaris nazımı holding only `platform.ban_scoped` does not. The ban is the medrese\'s kademe: a köşk nazımı or Medaris administration lifts it, a müderris does not. Barring someone already barred in that scope returns the standing ban. 404 for a course that is not the medrese\'s. The reason is kept for those who see and lift bans and never sent to the talebe.
+     * Takes effect at once: the talebe cannot apply, apply again or leave, and loses the course\'s content, in the one course or in every course of the medrese. A medrese-wide ban takes `madrasah.ban` or `platform.ban_scoped`; a ban from one course takes `ban.course` in it or `madrasah.ban`, which reaches the medrese\'s courses (a Medaris nazımı holding only `platform.ban_scoped` has neither). The ban is the medrese\'s kademe: a köşk nazımı or Medaris administration lifts it, a müderris does not. Barring someone already barred in that scope returns the standing ban. 404 for a course that is not the medrese\'s. The reason is kept for those who see and lift bans and never sent to the talebe.
      * Bar a talebe from a course of the medrese, or from all of it (Yasakla)
      */
     async createMadrasahBanRaw(requestParameters: CreateMadrasahBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahBanResponse>> {
@@ -204,7 +204,7 @@ export class BansApi extends runtime.BaseAPI {
     }
 
     /**
-     * Takes effect at once: the talebe cannot apply, apply again or leave, and loses the course\'s content, in the one course or in every course of the medrese. A medrese-wide ban takes `madrasah.ban` or `platform.ban_scoped`; a ban from one course takes `ban.course` in it, which the başmüderris holds and a Medaris nazımı holding only `platform.ban_scoped` does not. The ban is the medrese\'s kademe: a köşk nazımı or Medaris administration lifts it, a müderris does not. Barring someone already barred in that scope returns the standing ban. 404 for a course that is not the medrese\'s. The reason is kept for those who see and lift bans and never sent to the talebe.
+     * Takes effect at once: the talebe cannot apply, apply again or leave, and loses the course\'s content, in the one course or in every course of the medrese. A medrese-wide ban takes `madrasah.ban` or `platform.ban_scoped`; a ban from one course takes `ban.course` in it or `madrasah.ban`, which reaches the medrese\'s courses (a Medaris nazımı holding only `platform.ban_scoped` has neither). The ban is the medrese\'s kademe: a köşk nazımı or Medaris administration lifts it, a müderris does not. Barring someone already barred in that scope returns the standing ban. 404 for a course that is not the medrese\'s. The reason is kept for those who see and lift bans and never sent to the talebe.
      * Bar a talebe from a course of the medrese, or from all of it (Yasakla)
      */
     async createMadrasahBan(requestParameters: CreateMadrasahBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahBanResponse> {
@@ -321,7 +321,7 @@ export class BansApi extends runtime.BaseAPI {
     }
 
     /**
-     * The permission to ban at a ban\'s level also lifts it: `ban.course` (or `ban.lift_course`) for a course ban, `ban.manage_kosk` or `platform.ban_scoped` for a köşk ban, `madrasah.ban` or `platform.ban_scoped` for a medrese ban. And only the kademe that placed the ban, or a higher one: a Medaris nazımı\'s ban is lifted by Medaris administration alone. A Medaris nazımı holding only `platform.ban_scoped` lifts no course ban. The reason and the lifter\'s name are kept with the ban.
+     * The permission to ban at a ban\'s level also lifts it: `ban.course` (or `ban.lift_course`, or `madrasah.ban` in a medrese\'s course) for a course ban, `ban.manage_kosk` or `platform.ban_scoped` for a köşk ban, `madrasah.ban` or `platform.ban_scoped` for a medrese ban. And only the kademe that placed the ban, or a higher one: a Medaris nazımı\'s ban is lifted by Medaris administration alone. A Medaris nazımı holding only `platform.ban_scoped` lifts no course ban. The reason and the lifter\'s name are kept with the ban.
      * Lift a ban with a reason (Yasağı kaldır)
      */
     async liftBanRaw(requestParameters: LiftBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BanResponse>> {
@@ -366,7 +366,7 @@ export class BansApi extends runtime.BaseAPI {
     }
 
     /**
-     * The permission to ban at a ban\'s level also lifts it: `ban.course` (or `ban.lift_course`) for a course ban, `ban.manage_kosk` or `platform.ban_scoped` for a köşk ban, `madrasah.ban` or `platform.ban_scoped` for a medrese ban. And only the kademe that placed the ban, or a higher one: a Medaris nazımı\'s ban is lifted by Medaris administration alone. A Medaris nazımı holding only `platform.ban_scoped` lifts no course ban. The reason and the lifter\'s name are kept with the ban.
+     * The permission to ban at a ban\'s level also lifts it: `ban.course` (or `ban.lift_course`, or `madrasah.ban` in a medrese\'s course) for a course ban, `ban.manage_kosk` or `platform.ban_scoped` for a köşk ban, `madrasah.ban` or `platform.ban_scoped` for a medrese ban. And only the kademe that placed the ban, or a higher one: a Medaris nazımı\'s ban is lifted by Medaris administration alone. A Medaris nazımı holding only `platform.ban_scoped` lifts no course ban. The reason and the lifter\'s name are kept with the ban.
      * Lift a ban with a reason (Yasağı kaldır)
      */
     async liftBan(requestParameters: LiftBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BanResponse> {
