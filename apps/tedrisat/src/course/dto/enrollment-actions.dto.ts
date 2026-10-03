@@ -1,5 +1,11 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { IsIn, IsString, Matches, MaxLength } from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+} from "class-validator";
 import { EnrollmentStatus } from "../domain/enrollment-status.enum";
 
 /** The statuses the course team may move an approved enrollment between. */
@@ -31,4 +37,17 @@ export class RemoveEnrollmentDto {
   @MaxLength(500)
   @Matches(/\S/, { message: "reason must not be blank" })
   reason!: string;
+}
+
+export class RejectEnrollmentDto {
+  @ApiPropertyOptional({
+    example: "Bu ders için ön koşul sağlanmıyor.",
+    maxLength: 500,
+    description:
+      "Why the request is refused (nizam/02: optional). Kept in the audit log; blank counts as none.",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
 }

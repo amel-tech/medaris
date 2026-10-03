@@ -805,9 +805,16 @@ export class CourseService {
     return this.lostRace(courseId, studentId, EnrollmentStatus.ENROLLED);
   }
 
+  /**
+   * Refuses a pending request. With `actorId` the refusal is audited and the
+   * optional `reason` kept with it (nizam/02: "Ret gerekçesi (isteğe bağlı)");
+   * without it the row is only deleted, as before.
+   */
   async rejectEnrollment(
     courseId: string,
-    studentId: string
+    studentId: string,
+    actorId?: string,
+    reason?: string
   ): Promise<boolean> {
     // Only pending requests can be rejected; an active seat is taken away
     // with `removeEnrollment`, which needs a reason.
@@ -817,11 +824,18 @@ export class CourseService {
     }
     // Only while it is still pending: an approval that landed since the read
     // makes it a seat, which is not rejected.
-    const removed = await this.courseRepo.deleteEnrollment(
-      studentId,
-      courseId,
-      EnrollmentStatus.PENDING
-    );
+    const removed = actorId
+      ? await this.courseRepo.rejectEnrollment({
+          userId: studentId,
+          courseId,
+          actorId,
+          reason: reason?.trim() || null,
+        })
+      : await this.courseRepo.deleteEnrollment(
+          studentId,
+          courseId,
+          EnrollmentStatus.PENDING
+        );
     if (!removed) throw new EnrollmentNotFoundError(courseId);
     return true;
   }

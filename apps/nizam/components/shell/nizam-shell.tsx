@@ -1,6 +1,9 @@
 import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
-import { getMyAssignments } from "~/features/assignments/reads";
+import {
+  getMyAssignments,
+  getMyPermissionCodes,
+} from "~/features/assignments/reads";
 import {
   getManagedKosks,
   getPendingEnrollments,
@@ -8,7 +11,12 @@ import {
 import { bellLabel } from "~/features/notifications/notification-view";
 import { getUnreadNotificationCount } from "~/features/notifications/reads";
 import { auth } from "~/lib/auth_options";
-import { navGroups, roleLabelKey, shellVariant } from "~/lib/shell-nav";
+import {
+  filterByPermissions,
+  navGroups,
+  roleLabelKey,
+  shellVariant,
+} from "~/lib/shell-nav";
 import { ShellFrame, type ShellModel } from "./shell-frame";
 
 type Messages = (
@@ -69,7 +77,9 @@ export async function NizamShell({
     })
   );
 
-  const groups = navGroups(variant).map((group) => ({
+  // A Medaris nazımı sees only the sections their permissions open (nizam 05).
+  const held = variant === "medaris" ? await getMyPermissionCodes() : null;
+  const groups = filterByPermissions(navGroups(variant), held).map((group) => ({
     id: group.id,
     label: t(`groups.${group.id}`),
     items: group.items.map((item) => ({

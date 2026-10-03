@@ -50,6 +50,8 @@ interface Props {
   viewerId: string | null;
   /** the başnazım opens köşks and brings hidden ones back; a köşk nazımı only reads */
   chief: boolean;
+  /** the home page's "Köşk aç" lands here with the form already open (the başnazım's) */
+  initialOpen?: boolean;
 }
 
 const SEARCH_DELAY_MS = 300;
@@ -64,7 +66,13 @@ const ALL = "all";
  * a hidden köşk back; "Köşk aç" is nizam/10. A köşk nazımı sees only their
  * own köşks and neither button.
  */
-export function KosksDirectory({ directory, filters, viewerId, chief }: Props) {
+export function KosksDirectory({
+  directory,
+  filters,
+  viewerId,
+  chief,
+  initialOpen = false,
+}: Props) {
   const tm = useTranslations("nizam.KoskDirectory");
   const t = tm as unknown as Messages;
   const locale = useLocale();
@@ -72,7 +80,7 @@ export function KosksDirectory({ directory, filters, viewerId, chief }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState(filters.q);
-  const [opening, setOpening] = useState(false);
+  const [opening, setOpening] = useState(initialOpen && chief);
   const [busyId, setBusyId] = useState<string | null>(null);
   const searched = useRef(filters.q);
   // The filters the page is on or is heading to. `filters` only changes once

@@ -55,6 +55,9 @@ export interface ShellModel {
   };
 }
 
+/** A köşk's home page, `/kosks/:id/ana-sayfa`. */
+const HOME_OF_KOSK = /^\/kosks\/[^/]+\/ana-sayfa\/?$/;
+
 /** Where the person row goes: "Hesap ve ayarlar" (nizam/36, 47), where "Çıkış yap" asks its one confirmation. */
 const ACCOUNT_PATH = "/hesap";
 
@@ -145,7 +148,10 @@ export function ShellFrame({
         options={model.kosks.map((k) => ({
           value: k.id,
           label: k.name,
-          href: `/${locale}/kosks/${k.id}`,
+          // on a köşk's home page the switch keeps the page (nizam 02)
+          href: HOME_OF_KOSK.test(here)
+            ? `/${locale}/kosks/${k.id}/ana-sayfa`
+            : `/${locale}/kosks/${k.id}`,
         }))}
         caption={model.labels.kosk}
         actionLabel={model.labels.switchKosk}

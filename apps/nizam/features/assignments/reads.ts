@@ -44,3 +44,15 @@ export const getChiefNazimName = async (): Promise<string | null> => {
     return null;
   }
 };
+
+/** The permission codes the caller holds in any scope; null when they cannot be read (nothing is then hidden). */
+export const getMyPermissionCodes =
+  async (): Promise<ReadonlySet<string> | null> => {
+    try {
+      const { me } = await api();
+      return new Set((await me.getMyPermissions()).permissions);
+    } catch (error) {
+      console.error("Error fetching the caller's permissions:", error);
+      return null;
+    }
+  };

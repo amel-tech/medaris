@@ -31,7 +31,11 @@ export async function rejectApplication(
   userId: string
 ): Promise<ActionOutcome<null>> {
   const result = await authenticatedAction(async (api) => {
-    await api.courses.rejectEnrollment({ id: courseId, userId });
+    await api.courses.rejectEnrollment({
+      id: courseId,
+      userId,
+      rejectEnrollmentDto: {},
+    });
     return null;
   });
   if (!result.success)

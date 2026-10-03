@@ -663,6 +663,18 @@ describe("CourseController (e2e)", () => {
           expect(res.body[0]).toHaveProperty("status", "PENDING");
         });
 
+      // the köşk home page names the same instant, whatever zone the server is in
+      const pending = await request(app.getHttpServer())
+        .get(`/kosks/${koskId}/enrollments/pending`)
+        .expect(200);
+      const home = await request(app.getHttpServer())
+        .get(`/kosks/${koskId}/dashboard`)
+        .expect(200);
+      expect(home.body.latestApplications).toHaveLength(1);
+      expect(
+        new Date(home.body.latestApplications[0].requestedAt).getTime()
+      ).toBe(new Date(pending.body[0].createdAt).getTime());
+
       await request(app.getHttpServer())
         .post(`/courses/${id}/enrollments/${TEST_USER_ID}/approve`)
         .expect(201)

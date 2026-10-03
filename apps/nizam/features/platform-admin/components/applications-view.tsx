@@ -41,6 +41,8 @@ type Detail =
 interface Props {
   /** the waiting applications and both counts; null when the first read failed */
   initial: KoskApplicationListResponse | null;
+  /** the application the home page's "İncele" points at (`?secili=`); the first one when it is not waiting */
+  initialSelectedId?: string | null;
 }
 
 /**
@@ -51,7 +53,7 @@ interface Props {
  * filled with the application and accepts it when the köşk exists; "Reddet"
  * asks for a reason the applicant will read.
  */
-export function ApplicationsView({ initial }: Props) {
+export function ApplicationsView({ initial, initialSelectedId }: Props) {
   const t = useTranslations("nizam.KoskApplicationsPage");
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
@@ -68,7 +70,9 @@ export function ApplicationsView({ initial }: Props) {
   const [failed, setFailed] = useState(initial === null);
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(
-    initial?.items[0]?.id ?? null
+    initial?.items.find((a) => a.id === initialSelectedId)?.id ??
+      initial?.items[0]?.id ??
+      null
   );
   const [detail, setDetail] = useState<Detail | null>(null);
   const [opening, setOpening] = useState(false);
