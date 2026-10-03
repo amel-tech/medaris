@@ -22,7 +22,7 @@ export const TabView = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <>
-      <div className="border-b border-b-gray-300 mb-8">
+      <div data-legacy-tabs className="border-b border-b-gray-300 mb-8">
         <div className="flex gap-4 mx-auto w-full max-w-[80rem]">
           <Link
             href="/home"

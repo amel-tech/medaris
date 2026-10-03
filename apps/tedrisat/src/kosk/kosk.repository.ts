@@ -74,6 +74,12 @@ export class KoskRepository implements IKoskRepository {
       kosk: kosks,
       // Its KOSK_NAZIM holders (MDRS-134), oldest grant first.
       managerIds: holderIdsOf(ASSIGNED_ROLES.KOSK_NAZIM, sql`"kosks"."id"`),
+      // The name the köşk's page shows as "Köşk nazımı" (MDRS-160): its oldest
+      // KOSK_NAZIM holder's given and family name, null when the person has
+      // no name on file. A name is public; the id beside it is not.
+      managerName: sql<
+        string | null
+      >`(select nullif(btrim(concat_ws(' ', u.given_name, u.family_name)), '') from "users" u where u.id::text = (${holderIdsOf(ASSIGNED_ROLES.KOSK_NAZIM, sql`"kosks"."id"`)})[1])`,
       // The course count leaves out drafts (MDRS-159: it is the number the köşk's
       // page lists), and the three course-derived counts leave hidden courses
       // out (MDRS-124):
@@ -112,6 +118,7 @@ export class KoskRepository implements IKoskRepository {
   private toStats(row: {
     kosk: IKosk;
     managerIds: string[];
+    managerName: string | null;
     courseCount: number;
     studentCount: number;
     muderrisCount: number;
@@ -121,6 +128,7 @@ export class KoskRepository implements IKoskRepository {
     return {
       ...row.kosk,
       managerIds: row.managerIds,
+      managerName: row.managerName,
       courseCount: row.courseCount,
       studentCount: row.studentCount,
       muderrisCount: row.muderrisCount,

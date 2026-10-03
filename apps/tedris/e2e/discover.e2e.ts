@@ -53,13 +53,11 @@ const needsTalebe = () =>
 const card = (page: Page, title: string) =>
   page.locator(".mds-card").filter({ hasText: title }).first();
 
-test("sends a signed-out visitor to sign in, and the links survive", async ({
-  page,
-}) => {
-  for (const path of ["/tr/discover", "/tr/my-courses"]) {
-    await page.goto(path);
-    await expect(page).toHaveURL(/signin/);
-  }
+// Keşfet is open to a visitor since MDRS-160 (anonymous.e2e.ts); Derslerim is
+// the talebe's own.
+test("sends a signed-out visitor of Derslerim to sign in", async ({ page }) => {
+  await page.goto("/tr/my-courses");
+  await expect(page).toHaveURL(/signin/);
 });
 
 test.describe("Keşfet", () => {

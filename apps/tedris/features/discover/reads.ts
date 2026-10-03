@@ -21,6 +21,18 @@ export interface DiscoverData {
   fields: string[];
 }
 
+/**
+ * What a visitor with no account sees of the list (design tedris/09): the
+ * medreses that have opened a course. A signed-in talebe also sees the ones
+ * that have not (design tedris/02), but there is nothing to browse in an empty
+ * medrese and no account to wait for one with.
+ */
+export const forVisitor = (data: DiscoverData): DiscoverData => ({
+  ...data,
+  madrasahs: data.madrasahs.filter((m) => m.courseCount > 0),
+  allMadrasahs: data.allMadrasahs.filter((m) => m.courseCount > 0),
+});
+
 export const getDiscoverData = async (
   query: DiscoverQuery
 ): Promise<DiscoverData> => {
@@ -48,11 +60,12 @@ export const getDiscoverData = async (
     }),
     madrasahs.exploreMadrasahs({}),
   ]);
-  return {
+  const data = {
     kosks: page.items,
     koskTotal: page.total,
     madrasahs: filtered,
     allMadrasahs: all,
     fields,
   };
+  return accessToken ? data : forVisitor(data);
 };

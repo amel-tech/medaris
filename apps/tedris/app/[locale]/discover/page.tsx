@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { isSignedIn } from "~/features/courses/public-reads";
 import { DiscoverPage } from "~/features/discover/components/discover-page";
 import { parseDiscoverQuery } from "~/features/discover/discover-query";
 import { type DiscoverData, getDiscoverData } from "~/features/discover/reads";
@@ -24,5 +25,12 @@ export default async function Page({
     // Said on the page as an Alert, not as an empty list (design tedris/02).
     console.error("Error fetching Keşfet:", error);
   }
-  return <DiscoverPage query={query} data={data} failed={data === null} />;
+  return (
+    <DiscoverPage
+      query={query}
+      data={data}
+      failed={data === null}
+      signedIn={await isSignedIn()}
+    />
+  );
 }

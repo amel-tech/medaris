@@ -24,6 +24,8 @@ export interface IKosk {
 export interface IKoskWithStats extends IKosk {
   /** Who manages the köşk (MDRS-126), oldest first; never empty. */
   managerIds: string[];
+  /** The oldest manager's name, for the köşk's page (MDRS-160); null when none is on file. */
+  managerName: string | null;
   courseCount: number;
   studentCount: number;
   muderrisCount: number;
