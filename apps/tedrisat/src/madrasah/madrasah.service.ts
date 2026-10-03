@@ -12,6 +12,7 @@ import { MadrasahRepository } from "./madrasah.repository";
 import {
   ICreateMadrasah,
   IMadrasahBadgeCounts,
+  IMadrasahCourseFilter,
   IMadrasahCourseListItem,
   IMadrasahDirectory,
   IMadrasahDirectoryFilter,
@@ -348,12 +349,15 @@ export class MadrasahService {
     return this.getSettings(id);
   }
 
-  /** The courses nazir/04 lists under its policies; not-found for an unknown medrese. */
-  async findCourseList(id: string): Promise<IMadrasahCourseListItem[]> {
+  /** The courses nazir/04 and nazir/07 list; not-found for an unknown medrese. */
+  async findCourseList(
+    id: string,
+    filter: IMadrasahCourseFilter = {}
+  ): Promise<IMadrasahCourseListItem[]> {
     if (!(await this.madrasahRepo.exists(id))) {
       throw new MadrasahNotFoundError(id);
     }
-    return this.madrasahRepo.findCourseList(id);
+    return this.madrasahRepo.findCourseList(id, filter);
   }
 
   async delete(id: string): Promise<boolean> {

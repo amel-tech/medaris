@@ -22,6 +22,9 @@ const api = {
     updateMadrasahPermissionGroup: vi.fn(),
     deleteMadrasahPermissionGroup: vi.fn(),
     hideMadrasah: vi.fn(),
+    openMadrasahCourse: vi.fn(),
+    setMadrasahCourseMuderris: vi.fn(),
+    hideMadrasahCourse: vi.fn(),
   },
   archive: { restoreArchiveItem: vi.fn() },
   users: { lookupUser: vi.fn() },
@@ -462,5 +465,118 @@ describe("the archive actions (nazir 12)", () => {
       success: false,
       code: "MADRASAH_ALREADY_HIDDEN",
     });
+  });
+});
+
+describe("the course actions (nazir 08, 17, 18)", () => {
+  const actions = () => import("~/features/courses/actions");
+
+  it("opens a course with the form's body, and hands back only its id and title", async () => {
+    const { openCourse } = await actions();
+    api.madrasahs.openMadrasahCourse.mockResolvedValue({
+      id: "c-9",
+      title: "Maksûd şerhi",
+      status: "DRAFT",
+      muderris: [{ name: "Mehmet Emin Işıkoğlu" }],
+    });
+    const body = {
+      koskId: "k-1",
+      title: "Maksûd şerhi",
+      muderrisUserIds: ["u-1"],
+      imamUserId: "u-1",
+      closedCourse: false,
+      requiresApproval: true,
+    };
+    expect(await openCourse("m-1", body)).toEqual({
+      success: true,
+      data: { id: "c-9", title: "Maksûd şerhi" },
+    });
+    expect(api.madrasahs.openMadrasahCourse).toHaveBeenCalledWith({
+      id: "m-1",
+      openMadrasahCourseDto: body,
+    });
+  });
+
+  it("hands back the code of a refused opening, never the API's message", async () => {
+    const { openCourse } = await actions();
+    api.madrasahs.openMadrasahCourse.mockRejectedValue(
+      refusal(403, { code: "HOSTING_RIGHT_REQUIRED", message: "x" })
+    );
+    const body = { koskId: "k-1", title: "Ders", muderrisUserIds: ["u-1"] };
+    expect(await openCourse("m-1", body)).toEqual({
+      success: false,
+      code: "HOSTING_RIGHT_REQUIRED",
+    });
+    api.madrasahs.openMadrasahCourse.mockRejectedValue(
+      refusal(404, { code: "MUDERRIS_UNKNOWN_USER", message: "x" })
+    );
+    expect(await openCourse("m-1", body)).toEqual({
+      success: false,
+      code: "MUDERRIS_UNKNOWN_USER",
+    });
+    api.madrasahs.openMadrasahCourse.mockRejectedValue(refusal(500));
+    expect(await openCourse("m-1", body)).toEqual({
+      success: false,
+      code: "",
+    });
+  });
+
+  it("replaces the müderrisler with the whole list as the PUT's body", async () => {
+    const { replaceMuderris } = await actions();
+    api.madrasahs.setMadrasahCourseMuderris.mockResolvedValue({ id: "c-1" });
+    const request = { muderrisUserIds: ["u-1"], imamUserId: "u-1" };
+    expect(await replaceMuderris("m-1", "c-1", request)).toEqual({
+      success: true,
+      data: null,
+    });
+    expect(api.madrasahs.setMadrasahCourseMuderris).toHaveBeenCalledWith({
+      id: "m-1",
+      courseId: "c-1",
+      setMadrasahCourseMuderrisDto: request,
+    });
+    api.madrasahs.setMadrasahCourseMuderris.mockRejectedValue(
+      refusal(400, { code: "COURSE_IMAM_REQUIRED", message: "x" })
+    );
+    expect(await replaceMuderris("m-1", "c-1", request)).toEqual({
+      success: false,
+      code: "COURSE_IMAM_REQUIRED",
+    });
+  });
+
+  it("hides a course, and hands back the code of a refusal ('zaten gizli' is the API's 409)", async () => {
+    const { hideCourse } = await actions();
+    api.madrasahs.hideMadrasahCourse.mockResolvedValue(undefined);
+    expect(await hideCourse("m-1", "c-1")).toEqual({
+      success: true,
+      data: null,
+    });
+    expect(api.madrasahs.hideMadrasahCourse).toHaveBeenCalledWith({
+      id: "m-1",
+      courseId: "c-1",
+    });
+    api.madrasahs.hideMadrasahCourse.mockRejectedValue(
+      refusal(409, { code: "MADRASAH_COURSE_ALREADY_HIDDEN", message: "x" })
+    );
+    expect(await hideCourse("m-1", "c-1")).toEqual({
+      success: false,
+      code: "MADRASAH_COURSE_ALREADY_HIDDEN",
+    });
+    api.madrasahs.hideMadrasahCourse.mockRejectedValue(
+      refusal(403, { code: "AUTHZ_FORBIDDEN", message: "x" })
+    );
+    expect(await hideCourse("m-1", "c-1")).toEqual({
+      success: false,
+      code: "AUTHZ_FORBIDDEN",
+    });
+  });
+
+  it("writes nothing without a session", async () => {
+    token = undefined;
+    const { hideCourse } = await actions();
+    expect(await hideCourse("m-1", "c-1")).toEqual({
+      success: false,
+      code: "",
+    });
+    expect(api.madrasahs.hideMadrasahCourse).not.toHaveBeenCalled();
   });
 });

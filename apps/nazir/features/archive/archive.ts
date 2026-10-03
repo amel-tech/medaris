@@ -3,6 +3,7 @@ import type {
   MadrasahArchiveItemResponse,
 } from "@medaris/services/tedrisat";
 import type { IconName } from "@medaris/ui/mds/icon";
+import { dayKey } from "~/lib/dates";
 import type { Messages } from "~/lib/i18n/messages";
 
 /**
@@ -102,14 +103,6 @@ const TYPE_ICON: Readonly<Record<string, IconName>> = {
   session: "calendar",
   recording: "video",
 };
-
-const dayKey = (date: Date, timeZone: string): string =>
-  new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
 
 /**
  * When it was hidden, the way the canvas prints it: "Dün 10:40" for yesterday,

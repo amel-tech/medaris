@@ -548,5 +548,177 @@
       "already": "This medrese is already hidden. Ask Medaris administration to bring it back.",
       "failedTitle": "The medrese could not be hidden"
     }
+  },
+  "Courses": {
+    "title": "Courses",
+    "subtitle": "{name}’s courses, with the köşk they were opened in.",
+    "subtitleUnnamed": "The medrese’s courses, with the köşk they were opened in.",
+    "offsite": "Send an off-medrese course request",
+    "open": "Open a medrese course",
+    "filters": {
+      "label": "Filter the courses",
+      "kosk": {
+        "label": "Köşk",
+        "all": "Köşk: all",
+        "one": "Köşk: {name}"
+      },
+      "status": {
+        "label": "State",
+        "all": "State: all",
+        "PUBLISHED": "State: Published",
+        "DRAFT": "State: Draft"
+      }
+    },
+    "counter": "{courses, plural, one {# course} other {# courses}} · in {kosks, plural, one {# köşk} other {# köşks}}",
+    "counterNone": "No courses to show",
+    "caption": "Medrese courses",
+    "columns": {
+      "course": "Course",
+      "muderris": "Müderrisler",
+      "students": "Talebe",
+      "status": "State",
+      "actions": "Actions"
+    },
+    "openedToday": "opened today",
+    "imam": "Course imam",
+    "noStudents": "No talebe yet",
+    "pending": "{count} awaiting approval",
+    "status": {
+      "PUBLISHED": "Published",
+      "DRAFT": "Draft"
+    },
+    "actions": {
+      "label": "More actions: {title}",
+      "muderris": "Change the müderrisler",
+      "hide": "Hide the course"
+    },
+    "empty": "This medrese has no courses yet. In a köşk that hosts it you can open the first one with “Open a medrese course”.",
+    "emptyFiltered": "No course matches this filter.",
+    "clearFilters": "Clear the filters",
+    "hiddenNote": {
+      "before": "Hidden courses are not listed here; they appear in the ",
+      "link": "Archive",
+      "after": "."
+    },
+    "hosts": {
+      "title": "Köşks you can open a course in",
+      "courses": "{count, plural, one {# medrese course} other {# medrese courses}}",
+      "text": "The köşk’s nazım or Medaris administration gives the hosting right. If it is withdrawn, no new course can be opened in that köşk; the courses already open carry on unless whoever withdrew it chooses to hide them.",
+      "none": "No köşk has given your medrese a hosting right yet. Once one does, it is listed here.",
+      "failed": "The köşks could not be read right now. Refresh the page and try again."
+    },
+    "outside": {
+      "title": "Off-medrese courses",
+      "text": "Here you can only open the medrese’s own courses. To ask for a course that will not belong to the medrese, use “Send an off-medrese course request”; the request goes to the köşk’s nazım and Medaris administration sees it. If it is accepted, the köşk’s nazım opens the course and chooses its müderrisler."
+    },
+    "loadFailedTitle": "The courses could not be read",
+    "loadFailed": "The courses could not be read right now. Try again in a few seconds.",
+    "errors": {
+      "hostingRight": "This köşk no longer gives your medrese a hosting right. The page was refreshed; choose another köşk.",
+      "unknownUser": "The account of one of the müderrisler you chose could not be found. Check the list and try again.",
+      "imam": "Choose the course’s imam and try again.",
+      "duplicate": "The same person is on the list twice. Check the list and try again.",
+      "invalid": "Check the course name and the müderris list and try again.",
+      "gone": "This course no longer exists. The list was refreshed."
+    }
+  },
+  "OpenCourse": {
+    "title": "Open a medrese course",
+    "breadcrumb": "Page path",
+    "intro": "The course is opened in {name}’s name, in a köşk that hosts it. You choose the müderrisler now.",
+    "introUnnamed": "The course is opened in the medrese’s name, in a köşk that hosts it. You choose the müderrisler now.",
+    "required": "required field",
+    "kosk": {
+      "legend": "Köşk",
+      "help": "Only köşks that hold a hosting right for your medrese are listed.",
+      "required": "Choose a köşk.",
+      "courses": "the medrese has {count, plural, one {# course} other {# courses}} here",
+      "noCourses": "the medrese has no course here yet"
+    },
+    "name": "Course name",
+    "nameHelp": "Talebe see this name; the müderrisler can change it later.",
+    "nameProblems": {
+      "required": "The course name cannot be empty.",
+      "short": "The course name must be at least {min} characters.",
+      "long": "The course name can be at most {max} characters."
+    },
+    "team": {
+      "legend": "Chosen müderrisler",
+      "help": "Choose at least one müderris. A lone müderris is the course’s imam; with several you choose the imam.",
+      "none": "Choose at least one müderris."
+    },
+    "settingsTitle": "Course settings",
+    "closed": {
+      "label": "Closed course",
+      "help": "The course’s content and recordings can never be opened to everyone. The introduction page stays public; you may show a sample course."
+    },
+    "approval": {
+      "label": "Enrolment needs approval",
+      "help": "The course staff approve the applications."
+    },
+    "lock": {
+      "closed": "The medrese’s “Closed course required” policy locks this setting.",
+      "approval": "The medrese’s “Enrolment always needs approval” policy locks this setting.",
+      "tail": {
+        "before": "You can change the policy in ",
+        "after": "."
+      }
+    },
+    "policiesUnknown": "The medrese’s policies could not be read right now; the server applies them when the course is opened.",
+    "note": "The course is opened as a draft. The müderrisler prepare the syllabus and the sessions and publish them; talebe do not see the course until it is published.",
+    "cancel": "Cancel",
+    "submit": "Open the course",
+    "opening": "Opening the course",
+    "opened": "Course opened as a draft",
+    "openedBody": "“{title}” appears in the course list as a draft.",
+    "failedTitle": "The course could not be opened",
+    "loadFailedTitle": "The köşks could not be read",
+    "loadFailed": "The köşks a course can be opened in could not be read right now. Try again in a few seconds.",
+    "noKoskTitle": "No köşk to open a course in",
+    "noKosk": "No course can be opened because no köşk has given your medrese a hosting right. The köşk’s nazım or Medaris administration gives it.",
+    "back": "Back to the courses"
+  },
+  "Team": {
+    "label": "Müderris",
+    "help": "Type the registered account’s full e-mail address; every search is written to the audit log.",
+    "placeholder": "first.last@example.com",
+    "searching": "Searching",
+    "added": "{name} added to the list",
+    "notFound": "No account is registered with this e-mail address.",
+    "failed": "The search is not available right now. Try again in a moment.",
+    "listed": "This person is already on the list.",
+    "full": "At most {max} müderrisler can be added.",
+    "noAccount": "A müderris with no account; this list cannot change them.",
+    "imam": "Course imam",
+    "imamPick": "Course imam: {name}",
+    "imamMissing": "Choose the course’s imam.",
+    "remove": "Remove",
+    "removeLabel": "Remove: {name}"
+  },
+  "ChangeTeam": {
+    "title": "Change the müderrisler",
+    "intro": "You change the müderris list in the medrese’s name; the köşk’s nazım cannot.",
+    "legend": "Müderrisler",
+    "help": "At least one müderris is needed. A lone müderris is the course’s imam; with several you choose the imam.",
+    "count": "{count, plural, one {# müderris} other {# müderrisler}}",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving",
+    "saved": "Müderrisler saved",
+    "savedBody": "The müderris list of “{title}” was updated.",
+    "failedTitle": "The müderrisler could not be saved"
+  },
+  "HideCourse": {
+    "title": "Hide the course",
+    "rest": "will be hidden from talebe, from visitors and from {kosk}’s page; its sessions will drop out of the talebe’s calendars.",
+    "affected": "{count, plural, one {# talebe} other {# talebe}} can no longer reach the sessions and recordings.",
+    "note": "Nothing is deleted; you can bring it back from the Archive. The kademe that hid it, or a higher one, brings it back.",
+    "confirm": "Hide",
+    "cancel": "Cancel",
+    "done": "Course hidden",
+    "doneBody": "“{title}” left the list; it appears in the Archive.",
+    "already": "This course is already hidden; the list was refreshed.",
+    "alreadyTitle": "Course already hidden",
+    "failedTitle": "The course could not be hidden"
   }
 }

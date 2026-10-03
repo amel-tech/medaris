@@ -548,5 +548,177 @@
       "already": "Bu medrese zaten gizli. Geri getirmek için Medaris yönetimiyle görüşün.",
       "failedTitle": "Medrese gizlenemedi"
     }
+  },
+  "Courses": {
+    "title": "Dersler",
+    "subtitle": "{nameGenitive} dersleri, açıldıkları köşkle birlikte.",
+    "subtitleUnnamed": "Medresenin dersleri, açıldıkları köşkle birlikte.",
+    "offsite": "Medrese dışı ders talebi gönder",
+    "open": "Medrese dersi aç",
+    "filters": {
+      "label": "Dersleri süz",
+      "kosk": {
+        "label": "Köşk",
+        "all": "Köşk: tümü",
+        "one": "Köşk: {name}"
+      },
+      "status": {
+        "label": "Durum",
+        "all": "Durum: tümü",
+        "PUBLISHED": "Durum: Yayında",
+        "DRAFT": "Durum: Taslak"
+      }
+    },
+    "counter": "{courses} ders · {kosks} köşkte",
+    "counterNone": "Gösterilecek ders yok",
+    "caption": "Medrese dersleri",
+    "columns": {
+      "course": "Ders",
+      "muderris": "Müderrisler",
+      "students": "Talebe",
+      "status": "Durum",
+      "actions": "İşlemler"
+    },
+    "openedToday": "bugün açıldı",
+    "imam": "Dersin imamı",
+    "noStudents": "Henüz talebe yok",
+    "pending": "{count} onay bekliyor",
+    "status": {
+      "PUBLISHED": "Yayında",
+      "DRAFT": "Taslak"
+    },
+    "actions": {
+      "label": "Diğer işlemler: {title}",
+      "muderris": "Müderrisleri değiştir",
+      "hide": "Dersi gizle"
+    },
+    "empty": "Bu medresede henüz ders yok. Barındırma hakkı olan bir köşkte “Medrese dersi aç” ile ilk dersi açabilirsiniz.",
+    "emptyFiltered": "Bu süzgece uyan ders yok.",
+    "clearFilters": "Süzgeçleri temizle",
+    "hiddenNote": {
+      "before": "Gizlenen dersler bu listede yer almaz; ",
+      "link": "Arşiv",
+      "after": "’de görünür."
+    },
+    "hosts": {
+      "title": "Ders açabileceğiniz köşkler",
+      "courses": "{count} medrese dersi",
+      "text": "Barındırma hakkını köşkün nazımı ya da Medaris yönetimi verir. Hak geri alınırsa o köşkte yeni ders açılamaz; açık dersler, hakkı geri alan gizlemeyi seçmedikçe sürer.",
+      "none": "Henüz hiçbir köşk medresenize barındırma hakkı vermedi. Hak verilince köşk burada listelenir.",
+      "failed": "Köşkler şu an okunamadı. Sayfayı yenileyip yeniden deneyin."
+    },
+    "outside": {
+      "title": "Medrese dışı ders",
+      "text": "Burada yalnız medresenin derslerini açabilirsiniz. Medreseye bağlı olmayacak bir dersin açılmasını “Medrese dışı ders talebi gönder” ile isteyebilirsiniz; talep köşkün nazımına gider, Medaris yönetimi talebi görür. Kabul edilirse dersi köşk nazımı açar ve müderrislerini seçer."
+    },
+    "loadFailedTitle": "Dersler okunamadı",
+    "loadFailed": "Dersler şu an okunamadı. Birkaç saniye sonra yeniden deneyin.",
+    "errors": {
+      "hostingRight": "Bu köşk artık medresenize barındırma hakkı vermiyor. Sayfa yenilendi; başka bir köşk seçin.",
+      "unknownUser": "Seçtiğiniz müderrislerden birinin hesabı bulunamadı. Listeyi denetleyip yeniden deneyin.",
+      "imam": "Dersin imamını seçip yeniden deneyin.",
+      "duplicate": "Aynı kişi listede iki kez yer alıyor. Listeyi denetleyip yeniden deneyin.",
+      "invalid": "Ders adını ve müderris listesini denetleyip yeniden deneyin.",
+      "gone": "Bu ders artık yok. Liste yenilendi."
+    }
+  },
+  "OpenCourse": {
+    "title": "Medrese dersi aç",
+    "breadcrumb": "Sayfa yolu",
+    "intro": "Ders {name} adına, barındırma hakkı olan bir köşkte açılır. Müderrisleri şimdi seçersiniz.",
+    "introUnnamed": "Ders medrese adına, barındırma hakkı olan bir köşkte açılır. Müderrisleri şimdi seçersiniz.",
+    "required": "zorunlu alan",
+    "kosk": {
+      "legend": "Köşk",
+      "help": "Yalnız medresenizin barındırma hakkı olan köşkler listelenir.",
+      "required": "Bir köşk seçin.",
+      "courses": "medresenin burada {count} dersi var",
+      "noCourses": "medresenin burada henüz dersi yok"
+    },
+    "name": "Ders adı",
+    "nameHelp": "Talebeler bu adı görür; müderrisler sonradan değiştirebilir.",
+    "nameProblems": {
+      "required": "Ders adı boş olamaz.",
+      "short": "Ders adı en az {min} karakter olmalı.",
+      "long": "Ders adı en çok {max} karakter olabilir."
+    },
+    "team": {
+      "legend": "Seçilen müderrisler",
+      "help": "En az bir müderris seçin. Tek müderris dersin imamıdır; birden çok müderris seçerseniz imamı siz belirlersiniz.",
+      "none": "En az bir müderris seçin."
+    },
+    "settingsTitle": "Ders ayarları",
+    "closed": {
+      "label": "Kapalı ders",
+      "help": "Dersin içeriği ve ders kayıtları hiçbir zaman herkese açılamaz. Tanıtım sayfası herkese açık kalır; isterseniz bir örnek ders gösterin."
+    },
+    "approval": {
+      "label": "Kayıt onayı gereksin",
+      "help": "Başvuruları ders kadrosu onaylar."
+    },
+    "lock": {
+      "closed": "Medresenin “Kapalı ders zorunlu” politikası bu ayarı kilitler.",
+      "approval": "Medresenin “Kayıt her zaman onaylı” politikası bu ayarı kilitler.",
+      "tail": {
+        "before": "Politikayı ",
+        "after": "’ndan değiştirebilirsiniz."
+      }
+    },
+    "policiesUnknown": "Medresenin politikaları şu an okunamadı; ders açılırken sunucu uygular.",
+    "note": "Ders taslak olarak açılır. Müderrisler müfredatı ve celseleri hazırlayıp yayımlar; yayımlanana kadar talebeler dersi görmez.",
+    "cancel": "Vazgeç",
+    "submit": "Dersi aç",
+    "opening": "Ders açılıyor",
+    "opened": "Ders taslak olarak açıldı",
+    "openedBody": "“{title}” Dersler listesinde Taslak olarak görünür.",
+    "failedTitle": "Ders açılamadı",
+    "loadFailedTitle": "Köşkler okunamadı",
+    "loadFailed": "Ders açılabilecek köşkler şu an okunamadı. Birkaç saniye sonra yeniden deneyin.",
+    "noKoskTitle": "Ders açılabilecek köşk yok",
+    "noKosk": "Hiçbir köşk medresenize barındırma hakkı vermediği için ders açılamıyor. Hakkı köşkün nazımı ya da Medaris yönetimi verir.",
+    "back": "Derslere dön"
+  },
+  "Team": {
+    "label": "Müderris",
+    "help": "Kayıtlı hesabın e-posta adresini eksiksiz yazın; her arama denetim kaydına yazılır.",
+    "placeholder": "ad.soyad@example.com",
+    "searching": "Aranıyor",
+    "added": "{name} listeye eklendi",
+    "notFound": "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.",
+    "failed": "Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.",
+    "listed": "Bu kişi zaten listede.",
+    "full": "En fazla {max} müderris eklenebilir.",
+    "noAccount": "Hesabı olmayan müderris; bu listeden değiştirilemez.",
+    "imam": "Dersin imamı",
+    "imamPick": "Dersin imamı: {name}",
+    "imamMissing": "Dersin imamını seçin.",
+    "remove": "Çıkar",
+    "removeLabel": "Çıkar: {name}"
+  },
+  "ChangeTeam": {
+    "title": "Müderrisleri değiştir",
+    "intro": "Müderris listesini medrese adına siz değiştirirsiniz; köşk nazımı değiştiremez.",
+    "legend": "Müderrisler",
+    "help": "En az bir müderris gerekir. Tek müderris dersin imamıdır; birden çok müderris varsa imamı siz belirlersiniz.",
+    "count": "{count} müderris",
+    "cancel": "Vazgeç",
+    "save": "Kaydet",
+    "saving": "Kaydediliyor",
+    "saved": "Müderrisler kaydedildi",
+    "savedBody": "“{title}” dersinin müderris listesi güncellendi.",
+    "failedTitle": "Müderrisler kaydedilemedi"
+  },
+  "HideCourse": {
+    "title": "Dersi gizle",
+    "rest": "talebelerden, ziyaretçilerden ve {koskGenitive} sayfasından gizlenecek; celseleri talebelerin takviminden düşecek.",
+    "affected": "{count} talebe celselere ve ders kayıtlarına erişemez.",
+    "note": "Hiçbir şey silinmez; Arşiv’den geri alabilirsiniz. Öğeyi gizleyen kademe ya da üstü geri alır.",
+    "confirm": "Gizle",
+    "cancel": "Vazgeç",
+    "done": "Ders gizlendi",
+    "doneBody": "“{title}” listeden kalktı; Arşiv’de görünür.",
+    "already": "Bu ders zaten gizli; liste yenilendi.",
+    "alreadyTitle": "Ders zaten gizli",
+    "failedTitle": "Ders gizlenemedi"
   }
 }

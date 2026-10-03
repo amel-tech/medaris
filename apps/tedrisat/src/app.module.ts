@@ -25,6 +25,7 @@ import { HostingModule } from "./hosting/hosting.module";
 import { InactiveScopeModule } from "./inactive-scope/inactive-scope.module";
 import { KoskModule } from "./kosk/kosk.module";
 import { KoskApplicationModule } from "./kosk-application/kosk-application.module";
+import { MadrasahCourseModule } from "./madrasah/course/madrasah-course.module";
 import { MadrasahModule } from "./madrasah/madrasah.module";
 import { MadrasahNazirModule } from "./madrasah/nazir/madrasah-nazir.module";
 import { NotificationModule } from "./notification/notification.module";
@@ -63,6 +64,7 @@ import { UserModule } from "./user/user.module";
     // lists paths in the order the modules are scanned.
     MadrasahNazirModule,
     InactiveScopeModule,
+    MadrasahCourseModule,
     ArchiveModule,
     DeckReviewModule,
     AuditModule,
