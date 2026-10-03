@@ -124,7 +124,7 @@ export function CourseSettingsPage({
           fail(res.errorBody);
           return;
         }
-        version = res.data.courseVersion;
+        // The last write: nothing after it carries the version.
       }
     }
     const courseChanges = {

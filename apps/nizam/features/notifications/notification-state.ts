@@ -82,3 +82,16 @@ export const markAllRead = (
   nextCursor: tab === "unread" ? null : state.nextCursor,
   counts: { ...state.counts, unread: 0 },
 });
+
+/**
+ * Undoes an optimistic read the API refused. On the list the read was made on
+ * the state goes back to `before`. If another tab or chip was chosen since,
+ * the list on screen is the server's own and stays; only the counts, which a
+ * swap keeps, go back to what they were before the read lowered them.
+ */
+export const rollBack = (
+  current: NotificationsState,
+  before: NotificationsState,
+  sameList: boolean
+): NotificationsState =>
+  sameList ? before : { ...current, counts: before.counts };

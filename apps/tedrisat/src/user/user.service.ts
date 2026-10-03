@@ -1,6 +1,7 @@
 import { AuthzService } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { CourseRepository } from "../course/course.repository";
+import { DatabaseService } from "../database/database.service";
 import { KoskService } from "../kosk/kosk.service";
 import { MeResponse } from "./dto/me-response.dto";
 import { UpdateMeDto } from "./dto/update-me.dto";
@@ -21,7 +22,8 @@ export class UserService {
     private readonly userSync: UserSyncService,
     private readonly koskService: KoskService,
     private readonly courseRepo: CourseRepository,
-    private readonly authz: AuthzService
+    private readonly authz: AuthzService,
+    private readonly databaseService: DatabaseService
   ) {}
 
   /**
@@ -56,17 +58,31 @@ export class UserService {
     const settings: IUserSettings = {};
     if (dto.timeZone !== undefined) settings.timeZone = dto.timeZone;
     if (dto.locale !== undefined) settings.locale = dto.locale;
-    if (Object.keys(settings).length > 0) {
-      await this.users.updateSettings(user.id, settings);
-    }
     // The names are the person's own words, kept apart from the token's so the
     // next sync cannot undo them (MDRS-166).
-    if (dto.givenName !== undefined || dto.familyName !== undefined) {
-      await this.profiles.upsert(user.id, {
-        ...(dto.givenName !== undefined && { givenName: dto.givenName.trim() }),
-        ...(dto.familyName !== undefined && {
-          familyName: dto.familyName.trim(),
-        }),
+    const names =
+      dto.givenName !== undefined || dto.familyName !== undefined
+        ? {
+            ...(dto.givenName !== undefined && {
+              givenName: dto.givenName.trim(),
+            }),
+            ...(dto.familyName !== undefined && {
+              familyName: dto.familyName.trim(),
+            }),
+          }
+        : null;
+    const hasSettings = Object.keys(settings).length > 0;
+    if (hasSettings || names) {
+      // One request, one outcome: the settings (`users`) and the names
+      // (`user_profiles`) are two tables, so a failure of the second write must
+      // not leave the first behind.
+      await this.databaseService.db.transaction(async (tx) => {
+        if (hasSettings) {
+          await this.users.updateSettings(user.id, settings, tx);
+        }
+        if (names) {
+          await this.profiles.upsert(user.id, names, tx);
+        }
       });
     }
     return this.getMe(claims);

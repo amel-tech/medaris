@@ -104,6 +104,9 @@ merged in.
 
 ## Verified
 
+Counts were taken again on top of `5eb2f5f` with the command shown beside each;
+what needs a database, Keycloak or a browser was not run again here and says so.
+
 - tedrisat against a real Postgres (Testcontainers):
   `kosk-admin.e2e.spec.ts` (34 specs: the table and its counts, filters alone and
   together, paging and the 50 cap, a nazım who never signed in named from the
@@ -112,25 +115,49 @@ merged in.
   adding nazımları with an end, all-or-nothing, unknown account, past end,
   passive köşk made active, opening with `managerUserIds`, taken short name,
   the policies through `PATCH`, enrollment waiting under the approval policy);
-  `kosk.e2e.spec.ts` (35) still passes. The suite is 75 files, 1094 tests, green.
-- nizam-web: vitest `kosk-admin.spec.ts` (37) and `kosk-views.spec.tsx` (23) —
-  19 files, 286 tests in the app, green.
-- Playwright `e2e/kosks.e2e.ts` (14 specs) against the running API, a private
-  Postgres and the real Keycloak (`e2e-sistem-admin`, `e2e-kosk-nazim`; the
-  e-mail lookups go to the real realm through `tedrisat-admin` and find
-  `e2e-talebe`): the tabs' numbers equal the database's, every filter alone and
-  together and restored by a reload, "Geri al", a nazım seeing only their own
-  köşks, "Köşk aç" end to end (button off until the form is right, tags,
-  duplicate pick, row in the list, grants and audit in the database), the form's
-  messages and a taken short name, the settings (read-only short name, an empty
-  name refused without a request, save and reload, "Vazgeç"), "Listelerde
-  gösterme" leaving the open list, "Köşkü gizle" (the dialog, focus on
-  "Vazgeç", the hidden köşk gone from the open list and a 404 by link), the nazım
-  list (Siz, Atayan with its role, date, Süresiz, no add button, 403 for another
-  köşk), "Köşk nazımı ekle" (not found, found, row, audit, twice refused, an end
-  date kept, a past one refused). The rest of the nizam e2e suite was run too:
-  72 passed, 2 skipped by their own condition; one spec timed out once and
-  passed alone.
+  `kosk.e2e.spec.ts` (35) still passes.
+  - 34: `grep -cE '^\s*it\(' apps/tedrisat/test/e2e/kosk-admin.e2e.spec.ts`
+    prints `34`.
+  - 35: `grep -cE '^\s*it(\.each)?\(' apps/tedrisat/test/e2e/kosk.e2e.spec.ts`
+    prints `27` declarations, two of them `it.each` with 6 and 4 cases:
+    27 - 2 + 6 + 4 = 35.
+  - "75 files, 1094 tests, green": the 75 is the file count when this note was
+    written (`git ls-tree -r --name-only 14bb10c8 apps/tedrisat/test | grep -c '\.spec\.ts$'`
+    prints `75`); on this branch `find apps/tedrisat/test -name '*.spec.ts' | wc -l`
+    prints `77`, the two new ones (`discover.e2e.spec.ts`, `next-session.spec.ts`)
+    having come with the merges since. The 1094 tests and the green result were
+    **not run again** (Testcontainers, slow): the CI `Verify` job, which runs
+    `nx affected -t test` and so these specs, passed on `5eb2f5f`.
+- nizam-web, `cd apps/nizam && ./node_modules/.bin/vitest run` on this branch
+  prints `Test Files 20 passed (20)` and `Tests 289 passed (289)`, with
+  `test/kosk-admin.spec.ts (37 tests)`, `test/kosk-views.spec.tsx (23 tests)` and
+  `test/kosks-directory-search.spec.tsx (3 tests)` among them. Before the
+  search spec was added (it is the one DOM spec of the app, so `happy-dom` is a
+  devDependency of nizam now) the same command printed 19 files and 286 tests.
+- Playwright `e2e/kosks.e2e.ts` (14 specs:
+  `grep -cE '^test\(' apps/nizam/e2e/kosks.e2e.ts` prints `14`) against the
+  running API, a private Postgres and the real Keycloak (`e2e-sistem-admin`,
+  `e2e-kosk-nazim`; the e-mail lookups go to the real realm through
+  `tedrisat-admin` and find `e2e-talebe`): the tabs' numbers equal the
+  database's, every filter alone and together and restored by a reload, "Geri
+  al", a nazım seeing only their own köşks, "Köşk aç" end to end (button off until
+  the form is right, tags, duplicate pick, row in the list, grants and audit in
+  the database), the form's messages and a taken short name, the settings
+  (read-only short name, an empty name refused without a request, save and
+  reload, "Vazgeç"), "Listelerde gösterme" leaving the open list, "Köşkü gizle"
+  (the dialog, focus on "Vazgeç", the hidden köşk gone from the open list and a
+  404 by link), the nazım list (Siz, Atayan with its role, date, Süresiz, no add
+  button, 403 for another köşk), "Köşk nazımı ekle" (not found, found, row,
+  audit, twice refused, an end date kept, a past one refused). The rest of the
+  nizam e2e suite was run too: 72 passed, 2 skipped by their own condition; one
+  spec timed out once and passed alone. These runs were **not repeated** for
+  this note (they need the API, Postgres and Keycloak); the numbers are from the
+  session that wrote it. The specs they add up to are counted by
+  `cat apps/nizam/e2e/*.e2e.ts | grep -cE '^\s*test\('`, which prints `74`
+  (72 + 2).
+  The API's 403 for a köşk nazımı on `POST /kosks/:id/nazims` is tedrisat's
+  ("is the başnazım's alone" in `kosk-admin.e2e.spec.ts`), not Playwright's: the
+  browser holds no bearer token, so the Playwright spec only checks the screen.
 - The screens were compared with the canvas PNGs at the browser's 1280 px width.
 
 ## Not verified / not done

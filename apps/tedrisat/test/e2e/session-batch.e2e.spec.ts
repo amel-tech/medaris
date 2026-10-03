@@ -11,6 +11,7 @@ import {
 } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
+import { asSystemAdmin } from "../helpers/system-admin.helper";
 import {
   createTestApp,
   OTHER_USER_ID,
@@ -60,20 +61,23 @@ const berlinLocalTime = (iso: string) =>
 
 describe("POST /courses/:courseId/sessions/batch (MDRS-109)", () => {
   let app: INestApplication;
+  let adminApp: INestApplication;
   let databaseService: DatabaseService;
   let dbUtils: TestDatabaseUtils;
   let koskId: string;
 
   beforeAll(async () => {
     app = await createTestApp({ authUserId: TEST_USER_ID });
+    adminApp = await createTestApp();
     databaseService = app.get<DatabaseService>(DatabaseService);
     dbUtils = new TestDatabaseUtils(databaseService);
   });
 
   beforeEach(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
-    const kosk = await request(app.getHttpServer())
+    const kosk = await request(adminApp.getHttpServer())
       .post("/kosks")
+      .set("Authorization", asSystemAdmin(TEST_USER_ID))
       .send({ name: "Süleymaniye Köşkü" })
       .expect(201);
     koskId = kosk.body.id;
@@ -82,6 +86,7 @@ describe("POST /courses/:courseId/sessions/batch (MDRS-109)", () => {
   afterAll(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
     await app.close();
+    await adminApp.close();
   });
 
   /** A course with week 1 (one video lesson) and week 2 (none yet). */

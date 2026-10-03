@@ -769,15 +769,16 @@ export class CourseService {
     if (existing.status === EnrollmentStatus.COMPLETED) {
       throw new EnrollmentStateError(courseId, existing.status);
     }
+    // Conditional on the status read: a revoked seat is the one that may be
+    // approved back, and only while it is still revoked.
     const updated = await this.courseRepo.setEnrollmentStatus(
       studentId,
       courseId,
-      EnrollmentStatus.ENROLLED
+      EnrollmentStatus.ENROLLED,
+      existing.status
     );
-    if (!updated) {
-      throw new EnrollmentNotFoundError(courseId);
-    }
-    return updated;
+    if (updated) return updated;
+    return this.lostRace(courseId, studentId, EnrollmentStatus.ENROLLED);
   }
 
   async rejectEnrollment(
@@ -790,7 +791,15 @@ export class CourseService {
     if (!existing || existing.status !== EnrollmentStatus.PENDING) {
       throw new EnrollmentNotFoundError(courseId);
     }
-    return this.courseRepo.deleteEnrollment(studentId, courseId);
+    // Only while it is still pending: an approval that landed since the read
+    // makes it a seat, which is not rejected.
+    const removed = await this.courseRepo.deleteEnrollment(
+      studentId,
+      courseId,
+      EnrollmentStatus.PENDING
+    );
+    if (!removed) throw new EnrollmentNotFoundError(courseId);
+    return true;
   }
 
   /**
@@ -813,11 +822,16 @@ export class CourseService {
       throw new EnrollmentStateError(courseId, existing.status);
     }
     if (existing.status === status) return existing;
-    return (await this.courseRepo.setEnrollmentStatus(
+    // Only while it is still in the status read: a removal that landed since
+    // turned it REVOKED, and completing or reopening must not undo that.
+    const updated = await this.courseRepo.setEnrollmentStatus(
       studentId,
       courseId,
-      status
-    )) as IEnrollment;
+      status,
+      existing.status
+    );
+    if (updated) return updated;
+    return this.lostRace(courseId, studentId, status);
   }
 
   /**
@@ -870,7 +884,15 @@ export class CourseService {
     ) {
       throw new EnrollmentStateError(courseId, existing.status);
     }
-    return this.courseRepo.deleteEnrollment(userId, courseId);
+    // Only while it is still in the status read: a removal that landed since
+    // turned it REVOKED, and that record is not the talebe's to delete.
+    const left = await this.courseRepo.deleteEnrollment(
+      userId,
+      courseId,
+      existing.status
+    );
+    if (!left) await this.lostRace(courseId, userId);
+    return true;
   }
 
   /**
@@ -920,12 +942,32 @@ export class CourseService {
     if (status !== undefined && status !== existing.status) {
       throw new EnrollmentStatusForbiddenError(courseId);
     }
+    // Only while it is still in the status read: a removal that landed since
+    // turned it REVOKED, and a progress write must not turn it back.
     const updated = await this.courseRepo.updateProgress(
       userId,
       courseId,
       progress,
       existing.status
     );
-    return updated as IEnrollment;
+    return updated ?? (await this.lostRace(courseId, userId));
+  }
+
+  /**
+   * A write conditional on the status that was read changed nothing: the
+   * enrollment moved on, or went, between the read and the write. Says what it
+   * is now. When it already is `settledAt` (another approval or completion of
+   * the same kind got there first) that row is the answer, as it is when the
+   * action is repeated on an enrollment already there.
+   */
+  private async lostRace(
+    courseId: string,
+    userId: string,
+    settledAt?: EnrollmentStatus
+  ): Promise<IEnrollment> {
+    const now = await this.courseRepo.findEnrollment(userId, courseId);
+    if (!now) throw new EnrollmentNotFoundError(courseId);
+    if (settledAt !== undefined && now.status === settledAt) return now;
+    throw new EnrollmentStateError(courseId, now.status);
   }
 }
