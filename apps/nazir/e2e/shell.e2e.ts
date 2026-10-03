@@ -63,14 +63,21 @@ const DERS_ITEMS = [
 ];
 
 /** The menu's item names in order, without the number a badge adds. */
-const itemNames = async (page: Page, scope = "aside") =>
-  (
-    await page
-      .locator(scope)
-      .getByRole("navigation", { name: "Ana menü" })
-      .getByRole("link")
-      .allInnerTexts()
-  ).map((text) => text.replace(/\s*\d+[\s\S]*$/, "").trim());
+const itemNames = async (page: Page, scope = "aside") => {
+  const links = page
+    .locator(scope)
+    .getByRole("navigation", { name: "Ana menü" })
+    .getByRole("link");
+  // a client-side move shows the loading state first, with no menu in it
+  await expect(links.first()).toBeVisible();
+  return (await links.allInnerTexts()).map((text) =>
+    text.replace(/\s*\d+[\s\S]*$/, "").trim()
+  );
+};
+
+/** Alerts the page draws; Next's own route announcer is a role=alert too and is not one. */
+const alerts = (page: Page) =>
+  page.locator("[role=alert]:not(#__next-route-announcer__)");
 
 test("nazir/03 — the closed picker names the scope, and opening it lists only the person's medrese and courses with the current one checked", async ({
   as,
@@ -98,7 +105,12 @@ test("nazir/03 — the closed picker names the scope, and opening it lists only 
   ).toHaveAttribute("aria-current", "true");
   await expect(
     rows.filter({ hasText: fixture?.first.title ?? "" })
-  ).toContainText(`Müderris · dersin imamı · ${fixture?.first.koskName}`);
+  ).toContainText(
+    new RegExp(
+      // the "·" is a separate, aria-hidden span, spaced by CSS, not by text
+      `Müderris\\s*·\\s*dersin imamı\\s*·\\s*${fixture?.first.koskName}`
+    )
+  );
 
   // Esc closes it and the focus returns to the picker.
   await page.keyboard.press("Escape");
@@ -293,7 +305,7 @@ test("a medrese nazırı gets the shell and no error where the role matrix refus
   await expect(
     page.locator("aside").getByRole("link", { name: /^Dersler/ })
   ).not.toContainText(/\d/);
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(alerts(page)).toHaveCount(0);
 });
 
 test("a ders nazırı gets the course's shell and no error where the role matrix refuses a count (open owner decision)", async ({
@@ -304,5 +316,5 @@ test("a ders nazırı gets the course's shell and no error where the role matrix
   await page.setViewportSize(desktop);
   await page.goto(`/ders/${fixture?.first.id}`);
   expect(await itemNames(page)).toEqual(DERS_ITEMS);
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(alerts(page)).toHaveCount(0);
 });

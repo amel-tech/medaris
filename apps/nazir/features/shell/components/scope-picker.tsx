@@ -104,6 +104,7 @@ export function ScopePicker({ current, options, labels }: ScopePickerProps) {
         <Menu.Positioner sideOffset={4} align="start" className="z-70">
           <Menu.Popup
             aria-label={labels.menu}
+            aria-labelledby={undefined}
             className="mds-popup max-inline-[min(26rem,90vw)] min-inline-[min(22rem,90vw)]"
           >
             {groups.map((group) => (
@@ -115,7 +116,7 @@ export function ScopePicker({ current, options, labels }: ScopePickerProps) {
                   <Menu.LinkItem
                     key={option.key}
                     href={option.href}
-                    className="mds-option gap-3 py-2 aria-[current=true]:bg-brand-subtle"
+                    className="mds-option gap-3 py-2 text-inherit no-underline aria-[current=true]:bg-brand-subtle"
                     aria-current={
                       option.key === current.key ? "true" : undefined
                     }
