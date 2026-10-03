@@ -149,6 +149,14 @@ export class ManagedKoskDecksResponse {
 
   @ApiProperty({ type: [DeckProposalResponse] })
   proposals!: DeckProposalResponse[];
+
+  @ApiProperty({ description: "Every shown deck of the köşk, not the page" })
+  decksTotal!: number;
+
+  @ApiProperty({
+    description: "Every proposal nobody has answered, not the page",
+  })
+  proposalsTotal!: number;
 }
 
 export class CreateKoskDeckDto {

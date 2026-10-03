@@ -188,6 +188,49 @@ describe("Deck review (e2e)", () => {
       });
     });
 
+    it("reads the requests a page at a time and counts every one, not the page", async () => {
+      await db()
+        .insert(decks)
+        .values(
+          [1, 2].map((n) => ({
+            authorId: OWNER_ID,
+            title: `Bekleyen ${n}`,
+            publishStatus: DeckPublishStatus.PENDING,
+            publishRequestedAt: new Date(`2026-09-30T0${n}:00:00Z`),
+          }))
+        );
+      const read = (query: string) =>
+        http()
+          .get(`/nizam/deck-publish-requests?${query}`)
+          .set("Authorization", auth(ADMIN_ID))
+          .expect(200);
+
+      const first = await read("status=PENDING&limit=2&page=1");
+      const second = await read("status=PENDING&limit=2&page=2");
+      expect(first.body.items).toHaveLength(2);
+      expect(second.body.items).toHaveLength(1);
+      expect(first.body.pendingCount).toBe(3);
+      expect(second.body.pendingCount).toBe(3);
+      // Oldest waiting first, and no row on two pages.
+      expect(
+        [...first.body.items, ...second.body.items].map(
+          (r: { title: string }) => r.title
+        )
+      ).toEqual(["Mehmûz fiiller", "Bekleyen 1", "Bekleyen 2"]);
+
+      // A page past the end is empty, and the tab still counts what it holds.
+      const past = await read("status=DECIDED&limit=1&page=2");
+      expect(past.body.items).toEqual([]);
+      expect(past.body.decidedCount).toBe(1);
+
+      // The limit is held to 50, and what is not a number is a 400.
+      await read("limit=1000");
+      await http()
+        .get("/nizam/deck-publish-requests?limit=many")
+        .set("Authorization", auth(ADMIN_ID))
+        .expect(400);
+    });
+
     it("refuses everyone but the başnazım", async () => {
       await http()
         .get("/nizam/deck-publish-requests")
@@ -354,6 +397,7 @@ describe("Deck review (e2e)", () => {
       expect(res.body.decks.map((d: { title: string }) => d.title)).toEqual([
         "Sarfın temel kelimeleri",
       ]);
+      expect(res.body).toMatchObject({ decksTotal: 1, proposalsTotal: 1 });
       expect(res.body.proposals).toHaveLength(1);
       expect(res.body.proposals[0]).toMatchObject({
         title: "İ'lâl kaideleri",
@@ -369,6 +413,55 @@ describe("Deck review (e2e)", () => {
         .get(`/kosks/${koskA}/decks/manage`)
         .set("Authorization", auth(ADMIN_ID))
         .expect(200);
+    });
+
+    it("reads the decks and the proposals a page at a time, with both totals", async () => {
+      for (const n of [1, 2, 3]) {
+        await propose(MUDERRIS_ID, { title: `Öneri ${n}` }).expect(201);
+      }
+      await db()
+        .insert(decks)
+        .values(
+          [1, 2, 3].map((n) => ({
+            authorId: NAZIM_A_ID,
+            koskId: koskA,
+            title: `Deste ${n}`,
+            updatedAt: new Date(`2026-09-2${n}T10:00:00Z`),
+          }))
+        );
+      // Hidden decks are no part of the total.
+      await db().insert(decks).values({
+        authorId: NAZIM_A_ID,
+        koskId: koskA,
+        title: "Gizli",
+        archivedAt: new Date(),
+      });
+      const read = (query: string) =>
+        http()
+          .get(`/kosks/${koskA}/decks/manage?${query}`)
+          .set("Authorization", auth(NAZIM_A_ID))
+          .expect(200);
+
+      const first = await read("limit=2&page=1");
+      const second = await read("limit=2&page=2");
+      expect(first.body).toMatchObject({ decksTotal: 3, proposalsTotal: 3 });
+      expect(second.body).toMatchObject({ decksTotal: 3, proposalsTotal: 3 });
+      const titles = (rows: { title: string }[]) => rows.map((r) => r.title);
+      // Last changed first; oldest proposal first; no row on two pages.
+      expect([
+        ...titles(first.body.decks),
+        ...titles(second.body.decks),
+      ]).toEqual(["Deste 3", "Deste 2", "Deste 1"]);
+      expect([
+        ...titles(first.body.proposals),
+        ...titles(second.body.proposals),
+      ]).toEqual(["Öneri 1", "Öneri 2", "Öneri 3"]);
+      expect(second.body.decks).toHaveLength(1);
+      expect(second.body.proposals).toHaveLength(1);
+      const past = await read("limit=2&page=3");
+      expect(past.body.decks).toEqual([]);
+      expect(past.body.proposals).toEqual([]);
+      expect(past.body).toMatchObject({ decksTotal: 3, proposalsTotal: 3 });
     });
 
     it("lets only a müderris of the köşk propose", async () => {

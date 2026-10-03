@@ -2873,6 +2873,7 @@
     },
     "loadFailedTitle": "Requests could not be read",
     "loadFailed": "The deck publish requests cannot be fetched right now. Try again in a moment.",
+    "loadMore": "Show more",
     "retry": "Try again",
     "cardsFailed": "The cards could not be read.",
     "noCards": "This deck has no cards yet.",
@@ -3003,6 +3004,7 @@
       "forbidden": "You may not do this."
     },
     "introNoName": "Köşk decks are open to the students enrolled in any course of the köşk.",
+    "loadMore": "Show more",
     "retry": "Try again"
   },
   "KoskDeckForm": {

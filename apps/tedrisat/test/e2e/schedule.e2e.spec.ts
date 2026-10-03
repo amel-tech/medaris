@@ -1,3 +1,4 @@
+import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
@@ -10,6 +11,7 @@ import {
   COURSE_TREE_TABLES,
   TestDatabaseUtils,
 } from "../helpers/test-database.helper";
+import { bearerFor } from "../helpers/test-keycloak.helper";
 
 /**
  * MDRS-163: `GET /sessions?from&to` (Programım) and `GET /me/upcoming-lessons`
@@ -58,20 +60,31 @@ const payload = (
 describe("schedule (e2e)", () => {
   let app: INestApplication;
   let talebe: INestApplication;
+  let adminApp: INestApplication;
   let dbUtils: TestDatabaseUtils;
   let koskId: string;
 
   beforeAll(async () => {
     app = await createTestApp({ authUserId: TEST_USER_ID });
     talebe = await createTestApp({ authUserId: OTHER_USER_ID });
+    adminApp = await createTestApp();
     dbUtils = new TestDatabaseUtils(app.get(DatabaseService));
   });
 
   beforeEach(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
+    // Opening a köşk is SYSTEM_ADMIN only (2026-10-02); signed with
+    // TEST_USER_ID's own `sub`, the köşk is still that user's to manage.
     koskId = (
-      await request(app.getHttpServer())
+      await request(adminApp.getHttpServer())
         .post("/kosks")
+        .set(
+          "Authorization",
+          bearerFor({
+            sub: TEST_USER_ID,
+            claims: { realm_access: { roles: [ROLES.SYSTEM_ADMIN] } },
+          })
+        )
         .send({ name: "Nûruosmaniye Köşkü" })
         .expect(201)
     ).body.id;
@@ -81,6 +94,7 @@ describe("schedule (e2e)", () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
     await app.close();
     await talebe.close();
+    await adminApp.close();
   });
 
   const createCourse = async (

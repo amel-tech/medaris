@@ -46,6 +46,18 @@ export interface ManagedKoskDecksResponse {
      * @memberof ManagedKoskDecksResponse
      */
     proposals: Array<DeckProposalResponse>;
+    /**
+     * Every shown deck of the köşk, not the page
+     * @type {number}
+     * @memberof ManagedKoskDecksResponse
+     */
+    decksTotal: number;
+    /**
+     * Every proposal nobody has answered, not the page
+     * @type {number}
+     * @memberof ManagedKoskDecksResponse
+     */
+    proposalsTotal: number;
 }
 
 /**
@@ -54,6 +66,8 @@ export interface ManagedKoskDecksResponse {
 export function instanceOfManagedKoskDecksResponse(value: object): value is ManagedKoskDecksResponse {
     if (!('decks' in value) || value['decks'] === undefined) return false;
     if (!('proposals' in value) || value['proposals'] === undefined) return false;
+    if (!('decksTotal' in value) || value['decksTotal'] === undefined) return false;
+    if (!('proposalsTotal' in value) || value['proposalsTotal'] === undefined) return false;
     return true;
 }
 
@@ -69,6 +83,8 @@ export function ManagedKoskDecksResponseFromJSONTyped(json: any, ignoreDiscrimin
         
         'decks': ((json['decks'] as Array<any>).map(ManagedKoskDeckResponseFromJSON)),
         'proposals': ((json['proposals'] as Array<any>).map(DeckProposalResponseFromJSON)),
+        'decksTotal': json['decksTotal'],
+        'proposalsTotal': json['proposalsTotal'],
     };
 }
 
@@ -85,6 +101,8 @@ export function ManagedKoskDecksResponseToJSONTyped(value?: ManagedKoskDecksResp
         
         'decks': ((value['decks'] as Array<any>).map(ManagedKoskDeckResponseToJSON)),
         'proposals': ((value['proposals'] as Array<any>).map(DeckProposalResponseToJSON)),
+        'decksTotal': value['decksTotal'],
+        'proposalsTotal': value['proposalsTotal'],
     };
 }
 

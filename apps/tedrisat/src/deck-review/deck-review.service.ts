@@ -22,7 +22,12 @@ import {
 
 /** How many cards "Örnek kartlar" shows. */
 export const SAMPLE_CARD_COUNT = 3;
-const LIST_LIMIT = 100;
+
+/** One page of a list: the clamped `limit` and the rows before it. */
+export interface IPaging {
+  limit: number;
+  offset: number;
+}
 
 export const PRIVATE_READ_ACTION = "deck.private-read";
 
@@ -60,11 +65,12 @@ export class DeckReviewService {
 
   async listRequests(
     user: AuthenticatedUser,
-    status: "PENDING" | "DECIDED"
+    status: "PENDING" | "DECIDED",
+    paging: IPaging
   ): Promise<{ items: IPublishRequest[]; counts: IRequestCounts }> {
     this.assertChief(user);
     const [items, counts] = await Promise.all([
-      this.repo.listRequests(status, LIST_LIMIT),
+      this.repo.listRequests(status, paging.limit, paging.offset),
       this.repo.countRequests(),
     ]);
     return { items, counts };
@@ -150,14 +156,22 @@ export class DeckReviewService {
 
   async koskDecks(
     user: AuthenticatedUser,
-    koskId: string
-  ): Promise<{ decks: IKoskDeck[]; proposals: IDeckProposal[] }> {
+    koskId: string,
+    paging: IPaging
+  ): Promise<{
+    decks: IKoskDeck[];
+    proposals: IDeckProposal[];
+    decksTotal: number;
+    proposalsTotal: number;
+  }> {
     await this.assertKoskNazim(user, koskId);
-    const [decks, proposals] = await Promise.all([
-      this.repo.listKoskDecks(koskId),
-      this.repo.listPendingProposals(koskId),
+    const [decks, proposals, decksTotal, proposalsTotal] = await Promise.all([
+      this.repo.listKoskDecks(koskId, paging.limit, paging.offset),
+      this.repo.listPendingProposals(koskId, paging.limit, paging.offset),
+      this.repo.countKoskDecks(koskId),
+      this.repo.countPendingProposals(koskId),
     ]);
-    return { decks, proposals };
+    return { decks, proposals, decksTotal, proposalsTotal };
   }
 
   async createKoskDeck(

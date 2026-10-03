@@ -8,6 +8,7 @@ import {
   roleAssignments,
 } from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
+import { asSystemAdmin } from "../helpers/system-admin.helper";
 import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
 import {
   COURSE_TREE_TABLES,
@@ -50,6 +51,7 @@ const payload = (extra: Record<string, unknown> = {}) => ({
 
 describe("course müderris list, imam and session cancellation (e2e)", () => {
   let app: INestApplication;
+  let adminApp: INestApplication;
   let databaseService: DatabaseService;
   let dbUtils: TestDatabaseUtils;
   let koskId: string;
@@ -87,6 +89,7 @@ describe("course müderris list, imam and session cancellation (e2e)", () => {
 
   beforeAll(async () => {
     app = await createTestApp({ authUserId: TEST_USER_ID });
+    adminApp = await createTestApp();
     databaseService = app.get<DatabaseService>(DatabaseService);
     dbUtils = new TestDatabaseUtils(databaseService);
   });
@@ -96,8 +99,11 @@ describe("course müderris list, imam and session cancellation (e2e)", () => {
     await databaseService.db
       .insert(users)
       .values([TEST_USER_ID, AHMED, HASAN, ZEYD].map((id) => ({ id })));
-    const kosk = await http()
+    // Opening a köşk is SYSTEM_ADMIN only (2026-10-02). The admin signs with
+    // TEST_USER_ID's own `sub`, so every request below runs as that manager.
+    const kosk = await request(adminApp.getHttpServer())
       .post("/kosks")
+      .set("Authorization", asSystemAdmin(TEST_USER_ID))
       .send({ name: "Süleymaniye Köşkü" })
       .expect(201);
     koskId = kosk.body.id;
@@ -106,6 +112,7 @@ describe("course müderris list, imam and session cancellation (e2e)", () => {
   afterAll(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES, "users");
     await app.close();
+    await adminApp.close();
   });
 
   describe("PUT /courses/:id/muderris", () => {

@@ -2,9 +2,13 @@ import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { and, eq } from "drizzle-orm";
 import request from "supertest";
+import { CourseRepository } from "../../src/course/course.repository";
+import { CourseService } from "../../src/course/course.service";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { LessonType } from "../../src/course/domain/lesson-type.enum";
+import { EnrollmentNotFoundError } from "../../src/course/errors/enrollment-not-found.error";
+import { EnrollmentStateError } from "../../src/course/errors/enrollment-state.error";
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
 import {
@@ -429,6 +433,46 @@ describe("Course team (MDRS-105, e2e)", () => {
         .expect(403);
     });
 
+    it("does not let the müderris strip a co-müderris' link by uppercasing the row id", async () => {
+      // The ASSIGN_MUDERRIS check compares ids without case; the save must
+      // match them the same way, or it deletes the row and re-inserts it
+      // without the `userId` the payload left out.
+      const [coMuderris] = await db()
+        .insert(courseMuderris)
+        .values({
+          courseId,
+          userId: NEW_MUDERRIS_ID,
+          name: "Yusuf Efendi",
+          orderIndex: 2,
+        })
+        .returning();
+      const payload = replacePayloadFrom(await loadCourse());
+      payload.muderris = payload.muderris.map((m) =>
+        m.id === coMuderris.id
+          ? { id: coMuderris.id.toUpperCase(), name: m.name }
+          : m
+      );
+
+      await as(MUDERRIS_ID)
+        .put(`/courses/${courseId}`)
+        .send(payload)
+        .expect(200);
+
+      const after = await loadCourse();
+      expect(after.muderris).toEqual([
+        expect.objectContaining({ userId: MUDERRIS_ID }),
+        expect.objectContaining({ userId: null, name: "Ahmed Hilmi" }),
+        expect.objectContaining({
+          id: coMuderris.id,
+          userId: NEW_MUDERRIS_ID,
+          name: "Yusuf Efendi",
+        }),
+      ]);
+      await as(NEW_MUDERRIS_ID)
+        .get(`/courses/${courseId}/enrollments`)
+        .expect(200);
+    });
+
     it("refuses to link an account that has never signed in", async () => {
       const payload = replacePayloadFrom(await loadCourse());
       payload.muderris = [...payload.muderris, { userId: GHOST_ID, name: "?" }];
@@ -748,6 +792,118 @@ describe("Course team (MDRS-105, e2e)", () => {
           .from(auditLog)
           .where(eq(auditLog.action, "enrollment.remove"))
       ).toEqual([]);
+    });
+  });
+
+  /**
+   * A write that follows a read of the enrollment must not undo what landed
+   * in between (MDRS-161). Each test below runs the service call directly and
+   * lets `act` run right after the service has read the enrollment, before it
+   * writes: the first `findEnrollment` hands back what it found, then `act`
+   * happens, exactly the order of two requests that overlap.
+   */
+  describe("an enrollment that changes between the service's read and its write (MDRS-161)", () => {
+    const duringTheWrite = async <T>(
+      act: () => Promise<unknown>,
+      call: () => Promise<T>
+    ): Promise<T> => {
+      const repo = app.get(CourseRepository);
+      const read = repo.findEnrollment.bind(repo);
+      const spy = vi
+        .spyOn(repo, "findEnrollment")
+        .mockImplementationOnce(async (userId, id) => {
+          const row = await read(userId, id);
+          await act();
+          return row;
+        });
+      try {
+        return await call();
+      } finally {
+        spy.mockRestore();
+      }
+    };
+    const service = () => app.get(CourseService);
+    const teamRemoves = (userId: string) => () =>
+      service().removeEnrollment(courseId, MUDERRIS_ID, userId, "Gerekçe");
+
+    it("does not turn a seat removed meanwhile back by recording progress", async () => {
+      await expect(
+        duringTheWrite(teamRemoves(TALEBE_ID), () =>
+          service().updateProgress(TALEBE_ID, courseId, 90)
+        )
+      ).rejects.toBeInstanceOf(EnrollmentStateError);
+      expect(await enrollmentOf(TALEBE_ID)).toMatchObject({
+        status: EnrollmentStatus.REVOKED,
+        progress: 40,
+      });
+    });
+
+    it("does not let the talebe leave, and so drop the record of a seat removed meanwhile", async () => {
+      await expect(
+        duringTheWrite(teamRemoves(TALEBE_ID), () =>
+          service().leave(TALEBE_ID, courseId)
+        )
+      ).rejects.toBeInstanceOf(EnrollmentStateError);
+      expect(await enrollmentOf(TALEBE_ID)).toHaveProperty(
+        "status",
+        EnrollmentStatus.REVOKED
+      );
+    });
+
+    it("does not complete a seat removed meanwhile", async () => {
+      await expect(
+        duringTheWrite(teamRemoves(TALEBE_ID), () =>
+          service().setEnrollmentStatus(
+            courseId,
+            TALEBE_ID,
+            EnrollmentStatus.COMPLETED
+          )
+        )
+      ).rejects.toBeInstanceOf(EnrollmentStateError);
+      expect(await enrollmentOf(TALEBE_ID)).toMatchObject({
+        status: EnrollmentStatus.REVOKED,
+        completedAt: null,
+      });
+    });
+
+    it("does not reject a request the team approved meanwhile", async () => {
+      await expect(
+        duringTheWrite(
+          () => service().approveEnrollment(courseId, PENDING_ID),
+          () => service().rejectEnrollment(courseId, PENDING_ID)
+        )
+      ).rejects.toBeInstanceOf(EnrollmentNotFoundError);
+      expect(await enrollmentOf(PENDING_ID)).toHaveProperty(
+        "status",
+        EnrollmentStatus.ENROLLED
+      );
+    });
+
+    it("answers a second approval of the same request like approving an active seat again", async () => {
+      const second = await duringTheWrite(
+        () => service().approveEnrollment(courseId, PENDING_ID),
+        () => service().approveEnrollment(courseId, PENDING_ID)
+      );
+      expect(second.status).toBe(EnrollmentStatus.ENROLLED);
+    });
+
+    it("still approves a revoked seat back in, while it is revoked", async () => {
+      await teamRemoves(TALEBE_ID)();
+      const back = await service().approveEnrollment(courseId, TALEBE_ID);
+      expect(back).toMatchObject({
+        status: EnrollmentStatus.ENROLLED,
+        progress: 40,
+      });
+    });
+
+    it("says the enrollment is gone when it was withdrawn meanwhile", async () => {
+      await expect(
+        duringTheWrite(
+          () => service().withdraw(PENDING_ID, courseId),
+          () => service().approveEnrollment(courseId, PENDING_ID)
+        )
+      ).rejects.toBeInstanceOf(EnrollmentNotFoundError);
+      expect(await enrollmentOf(PENDING_ID)).toBeNull();
     });
   });
 

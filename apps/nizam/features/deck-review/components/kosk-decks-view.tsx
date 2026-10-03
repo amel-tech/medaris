@@ -14,12 +14,18 @@ import { Icon } from "@medaris/ui/mds/icon";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useState } from "react";
-import { hideKoskDeck, rejectDeckProposal } from "../actions";
+import {
+  hideKoskDeck,
+  loadManagedKoskDecks,
+  rejectDeckProposal,
+} from "../actions";
 import {
   deckErrorKey,
   deckFailureKey,
   isGone,
+  mergeById,
   newDeckHref,
+  nextPage,
   shortDate,
   shortDateTime,
 } from "../present";
@@ -52,6 +58,12 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
   const [proposals, setProposals] = useState<DeckProposalResponse[]>(
     initial?.proposals ?? []
   );
+  // Every deck and every waiting proposal, not the page: more are left while
+  // fewer are shown.
+  const [decksTotal, setDecksTotal] = useState(initial?.decksTotal ?? 0);
+  const [proposalsTotal, setProposalsTotal] = useState(
+    initial?.proposalsTotal ?? 0
+  );
   // router.refresh() ("Yeniden dene") hands this component a new `initial`;
   // useState only reads its argument on the first render, so adopt the fresh
   // server data here, during render, when the prop identity changes.
@@ -60,7 +72,12 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
     setSeen(initial);
     setDecks(initial?.decks ?? []);
     setProposals(initial?.proposals ?? []);
+    setDecksTotal(initial?.decksTotal ?? 0);
+    setProposalsTotal(initial?.proposalsTotal ?? 0);
   }
+  const [loadingMore, setLoadingMore] = useState<"decks" | "proposals" | null>(
+    null
+  );
   const [refusing, setRefusing] = useState<DeckProposalResponse | null>(null);
   const [hiding, setHiding] = useState<ManagedKoskDeckResponse | null>(null);
   const [busy, setBusy] = useState(false);
@@ -71,6 +88,47 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
       duration: Number.POSITIVE_INFINITY,
     });
 
+  /** "Daha fazla göster": the next page of one list, added below what is shown. */
+  const loadMore = async (list: "decks" | "proposals") => {
+    setLoadingMore(list);
+    let result: Awaited<ReturnType<typeof loadManagedKoskDecks>> | null = null;
+    try {
+      result = await loadManagedKoskDecks(
+        koskId,
+        nextPage(list === "decks" ? decks.length : proposals.length)
+      );
+    } catch {
+      result = null;
+    }
+    setLoadingMore(null);
+    if (!result?.success) {
+      toast.error(t("loadFailedTitle"), {
+        description: t("loadFailed"),
+        duration: Number.POSITIVE_INFINITY,
+      });
+      return;
+    }
+    // One read cuts both lists by the same page; only the asked one is taken.
+    const { data } = result;
+    if (list === "decks") {
+      setDecks((shown) => mergeById(shown, data.decks));
+    } else {
+      setProposals((shown) => mergeById(shown, data.proposals));
+    }
+    setDecksTotal(data.decksTotal);
+    setProposalsTotal(data.proposalsTotal);
+  };
+
+  const dropProposal = (id: string) => {
+    setProposals((list) => list.filter((p) => p.id !== id));
+    setProposalsTotal((n) => Math.max(0, n - 1));
+  };
+
+  const dropDeck = (id: string) => {
+    setDecks((list) => list.filter((d) => d.id !== id));
+    setDecksTotal((n) => Math.max(0, n - 1));
+  };
+
   const refuse = async (reason: string): Promise<boolean> => {
     if (!refusing) return false;
     const target = refusing;
@@ -78,12 +136,12 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
     if (!result.success) {
       failure(result.errorBody);
       if (isGone(result.errorBody)) {
-        setProposals((list) => list.filter((p) => p.id !== target.id));
+        dropProposal(target.id);
         return true;
       }
       return false;
     }
-    setProposals((list) => list.filter((p) => p.id !== target.id));
+    dropProposal(target.id);
     toast.success(t("proposalRefused"), {
       description: t("proposalRefusedBody", { title: target.title }),
     });
@@ -99,12 +157,12 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
     if (!result.success) {
       failure(result.errorBody);
       if (deckErrorKey(result.errorBody) === "errors.deckGone") {
-        setDecks((list) => list.filter((d) => d.id !== target.id));
+        dropDeck(target.id);
         setHiding(null);
       }
       return;
     }
-    setDecks((list) => list.filter((d) => d.id !== target.id));
+    dropDeck(target.id);
     setHiding(null);
     toast.success(t("hidden"), {
       description: t("hiddenBody", { title: target.title }),
@@ -220,7 +278,7 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
               {t("proposalsHeading")}
             </h2>
             <p className="mds-caption" data-testid="proposals-count">
-              {t("proposalsWaiting", { count: proposals.length })}
+              {t("proposalsWaiting", { count: proposalsTotal })}
             </p>
           </div>
           <div className="grid gap-grid md:grid-cols-2">
@@ -265,6 +323,16 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
               </Card>
             ))}
           </div>
+          {proposals.length < proposalsTotal ? (
+            <Button
+              variant="outline"
+              loading={loadingMore === "proposals"}
+              onClick={() => void loadMore("proposals")}
+              data-testid="more-proposals"
+            >
+              {t("loadMore")}
+            </Button>
+          ) : null}
           <p className="mds-caption">{t("proposalsNote")}</p>
         </section>
       ) : null}
@@ -279,7 +347,7 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
               {t("decksHeading")}
             </h2>
             <p className="mds-caption" data-testid="decks-count">
-              {t("decksCount", { count: decks.length })}
+              {t("decksCount", { count: decksTotal })}
             </p>
           </div>
           <Table
@@ -290,6 +358,16 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
             empty={t("empty")}
             responsive="stack"
           />
+          {decks.length < decksTotal ? (
+            <Button
+              variant="outline"
+              loading={loadingMore === "decks"}
+              onClick={() => void loadMore("decks")}
+              data-testid="more-decks"
+            >
+              {t("loadMore")}
+            </Button>
+          ) : null}
         </section>
       )}
 

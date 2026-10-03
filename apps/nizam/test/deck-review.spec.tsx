@@ -12,6 +12,7 @@ import { KoskDeckForm } from "~/features/deck-review/components/kosk-deck-form";
 import { KoskDecksView } from "~/features/deck-review/components/kosk-decks-view";
 import { RejectDialog } from "~/features/deck-review/components/reject-dialog";
 import {
+  countsAfterLeaving,
   deckErrorKey,
   deckFailureKey,
   deckPayload,
@@ -19,7 +20,9 @@ import {
   formFromProposal,
   isBlank,
   isGone,
+  mergeById,
   newDeckHref,
+  nextPage,
   previewKey,
   shortDate,
   shortDateTime,
@@ -131,6 +134,40 @@ describe("answers and dates", () => {
   });
 });
 
+describe("paging and the tab counts", () => {
+  it("asks for the first page that holds a row not loaded yet", () => {
+    expect(nextPage(0)).toBe(1);
+    expect(nextPage(11)).toBe(1);
+    expect(nextPage(12)).toBe(2);
+    expect(nextPage(23)).toBe(2);
+    expect(nextPage(24)).toBe(3);
+    expect(nextPage(50, 50)).toBe(2);
+  });
+
+  it("adds the page behind the rows shown and keeps a row that is on both once", () => {
+    const row = (id: string) => ({ id });
+    expect(
+      mergeById([row("a"), row("b")], [row("b"), row("c"), row("d")])
+    ).toEqual([row("a"), row("b"), row("c"), row("d")]);
+    expect(mergeById([], [row("a")])).toEqual([row("a")]);
+  });
+
+  it("counts a request this screen answered as answered, and one that is gone as neither", () => {
+    expect(countsAfterLeaving({ pending: 3, decided: 7 }, true)).toEqual({
+      pending: 2,
+      decided: 8,
+    });
+    expect(countsAfterLeaving({ pending: 3, decided: 7 }, false)).toEqual({
+      pending: 2,
+      decided: 7,
+    });
+    expect(countsAfterLeaving({ pending: 0, decided: 7 }, false)).toEqual({
+      pending: 0,
+      decided: 7,
+    });
+  });
+});
+
 describe("DeckRequestsView (nizam 16)", () => {
   const list: DeckPublishRequestListResponse = {
     pendingCount: 2,
@@ -181,6 +218,17 @@ describe("DeckRequestsView (nizam 16)", () => {
     expect(html).toContain("Reddet");
   });
 
+  it("offers Daha fazla göster only while the tab holds more requests than are shown", () => {
+    expect(render(<DeckRequestsView initial={list} />)).not.toContain(
+      "more-requests"
+    );
+    const html = render(
+      <DeckRequestsView initial={{ ...list, pendingCount: 30 }} />
+    );
+    expect(html).toContain("more-requests");
+    expect(html).toContain("Daha fazla göster");
+  });
+
   it("is an empty state when nothing waits", () => {
     const html = render(
       <DeckRequestsView
@@ -211,6 +259,8 @@ describe("KoskDecksView (nizam 30)", () => {
       },
     ],
     proposals: [proposal(), proposal({ id: "p2", title: "Ebniye-i seb’a" })],
+    decksTotal: 1,
+    proposalsTotal: 2,
   };
 
   it("lists the proposals with their count, and the decks with their actions", () => {
@@ -231,6 +281,29 @@ describe("KoskDecksView (nizam 30)", () => {
     expect(html).toContain("1 deste");
   });
 
+  it("counts every deck and proposal, not the page, and offers more of each only while some are left", () => {
+    expect(
+      render(
+        <KoskDecksView
+          koskId="k1"
+          koskName="Nûruosmaniye Köşkü"
+          initial={data}
+        />
+      )
+    ).not.toMatch(/more-decks|more-proposals/);
+    const html = render(
+      <KoskDecksView
+        koskId="k1"
+        koskName="Nûruosmaniye Köşkü"
+        initial={{ ...data, decksTotal: 75, proposalsTotal: 14 }}
+      />
+    );
+    expect(html).toContain("75 deste");
+    expect(html).toContain("14 öneri kararınızı bekliyor");
+    expect(html).toContain("more-decks");
+    expect(html).toContain("more-proposals");
+  });
+
   it("sends Kabul et to the form of that proposal, and Köşk destesi aç to an empty one", () => {
     const html = render(
       <KoskDecksView koskId="k1" koskName="Nûruosmaniye Köşkü" initial={data} />
@@ -245,7 +318,7 @@ describe("KoskDecksView (nizam 30)", () => {
       <KoskDecksView
         koskId="k1"
         koskName="Nûruosmaniye Köşkü"
-        initial={{ ...data, proposals: [] }}
+        initial={{ ...data, proposals: [], proposalsTotal: 0 }}
       />
     );
     expect(html).not.toContain("Müderris önerileri");
@@ -258,7 +331,12 @@ describe("KoskDecksView (nizam 30)", () => {
         <KoskDecksView
           koskId="k1"
           koskName="Nûruosmaniye Köşkü"
-          initial={{ decks: [], proposals: [] }}
+          initial={{
+            decks: [],
+            proposals: [],
+            decksTotal: 0,
+            proposalsTotal: 0,
+          }}
         />
       )
     ).toContain("Bu köşkün henüz destesi yok.");

@@ -2,12 +2,15 @@ import { AuthGuard } from "@medaris/common";
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Get,
   HttpCode,
   HttpStatus,
   Param,
+  ParseIntPipe,
   ParseUUIDPipe,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
@@ -20,6 +23,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
 import { AuthenticatedUserRequest } from "../user/interfaces/authenticated-user-request.interface";
@@ -31,6 +35,7 @@ import {
   ManagedKoskDecksResponse,
   RejectReasonDto,
 } from "./dto/deck-review.dto";
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, pagingOf } from "./paging";
 
 /**
  * A köşk's own decks, the proposals müderrises make for them and Gizle
@@ -47,8 +52,15 @@ export class KoskDecksController {
   @ApiOperation({
     summary: "A köşk's decks and the proposals waiting for an answer",
     description:
-      "The shown köşk decks with their card counts and the müderris proposals nobody has answered. A nazım of the köşk or SYSTEM_ADMIN.",
+      "The shown köşk decks with their card counts and the müderris proposals nobody has answered. `page` and `limit` cut both lists; `decksTotal` and `proposalsTotal` count every one. A nazım of the köşk or SYSTEM_ADMIN.",
     operationId: "getManagedKoskDecks",
+  })
+  @ApiQuery({ name: "page", required: false, type: Number })
+  @ApiQuery({
+    name: "limit",
+    required: false,
+    type: Number,
+    description: `1 to ${MAX_PAGE_SIZE}; default ${DEFAULT_PAGE_SIZE}.`,
   })
   @ApiOkResponse({ type: ManagedKoskDecksResponse })
   @ApiForbiddenResponse()
@@ -56,9 +68,12 @@ export class KoskDecksController {
   @Get("kosks/:id/decks/manage")
   async decks(
     @Req() request: AuthenticatedUserRequest,
-    @Param("id", ParseUUIDPipe) id: string
+    @Param("id", ParseUUIDPipe) id: string,
+    @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query("limit", new DefaultValuePipe(DEFAULT_PAGE_SIZE), ParseIntPipe)
+    limit: number
   ): Promise<ManagedKoskDecksResponse> {
-    return this.review.koskDecks(request.user, id);
+    return this.review.koskDecks(request.user, id, pagingOf(page, limit));
   }
 
   @ApiOperation({

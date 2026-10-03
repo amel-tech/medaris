@@ -365,9 +365,21 @@ describe("Study round, due decks, public cards and followed courses (e2e)", () =
         .insert(kosks)
         .values({ ownerId: AUTHOR_ID, name: "Başka Köşk" })
         .returning();
+      // A followed köşk that is unlisted is in no list, for anyone (MDRS-122).
+      const [unlisted] = await db()
+        .insert(kosks)
+        .values({
+          ownerId: AUTHOR_ID,
+          name: "Bağlantıyla Köşk",
+          isPrivate: true,
+        })
+        .returning();
       await db()
         .insert(koskFollowers)
-        .values({ userId: TALEBE_ID, koskId: followed.id });
+        .values([
+          { userId: TALEBE_ID, koskId: followed.id },
+          { userId: TALEBE_ID, koskId: unlisted.id },
+        ]);
       const make = (
         koskId: string,
         title: string,
@@ -394,6 +406,7 @@ describe("Study round, due decks, public cards and followed courses (e2e)", () =
       await make(followed.id, "Gizli", { archivedAt: new Date() });
       const joined = await make(followed.id, "Zaten kayıtlı");
       await make(unfollowed.id, "Takip edilmeyen");
+      await make(unlisted.id, "Bağlantıyla açılan");
       await db().insert(enrollments).values({
         userId: TALEBE_ID,
         courseId: joined.id,

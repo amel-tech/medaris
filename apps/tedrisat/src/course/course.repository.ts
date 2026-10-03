@@ -444,8 +444,15 @@ export class CourseRepository implements ICourseRepository {
         .select({ id: courseMuderris.id })
         .from(courseMuderris)
         .where(eq(courseMuderris.courseId, id));
+      // Ids are compared lowercased, the way `muderrisListChanged` compares
+      // them before the ASSIGN_MUDERRIS check. Postgres returns uuids in
+      // lowercase and `@IsUUID()` accepts uppercase, so an exact match here
+      // would delete and re-insert a row the check called unchanged — with
+      // every field the payload left out, `userId` included, reset.
       const muderrisKeep = new Set(
-        muderris.map((m) => m.id).filter((x): x is string => Boolean(x))
+        muderris
+          .map((m) => m.id?.toLowerCase())
+          .filter((x): x is string => Boolean(x))
       );
       const muderrisToDelete = existingMuderris
         .filter((e) => !muderrisKeep.has(e.id))
@@ -466,11 +473,12 @@ export class CourseRepository implements ICourseRepository {
           avatarHue: m.avatarHue,
           orderIndex: i,
         };
-        if (m.id && existingMuderrisIds.has(m.id)) {
+        const muderrisId = m.id?.toLowerCase();
+        if (muderrisId && existingMuderrisIds.has(muderrisId)) {
           await tx
             .update(courseMuderris)
             .set(values)
-            .where(eq(courseMuderris.id, m.id));
+            .where(eq(courseMuderris.id, muderrisId));
         } else {
           await tx.insert(courseMuderris).values(values);
         }
@@ -1313,10 +1321,16 @@ export class CourseRepository implements ICourseRepository {
     return rows;
   }
 
+  /**
+   * Moves an enrollment to `status`, but only while it is still in
+   * `expectedStatus`, the one the caller read: null when it is not (or is
+   * gone), so a concurrent removal that turned it REVOKED is not written over.
+   */
   async setEnrollmentStatus(
     userId: string,
     courseId: string,
-    status: EnrollmentStatus
+    status: EnrollmentStatus,
+    expectedStatus: EnrollmentStatus
   ): Promise<IEnrollment | null> {
     return this.db
       .update(enrollments)
@@ -1331,7 +1345,11 @@ export class CourseRepository implements ICourseRepository {
         updatedAt: new Date(),
       })
       .where(
-        and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId))
+        and(
+          eq(enrollments.userId, userId),
+          eq(enrollments.courseId, courseId),
+          eq(enrollments.status, expectedStatus)
+        )
       )
       .returning()
       .then((result) => result[0] || null);
@@ -1601,17 +1619,26 @@ export class CourseRepository implements ICourseRepository {
     });
   }
 
+  /**
+   * Records progress only while the enrollment is still in `expectedStatus`,
+   * the one the caller read: null when it is not (or is gone). The status is
+   * never written here, so a stale write cannot turn a REVOKED seat back.
+   */
   async updateProgress(
     userId: string,
     courseId: string,
     progress: number,
-    status: EnrollmentStatus
+    expectedStatus: EnrollmentStatus
   ): Promise<IEnrollment | null> {
     return this.db
       .update(enrollments)
-      .set({ progress, status, updatedAt: new Date() })
+      .set({ progress, updatedAt: new Date() })
       .where(
-        and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId))
+        and(
+          eq(enrollments.userId, userId),
+          eq(enrollments.courseId, courseId),
+          eq(enrollments.status, expectedStatus)
+        )
       )
       .returning()
       .then((result) => result[0] || null);

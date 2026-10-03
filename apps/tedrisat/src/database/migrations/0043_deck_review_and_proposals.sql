@@ -20,4 +20,5 @@ ALTER TABLE "decks" ADD COLUMN "publish_reject_reason" text;--> statement-breakp
 ALTER TABLE "deck_proposals" ADD CONSTRAINT "deck_proposals_kosk_id_kosks_id_fk" FOREIGN KEY ("kosk_id") REFERENCES "public"."kosks"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "deck_proposals" ADD CONSTRAINT "deck_proposals_course_id_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."courses"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "deck_proposals" ADD CONSTRAINT "deck_proposals_deck_id_decks_id_fk" FOREIGN KEY ("deck_id") REFERENCES "public"."decks"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "deck_proposals_kosk_status_idx" ON "deck_proposals" USING btree ("kosk_id","status");
+CREATE INDEX "deck_proposals_kosk_status_idx" ON "deck_proposals" USING btree ("kosk_id","status");--> statement-breakpoint
+CREATE INDEX "decks_publish_decided_at_idx" ON "decks" USING btree ("publish_decided_at");

@@ -10,6 +10,7 @@ import {
   DeckRequestNotPendingError,
   DeckReviewForbiddenError,
 } from "../../../src/deck-review/errors";
+import { pagingOf } from "../../../src/deck-review/paging";
 import { DeckPublishStatus } from "../../../src/flashcard/domain/deck-publish-status.enum";
 import type { KoskService } from "../../../src/kosk/kosk.service";
 import type { NotificationService } from "../../../src/notification/notification.service";
@@ -18,6 +19,7 @@ const ADMIN = { sub: "a1", realm_access: { roles: ["SYSTEM_ADMIN"] } };
 const NAZIM = { sub: "a2" };
 const KOSK = "b0000000-0000-4000-8000-0000000000aa";
 const DECK = "b0000000-0000-4000-8000-0000000000bb";
+const FIRST_PAGE = { limit: 12, offset: 0 };
 
 const deck = (over: Record<string, unknown> = {}) => ({
   id: DECK,
@@ -58,15 +60,29 @@ describe("DeckReviewService (MDRS-180)", () => {
   describe("publish requests", () => {
     it("are the başnazım's alone", async () => {
       const { service } = serviceWith({});
-      await expect(service.listRequests(NAZIM, "PENDING")).rejects.toThrow(
-        DeckReviewForbiddenError
-      );
+      await expect(
+        service.listRequests(NAZIM, "PENDING", FIRST_PAGE)
+      ).rejects.toThrow(DeckReviewForbiddenError);
       await expect(service.approve(NAZIM, DECK)).rejects.toThrow(
         DeckReviewForbiddenError
       );
       await expect(service.readCards(NAZIM, DECK, false)).rejects.toThrow(
         DeckReviewForbiddenError
       );
+    });
+
+    it("are read a page at a time, with the counts of every request", async () => {
+      const listRequests = vi.fn().mockResolvedValue([]);
+      const { service } = serviceWith({
+        listRequests,
+        countRequests: vi.fn().mockResolvedValue({ pending: 30, decided: 130 }),
+      });
+      const page = await service.listRequests(ADMIN, "DECIDED", {
+        limit: 50,
+        offset: 100,
+      });
+      expect(listRequests).toHaveBeenCalledWith("DECIDED", 50, 100);
+      expect(page.counts).toEqual({ pending: 30, decided: 130 });
     });
 
     it("writes the audit row before it reads the cards", async () => {
@@ -159,16 +175,48 @@ describe("DeckReviewService (MDRS-180)", () => {
       const repo = {
         listKoskDecks: vi.fn().mockResolvedValue([]),
         listPendingProposals: vi.fn().mockResolvedValue([]),
+        countKoskDecks: vi.fn().mockResolvedValue(0),
+        countPendingProposals: vi.fn().mockResolvedValue(0),
+      };
+      const empty = {
+        decks: [],
+        proposals: [],
+        decksTotal: 0,
+        proposalsTotal: 0,
       };
       await expect(
-        serviceWith(repo, { manages: false }).service.koskDecks(NAZIM, KOSK)
+        serviceWith(repo, { manages: false }).service.koskDecks(
+          NAZIM,
+          KOSK,
+          FIRST_PAGE
+        )
       ).rejects.toThrow(DeckReviewForbiddenError);
       await expect(
-        serviceWith(repo, { manages: false }).service.koskDecks(ADMIN, KOSK)
-      ).resolves.toEqual({ decks: [], proposals: [] });
+        serviceWith(repo, { manages: false }).service.koskDecks(
+          ADMIN,
+          KOSK,
+          FIRST_PAGE
+        )
+      ).resolves.toEqual(empty);
       await expect(
-        serviceWith(repo).service.koskDecks(NAZIM, KOSK)
-      ).resolves.toEqual({ decks: [], proposals: [] });
+        serviceWith(repo).service.koskDecks(NAZIM, KOSK, FIRST_PAGE)
+      ).resolves.toEqual(empty);
+    });
+
+    it("are read a page at a time, with the totals of both lists", async () => {
+      const repo = {
+        listKoskDecks: vi.fn().mockResolvedValue([]),
+        listPendingProposals: vi.fn().mockResolvedValue([]),
+        countKoskDecks: vi.fn().mockResolvedValue(75),
+        countPendingProposals: vi.fn().mockResolvedValue(14),
+      };
+      const res = await serviceWith(repo).service.koskDecks(NAZIM, KOSK, {
+        limit: 12,
+        offset: 24,
+      });
+      expect(repo.listKoskDecks).toHaveBeenCalledWith(KOSK, 12, 24);
+      expect(repo.listPendingProposals).toHaveBeenCalledWith(KOSK, 12, 24);
+      expect(res).toMatchObject({ decksTotal: 75, proposalsTotal: 14 });
     });
 
     it("hide only a shown köşk deck", async () => {
@@ -206,5 +254,22 @@ describe("DeckReviewService (MDRS-180)", () => {
         })
       ).rejects.toThrow(DeckReviewForbiddenError);
     });
+  });
+});
+
+describe("pagingOf (the köşk paging shape)", () => {
+  it("starts at the first page and takes 12 rows when nothing else is asked", () => {
+    expect(pagingOf(1, 12)).toEqual({ page: 1, limit: 12, offset: 0 });
+  });
+
+  it("skips the rows of the pages before", () => {
+    expect(pagingOf(3, 12)).toEqual({ page: 3, limit: 12, offset: 24 });
+  });
+
+  it("holds a page below 1 to the first and a limit to 1..50", () => {
+    expect(pagingOf(0, 12).offset).toBe(0);
+    expect(pagingOf(-4, 12).page).toBe(1);
+    expect(pagingOf(1, 0).limit).toBe(1);
+    expect(pagingOf(2, 1000)).toEqual({ page: 2, limit: 50, offset: 50 });
   });
 });
