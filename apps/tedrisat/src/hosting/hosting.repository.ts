@@ -20,7 +20,7 @@ import { MadrasahNotFoundError } from "../madrasah/errors/madrasah-not-found.err
 import type { CoursesAction } from "./dto/hosting-right.dto";
 import { HostingRightNotFoundError } from "./errors/hosting-right-not-found.error";
 
-export type GrantedByRole = "SYSTEM_ADMIN" | "KOSK_NAZIM";
+export type GrantedByRole = "SYSTEM_ADMIN" | "MEDARIS_NAZIM" | "KOSK_NAZIM";
 
 export interface IHostingRight {
   madrasahId: string;
@@ -128,6 +128,7 @@ export class HostingRepository {
           name: people.get(r.grantedBy) ?? null,
           role:
             r.grantedByRole === "SYSTEM_ADMIN" ||
+            r.grantedByRole === "MEDARIS_NAZIM" ||
             r.grantedByRole === "KOSK_NAZIM"
               ? r.grantedByRole
               : null,

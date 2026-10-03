@@ -1025,6 +1025,7 @@
     "unknownPerson": "Adı bilinmiyor",
     "roles": {
       "SYSTEM_ADMIN": "Medaris başnazımı",
+      "MEDARIS_NAZIM": "Medaris nazımı",
       "KOSK_NAZIM": "Köşk nazımı"
     },
     "published": "{count} yayında",

@@ -145,19 +145,37 @@ function blockedInMadrasahCourse(
 }
 
 /**
- * Course-scoped codes that are no course work: finding people, defining groups
- * and the permission to give permissions. Holding only these makes nobody
- * course staff.
+ * The course work that is done on the talebeler: deciding on, removing and
+ * completing enrollments. Whoever holds one of these reads the course's
+ * talebe list (names and e-mails), which is the same work seen from the list.
+ * Nothing else implies it: a grant of `week.hide`, `ban.course` or
+ * `deck.propose_kosk` is no reason to open the roster (review M1).
  */
-const NOT_COURSE_WORK: ReadonlySet<PermissionCode> = new Set([
-  PERMISSIONS.USER_LOOKUP,
-  PERMISSIONS.PERMISSION_GROUP_DEFINE,
-  PERMISSIONS.PERMISSION_GRANT,
+const ROSTER_WORK: ReadonlySet<PermissionCode> = new Set([
+  PERMISSIONS.ENROLLMENT_DECIDE,
+  PERMISSIONS.ENROLLMENT_REMOVE,
+  PERMISSIONS.ENROLLMENT_COMPLETE,
 ]);
 
-const isCourseWork = (code: PermissionCode) =>
-  PERMISSION_META[code].scopes.includes(SCOPE_TYPES.COURSE) &&
-  !NOT_COURSE_WORK.has(code);
+/**
+ * The course work that is done on the course itself and its sessions: editing,
+ * running sessions and their links, reading what is restricted, publishing and
+ * changing its settings. Whoever holds one of these (or any roster work) sees
+ * the course's details and content, which is how an editor edits ("every
+ * editor may also read details"). Unrelated grants do not imply it.
+ */
+const CONTENT_WORK: ReadonlySet<PermissionCode> = new Set([
+  PERMISSIONS.COURSE_EDIT,
+  PERMISSIONS.SESSION_MANAGE,
+  PERMISSIONS.SESSION_LIVE_LINK,
+  PERMISSIONS.SESSION_VIEW_CONTENT,
+  PERMISSIONS.RECORDING_MANAGE,
+  PERMISSIONS.RECORDING_UPLOAD,
+  PERMISSIONS.RECORDING_WATCH_RESTRICTED,
+  PERMISSIONS.COURSE_SETTINGS,
+  PERMISSIONS.COURSE_PUBLISH,
+  PERMISSIONS.COURSE_VIEW_UNPUBLISHED,
+]);
 
 /**
  * What the caller may do on the resource (MDRS-135 §6 and §7), as one pure
@@ -214,11 +232,17 @@ export function effectivePermissions(
     }
   }
 
-  // Course staff: whoever holds any course work in the course reads its
-  // talebeler and sees the content ("bu ayrı bir izin değildir", tedris/43).
-  if (facts.entity === ENTITIES.COURSE && [...codes].some(isCourseWork)) {
-    codes.add(PERMISSIONS.COURSE_STAFF_READ);
-    codes.add(PERMISSIONS.COURSE_VIEW_DETAILS);
+  // Course staff by what they do, not by holding "any" course code: the
+  // roster comes with the enrollment work and the details and content with the
+  // work on the course itself ("bu ayrı bir izin değildir", tedris/43). A role's
+  // defaults carry all of it, so a müderris or a köşk nazımı holds both.
+  if (facts.entity === ENTITIES.COURSE) {
+    const held = [...codes];
+    const rosterWork = held.some((code) => ROSTER_WORK.has(code));
+    if (rosterWork) codes.add(PERMISSIONS.COURSE_STAFF_READ);
+    if (rosterWork || held.some((code) => CONTENT_WORK.has(code))) {
+      codes.add(PERMISSIONS.COURSE_VIEW_DETAILS);
+    }
   }
 
   // Derived abilities ride on the permission they are part of.

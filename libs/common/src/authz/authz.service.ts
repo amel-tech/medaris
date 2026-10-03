@@ -98,8 +98,13 @@ export class AuthzService {
     if (granted.length === 0) return false;
 
     // A passive scope is closed to everyone but platform management, and
-    // every open is on the record (nizam/14).
-    if (effective.openedPassive) {
+    // every open of its content is on the record (nizam/14). A page view or
+    // any other code that is no content opens nothing and writes nothing
+    // (review L1: one page view wrote two rows).
+    if (
+      effective.openedPassive &&
+      granted.some((code) => PERMISSION_META[code].content)
+    ) {
       await this.record(user, resource, "scope.passive_open", {
         passiveScope: effective.openedPassive,
         permission: granted[0],

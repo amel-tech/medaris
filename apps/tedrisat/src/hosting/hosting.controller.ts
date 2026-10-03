@@ -3,6 +3,7 @@ import {
   Authz,
   AuthzGuard,
   AuthzService,
+  ENTITIES,
   PERMISSIONS,
 } from "@medaris/common";
 import {
@@ -39,6 +40,7 @@ import {
   GrantHostingRightDto,
   HostingRightResponse,
 } from "./dto/hosting-right.dto";
+import type { GrantedByRole } from "./hosting.repository";
 import { HostingService } from "./hosting.service";
 
 /**
@@ -90,17 +92,35 @@ export class HostingController {
     [PERMISSIONS.KOSK_HOSTING, PERMISSIONS.PLATFORM_HOSTING_GRANT],
     byExistingKosk
   )
-  grant(
+  async grant(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: GrantHostingRightDto
   ): Promise<HostingRightResponse> {
     return this.hosting.grant(id, dto.madrasahId, {
       id: request.user.sub,
-      role: this.authz.isSystemAdmin(request.user)
-        ? "SYSTEM_ADMIN"
-        : "KOSK_NAZIM",
+      role: await this.grantedByRole(request, id),
     });
+  }
+
+  /**
+   * How the caller was entitled to give the right: the başnazım, the köşk's
+   * own nazımı (who holds `kosk.hosting` by role default), or a Medaris nazımı
+   * holding `platform.hosting_grant`, who must not be recorded as the köşk's
+   * nazımı (review L11).
+   */
+  private async grantedByRole(
+    request: AuthorizedRequest,
+    koskId: string
+  ): Promise<GrantedByRole> {
+    if (this.authz.isSystemAdmin(request.user)) return "SYSTEM_ADMIN";
+    return (await this.authz.can(
+      request.user,
+      { entity: ENTITIES.KOSK, id: koskId },
+      PERMISSIONS.KOSK_HOSTING
+    ))
+      ? "KOSK_NAZIM"
+      : "MEDARIS_NAZIM";
   }
 
   @ApiOperation({

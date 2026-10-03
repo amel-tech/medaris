@@ -3,6 +3,11 @@ import { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
 import {
+  ASSIGNED_ROLES,
+  roleAssignments,
+  SCOPE_TYPES,
+} from "../../src/database/schema/role-assignment.schema";
+import {
   createTestApp,
   OTHER_USER_ID,
   TEST_USER_ID,
@@ -184,6 +189,30 @@ describe("schedule (e2e)", () => {
         (s: { title: string }) => s.title
       );
       expect(approved.sort()).toEqual(["Bekleyen", "Benim"]);
+    });
+
+    it("leaves out the sessions of a passive course, whose live link is closed even to its talebe (review M5)", async () => {
+      const course = await createCourse("Müderrissiz kalan", {
+        sessions: [{ title: "Eski celse", at: inHours(30) }],
+      });
+      await enroll(course.id);
+      expect((await list().expect(200)).body).toHaveLength(1);
+
+      // Its only müderris is gone: the course is passive (MDRS-136).
+      await app.get(DatabaseService).db.insert(roleAssignments).values({
+        userId: TEST_USER_ID,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeType: SCOPE_TYPES.COURSE,
+        scopeId: course.id,
+        grantedBy: TEST_USER_ID,
+        revokedAt: new Date(),
+        revokedBy: TEST_USER_ID,
+      });
+      expect((await list().expect(200)).body).toEqual([]);
+      const upcoming = await request(talebe.getHttpServer())
+        .get("/me/upcoming-lessons")
+        .expect(200);
+      expect(upcoming.body).toEqual([]);
     });
 
     it("keeps a cancelled session, marked, with no meeting link", async () => {

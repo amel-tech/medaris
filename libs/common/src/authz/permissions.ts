@@ -98,6 +98,8 @@ export const PERMISSIONS = {
   MADRASAH_STUDENTS_VIEW: "madrasah.students_view",
   MADRASAH_BAN: "madrasah.ban",
   MADRASAH_COURSE_HIDE: "madrasah.course_hide",
+  /** Hiding the whole medrese: the başmüderris's by role default, handed on to no one. */
+  MADRASAH_HIDE: "madrasah.hide",
   MADRASAH_ADMISSION_RULES: "madrasah.admission_rules",
   MADRASAH_APPEAL_OPEN: "madrasah.appeal_open",
   MADRASAH_PERMANENT_BAN_REQUEST: "madrasah.permanent_ban_request",
@@ -249,6 +251,7 @@ export const PERMISSION_META: Record<PermissionCode, IPermissionMeta> = {
   [P.MADRASAH_STUDENTS_VIEW]: listed([MADRASAH]),
   [P.MADRASAH_BAN]: listed([MADRASAH]),
   [P.MADRASAH_COURSE_HIDE]: listed([MADRASAH]),
+  [P.MADRASAH_HIDE]: listed([MADRASAH], { grantable: false, unlisted: true }),
   [P.MADRASAH_ADMISSION_RULES]: listed([MADRASAH]),
   [P.MADRASAH_APPEAL_OPEN]: listed([MADRASAH]),
   [P.MADRASAH_PERMANENT_BAN_REQUEST]: listed([MADRASAH]),

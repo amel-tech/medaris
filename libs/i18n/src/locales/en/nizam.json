@@ -1025,6 +1025,7 @@
     "unknownPerson": "Name unknown",
     "roles": {
       "SYSTEM_ADMIN": "Medaris chief nazım",
+      "MEDARIS_NAZIM": "Medaris nazımı",
       "KOSK_NAZIM": "Köşk nazım"
     },
     "published": "{count} live",

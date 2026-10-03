@@ -465,6 +465,12 @@ export interface ICourseRepository {
   /** Whether `userId` is listed in `course_muderris` for `courseId`. */
   isMuderris(courseId: string, userId: string): Promise<boolean>;
   findTaughtBy(userId: string): Promise<ICourseRef[]>;
+  /**
+   * Whether `userId` holds a role in the course's chain right now: in the
+   * course, its köşk, its medrese or on the platform. An enrolled talebe who
+   * does is not off the record when they read the course (review L3).
+   */
+  holdsRoleOnCourse(userId: string, courseId: string): Promise<boolean>;
   /** One `audit_log` row for a content read by a non-participant (MDRS-103). */
   recordContentRead(entry: {
     actorId: string;

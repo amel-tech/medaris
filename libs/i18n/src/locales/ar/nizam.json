@@ -1025,6 +1025,7 @@
     "unknownPerson": "الاسم غير معروف",
     "roles": {
       "SYSTEM_ADMIN": "كبير ناظري مداريس",
+      "MEDARIS_NAZIM": "ناظر مدارس",
       "KOSK_NAZIM": "ناظر الرواق"
     },
     "published": "{count} منشور",

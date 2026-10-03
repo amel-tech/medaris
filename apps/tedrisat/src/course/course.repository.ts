@@ -37,6 +37,7 @@ import {
 import {
   ASSIGNED_ROLES,
   roleAssignments,
+  SCOPE_TYPES,
 } from "../database/schema/role-assignment.schema";
 import { users } from "../database/schema/user.schema";
 import {
@@ -1490,6 +1491,32 @@ export class CourseRepository implements ICourseRepository {
         )
         .orderBy(courses.title, courses.id)
     );
+  }
+
+  async holdsRoleOnCourse(userId: string, courseId: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: roleAssignments.id })
+      .from(roleAssignments)
+      .where(
+        and(
+          eq(roleAssignments.userId, userId),
+          isHeld(),
+          or(
+            eq(roleAssignments.scopeType, SCOPE_TYPES.PLATFORM),
+            eq(roleAssignments.scopeId, courseId),
+            eq(
+              roleAssignments.scopeId,
+              sql`(select ${courses.koskId} from ${courses} where ${courses.id} = ${courseId})`
+            ),
+            eq(
+              roleAssignments.scopeId,
+              sql`(select ${courses.madrasahId} from ${courses} where ${courses.id} = ${courseId})`
+            )
+          )
+        )
+      )
+      .limit(1);
+    return rows.length > 0;
   }
 
   /**

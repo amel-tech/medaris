@@ -101,11 +101,22 @@ export class KoskController {
     private readonly selfGrant: SelfGrantGuard
   ) {}
 
-  /** Who is changing the managers, for the check under the köşk lock. */
-  private managerActor(request: AuthorizedRequest) {
+  /**
+   * Who is changing the managers, for the check under the köşk lock. The
+   * başnazım and a Medaris nazımı holding "Köşk nazımlarını yönet" are not
+   * managers of the köşk and pass it by right (review M7: the guard let the
+   * second in and the repository then refused them).
+   */
+  private async managerActor(request: AuthorizedRequest, koskId: string) {
     return {
       id: request.user.sub,
-      bypass: this.authz.isSystemAdmin(request.user),
+      bypass:
+        this.authz.isSystemAdmin(request.user) ||
+        (await this.authz.can(
+          request.user,
+          { entity: ENTITIES.KOSK, id: koskId },
+          PERMISSIONS.PLATFORM_KOSK_NAZIM_MANAGE
+        )),
     };
   }
 
@@ -383,7 +394,19 @@ export class KoskController {
     @Param("id", ParseUUIDPipe) id: string,
     @Param("userId", ParseUUIDPipe) userId: string
   ): Promise<KoskResponse> {
-    await this.koskService.addManager(id, userId, this.managerActor(request));
+    // A Medaris nazımı does not make themselves a köşk's nazımı by this route.
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      [userId],
+      { entity: ENTITIES.KOSK, id },
+      { role: ASSIGNED_ROLES.KOSK_NAZIM },
+      "kosk.managers.add"
+    );
+    await this.koskService.addManager(
+      id,
+      userId,
+      await this.managerActor(request, id)
+    );
     return this.koskService.findById(id, request.user.sub);
   }
 
@@ -414,7 +437,7 @@ export class KoskController {
     await this.koskService.removeManager(
       id,
       userId,
-      this.managerActor(request)
+      await this.managerActor(request, id)
     );
     return this.koskService.findById(id, request.user.sub);
   }

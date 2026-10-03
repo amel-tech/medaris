@@ -394,8 +394,11 @@ export class MadrasahController {
   @ApiConflictResponse({ description: "MADRASAH_ALREADY_HIDDEN" })
   @Post(":id/hide")
   @HttpCode(HttpStatus.OK)
+  // `madrasah.hide` is the başmüderris's by role default and no grant carries
+  // it: hiding the whole medrese is not part of "change the settings", which a
+  // nazır can be given (review M3).
   @Authz(
-    [PERMISSIONS.MADRASAH_SETTINGS_EDIT, PERMISSIONS.PLATFORM_MADRASAH_EDIT],
+    [PERMISSIONS.MADRASAH_HIDE, PERMISSIONS.PLATFORM_MADRASAH_EDIT],
     byExistingMadrasah
   )
   async hide(

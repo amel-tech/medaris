@@ -33,7 +33,8 @@ import {
   IUpdateLesson,
 } from "./course.repository.interface";
 import {
-  isCourseParticipant,
+  isCourseMuderris,
+  isEnrolledTalebe,
   withContent,
   withoutContent,
 } from "./domain/course-content";
@@ -203,7 +204,7 @@ export class CourseService {
   async viewDetail(
     id: string,
     user: AuthenticatedUser | null,
-    options: { audit: boolean } = { audit: true }
+    options: { audit: boolean; via?: string } = { audit: true }
   ): Promise<ICourseDetailView> {
     return this.present(await this.getDetail(id, user), user, options);
   }
@@ -217,7 +218,7 @@ export class CourseService {
   async present(
     course: ICourseDetail,
     user: AuthenticatedUser | null,
-    { audit }: { audit: boolean }
+    { audit, via }: { audit: boolean; via?: string }
   ): Promise<ICourseDetailView> {
     if (user === null) return withoutContent(course);
     const mayReadContent = await this.authz.can(
@@ -227,12 +228,13 @@ export class CourseService {
     );
     if (!mayReadContent) return withoutContent(course);
 
-    if (audit && !isCourseParticipant(course, user.sub)) {
+    if (audit && (await this.readIsAudited(course, user))) {
       await this.courseRepo.recordContentRead({
         actorId: user.sub,
         courseId: course.id,
         details: {
           title: course.title,
+          ...(via ? { via } : {}),
           // Who read it: the başnazım through the realm bypass, anyone else
           // through the permission named here (a köşk nazımı's course
           // permissions, a başmüderris's, a grant).
@@ -242,6 +244,23 @@ export class CourseService {
       });
     }
     return withContent(course);
+  }
+
+  /**
+   * Whether this content read goes on the record: everyone but the course's
+   * müderrisler and its enrolled talebe. An enrolled talebe who also holds a
+   * role in the course's chain (a köşk nazımı, a başmüderris, a nazır, the
+   * başnazım who enrolled themselves) is not off the record: enrolling is not
+   * a way out of the audit (review L3).
+   */
+  private async readIsAudited(
+    course: ICourseDetail,
+    user: AuthenticatedUser
+  ): Promise<boolean> {
+    if (isCourseMuderris(course, user.sub)) return false;
+    if (!isEnrolledTalebe(course, user.sub)) return true;
+    if (this.authz.isSystemAdmin(user)) return true;
+    return this.courseRepo.holdsRoleOnCourse(user.sub, course.id);
   }
 
   /**
@@ -367,7 +386,13 @@ export class CourseService {
     courseId: string,
     user: AuthenticatedUser | null
   ): Promise<IRecordingView[]> {
-    const detail = await this.viewDetail(courseId, user, { audit: false });
+    // The recording links are course content: a reader who is neither a
+    // müderris nor an enrolled talebe goes on the record like a page read
+    // (review M6).
+    const detail = await this.viewDetail(courseId, user, {
+      audit: true,
+      via: "recordings",
+    });
     const placed = detail.weeks.flatMap((week) =>
       week.lessons.map((lesson) => ({ week, lesson }))
     );

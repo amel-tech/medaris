@@ -16408,6 +16408,7 @@
             "nullable": true,
             "enum": [
               "SYSTEM_ADMIN",
+              "MEDARIS_NAZIM",
               "KOSK_NAZIM"
             ],
             "description": "How the granter was entitled to grant; null on rights older than MDRS-170"

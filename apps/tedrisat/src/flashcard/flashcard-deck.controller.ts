@@ -4,6 +4,7 @@ import {
   AuthzExempt,
   AuthzGuard,
   AuthzPublic,
+  AuthzService,
   byParam,
   ENTITIES,
   forNew,
@@ -69,7 +70,8 @@ export enum DeckIncludeEnum {}
 export class FlashcardDeckController {
   constructor(
     private readonly deckService: FlashcardDeckService,
-    private readonly summaryService: FlashcardDeckSummaryService
+    private readonly summaryService: FlashcardDeckSummaryService,
+    private readonly authz: AuthzService
   ) {}
 
   // GET Requests
@@ -194,7 +196,15 @@ export class FlashcardDeckController {
     return this.deckService.findReadable(
       deckId,
       request.user?.sub ?? null,
-      include
+      include,
+      {
+        // The başnazım's read of another person's private deck: the guard has
+        // allowed it and written it to the audit log, so the header comes back
+        // too (review L2); every write on it stays refused.
+        adminRead: request.user
+          ? this.authz.isSystemAdmin(request.user)
+          : false,
+      }
     );
   }
 

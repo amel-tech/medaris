@@ -118,7 +118,9 @@ export class ScheduleRepository {
           eq(courses.status, CourseStatus.PUBLISHED),
           inArray(
             courses.id,
-            enrolledCourseIds(this.db, userId, [EnrollmentStatus.ENROLLED])
+            enrolledCourseIds(this.db, userId, [EnrollmentStatus.ENROLLED], {
+              excludePassive: true,
+            })
           ),
           startRule,
           lt(lessons.scheduledAt, to)

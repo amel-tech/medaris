@@ -63,6 +63,14 @@ const auth = (sub: string) =>
 const inSeconds = (n: number) => new Date(Date.now() + n * 1000);
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * "Let through the guard": the handler answered, or the DTO refused an empty
+ * body with 400. A 401, 403, 404 or 5xx is none of those, which `not.toBe(403)`
+ * let pass (review T7).
+ */
+const letThrough = (response: { status: number }) =>
+  expect([200, 201, 400]).toContain(response.status);
+
 describe("The permission engine (MDRS-135, e2e)", () => {
   let app: INestApplication;
   let databaseService: DatabaseService;
@@ -352,9 +360,7 @@ describe("The permission engine (MDRS-135, e2e)", () => {
         { type: SCOPE_TYPES.MADRASAH, id: madrasahId },
         { permission: PERMISSIONS.COURSE_EDIT }
       );
-      expect(
-        (await patch(NAZIR_ID, `/courses/${medreseCourse}`)).status
-      ).not.toBe(403);
+      letThrough(await patch(NAZIR_ID, `/courses/${medreseCourse}`));
       await patch(NAZIR_ID, `/courses/${otherMedreseCourse}`).expect(403);
       await patch(NAZIR_ID, `/courses/${ownCourse}`).expect(403);
     });
@@ -409,34 +415,28 @@ describe("The permission engine (MDRS-135, e2e)", () => {
     it("a başmüderris runs their medrese and its courses, and nothing of another medrese", async () => {
       await get(HEAD_ID, `/madrasahs/${madrasahId}/students`).expect(200);
       await get(HEAD_ID, `/madrasahs/${madrasahId}/settings`).expect(200);
-      expect(
-        (await patch(HEAD_ID, `/courses/${medreseCourse}`)).status
-      ).not.toBe(403);
+      letThrough(await patch(HEAD_ID, `/courses/${medreseCourse}`));
       await get(HEAD_ID, `/madrasahs/${otherMadrasahId}/students`).expect(403);
       await patch(HEAD_ID, `/courses/${otherMedreseCourse}`).expect(403);
       await patch(HEAD_ID, `/courses/${ownCourse}`).expect(403);
     });
 
     it("a köşk nazımı runs the köşk's own course, but not the medrese's work in a medrese course", async () => {
-      expect((await patch(NAZIM_ID, `/courses/${ownCourse}`)).status).not.toBe(
-        403
-      );
+      letThrough(await patch(NAZIM_ID, `/courses/${ownCourse}`));
       // Choosing the müderrisler of a medrese course is the medrese's (owner, 1 October).
       await put(NAZIM_ID, `/courses/${medreseCourse}/muderris`, {
         muderris: [],
       }).expect(403);
       // Their own course: the guard lets the köşk nazımı through.
-      expect(
-        (
-          await put(NAZIM_ID, `/courses/${ownCourse}/muderris`, {
-            muderris: [],
-          })
-        ).status
-      ).not.toBe(403);
-      // And they still hide and read in the medrese's course.
-      expect(
-        (await post(NAZIM_ID, `/courses/${medreseCourse}/hide`)).status
-      ).not.toBe(403);
+      letThrough(
+        await put(NAZIM_ID, `/courses/${ownCourse}/muderris`, {
+          muderris: [],
+        })
+      );
+      // And they still hide and read in the medrese's course. The route is
+      // `/archive`: the answer is the real one, 200, not a 404 that passes a
+      // "not 403" (review T1).
+      await post(NAZIM_ID, `/courses/${medreseCourse}/archive`).expect(200);
     });
 
     it("a köşk nazımı reads a medrese course's content in their köşk, and the read is on the record", async () => {
@@ -460,9 +460,7 @@ describe("The permission engine (MDRS-135, e2e)", () => {
     });
 
     it("a müderris stays in their own course", async () => {
-      expect(
-        (await patch(MUDERRIS_ID, `/courses/${ownCourse}`)).status
-      ).not.toBe(403);
+      letThrough(await patch(MUDERRIS_ID, `/courses/${ownCourse}`));
       await patch(MUDERRIS_ID, `/courses/${medreseCourse}`).expect(403);
       // No audit row for the people who teach it.
       await get(MUDERRIS_ID, `/courses/${ownCourse}`).expect(200);
@@ -494,9 +492,7 @@ describe("The permission engine (MDRS-135, e2e)", () => {
         );
       }
       // What they were given works…
-      expect((await patch(DERS_ID, `/courses/${ownCourse}`)).status).not.toBe(
-        403
-      );
+      letThrough(await patch(DERS_ID, `/courses/${ownCourse}`));
       // …and none of it lets them hand anything on.
       await post(DERS_ID, `/kosks/${koskId}/grants`, {
         userId: NEWCOMER_ID,
@@ -555,9 +551,7 @@ describe("The permission engine (MDRS-135, e2e)", () => {
         { permission: PERMISSIONS.PLATFORM_KOSK_EDIT },
         { grantedBy: ADMIN_ID }
       );
-      expect(
-        (await patch(MEDARIS_ID, `/kosks/${koskId}`, { name: "Yeni" })).status
-      ).not.toBe(403);
+      letThrough(await patch(MEDARIS_ID, `/kosks/${koskId}`, { name: "Yeni" }));
     });
 
     // The ceiling on what a Medaris nazımı may give ("within their authority",
@@ -826,6 +820,150 @@ describe("The permission engine (MDRS-135, e2e)", () => {
     });
   });
 
+  describe("review fixes M1, M3, M6, M7, L1, L2, L3, L11", () => {
+    const platform = { type: SCOPE_TYPES.PLATFORM, id: null } as const;
+    const del = (sub: string, path: string) =>
+      http().delete(path).set("Authorization", auth(sub));
+    const auditRows = (action: string) =>
+      db().select().from(auditLog).where(eq(auditLog.action, action));
+    const medarisNazim = () =>
+      db().insert(roleAssignments).values({
+        userId: MEDARIS_ID,
+        role: ASSIGNED_ROLES.MEDARIS_NAZIM,
+        scopeType: SCOPE_TYPES.PLATFORM,
+        scopeId: null,
+        grantedBy: ADMIN_ID,
+      });
+
+    it("M1: a ders nazırı holding only an unrelated grant does not read the roster; enrollment work opens it", async () => {
+      await grant(
+        DERS_ID,
+        { type: SCOPE_TYPES.COURSE, id: ownCourse },
+        { permission: PERMISSIONS.WEEK_HIDE },
+        { grantedBy: NAZIM_ID }
+      );
+      await get(DERS_ID, `/courses/${ownCourse}/enrollments`).expect(403);
+      await grant(
+        DERS_ID,
+        { type: SCOPE_TYPES.COURSE, id: ownCourse },
+        { permission: PERMISSIONS.ENROLLMENT_DECIDE },
+        { grantedBy: NAZIM_ID }
+      );
+      await get(DERS_ID, `/courses/${ownCourse}/enrollments`).expect(200);
+    });
+
+    it("M3: a nazır given 'change the medrese settings' cannot hide the medrese, its başmüderris can", async () => {
+      await grant(
+        NAZIR_ID,
+        { type: SCOPE_TYPES.MADRASAH, id: madrasahId },
+        { permission: PERMISSIONS.MADRASAH_SETTINGS_EDIT }
+      );
+      await post(NAZIR_ID, `/madrasahs/${madrasahId}/hide`).expect(403);
+      await post(HEAD_ID, `/madrasahs/${madrasahId}/hide`).expect(200);
+    });
+
+    it("M6: a köşk nazımı listing the recordings is on the record, the müderris and the talebe are not", async () => {
+      await get(NAZIM_ID, `/courses/${ownCourse}/recordings`).expect(200);
+      await get(MUDERRIS_ID, `/courses/${ownCourse}/recordings`).expect(200);
+      await get(TALEBE_ID, `/courses/${ownCourse}/recordings`).expect(200);
+      const rows = await auditRows("course.content_read");
+      expect(rows.map((row) => row.actorId)).toEqual([NAZIM_ID]);
+      expect(rows[0].details).toMatchObject({ via: "recordings" });
+    });
+
+    it("M7: a Medaris nazımı with 'manage köşk nazımları' adds and removes a nazım through the köşk's own routes, and not themselves", async () => {
+      await medarisNazim();
+      await grant(
+        MEDARIS_ID,
+        platform,
+        { permission: PERMISSIONS.PLATFORM_KOSK_NAZIM_MANAGE },
+        { grantedBy: ADMIN_ID }
+      );
+      const self = await post(
+        MEDARIS_ID,
+        `/kosks/${koskId}/managers/${MEDARIS_ID}`
+      ).expect(403);
+      expect(self.body.code).toBe("SELF_GRANT_REFUSED");
+      await post(MEDARIS_ID, `/kosks/${koskId}/managers/${NEWCOMER_ID}`).expect(
+        201
+      );
+      await del(MEDARIS_ID, `/kosks/${koskId}/managers/${NEWCOMER_ID}`).expect(
+        200
+      );
+    });
+
+    it("L1: one page view of a passive course by platform management writes one passive-open row, not two", async () => {
+      await medarisNazim();
+      await grant(
+        MEDARIS_ID,
+        platform,
+        { permission: PERMISSIONS.PLATFORM_INACTIVE_SCOPES_MANAGE },
+        { grantedBy: ADMIN_ID }
+      );
+      await db()
+        .update(roleAssignments)
+        .set({ revokedAt: new Date(), revokedBy: NAZIM_ID })
+        .where(
+          and(
+            eq(roleAssignments.scopeId, ownCourse),
+            eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
+          )
+        );
+      await get(MEDARIS_ID, `/courses/${ownCourse}`).expect(200);
+      expect(await auditRows("scope.passive_open")).toHaveLength(1);
+    });
+
+    it("L2: the başnazım reads another person's private deck, header included, on the record; writes stay refused", async () => {
+      const deck = await post(TALEBE_ID, "/flashcard/decks", {
+        title: "Özel deste",
+        isPublic: false,
+      }).expect(201);
+      await get(ADMIN_ID, `/flashcard/decks/${deck.body.id}`).expect(200);
+      const rows = await auditRows("deck.admin_read");
+      expect(rows.map((row) => row.actorId)).toEqual([ADMIN_ID]);
+      await patch(ADMIN_ID, `/flashcard/decks/${deck.body.id}`, {
+        title: "Başka ad",
+      }).expect(403);
+      // Someone else still cannot read it.
+      expect(
+        (await get(NEWCOMER_ID, `/flashcard/decks/${deck.body.id}`)).status
+      ).toBeGreaterThanOrEqual(403);
+    });
+
+    it("L3: a köşk nazımı who enrolled in the course is still on the record when they read it; the talebe is not", async () => {
+      await db().insert(enrollments).values({
+        userId: NAZIM_ID,
+        courseId: ownCourse,
+        status: EnrollmentStatus.ENROLLED,
+      });
+      await get(NAZIM_ID, `/courses/${ownCourse}`).expect(200);
+      await get(TALEBE_ID, `/courses/${ownCourse}`).expect(200);
+      expect(
+        (await auditRows("course.content_read")).map((row) => row.actorId)
+      ).toEqual([NAZIM_ID]);
+    });
+
+    it("L11: a hosting right given by a Medaris nazımı says so, the köşk nazımı's says KOSK_NAZIM", async () => {
+      await medarisNazim();
+      await grant(
+        MEDARIS_ID,
+        platform,
+        { permission: PERMISSIONS.PLATFORM_HOSTING_GRANT },
+        { grantedBy: ADMIN_ID }
+      );
+      const byMedaris = await post(
+        MEDARIS_ID,
+        `/kosks/${koskId}/hosting-rights`,
+        { madrasahId }
+      ).expect(201);
+      expect(byMedaris.body.grantedBy.role).toBe("MEDARIS_NAZIM");
+      const byNazim = await post(NAZIM_ID, `/kosks/${koskId}/hosting-rights`, {
+        madrasahId: otherMadrasahId,
+      }).expect(201);
+      expect(byNazim.body.grantedBy.role).toBe("KOSK_NAZIM");
+    });
+  });
+
   describe("policies and passive scopes against the real database", () => {
     it("a köşk policy closes an ability for the müderris, and a grant from the platform keeps it for one person", async () => {
       const resource = { entity: "course" as const, id: ownCourse };
@@ -905,9 +1043,7 @@ describe("The permission engine (MDRS-135, e2e)", () => {
   describe("the başnazım", () => {
     it("passes every guard, with no role and no grant", async () => {
       await get(ADMIN_ID, `/madrasahs/${madrasahId}/students`).expect(200);
-      expect(
-        (await patch(ADMIN_ID, `/courses/${medreseCourse}`)).status
-      ).not.toBe(403);
+      letThrough(await patch(ADMIN_ID, `/courses/${medreseCourse}`));
     });
   });
 });

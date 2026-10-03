@@ -83,13 +83,26 @@ export function isCourseParticipant(
   course: ICourseDetail,
   userId: string
 ): boolean {
+  return isEnrolledTalebe(course, userId) || isCourseMuderris(course, userId);
+}
+
+/** The caller's own row says ENROLLED or COMPLETED (PENDING is not enrolled). */
+export function isEnrolledTalebe(
+  course: ICourseDetail,
+  userId: string
+): boolean {
   const status = course.enrollment?.status;
-  if (
+  return (
     course.enrollment?.userId === userId &&
     (status === EnrollmentStatus.ENROLLED ||
       status === EnrollmentStatus.COMPLETED)
-  ) {
-    return true;
-  }
+  );
+}
+
+/** One of the course's listed müderrisler. */
+export function isCourseMuderris(
+  course: ICourseDetail,
+  userId: string
+): boolean {
   return course.muderris.some((m) => m.userId === userId);
 }

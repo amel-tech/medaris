@@ -528,7 +528,7 @@ describe("effective permissions: passive scopes and relationships", () => {
     ).toBe(false);
   });
 
-  it("whoever holds any course work in the course also reads its talebeler and content", () => {
+  it("whoever does enrollment work in the course also reads its talebeler and content", () => {
     const codes = held(
       courseFacts({ medrese: true }),
       [role(ASSIGNED_ROLES.MEDRESE_NAZIR, madrasah())],
@@ -588,5 +588,70 @@ describe("ids compare lower-cased (review H1)", () => {
       ),
     ]);
     expect(codes.has(P.COURSE_EDIT)).toBe(false);
+  });
+});
+
+describe("what implies reading the roster and the content (review M1)", () => {
+  const asDersNazir = (...codes: PermissionCode[]) =>
+    held(
+      courseFacts(),
+      [role(ASSIGNED_ROLES.DERS_NAZIR, course())],
+      [grant(course(), codes)]
+    );
+
+  it("a grant unrelated to the talebeler or the course's content opens neither the roster nor the content", () => {
+    for (const code of [
+      P.WEEK_HIDE,
+      P.BAN_COURSE,
+      P.BAN_LIFT_COURSE,
+      P.DECK_MANAGE_COURSE,
+      P.DECK_PROPOSE_KOSK,
+      P.COURSE_NAZIR_ASSIGN,
+    ]) {
+      const codes = asDersNazir(code);
+      expect(codes.has(code), code).toBe(true);
+      expect(codes.has(P.COURSE_STAFF_READ), `${code} staff_read`).toBe(false);
+      expect(codes.has(P.COURSE_VIEW_DETAILS), `${code} details`).toBe(false);
+    }
+  });
+
+  it("enrollment work opens the roster and the details, every other piece of course work only the details", () => {
+    for (const code of [
+      P.ENROLLMENT_DECIDE,
+      P.ENROLLMENT_REMOVE,
+      P.ENROLLMENT_COMPLETE,
+    ]) {
+      const codes = asDersNazir(code);
+      expect(codes.has(P.COURSE_STAFF_READ), code).toBe(true);
+      expect(codes.has(P.COURSE_VIEW_DETAILS), code).toBe(true);
+    }
+    for (const code of [
+      P.COURSE_EDIT,
+      P.SESSION_MANAGE,
+      P.SESSION_LIVE_LINK,
+      P.SESSION_VIEW_CONTENT,
+      P.RECORDING_MANAGE,
+      P.RECORDING_UPLOAD,
+      P.RECORDING_WATCH_RESTRICTED,
+      P.COURSE_SETTINGS,
+      P.COURSE_PUBLISH,
+      P.COURSE_VIEW_UNPUBLISHED,
+    ]) {
+      const codes = asDersNazir(code);
+      expect(codes.has(P.COURSE_VIEW_DETAILS), code).toBe(true);
+      expect(codes.has(P.COURSE_STAFF_READ), code).toBe(false);
+    }
+  });
+
+  it("the roles that hold the course work by default still read both, so course staff see the talebe list (MDRS-203)", () => {
+    for (const [r, scope, medrese] of [
+      [ASSIGNED_ROLES.MUDERRIS, course(), false],
+      [ASSIGNED_ROLES.KOSK_NAZIM, kosk(), false],
+      [ASSIGNED_ROLES.MEDRESE_BASMUDERRIS, madrasah(), true],
+    ] as const) {
+      const codes = held(courseFacts({ medrese }), [role(r, scope)]);
+      expect(codes.has(P.COURSE_STAFF_READ), r).toBe(true);
+      expect(codes.has(P.COURSE_VIEW_DETAILS), r).toBe(true);
+    }
   });
 });
