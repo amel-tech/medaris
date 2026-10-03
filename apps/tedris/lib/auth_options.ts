@@ -2,6 +2,7 @@ import {
   checkKeycloakSession,
   createAccessTokenReader,
   isKeycloakSessionEnded,
+  logRefreshFailure,
   refreshDeadline,
   refreshFailureError,
 } from "@medaris/services/auth";
@@ -55,7 +56,8 @@ const refreshAccessToken = async (token: JWT) => {
 
     const refreshedTokens = await response.json();
 
-    if (!response.ok) throw refreshedTokens;
+    // The status travels with Keycloak's answer so the failure log can name it.
+    if (!response.ok) throw { ...refreshedTokens, status: response.status };
 
     return {
       ...token,
@@ -75,7 +77,7 @@ const refreshAccessToken = async (token: JWT) => {
       ssoCheckedAt: Date.now(),
     };
   } catch (error) {
-    console.log("refreshToken error: ", error);
+    logRefreshFailure(error);
 
     return {
       ...token,
