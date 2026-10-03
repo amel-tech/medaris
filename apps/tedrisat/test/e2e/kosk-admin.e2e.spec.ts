@@ -660,15 +660,13 @@ describe("Köşk administration (e2e)", () => {
       await post("/kosks", body({ managerUserIds: ["x"] })).expect(400);
     });
 
-    it("lets only the başnazım name nazımları", async () => {
+    // Opening a köşk is SYSTEM_ADMIN only (2026-10-02): an ordinary caller is
+    // refused whether or not they name nazımları, and nothing is written.
+    it("refuses an ordinary caller with or without managerUserIds", async () => {
       await post("/kosks", body(), TALEBE).expect(403);
-    });
-
-    it("still lets anyone open a köşk of their own without managerUserIds", async () => {
-      const res = await post("/kosks", { name: "Kendi Köşküm" }, TALEBE).expect(
-        201
-      );
-      expect(res.body.managerIds).toEqual([TALEBE]);
+      await post("/kosks", { name: "Kendi Köşküm" }, TALEBE).expect(403);
+      const rows = await db.select().from(kosks);
+      expect(rows.some((r) => r.name === "Kendi Köşküm")).toBe(false);
     });
   });
 
