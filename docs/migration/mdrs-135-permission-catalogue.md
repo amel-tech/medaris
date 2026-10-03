@@ -107,8 +107,8 @@ prints nothing). The rollback is `src/database/rollbacks/0047_mdrs_135_grant_aut
 
 - A başmüderris gives from the `permission.grant` their role holds (a role default, never a grant), as
   the medrese's authority. The başnazım gives as the platform. A Medaris nazımı holding
-  `platform.madrasah_nazir_grant` gives a medrese nazırı its permissions, as the platform and within
-  their own authority. All three go through `MadrasahPermissionService.authorityOf`, which asks the
+  `platform.madrasah_nazir_grant` gives a medrese nazırı its permissions, as the platform. What
+  "within their own authority" caps that at is an open owner question (see "Open questions"). All three go through `MadrasahPermissionService.authorityOf`, which asks the
   engine. A medrese nazırı, a ders nazırı and a grantee of any kind cannot give.
 - A köşk nazımı's ceiling for ders nazırları is `course.manage_all` opening `COURSE_CATALOG`; the rule
   (`kosk-grants-rules.ts`) is unchanged and its grants now record `authority = kosk`.
@@ -128,9 +128,12 @@ read at three levels (`platform_policies`, `kosks.always_require_approval` /
 policy's level survives that policy and no other (`authorityAbove`: platform over köşk, medrese and
 course; köşk and medrese over course; a köşk and a medrese are not above one another).
 
-The enforcement points that already existed (`CourseService.enroll`, `publicRecordingsAllowed`,
-`PlatformPolicyService.assert*MayChange`) are unchanged; the engine now also answers "may this person
-turn the ability off at all", for the screens and the tests.
+Enforcement points: `CourseService.enroll` and `publicRecordingsAllowed` still read the settings
+themselves and still force approval, or hide the public recording, whatever a course's own flag says.
+`PATCH` and `PUT /courses/:id` now ask the engine (see "The review of 3 October", H3): a switch-off
+of "requires approval" needs `setting.approval_off`, opening a closed course needs
+`setting.course_open`, and a policy that closes either answers 409 `PLATFORM_POLICY_LOCKED` as before.
+`PlatformPolicyService.assertCourseMayChange` is gone; `assertKoskMayChange` stays.
 
 ### Passive scopes (§7)
 
@@ -256,9 +259,22 @@ codes with a sentence: 56 of 75
 
 ## What is NOT done
 
+(The review of 3 October closed most of the earlier list; what is still open is here and under
+"Open questions".)
+
 - **The ban tiers** (`ban-tier.ts`, `BanService`) keep their own rule from the roles held; they are not
-  yet read from `ban.*` / `madrasah.ban` / `platform.ban_*`. The routes' `@Authz` names the catalogue
-  code; the tier decision inside the service is the MDRS-113 one.
+  read from `ban.*` / `madrasah.ban` / `platform.ban_*`. `BanController` has `@UseGuards(AuthGuard)`
+  only, no `@Authz`. What follows from that, measured by the review: a Medaris nazımı or a ders nazırı
+  with no grant bans (`MAY_BAN_ROLES`), a medrese nazırı with no `madrasah.ban` lifts, widens and asks
+  for a permanent ban (`MAY_MODERATE_ROLES`, `MADRASAH_WIDE_ROLES`), a Medaris nazımı lists every ban
+  with its reason, and a granted `ban.course`, `ban.lift_course`, `ban.manage_kosk`, `madrasah.ban`,
+  `madrasah.permanent_ban_request` or `platform.ban_*` changes nothing. Pre-existing on main; left
+  untouched on purpose, see "Open questions" for what has to be decided first.
+- **`GET /users/lookup`** is open to anyone holding any role (`AssignmentRepository.holdsAnyRole`), not
+  to `user.lookup`. A grant-less medrese nazırı, ders nazırı or Medaris nazımı can resolve an e-mail
+  to an account. Also left, for the reason under "Open questions".
+- **Nazır dismissal** (`MadrasahNazirRepository.heldGivenBy`) still leaves out the rows a nazır made for
+  themselves; the self-grant guard stops such a row being written, so there is nothing to list.
 - **`ALWAYS_REQUIRE_APPROVAL`, `RECORDINGS_NEVER_PUBLIC`, `CLOSED_COURSE_REQUIRED` as engine
   decisions**: the three abilities are computed, but the code that enforces each policy on
   enrolment and recordings still reads the settings itself (it did, and still does the same thing).
@@ -351,6 +367,89 @@ Outside the owner's decisions of 1 and 3 October there are four, each forced by 
 4. **`course.hide`** is a new role default of the köşk nazımı so the old `ARCHIVE` row keeps meaning
    exactly "the köşk's nazımı and the başnazım", plus the owner's "köşk nazımı holds hide in a medrese
    course".
+
+## The review of 3 October
+
+An independent adversarial review of this change (read-only; its report is not in the repository)
+found, by its own count, 1 blocker, 4 high, 9 medium, 13 low and 10 test findings (the count is the
+report's; it cannot be reproduced from this repository). What changed, by finding, and the test that
+fails without it (each was checked by putting the old code back):
+
+| Finding | Change | Test |
+| --- | --- | --- |
+| B1, M4: a Medaris nazımı with one platform permission appoints themselves a nazır and gives themselves every permission | `SelfGrantGuard` refuses a caller naming themselves for everyone but SYSTEM_ADMIN and writes `permission.self_grant_refused` to the audit log. The nazır, köşk-nazım, head-müderris, köşk-grant, passive-scope and köşk-manager paths refuse always; naming yourself müderris of a medrese course passes only for someone who already holds every müderris default there (a başmüderris) | `authz-engine.e2e.spec.ts` › "naming yourself into more than you hold"; `self-grant.guard.spec.ts` |
+| H1: an upper-case uuid in the path dropped the resource's own scope from roles, grants and the passive check | ids lower-cased once at the boundary (`AuthzService`, the loader) and compared lower-cased in `effectivePermissions` | `authz-engine.e2e.spec.ts` › "an id spelled in upper case"; `effective-permissions.spec.ts` › "ids compare lower-cased" |
+| H4: what a dismissed Medaris nazımı made for themselves survived | `heldGivenBy` lists those rows and `dismiss` revokes them whatever the answer; an answer owed only for what went to others | `permission-admin.e2e.spec.ts` › "made for themselves" |
+| H3: `course.publish`, `course.settings`, `course.view_unpublished` and the `setting.*` abilities were computed and never asked | `PATCH`/`PUT /courses/:id` ask the engine; a draft shows to a holder of `course.view_unpublished` | `authz-engine.e2e.spec.ts` › "the abilities the engine knows are asked on a course save" |
+| M1: any course code opened the roster and the content | the roster comes with enrollment work (`enrollment.decide/remove/complete`), the details with the work on the course itself; the roles' defaults still carry both | `effective-permissions.spec.ts` › "what implies reading the roster and the content"; `authz-engine.e2e.spec.ts` › "M1" |
+| M3: `madrasah.settings_edit` hid the whole medrese | `madrasah.hide`, an unlisted role default of the başmüderris | "M3" |
+| M5: Programım, the upcoming card and the calendar feed gave the live link of a passive course | `enrolledCourseIds(..., { excludePassive: true })` in the schedule and the feed | `schedule.e2e.spec.ts` › "passive course" |
+| M6: the recordings list was not audited | audited like a page read, `via: "recordings"` | "M6" |
+| M7: `platform.kosk_nazim_manage` passed the guard and the repository then refused it | the köşk's manager routes accept it | "M7" |
+| L1: a page view of a passive course wrote two open rows | `scope.passive_open` only when a content code was among the granted ones | "L1"; `authz.service.spec.ts` |
+| L2: the başnazım's audited read of a private deck returned 403 for the header | the handler honours the audited admin read | "L2" |
+| L3: enrolling removed a staff member from the audit | an enrolled talebe who holds a role in the course's chain stays audited | "L3" |
+| L11: a hosting right from a Medaris nazımı was recorded as the köşk nazımı's | `MEDARIS_NAZIM` in the API, the generated client and the label (tr/en/ar) | "L11" |
+| T1-T10 | the hide test posts the real route; "allowed" names the statuses it accepts; a hand-written golden table of the catalogue; one negative case per engine rule a mutation could drop; loader cases (deleted group, "every course", policies, passive, sibling köşk); audit unit cases; a snapshot of every route's permissions | `catalogue-golden.spec.ts`, `effective-permissions.spec.ts`, `authz-engine.e2e.spec.ts`, `authz-route-inventory.e2e.spec.ts` |
+
+Decision taken here: **roster reads are not audited.** `course.content_read` is written for the course's
+content (the page and the recordings); the talebe list (names and e-mails) is read through
+`course.staff_read` by the people who run the course and is closed under a passive scope, but a read of
+it writes no row. Written down because the issue says "every read of course content" and the talebe
+list is arguably personal data (KVKK): see "Open questions".
+
+The route inventory is a snapshot of every HTTP handler with the codes it asks for:
+
+```
+$ wc -l apps/tedrisat/test/e2e/__snapshots__/authz-route-inventory.txt
+207 apps/tedrisat/test/e2e/__snapshots__/authz-route-inventory.txt
+```
+
+A widened `@Authz` now shows up as a line of that file in a diff.
+
+### Grantable codes no handler or service asks for
+
+```
+$ node -e "…"   # for each grantable code: grep -rEl "PERMISSIONS\.<KEY>" apps/tedrisat/src, excluding permission-catalog.ts
+21 grantable codes no handler or service asks for (of 56 grantable):
+ban.manage_kosk, deck.manage_kosk, user.lookup, session.live_link, week.hide, recording.manage,
+recording.upload, recording.watch_restricted, session.view_content, ban.course, ban.lift_course,
+deck.manage_course, deck.propose_kosk, course_nazir.assign, permission_group.define,
+platform.appeal_decide, platform.ban_account, platform.youtube_manage, madrasah.admission_rules,
+madrasah.appeal_open, madrasah.permanent_ban_request
+```
+
+Granting one of them does nothing yet, except that five of them (`session.live_link`, `recording.manage`,
+`recording.upload`, `recording.watch_restricted`, `session.view_content`) imply reading the course's
+details inside the engine. They belong to features that are not built (recordings,
+appeals, admission rules, YouTube, the ban moves above, week hiding) or to the lookup above. They are
+kept grantable because nazir/06 and nizam/13 print them: removing one would change the 10, 20 and 11, 21
+the screens count.
+
+## Open questions
+
+1. **What does "within their authority" cap a Medaris nazımı at?** Read as "only what they hold
+   themselves" it leaves them nothing to give: their own role default is empty and a grantee never
+   hands on what was granted. Read as "any medrese or course code the catalogue lists" it lets a Medaris
+   nazımı with one platform permission hand a nazır every permission of a medrese, as the platform,
+   which also beats the medrese's and the köşk's policies. The self-grant guard stops the person naming
+   themselves; it does not stop naming an accomplice. Until the owner says, there is no ceiling on this
+   path and `authz-engine.e2e.spec.ts` carries an `it.todo` for it.
+2. **Bans through the catalogue.** To read bans from the codes someone has to say: may a başmüderris ban
+   in a course of their medrese (the catalogue says yes, `ban.course` is in their defaults; the route
+   says no, MDRS-133)? Which code lifts a köşk-level, a medrese-level and a platform-level ban (the
+   catalogue has `ban.lift_course` only for the course; `ban.manage_kosk`, `madrasah.ban` and
+   `platform.ban_scoped` each say "ban or lift")? What does a Medaris nazımı holding only
+   `platform.ban_scoped` do about a course ban? Does `platform.ban_account` (a closed account) need
+   anything the ban tables have?
+3. **Who may look people up.** `user.lookup` is tagged for the köşk and the course; a Medaris nazımı
+   cannot hold it, yet needs it to appoint a köşk nazımı, and a medrese nazırı given
+   `madrasah.nazir_appoint` needs it to appoint a nazır.
+4. **Roster reads and the audit** (the decision above): audit them, or keep them as management views?
+5. **A policy's outcome at enrolment.** A grant from above a policy lets one person switch the ability
+   off, but `CourseService.enroll` still forces approval under the policy; widening a person changes
+   what they may set, not what their course then does. Making it do so needs a stored override.
+6. **`setting.recordings_public`** has nothing to guard until a route writes a recording's visibility.
 
 ## Needs review
 
