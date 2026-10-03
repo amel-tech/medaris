@@ -44,12 +44,11 @@ export const UserHeaderMenu = ({ imageIssuer }: UserHeaderMenuProps) => {
       <DropdownMenuTrigger>
         <div className="flex items-center gap-2 cursor-pointer select-none hover:bg-gray-100 rounded-md">
           <UserAvatar user={session?.user} imageIssuer={imageIssuer} />
-          <div className="flex flex-col text-start">
-            <p className="text-sm whitespace-nowrap">{session?.user?.name}</p>
-            <p className="text-xs whitespace-nowrap text-neutral-tertiary">
-              {t("UserHeaderMenu.talebe")}
-            </p>
-          </div>
+          {/* No role line: the session does not carry the account's roles,
+              and a fixed "Talebe" mislabelled a sistem admin (MDRS-216). */}
+          <p className="text-sm whitespace-nowrap text-start">
+            {session?.user?.name}
+          </p>
           <CaretDownIcon size={16} />
         </div>
       </DropdownMenuTrigger>

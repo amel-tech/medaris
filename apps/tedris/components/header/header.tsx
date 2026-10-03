@@ -20,9 +20,7 @@ export const Header = async () => {
     >
       <div className="flex gap-4 items-center">
         <MadrasahLogoIcon size={36} />
-        <p className="text-xl font-medium text-brand-primary">
-          Online Madrasah
-        </p>
+        <p className="text-xl font-medium text-brand-primary">Medaris</p>
       </div>
 
       <div className="flex items-center gap-4">
