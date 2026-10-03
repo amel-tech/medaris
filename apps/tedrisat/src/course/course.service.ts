@@ -8,6 +8,7 @@ import { Injectable } from "@nestjs/common";
 import { BanService } from "../ban/ban.service";
 import { KoskForbiddenError } from "../kosk/errors/kosk-forbidden.error";
 import { KoskService } from "../kosk/kosk.service";
+import { PlatformPolicyService } from "../platform-policy/platform-policy.service";
 import { CourseRepository } from "./course.repository";
 import {
   ICourse,
@@ -95,7 +96,8 @@ export class CourseService {
     private readonly koskService: KoskService,
     private readonly authz: AuthzService,
     private readonly banService: BanService,
-    private readonly recordingRepo: RecordingRepository
+    private readonly recordingRepo: RecordingRepository,
+    private readonly platformPolicies: PlatformPolicyService
   ) {}
 
   /**
@@ -400,6 +402,9 @@ export class CourseService {
     isClosed: boolean;
   }): Promise<boolean> {
     if (detail.isClosed) return false;
+    if (await this.platformPolicies.isOn("RECORDINGS_NEVER_PUBLIC")) {
+      return false;
+    }
     const rule = await this.koskService.findVisibility(detail.koskId);
     return !(rule?.recordingsNeverPublic ?? false);
   }
@@ -698,10 +703,12 @@ export class CourseService {
     // found, and passing a link on must not hand out seats.
     // The köşk's own policy (MDRS-174, nizam/24) says the same for all its
     // courses and a course's setting cannot loosen it.
+    // The platform's own policy (MDRS-181, nizam/19) says it for every köşk.
     const koskRule = await this.koskService.findVisibility(course.koskId);
     const unlisted =
       (koskRule?.isPrivate ?? false) ||
-      (koskRule?.alwaysRequireApproval ?? false);
+      (koskRule?.alwaysRequireApproval ?? false) ||
+      (await this.platformPolicies.isOn("ALWAYS_REQUIRE_APPROVAL"));
     const status =
       course.requiresApproval || unlisted
         ? EnrollmentStatus.PENDING

@@ -15,7 +15,10 @@
 
 import * as runtime from '../runtime';
 import type {
+  AcceptCourseRequestDto,
   AddKoskNazimsDto,
+  CourseRequestListResponse,
+  CreateCourseRequestDto,
   CreateDeckProposalDto,
   CreateKoskDeckDto,
   CreateKoskDto,
@@ -44,8 +47,14 @@ import type {
   UpdateKoskGrantDto,
 } from '../models/index';
 import {
+    AcceptCourseRequestDtoFromJSON,
+    AcceptCourseRequestDtoToJSON,
     AddKoskNazimsDtoFromJSON,
     AddKoskNazimsDtoToJSON,
+    CourseRequestListResponseFromJSON,
+    CourseRequestListResponseToJSON,
+    CreateCourseRequestDtoFromJSON,
+    CreateCourseRequestDtoToJSON,
     CreateDeckProposalDtoFromJSON,
     CreateDeckProposalDtoToJSON,
     CreateKoskDeckDtoFromJSON,
@@ -100,6 +109,11 @@ import {
     UpdateKoskGrantDtoToJSON,
 } from '../models/index';
 
+export interface AcceptCourseRequestRequest {
+    id: string;
+    acceptCourseRequestDto: AcceptCourseRequestDto;
+}
+
 export interface AddKoskManagerRequest {
     id: string;
     userId: string;
@@ -108,6 +122,11 @@ export interface AddKoskManagerRequest {
 export interface AddKoskNazimsRequest {
     id: string;
     addKoskNazimsDto: AddKoskNazimsDto;
+}
+
+export interface CreateCourseRequestRequest {
+    id: string;
+    createCourseRequestDto: CreateCourseRequestDto;
 }
 
 export interface CreateKoskRequest {
@@ -205,9 +224,19 @@ export interface HideKoskDeckRequest {
     id: string;
 }
 
+export interface ListCourseRequestsRequest {
+    id: string;
+    status?: ListCourseRequestsStatusEnum;
+}
+
 export interface ProposeKoskDeckRequest {
     id: string;
     createDeckProposalDto: CreateDeckProposalDto;
+}
+
+export interface RejectCourseRequestRequest {
+    id: string;
+    rejectReasonDto: RejectReasonDto;
 }
 
 export interface RejectKoskDeckProposalRequest {
@@ -255,6 +284,59 @@ export interface UpdateKoskGrantRequest {
  * 
  */
 export class KosksApi extends runtime.BaseAPI {
+
+    /**
+     * Open the course first (the \'Ders aç\' form, filled in from the request); this marks the request accepted. 409 (COURSE_REQUEST_NOT_PENDING) when it was answered already.
+     * Accept the request with the course opened from it (Kabul et)
+     */
+    async acceptCourseRequestRaw(requestParameters: AcceptCourseRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling acceptCourseRequest().'
+            );
+        }
+
+        if (requestParameters['acceptCourseRequestDto'] == null) {
+            throw new runtime.RequiredError(
+                'acceptCourseRequestDto',
+                'Required parameter "acceptCourseRequestDto" was null or undefined when calling acceptCourseRequest().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/course-requests/{id}/accept`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: AcceptCourseRequestDtoToJSON(requestParameters['acceptCourseRequestDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Open the course first (the \'Ders aç\' form, filled in from the request); this marks the request accepted. 409 (COURSE_REQUEST_NOT_PENDING) when it was answered already.
+     * Accept the request with the course opened from it (Kabul et)
+     */
+    async acceptCourseRequest(requestParameters: AcceptCourseRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.acceptCourseRequestRaw(requestParameters, initOverrides);
+    }
 
     /**
      * Idempotent. Open to the köşk\'s managers and SYSTEM_ADMIN (MDRS-126).
@@ -359,6 +441,60 @@ export class KosksApi extends runtime.BaseAPI {
      */
     async addKoskNazims(requestParameters: AddKoskNazimsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<KoskNazimResponse>> {
         const response = await this.addKoskNazimsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Sent by the başmüderris of the medrese named in the body; anyone else gets 403.
+     * Ask a köşk to open a course for a medrese
+     */
+    async createCourseRequestRaw(requestParameters: CreateCourseRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreatedIdResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling createCourseRequest().'
+            );
+        }
+
+        if (requestParameters['createCourseRequestDto'] == null) {
+            throw new runtime.RequiredError(
+                'createCourseRequestDto',
+                'Required parameter "createCourseRequestDto" was null or undefined when calling createCourseRequest().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/course-requests`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateCourseRequestDtoToJSON(requestParameters['createCourseRequestDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CreatedIdResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Sent by the başmüderris of the medrese named in the body; anyone else gets 403.
+     * Ask a köşk to open a course for a medrese
+     */
+    async createCourseRequest(requestParameters: CreateCourseRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreatedIdResponse> {
+        const response = await this.createCourseRequestRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1350,6 +1486,54 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
+     * Waiting ones oldest first, answered ones newest first, with both tab counts. The köşk\'s nazımları and the başnazım only.
+     * The course requests a köşk received (Bekleyen / Karara bağlanan)
+     */
+    async listCourseRequestsRaw(requestParameters: ListCourseRequestsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseRequestListResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listCourseRequests().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/course-requests`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseRequestListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Waiting ones oldest first, answered ones newest first, with both tab counts. The köşk\'s nazımları and the başnazım only.
+     * The course requests a köşk received (Bekleyen / Karara bağlanan)
+     */
+    async listCourseRequests(requestParameters: ListCourseRequestsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseRequestListResponse> {
+        const response = await this.listCourseRequestsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * A müderris of one of the köşk\'s courses. The köşk nazımı accepts it by opening the deck, or refuses it with a reason.
      * Suggest a deck for the köşk
      */
@@ -1401,6 +1585,59 @@ export class KosksApi extends runtime.BaseAPI {
     async proposeKoskDeck(requestParameters: ProposeKoskDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreatedIdResponse> {
         const response = await this.proposeKoskDeckRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * The reason is required. 409 when it was answered already.
+     * Refuse the request (Reddet)
+     */
+    async rejectCourseRequestRaw(requestParameters: RejectCourseRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling rejectCourseRequest().'
+            );
+        }
+
+        if (requestParameters['rejectReasonDto'] == null) {
+            throw new runtime.RequiredError(
+                'rejectReasonDto',
+                'Required parameter "rejectReasonDto" was null or undefined when calling rejectCourseRequest().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/course-requests/{id}/reject`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RejectReasonDtoToJSON(requestParameters['rejectReasonDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The reason is required. 409 when it was answered already.
+     * Refuse the request (Reddet)
+     */
+    async rejectCourseRequest(requestParameters: RejectCourseRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.rejectCourseRequestRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -1845,3 +2082,11 @@ export const GetAllKosksLevelEnum = {
     Advanced: 'ADVANCED'
 } as const;
 export type GetAllKosksLevelEnum = typeof GetAllKosksLevelEnum[keyof typeof GetAllKosksLevelEnum];
+/**
+ * @export
+ */
+export const ListCourseRequestsStatusEnum = {
+    Pending: 'PENDING',
+    Decided: 'DECIDED'
+} as const;
+export type ListCourseRequestsStatusEnum = typeof ListCourseRequestsStatusEnum[keyof typeof ListCourseRequestsStatusEnum];

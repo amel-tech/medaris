@@ -16,7 +16,11 @@
 import * as runtime from '../runtime';
 import type {
   AppointMedarisNazimDto,
+  ApproveKoskApplicationDto,
   AssignInactiveScopeDto,
+  AuditPageResponse,
+  AuditScopeKind,
+  AuditType,
   ChiefNazimResponse,
   CreatePermissionGroupDto,
   DeckPublishRequestListResponse,
@@ -28,18 +32,32 @@ import type {
   GroupUserResponse,
   InactiveScopeResponse,
   InactiveScopeType,
+  KoskApplicationDetailResponse,
+  KoskApplicationListResponse,
   MedarisNazimResponse,
   PermissionCatalogResponse,
   PermissionGroupResponse,
+  PlatformPolicyKey,
+  PlatformPolicyListResponse,
   RejectReasonDto,
+  ScopedPolicyListResponse,
   SetNazimGrantsDto,
+  SetPlatformPolicyDto,
   UpdatePermissionGroupDto,
 } from '../models/index';
 import {
     AppointMedarisNazimDtoFromJSON,
     AppointMedarisNazimDtoToJSON,
+    ApproveKoskApplicationDtoFromJSON,
+    ApproveKoskApplicationDtoToJSON,
     AssignInactiveScopeDtoFromJSON,
     AssignInactiveScopeDtoToJSON,
+    AuditPageResponseFromJSON,
+    AuditPageResponseToJSON,
+    AuditScopeKindFromJSON,
+    AuditScopeKindToJSON,
+    AuditTypeFromJSON,
+    AuditTypeToJSON,
     ChiefNazimResponseFromJSON,
     ChiefNazimResponseToJSON,
     CreatePermissionGroupDtoFromJSON,
@@ -62,16 +80,28 @@ import {
     InactiveScopeResponseToJSON,
     InactiveScopeTypeFromJSON,
     InactiveScopeTypeToJSON,
+    KoskApplicationDetailResponseFromJSON,
+    KoskApplicationDetailResponseToJSON,
+    KoskApplicationListResponseFromJSON,
+    KoskApplicationListResponseToJSON,
     MedarisNazimResponseFromJSON,
     MedarisNazimResponseToJSON,
     PermissionCatalogResponseFromJSON,
     PermissionCatalogResponseToJSON,
     PermissionGroupResponseFromJSON,
     PermissionGroupResponseToJSON,
+    PlatformPolicyKeyFromJSON,
+    PlatformPolicyKeyToJSON,
+    PlatformPolicyListResponseFromJSON,
+    PlatformPolicyListResponseToJSON,
     RejectReasonDtoFromJSON,
     RejectReasonDtoToJSON,
+    ScopedPolicyListResponseFromJSON,
+    ScopedPolicyListResponseToJSON,
     SetNazimGrantsDtoFromJSON,
     SetNazimGrantsDtoToJSON,
+    SetPlatformPolicyDtoFromJSON,
+    SetPlatformPolicyDtoToJSON,
     UpdatePermissionGroupDtoFromJSON,
     UpdatePermissionGroupDtoToJSON,
 } from '../models/index';
@@ -82,6 +112,11 @@ export interface AppointMedarisNazimRequest {
 
 export interface ApproveDeckPublishRequestRequest {
     id: string;
+}
+
+export interface ApproveKoskApplicationRequest {
+    id: string;
+    approveKoskApplicationDto: ApproveKoskApplicationDto;
 }
 
 export interface AssignInactiveScopeRequest {
@@ -104,8 +139,20 @@ export interface DismissMedarisNazimRequest {
     dismissMedarisNazimDto: DismissMedarisNazimDto;
 }
 
+export interface ExportAuditLogRequest {
+    actor?: string;
+    type?: AuditType;
+    scope?: AuditScopeKind;
+    from?: Date;
+    to?: Date;
+}
+
 export interface GetInactiveScopesRequest {
     type?: InactiveScopeType;
+}
+
+export interface GetKoskApplicationRequest {
+    id: string;
 }
 
 export interface GetMedarisNazimGivenRequest {
@@ -116,8 +163,21 @@ export interface GetPermissionGroupUsersRequest {
     id: string;
 }
 
+export interface ListAuditLogRequest {
+    actor?: string;
+    type?: AuditType;
+    scope?: AuditScopeKind;
+    from?: Date;
+    to?: Date;
+    cursor?: string;
+}
+
 export interface ListDeckPublishRequestsRequest {
     status?: DeckRequestStatus;
+}
+
+export interface ListKoskApplicationsRequest {
+    status?: ListKoskApplicationsStatusEnum;
 }
 
 export interface ReadDeckPublishRequestCardsRequest {
@@ -130,9 +190,19 @@ export interface RejectDeckPublishRequestRequest {
     rejectReasonDto: RejectReasonDto;
 }
 
+export interface RejectKoskApplicationRequest {
+    id: string;
+    rejectReasonDto: RejectReasonDto;
+}
+
 export interface SetMedarisNazimGrantsRequest {
     userId: string;
     setNazimGrantsDto: SetNazimGrantsDto;
+}
+
+export interface SetPlatformPolicyRequest {
+    key: PlatformPolicyKey;
+    setPlatformPolicyDto: SetPlatformPolicyDto;
 }
 
 export interface UpdatePermissionGroupRequest {
@@ -237,6 +307,59 @@ export class NizamApi extends runtime.BaseAPI {
      */
     async approveDeckPublishRequest(requestParameters: ApproveDeckPublishRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.approveDeckPublishRequestRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Open the köşk first (`POST /kosks` with the application\'s values); this marks the application Kabul edildi and tells the applicant. 409 (KOSK_APPLICATION_DECIDED) when it was answered already.
+     * Accept the application with the köşk opened from it (Köşkü aç)
+     */
+    async approveKoskApplicationRaw(requestParameters: ApproveKoskApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling approveKoskApplication().'
+            );
+        }
+
+        if (requestParameters['approveKoskApplicationDto'] == null) {
+            throw new runtime.RequiredError(
+                'approveKoskApplicationDto',
+                'Required parameter "approveKoskApplicationDto" was null or undefined when calling approveKoskApplication().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/kosk-applications/{id}/approve`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ApproveKoskApplicationDtoToJSON(requestParameters['approveKoskApplicationDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Open the köşk first (`POST /kosks` with the application\'s values); this marks the application Kabul edildi and tells the applicant. 409 (KOSK_APPLICATION_DECIDED) when it was answered already.
+     * Accept the application with the köşk opened from it (Köşkü aç)
+     */
+    async approveKoskApplication(requestParameters: ApproveKoskApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.approveKoskApplicationRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -453,6 +576,62 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
+     * The same filters as the list, without paging (at most 10 000 records). The export is itself written to the trail as `audit.export`.
+     * The filtered records as a CSV file
+     */
+    async exportAuditLogRaw(requestParameters: ExportAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<object>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['actor'] != null) {
+            queryParameters['actor'] = requestParameters['actor'];
+        }
+
+        if (requestParameters['type'] != null) {
+            queryParameters['type'] = requestParameters['type'];
+        }
+
+        if (requestParameters['scope'] != null) {
+            queryParameters['scope'] = requestParameters['scope'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = (requestParameters['from'] as any).toISOString();
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = (requestParameters['to'] as any).toISOString();
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/audit-log/export`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse<any>(response);
+    }
+
+    /**
+     * The same filters as the list, without paging (at most 10 000 records). The export is itself written to the trail as `audit.export`.
+     * The filtered records as a CSV file
+     */
+    async exportAuditLog(requestParameters: ExportAuditLogRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<object> {
+        const response = await this.exportAuditLogRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Any signed-in caller: the \'no access\' screen names who to ask. `displayName` is null when nobody holds the role or the directory cannot be reached.
      * The name of the Medaris başnazımı
      */
@@ -525,6 +704,50 @@ export class NizamApi extends runtime.BaseAPI {
      */
     async getInactiveScopes(requestParameters: GetInactiveScopesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<InactiveScopeResponse>> {
         const response = await this.getInactiveScopesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The applicant\'s e-mail and phone are personal data: every read is written to the audit trail (`kosk_application.contact_read`) before the details are returned.
+     * One application with the applicant\'s contact details
+     */
+    async getKoskApplicationRaw(requestParameters: GetKoskApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskApplicationDetailResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getKoskApplication().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/kosk-applications/{id}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskApplicationDetailResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The applicant\'s e-mail and phone are personal data: every read is written to the audit trail (`kosk_application.contact_read`) before the details are returned.
+     * One application with the applicant\'s contact details
+     */
+    async getKoskApplication(requestParameters: GetKoskApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskApplicationDetailResponse> {
+        const response = await this.getKoskApplicationRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -723,6 +946,66 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
+     * Filters combine. Fifty records a page; pass `nextCursor` as `cursor` for the older ones. Köşk nazımları, başmüderrisler and everyone else get 403.
+     * The audit trail, newest first
+     */
+    async listAuditLogRaw(requestParameters: ListAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AuditPageResponse>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['actor'] != null) {
+            queryParameters['actor'] = requestParameters['actor'];
+        }
+
+        if (requestParameters['type'] != null) {
+            queryParameters['type'] = requestParameters['type'];
+        }
+
+        if (requestParameters['scope'] != null) {
+            queryParameters['scope'] = requestParameters['scope'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = (requestParameters['from'] as any).toISOString();
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = (requestParameters['to'] as any).toISOString();
+        }
+
+        if (requestParameters['cursor'] != null) {
+            queryParameters['cursor'] = requestParameters['cursor'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/audit-log`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AuditPageResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Filters combine. Fifty records a page; pass `nextCursor` as `cursor` for the older ones. Köşk nazımları, başmüderrisler and everyone else get 403.
+     * The audit trail, newest first
+     */
+    async listAuditLog(requestParameters: ListAuditLogRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AuditPageResponse> {
+        const response = await this.listAuditLogRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * The members\' requests to make a deck public, oldest waiting first, or the answered ones, newest first. Both tab counts come with the page. The Medaris başnazımı (SYSTEM_ADMIN) only.
      * Deck publish requests (Bekleyen / Karara bağlanan)
      */
@@ -759,6 +1042,116 @@ export class NizamApi extends runtime.BaseAPI {
      */
     async listDeckPublishRequests(requestParameters: ListDeckPublishRequestsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckPublishRequestListResponse> {
         const response = await this.listDeckPublishRequestsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Waiting ones oldest first, answered ones newest first, with both tab counts. No contact detail is in the list.
+     * Köşk applications (Bekleyen / Karara bağlanan)
+     */
+    async listKoskApplicationsRaw(requestParameters: ListKoskApplicationsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskApplicationListResponse>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/kosk-applications`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskApplicationListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Waiting ones oldest first, answered ones newest first, with both tab counts. No contact detail is in the list.
+     * Köşk applications (Bekleyen / Karara bağlanan)
+     */
+    async listKoskApplications(requestParameters: ListKoskApplicationsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskApplicationListResponse> {
+        const response = await this.listKoskApplicationsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The platform policies and who applies them on their own
+     */
+    async listPlatformPoliciesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformPolicyListResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/platform-policies`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlatformPolicyListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The platform policies and who applies them on their own
+     */
+    async listPlatformPolicies(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformPolicyListResponse> {
+        const response = await this.listPlatformPoliciesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * \'Köşk ve medrese politikaları\' of nizam/19. Medreses have no policy settings of their own yet, so only köşks are listed.
+     * The köşks that apply a policy on their own
+     */
+    async listScopedPoliciesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ScopedPolicyListResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/scoped-policies`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ScopedPolicyListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * \'Köşk ve medrese politikaları\' of nizam/19. Medreses have no policy settings of their own yet, so only köşks are listed.
+     * The köşks that apply a policy on their own
+     */
+    async listScopedPolicies(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ScopedPolicyListResponse> {
+        const response = await this.listScopedPoliciesRaw(initOverrides);
         return await response.value();
     }
 
@@ -864,6 +1257,59 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
+     * The reason is required and goes to the applicant in their notifications. 409 (KOSK_APPLICATION_DECIDED) when it was answered already.
+     * Refuse the application (Reddet)
+     */
+    async rejectKoskApplicationRaw(requestParameters: RejectKoskApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling rejectKoskApplication().'
+            );
+        }
+
+        if (requestParameters['rejectReasonDto'] == null) {
+            throw new runtime.RequiredError(
+                'rejectReasonDto',
+                'Required parameter "rejectReasonDto" was null or undefined when calling rejectKoskApplication().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/kosk-applications/{id}/reject`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RejectReasonDtoToJSON(requestParameters['rejectReasonDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The reason is required and goes to the applicant in their notifications. 409 (KOSK_APPLICATION_DECIDED) when it was answered already.
+     * Refuse the application (Reddet)
+     */
+    async rejectKoskApplication(requestParameters: RejectKoskApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.rejectKoskApplicationRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * nizam/12. Replaces the group and the single permissions with the ones sent; what stays keeps its giver and date. The end may not be after the appointment\'s. Written to the audit log.
      * Set a Medaris nazımı\'s platform permissions
      */
@@ -914,6 +1360,60 @@ export class NizamApi extends runtime.BaseAPI {
      */
     async setMedarisNazimGrants(requestParameters: SetMedarisNazimGrantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MedarisNazimResponse> {
         const response = await this.setMedarisNazimGrantsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * In force at once and written to the audit trail as `platform_policy.change`. While \'Kayıt her zaman onaylı\' is on every enrolment waits for approval; while \'Ders kayıtları herkese açılamaz\' is on no recording is shown to people outside the course; a köşk cannot switch either rule off (409 PLATFORM_POLICY_LOCKED).
+     * Switch a platform policy on or off
+     */
+    async setPlatformPolicyRaw(requestParameters: SetPlatformPolicyRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformPolicyListResponse>> {
+        if (requestParameters['key'] == null) {
+            throw new runtime.RequiredError(
+                'key',
+                'Required parameter "key" was null or undefined when calling setPlatformPolicy().'
+            );
+        }
+
+        if (requestParameters['setPlatformPolicyDto'] == null) {
+            throw new runtime.RequiredError(
+                'setPlatformPolicyDto',
+                'Required parameter "setPlatformPolicyDto" was null or undefined when calling setPlatformPolicy().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/platform-policies/{key}`;
+        urlPath = urlPath.replace(`{${"key"}}`, encodeURIComponent(String(requestParameters['key'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetPlatformPolicyDtoToJSON(requestParameters['setPlatformPolicyDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlatformPolicyListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * In force at once and written to the audit trail as `platform_policy.change`. While \'Kayıt her zaman onaylı\' is on every enrolment waits for approval; while \'Ders kayıtları herkese açılamaz\' is on no recording is shown to people outside the course; a köşk cannot switch either rule off (409 PLATFORM_POLICY_LOCKED).
+     * Switch a platform policy on or off
+     */
+    async setPlatformPolicy(requestParameters: SetPlatformPolicyRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformPolicyListResponse> {
+        const response = await this.setPlatformPolicyRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1023,3 +1523,12 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
 }
+
+/**
+ * @export
+ */
+export const ListKoskApplicationsStatusEnum = {
+    Pending: 'PENDING',
+    Decided: 'DECIDED'
+} as const;
+export type ListKoskApplicationsStatusEnum = typeof ListKoskApplicationsStatusEnum[keyof typeof ListKoskApplicationsStatusEnum];
