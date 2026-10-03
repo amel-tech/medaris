@@ -1,3 +1,4 @@
+import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { and, eq } from "drizzle-orm";
 import request from "supertest";
@@ -12,6 +13,7 @@ import {
   COURSE_TREE_TABLES,
   TestDatabaseUtils,
 } from "../helpers/test-database.helper";
+import { bearerFor } from "../helpers/test-keycloak.helper";
 
 /**
  * MDRS-134: `course_muderris` stays what the course page shows, and the
@@ -40,6 +42,7 @@ const payload = (list: ReturnType<typeof muderris>[]) => ({
 
 describe("MUDERRIS role rows follow the course's müderris list (e2e)", () => {
   let app: INestApplication;
+  let adminApp: INestApplication;
   let databaseService: DatabaseService;
   let dbUtils: TestDatabaseUtils;
   let koskId: string;
@@ -78,6 +81,7 @@ describe("MUDERRIS role rows follow the course's müderris list (e2e)", () => {
 
   beforeAll(async () => {
     app = await createTestApp({ authUserId: TEST_USER_ID });
+    adminApp = await createTestApp();
     databaseService = app.get<DatabaseService>(DatabaseService);
     dbUtils = new TestDatabaseUtils(databaseService);
   });
@@ -88,8 +92,17 @@ describe("MUDERRIS role rows follow the course's müderris list (e2e)", () => {
     await databaseService.db
       .insert(users)
       .values([TEST_USER_ID, AHMED, HASAN, ZEYD].map((id) => ({ id })));
-    const kosk = await http()
+    // Opening a köşk is SYSTEM_ADMIN only (2026-10-02); signed with
+    // TEST_USER_ID's own `sub`, the köşk is still that user's to manage.
+    const kosk = await request(adminApp.getHttpServer())
       .post("/kosks")
+      .set(
+        "Authorization",
+        bearerFor({
+          sub: TEST_USER_ID,
+          claims: { realm_access: { roles: [ROLES.SYSTEM_ADMIN] } },
+        })
+      )
       .send({ name: "Süleymaniye Köşkü" })
       .expect(201);
     koskId = kosk.body.id;
@@ -98,6 +111,7 @@ describe("MUDERRIS role rows follow the course's müderris list (e2e)", () => {
   afterAll(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES, "users");
     await app.close();
+    await adminApp.close();
   });
 
   it("grants MUDERRIS to each bound account once, the first listed as imam", async () => {
