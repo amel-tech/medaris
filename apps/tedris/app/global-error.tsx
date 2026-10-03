@@ -4,6 +4,15 @@ import "@medaris/ui/medaris.css";
 import { textFontsHref } from "@medaris/tokens/medaris-fonts";
 import { Button } from "@medaris/ui/mds/button";
 import { SystemState } from "@medaris/ui/mds/system-state";
+import { htmlLangDir } from "~/lib/i18n/direction";
+
+/**
+ * `lang` describes the text actually drawn (MDRS-217). The copy below is
+ * Turkish whatever the URL says, so the document is `tr`/`ltr`; deriving it
+ * from the path would mark Turkish text as Arabic on `/ar/*`.
+ * follow-up to MDRS-217: translate this copy, then derive lang/dir from the path
+ */
+const { lang, dir } = htmlLangDir("tr");
 
 /**
  * Design tedris/40 when the app shell itself threw (the root layout, or
@@ -13,7 +22,7 @@ import { SystemState } from "@medaris/ui/mds/system-state";
  */
 export default function GlobalError({ reset }: { reset: () => void }) {
   return (
-    <html lang="tr" dir="ltr">
+    <html lang={lang} dir={dir}>
       <body>
         <link rel="stylesheet" href={textFontsHref} precedence="default" />
         <SystemState
