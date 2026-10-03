@@ -605,6 +605,7 @@
         ]
       },
       "post": {
+        "description": "The medrese and the başmüderris's grant are written together. Without a `handle` one is made from the name.",
         "operationId": "createMadrasah",
         "parameters": [],
         "requestBody": {
@@ -640,7 +641,7 @@
             "bearer": []
           }
         ],
-        "summary": "Create a medrese (SYSTEM_ADMIN only)",
+        "summary": "Open a medrese with its başmüderris (SYSTEM_ADMIN only)",
         "tags": [
           "madrasahs"
         ]
@@ -712,6 +713,71 @@
           }
         ],
         "summary": "Get the medreses Keşfet lists",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/directory": {
+      "get": {
+        "description": "nizam/07: hidden and passive medreses too, each with its başmüderris, course count and hosting köşks, and the per-status counts the tabs show. The open list above leaves hidden medreses out; this one is the başnazım's.",
+        "operationId": "getMadrasahDirectory",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/MadrasahStatusFilter"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Part of the medrese's name, its handle or its başmüderris",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahDirectoryResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every medrese for the platform's table (SYSTEM_ADMIN only)",
         "tags": [
           "madrasahs"
         ]
@@ -886,6 +952,105 @@
           }
         ],
         "summary": "Get what a medrese's page shows",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/head-muderris": {
+      "put": {
+        "description": "Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. Written to the audit log.",
+        "operationId": "setMadrasahHeadMuderris",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetHeadMuderrisDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahDirectoryItemResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Make a user the medrese's başmüderris (SYSTEM_ADMIN only)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/restore": {
+      "post": {
+        "description": "409 (MADRASAH_NOT_HIDDEN) when it is not hidden.",
+        "operationId": "restoreMadrasah",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahDirectoryItemResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "MADRASAH_NOT_HIDDEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Bring a hidden medrese back (SYSTEM_ADMIN only)",
         "tags": [
           "madrasahs"
         ]
@@ -3782,6 +3947,155 @@
         ]
       }
     },
+    "/kosks/{id}/hosting-rights": {
+      "get": {
+        "description": "nizam/26. Each with its başmüderris, who granted the right and when, and the medrese's courses here that are not hidden (nizam/27 asks what becomes of them).",
+        "operationId": "getKoskHostingRights",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HostingRightResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The medreses that hold a hosting right in the köşk",
+        "tags": [
+          "kosks"
+        ]
+      },
+      "post": {
+        "description": "Idempotent. 404 for a medrese that is missing or hidden. Written to the audit log.",
+        "operationId": "grantKoskHostingRight",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantHostingRightDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingRightResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Give a medrese a hosting right in the köşk",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/hosting-rights/{madrasahId}": {
+      "delete": {
+        "description": "`coursesAction` decides what becomes of the medrese's courses in this köşk: KEEP leaves them as they are, HIDE hides each (they come back from the archive). The medrese can open no new course here. Written to the audit log.",
+        "operationId": "revokeKoskHostingRight",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "madrasahId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "coursesAction",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/HostingCoursesAction"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Withdraw a medrese's hosting right",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
     "/calendar/{file}": {
       "get": {
         "description": "Every session of every course the feed's owner is enrolled in, teaches or manages, from 30 days back to 180 days ahead. Removed sessions carry `STATUS:CANCELLED`; UIDs and SEQUENCE are those of `GET /lessons/:id/calendar.ics` (MDRS-117). No meeting links.",
@@ -5283,6 +5597,212 @@
           "courses"
         ]
       },
+      "MadrasahStatusFilter": {
+        "type": "string",
+        "enum": [
+          "ALL",
+          "ACTIVE",
+          "PASSIVE",
+          "HIDDEN"
+        ]
+      },
+      "MadrasahStatus": {
+        "type": "string",
+        "enum": [
+          "ACTIVE",
+          "PASSIVE",
+          "HIDDEN"
+        ],
+        "description": "HIDDEN wins over PASSIVE: a hidden medrese is in nobody's list but this one."
+      },
+      "MadrasahPersonResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Null until that person has signed in once"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "MadrasahHostingKoskResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "MadrasahDirectoryItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "handle": {
+            "type": "string",
+            "example": "suleymaniye"
+          },
+          "name": {
+            "type": "string",
+            "example": "Süleymaniye Medresesi"
+          },
+          "coverHue": {
+            "type": "number",
+            "example": 215
+          },
+          "status": {
+            "description": "HIDDEN wins over PASSIVE: a hidden medrese is in nobody's list but this one.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MadrasahStatus"
+              }
+            ]
+          },
+          "since": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Since when it is hidden or passive; null while active"
+          },
+          "headMuderris": {
+            "nullable": true,
+            "description": "The oldest held başmüderris; null when there is none",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MadrasahPersonResponse"
+              }
+            ]
+          },
+          "courseCount": {
+            "type": "number",
+            "description": "Courses that are not hidden"
+          },
+          "hostingKosks": {
+            "description": "The köşks that hold a hosting right for this medrese",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahHostingKoskResponse"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "handle",
+          "name",
+          "coverHue",
+          "status",
+          "courseCount",
+          "hostingKosks"
+        ]
+      },
+      "MadrasahStatusCountsResponse": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "number"
+          },
+          "active": {
+            "type": "number"
+          },
+          "passive": {
+            "type": "number"
+          },
+          "hidden": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "all",
+          "active",
+          "passive",
+          "hidden"
+        ]
+      },
+      "PassiveMadrasahResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "since": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "since"
+        ]
+      },
+      "MadrasahDirectoryResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahDirectoryItemResponse"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Rows matching the status and search"
+          },
+          "page": {
+            "type": "number",
+            "example": 1
+          },
+          "limit": {
+            "type": "number",
+            "example": 25
+          },
+          "counts": {
+            "description": "Every medrese by status, whatever the filter and search: the tabs' numbers",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MadrasahStatusCountsResponse"
+              }
+            ]
+          },
+          "passive": {
+            "description": "The passive medreses the page's warning names, oldest first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PassiveMadrasahResponse"
+            }
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "counts",
+          "passive"
+        ]
+      },
       "MadrasahHeadMuderrisResponse": {
         "type": "object",
         "properties": {
@@ -5430,7 +5950,7 @@
           "handle": {
             "type": "string",
             "example": "hadis-ve-siyer",
-            "description": "Unique, URL-safe: lower-case letters, digits and inner hyphens, 2–60 characters"
+            "description": "Unique, URL-safe: lower-case letters, digits and inner hyphens, 2–60 characters. Left out, it is made from the name (MDRS-170)."
           },
           "name": {
             "type": "string",
@@ -5445,11 +5965,29 @@
             "example": 215,
             "minimum": 0,
             "maximum": 360
+          },
+          "headMuderrisUserId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The account that becomes the başmüderris when the medrese opens (found with GET /users/lookup). A medrese opens with one (MDRS-170)."
           }
         },
         "required": [
-          "handle",
-          "name"
+          "name",
+          "headMuderrisUserId"
+        ]
+      },
+      "SetHeadMuderrisDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The account that becomes the başmüderris"
+          }
+        },
+        "required": [
+          "userId"
         ]
       },
       "UpdateMadrasahDto": {
@@ -5458,7 +5996,7 @@
           "handle": {
             "type": "string",
             "example": "hadis-ve-siyer",
-            "description": "Unique, URL-safe: lower-case letters, digits and inner hyphens, 2–60 characters"
+            "description": "Unique, URL-safe: lower-case letters, digits and inner hyphens, 2–60 characters. Left out, it is made from the name (MDRS-170)."
           },
           "name": {
             "type": "string",
@@ -8377,6 +8915,160 @@
         "required": [
           "labelId",
           "usageCount"
+        ]
+      },
+      "HostingPersonResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "HostingGrantedByResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "SYSTEM_ADMIN",
+              "KOSK_NAZIM"
+            ],
+            "description": "How the granter was entitled to grant; null on rights older than MDRS-170"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "HostingCourseStatus": {
+        "type": "string",
+        "enum": [
+          "DRAFT",
+          "PUBLISHED"
+        ]
+      },
+      "HostingOpenCourseResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HostingCourseStatus"
+              }
+            ]
+          },
+          "studentCount": {
+            "type": "number",
+            "description": "Enrolled talebe (pending applications do not count)"
+          },
+          "imamName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The course's imam, as the course page names them"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "status",
+          "studentCount"
+        ]
+      },
+      "HostingRightResponse": {
+        "type": "object",
+        "properties": {
+          "madrasahId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "coverHue": {
+            "type": "number",
+            "example": 215
+          },
+          "headMuderris": {
+            "nullable": true,
+            "description": "The medrese's başmüderris; null when it has none",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HostingPersonResponse"
+              }
+            ]
+          },
+          "grantedBy": {
+            "$ref": "#/components/schemas/HostingGrantedByResponse"
+          },
+          "grantedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "openCourses": {
+            "description": "The medrese's courses in this köşk that are not hidden: what the right's withdrawal decides about",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HostingOpenCourseResponse"
+            }
+          }
+        },
+        "required": [
+          "madrasahId",
+          "name",
+          "handle",
+          "coverHue",
+          "grantedBy",
+          "grantedAt",
+          "openCourses"
+        ]
+      },
+      "GrantHostingRightDto": {
+        "type": "object",
+        "properties": {
+          "madrasahId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The medrese that gets the right"
+          }
+        },
+        "required": [
+          "madrasahId"
+        ]
+      },
+      "HostingCoursesAction": {
+        "type": "string",
+        "enum": [
+          "KEEP",
+          "HIDE"
         ]
       },
       "CalendarFeedStatusResponse": {

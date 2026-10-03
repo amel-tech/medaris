@@ -73,7 +73,7 @@ const UUID_REGEX =
  * SYSTEM_ADMIN bypasses the resolver, so the existence check stays here for
  * the routes whose handlers assume the köşk is there.
  */
-const byExistingKosk: AuthzResolve = async (req, moduleRef) => {
+export const byExistingKosk: AuthzResolve = async (req, moduleRef) => {
   const koskId = typeof req.params.id === "string" ? req.params.id : "";
   if (
     !UUID_REGEX.test(koskId) ||
