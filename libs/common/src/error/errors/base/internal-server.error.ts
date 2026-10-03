@@ -5,8 +5,9 @@ export class InternalServerError extends MedarisError {
   protected constructor(
     code: string = "INTERNAL_SERVER_ERROR",
     message?: string,
-    context?: ErrorContext
+    context?: ErrorContext,
+    options?: ErrorOptions
   ) {
-    super(code, 500, message, context);
+    super(code, 500, message, context, options);
   }
 }
