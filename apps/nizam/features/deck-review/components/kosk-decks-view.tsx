@@ -6,7 +6,6 @@ import type {
   ManagedKoskDecksResponse,
 } from "@medaris/services/tedrisat";
 import { toast } from "@medaris/ui/components/sonner";
-import { Alert } from "@medaris/ui/mds/alert";
 import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Button } from "@medaris/ui/mds/button";
@@ -18,11 +17,13 @@ import { useState } from "react";
 import { hideKoskDeck, rejectDeckProposal } from "../actions";
 import {
   deckErrorKey,
+  deckFailureKey,
   isGone,
   newDeckHref,
   shortDate,
   shortDateTime,
 } from "../present";
+import { LoadFailed } from "./load-failed";
 import { RejectDialog } from "./reject-dialog";
 
 interface Props {
@@ -55,11 +56,9 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
   const [hiding, setHiding] = useState<ManagedKoskDeckResponse | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const failure = (body: unknown, fallback: string) =>
+  const failure = (body: unknown) =>
     toast.error(t("actionFailed"), {
-      description: deckErrorKey(body)
-        ? t(deckErrorKey(body) as never)
-        : fallback,
+      description: t(deckFailureKey(body) as never),
       duration: Number.POSITIVE_INFINITY,
     });
 
@@ -68,7 +67,7 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
     const target = refusing;
     const result = await rejectDeckProposal(koskId, target.id, reason);
     if (!result.success) {
-      failure(result.errorBody, result.error);
+      failure(result.errorBody);
       if (isGone(result.errorBody)) {
         setProposals((list) => list.filter((p) => p.id !== target.id));
         return true;
@@ -89,7 +88,7 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
     const result = await hideKoskDeck(target.id);
     setBusy(false);
     if (!result.success) {
-      failure(result.errorBody, result.error);
+      failure(result.errorBody);
       if (deckErrorKey(result.errorBody) === "errors.deckGone") {
         setDecks((list) => list.filter((d) => d.id !== target.id));
         setHiding(null);
@@ -175,25 +174,33 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
       data-testid="kosk-decks"
     >
       {initial === null ? (
-        <Alert tone="error" title={t("loadFailedTitle")}>
-          {t("loadFailed")}
-        </Alert>
+        <LoadFailed
+          title={t("loadFailedTitle")}
+          body={t("loadFailed")}
+          retryLabel={t("retry")}
+        />
       ) : null}
 
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex max-w-[48rem] flex-col gap-3">
           <h1 className="mds-h1">{t("title")}</h1>
-          <p>{t("intro", { kosk: koskName })}</p>
+          <p>{koskName ? t("intro", { kosk: koskName }) : t("introNoName")}</p>
         </div>
-        <Button
-          href={`/${locale}${newDeckHref(koskId)}`}
-          iconLeft={<Icon name="plus" size="sm" />}
-        >
-          {t("open")}
-        </Button>
+        {initial === null ? (
+          <Button disabled iconLeft={<Icon name="plus" size="sm" />}>
+            {t("open")}
+          </Button>
+        ) : (
+          <Button
+            href={`/${locale}${newDeckHref(koskId)}`}
+            iconLeft={<Icon name="plus" size="sm" />}
+          >
+            {t("open")}
+          </Button>
+        )}
       </header>
 
-      {proposals.length > 0 ? (
+      {initial !== null && proposals.length > 0 ? (
         <section
           aria-labelledby="proposals-heading"
           className="flex flex-col gap-4"
@@ -253,24 +260,29 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
         </section>
       ) : null}
 
-      <section aria-labelledby="decks-heading" className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 id="decks-heading" className="mds-h2">
-            {t("decksHeading")}
-          </h2>
-          <p className="mds-caption" data-testid="decks-count">
-            {t("decksCount", { count: decks.length })}
-          </p>
-        </div>
-        <Table
-          caption={t("caption", { kosk: koskName })}
-          columns={columns}
-          rows={decks}
-          rowKey={(deck) => deck.id}
-          empty={t("empty")}
-          responsive="stack"
-        />
-      </section>
+      {initial === null ? null : (
+        <section
+          aria-labelledby="decks-heading"
+          className="flex flex-col gap-4"
+        >
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 id="decks-heading" className="mds-h2">
+              {t("decksHeading")}
+            </h2>
+            <p className="mds-caption" data-testid="decks-count">
+              {t("decksCount", { count: decks.length })}
+            </p>
+          </div>
+          <Table
+            caption={t("caption", { kosk: koskName })}
+            columns={columns}
+            rows={decks}
+            rowKey={(deck) => deck.id}
+            empty={t("empty")}
+            responsive="stack"
+          />
+        </section>
+      )}
 
       <RejectDialog
         open={refusing !== null}

@@ -2913,6 +2913,7 @@
     "rejectedBody": "{title} özel kaldı; gerekçe sahibine iletildi.",
     "answerFailed": "Karar kaydedilemedi",
     "errors": {
+      "generic": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin.",
       "requestAnswered": "Bu istek az önce karara bağlanmış ya da geri çekilmiş.",
       "requestGone": "Bu istek artık yok.",
       "proposalAnswered": "Bu öneri az önce karara bağlanmış.",
@@ -2943,7 +2944,7 @@
     "title": "Köşk desteleri",
     "intro": "Köşk desteleri, {kosk}'nün herhangi bir dersine kayıtlı talebelere açıktır. Kartlarını siz eklersiniz; talebeler desteyi çalışır ve istedikleri kartı kendi destelerine kopyalar.",
     "loadFailedTitle": "Desteler okunamadı",
-    "loadFailed": "Köşkün desteleri şu anda alınamıyor. Sayfayı yenileyin.",
+    "loadFailed": "Köşkün desteleri şu anda alınamıyor. Biraz sonra yeniden deneyin.",
     "open": "Köşk destesi aç",
     "proposalsHeading": "Müderris önerileri",
     "proposalsWaiting": "{count, plural, one {# öneri kararınızı bekliyor} other {# öneri kararınızı bekliyor}}",
@@ -2983,13 +2984,16 @@
     "proposalRefusedBody": "{title} önerisinin gerekçesi öneren müderrise iletildi.",
     "actionFailed": "İşlem yapılamadı",
     "errors": {
+      "generic": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin.",
       "requestAnswered": "Bu istek az önce karara bağlanmış ya da geri çekilmiş.",
       "requestGone": "Bu istek artık yok.",
       "proposalAnswered": "Bu öneri az önce karara bağlanmış.",
       "proposalGone": "Bu öneri artık yok.",
       "deckGone": "Bu deste artık yok ya da zaten gizli.",
       "forbidden": "Bu işlem için izniniz yok."
-    }
+    },
+    "introNoName": "Köşk desteleri, köşkün herhangi bir dersine kayıtlı talebelere açıktır.",
+    "retry": "Yeniden dene"
   },
   "KoskDeckForm": {
     "title": "Köşk destesi aç",
@@ -3051,12 +3055,16 @@
     "opened": "Deste açıldı",
     "openedBody": "{title} köşk desteleri arasında; kartlarını şimdi ekleyebilirsiniz.",
     "errors": {
+      "generic": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin.",
       "requestAnswered": "Bu istek az önce karara bağlanmış ya da geri çekilmiş.",
       "requestGone": "Bu istek artık yok.",
       "proposalAnswered": "Bu öneri az önce karara bağlanmış; deste açılmadı.",
       "proposalGone": "Bu öneri artık yok; deste açılmadı.",
       "deckGone": "Bu deste artık yok ya da zaten gizli.",
       "forbidden": "Bu köşkün nazımı değilsiniz."
-    }
+    },
+    "loadFailedTitle": "Köşk bilgisi okunamadı",
+    "loadFailed": "Köşk ve desteleri şu anda alınamıyor. Biraz sonra yeniden deneyin.",
+    "retry": "Yeniden dene"
   }
 }

@@ -81,6 +81,15 @@ export const errorCode = (body: unknown): string | null =>
 export const deckErrorKey = (body: unknown): string | null =>
   ERROR_KEYS[errorCode(body) ?? ""] ?? null;
 
+/**
+ * The message key for a failed answer. A code this screen knows gets its own
+ * sentence; anything else (the server unreachable, a reply without a body, a
+ * code nobody mapped) gets the generic one, because the library's own text for
+ * those is English and not for the person to read.
+ */
+export const deckFailureKey = (body: unknown): string =>
+  deckErrorKey(body) ?? "errors.generic";
+
 /** Whether the answer says the thing is already gone, so the row should leave the list. */
 export const isGone = (body: unknown): boolean =>
   [

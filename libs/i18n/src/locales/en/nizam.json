@@ -2913,6 +2913,7 @@
     "rejectedBody": "{title} stays private; the reason was passed on to its owner.",
     "answerFailed": "The answer could not be saved",
     "errors": {
+      "generic": "The action could not be completed. Try again in a moment.",
       "requestAnswered": "This request was answered or withdrawn a moment ago.",
       "requestGone": "This request no longer exists.",
       "proposalAnswered": "This proposal was answered a moment ago.",
@@ -2943,7 +2944,7 @@
     "title": "Köşk decks",
     "intro": "The decks of {kosk} are open to talebe enrolled in any of its courses. You add the cards; talebe study the deck and copy the cards they want into their own decks.",
     "loadFailedTitle": "Decks could not be read",
-    "loadFailed": "The köşk's decks cannot be fetched right now. Reload the page.",
+    "loadFailed": "The köşk's decks cannot be fetched right now. Try again in a moment.",
     "open": "Open a köşk deck",
     "proposalsHeading": "Müderris proposals",
     "proposalsWaiting": "{count, plural, one {# proposal waits for your answer} other {# proposals wait for your answer}}",
@@ -2983,13 +2984,16 @@
     "proposalRefusedBody": "The reason for {title} was passed on to the müderris.",
     "actionFailed": "That could not be done",
     "errors": {
+      "generic": "The action could not be completed. Try again in a moment.",
       "requestAnswered": "This request was answered or withdrawn a moment ago.",
       "requestGone": "This request no longer exists.",
       "proposalAnswered": "This proposal was answered a moment ago.",
       "proposalGone": "This proposal no longer exists.",
       "deckGone": "This deck no longer exists or is hidden already.",
       "forbidden": "You may not do this."
-    }
+    },
+    "introNoName": "Köşk decks are open to the students enrolled in any course of the köşk.",
+    "retry": "Try again"
   },
   "KoskDeckForm": {
     "title": "Open a köşk deck",
@@ -3051,12 +3055,16 @@
     "opened": "Deck opened",
     "openedBody": "{title} is among the köşk's decks; you can add its cards now.",
     "errors": {
+      "generic": "The action could not be completed. Try again in a moment.",
       "requestAnswered": "This request was answered or withdrawn a moment ago.",
       "requestGone": "This request no longer exists.",
       "proposalAnswered": "This proposal was answered a moment ago; the deck was not opened.",
       "proposalGone": "This proposal no longer exists; the deck was not opened.",
       "deckGone": "This deck no longer exists or is hidden already.",
       "forbidden": "You are not a nazım of this köşk."
-    }
+    },
+    "loadFailedTitle": "The köşk could not be read",
+    "loadFailed": "The köşk and its decks cannot be fetched right now. Try again in a moment.",
+    "retry": "Try again"
   }
 }

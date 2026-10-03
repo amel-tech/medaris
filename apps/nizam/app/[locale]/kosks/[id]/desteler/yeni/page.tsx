@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import { forbidden, notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { KoskDeckForm } from "~/features/deck-review/components/kosk-deck-form";
-import { getManagedKoskDecks } from "~/features/deck-review/reads";
-import { getKoskById } from "~/features/kosks/actions";
+import { LoadFailed } from "~/features/deck-review/components/load-failed";
+import {
+  getKoskForDecks,
+  getManagedKoskDecks,
+} from "~/features/deck-review/reads";
 
 // Behind the sign-in middleware, and per caller.
 export const dynamic = "force-dynamic";
@@ -30,17 +33,28 @@ export default async function Page({
   const [{ locale, id }, query] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
   const [kosk, decks] = await Promise.all([
-    getKoskById(id),
+    getKoskForDecks(id),
     getManagedKoskDecks(id),
   ]);
-  if (decks === "forbidden") forbidden();
-  if (!kosk || decks === "not-found") notFound();
+  if (decks === "forbidden" || kosk === "forbidden") forbidden();
+  if (decks === "not-found" || kosk === "not-found") notFound();
+  if (!kosk || !decks) {
+    const t = await getTranslations("nizam.KoskDeckForm");
+    return (
+      <div className="mx-auto w-full max-w-[72rem] px-gutter py-8">
+        <LoadFailed
+          title={t("loadFailedTitle")}
+          body={t("loadFailed")}
+          retryLabel={t("retry")}
+        />
+      </div>
+    );
+  }
 
   const wanted = typeof query.oneri === "string" ? query.oneri : null;
-  const proposal =
-    decks && wanted
-      ? (decks.proposals.find((p) => p.id === wanted) ?? null)
-      : null;
+  const proposal = wanted
+    ? (decks.proposals.find((p) => p.id === wanted) ?? null)
+    : null;
 
   return (
     <div className="mx-auto w-full max-w-[72rem] px-gutter py-8">

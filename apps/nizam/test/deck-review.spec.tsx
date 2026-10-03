@@ -13,6 +13,7 @@ import { KoskDecksView } from "~/features/deck-review/components/kosk-decks-view
 import { RejectDialog } from "~/features/deck-review/components/reject-dialog";
 import {
   deckErrorKey,
+  deckFailureKey,
   deckPayload,
   emptyDeckForm,
   formFromProposal,
@@ -115,6 +116,11 @@ describe("answers and dates", () => {
     );
     expect(deckErrorKey({ code: "NOPE" })).toBeNull();
     expect(deckErrorKey(undefined)).toBeNull();
+    expect(deckFailureKey(undefined)).toBe("errors.generic");
+    expect(deckFailureKey({ code: "NOPE" })).toBe("errors.generic");
+    expect(deckFailureKey({ code: "KOSK_DECK_NOT_FOUND" })).toBe(
+      "errors.deckGone"
+    );
     expect(isGone({ code: "DECK_PROPOSAL_NOT_PENDING" })).toBe(true);
     expect(isGone({ code: "DECK_REVIEW_FORBIDDEN" })).toBe(false);
   });
@@ -265,6 +271,17 @@ describe("KoskDecksView (nizam 30)", () => {
         />
       )
     ).toContain("Desteler okunamadı");
+  });
+
+  it("on a failed read offers Yeniden dene and draws neither the empty state nor an open deck link", () => {
+    const html = render(
+      <KoskDecksView koskId="k1" koskName="" initial={null} />
+    );
+    expect(html).toContain("Yeniden dene");
+    expect(html).not.toContain("Bu köşkün henüz destesi yok.");
+    expect(html).not.toContain("0 deste");
+    expect(html).not.toContain("’nün");
+    expect(html).not.toContain("/desteler/yeni");
   });
 });
 

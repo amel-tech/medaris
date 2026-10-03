@@ -1,6 +1,7 @@
 import {
   createServerTedrisatAPIs,
   type DeckPublishRequestListResponse,
+  type KoskResponse,
   type ManagedKoskDecksResponse,
   ResponseError,
 } from "@medaris/services/tedrisat";
@@ -49,6 +50,24 @@ export const getManagedKoskDecks = async (
     const refused = refusal(error);
     if (refused) return refused;
     console.error("Error fetching the köşk decks:", error);
+    return null;
+  }
+};
+
+/**
+ * The köşk a deck screen is about. Told apart like the deck reads: a refusal
+ * and a missing köşk are answers, a failed read is `null` and the page shows
+ * its error state instead of the not-found screen.
+ */
+export const getKoskForDecks = async (
+  koskId: string
+): Promise<DeckRead<KoskResponse>> => {
+  try {
+    return await (await api()).kosks.getKoskById({ id: koskId });
+  } catch (error) {
+    const refused = refusal(error);
+    if (refused) return refused;
+    console.error("Error fetching the köşk:", error);
     return null;
   }
 };

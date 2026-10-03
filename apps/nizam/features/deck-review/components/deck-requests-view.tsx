@@ -21,7 +21,12 @@ import {
   loadRequestCards,
   rejectDeckRequest,
 } from "../actions";
-import { deckErrorKey, isGone, longDateTime, shortDateTime } from "../present";
+import {
+  deckFailureKey,
+  isGone,
+  longDateTime,
+  shortDateTime,
+} from "../present";
 import { RejectDialog } from "./reject-dialog";
 
 type Tab = "PENDING" | "DECIDED";
@@ -147,11 +152,10 @@ export function DeckRequestsView({ initial }: Props) {
     setSelectedId(rest[0]?.id ?? null);
   };
 
-  const fail = (body: unknown, fallback: string, id: string) => {
-    const key = deckErrorKey(body);
+  const fail = (body: unknown, id: string) => {
     if (isGone(body)) settle(id);
     toast.error(t("answerFailed"), {
-      description: key ? t(key as never) : fallback,
+      description: t(deckFailureKey(body) as never),
       duration: Number.POSITIVE_INFINITY,
     });
   };
@@ -162,7 +166,7 @@ export function DeckRequestsView({ initial }: Props) {
     const result = await approveDeckRequest(selected.id);
     setBusy(false);
     if (!result.success) {
-      fail(result.errorBody, result.error, selected.id);
+      fail(result.errorBody, selected.id);
       return;
     }
     toast.success(t("published"), {
@@ -175,7 +179,7 @@ export function DeckRequestsView({ initial }: Props) {
     if (!selected) return false;
     const result = await rejectDeckRequest(selected.id, reason);
     if (!result.success) {
-      fail(result.errorBody, result.error, selected.id);
+      fail(result.errorBody, selected.id);
       return isGone(result.errorBody);
     }
     toast.success(t("rejected"), {
@@ -246,7 +250,10 @@ export function DeckRequestsView({ initial }: Props) {
             className="flex flex-col gap-3 rounded-surface border border-neutral-subtle p-4"
           >
             <span className="mds-caption">{t("front")}</span>
-            <bdi className="mds-reading" dir="auto">
+            <bdi
+              className="mds-reading block text-center text-[1.75rem] leading-snug"
+              dir="auto"
+            >
               {card.front}
             </bdi>
             <hr className="border-neutral-subtle" />

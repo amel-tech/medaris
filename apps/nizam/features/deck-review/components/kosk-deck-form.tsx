@@ -21,7 +21,7 @@ import {
   CARD_TYPES,
   DESCRIPTION_MAX,
   type DeckFormValues,
-  deckErrorKey,
+  deckFailureKey,
   deckPayload,
   emptyDeckForm,
   formFromProposal,
@@ -82,9 +82,8 @@ export function KoskDeckForm({
     );
     setSaving(false);
     if (!result.success) {
-      const key = deckErrorKey(result.errorBody);
       toast.error(t("failed"), {
-        description: key ? t(key as never) : result.error,
+        description: t(deckFailureKey(result.errorBody) as never),
         duration: Number.POSITIVE_INFINITY,
       });
       return;
