@@ -38,10 +38,12 @@ export const STATUS_PARAMS: Readonly<Record<string, CourseStatus>> = {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+export const isUuid = (value: string): boolean => UUID.test(value);
+
 /** The filters an address names; a value nobody knows is "tümü", so a stale link never reaches the API as a 400. */
 export function filtersOf(params: { kosk?: string; durum?: string }): Filters {
   return {
-    kosk: params.kosk && UUID.test(params.kosk) ? params.kosk : null,
+    kosk: params.kosk && isUuid(params.kosk) ? params.kosk : null,
     status:
       params.durum && Object.hasOwn(STATUS_PARAMS, params.durum)
         ? (STATUS_PARAMS[params.durum] ?? null)
