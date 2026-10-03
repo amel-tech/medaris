@@ -39,6 +39,11 @@ export const decks = table(
     publishRequestedAt: timestamp("publish_requested_at", {
       withTimezone: true,
     }),
+    // The Medaris başnazımı's answer (MDRS-180): when and by whom, and the
+    // reason of a refusal. Cleared when the author asks again.
+    publishDecidedAt: timestamp("publish_decided_at", { withTimezone: true }),
+    publishDecidedBy: uuid("publish_decided_by"),
+    publishRejectReason: text("publish_reject_reason"),
     // Free labels the author types on the create form; only the author reads
     // them back. Not the `deck_label` tables: those need a title of five
     // characters and a second request per label.
@@ -69,6 +74,9 @@ export const decks = table(
     index("decks_kosk_id_idx").on(table.koskId),
     index("decks_course_id_idx").on(table.courseId),
     index("decks_madrasah_id_idx").on(table.madrasahId),
+    // The answered requests of nizam/16 are read newest answer first
+    // (`DeckReviewRepository.listRequests`).
+    index("decks_publish_decided_at_idx").on(table.publishDecidedAt),
   ]
 );
 

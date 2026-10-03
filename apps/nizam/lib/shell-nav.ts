@@ -225,8 +225,7 @@ const koskGroups: NavGroup[] = [
       {
         id: "decks",
         label: "decks",
-        // the decks page that exists today; the köşk's own list (nizam/53) replaces it
-        path: "/decks",
+        path: "/kosks/:kosk/desteler",
         icon: "cards",
       },
       {

@@ -252,7 +252,11 @@ export class FlashcardDeckService {
   async requestPublish(deckId: string): Promise<IFlashcardDeck> {
     const deck = await this.deckRepo.findById(deckId);
     if (deck === null) throw new DeckNotFoundError(deckId);
-    if (deck.publishStatus !== DeckPublishStatus.PRIVATE) {
+    // A refused deck may ask again (MDRS-180); a waiting or public one may not.
+    if (
+      deck.publishStatus !== DeckPublishStatus.PRIVATE &&
+      deck.publishStatus !== DeckPublishStatus.REJECTED
+    ) {
       throw new DeckPublishStateError(deckId, deck.publishStatus);
     }
     return this.setPublishRequest(

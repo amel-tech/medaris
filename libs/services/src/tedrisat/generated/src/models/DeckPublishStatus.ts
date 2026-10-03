@@ -20,7 +20,8 @@
 export const DeckPublishStatus = {
     Private: 'PRIVATE',
     Pending: 'PENDING',
-    Published: 'PUBLISHED'
+    Published: 'PUBLISHED',
+    Rejected: 'REJECTED'
 } as const;
 export type DeckPublishStatus = typeof DeckPublishStatus[keyof typeof DeckPublishStatus];
 

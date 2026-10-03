@@ -57,12 +57,16 @@ export function DecksPage({ decks }: DecksPageProps) {
     requested: (when) => t("requested", { when }),
     muderris: (name) => t("muderris", { name }),
   };
-  const statusLabel = (status: "PRIVATE" | "PENDING" | "PUBLISHED") =>
+  const statusLabel = (
+    status: "PRIVATE" | "PENDING" | "PUBLISHED" | "REJECTED"
+  ) =>
     status === "PUBLISHED"
       ? t("statusPUBLISHED")
       : status === "PENDING"
         ? t("statusPENDING")
-        : t("statusPRIVATE");
+        : status === "REJECTED"
+          ? t("statusREJECTED")
+          : t("statusPRIVATE");
   const kindLabel = (kind: "COURSE" | "KOSK" | "MADRASAH" | "PUBLIC") =>
     kind === "COURSE"
       ? t("kindCOURSE")

@@ -465,9 +465,9 @@
         "bodyReason": "Your application to open {koskName} was rejected. Reason: {reason}"
       },
       "DECK_PUBLISH_RESULT": {
-        "title": "{outcome, select, approved {Deck published} unpublished {Deck unpublished} other {Deck publish request rejected}}",
-        "body": "{outcome, select, approved {{deckTitle} is now public.} unpublished {{deckTitle} was unpublished.} other {Your request to make {deckTitle} public was rejected.}}",
-        "bodyReason": "{outcome, select, approved {{deckTitle} is now public.} unpublished {{deckTitle} was unpublished.} other {Your request to make {deckTitle} public was rejected.}} Reason: {reason}"
+        "title": "{outcome, select, approved {Deck published} unpublished {Deck unpublished} proposal_rejected {Deck proposal rejected} other {Deck publish request rejected}}",
+        "body": "{outcome, select, approved {{deckTitle} is now public.} unpublished {{deckTitle} was unpublished.} proposal_rejected {Your proposal for the deck {deckTitle} was rejected.} other {Your request to make {deckTitle} public was rejected.}}",
+        "bodyReason": "{outcome, select, approved {{deckTitle} is now public.} unpublished {{deckTitle} was unpublished.} proposal_rejected {Your proposal for the deck {deckTitle} was rejected.} other {Your request to make {deckTitle} public was rejected.}} Reason: {reason}"
       }
     }
   },
@@ -725,6 +725,7 @@
     "all": "All",
     "statusPRIVATE": "Private",
     "statusPENDING": "Awaiting publication",
+    "statusREJECTED": "Publish request refused",
     "statusPUBLISHED": "Published",
     "kindCOURSE": "Course deck",
     "kindKOSK": "Köşk deck",

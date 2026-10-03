@@ -1047,6 +1047,60 @@
         "tags": [
           "kosks"
         ]
+      },
+      "post": {
+        "description": "The deck is private to nobody but the köşk's talebe: its cards are added afterwards. With `proposalId` the proposal is accepted in the same step; 409 (DECK_PROPOSAL_NOT_PENDING) when it was answered meanwhile.",
+        "operationId": "createKoskDeck",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateKoskDeckDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedIdResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "DECK_PROPOSAL_NOT_PENDING"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Open a köşk deck (Desteyi aç)",
+        "tags": [
+          "kosks"
+        ]
       }
     },
     "/kosks/{id}/managers/{userId}": {
@@ -7054,6 +7108,408 @@
         ]
       }
     },
+    "/nizam/deck-publish-requests": {
+      "get": {
+        "description": "The members' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı (SYSTEM_ADMIN) only.",
+        "operationId": "listDeckPublishRequests",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/DeckRequestStatus"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 50; default 12.",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeckPublishRequestListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deck publish requests (Bekleyen / Karara bağlanan)",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/deck-publish-requests/{id}/cards": {
+      "get": {
+        "description": "Three sample cards, or every card with `all=true`. The deck is private until it is published, so each read is written to the audit log (`deck.private-read`) before the cards are returned.",
+        "operationId": "readDeckPublishRequestCards",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "all",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeckRequestCardsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The cards of a requested deck",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/deck-publish-requests/{id}/approve": {
+      "post": {
+        "description": "The deck becomes public and its owner is told. 409 (DECK_REQUEST_NOT_PENDING) when it was answered or withdrawn meanwhile.",
+        "operationId": "approveDeckPublishRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "DECK_REQUEST_NOT_PENDING"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Publish the deck (Yayımla)",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/deck-publish-requests/{id}/reject": {
+      "post": {
+        "description": "The deck stays private, the reason goes to its owner, who may ask again. The reason is required.",
+        "operationId": "rejectDeckPublishRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "DECK_REQUEST_NOT_PENDING"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refuse the request (Reddet)",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/kosks/{id}/decks/manage": {
+      "get": {
+        "description": "The shown köşk decks with their card counts and the müderris proposals nobody has answered. `page` and `limit` cut both lists; `decksTotal` and `proposalsTotal` count every one. A nazım of the köşk or SYSTEM_ADMIN.",
+        "operationId": "getManagedKoskDecks",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 50; default 12.",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedKoskDecksResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A köşk's decks and the proposals waiting for an answer",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/deck-proposals": {
+      "post": {
+        "description": "A müderris of one of the köşk's courses. The köşk nazımı accepts it by opening the deck, or refuses it with a reason.",
+        "operationId": "proposeKoskDeck",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeckProposalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedIdResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Suggest a deck for the köşk",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/deck-proposals/{proposalId}/reject": {
+      "post": {
+        "description": "The proposer reads the reason in their notifications. The reason is required.",
+        "operationId": "rejectKoskDeckProposal",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "proposalId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "DECK_PROPOSAL_NOT_PENDING"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refuse a proposal (Reddet)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/decks/{id}/hide": {
+      "post": {
+        "description": "Nothing is deleted: the deck moves to the köşk's archive, where Geri al brings it back.",
+        "operationId": "hideKoskDeck",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Hide a köşk deck (Gizle)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
     "/me": {
       "get": {
         "operationId": "getMe",
@@ -12361,7 +12817,8 @@
         "enum": [
           "PRIVATE",
           "PENDING",
-          "PUBLISHED"
+          "PUBLISHED",
+          "REJECTED"
         ]
       },
       "FlashcardDeckResponse": {
@@ -14561,6 +15018,343 @@
           "recordings",
           "followers",
           "cards"
+        ]
+      },
+      "DeckRequestStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "DECIDED"
+        ]
+      },
+      "DeckPersonResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "DeckPublishRequestResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The deck's id"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "cardType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FlashcardType"
+              }
+            ]
+          },
+          "cardCount": {
+            "type": "number"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/DeckPersonResponse"
+          },
+          "requestedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PUBLISHED",
+              "REJECTED"
+            ],
+            "description": "PENDING waits; PUBLISHED and REJECTED are answered."
+          },
+          "decidedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "rejectReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "cardType",
+          "cardCount",
+          "owner",
+          "requestedAt",
+          "outcome"
+        ]
+      },
+      "DeckPublishRequestListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeckPublishRequestResponse"
+            }
+          },
+          "pendingCount": {
+            "type": "number",
+            "description": "Requests waiting for an answer"
+          },
+          "decidedCount": {
+            "type": "number",
+            "description": "Requests answered (published or refused)"
+          }
+        },
+        "required": [
+          "items",
+          "pendingCount",
+          "decidedCount"
+        ]
+      },
+      "DeckRequestCardResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "front": {
+            "type": "string"
+          },
+          "back": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "front",
+          "back"
+        ]
+      },
+      "DeckRequestCardsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeckRequestCardResponse"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Every card the deck holds"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "RejectReasonDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Kartlarda kaynak gösterilmemiş.",
+            "description": "Shown to the person it is for. Required, and not blank."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "ManagedKoskDeckResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "cardType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FlashcardType"
+              }
+            ]
+          },
+          "cardCount": {
+            "type": "number"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "cardType",
+          "cardCount",
+          "updatedAt"
+        ]
+      },
+      "DeckProposalResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "cardType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FlashcardType"
+              }
+            ]
+          },
+          "proposedBy": {
+            "$ref": "#/components/schemas/DeckPersonResponse"
+          },
+          "courseTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "cardType",
+          "proposedBy",
+          "createdAt"
+        ]
+      },
+      "ManagedKoskDecksResponse": {
+        "type": "object",
+        "properties": {
+          "decks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagedKoskDeckResponse"
+            }
+          },
+          "proposals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeckProposalResponse"
+            }
+          },
+          "decksTotal": {
+            "type": "number",
+            "description": "Every shown deck of the köşk, not the page"
+          },
+          "proposalsTotal": {
+            "type": "number",
+            "description": "Every proposal nobody has answered, not the page"
+          }
+        },
+        "required": [
+          "decks",
+          "proposals",
+          "decksTotal",
+          "proposalsTotal"
+        ]
+      },
+      "CreateKoskDeckDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Sarfın temel kelimeleri"
+          },
+          "description": {
+            "type": "string"
+          },
+          "cardType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FlashcardType"
+              }
+            ]
+          },
+          "proposalId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The proposal this deck answers; it is accepted together with the deck."
+          }
+        },
+        "required": [
+          "title",
+          "cardType"
+        ]
+      },
+      "CreatedIdResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "CreateDeckProposalDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "İ'lâl kaideleri"
+          },
+          "description": {
+            "type": "string"
+          },
+          "cardType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FlashcardType"
+              }
+            ]
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "One of the proposer's courses in this köşk."
+          }
+        },
+        "required": [
+          "title",
+          "cardType"
         ]
       },
       "NazirMadrasahRef": {

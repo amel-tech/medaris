@@ -465,9 +465,9 @@
         "bodyReason": "{koskName} köşkünü açma başvurun reddedildi. Gerekçe: {reason}"
       },
       "DECK_PUBLISH_RESULT": {
-        "title": "{outcome, select, approved {Deste yayınlandı} unpublished {Deste yayından kaldırıldı} other {Deste yayın isteği reddedildi}}",
-        "body": "{outcome, select, approved {{deckTitle} destesi herkese açıldı.} unpublished {{deckTitle} destesi yayından kaldırıldı.} other {{deckTitle} destesini herkese açma isteğin reddedildi.}}",
-        "bodyReason": "{outcome, select, approved {{deckTitle} destesi herkese açıldı.} unpublished {{deckTitle} destesi yayından kaldırıldı.} other {{deckTitle} destesini herkese açma isteğin reddedildi.}} Gerekçe: {reason}"
+        "title": "{outcome, select, approved {Deste yayınlandı} unpublished {Deste yayından kaldırıldı} proposal_rejected {Deste öneriniz reddedildi} other {Deste yayın isteği reddedildi}}",
+        "body": "{outcome, select, approved {{deckTitle} destesi herkese açıldı.} unpublished {{deckTitle} destesi yayından kaldırıldı.} proposal_rejected {{deckTitle} deste öneriniz reddedildi.} other {{deckTitle} destesini herkese açma isteğin reddedildi.}}",
+        "bodyReason": "{outcome, select, approved {{deckTitle} destesi herkese açıldı.} unpublished {{deckTitle} destesi yayından kaldırıldı.} proposal_rejected {{deckTitle} deste öneriniz reddedildi.} other {{deckTitle} destesini herkese açma isteğin reddedildi.}} Gerekçe: {reason}"
       }
     }
   },
@@ -725,6 +725,7 @@
     "all": "Tümü",
     "statusPRIVATE": "Özel",
     "statusPENDING": "Yayın isteği bekliyor",
+    "statusREJECTED": "Yayın isteği reddedildi",
     "statusPUBLISHED": "Yayında",
     "kindCOURSE": "Ders destesi",
     "kindKOSK": "Köşk destesi",
