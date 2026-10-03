@@ -1,6 +1,7 @@
 import { resolveSwaggerEnabled } from "@medaris/common";
 import * as pkg from "../../package.json";
 import { resolveDatabaseSsl } from "./database-ssl";
+import { readKeycloakAdminConfig } from "./keycloak-admin-env";
 import { readSecurityEnv } from "./security-env";
 import { readTedrisWebUrl } from "./tedris-web-url";
 import { assertBulkThrottleEnv } from "./throttle-env";
@@ -70,6 +71,9 @@ export default () => {
       allowedClients: security.allowedClients,
       cacheTtl: process.env.KEYCLOAK_CACHE_TTL || "86400",
       notFoundCacheTtl: process.env.KEYCLOAK_NOT_FOUND_CACHE_TTL || "120",
+      // Service account that reads the realm's users (MDRS-169); null when
+      // unset, and the routes that need it answer 503.
+      admin: readKeycloakAdminConfig(process.env),
     },
   };
 };

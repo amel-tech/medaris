@@ -9,13 +9,15 @@
     "start": "next start --port 4001",
     "clean": "rm -rf .turbo .next node_modules dist",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@medaris/env": "workspace:*",
     "@medaris/i18n": "workspace:*",
     "@medaris/icons": "workspace:*",
     "@medaris/services": "workspace:*",
+    "@medaris/tokens": "workspace:*",
     "@medaris/ui": "workspace:*",
     "@medaris/utils": "workspace:*",
     "@opentelemetry/api": "catalog:",
@@ -30,12 +32,15 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@playwright/test": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "lightningcss": "catalog:",
     "next-intl": "catalog:",
+    "pg": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

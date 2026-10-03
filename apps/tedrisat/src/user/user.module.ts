@@ -1,6 +1,7 @@
 import { AuthGuardModule } from "@medaris/common";
 import { Module } from "@nestjs/common";
 import { APP_INTERCEPTOR } from "@nestjs/core";
+import { AssignmentModule } from "../assignment/assignment.module";
 import { CourseModule } from "../course/course.module";
 import { DatabaseModule } from "../database/database.module";
 import { KoskModule } from "../kosk/kosk.module";
@@ -12,7 +13,13 @@ import { UserSyncService } from "./user-sync.service";
 import { UsersController } from "./users.controller";
 
 @Module({
-  imports: [AuthGuardModule, DatabaseModule, KoskModule, CourseModule],
+  imports: [
+    AuthGuardModule,
+    DatabaseModule,
+    KoskModule,
+    CourseModule,
+    AssignmentModule,
+  ],
   controllers: [MeController, UsersController],
   providers: [
     UserRepository,

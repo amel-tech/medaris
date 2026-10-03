@@ -190,6 +190,13 @@
       "when": 1790900224601,
       "tag": "0026_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1790907262497,
+      "tag": "0027_permission_groups_grants",
+      "breakpoints": true
     }
   ]
 }

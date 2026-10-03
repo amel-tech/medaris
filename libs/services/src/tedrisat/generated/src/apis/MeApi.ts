@@ -18,6 +18,11 @@ import type {
   CalendarFeedLinkResponse,
   CalendarFeedStatusResponse,
   MeResponse,
+  MyAssignmentsResponse,
+  MyEffectivePermissionsResponse,
+  MyGrantsResponse,
+  MyPermissionsResponse,
+  MyRolesResponse,
   UpdateMeDto,
 } from '../models/index';
 import {
@@ -27,6 +32,16 @@ import {
     CalendarFeedStatusResponseToJSON,
     MeResponseFromJSON,
     MeResponseToJSON,
+    MyAssignmentsResponseFromJSON,
+    MyAssignmentsResponseToJSON,
+    MyEffectivePermissionsResponseFromJSON,
+    MyEffectivePermissionsResponseToJSON,
+    MyGrantsResponseFromJSON,
+    MyGrantsResponseToJSON,
+    MyPermissionsResponseFromJSON,
+    MyPermissionsResponseToJSON,
+    MyRolesResponseFromJSON,
+    MyRolesResponseToJSON,
     UpdateMeDtoFromJSON,
     UpdateMeDtoToJSON,
 } from '../models/index';
@@ -75,6 +90,42 @@ export class MeApi extends runtime.BaseAPI {
     }
 
     /**
+     * Held roles only: revoked and expired rows are left out. A course carries its status, köşk, medrese and enrolled count.
+     * The roles the caller holds, each with its scope
+     */
+    async getMyAssignmentsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyAssignmentsResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/me/assignments`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MyAssignmentsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Held roles only: revoked and expired rows are left out. A course carries its status, köşk, medrese and enrolled count.
+     * The roles the caller holds, each with its scope
+     */
+    async getMyAssignments(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyAssignmentsResponse> {
+        const response = await this.getMyAssignmentsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Whether the caller has a calendar-feed URL
      */
     async getMyCalendarFeedRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CalendarFeedStatusResponse>> {
@@ -105,6 +156,144 @@ export class MeApi extends runtime.BaseAPI {
      */
     async getMyCalendarFeed(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CalendarFeedStatusResponse> {
         const response = await this.getMyCalendarFeedRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Role defaults plus grants, grouped by role: the courses a müderris teaches are one group. Scopes where only a grant is held form a group with a null role.
+     * The caller\'s permissions by role and scope
+     */
+    async getMyEffectivePermissionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyEffectivePermissionsResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/me/effective-permissions`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MyEffectivePermissionsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Role defaults plus grants, grouped by role: the courses a müderris teaches are one group. Scopes where only a grant is held form a group with a null role.
+     * The caller\'s permissions by role and scope
+     */
+    async getMyEffectivePermissions(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyEffectivePermissionsResponse> {
+        const response = await this.getMyEffectivePermissionsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The permissions and permission groups given to the caller
+     */
+    async getMyGrantsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyGrantsResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/me/grants`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MyGrantsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The permissions and permission groups given to the caller
+     */
+    async getMyGrants(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyGrantsResponse> {
+        const response = await this.getMyGrantsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Every permission code the caller holds in any scope
+     */
+    async getMyPermissionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyPermissionsResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/me/permissions`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MyPermissionsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Every permission code the caller holds in any scope
+     */
+    async getMyPermissions(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyPermissionsResponse> {
+        const response = await this.getMyPermissionsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Which roles the caller holds, and in how many scopes
+     */
+    async getMyRolesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyRolesResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/me/roles`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MyRolesResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Which roles the caller holds, and in how many scopes
+     */
+    async getMyRoles(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyRolesResponse> {
+        const response = await this.getMyRolesRaw(initOverrides);
         return await response.value();
     }
 

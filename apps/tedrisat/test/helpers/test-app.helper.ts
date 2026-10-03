@@ -227,6 +227,8 @@ function applyStubKeycloakEnv(): void {
 export async function createTestApp(options?: {
   authUserId?: string;
   keyProvider?: "stub" | "real";
+  /** Providers to replace, e.g. the Keycloak admin client (MDRS-169). */
+  overrides?: Array<{ provide: unknown; useValue: unknown }>;
 }): Promise<INestApplication> {
   await useDatabaseForThisFile();
 
@@ -246,6 +248,12 @@ export async function createTestApp(options?: {
     builder
       .overrideProvider(PUBLIC_KEY_PROVIDER)
       .useValue(stubPublicKeyProvider());
+  }
+
+  for (const override of options?.overrides ?? []) {
+    builder
+      .overrideProvider(override.provide as never)
+      .useValue(override.useValue);
   }
 
   if (options?.authUserId !== undefined) {

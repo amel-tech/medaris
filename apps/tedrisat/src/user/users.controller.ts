@@ -5,8 +5,10 @@ import {
   ApiForbiddenResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiServiceUnavailableResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import { UserDirectoryService } from "../assignment/user-directory.service";
 import { FindUserByEmailQuery } from "./dto/find-user-by-email.query";
 import { UserSummaryResponse } from "./dto/user-summary-response.dto";
 import { AuthenticatedUserRequest } from "./interfaces/authenticated-user-request.interface";
@@ -22,7 +24,10 @@ import { UserService } from "./user.service";
 @UseGuards(AuthGuard)
 @Controller("users")
 export class UsersController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly directory: UserDirectoryService
+  ) {}
 
   @ApiOperation({
     summary: "Find a user by exact e-mail address",
@@ -38,5 +43,22 @@ export class UsersController {
     @Query() query: FindUserByEmailQuery
   ): Promise<UserSummaryResponse[]> {
     return this.userService.findByEmail(request.user, query.email);
+  }
+
+  @ApiOperation({
+    summary: "Find a user in the realm by exact e-mail address",
+    description:
+      "Searches Keycloak, so a person who has never opened the app is found too. Returns zero or one user. Callable by SYSTEM_ADMIN and anyone who holds a role; every search is written to the audit log. 503 when the directory is not configured or does not answer.",
+    operationId: "lookupUser",
+  })
+  @ApiOkResponse({ type: [UserSummaryResponse] })
+  @ApiForbiddenResponse()
+  @ApiServiceUnavailableResponse()
+  @Get("lookup")
+  async lookup(
+    @Req() request: AuthenticatedUserRequest,
+    @Query() query: FindUserByEmailQuery
+  ): Promise<UserSummaryResponse[]> {
+    return this.directory.lookup(request.user, query.email);
   }
 }
