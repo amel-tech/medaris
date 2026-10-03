@@ -8,10 +8,13 @@ import { PlatformPolicyModule } from "../platform-policy/platform-policy.module"
 import { CourseController } from "./course.controller";
 import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
+import { CourseAccessService } from "./course-access.service";
 import { CourseNotificationRepository } from "./course-notification.repository";
 import { CourseNotifier } from "./course-notifier";
 import { CourseStatsRepository } from "./course-stats.repository";
 import { LessonController } from "./lesson.controller";
+import { LiveStreamController } from "./live-stream.controller";
+import { LiveStreamService } from "./live-stream.service";
 import { RecordingRepository } from "./recording.repository";
 
 @Module({
@@ -22,10 +25,12 @@ import { RecordingRepository } from "./recording.repository";
     PlatformPolicyModule,
     NotificationModule,
   ],
-  controllers: [CourseController, LessonController],
+  controllers: [CourseController, LessonController, LiveStreamController],
   providers: [
     CourseService,
     CourseRepository,
+    CourseAccessService,
+    LiveStreamService,
     RecordingRepository,
     CourseStatsRepository,
     CourseNotifier,

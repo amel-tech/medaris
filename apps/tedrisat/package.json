@@ -32,6 +32,7 @@
   "dependencies": {
     "@medaris/common": "workspace:*",
     "@medaris/env": "workspace:*",
+    "@medaris/utils": "workspace:*",
     "@nestjs/common": "catalog:",
     "@nestjs/config": "catalog:",
     "@nestjs/core": "catalog:",

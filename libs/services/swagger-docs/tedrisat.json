@@ -4036,6 +4036,111 @@
         ]
       }
     },
+    "/courses/{id}/live-streams": {
+      "get": {
+        "description": "Every session of the course that has a live stream link, in programme order: what nizam's Celseler page shows the staff. `session.live_link` (the müderris and the köşk nazımı by default, a ders nazırı when given it); 403 for anyone else, so the link never reaches a caller who may not set it. The talebe reads the link from `GET /courses/:courseId/sessions/:sessionId`, and only while the session is live (MDRS-162).",
+        "operationId": "listCourseLiveStreams",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LiveStreamResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "AUTHZ_FORBIDDEN"
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course's live stream links, for its staff",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/live-stream": {
+      "put": {
+        "description": "`session.live_link` (the müderris and the köşk nazımı by default, a ders nazırı when given it). A YouTube video link in any of its usual forms, the YouTube Studio link included, is stored as `https://www.youtube.com/live/<id>`; `null` clears it. Only a LIVE session takes one, and not once it is cancelled. Does not change the course version. Written to `audit_log` as `lesson.live_stream_set` or `lesson.live_stream_clear`.",
+        "operationId": "setLessonLiveStream",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetLiveStreamDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveStreamResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation, or not a YouTube video link (LIVE_STREAM_URL_INVALID, with `problem`: not-https, not-youtube, channel, no-video, invalid, too-long, empty)."
+          },
+          "403": {
+            "description": "AUTHZ_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "The session is not a live one (LESSON_NOT_LIVE) or is cancelled (LESSON_CANCELLED)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set, change or clear a session's live stream link",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
     "/courses/{courseId}/bans": {
       "post": {
         "description": "Takes effect at once: the talebe cannot enroll, apply again or leave, and loses the course's content. A COURSE ban is the course's müderris's and above; a KOSK ban, placed from this course, is the köşk nazımı's and above. Barring someone already barred in that scope returns the standing ban. The reason is kept for those who see and lift bans and never sent to the talebe.",
@@ -15272,6 +15377,40 @@
         },
         "required": [
           "version"
+        ]
+      },
+      "LiveStreamResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "liveStreamUrl": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://www.youtube.com/live/dQw4w9WgXcQ",
+            "description": "Always `https://www.youtube.com/live/<id>`, or null."
+          }
+        },
+        "required": [
+          "lessonId",
+          "liveStreamUrl"
+        ]
+      },
+      "SetLiveStreamDto": {
+        "type": "object",
+        "properties": {
+          "liveStreamUrl": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 500,
+            "example": "https://studio.youtube.com/video/dQw4w9WgXcQ/livestreaming",
+            "description": "A YouTube video link — `youtube.com/watch?v=`, `/live/`, `/embed/`, `youtu.be/` or the YouTube Studio `studio.youtube.com/video/<id>/…` link — stored as `https://www.youtube.com/live/<id>`. A channel link (`/@handle/live`, `/channel/…`) is refused: a video link is needed. `null` clears the link."
+          }
+        },
+        "required": [
+          "liveStreamUrl"
         ]
       },
       "CreateBanDto": {
