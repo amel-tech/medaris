@@ -545,3 +545,48 @@ describe("effective permissions: passive scopes and relationships", () => {
     expect(medreseOnly.has(P.COURSE_STAFF_READ)).toBe(false);
   });
 });
+
+describe("ids compare lower-cased (review H1)", () => {
+  // The other ids here are all digits, which upper case does not change.
+  const LOWER_COURSE = "abcdefab-abcd-4abc-8abc-abcdefabcdef";
+  const LOWER_KOSK = "fedcbafe-dcba-4fed-8cba-fedcbafedcba";
+
+  it("a role and a grant held at a lower-case id still count when the chain spells it in upper case", () => {
+    const facts = courseFacts({
+      chain: [course(LOWER_COURSE.toUpperCase()), kosk(), platform],
+    });
+    const viaRole = held(facts, [
+      role(ASSIGNED_ROLES.MUDERRIS, course(LOWER_COURSE)),
+    ]);
+    expect(viaRole.has(P.COURSE_EDIT)).toBe(true);
+    const viaGrant = held(
+      facts,
+      [role(ASSIGNED_ROLES.DERS_NAZIR, course(LOWER_COURSE))],
+      [grant(course(LOWER_COURSE), [P.COURSE_EDIT])]
+    );
+    expect(viaGrant.has(P.COURSE_EDIT)).toBe(true);
+  });
+
+  it("a köşk nazımı's role covers a course whose köşk id is spelled in upper case", () => {
+    const facts = courseFacts({
+      chain: [course(), kosk(LOWER_KOSK.toUpperCase()), platform],
+    });
+    const codes = held(facts, [
+      role(ASSIGNED_ROLES.KOSK_NAZIM, kosk(LOWER_KOSK)),
+    ]);
+    expect(codes.has(P.COURSE_EDIT)).toBe(true);
+  });
+
+  it("still keeps another scope out: a different id is not the same id in another case", () => {
+    const facts = courseFacts({
+      chain: [course(LOWER_COURSE.toUpperCase()), kosk(), platform],
+    });
+    const codes = held(facts, [
+      role(
+        ASSIGNED_ROLES.MUDERRIS,
+        course("00000000-0000-4000-8000-00000000000a")
+      ),
+    ]);
+    expect(codes.has(P.COURSE_EDIT)).toBe(false);
+  });
+});

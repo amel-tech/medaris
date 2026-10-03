@@ -26,6 +26,17 @@ type Wanted = PermissionCode | readonly PermissionCode[];
 const asList = (wanted: Wanted): readonly PermissionCode[] =>
   typeof wanted === "string" ? [wanted] : wanted;
 
+/**
+ * Ids are compared lower-cased everywhere. The database answers lower-case
+ * uuids and a path may spell one in upper case (the route pipes and the
+ * database both accept it), so the resource's own scope would otherwise drop
+ * out of the caller's roles and grants and out of the passive-scope check.
+ */
+const normalized = (resource: ResourceRef): ResourceRef =>
+  resource.id === resource.id.toLowerCase()
+    ? resource
+    : { ...resource, id: resource.id.toLowerCase() };
+
 @Injectable()
 export class AuthzService {
   constructor(
@@ -60,9 +71,10 @@ export class AuthzService {
    */
   async can(
     user: AuthenticatedUser,
-    resource: ResourceRef,
+    rawResource: ResourceRef,
     permission: Wanted
   ): Promise<boolean> {
+    const resource = normalized(rawResource);
     const wanted = asList(permission);
     if (this.isSystemAdmin(user)) return this.adminCan(user, resource, wanted);
 
@@ -102,8 +114,9 @@ export class AuthzService {
    */
   async effective(
     user: AuthenticatedUser,
-    resource: ResourceRef
+    rawResource: ResourceRef
   ): Promise<IEffective | null> {
+    const resource = normalized(rawResource);
     const relation = await this.relations.resolve(user.sub, resource);
     if (!relation) return null;
     const ctx = await this.loader.load(user.sub, resource);
@@ -131,9 +144,10 @@ export class AuthzService {
    * read, with no `PUBLIC` inheritance: PUBLIC means "authenticated".
    */
   async canAnonymous(
-    resource: ResourceRef,
+    rawResource: ResourceRef,
     permission: Wanted
   ): Promise<boolean> {
+    const resource = normalized(rawResource);
     const relation = await this.relations.resolveAnonymous?.(resource);
     // Checked at runtime as well as in the type: a resolver written in plain
     // JS, or cast past the narrowing, must not hand an anonymous caller the

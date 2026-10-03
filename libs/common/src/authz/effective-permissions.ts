@@ -59,8 +59,12 @@ export interface IEffective {
   openedPassive: ScopeRef | null;
 }
 
+/** Ids compare lower-cased: a path may spell a uuid in upper case. */
+const sameId = (a: string | null, b: string | null) =>
+  a === b || (a !== null && b !== null && a.toLowerCase() === b.toLowerCase());
+
 const sameScope = (a: ScopeRef, b: ScopeRef) =>
-  a.type === b.type && a.id === b.id;
+  a.type === b.type && sameId(a.id, b.id);
 
 /**
  * Whether a role held at `outer` is a role in `inner` or above it: the same
@@ -84,7 +88,7 @@ export function roleCoversScope(
   if (outer.type === SCOPE_TYPES.PLATFORM) return true;
   if (inner.type === SCOPE_TYPES.PLATFORM) return false;
   if (outer.type === inner.type) {
-    return inner.id === null || outer.id === inner.id;
+    return inner.id === null || sameId(outer.id, inner.id);
   }
   if (
     inner.type !== SCOPE_TYPES.COURSE ||
@@ -95,9 +99,10 @@ export function roleCoversScope(
   if (!parentsOfCourse || inner.id === null) return true;
   const parents = parentsOfCourse(inner.id);
   if (!parents) return false;
-  return (
-    outer.id ===
-    (outer.type === SCOPE_TYPES.KOSK ? parents.koskId : parents.madrasahId)
+  return sameId(
+    outer.id,
+    (outer.type === SCOPE_TYPES.KOSK ? parents.koskId : parents.madrasahId) ??
+      null
   );
 }
 

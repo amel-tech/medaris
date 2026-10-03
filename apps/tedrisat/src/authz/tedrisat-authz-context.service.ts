@@ -70,7 +70,11 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
     return this.databaseService.db;
   }
 
-  async load(userId: string, resource: ResourceRef): Promise<IAuthzContext> {
+  async load(userId: string, rawResource: ResourceRef): Promise<IAuthzContext> {
+    // The chain below holds the resource's own id next to the ids the
+    // database answers; both are lower case or the resource's own scope drops
+    // out of the roles, the grants and the passive-scope check.
+    const resource = { ...rawResource, id: rawResource.id.toLowerCase() };
     const facts = UUID_REGEX.test(resource.id)
       ? await this.facts(resource)
       : null;
@@ -336,7 +340,7 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
       .groupBy(roleAssignments.scopeId, roleAssignments.role);
     for (const row of rows) {
       const manager = wanted.find(
-        (w) => w.id === row.scopeId && w.role === row.role
+        (w) => w.id.toLowerCase() === row.scopeId && w.role === row.role
       );
       if (manager && row.scopeId) {
         result.set(row.scopeId, { total: row.total, held: row.held });

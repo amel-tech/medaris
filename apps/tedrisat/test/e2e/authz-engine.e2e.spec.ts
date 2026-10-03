@@ -788,6 +788,44 @@ describe("The permission engine (MDRS-135, e2e)", () => {
     });
   });
 
+  describe("an id spelled in upper case (review H1)", () => {
+    const upper = (id: string) => id.toUpperCase();
+    const passivate = () =>
+      db()
+        .update(roleAssignments)
+        .set({ revokedAt: new Date(), revokedBy: NAZIM_ID })
+        .where(
+          and(
+            eq(roleAssignments.scopeId, ownCourse),
+            eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
+          )
+        );
+
+    it("the course's müderris keeps their access (main answered it from the database, the engine lost it)", async () => {
+      await get(MUDERRIS_ID, `/courses/${ownCourse}/enrollments`).expect(200);
+      await get(MUDERRIS_ID, `/courses/${upper(ownCourse)}/enrollments`).expect(
+        200
+      );
+    });
+
+    it("a başmüderris keeps their medrese and a köşk nazımı their köşk", async () => {
+      await get(HEAD_ID, `/madrasahs/${upper(madrasahId)}/students`).expect(
+        200
+      );
+      await patch(NAZIM_ID, `/kosks/${upper(koskId)}`, {
+        name: "Yeni ad",
+      }).expect(200);
+    });
+
+    it("a passive course stays closed to its köşk nazımı and its enrolled talebe whatever the case of its id", async () => {
+      await passivate();
+      for (const id of [ownCourse, upper(ownCourse)]) {
+        await get(NAZIM_ID, `/courses/${id}/enrollments`).expect(403);
+        await put(TALEBE_ID, `/courses/${id}/progress`, {}).expect(403);
+      }
+    });
+  });
+
   describe("policies and passive scopes against the real database", () => {
     it("a köşk policy closes an ability for the müderris, and a grant from the platform keeps it for one person", async () => {
       const resource = { entity: "course" as const, id: ownCourse };
