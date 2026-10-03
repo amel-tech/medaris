@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import * as winston from "winston";
 import { ILogger, LoggerConfig, LogLevel } from "./logger.interface";
+import { serializeError } from "./serialize-error";
 
 @Injectable()
 export class WinstonLogger implements ILogger {
@@ -90,7 +91,9 @@ export class WinstonLogger implements ILogger {
   error(message: string, error?: Error | any, trace?: string) {
     const logData = {
       context: this.context,
-      ...(error && { error }),
+      ...(error && {
+        error: error instanceof Error ? serializeError(error) : error,
+      }),
       ...(trace && { trace }),
     };
     this.logger.error(message, logData);
