@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { FlashcardType } from './FlashcardType';
+import {
+    FlashcardTypeFromJSON,
+    FlashcardTypeFromJSONTyped,
+    FlashcardTypeToJSON,
+    FlashcardTypeToJSONTyped,
+} from './FlashcardType';
+
 /**
  * 
  * @export
@@ -30,7 +38,19 @@ export interface CreateFlashcardDeckDto {
      * @type {boolean}
      * @memberof CreateFlashcardDeckDto
      */
-    isPublic: boolean;
+    isPublic?: boolean;
+    /**
+     * What the deck's cards are; fixed once the deck exists.
+     * @type {FlashcardType}
+     * @memberof CreateFlashcardDeckDto
+     */
+    cardType?: FlashcardType;
+    /**
+     * Free labels, trimmed and de-duplicated by the server. Only the author reads them back.
+     * @type {Array<string>}
+     * @memberof CreateFlashcardDeckDto
+     */
+    tags?: Array<string>;
     /**
      * 
      * @type {string}
@@ -39,12 +59,13 @@ export interface CreateFlashcardDeckDto {
     description?: string;
 }
 
+
+
 /**
  * Check if a given object implements the CreateFlashcardDeckDto interface.
  */
 export function instanceOfCreateFlashcardDeckDto(value: object): value is CreateFlashcardDeckDto {
     if (!('title' in value) || value['title'] === undefined) return false;
-    if (!('isPublic' in value) || value['isPublic'] === undefined) return false;
     return true;
 }
 
@@ -59,7 +80,9 @@ export function CreateFlashcardDeckDtoFromJSONTyped(json: any, ignoreDiscriminat
     return {
         
         'title': json['title'],
-        'isPublic': json['isPublic'],
+        'isPublic': json['isPublic'] == null ? undefined : json['isPublic'],
+        'cardType': json['cardType'] == null ? undefined : FlashcardTypeFromJSON(json['cardType']),
+        'tags': json['tags'] == null ? undefined : json['tags'],
         'description': json['description'] == null ? undefined : json['description'],
     };
 }
@@ -77,6 +100,8 @@ export function CreateFlashcardDeckDtoToJSONTyped(value?: CreateFlashcardDeckDto
         
         'title': value['title'],
         'isPublic': value['isPublic'],
+        'cardType': FlashcardTypeToJSON(value['cardType']),
+        'tags': value['tags'],
         'description': value['description'],
     };
 }

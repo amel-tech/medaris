@@ -237,6 +237,33 @@ describe("SessionJoin", () => {
     expect(locked?.querySelector(".mds-join__status--locked")).not.toBeNull();
   });
 
+  it("a live celse says how long it has run, after its length; no other state does", async () => {
+    const host = await render(
+      <>
+        <SessionJoin
+          {...base}
+          durationMinutes={60}
+          state="live"
+          elapsedText="14 dakikadır sürüyor"
+          now="2026-10-03T18:14:00Z"
+        />
+        <SessionJoin
+          {...base}
+          durationMinutes={60}
+          state="ended"
+          elapsedText="14 dakikadır sürüyor"
+          now="2026-10-04T00:00:00Z"
+        />
+      </>
+    );
+    const [live, ended] = Array.from(host.querySelectorAll("section"));
+    const zones = Array.from(
+      live?.querySelectorAll(".mds-join__zone") ?? []
+    ).map((el) => el.textContent);
+    expect(zones).toEqual(["60 dk", "14 dakikadır sürüyor"]);
+    expect(ended?.textContent).not.toContain("dakikadır sürüyor");
+  });
+
   it("an ended celse offers the recordings; a missing link says so", async () => {
     const host = await render(
       <>

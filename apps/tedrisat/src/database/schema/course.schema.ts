@@ -10,12 +10,18 @@ import {
   pgTable as table,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { CourseLevel } from "../../course/domain/course-level.enum";
 import { CourseStatus } from "../../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../course/domain/enrollment-status.enum";
 import { LessonType } from "../../course/domain/lesson-type.enum";
+import {
+  RecordingProvider,
+  RecordingStatus,
+  RecordingVisibility,
+} from "../../course/domain/recording";
 import { kosks } from "./kosk.schema";
 import { madrasahs } from "./madrasah.schema";
 
@@ -24,6 +30,15 @@ export const courseLevel = pgEnum("course_level", CourseLevel);
 export const courseStatus = pgEnum("course_status", CourseStatus);
 export const lessonType = pgEnum("lesson_type", LessonType);
 export const enrollmentStatus = pgEnum("enrollment_status", EnrollmentStatus);
+export const recordingProvider = pgEnum(
+  "recording_provider",
+  RecordingProvider
+);
+export const recordingVisibility = pgEnum(
+  "recording_visibility",
+  RecordingVisibility
+);
+export const recordingStatus = pgEnum("recording_status", RecordingStatus);
 
 // Tables
 //
@@ -60,6 +75,12 @@ export const courses = table("courses", {
   status: courseStatus().default(CourseStatus.DRAFT).notNull(),
   grantsCertificate: boolean("grants_certificate").default(false).notNull(),
   requiresApproval: boolean("requires_approval").default(false).notNull(),
+  // "Kapalı ders" (MDRS-176, nizam/32, nizam/34): its content and recordings
+  // are never opened to everyone, whatever a recording's own visibility says.
+  // The introduction page stays public.
+  isClosed: boolean("is_closed").default(false).notNull(),
+  // The short word printed on the cover ("Sarf", "Tecvid"); null: none.
+  coverLabel: text("cover_label"),
   // IANA zone the course's sessions are authored in (MDRS-110). An editor
   // types "21:00" meaning 21:00 here; talebe elsewhere see it converted.
   timeZone: text("time_zone").default("Europe/Istanbul").notNull(),
@@ -127,6 +148,10 @@ export const lessons = table(
     // backward compatibility with the original migration.
     scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
     meetingUrl: text("meeting_url"),
+    // The embeddable stream a LIVE session is watched on (MDRS-162), apart
+    // from `meeting_url`, which is where talebe join and speak. Course
+    // content, like the meeting link.
+    liveStreamUrl: text("live_stream_url"),
     agenda: jsonb("agenda").$type<{ time: string; title: string }[]>(),
     isPreview: boolean("is_preview").default(false).notNull(),
     orderIndex: integer("order_index").default(0).notNull(),
@@ -267,3 +292,30 @@ export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
     references: [courses.id],
   }),
 }));
+
+// The recording of one live session (MDRS-162): at most one per lesson, a link
+// to where it is hosted rather than a file. `url` stays null while the status
+// is PROCESSING, the "Hazırlanıyor" row of tedris/24. Reading it follows the
+// course's content rule unless `visibility` is PUBLIC. RESTRICT like every
+// foreign key here; `course/course-purge.ts` removes these before the lessons.
+export const lessonRecordings = table(
+  "lesson_recordings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    lessonId: uuid("lesson_id")
+      .references(() => lessons.id, { onDelete: "restrict" })
+      .notNull(),
+    title: text("title").notNull(),
+    provider: recordingProvider().default(RecordingProvider.OTHER).notNull(),
+    url: text("url"),
+    durationMinutes: integer("duration_minutes"),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }),
+    visibility: recordingVisibility()
+      .default(RecordingVisibility.ENROLLED)
+      .notNull(),
+    status: recordingStatus().default(RecordingStatus.PROCESSING).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("lesson_recordings_lesson_id_idx").on(t.lessonId)]
+);

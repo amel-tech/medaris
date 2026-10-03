@@ -10,6 +10,8 @@ export interface ProgressProps {
   value?: number;
   /** required and visible: the bar is named by it */
   label: string;
+  /** keeps the name for assistive technology and draws no text (a table cell whose column header says what it is) */
+  labelHidden?: boolean;
   showValue?: boolean;
   /** read after "%100" when the bar is full */
   completeLabel?: string;
@@ -25,6 +27,7 @@ export interface ProgressProps {
 export function Progress({
   value = 0,
   label,
+  labelHidden = false,
   showValue = false,
   completeLabel = "tamamlandı",
   locale,
@@ -46,7 +49,12 @@ export function Progress({
       className={className || undefined}
     >
       <div className="mds-progress__label">
-        <BaseProgress.Label render={<span />}>{label}</BaseProgress.Label>
+        <BaseProgress.Label
+          render={<span />}
+          className={labelHidden ? "mds-visually-hidden" : undefined}
+        >
+          {label}
+        </BaseProgress.Label>
         {showValue ? (
           <span className="mds-progress__value" aria-hidden="true">
             {done ? <span className="mds-progress__check" /> : null}

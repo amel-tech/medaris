@@ -27,6 +27,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -57,7 +58,10 @@ import {
   UpdateMadrasahSettingsDto,
 } from "./dto/madrasah-settings.dto";
 import { PaginatedMadrasahResponse } from "./dto/paginated-madrasah-response.dto";
-import { SetHeadMuderrisDto } from "./dto/set-head-muderris.dto";
+import {
+  HeadDelegationResponse,
+  SetHeadMuderrisDto,
+} from "./dto/set-head-muderris.dto";
 import { UpdateMadrasahDto } from "./dto/update-madrasah.dto";
 import { MadrasahNotFoundError } from "./errors/madrasah-not-found.error";
 import { MadrasahService } from "./madrasah.service";
@@ -242,7 +246,7 @@ export class MadrasahController {
     @Req() request: PublicRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahResponse> {
-    const madrasah = await this.madrasahService.findById(id);
+    const madrasah = await this.madrasahService.findOpenById(id);
     return request.user ? madrasah : maskMadrasahForAnonymous(madrasah);
   }
 
@@ -307,12 +311,33 @@ export class MadrasahController {
   }
 
   @ApiOperation({
+    summary: "What the başmüderris handed on (SYSTEM_ADMIN only)",
+    description:
+      "nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese that are still held; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.",
+    operationId: "getMadrasahHeadDelegations",
+  })
+  @ApiOkResponse({ type: HeadDelegationResponse, isArray: true })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Get(":id/head-muderris/delegations")
+  @Authz(SCOPES.CREATE_MADRASAH, byExistingMadrasah)
+  async headDelegations(
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<HeadDelegationResponse[]> {
+    return this.madrasahService.headDelegations(id);
+  }
+
+  @ApiOperation({
     summary: "Make a user the medrese's başmüderris (SYSTEM_ADMIN only)",
     description:
-      "Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. Written to the audit log.",
+      "Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. `delegations` answers what the replaced başmüderris handed on (Devral / Düşür), `endsAt` is the new one's Görev bitişi. Written to the audit log.",
     operationId: "setMadrasahHeadMuderris",
   })
   @ApiOkResponse({ type: MadrasahDirectoryItemResponse })
+  @ApiBadRequestResponse({
+    description:
+      "DISMISS_DECISIONS_INCOMPLETE: a hand-on is unanswered or unknown; GRANT_EXPIRY_INVALID: the end is in the past",
+  })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Put(":id/head-muderris")
@@ -324,8 +349,12 @@ export class MadrasahController {
   ): Promise<MadrasahDirectoryItemResponse> {
     return this.madrasahService.setHeadMuderris(
       id,
-      dto.userId,
-      request.user.sub
+      dto.userId.toLowerCase(),
+      request.user.sub,
+      {
+        endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
+        decisions: dto.delegations,
+      }
     );
   }
 

@@ -18,6 +18,7 @@ import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { dismissOpen } from "../../permissions/present";
 import { restoreMadrasah } from "../actions";
 import {
   dateWithCase,
@@ -63,6 +64,10 @@ export function MadrasahsView({ directory, status, q }: Props) {
   const [assigning, setAssigning] = useState<AssignTarget | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const searched = useRef(q);
+  // The "Başmüderrisi değiştir" window opens on 4 Ekim 2026 (the version gate),
+  // decided on the viewer's clock after mounting; the screen never says why.
+  const [gateOpen, setGateOpen] = useState(false);
+  useEffect(() => setGateOpen(dismissOpen(Date.now())), []);
 
   // The search follows the URL when it is changed from outside (back button).
   useEffect(() => {
@@ -230,6 +235,23 @@ export function MadrasahsView({ directory, status, q }: Props) {
             onClick={() => setAssigning({ id: m.id, name: m.name })}
           >
             {t("assign")}
+          </Button>
+        ) : m.status === "ACTIVE" && m.headMuderris ? (
+          <Button
+            variant="outline"
+            size="small"
+            disabled={!gateOpen}
+            aria-label={t("changeLabel", { name: m.name })}
+            onClick={() =>
+              setAssigning({
+                id: m.id,
+                name: m.name,
+                headId: m.headMuderris?.id ?? null,
+                headName: m.headMuderris?.name ?? null,
+              })
+            }
+          >
+            {t("change")}
           </Button>
         ) : null,
     },

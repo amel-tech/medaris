@@ -164,6 +164,22 @@ export const leaveCourse = async (
   return result;
 };
 
+/**
+ * Withdraws a request still awaiting approval. An approved seat is not
+ * withdrawn: the API answers 404 and the page, which was stale, refreshes
+ * to the state it is really in (design tedris/08).
+ */
+export const withdrawEnrollment = async (
+  courseId: string
+): Promise<AuthenticatedActionResult<boolean>> => {
+  const result = await authenticatedAction((api) =>
+    api.courses.withdrawEnrollment({ id: courseId })
+  );
+  revalidatePath(`/courses/${courseId}`);
+  if (result.success) revalidatePath("/my-courses");
+  return result;
+};
+
 export const updateCourseProgress = async (
   courseId: string,
   progress: number

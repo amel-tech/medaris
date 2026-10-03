@@ -13,12 +13,33 @@
  */
 
 import { mapValues } from '../runtime';
+import type { FlashcardType } from './FlashcardType';
+import {
+    FlashcardTypeFromJSON,
+    FlashcardTypeFromJSONTyped,
+    FlashcardTypeToJSON,
+    FlashcardTypeToJSONTyped,
+} from './FlashcardType';
+import type { DeckPublishStatus } from './DeckPublishStatus';
+import {
+    DeckPublishStatusFromJSON,
+    DeckPublishStatusFromJSONTyped,
+    DeckPublishStatusToJSON,
+    DeckPublishStatusToJSONTyped,
+} from './DeckPublishStatus';
+
 /**
  * 
  * @export
  * @interface FlashcardDeckResponse
  */
 export interface FlashcardDeckResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof FlashcardDeckResponse
+     */
+    id: string;
     /**
      * 
      * @type {string}
@@ -36,12 +57,6 @@ export interface FlashcardDeckResponse {
      * @type {string}
      * @memberof FlashcardDeckResponse
      */
-    id: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof FlashcardDeckResponse
-     */
     authorId: string;
     /**
      * 
@@ -49,16 +64,45 @@ export interface FlashcardDeckResponse {
      * @memberof FlashcardDeckResponse
      */
     description?: string;
+    /**
+     * 
+     * @type {FlashcardType}
+     * @memberof FlashcardDeckResponse
+     */
+    cardType: FlashcardType;
+    /**
+     * 
+     * @type {DeckPublishStatus}
+     * @memberof FlashcardDeckResponse
+     */
+    publishStatus: DeckPublishStatus;
+    /**
+     * 
+     * @type {Date}
+     * @memberof FlashcardDeckResponse
+     */
+    publishRequestedAt?: Date | null;
+    /**
+     * Empty for everyone but the author.
+     * @type {Array<string>}
+     * @memberof FlashcardDeckResponse
+     */
+    tags: Array<string>;
 }
+
+
 
 /**
  * Check if a given object implements the FlashcardDeckResponse interface.
  */
 export function instanceOfFlashcardDeckResponse(value: object): value is FlashcardDeckResponse {
+    if (!('id' in value) || value['id'] === undefined) return false;
     if (!('title' in value) || value['title'] === undefined) return false;
     if (!('isPublic' in value) || value['isPublic'] === undefined) return false;
-    if (!('id' in value) || value['id'] === undefined) return false;
     if (!('authorId' in value) || value['authorId'] === undefined) return false;
+    if (!('cardType' in value) || value['cardType'] === undefined) return false;
+    if (!('publishStatus' in value) || value['publishStatus'] === undefined) return false;
+    if (!('tags' in value) || value['tags'] === undefined) return false;
     return true;
 }
 
@@ -72,11 +116,15 @@ export function FlashcardDeckResponseFromJSONTyped(json: any, ignoreDiscriminato
     }
     return {
         
+        'id': json['id'],
         'title': json['title'],
         'isPublic': json['isPublic'],
-        'id': json['id'],
         'authorId': json['authorId'],
         'description': json['description'] == null ? undefined : json['description'],
+        'cardType': FlashcardTypeFromJSON(json['cardType']),
+        'publishStatus': DeckPublishStatusFromJSON(json['publishStatus']),
+        'publishRequestedAt': json['publishRequestedAt'] == null ? undefined : (new Date(json['publishRequestedAt'])),
+        'tags': json['tags'],
     };
 }
 
@@ -91,11 +139,15 @@ export function FlashcardDeckResponseToJSONTyped(value?: FlashcardDeckResponse |
 
     return {
         
+        'id': value['id'],
         'title': value['title'],
         'isPublic': value['isPublic'],
-        'id': value['id'],
         'authorId': value['authorId'],
         'description': value['description'],
+        'cardType': FlashcardTypeToJSON(value['cardType']),
+        'publishStatus': DeckPublishStatusToJSON(value['publishStatus']),
+        'publishRequestedAt': value['publishRequestedAt'] === null ? null : ((value['publishRequestedAt'] as any)?.toISOString()),
+        'tags': value['tags'],
     };
 }
 

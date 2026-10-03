@@ -43,6 +43,30 @@ export class LiftBanDto {
   reason!: string;
 }
 
+export const EXTEND_SCOPES = [BAN_SCOPES.KOSK] as const;
+
+export class ExtendBanDto {
+  @ApiProperty({
+    enum: [...EXTEND_SCOPES],
+    enumName: "ExtendBanScope",
+    description:
+      "The wider scope the ban moves up to. Only KOSK exists: medrese and platform bans are not modelled yet.",
+  })
+  @IsIn(EXTEND_SCOPES)
+  scope!: string;
+
+  @ApiProperty({
+    maxLength: BAN_REASON_MAX,
+    example: "Ders yasağından sonra köşkün başka derslerine başvurdu.",
+    description:
+      "Kept with the new, wider ban and read by whoever lifts it; never sent to the talebe. Required, and not blank.",
+  })
+  @IsString()
+  @MaxLength(BAN_REASON_MAX)
+  @Matches(/\S/, { message: "reason must not be blank" })
+  reason!: string;
+}
+
 export const BAN_STATUSES = ["ACTIVE", "LIFTED"] as const;
 export type BanStatus = (typeof BAN_STATUSES)[number];
 
@@ -76,6 +100,13 @@ export class BanResponse {
 
   @ApiProperty({ type: String, format: "uuid", nullable: true })
   courseId!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: "The köşk the ban sits in; the Medaris-wide list names it.",
+  })
+  koskName!: string | null;
 
   @ApiProperty({ type: String, nullable: true })
   courseTitle!: string | null;
@@ -144,4 +175,14 @@ export class BanListResponse {
 
   @ApiProperty({ description: "Open bans placed in the last 24 hours." })
   recentCount!: number;
+}
+
+export const BAN_LIST_LIMIT_MAX = 100;
+
+export class AllBansListResponse extends BanListResponse {
+  @ApiProperty({
+    description:
+      "How many bans match the filter in all; `items` is one page of them.",
+  })
+  total!: number;
 }

@@ -78,7 +78,13 @@ test("nizam/07 — the tabs' numbers are the database's totals, and each medrese
   await expect(active).toContainText("Etkin");
   await expect(active).toContainText(`@${fixture.active.handle}`);
   await expect(active).toContainText(fixture.koskName);
-  await expect(active.getByRole("button")).toHaveCount(0);
+  // the only button of an active row is nizam/22's, shut until the version gate
+  await expect(active.getByRole("button")).toHaveCount(1);
+  await expect(
+    active.getByRole("button", {
+      name: `Başmüderrisi değiştir: ${fixture.active.name}`,
+    })
+  ).toBeDisabled();
 
   const passive = rowOf(page, fixture.passive.name);
   await expect(passive).toContainText("Atanmamış");
@@ -142,7 +148,13 @@ test("nizam/07 — 'Geri al' brings a hidden medrese back as Etkin (criterion 3)
   await expect(page.getByText("Geri alındı")).toBeVisible();
   await expect(row).toContainText("Etkin");
   await expect(row).not.toContainText("Gizli");
-  await expect(row.getByRole("button")).toHaveCount(0);
+  // it is an active medrese with a başmüderris now: only nizam/22's shut button is left
+  await expect(row.getByRole("button")).toHaveCount(1);
+  await expect(
+    row.getByRole("button", {
+      name: `Başmüderrisi değiştir: ${fixture.hidden.name}`,
+    })
+  ).toBeDisabled();
   expect(
     (await fixture.madrasahByHandle(fixture.hidden.handle))?.archived
   ).toBe(false);

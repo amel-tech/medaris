@@ -1,0 +1,1 @@
+ALTER TYPE "public"."enrollment_status" ADD VALUE 'REVOKED';

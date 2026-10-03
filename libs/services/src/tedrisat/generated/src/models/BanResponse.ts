@@ -65,6 +65,12 @@ export interface BanResponse {
      */
     courseId: string | null;
     /**
+     * The köşk the ban sits in; the Medaris-wide list names it.
+     * @type {string}
+     * @memberof BanResponse
+     */
+    koskName: string | null;
+    /**
      * 
      * @type {string}
      * @memberof BanResponse
@@ -155,6 +161,7 @@ export function instanceOfBanResponse(value: object): value is BanResponse {
     if (!('scope' in value) || value['scope'] === undefined) return false;
     if (!('koskId' in value) || value['koskId'] === undefined) return false;
     if (!('courseId' in value) || value['courseId'] === undefined) return false;
+    if (!('koskName' in value) || value['koskName'] === undefined) return false;
     if (!('courseTitle' in value) || value['courseTitle'] === undefined) return false;
     if (!('madrasahName' in value) || value['madrasahName'] === undefined) return false;
     if (!('extendedFromCourseId' in value) || value['extendedFromCourseId'] === undefined) return false;
@@ -186,6 +193,7 @@ export function BanResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'scope': BanScopeFromJSON(json['scope']),
         'koskId': json['koskId'],
         'courseId': json['courseId'],
+        'koskName': json['koskName'],
         'courseTitle': json['courseTitle'],
         'madrasahName': json['madrasahName'],
         'extendedFromCourseId': json['extendedFromCourseId'],
@@ -218,6 +226,7 @@ export function BanResponseToJSONTyped(value?: BanResponse | null, ignoreDiscrim
         'scope': BanScopeToJSON(value['scope']),
         'koskId': value['koskId'],
         'courseId': value['courseId'],
+        'koskName': value['koskName'],
         'courseTitle': value['courseTitle'],
         'madrasahName': value['madrasahName'],
         'extendedFromCourseId': value['extendedFromCourseId'],
