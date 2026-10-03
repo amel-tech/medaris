@@ -60,7 +60,7 @@ export interface SidebarProps extends HTMLAttributes<HTMLElement> {
   navLabel?: string;
 }
 
-/** The desktop sidebar: brand, scope, a named `<nav>`, and the account at the block-end. Hidden below 768. */
+/** The desktop sidebar: brand, scope, a named `<nav>` (none while it has no items), and the account at the block-end. Hidden below 768. */
 export function Sidebar({
   brand,
   scope,

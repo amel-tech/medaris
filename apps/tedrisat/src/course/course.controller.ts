@@ -45,6 +45,7 @@ import {
 import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
 import { CourseStatsRepository } from "./course-stats.repository";
+import { CourseBadgeCountsResponse } from "./dto/course-badge-counts-response.dto";
 import {
   CourseDetailResponse,
   CourseSummaryResponse,
@@ -447,6 +448,26 @@ export class CourseController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<RemovedEnrollmentResponse[]> {
     return this.courseService.findRemovedEnrollments(id);
+  }
+
+  @ApiOperation({
+    summary: "Get the counts behind the nazır portal's course menu badges",
+    description:
+      "For the course team (MDRS-183): the live sessions still ahead that have no meeting link — cancelled and hidden ones are not counted — and the pending enrollment requests.",
+    operationId: "getCourseBadgeCounts",
+  })
+  @ApiOkResponse({ type: CourseBadgeCountsResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  // `MANAGE_ENROLLMENTS` is the scope of the roster this count summarises, and
+  // the köşk manager and the müderrisler hold it (MDRS-105); nobody below the
+  // course team does.
+  @Authz(SCOPES.MANAGE_ENROLLMENTS, byExistingCourse)
+  @Get("courses/:id/badge-counts")
+  async badgeCounts(
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<CourseBadgeCountsResponse> {
+    return this.courseService.getBadgeCounts(id);
   }
 
   @ApiOperation({

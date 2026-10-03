@@ -1,3 +1,191 @@
 {
-  "nazir-namespace-placeholder": "nazir"
+  "Auth": {
+    "redirectingTitle": "Taking you to the sign-in page",
+    "redirectingDescription": "If nothing happens, you can continue with the button below.",
+    "continue": "Continue",
+    "errorTitle": "We couldn't sign you in",
+    "errorDescription": "Something went wrong while signing you in. Please try again.",
+    "accessDenied": "This account is not allowed to sign in.",
+    "configurationError": "Sign-in is unavailable right now. Please try again later.",
+    "retry": "Try again",
+    "backHome": "Back to the home page",
+    "signOutTitle": "Do you want to sign out?",
+    "signOutDescription": "You will be signed out of Medaris in this browser. Your assignments and preferences stay on your account.",
+    "signOutConfirm": "Sign out",
+    "signOutBusy": "Signing out",
+    "signOutCancel": "Cancel"
+  },
+  "NotFound": {
+    "title": "Page not found",
+    "text": "The page you are looking for may have moved, been removed or be outside your assignments.",
+    "back": "Back to the home page"
+  },
+  "Shell": {
+    "appName": "Nazır",
+    "navLabel": "Main menu",
+    "menu": "Menu",
+    "close": "Close",
+    "scopeChange": "Change scope: {name}",
+    "scopeMenu": "Scopes",
+    "scopeMedrese": "Medrese",
+    "scopeCourses": "Courses",
+    "scopeNote": "Only the medrese and courses where you hold a role are listed.",
+    "imam": "course imam",
+    "bell": "Notifications",
+    "bellUnread": "Notifications, {count} unread",
+    "accountHint": "settings",
+    "countUnread": "unread",
+    "countCoursesWithApplications": "courses with applications waiting",
+    "countMissingLinks": "missing a link",
+    "countApplications": "applications waiting",
+    "placeholder": "This page is not ready yet.",
+    "loadingLabel": "Loading",
+    "loadFailedTitle": "Your roles could not be read",
+    "loadFailed": "Your roles could not be read right now. Try again in a few seconds.",
+    "retry": "Try again",
+    "errorTitle": "The page could not be opened",
+    "errorText": "Something went wrong while opening the page. Try again; if it keeps happening, look again in a few minutes."
+  },
+  "Roles": {
+    "MEDARIS_NAZIM": "Medaris nazım",
+    "KOSK_NAZIM": "Köşk nazım",
+    "MEDRESE_BASMUDERRIS": "Medrese head müderris",
+    "MEDRESE_NAZIR": "Medrese nazır",
+    "MUDERRIS": "Müderris",
+    "DERS_NAZIR": "Course nazır",
+    "STUDENT": "Talebe"
+  },
+  "Nav": {
+    "sections": {
+      "general": "General",
+      "medrese": "Medrese",
+      "ders": "Course",
+      "management": "Management"
+    },
+    "general": {
+      "pano": "Dashboard",
+      "notifications": "Notifications"
+    },
+    "medrese": {
+      "courses": "Courses",
+      "students": "Talebe",
+      "nazirs": "Medrese nazırları",
+      "bans": "Bans",
+      "appeals": "Appeals",
+      "archive": "Archive",
+      "rules": "Admission rules",
+      "settings": "Medrese settings"
+    },
+    "ders": {
+      "overview": "Overview",
+      "curriculum": "Syllabus",
+      "sessions": "Sessions",
+      "students": "Talebe",
+      "recordings": "Recordings",
+      "deck": "Course deck",
+      "bans": "Bans",
+      "archive": "Archive",
+      "nazirs": "Course nazırları",
+      "settings": "Course settings"
+    }
+  },
+  "NoAccess": {
+    "title": "You do not have access to this portal",
+    "text": "Nazır is the portal of medrese and course staff. Your account holds no medrese or course role; the portal opens once you are given one.",
+    "account": "Signed in as:",
+    "back": "Back to Tedris"
+  },
+  "Account": {
+    "pageTitle": "Account and settings",
+    "pageSubtitle": "Your roles, permissions, time zone and language.",
+    "tasksTitle": "Your roles",
+    "tasksIntro": "Every role applies in one scope. The person who assigned a role changes it and its term.",
+    "noNazirNote": "You hold no medrese nazır or course nazır role.",
+    "imam": "Course imam",
+    "self": "Yourself",
+    "unknownPerson": "Unknown",
+    "noExpiry": "No end date",
+    "columns": {
+      "role": "Role",
+      "scope": "Scope",
+      "grantor": "Assigned by",
+      "expires": "Term"
+    },
+    "scopeBadge": {
+      "active": "Active",
+      "published": "Published",
+      "draft": "Draft",
+      "hidden": "Hidden"
+    },
+    "permissionsTitle": "Your effective permissions",
+    "permissionsIntro": "Permissions come from your roles and from the permission groups given to you. You cannot give someone a permission that was given to you; the permissions that come from your role you can give within your own scope.",
+    "permissionsEmpty": "No permission comes from your roles and none has been given to you yet.",
+    "grantedRole": "Granted permissions",
+    "eachScope": {
+      "MUDERRIS": "Applies in each course you teach: {names}.",
+      "default": "Applies in each scope where you are {role}: {names}."
+    },
+    "expiryNone": "Ends: never.",
+    "expiryAt": "Ends: {date}.",
+    "expiryEarliest": "Earliest end: {date}.",
+    "defaultsNote": {
+      "KOSK_NAZIM": "A köşk nazım’s default permissions. In the köşk’s medrese courses, opening the course and the müderris list belong to the medrese.",
+      "MUDERRIS": "A müderris’s default permissions. The course staff see the name and e-mail of the talebe enrolled in the course by default; this is not a separate permission."
+    },
+    "permissions": {
+      "kosk_manage": "Edit the köşk, hide it or bring it back",
+      "kosk_hosting": "Give or take back a hosting right",
+      "course_open_standalone": "Open courses outside a medrese; choose the müderrisler and the imam",
+      "course_manage_all": "Manage the content, sessions, recordings and applications of the courses in the köşk",
+      "ban_manage_kosk": "Ban at course and köşk level, or lift a ban with a reason; widen a course ban to the köşk",
+      "deck_manage_kosk": "Create and edit the köşk's deck",
+      "course_nazir_assign_kosk": "Appoint a course nazır and grant permissions in the köşk's courses outside a medrese, within your own permissions",
+      "user_lookup": "Find a user by e-mail",
+      "course_edit": "Edit the course: title, introduction, syllabus, time zone",
+      "session_manage": "Add a session, change its date, cancel it; enter the meeting link",
+      "session_live_link": "Add the live-stream link to a session",
+      "week_hide": "Hide a week or a session, bring it back",
+      "course_settings": "Change the course settings and the closed-course flag",
+      "course_publish": "Publish the course or return it to draft",
+      "course_view_unpublished": "See a draft or hidden course",
+      "enrollment_decide": "Approve or reject an application",
+      "enrollment_remove": "Remove a talebe from the course, with a reason",
+      "enrollment_complete": "Mark a talebe as having completed the course",
+      "recording_manage": "Add, rename and hide a recording; change its visibility",
+      "recording_upload": "Upload a recording",
+      "recording_watch_restricted": "Watch recordings open to enrolled talebe only",
+      "session_view_content": "See the content and meeting links of a session",
+      "ban_course": "Ban a talebe from the course (includes seeing the course's ban list)",
+      "ban_lift_course": "Lift a course ban, with a reason",
+      "deck_manage_course": "Create and edit the course's deck",
+      "course_nazir_assign": "Appoint a course nazır; grant a permission or a group, within your own permissions",
+      "permission_group_define": "Define a permission group"
+    },
+    "permissionNotes": {
+      "course_manage_all": "Reads of the content are written to the audit log.",
+      "course_nazir_assign_kosk": "In a medrese's courses the medrese's staff grants permissions.",
+      "user_lookup": "Every search is written to the audit log.",
+      "ban_lift_course": "You cannot lift a ban set by a higher level."
+    },
+    "loadFailedTitle": "Your roles could not be loaded",
+    "loadFailed": "Your roles and permissions could not be read right now. Reload the page to try again.",
+    "timeTitle": "Time and language",
+    "timeZone": "Time zone",
+    "timeZoneHelp": "Session times are shown in this time zone. Your choice is saved as soon as you make it.",
+    "timeZoneOther": "Other…",
+    "timeZoneOtherLabel": "Other time zones",
+    "timeZoneSaved": "Your time zone was saved.",
+    "timeZoneFailedTitle": "The time zone could not be saved",
+    "timeZoneFailed": "Your choice could not be saved; your previous time zone still applies. Try again.",
+    "timeZoneUnreadable": "Your time zone could not be read right now. Reload the page to try again.",
+    "language": "Language",
+    "languageValue": "Turkish",
+    "languageHelp": "For now Medaris is shown in Turkish only.",
+    "accountTitle": "Account",
+    "email": "E-mail",
+    "emailHelp": "Read only. The address registered to your account; it cannot be changed here.",
+    "signOut": "Sign out",
+    "signOutBusy": "Signing out",
+    "signOutNote": "You sign out of Medaris in this browser. Your roles and preferences stay with your account."
+  }
 }

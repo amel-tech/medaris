@@ -1960,6 +1960,49 @@
         ]
       }
     },
+    "/madrasahs/{id}/badge-counts": {
+      "get": {
+        "description": "For the medrese's nazırs (MDRS-183): the pending enrollment requests across its courses, and how many courses hold one. A hidden course is not counted. Unread notifications are the caller's own and come from `GET /notifications/unread-count`.",
+        "operationId": "getMadrasahBadgeCounts",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahBadgeCountsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the counts behind the nazır portal's menu badges",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
     "/madrasahs/{id}/head-muderris/delegations": {
       "get": {
         "description": "nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese that are still held; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.",
@@ -2922,6 +2965,49 @@
           }
         ],
         "summary": "Talebe the team took out of the course, with the reasons",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/badge-counts": {
+      "get": {
+        "description": "For the course team (MDRS-183): the live sessions still ahead that have no meeting link — cancelled and hidden ones are not counted — and the pending enrollment requests.",
+        "operationId": "getCourseBadgeCounts",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseBadgeCountsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the counts behind the nazır portal's course menu badges",
         "tags": [
           "courses"
         ]
@@ -10399,6 +10485,25 @@
           "kosks"
         ]
       },
+      "MadrasahBadgeCountsResponse": {
+        "type": "object",
+        "properties": {
+          "pendingApplications": {
+            "type": "number",
+            "example": 3,
+            "description": "Enrollment requests waiting for approval across the medrese's courses. A hidden course is not counted."
+          },
+          "coursesWithPendingApplications": {
+            "type": "number",
+            "example": 2,
+            "description": "How many of the medrese's courses hold at least one pending request."
+          }
+        },
+        "required": [
+          "pendingApplications",
+          "coursesWithPendingApplications"
+        ]
+      },
       "CreateMadrasahDto": {
         "type": "object",
         "properties": {
@@ -12181,6 +12286,25 @@
           "progress",
           "removedAt",
           "removedBy"
+        ]
+      },
+      "CourseBadgeCountsResponse": {
+        "type": "object",
+        "properties": {
+          "missingMeetingLinks": {
+            "type": "number",
+            "example": 1,
+            "description": "Live sessions still ahead whose meeting link is empty. A cancelled or hidden session is not counted."
+          },
+          "pendingApplications": {
+            "type": "number",
+            "example": 2,
+            "description": "Enrollment requests waiting for approval."
+          }
+        },
+        "required": [
+          "missingMeetingLinks",
+          "pendingApplications"
         ]
       },
       "TeamSettableEnrollmentStatus": {
