@@ -652,3 +652,15 @@ every-course lift dropped, a group change left unchecked).
 - `course.hide` has no sentence in the canvases; it is deliberately unlisted. Whether a medrese
   nazırı given `madrasah.course_hide` should also be able to hide in a köşk-owned course is not asked.
 - Open PRs that add code on the old API and need a rebase after this lands: see the PR description.
+
+## Merge with main at 054c3e79 (4 October)
+
+Main moved again after the note above (`#186` MDRS-220, `#187` MDRS-217, `#189` MDRS-229). One file
+conflicted: `libs/common/src/authz/authz.guard.ts`, where `#186` stopped the guard from putting a
+failed resolver's raw message into the response. Both changes are kept: the guard now raises
+`AuthzResolverError("@Authz(<permission>) resolver failed", { permission }, { cause })`, so the
+response carries the permission code and no query text, and the caller's error travels as `cause`.
+`#186`'s new guard spec asserted the old `scope` key; it now asserts `permission`
+(`libs/common/test/authz/authz.guard.spec.ts`, "keeps what the resolver threw out of the message and
+context"). The rest of the three PRs touches the web apps and i18n only.
+
