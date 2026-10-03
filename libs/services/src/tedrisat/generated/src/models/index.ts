@@ -1,5 +1,6 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from './AddKoskNazimsDto';
 export * from './AgendaStepDto';
 export * from './AgendaStepResponse';
 export * from './AppointMedarisNazimDto';
@@ -78,9 +79,18 @@ export * from './HostingPersonResponse';
 export * from './HostingRightResponse';
 export * from './KoskDeckResponse';
 export * from './KoskDecksResponse';
+export * from './KoskDirectoryCountsResponse';
+export * from './KoskDirectoryItemResponse';
+export * from './KoskDirectoryResponse';
 export * from './KoskLevel';
+export * from './KoskListingFilter';
 export * from './KoskManagedBy';
+export * from './KoskNazimGranterRole';
+export * from './KoskNazimResponse';
+export * from './KoskPersonResponse';
 export * from './KoskResponse';
+export * from './KoskStatus';
+export * from './KoskStatusFilter';
 export * from './LabelStatsResponse';
 export * from './LessonMutationResponse';
 export * from './LessonResponse';
