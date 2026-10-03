@@ -1544,19 +1544,6 @@ export class CourseRepository implements ICourseRepository {
   }
 
   /**
-   * Which of `ids` have a `users` row, i.e. have signed in at least once
-   * (MDRS-104). Lowercased, like the ids Postgres returns for a `uuid`.
-   */
-  async findKnownUserIds(ids: readonly string[]): Promise<string[]> {
-    if (ids.length === 0) return [];
-    const rows = await this.db
-      .select({ id: users.id })
-      .from(users)
-      .where(inArray(users.id, [...ids]));
-    return rows.map((r) => r.id.toLowerCase());
-  }
-
-  /**
    * Every enrollment in the course — requests, active seats and completions
    * — for the course team's roster (MDRS-105). Requests first, then active
    * seats, then completions, each by when they joined.
