@@ -189,13 +189,27 @@ const authOptions: AuthOptions = {
 };
 export default authOptions;
 
-export function auth(
+/**
+ * The signed-in session for server code, or `null` for a visitor.
+ *
+ * Any session that carries an `error` counts as a visitor (MDRS-216): it has
+ * no usable access token — `getAccessToken()` answers `undefined` for it, so
+ * every API call already goes out anonymous — and reading it as signed in
+ * drew a member's chrome around a visitor's data on the public pages. In
+ * practice that is a failed refresh (`RefreshAccessTokenError`); an ended
+ * Keycloak session never gets this far, the `session` callback already hands
+ * out none. A protected page still leaves for Keycloak: the client's
+ * `RefreshErrorRedirect` sees the `error`, which the client-visible session
+ * keeps.
+ */
+export async function auth(
   ...args:
     | [GetServerSidePropsContext["req"], GetServerSidePropsContext["res"]]
     | [NextApiRequest, NextApiResponse]
     | []
 ) {
-  return getServerSession(...args, authOptions);
+  const session = await getServerSession(...args, authOptions);
+  return session?.error ? null : session;
 }
 
 /**
