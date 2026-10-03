@@ -1,4 +1,5 @@
 import { Inject, Injectable, Optional } from "@nestjs/common";
+import { SCOPE_TYPES } from "./assignments";
 import {
   AUTHZ_AUDIT,
   AUTHZ_CONTEXT,
@@ -116,20 +117,31 @@ export class AuthzService {
   /**
    * What the caller holds on a resource, for the screens and the tests: the
    * same computation `can` runs, without its audit rows.
+   *
+   * `acrossCourses` asks what they hold on a medrese or a köşk AND in every
+   * course below it: the chain gets a course with no id, which is where a grant
+   * "for every course" and the course work of a role held above the courses
+   * count. It is what a giver may hand on at a medrese's level, since a
+   * medrese-level grant of course work reaches all of its courses (MDRS-135).
    */
   async effective(
     user: AuthenticatedUser,
-    rawResource: ResourceRef
+    rawResource: ResourceRef,
+    options: { acrossCourses?: boolean } = {}
   ): Promise<IEffective | null> {
     const resource = normalized(rawResource);
     const relation = await this.relations.resolve(user.sub, resource);
     if (!relation) return null;
     const ctx = await this.loader.load(user.sub, resource);
+    const chain =
+      options.acrossCourses && resource.entity !== ENTITIES.COURSE
+        ? [{ type: SCOPE_TYPES.COURSE, id: null }, ...ctx.chain]
+        : ctx.chain;
     return effectivePermissions(
       {
         entity: resource.entity,
         relation,
-        chain: ctx.chain,
+        chain,
         madrasahCourse: ctx.madrasahCourse,
         passiveScope: ctx.passiveScope,
         policies: ctx.policies,

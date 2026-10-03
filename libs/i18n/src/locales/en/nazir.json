@@ -209,7 +209,8 @@
     "courseScope": "The courses you chose do not fit these permissions. Check the courses and try again.",
     "expiryInvalid": "The end date cannot be in the past or after the end of the appointment.",
     "groupGone": "This group no longer exists. The groups were refreshed; choose again.",
-    "groupNameTaken": "Another group has this name. Choose a different name."
+    "groupNameTaken": "Another group has this name. Choose a different name.",
+    "exceedsGiver": "You do not hold some of these permissions; you can only give what you hold yourself. Ask the Medaris administration for the ones you need."
   },
   "Settings": {
     "title": "Medrese settings",

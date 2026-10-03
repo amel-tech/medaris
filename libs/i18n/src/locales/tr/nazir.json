@@ -209,7 +209,8 @@
     "courseScope": "Seçtiğiniz dersler bu izinlerle bağdaşmıyor. Dersleri denetleyip yeniden deneyin.",
     "expiryInvalid": "Bitiş tarihi geçmişte ya da görevin bitişinden sonra olamaz.",
     "groupGone": "Bu grup artık yok. Gruplar yenilendi; yeniden seçin.",
-    "groupNameTaken": "Bu adla başka bir grup var. Başka bir ad seçin."
+    "groupNameTaken": "Bu adla başka bir grup var. Başka bir ad seçin.",
+    "exceedsGiver": "Bu izinlerin bir kısmı sizde yok; yalnız kendi izinlerinizi verebilirsiniz. Verebileceğiniz izinleri başnazıma sorun."
   },
   "Settings": {
     "title": "Medrese ayarları",

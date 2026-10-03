@@ -28,6 +28,7 @@ import {
   SCOPE_TYPES,
   type ScopeType,
 } from "../../database/schema/role-assignment.schema";
+import { GrantExceedsGiverError } from "../../kosk/errors/kosk-grants-errors";
 import { NazirCourseScopeError } from "../errors/nazir-course-scope.error";
 import { NazirNotFoundError } from "../errors/nazir-not-found.error";
 import { PermissionNotGivableError } from "../errors/permission-not-givable.error";
@@ -72,6 +73,13 @@ const COURSE_SCOPE_MESSAGES = {
     "No course permission is given, so there is nothing to limit to courses",
 } as const;
 
+/** Something being given: these codes, in this scope. */
+interface IGiven {
+  scopeType: ScopeType;
+  scopeId: string;
+  codes: readonly string[];
+}
+
 function presentGroup(
   group: IGroupRow & { userCount: number }
 ): MadrasahPermissionGroupResponse {
@@ -108,14 +116,12 @@ export class MadrasahPermissionService {
    * başnazım gives as the platform; a başmüderris gives in their medrese from
    * the `permission.grant` their role holds (never a grant — what you were
    * given you cannot give on); a Medaris nazımı holding
-   * `platform.madrasah_nazir_grant` gives as the platform, and may give every
-   * grantable medrese and course permission whatever they hold themselves
-   * (owner decision, MDRS-209: "Hepsi, her grant denetlenip başnazıma
-   * gösterilsin"): there is no ceiling at their own empty default, and in
-   * return every grant, group change and appointment is written to the audit
-   * log with its level and is listed to the başnazım under what they handed
-   * on. Asked of the engine, so the screens, the guard and this check cannot
-   * disagree.
+   * `platform.madrasah_nazir_grant` gives as the platform. How much they may
+   * give is `holdingsCheck`'s: only what they hold themselves in the
+   * medrese (owner, MDRS-209: "kendi izinleriyle sınırlı elbette"), and every
+   * grant, group change and appointment is written to the audit log with its
+   * level and is listed to the başnazım under what they handed on. Asked of the
+   * engine, so the screens, the guard and this check cannot disagree.
    */
   private async authorityOf(
     user: AuthenticatedUser,
@@ -160,18 +166,105 @@ export class MadrasahPermissionService {
     return { id: user.sub, authority };
   }
 
+  /**
+   * The ceiling: nobody hands on what they do not hold themselves in this
+   * medrese. Returns null for the başnazım, who is not asked, and otherwise a
+   * check over what is about to be given (a grant or a group's codes, with the
+   * scope it lands in) that throws `GRANT_EXCEEDS_GIVER`, naming the codes that
+   * exceed what the caller holds. The caller's own effective permissions, on
+   * the medrese and in every course below it, must contain each code:
+   *
+   * - the başmüderris holds every medrese and course code by role default, so
+   *   for them it asks nothing;
+   * - a Medaris nazımı's own default is empty, so what they may give is what
+   *   the başnazım gave them: codes held at this medrese (they were seated as
+   *   a nazır here and given them) and course codes given "for every course".
+   *   A Medaris nazımı with none of those appoints and gives nothing, which is
+   *   intended (owner, MDRS-209: "kendi izinleriyle sınırlı elbette");
+   * - a grant limited to some courses may also rest on the giver holding the
+   *   code in each of those courses.
+   *
+   * `candidates` is every scope and code the request may touch: it only decides
+   * which courses' holdings are read, so the check itself stays synchronous and
+   * can run inside the write's transaction on exactly the rows it inserts.
+   */
+  /** What the caller holds in the medrese and in every course below it; null for the başnazım, who holds no limit. */
+  private async holdingsOf(
+    user: AuthenticatedUser,
+    madrasahId: string
+  ): Promise<ReadonlySet<string> | null> {
+    if (this.authz.isSystemAdmin(user)) return null;
+    return new Set<string>(
+      (
+        await this.authz.effective(
+          user,
+          { entity: ENTITIES.MADRASAH, id: madrasahId },
+          { acrossCourses: true }
+        )
+      )?.codes ?? []
+    );
+  }
+
+  private async holdingsCheck(
+    user: AuthenticatedUser,
+    madrasahId: string,
+    candidates: ReadonlyArray<IGiven>
+  ): Promise<((given: readonly IGiven[]) => void) | null> {
+    const held = await this.holdingsOf(user, madrasahId);
+    if (held === null) return null;
+    const inCourse = new Map<string, ReadonlySet<string>>();
+    for (const scope of candidates) {
+      if (
+        scope.scopeType !== SCOPE_TYPES.COURSE ||
+        inCourse.has(scope.scopeId) ||
+        scope.codes.every((code) => held.has(code))
+      ) {
+        continue;
+      }
+      const codes = (
+        await this.authz.effective(user, {
+          entity: ENTITIES.COURSE,
+          id: scope.scopeId,
+        })
+      )?.codes;
+      inCourse.set(scope.scopeId, new Set<string>(codes ?? []));
+    }
+    return (given) => {
+      const exceeding = new Set<string>();
+      for (const scope of given) {
+        for (const code of scope.codes) {
+          if (held.has(code)) continue;
+          if (
+            scope.scopeType === SCOPE_TYPES.COURSE &&
+            inCourse.get(scope.scopeId)?.has(code)
+          ) {
+            continue;
+          }
+          exceeding.add(code);
+        }
+      }
+      if (exceeding.size > 0) {
+        throw new GrantExceedsGiverError([...exceeding].sort(), { madrasahId });
+      }
+    };
+  }
+
   // ---- the dictionary and the groups -------------------------------------
 
   async catalog(
     user: AuthenticatedUser,
     madrasahId: string
   ): Promise<MadrasahPermissionCatalogResponse> {
+    // What the editor lets them tick: the lists, cut to the caller's own
+    // holdings, so the screens and the write refuse the same codes.
+    const all = [...MADRASAH_CATALOG, ...MADRASAH_COURSE_CATALOG];
+    const held = (await this.mayGive(user, madrasahId))
+      ? await this.holdingsOf(user, madrasahId)
+      : new Set<string>();
     return {
       madrasah: [...MADRASAH_CATALOG],
       course: [...MADRASAH_COURSE_CATALOG],
-      givable: (await this.mayGive(user, madrasahId))
-        ? [...MADRASAH_CATALOG, ...MADRASAH_COURSE_CATALOG]
-        : [],
+      givable: held === null ? all : all.filter((code) => held.has(code)),
     };
   }
 
@@ -192,6 +285,14 @@ export class MadrasahPermissionService {
       dto.permissions,
       dto.scope === "MADRASAH" ? ANY_CODE : MADRASAH_COURSE_CODES
     );
+    const given: IGiven[] = [
+      {
+        scopeType: SCOPE_TYPES.MADRASAH,
+        scopeId: madrasahId,
+        codes: permissions,
+      },
+    ];
+    (await this.holdingsCheck(user, madrasahId, given))?.(given);
     if (await this.groups.nameTaken(name, madrasahId)) {
       throw new PermissionGroupNameTakenError(name);
     }
@@ -220,6 +321,17 @@ export class MadrasahPermissionService {
     const changed =
       permissions.length !== group.permissions.length ||
       permissions.some((code) => !group.permissions.includes(code));
+    // Changing a group hands its new codes to everyone who holds it, so what a
+    // change adds is held to the ceiling; what it takes away, and a rename, is
+    // not a gift.
+    const added: IGiven[] = [
+      {
+        scopeType: SCOPE_TYPES.MADRASAH,
+        scopeId: madrasahId,
+        codes: permissions.filter((code) => !group.permissions.includes(code)),
+      },
+    ];
+    (await this.holdingsCheck(user, madrasahId, added))?.(added);
     if (changed && group.userCount > 0 && !dto.usersPolicy) {
       throw new UsersPolicyRequiredError(group.userCount);
     }
@@ -338,17 +450,49 @@ export class MadrasahPermissionService {
       }
     }
 
+    const scopes = wantedScopes({
+      madrasahId,
+      group,
+      permissions: extras,
+      courseIds,
+    });
+    // Everything the request may hand on, by scope: its single permissions
+    // and, where a group sits, the group's codes. The ceiling is checked inside
+    // the write, on what it really inserts or re-times (a code the nazır
+    // already holds from someone else and keeps is not a gift).
+    const codesIn = (scope: (typeof scopes)[number]): string[] => [
+      ...scope.permissions,
+      ...(scope.groupId && group ? group.permissions : []),
+    ];
+    const check = await this.holdingsCheck(
+      user,
+      madrasahId,
+      scopes.map((scope) => ({
+        scopeType: scope.scopeType,
+        scopeId: scope.scopeId,
+        codes: codesIn(scope),
+      }))
+    );
     const authority =
       (await this.authorityOf(user, madrasahId)) ?? SCOPE_TYPES.MADRASAH;
     await this.repo.setPermissions(madrasahId, id, actor, {
       authority,
-      scopes: wantedScopes({
-        madrasahId,
-        group,
-        permissions: extras,
-        courseIds,
-      }),
+      scopes,
       expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
+      ceiling: check
+        ? (given) =>
+            check(
+              given.map((row) => ({
+                scopeType: row.scopeType,
+                scopeId: row.scopeId,
+                codes: row.permission
+                  ? [row.permission]
+                  : row.groupId && group && row.groupId === group.id
+                    ? group.permissions
+                    : [],
+              }))
+            )
+        : undefined,
     });
     const row = await this.nazirs.find(madrasahId, id);
     if (!row) throw new NazirNotFoundError(madrasahId, id);

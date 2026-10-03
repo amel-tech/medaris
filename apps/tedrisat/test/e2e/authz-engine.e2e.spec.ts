@@ -562,12 +562,15 @@ describe("The permission engine (MDRS-135, e2e)", () => {
       letThrough(await patch(MEDARIS_ID, `/kosks/${koskId}`, { name: "Yeni" }));
     });
 
-    // Owner decision (MDRS-209, 3 October): "Hepsi, her grant denetlenip
-    // başnazıma gösterilsin". A Medaris nazımı holding the permission may give
-    // every grantable medrese and course permission whatever they hold
-    // themselves, and in return every grant, group change and appointment is
-    // written to the audit log and listed under what they handed on.
-    describe("what a Medaris nazımı hands on: all of it, on the record, listed to the başnazım (MDRS-209)", () => {
+    // The Medaris nazımı's ceiling (MDRS-209). The owner first ticked "Hepsi,
+    // her grant denetlenip başnazıma gösterilsin" and then said what he meant:
+    // "Benim az önceki kararım 'kendi izinlerinin sınırını aşar' anlamında
+    // değil, kendi izinleriyle sınırlı elbette." So a Medaris nazımı holding the
+    // permission appoints a nazır and gives permissions ONLY FROM WHAT THEY HOLD
+    // THEMSELVES in the medrese (their own default is empty, so the başnazım's
+    // grants are all they have), and every grant, group change and appointment
+    // is on the record and listed to the başnazım.
+    describe("what a Medaris nazımı hands on: only what they hold, on the record, listed to the başnazım (MDRS-209)", () => {
       const allCodes = [
         ...MADRASAH_CATALOG,
         ...MADRASAH_COURSE_CATALOG,
@@ -575,6 +578,9 @@ describe("The permission engine (MDRS-135, e2e)", () => {
       const asPlatform = { type: SCOPE_TYPES.PLATFORM, id: null } as const;
       const del = (sub: string, path: string, body: object = {}) =>
         http().delete(path).set("Authorization", auth(sub)).send(body);
+      const permissionsOf = (userId: string) =>
+        `/madrasahs/${madrasahId}/nazirs/${userId}/permissions`;
+      const groupsPath = () => `/madrasahs/${madrasahId}/permission-groups`;
       const given = async () =>
         (
           await get(
@@ -600,6 +606,45 @@ describe("The permission engine (MDRS-135, e2e)", () => {
           .where(
             and(eq(auditLog.action, action), eq(auditLog.actorId, actorId))
           );
+      const handedByMedaris = (userId: string) =>
+        db()
+          .select()
+          .from(permissionGrants)
+          .where(
+            and(
+              eq(permissionGrants.userId, userId),
+              eq(permissionGrants.grantedBy, MEDARIS_ID),
+              isNull(permissionGrants.revokedAt)
+            )
+          );
+      /** The başnazım gives the Medaris nazımı these codes at the medrese: seats them as a nazır there, then gives. */
+      const holdAtMedrese = async (codes: string[]) => {
+        await post(
+          ADMIN_ID,
+          `/madrasahs/${madrasahId}/nazirs/${MEDARIS_ID}`
+        ).expect(201);
+        await put(ADMIN_ID, permissionsOf(MEDARIS_ID), {
+          permissions: codes,
+        }).expect(200);
+      };
+      const holdsOf = async () => {
+        const mine = await authz.effective(
+          user(MEDARIS_ID),
+          { entity: "madrasah", id: madrasahId },
+          { acrossCourses: true }
+        );
+        return allCodes.filter((code) => mine?.codes.has(code as never)).sort();
+      };
+      const refusedFor = (
+        res: { status: number; body: { code: string; message: string } },
+        codes: string[]
+      ) => {
+        expect(res.status).toBe(403);
+        expect(res.body.code).toBe("GRANT_EXCEEDS_GIVER");
+        expect(res.body.message).toBe(
+          `You do not hold: ${codes.sort().join(", ")}`
+        );
+      };
 
       beforeEach(async () => {
         await grant(
@@ -610,80 +655,16 @@ describe("The permission engine (MDRS-135, e2e)", () => {
         );
       });
 
-      it("gives every grantable code to a nazır, holding none of them: allowed, audited, listed", async () => {
-        const mine = await authz.effective(user(MEDARIS_ID), {
-          entity: "madrasah",
-          id: madrasahId,
-        });
-        // The premise: nothing of what follows is theirs.
-        expect(
-          allCodes.filter((code) => mine?.codes.has(code as never))
-        ).toEqual([]);
-
-        await put(
+      it("with nothing of their own they appoint a nazır and give nothing: the gift is refused naming the codes, and nothing is written", async () => {
+        expect(await holdsOf()).toEqual([]);
+        // The editor lets them tick nothing.
+        const catalog = await get(
           MEDARIS_ID,
-          `/madrasahs/${madrasahId}/nazirs/${NAZIR_ID}/permissions`,
-          { permissions: allCodes }
+          `/madrasahs/${madrasahId}/permissions`
         ).expect(200);
+        expect(catalog.body.givable).toEqual([]);
 
-        // The nazır holds them: a medrese permission and a course permission.
-        await get(NAZIR_ID, `/madrasahs/${madrasahId}/students`).expect(200);
-        letThrough(await patch(NAZIR_ID, `/courses/${medreseCourse}`));
-
-        // (a) the rows say who gave them, at which level.
-        const rows = await db()
-          .select()
-          .from(permissionGrants)
-          .where(
-            and(
-              eq(permissionGrants.userId, NAZIR_ID),
-              isNull(permissionGrants.revokedAt)
-            )
-          );
-        expect(rows).toHaveLength(allCodes.length);
-        for (const row of rows) {
-          expect(row).toMatchObject({
-            grantedBy: MEDARIS_ID,
-            authorityScopeType: SCOPE_TYPES.PLATFORM,
-          });
-        }
-        // (a) the audit row names the grants, the actor, the target, the scope
-        // and the level.
-        const [audit] = await auditRows("permission.grant");
-        expect(audit).toMatchObject({
-          actorId: MEDARIS_ID,
-          entityId: NAZIR_ID,
-        });
-        const details = audit.details as {
-          madrasahId: string;
-          authority: string;
-          grants: Array<{ id: string; permission: string; scopeId: string }>;
-        };
-        expect(details).toMatchObject({
-          madrasahId,
-          authority: SCOPE_TYPES.PLATFORM,
-        });
-        expect(details.grants.map((g) => g.id).sort()).toEqual(
-          rows.map((r) => r.id).sort()
-        );
-        expect(details.grants.map((g) => g.permission).sort()).toEqual(
-          [...allCodes].sort()
-        );
-
-        // (b) the başnazım's list of what they handed on has every one.
-        const listed = (await given()).filter((item) => item.kind === "GRANT");
-        expect(listed.map((item) => item.id).sort()).toEqual(
-          rows.map((r) => r.id).sort()
-        );
-        expect(new Set(listed.map((item) => item.to?.id))).toEqual(
-          new Set([NAZIR_ID])
-        );
-        expect(listed.map((item) => item.permission).sort()).toEqual(
-          [...allCodes].sort()
-        );
-      });
-
-      it("appoints a nazır: audited with the seat and the level, listed as a role", async () => {
+        // Appointing needs no holdings: audited with the seat and the level, listed.
         await post(
           MEDARIS_ID,
           `/madrasahs/${madrasahId}/nazirs/${NEWCOMER_ID}`
@@ -708,27 +689,347 @@ describe("The permission engine (MDRS-135, e2e)", () => {
           scopeId: madrasahId,
           authority: SCOPE_TYPES.PLATFORM,
         });
-        const listed = (await given()).filter((item) => item.kind === "ROLE");
-        expect(listed).toEqual([
+        expect((await given()).filter((item) => item.kind === "ROLE")).toEqual([
           expect.objectContaining({
             id: seat.id,
             role: ASSIGNED_ROLES.MEDRESE_NAZIR,
-            scopeType: SCOPE_TYPES.MADRASAH,
             to: expect.objectContaining({ id: NEWCOMER_ID }),
           }),
         ]);
-        // The başmüderris's own appointment is at the medrese's level.
-        await del(HEAD_ID, `/madrasahs/${madrasahId}/nazirs/${NEWCOMER_ID}`, {
-          decisions: [],
+
+        // Giving anything is refused, a medrese code and a course code alike.
+        refusedFor(
+          await put(MEDARIS_ID, permissionsOf(NAZIR_ID), {
+            permissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW],
+          }),
+          [PERMISSIONS.MADRASAH_STUDENTS_VIEW]
+        );
+        refusedFor(
+          await put(MEDARIS_ID, permissionsOf(NAZIR_ID), {
+            permissions: [PERMISSIONS.COURSE_EDIT, PERMISSIONS.MADRASAH_BAN],
+          }),
+          [PERMISSIONS.COURSE_EDIT, PERMISSIONS.MADRASAH_BAN]
+        );
+        refusedFor(
+          await post(MEDARIS_ID, groupsPath(), {
+            name: "Kayıt işleri",
+            scope: "MADRASAH",
+            permissions: [PERMISSIONS.MADRASAH_BAN],
+          }),
+          [PERMISSIONS.MADRASAH_BAN]
+        );
+        // Giving nothing (saving an empty set) is not a gift.
+        await put(MEDARIS_ID, permissionsOf(NAZIR_ID), {
+          permissions: [],
+        }).expect(200);
+
+        expect(await handedByMedaris(NAZIR_ID)).toEqual([]);
+        expect(await auditRows("permission.grant")).toEqual([]);
+        expect(await auditRows("permission_group.create")).toEqual([]);
+        expect((await given()).filter((item) => item.kind !== "ROLE")).toEqual(
+          []
+        );
+      });
+
+      it("after the başnazım gives them X at the medrese, exactly X can be handed on: allowed, audited with the grants, listed", async () => {
+        const X = [
+          PERMISSIONS.MADRASAH_STUDENTS_VIEW,
+          PERMISSIONS.MADRASAH_SETTINGS_EDIT,
+          PERMISSIONS.COURSE_EDIT,
+        ];
+        await holdAtMedrese(X);
+        // The premise: they hold X and nothing else of the lists.
+        expect(await holdsOf()).toEqual([...X].sort());
+        // The editor's list of what they may tick is exactly X.
+        const catalog = await get(
+          MEDARIS_ID,
+          `/madrasahs/${madrasahId}/permissions`
+        ).expect(200);
+        expect([...catalog.body.givable].sort()).toEqual([...X].sort());
+
+        await put(MEDARIS_ID, permissionsOf(NAZIR_ID), {
+          permissions: [
+            PERMISSIONS.MADRASAH_STUDENTS_VIEW,
+            PERMISSIONS.COURSE_EDIT,
+          ],
+        }).expect(200);
+        // The nazır holds those two and not the third X had.
+        await get(NAZIR_ID, `/madrasahs/${madrasahId}/students`).expect(200);
+        letThrough(await patch(NAZIR_ID, `/courses/${medreseCourse}`));
+        await get(NAZIR_ID, `/madrasahs/${madrasahId}/settings`).expect(403);
+
+        // (a) the rows say who gave them and at which level; the audit row names them.
+        const rows = await handedByMedaris(NAZIR_ID);
+        expect(rows.map((r) => r.permission).sort()).toEqual([
+          PERMISSIONS.COURSE_EDIT,
+          PERMISSIONS.MADRASAH_STUDENTS_VIEW,
+        ]);
+        for (const row of rows) {
+          expect(row.authorityScopeType).toBe(SCOPE_TYPES.PLATFORM);
+        }
+        const [audit] = await auditRows("permission.grant");
+        expect(audit).toMatchObject({
+          actorId: MEDARIS_ID,
+          entityId: NAZIR_ID,
+        });
+        const details = audit.details as {
+          madrasahId: string;
+          authority: string;
+          grants: Array<{ id: string; permission: string }>;
+        };
+        expect(details).toMatchObject({
+          madrasahId,
+          authority: SCOPE_TYPES.PLATFORM,
+        });
+        expect(details.grants.map((g) => g.id).sort()).toEqual(
+          rows.map((r) => r.id).sort()
+        );
+        // (b) the başnazım's list has each.
+        const listed = (await given()).filter((item) => item.kind === "GRANT");
+        expect(listed.map((item) => item.id).sort()).toEqual(
+          rows.map((r) => r.id).sort()
+        );
+        expect(new Set(listed.map((item) => item.to?.id))).toEqual(
+          new Set([NAZIR_ID])
+        );
+
+        // One code more than X is refused, naming only that code; nothing moves.
+        refusedFor(
+          await put(MEDARIS_ID, permissionsOf(NAZIR_ID), {
+            permissions: [
+              PERMISSIONS.MADRASAH_STUDENTS_VIEW,
+              PERMISSIONS.COURSE_EDIT,
+              PERMISSIONS.MADRASAH_BAN,
+            ],
+          }),
+          [PERMISSIONS.MADRASAH_BAN]
+        );
+        expect(
+          (await handedByMedaris(NAZIR_ID)).map((r) => r.id).sort()
+        ).toEqual(rows.map((r) => r.id).sort());
+        // A course code limited to one course rests on the same holding.
+        await put(MEDARIS_ID, permissionsOf(NAZIR_ID), {
+          permissions: [PERMISSIONS.COURSE_EDIT],
+          courseIds: [medreseCourse],
+        }).expect(200);
+      });
+
+      it("groups too: a group of codes within what they hold, a change that adds only held codes; anything beyond is refused", async () => {
+        await holdAtMedrese([
+          PERMISSIONS.MADRASAH_STUDENTS_VIEW,
+          PERMISSIONS.COURSE_EDIT,
+        ]);
+        refusedFor(
+          await post(MEDARIS_ID, groupsPath(), {
+            name: "Fazla",
+            scope: "MADRASAH",
+            permissions: [
+              PERMISSIONS.MADRASAH_STUDENTS_VIEW,
+              PERMISSIONS.MADRASAH_BAN,
+            ],
+          }),
+          [PERMISSIONS.MADRASAH_BAN]
+        );
+        const created = await post(MEDARIS_ID, groupsPath(), {
+          name: "Kayıt işleri",
+          scope: "MADRASAH",
+          permissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW],
+        }).expect(201);
+        const groupId = created.body.id as string;
+        const [createAudit] = await auditRows("permission_group.create");
+        expect(createAudit).toMatchObject({ entityId: groupId });
+        expect(createAudit.details).toMatchObject({
+          scopeType: SCOPE_TYPES.MADRASAH,
+          scopeId: madrasahId,
+          authority: SCOPE_TYPES.PLATFORM,
+          permissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW],
+        });
+        expect((await given()).filter((item) => item.kind === "GROUP")).toEqual(
+          [
+            expect.objectContaining({
+              id: groupId,
+              groupName: "Kayıt işleri",
+              groupAction: "create",
+              groupPermissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW],
+              scopeName: "Süleymaniye",
+              to: null,
+            }),
+          ]
+        );
+
+        // A nazır holds it, so a change reaches them and the record names them.
+        await put(MEDARIS_ID, permissionsOf(NAZIR_ID), {
+          groupId,
+          permissions: [],
+        }).expect(200);
+        refusedFor(
+          await patch(MEDARIS_ID, `${groupsPath()}/${groupId}`, {
+            permissions: [
+              PERMISSIONS.MADRASAH_STUDENTS_VIEW,
+              PERMISSIONS.SESSION_MANAGE,
+            ],
+            usersPolicy: "keep",
+          }),
+          [PERMISSIONS.SESSION_MANAGE]
+        );
+        await patch(MEDARIS_ID, `${groupsPath()}/${groupId}`, {
+          permissions: [
+            PERMISSIONS.MADRASAH_STUDENTS_VIEW,
+            PERMISSIONS.COURSE_EDIT,
+          ],
+          usersPolicy: "keep",
+        }).expect(200);
+        const [updateAudit] = await auditRows("permission_group.update");
+        expect(updateAudit.details).toMatchObject({
+          authority: SCOPE_TYPES.PLATFORM,
+          scopeType: SCOPE_TYPES.MADRASAH,
+          scopeId: madrasahId,
+          previousPermissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW],
+          holderIds: [NAZIR_ID],
+        });
+        expect((await given()).filter((item) => item.kind === "GROUP")).toEqual(
+          [expect.objectContaining({ id: groupId, groupAction: "update" })]
+        );
+        // A group the başmüderris made, with a code they do not hold, cannot
+        // be handed to a nazır by them.
+        const others = await post(HEAD_ID, groupsPath(), {
+          name: "Yasaklar",
+          scope: "MADRASAH",
+          permissions: [PERMISSIONS.MADRASAH_BAN],
+        }).expect(201);
+        refusedFor(
+          await put(MEDARIS_ID, permissionsOf(NAZIR_ID), {
+            groupId: others.body.id,
+            permissions: [],
+          }),
+          [PERMISSIONS.MADRASAH_BAN]
+        );
+        await del(MEDARIS_ID, `${groupsPath()}/${groupId}`, {
+          usersPolicy: "keep",
         }).expect(204);
-        await post(
-          HEAD_ID,
-          `/madrasahs/${madrasahId}/nazirs/${NEWCOMER_ID}`
-        ).expect(201);
-        const [byHead] = await auditRows("madrasah_nazir.appoint", HEAD_ID);
+        const [deleteAudit] = await auditRows("permission_group.delete");
+        expect(deleteAudit.details).toMatchObject({
+          authority: SCOPE_TYPES.PLATFORM,
+        });
+        expect((await given()).filter((item) => item.kind === "GROUP")).toEqual(
+          []
+        );
+      });
+
+      it("keeps what the nazır already holds from someone else: saving it as it is is no gift, giving it more time is", async () => {
+        const end = new Date(Date.now() + 3600_000).toISOString();
+        await put(HEAD_ID, permissionsOf(NAZIR_ID), {
+          permissions: [PERMISSIONS.MADRASAH_BAN],
+          expiresAt: end,
+        }).expect(200);
+        await holdAtMedrese([PERMISSIONS.MADRASAH_STUDENTS_VIEW]);
+        // The başmüderris's grant stays as it is, a held code is added: allowed.
+        await put(MEDARIS_ID, permissionsOf(NAZIR_ID), {
+          permissions: [
+            PERMISSIONS.MADRASAH_BAN,
+            PERMISSIONS.MADRASAH_STUDENTS_VIEW,
+          ],
+          expiresAt: end,
+        }).expect(200);
+        const byHead = await db()
+          .select()
+          .from(permissionGrants)
+          .where(
+            and(
+              eq(permissionGrants.userId, NAZIR_ID),
+              eq(permissionGrants.grantedBy, HEAD_ID),
+              isNull(permissionGrants.revokedAt)
+            )
+          );
+        expect(byHead.map((r) => r.permission)).toEqual([
+          PERMISSIONS.MADRASAH_BAN,
+        ]);
+        // Stretching the end of a code they do not hold is handing it on.
+        refusedFor(
+          await put(MEDARIS_ID, permissionsOf(NAZIR_ID), {
+            permissions: [
+              PERMISSIONS.MADRASAH_BAN,
+              PERMISSIONS.MADRASAH_STUDENTS_VIEW,
+            ],
+            expiresAt: new Date(Date.now() + 30 * 24 * 3600_000).toISOString(),
+          }),
+          [PERMISSIONS.MADRASAH_BAN]
+        );
+        // Shortening it is not.
+        await put(MEDARIS_ID, permissionsOf(NAZIR_ID), {
+          permissions: [
+            PERMISSIONS.MADRASAH_BAN,
+            PERMISSIONS.MADRASAH_STUDENTS_VIEW,
+          ],
+          expiresAt: new Date(Date.now() + 1800_000).toISOString(),
+        }).expect(200);
+      });
+
+      it("a grant 'for every course' lifts the ceiling by exactly the course codes it carries, and no medrese code", async () => {
+        await db().insert(permissionGrants).values({
+          userId: MEDARIS_ID,
+          scopeType: SCOPE_TYPES.COURSE,
+          scopeId: null,
+          permission: PERMISSIONS.ENROLLMENT_DECIDE,
+          grantedBy: ADMIN_ID,
+          authorityScopeType: SCOPE_TYPES.PLATFORM,
+        });
+        await put(MEDARIS_ID, permissionsOf(NAZIR_ID), {
+          permissions: [PERMISSIONS.ENROLLMENT_DECIDE],
+        }).expect(200);
+        refusedFor(
+          await put(MEDARIS_ID, permissionsOf(NAZIR_ID), {
+            permissions: [
+              PERMISSIONS.ENROLLMENT_DECIDE,
+              PERMISSIONS.SESSION_MANAGE,
+            ],
+          }),
+          [PERMISSIONS.SESSION_MANAGE]
+        );
+        // A medrese code is not a course code: the grant does not lift it.
+        refusedFor(
+          await put(MEDARIS_ID, permissionsOf(NAZIR_ID), {
+            permissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW],
+          }),
+          [PERMISSIONS.MADRASAH_STUDENTS_VIEW]
+        );
+      });
+
+      it("keeps the other callers' limits: the codes are the lists', the medrese is theirs, a grantee cannot hand on, nobody names themselves", async () => {
+        // A code outside the medrese and course lists is refused to the
+        // Medaris nazımı and to the başmüderris alike, before any ceiling.
+        for (const sub of [MEDARIS_ID, HEAD_ID]) {
+          const res = await put(sub, permissionsOf(NAZIR_ID), {
+            permissions: [PERMISSIONS.PLATFORM_AUDIT_READ],
+          }).expect(400);
+          expect(res.body.code).toBe("PERMISSION_UNKNOWN");
+        }
+        // The başmüderris holds every medrese and course code by role default,
+        // so their ceiling asks nothing: all of it, at the medrese's level.
+        await put(HEAD_ID, permissionsOf(NAZIR_ID), {
+          permissions: allCodes,
+        }).expect(200);
+        const [byHead] = await auditRows("permission.grant", HEAD_ID);
         expect(byHead.details).toMatchObject({
           authority: SCOPE_TYPES.MADRASAH,
         });
+        // The başnazım is not asked either.
+        await put(ADMIN_ID, permissionsOf(NAZIR_ID), {
+          permissions: allCodes,
+        }).expect(200);
+        // Another medrese's başmüderris is not one here.
+        await put(OTHER_HEAD_ID, permissionsOf(NAZIR_ID), {
+          permissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW],
+        }).expect(403);
+        // Nobody names themselves.
+        await post(
+          MEDARIS_ID,
+          `/madrasahs/${madrasahId}/nazirs/${MEDARIS_ID}`
+        ).expect(403);
+        // And the başnazım's list shows nothing of what the başmüderris did.
+        expect((await given()).filter((item) => item.kind === "GRANT")).toEqual(
+          []
+        );
       });
 
       it("seats a köşk nazımı through the admin route: audited, and listed as a role", async () => {
@@ -752,156 +1053,39 @@ describe("The permission engine (MDRS-135, e2e)", () => {
           }),
         ]);
       });
-
-      it("defines, changes and deletes a group of codes they do not hold: each audited with the level, listed while it lives", async () => {
-        const created = await post(
-          MEDARIS_ID,
-          `/madrasahs/${madrasahId}/permission-groups`,
-          {
-            name: "Kayıt işleri",
-            scope: "MADRASAH",
-            permissions: [PERMISSIONS.MADRASAH_BAN, PERMISSIONS.COURSE_EDIT],
-          }
-        ).expect(201);
-        const groupId = created.body.id as string;
-        const [createAudit] = await auditRows("permission_group.create");
-        expect(createAudit).toMatchObject({ entityId: groupId });
-        expect(createAudit.details).toMatchObject({
-          scopeType: SCOPE_TYPES.MADRASAH,
-          scopeId: madrasahId,
-          authority: SCOPE_TYPES.PLATFORM,
-          permissions: [PERMISSIONS.MADRASAH_BAN, PERMISSIONS.COURSE_EDIT],
-        });
-        expect(await given()).toEqual([
-          expect.objectContaining({
-            kind: "GROUP",
-            id: groupId,
-            groupName: "Kayıt işleri",
-            groupAction: "create",
-            groupPermissions: expect.arrayContaining([
-              PERMISSIONS.MADRASAH_BAN,
-              PERMISSIONS.COURSE_EDIT,
-            ]),
-            scopeType: SCOPE_TYPES.MADRASAH,
-            scopeName: "Süleymaniye",
-            to: null,
-          }),
-        ]);
-
-        // A nazır holds it, so a change reaches them: the record names them.
-        await put(
-          MEDARIS_ID,
-          `/madrasahs/${madrasahId}/nazirs/${NAZIR_ID}/permissions`,
-          { groupId, permissions: [] }
-        ).expect(200);
-        await patch(
-          MEDARIS_ID,
-          `/madrasahs/${madrasahId}/permission-groups/${groupId}`,
-          {
-            permissions: [PERMISSIONS.MADRASAH_BAN, PERMISSIONS.SESSION_MANAGE],
-            usersPolicy: "keep",
-          }
-        ).expect(200);
-        const [updateAudit] = await auditRows("permission_group.update");
-        expect(updateAudit).toMatchObject({ entityId: groupId });
-        expect(updateAudit.details).toMatchObject({
-          authority: SCOPE_TYPES.PLATFORM,
-          scopeType: SCOPE_TYPES.MADRASAH,
-          scopeId: madrasahId,
-          previousPermissions: expect.arrayContaining([
-            PERMISSIONS.COURSE_EDIT,
-          ]),
-          permissions: [PERMISSIONS.MADRASAH_BAN, PERMISSIONS.SESSION_MANAGE],
-          holderIds: [NAZIR_ID],
-        });
-        const afterEdit = (await given()).filter((i) => i.kind === "GROUP");
-        expect(afterEdit).toEqual([
-          expect.objectContaining({
-            id: groupId,
-            groupAction: "update",
-            groupPermissions: expect.arrayContaining([
-              PERMISSIONS.SESSION_MANAGE,
-            ]),
-          }),
-        ]);
-
-        await del(
-          MEDARIS_ID,
-          `/madrasahs/${madrasahId}/permission-groups/${groupId}`,
-          { usersPolicy: "keep" }
-        ).expect(204);
-        const [deleteAudit] = await auditRows("permission_group.delete");
-        expect(deleteAudit.details).toMatchObject({
-          authority: SCOPE_TYPES.PLATFORM,
-          holderIds: [],
-        });
-        // Deleted, it is no longer a live group to list.
-        expect((await given()).filter((i) => i.kind === "GROUP")).toEqual([]);
-      });
-
-      it("keeps the other callers' limits: the codes are the catalogue's, the medrese is theirs, a grantee cannot hand on", async () => {
-        // A code outside the medrese and course lists is refused to the
-        // Medaris nazımı and to the başmüderris alike.
-        for (const sub of [MEDARIS_ID, HEAD_ID]) {
-          const res = await put(
-            sub,
-            `/madrasahs/${madrasahId}/nazirs/${NAZIR_ID}/permissions`,
-            { permissions: [PERMISSIONS.PLATFORM_AUDIT_READ] }
-          ).expect(400);
-          expect(res.body.code).toBe("PERMISSION_UNKNOWN");
-        }
-        // The başmüderris gives all of it too, at the medrese's level.
-        await put(
-          HEAD_ID,
-          `/madrasahs/${madrasahId}/nazirs/${NAZIR_ID}/permissions`,
-          { permissions: allCodes }
-        ).expect(200);
-        const [byHead] = await auditRows("permission.grant", HEAD_ID);
-        expect(byHead.details).toMatchObject({
-          authority: SCOPE_TYPES.MADRASAH,
-        });
-        // Another medrese's başmüderris is not one here.
-        await put(
-          OTHER_HEAD_ID,
-          `/madrasahs/${madrasahId}/nazirs/${NAZIR_ID}/permissions`,
-          { permissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW] }
-        ).expect(403);
-        // Neither is a nazır holding "appoint nazırs" by a grant (own test above
-        // for the 403 PERMISSION_NOT_GIVABLE), nor the Medaris nazımı's own
-        // seat: naming themselves stays refused.
-        await put(
-          MEDARIS_ID,
-          `/madrasahs/${madrasahId}/nazirs/${MEDARIS_ID}/permissions`,
-          { permissions: allCodes }
-        ).expect(404);
-        await post(
-          MEDARIS_ID,
-          `/madrasahs/${madrasahId}/nazirs/${MEDARIS_ID}`
-        ).expect(403);
-        // And the başnazım's list shows nothing the başmüderris did.
-        expect((await given()).filter((item) => item.kind === "GRANT")).toEqual(
-          []
-        );
-      });
     });
 
-    it("may give a medrese nazırı permissions only with the permission to", async () => {
-      await put(
-        MEDARIS_ID,
-        `/madrasahs/${madrasahId}/nazirs/${NAZIR_ID}/permissions`,
-        { permissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW] }
-      ).expect(403);
+    it("may give a medrese nazırı permissions only with the permission to, and then only from what they hold", async () => {
+      const path = `/madrasahs/${madrasahId}/nazirs/${NAZIR_ID}/permissions`;
+      // No permission to give: refused at the guard.
+      await put(MEDARIS_ID, path, {
+        permissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW],
+      }).expect(403);
       await grant(
         MEDARIS_ID,
         { type: SCOPE_TYPES.PLATFORM, id: null },
         { permission: PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT },
         { grantedBy: ADMIN_ID }
       );
+      // The permission to give, and nothing of their own to give from.
+      const empty = await put(MEDARIS_ID, path, {
+        permissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW],
+      }).expect(403);
+      expect(empty.body.code).toBe("GRANT_EXCEEDS_GIVER");
+      // The başnazım gives them that code at the medrese (seating them there as
+      // a nazır): now it, and only it, can be handed on.
+      await post(
+        ADMIN_ID,
+        `/madrasahs/${madrasahId}/nazirs/${MEDARIS_ID}`
+      ).expect(201);
       await put(
-        MEDARIS_ID,
-        `/madrasahs/${madrasahId}/nazirs/${NAZIR_ID}/permissions`,
+        ADMIN_ID,
+        `/madrasahs/${madrasahId}/nazirs/${MEDARIS_ID}/permissions`,
         { permissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW] }
       ).expect(200);
+      await put(MEDARIS_ID, path, {
+        permissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW],
+      }).expect(200);
       // The nazır now holds exactly that, and the row says the platform gave it.
       await get(NAZIR_ID, `/madrasahs/${madrasahId}/students`).expect(200);
       const [row] = await db()
@@ -927,7 +1111,8 @@ describe("The permission engine (MDRS-135, e2e)", () => {
       db()
         .select()
         .from(auditLog)
-        .where(eq(auditLog.action, "permission.self_grant_refused"));
+        .where(eq(auditLog.action, "permission.self_grant_refused"))
+        .orderBy(auditLog.seq);
 
     beforeEach(async () => {
       await db().insert(roleAssignments).values({
@@ -1217,7 +1402,8 @@ describe("The permission engine (MDRS-135, e2e)", () => {
       const rows = await db()
         .select()
         .from(auditLog)
-        .where(eq(auditLog.actorId, MEDARIS_ID));
+        .where(eq(auditLog.actorId, MEDARIS_ID))
+        .orderBy(auditLog.seq);
       expect(
         rows
           .filter((row) => row.action.startsWith("kosk.nazim."))

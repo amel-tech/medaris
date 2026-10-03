@@ -1,6 +1,7 @@
 import {
   type AuthzService,
   PERMISSIONS,
+  ROLE_DEFAULT_PERMISSIONS,
   SelfGrantGuard,
 } from "@medaris/common";
 import { describe, expect, it, vi } from "vitest";
@@ -12,6 +13,7 @@ import {
   UsersPolicyRequiredError,
 } from "../../../src/assignment/admin/errors";
 import type { PermissionAdminRepository } from "../../../src/assignment/admin/permission-admin.repository";
+import { GrantExceedsGiverError } from "../../../src/kosk/errors/kosk-grants-errors";
 import { NazirCourseScopeError } from "../../../src/madrasah/errors/nazir-course-scope.error";
 import { NazirNotFoundError } from "../../../src/madrasah/errors/nazir-not-found.error";
 import { PermissionNotGivableError } from "../../../src/madrasah/errors/permission-not-givable.error";
@@ -36,6 +38,8 @@ const G = "c6000000-0000-4000-8000-0000000000e1";
 const ADMIN = { sub: "a1", realm_access: { roles: ["SYSTEM_ADMIN"] } };
 const HEAD = { sub: "a2" };
 const STRANGER = { sub: "a3" };
+/** A Medaris nazımı holding `platform.madrasah_nazir_grant`: no default of their own. */
+const MEDARIS = { sub: "a4" };
 
 const group = (over: Record<string, unknown> = {}) => ({
   id: G,
@@ -52,6 +56,11 @@ function build(
     repo?: Record<string, unknown>;
     groups?: Record<string, unknown>;
     nazirs?: Record<string, unknown>;
+    /** What the engine says a caller holds: in the medrese (and every course), and in single courses. */
+    held?: Record<
+      string,
+      { medrese: string[]; courses?: Record<string, string[]> }
+    >;
   } = {}
 ) {
   const repo = {
@@ -75,15 +84,38 @@ function build(
     ...parts.nazirs,
   };
   // The engine: a başmüderris (a2) holds `permission.grant` in their medrese by
-  // role default, and nobody here holds the Medaris nazımı's own permission.
+  // role default and every medrese and course code with it; the Medaris nazımı
+  // (a4) holds the platform's `madrasah_nazir_grant` and, in `held`, whatever
+  // the başnazım gave them.
+  const heads = new Set<string>(ROLE_DEFAULT_PERMISSIONS.MEDRESE_BASMUDERRIS);
+  const held = parts.held ?? {};
   const authz = {
+    effective: vi
+      .fn()
+      .mockImplementation(
+        async (
+          u: { sub: string },
+          resource: { entity: string; id: string },
+          options?: { acrossCourses?: boolean }
+        ) => {
+          if (u.sub === "a2") return { codes: heads };
+          const mine = held[u.sub];
+          if (resource.entity === "course") {
+            return { codes: new Set(mine?.courses?.[resource.id] ?? []) };
+          }
+          return {
+            codes: new Set(options?.acrossCourses ? (mine?.medrese ?? []) : []),
+          };
+        }
+      ),
     isSystemAdmin: (u: { realm_access?: { roles?: string[] } }) =>
       u.realm_access?.roles?.includes("SYSTEM_ADMIN") ?? false,
     can: vi
       .fn()
       .mockImplementation(
         async (u: { sub: string }, _resource: unknown, code: string) =>
-          u.sub === "a2" && code === PERMISSIONS.PERMISSION_GRANT
+          (u.sub === "a2" && code === PERMISSIONS.PERMISSION_GRANT) ||
+          (u.sub === "a4" && code === PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT)
       ),
   };
   const service = new MadrasahPermissionService(
@@ -293,6 +325,8 @@ describe("giving a nazır their permissions", () => {
         { scopeType: "course", scopeId: C1, groupId: G, permissions: [] },
       ],
       expiresAt: new Date("2099-01-01T00:00:00.000Z"),
+      // The başmüderris is asked, and holds all of it.
+      ceiling: expect.any(Function),
     });
   });
 
@@ -397,5 +431,158 @@ describe("giving a nazır their permissions", () => {
       courseIds: null,
       expiresAt: null,
     });
+  });
+});
+
+describe('the ceiling of a Medaris nazımı (MDRS-209: "kendi izinleriyle sınırlı elbette")', () => {
+  const medarisGroup = (permissions: string[]) => ({
+    name: "Kadro",
+    scope: "MADRASAH" as const,
+    permissions,
+  });
+
+  it("gives a group only of what they hold, and names what exceeds it", async () => {
+    const { service, groups } = build({
+      held: { a4: { medrese: ["madrasah.students_view"] } },
+    });
+    await service.createGroup(
+      MEDARIS,
+      M,
+      medarisGroup(["madrasah.students_view"])
+    );
+    expect(groups.createGroup).toHaveBeenCalledWith(
+      "a4",
+      expect.objectContaining({ authority: "platform" })
+    );
+    const refused = service.createGroup(
+      MEDARIS,
+      M,
+      medarisGroup(["madrasah.students_view", "madrasah.ban", "course.edit"])
+    );
+    await expect(refused).rejects.toBeInstanceOf(GrantExceedsGiverError);
+    await expect(refused).rejects.toMatchObject({
+      message: "You do not hold: course.edit, madrasah.ban",
+    });
+    expect(groups.createGroup).toHaveBeenCalledTimes(1);
+  });
+
+  it("with nothing of their own, gives no group and no permission", async () => {
+    const { service, groups, repo } = build();
+    await expect(
+      service.createGroup(MEDARIS, M, medarisGroup(["madrasah.ban"]))
+    ).rejects.toBeInstanceOf(GrantExceedsGiverError);
+    expect(groups.createGroup).not.toHaveBeenCalled();
+    // The write asks the ceiling of what it really inserts, and refuses.
+    repo.setPermissions.mockImplementation(
+      async (
+        _m: string,
+        _n: string,
+        _a: string,
+        wanted: { ceiling?: (g: unknown[]) => void }
+      ) =>
+        wanted.ceiling?.([
+          {
+            scopeType: "madrasah",
+            scopeId: M,
+            permission: "madrasah.ban",
+            groupId: null,
+          },
+        ])
+    );
+    await expect(
+      service.setNazirPermissions(MEDARIS, M, NAZIR, {
+        permissions: ["madrasah.ban"],
+      } as never)
+    ).rejects.toMatchObject({ code: "GRANT_EXCEEDS_GIVER" });
+  });
+
+  it("a change to a group adds only held codes; a rename and a removal are not gifts", async () => {
+    const { service, groups } = build({
+      held: { a4: { medrese: ["course.edit"] } },
+    });
+    // The group has course.edit and session.manage; they hold course.edit.
+    await service.updateGroup(MEDARIS, M, G, { name: "Yeni ad" });
+    await service.updateGroup(MEDARIS, M, G, { permissions: ["course.edit"] });
+    expect(groups.updateGroup).toHaveBeenCalledTimes(2);
+    await expect(
+      service.updateGroup(MEDARIS, M, G, {
+        permissions: ["course.edit", "madrasah.ban"],
+      })
+    ).rejects.toMatchObject({
+      message: "You do not hold: madrasah.ban",
+    });
+  });
+
+  it("a course the grant is limited to can carry what they hold in that course alone", async () => {
+    const { service, repo } = build({
+      held: { a4: { medrese: [], courses: { [C1]: ["course.edit"] } } },
+    });
+    let asked: unknown;
+    repo.setPermissions.mockImplementation(
+      async (
+        _m: string,
+        _n: string,
+        _a: string,
+        wanted: { ceiling?: (g: unknown[]) => void }
+      ) => {
+        asked = wanted.ceiling;
+      }
+    );
+    await service.setNazirPermissions(MEDARIS, M, NAZIR, {
+      permissions: ["course.edit"],
+      courseIds: [C1],
+    } as never);
+    const ceiling = asked as (g: unknown[]) => void;
+    expect(() =>
+      ceiling([
+        {
+          scopeType: "course",
+          scopeId: C1,
+          permission: "course.edit",
+          groupId: null,
+        },
+      ])
+    ).not.toThrow();
+    expect(() =>
+      ceiling([
+        {
+          scopeType: "madrasah",
+          scopeId: M,
+          permission: "course.edit",
+          groupId: null,
+        },
+      ])
+    ).toThrow(GrantExceedsGiverError);
+  });
+
+  it("lists as givable only what they hold, so the screens refuse what the write refuses", async () => {
+    const { service } = build({
+      held: { a4: { medrese: ["madrasah.students_view", "course.edit"] } },
+    });
+    const catalog = await service.catalog(MEDARIS, M);
+    expect(catalog.givable.sort()).toEqual([
+      "course.edit",
+      "madrasah.students_view",
+    ]);
+    // The lists themselves are the same for everyone; only the ticking differs.
+    expect(catalog.madrasah).toHaveLength(11);
+    const empty = await build().service.catalog(MEDARIS, M);
+    expect(empty.givable).toEqual([]);
+    expect(empty.course).toHaveLength(21);
+  });
+
+  it("the başnazım is not asked, and the başmüderris holds every code so is asked nothing", async () => {
+    const { service, groups } = build();
+    await service.createGroup(
+      ADMIN,
+      M,
+      medarisGroup(["madrasah.ban", "course.edit"])
+    );
+    await service.createGroup(
+      HEAD,
+      M,
+      medarisGroup(["madrasah.ban", "course.edit"])
+    );
+    expect(groups.createGroup).toHaveBeenCalledTimes(2);
   });
 });

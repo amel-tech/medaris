@@ -287,6 +287,19 @@ export class MadrasahNazirRepository {
       expiresAt: Date | null;
       /** The level of the authority the giver acts under (MDRS-135). */
       authority: ScopeType;
+      /**
+       * The giver's ceiling, asked inside the transaction of what is really
+       * handed on: the rows about to be inserted and the kept rows that get a
+       * new end. It throws to refuse; nothing has been written by then.
+       */
+      ceiling?: (
+        given: ReadonlyArray<{
+          scopeType: ScopeType;
+          scopeId: string;
+          permission: string | null;
+          groupId: string | null;
+        }>
+      ) => void;
     }
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
@@ -386,6 +399,28 @@ export class MadrasahNazirRepository {
         }
       }
 
+      // A kept row whose end moves later is handed on again, for more time; one
+      // whose end moves earlier is not a gift (and anyone may revoke by leaving
+      // it out), so only the first counts.
+      const extended = (row: { expiresAt: Date | null }) =>
+        expiresAt === null
+          ? row.expiresAt !== null
+          : row.expiresAt !== null && expiresAt > row.expiresAt;
+      wanted.ceiling?.([
+        ...insert,
+        ...held.flatMap((row) =>
+          retime.includes(row.id) && row.scopeId && extended(row)
+            ? [
+                {
+                  scopeType: row.scopeType,
+                  scopeId: row.scopeId,
+                  permission: row.permission,
+                  groupId: row.groupId,
+                },
+              ]
+            : []
+        ),
+      ]);
       if (revoke.length > 0) {
         await tx
           .update(permissionGrants)

@@ -33,9 +33,10 @@ export interface ISelfGrantWhat {
  * appoints themselves the nazır of a medrese and gives themselves every medrese
  * and course permission; a köşk nazımı seats themselves as a ders nazırı and
  * the seat outlives their own dismissal. (What a Medaris nazımı may give to
- * someone else is a separate decision, the owner's of MDRS-209: everything
- * grantable, with every grant audited and listed to the başnazım. Naming
- * themselves stays refused.)
+ * someone else is the ceiling of `MadrasahPermissionService`, the owner's
+ * MDRS-209 rule: only what they hold themselves in the medrese, "kendi
+ * izinleriyle sınırlı elbette", with every grant audited and listed to the
+ * başnazım. This guard is the other half: they do not name themselves.)
  *
  * SYSTEM_ADMIN is not asked. Everyone else may name themselves only into what
  * they already hold in the scope: a başmüderris who teaches a course of their

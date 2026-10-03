@@ -375,6 +375,8 @@ export function nazirErrorKey(code: string): string {
       return "Problems.actionForbidden";
     case "PERMISSION_UNKNOWN":
       return "Problems.permissionUnknown";
+    case "GRANT_EXCEEDS_GIVER":
+      return "Problems.exceedsGiver";
     case "NAZIR_COURSE_SCOPE_INVALID":
       return "Problems.courseScope";
     case "GRANT_EXPIRY_INVALID":
