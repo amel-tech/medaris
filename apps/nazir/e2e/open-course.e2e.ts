@@ -124,7 +124,8 @@ test("nazir/08 — köşk, name and a müderris's e-mail open a draft of the med
   test.skip(!directory(), "no TALEBE account");
   const page = await as("MEDRESE_BASMUDERRIS");
   await open(page);
-  const title = `E2E Maksûd şerhi ${courses?.tail}`;
+  // not the seeded draft's title, which the list has a row for already
+  const title = `E2E Akaid-i Nesefî ${courses?.tail}`;
 
   await page.getByRole("radio", { name: courses?.fatih.name ?? "" }).check();
   await name(page).fill(`  ${title} `);
@@ -132,7 +133,7 @@ test("nazir/08 — köşk, name and a müderris's e-mail open a draft of the med
   const picker = page.getByTestId("muderris-picker");
   await expect(picker).toContainText(TALEBE.email ?? "");
   // criterion 3: a lone müderris is the imam, with nothing to choose
-  await expect(picker.getByText("Dersin imamı")).toBeVisible();
+  await expect(picker.getByText("Dersin imamı", { exact: true })).toBeVisible();
   await expect(picker.getByRole("radio")).toHaveCount(0);
   await submit(page).click();
 
@@ -245,6 +246,8 @@ test("nazir/08 — a köşk that took its right back after the page opened refus
   test.skip(!directory(), "no TALEBE account");
   const page = await as("MEDRESE_BASMUDERRIS");
   await open(page);
+  // the köşks are listed by name and the first is chosen: choose the one that leaves
+  await page.getByRole("radio", { name: courses?.kosk.name ?? "" }).check();
   await name(page).fill(`E2E Mantığa giriş ${courses?.tail}`);
   await search(page, TALEBE.email ?? "");
   await expect(page.getByTestId("muderris-picker")).toContainText(
@@ -253,8 +256,11 @@ test("nazir/08 — a köşk that took its right back after the page opened refus
   await courses?.revokeHosting(courses?.kosk.id ?? "");
   await submit(page).click();
 
+  // the toast, not the live region that repeats it for screen readers
   await expect(
-    page.getByText("Bu köşk artık medresenize barındırma hakkı vermiyor.")
+    page
+      .locator(".mds-toast__desc")
+      .getByText("Bu köşk artık medresenize barındırma hakkı vermiyor.")
   ).toBeVisible();
   await expect(page).toHaveURL(/\/dersler\/yeni$/);
   expect(await courses?.created()).toHaveLength(0);
