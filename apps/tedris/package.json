@@ -10,7 +10,8 @@
     "clean": "rm -rf .turbo .next node_modules dist",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "analyze": "ANALYZE=true next build"
+    "analyze": "ANALYZE=true next build",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@fontsource/scheherazade-new": "catalog:",
@@ -41,13 +42,16 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@playwright/test": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "autoprefixer": "catalog:",
     "lightningcss": "catalog:",
     "next-intl": "catalog:",
+    "pg": "catalog:",
     "postcss": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

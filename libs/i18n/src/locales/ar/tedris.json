@@ -393,7 +393,27 @@
   },
   "MadrasahPage": {
     "kosks": "الأكشاك",
-    "noKosks": "لا توجد أكشاك مُدرَجة في هذه المدرسة."
+    "noKosks": "لا توجد أكشاك مُدرَجة في هذه المدرسة.",
+    "discover": "استكشف",
+    "eyebrow": "مدرسة",
+    "coursesCount": "{count} دروس",
+    "headMuderris": "كبير المدرّسين",
+    "headMuderrisCourses": "مدرّس في {count} من دروس هذه المدرسة",
+    "approvalNotice": "لكل درس مدرّسوه. التسجيل في دروس المدرسة بموافقة: عند التقديم يصبح تسجيلك نهائياً متى وافق عليه طاقم الدرس.",
+    "courses": "الدروس",
+    "coursesHint": "دروس المدرسة مع الكشك الذي فُتحت فيه",
+    "noCourses": "لم تفتح هذه المدرسة أي دروس بعد.",
+    "statusEnrolled": "جارٍ",
+    "statusPending": "بانتظار الموافقة",
+    "statusCompleted": "مكتمل",
+    "muderris": "المدرّس",
+    "imam": "الإمام",
+    "nextSession": "الجلسة القادمة",
+    "noNextSession": "لا توجد جلسة مجدولة",
+    "koskCourses": "{count} دروس",
+    "notFoundTitle": "الصفحة غير موجودة",
+    "notFoundText": "المدرسة التي تبحث عنها غير موجودة أو ربما أُزيلت.",
+    "notFoundAction": "العودة إلى الرئيسية"
   },
   "NotificationsPage": {
     "title": "الإشعارات",

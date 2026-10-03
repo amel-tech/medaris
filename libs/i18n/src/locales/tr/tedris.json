@@ -418,7 +418,27 @@
   },
   "MadrasahPage": {
     "kosks": "Köşkler",
-    "noKosks": "Bu medresede listelenen köşk yok."
+    "noKosks": "Bu medresede listelenen köşk yok.",
+    "discover": "Keşfet",
+    "eyebrow": "Medrese",
+    "coursesCount": "{count} ders",
+    "headMuderris": "Başmüderris",
+    "headMuderrisCourses": "Bu medresenin {count} dersinde müderris",
+    "approvalNotice": "Her dersin kendi müderrisleri vardır. Medresenin derslerine kayıt onaylıdır: başvurduğunda, dersin kadrosu onaylayınca kaydın kesinleşir.",
+    "courses": "Dersler",
+    "coursesHint": "Medresenin dersleri, açıldıkları köşkle birlikte",
+    "noCourses": "Bu medrese henüz ders açmadı.",
+    "statusEnrolled": "Devam ediyor",
+    "statusPending": "Onay bekliyor",
+    "statusCompleted": "Tamamlandı",
+    "muderris": "Müderris",
+    "imam": "imam",
+    "nextSession": "Sonraki celse",
+    "noNextSession": "Planlı celse yok",
+    "koskCourses": "{count} ders",
+    "notFoundTitle": "Sayfa bulunamadı",
+    "notFoundText": "Aradığın medrese yok ya da kaldırılmış olabilir.",
+    "notFoundAction": "Ana sayfaya dön"
   },
   "NotificationsPage": {
     "title": "Bildirimler",

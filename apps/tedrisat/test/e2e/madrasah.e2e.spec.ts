@@ -2,10 +2,12 @@ import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { and, eq } from "drizzle-orm";
 import request from "supertest";
+import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { LessonType } from "../../src/course/domain/lesson-type.enum";
 import { DatabaseService } from "../../src/database/database.service";
 import {
+  courseMuderris,
   courses,
   courseWeeks,
   enrollments,
@@ -18,6 +20,7 @@ import {
   madrasahKoskHosting,
   roleAssignments,
 } from "../../src/database/schema/role-assignment.schema";
+import { users } from "../../src/database/schema/user.schema";
 import { MadrasahNotFoundError } from "../../src/madrasah/errors/madrasah-not-found.error";
 import { MadrasahRepository } from "../../src/madrasah/madrasah.repository";
 import { MadrasahService } from "../../src/madrasah/madrasah.service";
@@ -456,6 +459,138 @@ describe("Madrasahs (e2e)", () => {
         ENROLLED,
         COMPLETED,
       ]);
+    });
+  });
+  describe("the medrese page's overview (MDRS-157)", () => {
+    const TALEBE_ID = "b0000000-0000-4000-8000-000000000011";
+    const future = new Date(Date.now() + 3 * 24 * 3600 * 1000);
+    const later = new Date(Date.now() + 9 * 24 * 3600 * 1000);
+    let unlistedKoskId: string;
+
+    beforeEach(async () => {
+      const db = databaseService.db;
+      await db
+        .update(courses)
+        .set({ madrasahId, status: CourseStatus.PUBLISHED })
+        .where(eq(courses.id, courseId));
+      await db.insert(users).values({
+        id: NAZIR_ID,
+        givenName: "Mehmet Emin",
+        familyName: "Işıkoğlu",
+      });
+      await db.insert(courseMuderris).values({
+        courseId,
+        userId: NAZIR_ID,
+        name: "Mehmet Emin Işıkoğlu",
+        title: "Dr.",
+      });
+      await assignRole(db, {
+        userId: NAZIR_ID,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeId: courseId,
+        grantedBy: ADMIN_ID,
+        isImam: true,
+      });
+      await db
+        .update(lessons)
+        .set({
+          type: LessonType.LIVE,
+          scheduledAt: later,
+          meetingUrl: "https://meet.example/secret",
+        })
+        .where(eq(lessons.id, lessonId));
+      await db.insert(lessons).values({
+        weekId,
+        title: "Yaklaşan",
+        type: LessonType.LIVE,
+        scheduledAt: future,
+      });
+      await db.insert(lessons).values({
+        weekId,
+        title: "Geçmiş",
+        type: LessonType.LIVE,
+        scheduledAt: new Date(Date.now() - 24 * 3600 * 1000),
+      });
+      const [unlisted] = await db
+        .insert(kosks)
+        .values({ ownerId: MANAGER_ID, name: "Gizli Köşk", isPrivate: true })
+        .returning();
+      unlistedKoskId = unlisted.id;
+      await db.insert(courses).values({
+        koskId: unlistedKoskId,
+        authorId: MANAGER_ID,
+        title: "Gizli ders",
+        madrasahId,
+        status: CourseStatus.PUBLISHED,
+      });
+      await db.insert(courses).values({
+        koskId,
+        authorId: MANAGER_ID,
+        title: "Taslak ders",
+        madrasahId,
+      });
+    });
+
+    it("answers a caller with no token: courses, next session, head müderris, no enrollment, no meeting link", async () => {
+      const res = await http()
+        .get(`/madrasahs/${madrasahId}/overview`)
+        .expect(200);
+      expect(res.body.courses).toHaveLength(1);
+      expect(res.body.courses[0]).toMatchObject({
+        id: courseId,
+        title: "Usûl-i Hadis",
+        koskId,
+        koskName: "Hadis Köşkü",
+        enrollmentStatus: null,
+        muderris: [
+          { name: "Mehmet Emin Işıkoğlu", title: "Dr.", isImam: true },
+        ],
+      });
+      expect(new Date(res.body.courses[0].nextSessionAt).getTime()).toBe(
+        future.getTime()
+      );
+      expect(JSON.stringify(res.body)).not.toContain("meet.example");
+      expect(res.body.kosks).toEqual([{ id: koskId, name: "Hadis Köşkü" }]);
+      expect(res.body.headMuderris).toEqual({
+        id: NAZIR_ID,
+        name: "Mehmet Emin Işıkoğlu",
+        courseCount: 1,
+      });
+    });
+
+    it("carries the caller's own enrollment state", async () => {
+      await databaseService.db.insert(enrollments).values({
+        userId: TALEBE_ID,
+        courseId,
+        status: EnrollmentStatus.PENDING,
+      });
+      const mine = await http()
+        .get(`/madrasahs/${madrasahId}/overview`)
+        .set("Authorization", auth(TALEBE_ID))
+        .expect(200);
+      expect(mine.body.courses[0].enrollmentStatus).toBe("PENDING");
+      const other = await http()
+        .get(`/madrasahs/${madrasahId}/overview`)
+        .set("Authorization", auth(STRANGER_ID))
+        .expect(200);
+      expect(other.body.courses[0].enrollmentStatus).toBeNull();
+    });
+
+    it("answers 404 for an unknown or malformed id and an empty list for a medrese with no courses", async () => {
+      await http()
+        .get("/madrasahs/b0000000-0000-4000-8000-00000000ffff/overview")
+        .expect(404);
+      await http().get("/madrasahs/not-a-uuid/overview").expect(404);
+      await databaseService.db
+        .update(courses)
+        .set({ madrasahId: null })
+        .where(eq(courses.madrasahId, madrasahId));
+      const res = await http()
+        .get(`/madrasahs/${madrasahId}/overview`)
+        .expect(200);
+      expect(res.body.courses).toEqual([]);
+      expect(res.body.kosks).toEqual([]);
+      expect(res.body.headMuderris.courseCount).toBe(0);
     });
   });
 });

@@ -5,6 +5,7 @@ import { NazirNotFoundError } from "./errors/nazir-not-found.error";
 import { MadrasahRepository } from "./madrasah.repository";
 import {
   ICreateMadrasah,
+  IMadrasahOverview,
   IMadrasahWithNazirs,
   IPaginatedMadrasahs,
   IUpdateMadrasah,
@@ -49,6 +50,17 @@ export class MadrasahService {
     const madrasah = await this.madrasahRepo.findById(id);
     if (!madrasah) throw new MadrasahNotFoundError(id);
     return madrasah;
+  }
+
+  /** The medrese page's data (MDRS-157); not-found for an unknown medrese. */
+  async findOverview(
+    id: string,
+    userId: string | null
+  ): Promise<IMadrasahOverview> {
+    if (!(await this.madrasahRepo.exists(id))) {
+      throw new MadrasahNotFoundError(id);
+    }
+    return this.madrasahRepo.findOverview(id, userId);
   }
 
   async exists(id: string): Promise<boolean> {

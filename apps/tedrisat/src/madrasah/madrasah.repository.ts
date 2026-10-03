@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, min, sql } from "drizzle-orm";
+import { CourseStatus } from "../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { DatabaseService } from "../database/database.service";
 import {
@@ -7,18 +8,30 @@ import {
   grantRole,
   holderIdsOf,
   holdsIn,
+  isHeld,
   revokeRole,
 } from "../database/role-assignments";
-import { courses, enrollments } from "../database/schema/course.schema";
+import {
+  courseMuderris,
+  courses,
+  courseWeeks,
+  enrollments,
+  lessons,
+} from "../database/schema/course.schema";
+import { kosks } from "../database/schema/kosk.schema";
 import { madrasahs } from "../database/schema/madrasah.schema";
 import {
   ASSIGNED_ROLES,
   roleAssignments,
   SCOPE_TYPES,
 } from "../database/schema/role-assignment.schema";
+import { users } from "../database/schema/user.schema";
 import {
   ICreateMadrasah,
   IMadrasah,
+  IMadrasahCourse,
+  IMadrasahHeadMuderris,
+  IMadrasahOverview,
   IMadrasahWithNazirs,
   IUpdateMadrasah,
 } from "./madrasah.repository.interface";
@@ -204,5 +217,189 @@ export class MadrasahRepository {
       )
       .orderBy(enrollments.userId);
     return rows.map((r) => r.userId);
+  }
+
+  /**
+   * What the medrese page shows (MDRS-157): the live, published courses of the
+   * medrese in listed köşks — an unlisted köşk is in no list (MDRS-122) — each
+   * with its müderrisler, the caller's enrollment and the next session; the
+   * köşks those courses are in; and the başmüderris. Four small reads over the
+   * course ids rather than one wide join, so a course with many müderrisler or
+   * sessions does not multiply rows.
+   */
+  async findOverview(
+    madrasahId: string,
+    userId: string | null
+  ): Promise<IMadrasahOverview> {
+    const courseRows = await this.db
+      .select({
+        id: courses.id,
+        title: courses.title,
+        category: courses.category,
+        coverHue: courses.coverHue,
+        koskId: courses.koskId,
+        koskName: kosks.name,
+      })
+      .from(courses)
+      .innerJoin(kosks, eq(kosks.id, courses.koskId))
+      .where(
+        and(
+          eq(courses.madrasahId, madrasahId),
+          eq(courses.status, CourseStatus.PUBLISHED),
+          isNull(courses.archivedAt),
+          eq(kosks.isPrivate, false)
+        )
+      )
+      .orderBy(asc(courses.title), asc(courses.id));
+    const ids = courseRows.map((c) => c.id);
+
+    const [muderrisRows, enrollmentRows, sessionRows, headId] =
+      await Promise.all([
+        this.muderrisOf(ids),
+        this.enrollmentsOf(ids, userId),
+        this.nextSessionsOf(ids),
+        this.firstHeadMuderrisId(madrasahId),
+      ]);
+
+    const muderrisByCourse = new Map<string, typeof muderrisRows>();
+    for (const m of muderrisRows) {
+      const list = muderrisByCourse.get(m.courseId) ?? [];
+      list.push(m);
+      muderrisByCourse.set(m.courseId, list);
+    }
+    const statusByCourse = new Map(
+      enrollmentRows.map((e) => [e.courseId, e.status])
+    );
+    const nextByCourse = new Map(sessionRows.map((s) => [s.courseId, s.next]));
+
+    const result: IMadrasahCourse[] = courseRows.map((c) => ({
+      ...c,
+      muderris: (muderrisByCourse.get(c.id) ?? []).map((m) => ({
+        name: m.name,
+        title: m.title,
+        isImam: m.isImam,
+      })),
+      enrollmentStatus: statusByCourse.get(c.id) ?? null,
+      nextSessionAt: nextByCourse.get(c.id) ?? null,
+    }));
+
+    const kosksSeen = new Map<string, string>();
+    for (const c of courseRows) kosksSeen.set(c.koskId, c.koskName);
+
+    let headMuderris: IMadrasahHeadMuderris | null = null;
+    if (headId) {
+      const [user] = await this.db
+        .select({ given: users.givenName, family: users.familyName })
+        .from(users)
+        .where(eq(users.id, headId))
+        .limit(1);
+      const name = [user?.given, user?.family].filter(Boolean).join(" ");
+      headMuderris = {
+        id: headId,
+        name: name || null,
+        courseCount: new Set(
+          muderrisRows.filter((m) => m.userId === headId).map((m) => m.courseId)
+        ).size,
+      };
+    }
+
+    return {
+      headMuderris,
+      courses: result,
+      kosks: [...kosksSeen].map(([id, name]) => ({ id, name })),
+    };
+  }
+
+  private async muderrisOf(ids: string[]): Promise<
+    {
+      courseId: string;
+      userId: string | null;
+      name: string;
+      title: string | null;
+      isImam: boolean;
+    }[]
+  > {
+    if (ids.length === 0) return [];
+    const [rows, imams] = await Promise.all([
+      this.db
+        .select({
+          courseId: courseMuderris.courseId,
+          userId: courseMuderris.userId,
+          name: courseMuderris.name,
+          title: courseMuderris.title,
+        })
+        .from(courseMuderris)
+        .where(inArray(courseMuderris.courseId, ids))
+        .orderBy(asc(courseMuderris.orderIndex), asc(courseMuderris.id)),
+      this.db
+        .select({
+          courseId: roleAssignments.scopeId,
+          userId: roleAssignments.userId,
+        })
+        .from(roleAssignments)
+        .where(
+          and(
+            eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS),
+            eq(roleAssignments.isImam, true),
+            inArray(roleAssignments.scopeId, ids),
+            isHeld()
+          )
+        ),
+    ]);
+    const imamKeys = new Set(imams.map((i) => `${i.courseId}:${i.userId}`));
+    return rows.map((r) => ({
+      ...r,
+      isImam: r.userId !== null && imamKeys.has(`${r.courseId}:${r.userId}`),
+    }));
+  }
+
+  private async enrollmentsOf(
+    ids: string[],
+    userId: string | null
+  ): Promise<{ courseId: string; status: EnrollmentStatus }[]> {
+    if (ids.length === 0 || userId === null) return [];
+    return this.db
+      .select({ courseId: enrollments.courseId, status: enrollments.status })
+      .from(enrollments)
+      .where(
+        and(eq(enrollments.userId, userId), inArray(enrollments.courseId, ids))
+      );
+  }
+
+  /** The earliest session still ahead, per course; archived ones do not count. */
+  private async nextSessionsOf(
+    ids: string[]
+  ): Promise<{ courseId: string; next: Date | null }[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db
+      .select({
+        courseId: courseWeeks.courseId,
+        next: min(lessons.scheduledAt),
+      })
+      .from(lessons)
+      .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
+      .where(
+        and(
+          inArray(courseWeeks.courseId, ids),
+          isNull(courseWeeks.archivedAt),
+          isNull(lessons.archivedAt),
+          gt(lessons.scheduledAt, sql`now()`)
+        )
+      )
+      .groupBy(courseWeeks.courseId);
+    return rows.map((r) => ({ courseId: r.courseId, next: r.next }));
+  }
+
+  /** The oldest held MEDRESE_BASMUDERRIS grant of the medrese, if any. */
+  private async firstHeadMuderrisId(
+    madrasahId: string
+  ): Promise<string | null> {
+    const rows = await this.db
+      .select({ userId: roleAssignments.userId })
+      .from(roleAssignments)
+      .where(holdsIn(NAZIR_ROLE, madrasahId))
+      .orderBy(asc(roleAssignments.createdAt), asc(roleAssignments.userId))
+      .limit(1);
+    return rows[0]?.userId ?? null;
   }
 }
