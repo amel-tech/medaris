@@ -26,6 +26,7 @@ import { InactiveScopeModule } from "./inactive-scope/inactive-scope.module";
 import { KoskModule } from "./kosk/kosk.module";
 import { KoskApplicationModule } from "./kosk-application/kosk-application.module";
 import { MadrasahModule } from "./madrasah/madrasah.module";
+import { MadrasahNazirModule } from "./madrasah/nazir/madrasah-nazir.module";
 import { NotificationModule } from "./notification/notification.module";
 import { PlatformPolicyModule } from "./platform-policy/platform-policy.module";
 import { ScheduleModule } from "./schedule/schedule.module";
@@ -58,6 +59,9 @@ import { UserModule } from "./user/user.module";
     NotificationModule,
     ScheduleModule,
     AssignmentModule,
+    // After AssignmentModule: it imports it, and the exported API document
+    // lists paths in the order the modules are scanned.
+    MadrasahNazirModule,
     InactiveScopeModule,
     ArchiveModule,
     DeckReviewModule,

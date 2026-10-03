@@ -23,7 +23,7 @@ import {
 import { users } from "../../src/database/schema/user.schema";
 import { MadrasahNotFoundError } from "../../src/madrasah/errors/madrasah-not-found.error";
 import { MadrasahRepository } from "../../src/madrasah/madrasah.repository";
-import { MadrasahService } from "../../src/madrasah/madrasah.service";
+import { MadrasahNazirService } from "../../src/madrasah/nazir/madrasah-nazir.service";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
   assignRole,
@@ -39,14 +39,14 @@ import { bearerFor } from "../helpers/test-keycloak.helper";
  * `realm_access` claim, which is what `AuthzService` reads for the
  * SYSTEM_ADMIN bypass.
  *
- * The API still says "nazır"; since MDRS-134 that is a MEDRESE_BASMUDERRIS
- * row in `role_assignments` (MDRS-144 renames the API).
+ * A medrese's `nazirIds` are MEDRESE_BASMUDERRIS rows in `role_assignments`
+ * since MDRS-134 (MDRS-144 renames the field). The medrese nazırs proper,
+ * `/madrasahs/:id/nazirs`, are madrasah-nazir.e2e.spec.ts's.
  */
 const ADMIN_ID = "b0000000-0000-4000-8000-000000000001";
 const NAZIR_ID = "b0000000-0000-4000-8000-000000000002";
 const STRANGER_ID = "b0000000-0000-4000-8000-000000000003";
 const MANAGER_ID = "b0000000-0000-4000-8000-000000000004";
-const OTHER_NAZIR_ID = "b0000000-0000-4000-8000-000000000005";
 
 const auth = (sub: string) =>
   bearerFor({
@@ -253,45 +253,6 @@ describe("Madrasahs (e2e)", () => {
       expect(res.body.name).toBe("Hadis ve Siyer Araştırmaları Medresesi");
     });
 
-    it("lets the nazır invite and remove nazırs; a non-nazır gets 403", async () => {
-      await http()
-        .post(`/madrasahs/${madrasahId}/nazirs/${STRANGER_ID}`)
-        .set("Authorization", auth(STRANGER_ID))
-        .expect(403);
-
-      const invited = await http()
-        .post(`/madrasahs/${madrasahId}/nazirs/${OTHER_NAZIR_ID}`)
-        .set("Authorization", auth(NAZIR_ID))
-        .expect(201);
-      expect(invited.body.nazirIds).toEqual([NAZIR_ID, OTHER_NAZIR_ID]);
-
-      // The invited nazır now governs too: they can edit.
-      await http()
-        .patch(`/madrasahs/${madrasahId}`)
-        .set("Authorization", auth(OTHER_NAZIR_ID))
-        .send({ coverHue: 30 })
-        .expect(200);
-
-      const removed = await http()
-        .delete(`/madrasahs/${madrasahId}/nazirs/${OTHER_NAZIR_ID}`)
-        .set("Authorization", auth(NAZIR_ID))
-        .expect(200);
-      expect(removed.body.nazirIds).toEqual([NAZIR_ID]);
-
-      await http()
-        .delete(`/madrasahs/${madrasahId}/nazirs/${OTHER_NAZIR_ID}`)
-        .set("Authorization", auth(NAZIR_ID))
-        .expect(404);
-
-      // MDRS-134: the grant and the revocation are both on record, in the
-      // name of the nazır who made them.
-      const rows = await nazirRows();
-      expect(rows.map((r) => [r.userId, r.grantedBy, r.revokedBy])).toEqual([
-        [NAZIR_ID, ADMIN_ID, null],
-        [OTHER_NAZIR_ID, NAZIR_ID, NAZIR_ID],
-      ]);
-    });
-
     it("does not let a nazır delete the medrese; SYSTEM_ADMIN can, and its courses stay in their köşks", async () => {
       await databaseService.db
         .update(courses)
@@ -337,7 +298,7 @@ describe("Madrasahs (e2e)", () => {
       // Nor does a grant land in a medrese that is gone: the row is locked
       // and read first, so nothing is written.
       await expect(
-        app.get(MadrasahService).addNazir(missing, STRANGER_ID, ADMIN_ID)
+        app.get(MadrasahNazirService).appoint(missing, STRANGER_ID, ADMIN_ID)
       ).rejects.toBeInstanceOf(MadrasahNotFoundError);
       const orphans = await databaseService.db
         .select()

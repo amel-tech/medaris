@@ -52,6 +52,11 @@ import {
 import { MadrasahExploreResponse } from "./dto/madrasah-explore-response.dto";
 import { MadrasahOverviewResponse } from "./dto/madrasah-overview-response.dto";
 import { MadrasahResponse } from "./dto/madrasah-response.dto";
+import {
+  MadrasahCourseListItemResponse,
+  MadrasahSettingsResponse,
+  UpdateMadrasahSettingsDto,
+} from "./dto/madrasah-settings.dto";
 import { PaginatedMadrasahResponse } from "./dto/paginated-madrasah-response.dto";
 import {
   HeadDelegationResponse,
@@ -80,7 +85,7 @@ const UUID_REGEX =
  * the role resolver reads a missing medrese as PUBLIC — which would turn
  * every restricted route on an unknown id into a 403 instead of a 404.
  */
-const byExistingMadrasah: AuthzResolve = async (req, moduleRef) => {
+export const byExistingMadrasah: AuthzResolve = async (req, moduleRef) => {
   const id = typeof req.params.id === "string" ? req.params.id : "";
   if (
     !UUID_REGEX.test(id) ||
@@ -390,6 +395,59 @@ export class MadrasahController {
   }
 
   @ApiOperation({
+    summary: "Get the medrese's settings (its başmüderris)",
+    description:
+      "nazir/04: the name and description, the three policies (all off until the first save) and who saved last. Not part of `GET /madrasahs/:id`, which anyone reads.",
+    operationId: "getMadrasahSettings",
+  })
+  @ApiOkResponse({ type: MadrasahSettingsResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Get(":id/settings")
+  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  async getSettings(
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<MadrasahSettingsResponse> {
+    return this.madrasahService.getSettings(id);
+  }
+
+  @ApiOperation({
+    summary: "Save the medrese's settings (its başmüderris)",
+    description:
+      "nazir/04's Kaydet. Only what is sent changes; a blank `description` clears it. Written to the audit log with what changed, and `updatedAt`/`updatedBy` move — unless nothing changed. `alwaysApproval` takes effect at once: every enrollment in the medrese's courses waits for approval from then on.",
+    operationId: "updateMadrasahSettings",
+  })
+  @ApiOkResponse({ type: MadrasahSettingsResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Patch(":id/settings")
+  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  async updateSettings(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: UpdateMadrasahSettingsDto
+  ): Promise<MadrasahSettingsResponse> {
+    return this.madrasahService.updateSettings(id, dto, request.user.sub);
+  }
+
+  @ApiOperation({
+    summary: "The medrese's courses for its settings screen (its başmüderris)",
+    description:
+      'nazir/04\'s "Politikaların uygulandığı dersler": drafts and published courses, a hidden one not, by title, each with its köşk and müderrisler (the imam marked).',
+    operationId: "getMadrasahCourses",
+  })
+  @ApiOkResponse({ type: MadrasahCourseListItemResponse, isArray: true })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Get(":id/courses")
+  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  async findCourses(
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<MadrasahCourseListItemResponse[]> {
+    return this.madrasahService.findCourseList(id);
+  }
+
+  @ApiOperation({
     summary: "Delete a medrese (SYSTEM_ADMIN only)",
     description:
       "Its nazır list and hosting rights go with it; its courses stay in their köşks with no medrese. Nazırs cannot delete (MDRS-124).",
@@ -402,39 +460,5 @@ export class MadrasahController {
   @Authz(SCOPES.DELETE, byExistingMadrasah)
   async delete(@Param("id", ParseUUIDPipe) id: string): Promise<boolean> {
     return this.madrasahService.delete(id);
-  }
-
-  @ApiOperation({
-    summary: "Make a user a nazır of the medrese",
-    operationId: "addMadrasahNazir",
-  })
-  @ApiCreatedResponse({ type: MadrasahResponse })
-  @ApiForbiddenResponse()
-  @ApiNotFoundResponse()
-  @Post(":id/nazirs/:userId")
-  @Authz(SCOPES.INVITE_NAZIR, byExistingMadrasah)
-  async addNazir(
-    @Req() request: AuthorizedRequest,
-    @Param("id", ParseUUIDPipe) id: string,
-    @Param("userId", ParseUUIDPipe) userId: string
-  ): Promise<MadrasahResponse> {
-    return this.madrasahService.addNazir(id, userId, request.user.sub);
-  }
-
-  @ApiOperation({
-    summary: "Remove a nazır from the medrese",
-    operationId: "removeMadrasahNazir",
-  })
-  @ApiOkResponse({ type: MadrasahResponse })
-  @ApiForbiddenResponse()
-  @ApiNotFoundResponse()
-  @Delete(":id/nazirs/:userId")
-  @Authz(SCOPES.REMOVE_NAZIR, byExistingMadrasah)
-  async removeNazir(
-    @Req() request: AuthorizedRequest,
-    @Param("id", ParseUUIDPipe) id: string,
-    @Param("userId", ParseUUIDPipe) userId: string
-  ): Promise<MadrasahResponse> {
-    return this.madrasahService.removeNazir(id, userId, request.user.sub);
   }
 }

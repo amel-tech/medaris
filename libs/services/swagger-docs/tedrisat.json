@@ -2151,68 +2151,13 @@
         ]
       }
     },
-    "/madrasahs/{id}/nazirs/{userId}": {
-      "post": {
-        "operationId": "addMadrasahNazir",
+    "/madrasahs/{id}/settings": {
+      "get": {
+        "description": "nazir/04: the name and description, the three policies (all off until the first save) and who saved last. Not part of `GET /madrasahs/:id`, which anyone reads.",
+        "operationId": "getMadrasahSettings",
         "parameters": [
           {
             "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "userId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MadrasahResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": ""
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Make a user a nazır of the medrese",
-        "tags": [
-          "madrasahs"
-        ]
-      },
-      "delete": {
-        "operationId": "removeMadrasahNazir",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "userId",
             "required": true,
             "in": "path",
             "schema": {
@@ -2226,7 +2171,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MadrasahResponse"
+                  "$ref": "#/components/schemas/MadrasahSettingsResponse"
                 }
               }
             }
@@ -2243,7 +2188,104 @@
             "bearer": []
           }
         ],
-        "summary": "Remove a nazır from the medrese",
+        "summary": "Get the medrese's settings (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      },
+      "patch": {
+        "description": "nazir/04's Kaydet. Only what is sent changes; a blank `description` clears it. Written to the audit log with what changed, and `updatedAt`/`updatedBy` move — unless nothing changed. `alwaysApproval` takes effect at once: every enrollment in the medrese's courses waits for approval from then on.",
+        "operationId": "updateMadrasahSettings",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMadrasahSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahSettingsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Save the medrese's settings (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/courses": {
+      "get": {
+        "description": "nazir/04's \"Politikaların uygulandığı dersler\": drafts and published courses, a hidden one not, by title, each with its köşk and müderrisler (the imam marked).",
+        "operationId": "getMadrasahCourses",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MadrasahCourseListItemResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The medrese's courses for its settings screen (its başmüderris)",
         "tags": [
           "madrasahs"
         ]
@@ -7160,6 +7202,212 @@
         ]
       }
     },
+    "/madrasahs/{id}/nazirs": {
+      "get": {
+        "description": "nazir/05's table, oldest appointment first. Each with who appointed them and when, the groups and single permissions they hold in this medrese, the earliest end among them, and who gave the permissions. A nazır who holds neither has just been appointed (\"henüz izin almadı\").",
+        "operationId": "getMadrasahNazirs",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MadrasahNazirResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The medrese's nazırs (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/nazirs/{userId}": {
+      "post": {
+        "description": "nazir/05's \"Medrese nazırı ata\": the person is found with `GET /users/lookup`, which writes the search to the audit log. They are appointed with no permissions. Idempotent. Written to the audit log.",
+        "operationId": "addMadrasahNazir",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahNazirResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Make a user a nazır of the medrese (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      },
+      "delete": {
+        "description": "nazir/15's \"Görevden al\", in one transaction. `decisions` answers every person `…/grants` lists, once and nobody else: TAKE_OVER leaves what the nazır gave them in place under the caller's name, DROP revokes it. The nazır's own appointment and permissions in the medrese are revoked. Written to the audit log.",
+        "operationId": "removeMadrasahNazir",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DismissMadrasahNazirDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": "DISMISS_DECISIONS_INCOMPLETE"
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Dismiss a nazır of the medrese (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/nazirs/{userId}/grants": {
+      "get": {
+        "description": "nazir/15's rows, one per person: the roles and permissions this nazır gave them in the medrese or one of its courses that are still held. Empty when they gave no one anything. 404 (MADRASAH_NAZIR_NOT_FOUND) when the user is not a nazır of the medrese.",
+        "operationId": "getMadrasahNazirGrants",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MadrasahNazirGivenResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What a nazır has handed on in the medrese (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
     "/nizam/inactive-scopes": {
       "get": {
         "description": "nizam/14. Only scopes that once had a manager and have none now, oldest first; hidden ones are left out. `reason` says whether the last term ran out or somebody took it away.",
@@ -10707,6 +10955,145 @@
             "maximum": 360
           }
         }
+      },
+      "MadrasahPoliciesResponse": {
+        "type": "object",
+        "properties": {
+          "closedCourseRequired": {
+            "type": "boolean",
+            "description": "Kapalı ders zorunlu. Kept for the courses that will read it; nothing in the API enforces it yet"
+          },
+          "alwaysApproval": {
+            "type": "boolean",
+            "description": "Kayıt her zaman onaylı. Every enrollment in a course of the medrese waits for approval, whatever the course's own `requiresApproval` says"
+          },
+          "noPublicRecordings": {
+            "type": "boolean",
+            "description": "Ders kayıtları herkese açılamaz. Kept for the recordings that will read it; nothing in the API enforces it yet"
+          }
+        },
+        "required": [
+          "closedCourseRequired",
+          "alwaysApproval",
+          "noPublicRecordings"
+        ]
+      },
+      "MadrasahSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Süleymaniye Medresesi"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "policies": {
+            "$ref": "#/components/schemas/MadrasahPoliciesResponse"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "The last save of the settings; null until the first one"
+          },
+          "updatedBy": {
+            "nullable": true,
+            "description": "Who saved last; null until the first save",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NazimPersonResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "policies",
+          "updatedAt",
+          "updatedBy"
+        ]
+      },
+      "MadrasahPoliciesDto": {
+        "type": "object",
+        "properties": {
+          "closedCourseRequired": {
+            "type": "boolean"
+          },
+          "alwaysApproval": {
+            "type": "boolean"
+          },
+          "noPublicRecordings": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateMadrasahSettingsDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Süleymaniye Medresesi",
+            "maxLength": 120
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 1000,
+            "description": "Empty or null clears it"
+          },
+          "policies": {
+            "description": "Only the policies sent change",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MadrasahPoliciesDto"
+              }
+            ]
+          }
+        }
+      },
+      "MadrasahCourseListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "koskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "koskName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED"
+            ]
+          },
+          "muderris": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahCourseMuderrisResponse"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "koskId",
+          "koskName",
+          "status",
+          "muderris"
+        ]
       },
       "SummaryMuderrisResponse": {
         "type": "object",
@@ -15898,6 +16285,206 @@
           "email",
           "isMedarisNazim",
           "expiresAt"
+        ]
+      },
+      "MadrasahNazirGroupResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "permissions"
+        ]
+      },
+      "MadrasahNazirResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/NazimPersonResponse"
+          },
+          "appointedBy": {
+            "nullable": true,
+            "description": "Who appointed them (\"Atayan\")",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NazimPersonResponse"
+              }
+            ]
+          },
+          "appointedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "assignmentExpiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "The appointment's own end; null while it has none"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "The earliest end among the appointment and the permissions (\"Bitiş\"); null when nothing ends"
+          },
+          "groups": {
+            "description": "The permission groups they hold in this medrese",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahNazirGroupResponse"
+            }
+          },
+          "permissions": {
+            "description": "Permissions given one by one, not through a group",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NazimPermissionResponse"
+            }
+          },
+          "grantedBy": {
+            "nullable": true,
+            "description": "Who gave the permissions (\"Veren\"); null while they hold none",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NazimPersonResponse"
+              }
+            ]
+          },
+          "grantedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "user",
+          "appointedBy",
+          "appointedAt",
+          "assignmentExpiresAt",
+          "expiresAt",
+          "groups",
+          "permissions",
+          "grantedBy",
+          "grantedAt"
+        ]
+      },
+      "MadrasahNazirGivenRoleResponse": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "example": "MEDRESE_NAZIR"
+          },
+          "scopeType": {
+            "type": "string",
+            "example": "madrasah"
+          },
+          "scopeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "grantedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "role",
+          "scopeType",
+          "scopeName",
+          "grantedAt",
+          "expiresAt"
+        ]
+      },
+      "MadrasahNazirGivenResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/NazimPersonResponse"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahNazirGivenRoleResponse"
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahNazirGroupResponse"
+            }
+          },
+          "permissions": {
+            "description": "Permission codes given one by one",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "user",
+          "roles",
+          "groups",
+          "permissions"
+        ]
+      },
+      "DismissMadrasahNazirDecisionDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A person the grants call lists"
+          },
+          "action": {
+            "description": "TAKE_OVER: the caller becomes the giver and everything stays. DROP: everything this nazır gave the person is revoked.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DismissAction"
+              }
+            ]
+          }
+        },
+        "required": [
+          "userId",
+          "action"
+        ]
+      },
+      "DismissMadrasahNazirDto": {
+        "type": "object",
+        "properties": {
+          "decisions": {
+            "description": "One per person `GET …/grants` lists, and nobody else; empty when it lists no one",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DismissMadrasahNazirDecisionDto"
+            }
+          }
+        },
+        "required": [
+          "decisions"
         ]
       },
       "InactiveScopeType": {

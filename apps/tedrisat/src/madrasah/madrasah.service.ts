@@ -11,15 +11,18 @@ import { MadrasahRepository } from "./madrasah.repository";
 import {
   ICreateMadrasah,
   IMadrasahBadgeCounts,
+  IMadrasahCourseListItem,
   IMadrasahDirectory,
   IMadrasahDirectoryFilter,
   IMadrasahDirectoryItem,
   IMadrasahExplore,
   IMadrasahExploreFilter,
   IMadrasahOverview,
+  IMadrasahSettings,
   IMadrasahWithNazirs,
   IPaginatedMadrasahs,
   IUpdateMadrasah,
+  IUpdateMadrasahSettings,
 } from "./madrasah.repository.interface";
 import { firstFreeHandle, handleFromName } from "./madrasah-handle";
 
@@ -312,36 +315,37 @@ export class MadrasahService {
     return this.findById(id);
   }
 
+  /** nazir/04's form; not-found for an unknown medrese. */
+  async getSettings(id: string): Promise<IMadrasahSettings> {
+    const settings = await this.madrasahRepo.getSettings(id);
+    if (!settings) throw new MadrasahNotFoundError(id);
+    return settings;
+  }
+
+  /** Saves nazir/04 (audited, stamped) and answers the screen's read again. */
+  async updateSettings(
+    id: string,
+    patch: IUpdateMadrasahSettings,
+    actorId: string
+  ): Promise<IMadrasahSettings> {
+    if (!(await this.madrasahRepo.updateSettings(id, patch, actorId))) {
+      throw new MadrasahNotFoundError(id);
+    }
+    return this.getSettings(id);
+  }
+
+  /** The courses nazir/04 lists under its policies; not-found for an unknown medrese. */
+  async findCourseList(id: string): Promise<IMadrasahCourseListItem[]> {
+    if (!(await this.madrasahRepo.exists(id))) {
+      throw new MadrasahNotFoundError(id);
+    }
+    return this.madrasahRepo.findCourseList(id);
+  }
+
   async delete(id: string): Promise<boolean> {
     if (!(await this.madrasahRepo.delete(id))) {
       throw new MadrasahNotFoundError(id);
     }
     return true;
-  }
-
-  /**
-   * Idempotent: inviting an existing nazır again changes nothing. `actorId`
-   * is recorded as the granter.
-   */
-  async addNazir(
-    madrasahId: string,
-    userId: string,
-    actorId: string
-  ): Promise<IMadrasahWithNazirs> {
-    if (!(await this.madrasahRepo.addNazir(madrasahId, userId, actorId))) {
-      throw new MadrasahNotFoundError(madrasahId);
-    }
-    return this.findById(madrasahId);
-  }
-
-  async removeNazir(
-    madrasahId: string,
-    userId: string,
-    actorId: string
-  ): Promise<IMadrasahWithNazirs> {
-    if (!(await this.madrasahRepo.removeNazir(madrasahId, userId, actorId))) {
-      throw new NazirNotFoundError(madrasahId, userId);
-    }
-    return this.findById(madrasahId);
   }
 }

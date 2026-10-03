@@ -104,6 +104,8 @@ src/models/DeckSource.ts
 src/models/DeletePermissionGroupDto.ts
 src/models/DismissAction.ts
 src/models/DismissDecisionDto.ts
+src/models/DismissMadrasahNazirDecisionDto.ts
+src/models/DismissMadrasahNazirDto.ts
 src/models/DismissMedarisNazimDto.ts
 src/models/EffectivePermissionGroup.ts
 src/models/EnrolledCourseResponse.ts
@@ -181,6 +183,7 @@ src/models/LessonMutationResponse.ts
 src/models/LessonResponse.ts
 src/models/LiftBanDto.ts
 src/models/MadrasahBadgeCountsResponse.ts
+src/models/MadrasahCourseListItemResponse.ts
 src/models/MadrasahCourseMuderrisResponse.ts
 src/models/MadrasahCourseResponse.ts
 src/models/MadrasahDirectoryItemResponse.ts
@@ -190,9 +193,16 @@ src/models/MadrasahExploreResponse.ts
 src/models/MadrasahHeadMuderrisResponse.ts
 src/models/MadrasahHostingKoskResponse.ts
 src/models/MadrasahKoskRefResponse.ts
+src/models/MadrasahNazirGivenResponse.ts
+src/models/MadrasahNazirGivenRoleResponse.ts
+src/models/MadrasahNazirGroupResponse.ts
+src/models/MadrasahNazirResponse.ts
 src/models/MadrasahOverviewResponse.ts
 src/models/MadrasahPersonResponse.ts
+src/models/MadrasahPoliciesDto.ts
+src/models/MadrasahPoliciesResponse.ts
 src/models/MadrasahResponse.ts
+src/models/MadrasahSettingsResponse.ts
 src/models/MadrasahStatus.ts
 src/models/MadrasahStatusCountsResponse.ts
 src/models/MadrasahStatusFilter.ts
@@ -281,6 +291,7 @@ src/models/UpdateKoskDto.ts
 src/models/UpdateKoskGrantDto.ts
 src/models/UpdateLessonDto.ts
 src/models/UpdateMadrasahDto.ts
+src/models/UpdateMadrasahSettingsDto.ts
 src/models/UpdateMeDto.ts
 src/models/UpdatePermissionGroupDto.ts
 src/models/UpdateProfileVisibilityDto.ts

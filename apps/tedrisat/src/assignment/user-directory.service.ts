@@ -1,11 +1,11 @@
 import { AuthzService, ROLES } from "@medaris/common";
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { KeycloakAdminService } from "../keycloak-admin/keycloak-admin.service";
 import { UserSummaryResponse } from "../user/dto/user-summary-response.dto";
 import { UserLookupForbiddenError } from "../user/errors/user-lookup-forbidden.error";
 import { TokenClaims } from "../user/interfaces/token-claims.interface";
 import { identityFromClaims } from "../user/user-identity";
-import { AssignmentRepository } from "./assignment.repository";
+import { AssignmentRepository, IPersonName } from "./assignment.repository";
 import { displayNameOf } from "./assignment.service";
 
 const CHIEF_CACHE_MS = 5 * 60_000;
@@ -16,6 +16,7 @@ const CHIEF_CACHE_MS = 5 * 60_000;
  */
 @Injectable()
 export class UserDirectoryService {
+  private readonly logger = new Logger(UserDirectoryService.name);
   private chief: { name: string | null; at: number } | null = null;
 
   constructor(
@@ -47,6 +48,30 @@ export class UserDirectoryService {
       email,
     });
     return found ? [found] : [];
+  }
+
+  /**
+   * Names and e-mail addresses for the people a screen lists: the users table
+   * first (written at sign-in), then the realm's directory for anyone who has
+   * never signed in — a freshly appointed nazır is exactly that. An
+   * unreachable directory is not an error; the row just has no name.
+   */
+  async resolvePeople(ids: string[]): Promise<Map<string, IPersonName>> {
+    const people = await this.repo.findPeople(ids);
+    const missing = [...new Set(ids)].filter((id) => !people.has(id));
+    if (missing.length > 0 && this.keycloak.isConfigured()) {
+      const found = await Promise.allSettled(
+        missing.map((id) => this.keycloak.findById(id))
+      );
+      found.forEach((result, i) => {
+        if (result.status === "fulfilled" && result.value) {
+          people.set(missing[i], result.value);
+        } else if (result.status === "rejected") {
+          this.logger.warn(`No directory name for ${missing[i]}`);
+        }
+      });
+    }
+    return people;
   }
 
   /**

@@ -142,7 +142,7 @@ export interface ICourseSummary extends ICourse {
   weekCount: number;
   lessonCount: number;
   resourceCount: number;
-  muderris: IMuderris[];
+  muderris: (IMuderris & { isImam: boolean })[];
   enrollment: IEnrollment | null;
   /** The medrese the course is opened by, or null (MDRS-159). */
   madrasah: { id: string; name: string } | null;
@@ -156,7 +156,7 @@ export interface IEnrolledCourse extends ICourse {
   madrasahName: string | null;
   weekCount: number;
   lessonCount: number;
-  muderris: IMuderris[];
+  muderris: (IMuderris & { isImam: boolean })[];
   /** The next standing session, or null when none is scheduled ahead. */
   nextSession: { at: Date; weekNumber: number } | null;
   enrollment: IEnrollment & { completedAt: Date | null };
@@ -391,6 +391,11 @@ export interface ICourseRepository {
   ): Promise<IEnrolledCourse[]>;
   create(course: ICreateCourse): Promise<ICourseDetail>;
   findKoskId(id: string): Promise<string | null>;
+  /**
+   * Whether the course's medrese makes every enrollment wait for approval
+   * ("Kayıt her zaman onaylı", nazir/04). False for a course in no medrese.
+   */
+  forcesApproval(id: string): Promise<boolean>;
   /** The user holding the course's imam grant, or null (MDRS-133). */
   findImamUserId(courseId: string): Promise<string | null>;
   /** Status, hidden, and the köşk's `is_private`; null for no course (MDRS-122). */

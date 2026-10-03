@@ -1,3 +1,5 @@
+import type { CourseStatus } from "../course/domain/course-status.enum";
+
 export interface IMadrasah {
   id: string;
   handle: string;
@@ -169,4 +171,38 @@ export interface IMadrasahExploreFilter {
   level?: string;
   field?: string;
   madrasahId?: string;
+}
+
+/** The three medrese-level policies of nazir/04. */
+export interface IMadrasahPolicies {
+  closedCourseRequired: boolean;
+  alwaysApproval: boolean;
+  noPublicRecordings: boolean;
+}
+
+/** What the settings screen reads and saves (nazir/04). */
+export interface IMadrasahSettings {
+  name: string;
+  description: string | null;
+  policies: IMadrasahPolicies;
+  /** The last save; null until the first one. */
+  updatedAt: Date | null;
+  updatedBy: { id: string; name: string | null; email: string | null } | null;
+}
+
+/** A partial save: what is left out is left as it is. `null` clears the description. */
+export interface IUpdateMadrasahSettings {
+  name?: string;
+  description?: string | null;
+  policies?: Partial<IMadrasahPolicies>;
+}
+
+/** A course of the medrese as the settings screen lists it, drafts included. */
+export interface IMadrasahCourseListItem {
+  id: string;
+  title: string;
+  koskId: string;
+  koskName: string;
+  status: CourseStatus;
+  muderris: IMadrasahCourseMuderris[];
 }
