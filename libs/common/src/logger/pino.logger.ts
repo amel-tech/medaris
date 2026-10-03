@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import pino from "pino";
 import { ILogger, LoggerConfig, LogLevel } from "./logger.interface";
+import { serializeError } from "./serialize-error";
 
 @Injectable()
 export class PinoLogger implements ILogger {
@@ -62,11 +63,7 @@ export class PinoLogger implements ILogger {
 
     if (error) {
       if (error instanceof Error) {
-        errorData.error = {
-          message: error.message,
-          stack: error.stack,
-          name: error.name,
-        };
+        errorData.error = serializeError(error);
       } else {
         errorData.error = error;
       }

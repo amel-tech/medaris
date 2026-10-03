@@ -1,4 +1,5 @@
 import {
+  AuthzResolverError,
   GlobalExceptionFilter,
   ValidationError as MedarisAppError,
   MedarisValidationPipe,
@@ -145,6 +146,17 @@ describe("GlobalExceptionFilter", () => {
       expect(res.body.code).toBeTruthy();
     });
 
+    it("keeps a 4xx MedarisError free of a correlation id", () => {
+      const res = captureResponse();
+
+      new GlobalExceptionFilter(stubLogger()).catch(
+        new MedarisAppError("yok"),
+        res.host
+      );
+
+      expect(res.body).not.toHaveProperty("correlationId");
+    });
+
     it("keeps an HttpException message and status, and adds a stable code", () => {
       const logger = stubLogger();
       const res = captureResponse();
@@ -180,6 +192,50 @@ describe("GlobalExceptionFilter", () => {
         status: 400,
         message: "handle zaten kullanımda",
       });
+    });
+  });
+
+  describe("a 5xx MedarisError (MDRS-220)", () => {
+    const resolverFailure = () =>
+      new AuthzResolverError(
+        "@Authz(view) resolver failed",
+        { scope: "view" },
+        { cause: new Error(PG_ERROR_MESSAGE) }
+      );
+
+    it("keeps its code and message, leaves the cause out and adds a correlation id", () => {
+      const res = captureResponse();
+
+      new GlobalExceptionFilter(stubLogger()).catch(
+        resolverFailure(),
+        res.host
+      );
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toEqual({
+        type: "APP_ERROR",
+        code: "AUTHZ_RESOLVER_ERROR",
+        status: 500,
+        message: "@Authz(view) resolver failed",
+        context: { scope: "view" },
+        correlationId: expect.any(String),
+        timestamp: expect.any(String),
+      });
+      expect(JSON.stringify(res.body)).not.toContain("does not exist");
+    });
+
+    it("hands the whole error, cause and stack included, to the logger under the same id", () => {
+      const logger = stubLogger();
+      const res = captureResponse();
+      const thrown = resolverFailure();
+
+      new GlobalExceptionFilter(logger).catch(thrown, res.host);
+
+      const [message, passed] = logger.error.mock.calls[0];
+      expect(message).toContain(res.body.correlationId);
+      expect(passed).toBe(thrown);
+      expect((passed as Error).stack).toBeDefined();
+      expect(((passed as Error).cause as Error).message).toBe(PG_ERROR_MESSAGE);
     });
   });
 

@@ -114,8 +114,9 @@ export class AuthzGuard implements CanActivate {
         throw error;
       }
       throw new AuthzResolverError(
-        `@Authz(${String(meta.permission)}) resolver threw: ${this.describe(error)}`,
-        { permission: meta.permission, cause: this.describe(error) }
+        `@Authz(${String(meta.permission)}) resolver failed`,
+        { permission: meta.permission },
+        { cause: error }
       );
     }
 
@@ -134,9 +135,5 @@ export class AuthzGuard implements CanActivate {
       );
     }
     return resource;
-  }
-
-  private describe(error: unknown): string {
-    return error instanceof Error ? error.message : String(error);
   }
 }

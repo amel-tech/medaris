@@ -189,6 +189,34 @@ describe("AuthzGuard", () => {
       );
     });
 
+    it("keeps what the resolver threw out of the message and context, carrying it as cause (MDRS-220)", async () => {
+      const thrown = new Error(
+        'Failed query: select "id" from "madrasahs" where "id" = $1'
+      );
+      const meta: AuthzMeta = {
+        permission: PERMISSIONS.DECK_VIEW,
+        resolve: () => {
+          throw thrown;
+        },
+      };
+      const guard = new AuthzGuard(
+        reflectorReturning(meta),
+        new AuthzService(fakeRoleResolver(null)),
+        moduleRefStub
+      );
+      const { ctx } = buildContext({ user: { sub: "u-1" } });
+
+      const error = await guard.canActivate(ctx).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(AuthzResolverError);
+      const { message, context, cause } = error as AuthzResolverError;
+      const serialised = JSON.stringify({ message, context });
+      expect(serialised).not.toContain("madrasahs");
+      expect(serialised).not.toContain("select");
+      expect(context).toEqual({ permission: PERMISSIONS.DECK_VIEW });
+      expect(cause).toBe(thrown);
+    });
+
     it("lets HttpException propagate (so 404 stays 404)", async () => {
       const meta: AuthzMeta = {
         permission: PERMISSIONS.DECK_VIEW,
