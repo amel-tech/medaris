@@ -68,7 +68,7 @@ export const lacksNazirRoles = (
     (a) => a.role === "MEDRESE_NAZIR" || a.role === "DERS_NAZIR"
   );
 
-const BADGE_VARIANT: Readonly<Record<ScopeBadge, BadgeVariant>> = {
+export const BADGE_VARIANT: Readonly<Record<ScopeBadge, BadgeVariant>> = {
   active: "secondary",
   published: "primary",
   draft: "outline",

@@ -60,3 +60,23 @@ export const dayKey = (date: Date, timeZone: string): string =>
     month: "2-digit",
     day: "2-digit",
   }).format(date);
+
+/**
+ * "30 Eyl": a day in a table cell, on the viewer's calendar, with the year
+ * ("30 Eyl 2025") once it is not the current one.
+ */
+export function shortDay(
+  at: Date,
+  now: Date,
+  where: { locale: string; timeZone: string }
+): string {
+  const sameYear =
+    dayKey(at, where.timeZone).slice(0, 4) ===
+    dayKey(now, where.timeZone).slice(0, 4);
+  return new Intl.DateTimeFormat(where.locale, {
+    timeZone: where.timeZone,
+    day: "numeric",
+    month: "short",
+    ...(sameYear ? {} : { year: "numeric" }),
+  }).format(at);
+}
