@@ -17,11 +17,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@medaris/ui/components/dropdown-menu";
+import NextLink from "next/link";
 import { useSession } from "next-auth/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { UserAvatar } from "~/features/user-avatar";
+import { authPages } from "~/lib/auth_pages";
 import { Link } from "~/lib/i18n/navigation";
-import { keycloakSignOut } from "~/lib/keycloak-logout";
 import Version from "./version";
 
 type UserHeaderMenuProps = {
@@ -31,6 +32,7 @@ type UserHeaderMenuProps = {
 
 export const UserHeaderMenu = ({ imageIssuer }: UserHeaderMenuProps) => {
   const t = useTranslations("tedris");
+  const locale = useLocale();
   const { data: session, status } = useSession();
 
   if (status === "loading") {
@@ -81,14 +83,13 @@ export const UserHeaderMenu = ({ imageIssuer }: UserHeaderMenuProps) => {
           </p>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={() => keycloakSignOut(session?.idToken)}
-          className="cursor-pointer"
-        >
-          <SignOutIcon className="text-neutral-primary" />
-          <p className="text-neutral-primary text-sm">
-            {t("UserHeaderMenu.signOut")}
-          </p>
+        <DropdownMenuItem asChild>
+          <NextLink href={`/${locale}${authPages.signOut}`} prefetch={false}>
+            <SignOutIcon className="text-neutral-primary" />
+            <p className="text-neutral-primary text-sm">
+              {t("UserHeaderMenu.signOut")}
+            </p>
+          </NextLink>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem>

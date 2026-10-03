@@ -4,6 +4,7 @@ import {
   type FlashcardResponse,
   ResponseError,
 } from "@medaris/services/tedrisat";
+import { notFound } from "next/navigation";
 import { env } from "~/env";
 import { DeckDetailPage } from "~/features/flashcards/components/deck-detail-page";
 import { DeckUnavailable } from "~/features/flashcards/components/deck-unavailable";
@@ -12,8 +13,9 @@ import { requireAccessToken } from "~/lib/require-access-token";
 import { subjectOf } from "~/lib/token-subject";
 
 /**
- * `null` when the API refused (403) or could not find (404) the deck — both
- * expected outcomes of MDRS-43's authz, so neither is logged as an error.
+ * `null` when the API refused (403) the deck; a 404 is the not-found page
+ * (design tedris/38). Both are expected outcomes of MDRS-43's authz, so
+ * neither is logged as an error.
  */
 async function getDeck(deckId: string): Promise<FlashcardDeckResponse | null> {
   try {
@@ -25,10 +27,11 @@ async function getDeck(deckId: string): Promise<FlashcardDeckResponse | null> {
     const deck = await decks.getFlashcardDeckById({ id: deckId });
     return deck || null;
   } catch (error) {
-    if (
-      error instanceof ResponseError &&
-      (error.response.status === 403 || error.response.status === 404)
-    ) {
+    if (error instanceof ResponseError && error.response.status === 404) {
+      // Design tedris/38: a deck that does not exist is the not-found page.
+      notFound();
+    }
+    if (error instanceof ResponseError && error.response.status === 403) {
       return null;
     }
     console.error("Error fetching deck:", error);

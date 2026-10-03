@@ -17,6 +17,9 @@ import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { leaveCourse } from "../actions";
 
+/** The withdraw button's id: the application window hands focus to it (design tedris/07). */
+export const WITHDRAW_BUTTON_ID = "withdraw-request";
+
 /**
  * The talebe's own way out of a course (MDRS-105): withdraw a request that
  * is still awaiting approval, or leave a course they are enrolled in. Both
@@ -54,6 +57,7 @@ export const LeaveCourse = ({
   if (mode === "withdraw") {
     return (
       <button
+        id={WITHDRAW_BUTTON_ID}
         type="button"
         onClick={leave}
         disabled={pending}
