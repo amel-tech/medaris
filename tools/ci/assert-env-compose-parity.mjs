@@ -182,7 +182,7 @@ const UNMAPPED_ON_PURPOSE = {
   API__DB_HOST:
     "compose pins `DB_HOST: medaris-db`, the service name the database answers on inside the compose network. The template's `localhost` is only ever correct for `nx run <api>:dev`, so interpolating it would let a host-side value break every container.",
   API__AUTO_MIGRATIONS_FOLDER:
-    'compose pins `./dist/src/database/migrations`. The template names `./src/...` for `nest start`; the image runs compiled output, and tsc mirrors the source tree so the compiled migrations sit under dist/src/. Interpolating the template value made the service log "Can\'t find meta/_journal.json" and then serve traffic against an unmigrated database.',
+    'compose pins `./dist/src/database/migrations`. The template names `./src/...` for `nest start`; the image runs compiled output, and tsc mirrors the source tree so the compiled migrations sit under dist/src/. Interpolating the template value made the service log "Can\'t find meta/_journal.json" and then serve traffic against an unmigrated database; since MDRS-219 it stops the boot instead.',
   WEB__TEDRISAT_API_BASE_URL:
     "compose pins `TEDRISAT_API_BASE_URL: http://tedrisat:3001` on the three apps that call the API — the service name it answers on inside the compose network, the same shape as API__DB_HOST. The template's `localhost:3001` is only ever correct for `nx run <app>-web:dev`.",
 };

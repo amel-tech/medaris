@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { basename, join } from "node:path";
+import { basename } from "node:path";
 import {
   AuthGuard,
   GlobalExceptionFilter,
@@ -147,10 +147,9 @@ export async function useDatabaseForThisFile(): Promise<void> {
   process.env.DB_NAME = name;
   process.env.DB_SSL = "false";
   process.env.AUTO_MIGRATIONS_ENABLED = "true";
-  process.env.AUTO_MIGRATIONS_FOLDER = join(
-    __dirname,
-    "../../src/database/migrations"
-  );
+  // Unset on purpose (MDRS-219): every suite then boots on the default folder
+  // the deployed service uses, rather than on a path only this helper knows.
+  delete process.env.AUTO_MIGRATIONS_FOLDER;
   process.env.LOG_LEVEL = "info";
   process.env.OTEL_ENABLED = "false";
   process.env.SWAGGER_ENABLED = "false";

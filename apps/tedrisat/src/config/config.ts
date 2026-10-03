@@ -1,5 +1,6 @@
 import { resolveSwaggerEnabled } from "@medaris/common";
 import * as pkg from "../../package.json";
+import { resolveMigrationsFolder } from "../database/migrations-folder";
 import { resolveDatabaseSsl } from "./database-ssl";
 import { readKeycloakAdminConfig } from "./keycloak-admin-env";
 import { readSecurityEnv } from "./security-env";
@@ -56,8 +57,11 @@ export default () => {
     },
     autoMigrations: {
       enabled: process.env.AUTO_MIGRATIONS_ENABLED === "true" || false,
-      migrationsFolder:
-        process.env.AUTO_MIGRATIONS_FOLDER || "./src/database/migrations",
+      // Unset means the folder beside the running database module, which
+      // exists both in a checkout and in the image (MDRS-219).
+      migrationsFolder: resolveMigrationsFolder(
+        process.env.AUTO_MIGRATIONS_FOLDER
+      ),
     },
     tedrisWeb: {
       // Base of the session-page links in calendar entries (MDRS-117); null

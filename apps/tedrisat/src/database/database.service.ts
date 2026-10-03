@@ -8,8 +8,8 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { drizzle, NodePgDatabase } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
-import { join } from "path";
 import { Pool } from "pg";
+import { DEFAULT_MIGRATIONS_FOLDER } from "./migrations-folder";
 import * as schema from "./schema";
 
 @Injectable()
@@ -50,7 +50,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     this.db = drizzle(this.pool, { schema });
 
-    await this.migrateDatabase();
+    try {
+      await this.migrateDatabase();
+    } catch (error) {
+      // A failed init hands the caller no application to close, so the pool
+      // would otherwise outlive the boot that opened it.
+      await this.pool.end();
+      throw error;
+    }
 
     // Test connection
     try {
@@ -66,6 +73,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     await this.pool.end();
   }
 
+  /**
+   * Runs the boot-time migrations, and stops the boot when they fail
+   * (MDRS-219). Logging and carrying on served traffic against whatever
+   * schema the database happened to have, and kept the deploy green while it
+   * did: tedris-dev lacked every migration from 0014 on, and only a broken
+   * page said so. A database the code does not match is not a state this
+   * service can run in.
+   */
   private async migrateDatabase() {
     const autoMigrations = this.configService.get<{
       enabled: boolean;
@@ -74,20 +89,21 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     const { enabled, migrationsFolder } = autoMigrations;
 
-    if (enabled) {
-      const resolvedFolder = migrationsFolder
-        ? migrationsFolder
-        : join(__dirname, "./migrations");
-
-      return migrate(this.db, { migrationsFolder: resolvedFolder })
-        .then(() => {
-          this.logger.log("Migrations completed successfully");
-        })
-        .catch((error) => {
-          this.logger.error("Migrations failed", error);
-        });
+    if (!enabled) {
+      this.logger.log("Auto migrations are disabled");
+      return;
     }
 
-    this.logger.log("Auto migrations are disabled");
+    const resolvedFolder = migrationsFolder || DEFAULT_MIGRATIONS_FOLDER;
+    this.logger.log(`Running migrations from ${resolvedFolder}`);
+
+    try {
+      await migrate(this.db, { migrationsFolder: resolvedFolder });
+    } catch (error) {
+      this.logger.error(`Migrations from ${resolvedFolder} failed`, error);
+      throw error;
+    }
+
+    this.logger.log("Migrations completed successfully");
   }
 }
