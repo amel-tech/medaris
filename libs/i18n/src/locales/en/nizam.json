@@ -472,7 +472,7 @@
     "invalidEmail": "Enter a valid e-mail address.",
     "managerOnly": "Only the köşk manager can change the müderris list.",
     "errorAssignmentForbidden": "Only the köşk manager can change the müderris list; nothing was saved.",
-    "errorUnknownUser": "One of the added accounts has never signed in to Medaris.",
+    "errorUnknownUser": "The account of one of the müderrisler you chose could not be found. Check the list and try again.",
     "errorDuplicateUser": "The same person is listed twice.",
     "errorLookupForbidden": "Only köşk managers can look people up.",
     "errorEnrollmentState": "This enrollment is not in a state that allows this; reload the page.",
@@ -2468,7 +2468,7 @@
     "savedBody": "The müderris list of {name} was saved.",
     "errors": {
       "versionConflict": "Someone saved the course since you opened this page. Reload the page and try again.",
-      "unknownUser": "This person has never signed in to the app; they can be added as a müderris after their first sign-in.",
+      "unknownUser": "The account of one of the müderrisler you chose could not be found. Check the list and try again.",
       "duplicateUser": "The same person is listed twice.",
       "listInvalid": "A course needs at least one müderris, and the imam must be one of those listed.",
       "alreadyCancelled": "This session is already cancelled.",
@@ -2548,7 +2548,7 @@
       "duration": "The session length must be between 1 and 1440 minutes.",
       "api": {
         "versionConflict": "Someone saved the course since you opened this page. Reload the page and try again.",
-        "unknownUser": "This person has never signed in to the app; they can be added as a müderris after their first sign-in.",
+        "unknownUser": "The account of one of the müderrisler you chose could not be found. Check the list and try again.",
         "duplicateUser": "The same person is listed twice.",
         "listInvalid": "A course needs at least one müderris, and the imam must be one of those listed.",
         "alreadyCancelled": "This session is already cancelled.",
@@ -2613,7 +2613,7 @@
     "hide": "Hide the course",
     "errors": {
       "versionConflict": "Someone saved the course since you opened this page. Reload the page and try again.",
-      "unknownUser": "This person has never signed in to the app; they can be added as a müderris after their first sign-in.",
+      "unknownUser": "The account of one of the müderrisler you chose could not be found. Check the list and try again.",
       "duplicateUser": "The same person is listed twice.",
       "listInvalid": "A course needs at least one müderris, and the imam must be one of those listed.",
       "alreadyCancelled": "This session is already cancelled.",
@@ -2700,7 +2700,7 @@
       "link": "The meeting link must start with https://. Copy the link again from the platform.",
       "api": {
         "versionConflict": "Someone saved the course since you opened this page. Reload the page and try again.",
-        "unknownUser": "This person has never signed in to the app; they can be added as a müderris after their first sign-in.",
+        "unknownUser": "The account of one of the müderrisler you chose could not be found. Check the list and try again.",
         "duplicateUser": "The same person is listed twice.",
         "listInvalid": "A course needs at least one müderris, and the imam must be one of those listed.",
         "alreadyCancelled": "This session is already cancelled.",
@@ -2775,7 +2775,7 @@
       "link": "The meeting link must start with https://. Copy the link again from the platform.",
       "api": {
         "versionConflict": "Someone saved the course since you opened this page. Reload the page and try again.",
-        "unknownUser": "This person has never signed in to the app; they can be added as a müderris after their first sign-in.",
+        "unknownUser": "The account of one of the müderrisler you chose could not be found. Check the list and try again.",
         "duplicateUser": "The same person is listed twice.",
         "listInvalid": "A course needs at least one müderris, and the imam must be one of those listed.",
         "alreadyCancelled": "This session is already cancelled.",
@@ -2851,7 +2851,7 @@
     "cancelledBody": "{name} was cancelled.",
     "errors": {
       "versionConflict": "Someone saved the course since you opened this page. Reload the page and try again.",
-      "unknownUser": "This person has never signed in to the app; they can be added as a müderris after their first sign-in.",
+      "unknownUser": "The account of one of the müderrisler you chose could not be found. Check the list and try again.",
       "duplicateUser": "The same person is listed twice.",
       "listInvalid": "A course needs at least one müderris, and the imam must be one of those listed.",
       "alreadyCancelled": "This session is already cancelled.",
