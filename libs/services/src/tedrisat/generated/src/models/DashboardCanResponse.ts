@@ -20,7 +20,7 @@ import { mapValues } from '../runtime';
  */
 export interface DashboardCanResponse {
     /**
-     * The viewer may open a köşk (the başnazım, or a Medaris nazımı holding 'Köşk aç'): the page shows the 'Köşk aç' button.
+     * The viewer may open a köşk (the başnazım only): the page shows the 'Köşk aç' button.
      * @type {boolean}
      * @memberof DashboardCanResponse
      */

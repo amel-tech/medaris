@@ -33,6 +33,7 @@ import {
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiBody,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
@@ -510,6 +511,7 @@ export class CourseController {
   // Same scope as approve: the matrix does not distinguish granting a seat
   // from refusing one.
   @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
+  @ApiBody({ type: RejectEnrollmentDto, required: false })
   @Delete("courses/:id/enrollments/:userId")
   async rejectEnrollment(
     @Req() request: AuthorizedRequest,

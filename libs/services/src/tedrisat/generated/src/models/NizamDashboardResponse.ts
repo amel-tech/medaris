@@ -107,13 +107,13 @@ export interface NizamDashboardResponse {
      */
     platformCounts: DashboardPlatformCountsResponse;
     /**
-     * The oldest waiting applications, three at most; null: not shown
+     * The newest waiting applications, three at most; null: not shown
      * @type {Array<NizamDashboardApplicationResponse>}
      * @memberof NizamDashboardResponse
      */
     latestApplications?: Array<NizamDashboardApplicationResponse> | null;
     /**
-     * The oldest waiting deck requests, three at most; null: not shown
+     * The newest waiting deck requests, three at most; null: not shown
      * @type {Array<DashboardDeckRequestResponse>}
      * @memberof NizamDashboardResponse
      */

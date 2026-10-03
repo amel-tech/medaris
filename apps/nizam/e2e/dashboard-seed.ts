@@ -203,6 +203,8 @@ export async function seedDashboard(subs: {
   const one = async (sql: string, params: unknown[] = []) =>
     Number((await client.query(sql, params)).rows[0]?.n ?? 0);
 
+  const medarisNazims = new Set<string>();
+
   return {
     tail,
     kosk: { id: koskId, name: koskName },
@@ -215,6 +217,7 @@ export async function seedDashboard(subs: {
     passiveMadrasah,
     ban,
     makeMedarisNazim: async (sub, codes) => {
+      medarisNazims.add(sub);
       await client.query(
         "delete from permission_grants where user_id = $1 and scope_type = 'platform'",
         [sub]
@@ -322,6 +325,14 @@ export async function seedDashboard(subs: {
         await client.query(
           "delete from role_assignments where scope_id = any($1)",
           [[koskId, madrasahId, courseId]]
+        );
+        await client.query(
+          "delete from permission_grants where user_id = any($1) and scope_type = 'platform'",
+          [[...medarisNazims]]
+        );
+        await client.query(
+          "delete from role_assignments where user_id = any($1) and role = 'MEDARIS_NAZIM'",
+          [[...medarisNazims]]
         );
         await client.query("delete from courses where id = $1", [courseId]);
         await client.query("delete from madrasahs where id = $1", [madrasahId]);

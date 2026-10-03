@@ -88,6 +88,7 @@ export function KoskHome({ data, nowIso }: Props) {
     wanted.current = value;
     if (value === data.tab) {
       setSessions(data.sessions);
+      setLoading(false);
       setTabFailed(false);
       return;
     }

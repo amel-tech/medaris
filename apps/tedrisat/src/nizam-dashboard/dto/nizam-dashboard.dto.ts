@@ -7,7 +7,7 @@ export type DashboardViewer = (typeof DASHBOARD_VIEWERS)[number];
 export class DashboardCanResponse {
   @ApiProperty({
     description:
-      "The viewer may open a köşk (the başnazım, or a Medaris nazımı holding 'Köşk aç'): the page shows the 'Köşk aç' button.",
+      "The viewer may open a köşk (the başnazım only): the page shows the 'Köşk aç' button.",
   })
   openKosk!: boolean;
 }
@@ -185,7 +185,7 @@ export class NizamDashboardResponse {
     isArray: true,
     nullable: true,
     description:
-      "The oldest waiting applications, three at most; null: not shown",
+      "The newest waiting applications, three at most; null: not shown",
   })
   latestApplications!: NizamDashboardApplicationResponse[] | null;
 
@@ -194,7 +194,7 @@ export class NizamDashboardResponse {
     isArray: true,
     nullable: true,
     description:
-      "The oldest waiting deck requests, three at most; null: not shown",
+      "The newest waiting deck requests, three at most; null: not shown",
   })
   latestDeckRequests!: DashboardDeckRequestResponse[] | null;
 

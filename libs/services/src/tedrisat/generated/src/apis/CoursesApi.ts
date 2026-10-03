@@ -135,7 +135,7 @@ export interface LeaveCourseRequest {
 export interface RejectEnrollmentRequest {
     id: string;
     userId: string;
-    rejectEnrollmentDto: RejectEnrollmentDto;
+    rejectEnrollmentDto?: RejectEnrollmentDto;
 }
 
 export interface RemoveEnrollmentRequest {
@@ -833,13 +833,6 @@ export class CoursesApi extends runtime.BaseAPI {
             throw new runtime.RequiredError(
                 'userId',
                 'Required parameter "userId" was null or undefined when calling rejectEnrollment().'
-            );
-        }
-
-        if (requestParameters['rejectEnrollmentDto'] == null) {
-            throw new runtime.RequiredError(
-                'rejectEnrollmentDto',
-                'Required parameter "rejectEnrollmentDto" was null or undefined when calling rejectEnrollment().'
             );
         }
 

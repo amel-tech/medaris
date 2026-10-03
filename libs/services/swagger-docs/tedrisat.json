@@ -3300,7 +3300,7 @@
           }
         ],
         "requestBody": {
-          "required": true,
+          "required": false,
           "content": {
             "application/json": {
               "schema": {
@@ -20139,7 +20139,7 @@
         "properties": {
           "openKosk": {
             "type": "boolean",
-            "description": "The viewer may open a köşk (the başnazım, or a Medaris nazımı holding 'Köşk aç'): the page shows the 'Köşk aç' button."
+            "description": "The viewer may open a köşk (the başnazım only): the page shows the 'Köşk aç' button."
           }
         },
         "required": [
@@ -20384,7 +20384,7 @@
           },
           "latestApplications": {
             "nullable": true,
-            "description": "The oldest waiting applications, three at most; null: not shown",
+            "description": "The newest waiting applications, three at most; null: not shown",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/NizamDashboardApplicationResponse"
@@ -20392,7 +20392,7 @@
           },
           "latestDeckRequests": {
             "nullable": true,
-            "description": "The oldest waiting deck requests, three at most; null: not shown",
+            "description": "The newest waiting deck requests, three at most; null: not shown",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/DashboardDeckRequestResponse"

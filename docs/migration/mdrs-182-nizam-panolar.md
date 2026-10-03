@@ -30,9 +30,9 @@ Web (`apps/nizam`):
 
 ## Verified
 
-- `apps/tedrisat/test/e2e/nizam-dashboard.e2e.spec.ts` (10 tests, Testcontainers Postgres) and `test/unit/nizam-dashboard/dashboard-sections.spec.ts` (5).
-- `apps/nizam` Vitest: 601 tests green (`dashboard-present.spec.ts`, `dashboard-views.spec.tsx`, updated `shell.spec.tsx`).
-- Playwright `apps/nizam/e2e/dashboard.e2e.ts` (9 specs) against a private Postgres (port 5472), real tedrisat and nizam-web, real Keycloak sign-ins as e2e-sistem-admin, e2e-kosk-nazim and e2e-medaris-nazim: the numbers on the pages equal counts taken off the database; Onayla and Reddet (with and without a reason, audit row checked); the three tabs; the 390 px layout; the menu cut by permissions, and a revoked permission gone after a reload; `/izin-gruplari` is the "izniniz yok" screen for a nazım without it.
+- `apps/tedrisat/test/e2e/nizam-dashboard.e2e.spec.ts` (10 tests, Testcontainers Postgres) and `test/unit/nizam-dashboard/dashboard-sections.spec.ts` (6); counts from `grep -cE '^\s*it\(' <file>`, both suites green in `pnpm nx run-many -t test`.
+- `apps/nizam` Vitest: `pnpm nx run nizam-web:test` reports `Tests 602 passed (602)` on #176 (`dashboard-present.spec.ts`, `dashboard-views.spec.tsx`, updated `shell.spec.tsx`).
+- Playwright `apps/nizam/e2e/dashboard.e2e.ts` (9 specs, `grep -cE '^\s*test\(' apps/nizam/e2e/dashboard.e2e.ts`; the run itself was on #174 and was not repeated on #176) against a private Postgres (port 5472), real tedrisat and nizam-web, real Keycloak sign-ins as e2e-sistem-admin, e2e-kosk-nazim and e2e-medaris-nazim: the numbers on the pages equal counts taken off the database; Onayla and Reddet (with and without a reason, audit row checked); the three tabs; the 390 px layout; the menu cut by permissions, and a revoked permission gone after a reload; `/izin-gruplari` is the "izniniz yok" screen for a nazım without it.
 - Pages were compared to the canvas screenshots at 1440 and 390 px.
 
 ## Not verified
