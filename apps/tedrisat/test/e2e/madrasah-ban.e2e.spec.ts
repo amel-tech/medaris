@@ -592,13 +592,11 @@ describe("Medrese bans (e2e)", () => {
         liftReason: "Görüşüldü.",
         liftedBy: { id: HEAD_ID },
       });
-      // With no grant the nazır lifts nothing, and madrasah.ban reaches the medrese's
-      // own level only: a course ban takes ban.course or ban.lift_course.
+      // With no grant the nazır lifts nothing; madrasah.ban reaches the medrese's own
+      // level and its courses' bans (d-1004-06), at the medrese's tier.
       const refused = await lift(NAZIR_ID, muderrisBan.id).expect(403);
       expect(refused.body.code).toBe("BAN_LIFT_FORBIDDEN");
       await giveNazir("madrasah.ban");
-      await lift(NAZIR_ID, muderrisBan.id).expect(403);
-      await giveNazir("ban.lift_course");
       await lift(NAZIR_ID, muderrisBan.id).expect(200);
       expect(await audits("ban.lift")).toHaveLength(2);
     });

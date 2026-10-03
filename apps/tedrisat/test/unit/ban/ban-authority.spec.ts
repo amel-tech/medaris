@@ -2,6 +2,7 @@ import {
   type IHeldGrantCodes,
   type IHeldRole,
   PERMISSIONS,
+  type PermissionCode,
   SCOPE_TYPES,
 } from "@medaris/common";
 import {
@@ -158,11 +159,17 @@ describe("who may do what about bans (MDRS-205)", () => {
       "impose a course ban (medrese course)",
       "lift a course ban (medrese course)",
     ]);
+    // And madrasah.ban reaches the medrese's courses (the owner, d-1004-06, "kapsar").
     expect(
       await allowed(
         withGrant(role(R.MEDRESE_NAZIR), [P.MADRASAH_BAN], atMadrasah)
       )
-    ).toEqual(["impose a medrese ban", "lift a medrese ban"]);
+    ).toEqual([
+      "impose a course ban (medrese course)",
+      "impose a medrese ban",
+      "lift a course ban (medrese course)",
+      "lift a medrese ban",
+    ]);
     expect(
       await allowed(withGrant(role(R.MEDARIS_NAZIM), [P.PLATFORM_BAN_SCOPED]))
     ).toEqual([
@@ -192,6 +199,37 @@ describe("who may do what about bans (MDRS-205)", () => {
     const chief: IActor = { name: "b", roles: [], admin: true };
     expect(await may(chief, "impose a course ban (medrese course)")).toBe(true);
     expect(await may(chief, "lift a course ban (medrese course)")).toBe(true);
+  });
+
+  it("madrasah.ban reaches the courses of its own medrese, and no other course, köşk or platform ban (d-1004-06)", async () => {
+    const nazir: IActor = {
+      name: "n",
+      roles: [role(R.MEDRESE_NAZIR)],
+      grants: [grantOf([P.MADRASAH_BAN], atMadrasah)],
+    };
+    const authority = authorityOf(nazir.roles, nazir.grants);
+    const held = await authority.holdingsOf({ sub: "u" });
+    const can = (place: IBanPlace, codes: readonly PermissionCode[]) =>
+      authority.standing(held, place, codes) !== null;
+    const own = medreseCourse;
+    const other = coursePlace({
+      id: COURSE,
+      koskId: KOSK,
+      madrasahId: "another-medrese",
+    });
+    for (const codes of [IMPOSE_CODES.COURSE, LIFT_CODES.COURSE]) {
+      expect(can(own, codes)).toBe(true);
+      expect(can(other, codes)).toBe(false);
+      expect(can(kosksCourse, codes)).toBe(false);
+    }
+    expect(can(koskPlace(KOSK), IMPOSE_CODES.KOSK)).toBe(false);
+    expect(can(koskPlace(KOSK), LIFT_CODES.KOSK)).toBe(false);
+    expect(can(PLATFORM_PLACE, READ_ALL_BANS_CODES)).toBe(false);
+    // At the medrese's tier: below the köşk's nazımı and Medaris administration.
+    expect(authority.standing(held, own, IMPOSE_CODES.COURSE)).toEqual({
+      role: R.MEDRESE_NAZIR,
+      tier: 2,
+    });
   });
 
   it("ban.lift_course lifts a course ban without placing one, and platform.ban_account only reads", async () => {

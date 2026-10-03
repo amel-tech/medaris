@@ -193,14 +193,47 @@ describe("BanService.listForMadrasah from the catalogue (MDRS-205)", () => {
     ]);
   });
 
-  it("lets madrasah.ban lift and widen at the medrese's level, but not lift a course ban, and ask for nothing permanent", async () => {
+  it("lets madrasah.ban lift and widen at the medrese's level and lift its courses' bans too (d-1004-06), and ask for nothing permanent", async () => {
     expect(
       await flags(rows, [nazir], {
         grants: [grantOf([PERMISSIONS.MADRASAH_BAN], at)],
       })
     ).toEqual([
-      [false, true, false],
+      [true, true, false],
       [true, false, false],
+    ]);
+  });
+
+  it("holds madrasah.ban to the medrese's tier: it lifts a müderris's course ban and not the köşk nazımı's or Medaris administration's", async () => {
+    const byKosk = entry({
+      id: "by-kosk",
+      bannedRole: "KOSK_NAZIM",
+      bannedTier: 3,
+    });
+    const byMedaris = entry({
+      id: "by-medaris",
+      bannedRole: "MEDARIS_NAZIM",
+      bannedTier: 4,
+    });
+    expect(
+      await flags([entry(), byKosk, byMedaris], [nazir], {
+        grants: [grantOf([PERMISSIONS.MADRASAH_BAN], at)],
+      })
+    ).toEqual([
+      [true, true, false],
+      [false, true, false],
+      [false, true, false],
+    ]);
+  });
+
+  it("lets ban.lift_course lift a course ban alone, with no say over the medrese-wide one", async () => {
+    expect(
+      await flags(rows, [nazir], {
+        grants: [grantOf([PERMISSIONS.BAN_LIFT_COURSE], at)],
+      })
+    ).toEqual([
+      [true, false, false],
+      [false, false, false],
     ]);
   });
 

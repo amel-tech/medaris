@@ -20,6 +20,12 @@ const P = PERMISSIONS;
  *   atabilir ban ama medaris nazımı atamaz": a course ban belongs to the
  *   course-level authorities and those above them, which is why no platform
  *   code is in the course row.
+ * - **`madrasah.ban` reaches the medrese's courses** (owner, d-1004-06,
+ *   "kapsar"): a medrese nazırı holding it may place and lift a ban on a single
+ *   course of its own medrese, not only the medrese-wide ban. It is in the
+ *   course row, and since it is held only where the medrese is on the chain it
+ *   reaches no other medrese's course and no course the köşk keeps for itself;
+ *   its tier in the kademe is the medrese's.
  *
  * `ban.lift_course` stays a way to lift a course ban without being able to
  * place one; every role that holds it by default holds `ban.course` too.
@@ -30,7 +36,7 @@ const P = PERMISSIONS;
 
 /** Placing a ban at a level: the permission, held where the ban would sit. */
 export const IMPOSE_CODES: Record<BanScope, readonly PermissionCode[]> = {
-  [BAN_SCOPES.COURSE]: [P.BAN_COURSE, P.BAN_MANAGE_KOSK],
+  [BAN_SCOPES.COURSE]: [P.BAN_COURSE, P.BAN_MANAGE_KOSK, P.MADRASAH_BAN],
   [BAN_SCOPES.KOSK]: [P.BAN_MANAGE_KOSK, P.PLATFORM_BAN_SCOPED],
   [BAN_SCOPES.MADRASAH]: [P.MADRASAH_BAN, P.PLATFORM_BAN_SCOPED],
 };
@@ -38,7 +44,12 @@ export const IMPOSE_CODES: Record<BanScope, readonly PermissionCode[]> = {
 /** Lifting a ban placed at a level: the same permissions, and `ban.lift_course` for a course. */
 export const LIFT_CODES: Record<BanScope, readonly PermissionCode[]> = {
   ...IMPOSE_CODES,
-  [BAN_SCOPES.COURSE]: [P.BAN_COURSE, P.BAN_LIFT_COURSE, P.BAN_MANAGE_KOSK],
+  [BAN_SCOPES.COURSE]: [
+    P.BAN_COURSE,
+    P.BAN_LIFT_COURSE,
+    P.BAN_MANAGE_KOSK,
+    P.MADRASAH_BAN,
+  ],
 };
 
 /** Asking Medaris administration to make a ban permanent: the medrese's own permission. */

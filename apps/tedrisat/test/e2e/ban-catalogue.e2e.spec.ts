@@ -74,6 +74,7 @@ describe("Bans from the permission catalogue (MDRS-205, e2e)", () => {
   let madrasahId: string;
   let otherMadrasahId: string;
   let medreseCourse: string;
+  let otherMedreseCourse: string;
   let koskCourse: string;
 
   const http = () => request(app.getHttpServer());
@@ -217,21 +218,23 @@ describe("Bans from the permission catalogue (MDRS-205, e2e)", () => {
         { ownerId: OTHER_NAZIM, name: "Fatih Köşkü" },
       ])
       .returning({ id: kosks.id });
-    [{ id: medreseCourse }, { id: koskCourse }] = await db()
-      .insert(courses)
-      .values(
-        [
-          ["Bina ve İzhar Şerhi", madrasahId],
-          ["Köşkün kendi dersi", null],
-        ].map(([title, medrese]) => ({
-          title: title as string,
-          koskId,
-          madrasahId: medrese,
-          authorId: KOSK_NAZIM,
-          status: CourseStatus.PUBLISHED,
-        }))
-      )
-      .returning({ id: courses.id });
+    [{ id: medreseCourse }, { id: koskCourse }, { id: otherMedreseCourse }] =
+      await db()
+        .insert(courses)
+        .values(
+          [
+            ["Bina ve İzhar Şerhi", madrasahId],
+            ["Köşkün kendi dersi", null],
+            ["Başka medresenin dersi", otherMadrasahId],
+          ].map(([title, medrese]) => ({
+            title: title as string,
+            koskId,
+            madrasahId: medrese,
+            authorId: KOSK_NAZIM,
+            status: CourseStatus.PUBLISHED,
+          }))
+        )
+        .returning({ id: courses.id });
 
     await seat(KOSK_NAZIM, ASSIGNED_ROLES.KOSK_NAZIM, koskId);
     await seat(OTHER_NAZIM, ASSIGNED_ROLES.KOSK_NAZIM, otherKoskId);
@@ -279,6 +282,7 @@ describe("Bans from the permission catalogue (MDRS-205, e2e)", () => {
         expect(res.body.context.permission).toEqual([
           "ban.course",
           "ban.manage_kosk",
+          "madrasah.ban",
         ]);
       }
       expect(await db().select().from(bans)).toHaveLength(
@@ -334,6 +338,31 @@ describe("Bans from the permission catalogue (MDRS-205, e2e)", () => {
       await banInCourse(NAZIR).expect(201);
       const [row] = await db().select().from(bans);
       expect(row).toMatchObject({ bannedRole: "MUDERRIS", bannedTier: 1 });
+    });
+
+    it("lets a medrese nazırı holding only madrasah.ban bar in its medrese's courses, at the medrese's tier, and nowhere else (d-1004-06)", async () => {
+      await give(NAZIR, "madrasah", "madrasah.ban");
+      const placed = await banInCourse(NAZIR).expect(201);
+      expect(placed.body.bannedRole).toBe("MEDRESE_NAZIR");
+      const [row] = await db().select().from(bans);
+      expect(row).toMatchObject({
+        bannedBy: NAZIR,
+        bannedRole: "MEDRESE_NAZIR",
+        bannedTier: 2,
+        scope: "COURSE",
+      });
+      // Not in a course of another medrese, nor one the köşk keeps for itself.
+      for (const course of [otherMedreseCourse, koskCourse]) {
+        const res = await banInCourse(
+          NAZIR,
+          { userId: TALEBE_2 },
+          () => course
+        ).expect(403);
+        expect(res.body.code).toBe("BAN_FORBIDDEN");
+      }
+      // Nor a köşk-wide ban: that is ban.manage_kosk's or platform.ban_scoped's.
+      await banInCourse(NAZIR, { scope: "KOSK", userId: TALEBE_2 }).expect(403);
+      expect(await db().select().from(bans)).toHaveLength(1);
     });
 
     // A course the köşk keeps for itself has no medrese: its head is a stranger to it.
@@ -401,7 +430,7 @@ describe("Bans from the permission catalogue (MDRS-205, e2e)", () => {
       await banInMadrasah(NAZIR).expect(201);
     });
 
-    it("asks a course ban for the course's own permission: the başmüderris has it, a Medaris nazımı with ban_scoped and a nazır with madrasah.ban do not", async () => {
+    it("bars from one course for the başmüderris, a nazır holding madrasah.ban (d-1004-06) and the başnazım, and not for a Medaris nazımı with only ban_scoped", async () => {
       const body = { scope: "COURSE", courseId: medreseCourse };
       await banInMadrasah(HEAD, body).expect(201);
       const byScoped = await banInMadrasah(SCOPED, {
@@ -409,15 +438,39 @@ describe("Bans from the permission catalogue (MDRS-205, e2e)", () => {
         userId: TALEBE_2,
       }).expect(403);
       expect(byScoped.body.code).toBe("BAN_FORBIDDEN");
+      // madrasah.ban reaches the medrese's courses: no ban.course needed.
       await give(NAZIR, "madrasah", "madrasah.ban");
-      await banInMadrasah(NAZIR, { ...body, userId: TALEBE_2 }).expect(403);
-      await give(NAZIR, "madrasah", "ban.course");
-      await banInMadrasah(NAZIR, { ...body, userId: TALEBE_2 }).expect(201);
+      const byNazir = await banInMadrasah(NAZIR, {
+        ...body,
+        userId: TALEBE_2,
+      }).expect(201);
+      expect(byNazir.body).toMatchObject({
+        scope: "COURSE",
+        bannedRole: "MEDRESE_NAZIR",
+      });
+      const [row] = await db()
+        .select()
+        .from(bans)
+        .where(eq(bans.id, byNazir.body.id));
+      expect(row.bannedTier).toBe(2);
       // The başnazım may in any course.
       await banInMadrasah(ADMIN, {
         ...body,
         userId: "cb000000-0000-4000-8000-0000000000a2",
       }).expect(201);
+    });
+
+    it("keeps a nazır's madrasah.ban to its own medrese: not another's course, which is the medrese route's 404", async () => {
+      await give(NAZIR, "madrasah", "madrasah.ban");
+      // A course of another medrese is not this medrese's: the same answer as a missing one.
+      await banInMadrasah(NAZIR, {
+        scope: "COURSE",
+        courseId: otherMedreseCourse,
+      }).expect(404);
+      await banInMadrasah(NAZIR, {
+        scope: "COURSE",
+        courseId: koskCourse,
+      }).expect(404);
     });
   });
 
@@ -455,6 +508,53 @@ describe("Bans from the permission catalogue (MDRS-205, e2e)", () => {
       await lift(DERS_NAZIR, higher.id).expect(403);
       await give(NAZIR, "madrasah", "ban.course");
       await lift(NAZIR, higher.id).expect(200);
+    });
+
+    it("lets a nazır holding madrasah.ban lift a course ban of its medrese at the medrese's tier, and nothing above it or elsewhere (d-1004-06)", async () => {
+      const byMuderris = await seed();
+      const byHead = await seed({
+        userId: TALEBE_2,
+        bannedBy: HEAD,
+        bannedRole: "MEDRESE_BASMUDERRIS",
+        bannedTier: 2,
+      });
+      const byKosk = await seed({
+        userId: "cb000000-0000-4000-8000-0000000000b3",
+        bannedBy: KOSK_NAZIM,
+        bannedRole: "KOSK_NAZIM",
+        bannedTier: 3,
+      });
+      const byMedaris = await seed({
+        userId: "cb000000-0000-4000-8000-0000000000b4",
+        bannedBy: SCOPED,
+        bannedRole: "MEDARIS_NAZIM",
+        bannedTier: 4,
+      });
+      const elsewhere = await seed({
+        userId: "cb000000-0000-4000-8000-0000000000b5",
+        courseId: otherMedreseCourse,
+      });
+      const ownKosk = await seed({
+        userId: "cb000000-0000-4000-8000-0000000000b6",
+        courseId: koskCourse,
+      });
+      const kosk = await seedKosk({
+        userId: "cb000000-0000-4000-8000-0000000000b7",
+      });
+      await lift(NAZIR, byMuderris.id).expect(403);
+      await give(NAZIR, "madrasah", "madrasah.ban");
+      await lift(NAZIR, byMuderris.id).expect(200);
+      await lift(NAZIR, byHead.id).expect(200);
+      // The köşk nazımı's and Medaris administration's bans are above the medrese's tier.
+      for (const id of [byKosk.id, byMedaris.id]) {
+        const res = await lift(NAZIR, id).expect(403);
+        expect(res.body.code).toBe("BAN_LIFT_FORBIDDEN");
+      }
+      // Another medrese's course, a course the köşk keeps, and the köşk's own ban are not
+      // its to lift: madrasah.ban is held only where its medrese is on the chain.
+      for (const id of [elsewhere.id, ownKosk.id, kosk.id]) {
+        await lift(NAZIR, id).expect(403);
+      }
     });
 
     it("orders by the kademe: a müderris cannot lift what the başmüderris placed, the köşk's nazımı can", async () => {
@@ -660,29 +760,34 @@ describe("Bans from the permission catalogue (MDRS-205, e2e)", () => {
         false,
       ]);
 
-      // A nazır is given one permission at a time, and the list follows.
+      // A nazır is given one permission at a time, and the list follows. madrasah.ban reaches
+      // the medrese's courses (d-1004-06) at the medrese's tier: a müderris's and the
+      // medrese's own course bans are liftable, the köşk nazımı's is not.
+      const byKosk = await seed({
+        userId: "cb000000-0000-4000-8000-0000000000b8",
+        bannedBy: KOSK_NAZIM,
+        bannedRole: "KOSK_NAZIM",
+        bannedTier: 3,
+      });
       await give(NAZIR, "madrasah", "madrasah.ban");
       let nazir = await rowsFor(NAZIR);
-      expect([flag(nazir, wide.id), flag(nazir, course.id)]).toEqual([
-        true,
-        false,
-      ]);
+      expect([
+        flag(nazir, wide.id),
+        flag(nazir, course.id),
+        flag(nazir, byKosk.id),
+      ]).toEqual([true, true, false]);
       expect(nazir.find((r) => r.id === course.id)).toMatchObject({
         viewerMayEscalate: true,
         viewerMayRequestPermanent: false,
       });
-      await give(NAZIR, "madrasah", "ban.lift_course");
       await give(NAZIR, "madrasah", "madrasah.permanent_ban_request");
       nazir = await rowsFor(NAZIR);
-      expect([flag(nazir, wide.id), flag(nazir, course.id)]).toEqual([
-        true,
-        true,
-      ]);
       expect(nazir.find((r) => r.id === course.id)).toMatchObject({
         viewerMayRequestPermanent: true,
       });
 
       // The flag is the route's answer.
+      await lift(NAZIR, byKosk.id).expect(403);
       await lift(NAZIR, course.id).expect(200);
       await lift(NAZIR, wide.id).expect(200);
     });

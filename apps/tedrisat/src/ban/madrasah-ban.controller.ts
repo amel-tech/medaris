@@ -104,7 +104,7 @@ export class MadrasahBanController {
     summary:
       "Bar a talebe from a course of the medrese, or from all of it (Yasakla)",
     description:
-      "Takes effect at once: the talebe cannot apply, apply again or leave, and loses the course's content, in the one course or in every course of the medrese. A medrese-wide ban takes `madrasah.ban` or `platform.ban_scoped`; a ban from one course takes `ban.course` in it, which the başmüderris holds and a Medaris nazımı holding only `platform.ban_scoped` does not. The ban is the medrese's kademe: a köşk nazımı or Medaris administration lifts it, a müderris does not. Barring someone already barred in that scope returns the standing ban. 404 for a course that is not the medrese's. The reason is kept for those who see and lift bans and never sent to the talebe.",
+      "Takes effect at once: the talebe cannot apply, apply again or leave, and loses the course's content, in the one course or in every course of the medrese. A medrese-wide ban takes `madrasah.ban` or `platform.ban_scoped`; a ban from one course takes `ban.course` in it or `madrasah.ban`, which reaches the medrese's courses (a Medaris nazımı holding only `platform.ban_scoped` has neither). The ban is the medrese's kademe: a köşk nazımı or Medaris administration lifts it, a müderris does not. Barring someone already barred in that scope returns the standing ban. 404 for a course that is not the medrese's. The reason is kept for those who see and lift bans and never sent to the talebe.",
     operationId: "createMadrasahBan",
   })
   @ApiCreatedResponse({ type: MadrasahBanResponse })

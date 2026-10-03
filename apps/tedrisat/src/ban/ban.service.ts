@@ -440,10 +440,11 @@ export class BanService {
    * Bars a talebe from one of the medrese's courses or from the whole medrese
    * (nazir/10 and nazir/11 "Yasakla"); a second request for the same bar is the
    * first. A medrese-wide ban takes `madrasah.ban` (or `platform.ban_scoped`);
-   * a ban from one course takes the course's own permission (`ban.course`),
-   * which the başmüderris holds in its medrese's courses and a Medaris nazımı
-   * holding only `platform.ban_scoped` does not. A medrese nazır's ban is the
-   * medrese's kademe: a köşk nazımı lifts it, a course's müderris does not.
+   * a ban from one course takes the course's own permission (`ban.course`) or
+   * `madrasah.ban`, which reaches the medrese's courses (owner, d-1004-06), and
+   * a Medaris nazımı holding only `platform.ban_scoped` has neither. A medrese
+   * nazır's ban is the medrese's kademe: a köşk nazımı lifts it, a course's
+   * müderris does not.
    */
   async createInMadrasah(
     user: AuthenticatedUser,
@@ -677,7 +678,9 @@ export class BanService {
   /**
    * The medrese list's version of `annotate`: each action is asked of the
    * catalogue for the row, over what the caller holds, so a nazır given only
-   * `madrasah.ban` sees a medrese-wide ban liftable and a course ban not.
+   * `madrasah.ban` sees the medrese-wide ban and the course bans of its medrese
+   * liftable (at the medrese's tier: not one a köşk nazımı placed), and one
+   * given only `ban.lift_course` the course bans alone.
    */
   private annotateMadrasah(
     entry: IBanEntry,
