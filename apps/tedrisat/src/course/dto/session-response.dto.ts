@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { SessionStatus } from "../domain/session-status.enum";
 import { AgendaStepResponse } from "./course-response.dto";
+import { SessionRecordingResponse } from "./recording-response.dto";
 
 const CONTENT_FIELD =
   "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).";
@@ -62,6 +63,22 @@ export class SessionResponse extends SessionRefResponse {
       " Null once the session is cancelled or over: there is nothing left to join.",
   })
   meetingUrl?: string | null;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description:
+      CONTENT_FIELD +
+      " The embeddable stream, sent only while the session is LIVE and only when one was set.",
+  })
+  liveStreamUrl?: string | null;
+  @ApiPropertyOptional({
+    type: SessionRecordingResponse,
+    nullable: true,
+    description:
+      CONTENT_FIELD +
+      " The session's recording, or null when it has none. Its `url` is null while it is PROCESSING.",
+  })
+  recording?: SessionRecordingResponse | null;
   @ApiPropertyOptional({
     type: SessionRefResponse,
     nullable: true,

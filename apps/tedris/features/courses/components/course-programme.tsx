@@ -16,6 +16,7 @@ import {
   holdsSeat,
   isCancelled,
   isoDateIn,
+  isRunning,
   nextSession,
   weekOpensAt,
   weekState,
@@ -41,15 +42,26 @@ export const CourseProgramme = ({
   course,
   state,
   now,
+  openWeeks,
 }: {
   course: CourseDetailResponse;
   state: CourseViewState;
   now: number;
+  /** Weeks open at first, instead of the sample and next-session weeks. */
+  openWeeks?: number[];
 }) => {
   const t = useTranslations("tedris.CoursePage");
   const locale = useLocale();
   const seat = holdsSeat(state);
   const next = seat ? nextSession(course, now) : null;
+  // A session on air now is the one marked "Sıradaki · Şu an canlı"
+  // (design tedris/16); the one still ahead is marked only when none is.
+  const running = seat
+    ? (course.weeks
+        .flatMap((week) => week.lessons)
+        .find((lesson) => isRunning(lesson, now)) ?? null)
+    : null;
+  const markedId = running?.id ?? next?.lesson.id;
   const typeLabels: Record<string, string> = {
     LIVE: t("typeLive"),
     VIDEO: t("typeVideo"),
@@ -61,7 +73,7 @@ export const CourseProgramme = ({
     const open = seat && weekOpen;
     const sample = !seat && lesson.isPreview;
     const cancelled = isCancelled(lesson);
-    const current = next?.lesson.id === lesson.id;
+    const current = markedId === lesson.id;
     return (
       <LessonRow
         key={lesson.id}
@@ -96,7 +108,11 @@ export const CourseProgramme = ({
         }
         courseTimeZone={course.timeZone}
         locale={locale}
-        currentLabel={t("lessonCurrent")}
+        currentLabel={
+          running?.id === lesson.id
+            ? t("lessonCurrentLive")
+            : t("lessonCurrent")
+        }
         lockedLabel={t("lessonLocked")}
         minuteUnit={t("minuteUnit")}
         trailing={
@@ -123,7 +139,7 @@ export const CourseProgramme = ({
         .map((week) => week.weekNumber);
 
   return (
-    <Weeks defaultOpen={openAtFirst}>
+    <Weeks defaultOpen={openWeeks ?? openAtFirst}>
       {course.weeks.map((week) => {
         const sampleWeek = hasSample(week);
         const wState = seat

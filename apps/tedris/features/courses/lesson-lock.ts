@@ -1,7 +1,7 @@
 import type { CourseDetailResponse } from "@medaris/services/tedrisat";
 
 /** Which call to action a locked lesson offers (design B8, MDRS-103). */
-export type LessonLockReason = "signIn" | "apply" | "pending";
+export type LessonLockReason = "signIn" | "apply" | "pending" | "revoked";
 
 /**
  * B8's call to action, or null when the lesson is not locked.
@@ -16,5 +16,14 @@ export function lessonLockReason(
 ): LessonLockReason | null {
   if (!course.contentLocked) return null;
   if (!signedIn) return "signIn";
-  return course.enrollment?.status === "PENDING" ? "pending" : "apply";
+  // REVOKED is locked like a stranger (design tedris/19, criterion 4), but
+  // there is nothing to apply for: the course page says what happened.
+  switch (course.enrollment?.status) {
+    case "PENDING":
+      return "pending";
+    case "REVOKED":
+      return "revoked";
+    default:
+      return "apply";
+  }
 }

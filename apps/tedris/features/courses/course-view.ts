@@ -110,6 +110,17 @@ export const nextSession = (
   return best && { lesson: best.lesson, weekNumber: best.weekNumber };
 };
 
+/** A session that has begun and is not over, not cancelled: it is on air now. */
+export const isRunning = (lesson: LessonResponse, now: number): boolean => {
+  const start = at(lesson);
+  return (
+    start !== null &&
+    !isCancelled(lesson) &&
+    start <= now &&
+    !hasEnded(lesson, now)
+  );
+};
+
 /** A session is over once its start plus its length has passed. */
 export const hasEnded = (lesson: LessonResponse, now: number): boolean => {
   const start = at(lesson);

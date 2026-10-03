@@ -11,11 +11,21 @@ import { Icon } from "@medaris/ui/mds/icon";
 import { resolveMeetingPlatform } from "@medaris/utils";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
+import {
+  embedUrlOf,
+  liveEmbedUrlOf,
+  recordingsTabPath,
+} from "../recordings-model";
 import { splitArabic, zoneLabel } from "../session-model";
+import { MediaPlayer } from "./media-player";
 import { SessionJoinLive } from "./session-join-live";
 import { SessionProgramme } from "./session-programme";
 
-type Translate = Awaited<ReturnType<typeof getTranslations>>;
+/** Loose on purpose: the full next-intl key union of the catalogue exceeds the instantiation depth (TS2589). */
+type Translate = (
+  key: string,
+  values?: Record<string, number | string>
+) => string;
 
 /** A line with each Arabic run set in its own language and direction. */
 const ArabicText = ({ text }: { text: string }) => (
@@ -151,6 +161,27 @@ export const SessionPage = async ({
     : null;
   const agenda = session.agenda ?? [];
 
+  // MDRS-162: the recording of a finished celse and the stream of a live one
+  // are content the API sends only to who may read it, so a body without them
+  // draws neither.
+  const recording = session.recording ?? null;
+  const recordingEmbed = recording
+    ? embedUrlOf(recording.provider, recording.url)
+    : null;
+  const showRecording =
+    session.status === "ENDED" && recording?.status === "READY";
+  const liveStream = session.status === "LIVE" ? session.liveStreamUrl : null;
+  const liveEmbed = liveEmbedUrlOf(liveStream);
+  const recordedOn = recording?.recordedAt
+    ? new Intl.DateTimeFormat(locale, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: course.timeZone,
+      }).format(recording.recordedAt)
+    : null;
+
   const crumbs: { label: string; href?: string }[] = [];
   if (koskName)
     crumbs.push({ label: koskName, href: `/kosks/${course.koskId}` });
@@ -187,6 +218,7 @@ export const SessionPage = async ({
       timeZone={timeZone}
       courseTimeZone={course.timeZone}
       calendar={calendar}
+      recordingsHref={recording ? recordingsTabPath(course.id) : undefined}
       labels={{
         label: t("SessionPage.joinLabel"),
         liveLabel: t("SessionPage.liveLabel"),
@@ -200,6 +232,8 @@ export const SessionPage = async ({
         revealLabel: t("SessionPage.reveal"),
         localTimeLabel: t("SessionPage.localTime"),
         minuteUnit: t("SessionPage.minuteUnit"),
+        recordingsLabel: t("SessionPage.recordingsGo"),
+        elapsedText: t("SessionPage.elapsed", { minutes: "{minutes}" }),
       }}
     />
   ) : null;
@@ -245,6 +279,29 @@ export const SessionPage = async ({
             </Alert>
           ) : null}
 
+          {showRecording && recording ? (
+            <MediaPlayer
+              id="recording-title"
+              title={recording.title}
+              embedUrl={recordingEmbed}
+              placeholder={t("SessionPage.recordingPlaceholder")}
+              openHref={recordingEmbed ? null : recording.url}
+              openLabel={t("SessionPage.recordingOpen")}
+            >
+              {[
+                t("SessionPage.recordingKind"),
+                recordedOn,
+                recording.durationMinutes != null
+                  ? t("SessionPage.minutes", {
+                      count: recording.durationMinutes,
+                    })
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </MediaPlayer>
+          ) : null}
+
           <div className="grid items-start gap-6 grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] max-md:grid-cols-1">
             {join}
             {agenda.length > 0 ? (
@@ -283,6 +340,19 @@ export const SessionPage = async ({
               </section>
             ) : null}
           </div>
+
+          {liveStream ? (
+            <MediaPlayer
+              id="live-stream-title"
+              title={t("SessionPage.liveStreamTitle")}
+              embedUrl={liveEmbed}
+              placeholder={t("SessionPage.liveStreamPlaceholder")}
+              openHref={liveEmbed ? null : liveStream}
+              openLabel={t("SessionPage.liveStreamOpen")}
+            >
+              {t("SessionPage.liveStreamText")}
+            </MediaPlayer>
+          ) : null}
 
           {session.previous || session.next ? (
             <nav

@@ -104,13 +104,13 @@
     "lockedMark": ", locked",
     "lessonLocked": "Locked",
     "lessonCurrent": "Next",
+    "lessonCurrentLive": "Next · Live now",
     "cancelledBadge": "Cancelled",
     "sampleHeading": "Sample session",
     "sampleMark": "Sample session",
     "sampleIntro": "You can read this session's outline and sources without enrolling.",
     "agendaHeading": "Session outline",
     "sourceHeading": "Sources",
-    "recordingsEmpty": "Recordings are published on the session pages. This course has none published yet.",
     "deckEmpty": "No deck is linked to this course.",
     "teachers": "Teachers",
     "typeLive": "Live session",
@@ -346,17 +346,16 @@
     "backToDecks": "Back to decks"
   },
   "LessonLocked": {
-    "title": "This lesson is for enrolled students",
     "description": {
-      "signIn": "Sign in to see the lesson's content, meeting link and resources.",
-      "apply": "A lesson's content, meeting link and resources are open to the course's enrolled students. The course page shows its programme.",
-      "pending": "Your application has been sent to the köşk manager. Once it is approved, the lesson opens here."
+      "signIn": "A session's content, meeting links and recordings are open to enrolled students. Sign in and enroll to see them.",
+      "apply": "A session's content, meeting links and recordings are open to enrolled students. You can see them once you enroll.",
+      "pending": "A session's content, meeting links and recordings are open to enrolled students. You can see them once your application is approved.",
+      "revoked": "A session's content, meeting links and recordings are open to enrolled students. Your access to this course was withdrawn."
     },
     "signIn": "Sign in",
-    "apply": "Apply",
-    "applying": "Sending...",
+    "apply": "Apply to enroll",
     "pending": "Your application is awaiting approval",
-    "backToCourse": "Back to the course"
+    "teachers": "Müderris {names}"
   },
   "MadrasahPage": {
     "kosks": "Köşks",
@@ -511,8 +510,18 @@
     "opensOn": "Opens on {date}",
     "weekEmpty": "No session has been added to this week yet.",
     "rowCurrent": "Up next",
+    "rowCurrentLive": "Up next · Live now",
     "rowDone": ", ended",
-    "rowCancelled": "Cancelled"
+    "rowCancelled": "Cancelled",
+    "recordingsGo": "Go to the course recordings",
+    "elapsed": "running for {minutes} minutes",
+    "recordingPlaceholder": "The recording plays here",
+    "recordingOpen": "Open the recording",
+    "recordingKind": "Recording",
+    "liveStreamTitle": "Live stream",
+    "liveStreamPlaceholder": "The live stream plays here",
+    "liveStreamOpen": "Open the stream",
+    "liveStreamText": "You can watch the stream here. To ask questions and join the conversation, join the session."
   },
   "AccountPage": {
     "pageTitle": "Account",

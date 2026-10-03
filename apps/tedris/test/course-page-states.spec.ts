@@ -1,5 +1,8 @@
 import { resources } from "@medaris/i18n";
-import type { CourseDetailResponse } from "@medaris/services/tedrisat";
+import type {
+  CourseDetailResponse,
+  RecordingResponse,
+} from "@medaris/services/tedrisat";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -132,7 +135,12 @@ const course = (status: Status, contentLocked: boolean) =>
 
 const render = async (
   status: Status,
-  props: { signedIn?: boolean; approvalRequired?: boolean } = {}
+  props: {
+    signedIn?: boolean;
+    approvalRequired?: boolean;
+    recordings?: RecordingResponse[];
+    initialTab?: string;
+  } = {}
 ) => {
   const { CoursePage } = await import(
     "~/features/courses/components/course-page"
@@ -265,6 +273,71 @@ describe("tedris/13: access withdrawn", () => {
   it("keeps the programme, every week but the sample session's locked", async () => {
     const html = await render("REVOKED");
     expect(html.match(/, kilitli/g)).toHaveLength(2);
+  });
+});
+
+describe("tedris/24: the recordings tab (MDRS-162)", () => {
+  const recordings = [
+    {
+      id: "r1",
+      lessonId: "next",
+      weekId: "w2",
+      weekNumber: 2,
+      weekTitle: "Mastar",
+      title: "Mastar: celse kaydı",
+      recordedAt: new Date("2026-09-26T18:00:00Z"),
+      durationMinutes: 58,
+      provider: "YOUTUBE",
+      url: "https://youtu.be/aaaaaaaaaaa",
+      visibility: "PUBLIC",
+      status: "READY",
+    },
+    {
+      id: "r2",
+      lessonId: "sample",
+      weekId: "w1",
+      weekNumber: 1,
+      weekTitle: "Giriş",
+      title: "Giriş: celse kaydı",
+      recordedAt: new Date("2026-09-19T18:00:00Z"),
+      durationMinutes: 61,
+      provider: "DRIVE",
+      url: "https://drive.google.com/file/d/abcdef123/view",
+      visibility: "ENROLLED",
+      status: "READY",
+    },
+  ] as unknown as RecordingResponse[];
+
+  it("says there are none, with no count on the tab, when nothing is published", async () => {
+    const html = await render("ENROLLED", { initialTab: "kayitlar" });
+    expect(html).toContain("henüz yayımlanmış ders kaydı yok");
+    expect(html).not.toContain("mds-tab__count");
+  });
+
+  it("counts the recordings on the tab and lists them when the page opens on it", async () => {
+    const html = await render("ENROLLED", {
+      recordings,
+      initialTab: "kayitlar",
+    });
+    expect(html).toContain("mds-tab__count");
+    expect(html).toContain("Bütün ders kayıtları");
+    expect(html).toContain("Mastar: celse kaydı");
+    expect(html).toContain("Giriş: celse kaydı");
+  });
+
+  it("lists a visitor only what the API sent them", async () => {
+    const html = await render(null, {
+      signedIn: false,
+      recordings: [recordings[0]],
+      initialTab: "kayitlar",
+    });
+    expect(html).toContain("Mastar: celse kaydı");
+    expect(html).not.toContain("drive.google.com");
+  });
+
+  it("opens on the curriculum for an unknown tab", async () => {
+    const html = await render("ENROLLED", { initialTab: "yok" });
+    expect(html).toMatch(/aria-selected="true"[^>]*>[^<]*Müfredat/);
   });
 });
 

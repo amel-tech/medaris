@@ -8,6 +8,7 @@ import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
 import { CourseStatsRepository } from "./course-stats.repository";
 import { LessonController } from "./lesson.controller";
+import { RecordingRepository } from "./recording.repository";
 
 @Module({
   imports: [AuthGuardModule, KoskModule, BanModule],
@@ -15,6 +16,7 @@ import { LessonController } from "./lesson.controller";
   providers: [
     CourseService,
     CourseRepository,
+    RecordingRepository,
     CourseStatsRepository,
     DatabaseService,
   ],
