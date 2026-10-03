@@ -1,0 +1,173 @@
+import {
+  createAccessTokenReader,
+  REFRESH_ACCESS_TOKEN_ERROR,
+  refreshDeadline,
+} from "@medaris/services/auth";
+import type {
+  GetServerSidePropsContext,
+  NextApiRequest,
+  NextApiResponse,
+} from "next";
+import { type AuthOptions, getServerSession } from "next-auth";
+import type { JWT } from "next-auth/jwt";
+import KeycloakProvider from "next-auth/providers/keycloak";
+import { env } from "~/env";
+import { authCookies } from "~/lib/auth_cookies";
+import { authPages } from "~/lib/auth_pages";
+
+/**
+ * Takes a token, and returns a new token with updated `accessToken`. If an
+ * error occurs, returns the old token and an error property.
+ */
+const refreshAccessToken = async (token: JWT) => {
+  try {
+    if (
+      typeof token.refreshTokenExpireIn === "number" &&
+      Date.now() > token.refreshTokenExpireIn
+    ) {
+      throw new Error("refresh token expired");
+    }
+
+    const url = `${env.KEYCLOAK_ISSUER}/protocol/openid-connect/token`;
+
+    const response = await fetch(url, {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+      },
+      method: "POST",
+      body: new URLSearchParams({
+        client_id: env.KEYCLOAK_CLIENT_ID,
+        client_secret: env.KEYCLOAK_CLIENT_SECRET,
+        grant_type: "refresh_token",
+        refresh_token: token.refreshToken,
+      }),
+    });
+
+    const refreshedTokens = await response.json();
+
+    if (!response.ok) throw refreshedTokens;
+
+    return {
+      ...token,
+      // A previous failed refresh left `error` on the token, and the spread
+      // would carry it forward for the rest of the session even though this
+      // refresh succeeded — `getAccessToken()` fails closed on `error`.
+      // `error` describes the most recent attempt only.
+      error: undefined,
+      accessToken: refreshedTokens.access_token,
+      accessTokenExpired: Date.now() + (refreshedTokens.expires_in - 15) * 1000,
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
+      refreshTokenExpireIn: refreshDeadline(refreshedTokens.refresh_expires_in),
+    };
+  } catch (error) {
+    console.log("refreshToken error: ", error);
+
+    return {
+      ...token,
+      // The one sentinel, declared in @medaris/services/auth: this produces it,
+      // `createAccessTokenReader` fails closed on it, and the client's
+      // `RefreshErrorRedirect` sends the visitor back to Keycloak on it.
+      error: REFRESH_ACCESS_TOKEN_ERROR,
+    };
+  }
+};
+
+/**
+ * The twin of apps/nizam/lib/auth_options.ts. Cookie names live in
+ * `auth_cookies.ts` so Edge middleware can reuse them without importing this
+ * file (KeycloakProvider breaks the Edge bundle). See MDRS-24.
+ */
+const authOptions: AuthOptions = {
+  providers: [
+    KeycloakProvider({
+      clientId: env.KEYCLOAK_CLIENT_ID,
+      clientSecret: env.KEYCLOAK_CLIENT_SECRET,
+      issuer: env.KEYCLOAK_ISSUER,
+      idToken: true,
+    }),
+  ],
+  cookies: authCookies,
+  // MDRS-101: our own pages instead of NextAuth's English ones. The middleware
+  // passes the same object to `withAuth`.
+  pages: authPages,
+  callbacks: {
+    /**
+     * Lets the sign-out navigation reach Keycloak's end-session endpoint.
+     * NextAuth's default `redirect` returns `baseUrl` for any off-origin URL,
+     * so `signOut({ callbackUrl: <end-session URL> })` would be dropped and
+     * Keycloak would keep its SSO cookie. The issuer's origin is the one
+     * exception this app needs; everything else off origin still collapses to
+     * `baseUrl`. See @medaris/services/auth-client.
+     */
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+
+      let target: URL;
+      try {
+        target = new URL(url);
+      } catch {
+        return baseUrl;
+      }
+
+      if (target.origin === new URL(baseUrl).origin) return url;
+      if (target.origin === new URL(env.KEYCLOAK_ISSUER).origin) return url;
+
+      return baseUrl;
+    },
+    async jwt({ token, user, account }) {
+      if (account) {
+        token.accessToken = account.access_token;
+        token.accessTokenExpired = (account.expires_at - 15) * 1000;
+        token.refreshToken = account.refresh_token;
+        token.idToken = account.id_token;
+        // remove 15 seconds to avoid edge cases
+        token.refreshTokenExpireIn = refreshDeadline(
+          account.refresh_expires_in
+        );
+        token.user = user;
+        return token;
+      }
+
+      if (Date.now() < token.accessTokenExpired) {
+        return token;
+      }
+
+      return refreshAccessToken(token);
+    },
+    async session({ session, token }) {
+      // accessToken is intentionally kept off the client-visible session —
+      // any script on the page could read it via GET /api/auth/session
+      // otherwise. Server code reads it through getAccessToken() below.
+      // See MDRS-28.
+      session.idToken = token.idToken as string;
+      // The failure flag, not the token: the client cannot recover a dead
+      // session on its own. See ClientProviders.
+      session.error = token.error;
+      return session;
+    },
+  },
+};
+export default authOptions;
+
+export function auth(
+  ...args:
+    | [GetServerSidePropsContext["req"], GetServerSidePropsContext["res"]]
+    | [NextApiRequest, NextApiResponse]
+    | []
+) {
+  return getServerSession(...args, authOptions);
+}
+
+/**
+ * Reads the Keycloak access token straight out of the encrypted session
+ * JWT. Server-only — the token never enters the client-visible `Session`
+ * object `auth()` returns. See MDRS-28.
+ *
+ * The implementation is shared with the other web apps through
+ * `@medaris/services/auth`; only the three app-local values are supplied here.
+ */
+export const getAccessToken = createAccessTokenReader<JWT>({
+  secret: env.NEXTAUTH_SECRET,
+  cookieName: authCookies?.sessionToken?.name,
+  refresh: refreshAccessToken,
+});
