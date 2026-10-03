@@ -75,3 +75,32 @@
   .mds-popup { outline: var(--border-width-thin) solid CanvasText; }
   .mds-option[data-highlighted] { background: Highlight; color: HighlightText; }
 }
+
+/* Overlays (MDRS-154, canvas rules 12 and 18). The system draws the dialog and
+   the sheet as native <dialog>s in the top layer; Base UI renders a Popup in a
+   Portal, so the scrim and the viewport that centres the popup are the two
+   parts the system does not have yet. The Portal sits in the app root's
+   `isolate` context, above the page and below nothing else. */
+.mds-scrim { position: fixed; inset: 0; z-index: 60; background: var(--background-neutral-scrim); }
+.mds-dialog-viewport { position: fixed; inset: 0; z-index: 61; display: grid; place-items: center; padding: var(--space-4); overflow: auto; }
+.mds-dialog-viewport > .mds-dialog { position: relative; }
+.mds-sheet { z-index: 61; }
+.mds-sheet:focus-visible { outline: 0; }
+.mds-dialog:focus-visible { outline: 0; }
+
+/* A closed week stays findable: `hidden="until-found"` must keep its UA
+   content-visibility, and the system's `display: none` would defeat it. */
+.mds-week__panel[hidden="until-found"] { display: block; }
+/* ...but the closed box must collapse to nothing: no top rule, no padding. */
+.mds-week__panel[hidden="until-found"] { border-block-start-width: 0; padding-block: 0; }
+
+/* Toasts. Base UI gives each toast role="dialog" (alertdialog when urgent),
+   so the system's `.mds-toaster > [role]` column rule would reach the toasts
+   themselves; the toast keeps its own row. */
+.mds-toaster { display: flex; flex-direction: column; gap: var(--space-2); }
+.mds-toaster > .mds-toast[role] { flex-direction: row; gap: var(--space-3); padding-block-start: var(--space-3); }
+/* Base UI marks the toasts beyond `limit` with data-limited; they wait unseen. */
+.mds-toaster > .mds-toast[data-limited] { display: none; }
+
+/* The scroll frame is the containing block of the visually-hidden header text. */
+.mds-table-wrap { position: relative; }
