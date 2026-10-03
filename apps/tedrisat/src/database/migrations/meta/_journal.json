@@ -260,6 +260,13 @@
       "when": 1790967082621,
       "tag": "0037_flashcard_review_schedule",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790969495913,
+      "tag": "0038_profile_and_kosk_application",
+      "breakpoints": true
     }
   ]
 }
