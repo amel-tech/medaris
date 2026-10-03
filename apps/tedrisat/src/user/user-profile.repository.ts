@@ -8,6 +8,7 @@ import {
   isNull,
   sql,
 } from "drizzle-orm";
+import type { Tx } from "../course/course-purge";
 import { CourseStatus } from "../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { DatabaseService } from "../database/database.service";
@@ -50,9 +51,16 @@ export class UserProfileRepository {
     return rows[0] ?? null;
   }
 
-  /** Creates the row on first write; afterwards changes only the fields given. */
-  async upsert(userId: string, patch: IUserProfilePatch): Promise<void> {
-    await this.db
+  /**
+   * Creates the row on first write; afterwards changes only the fields given.
+   * `executor` is the caller's transaction when the write must commit with others.
+   */
+  async upsert(
+    userId: string,
+    patch: IUserProfilePatch,
+    executor: DatabaseService["db"] | Tx = this.db
+  ): Promise<void> {
+    await executor
       .insert(userProfiles)
       .values({ userId, ...patch })
       .onConflictDoUpdate({
