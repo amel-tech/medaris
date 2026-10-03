@@ -203,6 +203,9 @@
     "home": "Ev",
     "learning": "Öğrenme"
   },
+  "Header": {
+    "searchPlaceholder": "Ara…"
+  },
   "UserHeaderMenu": {
     "accountSettings": "Hesap Ayarları",
     "helpAndSupport": "Yardım ve Destek",

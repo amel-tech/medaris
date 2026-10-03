@@ -203,6 +203,9 @@
     "home": "Home",
     "learning": "Learning"
   },
+  "Header": {
+    "searchPlaceholder": "Search…"
+  },
   "UserHeaderMenu": {
     "accountSettings": "Account Settings",
     "helpAndSupport": "Help and Support",

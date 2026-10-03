@@ -203,6 +203,9 @@
     "home": "الرئيسية",
     "learning": "التعلم"
   },
+  "Header": {
+    "searchPlaceholder": "ابحث…"
+  },
   "UserHeaderMenu": {
     "accountSettings": "إعدادات الحساب",
     "helpAndSupport": "المساعدة والدعم",
