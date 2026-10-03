@@ -5,7 +5,7 @@ import { AuthzService } from "./authz.service";
 import { AuthzWiringAssertion } from "./authz-wiring.assertion";
 
 /**
- * Provides {@link AuthzService} (matrix decision) and {@link AuthzGuard}
+ * Provides {@link AuthzService} (the permission decision) and {@link AuthzGuard}
  * (`@Authz` enforcement).
  *
  * `@Global()` so feature modules don't have to re-import it just to use

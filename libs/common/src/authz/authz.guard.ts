@@ -21,7 +21,7 @@ import { ResourceRef } from "./scopes";
  * `AuthGuard` so `request.user` is set:
  *
  *   @UseGuards(AuthGuard, AuthzGuard)
- *   @Authz(SCOPES.EDIT, byParam(ENTITIES.COURSE))
+ *   @Authz(PERMISSIONS.COURSE_EDIT, byParam(ENTITIES.COURSE))
  *   update(...) { ... }
  *
  * NestJS evaluates `@UseGuards` guards in declaration order, so
@@ -68,13 +68,13 @@ export class AuthzGuard implements CanActivate {
         throw new AuthzMissingUserError();
       }
       const resource = await this.resolveResource(meta, request);
-      if (!(await this.authz.canAnonymous(resource, meta.scope))) {
+      if (!(await this.authz.canAnonymous(resource, meta.permission))) {
         throw new AuthzMissingUserError(
           "Sign in to perform this action on this resource",
           {
             entity: resource.entity,
             resourceId: resource.id,
-            scope: meta.scope,
+            permission: meta.permission,
           }
         );
       }
@@ -83,13 +83,13 @@ export class AuthzGuard implements CanActivate {
 
     const resource = await this.resolveResource(meta, request);
 
-    const allowed = await this.authz.can(user, resource, meta.scope);
+    const allowed = await this.authz.can(user, resource, meta.permission);
     if (!allowed) {
       throw new AuthzForbiddenError(undefined, {
         userId: user.sub,
         entity: resource.entity,
         resourceId: resource.id,
-        scope: meta.scope,
+        permission: meta.permission,
       });
     }
     return true;
@@ -114,8 +114,8 @@ export class AuthzGuard implements CanActivate {
         throw error;
       }
       throw new AuthzResolverError(
-        `@Authz(${meta.scope}) resolver threw: ${this.describe(error)}`,
-        { scope: meta.scope, cause: this.describe(error) }
+        `@Authz(${String(meta.permission)}) resolver threw: ${this.describe(error)}`,
+        { permission: meta.permission, cause: this.describe(error) }
       );
     }
 
@@ -125,9 +125,9 @@ export class AuthzGuard implements CanActivate {
       resource.id.length === 0
     ) {
       throw new AuthzResolverError(
-        `@Authz(${meta.scope}) resolver returned an empty resource ID. Check that the decorator reads the correct request param name.`,
+        `@Authz(${String(meta.permission)}) resolver returned an empty resource ID. Check that the decorator reads the correct request param name.`,
         {
-          scope: meta.scope,
+          permission: meta.permission,
           entity: resource?.entity,
           returnedIdType: typeof resource?.id,
         }

@@ -1,99 +1,208 @@
-import { Inject, Injectable } from "@nestjs/common";
-import { MATRIX } from "./auth-matrix";
+import { Inject, Injectable, Optional } from "@nestjs/common";
+import {
+  AUTHZ_AUDIT,
+  AUTHZ_CONTEXT,
+  type AuthzAuditSink,
+  type AuthzContextLoader,
+} from "./authz-context.interface";
+import { effectivePermissions, type IEffective } from "./effective-permissions";
 import { AuthenticatedUser } from "./interfaces/authenticated-user.interface";
+import {
+  PERMISSION_META,
+  PERMISSIONS,
+  type PermissionCode,
+} from "./permissions";
+import { RELATIONS, relationCodes } from "./relations";
 import { ROLE_RESOLVER, RoleResolver } from "./role-resolver.interface";
-import { Entity, ResourceRef, ROLES, Role, Scope } from "./scopes";
+import { ENTITIES, ResourceRef, ROLES } from "./scopes";
 
 const SYSTEM_ADMIN_REALM_ROLE = ROLES.SYSTEM_ADMIN;
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+type Wanted = PermissionCode | readonly PermissionCode[];
+
+const asList = (wanted: Wanted): readonly PermissionCode[] =>
+  typeof wanted === "string" ? [wanted] : wanted;
+
 @Injectable()
 export class AuthzService {
-  constructor(@Inject(ROLE_RESOLVER) private readonly roles: RoleResolver) {}
+  constructor(
+    @Inject(ROLE_RESOLVER) private readonly relations: RoleResolver,
+    @Inject(AUTHZ_CONTEXT) private readonly loader: AuthzContextLoader,
+    @Optional() @Inject(AUTHZ_AUDIT) private readonly audit?: AuthzAuditSink
+  ) {}
 
   /**
-   * Decide whether `user` may invoke `scope` on `resource`.
+   * Decide whether `user` holds `permission` on `resource`; with a list, any
+   * one of them will do (a platform permission and the köşk's own, say).
    *
    * Algorithm:
-   *   1. Realm-role bypass: if `realm_access.roles` carries
-   *      SYSTEM_ADMIN, allow everything.
-   *   2. Ask `RoleResolver` for the caller's role on this specific
-   *      resource. The resolver does the domain-level work (deck variant
-   *      dispatch, enrollment lookup, ownership join). If it returns
-   *      `null`, treat the caller as `PUBLIC`.
-   *   3. Look the role's scopes up in `MATRIX[entity]`. Allow iff the
-   *      requested scope is listed.
+   *   1. Realm-role bypass: `realm_access.roles` carrying SYSTEM_ADMIN allows
+   *      everything, except what the başnazım may not do to another person's
+   *      private deck (read it, audited, and nothing else).
+   *   2. Ask the `RoleResolver` for the caller's relationship to the resource.
+   *      `null` is a hard deny.
+   *   3. Load the scope chain, the policies on it and what the caller holds in
+   *      it, and compute the effective permissions once
+   *      (`effectivePermissions`): relationship ∪ role defaults ∪ held grants,
+   *      cut by policies and by a passive scope.
+   *   4. Allow iff one of the wanted codes is in the result.
    *
-   * The matrix is closed by default — anything not explicitly granted
-   * is denied.
+   * Closed by default: a code nobody holds denies. Expiry and revocation are
+   * decided in the loader's queries against `now()`, so a grant that ran out
+   * is refused on the very next request, with no restart and no cache.
    *
-   * `realm_access.roles` is read defensively: if Keycloak's protocol
-   * mapper is misconfigured and the claim arrives as a string instead
-   * of an array, the `Array.isArray` guard treats it as empty (no
-   * bypass) rather than throwing.
+   * `realm_access.roles` is read defensively: a protocol mapper that sends the
+   * claim as a string instead of an array reads as empty (no bypass) rather
+   * than throwing.
    */
   async can(
     user: AuthenticatedUser,
     resource: ResourceRef,
-    scope: Scope
+    permission: Wanted
   ): Promise<boolean> {
-    if (this.isSystemAdmin(user)) return true;
+    const wanted = asList(permission);
+    if (this.isSystemAdmin(user)) return this.adminCan(user, resource, wanted);
 
-    // `null` from the resolver means "no role applies on this resource" —
-    // a strict deny. Resolvers must explicitly return `ROLES.PUBLIC` when
-    // the resource is open to any authenticated caller (e.g. a public
-    // deck, a madrasah donation endpoint). This prevents leaks where a
-    // null-fallback would silently grant `PUBLIC.view` on a private
-    // resource the caller has no role on.
-    const role = await this.roles.resolve(user.sub, resource);
-    if (!role) return false;
-    return this.matrixGrants(resource.entity, role, scope);
+    const relation = await this.relations.resolve(user.sub, resource);
+    if (!relation) return false;
+
+    const ctx = await this.loader.load(user.sub, resource);
+    const effective = effectivePermissions(
+      {
+        entity: resource.entity,
+        relation,
+        chain: ctx.chain,
+        madrasahCourse: ctx.madrasahCourse,
+        passiveScope: ctx.passiveScope,
+        policies: ctx.policies,
+      },
+      ctx.roles,
+      ctx.grants
+    );
+    const granted = wanted.filter((code) => effective.codes.has(code));
+    if (granted.length === 0) return false;
+
+    // A passive scope is closed to everyone but platform management, and
+    // every open is on the record (nizam/14).
+    if (effective.openedPassive) {
+      await this.record(user, resource, "scope.passive_open", {
+        passiveScope: effective.openedPassive,
+        permission: granted[0],
+      });
+    }
+    return true;
   }
 
   /**
-   * Decide whether a caller with NO token may invoke `scope` on `resource`
+   * What the caller holds on a resource, for the screens and the tests: the
+   * same computation `can` runs, without its audit rows.
+   */
+  async effective(
+    user: AuthenticatedUser,
+    resource: ResourceRef
+  ): Promise<IEffective | null> {
+    const relation = await this.relations.resolve(user.sub, resource);
+    if (!relation) return null;
+    const ctx = await this.loader.load(user.sub, resource);
+    return effectivePermissions(
+      {
+        entity: resource.entity,
+        relation,
+        chain: ctx.chain,
+        madrasahCourse: ctx.madrasahCourse,
+        passiveScope: ctx.passiveScope,
+        policies: ctx.policies,
+      },
+      ctx.roles,
+      ctx.grants
+    );
+  }
+
+  /**
+   * Decide whether a caller with NO token may hold `permission` on `resource`
    * (MDRS-45). `AuthzGuard` calls this only for an `@AuthzPublic()` handler.
    *
    * No realm-role bypass — there is no token to carry one. The resolver's
-   * optional `resolveAnonymous` must answer `ROLES.ANONYMOUS`; a resolver
-   * without it refuses every anonymous caller. The ANONYMOUS row is read on
-   * its own, with no PUBLIC inheritance: PUBLIC means "authenticated", and
-   * its scopes assume an identity to act as.
+   * optional `resolveAnonymous` must answer `RELATIONS.ANONYMOUS`; a resolver
+   * without it refuses every anonymous caller. Only the anonymous codes are
+   * read, with no `PUBLIC` inheritance: PUBLIC means "authenticated".
    */
-  async canAnonymous(resource: ResourceRef, scope: Scope): Promise<boolean> {
-    const role = await this.roles.resolveAnonymous?.(resource);
+  async canAnonymous(
+    resource: ResourceRef,
+    permission: Wanted
+  ): Promise<boolean> {
+    const relation = await this.relations.resolveAnonymous?.(resource);
     // Checked at runtime as well as in the type: a resolver written in plain
     // JS, or cast past the narrowing, must not hand an anonymous caller the
-    // PUBLIC row.
-    if (role !== ROLES.ANONYMOUS) return false;
-    return (MATRIX[resource.entity]?.[ROLES.ANONYMOUS] ?? []).includes(scope);
-  }
-
-  /**
-   * Matrix lookup with PUBLIC inheritance.
-   *
-   * Every role implicitly inherits the entity's `PUBLIC` scopes —
-   * "PUBLIC" by definition means "open to any authenticated caller", so
-   * a KOSK_MANAGER who also wants to invoke a PUBLIC scope (e.g.
-   * `enroll` on their own course, `donate` on a madrasah) should not be
-   * blocked because they happen to hold a more specialised role.
-   *
-   * This does NOT relax the strict-deny semantic for `null` roles —
-   * `can` short-circuits before reaching this method when the resolver
-   * returns null.
-   */
-  private matrixGrants(entity: Entity, role: Role, scope: Scope): boolean {
-    const roleScopes = MATRIX[entity]?.[role] ?? [];
-    if (roleScopes.includes(scope)) return true;
-    if (role === ROLES.PUBLIC) return false;
-    const publicScopes = MATRIX[entity]?.[ROLES.PUBLIC] ?? [];
-    return publicScopes.includes(scope);
+    // PUBLIC codes.
+    if (relation !== RELATIONS.ANONYMOUS) return false;
+    const open = relationCodes(resource.entity, RELATIONS.ANONYMOUS);
+    return asList(permission).some((code) => open.includes(code));
   }
 
   /** Reports whether the caller holds the SYSTEM_ADMIN realm role.
    *  Exposed for service-layer code that needs the bypass outside the
-   *  matrix flow (e.g. multi-resource batch operations). */
+   *  decision flow (e.g. multi-resource batch operations). */
   isSystemAdmin(user: AuthenticatedUser): boolean {
     const roles = user.realm_access?.roles;
     return Array.isArray(roles) && roles.includes(SYSTEM_ADMIN_REALM_ROLE);
+  }
+
+  /**
+   * The başnazım's bypass, with the two things it does not do silently: it
+   * reads another person's private deck and nothing else (writes stay refused,
+   * MDRS-148), and opening a passive scope's content is audited like anyone's.
+   * (A course's content read by someone who is not its talebe or müderris is
+   * audited by `CourseService.present`, which knows what the read returned.)
+   */
+  private async adminCan(
+    user: AuthenticatedUser,
+    resource: ResourceRef,
+    wanted: readonly PermissionCode[]
+  ): Promise<boolean> {
+    if (
+      resource.entity === ENTITIES.FLASHCARD_DECK &&
+      UUID_REGEX.test(resource.id)
+    ) {
+      const deck = await this.loader.findDeck(resource.id);
+      if (deck && !deck.isPublic && deck.authorId !== user.sub) {
+        if (!wanted.includes(PERMISSIONS.DECK_VIEW)) return false;
+        await this.record(user, resource, "deck.admin_read", {
+          authorId: deck.authorId,
+        });
+        return true;
+      }
+    }
+    if (
+      UUID_REGEX.test(resource.id) &&
+      wanted.some((code) => PERMISSION_META[code].content)
+    ) {
+      const ctx = await this.loader.load(user.sub, resource);
+      if (ctx.passiveScope) {
+        await this.record(user, resource, "scope.passive_open", {
+          passiveScope: ctx.passiveScope,
+          permission: wanted[0],
+        });
+      }
+    }
+    return true;
+  }
+
+  private async record(
+    user: AuthenticatedUser,
+    resource: ResourceRef,
+    action: string,
+    details: Record<string, unknown>
+  ): Promise<void> {
+    await this.audit?.record({
+      actorId: user.sub,
+      action,
+      entity: resource.entity,
+      entityId: resource.id,
+      details,
+    });
   }
 }

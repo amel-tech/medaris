@@ -23,8 +23,8 @@ const clientStringOf = (raw: unknown, field: string): string => {
  * Resolver that pulls the resource ID from a route param.
  *
  * @example
- *   @Authz(SCOPES.EDIT, byParam(ENTITIES.COURSE))           // reads :id
- *   @Authz(SCOPES.EDIT, byParam(ENTITIES.COURSE, 'courseId')) // reads :courseId
+ *   @Authz(PERMISSIONS.COURSE_EDIT, byParam(ENTITIES.COURSE))           // reads :id
+ *   @Authz(PERMISSIONS.COURSE_EDIT, byParam(ENTITIES.COURSE, 'courseId')) // reads :courseId
  */
 export const byParam =
   (entity: Entity, param = "id") =>
@@ -36,7 +36,7 @@ export const byParam =
 /**
  * Resolver that pulls the resource ID from a body field. Useful when a
  * new resource is authorized against its parent — e.g. creating a course
- * is gated by `manage_courses` on the kosk named in the body.
+ * is gated by `course.open_standalone` on the kosk named in the body.
  */
 export const byBody =
   (entity: Entity, field: string) =>
@@ -67,11 +67,12 @@ export const byQuery =
  * The sentinel is a non-UUID string on purpose. Every `RoleResolver`
  * implementation already has to answer for an id that is not a UUID —
  * malformed input reaches the guard before any pipe has validated it —
- * and `TedrisatRoleResolver` answers `ROLES.PUBLIC` there rather than
- * letting Postgres raise 22P02. A create scope therefore has to live on
- * the entity's `PUBLIC` matrix row to pass, which is exactly the
- * decision the matrix should be making: `CREATE_PRIVATE_DECK` is on that
- * row, `CREATE_KOSK` is deliberately on none.
+ * and `TedrisatRoleResolver` answers `RELATIONS.PUBLIC` there rather than
+ * letting Postgres raise 22P02. A create permission therefore has to be one
+ * a PUBLIC caller holds, or a platform permission a role or a grant carries,
+ * to pass — which is exactly the decision the engine should be making:
+ * `deck.create_private` is on the deck's PUBLIC codes, `platform.kosk_create`
+ * is deliberately on none.
  *
  * Do NOT give this an id that could collide with a real row — the guard
  * rejects an empty id as a configuration error, and a UUID here would
