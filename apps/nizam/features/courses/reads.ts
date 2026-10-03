@@ -4,6 +4,7 @@ import {
   type KoskResponse,
   type MeResponse,
   type RecordingResponse,
+  ResponseError,
 } from "@medaris/services/tedrisat";
 import { env } from "~/env";
 import { getCourse, getKoskById, getMe } from "~/features/kosks/actions";
@@ -54,6 +55,41 @@ export async function readCourseScope(
     me,
     manager: mayAssignMuderris(me, kosk.id),
   };
+}
+
+/**
+ * The course's live stream links by session id (MDRS-228), or `null` when the
+ * caller may not set them — which hides the "Canlı yayın" control.
+ *
+ * Who may is tedrisat's answer, not one worked out here: the route is
+ * `session.live_link`'s, and it answers 403 to anyone else. nizam's other
+ * course buttons are drawn from `GET /me`'s roles (`kosk-abilities.ts`), but
+ * this permission can also be given to a ders nazırı, and `/me` and
+ * `/me/effective-permissions` neither name the courses a köşk nazımı's
+ * `course.manage_all` covers nor the başnazım, so the rule would have to be
+ * written a second time. A failed read hides the control as well: without the
+ * links the rows could not say which session has one.
+ */
+export async function getLiveStreams(
+  courseId: string
+): Promise<Record<string, string> | null> {
+  try {
+    const { lessons } = await createServerTedrisatAPIs(
+      await getAccessToken(),
+      env.TEDRISAT_API_BASE_URL
+    );
+    const links = await lessons.listCourseLiveStreams({ id: courseId });
+    return Object.fromEntries(
+      links.flatMap((l) =>
+        l.liveStreamUrl ? [[l.lessonId, l.liveStreamUrl] as const] : []
+      )
+    );
+  } catch (error) {
+    if (!(error instanceof ResponseError && error.response.status === 403)) {
+      console.error("Error fetching the course's live stream links:", error);
+    }
+    return null;
+  }
 }
 
 /** The recordings of a course, for the count in the past sessions; empty when unread. */

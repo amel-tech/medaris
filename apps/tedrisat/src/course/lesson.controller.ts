@@ -83,7 +83,7 @@ const UUID_REGEX =
  * as a uuid cast error (22P02). The lookup includes archived lessons so that
  * a non-editor gets the same 403 whether or not the lesson is still live.
  */
-const byLessonCourse: AuthzResolve = async (req, moduleRef) => {
+export const byLessonCourse: AuthzResolve = async (req, moduleRef) => {
   const lessonId = typeof req.params.id === "string" ? req.params.id : "";
   if (!UUID_REGEX.test(lessonId)) throw new LessonNotFoundError(lessonId);
   const courseId = await moduleRef

@@ -15,6 +15,7 @@ import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import {
   fromZonedDatetimeLocal,
   normalizeMeetingUrl,
+  normalizeYoutubeLiveUrl,
   resolveMeetingPlatform,
   timeZoneCity,
   toZonedDatetimeLocal,
@@ -22,12 +23,14 @@ import {
 import { useRouter } from "next/navigation";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useState, useTransition } from "react";
-import { cancelSession, patchLesson } from "../actions";
+import { cancelSession, patchLesson, setLiveStream } from "../actions";
 import { formatInstant } from "../format";
 import {
   courseErrorKey,
   groupSessions,
   linkProblem,
+  liveStreamProblem,
+  liveStreamRefusal,
   type SessionRow,
   sessionRows,
 } from "../present";
@@ -37,12 +40,18 @@ interface Props {
   course: CourseDetailResponse;
   /** recordings per session id, for the past sessions */
   recordings: Record<string, number>;
+  /**
+   * The live stream link per session id (MDRS-228); `null` when the caller may
+   * not set them, which leaves the "Canlı yayın" column and buttons out.
+   */
+  liveStreams: Record<string, string> | null;
   /** tedris's address, for the session titles; null when this deployment has none */
   tedrisUrl: string | null;
 }
 
 type Editing =
   | { kind: "link"; id: string; value: string }
+  | { kind: "stream"; id: string; value: string }
   | { kind: "time"; id: string; date: string; time: string };
 
 /** how many past sessions show before "N geçmiş celsenin tümü" */
@@ -54,11 +63,17 @@ const PAST_PREVIEW = 2;
  * cancellation; a link is added or replaced inline (https only), a time is
  * moved, and "İptal et" keeps the session in the programme marked cancelled.
  * Every write carries the course version the page last saw.
+ *
+ * The live stream link (MDRS-228) is added, changed and removed the same way,
+ * for whoever holds `session.live_link`. It is a YouTube video link, checked
+ * here with the parser tedrisat runs; it carries no course version, since it
+ * is no part of the course document.
  */
 export function SessionsView({
   kosk,
   course: serverCourse,
   recordings,
+  liveStreams,
   tedrisUrl,
 }: Props) {
   const t = useTranslations("nizam.Sessions");
@@ -71,6 +86,8 @@ export function SessionsView({
   useEffect(() => setCourse(serverCourse), [serverCourse]);
   const [version, setVersion] = useState(serverCourse.version);
   useEffect(() => setVersion(serverCourse.version), [serverCourse.version]);
+  const [streams, setStreams] = useState(liveStreams);
+  useEffect(() => setStreams(liveStreams), [liveStreams]);
 
   // The clock is read in the browser and moves while the page is open.
   const [now, setNow] = useState(() => new Date());
@@ -103,6 +120,10 @@ export function SessionsView({
     setProblem(null);
     setEditing({ kind: "link", id: row.id, value: row.meetingUrl ?? "" });
   };
+  const startStream = (row: SessionRow) => {
+    setProblem(null);
+    setEditing({ kind: "stream", id: row.id, value: streams?.[row.id] ?? "" });
+  };
   const startTime = (row: SessionRow) => {
     setProblem(null);
     const [date = "", time = ""] = toZonedDatetimeLocal(row.start, zone).split(
@@ -111,9 +132,48 @@ export function SessionsView({
     setEditing({ kind: "time", id: row.id, date, time: time.slice(0, 5) });
   };
 
+  /** Sets the stream link, or clears it with `null`. */
+  const writeStream = async (lessonId: string, url: string | null) => {
+    setBusy(true);
+    const result = await setLiveStream(kosk.id, course.id, lessonId, url);
+    setBusy(false);
+    if (!result.success) {
+      const refusal = liveStreamRefusal(result.errorBody);
+      if ("field" in refusal) {
+        setProblem(t(`stream.problems.${refusal.field}`));
+      } else {
+        toast.error(t("failed"), {
+          description: t(refusal.toast as never),
+          duration: Number.POSITIVE_INFINITY,
+        });
+      }
+      return;
+    }
+    const saved = result.data.liveStreamUrl;
+    setStreams((current) => {
+      const next = { ...current };
+      if (saved) next[lessonId] = saved;
+      else delete next[lessonId];
+      return next;
+    });
+    setEditing(null);
+    toast.success(t(saved ? "stream.saved" : "stream.removed"));
+    refresh();
+  };
+
   const saveEditing = async (event: FormEvent) => {
     event.preventDefault();
     if (!editing) return;
+    if (editing.kind === "stream") {
+      const problemKey = liveStreamProblem(editing.value);
+      const url = normalizeYoutubeLiveUrl(editing.value);
+      if (problemKey || !url) {
+        setProblem(t(`stream.problems.${problemKey ?? "noVideo"}`));
+        return;
+      }
+      await writeStream(editing.id, url);
+      return;
+    }
     let body: { version: number; meetingUrl?: string; scheduledAt?: Date };
     if (editing.kind === "link") {
       const url = normalizeMeetingUrl(editing.value);
@@ -222,6 +282,22 @@ export function SessionsView({
     );
   };
 
+  const streamCell = (row: SessionRow) => {
+    if (row.state === "cancelled") {
+      return (
+        <span>
+          <span aria-hidden="true">—</span>
+          <span className="mds-visually-hidden">{t("linkHidden")}</span>
+        </span>
+      );
+    }
+    return streams?.[row.id] ? (
+      <span data-testid="stream-set">{t("stream.set")}</span>
+    ) : (
+      <span className="text-neutral-muted">{t("stream.missing")}</span>
+    );
+  };
+
   const statusCell = (row: SessionRow) => {
     switch (row.state) {
       case "live":
@@ -249,35 +325,49 @@ export function SessionsView({
     }
   };
 
+  // The "Canlı yayın" column only for someone who may set the link: nobody
+  // else is sent them. The others narrow to make room for it.
+  const withStream = streams !== null;
   const sessionColumn: TableColumn<SessionRow> = {
     key: "session",
     header: t("columns.session"),
     rowHeader: true,
-    width: "22%",
+    width: withStream ? "20%" : "22%",
     render: nameCell,
   };
   const timeColumn: TableColumn<SessionRow> = {
     key: "time",
     header: t("columns.time"),
-    width: "17%",
+    width: withStream ? "15%" : "17%",
     render: timeCell,
   };
   const linkColumn: TableColumn<SessionRow> = {
     key: "link",
     header: t("columns.link"),
-    width: "15%",
+    width: withStream ? "13%" : "15%",
     render: linkCell,
   };
   const stateColumn: TableColumn<SessionRow> = {
     key: "state",
     header: t("columns.state"),
-    width: "15%",
+    width: withStream ? "13%" : "15%",
     render: statusCell,
   };
+  const streamColumns: TableColumn<SessionRow>[] = withStream
+    ? [
+        {
+          key: "stream",
+          header: t("stream.column"),
+          width: "11%",
+          render: streamCell,
+        },
+      ]
+    : [];
   const upcomingColumns: TableColumn<SessionRow>[] = [
     sessionColumn,
     timeColumn,
     linkColumn,
+    ...streamColumns,
     stateColumn,
     {
       key: "actions",
@@ -285,7 +375,7 @@ export function SessionsView({
         <span className="mds-visually-hidden">{t("columns.actions")}</span>
       ),
       align: "right",
-      width: "31%",
+      width: withStream ? "28%" : "31%",
       render: (row) =>
         row.state === "cancelled" ? (
           <span className="mds-visually-hidden">{t("noActions")}</span>
@@ -304,6 +394,19 @@ export function SessionsView({
             >
               {t(row.meetingUrl ? "updateLink" : "addLink")}
             </Button>
+            {streams !== null ? (
+              <Button
+                variant="outline"
+                size="small"
+                aria-label={t(
+                  streams[row.id] ? "stream.updateLabel" : "stream.addLabel",
+                  { when: when(row) }
+                )}
+                onClick={() => startStream(row)}
+              >
+                {t(streams[row.id] ? "stream.update" : "stream.add")}
+              </Button>
+            ) : null}
             {row.state === "scheduled" ? (
               <>
                 <Button
@@ -333,6 +436,7 @@ export function SessionsView({
     sessionColumn,
     timeColumn,
     linkColumn,
+    ...streamColumns,
     stateColumn,
   ];
 
@@ -416,13 +520,35 @@ export function SessionsView({
             >
               <h3 className="mds-h3">
                 {t(
-                  editing.kind === "link" ? "linkFormTitle" : "timeFormTitle",
+                  editing.kind === "link"
+                    ? "linkFormTitle"
+                    : editing.kind === "stream"
+                      ? "stream.formTitle"
+                      : "timeFormTitle",
                   {
                     when: formatInstant(format, target.start, zone, "full"),
                   }
                 )}
               </h3>
-              {editing.kind === "link" ? (
+              {editing.kind === "stream" ? (
+                <Field
+                  label={t("stream.formLabel")}
+                  help={t("stream.formHelp")}
+                  error={problem ?? undefined}
+                >
+                  <Input
+                    mono
+                    name="liveStreamUrl"
+                    placeholder="https://studio.youtube.com/video/…"
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={editing.value}
+                    onChange={(e) =>
+                      setEditing({ ...editing, value: e.target.value })
+                    }
+                  />
+                </Field>
+              ) : editing.kind === "link" ? (
                 <Field
                   label={t("linkFormLabel")}
                   help={t("linkFormHelp")}
@@ -477,6 +603,16 @@ export function SessionsView({
                 >
                   {t("formCancel")}
                 </Button>
+                {editing.kind === "stream" && streams?.[editing.id] ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => void writeStream(editing.id, null)}
+                  >
+                    {t("stream.remove")}
+                  </Button>
+                ) : null}
                 <Button type="submit" loading={busy}>
                   {t("formSave")}
                 </Button>

@@ -19,10 +19,12 @@ import type {
   CreateSessionBatchDto,
   CreateWeekLessonDto,
   LessonMutationResponse,
+  LiveStreamResponse,
   RecordingResponse,
   SessionBatchPreviewResponse,
   SessionBatchResponse,
   SessionResponse,
+  SetLiveStreamDto,
   UpdateLessonDto,
   WeeklyPatternDto,
 } from '../models/index';
@@ -35,6 +37,8 @@ import {
     CreateWeekLessonDtoToJSON,
     LessonMutationResponseFromJSON,
     LessonMutationResponseToJSON,
+    LiveStreamResponseFromJSON,
+    LiveStreamResponseToJSON,
     RecordingResponseFromJSON,
     RecordingResponseToJSON,
     SessionBatchPreviewResponseFromJSON,
@@ -43,6 +47,8 @@ import {
     SessionBatchResponseToJSON,
     SessionResponseFromJSON,
     SessionResponseToJSON,
+    SetLiveStreamDtoFromJSON,
+    SetLiveStreamDtoToJSON,
     UpdateLessonDtoFromJSON,
     UpdateLessonDtoToJSON,
     WeeklyPatternDtoFromJSON,
@@ -79,6 +85,10 @@ export interface GetSessionRequest {
     sessionId: string;
 }
 
+export interface ListCourseLiveStreamsRequest {
+    id: string;
+}
+
 export interface ListCourseRecordingsRequest {
     id: string;
 }
@@ -86,6 +96,11 @@ export interface ListCourseRecordingsRequest {
 export interface PreviewSessionBatchRequest {
     courseId: string;
     weeklyPatternDto: WeeklyPatternDto;
+}
+
+export interface SetLessonLiveStreamRequest {
+    id: string;
+    setLiveStreamDto: SetLiveStreamDto;
 }
 
 export interface UpdateLessonRequest {
@@ -413,6 +428,50 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
+     * Every session of the course that has a live stream link, in programme order: what nizam\'s Celseler page shows the staff. `session.live_link` (the müderris and the köşk nazımı by default, a ders nazırı when given it); 403 for anyone else, so the link never reaches a caller who may not set it. The talebe reads the link from `GET /courses/:courseId/sessions/:sessionId`, and only while the session is live (MDRS-162).
+     * The course\'s live stream links, for its staff
+     */
+    async listCourseLiveStreamsRaw(requestParameters: ListCourseLiveStreamsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<LiveStreamResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listCourseLiveStreams().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/live-streams`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(LiveStreamResponseFromJSON));
+    }
+
+    /**
+     * Every session of the course that has a live stream link, in programme order: what nizam\'s Celseler page shows the staff. `session.live_link` (the müderris and the köşk nazımı by default, a ders nazırı when given it); 403 for anyone else, so the link never reaches a caller who may not set it. The talebe reads the link from `GET /courses/:courseId/sessions/:sessionId`, and only while the session is live (MDRS-162).
+     * The course\'s live stream links, for its staff
+     */
+    async listCourseLiveStreams(requestParameters: ListCourseLiveStreamsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<LiveStreamResponse>> {
+        const response = await this.listCourseLiveStreamsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162).
      * The course\'s lesson recordings, newest week first
      */
@@ -507,6 +566,60 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async previewSessionBatch(requestParameters: PreviewSessionBatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionBatchPreviewResponse> {
         const response = await this.previewSessionBatchRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * `session.live_link` (the müderris and the köşk nazımı by default, a ders nazırı when given it). A YouTube video link in any of its usual forms, the YouTube Studio link included, is stored as `https://www.youtube.com/live/<id>`; `null` clears it. Only a LIVE session takes one, and not once it is cancelled. Does not change the course version. Written to `audit_log` as `lesson.live_stream_set` or `lesson.live_stream_clear`.
+     * Set, change or clear a session\'s live stream link
+     */
+    async setLessonLiveStreamRaw(requestParameters: SetLessonLiveStreamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LiveStreamResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling setLessonLiveStream().'
+            );
+        }
+
+        if (requestParameters['setLiveStreamDto'] == null) {
+            throw new runtime.RequiredError(
+                'setLiveStreamDto',
+                'Required parameter "setLiveStreamDto" was null or undefined when calling setLessonLiveStream().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/live-stream`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetLiveStreamDtoToJSON(requestParameters['setLiveStreamDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LiveStreamResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * `session.live_link` (the müderris and the köşk nazımı by default, a ders nazırı when given it). A YouTube video link in any of its usual forms, the YouTube Studio link included, is stored as `https://www.youtube.com/live/<id>`; `null` clears it. Only a LIVE session takes one, and not once it is cancelled. Does not change the course version. Written to `audit_log` as `lesson.live_stream_set` or `lesson.live_stream_clear`.
+     * Set, change or clear a session\'s live stream link
+     */
+    async setLessonLiveStream(requestParameters: SetLessonLiveStreamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LiveStreamResponse> {
+        const response = await this.setLessonLiveStreamRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -1,5 +1,6 @@
 import { Toast as BaseToast } from "@base-ui/react/toast";
 import type { ReactNode } from "react";
+import { useDismissStaleToasts } from "../hooks/use-dismiss-stale-toasts";
 
 export type ToastTone = "success" | "info" | "warning" | "error";
 
@@ -9,6 +10,11 @@ export interface ToastData {
 }
 
 export interface NotifyOptions {
+  /**
+   * One id per action (`"course-create"`): firing it again replaces the toast
+   * in place, so a later success takes the earlier error off the screen
+   */
+  id?: string;
   tone?: ToastTone;
   title: ReactNode;
   description?: ReactNode;
@@ -39,12 +45,14 @@ export function useToaster() {
   const manager = BaseToast.useToastManager<ToastData>();
   return {
     notify({
+      id,
       tone = "success",
       title,
       description,
       action,
     }: NotifyOptions): string {
       return manager.add({
+        id,
         type: tone,
         title,
         description,
@@ -93,6 +101,21 @@ function ToastList() {
       })}
     </>
   );
+}
+
+/**
+ * Inside `ToastProvider`: on every change of `routeKey` (the pathname) it
+ * closes the toasts that were already on screen when the user last acted, so
+ * no toast outlives the page it reports on (MDRS-214).
+ */
+export function DismissStaleToasts({ routeKey }: { routeKey: string }) {
+  const { toasts, close } = BaseToast.useToastManager<ToastData>();
+  useDismissStaleToasts(routeKey, {
+    active: () => toasts.filter((t) => t.transitionStatus !== "ending"),
+    version: (t) => `${t.id}:${t.updateKey ?? 0}`,
+    dismiss: (t) => close(t.id),
+  });
+  return null;
 }
 
 /** Once per app root (canvas rule 3: `limit={3}`); put it before any toast exists. */

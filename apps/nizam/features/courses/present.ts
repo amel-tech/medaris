@@ -8,7 +8,9 @@ import {
   fromZonedDatetimeLocal,
   meetingUrlProblem,
   normalizeMeetingUrl,
+  parseYoutubeLiveUrl,
   toZonedDatetimeLocal,
+  type YoutubeLiveProblem,
 } from "@medaris/utils";
 
 /**
@@ -771,4 +773,68 @@ export function courseErrorKey(errorBody: unknown): CourseErrorKey {
   return typeof code === "string" && Object.hasOwn(CODES, code)
     ? CODES[code as keyof typeof CODES]
     : "generic";
+}
+
+// ---- the live stream link (MDRS-228) ----------------------------------------
+
+/** The `stream.problems.*` key of a link the shared parser refuses. */
+export type LiveStreamProblemKey =
+  | "empty"
+  | "channel"
+  | "notYoutube"
+  | "notHttps"
+  | "noVideo";
+
+const PROBLEM_KEYS: Record<YoutubeLiveProblem, LiveStreamProblemKey> = {
+  empty: "empty",
+  "too-long": "noVideo",
+  invalid: "noVideo",
+  "not-https": "notHttps",
+  "not-youtube": "notYoutube",
+  channel: "channel",
+  "no-video": "noVideo",
+};
+
+/**
+ * What the "Canlı yayın" field says before anything is sent: `null` when the
+ * link is one tedrisat stores (`parseYoutubeLiveUrl` is the parser tedrisat
+ * runs), otherwise the reason. Empty is a problem here: clearing the link is
+ * its own button.
+ */
+export function liveStreamProblem(value: string): LiveStreamProblemKey | null {
+  const parsed = parseYoutubeLiveUrl(value);
+  return parsed.ok ? null : PROBLEM_KEYS[parsed.problem];
+}
+
+/**
+ * Where a refused stream write is told: under the field, in the field's own
+ * words, when tedrisat refused the link itself (`LIVE_STREAM_URL_INVALID`
+ * carries the parser's `problem`); as a toast for the session's state; the
+ * course's error otherwise.
+ */
+export type LiveStreamRefusal =
+  | { field: LiveStreamProblemKey }
+  | { toast: "stream.errors.notLive" | "stream.errors.cancelled" }
+  | { toast: `errors.${CourseErrorKey}` };
+
+export function liveStreamRefusal(errorBody: unknown): LiveStreamRefusal {
+  const body =
+    typeof errorBody === "object" && errorBody !== null
+      ? (errorBody as { code?: unknown; context?: { problem?: unknown } })
+      : {};
+  if (body.code === "LIVE_STREAM_URL_INVALID") {
+    const problem = body.context?.problem;
+    return {
+      field:
+        typeof problem === "string" && Object.hasOwn(PROBLEM_KEYS, problem)
+          ? PROBLEM_KEYS[problem as YoutubeLiveProblem]
+          : "noVideo",
+    };
+  }
+  if (body.code === "LESSON_NOT_LIVE")
+    return { toast: "stream.errors.notLive" };
+  if (body.code === "LESSON_CANCELLED") {
+    return { toast: "stream.errors.cancelled" };
+  }
+  return { toast: `errors.${courseErrorKey(errorBody)}` };
 }

@@ -135,6 +135,13 @@ COPY --from=build --chown=nestjs:nodejs /app/pnpm-workspace.yaml      ./pnpm-wor
 COPY --from=build --chown=nestjs:nodejs /app/libs/env/package.json    ./libs/env/package.json
 COPY --from=build --chown=nestjs:nodejs /app/libs/env/src             ./libs/env/src
 
+# MDRS-228: the live stream link parser is shared with the web apps and lives
+# in @medaris/utils, a source-only package. tedrisat requires its one runnable
+# file by path (`@medaris/utils/src/youtube-live.js`, an ES module that Node 22
+# loads through require()), so the symlink prod-deps made needs its target.
+COPY --from=build --chown=nestjs:nodejs /app/libs/utils/package.json  ./libs/utils/package.json
+COPY --from=build --chown=nestjs:nodejs /app/libs/utils/src           ./libs/utils/src
+
 USER nestjs
 WORKDIR /app/apps/tedrisat
 EXPOSE 3001
