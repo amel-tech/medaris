@@ -232,6 +232,13 @@
       "when": 1790950266993,
       "tag": "0032_madrasah_archive_hosting_role",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790950379254,
+      "tag": "0033_permission_groups_course_wide",
+      "breakpoints": true
     }
   ]
 }

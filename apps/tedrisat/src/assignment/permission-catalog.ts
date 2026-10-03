@@ -43,6 +43,27 @@ export const PERMISSIONS = {
   DECK_MANAGE_COURSE: "deck.manage_course",
   COURSE_NAZIR_ASSIGN: "course_nazir.assign",
   PERMISSION_GROUP_DEFINE: "permission_group.define",
+
+  // What the Medaris başnazımı can hand to a Medaris nazımı (MDRS-171,
+  // nizam/12 and 13): the platform's own catalog, in the five sections the
+  // screens draw. No role holds these by default.
+  PLATFORM_KOSK_CREATE: "platform.kosk_create",
+  PLATFORM_KOSK_NAZIM_MANAGE: "platform.kosk_nazim_manage",
+  PLATFORM_KOSK_EDIT: "platform.kosk_edit",
+  PLATFORM_HOSTING_GRANT: "platform.hosting_grant",
+  PLATFORM_MADRASAH_CREATE: "platform.madrasah_create",
+  PLATFORM_HEAD_MUDERRIS_MANAGE: "platform.head_muderris_manage",
+  PLATFORM_MADRASAH_EDIT: "platform.madrasah_edit",
+  PLATFORM_MADRASAH_NAZIR_GRANT: "platform.madrasah_nazir_grant",
+  PLATFORM_KOSK_APPLICATION_DECIDE: "platform.kosk_application_decide",
+  PLATFORM_DECK_PUBLISH: "platform.deck_publish",
+  PLATFORM_APPEAL_DECIDE: "platform.appeal_decide",
+  PLATFORM_BAN_SCOPED: "platform.ban_scoped",
+  PLATFORM_BAN_ACCOUNT: "platform.ban_account",
+  PLATFORM_AUDIT_READ: "platform.audit_read",
+  PLATFORM_INACTIVE_SCOPES_MANAGE: "platform.inactive_scopes_manage",
+  PLATFORM_YOUTUBE_MANAGE: "platform.youtube_manage",
+  PLATFORM_POLICY_EDIT: "platform.policy_edit",
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -98,3 +119,74 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<
   [ASSIGNED_ROLES.MUDERRIS]: MUDERRIS_DEFAULTS,
   [ASSIGNED_ROLES.DERS_NAZIR]: [],
 };
+
+/**
+ * The platform catalog as nizam/12 and nizam/13 section it: one entry per
+ * heading, in the order the screens print them. The sentence under a code is
+ * the web app's (`nizam.PermissionCatalog`), never the API's.
+ */
+export const PLATFORM_CATALOG: ReadonlyArray<{
+  section: string;
+  permissions: readonly PermissionCode[];
+}> = [
+  {
+    section: "kosks",
+    permissions: [
+      PERMISSIONS.PLATFORM_KOSK_CREATE,
+      PERMISSIONS.PLATFORM_KOSK_NAZIM_MANAGE,
+      PERMISSIONS.PLATFORM_KOSK_EDIT,
+      PERMISSIONS.PLATFORM_HOSTING_GRANT,
+    ],
+  },
+  {
+    section: "madrasahs",
+    permissions: [
+      PERMISSIONS.PLATFORM_MADRASAH_CREATE,
+      PERMISSIONS.PLATFORM_HEAD_MUDERRIS_MANAGE,
+      PERMISSIONS.PLATFORM_MADRASAH_EDIT,
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT,
+    ],
+  },
+  {
+    section: "requests",
+    permissions: [
+      PERMISSIONS.PLATFORM_KOSK_APPLICATION_DECIDE,
+      PERMISSIONS.PLATFORM_DECK_PUBLISH,
+      PERMISSIONS.PLATFORM_APPEAL_DECIDE,
+    ],
+  },
+  {
+    section: "bans",
+    permissions: [
+      PERMISSIONS.PLATFORM_BAN_SCOPED,
+      PERMISSIONS.PLATFORM_BAN_ACCOUNT,
+    ],
+  },
+  {
+    section: "audit",
+    permissions: [
+      PERMISSIONS.PLATFORM_AUDIT_READ,
+      PERMISSIONS.PLATFORM_INACTIVE_SCOPES_MANAGE,
+      PERMISSIONS.PLATFORM_YOUTUBE_MANAGE,
+      PERMISSIONS.PLATFORM_POLICY_EDIT,
+    ],
+  },
+];
+
+/**
+ * What a group in the scope "Her ders" or "Bir ders" may carry: the course
+ * permissions a müderris holds by default, less the two that are no course
+ * work (finding people, defining groups). nizam/13 draws no list for these
+ * scopes; this is the course half of the catalog above.
+ */
+export const COURSE_CATALOG: readonly PermissionCode[] =
+  MUDERRIS_DEFAULTS.filter(
+    (code) =>
+      code !== PERMISSIONS.USER_LOOKUP &&
+      code !== PERMISSIONS.PERMISSION_GROUP_DEFINE
+  );
+
+export const PLATFORM_CODES: ReadonlySet<string> = new Set(
+  PLATFORM_CATALOG.flatMap((s) => s.permissions)
+);
+export const COURSE_CODES: ReadonlySet<string> = new Set(COURSE_CATALOG);
