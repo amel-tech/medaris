@@ -254,6 +254,23 @@ describe("enterKeycloak", () => {
     expect(await enterKeycloak(request, null, b)).toBe("signing-in");
     expect(signIn).toHaveBeenCalledTimes(1);
   });
+
+  it("shows the box when the round trip is refused, and lets the next attempt through", async () => {
+    const { enterKeycloak } = await load();
+    const shared = new MemoryStorage();
+    const local = new MemoryStorage();
+    const refused = vi.fn(async () => {
+      throw new Error("Failed to fetch");
+    });
+    const a = tab(shared, { local, signIn: refused });
+
+    expect(await enterKeycloak(request, "OAuthCallback", a)).toBe("show-error");
+
+    const signIn = vi.fn();
+    const b = tab(shared, { local, signIn });
+    expect(await enterKeycloak(request, null, b)).toBe("signing-in");
+    expect(signIn).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("startKeycloakSignIn", () => {

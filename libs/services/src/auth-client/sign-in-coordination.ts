@@ -180,15 +180,23 @@ export type KeycloakEntryOutcome =
  */
 let startedHere = false;
 
+/**
+ * Starts the round trip; resolves to whether it did. A refusal (NextAuth could
+ * not reach its own sign-in route) lets the next attempt through and tells the
+ * caller, so the page shows the box instead of "redirecting" for ever.
+ */
 const begin = (
   signIn: KeycloakEntryDeps["signIn"],
   request: KeycloakSignInRequest
-) => {
+): Promise<boolean> => {
   startedHere = true;
-  Promise.resolve(signIn(request)).catch(() => {
-    // The navigation never started: let the next attempt through.
-    startedHere = false;
-  });
+  return Promise.resolve(signIn(request)).then(
+    () => true,
+    () => {
+      startedHere = false;
+      return false;
+    }
+  );
 };
 
 /** Settles the claim race: two tabs that wrote in the same instant re-read after this. */
@@ -243,8 +251,9 @@ export const enterKeycloak = async (
       if (deps.cancelled?.()) return "cancelled";
       if (startedHere) return "signing-in";
       if (holdsSignIn(deps.shared, tab)) {
-        begin(deps.signIn, request);
-        return "signing-in";
+        return (await begin(deps.signIn, request))
+          ? "signing-in"
+          : "show-error";
       }
     }
     await deps.sleep(pollMs);
@@ -297,5 +306,5 @@ export const startKeycloakSignIn = (
     now: deps.now(),
     force: true,
   });
-  begin(deps.signIn, request);
+  void begin(deps.signIn, request);
 };
