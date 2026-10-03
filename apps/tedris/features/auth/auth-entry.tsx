@@ -2,74 +2,95 @@
 
 import {
   authErrorMessageKey,
+  browserKeycloakEntryDeps,
+  enterKeycloak,
+  isRetryableAuthError,
   type KeycloakSignInIntent,
-  keycloakSignIn,
+  startKeycloakSignIn,
 } from "@medaris/services/auth-client";
-import { Button } from "@medaris/ui/components/button";
-import Link from "next/link";
+import { Button } from "@medaris/ui/mds/button";
+import { SystemState } from "@medaris/ui/mds/system-state";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export interface AuthEntryProps {
   intent: KeycloakSignInIntent;
   /** Already reduced to a same-origin path by the page. */
   callbackUrl: string;
-  /** NextAuth's `?error=` code; when present nothing starts on its own. */
+  /** NextAuth's `?error=` code. */
   error?: string | null;
 }
 
 /**
  * The body of the sign-in, registration and error pages (MDRS-101). They
- * replace NextAuth's built-in English pages, and all they do is send the
- * visitor straight on to Keycloak — or, after a failed round trip, say so in
- * the visitor's language and offer a retry. Retrying never starts by itself:
- * a failure that repeats would otherwise bounce between here and Keycloak.
+ * replace NextAuth's built-in English pages and send the visitor on to
+ * Keycloak.
  *
- * Placeholder layout until the launch screens are designed (MDRS-127).
+ * A failed round trip does not show the box straight away. Most failures are
+ * two tabs signing in at once and overwriting each other's state cookie
+ * (`OAuthCallback`): by the time this page loads the other tab may already
+ * have the session — then the visitor goes straight on to `callbackUrl` — and
+ * otherwise one automatic retry fixes it. The retry is counted per tab, so a
+ * failure that repeats ends on the box instead of bouncing between here and
+ * Keycloak. `AccessDenied` and `Configuration` fail the same way every time
+ * and show the box at once. See `enterKeycloak`.
  */
 export function AuthEntry({ intent, callbackUrl, error }: AuthEntryProps) {
   const t = useTranslations("tedris");
   const locale = useLocale();
+  const retryable = isRetryableAuthError(error);
+  const [failed, setFailed] = useState(Boolean(error) && !retryable);
   const started = useRef(false);
-
-  const start = useCallback(() => {
-    started.current = true;
-    keycloakSignIn({ intent, callbackUrl, locale });
-  }, [intent, callbackUrl, locale]);
+  const request = useMemo(
+    () => ({ intent, callbackUrl, locale }),
+    [intent, callbackUrl, locale]
+  );
 
   useEffect(() => {
-    // Once only: React runs effects twice in development.
-    if (error || started.current) return;
-    start();
-  }, [error, start]);
+    // Once only: React runs effects twice in development, and the page has
+    // no other job, so there is nothing to cancel.
+    if (started.current) return;
+    started.current = true;
+    void enterKeycloak(request, error, browserKeycloakEntryDeps()).then(
+      (outcome) => {
+        if (outcome === "show-error") setFailed(true);
+      }
+    );
+  }, [request, error]);
 
-  if (error) {
+  const start = () => startKeycloakSignIn(request);
+
+  if (failed) {
     return (
-      <section className="mx-auto flex max-w-md flex-col gap-4 py-16 text-center">
-        <h1 className="text-2xl font-semibold text-brand-primary">
-          {t("Auth.errorTitle")}
-        </h1>
-        <p className="text-neutral-secondary">
-          {t(`Auth.${authErrorMessageKey(error)}`)}
-        </p>
-        <div className="flex justify-center gap-2">
-          <Button onClick={start}>{t("Auth.retry")}</Button>
-          <Button variant="outline" asChild>
-            <Link href={`/${locale}`}>{t("Auth.backHome")}</Link>
-          </Button>
-        </div>
-      </section>
+      <SystemState
+        shell
+        className="font-ui"
+        title={t("Auth.errorTitle")}
+        action={
+          retryable ? (
+            <Button variant="secondary" onClick={start}>
+              {t("Auth.retry")}
+            </Button>
+          ) : (
+            <Button href={`/${locale}`} variant="secondary">
+              {t("Auth.backHome")}
+            </Button>
+          )
+        }
+      >
+        {t(`Auth.${authErrorMessageKey(error)}`)}
+      </SystemState>
     );
   }
 
   return (
-    <section className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
-      <output className="text-neutral-secondary">
+    <section className="mds-system-state font-ui">
+      <output className="mds-system-state__text">
         {intent === "register"
           ? t("Auth.redirectingRegister")
           : t("Auth.redirectingSignIn")}
       </output>
-      <Button variant="outline" onClick={start}>
+      <Button variant="secondary" onClick={start}>
         {t("Auth.continue")}
       </Button>
     </section>

@@ -1,4 +1,5 @@
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { PhoneChrome } from "~/components/phone-menu/phone-chrome";
 import { AuthEntry } from "~/features/auth/auth-entry";
 import { postSignInPage } from "~/lib/auth_pages";
 
@@ -13,8 +14,15 @@ export default async function RegisterPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations("tedris.Auth");
 
   return (
-    <AuthEntry intent="register" callbackUrl={`/${locale}${postSignInPage}`} />
+    <>
+      <PhoneChrome section={null} title={t("register")} />
+      <AuthEntry
+        intent="register"
+        callbackUrl={`/${locale}${postSignInPage}`}
+      />
+    </>
   );
 }

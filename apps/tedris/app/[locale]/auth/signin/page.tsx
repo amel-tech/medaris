@@ -1,4 +1,5 @@
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { PhoneChrome } from "~/components/phone-menu/phone-chrome";
 import { env } from "~/env";
 import { AuthEntry } from "~/features/auth/auth-entry";
 import { locales } from "~/lib/i18n/routing";
@@ -18,16 +19,20 @@ export default async function SignInPage({
   const { locale } = await params;
   const { callbackUrl, error } = await searchParams;
   setRequestLocale(locale);
+  const t = await getTranslations("tedris.Auth");
 
   return (
-    <AuthEntry
-      intent="signin"
-      callbackUrl={signInCallbackUrl(callbackUrl, {
-        baseUrl: env.NEXTAUTH_URL,
-        locales,
-        locale,
-      })}
-      error={error}
-    />
+    <>
+      <PhoneChrome section={null} title={t("signIn")} />
+      <AuthEntry
+        intent="signin"
+        callbackUrl={signInCallbackUrl(callbackUrl, {
+          baseUrl: env.NEXTAUTH_URL,
+          locales,
+          locale,
+        })}
+        error={error}
+      />
+    </>
   );
 }

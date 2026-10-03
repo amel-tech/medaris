@@ -3,11 +3,12 @@ import { textFontsHref } from "@medaris/tokens/medaris-fonts";
 import type { ReactNode } from "react";
 
 /**
- * The sign-out confirmation is on the unified design system (MDRS-156); the
- * sign-in and error pages next to it are not yet, so the system's stylesheet
- * and faces load with this segment only.
+ * The sign-in, registration, error and sign-out pages are on the unified
+ * design system (MDRS-156), so the system's stylesheet and faces load with
+ * this segment. Each page mounts `PhoneChrome` itself, with its own phone-bar
+ * title; the chrome hides the app's old header and tab row.
  */
-export default function SignOutLayout({ children }: { children: ReactNode }) {
+export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
