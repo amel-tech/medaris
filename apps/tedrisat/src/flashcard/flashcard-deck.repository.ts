@@ -1,7 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { and, eq, exists, or, SQL } from "drizzle-orm";
+import { and, eq, exists, or, SQL, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import { decks, decksUsers } from "../database/schema/flashcard-deck.schema";
+import { deckSharedWith } from "./deck-sharing";
+import { DeckPublishStatus } from "./domain/deck-publish-status.enum";
 import {
   ICreateFlashcardDeck,
   IFlashcardDeck,
@@ -12,6 +14,13 @@ import {
   IFlashcardDeckVisibility,
   IUpdateFlashcardDeck,
 } from "./flashcard-deck.repository.interface";
+
+/** What a new request or a change of visibility wipes: the last reviewer's answer (MDRS-180). */
+const CLEARED_DECISION = {
+  publishDecidedAt: null,
+  publishDecidedBy: null,
+  publishRejectReason: null,
+} as const;
 
 @Injectable()
 export class FlashcardDeckRepository implements IFlashcardDeckRepository {
@@ -70,9 +79,18 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
     return rows[0] ?? null;
   }
 
-  async findVisibility(id: string): Promise<IFlashcardDeckVisibility | null> {
+  async findVisibility(
+    id: string,
+    viewerId?: string
+  ): Promise<IFlashcardDeckVisibility | null> {
     const rows = await this.databaseService.db
-      .select({ authorId: decks.authorId, isPublic: decks.isPublic })
+      .select({
+        authorId: decks.authorId,
+        isPublic: decks.isPublic,
+        sharedWithViewer: viewerId
+          ? deckSharedWith(viewerId)
+          : sql<boolean>`false`,
+      })
       .from(decks)
       .where(eq(decks.id, id))
       .limit(1);
@@ -126,7 +144,11 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
       // to. The predicate is `findAllVisibleToUser`'s, so the two list routes
       // answer the same question about the same rows.
       where: and(
-        or(eq(decks.isPublic, true), eq(decks.authorId, userId)),
+        or(
+          eq(decks.isPublic, true),
+          eq(decks.authorId, userId),
+          deckSharedWith(userId)
+        ),
         exists(
           // using simple `eq(decksUsers.userId, userId)` instead of `exists(...)` causes bug in drizzle
           this.databaseService.db
@@ -144,9 +166,17 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
   }
 
   async create(newDeck: ICreateFlashcardDeck): Promise<IFlashcardDeck> {
+    const { isPublic = false, ...rest } = newDeck;
     const [createdDeck] = await this.databaseService.db
       .insert(decks)
-      .values(newDeck)
+      .values({
+        ...rest,
+        isPublic,
+        // The two are one fact written twice; see `DeckPublishStatus`.
+        publishStatus: isPublic
+          ? DeckPublishStatus.PUBLISHED
+          : DeckPublishStatus.PRIVATE,
+      })
       .returning();
     return createdDeck;
   }
@@ -155,11 +185,20 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
     userId: string,
     deckId: string
   ): Promise<IFlashcardDeckUserCollectionItem> {
+    // Collecting twice is not an error (MDRS-164): a double click, or a page
+    // that was stale when it was clicked. The row that is already there is the
+    // answer, and its `createdAt` stays the day the deck was first collected.
     const [createdUser] = await this.databaseService.db
       .insert(decksUsers)
       .values({ userId, deckId })
+      .onConflictDoNothing()
       .returning();
-    return createdUser;
+    if (createdUser) return createdUser;
+    const [existing] = await this.databaseService.db
+      .select()
+      .from(decksUsers)
+      .where(and(eq(decksUsers.userId, userId), eq(decksUsers.deckId, deckId)));
+    return existing;
   }
 
   async update(
@@ -171,9 +210,37 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
     // the deck-scoped card routes settle it (MDRS-63), and MDRS-43 replaces
     // that with `@Authz`. Adding an `authorId` predicate here would turn a
     // permission failure into a silent no-op instead of a 403.
+    const publishing =
+      updates.isPublic === undefined
+        ? {}
+        : {
+            publishStatus: updates.isPublic
+              ? DeckPublishStatus.PUBLISHED
+              : DeckPublishStatus.PRIVATE,
+            publishRequestedAt: null,
+            ...CLEARED_DECISION,
+          };
     return this.databaseService.db
       .update(decks)
-      .set(updates)
+      .set({ ...updates, ...publishing })
+      .where(eq(decks.id, id))
+      .returning()
+      .then((result) => result[0] || null);
+  }
+
+  async setPublishRequest(
+    id: string,
+    publishStatus: DeckPublishStatus,
+    requestedAt: Date | null
+  ): Promise<IFlashcardDeck | null> {
+    // Not `updatedAt`: asking for a review does not edit the deck.
+    return this.databaseService.db
+      .update(decks)
+      .set({
+        publishStatus,
+        publishRequestedAt: requestedAt,
+        ...CLEARED_DECISION,
+      })
       .where(eq(decks.id, id))
       .returning()
       .then((result) => result[0] || null);

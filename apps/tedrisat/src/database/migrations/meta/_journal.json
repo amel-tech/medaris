@@ -243,22 +243,78 @@
     {
       "idx": 34,
       "version": "7",
-      "when": 1790958628527,
-      "tag": "0034_madrasah_settings",
+      "when": 1790950480845,
+      "tag": "0034_kosk_policies",
       "breakpoints": true
     },
     {
       "idx": 35,
       "version": "7",
-      "when": 1790973689767,
-      "tag": "0035_course_closed",
+      "when": 1790966122608,
+      "tag": "0036_decks_summary",
       "breakpoints": true
     },
     {
       "idx": 36,
       "version": "7",
-      "when": 1790979615944,
-      "tag": "0036_madrasah_bans_offsite_requests",
+      "when": 1790967082621,
+      "tag": "0037_flashcard_review_schedule",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790969495913,
+      "tag": "0038_profile_and_kosk_application",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790971045895,
+      "tag": "0039_revoked_enrollment",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1790972623120,
+      "tag": "0041_lesson_recordings",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1790978792429,
+      "tag": "0042_course_closed_cover_label",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1790986989893,
+      "tag": "0043_deck_review_and_proposals",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1790993647795,
+      "tag": "0044_platform_admin",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1791004862496,
+      "tag": "0045_madrasah_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1791008686926,
+      "tag": "0046_madrasah_bans_offsite_requests",
       "breakpoints": true
     }
   ]

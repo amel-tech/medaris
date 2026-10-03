@@ -173,7 +173,7 @@ export class MadrasahCourseRepository {
           authorId: input.actorId,
           title: input.title,
           requiresApproval,
-          closed,
+          isClosed: closed,
         })
         .returning({ id: courses.id });
       await tx.insert(courseMuderris).values(

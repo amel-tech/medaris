@@ -540,7 +540,7 @@ describe("Medrese courses (e2e)", () => {
         requiresApproval: true,
       });
       expect(await courseRow(forced.body.id)).toMatchObject({
-        closed: true,
+        isClosed: true,
         requiresApproval: true,
       });
     });

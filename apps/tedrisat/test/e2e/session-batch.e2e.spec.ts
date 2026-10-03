@@ -11,6 +11,7 @@ import {
 } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
+import { asSystemAdmin } from "../helpers/system-admin.helper";
 import {
   createTestApp,
   OTHER_USER_ID,
@@ -60,20 +61,23 @@ const berlinLocalTime = (iso: string) =>
 
 describe("POST /courses/:courseId/sessions/batch (MDRS-109)", () => {
   let app: INestApplication;
+  let adminApp: INestApplication;
   let databaseService: DatabaseService;
   let dbUtils: TestDatabaseUtils;
   let koskId: string;
 
   beforeAll(async () => {
     app = await createTestApp({ authUserId: TEST_USER_ID });
+    adminApp = await createTestApp();
     databaseService = app.get<DatabaseService>(DatabaseService);
     dbUtils = new TestDatabaseUtils(databaseService);
   });
 
   beforeEach(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
-    const kosk = await request(app.getHttpServer())
+    const kosk = await request(adminApp.getHttpServer())
       .post("/kosks")
+      .set("Authorization", asSystemAdmin(TEST_USER_ID))
       .send({ name: "Süleymaniye Köşkü" })
       .expect(201);
     koskId = kosk.body.id;
@@ -82,6 +86,7 @@ describe("POST /courses/:courseId/sessions/batch (MDRS-109)", () => {
   afterAll(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
     await app.close();
+    await adminApp.close();
   });
 
   /** A course with week 1 (one video lesson) and week 2 (none yet). */
@@ -311,6 +316,31 @@ describe("POST /courses/:courseId/sessions/batch (MDRS-109)", () => {
     const after = await getDetail(course.id);
     expect(after.version).toBe(course.version);
     expect(after.weeks).toHaveLength(2);
+  });
+
+  it("previews the week numbers the batch then writes (nizam/55)", async () => {
+    const course = await createCourse();
+    await batch(course.id).send(istanbulBatch).expect(201);
+    const fridays = {
+      weekdays: [5],
+      startTime: "21:00",
+      timeZone: "Europe/Istanbul",
+      startDate: "2026-10-16",
+      count: 3,
+    };
+
+    const previewed = await preview(course.id).send(fridays).expect(200);
+    const written = await batch(course.id)
+      .send({ ...fridays, title: "Cuma", durationMinutes: 30 })
+      .expect(201);
+
+    const previewedWeeks = previewed.body.sessions.map(
+      (s: { weekNumber: number }) => s.weekNumber
+    );
+    expect(previewedWeeks).toEqual([2, 3, 4]);
+    expect(
+      written.body.lessons.map((l: { weekNumber: number }) => l.weekNumber)
+    ).toEqual(previewedWeeks);
   });
 
   it("answers 400 INVALID_SESSION_PATTERN to a pattern that cannot be expanded, and writes nothing", async () => {

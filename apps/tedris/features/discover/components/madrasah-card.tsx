@@ -3,9 +3,11 @@ import { Avatar } from "@medaris/ui/mds/avatar";
 import { Card } from "@medaris/ui/mds/card";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import Link from "next/link";
-import type { getTranslations } from "next-intl/server";
+import type { LooseTranslator } from "~/lib/i18n/loose";
 
-type Translate = Awaited<ReturnType<typeof getTranslations>>;
+// Typed by what the card calls, not by the whole catalogue, like the köşk card
+// (TS2589 once the celse texts joined the catalogue, MDRS-162).
+type Translate = LooseTranslator;
 
 /**
  * A medrese on Keşfet (MDRS-159, design tedris/02): its mark and name, its

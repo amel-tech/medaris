@@ -6,6 +6,7 @@ import { DatabaseService } from "../../src/database/database.service";
 import { BAN_SCOPES, bans } from "../../src/database/schema/ban.schema";
 import { courses } from "../../src/database/schema/course.schema";
 import { madrasahs } from "../../src/database/schema/madrasah.schema";
+import { asSystemAdmin } from "../helpers/system-admin.helper";
 import {
   createTestApp,
   OTHER_USER_ID,
@@ -91,6 +92,7 @@ const eventFor = (ics: string, lessonId: string) =>
 
 describe("calendar feed (e2e)", () => {
   let app: INestApplication;
+  let adminApp: INestApplication;
   let otherApp: INestApplication;
   let dbUtils: TestDatabaseUtils;
   let koskId: string;
@@ -99,6 +101,7 @@ describe("calendar feed (e2e)", () => {
     // Read by the config factory when AppModule is first imported.
     process.env.TEDRIS_WEB_URL = WEB_URL;
     app = await createTestApp({ authUserId: TEST_USER_ID });
+    adminApp = await createTestApp();
     otherApp = await createTestApp({ authUserId: OTHER_USER_ID });
     dbUtils = new TestDatabaseUtils(app.get(DatabaseService));
   });
@@ -110,8 +113,9 @@ describe("calendar feed (e2e)", () => {
       "bans",
       "madrasahs"
     );
-    const kosk = await request(app.getHttpServer())
+    const kosk = await request(adminApp.getHttpServer())
       .post("/kosks")
+      .set("Authorization", asSystemAdmin(TEST_USER_ID))
       .send({ name: "Süleymaniye Köşkü" })
       .expect(201);
     koskId = kosk.body.id;
@@ -125,6 +129,7 @@ describe("calendar feed (e2e)", () => {
       "madrasahs"
     );
     await app.close();
+    await adminApp.close();
     await otherApp.close();
     delete process.env.TEDRIS_WEB_URL;
   });
@@ -358,11 +363,13 @@ describe("calendar feed (e2e)", () => {
     expect(Number(prop(matching[0], "SEQUENCE"))).toBeGreaterThan(
       Number(prop(before as string[], "SEQUENCE"))
     );
-    expect(prop(matching[0], "DTSTART")).toBe(
-      movedTo
+    expect(matching[0].join("\n")).toContain(
+      `DTSTART;TZID=Europe/Istanbul:${new Date(
+        movedTo.getTime() + 3 * 3_600_000
+      )
         .toISOString()
-        .replace(/\.\d{3}Z$/, "Z")
-        .replace(/[-:]/g, "")
+        .replace(/\.\d{3}Z$/, "")
+        .replace(/[-:]/g, "")}`
     );
   });
 
@@ -382,6 +389,31 @@ describe("calendar feed (e2e)", () => {
     expect(Number(prop(after as string[], "SEQUENCE"))).toBeGreaterThan(
       Number(prop(before as string[], "SEQUENCE"))
     );
+  });
+
+  it("writes a cancelled session STATUS:CANCELLED and keeps it in the feed (MDRS-163)", async () => {
+    const detail = await createCourse("İptal edilen");
+    const lesson = firstLesson(detail);
+    await request(otherApp.getHttpServer())
+      .post(`/courses/${detail.id}/enroll`)
+      .expect(201);
+    const { url } = await issueFeed(otherApp);
+    expect(
+      prop(
+        eventFor((await fetchFeed(url)).body, lesson.id) as string[],
+        "STATUS"
+      )
+    ).toBeUndefined();
+
+    await app
+      .get(DatabaseService)
+      .db.execute(
+        `UPDATE "lessons" SET "cancelled_at" = now() WHERE "id" = '${lesson.id}'`
+      );
+
+    const event = eventFor((await fetchFeed(url)).body, lesson.id);
+    expect(event).toBeDefined();
+    expect(prop(event as string[], "STATUS")).toBe("CANCELLED");
   });
 
   it("answers 404 for the old URL once the link is regenerated", async () => {

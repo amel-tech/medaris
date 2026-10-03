@@ -43,15 +43,9 @@ const ABSENT_ID = "00000000-0000-4000-8000-000000000000";
 const MEETING_URL = "https://meet.google.com/abc-defg-hij";
 const RESOURCE_URL = "https://files.medaris.test/serh.pdf";
 const KAYNAK = "Şerh · s. 1-4";
-const CONTENT_MARKERS = [
-  "meetingUrl",
-  "agenda",
-  "kaynak",
-  '"url"',
-  MEETING_URL,
-  RESOURCE_URL,
-  KAYNAK,
-];
+// The sample session (isPreview) keeps its source line and agenda (MDRS-161),
+// so only the link and the resource urls are markers here.
+const CONTENT_MARKERS = ["meetingUrl", '"url"', MEETING_URL, RESOURCE_URL];
 
 describe("Public köşk, medrese and course pages (MDRS-122, e2e)", () => {
   let app: INestApplication;
@@ -112,17 +106,31 @@ describe("Public köşk, medrese and course pages (MDRS-122, e2e)", () => {
       .returning();
     await db()
       .insert(lessons)
-      .values({
-        weekId: week.id,
-        title: "Canlı halka",
-        type: LessonType.LIVE,
-        durationMinutes: 60,
-        scheduledAt: new Date("2026-10-05T18:00:00Z"),
-        meetingUrl: MEETING_URL,
-        kaynak: KAYNAK,
-        agenda: [{ time: "21:00", title: "Açılış" }],
-        isPreview: true,
-      });
+      .values([
+        {
+          weekId: week.id,
+          title: "Canlı halka",
+          type: LessonType.LIVE,
+          durationMinutes: 60,
+          scheduledAt: new Date("2026-10-05T18:00:00Z"),
+          meetingUrl: MEETING_URL,
+          kaynak: KAYNAK,
+          agenda: [{ time: "21:00", title: "Açılış" }],
+          isPreview: true,
+          orderIndex: 0,
+        },
+        {
+          weekId: week.id,
+          title: "Kapalı halka",
+          type: LessonType.LIVE,
+          durationMinutes: 60,
+          scheduledAt: new Date("2026-10-12T18:00:00Z"),
+          meetingUrl: MEETING_URL,
+          kaynak: "Gizli kaynak",
+          agenda: [{ time: "21:00", title: "Gizli adım" }],
+          orderIndex: 1,
+        },
+      ]);
     await db().insert(courseResources).values({
       courseId: course.id,
       name: "Şerh",
@@ -362,6 +370,17 @@ describe("Public köşk, medrese and course pages (MDRS-122, e2e)", () => {
         durationMinutes: 60,
       });
       expectNoContent(res.body);
+      // The sample session (tedris/05) keeps its source line and agenda; the
+      // next one keeps nothing, and neither carries the link.
+      const [sample, closed] = res.body.weeks[0].lessons;
+      expect(sample).toMatchObject({
+        isPreview: true,
+        kaynak: KAYNAK,
+        agenda: [{ time: "21:00", title: "Açılış" }],
+      });
+      expect(JSON.stringify(res.body)).not.toContain("Gizli");
+      expect(closed).not.toHaveProperty("kaynak");
+      expect(closed).not.toHaveProperty("agenda");
     });
 
     it("answers a draft, a hidden course and any course of an unlisted köşk as not found", async () => {

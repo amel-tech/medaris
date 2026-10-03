@@ -69,7 +69,7 @@ export const SessionProgramme = async ({
             opensOnLabel={t("SessionPage.opensOn", { date: "{date}" })}
             emptyLabel={t("SessionPage.weekEmpty")}
           >
-            {rows.map(({ lesson, state: rowState, cancelled }) => (
+            {rows.map(({ lesson, state: rowState, cancelled, live }) => (
               <LessonRow
                 key={lesson.id}
                 title={lesson.title}
@@ -84,7 +84,11 @@ export const SessionProgramme = async ({
                 startsAt={lesson.scheduledAt?.toISOString()}
                 timeZone={timeZone}
                 courseTimeZone={course.timeZone}
-                currentLabel={t("SessionPage.rowCurrent")}
+                currentLabel={
+                  live
+                    ? t("SessionPage.rowCurrentLive")
+                    : t("SessionPage.rowCurrent")
+                }
                 doneLabel={t("SessionPage.rowDone")}
                 localTimeLabel={t("SessionPage.localTime")}
                 minuteUnit={t("SessionPage.minuteUnit")}

@@ -32,7 +32,12 @@ export interface IArchivePage {
 }
 
 /** What a köşk manager may bring back: the contents of their own köşk. */
-const KOSK_SCOPED: readonly ArchiveItemType[] = ["course", "week", "session"];
+const KOSK_SCOPED: readonly ArchiveItemType[] = [
+  "course",
+  "week",
+  "session",
+  "deck",
+];
 
 /** What a medrese's başmüderris may bring back: the contents of their own medrese, by kademe. */
 const MADRASAH_SCOPED: readonly ArchiveItemType[] = [

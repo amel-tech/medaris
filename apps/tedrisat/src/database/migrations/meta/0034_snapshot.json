@@ -1,5 +1,5 @@
 {
-  "id": "4d8d052d-d2f5-4e67-80ae-50aad861c847",
+  "id": "9e81a207-c225-49c4-986e-48778f392816",
   "prevId": "a6cab698-158b-4b9e-80aa-6865f7a562a7",
   "version": "7",
   "dialect": "postgresql",
@@ -1797,6 +1797,20 @@
           "notNull": true,
           "default": "'{}'"
         },
+        "always_require_approval": {
+          "name": "always_require_approval",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "recordings_never_public": {
+          "name": "recordings_never_public",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "verified": {
           "name": "verified",
           "type": "boolean",
@@ -1866,73 +1880,6 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.madrasah_settings": {
-      "name": "madrasah_settings",
-      "schema": "",
-      "columns": {
-        "madrasah_id": {
-          "name": "madrasah_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "policy_closed_course_required": {
-          "name": "policy_closed_course_required",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "policy_always_approval": {
-          "name": "policy_always_approval",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "policy_no_public_recordings": {
-          "name": "policy_no_public_recordings",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_by": {
-          "name": "updated_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "madrasah_settings_madrasah_id_madrasahs_id_fk": {
-          "name": "madrasah_settings_madrasah_id_madrasahs_id_fk",
-          "tableFrom": "madrasah_settings",
-          "tableTo": "madrasahs",
-          "columnsFrom": [
-            "madrasah_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},

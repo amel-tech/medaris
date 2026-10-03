@@ -12,12 +12,15 @@ import {
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Delete,
   Get,
   HttpException,
   HttpStatus,
   Param,
   ParseBoolPipe,
+  ParseEnumPipe,
+  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -29,6 +32,7 @@ import {
 import {
   ApiBearerAuth,
   ApiBody,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
@@ -41,11 +45,17 @@ import {
   IncludeApiQuery,
   IncludeQuery,
 } from "./decorators/include-query.decorator";
+import { FlashcardType } from "./domain/flashcard-type.enum";
 import { CreateFlashcardDeckDto } from "./dto/create-flashcard-deck.dto";
 import { FlashcardDeckResponse } from "./dto/flashcard-deck-response.dto";
+import {
+  FlashcardDeckExploreResponse,
+  FlashcardDeckSummaryResponse,
+} from "./dto/flashcard-deck-summary-response.dto";
 import { FlashcardDeckUserResponse } from "./dto/flashcard-deck-user-response.dto";
 import { UpdateFlashcardDeckDto } from "./dto/update-flashcard-deck.dto";
 import { FlashcardDeckService } from "./flashcard-deck.service";
+import { FlashcardDeckSummaryService } from "./flashcard-deck-summary.service";
 import { AuthorizedRequest } from "./interfaces/authorized-request.interface";
 import { PublicRequest } from "./interfaces/public-request.interface";
 
@@ -57,7 +67,10 @@ export enum DeckIncludeEnum {}
 @UseGuards(AuthGuard, AuthzGuard)
 @Controller("flashcard/decks")
 export class FlashcardDeckController {
-  constructor(private readonly deckService: FlashcardDeckService) {}
+  constructor(
+    private readonly deckService: FlashcardDeckService,
+    private readonly summaryService: FlashcardDeckSummaryService
+  ) {}
 
   // GET Requests
 
@@ -78,6 +91,74 @@ export class FlashcardDeckController {
   ): Promise<FlashcardDeckResponse[]> {
     const userId = request.user.sub;
     return this.deckService.findAllByUser(userId);
+  }
+
+  @ApiOperation({
+    summary: "Get the caller's decks with their progress",
+    description:
+      "The caller's own decks followed by the decks of other people they collected, each with the card counts and the caller's progress through them, so a list page makes one request instead of one per deck.",
+    operationId: "getFlashcardDeckSummaries",
+  })
+  @ApiOkResponse({ type: FlashcardDeckSummaryResponse, isArray: true })
+  // Exempt for the reason `/collections` is: the rows are chosen by the
+  // caller's own `sub`, in the query, and no resource is named in the request.
+  // Declared before `:id` so `summary` is not read as a deck id.
+  @AuthzExempt()
+  @Get("summary")
+  async summary(
+    @Req() request: AuthorizedRequest
+  ): Promise<FlashcardDeckSummaryResponse[]> {
+    return this.summaryService.summarize(request.user.sub);
+  }
+
+  @ApiOperation({
+    summary: "The decks to study today",
+    description:
+      "The decks of the caller's collection with something to study (MDRS-165): first the ones with cards waiting for a repeat, most first, then the decks of other people that grew since the caller collected them.",
+    operationId: "getFlashcardDecksDueToday",
+  })
+  @ApiQuery({
+    name: "limit",
+    required: false,
+    type: Number,
+    description: "At most this many decks; 3 by default, 10 at most.",
+  })
+  @ApiOkResponse({ type: FlashcardDeckSummaryResponse, isArray: true })
+  // Exempt for the reason `summary` is. Declared before `:id`.
+  @AuthzExempt()
+  @Get("due")
+  async dueToday(
+    @Req() request: AuthorizedRequest,
+    @Query("limit", new DefaultValuePipe(3), ParseIntPipe) limit: number
+  ): Promise<FlashcardDeckSummaryResponse[]> {
+    return this.summaryService.dueToday(
+      request.user.sub,
+      Math.min(Math.max(limit, 1), 10)
+    );
+  }
+
+  @ApiOperation({
+    summary: "Discover decks to collect",
+    description:
+      "The decks of the courses, köşks and medreses the caller is enrolled in, and the decks Medaris published, each marked with whether the caller has it in the collection.",
+    operationId: "exploreFlashcardDecks",
+  })
+  @ApiQuery({
+    name: "cardType",
+    required: false,
+    enum: FlashcardType,
+    description: "Leaves out decks of the other kind.",
+  })
+  @ApiOkResponse({ type: FlashcardDeckExploreResponse })
+  // Exempt, as `summary` above: visibility is the query's predicate.
+  @AuthzExempt()
+  @Get("explore")
+  async explore(
+    @Req() request: AuthorizedRequest,
+    @Query("cardType", new ParseEnumPipe(FlashcardType, { optional: true }))
+    cardType?: FlashcardType
+  ): Promise<FlashcardDeckExploreResponse> {
+    return this.summaryService.explore(request.user.sub, cardType);
   }
 
   @ApiOperation({
@@ -212,6 +293,27 @@ export class FlashcardDeckController {
     return this.deckService.addToUserCollection(userId, deckId);
   }
 
+  @ApiOperation({
+    summary: "Ask for a deck to be published",
+    description:
+      "Marks a private deck as waiting for Medaris to review it. The deck stays private until it is published.",
+    operationId: "requestFlashcardDeckPublication",
+  })
+  @ApiCreatedResponse({ type: FlashcardDeckResponse })
+  @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
+  @ApiConflictResponse({
+    description: "The deck already waits for review or is already public",
+  })
+  // The author's call, like every write on the deck: the scope that edits it.
+  @Authz(SCOPES.MANAGE_PRIVATE_DECK, byParam(ENTITIES.FLASHCARD_DECK))
+  @Post(":id/publish-request")
+  async requestPublication(
+    @Param("id", ParseUUIDPipe) deckId: string
+  ): Promise<FlashcardDeckResponse> {
+    return this.deckService.requestPublish(deckId);
+  }
+
   // PUT Requests
 
   @ApiOperation({
@@ -295,6 +397,24 @@ export class FlashcardDeckController {
     // and the cards FK cascades, so the guard above is what keeps one user's
     // deck — and its cards — out of another user's reach.
     return this.deckService.delete(deckId);
+  }
+
+  @ApiOperation({
+    summary: "Withdraw a publication request, or take a public deck back",
+    description:
+      "Cancels the request for review, or turns a published deck private again.",
+    operationId: "withdrawFlashcardDeckPublication",
+  })
+  @ApiOkResponse({ type: FlashcardDeckResponse })
+  @ApiNotFoundResponse({ description: "Deck not found" })
+  @ApiForbiddenResponse({ description: "Deck belongs to another user" })
+  @ApiConflictResponse({ description: "The deck is private already" })
+  @Authz(SCOPES.MANAGE_PRIVATE_DECK, byParam(ENTITIES.FLASHCARD_DECK))
+  @Delete(":id/publish-request")
+  async withdrawPublication(
+    @Param("id", ParseUUIDPipe) deckId: string
+  ): Promise<FlashcardDeckResponse> {
+    return this.deckService.withdrawPublish(deckId);
   }
 
   @ApiOperation({

@@ -65,6 +65,12 @@ export interface MadrasahBanResponse {
      */
     courseId: string | null;
     /**
+     * The köşk the ban sits in; the Medaris-wide list names it.
+     * @type {string}
+     * @memberof MadrasahBanResponse
+     */
+    koskName: string | null;
+    /**
      * 
      * @type {string}
      * @memberof MadrasahBanResponse
@@ -167,6 +173,7 @@ export function instanceOfMadrasahBanResponse(value: object): value is MadrasahB
     if (!('scope' in value) || value['scope'] === undefined) return false;
     if (!('koskId' in value) || value['koskId'] === undefined) return false;
     if (!('courseId' in value) || value['courseId'] === undefined) return false;
+    if (!('koskName' in value) || value['koskName'] === undefined) return false;
     if (!('courseTitle' in value) || value['courseTitle'] === undefined) return false;
     if (!('madrasahName' in value) || value['madrasahName'] === undefined) return false;
     if (!('extendedFromCourseId' in value) || value['extendedFromCourseId'] === undefined) return false;
@@ -200,6 +207,7 @@ export function MadrasahBanResponseFromJSONTyped(json: any, ignoreDiscriminator:
         'scope': BanScopeFromJSON(json['scope']),
         'koskId': json['koskId'],
         'courseId': json['courseId'],
+        'koskName': json['koskName'],
         'courseTitle': json['courseTitle'],
         'madrasahName': json['madrasahName'],
         'extendedFromCourseId': json['extendedFromCourseId'],
@@ -234,6 +242,7 @@ export function MadrasahBanResponseToJSONTyped(value?: MadrasahBanResponse | nul
         'scope': BanScopeToJSON(value['scope']),
         'koskId': value['koskId'],
         'courseId': value['courseId'],
+        'koskName': value['koskName'],
         'courseTitle': value['courseTitle'],
         'madrasahName': value['madrasahName'],
         'extendedFromCourseId': value['extendedFromCourseId'],

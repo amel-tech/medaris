@@ -32,6 +32,12 @@ export interface UpdateFlashcardDeckDto {
      */
     isPublic?: boolean;
     /**
+     * Free labels, trimmed and de-duplicated by the server. Only the author reads them back.
+     * @type {Array<string>}
+     * @memberof UpdateFlashcardDeckDto
+     */
+    tags?: Array<string>;
+    /**
      * 
      * @type {string}
      * @memberof UpdateFlashcardDeckDto
@@ -58,6 +64,7 @@ export function UpdateFlashcardDeckDtoFromJSONTyped(json: any, ignoreDiscriminat
         
         'title': json['title'] == null ? undefined : json['title'],
         'isPublic': json['isPublic'] == null ? undefined : json['isPublic'],
+        'tags': json['tags'] == null ? undefined : json['tags'],
         'description': json['description'] == null ? undefined : json['description'],
     };
 }
@@ -75,6 +82,7 @@ export function UpdateFlashcardDeckDtoToJSONTyped(value?: UpdateFlashcardDeckDto
         
         'title': value['title'],
         'isPublic': value['isPublic'],
+        'tags': value['tags'],
         'description': value['description'],
     };
 }

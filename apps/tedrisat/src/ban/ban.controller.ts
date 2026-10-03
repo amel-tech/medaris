@@ -8,6 +8,7 @@ import {
   HttpStatus,
   Param,
   ParseEnumPipe,
+  ParseIntPipe,
   ParseUUIDPipe,
   Post,
   Query,
@@ -26,18 +27,30 @@ import {
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
+import { BAN_SCOPES, type BanScope } from "../database/schema/ban.schema";
 import { AuthenticatedUserRequest } from "../user/interfaces/authenticated-user-request.interface";
-import { BanService } from "./ban.service";
+import {
+  BanService,
+  type IAllBansList,
+} from "./ban.service";
 import { presentBan, presentList, presentMadrasahBan } from "./ban-present";
 import {
+  AllBansListResponse,
+  BAN_LIST_LIMIT_MAX,
   BAN_STATUSES,
   BanListResponse,
   BanResponse,
   type BanStatus,
   CreateBanDto,
+  ExtendBanDto,
   LiftBanDto,
 } from "./dto/ban.dto";
 import { BanReasonDto, MadrasahBanResponse } from "./dto/madrasah-ban.dto";
+
+const presentAll = (list: IAllBansList): AllBansListResponse => ({
+  ...presentList(list),
+  total: list.total,
+});
 
 /**
  * Bans (MDRS-177, screens nizam/41 and nizam/42). Like `ArchiveController`,
@@ -99,6 +112,73 @@ export class BanController {
     return presentList(
       await this.bans.listForKosk(request.user, koskId, status)
     );
+  }
+
+  @ApiOperation({
+    summary: "Every ban of every köşk, open or lifted (Medaris Yasaklamalar)",
+    description:
+      "Newest first, one page at a time, with platform-wide counts for the tabs. Medaris administration only: the başnazım and the Medaris nazımı. `q` matches the person's name or e-mail; `scope` keeps one scope.",
+    operationId: "listAllBans",
+  })
+  @ApiQuery({ name: "status", required: false, enum: BAN_STATUSES })
+  @ApiQuery({
+    name: "scope",
+    required: false,
+    enum: Object.values(BAN_SCOPES),
+  })
+  @ApiQuery({ name: "q", required: false })
+  @ApiQuery({ name: "limit", required: false, type: Number })
+  @ApiQuery({ name: "offset", required: false, type: Number })
+  @ApiOkResponse({ type: AllBansListResponse })
+  @ApiForbiddenResponse({ description: "BAN_FORBIDDEN" })
+  @Get("bans")
+  async listAll(
+    @Req() request: AuthenticatedUserRequest,
+    @Query(
+      "status",
+      new DefaultValuePipe("ACTIVE"),
+      new ParseEnumPipe(BAN_STATUSES)
+    )
+    status: BanStatus,
+    @Query(
+      "scope",
+      new ParseEnumPipe(Object.values(BAN_SCOPES), { optional: true })
+    )
+    scope?: BanScope,
+    @Query("q") q?: string,
+    @Query("limit", new DefaultValuePipe(50), ParseIntPipe) limit = 50,
+    @Query("offset", new DefaultValuePipe(0), ParseIntPipe) offset = 0
+  ): Promise<AllBansListResponse> {
+    return presentAll(
+      await this.bans.listAll(request.user, {
+        status,
+        scope,
+        // A repeated query key arrives as an array; only a single value is read.
+        q: typeof q === "string" ? q.slice(0, 100) : undefined,
+        limit: Math.min(Math.max(limit, 1), BAN_LIST_LIMIT_MAX),
+        offset: Math.max(offset, 0),
+      })
+    );
+  }
+
+  @ApiOperation({
+    summary: "Widen a course ban to the whole köşk (Yasağı genişlet)",
+    description:
+      "Opens a KOSK ban for the same person with its own reason and leaves the course ban standing; the audit row says `ban.extend`. The köşk's nazım and above. A person already barred from the köşk gets the standing ban back.",
+    operationId: "extendBan",
+  })
+  @ApiOkResponse({ type: BanResponse })
+  @ApiForbiddenResponse({ description: "BAN_FORBIDDEN" })
+  @ApiNotFoundResponse()
+  @ApiConflictResponse({ description: "BAN_ALREADY_LIFTED" })
+  @Post("bans/:banId/extend")
+  @HttpCode(HttpStatus.OK)
+  extend(
+    @Req() request: AuthenticatedUserRequest,
+    @Param("banId", ParseUUIDPipe) banId: string,
+    @Body() dto: ExtendBanDto
+  ): Promise<BanResponse> {
+    return this.bans.extend(request.user, banId, dto).then(presentBan);
   }
 
   @ApiOperation({

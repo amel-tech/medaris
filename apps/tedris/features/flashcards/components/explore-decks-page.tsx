@@ -1,209 +1,275 @@
 "use client";
 
-import { MagnifyingGlassIcon } from "@medaris/icons";
-import type { FlashcardDeckResponse } from "@medaris/services/tedrisat";
-import { Input } from "@medaris/ui/components/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@medaris/ui/components/select";
-import Link from "next/link";
+import type {
+  FlashcardDeckExploreResponse,
+  FlashcardDeckSummaryResponse,
+  FlashcardType,
+} from "@medaris/services/tedrisat";
+import { Badge } from "@medaris/ui/mds/badge";
+import { Breadcrumb } from "@medaris/ui/mds/breadcrumb";
+import { Button } from "@medaris/ui/mds/button";
+import { ChoiceChips } from "@medaris/ui/mds/choice-chips";
+import { EmptyState } from "@medaris/ui/mds/empty-state";
+import { Icon } from "@medaris/ui/mds/icon";
+import { Input } from "@medaris/ui/mds/input";
+import { SystemState } from "@medaris/ui/mds/system-state";
+import { useToaster } from "@medaris/ui/mds/toast";
 import { usePathname, useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef, useState } from "react";
-import DeckCard from "~/features/flashcards/components/deck/deck-card";
+import { useLocale, useTranslations } from "next-intl";
+import { useId, useState } from "react";
+import { addDeckToCollection, removeDeckFromCollection } from "../actions";
+import { attempt } from "../attempt";
+import { matchesQuery } from "../deck-model";
+import { KindBadge } from "./deck-badges";
+import { type DeckCardLabels, DeckSummaryCard } from "./deck-summary-card";
 
-type SortOption = "title-asc" | "title-desc";
-type FilterOption = "all" | "public" | "private";
+export interface ExploreDecksPageProps {
+  /** null when the server could not read them: the page offers a retry */
+  data: FlashcardDeckExploreResponse | null;
+  /** the card-type filter the address carries, or null for every type */
+  cardType: FlashcardType | null;
+}
 
-const DECKS_PER_PAGE = 16;
+const GRID =
+  "grid gap-grid grid-cols-3 max-lg:grid-cols-2 max-md:grid-cols-1 [&>*]:min-inline-0";
+const TYPES = ["all", "VOCABULARY", "HADEETH"] as const;
 
-export function ExploreDecksPage({
-  initialDecks,
-  userDeckIds,
-  filter,
-  currentUserId,
-}: {
-  initialDecks: FlashcardDeckResponse[];
-  userDeckIds: string[];
-  filter: FilterOption;
-  currentUserId?: string;
-}) {
-  const t = useTranslations("tedris");
+/**
+ * Desteleri keşfet (design tedris/26): the decks of the caller's courses and
+ * the published decks, a card-type filter that the address carries (so a
+ * filtered result is a link), a search box over what is shown, and "Koleksiyona
+ * ekle" / "Çıkar" on each deck. Adding and removing answer at once and are
+ * undone with a toast if the API refuses; a deck is busy while its request is
+ * out, so a second click does nothing.
+ */
+export function ExploreDecksPage({ data, cardType }: ExploreDecksPageProps) {
+  const t = useTranslations("tedris.Decks");
+  const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>("title-asc");
-  const [displayedCount, setDisplayedCount] = useState(DECKS_PER_PAGE);
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
-  const observerTarget = useRef<HTMLDivElement>(null);
-  const userDeckIdsSet = useMemo(() => new Set(userDeckIds), [userDeckIds]);
+  const toaster = useToaster();
+  const [query, setQuery] = useState("");
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
+  const courseId = useId();
+  const publicId = useId();
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [searchQuery]);
+  const labels: DeckCardLabels = {
+    cards: (count) => t("cards", { count }),
+    cardType: (kind) =>
+      kind === "HADEETH" ? t("cardTypeHADEETH") : t("cardTypeVOCABULARY"),
+    completed: (done, total) => t("completed", { done, total }),
+    muderris: (name) => t("muderris", { name }),
+  };
+  const kindLabel = (kind: "COURSE" | "KOSK" | "MADRASAH" | "PUBLIC") =>
+    kind === "COURSE"
+      ? t("kindCOURSE")
+      : kind === "KOSK"
+        ? t("kindKOSK")
+        : kind === "MADRASAH"
+          ? t("kindMADRASAH")
+          : t("kindPUBLIC");
 
-  const filteredAndSortedDecks = useMemo(() => {
-    let filtered = [...initialDecks];
-    if (debouncedSearchQuery.trim()) {
-      const query = debouncedSearchQuery.toLowerCase();
-      filtered = filtered.filter((deck) => {
-        const titleMatch = deck.title?.toLowerCase().includes(query);
-        const descriptionMatch = deck.description
-          ?.toLowerCase()
-          .includes(query);
-        return titleMatch || descriptionMatch;
-      });
-    }
-    filtered.sort((a, b) => {
-      const titleA = a.title?.toLowerCase() || "";
-      const titleB = b.title?.toLowerCase() || "";
-      if (sortBy === "title-asc") {
-        return titleA.localeCompare(titleB);
-      }
-      return titleB.localeCompare(titleA);
-    });
-    return filtered;
-  }, [initialDecks, debouncedSearchQuery, sortBy]);
+  const inCollection = (deck: FlashcardDeckSummaryResponse) =>
+    overrides[deck.id] ?? deck.inCollection;
 
-  const displayedDecks = useMemo(() => {
-    return filteredAndSortedDecks.slice(0, displayedCount);
-  }, [filteredAndSortedDecks, displayedCount]);
-
-  useEffect(() => {
-    setDisplayedCount(DECKS_PER_PAGE);
-  }, [debouncedSearchQuery, sortBy, filter]);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (
-          entries[0].isIntersecting &&
-          displayedCount < filteredAndSortedDecks.length
-        ) {
-          setDisplayedCount((prev) =>
-            Math.min(prev + DECKS_PER_PAGE, filteredAndSortedDecks.length)
-          );
-        }
-      },
-      { threshold: 0.1 }
+  const toggle = async (deck: FlashcardDeckSummaryResponse, next: boolean) => {
+    if (busy.has(deck.id)) return;
+    const before = inCollection(deck);
+    setBusy((s) => new Set(s).add(deck.id));
+    setOverrides((o) => ({ ...o, [deck.id]: next }));
+    const result = await attempt(() =>
+      next ? addDeckToCollection(deck.id) : removeDeckFromCollection(deck.id)
     );
-    const currentTarget = observerTarget.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
+    setBusy((s) => {
+      const rest = new Set(s);
+      rest.delete(deck.id);
+      return rest;
+    });
+    if (result.success) {
+      router.refresh();
+      return;
     }
-    return () => {
-      if (currentTarget) {
-        observer.unobserve(currentTarget);
-      }
-    };
-  }, [displayedCount, filteredAndSortedDecks.length]);
+    setOverrides((o) => ({ ...o, [deck.id]: before }));
+    toaster.notify({
+      tone: "error",
+      title: t(next ? "addFailedTitle" : "removeFailedTitle"),
+      description: t("tryAgain"),
+    });
+  };
 
-  return (
-    <div className="w-full">
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <MagnifyingGlassIcon
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
-            size={20}
-          />
-          <Input
-            type="text"
-            placeholder={t("ExploreDecksClient.searchPlaceholder")}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Select
-            value={sortBy}
-            onValueChange={(value) => setSortBy(value as SortOption)}
+  const changeType = (value: string | null) => {
+    const type = value && value !== "all" ? value : null;
+    router.push(type ? `${pathname}?type=${type}` : pathname);
+  };
+
+  const shell = (children: React.ReactNode) => (
+    <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
+      {children}
+    </main>
+  );
+
+  if (!data) {
+    return shell(
+      <SystemState
+        shell
+        headingLevel={2}
+        title={t("errorTitle")}
+        action={
+          <Button variant="outline" onClick={() => router.refresh()}>
+            {t("retry")}
+          </Button>
+        }
+      >
+        {t("errorText")}
+      </SystemState>
+    );
+  }
+
+  const courseDecks = data.courseDecks.filter((d) =>
+    matchesQuery(d, query, locale)
+  );
+  const publicDecks = data.publicDecks.filter((d) =>
+    matchesQuery(d, query, locale)
+  );
+
+  const actionsOf = (deck: FlashcardDeckSummaryResponse) => {
+    if (deck.isMine) return <span className="mds-caption">{t("yours")}</span>;
+    const isBusy = busy.has(deck.id);
+    if (inCollection(deck)) {
+      return (
+        <span className="flex shrink-0 items-center gap-2">
+          <Badge variant="success" icon={<Icon name="check" size="sm" />}>
+            {t("inCollection")}
+          </Badge>
+          <Button
+            variant="ghost"
+            size="mini"
+            loading={isBusy}
+            aria-label={t("removeLabel", { title: deck.title })}
+            onClick={() => toggle(deck, false)}
           >
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder={t("ExploreDecksClient.sortBy")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="title-asc">
-                {t("ExploreDecksClient.titleAsc")}
-              </SelectItem>
-              <SelectItem value="title-desc">
-                {t("ExploreDecksClient.titleDesc")}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={filter}
-            onValueChange={(value) => {
-              const next = value as FilterOption;
-              const params = new URLSearchParams();
-              if (next !== "all") params.set("filter", next);
-              const qs = params.toString();
-              router.push(qs ? `${pathname}?${qs}` : pathname);
-            }}
-          >
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder={t("ExploreDecksClient.filter")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("ExploreDecksClient.all")}</SelectItem>
-              <SelectItem value="public">
-                {t("ExploreDecksClient.public")}
-              </SelectItem>
-              <SelectItem value="private">
-                {t("ExploreDecksClient.private")}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+            {t("remove")}
+          </Button>
+        </span>
+      );
+    }
+    return (
+      <Button
+        variant="outline"
+        size="small"
+        iconLeft={<Icon name="plus" />}
+        loading={isBusy}
+        aria-label={t("addLabel", { title: deck.title })}
+        onClick={() => toggle(deck, true)}
+      >
+        {t("add")}
+      </Button>
+    );
+  };
 
-      <div className="mb-4 text-sm text-muted-foreground">
-        {filteredAndSortedDecks.length}{" "}
-        {filteredAndSortedDecks.length === 1
-          ? t("ExploreDecksClient.deck")
-          : t("ExploreDecksClient.decks")}{" "}
-        {t("ExploreDecksClient.found")}
+  const section = (
+    id: string,
+    title: string,
+    hint: string,
+    decks: FlashcardDeckSummaryResponse[],
+    empty: string,
+    withKind: boolean
+  ) => (
+    <section className="flex flex-col gap-5" aria-labelledby={id}>
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="mds-h2" id={id}>
+          {title}
+        </h2>
+        <span className="mds-caption">
+          {t("deckCount", { count: decks.length })}
+        </span>
       </div>
-
-      {displayedDecks.length > 0 ? (
-        <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6">
-          {displayedDecks.map((deck) => (
-            <Link href={`/decks/${deck.id}`} key={deck.id}>
-              <DeckCard
-                deckId={deck.id}
-                title={deck.title}
-                description={deck.description}
-                cardCount={0}
-                isInCollection={userDeckIdsSet.has(deck.id)}
-                isPublic={deck.isPublic}
-                isOwner={!!currentUserId && deck.authorId === currentUserId}
-              />
-            </Link>
-          ))}
-        </div>
+      <p className="mds-body-sm max-inline-measure">{hint}</p>
+      {decks.length === 0 ? (
+        <EmptyState icon={<Icon name="cards" size="lg" />}>{empty}</EmptyState>
       ) : (
-        <div className="flex items-center justify-center py-12 text-muted-foreground">
-          <p>{t("ExploreDecksClient.noDecksFound")}</p>
-        </div>
+        <ul className={GRID} aria-labelledby={id}>
+          {decks.map((deck) => (
+            <li key={deck.id} className="flex">
+              <DeckSummaryCard
+                deck={deck}
+                labels={labels}
+                showProgress={deck.isMine || inCollection(deck)}
+                badge={
+                  withKind && deck.collectionKind ? (
+                    <KindBadge
+                      kind={deck.collectionKind}
+                      label={kindLabel(deck.collectionKind)}
+                    />
+                  ) : null
+                }
+                actions={actionsOf(deck)}
+              />
+            </li>
+          ))}
+        </ul>
       )}
+    </section>
+  );
 
-      {displayedCount < filteredAndSortedDecks.length && (
-        <div
-          ref={observerTarget}
-          className="h-20 flex items-center justify-center"
-        >
-          <p className="text-sm text-muted-foreground">
-            {t("ExploreDecksClient.loadingMore")}
-          </p>
+  const searching = query.trim() !== "";
+  return shell(
+    <>
+      <div className="flex flex-col gap-3">
+        <Breadcrumb
+          label={t("breadcrumbLabel")}
+          items={[{ label: t("title"), href: "/decks" }, t("explore")]}
+        />
+        <h1 className="mds-h1">{t("explore")}</h1>
+        <p className="mds-body-sm max-inline-measure">{t("exploreSubtitle")}</p>
+      </div>
+
+      <search className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <div className="inline-full max-inline-measure">
+          <Input
+            type="search"
+            name="q"
+            aria-label={t("searchByName")}
+            placeholder={t("searchByName")}
+            value={query}
+            maxLength={100}
+            onChange={(event) => setQuery(event.target.value)}
+            leading={<Icon name="search" />}
+          />
         </div>
+        <ChoiceChips
+          legend={t("kindLegend")}
+          value={cardType ?? "all"}
+          onChange={changeType}
+          options={TYPES.map((value) => ({
+            value,
+            label:
+              value === "all"
+                ? t("all")
+                : value === "VOCABULARY"
+                  ? t("cardTypeVOCABULARY")
+                  : t("cardTypeHADEETH"),
+          }))}
+        />
+      </search>
+
+      {section(
+        courseId,
+        t("courseTitle"),
+        t("courseHint"),
+        courseDecks,
+        searching ? t("emptySearch") : t("emptyCourse"),
+        true
       )}
-    </div>
+      {section(
+        publicId,
+        t("publicTitle"),
+        t("publicHint"),
+        publicDecks,
+        searching ? t("emptySearch") : t("emptyPublic"),
+        false
+      )}
+    </>
   );
 }

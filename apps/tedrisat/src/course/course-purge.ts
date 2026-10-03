@@ -8,6 +8,7 @@ import {
   courses,
   courseWeeks,
   enrollments,
+  lessonRecordings,
   lessons,
 } from "../database/schema/course.schema";
 import { SCOPE_TYPES } from "../database/schema/role-assignment.schema";
@@ -60,6 +61,18 @@ export async function purgeCourses(
   ).map((w) => w.id);
 
   if (weekIds.length > 0) {
+    // Recordings hang off lessons (MDRS-162); they go first, uncounted.
+    await tx
+      .delete(lessonRecordings)
+      .where(
+        inArray(
+          lessonRecordings.lessonId,
+          tx
+            .select({ id: lessons.id })
+            .from(lessons)
+            .where(inArray(lessons.weekId, weekIds))
+        )
+      );
     counts.lessons = (
       await tx
         .delete(lessons)

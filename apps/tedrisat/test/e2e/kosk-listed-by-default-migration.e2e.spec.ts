@@ -5,9 +5,10 @@ import { useDatabaseForThisFile } from "../helpers/test-app.helper";
 
 /**
  * MDRS-122: from 0022 on a new köşk is listed (`is_private` defaults to
- * false), and no köşk that exists when 0022 runs changes — the owner decides
- * about those one by one. The rollback puts the old default back and touches
- * no row either.
+ * false), and every köşk that exists when 0022 runs is listed too — the
+ * owner's decision of 2026-10-02, since nearly all of them were unlisted only
+ * by the old default. The rollback puts the old default back and touches no
+ * row: what was unlisted before 0022 is not recorded.
  *
  * No Nest app here: the schema is built by applying the migration files one by
  * one, so that köşks exist BEFORE 0022 runs.
@@ -73,7 +74,7 @@ describe("0022_kosk_listed_by_default migration (e2e)", () => {
     await client?.end();
   });
 
-  it("lists new köşks, leaves every existing one as it was, and reverses", async () => {
+  it("lists new köşks and every existing one, and reverses only the default", async () => {
     // Before 0022: the old default made every köşk private unless asked.
     expect(await insertWithDefault("Eski Varsayılan")).toBe(true);
     await client.query(
@@ -81,11 +82,16 @@ describe("0022_kosk_listed_by_default migration (e2e)", () => {
       [owner]
     );
     const before = await kosksSnapshot();
+    expect(before.map((k) => k.is_private).sort()).toEqual([false, true]);
 
     await run(join(MIGRATIONS, `${TARGET}.sql`));
 
-    // No UPDATE: the existing rows, `is_private = true` included, are intact.
-    expect(await kosksSnapshot()).toEqual(before);
+    // Every existing köşk is listed now; nothing else on the rows moves.
+    const listed = await kosksSnapshot();
+    expect(listed.every((k) => k.is_private === false)).toBe(true);
+    expect(listed.map(({ is_private, ...rest }) => rest)).toEqual(
+      before.map(({ is_private, ...rest }) => rest)
+    );
     expect(await insertWithDefault("Yeni Köşk")).toBe(false);
 
     const afterForward = await kosksSnapshot();

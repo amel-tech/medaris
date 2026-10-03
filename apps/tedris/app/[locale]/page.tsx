@@ -1,11 +1,14 @@
-import { getTranslations } from "next-intl/server";
+import { redirect } from "next/navigation";
 
-export default async function Home() {
-  const t = await getTranslations("tedris");
-
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <p>{t("HomePage.greeting")}</p>
-    </main>
-  );
+/**
+ * `/` has no page of its own: Ana sayfa (design tedris/01) is `/home`, open to a
+ * visitor and different for a signed-in caller (MDRS-165).
+ */
+export default async function Root({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  redirect(`/${locale}/home`);
 }

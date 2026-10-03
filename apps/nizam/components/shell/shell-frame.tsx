@@ -35,6 +35,8 @@ export interface ShellModel {
       icon: IconName;
       /** badge numbers per köşk id, for the items whose badge follows the scope */
       counts?: Record<string, number>;
+      /** a badge that does not follow the scope (the unread notifications) */
+      count?: number;
       countLabel: string;
     }[];
   }[];
@@ -53,8 +55,8 @@ export interface ShellModel {
   };
 }
 
-/** Where the person row goes until the account page exists (nizam/47, a later package): the one place a sign-out is asked. */
-const ACCOUNT_PATH = "/auth/signout";
+/** Where the person row goes: "Hesap ve ayarlar" (nizam/36, 47), where "Çıkış yap" asks its one confirmation. */
+const ACCOUNT_PATH = "/hesap";
 
 /**
  * The client half of the shell: it knows the page the viewer is on, so it
@@ -127,7 +129,7 @@ export function ShellFrame({
                 linkComponent={Link}
                 icon={<Icon name={i.icon} size="sm" />}
                 active={activeId === `${g.id}.${i.id}`}
-                count={koskId ? i.counts?.[koskId] : undefined}
+                count={i.count ?? (koskId ? i.counts?.[koskId] : undefined)}
                 countLabel={i.countLabel}
               >
                 {i.label}

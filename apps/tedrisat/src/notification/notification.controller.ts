@@ -1,5 +1,6 @@
 import { AuthGuard } from "@medaris/common";
 import {
+  BadRequestException,
   Controller,
   DefaultValuePipe,
   Get,
@@ -36,7 +37,9 @@ import {
 } from "./notification.service";
 import {
   NOTIFICATION_STATUSES,
+  NOTIFICATION_TYPES,
   NotificationStatus,
+  parseNotificationTypes,
 } from "./notification-types";
 
 /**
@@ -64,6 +67,12 @@ export class NotificationController {
     enum: NOTIFICATION_STATUSES,
     description: "`unread` leaves out what the caller has read. Default `all`.",
   })
+  @ApiQuery({
+    name: "types",
+    required: false,
+    type: String,
+    description: `Comma separated; only these types are listed. Any of ${NOTIFICATION_TYPES.join(", ")}.`,
+  })
   @ApiQuery({ name: "cursor", required: false, type: String })
   @ApiQuery({
     name: "limit",
@@ -85,12 +94,21 @@ export class NotificationController {
       new ParseEnumPipe(NOTIFICATION_STATUSES)
     )
     status: NotificationStatus,
+    @Query("types") types: string | undefined,
     @Query("cursor") cursor: string | undefined,
     @Query("limit", new DefaultValuePipe(DEFAULT_PAGE_SIZE), ParseIntPipe)
     limit: number
   ): Promise<PaginatedNotificationResponse> {
+    const parsed = parseNotificationTypes(types);
+    if (parsed === null) {
+      throw new BadRequestException({
+        code: "INVALID_NOTIFICATION_TYPES",
+        message: `types must be a comma separated list of: ${NOTIFICATION_TYPES.join(", ")}`,
+      });
+    }
     return this.notifications.list(request.user.sub, {
       status,
+      types: parsed,
       cursor: cursor || undefined,
       limit,
     });
@@ -104,25 +122,59 @@ export class NotificationController {
       '`unread` is what the bell announces; `total` is the "all" tab\'s count.',
     operationId: "getNotificationCounts",
   })
+  @ApiQuery({
+    name: "types",
+    required: false,
+    type: String,
+    description: `Comma separated; only these types are counted. Any of ${NOTIFICATION_TYPES.join(", ")}.`,
+  })
   @ApiOkResponse({ type: NotificationCountsResponse })
+  @ApiBadRequestResponse({
+    description: "An unknown type (INVALID_NOTIFICATION_TYPES).",
+  })
   @Get("unread-count")
   async counts(
-    @Req() request: AuthenticatedUserRequest
+    @Req() request: AuthenticatedUserRequest,
+    @Query("types") types: string | undefined
   ): Promise<NotificationCountsResponse> {
-    return this.notifications.counts(request.user.sub);
+    const parsed = parseNotificationTypes(types);
+    if (parsed === null) {
+      throw new BadRequestException({
+        code: "INVALID_NOTIFICATION_TYPES",
+        message: `types must be a comma separated list of: ${NOTIFICATION_TYPES.join(", ")}`,
+      });
+    }
+    return this.notifications.counts(request.user.sub, parsed);
   }
 
   @ApiOperation({
     summary: "Mark every unread notification of the caller read",
     operationId: "markAllNotificationsRead",
   })
+  @ApiQuery({
+    name: "types",
+    required: false,
+    type: String,
+    description: `Comma separated; only these types are marked read. Any of ${NOTIFICATION_TYPES.join(", ")}.`,
+  })
   @ApiOkResponse({ type: ReadAllNotificationsResponse })
+  @ApiBadRequestResponse({
+    description: "An unknown type (INVALID_NOTIFICATION_TYPES).",
+  })
   @Post("read-all")
   @HttpCode(200)
   async readAll(
-    @Req() request: AuthenticatedUserRequest
+    @Req() request: AuthenticatedUserRequest,
+    @Query("types") types: string | undefined
   ): Promise<ReadAllNotificationsResponse> {
-    return this.notifications.markAllRead(request.user.sub);
+    const parsed = parseNotificationTypes(types);
+    if (parsed === null) {
+      throw new BadRequestException({
+        code: "INVALID_NOTIFICATION_TYPES",
+        message: `types must be a comma separated list of: ${NOTIFICATION_TYPES.join(", ")}`,
+      });
+    }
+    return this.notifications.markAllRead(request.user.sub, parsed);
   }
 
   @ApiOperation({

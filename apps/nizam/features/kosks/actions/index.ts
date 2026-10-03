@@ -10,6 +10,7 @@ import {
   type MeResponse,
   type PaginatedKoskResponse,
   type PendingEnrollmentResponse,
+  type RemovedEnrollmentResponse,
   type RosterEnrollmentResponse,
   type UpdateKoskDto,
 } from "@medaris/services/tedrisat";
@@ -151,6 +152,27 @@ export const getCourseEnrollments = async (
   } catch (error) {
     console.error("Error fetching course enrollments:", error);
     return null;
+  }
+};
+
+/**
+ * The talebe a course's team took out, with the reasons (MDRS-178). Empty when
+ * tedrisat could not answer: the tab then shows no one rather than failing the
+ * page the rest of which was read.
+ */
+export const getRemovedEnrollments = async (
+  courseId: string
+): Promise<RemovedEnrollmentResponse[]> => {
+  try {
+    const accessToken = await getAccessToken();
+    const { courses } = await createServerTedrisatAPIs(
+      accessToken,
+      env.TEDRISAT_API_BASE_URL
+    );
+    return await courses.getRemovedEnrollments({ id: courseId });
+  } catch (error) {
+    console.error("Error fetching the removed enrollments:", error);
+    return [];
   }
 };
 

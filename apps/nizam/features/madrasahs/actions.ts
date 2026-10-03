@@ -3,6 +3,8 @@
 import {
   type CreateMadrasahDto,
   createServerTedrisatAPIs,
+  type DismissDecisionDto,
+  type HeadDelegationResponse,
   type MadrasahDirectoryItemResponse,
   type MadrasahResponse,
   ResponseError,
@@ -39,20 +41,37 @@ export const restoreMadrasah = async (
   return result;
 };
 
-/** "Başmüderris ata" (nizam 07, 22): the chosen account heads the medrese; a passive one is active again. */
+/**
+ * "Başmüderris ata" and "Başmüderrisi değiştir" (nizam 07, 22): the chosen
+ * account heads the medrese; a passive one is active again. When a başmüderris
+ * is replaced, `delegations` answers each thing they handed on.
+ */
 export const setHeadMuderris = async (
   id: string,
-  userId: string
+  userId: string,
+  options: { endsAt?: Date; delegations?: DismissDecisionDto[] } = {}
 ): Promise<AuthenticatedActionResult<MadrasahDirectoryItemResponse>> => {
   const result = await authenticatedAction((api) =>
     api.madrasahs.setMadrasahHeadMuderris({
       id,
-      setHeadMuderrisDto: { userId },
+      setHeadMuderrisDto: {
+        userId,
+        ...(options.endsAt ? { endsAt: options.endsAt } : {}),
+        ...(options.delegations ? { delegations: options.delegations } : {}),
+      },
     })
   );
   if (result.success) revalidatePath("/", "layout");
   return result;
 };
+
+/** What the sitting başmüderris handed on, which "Başmüderrisi değiştir" asks about (nizam 22). */
+export const getHeadDelegations = async (
+  id: string
+): Promise<AuthenticatedActionResult<HeadDelegationResponse[]>> =>
+  authenticatedAction((api) =>
+    api.madrasahs.getMadrasahHeadDelegations({ id })
+  );
 
 export type LookupResult =
   | { kind: "found"; user: PickedUser }

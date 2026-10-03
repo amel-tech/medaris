@@ -20,6 +20,7 @@ import type {
   CreateOffsiteCourseRequestDto,
   DeletePermissionGroupDto,
   DismissMadrasahNazirDto,
+  HeadDelegationResponse,
   MadrasahBadgeCountsResponse,
   MadrasahCourseKoskResponse,
   MadrasahCourseListItemResponse,
@@ -58,6 +59,8 @@ import {
     DeletePermissionGroupDtoToJSON,
     DismissMadrasahNazirDtoFromJSON,
     DismissMadrasahNazirDtoToJSON,
+    HeadDelegationResponseFromJSON,
+    HeadDelegationResponseToJSON,
     MadrasahBadgeCountsResponseFromJSON,
     MadrasahBadgeCountsResponseToJSON,
     MadrasahCourseKoskResponseFromJSON,
@@ -171,6 +174,10 @@ export interface GetMadrasahDirectoryRequest {
     page?: number;
     limit?: number;
     q?: string;
+}
+
+export interface GetMadrasahHeadDelegationsRequest {
+    id: string;
 }
 
 export interface GetMadrasahHostingKosksRequest {
@@ -877,6 +884,50 @@ export class MadrasahsApi extends runtime.BaseAPI {
      */
     async getMadrasahDirectory(requestParameters: GetMadrasahDirectoryRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahDirectoryResponse> {
         const response = await this.getMadrasahDirectoryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese that are still held; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.
+     * What the başmüderris handed on (SYSTEM_ADMIN only)
+     */
+    async getMadrasahHeadDelegationsRaw(requestParameters: GetMadrasahHeadDelegationsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<HeadDelegationResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getMadrasahHeadDelegations().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/head-muderris/delegations`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(HeadDelegationResponseFromJSON));
+    }
+
+    /**
+     * nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese that are still held; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.
+     * What the başmüderris handed on (SYSTEM_ADMIN only)
+     */
+    async getMadrasahHeadDelegations(requestParameters: GetMadrasahHeadDelegationsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<HeadDelegationResponse>> {
+        const response = await this.getMadrasahHeadDelegationsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1727,7 +1778,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. Written to the audit log.
+     * Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. `delegations` answers what the replaced başmüderris handed on (Devral / Düşür), `endsAt` is the new one\'s Görev bitişi. Written to the audit log.
      * Make a user the medrese\'s başmüderris (SYSTEM_ADMIN only)
      */
     async setMadrasahHeadMuderrisRaw(requestParameters: SetMadrasahHeadMuderrisRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahDirectoryItemResponse>> {
@@ -1772,7 +1823,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. Written to the audit log.
+     * Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. `delegations` answers what the replaced başmüderris handed on (Devral / Düşür), `endsAt` is the new one\'s Görev bitişi. Written to the audit log.
      * Make a user the medrese\'s başmüderris (SYSTEM_ADMIN only)
      */
     async setMadrasahHeadMuderris(requestParameters: SetMadrasahHeadMuderrisRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahDirectoryItemResponse> {
