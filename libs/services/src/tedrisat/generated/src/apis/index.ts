@@ -10,5 +10,6 @@ export * from './KosksApi';
 export * from './LessonsApi';
 export * from './MadrasahsApi';
 export * from './MeApi';
+export * from './NotificationsApi';
 export * from './TedrisatServiceApi';
 export * from './UsersApi';
