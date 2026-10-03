@@ -428,6 +428,46 @@ describe("Course team (MDRS-105, e2e)", () => {
         .expect(403);
     });
 
+    it("does not let the müderris strip a co-müderris' link by uppercasing the row id", async () => {
+      // The ASSIGN_MUDERRIS check compares ids without case; the save must
+      // match them the same way, or it deletes the row and re-inserts it
+      // without the `userId` the payload left out.
+      const [coMuderris] = await db()
+        .insert(courseMuderris)
+        .values({
+          courseId,
+          userId: NEW_MUDERRIS_ID,
+          name: "Yusuf Efendi",
+          orderIndex: 2,
+        })
+        .returning();
+      const payload = replacePayloadFrom(await loadCourse());
+      payload.muderris = payload.muderris.map((m) =>
+        m.id === coMuderris.id
+          ? { id: coMuderris.id.toUpperCase(), name: m.name }
+          : m
+      );
+
+      await as(MUDERRIS_ID)
+        .put(`/courses/${courseId}`)
+        .send(payload)
+        .expect(200);
+
+      const after = await loadCourse();
+      expect(after.muderris).toEqual([
+        expect.objectContaining({ userId: MUDERRIS_ID }),
+        expect.objectContaining({ userId: null, name: "Ahmed Hilmi" }),
+        expect.objectContaining({
+          id: coMuderris.id,
+          userId: NEW_MUDERRIS_ID,
+          name: "Yusuf Efendi",
+        }),
+      ]);
+      await as(NEW_MUDERRIS_ID)
+        .get(`/courses/${courseId}/enrollments`)
+        .expect(200);
+    });
+
     it("refuses to link an account that has never signed in", async () => {
       const payload = replacePayloadFrom(await loadCourse());
       payload.muderris = [...payload.muderris, { userId: GHOST_ID, name: "?" }];
