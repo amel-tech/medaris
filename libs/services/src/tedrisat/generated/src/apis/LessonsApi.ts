@@ -16,9 +16,11 @@
 import * as runtime from '../runtime';
 import type {
   CancelLessonDto,
+  CreateLessonNoteDto,
   CreateSessionBatchDto,
   CreateWeekLessonDto,
   LessonMutationResponse,
+  LessonNoteResponse,
   LiveStreamResponse,
   RecordingResponse,
   SessionBatchPreviewResponse,
@@ -26,17 +28,22 @@ import type {
   SessionResponse,
   SetLiveStreamDto,
   UpdateLessonDto,
+  UpdateLessonNoteDto,
   WeeklyPatternDto,
 } from '../models/index';
 import {
     CancelLessonDtoFromJSON,
     CancelLessonDtoToJSON,
+    CreateLessonNoteDtoFromJSON,
+    CreateLessonNoteDtoToJSON,
     CreateSessionBatchDtoFromJSON,
     CreateSessionBatchDtoToJSON,
     CreateWeekLessonDtoFromJSON,
     CreateWeekLessonDtoToJSON,
     LessonMutationResponseFromJSON,
     LessonMutationResponseToJSON,
+    LessonNoteResponseFromJSON,
+    LessonNoteResponseToJSON,
     LiveStreamResponseFromJSON,
     LiveStreamResponseToJSON,
     RecordingResponseFromJSON,
@@ -51,6 +58,8 @@ import {
     SetLiveStreamDtoToJSON,
     UpdateLessonDtoFromJSON,
     UpdateLessonDtoToJSON,
+    UpdateLessonNoteDtoFromJSON,
+    UpdateLessonNoteDtoToJSON,
     WeeklyPatternDtoFromJSON,
     WeeklyPatternDtoToJSON,
 } from '../models/index';
@@ -70,9 +79,19 @@ export interface CreateLessonRequest {
     createWeekLessonDto: CreateWeekLessonDto;
 }
 
+export interface CreateLessonNoteRequest {
+    id: string;
+    createLessonNoteDto: CreateLessonNoteDto;
+}
+
 export interface CreateSessionBatchRequest {
     courseId: string;
     createSessionBatchDto: CreateSessionBatchDto;
+}
+
+export interface DeleteLessonNoteRequest {
+    id: string;
+    noteId: string;
 }
 
 export interface GetLessonCalendarRequest {
@@ -93,6 +112,10 @@ export interface ListCourseRecordingsRequest {
     id: string;
 }
 
+export interface ListLessonNotesRequest {
+    id: string;
+}
+
 export interface PreviewSessionBatchRequest {
     courseId: string;
     weeklyPatternDto: WeeklyPatternDto;
@@ -106,6 +129,12 @@ export interface SetLessonLiveStreamRequest {
 export interface UpdateLessonRequest {
     id: string;
     updateLessonDto: UpdateLessonDto;
+}
+
+export interface UpdateLessonNoteRequest {
+    id: string;
+    noteId: string;
+    updateLessonNoteDto: UpdateLessonNoteDto;
 }
 
 /**
@@ -270,6 +299,60 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
+     * An enrolled talebe only (ENROLLED or COMPLETED, and not barred). `offsetSeconds` is the player position from the start of the video and may be left out. `body` is Markdown, 1 to 4000 characters after trimming; it is stored as typed and never rendered as HTML.
+     * Write a note on a session\'s video
+     */
+    async createLessonNoteRaw(requestParameters: CreateLessonNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonNoteResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling createLessonNote().'
+            );
+        }
+
+        if (requestParameters['createLessonNoteDto'] == null) {
+            throw new runtime.RequiredError(
+                'createLessonNoteDto',
+                'Required parameter "createLessonNoteDto" was null or undefined when calling createLessonNote().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/notes`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateLessonNoteDtoToJSON(requestParameters['createLessonNoteDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LessonNoteResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * An enrolled talebe only (ENROLLED or COMPLETED, and not barred). `offsetSeconds` is the player position from the start of the video and may be left out. `body` is Markdown, 1 to 4000 characters after trimming; it is stored as typed and never rendered as HTML.
+     * Write a note on a session\'s video
+     */
+    async createLessonNote(requestParameters: CreateLessonNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonNoteResponse> {
+        const response = await this.createLessonNoteRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Expands the pattern in its IANA zone, so each session keeps its local start time across daylight-saving changes, and inserts every session in one transaction. The week holding `startDate` is \"Hafta 1\"; each session goes into the week of its date, and a missing week is created as \"Hafta N\". Bumps the course version like the other session-level writes (MDRS-109).
      * Create live sessions from a weekly pattern
      */
@@ -321,6 +404,57 @@ export class LessonsApi extends runtime.BaseAPI {
     async createSessionBatch(requestParameters: CreateSessionBatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionBatchResponse> {
         const response = await this.createSessionBatchRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * The note is removed for good; there is no history. 404 for a note the caller did not write, as for one that does not exist.
+     * Delete the caller\'s own note
+     */
+    async deleteLessonNoteRaw(requestParameters: DeleteLessonNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling deleteLessonNote().'
+            );
+        }
+
+        if (requestParameters['noteId'] == null) {
+            throw new runtime.RequiredError(
+                'noteId',
+                'Required parameter "noteId" was null or undefined when calling deleteLessonNote().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/notes/{noteId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"noteId"}}`, encodeURIComponent(String(requestParameters['noteId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The note is removed for good; there is no history. 404 for a note the caller did not write, as for one that does not exist.
+     * Delete the caller\'s own note
+     */
+    async deleteLessonNote(requestParameters: DeleteLessonNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteLessonNoteRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -516,6 +650,50 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
+     * Only the caller\'s notes, whoever else wrote one on the session. By `offsetSeconds` ascending, notes without a position last, then oldest first. Never lists anyone else\'s notes, a SYSTEM_ADMIN\'s request included (MDRS-150).
+     * The caller\'s own notes on a session
+     */
+    async listLessonNotesRaw(requestParameters: ListLessonNotesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<LessonNoteResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listLessonNotes().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/notes`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(LessonNoteResponseFromJSON));
+    }
+
+    /**
+     * Only the caller\'s notes, whoever else wrote one on the session. By `offsetSeconds` ascending, notes without a position last, then oldest first. Never lists anyone else\'s notes, a SYSTEM_ADMIN\'s request included (MDRS-150).
+     * The caller\'s own notes on a session
+     */
+    async listLessonNotes(requestParameters: ListLessonNotesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<LessonNoteResponse>> {
+        const response = await this.listLessonNotesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Expands the pattern exactly as `POST /courses/:courseId/sessions/batch` would and writes nothing, so the editor can show the list before it is saved (MDRS-109).
      * Preview the sessions a weekly pattern would create
      */
@@ -672,6 +850,68 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async updateLesson(requestParameters: UpdateLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonMutationResponse> {
         const response = await this.updateLessonRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * A key left out stays as it is; `offsetSeconds: null` clears the position. The same rule as writing one: an enrolled talebe only. 404 for a note the caller did not write, as for one that does not exist.
+     * Edit the caller\'s own note
+     */
+    async updateLessonNoteRaw(requestParameters: UpdateLessonNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonNoteResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling updateLessonNote().'
+            );
+        }
+
+        if (requestParameters['noteId'] == null) {
+            throw new runtime.RequiredError(
+                'noteId',
+                'Required parameter "noteId" was null or undefined when calling updateLessonNote().'
+            );
+        }
+
+        if (requestParameters['updateLessonNoteDto'] == null) {
+            throw new runtime.RequiredError(
+                'updateLessonNoteDto',
+                'Required parameter "updateLessonNoteDto" was null or undefined when calling updateLessonNote().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/notes/{noteId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"noteId"}}`, encodeURIComponent(String(requestParameters['noteId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdateLessonNoteDtoToJSON(requestParameters['updateLessonNoteDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LessonNoteResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * A key left out stays as it is; `offsetSeconds: null` clears the position. The same rule as writing one: an enrolled talebe only. 404 for a note the caller did not write, as for one that does not exist.
+     * Edit the caller\'s own note
+     */
+    async updateLessonNote(requestParameters: UpdateLessonNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonNoteResponse> {
+        const response = await this.updateLessonNoteRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

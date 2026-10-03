@@ -19,6 +19,7 @@ import {
 } from "../database/schema/flashcard.schema";
 import { decks } from "../database/schema/flashcard-deck.schema";
 import { koskFollowers, kosks } from "../database/schema/kosk.schema";
+import { lessonNotes } from "../database/schema/lesson-note.schema";
 import { madrasahs } from "../database/schema/madrasah.schema";
 import {
   roleAssignments,
@@ -575,6 +576,17 @@ export class ArchiveRepository {
           .where(and(eq(courseWeeks.id, id), isNotNull(courseWeeks.archivedAt)))
           .for("update");
         if (!week) return null;
+        await tx
+          .delete(lessonNotes)
+          .where(
+            inArray(
+              lessonNotes.lessonId,
+              tx
+                .select({ id: lessons.id })
+                .from(lessons)
+                .where(eq(lessons.weekId, id))
+            )
+          );
         const removedSessions = (
           await tx
             .delete(lessons)
@@ -596,6 +608,7 @@ export class ArchiveRepository {
           .where(and(eq(lessons.id, id), isNotNull(lessons.archivedAt)))
           .for("update");
         if (!lesson) return null;
+        await tx.delete(lessonNotes).where(eq(lessonNotes.lessonId, id));
         await tx.delete(lessons).where(eq(lessons.id, id));
         const [week] = await tx
           .select({ courseId: courseWeeks.courseId })
