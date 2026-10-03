@@ -831,7 +831,8 @@
     "tabs": {
       "applications": "Applications",
       "enrolled": "Enrolled",
-      "completed": "Completed"
+      "completed": "Completed",
+      "removed": "Removed"
     },
     "applicationsNote": "This course needs your approval to enroll. A student you approve gets the sessions and recordings at once; a student you reject may apply again.",
     "applicationsNoteOpen": "This course does not ask for approval; students enroll as soon as they apply.",
@@ -1911,5 +1912,96 @@
       "MADRASAH": "{person} was appointed head müderris for {name}.",
       "COURSE": "{person} was appointed müderris for {name}."
     }
+  },
+  "AllBansPage": {
+    "intro": "Every ban placed at course and köşk level in Medaris, with its reason. A ban is lifted only by the kademe that placed it or a higher one, and lifting takes a reason.",
+    "searchLabel": "Search people",
+    "searchPlaceholder": "Search by name or e-mail",
+    "scopeLegend": "Scope",
+    "scopeAll": "All",
+    "summary": {
+      "ACTIVE": "{count} active bans",
+      "LIFTED": "{count} lifted bans"
+    },
+    "caption": {
+      "ACTIVE": "Active bans in every köşk",
+      "LIFTED": "Lifted bans in every köşk"
+    },
+    "emptyFiltered": "No ban matches this filter",
+    "more": "Show more",
+    "extend": "Widen ban",
+    "extendLabel": "Widen ban: {name}"
+  },
+  "ExtendDialog": {
+    "title": "Widen ban",
+    "close": "Close",
+    "info": "<b>{name}</b> will no longer be able to apply to any course in {kosk}; the course ban stays in force.",
+    "requiredNote": "required field",
+    "reasonLabel": "Reason for widening",
+    "reasonHelp": "The reason is seen by the kademe that can lift the ban; it is never shown to the student.",
+    "reasonRequired": "Write a reason.",
+    "cancel": "Cancel",
+    "submit": "Widen ban",
+    "extended": "Ban widened",
+    "extendedBody": "{name} can no longer apply to any course in {kosk}.",
+    "failed": "The ban could not be widened"
+  },
+  "RemoveDialog": {
+    "title": "Remove from course",
+    "close": "Close",
+    "body": "<b>{name}</b> will be removed from {course}. They lose access to the sessions, meeting links, recordings and the course deck, and the course's sessions leave their calendar. Cards they copied to their own deck stay with them.",
+    "info": "The student may apply again. If you also need to stop them applying again, use “Bar”.",
+    "requiredNote": "required field",
+    "reasonLabel": "Reason for removal",
+    "reasonHelp": "The reason is shown to the course team in the Removed tab.",
+    "cancel": "Cancel",
+    "submit": "Remove from course",
+    "removed": "Student removed from the course",
+    "removedBody": "{name} moved to the Removed tab.",
+    "failed": "The student could not be removed"
+  },
+  "StudentsRoster": {
+    "searchLabel": "Search students",
+    "searchPlaceholder": "Search by name or e-mail…",
+    "rosterHelp": "Students enter their own progress; the course team confirms that they finished the course.",
+    "removedNote": "Students the course team removed from the course, with their reasons. A removed student may apply again.",
+    "columns": {
+      "student": "Student",
+      "email": "E-mail",
+      "joined": "Enrolled on",
+      "progress": "Progress",
+      "actions": "Actions",
+      "removedAt": "Removed",
+      "reason": "Reason",
+      "removedBy": "Removed by"
+    },
+    "captionEnrolled": "Students enrolled in {course}",
+    "captionCompleted": "Students who completed {course}",
+    "captionRemoved": "Students removed from {course}",
+    "progressLabel": "Progress entered by the student: {name}",
+    "progressDone": "complete",
+    "complete": "Mark complete",
+    "completeLabel": "Mark complete: {name}",
+    "reopen": "Reopen",
+    "reopenLabel": "Reopen: {name}",
+    "remove": "Remove from course",
+    "removeLabel": "Remove from course: {name}",
+    "ban": "Bar",
+    "banLabel": "Bar: {name}",
+    "lift": "Lift ban",
+    "liftLabel": "Lift ban: {name}",
+    "banned": "Barred",
+    "bannedCourse": "Barred · This course",
+    "bannedKosk": "Barred · Köşk",
+    "showing": "Showing {shown} of {total} students",
+    "more": "Show more",
+    "emptySearch": "No student matches the search",
+    "emptyRemoved": "No student has been removed",
+    "unnamed": "Unnamed student",
+    "completed": "Student moved to Completed",
+    "completedBody": "{name} completed the course.",
+    "reopened": "Enrollment reopened",
+    "reopenedBody": "{name} is back under Enrolled.",
+    "actionFailed": "The action could not be completed"
   }
 }

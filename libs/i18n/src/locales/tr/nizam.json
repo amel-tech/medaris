@@ -831,7 +831,8 @@
     "tabs": {
       "applications": "Başvurular",
       "enrolled": "Kayıtlı",
-      "completed": "Tamamlayanlar"
+      "completed": "Tamamlayanlar",
+      "removed": "Erişimi kaldırılanlar"
     },
     "applicationsNote": "Bu derse kayıt için onayınız gerekiyor. Onayladığınız talebe celselere ve ders kayıtlarına hemen erişir; reddettiğiniz talebe yeniden başvurabilir.",
     "applicationsNoteOpen": "Bu ders onay istemiyor; talebeler başvurur başvurmaz kaydolur.",
@@ -1911,5 +1912,96 @@
       "MADRASAH": "{person}, {name} için başmüderris olarak atandı.",
       "COURSE": "{person}, {name} için müderris olarak atandı."
     }
+  },
+  "AllBansPage": {
+    "intro": "Medaris'te ders ve köşk düzeyinde konan bütün yasaklar, gerekçeleriyle. Bir yasağı yalnız onu koyan kademe ya da daha üst bir kademe kaldırır; kaldırırken gerekçe yazılır.",
+    "searchLabel": "Kişi ara",
+    "searchPlaceholder": "Kişi adı ya da e-posta ara",
+    "scopeLegend": "Kapsam",
+    "scopeAll": "Tümü",
+    "summary": {
+      "ACTIVE": "{count} etkin yasak",
+      "LIFTED": "{count} kaldırılan yasak"
+    },
+    "caption": {
+      "ACTIVE": "Bütün köşklerdeki etkin yasaklar",
+      "LIFTED": "Bütün köşklerde kaldırılan yasaklar"
+    },
+    "emptyFiltered": "Bu süzgece uyan yasak yok",
+    "more": "Daha fazla göster",
+    "extend": "Yasağı genişlet",
+    "extendLabel": "Yasağı genişlet: {name}"
+  },
+  "ExtendDialog": {
+    "title": "Yasağı genişlet",
+    "close": "Kapat",
+    "info": "<b>{name}</b> adlı talebe {kosk} içindeki hiçbir derse başvuramaz hâle gelecek; ders yasağı da yürürlükte kalır.",
+    "requiredNote": "zorunlu alan",
+    "reasonLabel": "Genişletme gerekçesi",
+    "reasonHelp": "Gerekçe, yasağı kaldıracak kademeye görünür; talebeye hiçbir zaman gösterilmez.",
+    "reasonRequired": "Bir gerekçe yazın.",
+    "cancel": "Vazgeç",
+    "submit": "Yasağı genişlet",
+    "extended": "Yasak genişletildi",
+    "extendedBody": "{name} artık {kosk} içindeki hiçbir derse başvuramaz.",
+    "failed": "Yasak genişletilemedi"
+  },
+  "RemoveDialog": {
+    "title": "Dersten çıkar",
+    "close": "Kapat",
+    "body": "<b>{name}</b> adlı talebe {course} dersinden çıkarılacak. Celselere, toplantı bağlantılarına, ders kayıtlarına ve ders destesine erişimi kalkar; dersin celseleri takviminden de düşer. Kendi destesine kopyaladığı kartlar kendisinde kalır.",
+    "info": "Talebe yeniden başvurabilir. Yeniden başvurmasını da engellemek gerekiyorsa “Yasakla”yı kullanın.",
+    "requiredNote": "zorunlu alan",
+    "reasonLabel": "Çıkarma gerekçesi",
+    "reasonHelp": "Gerekçe, Erişimi kaldırılanlar sekmesinde ders kadrosuna görünür.",
+    "cancel": "Vazgeç",
+    "submit": "Dersten çıkar",
+    "removed": "Talebe dersten çıkarıldı",
+    "removedBody": "{name} Erişimi kaldırılanlar sekmesine taşındı.",
+    "failed": "Talebe dersten çıkarılamadı"
+  },
+  "StudentsRoster": {
+    "searchLabel": "Talebe ara",
+    "searchPlaceholder": "Ada ya da e-postaya göre ara…",
+    "rosterHelp": "İlerlemeyi talebe kendisi girer; dersi tamamladığını ders kadrosu onaylar.",
+    "removedNote": "Ders kadrosunun dersten çıkardığı talebeler, gerekçeleriyle. Çıkarılan talebe yeniden başvurabilir.",
+    "columns": {
+      "student": "Talebe",
+      "email": "E-posta",
+      "joined": "Kayıt tarihi",
+      "progress": "İlerleme",
+      "actions": "İşlemler",
+      "removedAt": "Çıkarılma",
+      "reason": "Gerekçe",
+      "removedBy": "Çıkaran"
+    },
+    "captionEnrolled": "{course} dersine kayıtlı talebeler",
+    "captionCompleted": "{course} dersini tamamlayan talebeler",
+    "captionRemoved": "{course} dersinden erişimi kaldırılan talebeler",
+    "progressLabel": "Talebenin girdiği ilerleme: {name}",
+    "progressDone": "tamamlandı",
+    "complete": "Tamamladı say",
+    "completeLabel": "Tamamladı say: {name}",
+    "reopen": "Yeniden aç",
+    "reopenLabel": "Yeniden aç: {name}",
+    "remove": "Dersten çıkar",
+    "removeLabel": "Dersten çıkar: {name}",
+    "ban": "Yasakla",
+    "banLabel": "Yasakla: {name}",
+    "lift": "Yasağı kaldır",
+    "liftLabel": "Yasağı kaldır: {name}",
+    "banned": "Yasaklı",
+    "bannedCourse": "Yasaklı · Bu ders",
+    "bannedKosk": "Yasaklı · Köşk",
+    "showing": "{total} talebeden {shown} tanesi gösteriliyor",
+    "more": "Daha fazla göster",
+    "emptySearch": "Aramaya uyan talebe yok",
+    "emptyRemoved": "Erişimi kaldırılan talebe yok",
+    "unnamed": "Adsız talebe",
+    "completed": "Talebe Tamamlayanlar'a taşındı",
+    "completedBody": "{name} dersi tamamladı.",
+    "reopened": "Kayıt yeniden açıldı",
+    "reopenedBody": "{name} yeniden Kayıtlı sekmesinde.",
+    "actionFailed": "İşlem tamamlanamadı"
   }
 }

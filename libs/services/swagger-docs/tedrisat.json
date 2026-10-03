@@ -2230,6 +2230,52 @@
         ]
       }
     },
+    "/courses/{id}/enrollments/removed": {
+      "get": {
+        "description": "For the course team (MDRS-178, Erişimi kaldırılanlar): who was taken out by `POST …/remove`, by whom, when and why, newest first. Read from the audit log; a talebe may have applied again since.",
+        "operationId": "getRemovedEnrollments",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RemovedEnrollmentResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Talebe the team took out of the course, with the reasons",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
     "/courses/{id}/enrollments/{userId}/approve": {
       "post": {
         "operationId": "approveEnrollment",
@@ -3024,6 +3070,142 @@
           }
         ],
         "summary": "A köşk's bans, open or lifted (Yasaklamalar)",
+        "tags": [
+          "bans"
+        ]
+      }
+    },
+    "/bans": {
+      "get": {
+        "description": "Newest first, one page at a time, with platform-wide counts for the tabs. Medaris administration only: the başnazım and the Medaris nazımı. `q` matches the person's name or e-mail; `scope` keeps one scope.",
+        "operationId": "listAllBans",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "ACTIVE",
+                "LIFTED"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "COURSE",
+                "KOSK"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllBansListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "BAN_FORBIDDEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every ban of every köşk, open or lifted (Medaris Yasaklamalar)",
+        "tags": [
+          "bans"
+        ]
+      }
+    },
+    "/bans/{banId}/extend": {
+      "post": {
+        "description": "Opens a KOSK ban for the same person with its own reason and leaves the course ban standing; the audit row says `ban.extend`. The köşk's nazım and above. A person already barred from the köşk gets the standing ban back.",
+        "operationId": "extendBan",
+        "parameters": [
+          {
+            "name": "banId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtendBanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BanResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "BAN_FORBIDDEN"
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "BAN_ALREADY_LIFTED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Widen a course ban to the whole köşk (Yasağı genişlet)",
         "tags": [
           "bans"
         ]
@@ -9367,6 +9549,64 @@
           "ban"
         ]
       },
+      "RemovedByResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "RemovedEnrollmentResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "description": "The team's reason for taking them out."
+          },
+          "progress": {
+            "type": "number",
+            "description": "Percent complete when they were taken out."
+          },
+          "removedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "removedBy": {
+            "$ref": "#/components/schemas/RemovedByResponse"
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "email",
+          "reason",
+          "progress",
+          "removedAt",
+          "removedBy"
+        ]
+      },
       "TeamSettableEnrollmentStatus": {
         "type": "string",
         "enum": [
@@ -10189,6 +10429,11 @@
             "format": "uuid",
             "nullable": true
           },
+          "koskName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The köşk the ban sits in; the Medaris-wide list names it."
+          },
           "courseTitle": {
             "type": "string",
             "nullable": true
@@ -10254,6 +10499,7 @@
           "scope",
           "koskId",
           "courseId",
+          "koskName",
           "courseTitle",
           "madrasahName",
           "extendedFromCourseId",
@@ -10296,6 +10542,70 @@
           "activeCount",
           "liftedCount",
           "recentCount"
+        ]
+      },
+      "AllBansListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BanResponse"
+            }
+          },
+          "activeCount": {
+            "type": "number",
+            "description": "Open bans in the köşk."
+          },
+          "liftedCount": {
+            "type": "number",
+            "description": "Lifted bans in the köşk."
+          },
+          "recentCount": {
+            "type": "number",
+            "description": "Open bans placed in the last 24 hours."
+          },
+          "total": {
+            "type": "number",
+            "description": "How many bans match the filter in all; `items` is one page of them."
+          }
+        },
+        "required": [
+          "items",
+          "activeCount",
+          "liftedCount",
+          "recentCount",
+          "total"
+        ]
+      },
+      "ExtendBanScope": {
+        "type": "string",
+        "enum": [
+          "KOSK"
+        ],
+        "description": "The wider scope the ban moves up to. Only KOSK exists: medrese and platform bans are not modelled yet."
+      },
+      "ExtendBanDto": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "description": "The wider scope the ban moves up to. Only KOSK exists: medrese and platform bans are not modelled yet.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExtendBanScope"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "example": "Ders yasağından sonra köşkün başka derslerine başvurdu.",
+            "description": "Kept with the new, wider ban and read by whoever lifts it; never sent to the talebe. Required, and not blank."
+          }
+        },
+        "required": [
+          "scope",
+          "reason"
         ]
       },
       "LiftBanDto": {

@@ -87,6 +87,69 @@ export function sortByDate(
   );
 }
 
+/** How many talebe the Kayıtlı table shows before "Daha fazla göster" (nizam 58: "28 talebeden 6 tanesi"). */
+export const ROSTER_PAGE = 6;
+
+type RosterPerson = {
+  studentName?: string | null;
+  studentEmail?: string | null;
+};
+
+/**
+ * The talebe whose name or e-mail holds the search text, in the order given
+ * (nizam 58: "Arama ad/e-posta süzgeci"). An empty search keeps everyone.
+ */
+export function filterRoster<T extends RosterPerson>(
+  list: readonly T[],
+  query: string
+): T[] {
+  const needle = fold(query.trim());
+  if (!needle) return [...list];
+  return list.filter(
+    (e) =>
+      fold(e.studentName ?? "").includes(needle) ||
+      fold(e.studentEmail ?? "").includes(needle)
+  );
+}
+
+/** By name in Turkish order, nameless last (the Talebe column's sort). */
+export function sortRoster<T extends RosterPerson>(
+  list: readonly T[],
+  direction: "ascending" | "descending"
+): T[] {
+  const sign = direction === "descending" ? -1 : 1;
+  return [...list].sort((a, b) => {
+    const x = a.studentName?.trim() ?? "";
+    const y = b.studentName?.trim() ?? "";
+    if (!x !== !y) return x ? -1 : 1;
+    return sign * x.localeCompare(y, "tr");
+  });
+}
+
+export type StudentAction = "complete" | "reopen" | "remove" | "ban" | "lift";
+
+/**
+ * The buttons a talebe's row offers, in display order (nizam 58). A seat that
+ * is held is completed or removed, a completion reopened; either can be barred,
+ * and a barred talebe's row offers "Yasağı kaldır" instead. A barred talebe is
+ * not taken out of the course (leaving would drop the record the ban sits on).
+ * tedrisat decides who may; the page is only reached by the course team.
+ */
+export function studentActions(
+  status: "PENDING" | "ENROLLED" | "COMPLETED",
+  barred: boolean
+): StudentAction[] {
+  const bar: StudentAction = barred ? "lift" : "ban";
+  switch (status) {
+    case "ENROLLED":
+      return barred ? ["complete", bar] : ["complete", "remove", bar];
+    case "COMPLETED":
+      return ["reopen", bar];
+    default:
+      return [];
+  }
+}
+
 /** A row's key: the same talebe may wait on two courses. */
 export const rowKey = (row: Pick<ApplicationRow, "courseId" | "userId">) =>
   `${row.courseId}:${row.userId}`;

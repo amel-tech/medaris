@@ -652,6 +652,34 @@ describe("Course team (MDRS-105, e2e)", () => {
         .expect((res) => expect(res.body.status).toBe("ENROLLED"));
     });
 
+    it("lists who was taken out with the reason, newest first, for the team only (MDRS-178)", async () => {
+      await as(MUDERRIS_ID)
+        .get(`/courses/${courseId}/enrollments/removed`)
+        .expect(200)
+        .expect((res) => expect(res.body).toEqual([]));
+
+      await as(MUDERRIS_ID)
+        .post(`/courses/${courseId}/enrollments/${TALEBE_ID}/remove`)
+        .send({ reason: "Dört celsedir haber vermeden katılmıyor." })
+        .expect(200);
+
+      const res = await as(MUDERRIS_ID)
+        .get(`/courses/${courseId}/enrollments/removed`)
+        .expect(200);
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0]).toMatchObject({
+        userId: TALEBE_ID,
+        reason: "Dört celsedir haber vermeden katılmıyor.",
+        progress: 40,
+        removedBy: { id: MUDERRIS_ID },
+      });
+      expect(typeof res.body[0].removedAt).toBe("string");
+
+      await as(TALEBE_ID)
+        .get(`/courses/${courseId}/enrollments/removed`)
+        .expect(403);
+    });
+
     it("refuses a removal without a reason, of a request or a completion, and by the talebe", async () => {
       const remove = (sub: string, userId: string, body: object) =>
         as(sub)
