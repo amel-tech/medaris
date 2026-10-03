@@ -16,6 +16,20 @@ const parse = (url: string): URL | null => {
   }
 };
 
+/** The video id of a YouTube link (`watch?v=`, `/embed/`, `/live/`, `/shorts/`, `youtu.be/`), or null. */
+const youtubeIdOf = (parsed: URL): string | null => {
+  const host = parsed.hostname.replace(/^(www|m)\./, "");
+  let id: string | null | undefined = null;
+  if (host === "youtu.be") id = parsed.pathname.split("/")[1];
+  else if (host === "youtube.com" || host === "youtube-nocookie.com") {
+    id =
+      parsed.pathname === "/watch"
+        ? parsed.searchParams.get("v")
+        : /^\/(?:embed|live|shorts)\/([^/?]+)/.exec(parsed.pathname)?.[1];
+  }
+  return id && ID.test(id) ? id : null;
+};
+
 /**
  * The address a recording or a live stream is embedded from, or null when the
  * link cannot be embedded safely. Only the two hosts the page frames are ever
@@ -32,17 +46,8 @@ export const embedUrlOf = (
   const host = parsed.hostname.replace(/^(www|m)\./, "");
 
   if (provider === "YOUTUBE") {
-    let id: string | null | undefined = null;
-    if (host === "youtu.be") id = parsed.pathname.split("/")[1];
-    else if (host === "youtube.com" || host === "youtube-nocookie.com") {
-      id =
-        parsed.pathname === "/watch"
-          ? parsed.searchParams.get("v")
-          : /^\/(?:embed|live|shorts)\/([^/?]+)/.exec(parsed.pathname)?.[1];
-    }
-    return id && ID.test(id)
-      ? `https://www.youtube-nocookie.com/embed/${id}`
-      : null;
+    const id = youtubeIdOf(parsed);
+    return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
   }
 
   if (provider === "DRIVE" && host === "drive.google.com") {
@@ -114,3 +119,24 @@ export const firstPlayable = (
 /** The address of a course's recordings tab. */
 export const recordingsTabPath = (courseId: string): string =>
   `/courses/${courseId}?tab=kayitlar`;
+
+/**
+ * YouTube's own live chat for a stream (MDRS-229), framed under the player.
+ * `embed_domain` must be the embedding page's host or YouTube refuses the
+ * frame, so the caller passes `window.location.hostname`. `dark_theme=1` is
+ * undocumented but honoured: it draws the chat on a dark ground for a dark
+ * page. Like `embedUrlOf`, only the video id of the stored link is used.
+ */
+export const liveChatUrlOf = (
+  url: string | null | undefined,
+  { host, dark }: { host: string; dark: boolean }
+): string | null => {
+  const parsed = url ? parse(url) : null;
+  const id = parsed ? youtubeIdOf(parsed) : null;
+  if (!id || !host) return null;
+  const chat = new URL("https://www.youtube.com/live_chat");
+  chat.searchParams.set("v", id);
+  chat.searchParams.set("embed_domain", host);
+  if (dark) chat.searchParams.set("dark_theme", "1");
+  return chat.toString();
+};
