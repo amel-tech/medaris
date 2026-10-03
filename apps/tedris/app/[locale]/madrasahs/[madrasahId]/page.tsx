@@ -7,6 +7,7 @@ import {
   getMadrasah,
   getMadrasahForMetadata,
   getMadrasahOverview,
+  isSignedIn,
 } from "~/features/courses/public-reads";
 
 type Params = Promise<{ locale: string; madrasahId: string }>;
@@ -32,11 +33,14 @@ export async function generateMetadata({
 
 export default async function Page({ params }: { params: Params }) {
   const { madrasahId } = await params;
-  const [madrasah, overview] = await Promise.all([
+  const [madrasah, overview, signedIn] = await Promise.all([
     getMadrasah(madrasahId),
     getMadrasahOverview(madrasahId),
+    isSignedIn(),
   ]);
   if (!madrasah || !overview) notFound();
 
-  return <MadrasahPage madrasah={madrasah} overview={overview} />;
+  return (
+    <MadrasahPage madrasah={madrasah} overview={overview} signedIn={signedIn} />
+  );
 }

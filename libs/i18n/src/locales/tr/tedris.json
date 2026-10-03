@@ -299,7 +299,8 @@
     "decksEmpty": "Bu köşkün henüz destesi yok.",
     "deckMeta": "Köşk destesi",
     "cardsCount": "{count} ezber kartı",
-    "inCollection": "Koleksiyonunda"
+    "inCollection": "Koleksiyonunda",
+    "manager": "Köşk nazımı {name}"
   },
   "LearningPage": {
     "title": "Öğrenme",
@@ -479,6 +480,9 @@
     "approvalNotice": "Her dersin kendi müderrisleri vardır. Medresenin derslerine kayıt onaylıdır: başvurduğunda, dersin kadrosu onaylayınca kaydın kesinleşir.",
     "courses": "Dersler",
     "coursesHint": "Medresenin dersleri, açıldıkları köşkle birlikte",
+    "coursesHintAnonymous": "Medresenin bütün dersleri, açıldıkları köşkle birlikte",
+    "kosksHint": "Derslerini açtığı köşkler",
+    "kosksLabel": "{name} medresesinin derslerini açtığı köşkler",
     "noCourses": "Bu medrese henüz ders açmadı.",
     "statusEnrolled": "Devam ediyor",
     "statusPending": "Onay bekliyor",
@@ -752,5 +756,18 @@
     "prev": "Önceki",
     "next": "Sonraki",
     "pageOf": "{page} / {total}"
+  },
+  "AnonymousInvite": {
+    "apply": "Bir derse başvurmak için <signIn>giriş yap</signIn> ya da <register>kayıt ol</register>.",
+    "discover": "Bir derse başvurmak için <signIn>giriş yap</signIn> ya da <register>kayıt ol</register>. Köşklere, medreselere ve derslerin tanıtımına hesap açmadan da göz atabilirsin."
+  },
+  "PhoneMenu": {
+    "menu": "Menü",
+    "navLabel": "Ana menü",
+    "close": "Kapat",
+    "home": "Ana sayfa",
+    "discover": "Keşfet",
+    "signIn": "Giriş yap",
+    "register": "Kayıt ol"
   }
 }

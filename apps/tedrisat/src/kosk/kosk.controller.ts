@@ -39,6 +39,7 @@ import {
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
+import { maskKoskForAnonymous } from "./anonymous-mask";
 import { CreateKoskDto } from "./dto/create-kosk.dto";
 import { KoskDecksResponse } from "./dto/kosk-deck-response.dto";
 import { KoskManagedBy } from "./dto/kosk-managed-by.enum";
@@ -170,7 +171,7 @@ export class KoskController {
     }
     const safePage = page < 1 ? 1 : page;
     const safeLimit = Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
-    return this.koskService.findAll(userId, safePage, safeLimit, {
+    const page_ = await this.koskService.findAll(userId, safePage, safeLimit, {
       managedByCaller: managedBy === KoskManagedBy.ME,
       madrasahId,
       level,
@@ -178,6 +179,9 @@ export class KoskController {
       field: typeof field === "string" ? field.trim() || undefined : undefined,
       q: typeof q === "string" ? q.slice(0, 100) : undefined,
     });
+    return userId === null
+      ? { ...page_, items: page_.items.map(maskKoskForAnonymous) }
+      : page_;
   }
 
   @ApiOperation({
@@ -209,7 +213,9 @@ export class KoskController {
     @Req() request: PublicRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskResponse> {
-    return this.koskService.findById(id, request.user?.sub ?? null);
+    const userId = request.user?.sub ?? null;
+    const kosk = await this.koskService.findById(id, userId);
+    return userId === null ? maskKoskForAnonymous(kosk) : kosk;
   }
 
   @ApiOperation({

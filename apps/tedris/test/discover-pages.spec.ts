@@ -10,7 +10,23 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { parseDiscoverQuery } from "~/features/discover/discover-query";
 
-const lookup = (key: string, values?: Record<string, unknown>) => {
+// `rich` is only read by the signed-out invitation: the tags are dropped here,
+// the links they make are pinned in anonymous-read.spec.ts.
+const lookup = Object.assign(
+  (key: string, values?: Record<string, unknown>) => plain(key, values),
+  { rich: (key: string) => stripTags(plain(key)) }
+);
+// Repeats until nothing changes, so a tag split by another one cannot survive.
+function stripTags(text: string) {
+  let previous: string;
+  let current = text;
+  do {
+    previous = current;
+    current = current.replace(/<\/?\w+>/g, "");
+  } while (current !== previous);
+  return current;
+}
+function plain(key: string, values?: Record<string, unknown>) {
   const text = key
     .split(".")
     .reduce<unknown>(
@@ -21,7 +37,7 @@ const lookup = (key: string, values?: Record<string, unknown>) => {
     (acc, [k, v]) => acc.replaceAll(`{${k}}`, String(v)),
     text
   );
-};
+}
 vi.mock("next-intl/server", () => ({
   getTranslations: async () => lookup,
   getLocale: async () => "tr",

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { MedarisAssets } from "~/components/medaris-assets";
+import { PhoneChrome } from "~/components/phone-menu/phone-chrome";
 
 /**
  * The medrese pages are the first tedris screens on the unified design system
@@ -10,6 +11,7 @@ export default function MadrasahsLayout({ children }: { children: ReactNode }) {
   return (
     <>
       <MedarisAssets />
+      <PhoneChrome />
       {children}
     </>
   );

@@ -2,7 +2,8 @@ import { Alert } from "@medaris/ui/mds/alert";
 import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import { AnonymousInvite } from "~/components/anonymous-invite";
 import {
   type DiscoverQuery,
   discoverHref,
@@ -70,12 +71,19 @@ export const DiscoverPage = async ({
   query,
   data,
   failed = false,
+  signedIn = true,
 }: {
   query: DiscoverQuery;
   data: DiscoverData | null;
   failed?: boolean;
+  /**
+   * False for a visitor with no account (design tedris/09): no follow buttons,
+   * and the way to apply is to sign in or register, not a köşk application.
+   */
+  signedIn?: boolean;
 }) => {
   const t = await getTranslations("tedris");
+  const locale = await getLocale();
 
   return (
     <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
@@ -152,7 +160,12 @@ export const DiscoverPage = async ({
                   </h2>
                   <div className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))]">
                     {data.kosks.map((kosk) => (
-                      <KoskCard key={kosk.id} kosk={kosk} t={t} />
+                      <KoskCard
+                        key={kosk.id}
+                        kosk={kosk}
+                        t={t}
+                        signedIn={signedIn}
+                      />
                     ))}
                   </div>
                   <Pagination query={query} total={data.koskTotal} t={t} />
@@ -180,12 +193,24 @@ export const DiscoverPage = async ({
             </>
           )}
 
-          <Card className="flex flex-row flex-wrap items-center justify-between gap-4">
-            <p className="mds-body-sm">{t("DiscoverPage.applyNotice")}</p>
-            <Button variant="outline" href={KOSK_APPLICATION_HREF}>
-              {t("DiscoverPage.applyLink")}
-            </Button>
-          </Card>
+          {signedIn ? (
+            <Card className="flex flex-row flex-wrap items-center justify-between gap-4">
+              <p className="mds-body-sm">{t("DiscoverPage.applyNotice")}</p>
+              <Button variant="outline" href={KOSK_APPLICATION_HREF}>
+                {t("DiscoverPage.applyLink")}
+              </Button>
+            </Card>
+          ) : (
+            <Card>
+              <AnonymousInvite
+                t={t}
+                locale={locale}
+                variant="discover"
+                callbackPath={discoverHref(query)}
+                className="mds-body-sm"
+              />
+            </Card>
+          )}
         </>
       )}
     </main>
