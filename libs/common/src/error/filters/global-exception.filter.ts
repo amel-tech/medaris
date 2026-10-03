@@ -43,10 +43,21 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         context: exception.context,
         timestamp: new Date().toISOString(),
       };
-      this.logger.error(
-        `${exception.code}: ${exception.message}`,
-        exception.context
-      );
+      if (exception.status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+        // A 5xx usually wraps a failure whose own message must not leave the
+        // process (MDRS-220): it rides in `cause`, which only the log sees.
+        const correlationId = randomUUID();
+        errorResponse.correlationId = correlationId;
+        this.logger.error(
+          `${exception.code} [${correlationId}]: ${exception.message}`,
+          exception
+        );
+      } else {
+        this.logger.error(
+          `${exception.code}: ${exception.message}`,
+          exception.context
+        );
+      }
     } else if (exception instanceof HttpException) {
       const httpResponse = exception.getResponse();
       const message =

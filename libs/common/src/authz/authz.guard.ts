@@ -114,8 +114,9 @@ export class AuthzGuard implements CanActivate {
         throw error;
       }
       throw new AuthzResolverError(
-        `@Authz(${meta.scope}) resolver threw: ${this.describe(error)}`,
-        { scope: meta.scope, cause: this.describe(error) }
+        `@Authz(${meta.scope}) resolver failed`,
+        { scope: meta.scope },
+        { cause: error }
       );
     }
 
@@ -134,9 +135,5 @@ export class AuthzGuard implements CanActivate {
       );
     }
     return resource;
-  }
-
-  private describe(error: unknown): string {
-    return error instanceof Error ? error.message : String(error);
   }
 }
