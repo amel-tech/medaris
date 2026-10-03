@@ -8,8 +8,24 @@ import {
 } from "react";
 
 /**
+ * A BCP 47 tag in canonical form, or null when the runtime rejects it (a
+ * `lang="tr_TR"` in the DOM, an empty string). `Intl` constructors throw a
+ * RangeError on such a tag, so it is checked once, here, at the source.
+ */
+function canonicalLocale(tag: string | null | undefined): string | null {
+  if (!tag) return null;
+  try {
+    return Intl.getCanonicalLocales(tag)[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * The page's locale (MDS-NUM-01): the `locale` prop, else the nearest `lang`
- * once mounted, else tr-TR. Attach the returned ref to the component's root.
+ * once mounted, else tr-TR. A value that is not a valid tag is skipped for the
+ * next one, so every consumer gets a tag `Intl` accepts. Attach the returned
+ * ref to the component's root.
  */
 export function usePageLocale<T extends HTMLElement = HTMLElement>(
   locale?: string
@@ -20,7 +36,10 @@ export function usePageLocale<T extends HTMLElement = HTMLElement>(
     const el = ref.current?.closest<HTMLElement>("[lang]");
     setFound(el?.lang || null);
   }, []);
-  return { ref, lang: locale ?? found ?? "tr-TR" };
+  return {
+    ref,
+    lang: canonicalLocale(locale) ?? canonicalLocale(found) ?? "tr-TR",
+  };
 }
 
 /** Intl number in `locale`; a locale the runtime rejects falls back to tr-TR. */
