@@ -1279,6 +1279,290 @@
         ]
       }
     },
+    "/nizam/audit-log": {
+      "get": {
+        "description": "Filters combine. Fifty records a page; pass `nextCursor` as `cursor` for the older ones. Köşk nazımları, başmüderrisler and everyone else get 403.",
+        "operationId": "listAuditLog",
+        "parameters": [
+          {
+            "name": "actor",
+            "required": false,
+            "in": "query",
+            "description": "Who did it: a name or e-mail fragment, or the account's id. Matches the people the app has seen.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "description": "What they did; omitted means every kind.",
+            "schema": {
+              "$ref": "#/components/schemas/AuditType"
+            }
+          },
+          {
+            "name": "scope",
+            "required": false,
+            "in": "query",
+            "description": "Where: the platform, a köşk or a medrese.",
+            "schema": {
+              "$ref": "#/components/schemas/AuditScopeKind"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Not before this moment",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Not after this moment",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` of the previous page; omitted for the first.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The audit trail, newest first",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/audit-log/export": {
+      "get": {
+        "description": "The same filters as the list, without paging (at most 10 000 records). The export is itself written to the trail as `audit.export`.",
+        "operationId": "exportAuditLog",
+        "parameters": [
+          {
+            "name": "actor",
+            "required": false,
+            "in": "query",
+            "description": "Who did it: a name or e-mail fragment, or the account's id. Matches the people the app has seen.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "description": "What they did; omitted means every kind.",
+            "schema": {
+              "$ref": "#/components/schemas/AuditType"
+            }
+          },
+          {
+            "name": "scope",
+            "required": false,
+            "in": "query",
+            "description": "Where: the platform, a köşk or a medrese.",
+            "schema": {
+              "$ref": "#/components/schemas/AuditScopeKind"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Not before this moment",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Not after this moment",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamableFile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The filtered records as a CSV file",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/platform-policies": {
+      "get": {
+        "operationId": "listPlatformPolicies",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformPolicyListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The platform policies and who applies them on their own",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/platform-policies/{key}": {
+      "put": {
+        "description": "In force at once and written to the audit trail as `platform_policy.change`. While 'Kayıt her zaman onaylı' is on every enrolment waits for approval; while 'Ders kayıtları herkese açılamaz' is on no recording is shown to people outside the course; a köşk cannot switch either rule off (409 PLATFORM_POLICY_LOCKED).",
+        "operationId": "setPlatformPolicy",
+        "parameters": [
+          {
+            "name": "key",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "$ref": "#/components/schemas/PlatformPolicyKey"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPlatformPolicyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformPolicyListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Switch a platform policy on or off",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/scoped-policies": {
+      "get": {
+        "description": "'Köşk ve medrese politikaları' of nizam/19. Medreses have no policy settings of their own yet, so only köşks are listed.",
+        "operationId": "listScopedPolicies",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScopedPolicyListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The köşks that apply a policy on their own",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
     "/madrasahs": {
       "get": {
         "description": "Open to callers with no token (MDRS-122).",
@@ -5855,6 +6139,191 @@
         ]
       }
     },
+    "/nizam/kosk-applications": {
+      "get": {
+        "description": "Waiting ones oldest first, answered ones newest first, with both tab counts. No contact detail is in the list.",
+        "operationId": "listKoskApplications",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "PENDING",
+                "DECIDED"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskApplicationListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Köşk applications (Bekleyen / Karara bağlanan)",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/kosk-applications/{id}": {
+      "get": {
+        "description": "The applicant's e-mail and phone are personal data: every read is written to the audit trail (`kosk_application.contact_read`) before the details are returned.",
+        "operationId": "getKoskApplication",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskApplicationDetailResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One application with the applicant's contact details",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/kosk-applications/{id}/approve": {
+      "post": {
+        "description": "Open the köşk first (`POST /kosks` with the application's values); this marks the application Kabul edildi and tells the applicant. 409 (KOSK_APPLICATION_DECIDED) when it was answered already.",
+        "operationId": "approveKoskApplication",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveKoskApplicationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "KOSK_APPLICATION_DECIDED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accept the application with the köşk opened from it (Köşkü aç)",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/kosk-applications/{id}/reject": {
+      "post": {
+        "description": "The reason is required and goes to the applicant in their notifications. 409 (KOSK_APPLICATION_DECIDED) when it was answered already.",
+        "operationId": "rejectKoskApplication",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "KOSK_APPLICATION_DECIDED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refuse the application (Reddet)",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
     "/sessions": {
       "get": {
         "description": "Programım. Only courses the caller is ENROLLED in: a pending request, a completed course and a barred talebe's course are left out. Starts in `[from, to)`, soonest first. A cancelled session is kept with `status: CANCELLED`; a hidden one is not here. `meetingUrl` is null for a cancelled or finished session.",
@@ -7510,6 +7979,210 @@
         ]
       }
     },
+    "/kosks/{id}/course-requests": {
+      "post": {
+        "description": "Sent by the başmüderris of the medrese named in the body; anyone else gets 403.",
+        "operationId": "createCourseRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCourseRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedIdResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ask a köşk to open a course for a medrese",
+        "tags": [
+          "kosks"
+        ]
+      },
+      "get": {
+        "description": "Waiting ones oldest first, answered ones newest first, with both tab counts. The köşk's nazımları and the başnazım only.",
+        "operationId": "listCourseRequests",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "PENDING",
+                "DECIDED"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseRequestListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course requests a köşk received (Bekleyen / Karara bağlanan)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/course-requests/{id}/accept": {
+      "post": {
+        "description": "Open the course first (the 'Ders aç' form, filled in from the request); this marks the request accepted. 409 (COURSE_REQUEST_NOT_PENDING) when it was answered already.",
+        "operationId": "acceptCourseRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptCourseRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "COURSE_REQUEST_NOT_PENDING"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accept the request with the course opened from it (Kabul et)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/course-requests/{id}/reject": {
+      "post": {
+        "description": "The reason is required. 409 when it was answered already.",
+        "operationId": "rejectCourseRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "COURSE_REQUEST_NOT_PENDING"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refuse the request (Reddet)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
     "/me": {
       "get": {
         "operationId": "getMe",
@@ -8922,6 +9595,317 @@
             "description": "Köşk-wide policy (MDRS-174): no recording of the köşk is opened to everyone or uploaded to YouTube. Stored for the recording model; nothing reads it yet."
           }
         }
+      },
+      "AuditType": {
+        "type": "string",
+        "enum": [
+          "CONTENT_READ",
+          "PRIVATE_DECK_READ",
+          "PERSONAL_DATA_READ",
+          "USER_LOOKUP",
+          "TAKEOVER",
+          "GRANT",
+          "ROLE_CHANGE",
+          "POLICY_CHANGE",
+          "BAN",
+          "HIDE",
+          "HOSTING",
+          "APPEAL",
+          "PERMANENT_BAN",
+          "PERMANENT_DELETE",
+          "EXPORT",
+          "OTHER"
+        ]
+      },
+      "AuditScopeKind": {
+        "type": "string",
+        "enum": [
+          "PLATFORM",
+          "KOSK",
+          "MADRASAH"
+        ]
+      },
+      "AuditActorResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "nullable": true,
+            "description": "The widest role the person holds now (SYSTEM_ADMIN for the başnazım, read from the realm; otherwise MEDARIS_NAZIM, KOSK_NAZIM, …); null for people who hold none."
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "AuditScopeResponse": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AuditScopeKind"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "AuditEntryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number",
+            "description": "The record's number, the `#no` of the page"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/AuditActorResponse"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AuditType"
+              }
+            ]
+          },
+          "action": {
+            "type": "string",
+            "description": "The stored `<entity>.<verb>`",
+            "example": "ban.create"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "What the writer recorded; its keys depend on the action."
+          },
+          "scope": {
+            "$ref": "#/components/schemas/AuditScopeResponse"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "createdAt",
+          "actor",
+          "type",
+          "action",
+          "details",
+          "scope"
+        ]
+      },
+      "AuditPageResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEntryResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Pass as `cursor` for the older records; null at the end."
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "StreamableFile": {
+        "type": "object",
+        "properties": {}
+      },
+      "PlatformPolicyKey": {
+        "type": "string",
+        "enum": [
+          "ALWAYS_REQUIRE_APPROVAL",
+          "RECORDINGS_NEVER_PUBLIC"
+        ],
+        "description": "ALWAYS_REQUIRE_APPROVAL is 'Kayıt her zaman onaylı'; RECORDINGS_NEVER_PUBLIC is 'Ders kayıtları herkese açılamaz'."
+      },
+      "PolicyPersonResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "PlatformPolicyResponse": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "description": "ALWAYS_REQUIRE_APPROVAL is 'Kayıt her zaman onaylı'; RECORDINGS_NEVER_PUBLIC is 'Ders kayıtları herkese açılamaz'.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlatformPolicyKey"
+              }
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "changedBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PolicyPersonResponse"
+              }
+            ]
+          },
+          "changedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "ownScopes": {
+            "description": "Names of the köşks that already apply the same rule on their own ('Kendi kapsamında uygulayan').",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "key",
+          "enabled",
+          "ownScopes"
+        ]
+      },
+      "PlatformPolicyListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlatformPolicyResponse"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "SetPlatformPolicyDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      },
+      "ScopedPolicyScopeResponse": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "KOSK",
+              "MADRASAH"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "name"
+        ]
+      },
+      "ScopedPolicyResponse": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/ScopedPolicyScopeResponse"
+          },
+          "key": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlatformPolicyKey"
+              }
+            ]
+          },
+          "openedBy": {
+            "nullable": true,
+            "description": "Who switched it on; null when the trail does not say.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PolicyPersonResponse"
+              }
+            ]
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "scope",
+          "key"
+        ]
+      },
+      "ScopedPolicyListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScopedPolicyResponse"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
       },
       "MadrasahResponse": {
         "type": "object",
@@ -12801,10 +13785,6 @@
           "context"
         ]
       },
-      "StreamableFile": {
-        "type": "object",
-        "properties": {}
-      },
       "FlashcardType": {
         "type": "string",
         "enum": [
@@ -13686,6 +14666,236 @@
         "required": [
           "id",
           "status"
+        ]
+      },
+      "KoskApplicationItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Davutpaşa Köşkü"
+          },
+          "field": {
+            "type": "string",
+            "enum": [
+              "ARABIC_LANGUAGE_SCIENCES",
+              "RHETORIC",
+              "FIQH",
+              "USUL_AL_FIQH",
+              "HADITH",
+              "QURAN_SCIENCES",
+              "TAFSIR",
+              "AQEEDAH_KALAM",
+              "SEERAH",
+              "LOGIC",
+              "OTHER"
+            ]
+          },
+          "applicantName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The applicant's name; no contact detail travels in the list."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "REJECTED"
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "decidedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "field",
+          "status",
+          "createdAt"
+        ]
+      },
+      "KoskApplicationListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskApplicationItemResponse"
+            }
+          },
+          "pendingCount": {
+            "type": "number",
+            "description": "The Bekleyen tab's count"
+          },
+          "decidedCount": {
+            "type": "number",
+            "description": "The Karara bağlanan tab's count"
+          }
+        },
+        "required": [
+          "items",
+          "pendingCount",
+          "decidedCount"
+        ]
+      },
+      "KoskApplicantResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "description": "What the applicant typed on the form"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true,
+            "description": "Null when not given: the page says 'Verilmedi'."
+          },
+          "roles": {
+            "description": "The roles the applicant holds now (KOSK_NAZIM, MUDERRIS, …)",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "roles"
+        ]
+      },
+      "KoskApplicationDetailResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Davutpaşa Köşkü"
+          },
+          "field": {
+            "type": "string",
+            "enum": [
+              "ARABIC_LANGUAGE_SCIENCES",
+              "RHETORIC",
+              "FIQH",
+              "USUL_AL_FIQH",
+              "HADITH",
+              "QURAN_SCIENCES",
+              "TAFSIR",
+              "AQEEDAH_KALAM",
+              "SEERAH",
+              "LOGIC",
+              "OTHER"
+            ]
+          },
+          "applicantName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The applicant's name; no contact detail travels in the list."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "REJECTED"
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "decidedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "summary": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "description": "'Neden bu köşk'"
+          },
+          "applicant": {
+            "$ref": "#/components/schemas/KoskApplicantResponse"
+          },
+          "sameFieldKosks": {
+            "description": "Names of the köşks already open in the same field",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rejectReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "koskId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "field",
+          "status",
+          "createdAt",
+          "summary",
+          "reason",
+          "applicant",
+          "sameFieldKosks"
+        ]
+      },
+      "ApproveKoskApplicationDto": {
+        "type": "object",
+        "properties": {
+          "koskId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The köşk that was opened from the application with `POST /kosks` (nizam/10); the application is accepted with it."
+          }
+        },
+        "required": [
+          "koskId"
+        ]
+      },
+      "RejectReasonDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Kartlarda kaynak gösterilmemiş.",
+            "description": "Shown to the person it is for. Required, and not blank."
+          }
+        },
+        "required": [
+          "reason"
         ]
       },
       "ScheduleSessionResponse": {
@@ -15167,19 +16377,6 @@
           "total"
         ]
       },
-      "RejectReasonDto": {
-        "type": "object",
-        "properties": {
-          "reason": {
-            "type": "string",
-            "example": "Kartlarda kaynak gösterilmemiş.",
-            "description": "Shown to the person it is for. Required, and not blank."
-          }
-        },
-        "required": [
-          "reason"
-        ]
-      },
       "ManagedKoskDeckResponse": {
         "type": "object",
         "properties": {
@@ -15355,6 +16552,160 @@
         "required": [
           "title",
           "cardType"
+        ]
+      },
+      "CreateCourseRequestDto": {
+        "type": "object",
+        "properties": {
+          "madrasahId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The medrese the request is sent from"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Usûl-i Fıkıh Okumaları"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "madrasahId",
+          "title",
+          "reason"
+        ]
+      },
+      "CourseRequestRefResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "CourseRequestPersonResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "CourseRequestResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "The course the medrese asks to open"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ACCEPTED",
+              "REJECTED"
+            ]
+          },
+          "kosk": {
+            "$ref": "#/components/schemas/CourseRequestRefResponse"
+          },
+          "madrasah": {
+            "$ref": "#/components/schemas/CourseRequestRefResponse"
+          },
+          "requestedBy": {
+            "$ref": "#/components/schemas/CourseRequestPersonResponse"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "decidedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "rejectReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "reason",
+          "status",
+          "kosk",
+          "madrasah",
+          "requestedBy",
+          "createdAt"
+        ]
+      },
+      "CourseRequestListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CourseRequestResponse"
+            }
+          },
+          "pendingCount": {
+            "type": "number",
+            "description": "The Bekleyen tab's count"
+          },
+          "decidedCount": {
+            "type": "number",
+            "description": "The Karara bağlanan tab's count"
+          }
+        },
+        "required": [
+          "items",
+          "pendingCount",
+          "decidedCount"
+        ]
+      },
+      "AcceptCourseRequestDto": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The course opened from the request in this köşk; the request is accepted with it."
+          }
+        },
+        "required": [
+          "courseId"
         ]
       },
       "NazirMadrasahRef": {

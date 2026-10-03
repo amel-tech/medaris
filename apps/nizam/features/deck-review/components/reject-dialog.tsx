@@ -8,7 +8,16 @@ import { useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { isBlank, REASON_MAX } from "../present";
 
-export type RejectKind = "request" | "proposal";
+/**
+ * The refusals that share this dialog: a publish request and a proposal
+ * (nizam 16, 30), and, since MDRS-181, a köşk application (nizam 15) and a
+ * medrese's course request (nizam 39).
+ */
+export type RejectKind =
+  | "request"
+  | "proposal"
+  | "application"
+  | "courseRequest";
 
 interface Props {
   open: boolean;

@@ -2939,6 +2939,16 @@
       "title": "Öneriyi reddet",
       "body": "Öneri kapanır. Gerekçeyi öneren, bildirimlerinde görür.",
       "help": "Öneren bu gerekçeyi okuyacak."
+    },
+    "application": {
+      "title": "Başvuruyu reddet",
+      "body": "Başvuru kapanır. Gerekçeyi başvuran, bildirimlerinde görür.",
+      "help": "Başvuran bu gerekçeyi okuyacak."
+    },
+    "courseRequest": {
+      "title": "Talebi reddet",
+      "body": "Talep kapanır. Gerekçeyi medresenin başmüderrisi görür.",
+      "help": "Başmüderris bu gerekçeyi okuyacak."
     }
   },
   "KoskDecksPage": {
@@ -3068,5 +3078,269 @@
     "loadFailedTitle": "Köşk bilgisi okunamadı",
     "loadFailed": "Köşk ve desteleri şu anda alınamıyor. Biraz sonra yeniden deneyin.",
     "retry": "Yeniden dene"
+  },
+  "KoskApplicationsPage": {
+    "title": "Köşk başvuruları",
+    "intro": "Üyelerin Tedris'ten gönderdiği köşk açma başvurularını karara bağlayın: köşkü açın ya da gerekçeyle reddedin.",
+    "tabsLabel": "Başvuru durumu",
+    "tabs": {
+      "PENDING": "Bekleyen",
+      "DECIDED": "Karara bağlanan"
+    },
+    "empty": {
+      "PENDING": "Karar bekleyen köşk başvurusu yok.",
+      "DECIDED": "Karara bağlanmış başvuru yok."
+    },
+    "loadFailedTitle": "Başvurular okunamadı",
+    "loadFailed": "Köşk başvuruları şu anda alınamıyor. Biraz sonra yeniden deneyin.",
+    "retry": "Tekrar dene",
+    "detailFailed": "Başvurunun ayrıntıları okunamadı.",
+    "detailEyebrow": "KÖŞK AÇMA BAŞVURUSU",
+    "status": {
+      "PENDING": "Karar bekliyor",
+      "APPROVED": "Kabul edildi",
+      "REJECTED": "Reddedildi"
+    },
+    "outcome": {
+      "PENDING": "Bekliyor",
+      "APPROVED": "Kabul edildi",
+      "REJECTED": "Reddedildi"
+    },
+    "unknownPerson": "Adı bilinmeyen üye",
+    "field": "Alan",
+    "sentAt": "Gönderildi",
+    "sameField": "Bu alandaki köşkler",
+    "sameFieldNone": "Henüz yok",
+    "summary": "Kısa açıklama",
+    "reason": "Neden bu köşk",
+    "applicant": "Başvuran",
+    "applicantName": "Ad",
+    "roles": "Rolleri",
+    "noRoles": "Henüz bir rolü yok",
+    "roleNames": {
+      "MEDARIS_NAZIM": "Medaris nâzımı",
+      "KOSK_NAZIM": "Köşk nâzımı",
+      "MEDRESE_BASMUDERRIS": "Medrese başmüderrisi",
+      "MEDRESE_NAZIR": "Medrese nâzırı",
+      "MUDERRIS": "Müderris",
+      "DERS_NAZIR": "Ders nâzırı"
+    },
+    "email": "E-posta",
+    "phone": "Telefon",
+    "phoneMissing": "Verilmedi",
+    "contactNote": "İletişim bilgilerini görmeniz denetim kaydına yazılır.",
+    "openNote": "Köşk açma formu, başvurudaki ad, alan ve açıklamayla açılır; köşk açılınca başvuru kabul edilmiş sayılır.",
+    "open": "Köşkü aç",
+    "reject": "Reddet",
+    "rejectReasonTitle": "Ret gerekçesi",
+    "approved": "Başvuru kabul edildi",
+    "approvedBody": "{name} açıldı; başvurana haber verildi.",
+    "rejected": "Başvuru reddedildi",
+    "rejectedBody": "{name} başvurusu reddedildi; gerekçe başvurana iletildi.",
+    "answerFailed": "Karar kaydedilemedi",
+    "errors": {
+      "generic": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin.",
+      "answered": "Bu başvuru az önce karara bağlanmış.",
+      "gone": "Bu başvuru artık yok.",
+      "courseGone": "Bu ders bu köşkte bulunamadı.",
+      "locked": "Bu ayar platform politikasıyla kapalı.",
+      "forbidden": "Bu işlem için izniniz yok."
+    }
+  },
+  "AuditPage": {
+    "title": "Denetim kaydı",
+    "intro": "Kimin neyi okuduğunun ya da değiştirdiğinin salt okunur kaydı. Kayıtlar silinemez ve değiştirilemez.",
+    "export": "Dışa aktar",
+    "noticeTitle": "Bu kaydı yalnız siz görürsünüz",
+    "notice": "Köşk nâzımları, medrese ve ders kadroları bu kaydı göremez; kişisel veriler talebi karşılayacak kadarıyla verilir (KVKK).",
+    "filtersLabel": "Denetim kaydı süzgeçleri",
+    "filters": {
+      "actor": "Kişi",
+      "actorPlaceholder": "Ad ya da e-posta",
+      "type": "Ne yaptı",
+      "allTypes": "Tümü",
+      "scope": "Kapsam",
+      "allScopes": "Bütün kapsamlar",
+      "range": "Tarih",
+      "from": "Başlangıç",
+      "to": "Bitiş"
+    },
+    "types": {
+      "CONTENT_READ": "İçerik okuma",
+      "PRIVATE_DECK_READ": "Özel deste okuma",
+      "PERSONAL_DATA_READ": "Kişisel veri okuma",
+      "USER_LOOKUP": "Kullanıcı arama",
+      "GRANT": "İzin verme ve geri alma",
+      "ROLE_CHANGE": "Rol değişikliği",
+      "POLICY_CHANGE": "Politika değişikliği",
+      "BAN": "Yasak ve yasak kaldırma",
+      "HIDE": "Gizleme ve geri alma",
+      "HOSTING": "Barındırma hakkı",
+      "TAKEOVER": "Devral ya da düşür",
+      "APPEAL": "İtiraz ve kararı",
+      "PERMANENT_BAN": "Kalıcı yasak talebi ve kararı",
+      "PERMANENT_DELETE": "Kalıcı silme",
+      "EXPORT": "Dışa aktarma",
+      "OTHER": "Diğer işlem"
+    },
+    "scopes": {
+      "PLATFORM": "Platform",
+      "KOSK": "Köşkler",
+      "MADRASAH": "Medreseler"
+    },
+    "scopeKinds": {
+      "PLATFORM": "Platform",
+      "KOSK": "Köşk",
+      "MADRASAH": "Medrese"
+    },
+    "ranges": {
+      "ALL": "Bütün zamanlar",
+      "24h": "Son 24 saat",
+      "7d": "Son 7 gün",
+      "30d": "Son 30 gün",
+      "custom": "Aralık seç"
+    },
+    "day": {
+      "today": "Bugün",
+      "yesterday": "Dün"
+    },
+    "columns": {
+      "record": "Kayıt",
+      "actor": "Kim",
+      "action": "Ne yaptı",
+      "scope": "Kapsam"
+    },
+    "roles": {
+      "SYSTEM_ADMIN": "Medaris başnazımı",
+      "MEDARIS_NAZIM": "Medaris nâzımı",
+      "KOSK_NAZIM": "Köşk nâzımı",
+      "MEDRESE_BASMUDERRIS": "Medrese başmüderrisi",
+      "MEDRESE_NAZIR": "Medrese nâzırı",
+      "MUDERRIS": "Müderris",
+      "DERS_NAZIR": "Ders nâzırı"
+    },
+    "unknownPerson": "Adı bilinmeyen üye",
+    "empty": "Bu süzgeçlere uyan kayıt yok.",
+    "loadFailedTitle": "Kayıt okunamadı",
+    "loadFailed": "Denetim kaydı şu anda alınamıyor. Biraz sonra yeniden deneyin.",
+    "retry": "Tekrar dene",
+    "moreFailedTitle": "Eski kayıtlar okunamadı",
+    "moreFailed": "Daha eski kayıtlar şu anda alınamıyor. Biraz sonra yeniden deneyin.",
+    "older": "Daha eskileri göster",
+    "retention": "Kayıtlar [KVKK saklama süresi] boyunca saklanır."
+  },
+  "PlatformSettingsPage": {
+    "title": "Platform ayarları",
+    "intro": "Platform politikaları her köşkte, medresede ve derste geçerlidir. Bir politika bir izni kapatır; köşk, medrese ya da ders onu yeniden açamaz.",
+    "policiesHeading": "Politikalar",
+    "policies": {
+      "ALWAYS_REQUIRE_APPROVAL": {
+        "title": "Kayıt her zaman onaylı",
+        "body": "Açıkken hiçbir derse doğrudan kaydolunamaz; her kayıt bir başvuru olur ve ders kadrosu onaylar. Listelenmeyen köşklerde kayıt bu ayardan bağımsız olarak her zaman onaylıdır."
+      },
+      "RECORDINGS_NEVER_PUBLIC": {
+        "title": "Ders kayıtları herkese açılamaz",
+        "body": "Açıkken hiçbir ders kaydı herkese açık yapılamaz ve YouTube’a yüklenemez; ders kayıtlarını yalnız kayıtlı talebeler ve ders kadrosu izler."
+      }
+    },
+    "ownScopes": "Kendi kapsamında uygulayan: {names}",
+    "instantNote": "Her değişiklik anında geçerli olur ve denetim kaydına yazılır.",
+    "combineHeading": "Politikalar nasıl birleşir",
+    "steps": {
+      "roleDefault": {
+        "title": "Rolün varsayılanı ve aldığı izinler",
+        "body": "Köşk nazımı, başmüderris ve müderris kendi kapsamlarında rollerinin varsayılan izinlerini tutar; Medaris nazımı, medrese nazırı ve ders nazırı yalnız kendilerine verilen izinleri."
+      },
+      "platform": {
+        "title": "Platform politikası",
+        "body": "Bu sayfadaki politikalar; her yerde geçerli."
+      },
+      "kosk": {
+        "title": "Köşk politikası",
+        "body": "Köşk nazımı kendi köşkünü daha da daraltır."
+      },
+      "madrasah": {
+        "title": "Medrese politikası",
+        "body": "Yalnız medrese derslerinde. Böyle bir derse köşkün ve medresenin politikası birlikte uygulanır."
+      },
+      "course": {
+        "title": "Ders politikası",
+        "body": "Dersin kendi ayarları; son daraltma."
+      }
+    },
+    "combineIntro": "Bir kişinin bir derste yapabildikleri, sırayla daraltılarak bulunur:",
+    "combineWarningTitle": "Üst kademenin verdiği izin, alttaki politikayı aşar",
+    "combineWarning": "Örneğin sizin bir Medaris nazımına verdiğiniz izin, köşk politikasını o kişi için aşar; platform politikasını aşmaz.",
+    "scopedHeading": "Köşk ve medrese politikaları",
+    "scopedEmpty": "Kendi politikasını uygulayan köşk ya da medrese yok.",
+    "columns": {
+      "scope": "Kapsam",
+      "policy": "Politika",
+      "by": "Açan",
+      "at": "Tarih"
+    },
+    "scopeKinds": {
+      "KOSK": "Köşk",
+      "MADRASAH": "Medrese"
+    },
+    "unknownPerson": "Adı bilinmeyen üye",
+    "unknownBy": "Kayıtlı değil",
+    "turnedOn": "Politika açıldı",
+    "turnedOff": "Politika kapatıldı",
+    "saveFailed": "Politika kaydedilemedi",
+    "loadFailedTitle": "Ayarlar okunamadı",
+    "loadFailed": "Platform ayarları şu anda alınamıyor. Biraz sonra yeniden deneyin.",
+    "retry": "Tekrar dene",
+    "errors": {
+      "generic": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin.",
+      "forbidden": "Bu işlem için izniniz yok."
+    }
+  },
+  "CourseRequestsPage": {
+    "title": "Ders talepleri",
+    "intro": "Medreselerin bu köşkte açılmasını istediği medrese dışı dersler.",
+    "tabsLabel": "Talep durumu",
+    "tabs": {
+      "PENDING": "Bekleyen",
+      "DECIDED": "Karara bağlanan"
+    },
+    "empty": {
+      "PENDING": "Karar bekleyen ders talebi yok.",
+      "DECIDED": "Karara bağlanmış talep yok."
+    },
+    "loadFailedTitle": "Talepler okunamadı",
+    "loadFailed": "Ders talepleri şu anda alınamıyor. Biraz sonra yeniden deneyin.",
+    "retry": "Tekrar dene",
+    "detailEyebrow": "MEDRESE DIŞI DERS TALEBİ",
+    "status": {
+      "PENDING": "Karar bekliyor",
+      "ACCEPTED": "Kabul edildi",
+      "REJECTED": "Reddedildi"
+    },
+    "outcome": {
+      "PENDING": "Bekliyor",
+      "ACCEPTED": "Kabul edildi",
+      "REJECTED": "Reddedildi"
+    },
+    "kosk": "Açılması istenen köşk",
+    "madrasah": "Medrese",
+    "sentAt": "Gönderildi",
+    "sender": "Talebi gönderen",
+    "reason": "Gerekçe",
+    "answerNote": "Kabul ettiğinizde Ders aç formu talebin adıyla dolu açılır; ders açılınca talep kabul sayılır. Reddettiğinizde başmüderris gerekçeyi görür.",
+    "accept": "Kabul et",
+    "reject": "Reddet",
+    "rejectReasonTitle": "Ret gerekçesi",
+    "unknownPerson": "Adı bilinmeyen üye",
+    "rejected": "Talep reddedildi",
+    "rejectedBody": "{title} talebi reddedildi; gerekçe başmüderrise iletildi.",
+    "answerFailed": "Karar kaydedilemedi",
+    "errors": {
+      "generic": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin.",
+      "answered": "Bu talep az önce karara bağlanmış.",
+      "gone": "Bu talep artık yok.",
+      "courseGone": "Bu ders bu köşkte bulunamadı.",
+      "forbidden": "Bu işlem için izniniz yok."
+    }
   }
 }

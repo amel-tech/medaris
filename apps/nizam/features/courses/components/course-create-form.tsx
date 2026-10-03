@@ -27,6 +27,7 @@ import {
   koskCase,
   TONE_HUE,
 } from "~/features/kosks/admin-present";
+import { acceptCourseRequest } from "~/features/platform-admin/actions";
 import { formatDay, weekdayName } from "../format";
 import {
   arabicOfCoverLabel,
@@ -43,6 +44,8 @@ import { TeamPicker } from "./team-picker";
 
 interface Props {
   kosk: KoskResponse;
+  /** A medrese's course request (nizam/39 "Kabul et"): it names the course and is accepted with it. */
+  request?: { id: string; title: string };
 }
 
 /**
@@ -52,13 +55,13 @@ interface Props {
  * that follows the fields. "Dersi aç" creates the course and then its sessions
  * in one request chain; with a field wrong it sends nothing and says which.
  */
-export function CourseCreateForm({ kosk }: Props) {
+export function CourseCreateForm({ kosk, request }: Props) {
   const t = useTranslations("nizam.CourseCreate");
   const format = useFormatter();
   const locale = useLocale();
   const router = useRouter();
 
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(request?.title ?? "");
   const [description, setDescription] = useState("");
   const [tone, setTone] = useState<(typeof COVER_TONES)[number]>("bordo");
   const [label, setLabel] = useState<string | null>(null);
@@ -137,6 +140,9 @@ export function CourseCreateForm({ kosk }: Props) {
       });
       return;
     }
+    // The request is answered by the course opened from it; a request already
+    // answered elsewhere does not undo a course that now exists.
+    if (request) await acceptCourseRequest(request.id, created.data.id);
     const sessions = await createCourseSessions(kosk.id, created.data.id, {
       ...pattern,
       title: title.trim(),

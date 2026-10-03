@@ -1,4 +1,6 @@
 import { Injectable } from "@nestjs/common";
+import { AuditService } from "../audit/audit.service";
+import { PlatformPolicyService } from "../platform-policy/platform-policy.service";
 import { KoskForbiddenError } from "./errors/kosk-forbidden.error";
 import { KoskHandleTakenError } from "./errors/kosk-handle-taken.error";
 import { KoskLastManagerError } from "./errors/kosk-last-manager.error";
@@ -22,7 +24,13 @@ import {
 
 @Injectable()
 export class KoskService {
-  constructor(private readonly koskRepo: KoskRepository) {}
+  // Must stay value imports: `import type` erases them from
+  // `design:paramtypes` and Nest can no longer inject them.
+  constructor(
+    private readonly koskRepo: KoskRepository,
+    private readonly platformPolicies: PlatformPolicyService,
+    private readonly audit: AuditService
+  ) {}
 
   /**
    * A page of köşks. `managedByCaller` (`GET /kosks?managedBy=me`, MDRS-108)
@@ -204,11 +212,34 @@ export class KoskService {
    * Authorization is `@Authz(SCOPES.EDIT, …)` on `KoskController.update`: the
    * köşk's managers. A medrese has no say over a köşk since MDRS-134.
    */
-  async update(id: string, updates: IUpdateKosk): Promise<IKosk> {
+  async update(
+    id: string,
+    updates: IUpdateKosk,
+    actorId?: string
+  ): Promise<IKosk> {
     await this.assertHandleFree(updates.handle, id);
+    // A platform policy that is on cannot be switched off from below (MDRS-181).
+    await this.platformPolicies.assertKoskMayChange(updates);
     const updated = await this.koskRepo.update(id, updates);
     if (!updated) {
       throw new KoskNotFoundError(id);
+    }
+    const touchesPolicy =
+      updates.alwaysRequireApproval !== undefined ||
+      updates.recordingsNeverPublic !== undefined;
+    if (actorId && touchesPolicy) {
+      // The platform settings page says who switched a köşk's rule on and when.
+      await this.audit.record({
+        actorId,
+        action: "kosk.policy_change",
+        entity: "kosk",
+        entityId: id,
+        details: {
+          name: updated.name,
+          alwaysRequireApproval: updated.alwaysRequireApproval,
+          recordingsNeverPublic: updated.recordingsNeverPublic,
+        },
+      });
     }
     return updated;
   }
