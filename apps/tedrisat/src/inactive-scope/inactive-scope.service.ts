@@ -110,6 +110,50 @@ export class InactiveScopeService {
     return chief;
   }
 
+  /**
+   * The same scopes as `list`, without the people (MDRS-182, nizam/01 and 05):
+   * the home page's count and its Pasif kapsamlar card need the name, the kind,
+   * the reason and the date, and no directory call. Oldest first, like `list`.
+   * No permission check here: the caller decides what to show whom.
+   */
+  async brief(): Promise<
+    {
+      type: InactiveScopeType;
+      id: string;
+      name: string;
+      koskName: string | null;
+      reason: ReturnType<typeof endReason>;
+      since: Date;
+    }[]
+  > {
+    const found = await Promise.all(
+      INACTIVE_SCOPE_TYPES.map(async (type) => {
+        const posts = await this.repo.lastPosts(type);
+        const scopes = await this.repo.scopeInfo(
+          type,
+          posts.map((p) => p.scopeId)
+        );
+        return posts.flatMap((post) => {
+          const scope = scopes.get(post.scopeId);
+          const since = endedAt(post);
+          return scope && since
+            ? [
+                {
+                  type,
+                  id: scope.id,
+                  name: scope.name,
+                  koskName: scope.kosk?.name ?? null,
+                  reason: endReason(post),
+                  since,
+                },
+              ]
+            : [];
+        });
+      })
+    );
+    return found.flat().sort((a, b) => a.since.getTime() - b.since.getTime());
+  }
+
   async list(
     user: AuthenticatedUser,
     type?: InactiveScopeType

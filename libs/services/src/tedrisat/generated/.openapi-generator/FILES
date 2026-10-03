@@ -89,6 +89,16 @@ src/models/CreateSessionBatchDto.ts
 src/models/CreateWeekDto.ts
 src/models/CreateWeekLessonDto.ts
 src/models/CreatedIdResponse.ts
+src/models/DashboardApplicationResponse.ts
+src/models/DashboardBanResponse.ts
+src/models/DashboardCanResponse.ts
+src/models/DashboardDeckRequestResponse.ts
+src/models/DashboardInactiveScopeResponse.ts
+src/models/DashboardPendingTotalsResponse.ts
+src/models/DashboardPlatformCountsResponse.ts
+src/models/DashboardSessionMuderrisResponse.ts
+src/models/DashboardSessionTab.ts
+src/models/DashboardViewer.ts
 src/models/DeckCollectionKind.ts
 src/models/DeckLabelStatsResponse.ts
 src/models/DeckPersonResponse.ts
@@ -156,6 +166,12 @@ src/models/KoskCourseMuderrisResponse.ts
 src/models/KoskCourseRosterResponse.ts
 src/models/KoskCourseRowResponse.ts
 src/models/KoskCourseStatus.ts
+src/models/KoskDashboardApplicationResponse.ts
+src/models/KoskDashboardCountsResponse.ts
+src/models/KoskDashboardMuderrisResponse.ts
+src/models/KoskDashboardResponse.ts
+src/models/KoskDashboardSessionCountsResponse.ts
+src/models/KoskDashboardSessionResponse.ts
 src/models/KoskDeckResponse.ts
 src/models/KoskDecksResponse.ts
 src/models/KoskDirectoryCountsResponse.ts
@@ -215,6 +231,7 @@ src/models/NazimPermissionResponse.ts
 src/models/NazimPersonResponse.ts
 src/models/NazirMadrasahRef.ts
 src/models/NextSessionResponse.ts
+src/models/NizamDashboardResponse.ts
 src/models/NotificationCountsResponse.ts
 src/models/NotificationResponse.ts
 src/models/PaginatedArchiveResponse.ts
@@ -240,6 +257,7 @@ src/models/RecordingProvider.ts
 src/models/RecordingResponse.ts
 src/models/RecordingStatus.ts
 src/models/RecordingVisibility.ts
+src/models/RejectEnrollmentDto.ts
 src/models/RejectReasonDto.ts
 src/models/RemoveEnrollmentDto.ts
 src/models/RemovedByResponse.ts

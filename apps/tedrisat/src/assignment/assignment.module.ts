@@ -25,6 +25,6 @@ import { UserDirectoryService } from "./user-directory.service";
     PermissionAdminRepository,
     PermissionAdminService,
   ],
-  exports: [UserDirectoryService],
+  exports: [UserDirectoryService, AssignmentService],
 })
 export class AssignmentModule {}

@@ -43,6 +43,11 @@ import {
   KoskNazimResponse,
   type KoskStatusFilter,
 } from "./dto/kosk-admin.dto";
+import {
+  DASHBOARD_SESSION_TABS,
+  type DashboardSessionTab,
+  KoskDashboardResponse,
+} from "./dto/kosk-dashboard.dto";
 import { KOSK_LEVELS, type KoskLevel } from "./dto/kosk-field-rules";
 import {
   KoskCourseRosterResponse,
@@ -50,6 +55,7 @@ import {
 } from "./dto/kosk-overview.dto";
 import { byExistingKosk } from "./kosk.controller";
 import { KoskAdminService } from "./kosk-admin.service";
+import { KoskDashboardService } from "./kosk-dashboard.service";
 
 const MAX_PAGE_SIZE = 50;
 const MAX_TEXT_LENGTH = 100;
@@ -64,7 +70,10 @@ const MAX_TEXT_LENGTH = 100;
 @UseGuards(AuthGuard, AuthzGuard)
 @Controller("kosks")
 export class KoskAdminController {
-  constructor(private readonly admin: KoskAdminService) {}
+  constructor(
+    private readonly admin: KoskAdminService,
+    private readonly dashboard: KoskDashboardService
+  ) {}
 
   @ApiOperation({
     summary: "Every köşk for the table of nizam/09",
@@ -162,6 +171,36 @@ export class KoskAdminController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskOverviewResponse> {
     return this.admin.overview(id);
+  }
+
+  @ApiOperation({
+    summary: "A köşk nazımı's home page (numbers, celse table, applications)",
+    description:
+      "nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk's nazımları and the başnazım.",
+    operationId: "getKoskDashboard",
+  })
+  @ApiQuery({
+    name: "sessions",
+    required: false,
+    enum: DASHBOARD_SESSION_TABS,
+    enumName: "DashboardSessionTab",
+  })
+  @ApiOkResponse({ type: KoskDashboardResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Get(":id/dashboard")
+  @Authz(SCOPES.EDIT, byExistingKosk)
+  koskDashboard(
+    @Req() request: AuthenticatedUserRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Query(
+      "sessions",
+      new DefaultValuePipe("UPCOMING"),
+      new ParseEnumPipe(DASHBOARD_SESSION_TABS)
+    )
+    tab: DashboardSessionTab
+  ): Promise<KoskDashboardResponse> {
+    return this.dashboard.get(id, request.user.sub, tab);
   }
 
   @ApiOperation({

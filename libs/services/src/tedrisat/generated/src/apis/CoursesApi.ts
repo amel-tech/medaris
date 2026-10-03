@@ -23,6 +23,7 @@ import type {
   EnrollmentResponse,
   MuderrisListResponse,
   PendingEnrollmentResponse,
+  RejectEnrollmentDto,
   RemoveEnrollmentDto,
   RemovedEnrollmentResponse,
   ReplaceCourseDto,
@@ -49,6 +50,8 @@ import {
     MuderrisListResponseToJSON,
     PendingEnrollmentResponseFromJSON,
     PendingEnrollmentResponseToJSON,
+    RejectEnrollmentDtoFromJSON,
+    RejectEnrollmentDtoToJSON,
     RemoveEnrollmentDtoFromJSON,
     RemoveEnrollmentDtoToJSON,
     RemovedEnrollmentResponseFromJSON,
@@ -125,6 +128,7 @@ export interface LeaveCourseRequest {
 export interface RejectEnrollmentRequest {
     id: string;
     userId: string;
+    rejectEnrollmentDto: RejectEnrollmentDto;
 }
 
 export interface RemoveEnrollmentRequest {
@@ -763,6 +767,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * The body is optional: a `reason` (nizam/02, Ret gerekçesi) is kept with the refusal in the audit log as `enrollment.reject`.
      * Reject a pending enrollment, deleting it (course team)
      */
     async rejectEnrollmentRaw(requestParameters: RejectEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<boolean>> {
@@ -780,9 +785,18 @@ export class CoursesApi extends runtime.BaseAPI {
             );
         }
 
+        if (requestParameters['rejectEnrollmentDto'] == null) {
+            throw new runtime.RequiredError(
+                'rejectEnrollmentDto',
+                'Required parameter "rejectEnrollmentDto" was null or undefined when calling rejectEnrollment().'
+            );
+        }
+
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
 
         if (this.configuration && this.configuration.accessToken) {
             // oauth required
@@ -799,6 +813,7 @@ export class CoursesApi extends runtime.BaseAPI {
             method: 'DELETE',
             headers: headerParameters,
             query: queryParameters,
+            body: RejectEnrollmentDtoToJSON(requestParameters['rejectEnrollmentDto']),
         }, initOverrides);
 
         if (this.isJsonMime(response.headers.get('content-type'))) {
@@ -809,6 +824,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * The body is optional: a `reason` (nizam/02, Ret gerekçesi) is kept with the refusal in the audit log as `enrollment.reject`.
      * Reject a pending enrollment, deleting it (course team)
      */
     async rejectEnrollment(requestParameters: RejectEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {

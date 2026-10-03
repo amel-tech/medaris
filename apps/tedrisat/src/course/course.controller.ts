@@ -57,6 +57,7 @@ import {
 import { CourseStatsResponse } from "./dto/course-stats.dto";
 import { CreateCourseDto } from "./dto/create-course.dto";
 import {
+  RejectEnrollmentDto,
   RemoveEnrollmentDto,
   SetEnrollmentStatusDto,
 } from "./dto/enrollment-actions.dto";
@@ -479,6 +480,8 @@ export class CourseController {
 
   @ApiOperation({
     summary: "Reject a pending enrollment, deleting it (course team)",
+    description:
+      "The body is optional: a `reason` (nizam/02, Ret gerekçesi) is kept with the refusal in the audit log as `enrollment.reject`.",
     operationId: "rejectEnrollment",
   })
   @ApiOkResponse({ type: Boolean })
@@ -488,10 +491,17 @@ export class CourseController {
   @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
   @Delete("courses/:id/enrollments/:userId")
   async rejectEnrollment(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
-    @Param("userId", ParseUUIDPipe) userId: string
+    @Param("userId", ParseUUIDPipe) userId: string,
+    @Body() dto?: RejectEnrollmentDto
   ): Promise<boolean> {
-    return this.courseService.rejectEnrollment(id, userId);
+    return this.courseService.rejectEnrollment(
+      id,
+      userId,
+      request.user.sub,
+      dto?.reason
+    );
   }
 
   @ApiOperation({
