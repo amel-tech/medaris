@@ -8,6 +8,7 @@ import { introMetadata } from "~/features/courses/intro-metadata";
 import { loadCourse } from "~/features/courses/load-course";
 import {
   getCourseForMetadata,
+  getCourseQuestions,
   getRecordings,
   isSignedIn,
 } from "~/features/courses/public-reads";
@@ -52,12 +53,14 @@ export default async function Page({
   // Köşk name for the breadcrumb (CourseDetailResponse only carries koskId),
   // and whether it is unlisted: every enrollment there waits for approval
   // (MDRS-122), whatever the course's own `requiresApproval` says.
-  const [kosk, signedIn, locale, recordings] = await Promise.all([
-    getKosk(course.koskId),
-    isSignedIn(),
-    getLocale(),
-    getRecordings(course.id),
-  ]);
+  const [kosk, signedIn, locale, recordings, staffQuestions] =
+    await Promise.all([
+      getKosk(course.koskId),
+      isSignedIn(),
+      getLocale(),
+      getRecordings(course.id),
+      getCourseQuestions(course.id),
+    ]);
   const hrefs = inviteHrefs(locale, `/courses/${course.id}`);
 
   return (
@@ -70,6 +73,7 @@ export default async function Page({
       registerHref={hrefs.register}
       nazirUrl={env.NAZIR_URL || null}
       recordings={recordings}
+      staffQuestions={staffQuestions}
       initialTab={typeof tab === "string" ? tab : undefined}
     />
   );

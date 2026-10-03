@@ -216,7 +216,7 @@ describe("Medrese permissions and groups (e2e)", () => {
       const res = await get(HEAD_ID, at("/permissions")).expect(200);
       expect(res.body.madrasah).toHaveLength(10);
       expect(res.body.madrasah[0]).toBe("madrasah.course_open");
-      expect(res.body.course).toHaveLength(20);
+      expect(res.body.course).toHaveLength(21);
       expect(res.body.course[0]).toBe("course.edit");
       expect(res.body.givable).toEqual([
         ...res.body.madrasah,

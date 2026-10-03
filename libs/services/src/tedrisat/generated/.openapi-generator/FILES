@@ -26,6 +26,7 @@ src/models/AddKoskNazimsDto.ts
 src/models/AgendaStepDto.ts
 src/models/AgendaStepResponse.ts
 src/models/AllBansListResponse.ts
+src/models/AnswerLessonQuestionDto.ts
 src/models/AppointMedarisNazimDto.ts
 src/models/ApproveKoskApplicationDto.ts
 src/models/ArchiveImpactResponse.ts
@@ -35,6 +36,7 @@ src/models/ArchiveRestoreResponse.ts
 src/models/ArchiveScopeRefResponse.ts
 src/models/ArchiveScopesResponse.ts
 src/models/ArchiverResponse.ts
+src/models/AskLessonQuestionDto.ts
 src/models/AssignInactiveScopeDto.ts
 src/models/AssignedCourseInfo.ts
 src/models/AssignmentResponse.ts
@@ -61,6 +63,7 @@ src/models/CourseBadgeCountsResponse.ts
 src/models/CourseDetailMadrasahResponse.ts
 src/models/CourseDetailResponse.ts
 src/models/CourseMadrasahResponse.ts
+src/models/CourseQuestionResponse.ts
 src/models/CourseRequestListResponse.ts
 src/models/CourseRequestPersonResponse.ts
 src/models/CourseRequestRefResponse.ts
@@ -203,6 +206,7 @@ src/models/KoskStatusFilter.ts
 src/models/LabelStatsResponse.ts
 src/models/LessonMutationResponse.ts
 src/models/LessonNoteResponse.ts
+src/models/LessonQuestionResponse.ts
 src/models/LessonResponse.ts
 src/models/LiftBanDto.ts
 src/models/LiveStreamResponse.ts
@@ -291,6 +295,8 @@ src/models/PlatformPolicyResponse.ts
 src/models/PolicyPersonResponse.ts
 src/models/ProfileVisibility.ts
 src/models/PublicProfileResponse.ts
+src/models/QuestionAnswerResponse.ts
+src/models/QuestionPersonResponse.ts
 src/models/ReadAllNotificationsResponse.ts
 src/models/RecordingProvider.ts
 src/models/RecordingResponse.ts

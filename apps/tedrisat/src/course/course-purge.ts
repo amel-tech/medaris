@@ -12,6 +12,7 @@ import {
   lessons,
 } from "../database/schema/course.schema";
 import { lessonNotes } from "../database/schema/lesson-note.schema";
+import { lessonQuestions } from "../database/schema/lesson-question.schema";
 import { SCOPE_TYPES } from "../database/schema/role-assignment.schema";
 
 export type Tx = Parameters<
@@ -62,8 +63,8 @@ export async function purgeCourses(
   ).map((w) => w.id);
 
   if (weekIds.length > 0) {
-    // Recordings (MDRS-162) and notes (MDRS-150) hang off lessons; they go
-    // first, uncounted.
+    // Recordings (MDRS-162), notes and questions (MDRS-150) hang off lessons;
+    // they go first, uncounted.
     const lessonIds = tx
       .select({ id: lessons.id })
       .from(lessons)
@@ -74,6 +75,9 @@ export async function purgeCourses(
     await tx
       .delete(lessonNotes)
       .where(inArray(lessonNotes.lessonId, lessonIds));
+    await tx
+      .delete(lessonQuestions)
+      .where(inArray(lessonQuestions.lessonId, lessonIds));
     counts.lessons = (
       await tx
         .delete(lessons)

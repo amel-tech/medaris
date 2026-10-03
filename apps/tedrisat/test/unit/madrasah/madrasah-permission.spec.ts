@@ -102,9 +102,9 @@ describe("the dictionary", () => {
     const { service } = build();
     const head = await service.catalog(HEAD, M);
     expect(head.madrasah).toHaveLength(10);
-    expect(head.course).toHaveLength(20);
-    expect(head.givable).toHaveLength(30);
-    expect((await service.catalog(ADMIN, M)).givable).toHaveLength(30);
+    expect(head.course).toHaveLength(21);
+    expect(head.givable).toHaveLength(31);
+    expect((await service.catalog(ADMIN, M)).givable).toHaveLength(31);
     expect((await service.catalog(STRANGER, M)).givable).toEqual([]);
   });
 });

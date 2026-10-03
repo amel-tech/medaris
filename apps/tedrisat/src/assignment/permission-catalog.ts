@@ -12,7 +12,8 @@ import {
  * The lists below come from the account screen (tedris 43), which spells out
  * what a köşk nazımı and a müderris hold by default. The other four roles have
  * no default text anywhere yet, so they hold nothing by default and get what
- * they are given through grants.
+ * they are given through grants. `question.answer` (MDRS-150) is on no canvas
+ * yet: its sentence is the web messages' alone.
  */
 export const PERMISSIONS = {
   KOSK_MANAGE: "kosk.manage",
@@ -38,6 +39,7 @@ export const PERMISSIONS = {
   RECORDING_UPLOAD: "recording.upload",
   RECORDING_WATCH_RESTRICTED: "recording.watch_restricted",
   SESSION_VIEW_CONTENT: "session.view_content",
+  QUESTION_ANSWER: "question.answer",
   BAN_COURSE: "ban.course",
   BAN_LIFT_COURSE: "ban.lift_course",
   DECK_MANAGE_COURSE: "deck.manage_course",
@@ -114,6 +116,7 @@ const MUDERRIS_DEFAULTS: readonly PermissionCode[] = [
   PERMISSIONS.RECORDING_UPLOAD,
   PERMISSIONS.RECORDING_WATCH_RESTRICTED,
   PERMISSIONS.SESSION_VIEW_CONTENT,
+  PERMISSIONS.QUESTION_ANSWER,
   PERMISSIONS.BAN_COURSE,
   PERMISSIONS.BAN_LIFT_COURSE,
   PERMISSIONS.DECK_MANAGE_COURSE,
@@ -223,10 +226,9 @@ export const MADRASAH_CATALOG: readonly PermissionCode[] = [
 ];
 
 /**
- * The "Medrese dersleri" section of nazir/06 and nazir/16: all twenty course
- * permissions the müderris holds by default, which is the count the canvas
- * prints. nizam/13's `COURSE_CATALOG` leaves two out; the medrese dialogs do
- * not say they do.
+ * The "Medrese dersleri" section of nazir/06 and nazir/16: every course
+ * permission the müderris holds by default. nizam/13's `COURSE_CATALOG` leaves
+ * two out; the medrese dialogs do not say they do.
  */
 export const MADRASAH_COURSE_CATALOG: readonly PermissionCode[] =
   MUDERRIS_DEFAULTS;

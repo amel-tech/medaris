@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { BanRepository } from "../ban/ban.repository";
+import { ActiveTalebeService } from "../course/active-talebe.service";
 import { CourseRepository } from "../course/course.repository";
-import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { LessonNotFoundError } from "../course/errors/lesson-not-found.error";
 import type {
   CreateLessonNoteDto,
@@ -18,11 +17,9 @@ import {
  * A talebe's private notes on a session's video (MDRS-150).
  *
  * Whose they are is decided by the repository, which never reads a note
- * without its author. What this decides is who may write: an active
- * enrollment (ENROLLED or COMPLETED) in the session's course that no ban bars,
- * asked here and not through the route matrix because SYSTEM_ADMIN passes the
- * guard on every course and the course team holds `view_details` without
- * being talebe. Reading and deleting one's own notes ask nothing more, so a
+ * without its author. What this decides is who may write: an active talebe of
+ * the session's course (`ActiveTalebeService`), asked here and not through the
+ * route matrix. Reading and deleting one's own notes ask nothing more, so a
  * talebe who was removed or barred can still read and remove what they wrote.
  */
 @Injectable()
@@ -32,7 +29,7 @@ export class LessonNoteService {
   constructor(
     private readonly notes: LessonNoteRepository,
     private readonly courseRepo: CourseRepository,
-    private readonly banRepo: BanRepository
+    private readonly talebe: ActiveTalebeService
   ) {}
 
   async list(lessonId: string, userId: string): Promise<ILessonNote[]> {
@@ -87,11 +84,7 @@ export class LessonNoteService {
     userId: string
   ): Promise<void> {
     const courseId = await this.existing(lessonId);
-    const enrollment = await this.courseRepo.findEnrollment(userId, courseId);
-    const active =
-      enrollment?.status === EnrollmentStatus.ENROLLED ||
-      enrollment?.status === EnrollmentStatus.COMPLETED;
-    if (!active || (await this.banRepo.isBarredFromCourse(userId, courseId))) {
+    if (!(await this.talebe.isActive(userId, courseId))) {
       throw new LessonNoteForbiddenError();
     }
   }

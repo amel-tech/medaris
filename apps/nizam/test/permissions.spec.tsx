@@ -97,7 +97,7 @@ describe("codes and messages", () => {
         expect(entry?.title, `${lang} ${code}`).toBeTruthy();
         expect(entry?.short, `${lang} ${code}`).toBeTruthy();
       }
-      expect(Object.keys(catalog.course)).toHaveLength(18);
+      expect(Object.keys(catalog.course)).toHaveLength(19);
     }
   });
 });
