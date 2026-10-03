@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import "@medaris/ui/globals.css";
 import "@medaris/ui/medaris.css";
 import { textFontsHref } from "@medaris/tokens/medaris-fonts";
-import { AppProviders } from "@medaris/ui/mds/app-providers";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
@@ -47,9 +46,7 @@ export default async function LocaleLayout({
       <body suppressHydrationWarning>
         <NextIntlClientProvider>
           <ClientProviders>
-            <AppProviders toaster>
-              <NizamShell footer={<LegalFooter />}>{children}</NizamShell>
-            </AppProviders>
+            <NizamShell footer={<LegalFooter />}>{children}</NizamShell>
           </ClientProviders>
         </NextIntlClientProvider>
       </body>
