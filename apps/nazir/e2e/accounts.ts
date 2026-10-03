@@ -39,8 +39,13 @@ export async function signIn(page: Page, who: Account): Promise<void> {
   await page.locator("button[type=submit]").click();
   const here = new URL(process.env.E2E_BASE_URL ?? "http://localhost:4002")
     .origin;
+  // `/` answers with a client-side redirect, so it is not where the sign-in ends
   await page.waitForURL(
-    (url) => url.origin === here && !url.pathname.startsWith("/auth/"),
+    (url) =>
+      url.origin === here &&
+      url.pathname !== "/" &&
+      !url.pathname.startsWith("/auth/") &&
+      !url.pathname.startsWith("/api/auth/"),
     { timeout: 30_000 }
   );
 }

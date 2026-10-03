@@ -56,8 +56,13 @@ export function TimeZoneForm({
     const previous = zone;
     setZone(next);
     startTransition(async () => {
-      const result = await updateTimeZone(next);
-      if (result.success) {
+      // A dropped connection rejects the action instead of answering, and
+      // that must read as a failed save, not as the page's error screen.
+      const saved = await updateTimeZone(next).then(
+        (result) => result.success,
+        () => false
+      );
+      if (saved) {
         notify({ tone: "success", title: labels.saved });
         router.refresh();
       } else {
