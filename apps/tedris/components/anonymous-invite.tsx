@@ -25,20 +25,26 @@ export const AnonymousInvite = ({
   className?: string;
 }) => {
   const hrefs = inviteHrefs(locale, callbackPath);
+  const links = {
+    signIn: (chunks: React.ReactNode) => (
+      <Link href={hrefs.signIn} prefetch={false}>
+        {chunks}
+      </Link>
+    ),
+    register: (chunks: React.ReactNode) => (
+      <Link href={hrefs.register} prefetch={false}>
+        {chunks}
+      </Link>
+    ),
+  };
+  // One literal key per branch: the template `AnonymousInvite.${variant}` made
+  // the checker expand every key of the app's catalogue (MDRS-164 grew it past
+  // the point where that finishes: TS2589).
   return (
     <p className={className}>
-      {t.rich(`AnonymousInvite.${variant}`, {
-        signIn: (chunks) => (
-          <Link href={hrefs.signIn} prefetch={false}>
-            {chunks}
-          </Link>
-        ),
-        register: (chunks) => (
-          <Link href={hrefs.register} prefetch={false}>
-            {chunks}
-          </Link>
-        ),
-      })}
+      {variant === "apply"
+        ? t.rich("AnonymousInvite.apply", links)
+        : t.rich("AnonymousInvite.discover", links)}
     </p>
   );
 };

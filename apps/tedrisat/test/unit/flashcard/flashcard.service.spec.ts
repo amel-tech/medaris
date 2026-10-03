@@ -49,6 +49,7 @@ describe("FlashcardService", () => {
     deckId: DECK_ID,
     authorId: USER_ID,
     isPublic: false,
+    sharedWithViewer: false,
   };
 
   const card: IFlashcard = {
@@ -308,7 +309,24 @@ describe("FlashcardService", () => {
 
       expect(
         mockFlashcardRepository.findVisibilityByIds
-      ).toHaveBeenCalledExactlyOnceWith([CARD_ID]);
+      ).toHaveBeenCalledExactlyOnceWith([CARD_ID], USER_ID);
+    });
+
+    // MDRS-164: a deck that belongs to a course the caller is enrolled in is
+    // readable like a public one, so its cards take progress.
+    it("allows a card in a private deck shared with the caller through a course", async () => {
+      mockFlashcardRepository.findVisibilityByIds.mockResolvedValue([
+        {
+          ...ownVisibility,
+          authorId: "someone-else",
+          sharedWithViewer: true,
+        },
+      ]);
+      mockFlashcardRepository.replaceManyProgress.mockResolvedValue([]);
+
+      await expect(
+        service.replaceManyProgress(USER, progress)
+      ).resolves.toEqual([]);
     });
 
     // The realm bypass has to hold here too, or this route would be the one
