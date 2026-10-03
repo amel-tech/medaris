@@ -676,6 +676,46 @@
         ]
       }
     },
+    "/madrasahs/{id}/overview": {
+      "get": {
+        "description": "Open to callers with no token (MDRS-122). The medrese's published courses in listed köşks, each with its müderrisler, the caller's own enrollment state and the next session (never the meeting link); the köşks those courses are in; and the başmüderris.",
+        "operationId": "getMadrasahOverview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahOverviewResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get what a medrese's page shows",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
     "/madrasahs/{id}/nazirs/{userId}": {
       "post": {
         "operationId": "addMadrasahNazir",
@@ -4161,6 +4201,147 @@
           "total",
           "page",
           "limit"
+        ]
+      },
+      "MadrasahHeadMuderrisResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Display name from the users table; null while that person has never signed in."
+          },
+          "courseCount": {
+            "type": "number",
+            "description": "How many of the medrese's courses they teach"
+          }
+        },
+        "required": [
+          "id",
+          "courseCount"
+        ]
+      },
+      "MadrasahCourseMuderrisResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "isImam": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "isImam"
+        ]
+      },
+      "MadrasahCourseResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "coverHue": {
+            "type": "number",
+            "example": 215
+          },
+          "koskId": {
+            "type": "string"
+          },
+          "koskName": {
+            "type": "string"
+          },
+          "muderris": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahCourseMuderrisResponse"
+            }
+          },
+          "enrollmentStatus": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ENROLLED",
+              "COMPLETED"
+            ],
+            "nullable": true,
+            "description": "The caller's own enrollment in the course; null with no token or no enrollment."
+          },
+          "nextSessionAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "The earliest session of the course that is still ahead; null when none is scheduled. The meeting link is never part of this response."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "coverHue",
+          "koskId",
+          "koskName",
+          "muderris"
+        ]
+      },
+      "MadrasahKoskRefResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "MadrasahOverviewResponse": {
+        "type": "object",
+        "properties": {
+          "headMuderris": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MadrasahHeadMuderrisResponse"
+              }
+            ]
+          },
+          "courses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahCourseResponse"
+            }
+          },
+          "kosks": {
+            "description": "Only the köşks the medrese has a listed course in",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahKoskRefResponse"
+            }
+          }
+        },
+        "required": [
+          "courses",
+          "kosks"
         ]
       },
       "CreateMadrasahDto": {

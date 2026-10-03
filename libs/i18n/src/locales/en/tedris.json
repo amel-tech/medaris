@@ -418,7 +418,27 @@
   },
   "MadrasahPage": {
     "kosks": "Köşks",
-    "noKosks": "This medrese has no listed köşks."
+    "noKosks": "This medrese has no listed köşks.",
+    "discover": "Discover",
+    "eyebrow": "Medrese",
+    "coursesCount": "{count} courses",
+    "headMuderris": "Head müderris",
+    "headMuderrisCourses": "Müderris in {count} courses of this medrese",
+    "approvalNotice": "Every course has its own müderrisler. Enrolling in this medrese's courses needs approval: when you apply, your enrollment is final once the course's staff approve it.",
+    "courses": "Courses",
+    "coursesHint": "The medrese's courses, with the köşk each is opened in",
+    "noCourses": "This medrese has not opened any courses yet.",
+    "statusEnrolled": "In progress",
+    "statusPending": "Awaiting approval",
+    "statusCompleted": "Completed",
+    "muderris": "Müderris",
+    "imam": "imam",
+    "nextSession": "Next session",
+    "noNextSession": "No session scheduled",
+    "koskCourses": "{count} courses",
+    "notFoundTitle": "Page not found",
+    "notFoundText": "The madrasah you are looking for does not exist or may have been removed.",
+    "notFoundAction": "Back to home"
   },
   "NotificationsPage": {
     "title": "Notifications",
