@@ -29,10 +29,17 @@ const translate = Object.assign(lookup, {
     return createElement(Fragment, null, parts[0], when(parts[1]), parts[2]);
   },
 });
+vi.mock("@medaris/ui/mds/toast", () => ({
+  useToaster: () => ({ notify: () => "", dismiss: () => {} }),
+}));
 vi.mock("next-intl/server", () => ({
   getTranslations: async () => translate,
   getLocale: async () => "tr",
   getTimeZone: async () => "Europe/Istanbul",
+}));
+// The calendar menu routes through next-intl's navigation, which needs a mounted app router.
+vi.mock("~/lib/i18n/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
 }));
 // The programme is an async server component with its own spec below.
 vi.mock("~/features/courses/components/session-programme", () => ({

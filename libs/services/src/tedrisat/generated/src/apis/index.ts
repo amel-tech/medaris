@@ -14,5 +14,6 @@ export * from './MadrasahsApi';
 export * from './MeApi';
 export * from './NizamApi';
 export * from './NotificationsApi';
+export * from './SessionsApi';
 export * from './TedrisatServiceApi';
 export * from './UsersApi';
