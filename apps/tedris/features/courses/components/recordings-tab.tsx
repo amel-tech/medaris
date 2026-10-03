@@ -5,15 +5,22 @@ import { Button } from "@medaris/ui/mds/button";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import {
   embedUrlOf,
   firstPlayable,
   groupByWeek,
+  playerApiUrlOf,
   recordingAction,
 } from "../recordings-model";
 import { MediaPlayer } from "./media-player";
 import { RecordingsFailed } from "./recordings-failed";
+
+// Loaded when a talebe's player first shows: the panel brings the notes actions
+// and YouTube's player script with it, which no other viewer of the tab needs.
+const LessonNotes = lazy(() =>
+  import("./lesson-notes").then((m) => ({ default: m.LessonNotes }))
+);
 
 const PROVIDER_NAMES: Record<string, string | undefined> = {
   YOUTUBE: "YouTube",
@@ -26,26 +33,34 @@ const PROVIDER_NAMES: Record<string, string | undefined> = {
  * list is the API's — it already leaves out what this caller may not see — so
  * the tab only chooses what each row offers: a YouTube recording plays in the
  * frame above, anything else opens at its host, one still being prepared
- * offers nothing.
+ * offers nothing. For an enrolled talebe (`notes`) the player has their private
+ * notes panel beside it (MDRS-150).
  */
 export const RecordingsTab = ({
   recordings,
   timeZone,
+  notes = false,
 }: {
   /** Null when the read failed: the tab says so and offers a retry. */
   recordings: RecordingResponse[] | null;
   timeZone: string;
+  /** Whether the viewer may take notes: an enrolled talebe (MDRS-150). */
+  notes?: boolean;
 }) => {
   if (recordings === null) return <RecordingsFailed />;
-  return <RecordingsList recordings={recordings} timeZone={timeZone} />;
+  return (
+    <RecordingsList recordings={recordings} timeZone={timeZone} notes={notes} />
+  );
 };
 
 const RecordingsList = ({
   recordings,
   timeZone,
+  notes,
 }: {
   recordings: RecordingResponse[];
   timeZone: string;
+  notes: boolean;
 }) => {
   const t = useTranslations("tedrisLearn.RecordingsTab");
   const locale = useLocale();
@@ -53,6 +68,7 @@ const RecordingsList = ({
     () => firstPlayable(recordings)?.id ?? null
   );
   const selected = recordings.find((r) => r.id === selectedId) ?? null;
+  const frameId = selected ? `recording-frame-${selected.id}` : undefined;
 
   if (recordings.length === 0) return <EmptyState>{t("empty")}</EmptyState>;
 
@@ -86,14 +102,43 @@ const RecordingsList = ({
   return (
     <div className="flex flex-col gap-section">
       {selected ? (
-        <MediaPlayer
-          id="recording-player"
-          title={selected.title}
-          embedUrl={embedUrlOf(selected.provider, selected.url)}
-          placeholder={t("playerPlaceholder")}
+        <div
+          className={
+            notes
+              ? "grid items-start gap-6 grid-cols-[minmax(0,1fr)_minmax(0,24rem)] max-lg:grid-cols-1"
+              : undefined
+          }
         >
-          {facts(selected, true)}
-        </MediaPlayer>
+          <MediaPlayer
+            // A new recording is a new frame: the player API is attached to one.
+            key={selected.id}
+            id="recording-player"
+            title={selected.title}
+            embedUrl={
+              notes
+                ? playerApiUrlOf(embedUrlOf(selected.provider, selected.url))
+                : embedUrlOf(selected.provider, selected.url)
+            }
+            placeholder={t("playerPlaceholder")}
+            frameId={notes ? frameId : undefined}
+          >
+            {facts(selected, true)}
+          </MediaPlayer>
+          {notes ? (
+            <Suspense fallback={null}>
+              <LessonNotes
+                key={selected.lessonId}
+                lessonId={selected.lessonId}
+                frameId={
+                  selected.provider === "YOUTUBE" &&
+                  embedUrlOf(selected.provider, selected.url)
+                    ? frameId
+                    : null
+                }
+              />
+            </Suspense>
+          ) : null}
+        </div>
       ) : null}
 
       <section className="flex flex-col gap-3" aria-labelledby="all-recordings">
