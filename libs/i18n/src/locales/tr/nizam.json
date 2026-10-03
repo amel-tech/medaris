@@ -773,7 +773,8 @@
       "MEDRESE_NAZIR": "Medrese nâzırı",
       "MUDERRIS": "Müderris",
       "DERS_NAZIR": "Ders nâzırı"
-    }
+    },
+    "bellUnread": "Bildirimler, {count} okunmamış"
   },
   "NoRole": {
     "title": "Yönetim yetkiniz yok",
@@ -2003,6 +2004,180 @@
     "reopened": "Kayıt yeniden açıldı",
     "reopenedBody": "{name} yeniden Kayıtlı sekmesinde.",
     "actionFailed": "İşlem tamamlanamadı"
+  },
+  "NotificationsPage": {
+    "title": "Bildirimler",
+    "subtitleKosk": "Köşkünüzde konan yasaklar.",
+    "subtitlePlatform": "Köşklerde konan yasaklar.",
+    "markAllRead": "Tümünü okundu say",
+    "tabsLabel": "Bildirim süzgeci",
+    "tabAll": "Tümü",
+    "tabUnread": "Okunmamış",
+    "typeLegend": "Bildirim türü",
+    "filters": {
+      "all": "Tümü",
+      "bans": "Yasaklar"
+    },
+    "listLabel": "Bildirim listesi",
+    "groupToday": "Bugün",
+    "groupYesterday": "Dün",
+    "groupEarlier": "Daha önce",
+    "new": "Yeni",
+    "markRead": "Okundu say",
+    "markReadLabel": "Okundu say: {title}",
+    "emptyTitle": "Bildirim yok",
+    "emptyUnreadTitle": "Okunmamış bildirim yok",
+    "errorTitle": "Bildirimler yüklenemedi",
+    "errorText": "Bir sorun oluştu. Birazdan yeniden deneyin.",
+    "retry": "Yeniden dene",
+    "loadMore": "Daha fazla göster",
+    "loadingMore": "Yükleniyor",
+    "markReadFailedTitle": "Okundu olarak işaretlenemedi.",
+    "markReadFailedText": "Bildirim okunmamış kaldı. Yeniden deneyin.",
+    "markAllFailedTitle": "Bildirimler okundu yapılamadı.",
+    "markAllFailedText": "Hiçbiri değişmedi. Yeniden deneyin.",
+    "unknownTitle": "Bildirim",
+    "types": {
+      "COURSE_BAN_PLACED": {
+        "title": "Yeni ders yasağı",
+        "body": "{actorName}, {talebeName} adlı talebeyi {courseTitle} dersinden yasakladı.",
+        "bodyReason": "{actorName}, {talebeName} adlı talebeyi {courseTitle} dersinden yasakladı. Gerekçe: {reason}"
+      },
+      "KOSK_BAN_PLACED": {
+        "title": "Yeni köşk yasağı",
+        "body": "{actorName}, {talebeName} adlı talebeyi {koskName}'nün derslerinden yasakladı.",
+        "bodyReason": "{actorName}, {talebeName} adlı talebeyi {koskName}'nün derslerinden yasakladı. Gerekçe: {reason}",
+        "bodyAnyKosk": "{actorName}, {talebeName} adlı talebeyi köşkün tüm derslerinden yasakladı.",
+        "bodyReasonAnyKosk": "{actorName}, {talebeName} adlı talebeyi köşkün tüm derslerinden yasakladı. Gerekçe: {reason}"
+      }
+    }
+  },
+  "AccountPage": {
+    "roles": {
+      "MEDARIS_NAZIM": "Medaris nazımı",
+      "KOSK_NAZIM": "Köşk nazımı",
+      "MEDRESE_BASMUDERRIS": "Medrese başmüderrisi",
+      "MEDRESE_NAZIR": "Medrese nazırı",
+      "MUDERRIS": "Müderris",
+      "DERS_NAZIR": "Ders nazırı",
+      "chief": "Medaris başnazımı"
+    },
+    "grantedRole": "Verilen izinler",
+    "courseBadge": {
+      "published": "Yayında",
+      "draft": "Taslak",
+      "hidden": "Gizli"
+    },
+    "imam": "İmam",
+    "self": "Kendiniz",
+    "unknownPerson": "Bilinmiyor",
+    "noExpiry": "Süresiz",
+    "permissions": {
+      "kosk_manage": "Köşkü düzenle, gizle ya da geri al",
+      "kosk_hosting": "Barındırma hakkı ver ya da geri al",
+      "course_open_standalone": "Medrese dışı ders aç; müderrisleri ve imamı seç",
+      "course_manage_all": "Köşkteki derslerin içeriğini, celselerini, ders kayıtlarını ve başvurularını yönet",
+      "ban_manage_kosk": "Ders ve köşk düzeyinde yasakla ya da yasağı gerekçeyle kaldır; ders yasağını köşke genişlet",
+      "deck_manage_kosk": "Köşk destesini aç ve düzenle",
+      "course_nazir_assign_kosk": "Köşkün medrese dışı derslerinde ders nazırı ata ve izin ver, kendi izinlerini aşmadan",
+      "user_lookup": "E-postayla kullanıcı bul",
+      "course_edit": "Dersi düzenle: başlık, tanıtım, müfredat, saat dilimi",
+      "session_manage": "Celse ekle, tarihini değiştir, iptal et; toplantı bağlantısını gir",
+      "session_live_link": "Canlı yayın bağlantısını celseye ekle",
+      "week_hide": "Hafta ve celse gizle, geri al",
+      "course_settings": "Ders ayarlarını ve kapalı ders bayrağını değiştir",
+      "course_publish": "Dersi yayımla ya da taslağa çek",
+      "course_view_unpublished": "Taslak ya da gizli dersi gör",
+      "enrollment_decide": "Başvuruyu onayla ya da reddet",
+      "enrollment_remove": "Talebeyi gerekçeyle dersten çıkar",
+      "enrollment_complete": "Talebeyi dersi tamamlamış say",
+      "recording_manage": "Ders kaydı ekle, adlandır, gizle; görünürlüğünü değiştir",
+      "recording_upload": "Ders kaydı yükle",
+      "recording_watch_restricted": "Yalnız kayıtlılara açık ders kayıtlarını izle",
+      "session_view_content": "Celse içeriğini ve toplantı bağlantılarını gör",
+      "ban_course": "Talebeyi dersten yasakla (dersin yasak listesini görmeyi kapsar)",
+      "ban_lift_course": "Ders yasağını gerekçeyle kaldır",
+      "deck_manage_course": "Ders destesini aç ve düzenle",
+      "course_nazir_assign": "Ders nazırı ata; izin ya da grup ver, kendi izinlerini aşmadan",
+      "permission_group_define": "İzin grubu tanımla"
+    },
+    "permissionNotes": {
+      "course_manage_all": "İçerik okumaların denetim kaydına yazılır.",
+      "course_nazir_assign_kosk": "Medrese derslerinde izni medrese kadrosu verir.",
+      "user_lookup": "Her arama denetim kaydına yazılır.",
+      "ban_lift_course": "Üst kademenin koyduğu yasağı kaldıramazsınız."
+    },
+    "defaultsNote": {
+      "KOSK_NAZIM": "Köşk nazımının varsayılan izinleri. Köşkteki medrese derslerinde dersi açmak ve müderris listesi medresenindir.",
+      "MUDERRIS": "Müderrisin varsayılan izinleri. Ders kadrosu, derse kayıtlı talebenin adını ve e-postasını varsayılan görür; bu ayrı bir izin değildir."
+    },
+    "columns": {
+      "role": "Görev",
+      "scope": "Kapsam",
+      "grantor": "Atayan",
+      "expires": "Süre"
+    },
+    "pageTitle": "Hesap ve ayarlar",
+    "pageSubtitle": "Görevleriniz, izinleriniz, saat diliminiz ve diliniz.",
+    "tasksTitle": "Görevleriniz",
+    "tasksIntro": "Her görev bir kapsamda geçerlidir. Görevi ve süresini, onu atayan kişi değiştirir.",
+    "noTasks": "Henüz bir göreviniz yok.",
+    "chiefScope": "Platform",
+    "chiefGrantor": "Giriş sisteminde tanımlı",
+    "until": "{date} tarihine kadar",
+    "permissionsTitle": "Etkin izinleriniz",
+    "permissionsIntro": "İzinler görevlerinizden gelir. Size verilen bir izni başkasına veremezsiniz; köşk nazımlığından gelen izni kendi köşkünüzde, kendi izinlerinizi aşmadan verebilirsiniz.",
+    "permissionsIntroChief": "İzinler görevlerinizden ve size verilen izin gruplarından gelir. Size verilen bir izni başkasına veremezsiniz; görevinizden gelen izni kendi kapsamınızda verebilirsiniz.",
+    "chiefPermissions": "Bütün izinler, her kapsamda. Ders içeriği, özel deste ve kişisel veri okumalarınız, kullanıcı aramalarınız ve kalıcı silmeleriniz denetim kaydına yazılır.",
+    "endsNote": "Atamanız {date} tarihinde bittiği için izin de en geç o gün biter.",
+    "indefinite": {
+      "MEDARIS_NAZIM": "Süresiz: atamanız, atayan geri alana dek sürer.",
+      "KOSK_NAZIM": "Süresiz: atamanız, atayan geri alana dek sürer.",
+      "MEDRESE_BASMUDERRIS": "Süresiz: göreviniz, atayan geri alana dek sürer.",
+      "MEDRESE_NAZIR": "Süresiz: göreviniz, atayan geri alana dek sürer.",
+      "MUDERRIS": "Süresiz: müderrislik, dersin müderris listesinden çıkanlara dek sürer.",
+      "DERS_NAZIR": "Süresiz: göreviniz, atayan geri alana dek sürer."
+    },
+    "eachScope": {
+      "MUDERRIS": "Müderris olduğunuz derslerin her birinde geçerli: {names}.",
+      "default": "{role} olduğunuz her kapsamda geçerli: {names}."
+    },
+    "zoneTitle": "Saat ve dil",
+    "zone": "Saat dilimi",
+    "zoneHelp": "Celse saatleri bu saat diliminde gösterilir. Seçtiğiniz an kaydedilir.",
+    "zoneOther": "Diğer…",
+    "allZones": "Tüm saat dilimleri",
+    "allZonesHelp": "Listeden bir bölge seçin; seçtiğiniz an kaydedilir.",
+    "zoneSavedTitle": "Saat diliminiz kaydedildi.",
+    "zoneSavedText": "Celse saatleri artık bu saat diliminde gösterilir.",
+    "zoneFailedTitle": "Saat dilimi kaydedilemedi.",
+    "zoneFailedText": "Önceki saat diliminiz geçerli. Yeniden deneyin.",
+    "language": "Dil",
+    "languageValue": "Türkçe",
+    "languageHelp": "Medaris şimdilik yalnız Türkçe görünür.",
+    "accountTitle": "Hesap",
+    "email": "E-posta",
+    "emailHelp": "Salt okunur. Hesabınıza kayıtlı adres; buradan değiştirilemez.",
+    "teachingTitle": "Müderrislik",
+    "teachingText": "Müderris olduğunuz derslerin celselerini, talebelerini ve ders kayıtlarını Nazır’da yönetirsiniz.",
+    "openNazir": "Nazır’da aç",
+    "signOutText": "Bu tarayıcıda Medaris’ten çıkarsınız. Görevleriniz ve tercihleriniz hesabınızda kalır.",
+    "signOut": "Çıkış yap",
+    "retry": "Yeniden dene",
+    "loadFailedTitle": "Hesabınız yüklenemedi",
+    "loadFailed": "Hesap bilgileriniz şu an okunamadı. Sayfayı yenileyerek yeniden deneyin.",
+    "zones": {
+      "Europe/Istanbul": "İstanbul",
+      "Europe/Berlin": "Berlin",
+      "Europe/Amsterdam": "Amsterdam",
+      "Europe/Brussels": "Brüksel",
+      "Europe/Paris": "Paris",
+      "Europe/Vienna": "Viyana",
+      "Europe/London": "Londra",
+      "America/New_York": "New York"
+    },
+    "permissionsIntroMedaris": "İzinler görevinizden gelir. Size verilen bir izni başkasına veremezsiniz.",
+    "permissionsEmpty": "Size ayrıca verilmiş bir izin grubu yok. Medaris nazımı olarak yönetim ekranlarına görevinizle erişirsiniz."
   },
   "KoskManage": {
     "title": "Köşk",

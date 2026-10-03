@@ -106,6 +106,38 @@ describe("notifications (e2e)", () => {
     ).toBe(true);
   });
 
+  it("lists only the types asked for, and rejects an unknown type with 400 (MDRS-179)", async () => {
+    await seed();
+    const res = await request(app.getHttpServer())
+      .get("/notifications?types=SESSION_ADDED,ENROLLMENT_APPROVED")
+      .expect(200);
+    expect(res.body.items).toHaveLength(4);
+    expect(
+      res.body.items.every((n: { type: string }) =>
+        ["SESSION_ADDED", "ENROLLMENT_APPROVED"].includes(n.type)
+      )
+    ).toBe(true);
+    const unread = await request(app.getHttpServer())
+      .get("/notifications?types=SESSION_CANCELLED&status=unread")
+      .expect(200);
+    expect(unread.body.items).toHaveLength(2);
+    await request(app.getHttpServer())
+      .get("/notifications?types=SESSION_ADDED,NOPE")
+      .expect(400);
+  });
+
+  it("counts only the types asked for, and rejects an unknown type with 400 (MDRS-179)", async () => {
+    await seed();
+    const res = await request(app.getHttpServer())
+      .get("/notifications/unread-count?types=SESSION_ADDED")
+      .expect(200);
+    expect(res.body).toEqual({ unread: 1, total: 2 });
+    await request(app.getHttpServer())
+      .get("/notifications/unread-count?types=NOPE")
+      .expect(400);
+    expect(await counts()).toEqual({ unread: 3, total: 6 });
+  });
+
   it("pages with an opaque cursor without skipping or repeating a row", async () => {
     await seed();
     const seen: string[] = [];
@@ -230,6 +262,26 @@ describe("notifications (e2e)", () => {
       .post("/notifications/read-all")
       .expect(200);
     expect(again.body).toEqual({ updated: 0 });
+  });
+
+  it("read-all with types leaves the other types unread and rejects an unknown type", async () => {
+    await seed();
+    await db.insert(notifications).values({
+      userId: TEST_USER_ID,
+      type: "ENROLLMENT_APPROVED",
+      params: {},
+    });
+    expect(await counts()).toEqual({ unread: 4, total: 7 });
+
+    await request(app.getHttpServer())
+      .post("/notifications/read-all?types=SESSION_ADDED,NOPE")
+      .expect(400);
+
+    const res = await request(app.getHttpServer())
+      .post("/notifications/read-all?types=SESSION_ADDED,SESSION_CANCELLED")
+      .expect(200);
+    expect(res.body).toEqual({ updated: 3 });
+    expect(await counts()).toEqual({ unread: 1, total: 7 });
   });
 
   it("starts empty", async () => {

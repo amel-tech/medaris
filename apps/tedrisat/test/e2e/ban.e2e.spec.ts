@@ -9,6 +9,7 @@ import { auditLog } from "../../src/database/schema/audit.schema";
 import { bans } from "../../src/database/schema/ban.schema";
 import { courses, enrollments } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
+import { notifications } from "../../src/database/schema/notification.schema";
 import {
   ASSIGNED_ROLES,
   roleAssignments,
@@ -53,7 +54,13 @@ describe("Bans (e2e)", () => {
 
   const http = () => request(app.getHttpServer());
   const db = () => databaseService.db;
-  const TABLES = [...COURSE_TREE_TABLES, "bans", "audit_log", "users"] as const;
+  const TABLES = [
+    ...COURSE_TREE_TABLES,
+    "bans",
+    "audit_log",
+    "notifications",
+    "users",
+  ] as const;
 
   const ban = (
     by: string,
@@ -166,6 +173,27 @@ describe("Bans (e2e)", () => {
         .from(auditLog)
         .where(eq(auditLog.action, "ban.create"));
       expect(audit).toHaveLength(1);
+    });
+
+    it("notifies the köşk's nazım once, with the sentence's values, and nobody else (MDRS-179)", async () => {
+      await ban(MUDERRIS_ID).expect(201);
+      await ban(MUDERRIS_ID).expect(201);
+      const rows = await db().select().from(notifications);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        userId: NAZIM_ID,
+        type: "COURSE_BAN_PLACED",
+        targetType: "KOSK",
+        targetId: koskId,
+        readAt: null,
+        params: {
+          source: "Nûruosmaniye Köşkü",
+          courseTitle: "Emsile ve Bina",
+          talebeName: "Ömer Faruk Demirkaya",
+          actorName: "Ayşe Nur Kılıçarslan",
+          reason: "Celselerde başka talebelere hakaret etti.",
+        },
+      });
     });
 
     it("answers a second request for the same bar with the first", async () => {

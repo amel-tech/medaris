@@ -95,13 +95,15 @@ test("nizam/03 — signed out, /tr/yetki-yok sends to sign-in, not to the screen
   await expect(page.locator("#username")).toBeVisible();
 });
 
-test("medaris/16 — the person row asks 'Çıkış yapılsın mı?'; Vazgeç keeps the session, Çıkış yap ends it", async ({
+test("nizam/36 + medaris/16 — the person row leads to Hesap, whose 'Çıkış yap' asks 'Çıkış yapılsın mı?'; Vazgeç keeps the session, Çıkış yap ends it", async ({
   page,
 }) => {
   test.skip(!TALEBE.password, "no talebe account");
   await signIn(page, TALEBE);
   await page.goto("/tr/yetki-yok");
   await page.locator("aside .mds-nav-user").click();
+  await page.waitForURL(/\/tr\/hesap$/);
+  await page.getByRole("link", { name: "Çıkış yap" }).click();
   await page.waitForURL(/\/tr\/auth\/signout$/);
   await expect(
     page.getByRole("heading", { level: 1, name: "Çıkış yapılsın mı?" })
@@ -111,9 +113,9 @@ test("medaris/16 — the person row asks 'Çıkış yapılsın mı?'; Vazgeç ke
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Vazgeç" }).click();
-  await page.waitForURL(/\/tr\/yetki-yok$/);
+  await page.waitForURL(/\/tr\/hesap$/);
 
-  await page.locator("aside .mds-nav-user").click();
+  await page.getByRole("link", { name: "Çıkış yap" }).click();
   await page.getByRole("button", { name: "Çıkış yap" }).click();
   // Keycloak ends its session and sends the browser back to Nizam's root,
   // where a signed-out visitor is offered the way in
