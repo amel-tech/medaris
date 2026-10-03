@@ -144,3 +144,34 @@ test("a köşk id that does not exist shows the same screen", async ({
     page.getByRole("heading", { name: "Bu bölüm için izniniz yok" })
   ).toBeVisible();
 });
+
+test("a path no page answers, under the köşk the nazım manages, is 'Sayfa bulunamadı', not 'izniniz yok' (MDRS-211)", async ({
+  page,
+}) => {
+  test.skip(
+    !(KOSK_NAZIM.email && KOSK_NAZIM.password),
+    "no köşk nazım account"
+  );
+  test.skip(!KOSK_NAZIM.sub, "no köşk nazım id");
+  const managed = await seedShell({ nazim: KOSK_NAZIM.sub as string });
+  try {
+    await signIn(page, KOSK_NAZIM);
+    await page.goto(`/tr/kosks/${managed.koskId}/celseler`);
+    await expect(
+      page.getByRole("heading", { name: "Sayfa bulunamadı" })
+    ).toBeVisible();
+    await expect(page.getByText("izniniz yok")).toHaveCount(0);
+    // the shell around it is still there, and its menu no longer offers the page
+    await expect(page.locator("aside").first()).toBeVisible();
+    await expect(
+      page
+        .locator("aside")
+        .first()
+        .getByRole("link", { name: /^Celseler/ })
+    ).toHaveCount(0);
+    await page.getByRole("link", { name: "Ana sayfaya dön" }).click();
+    await expect(page).toHaveURL(/\/tr$/);
+  } finally {
+    await managed.remove();
+  }
+});

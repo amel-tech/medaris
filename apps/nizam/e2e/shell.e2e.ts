@@ -257,10 +257,13 @@ test("nizam/57 [seed] — a course's Talebeler opens on Başvurular; Onayla move
   for (const a of waiting) await expect(page.getByText(a.email)).toBeVisible();
   const other = fixture.applicants.find((a) => a.courseId !== course?.id);
   await expect(page.getByText(other?.email ?? "x")).toHaveCount(0);
-  // the sidebar draws Talebeler selected
+  // the sidebar draws Dersler selected: the köşk-wide Talebeler is not built (MDRS-211)
+  await expect(
+    sidebar(page).getByRole("link", { name: /^Dersler/ })
+  ).toHaveAttribute("aria-current", "page");
   await expect(
     sidebar(page).getByRole("link", { name: /^Talebeler/ })
-  ).toHaveAttribute("aria-current", "page");
+  ).toHaveCount(0);
 
   const target = waiting[0];
   await page
@@ -296,11 +299,8 @@ test.describe("the phone menus (390 x 844)", () => {
       "Bildirimler",
       "KÖŞK",
       "Dersler",
-      "Celseler",
-      "Talebeler",
       expect.stringMatching(/^Başvurular\s*5/) as unknown as string,
       "Ders talepleri",
-      "Ders kayıtları",
       "Köşk desteleri",
       "Yasaklamalar",
       "Arşiv",

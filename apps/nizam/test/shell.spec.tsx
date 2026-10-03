@@ -122,12 +122,9 @@ describe("the shell of a köşk nazımı (nizam/52, nizam/31)", () => {
       "Bildirimler",
       "Köşk",
       "Dersler",
-      "Celseler",
-      "Talebeler",
       "Başvurular",
       "bekleyen",
       "Ders talepleri",
-      "Ders kayıtları",
       "Köşk desteleri",
       "Yasaklamalar",
       "Arşiv",
@@ -152,10 +149,11 @@ describe("the shell of a köşk nazımı (nizam/52, nizam/31)", () => {
     const nav = sidebarNav(await render());
     expect(nav).toContain("/tr/kosks/k2/basvurular");
     expect(nav).not.toContain("mds-nav-item__count");
-    // a course's roster draws Talebeler selected (nizam/57)
+    // a course's roster draws Dersler selected: the köşk-wide Talebeler is not built (MDRS-211)
     expect(nav).toMatch(
-      /<a[^>]*aria-current="page"[^>]*href="\/tr\/kosks\/k2\/talebeler"/
+      /<a[^>]*aria-current="page"[^>]*href="\/tr\/kosks\/k2\/dersler"/
     );
+    expect(nav).not.toMatch(/\/kosks\/k2\/(celseler|talebeler|ders-kayitlari)/);
   });
 
   it("carries the same nav in the phone sheet's trigger bar, and 'Çıkış yap' only as the account link's hidden text", async () => {

@@ -339,7 +339,10 @@ export function CourseOverview({ kosk, course, stats, pending, row }: Props) {
           <h2 id="next-heading" className="mds-h2">
             {t("nextHeading")}
           </h2>
-          <a className="mds-link" href={`${base}/celseler`}>
+          <a
+            className="mds-link"
+            href={`${base}/courses/${course.id}/sessions`}
+          >
             {t("allSessions")}
           </a>
         </div>

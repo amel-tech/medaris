@@ -1,7 +1,11 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { resources } from "@medaris/i18n";
 import { describe, expect, it } from "vitest";
 import {
   activeEntryId,
+  coursePathAlias,
   currentKoskId,
   homeHref,
   isActive,
@@ -9,7 +13,6 @@ import {
   roleLabelKey,
   shellVariant,
   stripLocale,
-  studentsPathAlias,
 } from "~/lib/shell-nav";
 
 const shell = resources.tr.nizam.Shell as {
@@ -107,17 +110,27 @@ describe("the menus as the canvases draw them", () => {
       [
         "Köşk",
         "Dersler",
-        "Celseler",
-        "Talebeler",
         "Başvurular",
         "Ders talepleri",
-        "Ders kayıtları",
         "Köşk desteleri",
         "Yasaklamalar",
         "Arşiv",
       ],
       ["Yönetim", "İzinler", "Köşk ayarları"],
     ]);
+  });
+
+  it("Köşk nazımı: every entry is a page that exists, so none answers 404 (MDRS-211)", () => {
+    const appDir = fileURLToPath(new URL("../app/[locale]", import.meta.url));
+    for (const g of navGroups("kosk")) {
+      for (const i of g.items) {
+        const dir = i.path.replace(":kosk", "[id]");
+        expect(
+          existsSync(join(appDir, dir, "page.tsx")),
+          `${i.id}: ${i.path}`
+        ).toBe(true);
+      }
+    }
   });
 
   it("has no sign-out entry in any of them (canvas rule 18)", () => {
@@ -194,20 +207,19 @@ describe("where the viewer is", () => {
   });
 
   it("draws Dersler selected on a course's own pages (nizam/53)", () => {
-    expect(studentsPathAlias("/kosks/a/courses/c")).toBe("/kosks/a/dersler");
-    expect(studentsPathAlias("/kosks/a/courses/c/edit")).toBe(
-      "/kosks/a/dersler"
-    );
-    expect(studentsPathAlias("/kosks/a/courses/new")).toBe("/kosks/a/dersler");
+    expect(coursePathAlias("/kosks/a/courses/c")).toBe("/kosks/a/dersler");
+    expect(coursePathAlias("/kosks/a/courses/c/edit")).toBe("/kosks/a/dersler");
+    expect(coursePathAlias("/kosks/a/courses/new")).toBe("/kosks/a/dersler");
   });
 
-  it("draws Talebeler selected on a course's roster (nizam/57)", () => {
-    expect(studentsPathAlias("/kosks/a/courses/c/students")).toBe(
-      "/kosks/a/talebeler"
+  it("draws Dersler selected on a course's Celseler and Talebeler too: the köşk-wide pages are not built (MDRS-211)", () => {
+    expect(coursePathAlias("/kosks/a/courses/c/students")).toBe(
+      "/kosks/a/dersler"
     );
-    expect(studentsPathAlias("/kosks/a/basvurular")).toBe(
-      "/kosks/a/basvurular"
+    expect(coursePathAlias("/kosks/a/courses/c/sessions")).toBe(
+      "/kosks/a/dersler"
     );
+    expect(coursePathAlias("/kosks/a/basvurular")).toBe("/kosks/a/basvurular");
   });
 
   it("keeps the logo on the locale root", () => {
