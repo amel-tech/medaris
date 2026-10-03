@@ -47,6 +47,292 @@
         ]
       }
     },
+    "/kosks/directory": {
+      "get": {
+        "description": "Hidden and passive köşks too, each with its nazımları and course count, the per-status counts the tabs show and the fields the Alan chips offer. The Medaris başnazımı (SYSTEM_ADMIN) sees every köşk; a köşk nazımı only their own; anyone else is refused.",
+        "operationId": "getKoskDirectory",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/KoskStatusFilter"
+            }
+          },
+          {
+            "name": "listing",
+            "required": false,
+            "in": "query",
+            "description": "Görünürlük: LISTED, UNLISTED (Listelenmeyen) or ALL",
+            "schema": {
+              "$ref": "#/components/schemas/KoskListingFilter"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 50; default 12.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Part of the köşk's name, its short name or a nazım's name",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "field",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "level",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/KoskLevel"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskDirectoryResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every köşk for the table of nizam/09",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/nazims": {
+      "get": {
+        "description": "nizam/25. The köşk's nazımları and the Medaris başnazımı read it; nobody changes the list from here.",
+        "operationId": "getKoskNazims",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/KoskNazimResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The köşk's nazımları with who gave each post and when",
+        "tags": [
+          "kosks"
+        ]
+      },
+      "post": {
+        "description": "nizam/21. Accounts found by e-mail, with an optional end of the post. All or nothing: someone who is a nazım already refuses the whole call with 409 (KOSK_NAZIM_EXISTS). A passive köşk is active again. One audit entry per person. Answers the köşk's nazımları as they are now.",
+        "operationId": "addKoskNazims",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddKoskNazimsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/KoskNazimResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "No such köşk, or an account the directory does not know"
+          },
+          "409": {
+            "description": "KOSK_NAZIM_EXISTS"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Make people the köşk's nazımları (SYSTEM_ADMIN only)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/hide": {
+      "post": {
+        "description": "Nothing is deleted: the köşk and its courses leave every list, and nobody but its nazımları and the başnazım can open it. The başnazım brings it back (`POST /kosks/:id/restore`) or deletes it from the archive. 409 (KOSK_ALREADY_HIDDEN) when it is hidden already. Written to the audit log.",
+        "operationId": "hideKosk",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskDirectoryItemResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "KOSK_ALREADY_HIDDEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Hide a köşk (Köşkü gizle)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/restore": {
+      "post": {
+        "description": "nizam/09 \"Geri al\". 409 (KOSK_NOT_HIDDEN) when it is not hidden. Written to the audit log.",
+        "operationId": "restoreKosk",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskDirectoryItemResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "KOSK_NOT_HIDDEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Bring a hidden köşk back (SYSTEM_ADMIN only)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
     "/kosks": {
       "get": {
         "description": "Open to callers with no token (MDRS-122). Lists every köşk except the unlisted ones (`isPrivate`): an unlisted köşk is in no list, for anyone — it is reached by its link. `managedBy=me` narrows the list, and its `total`, to the köşks the caller manages (KOSK_NAZIM, MDRS-108, MDRS-134), unlisted ones included — nizam's köşk list; it needs a token. `madrasahId` narrows it to the köşks that medrese holds a hosting right in (MDRS-134).",
@@ -5584,6 +5870,267 @@
           "service"
         ]
       },
+      "KoskStatusFilter": {
+        "type": "string",
+        "enum": [
+          "ALL",
+          "ACTIVE",
+          "PASSIVE",
+          "HIDDEN"
+        ]
+      },
+      "KoskListingFilter": {
+        "type": "string",
+        "enum": [
+          "ALL",
+          "LISTED",
+          "UNLISTED"
+        ]
+      },
+      "KoskLevel": {
+        "type": "string",
+        "enum": [
+          "ALL",
+          "BEGINNER",
+          "INTERMEDIATE",
+          "ADVANCED"
+        ]
+      },
+      "KoskStatus": {
+        "type": "string",
+        "enum": [
+          "ACTIVE",
+          "PASSIVE",
+          "HIDDEN"
+        ],
+        "description": "HIDDEN wins over PASSIVE: someone hid it, which says more than that nobody attends it."
+      },
+      "KoskPersonResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Null when neither the app nor the directory knows the name"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "KoskDirectoryItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "handle": {
+            "type": "string",
+            "nullable": true,
+            "description": "The short name, without a leading @",
+            "example": "nuruosmaniye"
+          },
+          "name": {
+            "type": "string",
+            "example": "Nûruosmaniye Köşkü"
+          },
+          "coverHue": {
+            "type": "number",
+            "example": 215
+          },
+          "field": {
+            "type": "string",
+            "nullable": true
+          },
+          "level": {
+            "type": "string",
+            "nullable": true
+          },
+          "isPrivate": {
+            "type": "boolean",
+            "description": "Unlisted: shown as Listelenmeyen"
+          },
+          "status": {
+            "description": "HIDDEN wins over PASSIVE: someone hid it, which says more than that nobody attends it.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskStatus"
+              }
+            ]
+          },
+          "since": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Since when it is hidden or passive; null while active"
+          },
+          "nazims": {
+            "description": "The köşk nazımları held now, oldest grant first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskPersonResponse"
+            }
+          },
+          "courseCount": {
+            "type": "number",
+            "description": "Every course of the köşk, drafts, hidden and passive ones too"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "coverHue",
+          "isPrivate",
+          "status",
+          "nazims",
+          "courseCount"
+        ]
+      },
+      "KoskDirectoryCountsResponse": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "number"
+          },
+          "active": {
+            "type": "number"
+          },
+          "passive": {
+            "type": "number"
+          },
+          "hidden": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "all",
+          "active",
+          "passive",
+          "hidden"
+        ]
+      },
+      "KoskDirectoryResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskDirectoryItemResponse"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Rows matching every filter"
+          },
+          "page": {
+            "type": "number",
+            "example": 1
+          },
+          "limit": {
+            "type": "number",
+            "example": 50
+          },
+          "counts": {
+            "description": "The caller's köşks by status, whatever the filters and search: the tabs' numbers",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskDirectoryCountsResponse"
+              }
+            ]
+          },
+          "fields": {
+            "description": "The fields (alan) the caller's köşks carry, for the Alan chips; alphabetical",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "counts",
+          "fields"
+        ]
+      },
+      "KoskNazimGranterRole": {
+        "type": "string",
+        "enum": [
+          "SYSTEM_ADMIN",
+          "MEDARIS_NAZIM",
+          "KOSK_NAZIM"
+        ],
+        "description": "What the giver is, worked out when read: the realm's başnazım, a Medaris nazımı, or a nazım of this köşk. Null when it cannot be told."
+      },
+      "KoskNazimResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/KoskPersonResponse"
+          },
+          "grantedBy": {
+            "$ref": "#/components/schemas/KoskPersonResponse"
+          },
+          "grantedByRole": {
+            "nullable": true,
+            "description": "What the giver is, worked out when read: the realm's başnazım, a Medaris nazımı, or a nazım of this köşk. Null when it cannot be told.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskNazimGranterRole"
+              }
+            ]
+          },
+          "grantedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endsAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the post ends; null means until it is taken away"
+          }
+        },
+        "required": [
+          "user",
+          "grantedBy",
+          "grantedAt"
+        ]
+      },
+      "AddKoskNazimsDto": {
+        "type": "object",
+        "properties": {
+          "userIds": {
+            "minItems": 1,
+            "maxItems": 10,
+            "description": "Accounts found by e-mail (`GET /users/lookup`)",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Görev bitişi. Omitted: until the nazım is taken away. In the past: 400."
+          }
+        },
+        "required": [
+          "userIds"
+        ]
+      },
       "KoskManagedBy": {
         "type": "string",
         "enum": [
@@ -5651,6 +6198,22 @@
               "type": "string"
             }
           },
+          "alwaysRequireApproval": {
+            "type": "boolean",
+            "example": false,
+            "description": "Köşk-wide policy (MDRS-174): enrollment always waits"
+          },
+          "recordingsNeverPublic": {
+            "type": "boolean",
+            "example": false,
+            "description": "Köşk-wide policy (MDRS-174): no recording is made public"
+          },
+          "archivedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Since when the köşk is hidden (MDRS-174); null while it is shown. Only its nazımları and SYSTEM_ADMIN can read a hidden köşk."
+          },
           "verified": {
             "type": "boolean",
             "example": false
@@ -5708,6 +6271,8 @@
           "coverHue",
           "isPrivate",
           "tags",
+          "alwaysRequireApproval",
+          "recordingsNeverPublic",
           "verified",
           "featured",
           "rating",
@@ -5800,16 +6365,6 @@
           "decks"
         ]
       },
-      "KoskLevel": {
-        "type": "string",
-        "enum": [
-          "ALL",
-          "BEGINNER",
-          "INTERMEDIATE",
-          "ADVANCED"
-        ],
-        "description": "Who the köşk is for; null clears it"
-      },
       "CreateKoskDto": {
         "type": "object",
         "properties": {
@@ -5871,6 +6426,28 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "alwaysRequireApproval": {
+            "type": "boolean",
+            "example": false,
+            "default": false,
+            "description": "Köşk-wide policy (MDRS-174): every enrollment in any course of the köşk waits for approval, whatever the course says."
+          },
+          "recordingsNeverPublic": {
+            "type": "boolean",
+            "example": false,
+            "default": false,
+            "description": "Köşk-wide policy (MDRS-174): no recording of the köşk is opened to everyone or uploaded to YouTube. Stored for the recording model; nothing reads it yet."
+          },
+          "managerUserIds": {
+            "minItems": 1,
+            "maxItems": 10,
+            "description": "nizam/10: the köşk's first nazımları, found by e-mail (`GET /users/lookup`). SYSTEM_ADMIN only; when given, they are the köşk's nazımları and the caller is not one. Omitted: the caller becomes the köşk's only nazım, as before.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
             }
           }
         },
@@ -5940,6 +6517,18 @@
             "items": {
               "type": "string"
             }
+          },
+          "alwaysRequireApproval": {
+            "type": "boolean",
+            "example": false,
+            "default": false,
+            "description": "Köşk-wide policy (MDRS-174): every enrollment in any course of the köşk waits for approval, whatever the course says."
+          },
+          "recordingsNeverPublic": {
+            "type": "boolean",
+            "example": false,
+            "default": false,
+            "description": "Köşk-wide policy (MDRS-174): no recording of the köşk is opened to everyone or uploaded to YouTube. Stored for the recording model; nothing reads it yet."
           }
         }
       },

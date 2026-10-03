@@ -17,6 +17,12 @@ export interface IKosk {
   ratingCount: number;
   passiveSince: Date | null;
   passiveReason: string | null;
+  /** Köşk-wide policy (MDRS-174): every course of the köşk waits for approval. */
+  alwaysRequireApproval: boolean;
+  /** Köşk-wide policy (MDRS-174): no recording is ever opened to everyone. */
+  recordingsNeverPublic: boolean;
+  /** Since when the köşk is hidden (MDRS-173, MDRS-174); null while shown. */
+  archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -50,6 +56,8 @@ export interface ICreateKosk {
   field?: string | null;
   level?: string | null;
   tags?: string[];
+  alwaysRequireApproval?: boolean;
+  recordingsNeverPublic?: boolean;
   verified?: boolean;
   featured?: boolean;
   rating?: number;
@@ -65,6 +73,8 @@ export interface IUpdateKosk {
   field?: string | null;
   level?: string | null;
   tags?: string[];
+  alwaysRequireApproval?: boolean;
+  recordingsNeverPublic?: boolean;
   verified?: boolean;
   featured?: boolean;
   rating?: number;
@@ -142,6 +152,14 @@ export interface IKoskDecks {
   decks: IKoskDeck[];
 }
 
+/** What decides who may open a köşk and how enrollment goes in it. */
+export interface IKoskVisibility {
+  isPrivate: boolean;
+  /** Hidden (MDRS-173): nobody but its nazımları and SYSTEM_ADMIN opens it. */
+  hidden: boolean;
+  alwaysRequireApproval: boolean;
+}
+
 export interface IKoskRepository {
   findAll(
     userId: string | null,
@@ -156,8 +174,10 @@ export interface IKoskRepository {
   /** `userId` null is a caller with no token (MDRS-122): following nothing. */
   findById(id: string, userId: string | null): Promise<IKoskWithStats | null>;
   exists(id: string): Promise<boolean>;
-  /** Whether the köşk is unlisted, or null when there is no such köşk. */
-  findVisibility(id: string): Promise<{ isPrivate: boolean } | null>;
+  /** Whether the köşk is unlisted, hidden or holds the approval policy, or null when there is no such köşk. */
+  findVisibility(id: string): Promise<IKoskVisibility | null>;
+  /** True when a köşk other than `exceptId` already has this short name (MDRS-174). */
+  handleTaken(handle: string, exceptId?: string): Promise<boolean>;
   isManager(koskId: string, userId: string): Promise<boolean>;
   findManagedBy(userId: string): Promise<IKoskRef[]>;
   managesAny(userId: string): Promise<boolean>;
