@@ -53,11 +53,11 @@ export interface BanResponse {
      */
     scope: BanScope;
     /**
-     * 
+     * Null for a MADRASAH ban, which belongs to no single köşk.
      * @type {string}
      * @memberof BanResponse
      */
-    koskId: string;
+    koskId: string | null;
     /**
      * 
      * @type {string}
@@ -83,7 +83,7 @@ export interface BanResponse {
      */
     madrasahName: string | null;
     /**
-     * For a KOSK ban widened from a course: that course. Null otherwise.
+     * For a KOSK or MADRASAH ban widened from a course: that course. Null otherwise.
      * @type {string}
      * @memberof BanResponse
      */

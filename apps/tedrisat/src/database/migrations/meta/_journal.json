@@ -309,6 +309,13 @@
       "when": 1791004862496,
       "tag": "0045_madrasah_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1791008686926,
+      "tag": "0046_madrasah_bans_offsite_requests",
+      "breakpoints": true
     }
   ]
 }

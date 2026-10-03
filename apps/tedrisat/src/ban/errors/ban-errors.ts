@@ -72,3 +72,41 @@ export class BanTargetInvalidError extends BadRequestError {
     super(BanTargetInvalidError.code, message, context);
   }
 }
+
+/** The ban is not one a medrese widens: no open course ban in a medrese's course (MDRS-187). */
+export class BanNotEscalatableError extends ConflictError {
+  static readonly code = "BAN_NOT_ESCALATABLE";
+
+  constructor(banId: string, context?: ErrorContext) {
+    super(
+      BanNotEscalatableError.code,
+      `The ban ${banId} is not a course ban in a medrese's course`,
+      context
+    );
+  }
+}
+
+/** The ban is not one a medrese asks to make permanent: a köşk's, or Medaris administration's own (MDRS-187). */
+export class BanPermanentRequestInvalidError extends ConflictError {
+  static readonly code = "BAN_PERMANENT_REQUEST_INVALID";
+
+  constructor(banId: string, message: string, context?: ErrorContext) {
+    super(BanPermanentRequestInvalidError.code, message, {
+      banId,
+      ...context,
+    });
+  }
+}
+
+/** The ban has a request for it to be permanent already (MDRS-187). */
+export class BanPermanentRequestExistsError extends ConflictError {
+  static readonly code = "BAN_PERMANENT_REQUEST_EXISTS";
+
+  constructor(banId: string, context?: ErrorContext) {
+    super(
+      BanPermanentRequestExistsError.code,
+      `The ban ${banId} has a request for it to be permanent already`,
+      context
+    );
+  }
+}

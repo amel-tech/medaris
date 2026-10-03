@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { displayNameOf } from "../../assignment/assignment.service";
 import { UserDirectoryService } from "../../assignment/user-directory.service";
 import { MuderrisUnknownUserError } from "../../course/errors/muderris-unknown-user.error";
+import { KoskNotFoundError } from "../../kosk/errors/kosk-not-found.error";
 import { MadrasahNotFoundError } from "../errors/madrasah-not-found.error";
 import type { IMadrasahCourseListItem } from "../madrasah.repository.interface";
 import { MadrasahService } from "../madrasah.service";
@@ -12,7 +13,10 @@ import {
   MadrasahCourseNotFoundError,
 } from "./errors";
 import { MadrasahCourseRepository } from "./madrasah-course.repository";
-import type { IMadrasahHostingKosk } from "./madrasah-course.repository.interface";
+import type {
+  IMadrasahHostingKosk,
+  IOffsiteCourseRequest,
+} from "./madrasah-course.repository.interface";
 
 export interface OpenMadrasahCourseInput {
   koskId: string;
@@ -24,7 +28,8 @@ export interface OpenMadrasahCourseInput {
 }
 
 /**
- * The medrese's own courses (nazir/07, 08, 17, 18). Reached through
+ * The medrese's own courses (nazir/07, 08, 17, 18) and its requests for a
+ * course outside it (nazir/09). Reached through
  * `MadrasahCourseController`, whose `@Authz` scope decides who may call it —
  * the medrese's başmüderris and SYSTEM_ADMIN; nothing here re-checks the
  * caller. The permissions the catalogue names for these actions
@@ -105,6 +110,35 @@ export class MadrasahCourseService {
     });
     if (!found) throw new MadrasahCourseNotFoundError(madrasahId, courseId);
     return this.listItem(madrasahId, courseId);
+  }
+
+  /**
+   * Sends the medrese's request that a köşk open a course outside it
+   * (nazir/09). The permission the catalogue names for opening courses is not
+   * read: any caller the controller lets through may send one.
+   */
+  async requestOffsiteCourse(
+    madrasahId: string,
+    input: { koskId: string; title: string; reason: string },
+    actorId: string
+  ): Promise<IOffsiteCourseRequest> {
+    const result = await this.repo.createOffsiteRequest({
+      madrasahId,
+      ...input,
+      actorId,
+    });
+    if (result.status === "madrasah-not-found") {
+      throw new MadrasahNotFoundError(madrasahId);
+    }
+    if (result.status === "kosk-not-found") {
+      throw new KoskNotFoundError(input.koskId);
+    }
+    return result.request;
+  }
+
+  /** The medrese's requests for a course outside it, newest first. */
+  offsiteRequests(madrasahId: string): Promise<IOffsiteCourseRequest[]> {
+    return this.repo.findOffsiteRequests(madrasahId);
   }
 
   /** Hides the course (nazir/18); nothing is deleted. */

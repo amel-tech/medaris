@@ -13,6 +13,7 @@ export * from "./kosk.schema";
 export * from "./kosk-application.schema";
 export * from "./madrasah.schema";
 export * from "./notification.schema";
+export * from "./offsite-course-request.schema";
 export * from "./permission.schema";
 export * from "./platform-policy.schema";
 export * from "./role-assignment.schema";

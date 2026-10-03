@@ -15,5 +15,7 @@ import { MadrasahCourseService } from "./madrasah-course.service";
   imports: [AuthGuardModule, DatabaseModule, AssignmentModule, MadrasahModule],
   controllers: [MadrasahCourseController],
   providers: [MadrasahCourseService, MadrasahCourseRepository],
+  // For the Pano's köşk list (`MadrasahPortalService`).
+  exports: [MadrasahCourseService],
 })
 export class MadrasahCourseModule {}

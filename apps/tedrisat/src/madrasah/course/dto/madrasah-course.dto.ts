@@ -11,6 +11,10 @@ import {
   MaxLength,
   MinLength,
 } from "class-validator";
+import {
+  OFFSITE_REQUEST_STATUSES,
+  type OffsiteRequestStatus,
+} from "../../../database/schema/offsite-course-request.schema";
 
 const MAX_MUDERRIS = 20;
 
@@ -114,4 +118,82 @@ export class SetMadrasahCourseMuderrisDto {
   @IsOptional()
   @IsUUID()
   imamUserId?: string;
+}
+
+const OFFSITE_REASON_MAX = 2000;
+
+export class CreateOffsiteCourseRequestDto {
+  @ApiProperty({
+    format: "uuid",
+    description:
+      "The köşk the medrese asks to open the course. Any köşk that is not hidden: this is for courses that will not belong to the medrese, so the medrese's hosting rights are neither required nor looked at",
+  })
+  @IsUUID()
+  koskId!: string;
+
+  @ApiProperty({
+    example: "Erbaîn-i Nevevî okumaları",
+    minLength: 2,
+    maxLength: 200,
+    description: "The name suggested; whoever opens the course may change it",
+  })
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  title!: string;
+
+  @ApiProperty({
+    minLength: 1,
+    maxLength: OFFSITE_REASON_MAX,
+    example:
+      "Medresemizde bu metni okutan bir ders yok; müderrisliğini ben üstlenmek isterim.",
+    description:
+      "Why the course should open outside the medrese, and the müderrisler proposed. Required, and not blank",
+  })
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
+  @IsString()
+  @MinLength(1)
+  @MaxLength(OFFSITE_REASON_MAX)
+  reason!: string;
+}
+
+export class OffsiteCourseRequestResponse {
+  @ApiProperty({ format: "uuid" })
+  id!: string;
+
+  @ApiProperty({ format: "uuid" })
+  madrasahId!: string;
+
+  @ApiProperty({ format: "uuid" })
+  koskId!: string;
+
+  @ApiProperty({ example: "Nûruosmaniye Köşkü" })
+  koskName!: string;
+
+  @ApiProperty()
+  title!: string;
+
+  @ApiProperty()
+  reason!: string;
+
+  @ApiProperty({
+    enum: Object.values(OFFSITE_REQUEST_STATUSES),
+    description:
+      "PENDING when sent. The köşk side accepts or rejects it in its own screens (nizam/39); until then it stays PENDING",
+  })
+  status!: OffsiteRequestStatus;
+
+  @ApiProperty({ format: "uuid", description: "The account that sent it" })
+  requestedById!: string;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: "Null when the account never signed in to tedrisat",
+  })
+  requestedByName!: string | null;
+
+  @ApiProperty({ type: String, format: "date-time" })
+  createdAt!: Date;
 }

@@ -13,14 +13,6 @@
  */
 
 import { mapValues } from '../runtime';
-import type { BanScope } from './BanScope';
-import {
-    BanScopeFromJSON,
-    BanScopeFromJSONTyped,
-    BanScopeToJSON,
-    BanScopeToJSONTyped,
-} from './BanScope';
-
 /**
  * 
  * @export
@@ -35,10 +27,10 @@ export interface CreateBanDto {
     userId: string;
     /**
      * COURSE bars the talebe from this course alone; KOSK from every course of its köşk, and they may not apply again. KOSK is the köşk nazımı's and above.
-     * @type {BanScope}
+     * @type {string}
      * @memberof CreateBanDto
      */
-    scope: BanScope;
+    scope: CreateBanDtoScopeEnum;
     /**
      * Read by whoever sees the ban and by whoever lifts it; never sent to the talebe. Required, and not blank.
      * @type {string}
@@ -47,6 +39,15 @@ export interface CreateBanDto {
     reason: string;
 }
 
+
+/**
+ * @export
+ */
+export const CreateBanDtoScopeEnum = {
+    Course: 'COURSE',
+    Kosk: 'KOSK'
+} as const;
+export type CreateBanDtoScopeEnum = typeof CreateBanDtoScopeEnum[keyof typeof CreateBanDtoScopeEnum];
 
 
 /**
@@ -70,7 +71,7 @@ export function CreateBanDtoFromJSONTyped(json: any, ignoreDiscriminator: boolea
     return {
         
         'userId': json['userId'],
-        'scope': BanScopeFromJSON(json['scope']),
+        'scope': json['scope'],
         'reason': json['reason'],
     };
 }
@@ -87,7 +88,7 @@ export function CreateBanDtoToJSONTyped(value?: CreateBanDto | null, ignoreDiscr
     return {
         
         'userId': value['userId'],
-        'scope': BanScopeToJSON(value['scope']),
+        'scope': value['scope'],
         'reason': value['reason'],
     };
 }
