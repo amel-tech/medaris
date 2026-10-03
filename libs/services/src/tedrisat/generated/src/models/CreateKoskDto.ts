@@ -75,6 +75,24 @@ export interface CreateKoskDto {
      * @memberof CreateKoskDto
      */
     tags?: Array<string>;
+    /**
+     * Köşk-wide policy (MDRS-174): every enrollment in any course of the köşk waits for approval, whatever the course says.
+     * @type {boolean}
+     * @memberof CreateKoskDto
+     */
+    alwaysRequireApproval?: boolean;
+    /**
+     * Köşk-wide policy (MDRS-174): no recording of the köşk is opened to everyone or uploaded to YouTube. Stored for the recording model; nothing reads it yet.
+     * @type {boolean}
+     * @memberof CreateKoskDto
+     */
+    recordingsNeverPublic?: boolean;
+    /**
+     * nizam/10: the köşk's first nazımları, found by e-mail (`GET /users/lookup`). SYSTEM_ADMIN only; when given, they are the köşk's nazımları and the caller is not one. Omitted: the caller becomes the köşk's only nazım, as before.
+     * @type {Array<string>}
+     * @memberof CreateKoskDto
+     */
+    managerUserIds?: Array<string>;
 }
 
 
@@ -105,6 +123,9 @@ export function CreateKoskDtoFromJSONTyped(json: any, ignoreDiscriminator: boole
         'field': json['field'] == null ? undefined : json['field'],
         'level': json['level'] == null ? undefined : KoskLevelFromJSON(json['level']),
         'tags': json['tags'] == null ? undefined : json['tags'],
+        'alwaysRequireApproval': json['alwaysRequireApproval'] == null ? undefined : json['alwaysRequireApproval'],
+        'recordingsNeverPublic': json['recordingsNeverPublic'] == null ? undefined : json['recordingsNeverPublic'],
+        'managerUserIds': json['managerUserIds'] == null ? undefined : json['managerUserIds'],
     };
 }
 
@@ -127,6 +148,9 @@ export function CreateKoskDtoToJSONTyped(value?: CreateKoskDto | null, ignoreDis
         'field': value['field'],
         'level': KoskLevelToJSON(value['level']),
         'tags': value['tags'],
+        'alwaysRequireApproval': value['alwaysRequireApproval'],
+        'recordingsNeverPublic': value['recordingsNeverPublic'],
+        'managerUserIds': value['managerUserIds'],
     };
 }
 

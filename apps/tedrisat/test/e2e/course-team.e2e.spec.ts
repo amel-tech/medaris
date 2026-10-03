@@ -2,9 +2,13 @@ import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { and, eq } from "drizzle-orm";
 import request from "supertest";
+import { CourseRepository } from "../../src/course/course.repository";
+import { CourseService } from "../../src/course/course.service";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { LessonType } from "../../src/course/domain/lesson-type.enum";
+import { EnrollmentNotFoundError } from "../../src/course/errors/enrollment-not-found.error";
+import { EnrollmentStateError } from "../../src/course/errors/enrollment-state.error";
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
 import {
@@ -15,6 +19,7 @@ import {
   lessons,
 } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
+import { madrasahs } from "../../src/database/schema/madrasah.schema";
 import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
 import { createTestApp } from "../helpers/test-app.helper";
@@ -428,6 +433,46 @@ describe("Course team (MDRS-105, e2e)", () => {
         .expect(403);
     });
 
+    it("does not let the müderris strip a co-müderris' link by uppercasing the row id", async () => {
+      // The ASSIGN_MUDERRIS check compares ids without case; the save must
+      // match them the same way, or it deletes the row and re-inserts it
+      // without the `userId` the payload left out.
+      const [coMuderris] = await db()
+        .insert(courseMuderris)
+        .values({
+          courseId,
+          userId: NEW_MUDERRIS_ID,
+          name: "Yusuf Efendi",
+          orderIndex: 2,
+        })
+        .returning();
+      const payload = replacePayloadFrom(await loadCourse());
+      payload.muderris = payload.muderris.map((m) =>
+        m.id === coMuderris.id
+          ? { id: coMuderris.id.toUpperCase(), name: m.name }
+          : m
+      );
+
+      await as(MUDERRIS_ID)
+        .put(`/courses/${courseId}`)
+        .send(payload)
+        .expect(200);
+
+      const after = await loadCourse();
+      expect(after.muderris).toEqual([
+        expect.objectContaining({ userId: MUDERRIS_ID }),
+        expect.objectContaining({ userId: null, name: "Ahmed Hilmi" }),
+        expect.objectContaining({
+          id: coMuderris.id,
+          userId: NEW_MUDERRIS_ID,
+          name: "Yusuf Efendi",
+        }),
+      ]);
+      await as(NEW_MUDERRIS_ID)
+        .get(`/courses/${courseId}/enrollments`)
+        .expect(200);
+    });
+
     it("refuses to link an account that has never signed in", async () => {
       const payload = replacePayloadFrom(await loadCourse());
       payload.muderris = [...payload.muderris, { userId: GHOST_ID, name: "?" }];
@@ -580,14 +625,17 @@ describe("Course team (MDRS-105, e2e)", () => {
       );
     });
 
-    it("takes a talebe out with a reason, audits it, and lets them apply again", async () => {
+    it("takes a talebe out with a reason, audits it, and keeps the seat as REVOKED (MDRS-161)", async () => {
       await as(MUDERRIS_ID)
         .post(`/courses/${courseId}/enrollments/${TALEBE_ID}/remove`)
         .send({ reason: "  Üç haftadır derslere katılmıyor.  " })
         .expect(200)
         .expect((res) => expect(res.text).toBe("true"));
 
-      expect(await enrollmentOf(TALEBE_ID)).toBeNull();
+      expect(await enrollmentOf(TALEBE_ID)).toMatchObject({
+        status: EnrollmentStatus.REVOKED,
+        progress: 40,
+      });
       const audit = await db()
         .select()
         .from(auditLog)
@@ -604,12 +652,119 @@ describe("Course team (MDRS-105, e2e)", () => {
           progress: 40,
         },
       });
+    });
 
-      // Not a ban.
+    it("shows a revoked talebe the public page with the content locked, and does not let them apply, leave or record progress", async () => {
+      await db()
+        .update(lessons)
+        .set({ meetingUrl: "https://meet.example/secret" })
+        .where(eq(lessons.weekId, weekId));
+      await as(MUDERRIS_ID)
+        .post(`/courses/${courseId}/enrollments/${TALEBE_ID}/remove`)
+        .send({ reason: "Gerekçe" })
+        .expect(200);
+
+      const page = await as(TALEBE_ID).get(`/courses/${courseId}`).expect(200);
+      expect(page.body.enrollment.status).toBe("REVOKED");
+      expect(page.body.contentLocked).toBe(true);
+      expect(JSON.stringify(page.body)).not.toContain("meet.example");
+      expect(page.body.weeks).toHaveLength(1);
+
       await as(TALEBE_ID)
         .post(`/courses/${courseId}/enroll`)
+        .expect(409)
+        .expect((res) =>
+          expect(res.body.code).toBe("ENROLLMENT_STATE_CONFLICT")
+        );
+      await as(TALEBE_ID).delete(`/courses/${courseId}/enrollment`).expect(409);
+      await as(TALEBE_ID)
+        .put(`/courses/${courseId}/progress`)
+        .send({ progress: 50 })
+        .expect(403);
+      await as(MUDERRIS_ID)
+        .patch(`/courses/${courseId}/enrollments/${TALEBE_ID}`)
+        .send({ status: "COMPLETED" })
+        .expect(409);
+      expect(await enrollmentOf(TALEBE_ID)).toHaveProperty(
+        "status",
+        EnrollmentStatus.REVOKED
+      );
+    });
+
+    it("lets the team approve a revoked seat back in", async () => {
+      await as(MUDERRIS_ID)
+        .post(`/courses/${courseId}/enrollments/${TALEBE_ID}/remove`)
+        .send({ reason: "Gerekçe" })
+        .expect(200);
+      await as(MUDERRIS_ID)
+        .post(`/courses/${courseId}/enrollments/${TALEBE_ID}/approve`)
         .expect(201)
         .expect((res) => expect(res.body.status).toBe("ENROLLED"));
+    });
+
+    it("names the medrese that opened the course on the page, to a caller with no token", async () => {
+      const [madrasah] = await db()
+        .insert(madrasahs)
+        .values({
+          handle: "course-page-madrasah",
+          name: "Süleymaniye Medresesi",
+          createdBy: ADMIN_ID,
+        })
+        .returning();
+      await db()
+        .update(courses)
+        .set({ madrasahId: madrasah.id })
+        .where(eq(courses.id, courseId));
+      try {
+        const res = await http().get(`/courses/${courseId}`).expect(200);
+        expect(res.body.madrasah).toEqual({
+          id: madrasah.id,
+          name: "Süleymaniye Medresesi",
+        });
+      } finally {
+        await db()
+          .update(courses)
+          .set({ madrasahId: null })
+          .where(eq(courses.id, courseId));
+        await db().delete(madrasahs).where(eq(madrasahs.id, madrasah.id));
+      }
+    });
+
+    it("does not list a revoked course among the talebe's own, and does not count it in the köşk", async () => {
+      await as(MUDERRIS_ID)
+        .post(`/courses/${courseId}/enrollments/${TALEBE_ID}/remove`)
+        .send({ reason: "Gerekçe" })
+        .expect(200);
+      const mine = await as(TALEBE_ID).get("/courses/enrolled").expect(200);
+      expect(mine.body).toEqual([]);
+    });
+
+    it("lists who was taken out with the reason, newest first, for the team only (MDRS-178)", async () => {
+      await as(MUDERRIS_ID)
+        .get(`/courses/${courseId}/enrollments/removed`)
+        .expect(200)
+        .expect((res) => expect(res.body).toEqual([]));
+
+      await as(MUDERRIS_ID)
+        .post(`/courses/${courseId}/enrollments/${TALEBE_ID}/remove`)
+        .send({ reason: "Dört celsedir haber vermeden katılmıyor." })
+        .expect(200);
+
+      const res = await as(MUDERRIS_ID)
+        .get(`/courses/${courseId}/enrollments/removed`)
+        .expect(200);
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0]).toMatchObject({
+        userId: TALEBE_ID,
+        reason: "Dört celsedir haber vermeden katılmıyor.",
+        progress: 40,
+        removedBy: { id: MUDERRIS_ID },
+      });
+      expect(typeof res.body[0].removedAt).toBe("string");
+
+      await as(TALEBE_ID)
+        .get(`/courses/${courseId}/enrollments/removed`)
+        .expect(403);
     });
 
     it("refuses a removal without a reason, of a request or a completion, and by the talebe", async () => {
@@ -637,6 +792,118 @@ describe("Course team (MDRS-105, e2e)", () => {
           .from(auditLog)
           .where(eq(auditLog.action, "enrollment.remove"))
       ).toEqual([]);
+    });
+  });
+
+  /**
+   * A write that follows a read of the enrollment must not undo what landed
+   * in between (MDRS-161). Each test below runs the service call directly and
+   * lets `act` run right after the service has read the enrollment, before it
+   * writes: the first `findEnrollment` hands back what it found, then `act`
+   * happens, exactly the order of two requests that overlap.
+   */
+  describe("an enrollment that changes between the service's read and its write (MDRS-161)", () => {
+    const duringTheWrite = async <T>(
+      act: () => Promise<unknown>,
+      call: () => Promise<T>
+    ): Promise<T> => {
+      const repo = app.get(CourseRepository);
+      const read = repo.findEnrollment.bind(repo);
+      const spy = vi
+        .spyOn(repo, "findEnrollment")
+        .mockImplementationOnce(async (userId, id) => {
+          const row = await read(userId, id);
+          await act();
+          return row;
+        });
+      try {
+        return await call();
+      } finally {
+        spy.mockRestore();
+      }
+    };
+    const service = () => app.get(CourseService);
+    const teamRemoves = (userId: string) => () =>
+      service().removeEnrollment(courseId, MUDERRIS_ID, userId, "Gerekçe");
+
+    it("does not turn a seat removed meanwhile back by recording progress", async () => {
+      await expect(
+        duringTheWrite(teamRemoves(TALEBE_ID), () =>
+          service().updateProgress(TALEBE_ID, courseId, 90)
+        )
+      ).rejects.toBeInstanceOf(EnrollmentStateError);
+      expect(await enrollmentOf(TALEBE_ID)).toMatchObject({
+        status: EnrollmentStatus.REVOKED,
+        progress: 40,
+      });
+    });
+
+    it("does not let the talebe leave, and so drop the record of a seat removed meanwhile", async () => {
+      await expect(
+        duringTheWrite(teamRemoves(TALEBE_ID), () =>
+          service().leave(TALEBE_ID, courseId)
+        )
+      ).rejects.toBeInstanceOf(EnrollmentStateError);
+      expect(await enrollmentOf(TALEBE_ID)).toHaveProperty(
+        "status",
+        EnrollmentStatus.REVOKED
+      );
+    });
+
+    it("does not complete a seat removed meanwhile", async () => {
+      await expect(
+        duringTheWrite(teamRemoves(TALEBE_ID), () =>
+          service().setEnrollmentStatus(
+            courseId,
+            TALEBE_ID,
+            EnrollmentStatus.COMPLETED
+          )
+        )
+      ).rejects.toBeInstanceOf(EnrollmentStateError);
+      expect(await enrollmentOf(TALEBE_ID)).toMatchObject({
+        status: EnrollmentStatus.REVOKED,
+        completedAt: null,
+      });
+    });
+
+    it("does not reject a request the team approved meanwhile", async () => {
+      await expect(
+        duringTheWrite(
+          () => service().approveEnrollment(courseId, PENDING_ID),
+          () => service().rejectEnrollment(courseId, PENDING_ID)
+        )
+      ).rejects.toBeInstanceOf(EnrollmentNotFoundError);
+      expect(await enrollmentOf(PENDING_ID)).toHaveProperty(
+        "status",
+        EnrollmentStatus.ENROLLED
+      );
+    });
+
+    it("answers a second approval of the same request like approving an active seat again", async () => {
+      const second = await duringTheWrite(
+        () => service().approveEnrollment(courseId, PENDING_ID),
+        () => service().approveEnrollment(courseId, PENDING_ID)
+      );
+      expect(second.status).toBe(EnrollmentStatus.ENROLLED);
+    });
+
+    it("still approves a revoked seat back in, while it is revoked", async () => {
+      await teamRemoves(TALEBE_ID)();
+      const back = await service().approveEnrollment(courseId, TALEBE_ID);
+      expect(back).toMatchObject({
+        status: EnrollmentStatus.ENROLLED,
+        progress: 40,
+      });
+    });
+
+    it("says the enrollment is gone when it was withdrawn meanwhile", async () => {
+      await expect(
+        duringTheWrite(
+          () => service().withdraw(PENDING_ID, courseId),
+          () => service().approveEnrollment(courseId, PENDING_ID)
+        )
+      ).rejects.toBeInstanceOf(EnrollmentNotFoundError);
+      expect(await enrollmentOf(PENDING_ID)).toBeNull();
     });
   });
 
@@ -678,6 +945,24 @@ describe("Course team (MDRS-105, e2e)", () => {
     it("withdraws a pending request, and the talebe may apply again", async () => {
       await as(PENDING_ID)
         .delete(`/courses/${courseId}/enrollment`)
+        .expect(200)
+        .expect((res) => expect(res.text).toBe("true"));
+      expect(await enrollmentOf(PENDING_ID)).toBeNull();
+      await as(PENDING_ID).post(`/courses/${courseId}/enroll`).expect(201);
+    });
+
+    it("withdraws only a pending request: an approved seat is a 404 and stays", async () => {
+      await as(TALEBE_ID)
+        .delete(`/courses/${courseId}/enroll`)
+        .expect(404)
+        .expect((res) => expect(res.body.code).toBe("ENROLLMENT_NOT_FOUND"));
+      expect(await enrollmentOf(TALEBE_ID)).toHaveProperty(
+        "status",
+        EnrollmentStatus.ENROLLED
+      );
+      await as(STRANGER_ID).delete(`/courses/${courseId}/enroll`).expect(404);
+      await as(PENDING_ID)
+        .delete(`/courses/${courseId}/enroll`)
         .expect(200)
         .expect((res) => expect(res.text).toBe("true"));
       expect(await enrollmentOf(PENDING_ID)).toBeNull();

@@ -12,7 +12,7 @@ Components, all in `libs/ui/src/mds/`, imported as `@medaris/ui/mds/<file>`.
 Markup follows each component's `.prompt.md` in
 `design-system/medaris-unified/components/` and canvas rules 2 to 21.
 
-On Base UI (8 files):
+On Base UI (8 files; counted on 3 October with `git diff --name-only --diff-filter=A origin/release/stack-23-ui-kit-form HEAD -- libs/ui/src/mds | xargs grep -l '@base-ui/react' | wc -l`, which prints 8):
 
 | File | Component | Base UI parts |
 | -- | -- | -- |
@@ -25,14 +25,18 @@ On Base UI (8 files):
 | `app-bar.tsx` | `AppBar` (bar + phone nav sheet) | `Dialog` with `Popup.mds-sheet` |
 | `app-providers.tsx` | `AppProviders` | `DirectionProvider`, `Tooltip.Provider delay={600}`, `Toast.Provider limit={3}`, `className="isolate"` |
 
-Native, no `data-baseui` (16 new files; `Icon` and `Logo` came with MDRS-153, which
-makes the 18 of rule 6): `Alert`, `AvatarStack`, `Badge`, `Breadcrumb`, `Card`,
+Native, no `data-baseui` (16 new component files; `Icon` and `Logo` came with MDRS-153, which
+makes the 18 of rule 6. The same `git diff` without the `grep` lists 26 new files: the 8
+above and 18 native ones, which are these 16 plus `app-shell.tsx` and `locale.tsx`.
+`grep -l data-baseui libs/ui/src/mds/*.tsx` finds none): `Alert`, `AvatarStack`, `Badge`, `Breadcrumb`, `Card`,
 `CoverPattern`, `EmptyState`, `LessonRow`, `NavItem`, `NavSection`,
 `PlatformChip`, `SessionJoin`, `Skeleton`, `Stat`, `SystemState`, `Table`.
 Sorting and paging stay with the caller (TanStack Table); `Table` draws the
 state and reports the click. `locale.tsx` holds the shared page-locale hook,
 Intl helpers and the `joinRun` separator logic that the JSX files each
-repeated.
+repeated. `usePageLocale` skips a tag the runtime rejects (`lang="tr_TR"`, an
+empty string) and falls through prop, nearest `lang`, tr-TR, so no consumer
+reaches `Intl` with a tag that makes it throw.
 
 Shell components (`app-shell.tsx`), the libs/ui half of canvas note 29 table 3:
 `AppShell`, `Sidebar`, `TopBar`. They place with Tailwind utilities on logical
@@ -43,8 +47,12 @@ CSS: `styles/mds/baseui.css` grew by the parts the system does not have yet.
 two fixes where Base UI differs from the native elements the class layer was
 written for (see below). `components.css` and `medrese.css` are untouched.
 
-Tests: three specs, 56 new tests (`native.spec.tsx` 23, `medrese.spec.tsx` 16,
-`overlay.spec.tsx` 17). `libs/ui` is at 84 tests with the MDRS-153 ones.
+Tests: three specs, 61 tests (`native.spec.tsx` 26, `medrese.spec.tsx` 16,
+`overlay.spec.tsx` 19). `libs/ui` is at 89 tests with the 28 of MDRS-153
+(`button` 8, `choice` 10, `field` 4, `tabs-select` 6). Counted on 3 October with
+`./node_modules/.bin/vitest run --reporter=json` in `libs/ui`: 89 passed, 0
+failed. An earlier draft of this document said 56 and 84; those numbers had not
+been counted.
 
 ## Decisions that differ from the canvas notes
 
@@ -84,8 +92,10 @@ Tests: three specs, 56 new tests (`native.spec.tsx` 23, `medrese.spec.tsx` 16,
 
 ## What was verified
 
-- `tsc -b` for `libs/ui`, and the whole gate (below).
-- 84 vitest tests in happy-dom, 56 of them new. They assert the markup contract:
+- `tsc -b` in `libs/ui` exits 0, and `biome check` on `locale.tsx` and
+  `native.spec.tsx` is clean (3 October). The CI gate (`Verify`) runs on the pull
+  request; its result is on the PR and is not repeated here.
+- 89 vitest tests in happy-dom, 61 of them in this package's three specs. They assert the markup contract:
   class names, roles, aria and data attributes, behaviour that happy-dom can run.
   Among them, from the rule-20 "doğrulanmadı" list: Dialog Popup is
   `role="dialog"`, AlertDialog is `role="alertdialog"`, a toast is `dialog` and

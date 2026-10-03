@@ -11,14 +11,20 @@ vi.mock("next-intl", async () => {
     // The lesson rows write their times through SessionTime; the date is not under test.
     useFormatter: () => ({ dateTime: () => "12 Eki 21:00" }),
     useTimeZone: () => "Europe/Istanbul",
-    useTranslations:
-      (namespace: string) => (key: string, values?: Record<string, string>) =>
-        (
-          [...namespace.split("."), ...key.split(".")].reduce<unknown>(
-            (node, part) => (node as Record<string, unknown>)?.[part],
-            resources.tr
-          ) as string
-        ).replace(/\{(\w+)\}/g, (_, name) => values?.[name] ?? ""),
+    useTranslations: (namespace: string) => {
+      const read = (key: string) =>
+        [...namespace.split("."), ...key.split(".")].reduce<unknown>(
+          (node, part) => (node as Record<string, unknown>)?.[part],
+          resources.tr
+        ) as string;
+      return Object.assign(
+        (key: string, values?: Record<string, string | number>) =>
+          read(key).replace(/\{(\w+)\}/g, (_, name) =>
+            String(values?.[name] ?? "")
+          ),
+        { raw: read, rich: (key: string) => read(key) }
+      );
+    },
   };
 });
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh() {} }) }));

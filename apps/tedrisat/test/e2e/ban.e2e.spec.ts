@@ -9,7 +9,12 @@ import { auditLog } from "../../src/database/schema/audit.schema";
 import { bans } from "../../src/database/schema/ban.schema";
 import { courses, enrollments } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
-import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
+import { notifications } from "../../src/database/schema/notification.schema";
+import {
+  ASSIGNED_ROLES,
+  roleAssignments,
+  SCOPE_TYPES,
+} from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
@@ -49,7 +54,13 @@ describe("Bans (e2e)", () => {
 
   const http = () => request(app.getHttpServer());
   const db = () => databaseService.db;
-  const TABLES = [...COURSE_TREE_TABLES, "bans", "audit_log", "users"] as const;
+  const TABLES = [
+    ...COURSE_TREE_TABLES,
+    "bans",
+    "audit_log",
+    "notifications",
+    "users",
+  ] as const;
 
   const ban = (
     by: string,
@@ -162,6 +173,27 @@ describe("Bans (e2e)", () => {
         .from(auditLog)
         .where(eq(auditLog.action, "ban.create"));
       expect(audit).toHaveLength(1);
+    });
+
+    it("notifies the köşk's nazım once, with the sentence's values, and nobody else (MDRS-179)", async () => {
+      await ban(MUDERRIS_ID).expect(201);
+      await ban(MUDERRIS_ID).expect(201);
+      const rows = await db().select().from(notifications);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        userId: NAZIM_ID,
+        type: "COURSE_BAN_PLACED",
+        targetType: "KOSK",
+        targetId: koskId,
+        readAt: null,
+        params: {
+          source: "Nûruosmaniye Köşkü",
+          courseTitle: "Emsile ve Bina",
+          talebeName: "Ömer Faruk Demirkaya",
+          actorName: "Ayşe Nur Kılıçarslan",
+          reason: "Celselerde başka talebelere hakaret etti.",
+        },
+      });
     });
 
     it("answers a second request for the same bar with the first", async () => {
@@ -408,6 +440,172 @@ describe("Bans (e2e)", () => {
         .set("Authorization", auth(MUDERRIS_ID))
         .send({ reason: "ok" })
         .expect(404);
+    });
+  });
+  describe("Medaris administration (MDRS-178, nizam/48)", () => {
+    const MEDARIS_ID = "d0000000-0000-4000-8000-000000000008";
+
+    const medarisNazim = async () => {
+      await db().insert(users).values({ id: MEDARIS_ID });
+      await db().insert(roleAssignments).values({
+        userId: MEDARIS_ID,
+        role: ASSIGNED_ROLES.MEDARIS_NAZIM,
+        scopeType: SCOPE_TYPES.PLATFORM,
+        scopeId: null,
+        grantedBy: ADMIN_ID,
+      });
+    };
+
+    it("lists every köşk's bans for the başnazım and the Medaris nazımı, filtered", async () => {
+      await medarisNazim();
+      const [{ id: farCourse }] = await db()
+        .insert(courses)
+        .values({
+          koskId: otherKoskId,
+          authorId: OTHER_NAZIM_ID,
+          title: "Fıkıh",
+          status: CourseStatus.PUBLISHED,
+        })
+        .returning({ id: courses.id });
+      await ban(MUDERRIS_ID).expect(201);
+      await ban(NAZIM_ID, { scope: "KOSK" }).expect(201);
+      await ban(ADMIN_ID, {}, () => farCourse).expect(201);
+
+      const all = await http()
+        .get("/bans")
+        .set("Authorization", auth(MEDARIS_ID))
+        .expect(200);
+      expect(all.body.total).toBe(3);
+      expect(all.body.activeCount).toBe(3);
+      expect(all.body.items).toHaveLength(3);
+      expect(
+        all.body.items.every((i: { viewerMayLift: boolean }) => i.viewerMayLift)
+      ).toBe(true);
+
+      const kosk = await http()
+        .get("/bans?scope=KOSK")
+        .set("Authorization", auth(ADMIN_ID))
+        .expect(200);
+      expect(kosk.body.total).toBe(1);
+      expect(kosk.body.items[0].scope).toBe("KOSK");
+      expect(kosk.body.activeCount).toBe(3);
+
+      const search = await http()
+        .get("/bans?q=demirkaya&limit=2")
+        .set("Authorization", auth(ADMIN_ID))
+        .expect(200);
+      expect(search.body.total).toBe(3);
+      expect(search.body.items).toHaveLength(2);
+      const none = await http()
+        .get("/bans?q=nobody-by-this-name")
+        .set("Authorization", auth(ADMIN_ID))
+        .expect(200);
+      expect(none.body.total).toBe(0);
+    });
+
+    it("refuses everyone else with 403 and a bad filter with 400", async () => {
+      await http()
+        .get("/bans")
+        .set("Authorization", auth(NAZIM_ID))
+        .expect(403);
+      await http()
+        .get("/bans")
+        .set("Authorization", auth(MUDERRIS_ID))
+        .expect(403);
+      await http()
+        .get("/bans?scope=PLATFORM")
+        .set("Authorization", auth(ADMIN_ID))
+        .expect(400);
+      await http()
+        .get("/bans?limit=abc")
+        .set("Authorization", auth(ADMIN_ID))
+        .expect(400);
+    });
+
+    it("widens a course ban to the köşk, keeps the course ban and writes ban.extend", async () => {
+      const course = await ban(MUDERRIS_ID).expect(201);
+      const res = await http()
+        .post(`/bans/${course.body.id}/extend`)
+        .set("Authorization", auth(ADMIN_ID))
+        .send({ scope: "KOSK", reason: "Köşkün başka derslerine de başvurdu." })
+        .expect(200);
+      expect(res.body.scope).toBe("KOSK");
+      expect(res.body.extendedFromCourseId).toBe(courseId);
+      expect(res.body.bannedRole).toBe("SYSTEM_ADMIN");
+
+      const rows = await db().select().from(bans);
+      expect(rows).toHaveLength(2);
+      expect(rows.find((r) => r.id === course.body.id)?.liftedAt).toBeNull();
+      const audit = await db()
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.action, "ban.extend"));
+      expect(audit).toHaveLength(1);
+      expect(audit[0].details).toMatchObject({
+        extendedFromBanId: course.body.id,
+        scope: "KOSK",
+      });
+
+      const list = await http()
+        .get("/bans")
+        .set("Authorization", auth(ADMIN_ID))
+        .expect(200);
+      const courseRow = list.body.items.find(
+        (i: { id: string }) => i.id === course.body.id
+      );
+      expect(courseRow.viewerMayExtend).toBe(false);
+    });
+
+    it("lets the köşk nazım widen, and no one below", async () => {
+      const course = await ban(MUDERRIS_ID).expect(201);
+      const body = { scope: "KOSK", reason: "Genişletildi." };
+      await http()
+        .post(`/bans/${course.body.id}/extend`)
+        .set("Authorization", auth(MUDERRIS_ID))
+        .send(body)
+        .expect(403);
+      await http()
+        .post(`/bans/${course.body.id}/extend`)
+        .set("Authorization", auth(OTHER_NAZIM_ID))
+        .send(body)
+        .expect(403);
+      await http()
+        .post(`/bans/${course.body.id}/extend`)
+        .set("Authorization", auth(NAZIM_ID))
+        .send(body)
+        .expect(200);
+    });
+
+    it("refuses widening a köşk ban (400), a lifted one (409), a blank reason or other scope (400)", async () => {
+      const kosk = await ban(NAZIM_ID, { scope: "KOSK" }).expect(201);
+      const body = { scope: "KOSK", reason: "Genişlet." };
+      await http()
+        .post(`/bans/${kosk.body.id}/extend`)
+        .set("Authorization", auth(ADMIN_ID))
+        .send(body)
+        .expect(400);
+      await dbUtils.cleanTables("bans");
+      const course = await ban(MUDERRIS_ID).expect(201);
+      await http()
+        .post(`/bans/${course.body.id}/extend`)
+        .set("Authorization", auth(ADMIN_ID))
+        .send({ scope: "KOSK", reason: "  " })
+        .expect(400);
+      await http()
+        .post(`/bans/${course.body.id}/extend`)
+        .set("Authorization", auth(ADMIN_ID))
+        .send({ scope: "PLATFORM", reason: "x" })
+        .expect(400);
+      await http()
+        .post(`/bans/${course.body.id}/lift`)
+        .set("Authorization", auth(MUDERRIS_ID))
+        .send({ reason: "ok" })
+        .expect(200);
+      await http()
+        .post(`/bans/${course.body.id}/extend`)
+        .set("Authorization", auth(ADMIN_ID))
+        .send(body)
+        .expect(409);
     });
   });
 });

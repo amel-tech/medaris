@@ -15,9 +15,11 @@
 
 import * as runtime from '../runtime';
 import type {
+  CancelLessonDto,
   CreateSessionBatchDto,
   CreateWeekLessonDto,
   LessonMutationResponse,
+  RecordingResponse,
   SessionBatchPreviewResponse,
   SessionBatchResponse,
   SessionResponse,
@@ -25,12 +27,16 @@ import type {
   WeeklyPatternDto,
 } from '../models/index';
 import {
+    CancelLessonDtoFromJSON,
+    CancelLessonDtoToJSON,
     CreateSessionBatchDtoFromJSON,
     CreateSessionBatchDtoToJSON,
     CreateWeekLessonDtoFromJSON,
     CreateWeekLessonDtoToJSON,
     LessonMutationResponseFromJSON,
     LessonMutationResponseToJSON,
+    RecordingResponseFromJSON,
+    RecordingResponseToJSON,
     SessionBatchPreviewResponseFromJSON,
     SessionBatchPreviewResponseToJSON,
     SessionBatchResponseFromJSON,
@@ -45,6 +51,11 @@ import {
 
 export interface ArchiveLessonRequest {
     id: string;
+}
+
+export interface CancelLessonRequest {
+    id: string;
+    cancelLessonDto: CancelLessonDto;
 }
 
 export interface CreateLessonRequest {
@@ -66,6 +77,10 @@ export interface GetLessonCalendarRequest {
 export interface GetSessionRequest {
     courseId: string;
     sessionId: string;
+}
+
+export interface ListCourseRecordingsRequest {
+    id: string;
 }
 
 export interface PreviewSessionBatchRequest {
@@ -122,6 +137,60 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async archiveLesson(requestParameters: ArchiveLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonMutationResponse> {
         const response = await this.archiveLessonRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The session stays in the programme as \'İptal edildi\' (MDRS-158); its meeting link is no longer shown. The reason is course content. Written to `audit_log` (MDRS-176).
+     * Cancel a live session; it keeps its slot, marked cancelled
+     */
+    async cancelLessonRaw(requestParameters: CancelLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonMutationResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling cancelLesson().'
+            );
+        }
+
+        if (requestParameters['cancelLessonDto'] == null) {
+            throw new runtime.RequiredError(
+                'cancelLessonDto',
+                'Required parameter "cancelLessonDto" was null or undefined when calling cancelLesson().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/cancel`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CancelLessonDtoToJSON(requestParameters['cancelLessonDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LessonMutationResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The session stays in the programme as \'İptal edildi\' (MDRS-158); its meeting link is no longer shown. The reason is course content. Written to `audit_log` (MDRS-176).
+     * Cancel a live session; it keeps its slot, marked cancelled
+     */
+    async cancelLesson(requestParameters: CancelLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonMutationResponse> {
+        const response = await this.cancelLessonRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -340,6 +409,50 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async getSession(requestParameters: GetSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionResponse> {
         const response = await this.getSessionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162).
+     * The course\'s lesson recordings, newest week first
+     */
+    async listCourseRecordingsRaw(requestParameters: ListCourseRecordingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<RecordingResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listCourseRecordings().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/recordings`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(RecordingResponseFromJSON));
+    }
+
+    /**
+     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162).
+     * The course\'s lesson recordings, newest week first
+     */
+    async listCourseRecordings(requestParameters: ListCourseRecordingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<RecordingResponse>> {
+        const response = await this.listCourseRecordingsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -112,6 +112,12 @@ describe("NotificationService (MDRS-167)", () => {
     expect(markRead).toHaveBeenCalledWith(USER, ID);
   });
 
+  it("hands the types of read-all to the repository", async () => {
+    const markAllRead = vi.fn().mockResolvedValue(1);
+    await serviceWith({ markAllRead }).markAllRead(USER, ["SESSION_ADDED"]);
+    expect(markAllRead).toHaveBeenCalledWith(USER, ["SESSION_ADDED"]);
+  });
+
   it("reports how many read-all changed", async () => {
     const markAllRead = vi.fn().mockResolvedValue(3);
     await expect(

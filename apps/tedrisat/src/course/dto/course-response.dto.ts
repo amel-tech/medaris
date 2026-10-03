@@ -10,7 +10,7 @@ export class AgendaStepResponse {
 }
 
 const CONTENT_FIELD =
-  "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).";
+  "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.";
 
 export class LessonResponse {
   @ApiProperty() id!: string;
@@ -84,6 +84,10 @@ export class MuderrisResponse {
   @ApiPropertyOptional({ type: String }) bio!: string | null;
   @ApiProperty() avatarHue!: number;
   @ApiProperty() orderIndex!: number;
+  @ApiProperty({
+    description: "The course's imam among its müderrisler (MDRS-133)",
+  })
+  isImam!: boolean;
 }
 
 export class ResourceResponse {
@@ -135,6 +139,24 @@ export class RosterEnrollmentResponse extends EnrollmentResponse {
   ban!: EnrollmentBanResponse | null;
 }
 
+export class RemovedByResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty({ type: String, nullable: true }) name!: string | null;
+}
+
+/** A talebe the course team took out, with the reason (MDRS-178). */
+export class RemovedEnrollmentResponse {
+  @ApiProperty({ format: "uuid" }) userId!: string;
+  @ApiProperty({ type: String, nullable: true }) name!: string | null;
+  @ApiProperty({ type: String, nullable: true }) email!: string | null;
+  @ApiProperty({ description: "The team's reason for taking them out." })
+  reason!: string;
+  @ApiProperty({ description: "Percent complete when they were taken out." })
+  progress!: number;
+  @ApiProperty({ type: String, format: "date-time" }) removedAt!: Date;
+  @ApiProperty({ type: () => RemovedByResponse }) removedBy!: RemovedByResponse;
+}
+
 export class PendingEnrollmentResponse extends EnrollmentResponse {
   @ApiProperty() courseTitle!: string;
 }
@@ -154,6 +176,17 @@ class CourseBase {
   @ApiProperty({ enum: CourseStatus }) status!: CourseStatus;
   @ApiProperty() grantsCertificate!: boolean;
   @ApiProperty() requiresApproval!: boolean;
+  @ApiProperty({
+    description:
+      "Closed course (MDRS-176): its content and recordings are never opened to everyone; recordings marked PUBLIC are read by the course team and the enrolled talebe only.",
+  })
+  isClosed!: boolean;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: "The word printed on the cover; null when none.",
+  })
+  coverLabel!: string | null;
   @ApiProperty({
     example: "Europe/Istanbul",
     description:
@@ -183,7 +216,19 @@ class CourseBase {
   @ApiProperty() updatedAt!: Date;
 }
 
+export class CourseDetailMadrasahResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty() name!: string;
+}
+
 export class CourseDetailResponse extends CourseBase {
+  @ApiPropertyOptional({
+    type: CourseDetailMadrasahResponse,
+    nullable: true,
+    description:
+      "The medrese that opened the course (MDRS-161); null when none, absent on a write's answer.",
+  })
+  madrasah?: CourseDetailMadrasahResponse | null;
   @ApiProperty({ type: [WeekResponse] }) weeks!: WeekResponse[];
   @ApiProperty({ type: [MuderrisResponse] }) muderris!: MuderrisResponse[];
   @ApiProperty({ type: [ResourceResponse] }) resources!: ResourceResponse[];
@@ -196,12 +241,7 @@ export class CourseDetailResponse extends CourseBase {
   contentLocked!: boolean;
 }
 
-export class SummaryMuderrisResponse extends MuderrisResponse {
-  @ApiProperty({
-    description: "The course's imam among its müderrisler (MDRS-133)",
-  })
-  isImam!: boolean;
-}
+export class SummaryMuderrisResponse extends MuderrisResponse {}
 
 export class CourseMadrasahResponse {
   @ApiProperty({ format: "uuid" }) id!: string;

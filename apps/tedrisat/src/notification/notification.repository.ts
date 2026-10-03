@@ -1,5 +1,15 @@
 import { Injectable } from "@nestjs/common";
-import { and, count, desc, eq, isNull, lt, or, sql } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  lt,
+  or,
+  sql,
+} from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import { notifications } from "../database/schema/notification.schema";
 import type { NotificationCursor } from "./notification-cursor";
@@ -44,9 +54,11 @@ export class NotificationRepository {
       status: NotificationStatus;
       cursor: NotificationCursor | null;
       limit: number;
+      /** only these types; empty keeps every type */
+      types?: string[];
     }
   ): Promise<INotification[]> {
-    const { status, cursor, limit } = options;
+    const { status, cursor, limit, types } = options;
     return this.db
       .select()
       .from(notifications)
@@ -54,6 +66,9 @@ export class NotificationRepository {
         and(
           eq(notifications.userId, userId),
           status === "unread" ? isNull(notifications.readAt) : undefined,
+          types && types.length > 0
+            ? inArray(notifications.type, types)
+            : undefined,
           cursor
             ? or(
                 lt(notifications.createdAt, cursor.createdAt),
@@ -69,14 +84,25 @@ export class NotificationRepository {
       .limit(limit + 1);
   }
 
-  async counts(userId: string): Promise<{ unread: number; total: number }> {
+  /** `types` narrows what is counted; empty counts every type. */
+  async counts(
+    userId: string,
+    types?: string[]
+  ): Promise<{ unread: number; total: number }> {
     const [row] = await this.db
       .select({
         total: count(),
         unread: sql<number>`count(*) filter (where ${notifications.readAt} is null)`,
       })
       .from(notifications)
-      .where(eq(notifications.userId, userId));
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          types && types.length > 0
+            ? inArray(notifications.type, types)
+            : undefined
+        )
+      );
     return { total: Number(row.total), unread: Number(row.unread) };
   }
 
@@ -93,12 +119,19 @@ export class NotificationRepository {
     return row ?? null;
   }
 
-  async markAllRead(userId: string): Promise<number> {
+  /** `types` narrows what is marked; empty marks every type. */
+  async markAllRead(userId: string, types?: string[]): Promise<number> {
     const rows = await this.db
       .update(notifications)
       .set({ readAt: new Date() })
       .where(
-        and(eq(notifications.userId, userId), isNull(notifications.readAt))
+        and(
+          eq(notifications.userId, userId),
+          isNull(notifications.readAt),
+          types && types.length > 0
+            ? inArray(notifications.type, types)
+            : undefined
+        )
       )
       .returning({ id: notifications.id });
     return rows.length;

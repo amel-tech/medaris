@@ -76,7 +76,9 @@ export const NotificationResponseTypeEnum = {
     SessionCancelled: 'SESSION_CANCELLED',
     SessionAdded: 'SESSION_ADDED',
     KoskApplicationResult: 'KOSK_APPLICATION_RESULT',
-    DeckPublishResult: 'DECK_PUBLISH_RESULT'
+    DeckPublishResult: 'DECK_PUBLISH_RESULT',
+    CourseBanPlaced: 'COURSE_BAN_PLACED',
+    KoskBanPlaced: 'KOSK_BAN_PLACED'
 } as const;
 export type NotificationResponseTypeEnum = typeof NotificationResponseTypeEnum[keyof typeof NotificationResponseTypeEnum];
 

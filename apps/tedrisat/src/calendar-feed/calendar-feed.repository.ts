@@ -1,15 +1,14 @@
 import { Injectable } from "@nestjs/common";
-import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import { CourseStatus } from "../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { DatabaseService } from "../database/database.service";
+import { enrolledCourseIds } from "../database/enrolled-courses";
 import { isHeld } from "../database/role-assignments";
-import { bans } from "../database/schema/ban.schema";
 import { calendarFeedTokens } from "../database/schema/calendar-feed.schema";
 import {
   courses,
   courseWeeks,
-  enrollments,
   lessons,
 } from "../database/schema/course.schema";
 import {
@@ -27,7 +26,10 @@ export interface IFeedSession {
   lessonTitle: string;
   scheduledAt: Date;
   durationMinutes: number | null;
-  /** The lesson, or the week holding it, was removed (MDRS-95). */
+  /**
+   * The lesson, or the week holding it, was removed (MDRS-95), or the
+   * session was cancelled and keeps its slot (MDRS-158).
+   */
   cancelled: boolean;
 }
 
@@ -104,18 +106,11 @@ export class CalendarFeedRepository {
     from: Date,
     to: Date
   ): Promise<IFeedSession[]> {
-    const enrolledIn = this.db
-      .select({ id: enrollments.courseId })
-      .from(enrollments)
-      .where(
-        and(
-          eq(enrollments.userId, userId),
-          inArray(enrollments.status, FEED_ENROLLMENT_STATES),
-          // A barred talebe's sessions fall out of the feed (MDRS-177): the
-          // ban lifts, and they come back on the next poll.
-          sql`not exists (select 1 from ${bans} where ${bans.userId} = ${enrollments.userId} and ${bans.liftedAt} is null and ((${bans.scope} = 'COURSE' and ${bans.courseId} = ${enrollments.courseId}) or (${bans.scope} = 'KOSK' and ${bans.koskId} = (select ${courses.koskId} from ${courses} where ${courses.id} = ${enrollments.courseId}))))`
-        )
-      );
+    const enrolledIn = enrolledCourseIds(
+      this.db,
+      userId,
+      FEED_ENROLLMENT_STATES
+    );
     // The courses the user holds MUDERRIS on, and the köşks they hold
     // KOSK_NAZIM in (MDRS-126, MDRS-134).
     const heldBy = (
@@ -144,6 +139,7 @@ export class CalendarFeedRepository {
         scheduledAt: lessons.scheduledAt,
         durationMinutes: lessons.durationMinutes,
         lessonArchivedAt: lessons.archivedAt,
+        lessonCancelledAt: lessons.cancelledAt,
         weekArchivedAt: courseWeeks.archivedAt,
       })
       .from(lessons)
@@ -166,7 +162,13 @@ export class CalendarFeedRepository {
       .orderBy(asc(lessons.scheduledAt), asc(lessons.id));
 
     return rows.flatMap(
-      ({ scheduledAt, lessonArchivedAt, weekArchivedAt, ...row }) =>
+      ({
+        scheduledAt,
+        lessonArchivedAt,
+        lessonCancelledAt,
+        weekArchivedAt,
+        ...row
+      }) =>
         // Never null here — the range predicate excludes NULL — but the
         // column type does not know that.
         scheduledAt
@@ -174,7 +176,10 @@ export class CalendarFeedRepository {
               {
                 ...row,
                 scheduledAt,
-                cancelled: lessonArchivedAt !== null || weekArchivedAt !== null,
+                cancelled:
+                  lessonArchivedAt !== null ||
+                  lessonCancelledAt !== null ||
+                  weekArchivedAt !== null,
               },
             ]
           : []

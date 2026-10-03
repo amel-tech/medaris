@@ -17,6 +17,7 @@ import {
 } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
+import { asSystemAdmin } from "../helpers/system-admin.helper";
 import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
 import {
   assignRole,
@@ -73,20 +74,23 @@ const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";
 
 describe("CourseController (e2e)", () => {
   let app: INestApplication;
+  let adminApp: INestApplication;
   let databaseService: DatabaseService;
   let dbUtils: TestDatabaseUtils;
   let koskId: string;
 
   beforeAll(async () => {
     app = await createTestApp({ authUserId: TEST_USER_ID });
+    adminApp = await createTestApp();
     databaseService = app.get<DatabaseService>(DatabaseService);
     dbUtils = new TestDatabaseUtils(databaseService);
   });
 
   beforeEach(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
-    const kosk = await request(app.getHttpServer())
+    const kosk = await request(adminApp.getHttpServer())
       .post("/kosks")
+      .set("Authorization", asSystemAdmin(TEST_USER_ID))
       .send({ name: "Süleymaniye Köşkü" })
       .expect(201);
     koskId = kosk.body.id;
@@ -95,6 +99,7 @@ describe("CourseController (e2e)", () => {
   afterAll(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
     await app.close();
+    await adminApp.close();
   });
 
   const createCourse = () =>
@@ -1371,17 +1376,12 @@ const RESOURCE_URL = "https://files.medaris.test/bina.pdf";
 const KAYNAK = "Bina · s. 4-9";
 const AGENDA_STEP = "Açılış ve geçen haftanın özeti";
 
-/** Every key and value that is content — none may appear in a locked body. */
-const CONTENT_MARKERS = [
-  "meetingUrl",
-  "agenda",
-  "kaynak",
-  '"url"',
-  MEETING_URL,
-  RESOURCE_URL,
-  KAYNAK,
-  AGENDA_STEP,
-];
+/**
+ * Every key and value that is content — none may appear in a locked body. The
+ * source line and the agenda are checked per lesson: a sample session (the
+ * first one) keeps them (MDRS-161), the rest do not.
+ */
+const CONTENT_MARKERS = ["meetingUrl", '"url"', MEETING_URL, RESOURCE_URL];
 
 const auth = (sub: string) =>
   bearerFor({
@@ -1419,6 +1419,15 @@ describe("Course content access (MDRS-103, e2e)", () => {
       durationMinutes: 60,
     });
     expect(week.lessons[0].scheduledAt).toBeTruthy();
+    // The sample session keeps its source line and agenda, never its link.
+    expect(week.lessons[0]).toMatchObject({
+      isPreview: true,
+      kaynak: KAYNAK,
+      agenda: [{ time: "21:00", title: AGENDA_STEP }],
+    });
+    expect(week.lessons[0]).not.toHaveProperty("meetingUrl");
+    expect(week.lessons[1]).not.toHaveProperty("kaynak");
+    expect(week.lessons[1]).not.toHaveProperty("agenda");
     expect(body.resources).toEqual([
       expect.objectContaining({ name: "Bina ve İzhar", type: "pdf" }),
     ]);
@@ -1483,7 +1492,7 @@ describe("Course content access (MDRS-103, e2e)", () => {
           meetingUrl: MEETING_URL,
           kaynak: KAYNAK,
           agenda: [{ time: "21:00", title: AGENDA_STEP }],
-          // A preview lesson opens nothing: a meeting link is never public.
+          // A sample session shows its source and agenda, never its link.
           isPreview: true,
           orderIndex: 0,
         },

@@ -5,6 +5,7 @@ import type {
   IWeekView,
 } from "../course.repository.interface";
 import { LessonType } from "./lesson-type.enum";
+import type { IRecordingView } from "./recording";
 import { SessionStatus } from "./session-status.enum";
 
 /**
@@ -49,6 +50,13 @@ export interface ISessionView extends ISessionRef {
    * the session is cancelled or over — there is nothing left to join.
    */
   meetingUrl?: string | null;
+  /** Course content; only while the session is LIVE (MDRS-162). */
+  liveStreamUrl?: string | null;
+  /** Course content: absent for a caller who may not read it (MDRS-162). */
+  recording?: Omit<
+    IRecordingView,
+    "lessonId" | "weekId" | "weekNumber" | "weekTitle"
+  > | null;
   previous: ISessionRef | null;
   next: ISessionRef | null;
   /** The course's müderrisler: public, like on the course page. */

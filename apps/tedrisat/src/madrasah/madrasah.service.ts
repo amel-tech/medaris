@@ -1,8 +1,13 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
+import { GrantExpiryInvalidError } from "../assignment/admin/errors";
+import { checkGrantExpiry } from "../assignment/admin/grant-plan";
+import { KeycloakAdminService } from "../keycloak-admin/keycloak-admin.service";
+import type { HeadDelegationResponse } from "./dto/set-head-muderris.dto";
 import { MadrasahAlreadyHiddenError } from "./errors/madrasah-already-hidden.error";
 import { MadrasahHandleTakenError } from "./errors/madrasah-handle-taken.error";
 import { MadrasahNotFoundError } from "./errors/madrasah-not-found.error";
 import { MadrasahNotHiddenError } from "./errors/madrasah-not-hidden.error";
+import { NazirNotFoundError } from "./errors/nazir-not-found.error";
 import { MadrasahRepository } from "./madrasah.repository";
 import {
   ICreateMadrasah,
@@ -47,7 +52,14 @@ function isUniqueViolation(error: unknown): boolean {
  */
 @Injectable()
 export class MadrasahService {
-  constructor(private readonly madrasahRepo: MadrasahRepository) {}
+  private readonly logger = new Logger(MadrasahService.name);
+
+  // Must stay value imports: `import type` erases them from
+  // `design:paramtypes` and Nest can no longer inject them.
+  constructor(
+    private readonly madrasahRepo: MadrasahRepository,
+    private readonly keycloak: KeycloakAdminService
+  ) {}
 
   async findAll(page: number, limit: number): Promise<IPaginatedMadrasahs> {
     const offset = (page - 1) * limit;
@@ -61,6 +73,18 @@ export class MadrasahService {
   async findById(id: string): Promise<IMadrasahWithNazirs> {
     const madrasah = await this.madrasahRepo.findById(id);
     if (!madrasah) throw new MadrasahNotFoundError(id);
+    return madrasah;
+  }
+
+  /**
+   * What `GET /madrasahs/:id` serves, to callers with no token too: a hidden
+   * medrese is not-found, closed like its listing and its page (MDRS-170).
+   * `findById` stays open to it for the writes that return the medrese they
+   * changed.
+   */
+  async findOpenById(id: string): Promise<IMadrasahWithNazirs> {
+    const madrasah = await this.findById(id);
+    if (madrasah.archivedAt) throw new MadrasahNotFoundError(id);
     return madrasah;
   }
 
@@ -79,19 +103,19 @@ export class MadrasahService {
     return this.madrasahRepo.findOverview(id, userId);
   }
 
+  /** The medrese cards of Keşfet (MDRS-159). */
+  async findExplore(
+    filter: IMadrasahExploreFilter
+  ): Promise<IMadrasahExplore[]> {
+    return this.madrasahRepo.findExplore(filter);
+  }
+
   /** The nazır portal's menu badges (MDRS-183); not-found for an unknown medrese. */
   async getBadgeCounts(id: string): Promise<IMadrasahBadgeCounts> {
     if (!(await this.madrasahRepo.exists(id))) {
       throw new MadrasahNotFoundError(id);
     }
     return this.madrasahRepo.getBadgeCounts(id);
-  }
-
-  /** The medrese cards of Keşfet (MDRS-159). */
-  async findExplore(
-    filter: IMadrasahExploreFilter
-  ): Promise<IMadrasahExplore[]> {
-    return this.madrasahRepo.findExplore(filter);
   }
 
   async exists(id: string): Promise<boolean> {
@@ -170,18 +194,87 @@ export class MadrasahService {
     return { items, total, page, limit, counts, passive };
   }
 
-  /** Makes `userId` the medrese's başmüderris; a passive medrese is active again. */
+  /**
+   * Makes `userId` the medrese's başmüderris; a passive medrese is active
+   * again. `options.decisions` answers what the outgoing başmüderris handed on
+   * (nizam/22), `options.endsAt` is the new one's "Görev bitişi".
+   */
   async setHeadMuderris(
     madrasahId: string,
     userId: string,
-    actorId: string
+    actorId: string,
+    options: {
+      endsAt?: Date | null;
+      decisions?: Array<{
+        kind: "ROLE" | "GRANT";
+        id: string;
+        action: "TAKE_OVER" | "DROP";
+      }>;
+    } = {}
   ): Promise<IMadrasahDirectoryItem> {
+    if (checkGrantExpiry(options.endsAt ?? null, null, new Date()) === "past") {
+      throw new GrantExpiryInvalidError("The end date is in the past");
+    }
     if (
-      !(await this.madrasahRepo.setHeadMuderris(madrasahId, userId, actorId))
+      !(await this.madrasahRepo.setHeadMuderris(
+        madrasahId,
+        userId,
+        actorId,
+        options
+      ))
     ) {
       throw new MadrasahNotFoundError(madrasahId);
     }
     return this.directoryItem(madrasahId);
+  }
+
+  /**
+   * What the sitting başmüderris handed on (nizam/22's "şu kişilere rol ve
+   * izin vermişti"), named. `exceptUserId` is the person about to take over.
+   */
+  async headDelegations(
+    madrasahId: string,
+    exceptUserId?: string
+  ): Promise<HeadDelegationResponse[]> {
+    if (!(await this.madrasahRepo.exists(madrasahId))) {
+      throw new MadrasahNotFoundError(madrasahId);
+    }
+    const rows = await this.madrasahRepo.headDelegations(
+      madrasahId,
+      exceptUserId
+    );
+    const ids = [...new Set(rows.map((r) => r.userId))];
+    const people = await this.madrasahRepo.people(ids);
+    const missing = ids.filter((id) => !people.has(id));
+    if (missing.length > 0 && this.keycloak.isConfigured()) {
+      const found = await Promise.allSettled(
+        missing.map((id) => this.keycloak.findById(id))
+      );
+      found.forEach((result, i) => {
+        if (result.status === "fulfilled" && result.value) {
+          people.set(missing[i], result.value);
+        } else if (result.status === "rejected") {
+          this.logger.warn(`No directory name for ${missing[i]}`);
+        }
+      });
+    }
+    return rows.map((r) => {
+      const person = people.get(r.userId);
+      const name = [person?.givenName, person?.familyName]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      return {
+        kind: r.kind,
+        id: r.id,
+        role: r.role,
+        permission: r.permission,
+        groupName: r.groupName,
+        to: { id: r.userId, name: name || null, email: person?.email ?? null },
+        grantedAt: r.grantedAt,
+        expiresAt: r.expiresAt,
+      };
+    });
   }
 
   /** "Medreseyi gizle" (nazir/12): out of every list, its courses with it; nothing is deleted. */

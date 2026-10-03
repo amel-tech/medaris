@@ -31,10 +31,19 @@ import {
     ReadAllNotificationsResponseToJSON,
 } from '../models/index';
 
+export interface GetNotificationCountsRequest {
+    types?: string;
+}
+
 export interface ListNotificationsRequest {
     status?: ListNotificationsStatusEnum;
     limit?: number;
     cursor?: string;
+    types?: string;
+}
+
+export interface MarkAllNotificationsReadRequest {
+    types?: string;
 }
 
 export interface MarkNotificationReadRequest {
@@ -50,8 +59,12 @@ export class NotificationsApi extends runtime.BaseAPI {
      * `unread` is what the bell announces; `total` is the \"all\" tab\'s count.
      * How many notifications the caller has, and how many are unread
      */
-    async getNotificationCountsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<NotificationCountsResponse>> {
+    async getNotificationCountsRaw(requestParameters: GetNotificationCountsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<NotificationCountsResponse>> {
         const queryParameters: any = {};
+
+        if (requestParameters['types'] != null) {
+            queryParameters['types'] = requestParameters['types'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -77,8 +90,8 @@ export class NotificationsApi extends runtime.BaseAPI {
      * `unread` is what the bell announces; `total` is the \"all\" tab\'s count.
      * How many notifications the caller has, and how many are unread
      */
-    async getNotificationCounts(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<NotificationCountsResponse> {
-        const response = await this.getNotificationCountsRaw(initOverrides);
+    async getNotificationCounts(requestParameters: GetNotificationCountsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<NotificationCountsResponse> {
+        const response = await this.getNotificationCountsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -98,6 +111,10 @@ export class NotificationsApi extends runtime.BaseAPI {
 
         if (requestParameters['cursor'] != null) {
             queryParameters['cursor'] = requestParameters['cursor'];
+        }
+
+        if (requestParameters['types'] != null) {
+            queryParameters['types'] = requestParameters['types'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -131,8 +148,12 @@ export class NotificationsApi extends runtime.BaseAPI {
     /**
      * Mark every unread notification of the caller read
      */
-    async markAllNotificationsReadRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ReadAllNotificationsResponse>> {
+    async markAllNotificationsReadRaw(requestParameters: MarkAllNotificationsReadRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ReadAllNotificationsResponse>> {
         const queryParameters: any = {};
+
+        if (requestParameters['types'] != null) {
+            queryParameters['types'] = requestParameters['types'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -157,8 +178,8 @@ export class NotificationsApi extends runtime.BaseAPI {
     /**
      * Mark every unread notification of the caller read
      */
-    async markAllNotificationsRead(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReadAllNotificationsResponse> {
-        const response = await this.markAllNotificationsReadRaw(initOverrides);
+    async markAllNotificationsRead(requestParameters: MarkAllNotificationsReadRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReadAllNotificationsResponse> {
+        const response = await this.markAllNotificationsReadRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

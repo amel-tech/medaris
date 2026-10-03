@@ -44,7 +44,7 @@ export const AddToCalendarMenu = ({
         <button
           type="button"
           className={cn(
-            "inline-flex items-center justify-center gap-1.5 rounded-lg border bg-white px-3.5 py-2 text-[13px] font-medium",
+            "mds-btn mds-btn--regular mds-btn--outline mds-btn--full",
             className
           )}
         >

@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { DismissDecisionDto } from './DismissDecisionDto';
+import {
+    DismissDecisionDtoFromJSON,
+    DismissDecisionDtoFromJSONTyped,
+    DismissDecisionDtoToJSON,
+    DismissDecisionDtoToJSONTyped,
+} from './DismissDecisionDto';
+
 /**
  * 
  * @export
@@ -25,6 +33,18 @@ export interface SetHeadMuderrisDto {
      * @memberof SetHeadMuderrisDto
      */
     userId: string;
+    /**
+     * Görev bitişi (nizam/22). Omitted: until taken away. In the past: 400.
+     * @type {Date}
+     * @memberof SetHeadMuderrisDto
+     */
+    endsAt?: Date;
+    /**
+     * One answer per item `GET …/head-muderris/delegations` lists, when the medrese has a başmüderris who is replaced: TAKE_OVER leaves the right in place under the caller's name, DROP revokes it. Incomplete: 400 (DISMISS_DECISIONS_INCOMPLETE), nothing changes.
+     * @type {Array<DismissDecisionDto>}
+     * @memberof SetHeadMuderrisDto
+     */
+    delegations?: Array<DismissDecisionDto>;
 }
 
 /**
@@ -46,6 +66,8 @@ export function SetHeadMuderrisDtoFromJSONTyped(json: any, ignoreDiscriminator: 
     return {
         
         'userId': json['userId'],
+        'endsAt': json['endsAt'] == null ? undefined : (new Date(json['endsAt'])),
+        'delegations': json['delegations'] == null ? undefined : ((json['delegations'] as Array<any>).map(DismissDecisionDtoFromJSON)),
     };
 }
 
@@ -61,6 +83,8 @@ export function SetHeadMuderrisDtoToJSONTyped(value?: SetHeadMuderrisDto | null,
     return {
         
         'userId': value['userId'],
+        'endsAt': value['endsAt'] == null ? undefined : ((value['endsAt']).toISOString()),
+        'delegations': value['delegations'] == null ? undefined : ((value['delegations'] as Array<any>).map(DismissDecisionDtoToJSON)),
     };
 }
 
