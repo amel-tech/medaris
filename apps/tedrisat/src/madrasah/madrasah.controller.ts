@@ -14,6 +14,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseEnumPipe,
   ParseIntPipe,
   ParseUUIDPipe,
   Patch,
@@ -36,6 +37,7 @@ import {
 import { PublicRequest } from "../course/interfaces/authorized-request.interface";
 import { AuthorizedRequest } from "../kosk/interfaces/authorized-request.interface";
 import { CreateMadrasahDto } from "./dto/create-madrasah.dto";
+import { MadrasahExploreResponse } from "./dto/madrasah-explore-response.dto";
 import { MadrasahOverviewResponse } from "./dto/madrasah-overview-response.dto";
 import { MadrasahResponse } from "./dto/madrasah-response.dto";
 import { PaginatedMadrasahResponse } from "./dto/paginated-madrasah-response.dto";
@@ -44,6 +46,13 @@ import { MadrasahNotFoundError } from "./errors/madrasah-not-found.error";
 import { MadrasahService } from "./madrasah.service";
 
 const MAX_PAGE_SIZE = 50;
+
+const EXPLORE_LEVELS = {
+  ALL: "ALL",
+  BEGINNER: "BEGINNER",
+  INTERMEDIATE: "INTERMEDIATE",
+  ADVANCED: "ADVANCED",
+};
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -106,6 +115,47 @@ export class MadrasahController {
     const safePage = page < 1 ? 1 : page;
     const safeLimit = Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
     return this.madrasahService.findAll(safePage, safeLimit);
+  }
+
+  @ApiOperation({
+    summary: "Get the medreses Keşfet lists",
+    description:
+      "Open to callers with no token (MDRS-122). Each medrese with its başmüderris's name and its listed courses (published, in a köşk the public list holds), by name. `level` and `field` keep the medreses with a listed course in a köşk of that level or ilim alanı; `q` matches the name, handle or description, or the başmüderris's name. Not paginated (MDRS-159).",
+    operationId: "exploreMadrasahs",
+  })
+  @ApiQuery({ name: "q", required: false, type: String })
+  @ApiQuery({
+    name: "level",
+    required: false,
+    enum: ["ALL", "BEGINNER", "INTERMEDIATE", "ADVANCED"],
+  })
+  @ApiQuery({ name: "field", required: false, type: String })
+  @ApiQuery({
+    name: "madrasahId",
+    required: false,
+    type: String,
+    format: "uuid",
+  })
+  @ApiOkResponse({ type: MadrasahExploreResponse, isArray: true })
+  // Declared before `:id` so `explore` is not read as an id.
+  @Get("explore")
+  @Authz(SCOPES.VIEW, anyMadrasah)
+  @AuthzPublic()
+  async explore(
+    @Query("q") q?: string,
+    @Query("level", new ParseEnumPipe(EXPLORE_LEVELS, { optional: true }))
+    level?: string,
+    @Query("field") field?: string,
+    @Query("madrasahId", new ParseUUIDPipe({ optional: true }))
+    madrasahId?: string
+  ): Promise<MadrasahExploreResponse[]> {
+    return this.madrasahService.findExplore({
+      // A repeated query key arrives as an array; only a single value is read.
+      q: typeof q === "string" ? q.slice(0, 100) : undefined,
+      level,
+      field: typeof field === "string" ? field.trim() || undefined : undefined,
+      madrasahId,
+    });
   }
 
   @ApiOperation({

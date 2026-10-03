@@ -81,3 +81,21 @@ export interface IMadrasahOverview {
   courses: IMadrasahCourse[];
   kosks: IMadrasahKoskRef[];
 }
+
+/** A medrese as Keşfet lists it (MDRS-159). */
+export interface IMadrasahExplore {
+  id: string;
+  handle: string;
+  name: string;
+  headMuderrisName: string | null;
+  courseCount: number;
+  courses: { id: string; title: string; coverHue: number }[];
+}
+
+/** Narrows the medrese list of Keşfet (MDRS-159). */
+export interface IMadrasahExploreFilter {
+  q?: string;
+  level?: string;
+  field?: string;
+  madrasahId?: string;
+}

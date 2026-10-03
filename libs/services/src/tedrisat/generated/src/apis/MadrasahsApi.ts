@@ -16,6 +16,7 @@
 import * as runtime from '../runtime';
 import type {
   CreateMadrasahDto,
+  MadrasahExploreResponse,
   MadrasahOverviewResponse,
   MadrasahResponse,
   PaginatedMadrasahResponse,
@@ -24,6 +25,8 @@ import type {
 import {
     CreateMadrasahDtoFromJSON,
     CreateMadrasahDtoToJSON,
+    MadrasahExploreResponseFromJSON,
+    MadrasahExploreResponseToJSON,
     MadrasahOverviewResponseFromJSON,
     MadrasahOverviewResponseToJSON,
     MadrasahResponseFromJSON,
@@ -45,6 +48,13 @@ export interface CreateMadrasahRequest {
 
 export interface DeleteMadrasahRequest {
     id: string;
+}
+
+export interface ExploreMadrasahsRequest {
+    q?: string;
+    level?: ExploreMadrasahsLevelEnum;
+    field?: string;
+    madrasahId?: string;
 }
 
 export interface GetAllMadrasahsRequest {
@@ -214,6 +224,58 @@ export class MadrasahsApi extends runtime.BaseAPI {
      */
     async deleteMadrasah(requestParameters: DeleteMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
         const response = await this.deleteMadrasahRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Open to callers with no token (MDRS-122). Each medrese with its başmüderris\'s name and its listed courses (published, in a köşk the public list holds), by name. `level` and `field` keep the medreses with a listed course in a köşk of that level or ilim alanı; `q` matches the name, handle or description, or the başmüderris\'s name. Not paginated (MDRS-159).
+     * Get the medreses Keşfet lists
+     */
+    async exploreMadrasahsRaw(requestParameters: ExploreMadrasahsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<MadrasahExploreResponse>>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['q'] != null) {
+            queryParameters['q'] = requestParameters['q'];
+        }
+
+        if (requestParameters['level'] != null) {
+            queryParameters['level'] = requestParameters['level'];
+        }
+
+        if (requestParameters['field'] != null) {
+            queryParameters['field'] = requestParameters['field'];
+        }
+
+        if (requestParameters['madrasahId'] != null) {
+            queryParameters['madrasahId'] = requestParameters['madrasahId'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/explore`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(MadrasahExploreResponseFromJSON));
+    }
+
+    /**
+     * Open to callers with no token (MDRS-122). Each medrese with its başmüderris\'s name and its listed courses (published, in a köşk the public list holds), by name. `level` and `field` keep the medreses with a listed course in a köşk of that level or ilim alanı; `q` matches the name, handle or description, or the başmüderris\'s name. Not paginated (MDRS-159).
+     * Get the medreses Keşfet lists
+     */
+    async exploreMadrasahs(requestParameters: ExploreMadrasahsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<MadrasahExploreResponse>> {
+        const response = await this.exploreMadrasahsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -452,3 +514,14 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
 }
+
+/**
+ * @export
+ */
+export const ExploreMadrasahsLevelEnum = {
+    All: 'ALL',
+    Beginner: 'BEGINNER',
+    Intermediate: 'INTERMEDIATE',
+    Advanced: 'ADVANCED'
+} as const;
+export type ExploreMadrasahsLevelEnum = typeof ExploreMadrasahsLevelEnum[keyof typeof ExploreMadrasahsLevelEnum];
