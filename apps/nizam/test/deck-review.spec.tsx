@@ -1,0 +1,363 @@
+import { resources } from "@medaris/i18n";
+import type {
+  DeckProposalResponse,
+  DeckPublishRequestListResponse,
+  ManagedKoskDecksResponse,
+} from "@medaris/services/tedrisat";
+import { NextIntlClientProvider } from "next-intl";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+import { DeckRequestsView } from "~/features/deck-review/components/deck-requests-view";
+import { KoskDeckForm } from "~/features/deck-review/components/kosk-deck-form";
+import { KoskDecksView } from "~/features/deck-review/components/kosk-decks-view";
+import { RejectDialog } from "~/features/deck-review/components/reject-dialog";
+import {
+  deckErrorKey,
+  deckPayload,
+  emptyDeckForm,
+  formFromProposal,
+  isBlank,
+  isGone,
+  newDeckHref,
+  previewKey,
+  shortDate,
+  shortDateTime,
+  validateDeckForm,
+} from "~/features/deck-review/present";
+
+// The server actions reach for the session and the API; none runs in a render.
+vi.mock("~/features/deck-review/actions", () => ({
+  loadDeckRequests: vi.fn(),
+  loadRequestCards: vi.fn(),
+  approveDeckRequest: vi.fn(),
+  rejectDeckRequest: vi.fn(),
+  rejectDeckProposal: vi.fn(),
+  openKoskDeck: vi.fn(),
+  hideKoskDeck: vi.fn(),
+}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+}));
+
+const render = (ui: React.ReactElement, locale: "tr" | "en" | "ar" = "tr") =>
+  renderToStaticMarkup(
+    <NextIntlClientProvider
+      locale={locale}
+      timeZone="Europe/Istanbul"
+      messages={{ nizam: resources[locale].nizam } as never}
+    >
+      {ui}
+    </NextIntlClientProvider>
+  );
+
+const OPTS = { locale: "tr", timeZone: "Europe/Istanbul" };
+
+const proposal = (
+  over: Partial<DeckProposalResponse> = {}
+): DeckProposalResponse => ({
+  id: "p1",
+  title: "İ’lâl kaideleri",
+  description: "Tek bir köşk destesi iki derse yeter.",
+  cardType: "VOCABULARY",
+  proposedBy: { id: "m1", name: "Ayşe Nur Kılıçarslan" },
+  courseTitle: "Avâmil ve Tasrîf",
+  createdAt: new Date("2026-09-29T09:00:00Z"),
+  ...over,
+});
+
+describe("the deck form's rules (nizam 35)", () => {
+  it("needs a name and nothing else", () => {
+    expect(validateDeckForm(emptyDeckForm())).toBe("titleRequired");
+    expect(validateDeckForm({ ...emptyDeckForm(), title: "   " })).toBe(
+      "titleRequired"
+    );
+    expect(validateDeckForm({ ...emptyDeckForm(), title: "Sarf" })).toBeNull();
+    expect(isBlank(" \n ")).toBe(true);
+  });
+
+  it("opens filled in from a proposal", () => {
+    expect(formFromProposal(proposal({ cardType: "HADEETH" }))).toEqual({
+      title: "İ’lâl kaideleri",
+      description: "Tek bir köşk destesi iki derse yeter.",
+      cardType: "HADEETH",
+    });
+    expect(formFromProposal(proposal({ description: null })).description).toBe(
+      ""
+    );
+  });
+
+  it("sends the trimmed name, leaves a blank description out and carries the proposal", () => {
+    expect(
+      deckPayload(
+        { title: " Sarf ", description: "  ", cardType: "HADEETH" },
+        "p1"
+      )
+    ).toEqual({
+      title: "Sarf",
+      description: undefined,
+      cardType: "HADEETH",
+      proposalId: "p1",
+    });
+  });
+
+  it("maps the card type to its preview and the proposal to its link", () => {
+    expect(previewKey("VOCABULARY")).toBe("vocabulary");
+    expect(previewKey("HADEETH")).toBe("hadith");
+    expect(newDeckHref("k1")).toBe("/kosks/k1/desteler/yeni");
+    expect(newDeckHref("k1", "p1")).toBe("/kosks/k1/desteler/yeni?oneri=p1");
+  });
+});
+
+describe("answers and dates", () => {
+  it("knows the codes tedrisat answers with, and which ones mean the row is gone", () => {
+    expect(deckErrorKey({ code: "DECK_REQUEST_NOT_PENDING" })).toBe(
+      "errors.requestAnswered"
+    );
+    expect(deckErrorKey({ code: "NOPE" })).toBeNull();
+    expect(deckErrorKey(undefined)).toBeNull();
+    expect(isGone({ code: "DECK_PROPOSAL_NOT_PENDING" })).toBe(true);
+    expect(isGone({ code: "DECK_REVIEW_FORBIDDEN" })).toBe(false);
+  });
+
+  it("writes a day and minute in the viewer's zone", () => {
+    expect(shortDateTime("2026-09-29T18:10:00Z", OPTS)).toBe("29 Eyl 21:10");
+    expect(shortDate("2026-09-29T18:10:00Z", OPTS)).toBe("29 Eyl");
+  });
+});
+
+describe("DeckRequestsView (nizam 16)", () => {
+  const list: DeckPublishRequestListResponse = {
+    pendingCount: 2,
+    decidedCount: 7,
+    items: [
+      {
+        id: "d1",
+        title: "Mehmûz fiiller",
+        description: "Hemzeli fiillerin çekimleri ve emir sîgaları.",
+        cardType: "VOCABULARY",
+        cardCount: 18,
+        owner: { id: "o1", name: "Zeynep Betül Karahanlı" },
+        requestedAt: new Date("2026-09-29T18:10:00Z"),
+        outcome: "PENDING",
+        decidedAt: null,
+        rejectReason: null,
+      },
+      {
+        id: "d2",
+        title: "Avâmil ezberi",
+        description: null,
+        cardType: "HADEETH",
+        cardCount: 100,
+        owner: { id: "o2", name: "Muhammed Said Özdemiroğlu" },
+        requestedAt: new Date("2026-09-28T08:05:00Z"),
+        outcome: "PENDING",
+        decidedAt: null,
+        rejectReason: null,
+      },
+    ],
+  };
+
+  it("shows both tab counts, the list and the first request's detail", () => {
+    const html = render(<DeckRequestsView initial={list} />);
+    expect(html).toContain("Deste yayın istekleri");
+    expect(html).toContain("Yayımlanan deste herkese açılır");
+    expect(html).toContain("Bekleyen");
+    expect(html).toContain("Karara bağlanan");
+    expect(html).toContain("Mehmûz fiiller");
+    expect(html).toContain("Avâmil ezberi");
+    expect(html).toContain("Zeynep Betül Karahanlı");
+    expect(html).toContain("18 ezber kartı");
+    expect(html).toContain("29 Eyl 21:10");
+    expect(html).toContain("Karar bekliyor");
+    expect(html).toContain("Örnek kartlar");
+    expect(html).toContain("kartlarını görmeniz denetim kaydına yazılır");
+    expect(html).toContain("Yayımla");
+    expect(html).toContain("Reddet");
+  });
+
+  it("is an empty state when nothing waits", () => {
+    const html = render(
+      <DeckRequestsView
+        initial={{ items: [], pendingCount: 0, decidedCount: 3 }}
+      />
+    );
+    expect(html).toContain("Karar bekleyen deste yayın isteği yok.");
+    expect(html).not.toContain("deck-request-detail");
+  });
+
+  it("says so, with a way back, when the first read failed", () => {
+    const html = render(<DeckRequestsView initial={null} />);
+    expect(html).toContain("İstekler okunamadı");
+    expect(html).toContain("Tekrar dene");
+  });
+});
+
+describe("KoskDecksView (nizam 30)", () => {
+  const data: ManagedKoskDecksResponse = {
+    decks: [
+      {
+        id: "d1",
+        title: "Sarfın temel kelimeleri",
+        description: "الصرف · sarfın temel kelimeleri ve anlamları",
+        cardType: "VOCABULARY",
+        cardCount: 60,
+        updatedAt: new Date("2026-09-28T19:10:00Z"),
+      },
+    ],
+    proposals: [proposal(), proposal({ id: "p2", title: "Ebniye-i seb’a" })],
+  };
+
+  it("lists the proposals with their count, and the decks with their actions", () => {
+    const html = render(
+      <KoskDecksView koskId="k1" koskName="Nûruosmaniye Köşkü" initial={data} />
+    );
+    expect(html).toContain("Köşk desteleri");
+    expect(html).toContain("Köşk destesi aç");
+    expect(html).toContain("Müderris önerileri");
+    expect(html).toContain("2 öneri kararınızı bekliyor");
+    expect(html).toContain("Öneren Ayşe Nur Kılıçarslan");
+    expect(html).toContain("Kabul et");
+    expect(html).toContain("Reddet");
+    expect(html).toContain("Sarfın temel kelimeleri");
+    expect(html).toContain("Kartları düzenle");
+    expect(html).toContain("Gizle");
+    expect(html).toContain("28 Eyl 22:10");
+    expect(html).toContain("1 deste");
+  });
+
+  it("sends Kabul et to the form of that proposal, and Köşk destesi aç to an empty one", () => {
+    const html = render(
+      <KoskDecksView koskId="k1" koskName="Nûruosmaniye Köşkü" initial={data} />
+    );
+    expect(html).toContain('href="/tr/kosks/k1/desteler/yeni?oneri=p1"');
+    expect(html).toContain('href="/tr/kosks/k1/desteler/yeni"');
+    expect(html).toContain('href="/tr/decks/d1/cards"');
+  });
+
+  it("leaves the proposals block out when there are none", () => {
+    const html = render(
+      <KoskDecksView
+        koskId="k1"
+        koskName="Nûruosmaniye Köşkü"
+        initial={{ ...data, proposals: [] }}
+      />
+    );
+    expect(html).not.toContain("Müderris önerileri");
+    expect(html).toContain("Desteler");
+  });
+
+  it("says the köşk has no deck yet, and that the read failed", () => {
+    expect(
+      render(
+        <KoskDecksView
+          koskId="k1"
+          koskName="Nûruosmaniye Köşkü"
+          initial={{ decks: [], proposals: [] }}
+        />
+      )
+    ).toContain("Bu köşkün henüz destesi yok.");
+    expect(
+      render(
+        <KoskDecksView
+          koskId="k1"
+          koskName="Nûruosmaniye Köşkü"
+          initial={null}
+        />
+      )
+    ).toContain("Desteler okunamadı");
+  });
+});
+
+describe("KoskDeckForm (nizam 35)", () => {
+  it("opens filled in from the proposal, with its banner", () => {
+    const html = render(
+      <KoskDeckForm
+        koskId="k1"
+        koskName="Nûruosmaniye Köşkü"
+        studentCount={74}
+        proposal={proposal()}
+      />
+    );
+    expect(html).toContain("Müderris önerisinden açılıyor");
+    expect(html).toContain("İ’lâl kaideleri");
+    expect(html).toContain("Tek bir köşk destesi iki derse yeter.");
+    expect(html).toContain("Ayşe Nur Kılıçarslan");
+    expect(html).toContain("74 talebe");
+    expect(html).toContain("Desteyi aç");
+    expect(html).toContain("Vazgeç");
+  });
+
+  it("hides the banner and starts empty without a proposal", () => {
+    const html = render(
+      <KoskDeckForm
+        koskId="k1"
+        koskName="Nûruosmaniye Köşkü"
+        studentCount={74}
+        proposal={null}
+      />
+    );
+    expect(html).not.toContain("Müderris önerisinden açılıyor");
+    expect(html).toContain("Kartlar sonra eklenir");
+    expect(html).toContain("Kelime");
+    expect(html).toContain("Hadis");
+  });
+
+  it("previews the card of the chosen type", () => {
+    const vocabulary = render(
+      <KoskDeckForm koskId="k1" koskName="K" studentCount={1} proposal={null} />
+    );
+    expect(vocabulary).toContain("Çağırdı, çağırır, çağırmak.");
+    const hadith = render(
+      <KoskDeckForm
+        koskId="k1"
+        koskName="K"
+        studentCount={1}
+        proposal={proposal({ cardType: "HADEETH" })}
+      />
+    );
+    expect(hadith).toContain("Ameller niyetlere göredir.");
+  });
+});
+
+describe("RejectDialog (canvas rule 17)", () => {
+  it("draws nothing until it is opened (it lives in a portal)", () => {
+    const html = render(
+      <RejectDialog
+        open={false}
+        onOpenChange={() => {}}
+        kind="request"
+        subject="Mehmûz fiiller"
+        onSubmit={async () => true}
+      />
+    );
+    expect(html).toBe("");
+  });
+});
+
+describe("the three languages carry the same keys", () => {
+  const namespaces = [
+    "DeckRequestsPage",
+    "DeckReject",
+    "KoskDecksPage",
+    "KoskDeckForm",
+  ] as const;
+  const keysOf = (node: unknown, prefix = ""): string[] =>
+    node && typeof node === "object"
+      ? Object.entries(node).flatMap(([k, v]) =>
+          keysOf(v, prefix ? `${prefix}.${k}` : k)
+        )
+      : [prefix];
+
+  it.each(namespaces)("%s", (ns) => {
+    const tr = keysOf(
+      (resources.tr.nizam as unknown as Record<string, unknown>)[ns]
+    ).sort();
+    for (const lang of ["en", "ar"] as const) {
+      expect(
+        keysOf(
+          (resources[lang].nizam as unknown as Record<string, unknown>)[ns]
+        ).sort()
+      ).toEqual(tr);
+    }
+  });
+});
