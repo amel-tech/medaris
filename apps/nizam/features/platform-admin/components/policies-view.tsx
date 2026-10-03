@@ -54,6 +54,13 @@ export function PoliciesView({ initial }: Props) {
     initial?.policies.items ?? []
   );
   const [busy, setBusy] = useState<string | null>(null);
+  // `initial` is a fresh server read after router.refresh() ("Tekrar dene"):
+  // the state seeded from the first render must follow it.
+  const [seen, setSeen] = useState(initial);
+  if (seen !== initial) {
+    setSeen(initial);
+    setItems(initial?.policies.items ?? []);
+  }
 
   const toggle = async (key: string, enabled: boolean) => {
     const before = items;
@@ -135,52 +142,77 @@ export function PoliciesView({ initial }: Props) {
         </Alert>
       ) : (
         <>
-          <section
-            className="flex flex-col gap-4"
-            aria-labelledby="policies-title"
-          >
-            <h2 id="policies-title" className="mds-h2">
-              {t("policiesHeading")}
-            </h2>
-            <ul className="m-0 flex list-none flex-col gap-4 p-0">
-              {items.map((p) => (
-                <li
-                  key={p.key}
-                  className="flex flex-col gap-2 rounded-surface border border-neutral-subtle p-4"
-                  data-testid={`policy-${p.key}`}
-                >
-                  <Switch
-                    label={t(`policies.${p.key}.title` as never)}
-                    description={t(`policies.${p.key}.body` as never)}
-                    checked={p.enabled}
-                    disabled={busy === p.key}
-                    onCheckedChange={(next) => void toggle(p.key, next)}
-                  />
-                  {p.ownScopes.length > 0 ? (
-                    <p className="mds-caption">
-                      {t("ownScopes", { names: p.ownScopes.join(", ") })}
-                    </p>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-            <p className="mds-caption">{t("instantNote")}</p>
-          </section>
+          <div className="grid items-start gap-section lg:grid-cols-2">
+            <section
+              className="flex min-w-0 flex-col gap-4"
+              aria-labelledby="policies-title"
+            >
+              <h2 id="policies-title" className="mds-h2">
+                {t("policiesHeading")}
+              </h2>
+              <ul className="m-0 flex list-none flex-col rounded-surface border border-neutral-subtle p-0">
+                {items.map((p) => (
+                  <li
+                    key={p.key}
+                    className="flex flex-col gap-2 border-b border-neutral-subtle p-4 last:border-b-0"
+                    data-testid={`policy-${p.key}`}
+                  >
+                    <Switch
+                      label={t(`policies.${p.key}.title` as never)}
+                      description={t(`policies.${p.key}.body` as never)}
+                      checked={p.enabled}
+                      disabled={busy === p.key}
+                      onCheckedChange={(next) => void toggle(p.key, next)}
+                    />
+                    {p.ownScopes.length > 0 ? (
+                      <p className="mds-caption">
+                        {t("ownScopes", { names: p.ownScopes.join(", ") })}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+              <p className="mds-caption">{t("instantNote")}</p>
+            </section>
 
-          <section
-            className="flex flex-col gap-4"
-            aria-labelledby="combine-title"
-          >
-            <h2 id="combine-title" className="mds-h2">
-              {t("combineHeading")}
-            </h2>
-            <ol className="m-0 flex max-w-[48rem] flex-col gap-2 ps-6">
-              {STEPS.map((step) => (
-                <li key={step}>{t(`steps.${step}`)}</li>
-              ))}
-            </ol>
-            <Alert tone="warning">{t("combineWarning")}</Alert>
-          </section>
+            <section
+              className="flex min-w-0 flex-col gap-4"
+              aria-labelledby="combine-title"
+            >
+              <h2 id="combine-title" className="mds-h2">
+                {t("combineHeading")}
+              </h2>
+              <div className="flex flex-col gap-4 rounded-surface border border-neutral-subtle p-4">
+                <p>{t("combineIntro")}</p>
+                <ol className="m-0 flex list-none flex-col p-0">
+                  {STEPS.map((step, index) => (
+                    <li
+                      key={step}
+                      className="flex gap-3 border-b border-neutral-subtle py-3 first:pt-0 last:border-b-0"
+                    >
+                      <span
+                        className="w-4 shrink-0 font-semibold"
+                        aria-hidden="true"
+                      >
+                        {index + 1}
+                      </span>
+                      <span className="flex min-w-0 flex-col gap-1">
+                        <span className="font-medium">
+                          {t(`steps.${step}.title`)}
+                        </span>
+                        <span className="mds-caption">
+                          {t(`steps.${step}.body`)}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+                <Alert tone="warning" title={t("combineWarningTitle")}>
+                  {t("combineWarning")}
+                </Alert>
+              </div>
+            </section>
+          </div>
 
           <section
             className="flex flex-col gap-4"

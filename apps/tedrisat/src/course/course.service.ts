@@ -443,6 +443,7 @@ export class CourseService {
     updates: IUpdateCourse
   ): Promise<ICourse> {
     await this.getDetail(id, user);
+    await this.platformPolicies.assertCourseMayChange(updates);
     const updated = await this.courseRepo.update(
       id,
       withCanonicalTimeZone(updates)
@@ -469,7 +470,13 @@ export class CourseService {
     user: AuthenticatedUser,
     data: IReplaceCourse
   ): Promise<ICourseDetailView> {
-    await this.getDetail(id, user); // a hidden course is not saved by a müderris
+    const stored = await this.getDetail(id, user); // a hidden course is not saved by a müderris
+    // The whole-course save carries every field, so only a switch-off of a
+    // stored "requires approval" is refused; an unrelated save of a course
+    // that never required it must still go through.
+    if (stored.requiresApproval) {
+      await this.platformPolicies.assertCourseMayChange(data);
+    }
     const next = data.muderris ?? [];
     const current = await this.courseRepo.findMuderris(id);
     if (

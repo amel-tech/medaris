@@ -1,6 +1,7 @@
-import { AuthenticatedUser } from "@medaris/common";
+import { AuthenticatedUser, ROLES } from "@medaris/common";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { PERMISSIONS } from "../assignment/permission-catalog";
+import { KeycloakAdminService } from "../keycloak-admin/keycloak-admin.service";
 import { PlatformAccessService } from "../platform-access/platform-access.service";
 import type { AuditEntryResponse, AuditPageResponse } from "./audit.dto";
 import {
@@ -15,6 +16,7 @@ import { auditCsv, auditTypeOf } from "./audit-types";
 export const AUDIT_PAGE_SIZE = 50;
 /** One export is capped so a download cannot turn into a table dump. */
 export const AUDIT_EXPORT_MAX = 10000;
+const CHIEF_CACHE_MS = 5 * 60_000;
 export const AUDIT_EXPORT_ACTION = "audit.export";
 
 const UUID_TEXT =
@@ -54,8 +56,33 @@ export class AuditService {
   // `design:paramtypes` and Nest can no longer inject them.
   constructor(
     private readonly repo: AuditRepository,
-    private readonly access: PlatformAccessService
+    private readonly access: PlatformAccessService,
+    private readonly keycloak: KeycloakAdminService
   ) {}
+
+  private chiefs: { ids: Set<string>; at: number } | null = null;
+
+  /**
+   * Who holds SYSTEM_ADMIN. The role lives in the realm, not in the
+   * database, so the directory is asked and the answer kept a few minutes.
+   * Not reaching it is an answer too (nobody), so the trail still renders.
+   */
+  private async systemAdminIds(): Promise<Set<string>> {
+    if (this.chiefs && Date.now() - this.chiefs.at < CHIEF_CACHE_MS) {
+      return this.chiefs.ids;
+    }
+    let ids = new Set<string>();
+    try {
+      if (this.keycloak.isConfigured()) {
+        const holders = await this.keycloak.findByRealmRole(ROLES.SYSTEM_ADMIN);
+        ids = new Set(holders.map((h) => h.id));
+      }
+    } catch {
+      ids = new Set();
+    }
+    this.chiefs = { ids, at: Date.now() };
+    return ids;
+  }
 
   /** Appends one row. */
   record(entry: IAuditEntry): Promise<void> {
@@ -117,6 +144,9 @@ export class AuditService {
     const roles = await this.repo.rolesOf([
       ...new Set(rows.map((r) => r.actorId)),
     ]);
+    // The head nazim is the widest role there is, whatever kosk role the same
+    // person also holds.
+    const chiefs = await this.systemAdminIds();
     return rows.map((r) => ({
       id: r.id,
       number: r.number,
@@ -124,7 +154,9 @@ export class AuditService {
       actor: {
         id: r.actorId,
         name: r.actorName,
-        role: roles.get(r.actorId) ?? null,
+        role: chiefs.has(r.actorId)
+          ? ROLES.SYSTEM_ADMIN
+          : (roles.get(r.actorId) ?? null),
       },
       type: auditTypeOf(r.action),
       action: r.action,

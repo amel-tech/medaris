@@ -291,6 +291,26 @@ describe("the audit log (nizam 17)", () => {
     expect(html).toContain("bu kaydı göremez");
   });
 
+  it("names the başnazım by that role, not by a köşk role", () => {
+    const first = page.items[0];
+    if (!first) throw new Error("fixture");
+    const html = render(
+      <AuditView
+        filters={{}}
+        initial={{
+          ...page,
+          items: [
+            {
+              ...first,
+              actor: { ...first.actor, role: "SYSTEM_ADMIN" },
+            },
+          ],
+        }}
+      />
+    );
+    expect(html).toContain("Medaris başnazımı");
+  });
+
   it("hides 'Daha eskileri göster' at the end, and says so when nothing matches", () => {
     const end = render(
       <AuditView filters={{}} initial={{ ...page, nextCursor: null }} />
@@ -361,7 +381,13 @@ describe("platform settings (nizam 19)", () => {
     expect(html).toContain("Her değişiklik anında geçerli olur");
     expect(html).toContain("Politikalar nasıl birleşir");
     expect(html).toContain(
-      "Üst kademenin verdiği izin alttaki politikayı aşar."
+      "Üst kademenin verdiği izin, alttaki politikayı aşar"
+    );
+    expect(html).toContain("Rolün varsayılanı ve aldığı izinler");
+    expect(html).toContain("Ders politikası");
+    expect(html).toContain("Dersin kendi ayarları; son daraltma.");
+    expect(html).toContain(
+      "Örneğin sizin bir Medaris nazımına verdiğiniz izin"
     );
     expect(html).toContain("Üsküdar Köşkü");
     expect(html).toContain("Ali Nazım");

@@ -3209,6 +3209,7 @@
       "scope": "Scope"
     },
     "roles": {
+      "SYSTEM_ADMIN": "Medaris chief nazım",
       "MEDARIS_NAZIM": "Medaris nazım",
       "KOSK_NAZIM": "Köşk nazım",
       "MEDRESE_BASMUDERRIS": "Head müderris of a medrese",
@@ -3228,29 +3229,46 @@
   },
   "PlatformSettingsPage": {
     "title": "Platform settings",
-    "intro": "A policy closes a permission; the scopes below cannot open it again.",
+    "intro": "Platform policies apply in every köşk, medrese and course. A policy closes a permission; a köşk, medrese or course cannot open it again.",
     "policiesHeading": "Policies",
     "policies": {
       "ALWAYS_REQUIRE_APPROVAL": {
         "title": "Enrolment is always approved",
-        "body": "No enrolment in any course is automatic; each one waits for the course team's approval."
+        "body": "While on, no course can be joined directly; every enrolment becomes a request and the course team approves it. In unlisted köşks enrolment is always approved, whatever this setting says."
       },
       "RECORDINGS_NEVER_PUBLIC": {
         "title": "Recordings cannot be made public",
-        "body": "No köşk's or course's recording can be opened to people who are not enrolled."
+        "body": "While on, no recording can be made public or uploaded to YouTube; only enrolled students and the course team watch recordings."
       }
     },
     "ownScopes": "Already applied in their own scope: {names}",
     "instantNote": "Every change takes effect at once and is written to the audit log.",
     "combineHeading": "How policies combine",
     "steps": {
-      "roleDefault": "A role's default permissions are the start.",
-      "platform": "A platform policy closes the permission it names everywhere.",
-      "kosk": "A köşk may narrow further with its own policy.",
-      "madrasah": "A medrese may narrow within its own scope.",
-      "course": "A course sets the narrowest scope with its own settings."
+      "roleDefault": {
+        "title": "The role's default and the permissions it was given",
+        "body": "A köşk nazım, head müderris and müderris keep their role's default permissions in their own scope; a Medaris nazım, medrese nazır and course nazır hold only the permissions given to them."
+      },
+      "platform": {
+        "title": "Platform policy",
+        "body": "The policies on this page; in force everywhere."
+      },
+      "kosk": {
+        "title": "Köşk policy",
+        "body": "The köşk nazım narrows their own köşk further."
+      },
+      "madrasah": {
+        "title": "Medrese policy",
+        "body": "Only in medrese courses. Such a course gets the köşk's and the medrese's policy together."
+      },
+      "course": {
+        "title": "Course policy",
+        "body": "The course's own settings; the last narrowing."
+      }
     },
-    "combineWarning": "A permission granted from above overrides the policy below.",
+    "combineIntro": "What a person can do in a course is found by narrowing, in order:",
+    "combineWarningTitle": "A permission granted from above overrides the policy below",
+    "combineWarning": "For example, a permission you give a Medaris nazım overrides a köşk policy for that person; it does not override the platform policy.",
     "scopedHeading": "Köşk and medrese policies",
     "scopedEmpty": "No köşk or medrese applies a policy of its own.",
     "columns": {

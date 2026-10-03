@@ -60,6 +60,14 @@ export function AuditView({ filters, initial }: Props) {
     initial?.nextCursor ?? null
   );
   const failed = initial === null;
+  // `initial` is a fresh read after a filter change or "Tekrar dene"
+  // (router.refresh): the rows seeded from the first render must follow it.
+  const [seen, setSeen] = useState(initial);
+  if (seen !== initial) {
+    setSeen(initial);
+    setItems(initial?.items ?? []);
+    setCursor(initial?.nextCursor ?? null);
+  }
   const [more, setMore] = useState(false);
   const [actor, setActor] = useState(filters.actor ?? "");
   const now = useRef(new Date());

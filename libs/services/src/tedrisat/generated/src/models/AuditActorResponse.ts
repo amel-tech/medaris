@@ -32,7 +32,7 @@ export interface AuditActorResponse {
      */
     name?: string | null;
     /**
-     * The widest role the person holds now (MEDARIS_NAZIM, KOSK_NAZIM, …); null for the başnazım, whose role lives in the realm, and for people who hold none.
+     * The widest role the person holds now (SYSTEM_ADMIN for the başnazım, read from the realm; otherwise MEDARIS_NAZIM, KOSK_NAZIM, …); null for people who hold none.
      * @type {string}
      * @memberof AuditActorResponse
      */

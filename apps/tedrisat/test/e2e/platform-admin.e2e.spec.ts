@@ -584,6 +584,27 @@ describe("Platform admin (e2e)", () => {
       expect(free.body.status).toBe("ENROLLED");
     });
 
+    it("keeps a course from switching 'requires approval' off while the platform rule is on", async () => {
+      await policy("ALWAYS_REQUIRE_APPROVAL", true).expect(200);
+      const refused = await http()
+        .patch(`/courses/${courseId}`)
+        .set("Authorization", auth(NAZIM_A_ID))
+        .send({ requiresApproval: false })
+        .expect(409);
+      expect(refused.body.code).toBe("PLATFORM_POLICY_LOCKED");
+      await http()
+        .patch(`/courses/${courseId}`)
+        .set("Authorization", auth(NAZIM_A_ID))
+        .send({ requiresApproval: true })
+        .expect(200);
+      await policy("ALWAYS_REQUIRE_APPROVAL", false).expect(200);
+      await http()
+        .patch(`/courses/${courseId}`)
+        .set("Authorization", auth(NAZIM_A_ID))
+        .send({ requiresApproval: false })
+        .expect(200);
+    });
+
     it("keeps a köşk from switching a platform rule off, and lets it keep its own while the platform's is off", async () => {
       await http()
         .patch(`/kosks/${koskA}`)

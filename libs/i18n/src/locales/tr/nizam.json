@@ -3209,6 +3209,7 @@
       "scope": "Kapsam"
     },
     "roles": {
+      "SYSTEM_ADMIN": "Medaris başnazımı",
       "MEDARIS_NAZIM": "Medaris nâzımı",
       "KOSK_NAZIM": "Köşk nâzımı",
       "MEDRESE_BASMUDERRIS": "Medrese başmüderrisi",
@@ -3228,29 +3229,46 @@
   },
   "PlatformSettingsPage": {
     "title": "Platform ayarları",
-    "intro": "Bir politika bir izni kapatır; alt kapsamlar kapatılan izni yeniden açamaz.",
+    "intro": "Platform politikaları her köşkte, medresede ve derste geçerlidir. Bir politika bir izni kapatır; köşk, medrese ya da ders onu yeniden açamaz.",
     "policiesHeading": "Politikalar",
     "policies": {
       "ALWAYS_REQUIRE_APPROVAL": {
         "title": "Kayıt her zaman onaylı",
-        "body": "Hiçbir derse kayıt kendiliğinden olmaz; her kayıt, dersin ekibinin onayını bekler."
+        "body": "Açıkken hiçbir derse doğrudan kaydolunamaz; her kayıt bir başvuru olur ve ders kadrosu onaylar. Listelenmeyen köşklerde kayıt bu ayardan bağımsız olarak her zaman onaylıdır."
       },
       "RECORDINGS_NEVER_PUBLIC": {
         "title": "Ders kayıtları herkese açılamaz",
-        "body": "Hiçbir köşk ya da dersin kaydı, derse yazılmayanlara açılamaz."
+        "body": "Açıkken hiçbir ders kaydı herkese açık yapılamaz ve YouTube’a yüklenemez; ders kayıtlarını yalnız kayıtlı talebeler ve ders kadrosu izler."
       }
     },
     "ownScopes": "Kendi kapsamında uygulayan: {names}",
     "instantNote": "Her değişiklik anında geçerli olur ve denetim kaydına yazılır.",
     "combineHeading": "Politikalar nasıl birleşir",
     "steps": {
-      "roleDefault": "Rolün varsayılan izinleri başlangıçtır.",
-      "platform": "Platform politikası, kapattığı izni her yerde kapatır.",
-      "kosk": "Köşk kendi politikasıyla daha da daraltabilir.",
-      "madrasah": "Medrese, kendi kapsamında daraltabilir.",
-      "course": "Ders, kendi ayarlarıyla en dar kapsamı belirler."
+      "roleDefault": {
+        "title": "Rolün varsayılanı ve aldığı izinler",
+        "body": "Köşk nazımı, başmüderris ve müderris kendi kapsamlarında rollerinin varsayılan izinlerini tutar; Medaris nazımı, medrese nazırı ve ders nazırı yalnız kendilerine verilen izinleri."
+      },
+      "platform": {
+        "title": "Platform politikası",
+        "body": "Bu sayfadaki politikalar; her yerde geçerli."
+      },
+      "kosk": {
+        "title": "Köşk politikası",
+        "body": "Köşk nazımı kendi köşkünü daha da daraltır."
+      },
+      "madrasah": {
+        "title": "Medrese politikası",
+        "body": "Yalnız medrese derslerinde. Böyle bir derse köşkün ve medresenin politikası birlikte uygulanır."
+      },
+      "course": {
+        "title": "Ders politikası",
+        "body": "Dersin kendi ayarları; son daraltma."
+      }
     },
-    "combineWarning": "Üst kademenin verdiği izin alttaki politikayı aşar.",
+    "combineIntro": "Bir kişinin bir derste yapabildikleri, sırayla daraltılarak bulunur:",
+    "combineWarningTitle": "Üst kademenin verdiği izin, alttaki politikayı aşar",
+    "combineWarning": "Örneğin sizin bir Medaris nazımına verdiğiniz izin, köşk politikasını o kişi için aşar; platform politikasını aşmaz.",
     "scopedHeading": "Köşk ve medrese politikaları",
     "scopedEmpty": "Kendi politikasını uygulayan köşk ya da medrese yok.",
     "columns": {

@@ -241,7 +241,7 @@ export function ApplicationsView({ initial }: Props) {
         </div>
         <div className="flex flex-col gap-1">
           <dt className="mds-caption">{t("email")}</dt>
-          <dd className="m-0" dir="ltr">
+          <dd className="m-0 [overflow-wrap:anywhere]" dir="ltr">
             {d.applicant.email}
           </dd>
         </div>
@@ -262,7 +262,7 @@ export function ApplicationsView({ initial }: Props) {
     return (
       <section
         aria-labelledby="application-title"
-        className="flex flex-col gap-5 rounded-surface border border-neutral-subtle p-6"
+        className="flex min-w-0 flex-col gap-5 rounded-surface border border-neutral-subtle p-4 sm:p-6"
         data-testid="application-detail"
       >
         <header className="flex items-start justify-between gap-3">
@@ -396,9 +396,9 @@ export function ApplicationsView({ initial }: Props) {
           ) : items.length === 0 ? (
             <EmptyState>{t(`empty.${tab}`)}</EmptyState>
           ) : (
-            <div className="grid gap-grid lg:grid-cols-[22rem_1fr]">
+            <div className="grid gap-grid lg:grid-cols-[22rem_minmax(0,1fr)]">
               <ul
-                className="m-0 flex list-none flex-col gap-1 self-start rounded-surface border border-neutral-subtle p-2"
+                className="m-0 flex min-w-0 list-none flex-col gap-1 self-start rounded-surface border border-neutral-subtle p-2"
                 data-testid="application-list"
               >
                 {items.map(listItem)}
