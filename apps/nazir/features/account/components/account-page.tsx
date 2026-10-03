@@ -31,7 +31,7 @@ function Card({
   return (
     <section
       aria-labelledby={id}
-      className="mds-card flex flex-col gap-section p-card"
+      className="mds-card flex flex-col gap-stack p-card"
     >
       <h2 className="mds-h3" id={id}>
         {title}
@@ -57,7 +57,7 @@ async function PermissionsCard({
 
   return (
     <Card id="permissions-heading" title={t("Account.permissionsTitle")}>
-      <p>{t("Account.permissionsIntro")}</p>
+      <p className="mds-body-sm">{t("Account.permissionsIntro")}</p>
       {groups === null ? (
         <Alert tone="error" title={t("Account.loadFailedTitle")}>
           <p>{t("Account.loadFailed")}</p>
@@ -119,7 +119,7 @@ export async function AccountPage({ portal }: { portal: OkPortal }) {
       <div className="grid gap-grid md:grid-cols-[minmax(0,1fr)_var(--layout-aside)] md:items-start">
         <div className="flex min-inline-0 flex-col gap-grid">
           <Card id="tasks-heading" title={t("Account.tasksTitle")}>
-            <p>{t("Account.tasksIntro")}</p>
+            <p className="mds-body-sm">{t("Account.tasksIntro")}</p>
             <AssignmentsTable
               rows={rows}
               labels={{
@@ -171,7 +171,7 @@ export async function AccountPage({ portal }: { portal: OkPortal }) {
         <div className="flex flex-col gap-grid">
           <Card id="account-heading" title={t("Account.accountTitle")}>
             <div className="flex items-center gap-3">
-              <Avatar name={person.name} size="lg" decorative />
+              <Avatar name={person.name} decorative />
               <span className="flex min-inline-0 flex-col">
                 <span className="font-medium">
                   <bdi>{person.name}</bdi>
@@ -186,7 +186,7 @@ export async function AccountPage({ portal }: { portal: OkPortal }) {
             ) : null}
           </Card>
           <section className="mds-card flex flex-col items-start gap-3 p-card">
-            <p>{t("Account.signOutNote")}</p>
+            <p className="mds-body-sm">{t("Account.signOutNote")}</p>
             <SignOutButton
               label={t("Account.signOut")}
               busy={t("Account.signOutBusy")}
