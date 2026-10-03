@@ -16,8 +16,11 @@
 import * as runtime from '../runtime';
 import type {
   AddKoskNazimsDto,
+  CreateDeckProposalDto,
+  CreateKoskDeckDto,
   CreateKoskDto,
   CreateKoskGrantDto,
+  CreatedIdResponse,
   FollowedKoskCourseResponse,
   GrantHostingRightDto,
   HostingCoursesAction,
@@ -34,17 +37,25 @@ import type {
   KoskOverviewResponse,
   KoskResponse,
   KoskStatusFilter,
+  ManagedKoskDecksResponse,
   PaginatedKoskResponse,
+  RejectReasonDto,
   UpdateKoskDto,
   UpdateKoskGrantDto,
 } from '../models/index';
 import {
     AddKoskNazimsDtoFromJSON,
     AddKoskNazimsDtoToJSON,
+    CreateDeckProposalDtoFromJSON,
+    CreateDeckProposalDtoToJSON,
+    CreateKoskDeckDtoFromJSON,
+    CreateKoskDeckDtoToJSON,
     CreateKoskDtoFromJSON,
     CreateKoskDtoToJSON,
     CreateKoskGrantDtoFromJSON,
     CreateKoskGrantDtoToJSON,
+    CreatedIdResponseFromJSON,
+    CreatedIdResponseToJSON,
     FollowedKoskCourseResponseFromJSON,
     FollowedKoskCourseResponseToJSON,
     GrantHostingRightDtoFromJSON,
@@ -77,8 +88,12 @@ import {
     KoskResponseToJSON,
     KoskStatusFilterFromJSON,
     KoskStatusFilterToJSON,
+    ManagedKoskDecksResponseFromJSON,
+    ManagedKoskDecksResponseToJSON,
     PaginatedKoskResponseFromJSON,
     PaginatedKoskResponseToJSON,
+    RejectReasonDtoFromJSON,
+    RejectReasonDtoToJSON,
     UpdateKoskDtoFromJSON,
     UpdateKoskDtoToJSON,
     UpdateKoskGrantDtoFromJSON,
@@ -97,6 +112,11 @@ export interface AddKoskNazimsRequest {
 
 export interface CreateKoskRequest {
     createKoskDto: CreateKoskDto;
+}
+
+export interface CreateKoskDeckRequest {
+    id: string;
+    createKoskDeckDto: CreateKoskDeckDto;
 }
 
 export interface CreateKoskGrantRequest {
@@ -168,6 +188,10 @@ export interface GetKoskOverviewRequest {
     id: string;
 }
 
+export interface GetManagedKoskDecksRequest {
+    id: string;
+}
+
 export interface GrantKoskHostingRightRequest {
     id: string;
     grantHostingRightDto: GrantHostingRightDto;
@@ -175,6 +199,21 @@ export interface GrantKoskHostingRightRequest {
 
 export interface HideKoskRequest {
     id: string;
+}
+
+export interface HideKoskDeckRequest {
+    id: string;
+}
+
+export interface ProposeKoskDeckRequest {
+    id: string;
+    createDeckProposalDto: CreateDeckProposalDto;
+}
+
+export interface RejectKoskDeckProposalRequest {
+    id: string;
+    proposalId: string;
+    rejectReasonDto: RejectReasonDto;
 }
 
 export interface RemoveKoskManagerRequest {
@@ -364,6 +403,60 @@ export class KosksApi extends runtime.BaseAPI {
      */
     async createKosk(requestParameters: CreateKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
         const response = await this.createKoskRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The deck is private to nobody but the köşk\'s talebe: its cards are added afterwards. With `proposalId` the proposal is accepted in the same step; 409 (DECK_PROPOSAL_NOT_PENDING) when it was answered meanwhile.
+     * Open a köşk deck (Desteyi aç)
+     */
+    async createKoskDeckRaw(requestParameters: CreateKoskDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreatedIdResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling createKoskDeck().'
+            );
+        }
+
+        if (requestParameters['createKoskDeckDto'] == null) {
+            throw new runtime.RequiredError(
+                'createKoskDeckDto',
+                'Required parameter "createKoskDeckDto" was null or undefined when calling createKoskDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/decks`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateKoskDeckDtoToJSON(requestParameters['createKoskDeckDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CreatedIdResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The deck is private to nobody but the köşk\'s talebe: its cards are added afterwards. With `proposalId` the proposal is accepted in the same step; 409 (DECK_PROPOSAL_NOT_PENDING) when it was answered meanwhile.
+     * Open a köşk deck (Desteyi aç)
+     */
+    async createKoskDeck(requestParameters: CreateKoskDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreatedIdResponse> {
+        const response = await this.createKoskDeckRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1072,6 +1165,50 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
+     * The shown köşk decks with their card counts and the müderris proposals nobody has answered. A nazım of the köşk or SYSTEM_ADMIN.
+     * A köşk\'s decks and the proposals waiting for an answer
+     */
+    async getManagedKoskDecksRaw(requestParameters: GetManagedKoskDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ManagedKoskDecksResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getManagedKoskDecks().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/decks/manage`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ManagedKoskDecksResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The shown köşk decks with their card counts and the müderris proposals nobody has answered. A nazım of the köşk or SYSTEM_ADMIN.
+     * A köşk\'s decks and the proposals waiting for an answer
+     */
+    async getManagedKoskDecks(requestParameters: GetManagedKoskDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ManagedKoskDecksResponse> {
+        const response = await this.getManagedKoskDecksRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Idempotent. 404 for a medrese that is missing or hidden. Written to the audit log.
      * Give a medrese a hosting right in the köşk
      */
@@ -1167,6 +1304,164 @@ export class KosksApi extends runtime.BaseAPI {
     async hideKosk(requestParameters: HideKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskDirectoryItemResponse> {
         const response = await this.hideKoskRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Nothing is deleted: the deck moves to the köşk\'s archive, where Geri al brings it back.
+     * Hide a köşk deck (Gizle)
+     */
+    async hideKoskDeckRaw(requestParameters: HideKoskDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling hideKoskDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/decks/{id}/hide`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Nothing is deleted: the deck moves to the köşk\'s archive, where Geri al brings it back.
+     * Hide a köşk deck (Gizle)
+     */
+    async hideKoskDeck(requestParameters: HideKoskDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.hideKoskDeckRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * A müderris of one of the köşk\'s courses. The köşk nazımı accepts it by opening the deck, or refuses it with a reason.
+     * Suggest a deck for the köşk
+     */
+    async proposeKoskDeckRaw(requestParameters: ProposeKoskDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreatedIdResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling proposeKoskDeck().'
+            );
+        }
+
+        if (requestParameters['createDeckProposalDto'] == null) {
+            throw new runtime.RequiredError(
+                'createDeckProposalDto',
+                'Required parameter "createDeckProposalDto" was null or undefined when calling proposeKoskDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/deck-proposals`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateDeckProposalDtoToJSON(requestParameters['createDeckProposalDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CreatedIdResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * A müderris of one of the köşk\'s courses. The köşk nazımı accepts it by opening the deck, or refuses it with a reason.
+     * Suggest a deck for the köşk
+     */
+    async proposeKoskDeck(requestParameters: ProposeKoskDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreatedIdResponse> {
+        const response = await this.proposeKoskDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The proposer reads the reason in their notifications. The reason is required.
+     * Refuse a proposal (Reddet)
+     */
+    async rejectKoskDeckProposalRaw(requestParameters: RejectKoskDeckProposalRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling rejectKoskDeckProposal().'
+            );
+        }
+
+        if (requestParameters['proposalId'] == null) {
+            throw new runtime.RequiredError(
+                'proposalId',
+                'Required parameter "proposalId" was null or undefined when calling rejectKoskDeckProposal().'
+            );
+        }
+
+        if (requestParameters['rejectReasonDto'] == null) {
+            throw new runtime.RequiredError(
+                'rejectReasonDto',
+                'Required parameter "rejectReasonDto" was null or undefined when calling rejectKoskDeckProposal().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/deck-proposals/{proposalId}/reject`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"proposalId"}}`, encodeURIComponent(String(requestParameters['proposalId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RejectReasonDtoToJSON(requestParameters['rejectReasonDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The proposer reads the reason in their notifications. The reason is required.
+     * Refuse a proposal (Reddet)
+     */
+    async rejectKoskDeckProposal(requestParameters: RejectKoskDeckProposalRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.rejectKoskDeckProposalRaw(requestParameters, initOverrides);
     }
 
     /**

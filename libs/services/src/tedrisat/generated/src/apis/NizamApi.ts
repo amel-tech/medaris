@@ -19,6 +19,9 @@ import type {
   AssignInactiveScopeDto,
   ChiefNazimResponse,
   CreatePermissionGroupDto,
+  DeckPublishRequestListResponse,
+  DeckRequestCardsResponse,
+  DeckRequestStatus,
   DeletePermissionGroupDto,
   DismissMedarisNazimDto,
   GivenItemResponse,
@@ -28,6 +31,7 @@ import type {
   MedarisNazimResponse,
   PermissionCatalogResponse,
   PermissionGroupResponse,
+  RejectReasonDto,
   SetNazimGrantsDto,
   UpdatePermissionGroupDto,
 } from '../models/index';
@@ -40,6 +44,12 @@ import {
     ChiefNazimResponseToJSON,
     CreatePermissionGroupDtoFromJSON,
     CreatePermissionGroupDtoToJSON,
+    DeckPublishRequestListResponseFromJSON,
+    DeckPublishRequestListResponseToJSON,
+    DeckRequestCardsResponseFromJSON,
+    DeckRequestCardsResponseToJSON,
+    DeckRequestStatusFromJSON,
+    DeckRequestStatusToJSON,
     DeletePermissionGroupDtoFromJSON,
     DeletePermissionGroupDtoToJSON,
     DismissMedarisNazimDtoFromJSON,
@@ -58,6 +68,8 @@ import {
     PermissionCatalogResponseToJSON,
     PermissionGroupResponseFromJSON,
     PermissionGroupResponseToJSON,
+    RejectReasonDtoFromJSON,
+    RejectReasonDtoToJSON,
     SetNazimGrantsDtoFromJSON,
     SetNazimGrantsDtoToJSON,
     UpdatePermissionGroupDtoFromJSON,
@@ -66,6 +78,10 @@ import {
 
 export interface AppointMedarisNazimRequest {
     appointMedarisNazimDto: AppointMedarisNazimDto;
+}
+
+export interface ApproveDeckPublishRequestRequest {
+    id: string;
 }
 
 export interface AssignInactiveScopeRequest {
@@ -98,6 +114,20 @@ export interface GetMedarisNazimGivenRequest {
 
 export interface GetPermissionGroupUsersRequest {
     id: string;
+}
+
+export interface ListDeckPublishRequestsRequest {
+    status?: DeckRequestStatus;
+}
+
+export interface ReadDeckPublishRequestCardsRequest {
+    id: string;
+    all?: boolean;
+}
+
+export interface RejectDeckPublishRequestRequest {
+    id: string;
+    rejectReasonDto: RejectReasonDto;
 }
 
 export interface SetMedarisNazimGrantsRequest {
@@ -164,6 +194,49 @@ export class NizamApi extends runtime.BaseAPI {
     async appointMedarisNazim(requestParameters: AppointMedarisNazimRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MedarisNazimResponse> {
         const response = await this.appointMedarisNazimRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * The deck becomes public and its owner is told. 409 (DECK_REQUEST_NOT_PENDING) when it was answered or withdrawn meanwhile.
+     * Publish the deck (Yayımla)
+     */
+    async approveDeckPublishRequestRaw(requestParameters: ApproveDeckPublishRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling approveDeckPublishRequest().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/deck-publish-requests/{id}/approve`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The deck becomes public and its owner is told. 409 (DECK_REQUEST_NOT_PENDING) when it was answered or withdrawn meanwhile.
+     * Publish the deck (Yayımla)
+     */
+    async approveDeckPublishRequest(requestParameters: ApproveDeckPublishRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.approveDeckPublishRequestRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -647,6 +720,147 @@ export class NizamApi extends runtime.BaseAPI {
     async getPermissionGroups(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<PermissionGroupResponse>> {
         const response = await this.getPermissionGroupsRaw(initOverrides);
         return await response.value();
+    }
+
+    /**
+     * The members\' requests to make a deck public, oldest waiting first, or the answered ones, newest first. Both tab counts come with the page. The Medaris başnazımı (SYSTEM_ADMIN) only.
+     * Deck publish requests (Bekleyen / Karara bağlanan)
+     */
+    async listDeckPublishRequestsRaw(requestParameters: ListDeckPublishRequestsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckPublishRequestListResponse>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/deck-publish-requests`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => DeckPublishRequestListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The members\' requests to make a deck public, oldest waiting first, or the answered ones, newest first. Both tab counts come with the page. The Medaris başnazımı (SYSTEM_ADMIN) only.
+     * Deck publish requests (Bekleyen / Karara bağlanan)
+     */
+    async listDeckPublishRequests(requestParameters: ListDeckPublishRequestsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckPublishRequestListResponse> {
+        const response = await this.listDeckPublishRequestsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Three sample cards, or every card with `all=true`. The deck is private until it is published, so each read is written to the audit log (`deck.private-read`) before the cards are returned.
+     * The cards of a requested deck
+     */
+    async readDeckPublishRequestCardsRaw(requestParameters: ReadDeckPublishRequestCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckRequestCardsResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling readDeckPublishRequestCards().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['all'] != null) {
+            queryParameters['all'] = requestParameters['all'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/deck-publish-requests/{id}/cards`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => DeckRequestCardsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Three sample cards, or every card with `all=true`. The deck is private until it is published, so each read is written to the audit log (`deck.private-read`) before the cards are returned.
+     * The cards of a requested deck
+     */
+    async readDeckPublishRequestCards(requestParameters: ReadDeckPublishRequestCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckRequestCardsResponse> {
+        const response = await this.readDeckPublishRequestCardsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The deck stays private, the reason goes to its owner, who may ask again. The reason is required.
+     * Refuse the request (Reddet)
+     */
+    async rejectDeckPublishRequestRaw(requestParameters: RejectDeckPublishRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling rejectDeckPublishRequest().'
+            );
+        }
+
+        if (requestParameters['rejectReasonDto'] == null) {
+            throw new runtime.RequiredError(
+                'rejectReasonDto',
+                'Required parameter "rejectReasonDto" was null or undefined when calling rejectDeckPublishRequest().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/deck-publish-requests/{id}/reject`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RejectReasonDtoToJSON(requestParameters['rejectReasonDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The deck stays private, the reason goes to its owner, who may ask again. The reason is required.
+     * Refuse the request (Reddet)
+     */
+    async rejectDeckPublishRequest(requestParameters: RejectDeckPublishRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.rejectDeckPublishRequestRaw(requestParameters, initOverrides);
     }
 
     /**
