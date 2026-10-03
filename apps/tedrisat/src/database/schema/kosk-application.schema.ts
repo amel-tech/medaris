@@ -28,9 +28,9 @@ export const KOSK_APPLICATION_STATUSES = [
 ] as const;
 export type KoskApplicationStatus = (typeof KOSK_APPLICATION_STATUSES)[number];
 
-// A request to open a new köşk (MDRS-166, screen tedris/37). Only the
-// applicant's side exists: Medaris management reviews these on a screen that is
-// not part of this package, so `status` stays PENDING until that arrives.
+// A request to open a new köşk (MDRS-166, screen tedris/37). Medaris
+// management answers it on nizam/15 (MDRS-181): `status` moves from PENDING to
+// APPROVED or REJECTED exactly once.
 // `applicant_id` is the Keycloak `sub`, not a foreign key. `email` is what the
 // applicant typed (the form pre-fills it from the account), not the account's.
 export const koskApplications = table(
@@ -45,6 +45,13 @@ export const koskApplications = table(
     email: text("email").notNull(),
     phone: text("phone"),
     status: text("status").default("PENDING").notNull(),
+    // The answer (MDRS-181, nizam/15): who gave it and when, the reason a
+    // refusal carries, and the köşk an approval opened. Not foreign keys: the
+    // row is the record of the decision and outlives a hidden or deleted köşk.
+    decidedBy: uuid("decided_by"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    rejectReason: text("reject_reason"),
+    koskId: uuid("kosk_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

@@ -10,11 +10,13 @@ import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { ArchiveModule } from "./archive/archive.module";
 import { AssignmentModule } from "./assignment/assignment.module";
+import { AuditModule } from "./audit/audit.module";
 import { AuthzBindingsModule } from "./authz/authz-bindings.module";
 import { BanModule } from "./ban/ban.module";
 import { CalendarFeedModule } from "./calendar-feed/calendar-feed.module";
 import { configuration } from "./config";
 import { CourseModule } from "./course/course.module";
+import { CourseRequestModule } from "./course-request/course-request.module";
 import { DatabaseModule } from "./database/database.module";
 import { DeckReviewModule } from "./deck-review/deck-review.module";
 import { FlashcardModule } from "./flashcard/flashcard.module";
@@ -25,6 +27,7 @@ import { KoskModule } from "./kosk/kosk.module";
 import { KoskApplicationModule } from "./kosk-application/kosk-application.module";
 import { MadrasahModule } from "./madrasah/madrasah.module";
 import { NotificationModule } from "./notification/notification.module";
+import { PlatformPolicyModule } from "./platform-policy/platform-policy.module";
 import { ScheduleModule } from "./schedule/schedule.module";
 import { UserModule } from "./user/user.module";
 
@@ -58,6 +61,9 @@ import { UserModule } from "./user/user.module";
     InactiveScopeModule,
     ArchiveModule,
     DeckReviewModule,
+    AuditModule,
+    PlatformPolicyModule,
+    CourseRequestModule,
     BanModule,
     UserModule,
   ],
