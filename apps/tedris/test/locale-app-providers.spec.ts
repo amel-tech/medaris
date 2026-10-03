@@ -23,7 +23,7 @@ const render = async (locale: string) => {
     "~/components/locale-app-providers"
   );
   return renderToStaticMarkup(
-    createElement(LocaleAppProviders, { toaster: false }, "island")
+    createElement(LocaleAppProviders, { toaster: false, children: "island" })
   );
 };
 
