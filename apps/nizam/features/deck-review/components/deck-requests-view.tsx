@@ -41,6 +41,8 @@ type Cards =
 interface Props {
   /** the waiting requests and both counts; null when the first read failed */
   initial: DeckPublishRequestListResponse | null;
+  /** the request the home page's "İncele" points at (`?secili=`); the first one when it is not waiting */
+  initialSelectedId?: string | null;
 }
 
 /**
@@ -50,7 +52,7 @@ interface Props {
  * cards are read only once a request is selected. "Yayımla" opens the deck to
  * everyone, "Reddet" asks for a reason the owner will read.
  */
-export function DeckRequestsView({ initial }: Props) {
+export function DeckRequestsView({ initial, initialSelectedId }: Props) {
   const t = useTranslations("nizam.DeckRequestsPage");
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
@@ -68,7 +70,9 @@ export function DeckRequestsView({ initial }: Props) {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(
-    initial?.items[0]?.id ?? null
+    initial?.items.find((r) => r.id === initialSelectedId)?.id ??
+      initial?.items[0]?.id ??
+      null
   );
   const [cards, setCards] = useState<Cards | null>(null);
   const [showAll, setShowAll] = useState(false);
