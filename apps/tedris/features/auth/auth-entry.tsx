@@ -68,8 +68,11 @@ export function AuthEntry({ intent, callbackUrl, error }: AuthEntryProps) {
         title={t("Auth.errorTitle")}
         action={
           retryable ? (
+            // "Giriş sayfasına dön" (MDRS-216, the Keycloak theme's own error
+            // box): the sign-in page is Keycloak's, so going back starts a new
+            // round trip, claimed over any waiting tab.
             <Button variant="secondary" onClick={start}>
-              {t("Auth.retry")}
+              {t("Auth.backToSignIn")}
             </Button>
           ) : (
             <Button href={`/${locale}`} variant="secondary">
