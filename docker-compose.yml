@@ -75,7 +75,10 @@ services:
       # compiled migrations are under dist/src/, not dist/ — measured against the
       # image, where ./dist/database/migrations does not exist and the service
       # logs "Migrations failed: Can't find meta/_journal.json file" three times
-      # and then serves traffic against an unmigrated database.
+      # and then serves traffic against an unmigrated database. Since MDRS-219
+      # that failure stops the boot, and an unset value already resolves to
+      # this folder; the pin stays so the template's ./src/ value never reaches
+      # the container.
       AUTO_MIGRATIONS_FOLDER: ./dist/src/database/migrations
       OTEL_ENABLED: ${TEDRISAT__OTEL_ENABLED:-${API__OTEL_ENABLED:-false}}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${TEDRISAT__OTEL_EXPORTER_OTLP_ENDPOINT:-${API__OTEL_EXPORTER_OTLP_ENDPOINT:-localhost:4317}}
