@@ -1,6 +1,7 @@
 import { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
+import { asSystemAdmin } from "../helpers/system-admin.helper";
 import {
   createTestApp,
   OTHER_USER_ID,
@@ -61,6 +62,7 @@ const prop = (ics: string, name: string) =>
 
 describe("GET /lessons/:id/calendar.ics (e2e)", () => {
   let app: INestApplication;
+  let adminApp: INestApplication;
   let otherApp: INestApplication;
   let dbUtils: TestDatabaseUtils;
   let koskId: string;
@@ -69,14 +71,16 @@ describe("GET /lessons/:id/calendar.ics (e2e)", () => {
     // Read by the config factory when AppModule is first imported.
     process.env.TEDRIS_WEB_URL = `${WEB_URL}/`;
     app = await createTestApp({ authUserId: TEST_USER_ID });
+    adminApp = await createTestApp();
     otherApp = await createTestApp({ authUserId: OTHER_USER_ID });
     dbUtils = new TestDatabaseUtils(app.get(DatabaseService));
   });
 
   beforeEach(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
-    const kosk = await request(app.getHttpServer())
+    const kosk = await request(adminApp.getHttpServer())
       .post("/kosks")
+      .set("Authorization", asSystemAdmin(TEST_USER_ID))
       .send({ name: "Süleymaniye Köşkü" })
       .expect(201);
     koskId = kosk.body.id;
@@ -85,6 +89,7 @@ describe("GET /lessons/:id/calendar.ics (e2e)", () => {
   afterAll(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
     await app.close();
+    await adminApp.close();
     await otherApp.close();
     delete process.env.TEDRIS_WEB_URL;
   });

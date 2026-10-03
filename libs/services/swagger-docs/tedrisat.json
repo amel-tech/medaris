@@ -452,6 +452,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": ""
           }
         },
         "security": [

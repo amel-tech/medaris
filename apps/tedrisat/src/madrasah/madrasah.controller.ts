@@ -236,7 +236,7 @@ export class MadrasahController {
     @Req() request: PublicRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahResponse> {
-    const madrasah = await this.madrasahService.findById(id);
+    const madrasah = await this.madrasahService.findOpenById(id);
     return request.user ? madrasah : maskMadrasahForAnonymous(madrasah);
   }
 
