@@ -1,6 +1,6 @@
 import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { eq, ne } from "drizzle-orm";
 import request from "supertest";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
@@ -175,10 +175,14 @@ describe("Bans (e2e)", () => {
       expect(audit).toHaveLength(1);
     });
 
-    it("notifies the köşk's nazım once, with the sentence's values, and nobody else (MDRS-179)", async () => {
+    it("notifies the köşk's nazım once, with the sentence's values, and no other staff (MDRS-179)", async () => {
       await ban(MUDERRIS_ID).expect(201);
       await ban(MUDERRIS_ID).expect(201);
-      const rows = await db().select().from(notifications);
+      // The barred talebe's own row (MDRS-213) is the next test's.
+      const rows = await db()
+        .select()
+        .from(notifications)
+        .where(ne(notifications.userId, TALEBE_ID));
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({
         userId: NAZIM_ID,
@@ -194,6 +198,50 @@ describe("Bans (e2e)", () => {
           reason: "Celselerde başka talebelere hakaret etti.",
         },
       });
+    });
+
+    it("tells the barred talebe their access was removed, once and without the reason (MDRS-213)", async () => {
+      await ban(MUDERRIS_ID).expect(201);
+      await ban(MUDERRIS_ID).expect(201);
+      const rows = await db()
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, TALEBE_ID));
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        type: "COURSE_ACCESS_REMOVED",
+        targetType: "COURSE",
+        targetId: courseId,
+        params: {
+          courseTitle: "Emsile ve Bina",
+          source: "Nûruosmaniye Köşkü",
+        },
+      });
+      expect(rows[0].params).not.toHaveProperty("reason");
+    });
+
+    it("tells the talebe of no course twice when a course ban is widened to the köşk (MDRS-213)", async () => {
+      await db().insert(enrollments).values({
+        userId: TALEBE_ID,
+        courseId: secondCourseId,
+        status: EnrollmentStatus.COMPLETED,
+      });
+      const first = await ban(MUDERRIS_ID).expect(201);
+      await http()
+        .post(`/bans/${first.body.id}/extend`)
+        .set("Authorization", auth(NAZIM_ID))
+        .send({ scope: "KOSK", reason: "Köşkün başka derslerinde de sürdü." })
+        .expect(200);
+      const told = await db()
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, TALEBE_ID));
+      expect(told.map((n) => [n.type, n.targetId]).sort()).toEqual(
+        [
+          ["COURSE_ACCESS_REMOVED", courseId],
+          ["COURSE_ACCESS_REMOVED", secondCourseId],
+        ].sort()
+      );
     });
 
     it("answers a second request for the same bar with the first", async () => {

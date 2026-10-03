@@ -498,10 +498,11 @@ export class CourseController {
   @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
   @Post("courses/:id/enrollments/:userId/approve")
   async approveEnrollment(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("userId", ParseUUIDPipe) userId: string
   ): Promise<EnrollmentResponse> {
-    return this.courseService.approveEnrollment(id, userId);
+    return this.courseService.approveEnrollment(id, userId, request.user.sub);
   }
 
   @ApiOperation({
