@@ -44,7 +44,7 @@ export const UserHeaderMenu = ({ imageIssuer }: UserHeaderMenuProps) => {
       <DropdownMenuTrigger>
         <div className="flex items-center gap-2 cursor-pointer select-none hover:bg-gray-100 rounded-md">
           <UserAvatar user={session?.user} imageIssuer={imageIssuer} />
-          <div className="flex flex-col text-left">
+          <div className="flex flex-col text-start">
             <p className="text-sm whitespace-nowrap">{session?.user?.name}</p>
             <p className="text-xs whitespace-nowrap text-neutral-tertiary">
               {t("UserHeaderMenu.talebe")}
