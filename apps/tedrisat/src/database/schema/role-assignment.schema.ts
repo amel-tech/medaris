@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { kosks } from "./kosk.schema";
 import { madrasahs } from "./madrasah.schema";
+import { SCOPE_TYPES, type ScopeType, scopeType } from "./scope-type.schema";
 
 /**
  * The six scoped roles of role model v2 (MDRS-133, MDRS-134). The Medaris
@@ -29,18 +30,7 @@ export const ASSIGNED_ROLES = {
 } as const;
 export type AssignedRole = (typeof ASSIGNED_ROLES)[keyof typeof ASSIGNED_ROLES];
 
-/**
- * The kinds of scope a role (and, from MDRS-135, a permission grant) is held
- * in. `platform` has no scope id; the other three point at a köşk, a medrese
- * or a course.
- */
-export const SCOPE_TYPES = {
-  PLATFORM: "platform",
-  KOSK: "kosk",
-  MADRASAH: "madrasah",
-  COURSE: "course",
-} as const;
-export type ScopeType = (typeof SCOPE_TYPES)[keyof typeof SCOPE_TYPES];
+export { SCOPE_TYPES, type ScopeType, scopeType };
 
 export const ROLE_SCOPE_TYPES: Record<AssignedRole, ScopeType> = {
   MEDARIS_NAZIM: SCOPE_TYPES.PLATFORM,
@@ -58,13 +48,6 @@ export const assignedRole = pgEnum("assigned_role", [
   ASSIGNED_ROLES.MEDRESE_NAZIR,
   ASSIGNED_ROLES.MUDERRIS,
   ASSIGNED_ROLES.DERS_NAZIR,
-]);
-
-export const scopeType = pgEnum("scope_type", [
-  SCOPE_TYPES.PLATFORM,
-  SCOPE_TYPES.KOSK,
-  SCOPE_TYPES.MADRASAH,
-  SCOPE_TYPES.COURSE,
 ]);
 
 /**

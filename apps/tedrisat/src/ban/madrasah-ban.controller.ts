@@ -1,4 +1,4 @@
-import { AuthGuard, Authz, AuthzGuard, SCOPES } from "@medaris/common";
+import { AuthGuard, Authz, AuthzGuard, PERMISSIONS } from "@medaris/common";
 import {
   Body,
   Controller,
@@ -37,12 +37,12 @@ import {
 
 /**
  * A medrese's bans for its nazırs (MDRS-187, nazir/10 and nazir/11). The
- * medrese's başmüderris and SYSTEM_ADMIN reach these: `MANAGE_MADRASAH` is on
- * the matrix row that the başmüderris resolves to, and a medrese's nazır is
- * not yet mapped to it, so a MEDRESE_NAZIR gets 403 here. Lifting, widening
- * and asking for a permanent ban are `BanController`'s routes by ban id, and
- * `BanService` makes their decision from the roles held. Permission grants
- * (`madrasah.ban`) are not read: `AuthzGuard` does not enforce them.
+ * medrese's başmüderris and SYSTEM_ADMIN reach these, and so does a nazır the
+ * medrese gave `madrasah.ban` (or a Medaris nazımı holding
+ * `platform.ban_scoped`); a MEDRESE_NAZIR with no grant gets 403 here. Lifting,
+ * widening and asking for a permanent ban are `BanController`'s routes by ban
+ * id, and `BanService` makes their decision from the roles held — the ban
+ * tiers keep their own rule and are not yet read from the catalogue.
  */
 @ApiTags("bans")
 @ApiBearerAuth()
@@ -66,7 +66,10 @@ export class MadrasahBanController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/bans")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(
+    [PERMISSIONS.MADRASAH_BAN, PERMISSIONS.PLATFORM_BAN_SCOPED],
+    byExistingMadrasah
+  )
   async list(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -106,7 +109,10 @@ export class MadrasahBanController {
   @ApiForbiddenResponse({ description: "BAN_FORBIDDEN" })
   @ApiNotFoundResponse()
   @Post(":id/bans")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(
+    [PERMISSIONS.MADRASAH_BAN, PERMISSIONS.PLATFORM_BAN_SCOPED],
+    byExistingMadrasah
+  )
   async create(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,

@@ -22,8 +22,18 @@ export type UsersPolicy = (typeof USERS_POLICIES)[number];
 export const DISMISS_ACTIONS = ["TAKE_OVER", "DROP"] as const;
 export type DismissAction = (typeof DISMISS_ACTIONS)[number];
 
+/** What a dismissal asks an answer for: a role or a grant the person gave to someone. */
 export const GIVEN_KINDS = ["ROLE", "GRANT"] as const;
 export type GivenKind = (typeof GIVEN_KINDS)[number];
+
+/**
+ * What `GET …/given` lists: the roles and grants above, and the permission
+ * groups the person defined or changed. A group is listed so the başnazım sees
+ * it, and it needs no answer on dismissal: it is not a right the person holds,
+ * and what its holders hold is theirs.
+ */
+export const GIVEN_ITEM_KINDS = ["ROLE", "GRANT", "GROUP"] as const;
+export type GivenItemKind = (typeof GIVEN_ITEM_KINDS)[number];
 
 export const GROUP_NAME_MAX = 80;
 const MAX_CODES = 64;
@@ -300,10 +310,14 @@ export class SetNazimGrantsDto {
 }
 
 export class GivenItemResponse {
-  @ApiProperty({ enum: GIVEN_KINDS, enumName: "GivenKind" })
-  kind!: GivenKind;
+  @ApiProperty({ enum: GIVEN_ITEM_KINDS, enumName: "GivenItemKind" })
+  kind!: GivenItemKind;
 
-  @ApiProperty({ format: "uuid" })
+  @ApiProperty({
+    format: "uuid",
+    description:
+      "The role row, the grant row or, for a GROUP, the permission group",
+  })
   id!: string;
 
   @ApiProperty({ type: String, nullable: true })
@@ -315,8 +329,29 @@ export class GivenItemResponse {
   @ApiProperty({ type: String, nullable: true })
   groupName!: string | null;
 
-  @ApiProperty({ type: () => NazimPersonResponse })
-  to!: NazimPersonResponse;
+  @ApiProperty({
+    type: () => NazimPersonResponse,
+    nullable: true,
+    description: "Who it went to; null for a GROUP, which goes to no one yet",
+  })
+  to!: NazimPersonResponse | null;
+
+  @ApiProperty({
+    type: String,
+    isArray: true,
+    nullable: true,
+    description: "The codes a GROUP carries now; null for a role or a grant",
+  })
+  groupPermissions!: string[] | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    enum: ["create", "update"],
+    description:
+      "For a GROUP: whether the person defined it or last changed it; null otherwise",
+  })
+  groupAction!: "create" | "update" | null;
 
   @ApiProperty()
   scopeType!: string;

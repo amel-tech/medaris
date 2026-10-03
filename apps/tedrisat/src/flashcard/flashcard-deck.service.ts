@@ -131,7 +131,8 @@ export class FlashcardDeckService {
   async findReadable(
     deckId: string,
     userId: string | null,
-    include?: string[]
+    include?: string[],
+    options: { adminRead?: boolean } = {}
   ): Promise<IFlashcardDeck> {
     const deck = await this.findById(deckId, include);
     // A private deck of somebody else's may still be this caller's to read
@@ -147,7 +148,8 @@ export class FlashcardDeckService {
     this.assertVisibleTo(
       deckId,
       deck && { ...deck, sharedWithViewer: shared },
-      userId
+      userId,
+      options.adminRead === true
     );
     // `assertVisibleTo` has thrown if `deck` is null.
     return forViewer(deck as IFlashcardDeck, userId);
@@ -165,7 +167,8 @@ export class FlashcardDeckService {
       isPublic: boolean;
       sharedWithViewer?: boolean;
     } | null,
-    userId: string | null
+    userId: string | null,
+    adminRead = false
   ): void {
     if (deck === null) {
       throw new DeckNotFoundError(deckId);
@@ -173,7 +176,8 @@ export class FlashcardDeckService {
     if (
       deck.authorId !== userId &&
       !deck.isPublic &&
-      deck.sharedWithViewer !== true
+      deck.sharedWithViewer !== true &&
+      !adminRead
     ) {
       throw new DeckForbiddenError(
         "This deck is private and belongs to another user"

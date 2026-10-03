@@ -1030,6 +1030,7 @@
     "unknownPerson": "Adı bilinmiyor",
     "roles": {
       "SYSTEM_ADMIN": "Medaris başnazımı",
+      "MEDARIS_NAZIM": "Medaris nazımı",
       "KOSK_NAZIM": "Köşk nazımı"
     },
     "published": "{count} yayında",
@@ -1201,6 +1202,7 @@
       "ban_course": "ders yasağı",
       "ban_lift_course": "yasağı kaldırma",
       "deck_manage_course": "ders destesi",
+      "deck_propose_kosk": "köşk destesi önerisi",
       "course_nazir_assign": "ders nazırı atama"
     },
     "course": {
@@ -1221,6 +1223,7 @@
       "ban_course": "Talebeyi dersten yasakla (dersin yasak listesini görmeyi kapsar)",
       "ban_lift_course": "Ders yasağını gerekçeyle kaldır",
       "deck_manage_course": "Ders destesini aç ve düzenle",
+      "deck_propose_kosk": "Köşk destesi öner",
       "course_nazir_assign": "Ders nazırı ata; izin ya da grup ver, kendi izinlerini aşmadan"
     }
   },
@@ -1335,7 +1338,15 @@
     "dismissedBody": "{name} artık Medaris nazımı değil.",
     "loadFailedTitle": "Liste okunamadı",
     "loadFailed": "Bu kişinin verdikleri şu an okunamıyor. Biraz sonra yeniden deneyin.",
-    "retry": "Yeniden dene"
+    "retry": "Yeniden dene",
+    "groupsQuestion": "Bu kişi {count} izin grubu tanımlamış ya da değiştirmiş. Gruplar yerinde kalır; kimin neyi tuttuğu değişmez.",
+    "groupLine": "{action}",
+    "groupLineScoped": "{action} · {scope}",
+    "groupAction": {
+      "create": "Tanımladı",
+      "update": "Değiştirdi"
+    },
+    "groupsNote": "Grubun içeriği denetim kaydında, önceki ve sonraki haliyle durur."
   },
   "UsersPolicyDialog": {
     "titleUsers": "Bu grubu {count} kişi kullanıyor",
@@ -2103,6 +2114,7 @@
       "ban_course": "Talebeyi dersten yasakla (dersin yasak listesini görmeyi kapsar)",
       "ban_lift_course": "Ders yasağını gerekçeyle kaldır",
       "deck_manage_course": "Ders destesini aç ve düzenle",
+      "deck_propose_kosk": "Köşk destesi öner",
       "course_nazir_assign": "Ders nazırı ata; izin ya da grup ver, kendi izinlerini aşmadan",
       "permission_group_define": "İzin grubu tanımla"
     },

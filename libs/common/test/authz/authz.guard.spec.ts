@@ -1,8 +1,10 @@
 import { ExecutionContext, NotFoundException } from "@nestjs/common";
 import { ModuleRef, Reflector } from "@nestjs/core";
 import {
+  ASSIGNED_ROLES,
   AUTHZ_KEY,
   AUTHZ_PUBLIC_KEY,
+  AuthzContextLoader,
   AuthzForbiddenError,
   AuthzGuard,
   AuthzMeta,
@@ -10,10 +12,41 @@ import {
   AuthzResolverError,
   AuthzService,
   ENTITIES,
-  ROLES,
+  IAuthzContext,
+  PERMISSIONS,
+  RELATIONS,
   RoleResolver,
-  SCOPES,
+  SCOPE_TYPES,
 } from "../../src";
+
+const platform = { type: SCOPE_TYPES.PLATFORM, id: null } as const;
+
+const contextWith = (
+  over: Partial<IAuthzContext> = {}
+): AuthzContextLoader => ({
+  load: vi.fn().mockResolvedValue({
+    chain: [platform],
+    madrasahCourse: false,
+    passiveScope: null,
+    policies: [],
+    roles: [],
+    grants: [],
+    ...over,
+  }),
+  findDeck: vi.fn().mockResolvedValue(null),
+});
+
+/** The caller teaches course c-1. */
+const muderrisLoader = () =>
+  contextWith({
+    chain: [{ type: SCOPE_TYPES.COURSE, id: "c-1" }, platform],
+    roles: [
+      {
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scope: { type: SCOPE_TYPES.COURSE, id: "c-1" },
+      },
+    ],
+  });
 
 const buildContext = (
   request: Record<string, unknown>
@@ -39,7 +72,7 @@ const reflectorReturning = (meta?: AuthzMeta, isPublic = false): Reflector =>
 
 const fakeRoleResolver = (
   role: ReturnType<RoleResolver["resolve"]>,
-  anonymousRole?: typeof ROLES.ANONYMOUS | null
+  anonymousRole?: typeof RELATIONS.ANONYMOUS | null
 ): RoleResolver => ({
   resolve: vi.fn().mockResolvedValue(role),
   ...(anonymousRole !== undefined && {
@@ -48,7 +81,7 @@ const fakeRoleResolver = (
 });
 
 const publicDeckMeta: AuthzMeta = {
-  scope: SCOPES.VIEW,
+  permission: PERMISSIONS.DECK_VIEW,
   resolve: () => ({ entity: ENTITIES.FLASHCARD_DECK, id: "d-1" }),
 };
 
@@ -58,7 +91,7 @@ describe("AuthzGuard", () => {
   it("passes through when no @Authz metadata is present", async () => {
     const guard = new AuthzGuard(
       reflectorReturning(),
-      new AuthzService(fakeRoleResolver(null)),
+      new AuthzService(fakeRoleResolver(null), contextWith()),
       moduleRefStub
     );
     const { ctx } = buildContext({});
@@ -67,12 +100,12 @@ describe("AuthzGuard", () => {
 
   it("throws AuthzMissingUserError when metadata is set but user is absent", async () => {
     const meta: AuthzMeta = {
-      scope: SCOPES.EDIT,
+      permission: PERMISSIONS.COURSE_EDIT,
       resolve: () => ({ entity: ENTITIES.COURSE, id: "c-1" }),
     };
     const guard = new AuthzGuard(
       reflectorReturning(meta),
-      new AuthzService(fakeRoleResolver(null)),
+      new AuthzService(fakeRoleResolver(null), contextWith()),
       moduleRefStub
     );
     const { ctx } = buildContext({ params: { id: "c-1" } });
@@ -83,12 +116,12 @@ describe("AuthzGuard", () => {
 
   it("allows when AuthzService.can resolves true", async () => {
     const meta: AuthzMeta = {
-      scope: SCOPES.EDIT,
+      permission: PERMISSIONS.COURSE_EDIT,
       resolve: () => ({ entity: ENTITIES.COURSE, id: "c-1" }),
     };
     const guard = new AuthzGuard(
       reflectorReturning(meta),
-      new AuthzService(fakeRoleResolver(ROLES.MUDERRIS)),
+      new AuthzService(fakeRoleResolver(RELATIONS.PUBLIC), muderrisLoader()),
       moduleRefStub
     );
     const { ctx } = buildContext({ user: { sub: "u-1" } });
@@ -97,12 +130,12 @@ describe("AuthzGuard", () => {
 
   it("throws AuthzForbiddenError with structured context when denied", async () => {
     const meta: AuthzMeta = {
-      scope: SCOPES.ASSIGN_MUDERRIS,
+      permission: PERMISSIONS.COURSE_OPEN_STANDALONE,
       resolve: () => ({ entity: ENTITIES.COURSE, id: "c-1" }),
     };
     const guard = new AuthzGuard(
       reflectorReturning(meta),
-      new AuthzService(fakeRoleResolver(ROLES.MUDERRIS)),
+      new AuthzService(fakeRoleResolver(RELATIONS.PUBLIC), muderrisLoader()),
       moduleRefStub
     );
     const { ctx } = buildContext({ user: { sub: "u-1" } });
@@ -112,7 +145,7 @@ describe("AuthzGuard", () => {
         userId: "u-1",
         entity: "course",
         resourceId: "c-1",
-        scope: "assign_muderris",
+        permission: "course.open_standalone",
       },
     });
   });
@@ -121,7 +154,7 @@ describe("AuthzGuard", () => {
     const fakeMod = { tag: "mod-stub" } as unknown as ModuleRef;
     let observedMod: unknown;
     const meta: AuthzMeta = {
-      scope: SCOPES.VIEW,
+      permission: PERMISSIONS.DECK_VIEW,
       resolve: async (_req, mod) => {
         observedMod = mod;
         return { entity: ENTITIES.FLASHCARD_DECK, id: "d-1" };
@@ -129,7 +162,7 @@ describe("AuthzGuard", () => {
     };
     const guard = new AuthzGuard(
       reflectorReturning(meta),
-      new AuthzService(fakeRoleResolver(ROLES.PUBLIC)), // explicit PUBLIC for view ✓ on flashcard-deck
+      new AuthzService(fakeRoleResolver(RELATIONS.PUBLIC), contextWith()), // explicit PUBLIC for view ✓ on flashcard-deck
       fakeMod
     );
     const { ctx } = buildContext({ user: { sub: "u-1" } });
@@ -140,14 +173,14 @@ describe("AuthzGuard", () => {
   describe("resolver failure modes", () => {
     it("wraps unknown errors in AuthzResolverError (500)", async () => {
       const meta: AuthzMeta = {
-        scope: SCOPES.VIEW,
+        permission: PERMISSIONS.DECK_VIEW,
         resolve: () => {
           throw new Error("boom");
         },
       };
       const guard = new AuthzGuard(
         reflectorReturning(meta),
-        new AuthzService(fakeRoleResolver(null)),
+        new AuthzService(fakeRoleResolver(null), contextWith()),
         moduleRefStub
       );
       const { ctx } = buildContext({ user: { sub: "u-1" } });
@@ -161,7 +194,7 @@ describe("AuthzGuard", () => {
         'Failed query: select "id" from "madrasahs" where "id" = $1'
       );
       const meta: AuthzMeta = {
-        scope: SCOPES.VIEW,
+        permission: PERMISSIONS.DECK_VIEW,
         resolve: () => {
           throw thrown;
         },
@@ -180,20 +213,20 @@ describe("AuthzGuard", () => {
       const serialised = JSON.stringify({ message, context });
       expect(serialised).not.toContain("madrasahs");
       expect(serialised).not.toContain("select");
-      expect(context).toEqual({ scope: SCOPES.VIEW });
+      expect(context).toEqual({ permission: PERMISSIONS.DECK_VIEW });
       expect(cause).toBe(thrown);
     });
 
     it("lets HttpException propagate (so 404 stays 404)", async () => {
       const meta: AuthzMeta = {
-        scope: SCOPES.VIEW,
+        permission: PERMISSIONS.DECK_VIEW,
         resolve: () => {
           throw new NotFoundException("missing");
         },
       };
       const guard = new AuthzGuard(
         reflectorReturning(meta),
-        new AuthzService(fakeRoleResolver(null)),
+        new AuthzService(fakeRoleResolver(null), contextWith()),
         moduleRefStub
       );
       const { ctx } = buildContext({ user: { sub: "u-1" } });
@@ -204,12 +237,12 @@ describe("AuthzGuard", () => {
 
     it("rejects empty resource IDs as a configuration error", async () => {
       const meta: AuthzMeta = {
-        scope: SCOPES.VIEW,
+        permission: PERMISSIONS.DECK_VIEW,
         resolve: () => ({ entity: ENTITIES.COURSE, id: "" }),
       };
       const guard = new AuthzGuard(
         reflectorReturning(meta),
-        new AuthzService(fakeRoleResolver(null)),
+        new AuthzService(fakeRoleResolver(null), contextWith()),
         moduleRefStub
       );
       const { ctx } = buildContext({ user: { sub: "u-1" } });
@@ -223,15 +256,15 @@ describe("AuthzGuard", () => {
     it("lets an anonymous caller through a public handler that carries no @Authz", async () => {
       const guard = new AuthzGuard(
         reflectorReturning(undefined, true),
-        new AuthzService(fakeRoleResolver(null)),
+        new AuthzService(fakeRoleResolver(null), contextWith()),
         moduleRefStub
       );
       const { ctx } = buildContext({});
       await expect(guard.canActivate(ctx)).resolves.toBe(true);
     });
 
-    it("allows an anonymous caller when the resolver answers ANONYMOUS and the row lists the scope", async () => {
-      const resolver = fakeRoleResolver(null, ROLES.ANONYMOUS);
+    it("allows an anonymous caller when the resolver answers ANONYMOUS and the permission is one of its anonymous codes", async () => {
+      const resolver = fakeRoleResolver(null, RELATIONS.ANONYMOUS);
       const guard = new AuthzGuard(
         reflectorReturning(publicDeckMeta, true),
         new AuthzService(resolver),
@@ -255,13 +288,16 @@ describe("AuthzGuard", () => {
       );
     });
 
-    it("refuses an anonymous caller with 401 when the ANONYMOUS row does not list the scope", async () => {
+    it("refuses an anonymous caller with 401 when it is not one of the anonymous codes", async () => {
       const guard = new AuthzGuard(
         reflectorReturning(
-          { ...publicDeckMeta, scope: SCOPES.MANAGE_PRIVATE_DECK },
+          { ...publicDeckMeta, permission: PERMISSIONS.DECK_MANAGE_PRIVATE },
           true
         ),
-        new AuthzService(fakeRoleResolver(null, ROLES.ANONYMOUS)),
+        new AuthzService(
+          fakeRoleResolver(null, RELATIONS.ANONYMOUS),
+          contextWith()
+        ),
         moduleRefStub
       );
       const { ctx } = buildContext({ params: { id: "d-1" } });
@@ -274,14 +310,17 @@ describe("AuthzGuard", () => {
       const guard = new AuthzGuard(
         reflectorReturning(
           {
-            scope: SCOPES.VIEW,
+            permission: PERMISSIONS.DECK_VIEW,
             resolve: () => {
               throw new NotFoundException("missing");
             },
           },
           true
         ),
-        new AuthzService(fakeRoleResolver(null, ROLES.ANONYMOUS)),
+        new AuthzService(
+          fakeRoleResolver(null, RELATIONS.ANONYMOUS),
+          contextWith()
+        ),
         moduleRefStub
       );
       const { ctx } = buildContext({});
@@ -293,11 +332,14 @@ describe("AuthzGuard", () => {
     it("decides an authenticated caller on a public handler exactly as without the marker", async () => {
       const guard = new AuthzGuard(
         reflectorReturning(
-          { ...publicDeckMeta, scope: SCOPES.MANAGE_PRIVATE_DECK },
+          { ...publicDeckMeta, permission: PERMISSIONS.DECK_MANAGE_PRIVATE },
           true
         ),
-        // ANONYMOUS would be refused this scope too; PUBLIC is what is read.
-        new AuthzService(fakeRoleResolver(ROLES.PUBLIC, ROLES.ANONYMOUS)),
+        // ANONYMOUS would be refused this permission too; PUBLIC is what is read.
+        new AuthzService(
+          fakeRoleResolver(RELATIONS.PUBLIC, RELATIONS.ANONYMOUS),
+          contextWith()
+        ),
         moduleRefStub
       );
       const { ctx } = buildContext({ user: { sub: "u-1" } });

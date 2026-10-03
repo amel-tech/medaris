@@ -9,6 +9,7 @@ import {
   isNull,
   sql,
 } from "drizzle-orm";
+import type { HideLevel } from "../archive/hide-level";
 import { DatabaseService } from "../database/database.service";
 import { holdsIn } from "../database/role-assignments";
 import { auditLog } from "../database/schema/audit.schema";
@@ -376,10 +377,10 @@ export class DeckReviewRepository {
   }
 
   /** Hides a shown köşk deck; false when there is none to hide. */
-  async hideDeck(id: string, by: string): Promise<boolean> {
+  async hideDeck(id: string, by: string, level: HideLevel): Promise<boolean> {
     const rows = await this.db
       .update(decks)
-      .set({ archivedAt: new Date(), archivedBy: by })
+      .set({ archivedAt: new Date(), archivedBy: by, archivedLevel: level })
       .where(
         and(eq(decks.id, id), isNotNull(decks.koskId), isNull(decks.archivedAt))
       )

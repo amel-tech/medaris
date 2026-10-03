@@ -1,11 +1,9 @@
 import {
+  ASSIGNED_ROLES,
   AUTHZ_KEY,
   AUTHZ_PUBLIC_KEY,
   type AuthzMeta,
   ENTITIES,
-  MATRIX,
-  ROLES,
-  SCOPES,
 } from "@medaris/common";
 import { describe, expect, it } from "vitest";
 import { MuderrisDuplicateUserError } from "../../../src/course/errors/muderris-duplicate-user.error";
@@ -16,6 +14,7 @@ import {
 } from "../../../src/madrasah/course/errors";
 import { MadrasahCourseController } from "../../../src/madrasah/course/madrasah-course.controller";
 import { MadrasahController } from "../../../src/madrasah/madrasah.controller";
+import { permissionsOf, rolesHolding } from "../../helpers/authz-holders";
 
 /**
  * MDRS-186: the müderris and imam rule of nazir/08 and nazir/17, and who may
@@ -83,14 +82,13 @@ describe("authorization of the nazir/07, 08, 17 and 18 routes", () => {
 
   it.each(
     routes
-  )("%s needs the scope only a medrese's başmüderris holds", (_name, handler) => {
+  )("%s needs a permission only a medrese's başmüderris holds by default", (_name, handler) => {
     const meta = Reflect.getMetadata(AUTHZ_KEY, handler) as AuthzMeta;
-    expect(meta.scope).toBe(SCOPES.MANAGE_MADRASAH);
-    const holders = Object.entries(MATRIX[ENTITIES.MADRASAH])
-      .filter(([, scopes]) => scopes?.includes(meta.scope))
-      .map(([role]) => role);
-    // A köşk's nazım is a stranger to the medrese (PUBLIC), like a caller with
-    // no token (ANONYMOUS): both get 403.
-    expect(holders).toEqual([ROLES.MADRASAH_NAZIR]);
+    expect(permissionsOf(meta).length).toBeGreaterThan(0);
+    // A köşk's nazım is a stranger to the medrese, like a caller with no token
+    // (ANONYMOUS): both get 403. Anyone else holds it only through a grant.
+    expect(rolesHolding(permissionsOf(meta), ENTITIES.MADRASAH)).toEqual([
+      ASSIGNED_ROLES.MEDRESE_BASMUDERRIS,
+    ]);
   });
 });

@@ -1,4 +1,4 @@
-import { ENTITIES, ROLES } from "@medaris/common";
+import { ENTITIES, RELATIONS } from "@medaris/common";
 import { TedrisatRoleResolver } from "../../../src/authz/tedrisat-role-resolver.service";
 import { BanRepository } from "../../../src/ban/ban.repository";
 import { CourseRepository } from "../../../src/course/course.repository";
@@ -115,7 +115,7 @@ describe("TedrisatRoleResolver", () => {
           entity: ENTITIES.FLASHCARD_DECK,
           id: REAL_UUID,
         })
-      ).resolves.toBe(ROLES.DECK_OWNER);
+      ).resolves.toBe(RELATIONS.DECK_OWNER);
     });
 
     it("returns DECK_OWNER for the author of a PUBLIC deck — ownership beats visibility", async () => {
@@ -130,7 +130,7 @@ describe("TedrisatRoleResolver", () => {
           entity: ENTITIES.FLASHCARD_DECK,
           id: REAL_UUID,
         })
-      ).resolves.toBe(ROLES.DECK_OWNER);
+      ).resolves.toBe(RELATIONS.DECK_OWNER);
     });
 
     // MDRS-164: a deck that belongs to a course the caller is enrolled in is
@@ -149,7 +149,7 @@ describe("TedrisatRoleResolver", () => {
           entity: ENTITIES.FLASHCARD_DECK,
           id: REAL_UUID,
         })
-      ).resolves.toBe(ROLES.PUBLIC);
+      ).resolves.toBe(RELATIONS.PUBLIC);
       expect(deck.findVisibility).toHaveBeenCalledWith(REAL_UUID, "talebe");
     });
 
@@ -177,7 +177,7 @@ describe("TedrisatRoleResolver", () => {
           entity: ENTITIES.FLASHCARD_DECK,
           id: REAL_UUID,
         })
-      ).resolves.toBe(ROLES.PUBLIC);
+      ).resolves.toBe(RELATIONS.PUBLIC);
     });
 
     // MDRS-43. This branch used to answer PUBLIC and leave the 404 to the
@@ -198,7 +198,7 @@ describe("TedrisatRoleResolver", () => {
       const { resolver, deck } = build();
       await expect(
         resolver.resolve("u", { entity: ENTITIES.FLASHCARD_DECK, id: "new" })
-      ).resolves.toBe(ROLES.PUBLIC);
+      ).resolves.toBe(RELATIONS.PUBLIC);
       expect(deck.findVisibility).not.toHaveBeenCalled();
     });
   });
@@ -213,7 +213,7 @@ describe("TedrisatRoleResolver", () => {
           entity: ENTITIES.FLASHCARD_DECK,
           id: REAL_UUID,
         })
-      ).resolves.toBe(ROLES.ANONYMOUS);
+      ).resolves.toBe(RELATIONS.ANONYMOUS);
     });
 
     it("404s a private deck, exactly as a missing one", async () => {
@@ -245,14 +245,17 @@ describe("TedrisatRoleResolver", () => {
           entity: ENTITIES.FLASHCARD_DECK,
           id: "not-a-uuid",
         })
-      ).resolves.toBe(ROLES.ANONYMOUS);
+      ).resolves.toBe(RELATIONS.ANONYMOUS);
       expect(deck.findVisibility).not.toHaveBeenCalled();
     });
 
-    it("refuses ijazah — MDRS-122 opened köşk, medrese and course pages only", async () => {
+    it("refuses an entity it does not know — MDRS-122 opened köşk, medrese and course pages only", async () => {
       const { resolver } = build();
       await expect(
-        resolver.resolveAnonymous({ entity: ENTITIES.IJAZAH, id: REAL_UUID })
+        resolver.resolveAnonymous({
+          entity: "ijazah" as never,
+          id: REAL_UUID,
+        })
       ).resolves.toBeNull();
     });
   });
@@ -268,7 +271,7 @@ describe("TedrisatRoleResolver", () => {
       const { resolver } = build({ koskVisibility: { isPrivate: false } });
       await expect(
         resolver.resolveAnonymous({ entity: ENTITIES.KOSK, id: REAL_UUID })
-      ).resolves.toBe(ROLES.ANONYMOUS);
+      ).resolves.toBe(RELATIONS.ANONYMOUS);
     });
 
     it.each([
@@ -285,7 +288,7 @@ describe("TedrisatRoleResolver", () => {
       const { resolver } = build({ coursePublic: published });
       await expect(
         resolver.resolveAnonymous({ entity: ENTITIES.COURSE, id: REAL_UUID })
-      ).resolves.toBe(ROLES.ANONYMOUS);
+      ).resolves.toBe(RELATIONS.ANONYMOUS);
     });
 
     it.each([
@@ -306,7 +309,7 @@ describe("TedrisatRoleResolver", () => {
           entity: ENTITIES.MADRASAH,
           id: REAL_UUID,
         })
-      ).resolves.toBe(ROLES.ANONYMOUS);
+      ).resolves.toBe(RELATIONS.ANONYMOUS);
       await expect(
         build({ madrasahExists: false }).resolver.resolveAnonymous({
           entity: ENTITIES.MADRASAH,
@@ -323,7 +326,7 @@ describe("TedrisatRoleResolver", () => {
       const { resolver, kosk, course, madrasah } = build();
       await expect(
         resolver.resolveAnonymous({ entity, id: "not-a-uuid" })
-      ).resolves.toBe(ROLES.ANONYMOUS);
+      ).resolves.toBe(RELATIONS.ANONYMOUS);
       expect(kosk.findVisibility).not.toHaveBeenCalled();
       expect(course.findPublicVisibility).not.toHaveBeenCalled();
       expect(madrasah.exists).not.toHaveBeenCalled();
@@ -331,18 +334,22 @@ describe("TedrisatRoleResolver", () => {
   });
 
   describe("kosk dispatch", () => {
-    it("returns KOSK_MANAGER when caller owns the köşk", async () => {
-      const { resolver } = build({ koskManagerId: "manager-1" });
+    // MDRS-135: a köşk nazımı is a role (`role_assignments`), not a relationship,
+    // so the resolver answers the same for the manager as for a stranger and
+    // `AuthzService` adds what KOSK_NAZIM holds.
+    it("returns PUBLIC for the köşk's manager too: the role is not the resolver's", async () => {
+      const { resolver, kosk } = build({ koskManagerId: "manager-1" });
       await expect(
         resolver.resolve("manager-1", { entity: ENTITIES.KOSK, id: REAL_UUID })
-      ).resolves.toBe(ROLES.KOSK_MANAGER);
+      ).resolves.toBe(RELATIONS.PUBLIC);
+      expect(kosk.isManager).not.toHaveBeenCalled();
     });
 
     it("returns PUBLIC for any non-owner on an existing köşk", async () => {
       const { resolver } = build({ koskManagerId: "manager-1" });
       await expect(
         resolver.resolve("stranger", { entity: ENTITIES.KOSK, id: REAL_UUID })
-      ).resolves.toBe(ROLES.PUBLIC);
+      ).resolves.toBe(RELATIONS.PUBLIC);
     });
 
     it("404s when the köşk does not exist, rather than denying", async () => {
@@ -356,7 +363,7 @@ describe("TedrisatRoleResolver", () => {
       const { resolver, kosk, madrasah } = build();
       await expect(
         resolver.resolve("u", { entity: ENTITIES.KOSK, id: "new" })
-      ).resolves.toBe(ROLES.PUBLIC);
+      ).resolves.toBe(RELATIONS.PUBLIC);
       expect(kosk.exists).not.toHaveBeenCalled();
       expect(kosk.isManager).not.toHaveBeenCalled();
       expect(madrasah.isNazir).not.toHaveBeenCalled();
@@ -372,22 +379,22 @@ describe("TedrisatRoleResolver", () => {
       });
       await expect(
         resolver.resolve("nazir-1", { entity: ENTITIES.KOSK, id: REAL_UUID })
-      ).resolves.toBe(ROLES.PUBLIC);
+      ).resolves.toBe(RELATIONS.PUBLIC);
       expect(madrasah.isNazir).not.toHaveBeenCalled();
     });
   });
 
   describe("madrasah dispatch (MDRS-106)", () => {
-    // Fails if the nazır branch in `resolveMadrasahRole` is removed.
-    it("returns MADRASAH_NAZIR for a user who holds MEDRESE_BASMUDERRIS there", async () => {
+    // MDRS-135: the başmüderris is a role, not a relationship.
+    it("returns PUBLIC for a başmüderris too, and does not look the role up", async () => {
       const { resolver, madrasah } = build({ madrasahNazirs: ["nazir-1"] });
       await expect(
         resolver.resolve("nazir-1", {
           entity: ENTITIES.MADRASAH,
           id: REAL_UUID,
         })
-      ).resolves.toBe(ROLES.MADRASAH_NAZIR);
-      expect(madrasah.isNazir).toHaveBeenCalledWith(REAL_UUID, "nazir-1");
+      ).resolves.toBe(RELATIONS.PUBLIC);
+      expect(madrasah.isNazir).not.toHaveBeenCalled();
     });
 
     it("returns PUBLIC for anyone else, including on a missing medrese", async () => {
@@ -397,37 +404,39 @@ describe("TedrisatRoleResolver", () => {
           entity: ENTITIES.MADRASAH,
           id: REAL_UUID,
         })
-      ).resolves.toBe(ROLES.PUBLIC);
+      ).resolves.toBe(RELATIONS.PUBLIC);
     });
 
     it("returns PUBLIC for non-UUID ids (list, create) without a lookup", async () => {
       const { resolver, madrasah } = build({ madrasahNazirs: ["nazir-1"] });
       await expect(
         resolver.resolve("nazir-1", { entity: ENTITIES.MADRASAH, id: "any" })
-      ).resolves.toBe(ROLES.PUBLIC);
+      ).resolves.toBe(RELATIONS.PUBLIC);
       expect(madrasah.isNazir).not.toHaveBeenCalled();
     });
   });
 
-  describe("course dispatch (priority: kosk_manager > muderris > enrolled > pending > public)", () => {
-    it("returns KOSK_MANAGER when caller owns the parent köşk", async () => {
-      const { resolver } = build({
+  describe("course dispatch (enrolled > pending > public; roles are not the resolver's, MDRS-135)", () => {
+    it("answers PUBLIC for the parent köşk's manager and a müderris without asking who they are", async () => {
+      const { resolver, kosk, course } = build({
         courseKoskId: KOSK_UUID,
         koskManagerId: "manager-1",
+        muderris: true,
       });
       await expect(
         resolver.resolve("manager-1", {
           entity: ENTITIES.COURSE,
           id: REAL_UUID,
         })
-      ).resolves.toBe(ROLES.KOSK_MANAGER);
+      ).resolves.toBe(RELATIONS.PUBLIC);
+      expect(kosk.isManager).not.toHaveBeenCalled();
+      expect(course.isMuderris).not.toHaveBeenCalled();
     });
 
-    it("prefers KOSK_MANAGER over a muderris row and an enrollment for the same caller", async () => {
+    it("keeps a staff member's own enrollment: the relationship adds to the role", async () => {
       const { resolver } = build({
         courseKoskId: KOSK_UUID,
         koskManagerId: "manager-1",
-        muderris: true,
         enrollment: { status: EnrollmentStatus.PENDING },
       });
       await expect(
@@ -435,21 +444,7 @@ describe("TedrisatRoleResolver", () => {
           entity: ENTITIES.COURSE,
           id: REAL_UUID,
         })
-      ).resolves.toBe(ROLES.KOSK_MANAGER);
-    });
-
-    it("returns MUDERRIS when caller is listed in course_muderris", async () => {
-      const { resolver } = build({
-        courseKoskId: KOSK_UUID,
-        koskManagerId: "someone-else",
-        muderris: true,
-      });
-      await expect(
-        resolver.resolve("teacher-1", {
-          entity: ENTITIES.COURSE,
-          id: REAL_UUID,
-        })
-      ).resolves.toBe(ROLES.MUDERRIS);
+      ).resolves.toBe(RELATIONS.PENDING);
     });
 
     it("returns ENROLLED when caller has an ENROLLED enrollment", async () => {
@@ -463,7 +458,7 @@ describe("TedrisatRoleResolver", () => {
           entity: ENTITIES.COURSE,
           id: REAL_UUID,
         })
-      ).resolves.toBe(ROLES.ENROLLED);
+      ).resolves.toBe(RELATIONS.ENROLLED);
     });
 
     it("treats a barred, enrolled talebe as PUBLIC (MDRS-177)", async () => {
@@ -478,27 +473,16 @@ describe("TedrisatRoleResolver", () => {
           entity: ENTITIES.COURSE,
           id: REAL_UUID,
         })
-      ).resolves.toBe(ROLES.PUBLIC);
+      ).resolves.toBe(RELATIONS.PUBLIC);
       expect(bans.isBarredFromCourse).toHaveBeenCalledWith(
         "talebe-1",
         REAL_UUID
       );
     });
 
-    it("does not bar the köşk manager or a müderris, whatever the ban table says (MDRS-177)", async () => {
-      const { resolver } = build({
-        courseKoskId: KOSK_UUID,
-        koskManagerId: "nazim-1",
-        enrollment: { status: EnrollmentStatus.ENROLLED },
-        barred: true,
-      });
-      await expect(
-        resolver.resolve("nazim-1", {
-          entity: ENTITIES.COURSE,
-          id: REAL_UUID,
-        })
-      ).resolves.toBe(ROLES.KOSK_MANAGER);
-    });
+    // Staff are never barred (`BanService.create` refuses it), and what a
+    // ban takes away is the talebe relationship: a barred caller is PUBLIC
+    // here, and whatever role they hold is added by `AuthzService`.
 
     it("returns PENDING when caller has a PENDING enrollment", async () => {
       const { resolver } = build({
@@ -511,7 +495,7 @@ describe("TedrisatRoleResolver", () => {
           entity: ENTITIES.COURSE,
           id: REAL_UUID,
         })
-      ).resolves.toBe(ROLES.PENDING);
+      ).resolves.toBe(RELATIONS.PENDING);
     });
 
     it("returns PUBLIC for a stranger with no relationship to the course", async () => {
@@ -524,10 +508,10 @@ describe("TedrisatRoleResolver", () => {
           entity: ENTITIES.COURSE,
           id: REAL_UUID,
         })
-      ).resolves.toBe(ROLES.PUBLIC);
+      ).resolves.toBe(RELATIONS.PUBLIC);
     });
 
-    it("issues the three dependent lookups once each, after the course row", async () => {
+    it("issues the course row lookup and the enrollment lookup once each, and nothing about roles", async () => {
       const { resolver, kosk, course } = build({
         courseKoskId: KOSK_UUID,
         koskManagerId: "someone-else",
@@ -536,11 +520,12 @@ describe("TedrisatRoleResolver", () => {
         entity: ENTITIES.COURSE,
         id: REAL_UUID,
       });
+      expect(course.findKoskId).toHaveBeenCalledTimes(1);
       expect(course.findKoskId).toHaveBeenCalledWith(REAL_UUID);
-      expect(kosk.isManager).toHaveBeenCalledTimes(1);
-      expect(kosk.isManager).toHaveBeenCalledWith(KOSK_UUID, "stranger");
-      expect(course.isMuderris).toHaveBeenCalledWith(REAL_UUID, "stranger");
+      expect(course.findEnrollment).toHaveBeenCalledTimes(1);
       expect(course.findEnrollment).toHaveBeenCalledWith("stranger", REAL_UUID);
+      expect(kosk.isManager).not.toHaveBeenCalled();
+      expect(course.isMuderris).not.toHaveBeenCalled();
     });
 
     it("never makes a nazır of the parent köşk's medrese more than PUBLIC on the course", async () => {
@@ -554,7 +539,7 @@ describe("TedrisatRoleResolver", () => {
           entity: ENTITIES.COURSE,
           id: REAL_UUID,
         })
-      ).resolves.toBe(ROLES.PUBLIC);
+      ).resolves.toBe(RELATIONS.PUBLIC);
       expect(madrasah.isNazir).not.toHaveBeenCalled();
     });
 
@@ -569,12 +554,6 @@ describe("TedrisatRoleResolver", () => {
     });
   });
 
-  describe("entities without DB-backed role yet", () => {
-    it("returns PUBLIC for ijazah (provisional until its tables land)", async () => {
-      const { resolver } = build();
-      await expect(
-        resolver.resolve("u", { entity: ENTITIES.IJAZAH, id: REAL_UUID })
-      ).resolves.toBe(ROLES.PUBLIC);
-    });
-  });
+  // `ijazah` returns with the icazet record (MDRS-149); until then the entity
+  // does not exist and a resolver is never asked about it.
 });

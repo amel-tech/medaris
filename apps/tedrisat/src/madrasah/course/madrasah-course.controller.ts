@@ -1,4 +1,13 @@
-import { AuthGuard, Authz, AuthzGuard, SCOPES } from "@medaris/common";
+import {
+  ASSIGNED_ROLES,
+  AuthGuard,
+  Authz,
+  AuthzGuard,
+  AuthzService,
+  ENTITIES,
+  PERMISSIONS,
+  SelfGrantGuard,
+} from "@medaris/common";
 import {
   Body,
   Controller,
@@ -24,6 +33,7 @@ import {
   ApiOperation,
   ApiTags,
 } from "@nestjs/swagger";
+import { SCOPE_TYPES } from "../../database/schema/scope-type.schema";
 import { AuthorizedRequest } from "../../kosk/interfaces/authorized-request.interface";
 import { MadrasahCourseListItemResponse } from "../dto/madrasah-settings.dto";
 import { byExistingMadrasah } from "../madrasah.controller";
@@ -42,15 +52,21 @@ import { MadrasahCourseService } from "./madrasah-course.service";
  * under `/madrasahs/:id/offsite-course-requests`; the list itself is
  * `GET /madrasahs/:id/courses` on
  * `MadrasahController`. The medrese's başmüderris and SYSTEM_ADMIN call these;
- * a nazır of the medrese, a köşk's nazım and a course's müderris are not on
- * the matrix row that holds `MANAGE_MADRASAH`, so they get 403.
+ * a nazır of the medrese holds the permission of each route only if it was
+ * given (`madrasah.course_open`, `madrasah.muderris_manage`,
+ * `madrasah.course_hide`, `madrasah.offsite_course_request`); a köşk's nazım
+ * and a course's müderris hold none of them, so they get 403.
  */
 @ApiTags("madrasahs")
 @ApiBearerAuth()
 @UseGuards(AuthGuard, AuthzGuard)
 @Controller("madrasahs")
 export class MadrasahCourseController {
-  constructor(private readonly courses: MadrasahCourseService) {}
+  constructor(
+    private readonly courses: MadrasahCourseService,
+    private readonly selfGrant: SelfGrantGuard,
+    private readonly authz: AuthzService
+  ) {}
 
   @ApiOperation({
     summary: "The köşks the medrese may open courses in (its başmüderris)",
@@ -62,7 +78,7 @@ export class MadrasahCourseController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/hosting-kosks")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_COURSE_OPEN, byExistingMadrasah)
   hostingKosks(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahCourseKoskResponse[]> {
@@ -83,12 +99,21 @@ export class MadrasahCourseController {
   @ApiForbiddenResponse({ description: "HOSTING_RIGHT_REQUIRED" })
   @ApiNotFoundResponse({ description: "Also MUDERRIS_UNKNOWN_USER" })
   @Post(":id/courses")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
-  open(
+  @Authz(PERMISSIONS.MADRASAH_COURSE_OPEN, byExistingMadrasah)
+  async open(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: OpenMadrasahCourseDto
   ): Promise<MadrasahCourseListItemResponse> {
+    // Naming yourself müderris is for someone who already holds every course
+    // permission in the medrese (its başmüderris), not for a grantee.
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      dto.muderrisUserIds,
+      { entity: ENTITIES.MADRASAH, id },
+      { role: ASSIGNED_ROLES.MUDERRIS },
+      "madrasah.course.open"
+    );
     return this.courses.open(id, dto, request.user.sub);
   }
 
@@ -108,13 +133,20 @@ export class MadrasahCourseController {
     description: "MADRASAH_COURSE_NOT_FOUND or MUDERRIS_UNKNOWN_USER",
   })
   @Put(":id/courses/:courseId/muderrises")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
-  setMuderris(
+  @Authz(PERMISSIONS.MADRASAH_MUDERRIS_MANAGE, byExistingMadrasah)
+  async setMuderris(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("courseId", ParseUUIDPipe) courseId: string,
     @Body() dto: SetMadrasahCourseMuderrisDto
   ): Promise<MadrasahCourseListItemResponse> {
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      dto.muderrisUserIds,
+      { entity: ENTITIES.MADRASAH, id },
+      { role: ASSIGNED_ROLES.MUDERRIS },
+      "madrasah.course.muderris"
+    );
     return this.courses.setMuderris(id, courseId, dto, request.user.sub);
   }
 
@@ -130,13 +162,19 @@ export class MadrasahCourseController {
   @ApiConflictResponse({ description: "MADRASAH_COURSE_ALREADY_HIDDEN" })
   @Post(":id/courses/:courseId/hide")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_COURSE_HIDE, byExistingMadrasah)
   async hide(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("courseId", ParseUUIDPipe) courseId: string
   ): Promise<void> {
-    await this.courses.hide(id, courseId, request.user.sub);
+    // The başnazım hides as the platform, everyone else who holds
+    // `madrasah.course_hide` as the medrese: a köşk nazımı hides a medrese's
+    // course through `POST /courses/:id/archive`, at the köşk's level.
+    const level = this.authz.isSystemAdmin(request.user)
+      ? SCOPE_TYPES.PLATFORM
+      : SCOPE_TYPES.MADRASAH;
+    await this.courses.hide(id, courseId, request.user.sub, level);
   }
 
   @ApiOperation({
@@ -150,7 +188,7 @@ export class MadrasahCourseController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse({ description: "The medrese or the köşk" })
   @Post(":id/offsite-course-requests")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_OFFSITE_COURSE_REQUEST, byExistingMadrasah)
   requestOffsite(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -169,7 +207,7 @@ export class MadrasahCourseController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/offsite-course-requests")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_OFFSITE_COURSE_REQUEST, byExistingMadrasah)
   offsiteRequests(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<OffsiteCourseRequestResponse[]> {

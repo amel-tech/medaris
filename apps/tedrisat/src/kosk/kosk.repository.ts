@@ -32,6 +32,7 @@ import {
   isHeld,
   revokeRole,
 } from "../database/role-assignments";
+import { auditLog } from "../database/schema/audit.schema";
 import {
   courseMuderris,
   courses,
@@ -579,6 +580,20 @@ export class KoskRepository implements IKoskRepository {
         scopeId: koskId,
         grantedBy: actor.id,
       });
+      // The same row `POST /kosks/:id/nazims` writes: this route is open to a
+      // Medaris nazımı holding `platform.kosk_nazim_manage` as well, and every
+      // seat they give is on the record (review M7, owner decision MDRS-209).
+      await tx.insert(auditLog).values({
+        actorId: actor.id,
+        action: "kosk.nazim.add",
+        entity: "kosk",
+        entityId: koskId,
+        details: {
+          userId: target,
+          role: ASSIGNED_ROLES.KOSK_NAZIM,
+          authority: actor.bypass ? "platform" : "kosk",
+        },
+      });
       return "added";
     });
   }
@@ -611,6 +626,17 @@ export class KoskRepository implements IKoskRepository {
         role: ASSIGNED_ROLES.KOSK_NAZIM,
         scopeId: koskId,
         revokedBy: actor.id,
+      });
+      await tx.insert(auditLog).values({
+        actorId: actor.id,
+        action: "kosk.nazim.remove",
+        entity: "kosk",
+        entityId: koskId,
+        details: {
+          userId: target,
+          role: ASSIGNED_ROLES.KOSK_NAZIM,
+          authority: actor.bypass ? "platform" : "kosk",
+        },
       });
       return "removed";
     });

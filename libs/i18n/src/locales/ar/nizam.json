@@ -1030,6 +1030,7 @@
     "unknownPerson": "الاسم غير معروف",
     "roles": {
       "SYSTEM_ADMIN": "كبير ناظري مداريس",
+      "MEDARIS_NAZIM": "ناظر مدارس",
       "KOSK_NAZIM": "ناظر الرواق"
     },
     "published": "{count} منشور",
@@ -1201,6 +1202,7 @@
       "ban_course": "حظر الدرس",
       "ban_lift_course": "رفع الحظر",
       "deck_manage_course": "مجموعة الدرس",
+      "deck_propose_kosk": "اقتراح مجموعة الكوشك",
       "course_nazir_assign": "تعيين ناظر الدرس"
     },
     "course": {
@@ -1221,6 +1223,7 @@
       "ban_course": "حظر الطالب من الدرس (يشمل رؤية قائمة الحظر)",
       "ban_lift_course": "رفع حظر الدرس مع بيان السبب",
       "deck_manage_course": "إنشاء مجموعة الدرس وتعديلها",
+      "deck_propose_kosk": "اقتراح مجموعة للكوشك",
       "course_nazir_assign": "تعيين ناظر الدرس ومنح إذن أو مجموعة دون تجاوز أذونات صاحبها"
     }
   },
@@ -1335,7 +1338,15 @@
     "dismissedBody": "لم يعد {name} ناظر مدارس.",
     "loadFailedTitle": "تعذّرت قراءة القائمة",
     "loadFailed": "تعذّرت قراءة ما منحه هذا الشخص الآن. أعيدوا المحاولة بعد قليل.",
-    "retry": "إعادة المحاولة"
+    "retry": "إعادة المحاولة",
+    "groupsQuestion": "عرّف هذا الشخص أو عدّل {count} من مجموعات الصلاحيات. تبقى المجموعات كما هي ولا يتغير ما يملكه كل صاحب صلاحية.",
+    "groupLine": "{action}",
+    "groupLineScoped": "{action} · {scope}",
+    "groupAction": {
+      "create": "عرّف",
+      "update": "عدّل"
+    },
+    "groupsNote": "محتوى المجموعة قبل التعديل وبعده محفوظ في سجل التدقيق."
   },
   "UsersPolicyDialog": {
     "titleUsers": "يستخدم هذه المجموعة {count} شخص",
@@ -2103,6 +2114,7 @@
       "ban_course": "حظر الطالب من الدرس (يشمل رؤية قائمة الحظر)",
       "ban_lift_course": "رفع حظر الدرس مع بيان السبب",
       "deck_manage_course": "إنشاء مجموعة الدرس وتعديلها",
+      "deck_propose_kosk": "اقتراح مجموعة للكوشك",
       "course_nazir_assign": "تعيين ناظر الدرس ومنح إذن أو مجموعة دون تجاوز أذونات صاحبها",
       "permission_group_define": "تعريف مجموعة أذونات"
     },

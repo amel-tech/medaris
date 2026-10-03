@@ -11,6 +11,7 @@ import {
   ASSIGNED_ROLES,
   madrasahKoskHosting,
   roleAssignments,
+  SCOPE_TYPES,
 } from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
 import { createTestApp } from "../helpers/test-app.helper";
@@ -457,10 +458,38 @@ describe("Medrese directory (e2e)", () => {
         .post("/madrasahs/d0000000-0000-4000-8000-0000000000ff/restore")
         .set("Authorization", auth(ADMIN_ID))
         .expect(404);
-      await http()
+      // Someone with no part in the medrese, another medrese's başmüderris and a köşk's
+      // nazımı do not bring it back.
+      for (const sub of [HEAD_A, STRANGER, MANAGER]) {
+        await http()
+          .post(`/madrasahs/${hidden}/restore`)
+          .set("Authorization", auth(sub))
+          .expect(403);
+      }
+    });
+
+    // By kademe (MDRS-135, d-1003-07): the level that hid it, or one above. A medrese hidden
+    // before the level was recorded counts as the medrese's own, so its başmüderris may bring it
+    // back; once the level says the platform hid it, the başmüderris may not.
+    it("lets the başmüderris bring back a medrese hidden before levels were recorded, not one the platform hid", async () => {
+      await db()
+        .update(madrasahs)
+        .set({ archivedLevel: SCOPE_TYPES.PLATFORM })
+        .where(eq(madrasahs.id, hidden));
+      const refused = await http()
         .post(`/madrasahs/${hidden}/restore`)
         .set("Authorization", auth(HEAD_B))
         .expect(403);
+      expect(refused.body.code).toBe("ARCHIVE_RESTORE_LEVEL");
+
+      await db()
+        .update(madrasahs)
+        .set({ archivedLevel: null })
+        .where(eq(madrasahs.id, hidden));
+      await http()
+        .post(`/madrasahs/${hidden}/restore`)
+        .set("Authorization", auth(HEAD_B))
+        .expect(200);
     });
 
     it("restores a medrese that is both hidden and passive as passive", async () => {

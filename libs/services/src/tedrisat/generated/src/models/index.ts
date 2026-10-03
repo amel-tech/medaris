@@ -123,6 +123,7 @@ export * from './FlashcardResponse';
 export * from './FlashcardStudyRoundResponse';
 export * from './FlashcardType';
 export * from './FollowedKoskCourseResponse';
+export * from './GivenItemKind';
 export * from './GivenItemResponse';
 export * from './GivenKind';
 export * from './GrantHostingRightDto';

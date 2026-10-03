@@ -472,7 +472,7 @@
     },
     "/kosks/{id}/restore": {
       "post": {
-        "description": "nizam/09 \"Geri al\". 409 (KOSK_NOT_HIDDEN) when it is not hidden. Written to the audit log.",
+        "description": "nizam/09 \"Geri al\". By the kademe rule the bans follow: the level that hid it or any level above it (the köşk's own nazımı for what they hid, the Medaris administration for anything); 403 ARCHIVE_RESTORE_LEVEL names both levels otherwise. 409 (KOSK_NOT_HIDDEN) when it is not hidden. Written to the audit log.",
         "operationId": "restoreKosk",
         "parameters": [
           {
@@ -510,7 +510,7 @@
             "bearer": []
           }
         ],
-        "summary": "Bring a hidden köşk back (SYSTEM_ADMIN only)",
+        "summary": "Bring a hidden köşk back (by the level that hid it, or above)",
         "tags": [
           "kosks"
         ]
@@ -2204,7 +2204,7 @@
     },
     "/madrasahs/{id}/restore": {
       "post": {
-        "description": "The courses hidden with it come back too. 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.",
+        "description": "The courses hidden with it come back too. By the kademe rule the bans follow: the level that hid it or any level above it (the medrese's başmüderris for what they hid, the Medaris administration for anything); 403 ARCHIVE_RESTORE_LEVEL names both levels otherwise. 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.",
         "operationId": "restoreMadrasah",
         "parameters": [
           {
@@ -2242,7 +2242,7 @@
             "bearer": []
           }
         ],
-        "summary": "Bring a hidden medrese back (SYSTEM_ADMIN only)",
+        "summary": "Bring a hidden medrese back (by the level that hid it, or above)",
         "tags": [
           "madrasahs"
         ]
@@ -2733,7 +2733,7 @@
             }
           },
           "403": {
-            "description": "No `edit` on the course, or the save changes the müderris list without `assign_muderris` — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN)."
+            "description": "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN)."
           },
           "404": {
             "description": "No such course, or a müderris row links an id that names no account in the app or the realm (MUDERRIS_UNKNOWN_USER)."
@@ -2855,7 +2855,7 @@
     },
     "/courses/{id}/archive": {
       "post": {
-        "description": "The köşk manager's way to take a course down: nothing is deleted, every list leaves it out, and it answers 404 to everyone but the köşk manager and SYSTEM_ADMIN until it is restored (MDRS-124).",
+        "description": "The köşk manager's way to take a course down: nothing is deleted, every list leaves it out, and it answers 404 to everyone but the köşk manager and SYSTEM_ADMIN until it is restored (MDRS-124). The level the caller acts at is recorded with the hide (köşk, medrese, or platform for SYSTEM_ADMIN) and decides who may restore it (MDRS-135).",
         "operationId": "archiveCourse",
         "parameters": [
           {
@@ -2898,6 +2898,7 @@
     },
     "/courses/{id}/restore": {
       "post": {
+        "description": "By kademe (MDRS-135): the level that hid the course, or any level above it (course < medrese < köşk < platform). A lower level answers 403 (ARCHIVE_RESTORE_LEVEL), naming the level that hid it and the caller's. A course hidden before the level was recorded counts as the lowest level that could have hidden it.",
         "operationId": "restoreCourse",
         "parameters": [
           {
@@ -7280,7 +7281,7 @@
     },
     "/kosks/{id}/hosting-rights/{madrasahId}": {
       "delete": {
-        "description": "`coursesAction` decides what becomes of the medrese's courses in this köşk: KEEP leaves them as they are, HIDE hides each (they come back from the archive). The medrese can open no new course here. Written to the audit log.",
+        "description": "`coursesAction` decides what becomes of the medrese's courses in this köşk: KEEP leaves them as they are, HIDE hides each (they come back from the archive, by the level the caller acts at: the köşk's nazımı hides at the köşk's level, a Medaris nazımı or SYSTEM_ADMIN at the platform's, so the medrese's own başmüderris cannot bring them back). The medrese can open no new course here. Written to the audit log.",
         "operationId": "revokeKoskHostingRight",
         "parameters": [
           {
@@ -9072,7 +9073,7 @@
     },
     "/archive/{type}/{id}/restore": {
       "post": {
-        "description": "A köşk manager restores courses, weeks and sessions of their köşk; SYSTEM_ADMIN restores anything. A week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).",
+        "description": "By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. A köşk manager restores courses, weeks, sessions and decks of their köşk, a medrese's başmüderris what sits in their medrese, SYSTEM_ADMIN anything; a lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both. A week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).",
         "operationId": "restoreArchiveItem",
         "parameters": [
           {
@@ -16602,19 +16603,28 @@
           "permissions"
         ]
       },
+      "GivenItemKind": {
+        "type": "string",
+        "enum": [
+          "ROLE",
+          "GRANT",
+          "GROUP"
+        ]
+      },
       "GivenItemResponse": {
         "type": "object",
         "properties": {
           "kind": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/GivenKind"
+                "$ref": "#/components/schemas/GivenItemKind"
               }
             ]
           },
           "id": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "The role row, the grant row or, for a GROUP, the permission group"
           },
           "role": {
             "type": "string",
@@ -16629,7 +16639,31 @@
             "nullable": true
           },
           "to": {
-            "$ref": "#/components/schemas/NazimPersonResponse"
+            "nullable": true,
+            "description": "Who it went to; null for a GROUP, which goes to no one yet",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NazimPersonResponse"
+              }
+            ]
+          },
+          "groupPermissions": {
+            "nullable": true,
+            "description": "The codes a GROUP carries now; null for a role or a grant",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "groupAction": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "create",
+              "update"
+            ],
+            "description": "For a GROUP: whether the person defined it or last changed it; null otherwise"
           },
           "scopeType": {
             "type": "string"
@@ -16646,6 +16680,8 @@
           "permission",
           "groupName",
           "to",
+          "groupPermissions",
+          "groupAction",
           "scopeType",
           "scopeName"
         ]
@@ -17760,6 +17796,7 @@
             "nullable": true,
             "enum": [
               "SYSTEM_ADMIN",
+              "MEDARIS_NAZIM",
               "KOSK_NAZIM"
             ],
             "description": "How the granter was entitled to grant; null on rights older than MDRS-170"

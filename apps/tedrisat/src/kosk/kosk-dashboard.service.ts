@@ -11,8 +11,8 @@ const APPLICATION_ROWS = 5;
 
 /**
  * A köşk nazımı's home page in one read (MDRS-182, nizam/02). The route is
- * authorized as the köşk's overview is (`EDIT` on the köşk: its nazımları and
- * the başnazım), so this class only reads.
+ * authorized as the köşk's overview is (`kosk.manage`, or `platform.kosk_edit` for
+ * a Medaris nazımı; the başnazım by the bypass), so this class only reads.
  */
 @Injectable()
 export class KoskDashboardService {

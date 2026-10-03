@@ -1823,8 +1823,8 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/09 \"Geri al\". 409 (KOSK_NOT_HIDDEN) when it is not hidden. Written to the audit log.
-     * Bring a hidden köşk back (SYSTEM_ADMIN only)
+     * nizam/09 \"Geri al\". By the kademe rule the bans follow: the level that hid it or any level above it (the köşk\'s own nazımı for what they hid, the Medaris administration for anything); 403 ARCHIVE_RESTORE_LEVEL names both levels otherwise. 409 (KOSK_NOT_HIDDEN) when it is not hidden. Written to the audit log.
+     * Bring a hidden köşk back (by the level that hid it, or above)
      */
     async restoreKoskRaw(requestParameters: RestoreKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskDirectoryItemResponse>> {
         if (requestParameters['id'] == null) {
@@ -1858,8 +1858,8 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/09 \"Geri al\". 409 (KOSK_NOT_HIDDEN) when it is not hidden. Written to the audit log.
-     * Bring a hidden köşk back (SYSTEM_ADMIN only)
+     * nizam/09 \"Geri al\". By the kademe rule the bans follow: the level that hid it or any level above it (the köşk\'s own nazımı for what they hid, the Medaris administration for anything); 403 ARCHIVE_RESTORE_LEVEL names both levels otherwise. 409 (KOSK_NOT_HIDDEN) when it is not hidden. Written to the audit log.
+     * Bring a hidden köşk back (by the level that hid it, or above)
      */
     async restoreKosk(requestParameters: RestoreKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskDirectoryItemResponse> {
         const response = await this.restoreKoskRaw(requestParameters, initOverrides);
@@ -1918,7 +1918,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * `coursesAction` decides what becomes of the medrese\'s courses in this köşk: KEEP leaves them as they are, HIDE hides each (they come back from the archive). The medrese can open no new course here. Written to the audit log.
+     * `coursesAction` decides what becomes of the medrese\'s courses in this köşk: KEEP leaves them as they are, HIDE hides each (they come back from the archive, by the level the caller acts at: the köşk\'s nazımı hides at the köşk\'s level, a Medaris nazımı or SYSTEM_ADMIN at the platform\'s, so the medrese\'s own başmüderris cannot bring them back). The medrese can open no new course here. Written to the audit log.
      * Withdraw a medrese\'s hosting right
      */
     async revokeKoskHostingRightRaw(requestParameters: RevokeKoskHostingRightRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
@@ -1972,7 +1972,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * `coursesAction` decides what becomes of the medrese\'s courses in this köşk: KEEP leaves them as they are, HIDE hides each (they come back from the archive). The medrese can open no new course here. Written to the audit log.
+     * `coursesAction` decides what becomes of the medrese\'s courses in this köşk: KEEP leaves them as they are, HIDE hides each (they come back from the archive, by the level the caller acts at: the köşk\'s nazımı hides at the köşk\'s level, a Medaris nazımı or SYSTEM_ADMIN at the platform\'s, so the medrese\'s own başmüderris cannot bring them back). The medrese can open no new course here. Written to the audit log.
      * Withdraw a medrese\'s hosting right
      */
     async revokeKoskHostingRight(requestParameters: RevokeKoskHostingRightRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {

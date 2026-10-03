@@ -15,6 +15,7 @@ import { flashcards } from "./flashcard.schema";
 import { flashcardType } from "./flashcard-enums.schema";
 import { kosks } from "./kosk.schema";
 import { madrasahs } from "./madrasah.schema";
+import { scopeType } from "./scope-type.schema";
 
 // Tables
 export const decks = table(
@@ -67,6 +68,8 @@ export const decks = table(
     // Hidden (MDRS-173); see `kosks.archived_at`. Null while shown.
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     archivedBy: uuid("archived_by"),
+    // The level the hider acted at (MDRS-135); see `kosks.archived_level`.
+    archivedLevel: scopeType("archived_level"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

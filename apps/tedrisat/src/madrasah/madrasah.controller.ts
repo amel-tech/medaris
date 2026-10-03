@@ -1,11 +1,15 @@
 import {
+  ASSIGNED_ROLES,
+  type AuthenticatedUser,
   AuthGuard,
   Authz,
   AuthzGuard,
   AuthzPublic,
   type AuthzResolve,
+  AuthzService,
   ENTITIES,
-  SCOPES,
+  PERMISSIONS,
+  SelfGrantGuard,
 } from "@medaris/common";
 import {
   Body,
@@ -38,8 +42,10 @@ import {
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
+import { actingLevel } from "../archive/hide-level";
 import { CourseStatus } from "../course/domain/course-status.enum";
 import { PublicRequest } from "../course/interfaces/authorized-request.interface";
+import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { AuthorizedRequest } from "../kosk/interfaces/authorized-request.interface";
 import { maskMadrasahForAnonymous } from "./anonymous-mask";
 import { CreateMadrasahDto } from "./dto/create-madrasah.dto";
@@ -99,9 +105,10 @@ export const byExistingMadrasah: AuthzResolve = async (req, moduleRef) => {
 
 /**
  * No particular medrese: the list and the create route. The resolver reads a
- * non-UUID id as PUBLIC, which grants `VIEW` and nothing that creates —
- * `CREATE_MADRASAH` is on no matrix row, so only SYSTEM_ADMIN's realm bypass
- * passes it.
+ * non-UUID id as PUBLIC, which grants `madrasah.view` and nothing that
+ * creates — `platform.madrasah_create` is no relationship's and no role's
+ * default, so only SYSTEM_ADMIN's realm bypass and a Medaris nazımı who was
+ * given it pass.
  */
 const anyMadrasah: AuthzResolve = () => ({
   entity: ENTITIES.MADRASAH,
@@ -118,7 +125,32 @@ const anyMadrasah: AuthzResolve = () => ({
 @UseGuards(AuthGuard, AuthzGuard)
 @Controller("madrasahs")
 export class MadrasahController {
-  constructor(private readonly madrasahService: MadrasahService) {}
+  constructor(
+    private readonly madrasahService: MadrasahService,
+    private readonly selfGrant: SelfGrantGuard,
+    private readonly authz: AuthzService
+  ) {}
+
+  /**
+   * The level the caller hides and restores a medrese at: the başnazım and a
+   * Medaris nazımı holding `platform.madrasah_edit` as the platform, the
+   * medrese's başmüderris (`madrasah.hide`) as the medrese.
+   */
+  private hideLevel(user: AuthenticatedUser, madrasahId: string) {
+    return actingLevel(
+      this.authz,
+      user,
+      { entity: ENTITIES.MADRASAH, id: madrasahId },
+      [
+        {
+          level: SCOPE_TYPES.PLATFORM,
+          codes: [PERMISSIONS.PLATFORM_MADRASAH_EDIT],
+        },
+        { level: SCOPE_TYPES.MADRASAH, codes: [PERMISSIONS.MADRASAH_HIDE] },
+      ],
+      SCOPE_TYPES.MADRASAH
+    );
+  }
 
   @ApiOperation({
     summary: "Get a paginated list of medreses",
@@ -129,7 +161,7 @@ export class MadrasahController {
   @ApiQuery({ name: "limit", required: false, type: Number })
   @ApiOkResponse({ type: PaginatedMadrasahResponse })
   @Get()
-  @Authz(SCOPES.VIEW, anyMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_VIEW, anyMadrasah)
   @AuthzPublic()
   async findAll(
     @Req() request: PublicRequest,
@@ -166,7 +198,7 @@ export class MadrasahController {
   @ApiOkResponse({ type: MadrasahExploreResponse, isArray: true })
   // Declared before `:id` so `explore` is not read as an id.
   @Get("explore")
-  @Authz(SCOPES.VIEW, anyMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_VIEW, anyMadrasah)
   @AuthzPublic()
   async explore(
     @Query("q") q?: string,
@@ -208,7 +240,10 @@ export class MadrasahController {
   @ApiOkResponse({ type: MadrasahDirectoryResponse })
   @ApiForbiddenResponse()
   @Get("directory")
-  @Authz(SCOPES.CREATE_MADRASAH, anyMadrasah)
+  @Authz(
+    [PERMISSIONS.PLATFORM_MADRASAH_CREATE, PERMISSIONS.PLATFORM_MADRASAH_EDIT],
+    anyMadrasah
+  )
   async directory(
     @Query(
       "status",
@@ -241,7 +276,7 @@ export class MadrasahController {
   @ApiOkResponse({ type: MadrasahResponse })
   @ApiNotFoundResponse()
   @Get(":id")
-  @Authz(SCOPES.VIEW, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_VIEW, byExistingMadrasah)
   @AuthzPublic()
   async findById(
     @Req() request: PublicRequest,
@@ -260,7 +295,7 @@ export class MadrasahController {
   @ApiOkResponse({ type: MadrasahOverviewResponse })
   @ApiNotFoundResponse()
   @Get(":id/overview")
-  @Authz(SCOPES.VIEW, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_VIEW, byExistingMadrasah)
   @AuthzPublic()
   async findOverview(
     @Req() request: PublicRequest,
@@ -283,7 +318,7 @@ export class MadrasahController {
   // sits on the MADRASAH_NAZIR row alone, which makes it the narrowest scope
   // that already names the people who run the portal.
   @Get(":id/badge-counts")
-  @Authz(SCOPES.VIEW_MADRASAH_ANALYTICS, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_STUDENTS_VIEW, byExistingMadrasah)
   async getBadgeCounts(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahBadgeCountsResponse> {
@@ -300,11 +335,18 @@ export class MadrasahController {
   @ApiForbiddenResponse()
   @ApiConflictResponse({ description: "The handle is taken" })
   @Post()
-  @Authz(SCOPES.CREATE_MADRASAH, anyMadrasah)
+  @Authz(PERMISSIONS.PLATFORM_MADRASAH_CREATE, anyMadrasah)
   async create(
     @Req() request: AuthorizedRequest,
     @Body() dto: CreateMadrasahDto
   ): Promise<MadrasahResponse> {
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      [dto.headMuderrisUserId],
+      { entity: ENTITIES.MADRASAH, id: "new" },
+      { role: ASSIGNED_ROLES.MEDRESE_BASMUDERRIS, always: true },
+      "madrasah.create.head"
+    );
     return this.madrasahService.open({
       ...dto,
       createdBy: request.user.sub,
@@ -321,7 +363,7 @@ export class MadrasahController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/head-muderris/delegations")
-  @Authz(SCOPES.CREATE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.PLATFORM_HEAD_MUDERRIS_MANAGE, byExistingMadrasah)
   async headDelegations(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<HeadDelegationResponse[]> {
@@ -342,12 +384,19 @@ export class MadrasahController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Put(":id/head-muderris")
-  @Authz(SCOPES.CREATE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.PLATFORM_HEAD_MUDERRIS_MANAGE, byExistingMadrasah)
   async setHeadMuderris(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: SetHeadMuderrisDto
   ): Promise<MadrasahDirectoryItemResponse> {
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      [dto.userId],
+      { entity: ENTITIES.MADRASAH, id },
+      { role: ASSIGNED_ROLES.MEDRESE_BASMUDERRIS, always: true },
+      "madrasah.head_muderris.set"
+    );
     return this.madrasahService.setHeadMuderris(
       id,
       dto.userId.toLowerCase(),
@@ -371,18 +420,28 @@ export class MadrasahController {
   @ApiConflictResponse({ description: "MADRASAH_ALREADY_HIDDEN" })
   @Post(":id/hide")
   @HttpCode(HttpStatus.OK)
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  // `madrasah.hide` is the başmüderris's by role default and no grant carries
+  // it: hiding the whole medrese is not part of "change the settings", which a
+  // nazır can be given (review M3).
+  @Authz(
+    [PERMISSIONS.MADRASAH_HIDE, PERMISSIONS.PLATFORM_MADRASAH_EDIT],
+    byExistingMadrasah
+  )
   async hide(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahDirectoryItemResponse> {
-    return this.madrasahService.hide(id, request.user.sub);
+    return this.madrasahService.hide(
+      id,
+      request.user.sub,
+      await this.hideLevel(request.user, id)
+    );
   }
 
   @ApiOperation({
-    summary: "Bring a hidden medrese back (SYSTEM_ADMIN only)",
+    summary: "Bring a hidden medrese back (by the level that hid it, or above)",
     description:
-      "The courses hidden with it come back too. 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.",
+      "The courses hidden with it come back too. By the kademe rule the bans follow: the level that hid it or any level above it (the medrese's başmüderris for what they hid, the Medaris administration for anything); 403 ARCHIVE_RESTORE_LEVEL names both levels otherwise. 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.",
     operationId: "restoreMadrasah",
   })
   @ApiOkResponse({ type: MadrasahDirectoryItemResponse })
@@ -391,12 +450,19 @@ export class MadrasahController {
   @ApiConflictResponse({ description: "MADRASAH_NOT_HIDDEN" })
   @Post(":id/restore")
   @HttpCode(HttpStatus.OK)
-  @Authz(SCOPES.CREATE_MADRASAH, byExistingMadrasah)
+  @Authz(
+    [PERMISSIONS.MADRASAH_HIDE, PERMISSIONS.PLATFORM_MADRASAH_EDIT],
+    byExistingMadrasah
+  )
   async restore(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahDirectoryItemResponse> {
-    return this.madrasahService.restore(id, request.user.sub);
+    return this.madrasahService.restore(
+      id,
+      request.user.sub,
+      await this.hideLevel(request.user, id)
+    );
   }
 
   @ApiOperation({
@@ -408,7 +474,10 @@ export class MadrasahController {
   @ApiNotFoundResponse()
   @ApiConflictResponse({ description: "The handle is taken" })
   @Patch(":id")
-  @Authz(SCOPES.EDIT, byExistingMadrasah)
+  @Authz(
+    [PERMISSIONS.MADRASAH_SETTINGS_EDIT, PERMISSIONS.PLATFORM_MADRASAH_EDIT],
+    byExistingMadrasah
+  )
   async update(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: UpdateMadrasahDto
@@ -426,7 +495,7 @@ export class MadrasahController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/settings")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_SETTINGS_EDIT, byExistingMadrasah)
   async getSettings(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahSettingsResponse> {
@@ -443,7 +512,7 @@ export class MadrasahController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Patch(":id/settings")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_SETTINGS_EDIT, byExistingMadrasah)
   async updateSettings(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -464,7 +533,14 @@ export class MadrasahController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/courses")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(
+    [
+      PERMISSIONS.MADRASAH_COURSE_OPEN,
+      PERMISSIONS.MADRASAH_COURSE_HIDE,
+      PERMISSIONS.MADRASAH_MUDERRIS_MANAGE,
+    ],
+    byExistingMadrasah
+  )
   async findCourses(
     @Param("id", ParseUUIDPipe) id: string,
     @Query("koskId", new ParseUUIDPipe({ optional: true })) koskId?: string,
@@ -484,7 +560,7 @@ export class MadrasahController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Delete(":id")
-  @Authz(SCOPES.DELETE, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_DELETE, byExistingMadrasah)
   async delete(@Param("id", ParseUUIDPipe) id: string): Promise<boolean> {
     return this.madrasahService.delete(id);
   }

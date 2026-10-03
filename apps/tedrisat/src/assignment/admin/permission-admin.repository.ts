@@ -3,6 +3,7 @@ import {
   and,
   asc,
   countDistinct,
+  desc,
   eq,
   inArray,
   isNotNull,
@@ -217,7 +218,12 @@ export class PermissionAdminRepository {
     return row?.title ?? null;
   }
 
-  /** Everything the person handed on that is still held (nizam/11's dismissal question). */
+  /**
+   * Everything the person handed on that is still held (nizam/11's dismissal
+   * question), including what they gave themselves: a row the person made for
+   * themselves is theirs to answer for like any other, and leaving it out let a
+   * self-made seat outlive the dismissal (review H4).
+   */
   async heldGivenBy(userId: string, db: Tx | DatabaseService["db"] = this.db) {
     const roles = await db
       .select({
@@ -228,13 +234,7 @@ export class PermissionAdminRepository {
         scopeId: roleAssignments.scopeId,
       })
       .from(roleAssignments)
-      .where(
-        and(
-          eq(roleAssignments.grantedBy, userId),
-          ne(roleAssignments.userId, userId),
-          isHeld()
-        )
-      )
+      .where(and(eq(roleAssignments.grantedBy, userId), isHeld()))
       .orderBy(asc(roleAssignments.createdAt), asc(roleAssignments.id));
     const grants = await db
       .select({
@@ -246,13 +246,7 @@ export class PermissionAdminRepository {
         scopeId: permissionGrants.scopeId,
       })
       .from(permissionGrants)
-      .where(
-        and(
-          eq(permissionGrants.grantedBy, userId),
-          ne(permissionGrants.userId, userId),
-          grantHeld()
-        )
-      )
+      .where(and(eq(permissionGrants.grantedBy, userId), grantHeld()))
       .orderBy(asc(permissionGrants.createdAt), asc(permissionGrants.id));
     const rows: IGivenRow[] = [
       ...roles.map((r) => ({
@@ -277,6 +271,50 @@ export class PermissionAdminRepository {
       })),
     ];
     return rows;
+  }
+
+  /**
+   * The live permission groups the person defined or changed, newest touch
+   * first, with whether the touch was the creation or a later change. A group
+   * is not a row the person holds, so dismissal does not ask about it; it is
+   * listed so the başnazım sees what a Medaris nazımı wrote into a medrese's
+   * groups, and the audit rows (`permission_group.create` / `.update`) carry
+   * the codes before and after.
+   */
+  async groupsTouchedBy(
+    userId: string
+  ): Promise<Array<{ group: IGroupRow; action: "create" | "update" }>> {
+    const touches = await this.db
+      .select({
+        groupId: auditLog.entityId,
+        action: auditLog.action,
+        at: auditLog.createdAt,
+      })
+      .from(auditLog)
+      .where(
+        and(
+          eq(auditLog.actorId, userId),
+          inArray(auditLog.action, [
+            "permission_group.create",
+            "permission_group.update",
+          ])
+        )
+      )
+      .orderBy(desc(auditLog.createdAt), desc(auditLog.id));
+    const latest = new Map<string, "create" | "update">();
+    for (const touch of touches) {
+      if (!latest.has(touch.groupId)) {
+        latest.set(
+          touch.groupId,
+          touch.action === "permission_group.create" ? "create" : "update"
+        );
+      }
+    }
+    const groups = await this.groupsById([...latest.keys()]);
+    return [...latest.entries()].flatMap(([id, action]) => {
+      const group = groups.get(id);
+      return group ? [{ group, action }] : [];
+    });
   }
 
   // ---- Medaris nazımı writes --------------------------------------------
@@ -416,6 +454,9 @@ export class PermissionAdminRepository {
           permission: "permission" in item ? item.permission : null,
           groupId: "groupId" in item ? item.groupId : null,
           grantedBy: actorId,
+          // The başnazım is the one who gives a Medaris nazımı their
+          // permissions: the platform's authority, above every policy.
+          authorityScopeType: SCOPE_TYPES.PLATFORM,
           expiresAt: wanted.expiresAt,
         }))
       );
@@ -494,14 +535,22 @@ export class PermissionAdminRepository {
       const given = await this.heldGivenBy(userId, tx);
       const key = (kind: string, id: string) => `${kind}:${id}`;
       const decided = new Map(decisions.map((d) => [key(d.kind, d.id), d]));
+      // What the person made for themselves is not handed to anyone: it is
+      // revoked whatever the answer, so it needs none (an answer to it, which
+      // the listing invites, is accepted and ignored).
+      const forOthers = given.filter((g) => g.userId !== userId);
+      const known = new Set(given.map((g) => key(g.kind, g.id)));
       const complete =
         decided.size === decisions.length &&
-        decided.size === given.length &&
-        given.every((g) => decided.has(key(g.kind, g.id)));
+        forOthers.every((g) => decided.has(key(g.kind, g.id))) &&
+        [...decided.keys()].every((k) => known.has(k));
       if (!complete) throw new DismissDecisionsError();
 
       for (const item of given) {
-        const action = decided.get(key(item.kind, item.id))?.action;
+        const action =
+          item.userId === userId
+            ? "DROP"
+            : decided.get(key(item.kind, item.id))?.action;
         const take = action === "TAKE_OVER";
         if (item.kind === "ROLE") {
           await tx
@@ -544,12 +593,13 @@ export class PermissionAdminRepository {
         entity: "user",
         entityId: userId,
         details: {
-          tookOver: given.filter(
+          tookOver: forOthers.filter(
             (g) => decided.get(key(g.kind, g.id))?.action === "TAKE_OVER"
           ).length,
-          dropped: given.filter(
+          dropped: forOthers.filter(
             (g) => decided.get(key(g.kind, g.id))?.action === "DROP"
           ).length,
+          selfMade: given.length - forOthers.length,
         },
       });
     });
@@ -678,6 +728,8 @@ export class PermissionAdminRepository {
       scopeType: ScopeType;
       scopeId: string | null;
       permissions: string[];
+      /** The level the giver acts at: the başnazım and a Medaris nazımı as the platform. */
+      authority: ScopeType;
     }
   ): Promise<string> {
     try {
@@ -707,6 +759,7 @@ export class PermissionAdminRepository {
             scopeType: input.scopeType,
             scopeId: input.scopeId,
             permissions: input.permissions,
+            authority: input.authority,
           },
         });
         return group.id;
@@ -733,6 +786,7 @@ export class PermissionAdminRepository {
       name: string;
       permissions: string[];
       usersPolicy: UsersPolicy | null;
+      authority: ScopeType;
     }
   ): Promise<void> {
     try {
@@ -747,6 +801,12 @@ export class PermissionAdminRepository {
           oldCodes.length !== input.permissions.length ||
           oldCodes.some((c) => !input.permissions.includes(c));
 
+        // Whoever holds the group row now: a change to its codes reaches each of
+        // them at once unless the actor chose to detach them, so the record
+        // says who they were.
+        const holders = changed
+          ? await this.holdersOfGroup(tx, id)
+          : ([] as string[]);
         let affected = 0;
         if (changed && input.usersPolicy) {
           affected = await this.detachUsers(
@@ -782,10 +842,14 @@ export class PermissionAdminRepository {
           details: {
             name: input.name,
             previousName: group.name,
+            scopeType: group.scopeType,
+            scopeId: group.scopeId,
+            authority: input.authority,
             permissions: input.permissions,
             previousPermissions: oldCodes,
             usersPolicy: changed ? input.usersPolicy : null,
             affectedUsers: affected,
+            holderIds: holders,
           },
         });
       });
@@ -800,10 +864,12 @@ export class PermissionAdminRepository {
   async deleteGroup(
     actorId: string,
     id: string,
-    usersPolicy: UsersPolicy | null
+    usersPolicy: UsersPolicy | null,
+    authority: ScopeType
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
       const group = await this.lockGroup(tx, id);
+      const holders = await this.holdersOfGroup(tx, id);
       const old = await tx
         .select({ permission: permissionGroupItems.permission })
         .from(permissionGroupItems)
@@ -828,20 +894,42 @@ export class PermissionAdminRepository {
         entityId: id,
         details: {
           name: group.name,
+          scopeType: group.scopeType,
+          scopeId: group.scopeId,
+          authority,
           permissions: old.map((o) => o.permission),
           usersPolicy,
           affectedUsers: affected,
+          holderIds: holders,
         },
       });
     });
   }
 
+  private async holdersOfGroup(tx: Tx, groupId: string): Promise<string[]> {
+    const rows = await tx
+      .select({ userId: permissionGrants.userId })
+      .from(permissionGrants)
+      .where(and(eq(permissionGrants.groupId, groupId), grantHeld()));
+    return [...new Set(rows.map((r) => r.userId))].sort();
+  }
+
   private async lockGroup(
     tx: Tx,
     id: string
-  ): Promise<{ id: string; name: string }> {
+  ): Promise<{
+    id: string;
+    name: string;
+    scopeType: ScopeType;
+    scopeId: string | null;
+  }> {
     const [group] = await tx
-      .select({ id: permissionGroups.id, name: permissionGroups.name })
+      .select({
+        id: permissionGroups.id,
+        name: permissionGroups.name,
+        scopeType: permissionGroups.scopeType,
+        scopeId: permissionGroups.scopeId,
+      })
       .from(permissionGroups)
       .where(
         and(eq(permissionGroups.id, id), isNull(permissionGroups.deletedAt))
@@ -896,6 +984,7 @@ export class PermissionAdminRepository {
               permission,
               groupId: null,
               grantedBy: row.grantedBy,
+              authorityScopeType: row.authorityScopeType,
               expiresAt: row.expiresAt,
             }))
           );
