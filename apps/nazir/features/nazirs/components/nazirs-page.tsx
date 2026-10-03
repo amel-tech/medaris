@@ -10,8 +10,10 @@ import { dayFormat } from "~/lib/dates";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
 import { awaitingNotice, nazirRows } from "../nazirs";
+import { groupSummary } from "../permissions";
 import { AppointNazir } from "./appoint-nazir";
 import { NazirsTable } from "./nazirs-table";
+import { PermissionGroups } from "./permission-groups";
 
 /**
  * Medrese nazırları (nazir 05): who holds the nazır role in the medrese, with
@@ -19,19 +21,21 @@ import { NazirsTable } from "./nazirs-table";
  * nazır who has not received a permission yet. The medrese's başmüderris opens
  * the page; the API refuses a nazır of the medrese today (the role matrix has
  * no row for MEDRESE_NAZIR), so that answer is a notice, not a table, and the
- * button that appoints is left out with it.
- *
- * The permission groups' cards and the buttons that edit a nazır's permissions
- * (nazir 06, 16) belong to the next package and are not drawn.
+ * button that appoints is left out with it. Under the table are the medrese's
+ * permission groups (nazir 16); the buttons that edit a nazır's permissions
+ * (nazir 06) are in the table.
  */
 export async function NazirsPage({ madrasahId }: { madrasahId: string }) {
-  const [t, locale, me, portal, nazirs] = await Promise.all([
+  const [t, locale, me, portal, nazirs, groups] = await Promise.all([
     getMessages("nazir"),
     getLocale(),
     getViewer(),
     getPortal(),
     readOnce("the medrese's nazırs", (api) =>
       api.madrasahs.getMadrasahNazirs({ id: madrasahId })
+    ),
+    readOnce("the medrese's permission groups", (api) =>
+      api.madrasahs.getMadrasahPermissionGroups({ id: madrasahId })
     ),
   ]);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
@@ -82,6 +86,24 @@ export async function NazirsPage({ madrasahId }: { madrasahId: string }) {
             locale={locale}
             timeZone={timeZone}
           />
+          {groups.status === "ok" ? (
+            <PermissionGroups
+              madrasahId={madrasahId}
+              madrasahName={madrasahName}
+              cards={groups.data.map((group) => ({
+                group,
+                summary: groupSummary(group.permissions, t),
+                usage: t("Groups.usage", {
+                  count: group.permissions.length,
+                  users: group.userCount,
+                }),
+              }))}
+            />
+          ) : (
+            <Alert tone="error">
+              <p>{t("Groups.sectionFailed")}</p>
+            </Alert>
+          )}
         </>
       )}
     </>
@@ -99,6 +121,8 @@ export async function NazirsLoading() {
       {[0, 1, 2].map((row) => (
         <Skeleton key={row} height="3.5rem" />
       ))}
+      <Skeleton width="12rem" height="2rem" />
+      <Skeleton height="8rem" />
     </output>
   );
 }

@@ -7,9 +7,11 @@ import { type NazirFixture, seedPortal } from "./seed";
  * Design nazir/05 (Medrese nazırları) against the running app and API with real
  * Keycloak sign-ins (MDRS-184). The roster is the medrese başmüderris's;
  * MEDRESE_NAZIR is only asked what the open owner decision allows: the API
- * refuses it, and the page says so instead of drawing the table. The e-mail
- * search of "Medrese nazırı ata" goes to the real realm directory through
- * tedrisat's admin client, so it appoints the TALEBE account.
+ * refuses it, and the page says so instead of drawing the table. The permission
+ * editor and the groups have their own specs (permissions.e2e.ts and
+ * groups.e2e.ts). The e-mail search of "Medrese nazırı ata" goes to the real
+ * realm directory through tedrisat's admin client, so it appoints the TALEBE
+ * account.
  */
 const BASMUDERRIS = account("MEDRESE_BASMUDERRIS");
 const MEDRESE_NAZIR = account("MEDRESE_NAZIR");
@@ -121,18 +123,28 @@ test("nazir/05 — a nazır who holds nothing has 'İzin yok', who appointed the
   );
 });
 
-test("nazir/05 — the permission editor and the groups are the next package's: no 'İzinleri düzenle', 'İzin ver' or 'İzin grupları'", async ({
+test("nazir/05 — the permission buttons are on the rows and the groups under the table: 'İzinleri düzenle' where something is held, 'İzin ver' where nothing is", async ({
   as,
 }) => {
   test.skip(!ready(), "no medrese başmüderris");
   const page = await as("MEDRESE_BASMUDERRIS");
   await open(page);
-  for (const name of ["İzinleri düzenle", "İzin ver", "Grup tanımla"]) {
-    await expect(page.getByRole("button", { name })).toHaveCount(0);
-  }
+  await expect(
+    rowOf(page, extra?.fatma.name ?? "").getByRole("button", {
+      name: /^İzinleri düzenle/,
+    })
+  ).toBeVisible();
+  await expect(
+    rowOf(page, extra?.abdullah.name ?? "").getByRole("button", {
+      name: /^İzin ver/,
+    })
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "İzin grupları" })
-  ).toHaveCount(0);
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Grup tanımla" })
+  ).toBeVisible();
 });
 
 test("nazir/05 — 'Medrese nazırı ata' finds the account by its exact e-mail address and appoints it with no permission (criterion 3)", async ({

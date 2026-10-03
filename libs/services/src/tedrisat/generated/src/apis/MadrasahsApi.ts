@@ -16,6 +16,8 @@
 import * as runtime from '../runtime';
 import type {
   CreateMadrasahDto,
+  CreateMadrasahPermissionGroupDto,
+  DeletePermissionGroupDto,
   DismissMadrasahNazirDto,
   HeadDelegationResponse,
   MadrasahBadgeCountsResponse,
@@ -24,19 +26,28 @@ import type {
   MadrasahDirectoryResponse,
   MadrasahExploreResponse,
   MadrasahNazirGivenResponse,
+  MadrasahNazirPermissionsResponse,
   MadrasahNazirResponse,
   MadrasahOverviewResponse,
+  MadrasahPermissionCatalogResponse,
+  MadrasahPermissionGroupResponse,
   MadrasahResponse,
   MadrasahSettingsResponse,
   MadrasahStatusFilter,
   PaginatedMadrasahResponse,
   SetHeadMuderrisDto,
+  SetMadrasahNazirPermissionsDto,
   UpdateMadrasahDto,
+  UpdateMadrasahPermissionGroupDto,
   UpdateMadrasahSettingsDto,
 } from '../models/index';
 import {
     CreateMadrasahDtoFromJSON,
     CreateMadrasahDtoToJSON,
+    CreateMadrasahPermissionGroupDtoFromJSON,
+    CreateMadrasahPermissionGroupDtoToJSON,
+    DeletePermissionGroupDtoFromJSON,
+    DeletePermissionGroupDtoToJSON,
     DismissMadrasahNazirDtoFromJSON,
     DismissMadrasahNazirDtoToJSON,
     HeadDelegationResponseFromJSON,
@@ -53,10 +64,16 @@ import {
     MadrasahExploreResponseToJSON,
     MadrasahNazirGivenResponseFromJSON,
     MadrasahNazirGivenResponseToJSON,
+    MadrasahNazirPermissionsResponseFromJSON,
+    MadrasahNazirPermissionsResponseToJSON,
     MadrasahNazirResponseFromJSON,
     MadrasahNazirResponseToJSON,
     MadrasahOverviewResponseFromJSON,
     MadrasahOverviewResponseToJSON,
+    MadrasahPermissionCatalogResponseFromJSON,
+    MadrasahPermissionCatalogResponseToJSON,
+    MadrasahPermissionGroupResponseFromJSON,
+    MadrasahPermissionGroupResponseToJSON,
     MadrasahResponseFromJSON,
     MadrasahResponseToJSON,
     MadrasahSettingsResponseFromJSON,
@@ -67,8 +84,12 @@ import {
     PaginatedMadrasahResponseToJSON,
     SetHeadMuderrisDtoFromJSON,
     SetHeadMuderrisDtoToJSON,
+    SetMadrasahNazirPermissionsDtoFromJSON,
+    SetMadrasahNazirPermissionsDtoToJSON,
     UpdateMadrasahDtoFromJSON,
     UpdateMadrasahDtoToJSON,
+    UpdateMadrasahPermissionGroupDtoFromJSON,
+    UpdateMadrasahPermissionGroupDtoToJSON,
     UpdateMadrasahSettingsDtoFromJSON,
     UpdateMadrasahSettingsDtoToJSON,
 } from '../models/index';
@@ -82,8 +103,19 @@ export interface CreateMadrasahRequest {
     createMadrasahDto: CreateMadrasahDto;
 }
 
+export interface CreateMadrasahPermissionGroupRequest {
+    id: string;
+    createMadrasahPermissionGroupDto: CreateMadrasahPermissionGroupDto;
+}
+
 export interface DeleteMadrasahRequest {
     id: string;
+}
+
+export interface DeleteMadrasahPermissionGroupRequest {
+    id: string;
+    groupId: string;
+    deletePermissionGroupDto: DeletePermissionGroupDto;
 }
 
 export interface ExploreMadrasahsRequest {
@@ -126,6 +158,11 @@ export interface GetMadrasahNazirGrantsRequest {
     userId: string;
 }
 
+export interface GetMadrasahNazirPermissionsRequest {
+    id: string;
+    userId: string;
+}
+
 export interface GetMadrasahNazirsRequest {
     id: string;
 }
@@ -134,7 +171,19 @@ export interface GetMadrasahOverviewRequest {
     id: string;
 }
 
+export interface GetMadrasahPermissionGroupsRequest {
+    id: string;
+}
+
+export interface GetMadrasahPermissionsRequest {
+    id: string;
+}
+
 export interface GetMadrasahSettingsRequest {
+    id: string;
+}
+
+export interface HideMadrasahRequest {
     id: string;
 }
 
@@ -153,9 +202,21 @@ export interface SetMadrasahHeadMuderrisRequest {
     setHeadMuderrisDto: SetHeadMuderrisDto;
 }
 
+export interface SetMadrasahNazirPermissionsRequest {
+    id: string;
+    userId: string;
+    setMadrasahNazirPermissionsDto: SetMadrasahNazirPermissionsDto;
+}
+
 export interface UpdateMadrasahRequest {
     id: string;
     updateMadrasahDto: UpdateMadrasahDto;
+}
+
+export interface UpdateMadrasahPermissionGroupRequest {
+    id: string;
+    groupId: string;
+    updateMadrasahPermissionGroupDto: UpdateMadrasahPermissionGroupDto;
 }
 
 export interface UpdateMadrasahSettingsRequest {
@@ -267,6 +328,60 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
+     * nazir/16. The name is not blank and not used by another live group of this medrese, whatever its case; at least one permission, all from the scope\'s section of the dictionary. Written to the audit log.
+     * Define a permission group of the medrese (its başmüderris)
+     */
+    async createMadrasahPermissionGroupRaw(requestParameters: CreateMadrasahPermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahPermissionGroupResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling createMadrasahPermissionGroup().'
+            );
+        }
+
+        if (requestParameters['createMadrasahPermissionGroupDto'] == null) {
+            throw new runtime.RequiredError(
+                'createMadrasahPermissionGroupDto',
+                'Required parameter "createMadrasahPermissionGroupDto" was null or undefined when calling createMadrasahPermissionGroup().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/permission-groups`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateMadrasahPermissionGroupDtoToJSON(requestParameters['createMadrasahPermissionGroupDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahPermissionGroupResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nazir/16. The name is not blank and not used by another live group of this medrese, whatever its case; at least one permission, all from the scope\'s section of the dictionary. Written to the audit log.
+     * Define a permission group of the medrese (its başmüderris)
+     */
+    async createMadrasahPermissionGroup(requestParameters: CreateMadrasahPermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahPermissionGroupResponse> {
+        const response = await this.createMadrasahPermissionGroupRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Its nazır list and hosting rights go with it; its courses stay in their köşks with no medrese. Nazırs cannot delete (MDRS-124).
      * Delete a medrese (SYSTEM_ADMIN only)
      */
@@ -312,6 +427,67 @@ export class MadrasahsApi extends runtime.BaseAPI {
     async deleteMadrasah(requestParameters: DeleteMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
         const response = await this.deleteMadrasahRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * nazir/16. While people hold the group, `usersPolicy` is required (USERS_POLICY_REQUIRED otherwise): `keep` turns its permissions into single ones for each of them, `revoke` takes them away. Written to the audit log.
+     * Delete a permission group of the medrese
+     */
+    async deleteMadrasahPermissionGroupRaw(requestParameters: DeleteMadrasahPermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling deleteMadrasahPermissionGroup().'
+            );
+        }
+
+        if (requestParameters['groupId'] == null) {
+            throw new runtime.RequiredError(
+                'groupId',
+                'Required parameter "groupId" was null or undefined when calling deleteMadrasahPermissionGroup().'
+            );
+        }
+
+        if (requestParameters['deletePermissionGroupDto'] == null) {
+            throw new runtime.RequiredError(
+                'deletePermissionGroupDto',
+                'Required parameter "deletePermissionGroupDto" was null or undefined when calling deleteMadrasahPermissionGroup().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/permission-groups/{groupId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"groupId"}}`, encodeURIComponent(String(requestParameters['groupId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+            body: DeletePermissionGroupDtoToJSON(requestParameters['deletePermissionGroupDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * nazir/16. While people hold the group, `usersPolicy` is required (USERS_POLICY_REQUIRED otherwise): `keep` turns its permissions into single ones for each of them, `revoke` takes them away. Written to the audit log.
+     * Delete a permission group of the medrese
+     */
+    async deleteMadrasahPermissionGroup(requestParameters: DeleteMadrasahPermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteMadrasahPermissionGroupRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -691,6 +867,58 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
+     * The state `PUT` writes: the group, the single permissions on top of it, the courses they are limited to (null: every course) and the earliest end. 404 (MADRASAH_NAZIR_NOT_FOUND) when the user is not a nazır of the medrese.
+     * What a nazır was given, as nazir/06 opens it (its başmüderris)
+     */
+    async getMadrasahNazirPermissionsRaw(requestParameters: GetMadrasahNazirPermissionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahNazirPermissionsResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getMadrasahNazirPermissions().'
+            );
+        }
+
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling getMadrasahNazirPermissions().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/nazirs/{userId}/permissions`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"userId"}}`, encodeURIComponent(String(requestParameters['userId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahNazirPermissionsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The state `PUT` writes: the group, the single permissions on top of it, the courses they are limited to (null: every course) and the earliest end. 404 (MADRASAH_NAZIR_NOT_FOUND) when the user is not a nazır of the medrese.
+     * What a nazır was given, as nazir/06 opens it (its başmüderris)
+     */
+    async getMadrasahNazirPermissions(requestParameters: GetMadrasahNazirPermissionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahNazirPermissionsResponse> {
+        const response = await this.getMadrasahNazirPermissionsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * nazir/05\'s table, oldest appointment first. Each with who appointed them and when, the groups and single permissions they hold in this medrese, the earliest end among them, and who gave the permissions. A nazır who holds neither has just been appointed (\"henüz izin almadı\").
      * The medrese\'s nazırs (its başmüderris)
      */
@@ -779,6 +1007,94 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
+     * nazir/05\'s group cards and nazir/06\'s \"Hazır izin grubu\" list, oldest first: each with its permissions and how many people hold it. Only this medrese\'s own groups.
+     * The medrese\'s permission groups (its başmüderris)
+     */
+    async getMadrasahPermissionGroupsRaw(requestParameters: GetMadrasahPermissionGroupsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<MadrasahPermissionGroupResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getMadrasahPermissionGroups().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/permission-groups`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(MadrasahPermissionGroupResponseFromJSON));
+    }
+
+    /**
+     * nazir/05\'s group cards and nazir/06\'s \"Hazır izin grubu\" list, oldest first: each with its permissions and how many people hold it. Only this medrese\'s own groups.
+     * The medrese\'s permission groups (its başmüderris)
+     */
+    async getMadrasahPermissionGroups(requestParameters: GetMadrasahPermissionGroupsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<MadrasahPermissionGroupResponse>> {
+        const response = await this.getMadrasahPermissionGroupsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nazir/06 and nazir/16\'s checkboxes: the medrese\'s own permissions and the course permissions, codes only (the sentences are the web app\'s), and which of them the caller may give.
+     * The permission dictionary of a medrese (its başmüderris)
+     */
+    async getMadrasahPermissionsRaw(requestParameters: GetMadrasahPermissionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahPermissionCatalogResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getMadrasahPermissions().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/permissions`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahPermissionCatalogResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nazir/06 and nazir/16\'s checkboxes: the medrese\'s own permissions and the course permissions, codes only (the sentences are the web app\'s), and which of them the caller may give.
+     * The permission dictionary of a medrese (its başmüderris)
+     */
+    async getMadrasahPermissions(requestParameters: GetMadrasahPermissionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahPermissionCatalogResponse> {
+        const response = await this.getMadrasahPermissionsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * nazir/04: the name and description, the three policies (all off until the first save) and who saved last. Not part of `GET /madrasahs/:id`, which anyone reads.
      * Get the medrese\'s settings (its başmüderris)
      */
@@ -819,6 +1135,50 @@ export class MadrasahsApi extends runtime.BaseAPI {
      */
     async getMadrasahSettings(requestParameters: GetMadrasahSettingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahSettingsResponse> {
         const response = await this.getMadrasahSettingsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nazir/12\'s \"Medreseyi gizle\". The medrese leaves every list and its page closes, and so do its courses, all at once; nothing is deleted. The köşks that host its courses stay. Only the Medaris administration brings it back (`POST …/restore`). 409 (MADRASAH_ALREADY_HIDDEN) when it is hidden. Written to the audit log.
+     * Hide a medrese (its başmüderris)
+     */
+    async hideMadrasahRaw(requestParameters: HideMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahDirectoryItemResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling hideMadrasah().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/hide`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahDirectoryItemResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nazir/12\'s \"Medreseyi gizle\". The medrese leaves every list and its page closes, and so do its courses, all at once; nothing is deleted. The köşks that host its courses stay. Only the Medaris administration brings it back (`POST …/restore`). 409 (MADRASAH_ALREADY_HIDDEN) when it is hidden. Written to the audit log.
+     * Hide a medrese (its başmüderris)
+     */
+    async hideMadrasah(requestParameters: HideMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahDirectoryItemResponse> {
+        const response = await this.hideMadrasahRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -884,7 +1244,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.
+     * The courses hidden with it come back too. 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.
      * Bring a hidden medrese back (SYSTEM_ADMIN only)
      */
     async restoreMadrasahRaw(requestParameters: RestoreMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahDirectoryItemResponse>> {
@@ -919,7 +1279,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.
+     * The courses hidden with it come back too. 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.
      * Bring a hidden medrese back (SYSTEM_ADMIN only)
      */
     async restoreMadrasah(requestParameters: RestoreMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahDirectoryItemResponse> {
@@ -982,6 +1342,68 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
+     * nazir/06\'s Kaydet. Replaces what the nazır held in the medrese and its courses with the group, the single permissions and the courses sent; what stays keeps its giver and date. Answers the nazır\'s row of the roster. Only the medrese\'s başmüderris and the başnazım give (PERMISSION_NOT_GIVABLE otherwise); the nazır cannot hand on what they were given. Written to the audit log. Permissions are records: nothing the API decides reads them yet.
+     * Give a nazır their permissions (its başmüderris)
+     */
+    async setMadrasahNazirPermissionsRaw(requestParameters: SetMadrasahNazirPermissionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahNazirResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling setMadrasahNazirPermissions().'
+            );
+        }
+
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling setMadrasahNazirPermissions().'
+            );
+        }
+
+        if (requestParameters['setMadrasahNazirPermissionsDto'] == null) {
+            throw new runtime.RequiredError(
+                'setMadrasahNazirPermissionsDto',
+                'Required parameter "setMadrasahNazirPermissionsDto" was null or undefined when calling setMadrasahNazirPermissions().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/nazirs/{userId}/permissions`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"userId"}}`, encodeURIComponent(String(requestParameters['userId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetMadrasahNazirPermissionsDtoToJSON(requestParameters['setMadrasahNazirPermissionsDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahNazirResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nazir/06\'s Kaydet. Replaces what the nazır held in the medrese and its courses with the group, the single permissions and the courses sent; what stays keeps its giver and date. Answers the nazır\'s row of the roster. Only the medrese\'s başmüderris and the başnazım give (PERMISSION_NOT_GIVABLE otherwise); the nazır cannot hand on what they were given. Written to the audit log. Permissions are records: nothing the API decides reads them yet.
+     * Give a nazır their permissions (its başmüderris)
+     */
+    async setMadrasahNazirPermissions(requestParameters: SetMadrasahNazirPermissionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahNazirResponse> {
+        const response = await this.setMadrasahNazirPermissionsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Update a medrese (its nazırs)
      */
     async updateMadrasahRaw(requestParameters: UpdateMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahResponse>> {
@@ -1030,6 +1452,68 @@ export class MadrasahsApi extends runtime.BaseAPI {
      */
     async updateMadrasah(requestParameters: UpdateMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahResponse> {
         const response = await this.updateMadrasahRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nazir/16. Only what is sent changes. Changing the permissions while people hold the group needs `usersPolicy` (USERS_POLICY_REQUIRED otherwise): they keep what it gave them as single permissions, or lose it; either way they no longer hold the group. Written to the audit log.
+     * Rename a permission group or change its permissions
+     */
+    async updateMadrasahPermissionGroupRaw(requestParameters: UpdateMadrasahPermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahPermissionGroupResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling updateMadrasahPermissionGroup().'
+            );
+        }
+
+        if (requestParameters['groupId'] == null) {
+            throw new runtime.RequiredError(
+                'groupId',
+                'Required parameter "groupId" was null or undefined when calling updateMadrasahPermissionGroup().'
+            );
+        }
+
+        if (requestParameters['updateMadrasahPermissionGroupDto'] == null) {
+            throw new runtime.RequiredError(
+                'updateMadrasahPermissionGroupDto',
+                'Required parameter "updateMadrasahPermissionGroupDto" was null or undefined when calling updateMadrasahPermissionGroup().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/permission-groups/{groupId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"groupId"}}`, encodeURIComponent(String(requestParameters['groupId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdateMadrasahPermissionGroupDtoToJSON(requestParameters['updateMadrasahPermissionGroupDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahPermissionGroupResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nazir/16. Only what is sent changes. Changing the permissions while people hold the group needs `usersPolicy` (USERS_POLICY_REQUIRED otherwise): they keep what it gave them as single permissions, or lose it; either way they no longer hold the group. Written to the audit log.
+     * Rename a permission group or change its permissions
+     */
+    async updateMadrasahPermissionGroup(requestParameters: UpdateMadrasahPermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahPermissionGroupResponse> {
+        const response = await this.updateMadrasahPermissionGroupRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

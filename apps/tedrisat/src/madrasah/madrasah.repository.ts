@@ -49,6 +49,7 @@ import {
 } from "../database/schema/role-assignment.schema";
 import { users } from "../database/schema/user.schema";
 import {
+  HideMadrasahResult,
   ICreateMadrasah,
   ICreateMadrasahWithHead,
   IHeadDelegation,
@@ -472,7 +473,53 @@ export class MadrasahRepository {
     });
   }
 
-  /** Brings a hidden medrese back (nizam/07 "Geri al"), with an audit row. */
+  /**
+   * Hides the medrese (nazir/12 "Medreseyi gizle") together with its courses,
+   * in one transaction with an audit row. The courses that were shown get the
+   * medrese's own instant, which is how `restore` finds them again: one hidden
+   * on its own earlier stays hidden. Nothing is deleted.
+   */
+  async hide(madrasahId: string, actorId: string): Promise<HideMadrasahResult> {
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select({ archivedAt: madrasahs.archivedAt })
+        .from(madrasahs)
+        .where(eq(madrasahs.id, madrasahId))
+        .for("no key update");
+      if (!row) return "not-found";
+      if (row.archivedAt !== null) return "already-hidden";
+      const now = new Date();
+      await tx
+        .update(madrasahs)
+        .set({ archivedAt: now, archivedBy: actorId, updatedAt: now })
+        .where(eq(madrasahs.id, madrasahId));
+      const hidden = await tx
+        .update(courses)
+        .set({
+          archivedAt: now,
+          archivedBy: actorId,
+          version: sql`${courses.version} + 1`,
+          updatedAt: now,
+        })
+        .where(
+          and(eq(courses.madrasahId, madrasahId), isNull(courses.archivedAt))
+        )
+        .returning({ id: courses.id });
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "madrasah.hide",
+        entity: "madrasah",
+        entityId: madrasahId,
+        details: { courses: hidden.length },
+      });
+      return "hidden";
+    });
+  }
+
+  /**
+   * Brings a hidden medrese back (nizam/07 "Geri al"), with an audit row. The
+   * courses `hide` took with it come back too.
+   */
   async restore(
     madrasahId: string,
     actorId: string
@@ -485,16 +532,35 @@ export class MadrasahRepository {
         .for("no key update");
       if (!row) return "not-found";
       if (row.archivedAt === null) return "not-hidden";
+      const now = new Date();
       await tx
         .update(madrasahs)
-        .set({ archivedAt: null, archivedBy: null, updatedAt: new Date() })
+        .set({ archivedAt: null, archivedBy: null, updatedAt: now })
         .where(eq(madrasahs.id, madrasahId));
+      const shown = await tx
+        .update(courses)
+        .set({
+          archivedAt: null,
+          archivedBy: null,
+          version: sql`${courses.version} + 1`,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(courses.madrasahId, madrasahId),
+            eq(courses.archivedAt, row.archivedAt)
+          )
+        )
+        .returning({ id: courses.id });
       await tx.insert(auditLog).values({
         actorId,
         action: "madrasah.restore",
         entity: "madrasah",
         entityId: madrasahId,
-        details: { hiddenSince: row.archivedAt.toISOString() },
+        details: {
+          hiddenSince: row.archivedAt.toISOString(),
+          courses: shown.length,
+        },
       });
       return "restored";
     });

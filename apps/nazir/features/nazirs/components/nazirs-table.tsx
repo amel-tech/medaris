@@ -7,19 +7,19 @@ import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
-import { dismissOpen, type NazirRow } from "../nazirs";
+import { type NazirRow, permissionWindowOpen } from "../nazirs";
 import { DismissDialog } from "./dismiss-dialog";
+import { PermissionEditor } from "./permission-editor";
 
 /**
  * The table of "Medrese nazırları" (nazir 05). The rows arrive worded and
  * dated, so the table has nothing to translate; the kit's `Table` keeps state
- * of its own and the dismissal dialog is opened from here, which is why this
- * is a client component. "Görevden al" stays off until the version gate of 4
- * Ekim 2026, decided on the viewer's clock after mounting so the server's page
- * and the browser's agree while hydrating; the screen never says why.
- *
- * "İzinleri düzenle" and "İzin ver" (nazir 06) are not here: the permission
- * editor is a later package's, and a button with nowhere to go is not drawn.
+ * of its own and the dismissal and permission dialogs are opened from here,
+ * which is why this is a client component. "Görevden al" and "İzinleri
+ * düzenle" ("İzin ver" for a nazır who holds nothing) stay off until the
+ * version gate of 4 Ekim 2026, decided on the viewer's clock after mounting so
+ * the server's page and the browser's agree while hydrating; the screen never
+ * says why.
  */
 export function NazirsTable({
   rows,
@@ -38,15 +38,16 @@ export function NazirsTable({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [dismissing, setDismissing] = useState<NazirRow | null>(null);
+  const [editing, setEditing] = useState<NazirRow | null>(null);
   const [gateOpen, setGateOpen] = useState(false);
-  useEffect(() => setGateOpen(dismissOpen(Date.now())), []);
+  useEffect(() => setGateOpen(permissionWindowOpen(Date.now())), []);
 
   const columns: TableColumn<NazirRow>[] = [
     {
       key: "nazir",
       header: t("Nazirs.columns.nazir"),
       rowHeader: true,
-      width: "27%",
+      width: "24%",
       render: (row) => (
         <span className="flex min-inline-0 items-center gap-3">
           <Avatar name={row.name} decorative />
@@ -64,7 +65,7 @@ export function NazirsTable({
     {
       key: "grants",
       header: t("Nazirs.columns.grants"),
-      width: "30%",
+      width: "28%",
       render: (row) =>
         row.awaiting ? (
           <span className="flex flex-col items-start gap-1">
@@ -89,13 +90,18 @@ export function NazirsTable({
                 {row.extra}
               </span>
             ) : null}
+            {row.courseScope ? (
+              <span className="mds-caption" data-testid="course-scope">
+                <bdi>{row.courseScope}</bdi>
+              </span>
+            ) : null}
           </span>
         ),
     },
     {
       key: "end",
       header: t("Nazirs.columns.end"),
-      width: "12%",
+      width: "11%",
       render: (row) =>
         row.end ? (
           row.end.iso ? (
@@ -110,7 +116,7 @@ export function NazirsTable({
     {
       key: "giver",
       header: t("Nazirs.columns.giver"),
-      width: "15%",
+      width: "14%",
       render: (row) =>
         row.giver ? (
           <span className="flex flex-col">
@@ -131,17 +137,35 @@ export function NazirsTable({
         </span>
       ),
       align: "right",
-      width: "16%",
+      width: "23%",
       render: (row) => (
-        <Button
-          variant="ghost"
-          size="small"
-          disabled={!gateOpen}
-          aria-label={t("Nazirs.dismissLabel", { name: row.name })}
-          onClick={() => setDismissing(row)}
-        >
-          {t("Nazirs.dismiss")}
-        </Button>
+        <span className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            size="small"
+            disabled={!gateOpen}
+            aria-label={t(
+              row.awaiting
+                ? "Nazirs.givePermissionLabel"
+                : "Nazirs.editPermissionsLabel",
+              { name: row.name }
+            )}
+            onClick={() => setEditing(row)}
+          >
+            {t(
+              row.awaiting ? "Nazirs.givePermission" : "Nazirs.editPermissions"
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="small"
+            disabled={!gateOpen}
+            aria-label={t("Nazirs.dismissLabel", { name: row.name })}
+            onClick={() => setDismissing(row)}
+          >
+            {t("Nazirs.dismiss")}
+          </Button>
+        </span>
       ),
     },
   ];
@@ -155,6 +179,14 @@ export function NazirsTable({
         rowKey={(row) => row.id}
         empty={t("Nazirs.empty")}
         responsive="stack"
+      />
+      <PermissionEditor
+        madrasahId={madrasahId}
+        madrasahName={madrasahName}
+        nazir={editing}
+        timeZone={timeZone}
+        onClose={() => setEditing(null)}
+        onDone={() => startTransition(() => router.refresh())}
       />
       <DismissDialog
         madrasahId={madrasahId}

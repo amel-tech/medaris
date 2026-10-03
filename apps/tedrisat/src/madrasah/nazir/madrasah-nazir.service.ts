@@ -9,6 +9,7 @@ import {
   type IPersonName,
 } from "../../assignment/assignment.repository";
 import { UserDirectoryService } from "../../assignment/user-directory.service";
+import { SCOPE_TYPES } from "../../database/schema/role-assignment.schema";
 import { MadrasahNotFoundError } from "../errors/madrasah-not-found.error";
 import { NazirNotFoundError } from "../errors/nazir-not-found.error";
 import type {
@@ -50,6 +51,18 @@ export class MadrasahNazirService {
 
   async list(madrasahId: string): Promise<MadrasahNazirResponse[]> {
     return this.present(madrasahId, await this.repo.heldRoles(madrasahId));
+  }
+
+  /** One nazır's row of the roster, or null when the user is not a nazır of the medrese. */
+  async find(
+    madrasahId: string,
+    userId: string
+  ): Promise<MadrasahNazirResponse | null> {
+    const [nazir] = await this.present(
+      madrasahId,
+      await this.repo.heldRoles(madrasahId, userId.toLowerCase())
+    );
+    return nazir ?? null;
   }
 
   /** Idempotent: appointing a nazır again answers the same row. */
@@ -149,10 +162,15 @@ export class MadrasahNazirService {
     ]);
     return roles.map((role) => {
       const mine = grants.filter((g) => g.userId === role.userId);
-      const heldGroups: MadrasahNazirGroupResponse[] = mine.flatMap((g) => {
-        const group = g.groupId ? groups.get(g.groupId) : undefined;
-        return group ? [group] : [];
-      });
+      const inMedrese = mine.filter(
+        (g) => g.scopeType === SCOPE_TYPES.MADRASAH
+      );
+      const heldGroups: MadrasahNazirGroupResponse[] = inMedrese.flatMap(
+        (g) => {
+          const group = g.groupId ? groups.get(g.groupId) : undefined;
+          return group ? [group] : [];
+        }
+      );
       const [first] = mine;
       return {
         user: personOf(role.userId, people),
@@ -164,8 +182,21 @@ export class MadrasahNazirService {
           ...mine.map((g) => g.expiresAt),
         ]),
         groups: heldGroups,
-        permissions: mine.flatMap((g) =>
+        permissions: inMedrese.flatMap((g) =>
           g.permission ? [{ code: g.permission, grantedAt: g.createdAt }] : []
+        ),
+        courseGrants: mine.flatMap((g) =>
+          g.scopeType === SCOPE_TYPES.COURSE && g.scopeId
+            ? [
+                {
+                  courseId: g.scopeId,
+                  courseTitle: g.courseTitle,
+                  permission: g.permission,
+                  group: g.groupId ? (groups.get(g.groupId) ?? null) : null,
+                  grantedAt: g.createdAt,
+                },
+              ]
+            : []
         ),
         grantedBy: first ? personOf(first.grantedBy, people) : null,
         grantedAt: first?.createdAt ?? null,

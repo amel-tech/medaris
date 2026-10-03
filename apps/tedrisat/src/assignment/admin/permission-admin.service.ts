@@ -389,9 +389,12 @@ export class PermissionAdminService {
     });
   }
 
+  /** A live platform or course group; a medrese's own groups are not this screen's (MDRS-185). */
   private async mustFind(id: string) {
     const group = await this.repo.findGroup(id);
-    if (!group) throw new PermissionGroupNotFoundError(id);
+    if (!group || group.scopeType === SCOPE_TYPES.MADRASAH) {
+      throw new PermissionGroupNotFoundError(id);
+    }
     return group;
   }
 

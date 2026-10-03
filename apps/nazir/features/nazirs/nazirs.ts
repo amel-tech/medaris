@@ -1,6 +1,7 @@
 import type {
   DismissMadrasahNazirDecisionDto,
   MadrasahNazirGivenResponse,
+  MadrasahNazirGroupResponse,
   MadrasahNazirResponse,
   NazimPersonResponse,
   UserSummaryResponse,
@@ -10,15 +11,23 @@ import { dayMonth, dayMonthLocative } from "~/lib/dates";
 import type { Messages } from "~/lib/i18n/messages";
 
 /**
- * Medrese nazırları and Görevden al (nazir 05, 15) as rules: how a nazır's
- * permissions are summed up, when the "henüz izin almadı" banner shows, what
- * the table rows say, and the state machine of the dismissal.
+ * Medrese nazırları, Görevden al and İzinleri düzenle (nazir 05, 15, 06) as
+ * rules: how a nazır's permissions are summed up, when the "henüz izin almadı"
+ * banner shows, what the table rows say, and the state machine of the dismissal.
  */
 
-/** "Görevden al" opens on 4 Ekim 2026, 00:00 in Istanbul (the version gate); the screen never says why. */
-export const DISMISS_OPENS_AT = Date.parse("2026-10-04T00:00:00+03:00");
+/**
+ * The window to dismiss a nazır and to hand out permissions ("Görevden al",
+ * "İzinleri düzenle", "İzin ver") opens on 4 Ekim 2026, 00:00 in Istanbul (the
+ * version gate, _kurallar 15); the screen never says why. One constant for
+ * both, so that opening the window is a one-line change.
+ */
+export const PERMISSION_WINDOW_OPENS_AT = Date.parse(
+  "2026-10-04T00:00:00+03:00"
+);
 
-export const dismissOpen = (now: number): boolean => now >= DISMISS_OPENS_AT;
+export const permissionWindowOpen = (now: number): boolean =>
+  now >= PERMISSION_WINDOW_OPENS_AT;
 
 export type Person = Pick<NazimPersonResponse, "name" | "email">;
 
@@ -42,11 +51,51 @@ export interface Held {
   permissions: readonly string[];
 }
 
-/** A nazır who holds neither a group nor a permission ("henüz izin almadı"). */
+/**
+ * A nazır who holds no group, no single permission and nothing in a course
+ * ("henüz izin almadı").
+ */
 export const awaitingGrants = (held: {
   groups: readonly unknown[];
   permissions: readonly unknown[];
-}): boolean => held.groups.length === 0 && held.permissions.length === 0;
+  courseGrants?: readonly unknown[];
+}): boolean =>
+  held.groups.length === 0 &&
+  held.permissions.length === 0 &&
+  (held.courseGrants?.length ?? 0) === 0;
+
+/** The groups a nazır holds, in the medrese or only in some courses, each once. */
+export function heldGroups(
+  nazir: Pick<MadrasahNazirResponse, "groups" | "courseGrants">
+): MadrasahNazirGroupResponse[] {
+  const groups = new Map<string, MadrasahNazirGroupResponse>();
+  for (const group of [
+    ...nazir.groups,
+    ...nazir.courseGrants.flatMap((grant) =>
+      grant.group ? [grant.group] : []
+    ),
+  ]) {
+    if (!groups.has(group.id)) groups.set(group.id, group);
+  }
+  return [...groups.values()];
+}
+
+/**
+ * The single permissions beyond the groups, each code once, whether it is held
+ * in the medrese or in a course: what "Ayrıca N izin" counts.
+ */
+export function extraCodes(
+  nazir: Pick<MadrasahNazirResponse, "groups" | "permissions" | "courseGrants">
+): string[] {
+  const carried = new Set(heldGroups(nazir).flatMap((g) => g.permissions));
+  const codes = [
+    ...nazir.permissions.map((p) => p.code),
+    ...nazir.courseGrants.flatMap((grant) =>
+      grant.permission ? [grant.permission] : []
+    ),
+  ];
+  return [...new Set(codes)].filter((code) => !carried.has(code));
+}
 
 /**
  * "Ayrıca 3 izin: a · b · c" beside the group chips, or "3 izin: a · b · c"
@@ -80,9 +129,13 @@ export interface NazirRow {
   groups: string[];
   /** "Ayrıca 3 izin: …" */
   extra: string | null;
-  /** the single permissions held, for the dismissal's summary */
+  /** the single permissions beyond the groups, for the dismissal's summary */
   permissionCount: number;
+  /** "Ders izinleri yalnız şu derslerde: …", when some are held only in courses */
+  courseScope: string | null;
   awaiting: boolean;
+  /** when the appointment ends, which the permissions cannot outlast */
+  assignmentEnd: string | null;
   /** "Atayan: … · 30 Eylül 2026", for a nazır who holds nothing yet */
   appointedLine: string;
   /** null where the cell is a dash */
@@ -103,18 +156,28 @@ export function nazirRows(
 ): NazirRow[] {
   return nazirs.map((n) => {
     const awaiting = awaitingGrants(n);
-    const held = {
-      groups: n.groups,
-      permissions: n.permissions.map((p) => p.code),
-    };
+    const groups = heldGroups(n);
+    const extras = extraCodes(n);
+    const courses = [
+      ...new Set(
+        n.courseGrants.flatMap((g) => (g.courseTitle ? [g.courseTitle] : []))
+      ),
+    ];
     return {
       id: n.user.id,
       name: personName(n.user, t("Nazirs.unknownPerson")),
       email: n.user.email,
-      groups: n.groups.map((g) => g.name),
-      extra: permissionsLine(held, t),
-      permissionCount: n.permissions.length,
+      groups: groups.map((g) => g.name),
+      extra: permissionsLine({ groups, permissions: extras }, t),
+      permissionCount: extras.length,
+      courseScope:
+        courses.length > 0
+          ? t("Nazirs.courseScope", { list: courses.join(" · ") })
+          : null,
       awaiting,
+      assignmentEnd: n.assignmentExpiresAt
+        ? new Date(n.assignmentExpiresAt).toISOString()
+        : null,
       appointedLine: t("Nazirs.appointedBy", {
         name: personName(n.appointedBy, t("Nazirs.unknownPerson")),
         date: day.format(new Date(n.appointedAt)),
@@ -297,7 +360,10 @@ export function dropSummary(
   });
 }
 
-/** The message key of a refused dismissal or appointment, from the code the API answered with. */
+/**
+ * The message key of a refused dismissal, appointment, permission change or
+ * group write, from the code the API answered with.
+ */
 export function nazirErrorKey(code: string): string {
   switch (code) {
     case "DISMISS_DECISIONS_INCOMPLETE":
@@ -305,7 +371,18 @@ export function nazirErrorKey(code: string): string {
     case "MADRASAH_NAZIR_NOT_FOUND":
       return "Dismiss.gone";
     case "AUTHZ_FORBIDDEN":
+    case "PERMISSION_NOT_GIVABLE":
       return "Problems.actionForbidden";
+    case "PERMISSION_UNKNOWN":
+      return "Problems.permissionUnknown";
+    case "NAZIR_COURSE_SCOPE_INVALID":
+      return "Problems.courseScope";
+    case "GRANT_EXPIRY_INVALID":
+      return "Problems.expiryInvalid";
+    case "PERMISSION_GROUP_NOT_FOUND":
+      return "Problems.groupGone";
+    case "PERMISSION_GROUP_NAME_TAKEN":
+      return "Problems.groupNameTaken";
     default:
       return "Problems.actionGeneric";
   }

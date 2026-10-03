@@ -15,6 +15,7 @@ type Answer<T> =
 
 const state = {
   nazirs: { status: "failed" } as Answer<unknown[]>,
+  groups: { status: "ok", data: [] } as Answer<unknown[]>,
   me: { timeZone: "Europe/Istanbul" } as { timeZone?: string } | null,
 };
 
@@ -29,7 +30,8 @@ vi.mock("next-intl/server", () => ({
   getLocale: async () => "tr",
 }));
 vi.mock("~/lib/tedrisat-read", () => ({
-  readOnce: async () => state.nazirs,
+  readOnce: async (what: string) =>
+    what.includes("permission groups") ? state.groups : state.nazirs,
 }));
 vi.mock("~/features/account/reads", () => ({
   getViewer: async () => state.me,
@@ -54,6 +56,12 @@ vi.mock("~/features/nazirs/actions", () => ({
   appointNazir: vi.fn(),
   getNazirGrants: vi.fn(),
   dismissNazir: vi.fn(),
+  loadEditor: vi.fn(),
+  saveNazirPermissions: vi.fn(),
+  loadCatalog: vi.fn(),
+  createGroup: vi.fn(),
+  updateGroup: vi.fn(),
+  removeGroup: vi.fn(),
 }));
 
 const person = (name: string, email: string, id: string) => ({
@@ -75,6 +83,7 @@ const roster = [
       { id: "g-1", name: "Ders açma ve kadro", permissions: [] },
       { id: "g-2", name: "Yasak ve itiraz", permissions: [] },
     ],
+    courseGrants: [],
     permissions: [
       { code: "course.edit", grantedAt: new Date("2026-09-12T09:00:00Z") },
       { code: "week.hide", grantedAt: new Date("2026-09-12T09:00:00Z") },
@@ -95,6 +104,7 @@ const roster = [
     expiresAt: new Date("2026-12-31T20:59:59Z"),
     groups: [{ id: "g-3", name: "Kayıt ve talebe işleri", permissions: [] }],
     permissions: [],
+    courseGrants: [],
     grantedBy: giver,
     grantedAt: new Date("2026-09-20T09:00:00Z"),
   },
@@ -110,6 +120,7 @@ const roster = [
     expiresAt: null,
     groups: [],
     permissions: [],
+    courseGrants: [],
     grantedBy: null,
     grantedAt: null,
   },
@@ -132,7 +143,38 @@ const render = async () => {
   );
 };
 
+/** The three groups of the canvas, as `GET /madrasahs/:id/permission-groups` sends them. */
+const canvasGroups = [
+  {
+    id: "g-1",
+    name: "Ders açma ve kadro",
+    scope: "MADRASAH",
+    permissions: ["madrasah.course_open", "madrasah.muderris_manage"],
+    userCount: 1,
+  },
+  {
+    id: "g-3",
+    name: "Kayıt ve talebe işleri",
+    scope: "MADRASAH",
+    permissions: [
+      "madrasah.students_view",
+      "enrollment.decide",
+      "enrollment.remove",
+      "session.view_content",
+    ],
+    userCount: 1,
+  },
+  {
+    id: "g-2",
+    name: "Yasak ve itiraz",
+    scope: "COURSE",
+    permissions: ["ban.course", "ban.lift_course", "madrasah.appeal_open"],
+    userCount: 0,
+  },
+];
+
 beforeEach(() => {
+  state.groups = { status: "ok", data: canvasGroups };
   state.nazirs = { status: "ok", data: roster };
   state.me = { timeZone: "Europe/Istanbul" };
 });
@@ -163,7 +205,10 @@ describe("Medrese nazırları", () => {
 
   it("lists the nazırs with their groups, extra permissions, end and giver (criterion 1)", async () => {
     const markup = await render();
-    const table = markup.slice(markup.indexOf('data-testid="nazirs"'));
+    const table = markup.slice(
+      markup.indexOf('data-testid="nazirs"'),
+      markup.indexOf('data-testid="permission-groups"')
+    );
     const rows = table.split("<tr").slice(2).map(textOf);
     expect(rows).toHaveLength(3);
 
@@ -182,7 +227,7 @@ describe("Medrese nazırları", () => {
     expect(rows[2]).toContain("İzin yok");
     expect(rows[2]).toContain("Atayan: Fatma Zehra Çelebioğlu · 30 Eylül 2026");
     // Bitiş and Veren are dashes
-    expect(rows[2]).toMatch(/Eylül 2026 — — Görevden al/);
+    expect(rows[2]).toMatch(/Eylül 2026 — — İzin ver Görevden al/);
   });
 
   it("draws 'Görevden al' on every row, off until the gate has been read on the viewer's clock", async () => {
@@ -196,16 +241,61 @@ describe("Medrese nazırları", () => {
     }
   });
 
-  it("does not draw the permission editor or the groups of the next package", async () => {
-    const text = textOf(await render());
-    for (const word of [
-      "İzinleri düzenle",
-      "İzin ver",
-      "İzin grupları",
-      "Grup tanımla",
+  it("offers 'İzinleri düzenle' on a nazır who holds something and 'İzin ver' on one who holds nothing, off until the gate (criterion 2)", async () => {
+    const markup = await render();
+    for (const label of [
+      "İzinleri düzenle: Fatma Zehra Çelebioğlu",
+      "İzinleri düzenle: Ümmügülsüm Nur Hacıosmanoğlu",
+      "İzin ver: Abdullah Talha Erzurumluoğlu",
     ]) {
-      expect(text, word).not.toContain(word);
+      expect(markup, label).toMatch(
+        new RegExp(`<button[^>]*disabled[^>]*aria-label="${label}"`)
+      );
     }
+  });
+
+  it("lists the medrese's groups under the table as cards: name, permissions, and 'N izin · M nazıra verildi' (criterion 5 of nazir 16)", async () => {
+    const markup = await render();
+    const section = markup.slice(
+      markup.indexOf('data-testid="permission-groups"')
+    );
+    const text = textOf(section);
+    expect(text).toContain("İzin grupları");
+    expect(text).toContain(
+      "Gruplar yalnız bu medresede ve medrese derslerinde geçerlidir."
+    );
+    expect(text).toContain("Grup tanımla");
+
+    const cards = section
+      .split('data-testid="permission-group"')
+      .slice(1)
+      .map(textOf);
+    expect(cards).toHaveLength(3);
+    expect(cards[0]).toContain("Ders açma ve kadro");
+    expect(cards[0]).toContain(
+      "Medrese dersi aç · Müderris ekle ya da çıkar; imamı değiştir"
+    );
+    expect(cards[0]).toContain("2 izin · 1 nazıra verildi");
+    // more than four permissions are summed up, not all printed
+    expect(cards[1]).toContain("4 izin · 1 nazıra verildi");
+    expect(cards[2]).toContain("3 izin · 0 nazıra verildi");
+    expect(cards[2]).toContain("Köşk kararına itiraz aç");
+    expect(markup).toMatch(/aria-label="Düzenle: Yasak ve itiraz"/);
+  });
+
+  it("says so when the medrese has no group yet, and still offers 'Grup tanımla'", async () => {
+    state.groups = { status: "ok", data: [] };
+    const text = textOf(await render());
+    expect(text).toContain("Bu medresenin henüz izin grubu yok.");
+    expect(text).toContain("Grup tanımla");
+  });
+
+  it("says the groups could not be read without taking the roster away", async () => {
+    state.groups = { status: "failed" };
+    const text = textOf(await render());
+    expect(text).toContain("İzin grupları şu an okunamadı.");
+    expect(text).not.toContain("Grup tanımla");
+    expect(text).toContain("Fatma Zehra Çelebioğlu");
   });
 
   it("says so when the medrese has no nazır, and still offers the appointment", async () => {
@@ -221,6 +311,7 @@ describe("Medrese nazırları", () => {
     const text = textOf(markup);
     expect(text).toContain("Bu sayfaya izniniz yok");
     expect(text).not.toContain("Medrese nazırı ata");
+    expect(text).not.toContain("İzin grupları");
     expect(markup).not.toContain('data-testid="nazirs"');
   });
 

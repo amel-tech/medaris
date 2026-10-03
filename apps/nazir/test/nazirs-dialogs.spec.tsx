@@ -13,6 +13,8 @@ const lookupPerson = vi.fn();
 const appointNazir = vi.fn();
 const getNazirGrants = vi.fn();
 const dismissNazir = vi.fn();
+const loadEditor = vi.fn();
+const saveNazirPermissions = vi.fn();
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 vi.mock("~/features/nazirs/actions", () => ({
@@ -21,6 +23,13 @@ vi.mock("~/features/nazirs/actions", () => ({
   getNazirGrants: (id: string, userId: string) => getNazirGrants(id, userId),
   dismissNazir: (id: string, userId: string, decisions: unknown) =>
     dismissNazir(id, userId, decisions),
+  loadEditor: (id: string, userId: string) => loadEditor(id, userId),
+  saveNazirPermissions: (id: string, userId: string, request: unknown) =>
+    saveNazirPermissions(id, userId, request),
+  loadCatalog: vi.fn(),
+  createGroup: vi.fn(),
+  updateGroup: vi.fn(),
+  removeGroup: vi.fn(),
 }));
 
 const wrap = (node: React.ReactNode) => (
@@ -52,6 +61,8 @@ beforeEach(() => {
     appointNazir,
     getNazirGrants,
     dismissNazir,
+    loadEditor,
+    saveNazirPermissions,
   ]) {
     fn.mockReset();
   }
@@ -207,7 +218,9 @@ describe("'Görevden al' (nazir 15)", () => {
       groups: ["Ders açma ve kadro", "Yasak ve itiraz"],
       extra: "Ayrıca 3 izin: …",
       permissionCount: 3,
+      courseScope: null,
       awaiting: false,
+      assignmentEnd: null,
       appointedLine: "",
       end: { label: "Süresiz", iso: null },
       giver: null,
@@ -219,7 +232,9 @@ describe("'Görevden al' (nazir 15)", () => {
       groups: [],
       extra: null,
       permissionCount: 0,
+      courseScope: null,
       awaiting: true,
+      assignmentEnd: null,
       appointedLine: "Atayan: Fatma Zehra Çelebioğlu · 30 Eylül 2026",
       end: null,
       giver: null,
@@ -469,5 +484,86 @@ describe("'Görevden al' (nazir 15)", () => {
     await settle(60);
     expect(dialog()).toBeNull();
     expect(dismissNazir).not.toHaveBeenCalled();
+  });
+});
+
+describe("'İzinleri düzenle' and 'İzin ver' on the table (nazir 06)", () => {
+  const rows: NazirRow[] = [
+    {
+      id: "u-1",
+      name: "Fatma Zehra Çelebioğlu",
+      email: "fz@example.com",
+      groups: ["Ders açma ve kadro"],
+      extra: null,
+      permissionCount: 0,
+      courseScope: null,
+      awaiting: false,
+      assignmentEnd: null,
+      appointedLine: "Atayan: Mehmet Emin Işıkoğlu · 12 Eylül 2026",
+      end: { label: "Süresiz", iso: null },
+      giver: null,
+    },
+    {
+      id: "u-3",
+      name: "Abdullah Talha Erzurumluoğlu",
+      email: "a@example.com",
+      groups: [],
+      extra: null,
+      permissionCount: 0,
+      courseScope: null,
+      awaiting: true,
+      assignmentEnd: null,
+      appointedLine: "Atayan: Fatma Zehra Çelebioğlu · 30 Eylül 2026",
+      end: null,
+      giver: null,
+    },
+  ];
+  const mount = () =>
+    render(
+      wrap(
+        <NazirsTable
+          rows={rows}
+          madrasahId="m-1"
+          madrasahName="Süleymaniye Medresesi"
+          locale="tr"
+          timeZone="Europe/Istanbul"
+        />
+      )
+    );
+  const edit = (label: string) =>
+    document.querySelector(
+      `button[aria-label="${label}"]`
+    ) as HTMLButtonElement;
+
+  it("says 'İzinleri düzenle' on a nazır who holds something and 'İzin ver' on one who holds nothing (criterion 2)", async () => {
+    await mount();
+    expect(edit("İzinleri düzenle: Fatma Zehra Çelebioğlu").textContent).toBe(
+      "İzinleri düzenle"
+    );
+    expect(edit("İzin ver: Abdullah Talha Erzurumluoğlu").textContent).toBe(
+      "İzin ver"
+    );
+  });
+
+  it("is off before 4 Ekim 2026, with the same gate as 'Görevden al', and opens the editor after it", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-02T09:00:00+03:00"));
+    await mount();
+    expect(edit("İzinleri düzenle: Fatma Zehra Çelebioğlu").disabled).toBe(
+      true
+    );
+    expect(edit("İzin ver: Abdullah Talha Erzurumluoğlu").disabled).toBe(true);
+    await cleanup();
+
+    vi.setSystemTime(new Date("2026-10-05T10:00:00+03:00"));
+    loadEditor.mockReturnValue(new Promise(() => {}));
+    await mount();
+    const button = edit("İzin ver: Abdullah Talha Erzurumluoğlu");
+    expect(button.disabled).toBe(false);
+    await click(button);
+    await settle(60);
+    expect(loadEditor).toHaveBeenCalledExactlyOnceWith("m-1", "u-3");
+    expect(dialog().textContent).toContain("İzinleri düzenle");
+    expect(dialog().textContent).toContain("Abdullah Talha Erzurumluoğlu");
   });
 });

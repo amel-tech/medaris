@@ -13,7 +13,17 @@ const api = {
     addMadrasahNazir: vi.fn(),
     getMadrasahNazirGrants: vi.fn(),
     removeMadrasahNazir: vi.fn(),
+    getMadrasahPermissions: vi.fn(),
+    getMadrasahPermissionGroups: vi.fn(),
+    getMadrasahNazirPermissions: vi.fn(),
+    getMadrasahCourses: vi.fn(),
+    setMadrasahNazirPermissions: vi.fn(),
+    createMadrasahPermissionGroup: vi.fn(),
+    updateMadrasahPermissionGroup: vi.fn(),
+    deleteMadrasahPermissionGroup: vi.fn(),
+    hideMadrasah: vi.fn(),
   },
+  archive: { restoreArchiveItem: vi.fn() },
   users: { lookupUser: vi.fn() },
 };
 let token: string | undefined;
@@ -213,6 +223,244 @@ describe("the nazır actions", () => {
     expect(await getNazirGrants("m-1", "u-1")).toEqual({
       success: false,
       code: "MADRASAH_NAZIR_NOT_FOUND",
+    });
+  });
+});
+
+describe("the permission actions (nazir 06)", () => {
+  const actions = () => import("~/features/nazirs/actions");
+  const catalog = {
+    madrasah: ["madrasah.course_open"],
+    course: ["course.edit"],
+    givable: ["madrasah.course_open", "course.edit"],
+  };
+
+  it("reads the dictionary, the groups, what the nazır holds and the courses together, the end as text", async () => {
+    const { loadEditor } = await actions();
+    api.madrasahs.getMadrasahPermissions.mockResolvedValue(catalog);
+    api.madrasahs.getMadrasahPermissionGroups.mockResolvedValue([
+      {
+        id: "g-1",
+        name: "Ders açma ve kadro",
+        scope: "MADRASAH",
+        permissions: ["madrasah.course_open"],
+        userCount: 1,
+      },
+    ]);
+    api.madrasahs.getMadrasahNazirPermissions.mockResolvedValue({
+      groupId: "g-1",
+      permissions: ["course.edit"],
+      courseIds: null,
+      expiresAt: new Date("2026-12-31T20:59:59Z"),
+    });
+    api.madrasahs.getMadrasahCourses.mockResolvedValue([
+      { id: "c-1", title: "Bina ve İzhar Şerhi", status: "PUBLISHED" },
+    ]);
+    expect(await loadEditor("m-1", "u-1")).toEqual({
+      success: true,
+      data: {
+        catalog,
+        groups: [
+          {
+            id: "g-1",
+            name: "Ders açma ve kadro",
+            scope: "MADRASAH",
+            permissions: ["madrasah.course_open"],
+            userCount: 1,
+          },
+        ],
+        held: {
+          groupId: "g-1",
+          permissions: ["course.edit"],
+          courseIds: null,
+          expiresAt: "2026-12-31T20:59:59.000Z",
+        },
+        courses: [{ id: "c-1", title: "Bina ve İzhar Şerhi" }],
+      },
+    });
+    expect(api.madrasahs.getMadrasahNazirPermissions).toHaveBeenCalledWith({
+      id: "m-1",
+      userId: "u-1",
+    });
+  });
+
+  it("fails as a whole when one of the four reads fails, and says the nazır is gone when the API does", async () => {
+    const { loadEditor } = await actions();
+    api.madrasahs.getMadrasahPermissions.mockResolvedValue(catalog);
+    api.madrasahs.getMadrasahPermissionGroups.mockResolvedValue([]);
+    api.madrasahs.getMadrasahCourses.mockResolvedValue([]);
+    api.madrasahs.getMadrasahNazirPermissions.mockRejectedValue(
+      refusal(404, { code: "MADRASAH_NAZIR_NOT_FOUND", message: "x" })
+    );
+    expect(await loadEditor("m-1", "u-1")).toEqual({
+      success: false,
+      code: "MADRASAH_NAZIR_NOT_FOUND",
+    });
+  });
+
+  it("sends the request as the PUT's body, the end as a date", async () => {
+    const { saveNazirPermissions } = await actions();
+    api.madrasahs.setMadrasahNazirPermissions.mockResolvedValue({});
+    expect(
+      await saveNazirPermissions("m-1", "u-1", {
+        groupId: "g-1",
+        permissions: ["course.edit"],
+        courseIds: ["c-1"],
+        expiresAt: "2026-12-31T20:59:00.000Z",
+      })
+    ).toEqual({ success: true, data: null });
+    expect(api.madrasahs.setMadrasahNazirPermissions).toHaveBeenCalledWith({
+      id: "m-1",
+      userId: "u-1",
+      setMadrasahNazirPermissionsDto: {
+        groupId: "g-1",
+        permissions: ["course.edit"],
+        courseIds: ["c-1"],
+        expiresAt: new Date("2026-12-31T20:59:00.000Z"),
+      },
+    });
+
+    await saveNazirPermissions("m-1", "u-1", {
+      groupId: null,
+      permissions: [],
+      courseIds: null,
+      expiresAt: null,
+    });
+    expect(
+      api.madrasahs.setMadrasahNazirPermissions.mock.calls[1]?.[0]
+        .setMadrasahNazirPermissionsDto
+    ).toEqual({
+      groupId: null,
+      permissions: [],
+      courseIds: null,
+      expiresAt: null,
+    });
+  });
+
+  it("hands back the code of a refused grant (criterion 2: the server refuses what the caller may not give)", async () => {
+    const { saveNazirPermissions } = await actions();
+    api.madrasahs.setMadrasahNazirPermissions.mockRejectedValue(
+      refusal(403, { code: "PERMISSION_NOT_GIVABLE", message: "x" })
+    );
+    expect(
+      await saveNazirPermissions("m-1", "u-1", {
+        groupId: null,
+        permissions: ["course.edit"],
+        courseIds: null,
+        expiresAt: null,
+      })
+    ).toEqual({ success: false, code: "PERMISSION_NOT_GIVABLE" });
+  });
+});
+
+describe("the group actions (nazir 16)", () => {
+  const actions = () => import("~/features/nazirs/actions");
+
+  it("defines a group with the dialog's body", async () => {
+    const { createGroup } = await actions();
+    api.madrasahs.createMadrasahPermissionGroup.mockResolvedValue({});
+    const body = {
+      name: "Ders açma",
+      scope: "MADRASAH" as const,
+      permissions: ["madrasah.course_open"],
+    };
+    expect(await createGroup("m-1", body)).toEqual({ success: true });
+    expect(api.madrasahs.createMadrasahPermissionGroup).toHaveBeenCalledWith({
+      id: "m-1",
+      createMadrasahPermissionGroupDto: body,
+    });
+    api.madrasahs.createMadrasahPermissionGroup.mockRejectedValue(
+      refusal(409, { code: "PERMISSION_GROUP_NAME_TAKEN", message: "x" })
+    );
+    expect(await createGroup("m-1", body)).toEqual({
+      success: false,
+      code: "PERMISSION_GROUP_NAME_TAKEN",
+      userCount: undefined,
+    });
+  });
+
+  it("changes a group by the patch and the answer about its people, and carries the count of a refusal for want of one", async () => {
+    const { updateGroup } = await actions();
+    api.madrasahs.updateMadrasahPermissionGroup.mockResolvedValue({});
+    expect(
+      await updateGroup("m-1", "g-1", { permissions: ["course.edit"] }, "keep")
+    ).toEqual({ success: true });
+    expect(api.madrasahs.updateMadrasahPermissionGroup).toHaveBeenCalledWith({
+      id: "m-1",
+      groupId: "g-1",
+      updateMadrasahPermissionGroupDto: {
+        permissions: ["course.edit"],
+        usersPolicy: "keep",
+      },
+    });
+
+    api.madrasahs.updateMadrasahPermissionGroup.mockRejectedValue(
+      refusal(400, {
+        type: "APP_ERROR",
+        code: "USERS_POLICY_REQUIRED",
+        message: "2 people use this group",
+        context: { userCount: 2 },
+      })
+    );
+    expect(
+      await updateGroup("m-1", "g-1", { permissions: ["course.edit"] })
+    ).toEqual({ success: false, code: "USERS_POLICY_REQUIRED", userCount: 2 });
+  });
+
+  it("deletes with an empty body for a group nobody holds, and with the answer for one that is held", async () => {
+    const { removeGroup } = await actions();
+    api.madrasahs.deleteMadrasahPermissionGroup.mockResolvedValue(undefined);
+    expect(await removeGroup("m-1", "g-1")).toEqual({ success: true });
+    expect(
+      api.madrasahs.deleteMadrasahPermissionGroup.mock.calls[0]?.[0]
+        .deletePermissionGroupDto
+    ).toEqual({});
+    await removeGroup("m-1", "g-1", "revoke");
+    expect(
+      api.madrasahs.deleteMadrasahPermissionGroup.mock.calls[1]?.[0]
+        .deletePermissionGroupDto
+    ).toEqual({ usersPolicy: "revoke" });
+  });
+});
+
+describe("the archive actions (nazir 12)", () => {
+  const actions = () => import("~/features/archive/actions");
+
+  it("brings an item back by its type and id, and hands back its title", async () => {
+    const { restoreItem } = await actions();
+    api.archive.restoreArchiveItem.mockResolvedValue({
+      type: "course",
+      id: "c-1",
+      title: "Bina ve İzhar Şerhi",
+    });
+    expect(await restoreItem("course", "c-1")).toEqual({
+      success: true,
+      data: { title: "Bina ve İzhar Şerhi" },
+    });
+    expect(api.archive.restoreArchiveItem).toHaveBeenCalledWith({
+      type: "course",
+      id: "c-1",
+    });
+    api.archive.restoreArchiveItem.mockRejectedValue(
+      refusal(403, { code: "ARCHIVE_FORBIDDEN", message: "x" })
+    );
+    expect(await restoreItem("session", "s-1")).toEqual({
+      success: false,
+      code: "ARCHIVE_FORBIDDEN",
+    });
+  });
+
+  it("hides the medrese, and hands back the code of a refusal", async () => {
+    const { hideMedrese } = await actions();
+    api.madrasahs.hideMadrasah.mockResolvedValue({ status: "HIDDEN" });
+    expect(await hideMedrese("m-1")).toEqual({ success: true, data: null });
+    expect(api.madrasahs.hideMadrasah).toHaveBeenCalledWith({ id: "m-1" });
+    api.madrasahs.hideMadrasah.mockRejectedValue(
+      refusal(409, { code: "MADRASAH_ALREADY_HIDDEN", message: "x" })
+    );
+    expect(await hideMedrese("m-1")).toEqual({
+      success: false,
+      code: "MADRASAH_ALREADY_HIDDEN",
     });
   });
 });

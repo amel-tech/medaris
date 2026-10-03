@@ -46,8 +46,10 @@ import {
  * API refuses a set of answers that is not exactly the people it lists, so a
  * list that moved under the başmüderris is read again and the answers cleared.
  *
- * "Düzenle" (nazir 06, the permission editor) is a later package's and is not
- * drawn here.
+ * "Düzenle" beside a row (a link to nazir 06) is not drawn: the design leaves
+ * open whether it opens a second window or replaces this one, and most of the
+ * people listed are not nazırs of the medrese, whom the permission editor
+ * cannot open.
  */
 export function DismissDialog({
   madrasahId,
