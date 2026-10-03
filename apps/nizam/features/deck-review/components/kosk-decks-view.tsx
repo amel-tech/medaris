@@ -52,6 +52,15 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
   const [proposals, setProposals] = useState<DeckProposalResponse[]>(
     initial?.proposals ?? []
   );
+  // router.refresh() ("Yeniden dene") hands this component a new `initial`;
+  // useState only reads its argument on the first render, so adopt the fresh
+  // server data here, during render, when the prop identity changes.
+  const [seen, setSeen] = useState(initial);
+  if (seen !== initial) {
+    setSeen(initial);
+    setDecks(initial?.decks ?? []);
+    setProposals(initial?.proposals ?? []);
+  }
   const [refusing, setRefusing] = useState<DeckProposalResponse | null>(null);
   const [hiding, setHiding] = useState<ManagedKoskDeckResponse | null>(null);
   const [busy, setBusy] = useState(false);
