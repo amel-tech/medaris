@@ -159,7 +159,17 @@
       "ban_lift_course": "Ders yasağını gerekçeyle kaldır",
       "deck_manage_course": "Ders destesini aç ve düzenle",
       "course_nazir_assign": "Ders nazırı ata; izin ya da grup ver, kendi izinlerinizi aşmadan",
-      "permission_group_define": "İzin grubu tanımla"
+      "permission_group_define": "İzin grubu tanımla",
+      "madrasah_course_open": "Medrese dersi aç",
+      "madrasah_muderris_manage": "Müderris ekle ya da çıkar; imamı değiştir",
+      "madrasah_students_view": "Medresenin talebelerini gör",
+      "madrasah_ban": "Medrese düzeyinde yasakla; ders yasağını medreseye genişlet",
+      "madrasah_course_hide": "Medrese derslerini gizle, geri al",
+      "madrasah_admission_rules": "Kabul kurallarını belirle",
+      "madrasah_appeal_open": "Köşk kararına itiraz aç",
+      "madrasah_permanent_ban_request": "Kalıcı yasak talebi aç",
+      "madrasah_settings_edit": "Medrese ayarlarını ve politikalarını değiştir",
+      "madrasah_nazir_appoint": "Medrese nazırı ata"
     },
     "permissionNotes": {
       "course_manage_all": "İçerik okumaların denetim kaydına yazılır.",
@@ -192,7 +202,12 @@
     "forbiddenTitle": "Bu sayfaya izniniz yok",
     "forbidden": "Bu sayfayı açma izniniz yok. İzne ihtiyacınız varsa medresenin başmüderrisine başvurun.",
     "actionForbidden": "Bunu yapma izniniz yok.",
-    "actionGeneric": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin."
+    "actionGeneric": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
+    "permissionUnknown": "Seçtiğiniz izinlerden biri tanınmıyor. Sayfayı yenileyip yeniden deneyin.",
+    "courseScope": "Seçtiğiniz dersler bu izinlerle bağdaşmıyor. Dersleri denetleyip yeniden deneyin.",
+    "expiryInvalid": "Bitiş tarihi geçmişte ya da görevin bitişinden sonra olamaz.",
+    "groupGone": "Bu grup artık yok. Gruplar yenilendi; yeniden seçin.",
+    "groupNameTaken": "Bu adla başka bir grup var. Başka bir ad seçin."
   },
   "Settings": {
     "title": "Medrese ayarları",
@@ -298,7 +313,12 @@
     "dismissLabel": "Görevden al: {name}",
     "empty": "Bu medresenin henüz nazırı yok. “Medrese nazırı ata” ile bir kişi ekleyebilirsiniz.",
     "loadFailedTitle": "Medrese nazırları okunamadı",
-    "loadFailed": "Medrese nazırları şu an okunamadı. Birkaç saniye sonra yeniden deneyin."
+    "loadFailed": "Medrese nazırları şu an okunamadı. Birkaç saniye sonra yeniden deneyin.",
+    "editPermissions": "İzinleri düzenle",
+    "editPermissionsLabel": "İzinleri düzenle: {name}",
+    "givePermission": "İzin ver",
+    "givePermissionLabel": "İzin ver: {name}",
+    "courseScope": "Ders izinleri yalnız şu derslerde: {list}"
   },
   "Appoint": {
     "title": "Medrese nazırı ata",
@@ -349,5 +369,184 @@
     "gone": "Bu kişi artık bu medresenin nazırı değil.",
     "loadFailedTitle": "Liste okunamadı",
     "loadFailed": "Bu kişinin verdikleri şu an okunamıyor. Biraz sonra yeniden deneyin."
+  },
+  "Editor": {
+    "title": "İzinleri düzenle",
+    "role": "Medrese nazırı",
+    "group": "Hazır izin grubu",
+    "groupNone": "Grup yok",
+    "groupHelp": "İsteğe bağlı. Grubun izinleri aşağıda işaretli ve kilitli gelir; ek izinleri ayrıca seçebilirsiniz.",
+    "fromGroup": "Gruptan gelir.",
+    "permissions": "İzinler",
+    "madrasahSection": "Medrese",
+    "courseSection": "Medrese dersleri",
+    "where": "Hangi derslerde",
+    "whereAll": "Bütün medrese dersleri",
+    "whereChosen": "Seçtiğim dersler",
+    "whereAllHelp": "Bütün medrese dersleri, sonradan açılacak dersleri de kapsar.",
+    "whereChosenHelp": "Yalnız seçtiğiniz derslerde geçer; sonradan açılacak dersleri kapsamaz.",
+    "whereGroupSpans": "Grup medrese izinleri taşıdığı için bütün medrese derslerinde geçer.",
+    "whereNeedsCoursePermission": "Seçtiğiniz dersler, bir ders izni işaretleyince geçerli olur.",
+    "courses": "Dersler",
+    "noCourses": "Bu medresenin henüz dersi yok.",
+    "coursesProblem": "En az bir ders seçin.",
+    "expires": "Bitiş tarihi (isteğe bağlı)",
+    "expiresHelp": "Boş bırakırsanız süresiz. Tarih geçince izin kendiliğinden düşer.",
+    "expiresProblems": {
+      "past": "Bitiş tarihi geçmişte olamaz.",
+      "afterAppointment": "Bitiş tarihi, görevin bitişinden sonra olamaz."
+    },
+    "note": "Aldığı izni başkasına veremez. Verilen ve geri alınan her izin denetim kaydına yazılır.",
+    "summary": {
+      "none": "Hiç izin seçilmedi",
+      "single": "{count} izin",
+      "group": "Gruptan {group} izin",
+      "groupAndExtra": "Gruptan {group} izin ve {extra} ek izin"
+    },
+    "cancel": "Vazgeç",
+    "save": "Kaydet",
+    "loadFailedTitle": "İzinler okunamadı",
+    "loadFailed": "Bu kişinin izinleri şu an okunamıyor. Biraz sonra yeniden deneyin.",
+    "saved": "İzinler kaydedildi",
+    "savedBody": "{name} için izinler güncellendi.",
+    "failedTitle": "İzinler kaydedilemedi"
+  },
+  "Groups": {
+    "title": "İzin grupları",
+    "intro": "Gruplar yalnız bu medresede ve medrese derslerinde geçerlidir.",
+    "define": "Grup tanımla",
+    "edit": "Düzenle",
+    "editLabel": "Düzenle: {name}",
+    "usage": "{count} izin · {users} nazıra verildi",
+    "more": "ve {count} izin daha",
+    "empty": "Bu medresenin henüz izin grubu yok. “Grup tanımla” ile hazır bir izin kümesi oluşturabilirsiniz.",
+    "sectionFailed": "İzin grupları şu an okunamadı. Sayfayı yenileyerek yeniden deneyin.",
+    "createTitle": "İzin grubu tanımla",
+    "editTitle": "İzin grubunu düzenle",
+    "required": "zorunlu alan",
+    "name": "Grup adı",
+    "nameHelp": "İzin verirken bu adı görürsünüz.",
+    "nameProblems": {
+      "required": "Grup adı boş olamaz.",
+      "long": "Grup adı en çok {max} karakter olabilir."
+    },
+    "scope": "Kapsam",
+    "scopes": {
+      "MADRASAH": {
+        "label": "Medrese",
+        "help": "Medrese işleri ve medrese derslerindeki ders işleri."
+      },
+      "COURSE": {
+        "label": "Ders",
+        "help": "Yalnız ders işleri; izin verirken hangi derslerde geçeceğini seçersiniz."
+      }
+    },
+    "scopeHelp": "Kapsam, gruba girebilecek izinleri belirler. Grup yalnız bu medresede ve medrese derslerinde geçerlidir.",
+    "permissions": "İzinler",
+    "permissionsHelp": "Yalnız verebileceğiniz izinler listelenir. {count} izin seçili.",
+    "permissionsProblem": "En az bir izin seçin.",
+    "unusedNote": "Grubu henüz kimse kullanmıyor; kaydettikten sonra bir nazıra verebilirsiniz.",
+    "usedNote": "Bu grubu {count} kişi kullanıyor. İzinleri değiştirirseniz kullananlara ne olacağını sorarız.",
+    "meta": {
+      "MADRASAH": "Medrese kapsamı · {count} izin seçili",
+      "COURSE": "Ders kapsamı · {count} izin seçili"
+    },
+    "cancel": "Vazgeç",
+    "save": "Grubu kaydet",
+    "delete": "Grubu sil",
+    "catalogFailedTitle": "İzin listesi okunamadı",
+    "catalogFailed": "İzin listesi şu an okunamıyor. Biraz sonra yeniden deneyin.",
+    "saved": "Grup kaydedildi",
+    "savedBody": "“{name}” grubu kaydedildi.",
+    "failedTitle": "Grup kaydedilemedi",
+    "deleted": "Grup silindi",
+    "deletedBody": "“{name}” grubu silindi.",
+    "deleteFailedTitle": "Grup silinemedi",
+    "deleteTitle": "Grubu sil",
+    "deleteBody": "“{name}” grubu silinecek. Bu grubu kimse kullanmıyor; kimsenin izni değişmez.",
+    "users": {
+      "title": "Bu grubu {count} kişi kullanıyor",
+      "editIntro": "“{name}” grubunun izinlerini değiştiriyorsunuz. Yeni izinler yalnız grubu bundan sonra alanlara geçer; şimdi kullananlar için ne olacağını seçin.",
+      "deleteIntro": "“{name}” grubunu siliyorsunuz. Kullananlar için ne olacağını seçin.",
+      "legend": "Bu grubu kullananlar",
+      "keep": "İzinleri korusunlar",
+      "keepHelp": "Grubun şimdiki izinleri her birinde tek tek verilmiş izin olarak kalır; kişiler gruptan çıkar.",
+      "revoke": "İzinleri kaybetsinler",
+      "revokeHelp": "Grubun şimdiki izinleri her birinden hemen kalkar.",
+      "confirmEdit": "Grubu kaydet",
+      "confirmDelete": "Grubu sil",
+      "cancel": "Vazgeç"
+    }
+  },
+  "Archive": {
+    "title": "Arşiv",
+    "intro": "Bu medresede gizlenen dersler, haftalar, celseler ve ders kayıtları. Hiçbiri silinmez; öğeyi gizleyen kademe ya da üstü geri alır.",
+    "tabsLabel": "Arşivdeki öğe türleri",
+    "tabs": {
+      "all": "Tümü",
+      "course": "Dersler",
+      "weeks": "Haftalar ve celseler",
+      "recordings": "Ders kayıtları"
+    },
+    "caption": "Gizlenen öğeler",
+    "columns": {
+      "item": "Öğe",
+      "type": "Tür",
+      "hider": "Gizleyen",
+      "at": "Gizlendiği tarih",
+      "actions": "İşlemler"
+    },
+    "types": {
+      "course": "Ders",
+      "week": "Hafta",
+      "session": "Celse",
+      "recording": "Ders kaydı"
+    },
+    "weekNumber": "Hafta {number}",
+    "weekCount": "{count} hafta",
+    "studentCount": "{count} talebe",
+    "hiderYou": "{role} (siz)",
+    "byAdmin": "Medaris yönetimi",
+    "restore": "Geri al",
+    "restoreLabel": "Geri al: {title}",
+    "locked": "Bunu {role} gizledi; yalnız o kademe ya da üstü geri alabilir.",
+    "lockedAdmin": "Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir.",
+    "lockedUnknown": "Yalnız gizleyen kademe ya da üstü geri alabilir.",
+    "restored": "Geri alındı",
+    "restoredBody": "“{title}” asıl yerinde yeniden görünür.",
+    "restoreFailedTitle": "Geri alınamadı",
+    "errors": {
+      "forbidden": "Bunu geri alma yetkiniz yok; öğeyi daha üst bir kademe gizlemiş olabilir. Liste yenilendi.",
+      "gone": "Bu öğe artık arşivde değil. Liste yenilendi.",
+      "parentHidden": "Bu öğenin bağlı olduğu medrese ya da köşk hâlâ gizli, bu yüzden geri alınamadı. Medreseyi yalnız Medaris yönetimi geri getirebilir."
+    },
+    "empty": {
+      "all": "Bu medresede gizlenmiş bir öğe yok.",
+      "course": "Bu medresede gizlenmiş bir ders yok.",
+      "weeks": "Bu medresede gizlenmiş bir hafta ya da celse yok.",
+      "recordings": "Bu medresede gizlenmiş bir ders kaydı yok."
+    },
+    "today": "Bugün {time}",
+    "yesterday": "Dün {time}",
+    "pager": {
+      "label": "Arşiv sayfaları",
+      "range": "{from}–{to} / {total}",
+      "previous": "Önceki",
+      "next": "Sonraki"
+    },
+    "loadFailedTitle": "Arşiv okunamadı",
+    "loadFailed": "Arşiv şu an okunamadı. Birkaç saniye sonra yeniden deneyin.",
+    "hide": {
+      "title": "Medreseyi gizle",
+      "text": "{name} ve dersleri bütün listelerden ve aramadan kalkar; medrese ve ders sayfaları siz ve Medaris yönetimi dışında herkese kapanır. Dersleri barındıran köşkler gizlenmez. Hiçbir şey silinmez; medreseyi yalnız Medaris yönetimi geri getirebilir.",
+      "button": "Medreseyi gizle",
+      "confirmBody": "{name} ve görünen dersleri herkesten gizlenecek; sayfalarını yalnız siz ve Medaris yönetimi açabilecek. Hiçbir şey silinmez, ama medreseyi yalnız Medaris yönetimi geri getirebilir; o zamana dek Arşiv’deki dersleri geri alamazsınız.",
+      "confirm": "Gizle",
+      "cancel": "Vazgeç",
+      "done": "Medrese gizlendi",
+      "doneBody": "{name} ve dersleri artık siz ve Medaris yönetimi dışında kimseye görünmüyor. Geri getirmek için Medaris yönetimiyle görüşün.",
+      "already": "Bu medrese zaten gizli. Geri getirmek için Medaris yönetimiyle görüşün.",
+      "failedTitle": "Medrese gizlenemedi"
+    }
   }
 }

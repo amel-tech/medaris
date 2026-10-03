@@ -3,17 +3,19 @@ import { describe, expect, it } from "vitest";
 import {
   awaitingGrants,
   awaitingNotice,
-  DISMISS_OPENS_AT,
   dismissDecisions,
-  dismissOpen,
   dismissReady,
   dropSummary,
+  extraCodes,
   givenRoleLine,
+  heldGroups,
   isEmailLike,
   nazirErrorKey,
   nazirRows,
+  PERMISSION_WINDOW_OPENS_AT,
   permissionLabel,
   permissionsLine,
+  permissionWindowOpen,
   personName,
   pickedPerson,
 } from "~/features/nazirs/nazirs";
@@ -44,6 +46,7 @@ const nazir = (over: Record<string, unknown> = {}) =>
     expiresAt: null,
     groups: [],
     permissions: [],
+    courseGrants: [],
     grantedBy: null,
     grantedAt: null,
     ...over,
@@ -55,15 +58,23 @@ const grant = (code: string) => ({
   grantedAt: new Date("2026-09-12T09:00:00Z"),
 });
 
-describe("the version gate of 'Görevden al'", () => {
+describe("the version gate of 'Görevden al' and 'İzinleri düzenle'", () => {
   it("opens on 4 Ekim 2026 at midnight in Istanbul and not a moment before", () => {
-    expect(new Date(DISMISS_OPENS_AT).toISOString()).toBe(
+    expect(new Date(PERMISSION_WINDOW_OPENS_AT).toISOString()).toBe(
       "2026-10-03T21:00:00.000Z"
     );
-    expect(dismissOpen(Date.parse("2026-10-02T09:00:00+03:00"))).toBe(false);
-    expect(dismissOpen(Date.parse("2026-10-03T23:59:59+03:00"))).toBe(false);
-    expect(dismissOpen(Date.parse("2026-10-04T00:00:00+03:00"))).toBe(true);
-    expect(dismissOpen(Date.parse("2026-12-01T00:00:00+03:00"))).toBe(true);
+    expect(permissionWindowOpen(Date.parse("2026-10-02T09:00:00+03:00"))).toBe(
+      false
+    );
+    expect(permissionWindowOpen(Date.parse("2026-10-03T23:59:59+03:00"))).toBe(
+      false
+    );
+    expect(permissionWindowOpen(Date.parse("2026-10-04T00:00:00+03:00"))).toBe(
+      true
+    );
+    expect(permissionWindowOpen(Date.parse("2026-12-01T00:00:00+03:00"))).toBe(
+      true
+    );
   });
 });
 
@@ -162,6 +173,96 @@ describe("nazir 05's rows (criterion 1)", () => {
       "Adı bilinmiyor"
     );
     expect(personName(null, "Adı bilinmiyor")).toBe("Adı bilinmiyor");
+  });
+});
+
+describe("what a nazır holds in the medrese's courses", () => {
+  const dersAcma = {
+    id: "g-1",
+    name: "Ders açma ve kadro",
+    permissions: ["course.edit", "session.manage"],
+  };
+  const onlyHere = {
+    id: "g-2",
+    name: "Kayıt ve talebe işleri",
+    permissions: ["enrollment.decide"],
+  };
+  const inCourse = (
+    title: string | null,
+    over: Record<string, unknown> = {}
+  ) => ({
+    courseId: `c-${title}`,
+    courseTitle: title,
+    permission: null,
+    group: null,
+    grantedAt: new Date("2026-09-12T09:00:00Z"),
+    ...over,
+  });
+  const held = nazir({
+    groups: [dersAcma],
+    permissions: [grant("course.edit"), grant("madrasah.nazir_appoint")],
+    courseGrants: [
+      inCourse("Bina ve İzhar Şerhi", { group: onlyHere }),
+      inCourse("Bina ve İzhar Şerhi", { permission: "week.hide" }),
+      inCourse("İsâgûcî", { permission: "week.hide" }),
+      inCourse("İsâgûcî", { permission: "session.manage" }),
+    ],
+  });
+
+  it("lists a group held only in some courses beside the medrese's, each once", () => {
+    expect(heldGroups(held).map((g) => g.name)).toEqual([
+      "Ders açma ve kadro",
+      "Kayıt ve talebe işleri",
+    ]);
+  });
+
+  it("counts a single permission once however many places hold it, and not one a group carries", () => {
+    // course.edit and session.manage are the first group's; week.hide is held in two courses
+    expect(extraCodes(held)).toEqual(["madrasah.nazir_appoint", "week.hide"]);
+  });
+
+  it("is a nazır who holds something, though only in a course (criterion 1)", () => {
+    expect(
+      awaitingGrants({
+        groups: [],
+        permissions: [],
+        courseGrants: [inCourse("A")],
+      })
+    ).toBe(false);
+    expect(
+      awaitingGrants({ groups: [], permissions: [], courseGrants: [] })
+    ).toBe(true);
+    expect(
+      awaitingNotice([nazir({ courseGrants: [inCourse("A")] })], t, {
+        locale: "tr",
+        timeZone: IST,
+      })
+    ).toBeNull();
+  });
+
+  it("is worded in the row: the groups, 'Ayrıca N izin', and the courses the course permissions are limited to", () => {
+    const [row] = nazirRows([held], t, day);
+    expect(row).toMatchObject({
+      groups: ["Ders açma ve kadro", "Kayıt ve talebe işleri"],
+      permissionCount: 2,
+      awaiting: false,
+      courseScope:
+        "Ders izinleri yalnız şu derslerde: Bina ve İzhar Şerhi · İsâgûcî",
+    });
+    expect(row?.extra).toMatch(
+      /^Ayrıca 2 izin: Medrese nazırı ata · Hafta ve celse/
+    );
+    expect(nazirRows([nazir()], t, day)[0]?.courseScope).toBeNull();
+  });
+
+  it("carries the end of the appointment, which a permission cannot outlast", () => {
+    const [row] = nazirRows(
+      [nazir({ assignmentExpiresAt: new Date("2026-12-31T20:59:59Z") })],
+      t,
+      day
+    );
+    expect(row?.assignmentEnd).toBe("2026-12-31T20:59:59.000Z");
+    expect(nazirRows([nazir()], t, day)[0]?.assignmentEnd).toBeNull();
   });
 });
 
@@ -401,6 +502,27 @@ describe("a refused appointment or dismissal", () => {
     expect(nazirErrorKey("AUTHZ_FORBIDDEN")).toBe("Problems.actionForbidden");
     expect(nazirErrorKey("")).toBe("Problems.actionGeneric");
   });
+
+  it("is worded from the codes of a permission change or a group write", () => {
+    expect(nazirErrorKey("PERMISSION_NOT_GIVABLE")).toBe(
+      "Problems.actionForbidden"
+    );
+    expect(nazirErrorKey("PERMISSION_UNKNOWN")).toBe(
+      "Problems.permissionUnknown"
+    );
+    expect(nazirErrorKey("NAZIR_COURSE_SCOPE_INVALID")).toBe(
+      "Problems.courseScope"
+    );
+    expect(nazirErrorKey("GRANT_EXPIRY_INVALID")).toBe(
+      "Problems.expiryInvalid"
+    );
+    expect(nazirErrorKey("PERMISSION_GROUP_NOT_FOUND")).toBe(
+      "Problems.groupGone"
+    );
+    expect(nazirErrorKey("PERMISSION_GROUP_NAME_TAKEN")).toBe(
+      "Problems.groupNameTaken"
+    );
+  });
 });
 
 describe("message keys of the nazır screens", () => {
@@ -419,6 +541,12 @@ describe("message keys of the nazır screens", () => {
         "DISMISS_DECISIONS_INCOMPLETE",
         "MADRASAH_NAZIR_NOT_FOUND",
         "AUTHZ_FORBIDDEN",
+        "PERMISSION_NOT_GIVABLE",
+        "PERMISSION_UNKNOWN",
+        "NAZIR_COURSE_SCOPE_INVALID",
+        "GRANT_EXPIRY_INVALID",
+        "PERMISSION_GROUP_NOT_FOUND",
+        "PERMISSION_GROUP_NAME_TAKEN",
         "",
       ]) {
         expect(

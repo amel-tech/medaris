@@ -2105,9 +2105,55 @@
         ]
       }
     },
+    "/madrasahs/{id}/hide": {
+      "post": {
+        "description": "nazir/12's \"Medreseyi gizle\". The medrese leaves every list and its page closes, and so do its courses, all at once; nothing is deleted. The köşks that host its courses stay. Only the Medaris administration brings it back (`POST …/restore`). 409 (MADRASAH_ALREADY_HIDDEN) when it is hidden. Written to the audit log.",
+        "operationId": "hideMadrasah",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahDirectoryItemResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "MADRASAH_ALREADY_HIDDEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Hide a medrese (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
     "/madrasahs/{id}/restore": {
       "post": {
-        "description": "409 (MADRASAH_NOT_HIDDEN) when it is not hidden.",
+        "description": "The courses hidden with it come back too. 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.",
         "operationId": "restoreMadrasah",
         "parameters": [
           {
@@ -7408,6 +7454,387 @@
         ]
       }
     },
+    "/madrasahs/{id}/permissions": {
+      "get": {
+        "description": "nazir/06 and nazir/16's checkboxes: the medrese's own permissions and the course permissions, codes only (the sentences are the web app's), and which of them the caller may give.",
+        "operationId": "getMadrasahPermissions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahPermissionCatalogResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The permission dictionary of a medrese (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/permission-groups": {
+      "get": {
+        "description": "nazir/05's group cards and nazir/06's \"Hazır izin grubu\" list, oldest first: each with its permissions and how many people hold it. Only this medrese's own groups.",
+        "operationId": "getMadrasahPermissionGroups",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MadrasahPermissionGroupResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The medrese's permission groups (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      },
+      "post": {
+        "description": "nazir/16. The name is not blank and not used by another live group of this medrese, whatever its case; at least one permission, all from the scope's section of the dictionary. Written to the audit log.",
+        "operationId": "createMadrasahPermissionGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMadrasahPermissionGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahPermissionGroupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "PERMISSION_GROUP_NAME_TAKEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Define a permission group of the medrese (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/permission-groups/{groupId}": {
+      "patch": {
+        "description": "nazir/16. Only what is sent changes. Changing the permissions while people hold the group needs `usersPolicy` (USERS_POLICY_REQUIRED otherwise): they keep what it gave them as single permissions, or lose it; either way they no longer hold the group. Written to the audit log.",
+        "operationId": "updateMadrasahPermissionGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMadrasahPermissionGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahPermissionGroupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "PERMISSION_GROUP_NAME_TAKEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rename a permission group or change its permissions",
+        "tags": [
+          "madrasahs"
+        ]
+      },
+      "delete": {
+        "description": "nazir/16. While people hold the group, `usersPolicy` is required (USERS_POLICY_REQUIRED otherwise): `keep` turns its permissions into single ones for each of them, `revoke` takes them away. Written to the audit log.",
+        "operationId": "deleteMadrasahPermissionGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeletePermissionGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a permission group of the medrese",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/nazirs/{userId}/permissions": {
+      "get": {
+        "description": "The state `PUT` writes: the group, the single permissions on top of it, the courses they are limited to (null: every course) and the earliest end. 404 (MADRASAH_NAZIR_NOT_FOUND) when the user is not a nazır of the medrese.",
+        "operationId": "getMadrasahNazirPermissions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahNazirPermissionsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What a nazır was given, as nazir/06 opens it (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      },
+      "put": {
+        "description": "nazir/06's Kaydet. Replaces what the nazır held in the medrese and its courses with the group, the single permissions and the courses sent; what stays keeps its giver and date. Answers the nazır's row of the roster. Only the medrese's başmüderris and the başnazım give (PERMISSION_NOT_GIVABLE otherwise); the nazır cannot hand on what they were given. Written to the audit log. Permissions are records: nothing the API decides reads them yet.",
+        "operationId": "setMadrasahNazirPermissions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetMadrasahNazirPermissionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahNazirResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "PERMISSION_UNKNOWN, NAZIR_COURSE_SCOPE_INVALID or GRANT_EXPIRY_INVALID"
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Give a nazır their permissions (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
     "/nizam/inactive-scopes": {
       "get": {
         "description": "nizam/14. Only scopes that once had a manager and have none now, oldest first; hidden ones are left out. `reason` says whether the last term ran out or somebody took it away.",
@@ -7906,6 +8333,75 @@
           }
         ],
         "summary": "Delete a hidden item for real (Kalıcı olarak sil)",
+        "tags": [
+          "archive"
+        ]
+      }
+    },
+    "/madrasahs/{id}/archive": {
+      "get": {
+        "description": "nazir/12's table, newest hidden first: the medrese's hidden courses and the weeks and sessions in them. `counts` are the tabs' numbers. Each item says whether the caller may bring it back (`canRestore`); a recording has no storage yet, so none is listed.",
+        "operationId": "listMadrasahArchive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "types",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated, from course, week, session, recording; default all of them. \"Haftalar ve celseler\" is `week,session`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 50; default 10.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedMadrasahArchiveResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What is hidden in a medrese (its başmüderris)",
         "tags": [
           "archive"
         ]
@@ -16310,6 +16806,45 @@
           "permissions"
         ]
       },
+      "MadrasahNazirCourseGrantResponse": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "permission": {
+            "type": "string",
+            "nullable": true,
+            "description": "The permission code; null when the grant is a group"
+          },
+          "group": {
+            "nullable": true,
+            "description": "The group; null when the grant is a single permission",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MadrasahNazirGroupResponse"
+              }
+            ]
+          },
+          "grantedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "courseId",
+          "courseTitle",
+          "permission",
+          "group",
+          "grantedAt"
+        ]
+      },
       "MadrasahNazirResponse": {
         "type": "object",
         "properties": {
@@ -16350,10 +16885,17 @@
             }
           },
           "permissions": {
-            "description": "Permissions given one by one, not through a group",
+            "description": "Permissions given one by one, not through a group, held in the medrese (a course permission here covers every course of the medrese)",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/NazimPermissionResponse"
+            }
+          },
+          "courseGrants": {
+            "description": "Permissions and groups held in single courses of the medrese, one entry per course and permission or group; the same code in three courses is three entries",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahNazirCourseGrantResponse"
             }
           },
           "grantedBy": {
@@ -16380,6 +16922,7 @@
           "expiresAt",
           "groups",
           "permissions",
+          "courseGrants",
           "grantedBy",
           "grantedAt"
         ]
@@ -16485,6 +17028,207 @@
         },
         "required": [
           "decisions"
+        ]
+      },
+      "MadrasahPermissionCatalogResponse": {
+        "type": "object",
+        "properties": {
+          "madrasah": {
+            "description": "The \"Medrese\" section, in the order the dialogs print it",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "course": {
+            "description": "The \"Medrese dersleri\" section: the permissions held in courses",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "givable": {
+            "description": "What the caller may give. The medrese's başmüderris and the başnazım may give every code above; anyone else none, because what a nazır was given cannot be handed on.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "madrasah",
+          "course",
+          "givable"
+        ]
+      },
+      "MadrasahPermissionGroupScope": {
+        "type": "string",
+        "enum": [
+          "MADRASAH",
+          "COURSE"
+        ],
+        "description": "Worked out from the permissions, not stored: MADRASAH when any is a medrese permission, COURSE when all are course permissions"
+      },
+      "MadrasahPermissionGroupResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scope": {
+            "description": "Worked out from the permissions, not stored: MADRASAH when any is a medrese permission, COURSE when all are course permissions",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MadrasahPermissionGroupScope"
+              }
+            ]
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "userCount": {
+            "type": "number",
+            "description": "People who hold the group right now"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "scope",
+          "permissions",
+          "userCount"
+        ]
+      },
+      "CreateMadrasahPermissionGroupDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "scope": {
+            "description": "MADRASAH: any code of the medrese and course sections. COURSE: course codes only.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MadrasahPermissionGroupScope"
+              }
+            ]
+          },
+          "permissions": {
+            "description": "At least one code",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "scope",
+          "permissions"
+        ]
+      },
+      "UpdateMadrasahPermissionGroupDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "permissions": {
+            "description": "The group's whole new set of codes; at least one",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "usersPolicy": {
+            "description": "Required when the permissions change while people hold the group. `keep`: they keep what the group gave them, as single permissions. `revoke`: they lose it.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UsersPolicy"
+              }
+            ]
+          }
+        }
+      },
+      "MadrasahNazirPermissionsResponse": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "permissions": {
+            "description": "The single permissions held on top of the group",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "courseIds": {
+            "nullable": true,
+            "description": "The courses the permissions are limited to; null: every course",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "The earliest end among them; null when none ends"
+          }
+        },
+        "required": [
+          "groupId",
+          "permissions",
+          "courseIds",
+          "expiresAt"
+        ]
+      },
+      "SetMadrasahNazirPermissionsDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "One of the medrese's own groups; null or omitted for none"
+          },
+          "permissions": {
+            "description": "The permissions given on top of the group, from either section; empty for none",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "courseIds": {
+            "nullable": true,
+            "description": "\"Hangi derslerde\". Null or omitted: every course of the medrese, those opened later too. Otherwise only these courses, at least one, all of this medrese; the group may then carry course permissions only, and something course-level must be given.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the permissions end; null or omitted: when the appointment does. In the future, and never later than the appointment's end."
+          }
+        },
+        "required": [
+          "permissions"
         ]
       },
       "InactiveScopeType": {
@@ -16939,6 +17683,180 @@
           "recordings",
           "followers",
           "cards"
+        ]
+      },
+      "MadrasahArchiveItemResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ArchiveItemType"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "The hidden thing's own title or name."
+          },
+          "koskId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "koskName": {
+            "type": "string",
+            "nullable": true
+          },
+          "madrasahId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "madrasahName": {
+            "type": "string",
+            "nullable": true
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "The course a week or a session belongs to."
+          },
+          "courseTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "weekNumber": {
+            "type": "number",
+            "nullable": true,
+            "description": "Of a week, and of the week a session is in."
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "weekCount": {
+            "type": "number",
+            "nullable": true,
+            "description": "Of a course: its live weeks."
+          },
+          "sessionCount": {
+            "type": "number",
+            "nullable": true,
+            "description": "Of a week: its live sessions."
+          },
+          "studentCount": {
+            "type": "number",
+            "nullable": true,
+            "description": "Of a course: its enrolled talebe."
+          },
+          "archivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "archivedBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ArchiverResponse"
+              }
+            ]
+          },
+          "canRestore": {
+            "type": "boolean",
+            "description": "Whether the caller may bring it back (Geri al). False when the hider's kademe is above theirs; the hider's role is in `archivedBy.role`. A hidden parent still answers 409 on restore."
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "title",
+          "koskId",
+          "koskName",
+          "madrasahId",
+          "madrasahName",
+          "courseId",
+          "courseTitle",
+          "weekNumber",
+          "scheduledAt",
+          "weekCount",
+          "sessionCount",
+          "studentCount",
+          "archivedAt",
+          "archivedBy",
+          "canRestore"
+        ]
+      },
+      "MadrasahArchiveCountsResponse": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "number",
+            "description": "Everything hidden in the medrese (Tümü)."
+          },
+          "course": {
+            "type": "number"
+          },
+          "week": {
+            "type": "number"
+          },
+          "session": {
+            "type": "number"
+          },
+          "recording": {
+            "type": "number",
+            "description": "0 until recordings are stored."
+          }
+        },
+        "required": [
+          "all",
+          "course",
+          "week",
+          "session",
+          "recording"
+        ]
+      },
+      "PaginatedMadrasahArchiveResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MadrasahArchiveItemResponse"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "All hidden items matching `types`, not just this page."
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "counts": {
+            "description": "The tabs' numbers: everything hidden in the medrese, whatever `types` says.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MadrasahArchiveCountsResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "counts"
         ]
       },
       "DeckRequestStatus": {

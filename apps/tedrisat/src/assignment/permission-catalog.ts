@@ -64,6 +64,20 @@ export const PERMISSIONS = {
   PLATFORM_INACTIVE_SCOPES_MANAGE: "platform.inactive_scopes_manage",
   PLATFORM_YOUTUBE_MANAGE: "platform.youtube_manage",
   PLATFORM_POLICY_EDIT: "platform.policy_edit",
+
+  // What the medrese's başmüderris can hand to one of its nazırs (MDRS-185,
+  // nazir/06 and 16): the "Medrese" section of both dialogs, in the order they
+  // print it. The course permissions a nazır may be given are the ones above.
+  MADRASAH_COURSE_OPEN: "madrasah.course_open",
+  MADRASAH_MUDERRIS_MANAGE: "madrasah.muderris_manage",
+  MADRASAH_STUDENTS_VIEW: "madrasah.students_view",
+  MADRASAH_BAN: "madrasah.ban",
+  MADRASAH_COURSE_HIDE: "madrasah.course_hide",
+  MADRASAH_ADMISSION_RULES: "madrasah.admission_rules",
+  MADRASAH_APPEAL_OPEN: "madrasah.appeal_open",
+  MADRASAH_PERMANENT_BAN_REQUEST: "madrasah.permanent_ban_request",
+  MADRASAH_SETTINGS_EDIT: "madrasah.settings_edit",
+  MADRASAH_NAZIR_APPOINT: "madrasah.nazir_appoint",
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -190,3 +204,34 @@ export const PLATFORM_CODES: ReadonlySet<string> = new Set(
   PLATFORM_CATALOG.flatMap((s) => s.permissions)
 );
 export const COURSE_CODES: ReadonlySet<string> = new Set(COURSE_CATALOG);
+
+/**
+ * The "Medrese" section of nazir/06 and nazir/16, in print order. Held in the
+ * medrese itself; no role carries them by default.
+ */
+export const MADRASAH_CATALOG: readonly PermissionCode[] = [
+  PERMISSIONS.MADRASAH_COURSE_OPEN,
+  PERMISSIONS.MADRASAH_MUDERRIS_MANAGE,
+  PERMISSIONS.MADRASAH_STUDENTS_VIEW,
+  PERMISSIONS.MADRASAH_BAN,
+  PERMISSIONS.MADRASAH_COURSE_HIDE,
+  PERMISSIONS.MADRASAH_ADMISSION_RULES,
+  PERMISSIONS.MADRASAH_APPEAL_OPEN,
+  PERMISSIONS.MADRASAH_PERMANENT_BAN_REQUEST,
+  PERMISSIONS.MADRASAH_SETTINGS_EDIT,
+  PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+];
+
+/**
+ * The "Medrese dersleri" section of nazir/06 and nazir/16: all twenty course
+ * permissions the müderris holds by default, which is the count the canvas
+ * prints. nizam/13's `COURSE_CATALOG` leaves two out; the medrese dialogs do
+ * not say they do.
+ */
+export const MADRASAH_COURSE_CATALOG: readonly PermissionCode[] =
+  MUDERRIS_DEFAULTS;
+
+export const MADRASAH_CODES: ReadonlySet<string> = new Set(MADRASAH_CATALOG);
+export const MADRASAH_COURSE_CODES: ReadonlySet<string> = new Set(
+  MADRASAH_COURSE_CATALOG
+);

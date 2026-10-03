@@ -25,6 +25,32 @@ export class MadrasahNazirGroupResponse {
   permissions!: string[];
 }
 
+/** A permission or group held in one course of the medrese rather than in all of them (nazir/06's "Hangi derslerde"). */
+export class MadrasahNazirCourseGrantResponse {
+  @ApiProperty({ format: "uuid" })
+  courseId!: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  courseTitle!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: "The permission code; null when the grant is a group",
+  })
+  permission!: string | null;
+
+  @ApiProperty({
+    type: () => MadrasahNazirGroupResponse,
+    nullable: true,
+    description: "The group; null when the grant is a single permission",
+  })
+  group!: MadrasahNazirGroupResponse | null;
+
+  @ApiProperty()
+  grantedAt!: Date;
+}
+
 /** One row of nazir/05's table. */
 export class MadrasahNazirResponse {
   @ApiProperty({ type: () => NazimPersonResponse })
@@ -63,9 +89,17 @@ export class MadrasahNazirResponse {
 
   @ApiProperty({
     type: () => [NazimPermissionResponse],
-    description: "Permissions given one by one, not through a group",
+    description:
+      "Permissions given one by one, not through a group, held in the medrese (a course permission here covers every course of the medrese)",
   })
   permissions!: NazimPermissionResponse[];
+
+  @ApiProperty({
+    type: () => [MadrasahNazirCourseGrantResponse],
+    description:
+      "Permissions and groups held in single courses of the medrese, one entry per course and permission or group; the same code in three courses is three entries",
+  })
+  courseGrants!: MadrasahNazirCourseGrantResponse[];
 
   @ApiProperty({
     type: () => NazimPersonResponse,

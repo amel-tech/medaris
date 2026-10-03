@@ -12,7 +12,15 @@ import {
 } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { DismissAction } from "../../assignment/admin/dto/permission-admin.dto";
-import { DismissDecisionsError } from "../../assignment/admin/errors";
+import {
+  DismissDecisionsError,
+  GrantExpiryInvalidError,
+} from "../../assignment/admin/errors";
+import {
+  checkGrantExpiry,
+  type IHeldGrant,
+  planGrants,
+} from "../../assignment/admin/grant-plan";
 import { grantHeld } from "../../assignment/assignment.repository";
 import type { Tx } from "../../course/course-purge";
 import { DatabaseService } from "../../database/database.service";
@@ -31,6 +39,7 @@ import {
 import { MadrasahNotFoundError } from "../errors/madrasah-not-found.error";
 import { NazirNotFoundError } from "../errors/nazir-not-found.error";
 import { type IGivenItem, planDismissal } from "./dismissal-plan";
+import type { IHeldTreeGrant, IWantedScope } from "./nazir-grant-scopes";
 
 const NAZIR_ROLE = ASSIGNED_ROLES.MEDRESE_NAZIR;
 
@@ -44,6 +53,10 @@ export interface INazirRole {
 
 export interface INazirGrant {
   userId: string;
+  scopeType: ScopeType;
+  scopeId: string | null;
+  /** The title of the course a course-scoped grant is held in. */
+  courseTitle: string | null;
   permission: string | null;
   groupId: string | null;
   grantedBy: string;
@@ -61,7 +74,26 @@ export interface IGivenRow extends IGivenItem {
   expiresAt: Date | null;
 }
 
-/** Reads and writes behind nazir/05 and nazir/15: the medrese's MEDRESE_NAZIR roles and what hangs on them. */
+/**
+ * The scopes of a medrese's own tree, as a condition on a scope type and id
+ * column: the medrese itself and its courses.
+ */
+function inMedreseTree(
+  db: Tx | DatabaseService["db"],
+  madrasahId: string
+): (type: AnyPgColumn, id: AnyPgColumn) => SQL {
+  const medreseCourses = db
+    .select({ id: courses.id })
+    .from(courses)
+    .where(eq(courses.madrasahId, madrasahId));
+  return (type, id) =>
+    or(
+      and(eq(type, SCOPE_TYPES.MADRASAH), eq(id, madrasahId)),
+      and(eq(type, SCOPE_TYPES.COURSE), inArray(id, medreseCourses))
+    ) as SQL;
+}
+
+/** Reads and writes behind nazir/05, 06 and 15: the medrese's MEDRESE_NAZIR roles and what hangs on them. */
 @Injectable()
 export class MadrasahNazirRepository {
   constructor(private readonly databaseService: DatabaseService) {}
@@ -90,7 +122,10 @@ export class MadrasahNazirRepository {
       .orderBy(asc(roleAssignments.createdAt), asc(roleAssignments.id));
   }
 
-  /** The permissions and groups these people hold in the medrese itself, oldest first. */
+  /**
+   * The permissions and groups these people hold in the medrese and in its
+   * courses, oldest first.
+   */
   async heldGrants(
     madrasahId: string,
     userIds: string[]
@@ -99,6 +134,9 @@ export class MadrasahNazirRepository {
     return this.db
       .select({
         userId: permissionGrants.userId,
+        scopeType: permissionGrants.scopeType,
+        scopeId: permissionGrants.scopeId,
+        courseTitle: courses.title,
         permission: permissionGrants.permission,
         groupId: permissionGrants.groupId,
         grantedBy: permissionGrants.grantedBy,
@@ -106,11 +144,20 @@ export class MadrasahNazirRepository {
         expiresAt: permissionGrants.expiresAt,
       })
       .from(permissionGrants)
+      .leftJoin(
+        courses,
+        and(
+          eq(permissionGrants.scopeType, SCOPE_TYPES.COURSE),
+          eq(courses.id, permissionGrants.scopeId)
+        )
+      )
       .where(
         and(
           inArray(permissionGrants.userId, userIds),
-          eq(permissionGrants.scopeType, SCOPE_TYPES.MADRASAH),
-          eq(permissionGrants.scopeId, madrasahId),
+          inMedreseTree(this.db, madrasahId)(
+            permissionGrants.scopeType,
+            permissionGrants.scopeId
+          ),
           grantHeld()
         )
       )
@@ -165,6 +212,212 @@ export class MadrasahNazirRepository {
     });
   }
 
+  /** Which of these are courses of the medrese, hidden ones included. */
+  async courseIdsOf(madrasahId: string, ids: string[]): Promise<string[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db
+      .select({ id: courses.id })
+      .from(courses)
+      .where(and(eq(courses.madrasahId, madrasahId), inArray(courses.id, ids)));
+    return rows.map((r) => r.id);
+  }
+
+  /** The permissions and groups one person holds in the medrese's tree, oldest first. */
+  async heldTreeGrants(
+    madrasahId: string,
+    userId: string
+  ): Promise<IHeldTreeGrant[]> {
+    return this.db
+      .select({
+        scopeType: permissionGrants.scopeType,
+        scopeId: permissionGrants.scopeId,
+        permission: permissionGrants.permission,
+        groupId: permissionGrants.groupId,
+        expiresAt: permissionGrants.expiresAt,
+      })
+      .from(permissionGrants)
+      .where(
+        and(
+          eq(permissionGrants.userId, userId),
+          inMedreseTree(this.db, madrasahId)(
+            permissionGrants.scopeType,
+            permissionGrants.scopeId
+          ),
+          grantHeld()
+        )
+      )
+      .orderBy(asc(permissionGrants.createdAt), asc(permissionGrants.id));
+  }
+
+  /**
+   * Replaces what the nazır holds in the medrese and its courses with the
+   * scopes wanted (nazir/06's Kaydet), in one transaction with its audit rows.
+   * Scope by scope the rows that stay are left alone, so saving the dialog
+   * unchanged touches nothing; the rest are revoked in the actor's name or
+   * added. `expiresAt` null means "when the appointment ends". Locks the
+   * medrese first, like `appoint`, and the appointment, so two saves for one
+   * nazır queue.
+   */
+  async setPermissions(
+    madrasahId: string,
+    nazirId: string,
+    actorId: string,
+    wanted: { scopes: IWantedScope[]; expiresAt: Date | null }
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const [madrasah] = await tx
+        .select({ id: madrasahs.id })
+        .from(madrasahs)
+        .where(eq(madrasahs.id, madrasahId))
+        .for("no key update");
+      if (!madrasah) throw new MadrasahNotFoundError(madrasahId);
+      const [role] = await tx
+        .select({ expiresAt: roleAssignments.expiresAt })
+        .from(roleAssignments)
+        .where(
+          and(
+            eq(roleAssignments.userId, nazirId),
+            holdsIn(NAZIR_ROLE, madrasahId)
+          )
+        )
+        .for("update")
+        .limit(1);
+      if (!role) throw new NazirNotFoundError(madrasahId, nazirId);
+      const problem = checkGrantExpiry(
+        wanted.expiresAt,
+        role.expiresAt,
+        new Date()
+      );
+      if (problem === "past") {
+        throw new GrantExpiryInvalidError("The end date is in the past");
+      }
+      if (problem === "after-assignment") {
+        throw new GrantExpiryInvalidError(
+          "The end date is after the appointment's end"
+        );
+      }
+      const expiresAt = wanted.expiresAt ?? role.expiresAt;
+
+      const held = await tx
+        .select({
+          id: permissionGrants.id,
+          scopeType: permissionGrants.scopeType,
+          scopeId: permissionGrants.scopeId,
+          permission: permissionGrants.permission,
+          groupId: permissionGrants.groupId,
+          expiresAt: permissionGrants.expiresAt,
+        })
+        .from(permissionGrants)
+        .where(
+          and(
+            eq(permissionGrants.userId, nazirId),
+            inMedreseTree(tx, madrasahId)(
+              permissionGrants.scopeType,
+              permissionGrants.scopeId
+            ),
+            grantHeld()
+          )
+        )
+        .orderBy(asc(permissionGrants.createdAt), asc(permissionGrants.id));
+
+      const keyOf = (scope: { scopeType: ScopeType; scopeId: string | null }) =>
+        `${scope.scopeType}:${scope.scopeId}`;
+      const scopes = new Map(
+        wanted.scopes.map((scope) => [keyOf(scope), scope])
+      );
+      for (const row of held) {
+        if (!scopes.has(keyOf(row))) {
+          scopes.set(keyOf(row), {
+            scopeType: row.scopeType,
+            scopeId: row.scopeId as string,
+            groupId: null,
+            permissions: [],
+          });
+        }
+      }
+
+      const revoke: string[] = [];
+      const retime: string[] = [];
+      const insert: Array<{
+        scopeType: ScopeType;
+        scopeId: string;
+        permission: string | null;
+        groupId: string | null;
+      }> = [];
+      for (const [key, scope] of scopes) {
+        const plan = planGrants(
+          held.filter((row) => keyOf(row) === key) as IHeldGrant[],
+          { groupId: scope.groupId, permissions: scope.permissions, expiresAt }
+        );
+        revoke.push(...plan.revoke);
+        retime.push(...plan.retime);
+        for (const item of plan.insert) {
+          insert.push({
+            scopeType: scope.scopeType,
+            scopeId: scope.scopeId,
+            permission: "permission" in item ? item.permission : null,
+            groupId: "groupId" in item ? item.groupId : null,
+          });
+        }
+      }
+
+      if (revoke.length > 0) {
+        await tx
+          .update(permissionGrants)
+          .set({ revokedAt: sql`now()`, revokedBy: actorId })
+          .where(inArray(permissionGrants.id, revoke));
+      }
+      if (retime.length > 0) {
+        await tx
+          .update(permissionGrants)
+          .set({ expiresAt })
+          .where(inArray(permissionGrants.id, retime));
+      }
+      if (insert.length > 0) {
+        await tx.insert(permissionGrants).values(
+          insert.map((row) => ({
+            userId: nazirId,
+            ...row,
+            grantedBy: actorId,
+            expiresAt,
+          }))
+        );
+        await tx.insert(auditLog).values({
+          actorId,
+          action: "permission.grant",
+          entity: "user",
+          entityId: nazirId,
+          details: {
+            madrasahId,
+            permissions: insert.flatMap((i) =>
+              i.permission ? [{ code: i.permission, scopeId: i.scopeId }] : []
+            ),
+            groups: insert.flatMap((i) =>
+              i.groupId ? [{ id: i.groupId, scopeId: i.scopeId }] : []
+            ),
+            expiresAt: expiresAt?.toISOString() ?? null,
+          },
+        });
+      }
+      const gone = held.filter((row) => revoke.includes(row.id));
+      if (gone.length > 0) {
+        await tx.insert(auditLog).values({
+          actorId,
+          action: "permission.revoke",
+          entity: "user",
+          entityId: nazirId,
+          details: {
+            madrasahId,
+            permissions: gone.flatMap((r) =>
+              r.permission ? [{ code: r.permission, scopeId: r.scopeId }] : []
+            ),
+            groupIds: gone.flatMap((r) => (r.groupId ? [r.groupId] : [])),
+          },
+        });
+      }
+    });
+  }
+
   /**
    * Everything the nazır handed on in the medrese that is still held (nazir/15's
    * question): roles and permission grants in the medrese or in one of its
@@ -175,15 +428,7 @@ export class MadrasahNazirRepository {
     nazirId: string,
     db: Tx | DatabaseService["db"] = this.db
   ): Promise<IGivenRow[]> {
-    const medreseCourses = db
-      .select({ id: courses.id })
-      .from(courses)
-      .where(eq(courses.madrasahId, madrasahId));
-    const inMedrese = (type: AnyPgColumn, id: AnyPgColumn): SQL =>
-      or(
-        and(eq(type, SCOPE_TYPES.MADRASAH), eq(id, madrasahId)),
-        and(eq(type, SCOPE_TYPES.COURSE), inArray(id, medreseCourses))
-      ) as SQL;
+    const inMedrese = inMedreseTree(db, madrasahId);
 
     const roles = await db
       .select({
@@ -308,8 +553,10 @@ export class MadrasahNazirRepository {
         .where(
           and(
             eq(permissionGrants.userId, nazirId),
-            eq(permissionGrants.scopeType, SCOPE_TYPES.MADRASAH),
-            eq(permissionGrants.scopeId, madrasahId),
+            inMedreseTree(tx, madrasahId)(
+              permissionGrants.scopeType,
+              permissionGrants.scopeId
+            ),
             isNull(permissionGrants.revokedAt)
           )
         );

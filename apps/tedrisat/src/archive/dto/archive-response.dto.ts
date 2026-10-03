@@ -108,6 +108,55 @@ export class PaginatedArchiveResponse {
   limit!: number;
 }
 
+/** One row of nazir/12's table. */
+export class MadrasahArchiveItemResponse extends ArchiveItemResponse {
+  @ApiProperty({
+    description:
+      "Whether the caller may bring it back (Geri al). False when the hider's kademe is above theirs; the hider's role is in `archivedBy.role`. A hidden parent still answers 409 on restore.",
+  })
+  canRestore!: boolean;
+}
+
+export class MadrasahArchiveCountsResponse {
+  @ApiProperty({ description: "Everything hidden in the medrese (Tümü)." })
+  all!: number;
+
+  @ApiProperty()
+  course!: number;
+
+  @ApiProperty()
+  week!: number;
+
+  @ApiProperty()
+  session!: number;
+
+  @ApiProperty({ description: "0 until recordings are stored." })
+  recording!: number;
+}
+
+export class PaginatedMadrasahArchiveResponse {
+  @ApiProperty({ type: [MadrasahArchiveItemResponse] })
+  items!: MadrasahArchiveItemResponse[];
+
+  @ApiProperty({
+    description: "All hidden items matching `types`, not just this page.",
+  })
+  total!: number;
+
+  @ApiProperty()
+  page!: number;
+
+  @ApiProperty()
+  limit!: number;
+
+  @ApiProperty({
+    type: MadrasahArchiveCountsResponse,
+    description:
+      "The tabs' numbers: everything hidden in the medrese, whatever `types` says.",
+  })
+  counts!: MadrasahArchiveCountsResponse;
+}
+
 export class ArchiveRestoreResponse {
   @ApiProperty({ enum: ARCHIVE_ITEM_TYPES, enumName: "ArchiveItemType" })
   type!: string;

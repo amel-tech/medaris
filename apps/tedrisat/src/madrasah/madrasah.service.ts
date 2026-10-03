@@ -3,6 +3,7 @@ import { GrantExpiryInvalidError } from "../assignment/admin/errors";
 import { checkGrantExpiry } from "../assignment/admin/grant-plan";
 import { KeycloakAdminService } from "../keycloak-admin/keycloak-admin.service";
 import type { HeadDelegationResponse } from "./dto/set-head-muderris.dto";
+import { MadrasahAlreadyHiddenError } from "./errors/madrasah-already-hidden.error";
 import { MadrasahHandleTakenError } from "./errors/madrasah-handle-taken.error";
 import { MadrasahNotFoundError } from "./errors/madrasah-not-found.error";
 import { MadrasahNotHiddenError } from "./errors/madrasah-not-hidden.error";
@@ -273,6 +274,19 @@ export class MadrasahService {
         expiresAt: r.expiresAt,
       };
     });
+  }
+
+  /** "Medreseyi gizle" (nazir/12): out of every list, its courses with it; nothing is deleted. */
+  async hide(
+    madrasahId: string,
+    actorId: string
+  ): Promise<IMadrasahDirectoryItem> {
+    const result = await this.madrasahRepo.hide(madrasahId, actorId);
+    if (result === "not-found") throw new MadrasahNotFoundError(madrasahId);
+    if (result === "already-hidden") {
+      throw new MadrasahAlreadyHiddenError(madrasahId);
+    }
+    return this.directoryItem(madrasahId);
   }
 
   /** "Geri al": a hidden medrese is listed again. */

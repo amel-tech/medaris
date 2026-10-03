@@ -19,6 +19,7 @@ import type {
   ArchiveRestoreResponse,
   ArchiveScopesResponse,
   PaginatedArchiveResponse,
+  PaginatedMadrasahArchiveResponse,
 } from '../models/index';
 import {
     ArchiveImpactResponseFromJSON,
@@ -29,6 +30,8 @@ import {
     ArchiveScopesResponseToJSON,
     PaginatedArchiveResponseFromJSON,
     PaginatedArchiveResponseToJSON,
+    PaginatedMadrasahArchiveResponseFromJSON,
+    PaginatedMadrasahArchiveResponseToJSON,
 } from '../models/index';
 
 export interface DeleteArchiveItemRequest {
@@ -54,6 +57,13 @@ export interface ListKoskArchiveRequest {
     id: string;
     type?: ListKoskArchiveTypeEnum;
     q?: string;
+    limit?: number;
+    page?: number;
+}
+
+export interface ListMadrasahArchiveRequest {
+    id: string;
+    types?: string;
     limit?: number;
     page?: number;
 }
@@ -324,6 +334,62 @@ export class ArchiveApi extends runtime.BaseAPI {
      */
     async listKoskArchive(requestParameters: ListKoskArchiveRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PaginatedArchiveResponse> {
         const response = await this.listKoskArchiveRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nazir/12\'s table, newest hidden first: the medrese\'s hidden courses and the weeks and sessions in them. `counts` are the tabs\' numbers. Each item says whether the caller may bring it back (`canRestore`); a recording has no storage yet, so none is listed.
+     * What is hidden in a medrese (its başmüderris)
+     */
+    async listMadrasahArchiveRaw(requestParameters: ListMadrasahArchiveRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PaginatedMadrasahArchiveResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listMadrasahArchive().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['types'] != null) {
+            queryParameters['types'] = requestParameters['types'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/archive`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PaginatedMadrasahArchiveResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nazir/12\'s table, newest hidden first: the medrese\'s hidden courses and the weeks and sessions in them. `counts` are the tabs\' numbers. Each item says whether the caller may bring it back (`canRestore`); a recording has no storage yet, so none is listed.
+     * What is hidden in a medrese (its başmüderris)
+     */
+    async listMadrasahArchive(requestParameters: ListMadrasahArchiveRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PaginatedMadrasahArchiveResponse> {
+        const response = await this.listMadrasahArchiveRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

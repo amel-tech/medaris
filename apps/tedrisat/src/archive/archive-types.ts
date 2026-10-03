@@ -28,6 +28,14 @@ export const KOSK_ARCHIVE_ITEM_TYPES: readonly ArchiveItemType[] = [
   "deck",
 ];
 
+/** The types a medrese's own archive lists: its courses and what is in them (nazir/12). */
+export const MADRASAH_ARCHIVE_ITEM_TYPES: readonly ArchiveItemType[] = [
+  "course",
+  "week",
+  "session",
+  "recording",
+];
+
 /** The types with a table behind them. */
 export const STORED_ARCHIVE_ITEM_TYPES: readonly ArchiveItemType[] = [
   "kosk",

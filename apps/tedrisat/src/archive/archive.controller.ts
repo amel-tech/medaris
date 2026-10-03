@@ -27,7 +27,8 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { AuthenticatedUserRequest } from "../user/interfaces/authenticated-user-request.interface";
-import { ArchiveService, IArchivePage } from "./archive.service";
+import { ArchiveService } from "./archive.service";
+import { presentPage } from "./archive-present";
 import {
   ARCHIVE_ITEM_TYPES,
   ArchiveItemType,
@@ -47,30 +48,6 @@ const requiredTypePipe = new ParseEnumPipe(ARCHIVE_ITEM_TYPES);
 const clampPage = (page: number) => (page < 1 ? 1 : page);
 const clampLimit = (limit: number) =>
   Math.min(Math.max(limit, 1), MAX_ARCHIVE_PAGE_SIZE);
-
-const present = (page: IArchivePage): PaginatedArchiveResponse => ({
-  items: page.items.map((i) => ({
-    type: i.type,
-    id: i.id,
-    title: i.title,
-    koskId: i.koskId,
-    koskName: i.koskName,
-    madrasahId: i.madrasahId,
-    madrasahName: i.madrasahName,
-    courseId: i.courseId,
-    courseTitle: i.courseTitle,
-    weekNumber: i.weekNumber,
-    scheduledAt: i.scheduledAt,
-    weekCount: i.weekCount,
-    sessionCount: i.sessionCount,
-    studentCount: i.studentCount,
-    archivedAt: i.archivedAt,
-    archivedBy: i.archiver,
-  })),
-  total: page.total,
-  page: page.page,
-  limit: page.limit,
-});
 
 /**
  * The archive of hidden things (MDRS-173, screens nizam/28 and nizam/29).
@@ -119,7 +96,7 @@ export class ArchiveController {
     )
     limit = DEFAULT_ARCHIVE_PAGE_SIZE
   ): Promise<PaginatedArchiveResponse> {
-    return present(
+    return presentPage(
       await this.archive.listForKosk(request.user, id, {
         type,
         q: q?.trim() || undefined,
@@ -164,7 +141,7 @@ export class ArchiveController {
     )
     limit = DEFAULT_ARCHIVE_PAGE_SIZE
   ): Promise<PaginatedArchiveResponse> {
-    return present(
+    return presentPage(
       await this.archive.listForPlatform(request.user, {
         koskId,
         madrasahId,

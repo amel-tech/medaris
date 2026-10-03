@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { MadrasahNazirCourseGrantResponse } from './MadrasahNazirCourseGrantResponse';
+import {
+    MadrasahNazirCourseGrantResponseFromJSON,
+    MadrasahNazirCourseGrantResponseFromJSONTyped,
+    MadrasahNazirCourseGrantResponseToJSON,
+    MadrasahNazirCourseGrantResponseToJSONTyped,
+} from './MadrasahNazirCourseGrantResponse';
 import type { MadrasahNazirGroupResponse } from './MadrasahNazirGroupResponse';
 import {
     MadrasahNazirGroupResponseFromJSON,
@@ -78,11 +85,17 @@ export interface MadrasahNazirResponse {
      */
     groups: Array<MadrasahNazirGroupResponse>;
     /**
-     * Permissions given one by one, not through a group
+     * Permissions given one by one, not through a group, held in the medrese (a course permission here covers every course of the medrese)
      * @type {Array<NazimPermissionResponse>}
      * @memberof MadrasahNazirResponse
      */
     permissions: Array<NazimPermissionResponse>;
+    /**
+     * Permissions and groups held in single courses of the medrese, one entry per course and permission or group; the same code in three courses is three entries
+     * @type {Array<MadrasahNazirCourseGrantResponse>}
+     * @memberof MadrasahNazirResponse
+     */
+    courseGrants: Array<MadrasahNazirCourseGrantResponse>;
     /**
      * Who gave the permissions ("Veren"); null while they hold none
      * @type {NazimPersonResponse}
@@ -108,6 +121,7 @@ export function instanceOfMadrasahNazirResponse(value: object): value is Madrasa
     if (!('expiresAt' in value) || value['expiresAt'] === undefined) return false;
     if (!('groups' in value) || value['groups'] === undefined) return false;
     if (!('permissions' in value) || value['permissions'] === undefined) return false;
+    if (!('courseGrants' in value) || value['courseGrants'] === undefined) return false;
     if (!('grantedBy' in value) || value['grantedBy'] === undefined) return false;
     if (!('grantedAt' in value) || value['grantedAt'] === undefined) return false;
     return true;
@@ -130,6 +144,7 @@ export function MadrasahNazirResponseFromJSONTyped(json: any, ignoreDiscriminato
         'expiresAt': (json['expiresAt'] == null ? null : new Date(json['expiresAt'])),
         'groups': ((json['groups'] as Array<any>).map(MadrasahNazirGroupResponseFromJSON)),
         'permissions': ((json['permissions'] as Array<any>).map(NazimPermissionResponseFromJSON)),
+        'courseGrants': ((json['courseGrants'] as Array<any>).map(MadrasahNazirCourseGrantResponseFromJSON)),
         'grantedBy': NazimPersonResponseFromJSON(json['grantedBy']),
         'grantedAt': (json['grantedAt'] == null ? null : new Date(json['grantedAt'])),
     };
@@ -153,6 +168,7 @@ export function MadrasahNazirResponseToJSONTyped(value?: MadrasahNazirResponse |
         'expiresAt': ((value['expiresAt'] as any).toISOString()),
         'groups': ((value['groups'] as Array<any>).map(MadrasahNazirGroupResponseToJSON)),
         'permissions': ((value['permissions'] as Array<any>).map(NazimPermissionResponseToJSON)),
+        'courseGrants': ((value['courseGrants'] as Array<any>).map(MadrasahNazirCourseGrantResponseToJSON)),
         'grantedBy': NazimPersonResponseToJSON(value['grantedBy']),
         'grantedAt': ((value['grantedAt'] as any).toISOString()),
     };
