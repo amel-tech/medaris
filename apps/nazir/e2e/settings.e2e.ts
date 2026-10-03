@@ -206,7 +206,14 @@ test("nazir/04 — emptying the description clears it, and switching a policy of
   const page = await as("MEDRESE_BASMUDERRIS");
   await open(page);
 
-  await page.getByLabel("Açıklama").fill("");
+  // A value typed before the page has hydrated is put back by React; Kaydet
+  // only turns on once the change has been seen, so repeat until it has.
+  await expect(async () => {
+    await page.getByLabel("Açıklama").fill("");
+    await expect(page.getByRole("button", { name: "Kaydet" })).toBeEnabled({
+      timeout: 1000,
+    });
+  }).toPass();
   await page
     .getByRole("checkbox", { name: "Kayıt her zaman onaylı" })
     .uncheck();

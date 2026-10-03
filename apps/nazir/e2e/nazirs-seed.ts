@@ -75,6 +75,8 @@ export interface NazirsFixture {
   auditsOn: (action: string, entityId: string) => Promise<number>;
   /** takes a person a spec appointed through the screen out of the medrese again */
   forget: (userId: string) => Promise<void>;
+  /** makes a person a nazır of the medrese holding nothing, as the first nazır's appointment, for a spec that signs in as them */
+  seat: (userId: string) => Promise<void>;
   remove: () => Promise<void>;
 }
 
@@ -174,6 +176,8 @@ export async function seedNazirs(base: NazirFixture): Promise<NazirsFixture> {
 
     // Appointed 12, 20 and 30 September; the third by the first. Fatma's grants
     // are a second apart, so that the API's order (oldest first) is not a coin toss.
+    // Her three single permissions are none of her groups' (the screen counts a
+    // code once, and not at all where a group already carries it).
     await client.query(
       `insert into role_assignments(user_id, role, scope_type, scope_id, granted_by, created_at) values
         ($1, 'MEDRESE_NAZIR', 'madrasah', $4, $5, '2026-09-12T09:00:00Z'),
@@ -191,7 +195,7 @@ export async function seedNazirs(base: NazirFixture): Promise<NazirsFixture> {
       `insert into permission_grants(user_id, scope_type, scope_id, group_id, permission, granted_by, created_at, expires_at) values
         ($1, 'madrasah', $5, $6, null, $9, '2026-09-12T09:00:00Z', null),
         ($1, 'madrasah', $5, $7, null, $9, '2026-09-12T09:00:01Z', null),
-        ($1, 'madrasah', $5, null, 'course.edit', $9, '2026-09-12T09:00:02Z', null),
+        ($1, 'madrasah', $5, null, 'course.settings', $9, '2026-09-12T09:00:02Z', null),
         ($1, 'madrasah', $5, null, 'week.hide', $9, '2026-09-12T09:00:03Z', null),
         ($1, 'madrasah', $5, null, 'course.publish', $9, '2026-09-12T09:00:04Z', null),
         ($2, 'madrasah', $5, $8, null, $9, '2026-09-20T09:00:00Z', $10),
@@ -331,6 +335,12 @@ export async function seedNazirs(base: NazirFixture): Promise<NazirsFixture> {
       await client.query(
         "delete from role_assignments where user_id = $1 and scope_id = $2",
         [userId, madrasahId]
+      );
+    },
+    seat: async (userId) => {
+      await client.query(
+        "insert into role_assignments(user_id, role, scope_type, scope_id, granted_by) values ($1, 'MEDRESE_NAZIR', 'madrasah', $2, $3)",
+        [userId, madrasahId, admin.id]
       );
     },
     remove: async () => {

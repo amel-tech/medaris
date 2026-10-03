@@ -46,7 +46,9 @@ export async function signIn(page: Page, who: Account): Promise<void> {
       url.pathname !== "/" &&
       !url.pathname.startsWith("/auth/") &&
       !url.pathname.startsWith("/api/auth/"),
-    { timeout: 30_000 }
+    // "load" waits for every font and chunk of a `next dev` page, which on a
+    // loaded machine is longer than the sign-in is worth
+    { timeout: 30_000, waitUntil: "domcontentloaded" }
   );
 }
 
