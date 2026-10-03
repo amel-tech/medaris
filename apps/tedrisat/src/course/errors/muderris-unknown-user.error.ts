@@ -1,10 +1,10 @@
 import { ErrorContext, NotFoundError } from "@medaris/common";
 
 /**
- * A müderris row linked to an account that has no `users` row — the person
- * has never signed in (MDRS-104), or the id is mistyped (MDRS-105). Refused
- * like `KOSK_MANAGER_UNKNOWN_USER`: a link to nobody would grant MUDERRIS to
- * whoever later signs in under that id.
+ * A müderris row linked to an id that names no account: neither a `users` row
+ * (MDRS-104) nor a realm account (MDRS-218), so a mistyped id (MDRS-105).
+ * Refused like `KOSK_MANAGER_UNKNOWN_USER`: a link to nobody would grant
+ * MUDERRIS to whoever later signs in under that id.
  */
 export class MuderrisUnknownUserError extends NotFoundError {
   static readonly code = "MUDERRIS_UNKNOWN_USER";
@@ -12,7 +12,7 @@ export class MuderrisUnknownUserError extends NotFoundError {
   constructor(userId: string, context?: ErrorContext) {
     super(
       MuderrisUnknownUserError.code,
-      `User ${userId} has never signed in and cannot be made a müderris`,
+      `No account ${userId} in the app or the realm; it cannot be made a müderris`,
       context
     );
   }

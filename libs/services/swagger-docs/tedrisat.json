@@ -2736,7 +2736,7 @@
             "description": "No `edit` on the course, or the save changes the müderris list without `assign_muderris` — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN)."
           },
           "404": {
-            "description": "No such course, or a müderris row links an account that has never signed in (MUDERRIS_UNKNOWN_USER)."
+            "description": "No such course, or a müderris row links an id that names no account in the app or the realm (MUDERRIS_UNKNOWN_USER)."
           },
           "409": {
             "description": "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT)."
@@ -4875,6 +4875,662 @@
         "summary": "Mark one notification read",
         "tags": [
           "notifications"
+        ]
+      }
+    },
+    "/me/assignments": {
+      "get": {
+        "description": "Held roles only: revoked and expired rows are left out. A course carries its status, köşk, medrese and enrolled count.",
+        "operationId": "getMyAssignments",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyAssignmentsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The roles the caller holds, each with its scope",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/me/roles": {
+      "get": {
+        "operationId": "getMyRoles",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyRolesResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Which roles the caller holds, and in how many scopes",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/me/grants": {
+      "get": {
+        "operationId": "getMyGrants",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyGrantsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The permissions and permission groups given to the caller",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/me/permissions": {
+      "get": {
+        "operationId": "getMyPermissions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyPermissionsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every permission code the caller holds in any scope",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/me/effective-permissions": {
+      "get": {
+        "description": "Role defaults plus grants, grouped by role: the courses a müderris teaches are one group. Scopes where only a grant is held form a group with a null role.",
+        "operationId": "getMyEffectivePermissions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyEffectivePermissionsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's permissions by role and scope",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/nizam/chief-nazim": {
+      "get": {
+        "description": "Any signed-in caller: the 'no access' screen names who to ask. `displayName` is null when nobody holds the role or the directory cannot be reached.",
+        "operationId": "getChiefNazim",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChiefNazimResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The name of the Medaris başnazımı",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/permissions": {
+      "get": {
+        "description": "nizam/12 and 13: the platform's permissions in their five sections and the course permissions a course-scoped group may carry. Codes only; the sentences under them are the web app's.",
+        "operationId": "getPermissionCatalog",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionCatalogResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The permission catalog (SYSTEM_ADMIN only)",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/medaris-nazims": {
+      "get": {
+        "description": "nizam/11. Held appointments only, in the order they were made; one whose end has passed is not listed. Each carries its groups and single platform permissions.",
+        "operationId": "getMedarisNazims",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MedarisNazimResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The Medaris nazımları in office (SYSTEM_ADMIN only)",
+        "tags": [
+          "nizam"
+        ]
+      },
+      "post": {
+        "description": "nizam/12. The appointment and the permissions end together at `expiresAt`. Written to the audit log.",
+        "operationId": "appointMedarisNazim",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppointMedarisNazimDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedarisNazimResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "409": {
+            "description": "Already a Medaris nazımı"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Appoint a Medaris nazımı and give them their permissions",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/medaris-nazims/{userId}/grants": {
+      "put": {
+        "description": "nizam/12. Replaces the group and the single permissions with the ones sent; what stays keeps its giver and date. The end may not be after the appointment's. Written to the audit log.",
+        "operationId": "setMedarisNazimGrants",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetNazimGrantsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedarisNazimResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set a Medaris nazımı's platform permissions",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/medaris-nazims/{userId}/given": {
+      "get": {
+        "description": "nizam/11's dismissal question: the roles and permissions this person gave to others that are still held.",
+        "operationId": "getMedarisNazimGiven",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GivenItemResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What a Medaris nazımı has handed on",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/medaris-nazims/{userId}": {
+      "delete": {
+        "description": "nizam/11. `decisions` answers every item `…/given` lists: TAKE_OVER leaves the right in place under the başnazım's name, DROP revokes it. The appointment and the platform permissions are revoked. Written to the audit log.",
+        "operationId": "dismissMedarisNazim",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DismissMedarisNazimDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Dismiss a Medaris nazımı",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/permission-groups": {
+      "get": {
+        "description": "nizam/13. The platform's groups and the course groups, each with its permissions and how many people hold it.",
+        "operationId": "getPermissionGroups",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionGroupResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The permission groups (SYSTEM_ADMIN only)",
+        "tags": [
+          "nizam"
+        ]
+      },
+      "post": {
+        "description": "nizam/13. The name is not blank and not used by another live group, whatever its case. Written to the audit log.",
+        "operationId": "createPermissionGroup",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePermissionGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionGroupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "409": {
+            "description": "The name is taken"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a permission group",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/permission-groups/{id}": {
+      "put": {
+        "description": "nizam/13. Changing the permissions while people hold the group needs `usersPolicy`: they keep what it gave them as single permissions, or lose it; either way they no longer hold the group. Written to the audit log.",
+        "operationId": "updatePermissionGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePermissionGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionGroupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "The name is taken"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rename a permission group or change its permissions",
+        "tags": [
+          "nizam"
+        ]
+      },
+      "delete": {
+        "description": "nizam/13. While people hold the group, `usersPolicy` is required: `keep` turns its permissions into single ones for each of them, `revoke` takes them away. Written to the audit log.",
+        "operationId": "deletePermissionGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeletePermissionGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a permission group",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/permission-groups/{id}/users": {
+      "get": {
+        "operationId": "getPermissionGroupUsers",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupUserResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The people who hold a permission group",
+        "tags": [
+          "nizam"
         ]
       }
     },
@@ -7085,662 +7741,6 @@
         "summary": "The caller's next live sessions",
         "tags": [
           "sessions"
-        ]
-      }
-    },
-    "/me/assignments": {
-      "get": {
-        "description": "Held roles only: revoked and expired rows are left out. A course carries its status, köşk, medrese and enrolled count.",
-        "operationId": "getMyAssignments",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MyAssignmentsResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "The roles the caller holds, each with its scope",
-        "tags": [
-          "me"
-        ]
-      }
-    },
-    "/me/roles": {
-      "get": {
-        "operationId": "getMyRoles",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MyRolesResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Which roles the caller holds, and in how many scopes",
-        "tags": [
-          "me"
-        ]
-      }
-    },
-    "/me/grants": {
-      "get": {
-        "operationId": "getMyGrants",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MyGrantsResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "The permissions and permission groups given to the caller",
-        "tags": [
-          "me"
-        ]
-      }
-    },
-    "/me/permissions": {
-      "get": {
-        "operationId": "getMyPermissions",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MyPermissionsResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Every permission code the caller holds in any scope",
-        "tags": [
-          "me"
-        ]
-      }
-    },
-    "/me/effective-permissions": {
-      "get": {
-        "description": "Role defaults plus grants, grouped by role: the courses a müderris teaches are one group. Scopes where only a grant is held form a group with a null role.",
-        "operationId": "getMyEffectivePermissions",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MyEffectivePermissionsResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "The caller's permissions by role and scope",
-        "tags": [
-          "me"
-        ]
-      }
-    },
-    "/nizam/chief-nazim": {
-      "get": {
-        "description": "Any signed-in caller: the 'no access' screen names who to ask. `displayName` is null when nobody holds the role or the directory cannot be reached.",
-        "operationId": "getChiefNazim",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ChiefNazimResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "The name of the Medaris başnazımı",
-        "tags": [
-          "nizam"
-        ]
-      }
-    },
-    "/nizam/permissions": {
-      "get": {
-        "description": "nizam/12 and 13: the platform's permissions in their five sections and the course permissions a course-scoped group may carry. Codes only; the sentences under them are the web app's.",
-        "operationId": "getPermissionCatalog",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PermissionCatalogResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "The permission catalog (SYSTEM_ADMIN only)",
-        "tags": [
-          "nizam"
-        ]
-      }
-    },
-    "/nizam/medaris-nazims": {
-      "get": {
-        "description": "nizam/11. Held appointments only, in the order they were made; one whose end has passed is not listed. Each carries its groups and single platform permissions.",
-        "operationId": "getMedarisNazims",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/MedarisNazimResponse"
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "The Medaris nazımları in office (SYSTEM_ADMIN only)",
-        "tags": [
-          "nizam"
-        ]
-      },
-      "post": {
-        "description": "nizam/12. The appointment and the permissions end together at `expiresAt`. Written to the audit log.",
-        "operationId": "appointMedarisNazim",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AppointMedarisNazimDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MedarisNazimResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": ""
-          },
-          "403": {
-            "description": ""
-          },
-          "409": {
-            "description": "Already a Medaris nazımı"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Appoint a Medaris nazımı and give them their permissions",
-        "tags": [
-          "nizam"
-        ]
-      }
-    },
-    "/nizam/medaris-nazims/{userId}/grants": {
-      "put": {
-        "description": "nizam/12. Replaces the group and the single permissions with the ones sent; what stays keeps its giver and date. The end may not be after the appointment's. Written to the audit log.",
-        "operationId": "setMedarisNazimGrants",
-        "parameters": [
-          {
-            "name": "userId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SetNazimGrantsDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MedarisNazimResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": ""
-          },
-          "403": {
-            "description": ""
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Set a Medaris nazımı's platform permissions",
-        "tags": [
-          "nizam"
-        ]
-      }
-    },
-    "/nizam/medaris-nazims/{userId}/given": {
-      "get": {
-        "description": "nizam/11's dismissal question: the roles and permissions this person gave to others that are still held.",
-        "operationId": "getMedarisNazimGiven",
-        "parameters": [
-          {
-            "name": "userId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/GivenItemResponse"
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": ""
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "What a Medaris nazımı has handed on",
-        "tags": [
-          "nizam"
-        ]
-      }
-    },
-    "/nizam/medaris-nazims/{userId}": {
-      "delete": {
-        "description": "nizam/11. `decisions` answers every item `…/given` lists: TAKE_OVER leaves the right in place under the başnazım's name, DROP revokes it. The appointment and the platform permissions are revoked. Written to the audit log.",
-        "operationId": "dismissMedarisNazim",
-        "parameters": [
-          {
-            "name": "userId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DismissMedarisNazimDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": ""
-          },
-          "400": {
-            "description": ""
-          },
-          "403": {
-            "description": ""
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Dismiss a Medaris nazımı",
-        "tags": [
-          "nizam"
-        ]
-      }
-    },
-    "/nizam/permission-groups": {
-      "get": {
-        "description": "nizam/13. The platform's groups and the course groups, each with its permissions and how many people hold it.",
-        "operationId": "getPermissionGroups",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PermissionGroupResponse"
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "The permission groups (SYSTEM_ADMIN only)",
-        "tags": [
-          "nizam"
-        ]
-      },
-      "post": {
-        "description": "nizam/13. The name is not blank and not used by another live group, whatever its case. Written to the audit log.",
-        "operationId": "createPermissionGroup",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreatePermissionGroupDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PermissionGroupResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": ""
-          },
-          "403": {
-            "description": ""
-          },
-          "409": {
-            "description": "The name is taken"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Create a permission group",
-        "tags": [
-          "nizam"
-        ]
-      }
-    },
-    "/nizam/permission-groups/{id}": {
-      "put": {
-        "description": "nizam/13. Changing the permissions while people hold the group needs `usersPolicy`: they keep what it gave them as single permissions, or lose it; either way they no longer hold the group. Written to the audit log.",
-        "operationId": "updatePermissionGroup",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdatePermissionGroupDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PermissionGroupResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": ""
-          },
-          "403": {
-            "description": ""
-          },
-          "404": {
-            "description": ""
-          },
-          "409": {
-            "description": "The name is taken"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Rename a permission group or change its permissions",
-        "tags": [
-          "nizam"
-        ]
-      },
-      "delete": {
-        "description": "nizam/13. While people hold the group, `usersPolicy` is required: `keep` turns its permissions into single ones for each of them, `revoke` takes them away. Written to the audit log.",
-        "operationId": "deletePermissionGroup",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DeletePermissionGroupDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": ""
-          },
-          "400": {
-            "description": ""
-          },
-          "403": {
-            "description": ""
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Delete a permission group",
-        "tags": [
-          "nizam"
-        ]
-      }
-    },
-    "/nizam/permission-groups/{id}/users": {
-      "get": {
-        "operationId": "getPermissionGroupUsers",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/GroupUserResponse"
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": ""
-          },
-          "404": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "The people who hold a permission group",
-        "tags": [
-          "nizam"
         ]
       }
     },
@@ -16011,6 +16011,822 @@
           "updated"
         ]
       },
+      "PersonRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Null when the person has not signed in since names were kept"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "AssignedCourseInfo": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED"
+            ]
+          },
+          "hidden": {
+            "type": "boolean",
+            "description": "Hidden by its köşk manager"
+          },
+          "koskId": {
+            "type": "string"
+          },
+          "koskName": {
+            "type": "string"
+          },
+          "madrasahId": {
+            "type": "string"
+          },
+          "madrasahName": {
+            "type": "string"
+          },
+          "studentCount": {
+            "type": "number",
+            "description": "Talebe currently enrolled"
+          }
+        },
+        "required": [
+          "status",
+          "hidden",
+          "koskId",
+          "koskName",
+          "studentCount"
+        ]
+      },
+      "AssignmentResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "MEDARIS_NAZIM",
+              "KOSK_NAZIM",
+              "MEDRESE_BASMUDERRIS",
+              "MEDRESE_NAZIR",
+              "MUDERRIS",
+              "DERS_NAZIR"
+            ]
+          },
+          "scopeType": {
+            "type": "string",
+            "enum": [
+              "platform",
+              "kosk",
+              "madrasah",
+              "course"
+            ]
+          },
+          "scopeId": {
+            "type": "string",
+            "description": "Null for the platform"
+          },
+          "scopeName": {
+            "type": "string"
+          },
+          "isImam": {
+            "type": "boolean",
+            "description": "Imam of the course (MUDERRIS only)"
+          },
+          "grantedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Null: no end date"
+          },
+          "grantedBy": {
+            "$ref": "#/components/schemas/PersonRef"
+          },
+          "grantedBySelf": {
+            "type": "boolean",
+            "description": "The caller gave this role to themselves"
+          },
+          "course": {
+            "description": "Present when the scope is a course",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssignedCourseInfo"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "scopeType",
+          "isImam",
+          "grantedAt",
+          "grantedBy",
+          "grantedBySelf"
+        ]
+      },
+      "MyAssignmentsResponse": {
+        "type": "object",
+        "properties": {
+          "assignments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentResponse"
+            }
+          }
+        },
+        "required": [
+          "assignments"
+        ]
+      },
+      "RoleSummary": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "MEDARIS_NAZIM",
+              "KOSK_NAZIM",
+              "MEDRESE_BASMUDERRIS",
+              "MEDRESE_NAZIR",
+              "MUDERRIS",
+              "DERS_NAZIR"
+            ]
+          },
+          "scopeCount": {
+            "type": "number",
+            "description": "In how many scopes the role is held"
+          }
+        },
+        "required": [
+          "role",
+          "scopeCount"
+        ]
+      },
+      "MyRolesResponse": {
+        "type": "object",
+        "properties": {
+          "systemAdmin": {
+            "type": "boolean",
+            "description": "Holds the SYSTEM_ADMIN realm role"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoleSummary"
+            }
+          }
+        },
+        "required": [
+          "systemAdmin",
+          "roles"
+        ]
+      },
+      "PermissionGroupRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "permissions"
+        ]
+      },
+      "GrantResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "scopeType": {
+            "type": "string",
+            "enum": [
+              "platform",
+              "kosk",
+              "madrasah",
+              "course"
+            ]
+          },
+          "scopeId": {
+            "type": "string"
+          },
+          "scopeName": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string",
+            "description": "A catalog code; null when the grant is a group"
+          },
+          "group": {
+            "$ref": "#/components/schemas/PermissionGroupRef"
+          },
+          "grantedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "grantedBy": {
+            "$ref": "#/components/schemas/PersonRef"
+          },
+          "grantedBySelf": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "scopeType",
+          "grantedAt",
+          "grantedBy",
+          "grantedBySelf"
+        ]
+      },
+      "MyGrantsResponse": {
+        "type": "object",
+        "properties": {
+          "grants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GrantResponse"
+            }
+          }
+        },
+        "required": [
+          "grants"
+        ]
+      },
+      "MyPermissionsResponse": {
+        "type": "object",
+        "properties": {
+          "permissions": {
+            "description": "Every catalog code the caller holds in any scope",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "permissions"
+        ]
+      },
+      "ScopeRefResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "platform",
+              "kosk",
+              "madrasah",
+              "course"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "EffectivePermissionGroup": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "MEDARIS_NAZIM",
+              "KOSK_NAZIM",
+              "MEDRESE_BASMUDERRIS",
+              "MEDRESE_NAZIR",
+              "MUDERRIS",
+              "DERS_NAZIR"
+            ],
+            "description": "Null for scopes where the caller holds a grant but no role"
+          },
+          "scopeType": {
+            "type": "string",
+            "enum": [
+              "platform",
+              "kosk",
+              "madrasah",
+              "course"
+            ]
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScopeRefResponse"
+            }
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "scopeType",
+          "scopes",
+          "permissions"
+        ]
+      },
+      "MyEffectivePermissionsResponse": {
+        "type": "object",
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EffectivePermissionGroup"
+            }
+          }
+        },
+        "required": [
+          "groups"
+        ]
+      },
+      "ChiefNazimResponse": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "Null when nobody holds the role or the directory is not reachable"
+          }
+        }
+      },
+      "CatalogSectionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "kosks"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "permissions"
+        ]
+      },
+      "PermissionCatalogResponse": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "description": "The platform's permissions in the five sections of nizam/12",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogSectionResponse"
+            }
+          },
+          "course": {
+            "description": "What a group scoped to courses may carry",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "platform",
+          "course"
+        ]
+      },
+      "PermissionGroupScope": {
+        "type": "string",
+        "enum": [
+          "PLATFORM",
+          "ALL_COURSES",
+          "COURSE"
+        ]
+      },
+      "NazimGroupResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scope": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PermissionGroupScope"
+              }
+            ]
+          },
+          "courseTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "scope",
+          "courseTitle",
+          "permissions"
+        ]
+      },
+      "NazimPermissionResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "grantedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "grantedAt"
+        ]
+      },
+      "MedarisNazimResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/NazimPersonResponse"
+          },
+          "appointedBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NazimPersonResponse"
+              }
+            ]
+          },
+          "appointedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "assignmentExpiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "The appointment's own end; null while it has none"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "The earliest end among the appointment and the platform permissions; null when nothing ends"
+          },
+          "groups": {
+            "description": "Every group held: the platform's and the course-wide ones",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NazimGroupResponse"
+            }
+          },
+          "permissions": {
+            "description": "Platform permissions given one by one, not through a group",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NazimPermissionResponse"
+            }
+          }
+        },
+        "required": [
+          "user",
+          "appointedBy",
+          "appointedAt",
+          "assignmentExpiresAt",
+          "expiresAt",
+          "groups",
+          "permissions"
+        ]
+      },
+      "AppointMedarisNazimDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The account to appoint"
+          },
+          "groupId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "permissions": {
+            "description": "Codes from the catalog of the group's scope",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the appointment and its permissions end; empty: never"
+          }
+        },
+        "required": [
+          "userId",
+          "permissions"
+        ]
+      },
+      "SetNazimGrantsDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "A platform group, or empty for none"
+          },
+          "permissions": {
+            "description": "The permissions given on top of the group",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the permissions end; empty: when the appointment does. Never later than the appointment's end."
+          }
+        },
+        "required": [
+          "permissions"
+        ]
+      },
+      "GivenItemResponse": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GivenKind"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string",
+            "nullable": true
+          },
+          "permission": {
+            "type": "string",
+            "nullable": true
+          },
+          "groupName": {
+            "type": "string",
+            "nullable": true
+          },
+          "to": {
+            "$ref": "#/components/schemas/NazimPersonResponse"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "scopeName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "role",
+          "permission",
+          "groupName",
+          "to",
+          "scopeType",
+          "scopeName"
+        ]
+      },
+      "DismissMedarisNazimDto": {
+        "type": "object",
+        "properties": {
+          "decisions": {
+            "description": "One per item `GET …/given` lists",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DismissDecisionDto"
+            }
+          }
+        },
+        "required": [
+          "decisions"
+        ]
+      },
+      "PermissionGroupResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scope": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PermissionGroupScope"
+              }
+            ]
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "courseTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "userCount": {
+            "type": "number",
+            "description": "People who hold the group right now"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "scope",
+          "courseId",
+          "courseTitle",
+          "permissions",
+          "userCount"
+        ]
+      },
+      "CreatePermissionGroupDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "scope": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PermissionGroupScope"
+              }
+            ]
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The one course, when `scope` is COURSE"
+          },
+          "permissions": {
+            "description": "Codes from the catalog of the group's scope",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "scope",
+          "permissions"
+        ]
+      },
+      "UsersPolicy": {
+        "type": "string",
+        "enum": [
+          "keep",
+          "revoke"
+        ],
+        "description": "Required when the permissions change while people hold the group. `keep`: they keep what the group gave them, as single permissions. `revoke`: they lose it."
+      },
+      "UpdatePermissionGroupDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "permissions": {
+            "description": "Codes from the catalog of the group's scope",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "usersPolicy": {
+            "description": "Required when the permissions change while people hold the group. `keep`: they keep what the group gave them, as single permissions. `revoke`: they lose it.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UsersPolicy"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "permissions"
+        ]
+      },
+      "DeletePermissionGroupDto": {
+        "type": "object",
+        "properties": {
+          "usersPolicy": {
+            "description": "Required while people hold the group: `keep` turns the group's permissions into single permissions for each of them, `revoke` takes them away.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UsersPolicy"
+              }
+            ]
+          }
+        }
+      },
+      "GroupUserResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "isMedarisNazim": {
+            "type": "boolean",
+            "description": "Holds the Medaris nazımı role right now"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "email",
+          "isMedarisNazim",
+          "expiresAt"
+        ]
+      },
       "FlashcardProgressResponse": {
         "type": "object",
         "properties": {
@@ -17472,822 +18288,6 @@
           "durationMinutes",
           "status",
           "meetingUrl"
-        ]
-      },
-      "PersonRef": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string",
-            "description": "Null when the person has not signed in since names were kept"
-          }
-        },
-        "required": [
-          "id"
-        ]
-      },
-      "AssignedCourseInfo": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "DRAFT",
-              "PUBLISHED"
-            ]
-          },
-          "hidden": {
-            "type": "boolean",
-            "description": "Hidden by its köşk manager"
-          },
-          "koskId": {
-            "type": "string"
-          },
-          "koskName": {
-            "type": "string"
-          },
-          "madrasahId": {
-            "type": "string"
-          },
-          "madrasahName": {
-            "type": "string"
-          },
-          "studentCount": {
-            "type": "number",
-            "description": "Talebe currently enrolled"
-          }
-        },
-        "required": [
-          "status",
-          "hidden",
-          "koskId",
-          "koskName",
-          "studentCount"
-        ]
-      },
-      "AssignmentResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "MEDARIS_NAZIM",
-              "KOSK_NAZIM",
-              "MEDRESE_BASMUDERRIS",
-              "MEDRESE_NAZIR",
-              "MUDERRIS",
-              "DERS_NAZIR"
-            ]
-          },
-          "scopeType": {
-            "type": "string",
-            "enum": [
-              "platform",
-              "kosk",
-              "madrasah",
-              "course"
-            ]
-          },
-          "scopeId": {
-            "type": "string",
-            "description": "Null for the platform"
-          },
-          "scopeName": {
-            "type": "string"
-          },
-          "isImam": {
-            "type": "boolean",
-            "description": "Imam of the course (MUDERRIS only)"
-          },
-          "grantedAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "expiresAt": {
-            "format": "date-time",
-            "type": "string",
-            "description": "Null: no end date"
-          },
-          "grantedBy": {
-            "$ref": "#/components/schemas/PersonRef"
-          },
-          "grantedBySelf": {
-            "type": "boolean",
-            "description": "The caller gave this role to themselves"
-          },
-          "course": {
-            "description": "Present when the scope is a course",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/AssignedCourseInfo"
-              }
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "role",
-          "scopeType",
-          "isImam",
-          "grantedAt",
-          "grantedBy",
-          "grantedBySelf"
-        ]
-      },
-      "MyAssignmentsResponse": {
-        "type": "object",
-        "properties": {
-          "assignments": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AssignmentResponse"
-            }
-          }
-        },
-        "required": [
-          "assignments"
-        ]
-      },
-      "RoleSummary": {
-        "type": "object",
-        "properties": {
-          "role": {
-            "type": "string",
-            "enum": [
-              "MEDARIS_NAZIM",
-              "KOSK_NAZIM",
-              "MEDRESE_BASMUDERRIS",
-              "MEDRESE_NAZIR",
-              "MUDERRIS",
-              "DERS_NAZIR"
-            ]
-          },
-          "scopeCount": {
-            "type": "number",
-            "description": "In how many scopes the role is held"
-          }
-        },
-        "required": [
-          "role",
-          "scopeCount"
-        ]
-      },
-      "MyRolesResponse": {
-        "type": "object",
-        "properties": {
-          "systemAdmin": {
-            "type": "boolean",
-            "description": "Holds the SYSTEM_ADMIN realm role"
-          },
-          "roles": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RoleSummary"
-            }
-          }
-        },
-        "required": [
-          "systemAdmin",
-          "roles"
-        ]
-      },
-      "PermissionGroupRef": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "permissions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "permissions"
-        ]
-      },
-      "GrantResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "scopeType": {
-            "type": "string",
-            "enum": [
-              "platform",
-              "kosk",
-              "madrasah",
-              "course"
-            ]
-          },
-          "scopeId": {
-            "type": "string"
-          },
-          "scopeName": {
-            "type": "string"
-          },
-          "permission": {
-            "type": "string",
-            "description": "A catalog code; null when the grant is a group"
-          },
-          "group": {
-            "$ref": "#/components/schemas/PermissionGroupRef"
-          },
-          "grantedAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "expiresAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "grantedBy": {
-            "$ref": "#/components/schemas/PersonRef"
-          },
-          "grantedBySelf": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "id",
-          "scopeType",
-          "grantedAt",
-          "grantedBy",
-          "grantedBySelf"
-        ]
-      },
-      "MyGrantsResponse": {
-        "type": "object",
-        "properties": {
-          "grants": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/GrantResponse"
-            }
-          }
-        },
-        "required": [
-          "grants"
-        ]
-      },
-      "MyPermissionsResponse": {
-        "type": "object",
-        "properties": {
-          "permissions": {
-            "description": "Every catalog code the caller holds in any scope",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "permissions"
-        ]
-      },
-      "ScopeRefResponse": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "platform",
-              "kosk",
-              "madrasah",
-              "course"
-            ]
-          },
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "type"
-        ]
-      },
-      "EffectivePermissionGroup": {
-        "type": "object",
-        "properties": {
-          "role": {
-            "type": "string",
-            "enum": [
-              "MEDARIS_NAZIM",
-              "KOSK_NAZIM",
-              "MEDRESE_BASMUDERRIS",
-              "MEDRESE_NAZIR",
-              "MUDERRIS",
-              "DERS_NAZIR"
-            ],
-            "description": "Null for scopes where the caller holds a grant but no role"
-          },
-          "scopeType": {
-            "type": "string",
-            "enum": [
-              "platform",
-              "kosk",
-              "madrasah",
-              "course"
-            ]
-          },
-          "scopes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ScopeRefResponse"
-            }
-          },
-          "permissions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "scopeType",
-          "scopes",
-          "permissions"
-        ]
-      },
-      "MyEffectivePermissionsResponse": {
-        "type": "object",
-        "properties": {
-          "groups": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/EffectivePermissionGroup"
-            }
-          }
-        },
-        "required": [
-          "groups"
-        ]
-      },
-      "ChiefNazimResponse": {
-        "type": "object",
-        "properties": {
-          "displayName": {
-            "type": "string",
-            "description": "Null when nobody holds the role or the directory is not reachable"
-          }
-        }
-      },
-      "CatalogSectionResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "example": "kosks"
-          },
-          "permissions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "permissions"
-        ]
-      },
-      "PermissionCatalogResponse": {
-        "type": "object",
-        "properties": {
-          "platform": {
-            "description": "The platform's permissions in the five sections of nizam/12",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CatalogSectionResponse"
-            }
-          },
-          "course": {
-            "description": "What a group scoped to courses may carry",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "platform",
-          "course"
-        ]
-      },
-      "PermissionGroupScope": {
-        "type": "string",
-        "enum": [
-          "PLATFORM",
-          "ALL_COURSES",
-          "COURSE"
-        ]
-      },
-      "NazimGroupResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "scope": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/PermissionGroupScope"
-              }
-            ]
-          },
-          "courseTitle": {
-            "type": "string",
-            "nullable": true
-          },
-          "permissions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "scope",
-          "courseTitle",
-          "permissions"
-        ]
-      },
-      "NazimPermissionResponse": {
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string"
-          },
-          "grantedAt": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "required": [
-          "code",
-          "grantedAt"
-        ]
-      },
-      "MedarisNazimResponse": {
-        "type": "object",
-        "properties": {
-          "user": {
-            "$ref": "#/components/schemas/NazimPersonResponse"
-          },
-          "appointedBy": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/NazimPersonResponse"
-              }
-            ]
-          },
-          "appointedAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "assignmentExpiresAt": {
-            "format": "date-time",
-            "type": "string",
-            "nullable": true,
-            "description": "The appointment's own end; null while it has none"
-          },
-          "expiresAt": {
-            "format": "date-time",
-            "type": "string",
-            "nullable": true,
-            "description": "The earliest end among the appointment and the platform permissions; null when nothing ends"
-          },
-          "groups": {
-            "description": "Every group held: the platform's and the course-wide ones",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/NazimGroupResponse"
-            }
-          },
-          "permissions": {
-            "description": "Platform permissions given one by one, not through a group",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/NazimPermissionResponse"
-            }
-          }
-        },
-        "required": [
-          "user",
-          "appointedBy",
-          "appointedAt",
-          "assignmentExpiresAt",
-          "expiresAt",
-          "groups",
-          "permissions"
-        ]
-      },
-      "AppointMedarisNazimDto": {
-        "type": "object",
-        "properties": {
-          "userId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "The account to appoint"
-          },
-          "groupId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "permissions": {
-            "description": "Codes from the catalog of the group's scope",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true,
-            "description": "When the appointment and its permissions end; empty: never"
-          }
-        },
-        "required": [
-          "userId",
-          "permissions"
-        ]
-      },
-      "SetNazimGrantsDto": {
-        "type": "object",
-        "properties": {
-          "groupId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true,
-            "description": "A platform group, or empty for none"
-          },
-          "permissions": {
-            "description": "The permissions given on top of the group",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true,
-            "description": "When the permissions end; empty: when the appointment does. Never later than the appointment's end."
-          }
-        },
-        "required": [
-          "permissions"
-        ]
-      },
-      "GivenItemResponse": {
-        "type": "object",
-        "properties": {
-          "kind": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/GivenKind"
-              }
-            ]
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "role": {
-            "type": "string",
-            "nullable": true
-          },
-          "permission": {
-            "type": "string",
-            "nullable": true
-          },
-          "groupName": {
-            "type": "string",
-            "nullable": true
-          },
-          "to": {
-            "$ref": "#/components/schemas/NazimPersonResponse"
-          },
-          "scopeType": {
-            "type": "string"
-          },
-          "scopeName": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "required": [
-          "kind",
-          "id",
-          "role",
-          "permission",
-          "groupName",
-          "to",
-          "scopeType",
-          "scopeName"
-        ]
-      },
-      "DismissMedarisNazimDto": {
-        "type": "object",
-        "properties": {
-          "decisions": {
-            "description": "One per item `GET …/given` lists",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DismissDecisionDto"
-            }
-          }
-        },
-        "required": [
-          "decisions"
-        ]
-      },
-      "PermissionGroupResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "scope": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/PermissionGroupScope"
-              }
-            ]
-          },
-          "courseId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "courseTitle": {
-            "type": "string",
-            "nullable": true
-          },
-          "permissions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "userCount": {
-            "type": "number",
-            "description": "People who hold the group right now"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "scope",
-          "courseId",
-          "courseTitle",
-          "permissions",
-          "userCount"
-        ]
-      },
-      "CreatePermissionGroupDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 80
-          },
-          "scope": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/PermissionGroupScope"
-              }
-            ]
-          },
-          "courseId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "The one course, when `scope` is COURSE"
-          },
-          "permissions": {
-            "description": "Codes from the catalog of the group's scope",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "name",
-          "scope",
-          "permissions"
-        ]
-      },
-      "UsersPolicy": {
-        "type": "string",
-        "enum": [
-          "keep",
-          "revoke"
-        ],
-        "description": "Required when the permissions change while people hold the group. `keep`: they keep what the group gave them, as single permissions. `revoke`: they lose it."
-      },
-      "UpdatePermissionGroupDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 80
-          },
-          "permissions": {
-            "description": "Codes from the catalog of the group's scope",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "usersPolicy": {
-            "description": "Required when the permissions change while people hold the group. `keep`: they keep what the group gave them, as single permissions. `revoke`: they lose it.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/UsersPolicy"
-              }
-            ]
-          }
-        },
-        "required": [
-          "name",
-          "permissions"
-        ]
-      },
-      "DeletePermissionGroupDto": {
-        "type": "object",
-        "properties": {
-          "usersPolicy": {
-            "description": "Required while people hold the group: `keep` turns the group's permissions into single permissions for each of them, `revoke` takes them away.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/UsersPolicy"
-              }
-            ]
-          }
-        }
-      },
-      "GroupUserResponse": {
-        "type": "object",
-        "properties": {
-          "userId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string",
-            "nullable": true
-          },
-          "email": {
-            "type": "string",
-            "nullable": true
-          },
-          "isMedarisNazim": {
-            "type": "boolean",
-            "description": "Holds the Medaris nazımı role right now"
-          },
-          "expiresAt": {
-            "format": "date-time",
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "required": [
-          "userId",
-          "name",
-          "email",
-          "isMedarisNazim",
-          "expiresAt"
         ]
       },
       "MadrasahNazirGroupResponse": {

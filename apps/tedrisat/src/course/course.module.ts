@@ -1,5 +1,6 @@
 import { AuthGuardModule } from "@medaris/common";
 import { Module } from "@nestjs/common";
+import { AssignmentModule } from "../assignment/assignment.module";
 import { BanModule } from "../ban/ban.module";
 import { DatabaseService } from "../database/database.service";
 import { KoskModule } from "../kosk/kosk.module";
@@ -24,6 +25,7 @@ import { RecordingRepository } from "./recording.repository";
     BanModule,
     PlatformPolicyModule,
     NotificationModule,
+    AssignmentModule,
   ],
   controllers: [CourseController, LessonController, LiveStreamController],
   providers: [

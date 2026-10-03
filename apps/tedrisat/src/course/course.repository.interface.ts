@@ -487,8 +487,6 @@ export interface ICourseRepository {
   getBadgeCounts(courseId: string): Promise<ICourseBadgeCounts>;
   /** The course's müderris rows in display order (MDRS-105). */
   findMuderris(courseId: string): Promise<IMuderris[]>;
-  /** Which of `ids` have signed in at least once (have a `users` row). */
-  findKnownUserIds(ids: readonly string[]): Promise<string[]>;
   /** Every enrollment in the course, for its team's roster (MDRS-105). */
   findEnrollmentsByCourse(courseId: string): Promise<IEnrollment[]>;
   /** Deletes the enrollment and audits the reason, in one transaction. */
