@@ -465,9 +465,9 @@
         "bodyReason": "تم رفض طلبك لفتح {koskName}. السبب: {reason}"
       },
       "DECK_PUBLISH_RESULT": {
-        "title": "{outcome, select, approved {نُشرت المجموعة} unpublished {أُلغي نشر المجموعة} other {رُفض طلب نشر المجموعة}}",
-        "body": "{outcome, select, approved {أصبحت {deckTitle} متاحة للجميع.} unpublished {أُلغي نشر {deckTitle}.} other {رُفض طلبك لإتاحة {deckTitle} للجميع.}}",
-        "bodyReason": "{outcome, select, approved {أصبحت {deckTitle} متاحة للجميع.} unpublished {أُلغي نشر {deckTitle}.} other {رُفض طلبك لإتاحة {deckTitle} للجميع.}} السبب: {reason}"
+        "title": "{outcome, select, approved {نُشرت المجموعة} unpublished {أُلغي نشر المجموعة} proposal_rejected {رُفض اقتراح المجموعة} other {رُفض طلب نشر المجموعة}}",
+        "body": "{outcome, select, approved {أصبحت {deckTitle} متاحة للجميع.} unpublished {أُلغي نشر {deckTitle}.} proposal_rejected {رُفض اقتراحك للمجموعة {deckTitle}.} other {رُفض طلبك لإتاحة {deckTitle} للجميع.}}",
+        "bodyReason": "{outcome, select, approved {أصبحت {deckTitle} متاحة للجميع.} unpublished {أُلغي نشر {deckTitle}.} proposal_rejected {رُفض اقتراحك للمجموعة {deckTitle}.} other {رُفض طلبك لإتاحة {deckTitle} للجميع.}} السبب: {reason}"
       }
     }
   },
@@ -725,6 +725,7 @@
     "all": "الكل",
     "statusPRIVATE": "خاصة",
     "statusPENDING": "بانتظار النشر",
+    "statusREJECTED": "رُفض طلب النشر",
     "statusPUBLISHED": "منشورة",
     "kindCOURSE": "مجموعة درس",
     "kindKOSK": "مجموعة كشك",

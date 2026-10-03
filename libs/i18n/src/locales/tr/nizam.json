@@ -2856,5 +2856,207 @@
       "link": "Toplantı bağlantısı https:// ile başlamalı. Bağlantıyı platformdan yeniden kopyalayın.",
       "time": "Tarihi ve saati girin."
     }
+  },
+  "DeckRequestsPage": {
+    "title": "Deste yayın istekleri",
+    "intro": "Üyeler kendi destelerinin herkese açılmasını ister; desteyi siz yayımlarsınız.",
+    "noticeTitle": "Yayımlanan deste herkese açılır",
+    "notice": "Giriş yapmamış ziyaretçiler de desteyi görür ve çalışır; hazırlayanın adı gösterilmez. Sahibi desteyi dilediği an yeniden özele çekebilir; bunun için onayınız gerekmez.",
+    "tabsLabel": "İstek durumu",
+    "tabs": {
+      "PENDING": "Bekleyen",
+      "DECIDED": "Karara bağlanan"
+    },
+    "empty": {
+      "PENDING": "Karar bekleyen deste yayın isteği yok.",
+      "DECIDED": "Karara bağlanmış istek yok."
+    },
+    "loadFailedTitle": "İstekler okunamadı",
+    "loadFailed": "Deste yayın istekleri şu anda alınamıyor. Biraz sonra yeniden deneyin.",
+    "retry": "Tekrar dene",
+    "cardsFailed": "Kartlar okunamadı.",
+    "noCards": "Bu destede henüz kart yok.",
+    "front": "Ön yüz",
+    "back": "Arka yüz",
+    "detailEyebrow": "YAYIN İSTEĞİ",
+    "status": {
+      "PENDING": "Karar bekliyor",
+      "PUBLISHED": "Yayımlandı",
+      "REJECTED": "Reddedildi"
+    },
+    "outcome": {
+      "PENDING": "Bekliyor",
+      "PUBLISHED": "Yayımlandı",
+      "REJECTED": "Reddedildi"
+    },
+    "owner": "Sahibi",
+    "cards": "Kart",
+    "cardType": "Kart türü",
+    "requestedAt": "İstendi",
+    "cardTypes": {
+      "VOCABULARY": "Kelime",
+      "HADEETH": "Hadis"
+    },
+    "cardCount": "{count} ezber kartı",
+    "sampleHeading": "Örnek kartlar",
+    "allCards": "Bütün kartlar",
+    "auditNote": "Deste yayımlanana kadar özeldir; kartlarını görmeniz denetim kaydına yazılır.",
+    "allCardsCount": "Bütün kartlar: {count} ezber kartı",
+    "publishNote": "Yayımladığınızda deste, Desteleri keşfet sayfasında herkese görünür; hazırlayanın adı gösterilmez.",
+    "publish": "Yayımla",
+    "reject": "Reddet",
+    "rejectReasonTitle": "Ret gerekçesi",
+    "unknownPerson": "Adı bilinmeyen üye",
+    "published": "Deste yayımlandı",
+    "publishedBody": "{title} artık herkese açık; sahibine haber verildi.",
+    "rejected": "İstek reddedildi",
+    "rejectedBody": "{title} özel kaldı; gerekçe sahibine iletildi.",
+    "answerFailed": "Karar kaydedilemedi",
+    "errors": {
+      "requestAnswered": "Bu istek az önce karara bağlanmış ya da geri çekilmiş.",
+      "requestGone": "Bu istek artık yok.",
+      "proposalAnswered": "Bu öneri az önce karara bağlanmış.",
+      "proposalGone": "Bu öneri artık yok.",
+      "deckGone": "Bu deste artık yok ya da zaten gizli.",
+      "forbidden": "Bu işlem için izniniz yok."
+    }
+  },
+  "DeckReject": {
+    "close": "Kapat",
+    "cancel": "Vazgeç",
+    "submit": "Reddet",
+    "requiredNote": "zorunlu alan",
+    "reasonLabel": "Ret gerekçesi",
+    "reasonRequired": "Bir gerekçe yazın.",
+    "request": {
+      "title": "Yayın isteğini reddet",
+      "body": "Deste özel kalır. Gerekçe, deste sahibine bildirimle iletilir; sahibi isterse yeniden istekte bulunabilir.",
+      "help": "Sahibi bu gerekçeyi okuyacak."
+    },
+    "proposal": {
+      "title": "Öneriyi reddet",
+      "body": "Öneri kapanır. Gerekçeyi öneren, bildirimlerinde görür.",
+      "help": "Öneren bu gerekçeyi okuyacak."
+    }
+  },
+  "KoskDecksPage": {
+    "title": "Köşk desteleri",
+    "intro": "Köşk desteleri, {kosk}'nün herhangi bir dersine kayıtlı talebelere açıktır. Kartlarını siz eklersiniz; talebeler desteyi çalışır ve istedikleri kartı kendi destelerine kopyalar.",
+    "loadFailedTitle": "Desteler okunamadı",
+    "loadFailed": "Köşkün desteleri şu anda alınamıyor. Sayfayı yenileyin.",
+    "open": "Köşk destesi aç",
+    "proposalsHeading": "Müderris önerileri",
+    "proposalsWaiting": "{count, plural, one {# öneri kararınızı bekliyor} other {# öneri kararınızı bekliyor}}",
+    "proposalsNote": "Kabul ettiğinizde önerinin adı ve açıklamasıyla doldurulmuş “Köşk destesi aç” formu açılır; desteyi açıp kartlarını siz eklersiniz. Reddettiğinizde öneren gerekçeyi bildirimde görür.",
+    "proposedBy": "Öneren {name}",
+    "accept": "Kabul et",
+    "acceptLabel": "{title} önerisini kabul et",
+    "refuse": "Reddet",
+    "refuseLabel": "{title} önerisini reddet",
+    "unknownPerson": "adı bilinmeyen müderris",
+    "decksHeading": "Desteler",
+    "decksCount": "{count, plural, one {# deste} other {# deste}}",
+    "caption": "{kosk} desteleri",
+    "empty": "Bu köşkün henüz destesi yok.",
+    "columns": {
+      "deck": "Deste",
+      "cards": "Ezber kartı",
+      "changed": "Son değişiklik",
+      "actions": "İşlemler"
+    },
+    "cardTypes": {
+      "VOCABULARY": "Kelime",
+      "HADEETH": "Hadis"
+    },
+    "editCards": "Kartları düzenle",
+    "editCardsLabel": "{title} kartlarını düzenle",
+    "hide": "Gizle",
+    "hideLabel": "{title} destesini gizle",
+    "hideTitle": "Deste gizlensin mi?",
+    "hideBody": "{title}, {kosk} talebelerinden gizlenecek; deste silinmez. Arşivden istediğiniz an geri alabilirsiniz.",
+    "hideConfirm": "Gizle",
+    "cancel": "Vazgeç",
+    "close": "Kapat",
+    "hidden": "Deste gizlendi",
+    "hiddenBody": "{title} köşkün arşivine taşındı.",
+    "proposalRefused": "Öneri reddedildi",
+    "proposalRefusedBody": "{title} önerisinin gerekçesi öneren müderrise iletildi.",
+    "actionFailed": "İşlem yapılamadı",
+    "errors": {
+      "requestAnswered": "Bu istek az önce karara bağlanmış ya da geri çekilmiş.",
+      "requestGone": "Bu istek artık yok.",
+      "proposalAnswered": "Bu öneri az önce karara bağlanmış.",
+      "proposalGone": "Bu öneri artık yok.",
+      "deckGone": "Bu deste artık yok ya da zaten gizli.",
+      "forbidden": "Bu işlem için izniniz yok."
+    }
+  },
+  "KoskDeckForm": {
+    "title": "Köşk destesi aç",
+    "intro": "Köşk destesi, {kosk}'nün herhangi bir dersine kayıtlı talebelere açıktır. Kartları desteyi açtıktan sonra eklersiniz.",
+    "breadcrumbLabel": "Sayfa yolu",
+    "breadcrumbRoot": "Köşk desteleri",
+    "breadcrumbCurrent": "Köşk destesi aç",
+    "requiredNote": "zorunlu alan",
+    "proposalTitle": "Müderris önerisinden açılıyor",
+    "proposalBody": "<b>{title}</b> önerisi · {name} · {course} · {date}. Ad ve açıklama önerideki gibi geldi; değiştirebilirsiniz. Desteyi açtığınızda öneri kabul edilmiş olur.",
+    "unknownPerson": "adı bilinmeyen müderris",
+    "nameLabel": "Deste adı",
+    "nameHelp": "Köşkün talebeleri bu adı görür.",
+    "titleRequired": "Bir deste adı yazın.",
+    "descriptionLabel": "Açıklama",
+    "descriptionHelp": "İsteğe bağlı. Deste listesinde adının altında görünür.",
+    "typeLabel": "Kart türü",
+    "types": {
+      "VOCABULARY": {
+        "label": "Kelime",
+        "description": "Ön yüzde Arapça kelime ya da kalıp, arka yüzde anlamı ve notu."
+      },
+      "HADEETH": {
+        "label": "Hadis",
+        "description": "Ön yüzde hadisten bir parça, arka yüzde tam metni ve kaynağı."
+      }
+    },
+    "visibleTitle": "Kimler görür",
+    "visibleBody": "{kosk}'nün herhangi bir dersine kayıtlı talebeler; şu an {count, plural, one {# talebe} other {# talebe}}. Desteyi çalışır ve istedikleri kartı kendi destelerine kopyalar; kart ekleyemez ya da değiştiremez.",
+    "cancel": "Vazgeç",
+    "submit": "Desteyi aç",
+    "laterTitle": "Kartlar sonra eklenir",
+    "laterBody": "Desteyi açtıktan sonra deste satırındaki “Kartları düzenle” ile kartları tablo üzerinde tek tek girebilir ya da dosyadan aktarabilirsiniz.",
+    "import": {
+      "csv": {
+        "title": "CSV dosyasından içe aktarma",
+        "body": "Kartları CSV olarak dışa aktarabilirsiniz."
+      },
+      "xls": {
+        "title": "Excel dosyasından içe aktarma",
+        "body": "Kartları Excel olarak dışa aktarabilirsiniz."
+      }
+    },
+    "previewFront": "ÖN YÜZ",
+    "previewBack": "ARKA YÜZ",
+    "preview": {
+      "vocabulary": {
+        "front": "دَعَا يَدْعُو دُعَاءً",
+        "back": "Çağırdı, çağırır, çağırmak. Nâkıs vâvî: lâm-ı fiili vâvdır.",
+        "note": "Kelime kartı böyle görünür; örnek, seçtiğiniz türe göre değişir."
+      },
+      "hadith": {
+        "front": "إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ",
+        "back": "Ameller niyetlere göredir. (Buhârî, Bed’ü’l-vahy 1)",
+        "note": "Hadis kartı böyle görünür; örnek, seçtiğiniz türe göre değişir."
+      }
+    },
+    "failed": "Deste açılamadı",
+    "opened": "Deste açıldı",
+    "openedBody": "{title} köşk desteleri arasında; kartlarını şimdi ekleyebilirsiniz.",
+    "errors": {
+      "requestAnswered": "Bu istek az önce karara bağlanmış ya da geri çekilmiş.",
+      "requestGone": "Bu istek artık yok.",
+      "proposalAnswered": "Bu öneri az önce karara bağlanmış; deste açılmadı.",
+      "proposalGone": "Bu öneri artık yok; deste açılmadı.",
+      "deckGone": "Bu deste artık yok ya da zaten gizli.",
+      "forbidden": "Bu köşkün nazımı değilsiniz."
+    }
   }
 }
