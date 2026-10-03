@@ -154,8 +154,9 @@ reviews:
 
         WHAT CI ALREADY CATCHES — do not repeat it. `Commit hygiene` lints the PR
         title and every commit (conventional commits, scope enum in
-        commitlint.config.mjs). `Traceability` requires the Linear key in the title
-        or branch. `Verify` runs the Biome ratchet (tools/ci/biome-ratchet.mjs),
+        commitlint.config.mjs). `Traceability` only reports a Linear key if one is
+        present; work is no longer tracked in Linear, so a PR without one is
+        normal — do not ask for a key. `Verify` runs the Biome ratchet (tools/ci/biome-ratchet.mjs),
         the nx targets lint / typecheck / test / build / module-boundaries on
         affected projects, asserts release config consistency
         (tools/ci/assert-release-config.mjs), .env.example ↔ docker-compose parity
