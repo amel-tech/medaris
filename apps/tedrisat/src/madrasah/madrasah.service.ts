@@ -70,6 +70,18 @@ export class MadrasahService {
     return madrasah;
   }
 
+  /**
+   * What `GET /madrasahs/:id` serves, to callers with no token too: a hidden
+   * medrese is not-found, closed like its listing and its page (MDRS-170).
+   * `findById` stays open to it for the writes that return the medrese they
+   * changed.
+   */
+  async findOpenById(id: string): Promise<IMadrasahWithNazirs> {
+    const madrasah = await this.findById(id);
+    if (madrasah.archivedAt) throw new MadrasahNotFoundError(id);
+    return madrasah;
+  }
+
   /** The medrese page's data (MDRS-157); not-found for an unknown medrese. */
   async findOverview(
     id: string,

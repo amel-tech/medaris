@@ -28,6 +28,7 @@ import {
   markRead,
   type NotificationsState,
   replaceList,
+  rollBack,
   type TabKey,
 } from "../notification-state";
 import {
@@ -86,7 +87,8 @@ export function NotificationsPage({
   // The latest state for rollbacks, which run after an `await`.
   const latest = useRef(state);
   latest.current = state;
-  // Ignores a list answer that arrives after the person chose something else.
+  // Ignores a list answer that arrives after the person chose something else:
+  // a first page, a next page, or the refusal of a read made on the old list.
   const generation = useRef(0);
 
   const fetchList = useCallback((nextTab: TabKey, nextFilter: TypeFilter) => {
@@ -108,7 +110,10 @@ export function NotificationsPage({
 
   const loadMore = (cursor: string) =>
     startTransition(async () => {
+      const mine = generation.current;
       const res = await loadNotifications(tab, typesOf(filter), cursor);
+      // another tab or chip was chosen meanwhile: this page belongs to the old list
+      if (mine !== generation.current) return;
       if (!res.success) {
         setFailed("more");
         return;
@@ -138,6 +143,7 @@ export function NotificationsPage({
   const read = (n: NotificationResponse) => {
     const before = latest.current;
     if (!before) return;
+    const mine = generation.current;
     setState((s) => (s ? markRead(s, tab, n.id, new Date()) : s));
     void markNotificationRead(n.id).then((res) => {
       if (res.success) {
@@ -145,7 +151,9 @@ export function NotificationsPage({
         router.refresh();
         return;
       }
-      setState(before);
+      setState((s) =>
+        s ? rollBack(s, before, mine === generation.current) : s
+      );
       toaster.notify({
         tone: "error",
         title: t("markReadFailedTitle"),
@@ -157,13 +165,16 @@ export function NotificationsPage({
   const readAll = () => {
     const before = latest.current;
     if (!before) return;
+    const mine = generation.current;
     setState((s) => (s ? markAllRead(s, tab, new Date()) : s));
     void markAllNotificationsRead().then((res) => {
       if (res.success) {
         router.refresh();
         return;
       }
-      setState(before);
+      setState((s) =>
+        s ? rollBack(s, before, mine === generation.current) : s
+      );
       toaster.notify({
         tone: "error",
         title: t("markAllFailedTitle"),

@@ -666,7 +666,10 @@ test("nizam/21 — an end date is kept and shown, and one in the past cannot be 
   expect(mine?.endsAt?.toISOString().slice(0, 10)).toBe(inThirty);
 });
 
-test("nizam/21 — a köşk nazımı gets no 'Köşk nazımı ekle', and the API refuses them too (criterion 6)", async ({
+// The screen only: the browser holds no bearer token, so this spec cannot call
+// the API as the köşk nazımı. That `POST /kosks/:id/nazims` is a 403 for them is
+// tedrisat's `kosk-admin.e2e.spec.ts` ("is the başnazım's alone").
+test("nizam/21 — a köşk nazımı gets no 'Köşk nazımı ekle' (criterion 6)", async ({
   page,
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
