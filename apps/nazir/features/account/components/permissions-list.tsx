@@ -53,7 +53,7 @@ export function PermissionsList({
                 {title}
               </h3>
               {scopeLine ? <p className="mds-caption">{scopeLine}</p> : null}
-              <ul className="md:columns-2 md:gap-x-8">
+              <ul className="ps-0 md:columns-2 md:gap-x-8">
                 {codes.map((code) => (
                   <li
                     key={code}
@@ -62,7 +62,7 @@ export function PermissionsList({
                   >
                     <Icon name="check" size="sm" className="mbs-1 shrink-0" />
                     <span className="flex flex-col">
-                      <span>
+                      <span className="mds-body-sm">
                         {t(`Account.permissions.${permissionMessageKey(code)}`)}
                       </span>
                       {PERMISSION_NOTE_CODES.has(code) &&
