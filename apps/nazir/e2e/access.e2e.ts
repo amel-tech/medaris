@@ -93,11 +93,23 @@ test("'/' opens the scope that was last used and falls back to the first medrese
   test.skip(!(fixture && canSignIn(BASMUDERRIS)), "no medrese başmüderris");
   const page = await as("MEDRESE_BASMUDERRIS");
 
+  // the cookie is written once the page has hydrated, so wait for it
+  const remembered = (scope: string) =>
+    expect
+      .poll(
+        async () =>
+          (await page.context().cookies()).find((c) => c.name === "nazir-scope")
+            ?.value
+      )
+      .toBe(encodeURIComponent(scope));
+
   await page.goto(`/ders/${fixture?.first.id}`);
+  await remembered(`ders:${fixture?.first.id}`);
   await page.goto("/");
   await page.waitForURL(`**/ders/${fixture?.first.id}`);
 
   await page.goto(`/medrese/${fixture?.madrasah.id}`);
+  await remembered(`medrese:${fixture?.madrasah.id}`);
   await page.goto("/");
   await page.waitForURL(`**/medrese/${fixture?.madrasah.id}`);
 });
