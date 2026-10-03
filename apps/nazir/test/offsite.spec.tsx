@@ -22,6 +22,8 @@ import { expand, html, textOf, translatorFor } from "./server-render";
  */
 const state = {
   mode: "ok" as "ok" | "forbidden" | "failed",
+  /** the köşk list is open to everyone; the medrese's own route refuses a nazır */
+  requests: "ok" as "ok" | "forbidden",
   /** the köşks the API lists, a page after another */
   pages: [] as Array<Array<{ id: string; name: string }>>,
   asked: [] as unknown[],
@@ -41,11 +43,14 @@ vi.mock("next-intl/server", () => ({
   getLocale: async () => "tr",
 }));
 vi.mock("~/lib/tedrisat-read", () => ({
-  readOnce: async (_what: string, call: (api: unknown) => Promise<unknown>) => {
+  readOnce: async (what: string, call: (api: unknown) => Promise<unknown>) => {
     if (state.mode !== "ok") return { status: state.mode };
+    if (state.requests === "forbidden" && what.includes("requests"))
+      return { status: "forbidden" };
     return {
       status: "ok",
       data: await call({
+        madrasahs: { getOffsiteCourseRequests: async () => [] },
         kosks: {
           getAllKosks: async (request: { page: number }) => {
             state.asked.push(request);
@@ -113,6 +118,7 @@ const fill = async (title: string, reason: string) => {
 
 beforeEach(() => {
   state.mode = "ok";
+  state.requests = "ok";
   state.pages = [[NURUOSMANIYE, FATIH, BEYAZIT]];
   state.asked = [];
   for (const fn of [refresh, push, sendOffsiteRequest]) fn.mockReset();
@@ -240,6 +246,14 @@ describe("Medrese dışı ders talebi", () => {
 
   it("answers a refusal with a notice, without the form", async () => {
     state.mode = "forbidden";
+    const out = await markup();
+    expect(textOf(out)).toContain("Bu sayfaya izniniz yok");
+    expect(out).not.toContain("offsite-form");
+  });
+
+  it("answers a nazır of the medrese, whom the köşk list lets through, with the notice too", async () => {
+    state.pages = [[NURUOSMANIYE]];
+    state.requests = "forbidden";
     const out = await markup();
     expect(textOf(out)).toContain("Bu sayfaya izniniz yok");
     expect(out).not.toContain("offsite-form");

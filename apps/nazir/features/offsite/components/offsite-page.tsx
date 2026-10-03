@@ -30,12 +30,20 @@ const readKosks = (): Promise<Read<Array<{ id: string; name: string }>>> =>
  * asked; the medrese needs no hosting right there. The medrese's başmüderris
  * opens the page; the API refuses a nazır of the medrese today (the role
  * matrix has no row for MEDRESE_NAZIR), so that answer is a notice and the form
- * is not drawn. Where no köşk is listed there is nobody to ask and the page says
- * so.
+ * is not drawn. The köşk list is open to everyone who signed in, so the refusal
+ * is read from the medrese's own requests, the route the form's POST is behind.
+ * Where no köşk is listed there is nobody to ask and the page says so.
  */
 export async function OffsitePage({ madrasahId }: { madrasahId: string }) {
-  const [t, kosks] = await Promise.all([getMessages("nazir"), readKosks()]);
+  const [t, listed, access] = await Promise.all([
+    getMessages("nazir"),
+    readKosks(),
+    readOnce("the medrese's offsite requests", (api) =>
+      api.madrasahs.getOffsiteCourseRequests({ id: madrasahId })
+    ),
+  ]);
   const listHref = coursesHref(madrasahId, { kosk: null, status: null });
+  const kosks = access.status === "ok" ? listed : access;
 
   return (
     <>
