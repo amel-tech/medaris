@@ -712,13 +712,17 @@ export class CourseService {
     // The köşk's own policy (MDRS-174, nizam/24) says the same for all its
     // courses and a course's setting cannot loosen it.
     // The platform's own policy (MDRS-181, nizam/19) says it for every köşk.
+    // So does a course of a medrese whose policy is "Kayıt her zaman onaylı"
+    // (nazir/04), which its own settings cannot reopen.
     const koskRule = await this.koskService.findVisibility(course.koskId);
     const unlisted =
       (koskRule?.isPrivate ?? false) ||
       (koskRule?.alwaysRequireApproval ?? false) ||
       (await this.platformPolicies.isOn("ALWAYS_REQUIRE_APPROVAL"));
     const status =
-      course.requiresApproval || unlisted
+      course.requiresApproval ||
+      unlisted ||
+      (await this.courseRepo.forcesApproval(courseId))
         ? EnrollmentStatus.PENDING
         : EnrollmentStatus.ENROLLED;
     return this.courseRepo.enroll(userId, courseId, {

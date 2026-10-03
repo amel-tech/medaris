@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { sectionSegments } from "~/features/shell/nav";
 import { buildScopes } from "~/features/shell/scope";
@@ -16,6 +18,12 @@ vi.mock("next-intl/server", () => ({
 
 const props = (bolum: string) => ({ params: Promise.resolve({ bolum }) });
 
+/**
+ * The medrese's sections that have a page of their own (MDRS-184): a static
+ * route folder wins over the placeholder's `[bolum]`, so these never reach it.
+ */
+const BUILT = ["nazirlar", "ayarlar"];
+
 /** The pages no package has built yet: one placeholder per kind of scope. */
 describe("the shared placeholder under a medrese", () => {
   const page = async (bolum: string) =>
@@ -23,8 +31,9 @@ describe("the shared placeholder under a medrese", () => {
       props(bolum)
     );
 
-  it("answers every segment of the menu with the entry's name and a sentence", async () => {
+  it("answers every segment of the menu that has no page yet with the entry's name and a sentence", async () => {
     for (const segment of sectionSegments("medrese")) {
+      if (BUILT.includes(segment)) continue;
       const text = textOf(await html(await page(segment)));
       expect(text, segment).toContain("Bu sayfa henüz hazır değil.");
     }
@@ -32,6 +41,26 @@ describe("the shared placeholder under a medrese", () => {
     expect(textOf(await html(await page("kabul-kurallari")))).toMatch(
       /^Kabul kuralları /
     );
+  });
+
+  it("leaves the sections that have a page to their own route folder", () => {
+    for (const segment of BUILT) {
+      expect(sectionSegments("medrese"), segment).toContain(segment);
+      expect(
+        existsSync(
+          join(
+            import.meta.dirname,
+            "..",
+            "app",
+            "medrese",
+            "[medreseId]",
+            segment,
+            "page.tsx"
+          )
+        ),
+        segment
+      ).toBe(true);
+    }
   });
 
   it("answers 404 for a segment the menu does not have", async () => {

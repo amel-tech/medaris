@@ -55,3 +55,16 @@ export async function settle(ms = 20): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, ms));
   });
 }
+
+/** Types into a React-controlled input or textarea: the native setter, then the event React listens for. */
+export async function type(element: Element, value: string): Promise<void> {
+  const proto =
+    element instanceof HTMLTextAreaElement
+      ? HTMLTextAreaElement.prototype
+      : HTMLInputElement.prototype;
+  const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
+  await act(async () => {
+    setter?.call(element, value);
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}

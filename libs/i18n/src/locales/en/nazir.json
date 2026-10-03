@@ -187,5 +187,167 @@
     "signOut": "Sign out",
     "signOutBusy": "Signing out",
     "signOutNote": "You sign out of Medaris in this browser. Your roles and preferences stay with your account."
+  },
+  "Problems": {
+    "forbiddenTitle": "You do not have access to this page",
+    "forbidden": "You are not allowed to open this page. If you need access, ask the medrese's head müderris.",
+    "actionForbidden": "You are not allowed to do this.",
+    "actionGeneric": "Something went wrong. Try again in a moment."
+  },
+  "Settings": {
+    "title": "Medrese settings",
+    "subtitle": "The medrese's name, its description and the policies that apply to all of its courses.",
+    "viewPage": "View the medrese page",
+    "viewPageHint": "(opens in a new tab)",
+    "generalTitle": "General",
+    "required": "required field",
+    "name": "Medrese name",
+    "nameHelp": "Talebe see this name on the medrese page and on the pages of its courses.",
+    "nameProblems": {
+      "required": "The medrese name cannot be empty.",
+      "short": "The medrese name must be at least {min} characters.",
+      "long": "The medrese name can be at most {max} characters."
+    },
+    "description": "Description",
+    "descriptionHelp": "Shown on the medrese page, above the list of courses.",
+    "descriptionLong": "The description can be at most {max} characters.",
+    "policiesTitle": "Policies",
+    "policiesIntro": "A policy closes a permission in all of the medrese's courses. A course's settings cannot open what a policy has closed.",
+    "policiesGroup": "In the medrese's courses",
+    "policies": {
+      "closedCourseRequired": {
+        "label": "Closed course required",
+        "help": "When on, no content or recording of the medrese's courses can be opened to everyone; only a sample course chosen by the course staff may stay open in the introduction."
+      },
+      "alwaysApproval": {
+        "label": "Enrolment always needs approval",
+        "help": "When on, nobody can enrol in the medrese's courses directly; every enrolment becomes an application that the course staff approve."
+      },
+      "noPublicRecordings": {
+        "label": "Recordings cannot be public",
+        "help": "When on, no recording can be made public or uploaded to YouTube; only enrolled talebe and the course staff watch the recordings."
+      }
+    },
+    "policiesNote": "A policy change takes effect the moment you save it and is written to the audit log.",
+    "narrowerTitle": "A köşk's policy may be narrower",
+    "narrower": "A medrese course also follows the policies of the köşk it is opened in; whichever is narrower applies.",
+    "lastChange": "Last changed {date} · {name}",
+    "lastChangeAnonymous": "Last changed {date}",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving",
+    "saved": "Settings saved.",
+    "saveFailedTitle": "The settings could not be saved",
+    "saveFailedInvalid": "Check the medrese name and the description and try again.",
+    "tiersTitle": "How policies combine",
+    "tiersIntro": "A permission can be used only when it is on at all four levels; if one level closes it, it is closed.",
+    "tiers": {
+      "medaris": {
+        "name": "Medaris",
+        "help": "Set by Medaris administration"
+      },
+      "kosk": {
+        "name": "The köşk the course is opened in",
+        "help": "Set by the köşk nazım"
+      },
+      "medrese": {
+        "help": "Set by the head müderris or a medrese nazır with the permission"
+      },
+      "ders": {
+        "name": "Course settings",
+        "help": "Set by the course staff"
+      }
+    },
+    "thisPage": "This page",
+    "coursesTitle": "Courses the policies apply to",
+    "coursesEmpty": "This medrese has no courses yet.",
+    "coursesFailed": "The courses could not be read right now. Refresh the page to try again.",
+    "coursesLink": "Medrese courses",
+    "imam": "imam",
+    "status": {
+      "PUBLISHED": "Published",
+      "DRAFT": "Draft"
+    },
+    "loadFailedTitle": "The medrese settings could not be read",
+    "loadFailed": "The medrese settings could not be read right now. Try again in a few seconds."
+  },
+  "Nazirs": {
+    "title": "Medrese nazırs",
+    "intro": "Medrese nazırs work only with the permissions that you or a Medaris nazım with permission give them, and they cannot pass on a permission they received.",
+    "appoint": "Appoint a medrese nazır",
+    "awaitingTitle": "{name} has not received any permission yet",
+    "awaiting": "{appointer} appointed them on {date}. Until you give permission they cannot do anything.",
+    "awaitingManyTitle": "{count} nazırs have not received any permission yet",
+    "awaitingMany": "{names}. Until you give permission they cannot do anything.",
+    "caption": "Nazırs of {name}",
+    "columns": {
+      "nazir": "Nazır",
+      "grants": "Permissions and groups",
+      "end": "Ends",
+      "giver": "Given by",
+      "actions": "Actions"
+    },
+    "unknownPerson": "Name unknown",
+    "noGrants": "No permission",
+    "appointedBy": "Appointed by: {name} · {date}",
+    "permissionsWithGroups": "Also {count, plural, one {# permission} other {# permissions}}: {list}",
+    "permissionsOnly": "{count, plural, one {# permission} other {# permissions}}: {list}",
+    "never": "No end date",
+    "noValue": "—",
+    "dismiss": "Dismiss",
+    "dismissLabel": "Dismiss: {name}",
+    "empty": "This medrese has no nazır yet. You can add one with “Appoint a medrese nazır”.",
+    "loadFailedTitle": "The medrese nazırs could not be read",
+    "loadFailed": "The medrese nazırs could not be read right now. Try again in a few seconds."
+  },
+  "Appoint": {
+    "title": "Appoint a medrese nazır",
+    "intro": "The person you appoint starts with no permission; until you give permission they cannot do anything.",
+    "label": "The nazır's e-mail address",
+    "help": "Type the registered account's full e-mail address; every search is written to the audit log.",
+    "placeholder": "first.last@example.com",
+    "notFound": "No account is registered with this e-mail address.",
+    "failed": "The search is not available right now. Try again in a moment.",
+    "already": "This person is already a nazır of this medrese.",
+    "searching": "Searching",
+    "chosenTitle": "Chosen person",
+    "chosen": "{name} chosen",
+    "remove": "Remove the choice: {name}",
+    "submit": "Appoint",
+    "cancel": "Cancel",
+    "appointed": "Nazır appointed",
+    "appointedBody": "{name} was appointed; until you give permission they cannot do anything.",
+    "failedTitle": "The nazır could not be appointed"
+  },
+  "Dismiss": {
+    "title": "{name} is being dismissed",
+    "intro": "{name} had given roles and permissions to these people. Choose what happens to each.",
+    "introNone": "{name} has not given roles or permissions to anyone, so there is nothing to choose. Dismissing removes only their own role and permissions.",
+    "takeOver": "Take over",
+    "drop": "Drop",
+    "answerLegend": "Choice for {person}",
+    "noEnd": "no end date",
+    "until": "until {date}",
+    "givenAt": "given {date}",
+    "noPermissions": "No permissions at all; a medrese nazır cannot give permissions to a nazır they appointed.",
+    "answersNote": "If you take over, the role and permissions stay and you appear as the giver; if you drop, they are taken back at once. Every decision is written to the audit log.",
+    "gateNote": "You cannot dismiss before choosing for every row.",
+    "drops": {
+      "summary": "If {name} is dismissed, {what} will be dropped at once.",
+      "groupOne": "the group {names}",
+      "groupMany": "the groups {names}",
+      "permissions": "{count, plural, one {# extra permission} other {# extra permissions}}",
+      "both": "{groups} and {permissions}",
+      "nothing": "{name} has not received any permission yet, so there is nothing to drop."
+    },
+    "submit": "Dismiss",
+    "cancel": "Cancel",
+    "dismissed": "Dismissed",
+    "dismissedBody": "{name} is no longer a nazır of this medrese.",
+    "failedTitle": "The nazır could not be dismissed",
+    "changed": "What this person gave changed while you were looking. The list was refreshed; make your choices again.",
+    "gone": "This person is no longer a nazır of this medrese.",
+    "loadFailedTitle": "The list could not be read",
+    "loadFailed": "What this person gave cannot be read right now. Try again in a moment."
   }
 }

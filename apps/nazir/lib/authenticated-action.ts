@@ -57,3 +57,25 @@ export async function authenticatedAction<T>(
     };
   }
 }
+
+/** The API's error code of a failed call ("AUTHZ_FORBIDDEN"), or "" when it sent none. */
+export const errorCodeOf = (errorBody: unknown): string =>
+  errorBody && typeof errorBody === "object" && "code" in errorBody
+    ? String((errorBody as { code: unknown }).code)
+    : "";
+
+/**
+ * What a server action hands the browser: the data, or only the API's code.
+ * The server's message (which can name internals) never reaches the page; the
+ * page words a failure itself from the code.
+ */
+export type ActionOutcome<T> =
+  | { success: true; data: T }
+  | { success: false; code: string };
+
+export const outcomeOf = <T>(
+  result: AuthenticatedActionResult<T>
+): ActionOutcome<T> =>
+  result.success
+    ? result
+    : { success: false, code: errorCodeOf(result.errorBody) };
