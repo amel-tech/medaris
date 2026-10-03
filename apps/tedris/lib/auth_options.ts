@@ -1,7 +1,9 @@
 import {
+  checkKeycloakSession,
   createAccessTokenReader,
-  REFRESH_ACCESS_TOKEN_ERROR,
+  isKeycloakSessionEnded,
   refreshDeadline,
+  refreshFailureError,
 } from "@medaris/services/auth";
 import type {
   GetServerSidePropsContext,
@@ -24,6 +26,10 @@ import { authPages } from "~/lib/auth_pages";
  * @param  {JWT} token
  */
 const refreshAccessToken = async (token: JWT) => {
+  // Keycloak has already said this SSO session is over (MDRS-210): its refresh
+  // token is dead, and only a new sign-in replaces the token.
+  if (isKeycloakSessionEnded(token)) return token;
+
   try {
     if (
       typeof token.refreshTokenExpireIn === "number" &&
@@ -63,19 +69,33 @@ const refreshAccessToken = async (token: JWT) => {
       accessTokenExpired: Date.now() + (refreshedTokens.expires_in - 15) * 1000,
       refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
       refreshTokenExpireIn: refreshDeadline(refreshedTokens.refresh_expires_in),
+      // A fresh `id_token` keeps the sign-out's `id_token_hint` current.
+      idToken: refreshedTokens.id_token ?? token.idToken,
+      // A successful refresh is Keycloak confirming the SSO session.
+      ssoCheckedAt: Date.now(),
     };
   } catch (error) {
     console.log("refreshToken error: ", error);
 
     return {
       ...token,
-      // The one sentinel, declared in @medaris/services/auth: this produces it,
-      // `createAccessTokenReader` fails closed on it, and the client's
-      // `RefreshErrorRedirect` sends the visitor back to Keycloak on it.
-      error: REFRESH_ACCESS_TOKEN_ERROR,
+      // `invalid_grant` means the SSO session is gone (signed out, or another
+      // account signed in, elsewhere): the ended-session sentinel, which ends
+      // this app's session too. Anything else is the one sentinel declared in
+      // @medaris/services/auth that `createAccessTokenReader` fails closed on
+      // and the client's `RefreshErrorRedirect` sends back to Keycloak on.
+      error: refreshFailureError(error),
     };
   }
 };
+
+/**
+ * Re-confirms a fresh access token's SSO session with Keycloak at most once a
+ * minute, so a sign-out (or a switch of account) in another Medaris app ends
+ * this app's session too (MDRS-210). See @medaris/services/auth.
+ */
+const checkSession = (token: JWT) =>
+  checkKeycloakSession(token, { issuer: env.KEYCLOAK_ISSUER });
 
 /**
  * Cookie names live in `auth_cookies.ts` so Edge middleware can reuse them
@@ -134,16 +154,25 @@ const authOptions: AuthOptions = {
           account.refresh_expires_in
         );
         token.user = user;
+        // Keycloak has just confirmed the session by issuing these tokens.
+        token.ssoCheckedAt = Date.now();
         return token;
       }
 
       if (Date.now() < token.accessTokenExpired) {
-        return token;
+        return checkSession(token);
       }
 
       return refreshAccessToken(token);
     },
     async session({ session, token }) {
+      // Keycloak ended the SSO session: no session at all. NextAuth 4 reads an
+      // empty object as "signed out" on both sides — `getServerSession`
+      // returns `null` and `GET /api/auth/session` answers `{}`, which the
+      // client's `useSession` reports as `unauthenticated`. A public page then
+      // renders the visitor's view; the middleware already refuses the token
+      // because it carries `error`.
+      if (isKeycloakSessionEnded(token)) return {} as typeof session;
       // accessToken is intentionally kept off the client-visible session —
       // any script on the page could read it via GET /api/auth/session
       // otherwise. Server code reads it through getAccessToken() below.
@@ -184,4 +213,5 @@ export const getAccessToken = createAccessTokenReader<JWT>({
   secret: env.NEXTAUTH_SECRET,
   cookieName: authCookies?.sessionToken?.name,
   refresh: refreshAccessToken,
+  check: checkSession,
 });

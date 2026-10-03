@@ -1,6 +1,9 @@
 "use client";
 
-import { RefreshErrorRedirect } from "@medaris/services/auth-client";
+import {
+  KeycloakSessionWatch,
+  RefreshErrorRedirect,
+} from "@medaris/services/auth-client";
 import { Toaster } from "@medaris/ui/components/sonner";
 import { SessionProvider } from "next-auth/react";
 import { useLocale } from "next-intl";
@@ -12,6 +15,10 @@ import { TimeZoneSync } from "./time-zone-sync";
  * contract `createAccessTokenReader` implements on the server, and the
  * `RefreshAccessTokenError` sentinel it compares against is produced by this
  * app's own `refreshAccessToken`. The locale is the only app-local input.
+ *
+ * `KeycloakSessionWatch` is its counterpart for a session Keycloak has ended
+ * — a sign-out or a switch of account in another Medaris app (MDRS-210): it
+ * reloads the page so the server renders it without the ended session.
  */
 export function ClientProviders({ children }: { children: React.ReactNode }) {
   const locale = useLocale();
@@ -19,6 +26,7 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <RefreshErrorRedirect locale={locale} />
+      <KeycloakSessionWatch />
       <TimeZoneSync />
       {children}
       <Toaster />

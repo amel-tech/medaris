@@ -32,6 +32,15 @@ export interface AccessTokenReaderOptions<T extends AccessTokenJwt> {
    * refresh token is reported.
    */
   refresh: (token: T) => Promise<T>;
+  /**
+   * Re-confirms a fresh token's SSO session with Keycloak — the same check
+   * the app's `jwt` callback runs (`checkKeycloakSession`, MDRS-210). Without
+   * it a server component would go on calling the API with the access token
+   * of a user who has signed out in another app, until that token expired.
+   * The result counts like a refresh: a token it marks `error` yields
+   * `undefined`.
+   */
+  check?: (token: T) => Promise<T>;
 }
 
 /**
@@ -105,7 +114,9 @@ export function createAccessTokenReader<T extends AccessTokenJwt>(
       Date.now() < token.accessTokenExpired;
 
     if (trusted) {
-      return token.accessToken;
+      if (!options.check) return token.accessToken;
+      const checked = await options.check(token);
+      return checked.error ? undefined : checked.accessToken;
     }
 
     const refreshed = await options.refresh(token);
