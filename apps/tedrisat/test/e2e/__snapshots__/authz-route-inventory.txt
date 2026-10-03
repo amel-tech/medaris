@@ -31,6 +31,7 @@ GET /courses/:id -> course.view on course (public)
 GET /courses/:id/badge-counts -> course.staff_read on byExistingCourse
 GET /courses/:id/enrollments -> course.staff_read on course
 GET /courses/:id/enrollments/removed -> course.staff_read on course
+GET /courses/:id/live-streams -> session.live_link on course
 GET /courses/:id/recordings -> course.view on course (public)
 GET /courses/:id/stats -> course.staff_read on byExistingCourse
 GET /courses/enrolled -> exempt
@@ -201,6 +202,7 @@ PUT /courses/:id/progress -> course.view_details on course
 PUT /flashcard/cards/:id -> deck.manage_cards on custom
 PUT /flashcard/cards/progress -> exempt
 PUT /flashcard/decks/:id -> deck.manage_private on flashcard-deck
+PUT /lessons/:id/live-stream -> session.live_link on byLessonCourse
 PUT /madrasahs/:id/courses/:courseId/muderrises -> madrasah.muderris_manage on byExistingMadrasah
 PUT /madrasahs/:id/head-muderris -> platform.head_muderris_manage on byExistingMadrasah
 PUT /madrasahs/:id/nazirs/:userId/permissions -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah

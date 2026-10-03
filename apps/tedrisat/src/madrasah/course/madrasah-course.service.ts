@@ -166,15 +166,20 @@ export class MadrasahCourseService {
   /**
    * The names the new müderris rows carry, from the users table and then the
    * realm's directory. An account neither knows is refused: a link to nobody
-   * would grant MUDERRIS to whoever later signs in under that id.
+   * would grant MUDERRIS to whoever later signs in under that id. Existence is
+   * checked strictly first (MDRS-218), so a directory that does not answer is
+   * a 503 rather than "unknown account", the same rule as nizam's "Ders aç".
    */
   private async namesOf(userIds: string[]): Promise<Map<string, string>> {
+    const [unknown] = await this.directory.findUnknownAccounts(userIds);
+    if (unknown) throw new MuderrisUnknownUserError(unknown);
     const people = await this.directory.resolvePeople(userIds);
     const names = new Map<string, string>();
     for (const id of userIds) {
+      // The account exists (checked above); a name the directory did not give
+      // this time falls back to the id rather than refusing a real person.
       const person = people.get(id);
-      if (!person) throw new MuderrisUnknownUserError(id);
-      names.set(id, displayNameOf(person) ?? id);
+      names.set(id, (person && displayNameOf(person)) ?? id);
     }
     return names;
   }

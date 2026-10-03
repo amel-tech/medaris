@@ -61,10 +61,10 @@ const keycloak = [
 ];
 
 describe("the sign-in page after a failed round trip", () => {
-  it("retries an OAuthCallback silently instead of showing 'Giriş yapılamadı'", async () => {
+  it("retries an OAuthCallback silently instead of showing 'Giriş tamamlanamadı'", async () => {
     await mount("OAuthCallback");
     expect(mocks.signIn).toHaveBeenCalledWith(...keycloak);
-    expect(document.body.textContent).not.toContain("Giriş yapılamadı");
+    expect(document.body.textContent).not.toContain("Giriş tamamlanamadı");
     expect(document.body.textContent).toContain(
       "Giriş sayfasına yönlendiriliyorsunuz…"
     );
@@ -82,26 +82,34 @@ describe("the sign-in page after a failed round trip", () => {
     expect(mocks.signIn).not.toHaveBeenCalled();
   });
 
-  it("shows the box once the automatic retry is spent, with 'Tekrar dene'", async () => {
+  it("shows the design's box once the automatic retry is spent, with the way back to sign-in (MDRS-216)", async () => {
     sessionStorage.setItem(
       "medaris.auth.auto-retry",
       JSON.stringify({ count: 1, at: Date.now() })
     );
     const { button } = await mount("OAuthCallback");
     expect(mocks.signIn).not.toHaveBeenCalled();
-    expect(document.querySelector("h1")?.textContent).toBe("Giriş yapılamadı");
+    expect(document.querySelector("h1")?.textContent).toBe(
+      "Giriş tamamlanamadı"
+    );
+    expect(document.querySelector(".mds-system-state__text")?.textContent).toBe(
+      "Giriş işlemin yarıda kaldı ya da geçersiz hâle geldi. Giriş sayfasına dönüp baştan dene."
+    );
     expect(document.querySelector(".mds-system-state")).not.toBeNull();
+    expect(button("Tekrar dene")).toBeUndefined();
 
-    await click(button("Tekrar dene") as HTMLElement);
+    await click(button("Giriş sayfasına dön") as HTMLElement);
     expect(mocks.signIn).toHaveBeenCalledWith(...keycloak);
   });
 
   it("shows the box at once for AccessDenied, with the way home and no retry", async () => {
     const { button } = await mount("AccessDenied");
     expect(mocks.signIn).not.toHaveBeenCalled();
-    expect(document.querySelector("h1")?.textContent).toBe("Giriş yapılamadı");
+    expect(document.querySelector("h1")?.textContent).toBe(
+      "Giriş tamamlanamadı"
+    );
     expect(document.body.textContent).toContain("Bu hesabın giriş izni yok.");
-    expect(button("Tekrar dene")).toBeUndefined();
+    expect(button("Giriş sayfasına dön")).toBeUndefined();
     expect(button("Ana sayfaya dön")?.getAttribute("href")).toBe("/tr");
   });
 

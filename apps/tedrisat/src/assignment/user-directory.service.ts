@@ -75,6 +75,26 @@ export class UserDirectoryService {
   }
 
   /**
+   * Which of `ids` name no account: not in the users table (written at sign-in)
+   * and, when the realm's directory is configured, not in the realm either. So
+   * a person who has never opened the app counts as an account (MDRS-218), the
+   * same as for every other role. Unlike `resolvePeople`, a directory that does
+   * not answer is an error (503 `KEYCLOAK_ADMIN_UNAVAILABLE`), never "unknown":
+   * a blip must not tell the caller a real person does not exist. Ids are
+   * compared lowercased, as Postgres returns a `uuid`.
+   */
+  async findUnknownAccounts(ids: readonly string[]): Promise<string[]> {
+    const wanted = [...new Set(ids.map((id) => id.toLowerCase()))];
+    const known = await this.repo.findPeople(wanted);
+    const missing = wanted.filter((id) => !known.has(id));
+    if (missing.length === 0 || !this.keycloak.isConfigured()) return missing;
+    const found = await Promise.all(
+      missing.map((id) => this.keycloak.findById(id))
+    );
+    return missing.filter((_, i) => found[i] === null);
+  }
+
+  /**
    * The başnazım is whoever holds the SYSTEM_ADMIN realm role. Not finding
    * anyone, or not reaching the directory, is an answer (`null`), not an
    * error: the "no access" screen has a sentence for it. Cached a few

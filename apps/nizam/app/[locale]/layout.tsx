@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import "@medaris/ui/globals.css";
 import "@medaris/ui/medaris.css";
 import { textFontsHref } from "@medaris/tokens/medaris-fonts";
-import { AppProviders } from "@medaris/ui/mds/app-providers";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { LegalFooter } from "~/components/legal-footer";
 import { ClientProviders } from "~/components/providers/client-providers";
 import { NizamShell } from "~/components/shell/nizam-shell";
+import { htmlLangDir } from "~/lib/i18n/direction";
 import { routing } from "~/lib/i18n/routing";
 
 export const metadata: Metadata = {
@@ -30,11 +30,12 @@ export default async function LocaleLayout({
   }
 
   setRequestLocale(locale);
+  // The language and the direction come from the route (MDRS-230): `/ar/*`
+  // is served the Arabic catalogue, so it is marked Arabic and mirrored.
+  const { lang, dir } = htmlLangDir(locale);
 
-  // A launch is Turkish and left to right whatever the route's locale says
-  // (canvas rules 3 and 40); the Arabic interface is a later phase.
   return (
-    <html lang="tr" dir="ltr" data-app>
+    <html lang={lang} dir={dir} data-app>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -47,9 +48,7 @@ export default async function LocaleLayout({
       <body suppressHydrationWarning>
         <NextIntlClientProvider>
           <ClientProviders>
-            <AppProviders toaster>
-              <NizamShell footer={<LegalFooter />}>{children}</NizamShell>
-            </AppProviders>
+            <NizamShell footer={<LegalFooter />}>{children}</NizamShell>
           </ClientProviders>
         </NextIntlClientProvider>
       </body>

@@ -4,9 +4,14 @@ import {
   KeycloakSessionWatch,
   RefreshErrorRedirect,
 } from "@medaris/services/auth-client";
-import { Toaster } from "@medaris/ui/components/sonner";
+import {
+  DismissStaleSonnerToasts,
+  Toaster,
+} from "@medaris/ui/components/sonner";
+import { AppProviders } from "@medaris/ui/mds/app-providers";
+import { usePathname } from "next/navigation";
 import { SessionProvider } from "next-auth/react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { TimeZoneSync } from "./time-zone-sync";
 
 /**
@@ -19,17 +24,27 @@ import { TimeZoneSync } from "./time-zone-sync";
  * `KeycloakSessionWatch` is its counterpart for a session Keycloak has ended
  * — a sign-out or a switch of account in another Medaris app (MDRS-210): it
  * reloads the page so the server renders it without the ended session.
+ *
+ * `DismissStaleSonnerToasts` takes the toasts from before the user's last
+ * action off the screen when the pathname changes (MDRS-214). `AppProviders`
+ * (the unified kit's root and its `Toaster`) sits here rather than in the
+ * server layout so it can take the pathname as its `routeKey` too.
  */
 export function ClientProviders({ children }: { children: React.ReactNode }) {
   const locale = useLocale();
+  const t = useTranslations("common");
+  const pathname = usePathname() ?? "";
 
   return (
     <SessionProvider>
       <RefreshErrorRedirect locale={locale} />
       <KeycloakSessionWatch />
       <TimeZoneSync />
-      {children}
-      <Toaster />
+      <DismissStaleSonnerToasts routeKey={pathname} />
+      <AppProviders toaster routeKey={pathname}>
+        {children}
+      </AppProviders>
+      <Toaster closeLabel={t("toast.close")} />
     </SessionProvider>
   );
 }

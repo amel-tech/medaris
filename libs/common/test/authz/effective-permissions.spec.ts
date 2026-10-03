@@ -868,3 +868,61 @@ describe("which roles confer a permission (MDRS-205)", () => {
     }
   });
 });
+
+describe("effective permissions: who holds a course code by default (MDRS-228)", () => {
+  // The rule `standingCarries` pinned for the live-stream link before the
+  // engine read the catalogue itself; the grant half and the başnazım are
+  // covered against Postgres in `apps/tedrisat/test/e2e/live-stream.e2e.spec.ts`.
+  it("gives session.live_link to the müderris and to the köşk nazımı", () => {
+    expect(
+      held(courseFacts(), [role(ASSIGNED_ROLES.MUDERRIS, course())]).has(
+        P.SESSION_LIVE_LINK
+      )
+    ).toBe(true);
+    expect(
+      held(courseFacts(), [role(ASSIGNED_ROLES.KOSK_NAZIM, kosk())]).has(
+        P.SESSION_LIVE_LINK
+      )
+    ).toBe(true);
+  });
+
+  it("gives nothing to someone who holds neither role", () => {
+    expect(held(courseFacts()).has(P.SESSION_LIVE_LINK)).toBe(false);
+  });
+
+  it("gives a ders nazırı session.live_link only through a grant, and only while its role lasts", () => {
+    const derse = grant(course(), [P.SESSION_LIVE_LINK]);
+    expect(
+      held(courseFacts(), [role(ASSIGNED_ROLES.DERS_NAZIR, course())]).has(
+        P.SESSION_LIVE_LINK
+      )
+    ).toBe(false);
+    expect(
+      held(
+        courseFacts(),
+        [role(ASSIGNED_ROLES.DERS_NAZIR, course())],
+        [derse]
+      ).has(P.SESSION_LIVE_LINK)
+    ).toBe(true);
+    // A grant no role covers counts for nothing.
+    expect(held(courseFacts(), [], [derse]).has(P.SESSION_LIVE_LINK)).toBe(
+      false
+    );
+  });
+
+  it("does not stretch a course role to a platform permission", () => {
+    const codes = held(courseFacts(), [
+      role(ASSIGNED_ROLES.MUDERRIS, course()),
+      role(ASSIGNED_ROLES.KOSK_NAZIM, kosk()),
+    ]);
+    expect(codes.has(P.PLATFORM_AUDIT_READ)).toBe(false);
+  });
+
+  it("gives permission_group.define to the müderris", () => {
+    expect(
+      held(courseFacts(), [role(ASSIGNED_ROLES.MUDERRIS, course())]).has(
+        P.PERMISSION_GROUP_DEFINE
+      )
+    ).toBe(true);
+  });
+});

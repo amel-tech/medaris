@@ -2,6 +2,7 @@ export * from "./callback-url";
 export * from "./meeting-platform";
 export * from "./privacy-notice";
 export * from "./time-zone";
+export * from "./youtube-live";
 
 export const formatDate = (date: Date): string => {
   return new Intl.DateTimeFormat("tr-TR", {

@@ -251,7 +251,7 @@ export class CourseController {
   @ApiOkResponse({ type: CourseDetailResponse })
   @ApiNotFoundResponse({
     description:
-      "No such course, or a müderris row links an account that has never signed in (MUDERRIS_UNKNOWN_USER).",
+      "No such course, or a müderris row links an id that names no account in the app or the realm (MUDERRIS_UNKNOWN_USER).",
   })
   @ApiForbiddenResponse({
     description:
