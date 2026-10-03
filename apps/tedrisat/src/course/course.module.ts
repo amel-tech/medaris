@@ -6,12 +6,18 @@ import { KoskModule } from "../kosk/kosk.module";
 import { CourseController } from "./course.controller";
 import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
+import { CourseStatsRepository } from "./course-stats.repository";
 import { LessonController } from "./lesson.controller";
 
 @Module({
   imports: [AuthGuardModule, KoskModule, BanModule],
   controllers: [CourseController, LessonController],
-  providers: [CourseService, CourseRepository, DatabaseService],
+  providers: [
+    CourseService,
+    CourseRepository,
+    CourseStatsRepository,
+    DatabaseService,
+  ],
   // For AuthzBindingsModule's role resolver (MDRS-41): findKoskId,
   // isMuderris and findEnrollment have no CourseService counterpart, so the
   // repository is what is exported here.

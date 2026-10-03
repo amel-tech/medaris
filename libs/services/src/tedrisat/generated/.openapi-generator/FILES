@@ -48,6 +48,7 @@ src/models/CatalogSectionResponse.ts
 src/models/ChiefNazimResponse.ts
 src/models/CourseDetailResponse.ts
 src/models/CourseMadrasahResponse.ts
+src/models/CourseStatsResponse.ts
 src/models/CourseSummaryResponse.ts
 src/models/CreateBanDto.ts
 src/models/CreateCourseDto.ts
@@ -116,6 +117,11 @@ src/models/InactivePersonResponse.ts
 src/models/InactiveRemoverRole.ts
 src/models/InactiveScopeResponse.ts
 src/models/InactiveScopeType.ts
+src/models/KoskCourseCountsResponse.ts
+src/models/KoskCourseMuderrisResponse.ts
+src/models/KoskCourseRosterResponse.ts
+src/models/KoskCourseRowResponse.ts
+src/models/KoskCourseStatus.ts
 src/models/KoskDeckResponse.ts
 src/models/KoskDecksResponse.ts
 src/models/KoskDirectoryCountsResponse.ts
@@ -129,6 +135,8 @@ src/models/KoskListingFilter.ts
 src/models/KoskManagedBy.ts
 src/models/KoskNazimGranterRole.ts
 src/models/KoskNazimResponse.ts
+src/models/KoskOverviewMadrasahResponse.ts
+src/models/KoskOverviewResponse.ts
 src/models/KoskPersonResponse.ts
 src/models/KoskResponse.ts
 src/models/KoskStatus.ts
