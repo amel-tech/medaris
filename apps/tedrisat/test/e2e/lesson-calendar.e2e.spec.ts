@@ -136,8 +136,8 @@ describe("GET /lessons/:id/calendar.ics (e2e)", () => {
     const page = `${WEB_URL}/courses/${detail.id}/lessons/${lesson.id}`;
     expect(prop(ics, "UID")).toBe(`lesson-${lesson.id}@medaris.app`);
     expect(prop(ics, "SEQUENCE")).toBe(String(detail.version));
-    expect(prop(ics, "DTSTART")).toBe("20261001T180000Z");
-    expect(prop(ics, "DTEND")).toBe("20261001T190000Z");
+    expect(ics).toContain("DTSTART;TZID=Europe/Istanbul:20261001T210000");
+    expect(ics).toContain("DTEND;TZID=Europe/Istanbul:20261001T220000");
     expect(prop(ics, "SUMMARY")).toBe("Bina ve İzhar Şerhi — Açılış halkası");
     expect(prop(ics, "URL")).toBe(page);
     expect(prop(ics, "LOCATION")).toBe(page);
@@ -163,7 +163,7 @@ describe("GET /lessons/:id/calendar.ics (e2e)", () => {
     expect(Number(prop(after, "SEQUENCE"))).toBeGreaterThan(
       Number(prop(before, "SEQUENCE"))
     );
-    expect(prop(after, "DTSTART")).toBe("20261002T173000Z");
+    expect(after).toContain("DTSTART;TZID=Europe/Istanbul:20261002T203000");
   });
 
   it("writes the description in the requested language and refuses an unknown one", async () => {
