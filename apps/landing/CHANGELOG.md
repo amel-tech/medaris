@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.0](https://github.com/amel-tech/medaris/compare/landing-web-v2.0.0...landing-web-v2.1.0) (2026-10-03)
+
+
+### Features
+
+* **landing-web:** MDRS-152 carry PR [#106](https://github.com/amel-tech/medaris/issues/106) landing onto the stack ([#131](https://github.com/amel-tech/medaris/issues/131)) ([5264d17](https://github.com/amel-tech/medaris/commit/5264d174811d94dada7f2b35a522021ae2dc0ace))
+* **nizam-web, landing-web, i18n:** MDRS-101 launch wave 2 in nizam, landing and the shared libs ([#120](https://github.com/amel-tech/medaris/issues/120)) ([5f0f694](https://github.com/amel-tech/medaris/commit/5f0f694c0251c7924492b7c4441958ab711ec030))
+
 ## [2.0.0](https://github.com/amel-tech/medaris/compare/landing-web-v1.2.0...landing-web-v2.0.0) (2026-09-28)
 
 
