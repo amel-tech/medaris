@@ -22,7 +22,7 @@ export class NotificationService {
 
   /**
    * The producers' entry point (MDRS-167): one notification per recipient,
-   * written together. Not called by any module yet.
+   * written together.
    */
   async notify(...input: NotificationInput[]): Promise<void> {
     await this.repo.insert(input);

@@ -3,9 +3,11 @@
  * stored row carries this key and its `params`, never a sentence, so each
  * reader sees it in their own language.
  *
- * The producers of most of these events do not exist yet: only the
- * notification model and its reads ship with MDRS-167. A producer calls
- * `NotificationService.notify` with one of these.
+ * A producer calls `NotificationService.notify` with one of these. The
+ * course types are written by `CourseNotifier` (MDRS-213) and
+ * COURSE_ACCESS_REMOVED by `BanService` when a ban takes a seat. SESSION_ADDED
+ * — a lesson recording added, as tedris words it — has no producer yet: no
+ * route adds a recording.
  */
 export const NOTIFICATION_TYPES = [
   "ENROLLMENT_APPROVED",

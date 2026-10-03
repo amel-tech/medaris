@@ -8,6 +8,11 @@ import { useTranslations } from "next-intl";
  * e-mail sentence and "E-posta tercihleri" button are left out on purpose:
  * e-mail needs SMTP, which MDRS-167 does not have (spec tedris/36, class C
  * part).
+ *
+ * Only what tedrisat sends (MDRS-213). The design's "Derslerine eklenen ders
+ * kayıtları" row (SESSION_ADDED) and the make-up session of a cancelled one
+ * are left out until something can produce them: no route adds a recording
+ * or links a make-up session yet. Put them back with their producer.
  */
 const ITEMS: Array<{
   icon: IconName;
@@ -19,7 +24,6 @@ const ITEMS: Array<{
   { icon: "lock", title: "accessRemoved", text: "accessRemovedText" },
   { icon: "clock", title: "rescheduled" },
   { icon: "close", title: "cancelled" },
-  { icon: "video", title: "added" },
   { icon: "kosk", title: "kosk", text: "koskText" },
   { icon: "cards", title: "deck", text: "deckText" },
 ];

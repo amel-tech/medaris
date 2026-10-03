@@ -32,6 +32,7 @@ import {
   IUpdateCourse,
   IUpdateLesson,
 } from "./course.repository.interface";
+import { CourseNotifier } from "./course-notifier";
 import {
   isCourseParticipant,
   withContent,
@@ -98,7 +99,8 @@ export class CourseService {
     private readonly authz: AuthzService,
     private readonly banService: BanService,
     private readonly recordingRepo: RecordingRepository,
-    private readonly platformPolicies: PlatformPolicyService
+    private readonly platformPolicies: PlatformPolicyService,
+    private readonly notifier: CourseNotifier
   ) {}
 
   /**
@@ -539,9 +541,20 @@ export class CourseService {
   async updateLesson(
     lessonId: string,
     expectedVersion: number,
-    data: IUpdateLesson
+    data: IUpdateLesson,
+    actorId?: string
   ): Promise<ILessonMutation> {
-    return this.courseRepo.updateLesson(lessonId, expectedVersion, data);
+    const before =
+      data.scheduledAt === undefined
+        ? null
+        : await this.notifier.sessionStartBefore(lessonId);
+    const updated = await this.courseRepo.updateLesson(
+      lessonId,
+      expectedVersion,
+      data
+    );
+    await this.notifier.sessionRescheduled(before, updated, actorId);
+    return updated;
   }
 
   /** Cancels the session; it keeps its slot in the programme (MDRS-176). */
@@ -551,12 +564,14 @@ export class CourseService {
     reason: string | null,
     actorId: string
   ): Promise<ILessonMutation> {
-    return this.courseRepo.cancelLesson(
+    const cancelled = await this.courseRepo.cancelLesson(
       lessonId,
       expectedVersion,
       reason,
       actorId
     );
+    await this.notifier.sessionCancelled(cancelled, actorId);
+    return cancelled;
   }
 
   /**
@@ -790,7 +805,8 @@ export class CourseService {
    */
   async approveEnrollment(
     courseId: string,
-    studentId: string
+    studentId: string,
+    actorId?: string
   ): Promise<IEnrollment> {
     const existing = await this.courseRepo.findEnrollment(studentId, courseId);
     if (!existing) throw new EnrollmentNotFoundError(courseId);
@@ -806,8 +822,11 @@ export class CourseService {
       EnrollmentStatus.ENROLLED,
       existing.status
     );
-    if (updated) return updated;
-    return this.lostRace(courseId, studentId, EnrollmentStatus.ENROLLED);
+    if (!updated) {
+      return this.lostRace(courseId, studentId, EnrollmentStatus.ENROLLED);
+    }
+    await this.notifier.enrollmentApproved(courseId, studentId, actorId);
+    return updated;
   }
 
   /**
@@ -842,6 +861,12 @@ export class CourseService {
           EnrollmentStatus.PENDING
         );
     if (!removed) throw new EnrollmentNotFoundError(courseId);
+    await this.notifier.enrollmentRejected(
+      courseId,
+      studentId,
+      actorId,
+      reason?.trim() || null
+    );
     return true;
   }
 
@@ -905,6 +930,12 @@ export class CourseService {
       expectedStatus: EnrollmentStatus.ENROLLED,
     });
     if (!removed) throw new EnrollmentNotFoundError(courseId);
+    await this.notifier.removedFromCourse(
+      courseId,
+      studentId,
+      actorId,
+      reason.trim()
+    );
     return true;
   }
 

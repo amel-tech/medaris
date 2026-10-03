@@ -62,6 +62,7 @@ function build(
     lift: vi.fn().mockResolvedValue({ id: BAN_ID }),
     isBarredFromCourse: vi.fn().mockResolvedValue(false),
     nazimRecipients: vi.fn().mockResolvedValue(["n1", "m1"]),
+    seatsNewlyBarred: vi.fn().mockResolvedValue([]),
     ...repo,
   };
   const notify = vi.fn().mockResolvedValue(undefined);
@@ -121,6 +122,30 @@ describe("BanService (MDRS-177)", () => {
       expect(notify.mock.calls[0][0]).toMatchObject({
         type: "KOSK_BAN_PLACED",
       });
+    });
+
+    it("tells the talebe their access to the course was removed, never the reason (MDRS-213)", async () => {
+      const { service, notify } = build([ASSIGNED_ROLES.MUDERRIS], {
+        seatsNewlyBarred: vi.fn().mockResolvedValue([
+          {
+            userId: TALEBE,
+            courseId: COURSE,
+            courseTitle: "Emsile",
+            koskName: "Nûruosmaniye Köşkü",
+          },
+        ]),
+      });
+      await service.create({ sub: "m1" }, COURSE, dto);
+      expect(notify).toHaveBeenCalledTimes(2);
+      expect(notify.mock.calls[1]).toEqual([
+        {
+          userId: TALEBE,
+          type: "COURSE_ACCESS_REMOVED",
+          targetType: "COURSE",
+          targetId: COURSE,
+          params: { courseTitle: "Emsile", source: "Nûruosmaniye Köşkü" },
+        },
+      ]);
     });
 
     it("stays silent for a second request that placed nothing new", async () => {
