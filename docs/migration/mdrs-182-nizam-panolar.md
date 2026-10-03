@@ -16,8 +16,8 @@ Web (`apps/nizam`):
 
 - `/` renders nizam/01 or nizam/05 by role; a köşk nazımı is redirected to `/kosks/<first>/ana-sayfa` (nizam/02). The köşk's Ana sayfa menu item and "Köşk değiştir" stay on that page.
 - A Medaris nazımı's menu is cut to their permissions (`filterByPermissions` in `lib/shell-nav.ts`); if the permissions cannot be read nothing is hidden.
-- "İncele" lands on `/talepler/kosk-basvurulari?secili=<id>` and `/talepler/deste-yayin-istekleri?secili=<id>` with that row selected; "Köşk aç" opens the form on `/kosks?ac=1` (başnazım).
-- Reddet on a köşk application asks for "Ret gerekçesi (isteğe bağlı)"; the button is never held back.
+- "İncele" lands on `/talepler/kosk-basvurulari?secili=<id>` and `/talepler/deste-yayin-istekleri?secili=<id>` with that row selected; "Köşk aç" opens the form on `/kosks?ac=1` (başnazım only).
+- Reddet on a course enrollment (nizam/02) asks for "Ret gerekçesi (isteğe bağlı)"; Reddet on a köşk application (nizam/15) requires the reason (not optional).
 - i18n `nizam.Dashboard` in tr, en and ar.
 
 ## Decisions
