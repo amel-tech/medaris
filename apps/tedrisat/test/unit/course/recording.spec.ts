@@ -60,6 +60,15 @@ describe("visibleRecordings (MDRS-162)", () => {
     expect(list.map((r) => r.id)).toEqual(["b"]);
   });
 
+  it("lists nothing public to everyone else when the course is closed (MDRS-176)", () => {
+    const rows = [
+      row("a"),
+      row("b", { visibility: RecordingVisibility.PUBLIC }),
+    ];
+    expect(visibleRecordings(rows, false, false)).toEqual([]);
+    expect(visibleRecordings(rows, true, false)).toHaveLength(2);
+  });
+
   it("gives a PROCESSING recording no link, even if one is stored", () => {
     const [only] = visibleRecordings(
       [row("a", { status: RecordingStatus.PROCESSING })],

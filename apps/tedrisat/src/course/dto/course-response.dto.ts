@@ -84,6 +84,10 @@ export class MuderrisResponse {
   @ApiPropertyOptional({ type: String }) bio!: string | null;
   @ApiProperty() avatarHue!: number;
   @ApiProperty() orderIndex!: number;
+  @ApiProperty({
+    description: "The course's imam among its müderrisler (MDRS-133)",
+  })
+  isImam!: boolean;
 }
 
 export class ResourceResponse {
@@ -173,6 +177,17 @@ class CourseBase {
   @ApiProperty() grantsCertificate!: boolean;
   @ApiProperty() requiresApproval!: boolean;
   @ApiProperty({
+    description:
+      "Closed course (MDRS-176): its content and recordings are never opened to everyone; recordings marked PUBLIC are read by the course team and the enrolled talebe only.",
+  })
+  isClosed!: boolean;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: "The word printed on the cover; null when none.",
+  })
+  coverLabel!: string | null;
+  @ApiProperty({
     example: "Europe/Istanbul",
     description:
       "IANA time zone the course's sessions are authored in (MDRS-110).",
@@ -226,12 +241,7 @@ export class CourseDetailResponse extends CourseBase {
   contentLocked!: boolean;
 }
 
-export class SummaryMuderrisResponse extends MuderrisResponse {
-  @ApiProperty({
-    description: "The course's imam among its müderrisler (MDRS-133)",
-  })
-  isImam!: boolean;
-}
+export class SummaryMuderrisResponse extends MuderrisResponse {}
 
 export class CourseMadrasahResponse {
   @ApiProperty({ format: "uuid" }) id!: string;

@@ -11,6 +11,7 @@ import { Icon } from "@medaris/ui/mds/icon";
 import { resolveMeetingPlatform } from "@medaris/utils";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
+import type { LooseTranslator } from "~/lib/i18n/loose";
 import {
   embedUrlOf,
   liveEmbedUrlOf,
@@ -21,11 +22,8 @@ import { MediaPlayer } from "./media-player";
 import { SessionJoinLive } from "./session-join-live";
 import { SessionProgramme } from "./session-programme";
 
-/** Loose on purpose: the full next-intl key union of the catalogue exceeds the instantiation depth (TS2589). */
-type Translate = (
-  key: string,
-  values?: Record<string, number | string>
-) => string;
+// Narrow on purpose: the full translator type hits TS2589 here (MDRS-176).
+type Translate = LooseTranslator;
 
 /** A line with each Arabic run set in its own language and direction. */
 const ArabicText = ({ text }: { text: string }) => (

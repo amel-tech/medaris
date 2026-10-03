@@ -15,6 +15,7 @@
 
 import * as runtime from '../runtime';
 import type {
+  CancelLessonDto,
   CreateSessionBatchDto,
   CreateWeekLessonDto,
   LessonMutationResponse,
@@ -26,6 +27,8 @@ import type {
   WeeklyPatternDto,
 } from '../models/index';
 import {
+    CancelLessonDtoFromJSON,
+    CancelLessonDtoToJSON,
     CreateSessionBatchDtoFromJSON,
     CreateSessionBatchDtoToJSON,
     CreateWeekLessonDtoFromJSON,
@@ -48,6 +51,11 @@ import {
 
 export interface ArchiveLessonRequest {
     id: string;
+}
+
+export interface CancelLessonRequest {
+    id: string;
+    cancelLessonDto: CancelLessonDto;
 }
 
 export interface CreateLessonRequest {
@@ -129,6 +137,60 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async archiveLesson(requestParameters: ArchiveLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonMutationResponse> {
         const response = await this.archiveLessonRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The session stays in the programme as \'İptal edildi\' (MDRS-158); its meeting link is no longer shown. The reason is course content. Written to `audit_log` (MDRS-176).
+     * Cancel a live session; it keeps its slot, marked cancelled
+     */
+    async cancelLessonRaw(requestParameters: CancelLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonMutationResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling cancelLesson().'
+            );
+        }
+
+        if (requestParameters['cancelLessonDto'] == null) {
+            throw new runtime.RequiredError(
+                'cancelLessonDto',
+                'Required parameter "cancelLessonDto" was null or undefined when calling cancelLesson().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/cancel`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CancelLessonDtoToJSON(requestParameters['cancelLessonDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LessonMutationResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The session stays in the programme as \'İptal edildi\' (MDRS-158); its meeting link is no longer shown. The reason is course content. Written to `audit_log` (MDRS-176).
+     * Cancel a live session; it keeps its slot, marked cancelled
+     */
+    async cancelLesson(requestParameters: CancelLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonMutationResponse> {
+        const response = await this.cancelLessonRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

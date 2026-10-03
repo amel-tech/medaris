@@ -50,6 +50,8 @@ export interface IMuderris {
   bio: string | null;
   avatarHue: number;
   orderIndex: number;
+  /** Whether the account is the course's imam (MDRS-133). */
+  isImam: boolean;
 }
 
 export interface IResource {
@@ -77,6 +79,10 @@ export interface ICourse {
   status: CourseStatus;
   grantsCertificate: boolean;
   requiresApproval: boolean;
+  /** Content and recordings never public (MDRS-176). */
+  isClosed: boolean;
+  /** The word printed on the cover; null when none (MDRS-176). */
+  coverLabel: string | null;
   /** IANA zone the sessions are authored in (MDRS-110). */
   timeZone: string;
   /** Optimistic-concurrency token; bumped by every course or syllabus write. */
@@ -136,7 +142,7 @@ export interface ICourseSummary extends ICourse {
   weekCount: number;
   lessonCount: number;
   resourceCount: number;
-  muderris: (IMuderris & { isImam: boolean })[];
+  muderris: IMuderris[];
   enrollment: IEnrollment | null;
   /** The medrese the course is opened by, or null (MDRS-159). */
   madrasah: { id: string; name: string } | null;
@@ -150,7 +156,7 @@ export interface IEnrolledCourse extends ICourse {
   madrasahName: string | null;
   weekCount: number;
   lessonCount: number;
-  muderris: (IMuderris & { isImam: boolean })[];
+  muderris: IMuderris[];
   /** The next standing session, or null when none is scheduled ahead. */
   nextSession: { at: Date; weekNumber: number } | null;
   enrollment: IEnrollment & { completedAt: Date | null };
@@ -256,6 +262,8 @@ export interface ICreateCourse {
   status?: CourseStatus;
   grantsCertificate?: boolean;
   requiresApproval?: boolean;
+  isClosed?: boolean;
+  coverLabel?: string | null;
   timeZone?: string;
   weeks?: ICreateWeek[];
   muderris?: ICreateMuderris[];
@@ -274,6 +282,8 @@ export interface IUpdateCourse {
   status?: CourseStatus;
   grantsCertificate?: boolean;
   requiresApproval?: boolean;
+  isClosed?: boolean;
+  coverLabel?: string | null;
   timeZone?: string;
 }
 
@@ -309,7 +319,13 @@ export interface ILessonMutation extends ILesson {
 /** One session of a weekly-pattern batch (MDRS-109), already expanded. */
 export interface IBatchSession {
   scheduledAt: Date;
-  /** The course week it goes into; created as "Hafta N" when missing. */
+  /** Its calendar date in the pattern's zone, "YYYY-MM-DD". */
+  localDate: string;
+  /**
+   * The week the pattern numbers it into; the repository places it against
+   * the course's own weeks by date (nizam/55) and creates "Hafta N" when
+   * that week is missing.
+   */
   weekNumber: number;
 }
 
@@ -402,6 +418,24 @@ export interface ICourseRepository {
     lessonId: string,
     actorId?: string | null
   ): Promise<ILessonMutation>;
+  /** Marks the session cancelled, keeping its slot (MDRS-176). */
+  cancelLesson(
+    lessonId: string,
+    expectedVersion: number,
+    reason: string | null,
+    actorId: string
+  ): Promise<ILessonMutation>;
+  /**
+   * Replaces the muderris list and picks the imam, in one transaction, and
+   * writes the change to `audit_log` (MDRS-176).
+   */
+  setMuderris(
+    courseId: string,
+    expectedVersion: number,
+    list: { userId: string; name: string; title?: string }[],
+    imamUserId: string,
+    actorId: string
+  ): Promise<{ muderris: IMuderris[]; courseVersion: number }>;
   /** The course's IANA zone; null if there is no such course. */
   findTimeZone(courseId: string): Promise<string | null>;
   /** Inserts every session of `batch` in one transaction (MDRS-109). */

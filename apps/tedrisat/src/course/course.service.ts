@@ -55,6 +55,7 @@ import {
   IPlannedSession,
   IsoWeekday,
   IWeeklyPattern,
+  placeInWeeks,
   WeeklyPatternInvalid,
 } from "./domain/weekly-pattern";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
@@ -66,6 +67,7 @@ import { LessonNotFoundError } from "./errors/lesson-not-found.error";
 import { LessonNotScheduledError } from "./errors/lesson-not-scheduled.error";
 import { MuderrisAssignmentForbiddenError } from "./errors/muderris-assignment-forbidden.error";
 import { MuderrisDuplicateUserError } from "./errors/muderris-duplicate-user.error";
+import { MuderrisListInvalidError } from "./errors/muderris-list-invalid.error";
 import { MuderrisUnknownUserError } from "./errors/muderris-unknown-user.error";
 import { RecordingRepository } from "./recording.repository";
 
@@ -330,7 +332,8 @@ export class CourseService {
                 weekTitle: view.weekTitle,
               },
             ],
-            !detail.contentLocked
+            !detail.contentLocked,
+            await this.publicRecordingsAllowed(detail)
           )
         : [];
       if (shown) {
@@ -380,7 +383,25 @@ export class CourseService {
           ]
         : [];
     });
-    return visibleRecordings(rows, !detail.contentLocked);
+    return visibleRecordings(
+      rows,
+      !detail.contentLocked,
+      await this.publicRecordingsAllowed(detail)
+    );
+  }
+
+  /**
+   * Whether a PUBLIC recording may be shown to someone who cannot read the
+   * course's content: not for a closed course (MDRS-176), and not when the
+   * köşk's policy says its recordings are never public (nizam/34).
+   */
+  private async publicRecordingsAllowed(detail: {
+    koskId: string;
+    isClosed: boolean;
+  }): Promise<boolean> {
+    if (detail.isClosed) return false;
+    const rule = await this.koskService.findVisibility(detail.koskId);
+    return !(rule?.recordingsNeverPublic ?? false);
   }
 
   // ---- course writes (MDRS-105) ----
@@ -505,6 +526,65 @@ export class CourseService {
     return this.courseRepo.updateLesson(lessonId, expectedVersion, data);
   }
 
+  /** Cancels the session; it keeps its slot in the programme (MDRS-176). */
+  async cancelLesson(
+    lessonId: string,
+    expectedVersion: number,
+    reason: string | null,
+    actorId: string
+  ): Promise<ILessonMutation> {
+    return this.courseRepo.cancelLesson(
+      lessonId,
+      expectedVersion,
+      reason,
+      actorId
+    );
+  }
+
+  /**
+   * Replaces the muderris list and picks the imam (MDRS-176, nizam/33). The
+   * list is never empty and the imam is one of its accounts. Authorization is
+   * `ASSIGN_MUDERRIS` on the route.
+   */
+  async setMuderris(
+    courseId: string,
+    user: AuthenticatedUser,
+    input: {
+      version: number;
+      muderris: { userId: string; name: string; title?: string }[];
+      imamUserId: string;
+    }
+  ): Promise<{ muderris: IMuderris[]; courseVersion: number }> {
+    await this.getDetail(courseId, user);
+    const list = input.muderris.map((m) => ({
+      ...m,
+      userId: m.userId.toLowerCase(),
+    }));
+    if (list.length === 0) {
+      throw new MuderrisListInvalidError(
+        "A course keeps at least one muderris"
+      );
+    }
+    const imam = input.imamUserId.toLowerCase();
+    if (!list.some((m) => m.userId === imam)) {
+      throw new MuderrisListInvalidError(
+        "The imam must be one of the listed muderris"
+      );
+    }
+    const current = await this.courseRepo.findMuderris(courseId);
+    const asRows = list.map((m) => ({ userId: m.userId, name: m.name }));
+    const duplicate = duplicateUserId(asRows);
+    if (duplicate) throw new MuderrisDuplicateUserError(duplicate);
+    await this.assertMuderrisLinks(current, asRows);
+    return this.courseRepo.setMuderris(
+      courseId,
+      input.version,
+      list,
+      imam,
+      user.sub
+    );
+  }
+
   /** Hides the lesson; nothing attached to it is deleted (MDRS-124). */
   async archiveLesson(
     lessonId: string,
@@ -522,7 +602,17 @@ export class CourseService {
     courseId: string,
     pattern: SessionPatternInput
   ): Promise<{ timeZone: string; sessions: IPlannedSession[] }> {
-    return this.planSessions(courseId, pattern);
+    const courseZone = await this.courseRepo.findTimeZone(courseId);
+    if (courseZone === null) throw new CourseNotFoundError(courseId);
+    const { timeZone, sessions } = this.expand(pattern, courseZone);
+    const numbers = placeInWeeks(
+      sessions,
+      await this.courseRepo.datedWeeks(courseId, courseZone)
+    );
+    return {
+      timeZone,
+      sessions: sessions.map((s, i) => ({ ...s, weekNumber: numbers[i] })),
+    };
   }
 
   /** Expands the pattern and inserts every session in one transaction. */
@@ -543,15 +633,6 @@ export class CourseService {
       },
     });
     return { ...result, timeZone };
-  }
-
-  private async planSessions(
-    courseId: string,
-    pattern: SessionPatternInput
-  ): Promise<{ timeZone: string; sessions: IPlannedSession[] }> {
-    const courseZone = await this.courseRepo.findTimeZone(courseId);
-    if (courseZone === null) throw new CourseNotFoundError(courseId);
-    return this.expand(pattern, courseZone);
   }
 
   /** The pattern in its own zone, or the course's when it names none. */

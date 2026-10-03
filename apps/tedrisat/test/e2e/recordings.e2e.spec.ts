@@ -220,6 +220,22 @@ describe("lesson recordings (MDRS-162, e2e)", () => {
       expect(JSON.stringify(res.body)).not.toContain("drive.google.com");
     });
 
+    it("lists no PUBLIC recording to a visitor once the course is closed, and all of them to the talebe (MDRS-176)", async () => {
+      await db()
+        .update(courses)
+        .set({ isClosed: true })
+        .where(eq(courses.id, courseId));
+      const visitor = await http()
+        .get(`/courses/${courseId}/recordings`)
+        .expect(200);
+      expect(visitor.body).toEqual([]);
+      const talebe = await http()
+        .get(`/courses/${courseId}/recordings`)
+        .set("Authorization", as(TALEBE_ID))
+        .expect(200);
+      expect(talebe.body).toHaveLength(3);
+    });
+
     it.each([
       ["a stranger", STRANGER_ID],
       ["a PENDING applicant", PENDING_ID],

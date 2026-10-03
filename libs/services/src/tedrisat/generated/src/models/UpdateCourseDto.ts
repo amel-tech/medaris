@@ -91,6 +91,18 @@ export interface UpdateCourseDto {
      * @memberof UpdateCourseDto
      */
     requiresApproval?: boolean;
+    /**
+     * Closed course (MDRS-176): its content and recordings are never opened to everyone; recordings marked PUBLIC are read by the course team and the enrolled talebe only.
+     * @type {boolean}
+     * @memberof UpdateCourseDto
+     */
+    isClosed?: boolean;
+    /**
+     * The word printed on the cover.
+     * @type {string}
+     * @memberof UpdateCourseDto
+     */
+    coverLabel?: string;
 }
 
 
@@ -143,6 +155,8 @@ export function UpdateCourseDtoFromJSONTyped(json: any, ignoreDiscriminator: boo
         'status': json['status'] == null ? undefined : json['status'],
         'grantsCertificate': json['grantsCertificate'] == null ? undefined : json['grantsCertificate'],
         'requiresApproval': json['requiresApproval'] == null ? undefined : json['requiresApproval'],
+        'isClosed': json['isClosed'] == null ? undefined : json['isClosed'],
+        'coverLabel': json['coverLabel'] == null ? undefined : json['coverLabel'],
     };
 }
 
@@ -169,6 +183,8 @@ export function UpdateCourseDtoToJSONTyped(value?: UpdateCourseDto | null, ignor
         'status': value['status'],
         'grantsCertificate': value['grantsCertificate'],
         'requiresApproval': value['requiresApproval'],
+        'isClosed': value['isClosed'],
+        'coverLabel': value['coverLabel'],
     };
 }
 
