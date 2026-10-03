@@ -18,18 +18,21 @@ import { EnrollmentStatus } from "./enrollment-status.enum";
  * `url`. A caller without `VIEW_DETAILS` gets the programme only, and the
  * content keys are removed rather than nulled.
  *
- * `isPreview` does not open anything here: a meeting link is never public
- * (MDRS-103 "What to build" 3), and the sample-lesson rule for closed courses
- * belongs to role model v2 (MDRS-133).
+ * A meeting link is never public (MDRS-103 "What to build" 3). A sample
+ * session (`isPreview`, "Örnek celse", tedris/05) is the one exception to the
+ * rest of the content (MDRS-161): its source line and its agenda stay, so a
+ * visitor can read what a session is like before applying. Its meeting link
+ * and a cancellation's reason never do.
  */
 
 const lessonWithoutContent = ({
-  kaynak: _kaynak,
+  kaynak,
   meetingUrl: _meetingUrl,
-  agenda: _agenda,
+  agenda,
   cancelReason: _cancelReason,
   ...programme
-}: ILesson): ILessonView => programme;
+}: ILesson): ILessonView =>
+  programme.isPreview ? { ...programme, kaynak, agenda } : programme;
 
 const resourceWithoutContent = ({
   url: _url,

@@ -519,8 +519,13 @@ export class CourseService {
   ): Promise<IEnrollment> {
     const userId = user.sub;
     const course = await this.getDetail(courseId, user); // throws if missing
-    // A barred talebe does not apply again (MDRS-177).
+    // A barred talebe does not apply again (MDRS-177), nor one the course
+    // team took out: the REVOKED row is their record (MDRS-161).
     await this.banService.assertNotBarred(userId, courseId);
+    const held = await this.courseRepo.findEnrollment(userId, courseId);
+    if (held?.status === EnrollmentStatus.REVOKED) {
+      throw new EnrollmentStateError(courseId, held.status);
+    }
     // A course of an unlisted köşk always waits for approval (MDRS-122),
     // whatever its own `requires_approval` says: the link is how the köşk is
     // found, and passing a link on must not hand out seats.
@@ -583,7 +588,9 @@ export class CourseService {
   /**
    * Approves a request. Approving an active seat again changes nothing; a
    * completion is not turned back into a seat this way (that is
-   * `setEnrollmentStatus`), since the team now includes every müderris.
+   * `setEnrollmentStatus`), since the team now includes every müderris. A
+   * revoked seat is the one way back in: approving it reinstates the talebe
+   * (MDRS-161).
    */
   async approveEnrollment(
     courseId: string,
@@ -595,15 +602,16 @@ export class CourseService {
     if (existing.status === EnrollmentStatus.COMPLETED) {
       throw new EnrollmentStateError(courseId, existing.status);
     }
+    // Conditional on the status read: a revoked seat is the one that may be
+    // approved back, and only while it is still revoked.
     const updated = await this.courseRepo.setEnrollmentStatus(
       studentId,
       courseId,
-      EnrollmentStatus.ENROLLED
+      EnrollmentStatus.ENROLLED,
+      existing.status
     );
-    if (!updated) {
-      throw new EnrollmentNotFoundError(courseId);
-    }
-    return updated;
+    if (updated) return updated;
+    return this.lostRace(courseId, studentId, EnrollmentStatus.ENROLLED);
   }
 
   async rejectEnrollment(
@@ -616,7 +624,15 @@ export class CourseService {
     if (!existing || existing.status !== EnrollmentStatus.PENDING) {
       throw new EnrollmentNotFoundError(courseId);
     }
-    return this.courseRepo.deleteEnrollment(studentId, courseId);
+    // Only while it is still pending: an approval that landed since the read
+    // makes it a seat, which is not rejected.
+    const removed = await this.courseRepo.deleteEnrollment(
+      studentId,
+      courseId,
+      EnrollmentStatus.PENDING
+    );
+    if (!removed) throw new EnrollmentNotFoundError(courseId);
+    return true;
   }
 
   /**
@@ -634,18 +650,28 @@ export class CourseService {
     if (existing.status === EnrollmentStatus.PENDING) {
       throw new EnrollmentStateError(courseId, existing.status);
     }
+    // A revoked seat is reinstated by approving it, not by completing it.
+    if (existing.status === EnrollmentStatus.REVOKED) {
+      throw new EnrollmentStateError(courseId, existing.status);
+    }
     if (existing.status === status) return existing;
-    return (await this.courseRepo.setEnrollmentStatus(
+    // Only while it is still in the status read: a removal that landed since
+    // turned it REVOKED, and completing or reopening must not undo that.
+    const updated = await this.courseRepo.setEnrollmentStatus(
       studentId,
       courseId,
-      status
-    )) as IEnrollment;
+      status,
+      existing.status
+    );
+    if (updated) return updated;
+    return this.lostRace(courseId, studentId, status);
   }
 
   /**
    * Takes an enrolled talebe out of the course, with the team's reason
-   * (MDRS-105). The seat goes and the reason is kept in `audit_log`. It is
-   * not a ban: the talebe may apply again, and a ban is MDRS-113's.
+   * (MDRS-105). The enrollment turns REVOKED (MDRS-161) and the reason is kept
+   * in `audit_log`. It is not a ban (MDRS-177): the team may approve the seat
+   * back, but the talebe does not apply again on their own.
    *
    * Only an active seat: a request is rejected instead, and a completed
    * course is reopened first, so a completion is never removed by accident.
@@ -685,10 +711,42 @@ export class CourseService {
     await this.banService.assertNotBarred(userId, courseId);
     const existing = await this.courseRepo.findEnrollment(userId, courseId);
     if (!existing) throw new EnrollmentNotFoundError(courseId);
-    if (existing.status === EnrollmentStatus.COMPLETED) {
+    if (
+      existing.status === EnrollmentStatus.COMPLETED ||
+      existing.status === EnrollmentStatus.REVOKED
+    ) {
       throw new EnrollmentStateError(courseId, existing.status);
     }
-    return this.courseRepo.deleteEnrollment(userId, courseId);
+    // Only while it is still in the status read: a removal that landed since
+    // turned it REVOKED, and that record is not the talebe's to delete.
+    const left = await this.courseRepo.deleteEnrollment(
+      userId,
+      courseId,
+      existing.status
+    );
+    if (!left) await this.lostRace(courseId, userId);
+    return true;
+  }
+
+  /**
+   * The caller withdraws a request still awaiting approval. Only a PENDING
+   * row goes: once the team has approved it the seat is theirs, and a stale
+   * page that still offers "Başvuruyu geri çek" gets a 404 instead of quietly
+   * dropping them from the course (design tedris/08, criterion 5).
+   */
+  async withdraw(userId: string, courseId: string): Promise<boolean> {
+    await this.banService.assertNotBarred(userId, courseId);
+    const existing = await this.courseRepo.findEnrollment(userId, courseId);
+    if (!existing || existing.status !== EnrollmentStatus.PENDING) {
+      throw new EnrollmentNotFoundError(courseId);
+    }
+    const removed = await this.courseRepo.deleteEnrollment(
+      userId,
+      courseId,
+      EnrollmentStatus.PENDING
+    );
+    if (!removed) throw new EnrollmentNotFoundError(courseId);
+    return true;
   }
 
   /**
@@ -707,18 +765,42 @@ export class CourseService {
     // (awaiting-approval) or missing enrollment must not be silently promoted,
     // otherwise this endpoint would bypass the course team's approval.
     const existing = await this.courseRepo.findEnrollment(userId, courseId);
-    if (!existing || existing.status === EnrollmentStatus.PENDING) {
+    if (
+      !existing ||
+      existing.status === EnrollmentStatus.PENDING ||
+      existing.status === EnrollmentStatus.REVOKED
+    ) {
       throw new EnrollmentNotFoundError(courseId);
     }
     if (status !== undefined && status !== existing.status) {
       throw new EnrollmentStatusForbiddenError(courseId);
     }
+    // Only while it is still in the status read: a removal that landed since
+    // turned it REVOKED, and a progress write must not turn it back.
     const updated = await this.courseRepo.updateProgress(
       userId,
       courseId,
       progress,
       existing.status
     );
-    return updated as IEnrollment;
+    return updated ?? (await this.lostRace(courseId, userId));
+  }
+
+  /**
+   * A write conditional on the status that was read changed nothing: the
+   * enrollment moved on, or went, between the read and the write. Says what it
+   * is now. When it already is `settledAt` (another approval or completion of
+   * the same kind got there first) that row is the answer, as it is when the
+   * action is repeated on an enrollment already there.
+   */
+  private async lostRace(
+    courseId: string,
+    userId: string,
+    settledAt?: EnrollmentStatus
+  ): Promise<IEnrollment> {
+    const now = await this.courseRepo.findEnrollment(userId, courseId);
+    if (!now) throw new EnrollmentNotFoundError(courseId);
+    if (settledAt !== undefined && now.status === settledAt) return now;
+    throw new EnrollmentStateError(courseId, now.status);
   }
 }

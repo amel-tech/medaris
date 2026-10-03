@@ -26,6 +26,7 @@ export * from './CalendarFeedLinkResponse';
 export * from './CalendarFeedStatusResponse';
 export * from './CatalogSectionResponse';
 export * from './ChiefNazimResponse';
+export * from './CourseDetailMadrasahResponse';
 export * from './CourseDetailResponse';
 export * from './CourseMadrasahResponse';
 export * from './CourseStatsResponse';

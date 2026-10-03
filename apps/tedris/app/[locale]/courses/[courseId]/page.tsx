@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getLocale } from "next-intl/server";
 import { env } from "~/env";
-import { getCourse, getKosk } from "~/features/courses/actions";
+import { getKosk } from "~/features/courses/actions";
 import { CoursePage } from "~/features/courses/components/course-page";
 import { introMetadata } from "~/features/courses/intro-metadata";
+import { loadCourse } from "~/features/courses/load-course";
 import {
   getCourseForMetadata,
   isSignedIn,
 } from "~/features/courses/public-reads";
+import { inviteHrefs } from "~/lib/invite-hrefs";
 
 type Params = Promise<{ locale: string; courseId: string }>;
 
@@ -34,16 +37,18 @@ export async function generateMetadata({
 
 export default async function Page({ params }: { params: Params }) {
   const { courseId } = await params;
-  const course = await getCourse(courseId);
+  const course = await loadCourse(courseId);
   if (!course) notFound();
 
   // Köşk name for the breadcrumb (CourseDetailResponse only carries koskId),
   // and whether it is unlisted: every enrollment there waits for approval
   // (MDRS-122), whatever the course's own `requiresApproval` says.
-  const [kosk, signedIn] = await Promise.all([
+  const [kosk, signedIn, locale] = await Promise.all([
     getKosk(course.koskId),
     isSignedIn(),
+    getLocale(),
   ]);
+  const hrefs = inviteHrefs(locale, `/courses/${course.id}`);
 
   return (
     <CoursePage
@@ -51,6 +56,8 @@ export default async function Page({ params }: { params: Params }) {
       koskName={kosk?.name ?? null}
       approvalRequired={course.requiresApproval || Boolean(kosk?.isPrivate)}
       signedIn={signedIn}
+      signInHref={hrefs.signIn}
+      registerHref={hrefs.register}
       nazirUrl={env.NAZIR_URL || null}
     />
   );

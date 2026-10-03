@@ -90,6 +90,8 @@ export interface ICourse {
 }
 
 export interface ICourseDetail extends ICourse {
+  /** The medrese that opened the course, or null; read by `findDetailById` (MDRS-161). */
+  madrasah?: { id: string; name: string } | null;
   weeks: IWeek[];
   muderris: IMuderris[];
   resources: IResource[];
@@ -432,16 +434,24 @@ export interface ICourseRepository {
   /** Deletes the enrollment and audits the reason, in one transaction. */
   removeEnrollment(entry: IRemoveEnrollment): Promise<boolean>;
   findRemovedEnrollments(courseId: string): Promise<IRemovedEnrollment[]>;
+  /** The row moves only while it still has `expectedStatus`; else null. */
   setEnrollmentStatus(
     userId: string,
     courseId: string,
-    status: EnrollmentStatus
+    status: EnrollmentStatus,
+    expectedStatus: EnrollmentStatus
   ): Promise<IEnrollment | null>;
-  deleteEnrollment(userId: string, courseId: string): Promise<boolean>;
+  /** With `onlyStatus`, the row goes only while it still has that status. */
+  deleteEnrollment(
+    userId: string,
+    courseId: string,
+    onlyStatus?: EnrollmentStatus
+  ): Promise<boolean>;
+  /** Writes progress only while the row still has `expectedStatus`; else null. */
   updateProgress(
     userId: string,
     courseId: string,
     progress: number,
-    status: EnrollmentStatus
+    expectedStatus: EnrollmentStatus
   ): Promise<IEnrollment | null>;
 }

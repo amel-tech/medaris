@@ -2313,6 +2313,44 @@
         "tags": [
           "courses"
         ]
+      },
+      "delete": {
+        "description": "Deletes the caller's own PENDING enrollment. Once it is approved (or when there is none) this is a 404 (ENROLLMENT_NOT_FOUND): leaving an approved seat is `DELETE /courses/{id}/enrollment`.",
+        "operationId": "withdrawEnrollment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No enrollment, or it is no longer pending (ENROLLMENT_NOT_FOUND)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Withdraw a request still awaiting approval (the current talebe)",
+        "tags": [
+          "courses"
+        ]
       }
     },
     "/kosks/{koskId}/enrollments/pending": {
@@ -2653,7 +2691,7 @@
     },
     "/courses/{id}/enrollments/{userId}/remove": {
       "post": {
-        "description": "Deletes the enrollment and keeps the reason in the audit log (MDRS-105). It is not a ban: the talebe may apply again. Only an active seat — reject a request, reopen a completion first.",
+        "description": "Turns the enrollment REVOKED and keeps the reason in the audit log (MDRS-105, MDRS-161). The talebe sees the public page and nothing the enrolled hold, and does not apply again on their own; approving the seat reinstates them. Not a ban. Only an active seat — reject a request, reopen a completion first.",
         "operationId": "removeEnrollment",
         "parameters": [
           {
@@ -2717,7 +2755,7 @@
     },
     "/courses/{id}/enrollment": {
       "delete": {
-        "description": "Deletes the caller's own enrollment; they may apply again (MDRS-105). A completed course is not left (ENROLLMENT_STATE_CONFLICT).",
+        "description": "Deletes the caller's own enrollment; they may apply again (MDRS-105). A completed course, or a seat the course team revoked, is not left (ENROLLMENT_STATE_CONFLICT).",
         "operationId": "leaveCourse",
         "parameters": [
           {
@@ -2744,7 +2782,7 @@
             "description": ""
           },
           "409": {
-            "description": "The enrollment is completed (ENROLLMENT_STATE_CONFLICT)."
+            "description": "The enrollment is completed or revoked (ENROLLMENT_STATE_CONFLICT)."
           }
         },
         "security": [
@@ -9034,7 +9072,8 @@
             "enum": [
               "PENDING",
               "ENROLLED",
-              "COMPLETED"
+              "COMPLETED",
+              "REVOKED"
             ]
           },
           "createdAt": {
@@ -9464,6 +9503,22 @@
           "title"
         ]
       },
+      "CourseDetailMadrasahResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
       "AgendaStepResponse": {
         "type": "object",
         "properties": {
@@ -9509,7 +9564,7 @@
           },
           "kaynak": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "scheduledAt": {
             "format": "date-time",
@@ -9517,10 +9572,10 @@
           },
           "meetingUrl": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "agenda": {
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AgendaStepResponse"
@@ -9545,7 +9600,7 @@
           },
           "cancelReason": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           }
         },
         "required": [
@@ -9650,7 +9705,7 @@
           },
           "url": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "orderIndex": {
             "type": "number"
@@ -9745,6 +9800,16 @@
             "format": "date-time",
             "type": "string"
           },
+          "madrasah": {
+            "nullable": true,
+            "description": "The medrese that opened the course (MDRS-161); null when none, absent on a write's answer.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CourseDetailMadrasahResponse"
+              }
+            ]
+          },
           "weeks": {
             "type": "array",
             "items": {
@@ -9835,7 +9900,8 @@
             "enum": [
               "PENDING",
               "ENROLLED",
-              "COMPLETED"
+              "COMPLETED",
+              "REVOKED"
             ]
           },
           "createdAt": {
@@ -10183,7 +10249,8 @@
             "enum": [
               "PENDING",
               "ENROLLED",
-              "COMPLETED"
+              "COMPLETED",
+              "REVOKED"
             ]
           },
           "createdAt": {
@@ -10293,7 +10360,8 @@
             "enum": [
               "PENDING",
               "ENROLLED",
-              "COMPLETED"
+              "COMPLETED",
+              "REVOKED"
             ]
           },
           "createdAt": {
@@ -10435,7 +10503,8 @@
             "enum": [
               "PENDING",
               "ENROLLED",
-              "COMPLETED"
+              "COMPLETED",
+              "REVOKED"
             ],
             "deprecated": true,
             "description": "Not the talebe's to set (MDRS-105): a value other than the enrollment's current status is refused with 403 ENROLLMENT_STATUS_FORBIDDEN. Completion is set by the course team."
@@ -10712,7 +10781,7 @@
           },
           "kaynak": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "scheduledAt": {
             "format": "date-time",
@@ -10720,10 +10789,10 @@
           },
           "meetingUrl": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "agenda": {
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AgendaStepResponse"
@@ -10748,7 +10817,7 @@
           },
           "cancelReason": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "courseVersion": {
             "type": "number",
@@ -10974,7 +11043,7 @@
           },
           "kaynak": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "scheduledAt": {
             "format": "date-time",
@@ -10982,10 +11051,10 @@
           },
           "meetingUrl": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "agenda": {
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103).",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AgendaStepResponse"
@@ -11010,7 +11079,7 @@
           },
           "cancelReason": {
             "type": "string",
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103)."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "weekNumber": {
             "type": "number"

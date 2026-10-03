@@ -244,7 +244,7 @@ test.describe("medrese page (tedris/11)", () => {
       })
     ).toBeVisible();
     await expect(
-      main.getByText("Medresenin dersleri, açıldıkları köşkle birlikte")
+      main.getByText("Medresenin bütün dersleri, açıldıkları köşkle birlikte")
     ).toBeVisible();
     await expect(main.getByText("Onay bekliyor")).toHaveCount(0);
     await expect(main.getByText("Devam ediyor")).toHaveCount(0);

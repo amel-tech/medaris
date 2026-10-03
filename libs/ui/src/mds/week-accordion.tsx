@@ -183,11 +183,13 @@ export function Weeks({ children, defaultOpen, className }: WeeksProps) {
         c.props.access !== "locked"
     )
     .map((c) => String(c.props.week));
+  const initial = defaultOpen ? defaultOpen.map(String) : fromState;
   return (
     <Accordion.Root
+      key={initial.join(",")}
       multiple
       hiddenUntilFound
-      defaultValue={defaultOpen ? defaultOpen.map(String) : fromState}
+      defaultValue={initial}
       className={cx("mds-weeks", className)}
     >
       {children}

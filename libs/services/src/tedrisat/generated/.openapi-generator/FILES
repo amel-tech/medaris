@@ -47,6 +47,7 @@ src/models/CalendarFeedLinkResponse.ts
 src/models/CalendarFeedStatusResponse.ts
 src/models/CatalogSectionResponse.ts
 src/models/ChiefNazimResponse.ts
+src/models/CourseDetailMadrasahResponse.ts
 src/models/CourseDetailResponse.ts
 src/models/CourseMadrasahResponse.ts
 src/models/CourseStatsResponse.ts
