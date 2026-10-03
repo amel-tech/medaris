@@ -8,6 +8,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
+import { ArchiveModule } from "./archive/archive.module";
 import { AssignmentModule } from "./assignment/assignment.module";
 import { AuthzBindingsModule } from "./authz/authz-bindings.module";
 import { CalendarFeedModule } from "./calendar-feed/calendar-feed.module";
@@ -45,6 +46,7 @@ import { UserModule } from "./user/user.module";
     CalendarFeedModule,
     NotificationModule,
     AssignmentModule,
+    ArchiveModule,
     UserModule,
   ],
   controllers: [AppController],

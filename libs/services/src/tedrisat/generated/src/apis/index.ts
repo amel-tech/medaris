@@ -1,5 +1,6 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from './ArchiveApi';
 export * from './CalendarApi';
 export * from './CoursesApi';
 export * from './FlashcardCardsApi';

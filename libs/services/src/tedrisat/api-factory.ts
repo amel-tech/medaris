@@ -1,4 +1,5 @@
 import {
+  ArchiveApi,
   Configuration,
   CoursesApi,
   FlashcardCardsApi,
@@ -17,6 +18,12 @@ import {
 
 // Re-export types that are used in other apps
 export type {
+  ArchiveImpactResponse,
+  ArchiveItemResponse,
+  ArchiveItemType,
+  ArchiveRestoreResponse,
+  ArchiverResponse,
+  ArchiveScopesResponse,
   AssignmentResponse,
   ChiefNazimResponse,
   CourseDetailResponse,
@@ -61,6 +68,7 @@ export type {
   MyRolesResponse,
   NotificationCountsResponse,
   NotificationResponse,
+  PaginatedArchiveResponse,
   PaginatedKoskResponse,
   PaginatedMadrasahResponse,
   PaginatedNotificationResponse,
@@ -139,6 +147,8 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     nizam: new NizamApi(configuration),
     // The caller's in-app notifications (MDRS-167): the list page and the bell.
     notifications: new NotificationsApi(configuration),
+    // Hidden things, brought back or deleted for real (MDRS-173).
+    archive: new ArchiveApi(configuration),
     // The two label controllers MDRS-58 published for the first time. Generated
     // classes that only `./generated/src` exported were reachable by no app —
     // this factory is what `@medaris/services/tedrisat` hands out.

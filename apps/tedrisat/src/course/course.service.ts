@@ -384,8 +384,11 @@ export class CourseService {
   }
 
   /** Hides the lesson; nothing attached to it is deleted (MDRS-124). */
-  async archiveLesson(lessonId: string): Promise<ILessonMutation> {
-    return this.courseRepo.archiveLesson(lessonId);
+  async archiveLesson(
+    lessonId: string,
+    actorId: string | null = null
+  ): Promise<ILessonMutation> {
+    return this.courseRepo.archiveLesson(lessonId, actorId);
   }
 
   // ---- weekly pattern → sessions (MDRS-109) ----
