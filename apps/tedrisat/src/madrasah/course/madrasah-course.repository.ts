@@ -1,5 +1,14 @@
 import { Injectable } from "@nestjs/common";
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  type SQL,
+  sql,
+} from "drizzle-orm";
 import { DatabaseService } from "../../database/database.service";
 import {
   isHeld,
@@ -13,23 +22,29 @@ import {
   madrasahSettings,
   madrasahs,
 } from "../../database/schema/madrasah.schema";
+import { offsiteCourseRequests } from "../../database/schema/offsite-course-request.schema";
 import {
   ASSIGNED_ROLES,
   madrasahKoskHosting,
   roleAssignments,
 } from "../../database/schema/role-assignment.schema";
+import { users } from "../../database/schema/user.schema";
 import type {
   HideMadrasahCourseResult,
   IMadrasahHostingKosk,
+  INewOffsiteCourseRequest,
+  IOffsiteCourseRequest,
   IOpenMadrasahCourse,
   ISetCourseMuderris,
+  NewOffsiteCourseRequestResult,
   OpenMadrasahCourseResult,
 } from "./madrasah-course.repository.interface";
 
 /**
  * The medrese's own courses (nazir/07, 08, 17, 18): opening one in a köşk that
- * hosts the medrese, changing who teaches it, hiding it. Each write is one
- * transaction with its audit row.
+ * hosts the medrese, changing who teaches it, hiding it; and its requests for
+ * a course outside it (nazir/09). Each write is one transaction with its audit
+ * row.
  */
 @Injectable()
 export class MadrasahCourseRepository {
@@ -331,5 +346,99 @@ export class MadrasahCourseRepository {
       });
       return "hidden";
     });
+  }
+
+  /**
+   * Records the medrese's request that a köşk open a course outside it
+   * (nazir/09), as PENDING, with its audit row. Nothing else is written: no
+   * course exists until the köşk's nazım opens one.
+   */
+  async createOffsiteRequest(
+    input: INewOffsiteCourseRequest
+  ): Promise<NewOffsiteCourseRequestResult> {
+    return this.db.transaction(async (tx) => {
+      const [madrasah] = await tx
+        .select({ id: madrasahs.id })
+        .from(madrasahs)
+        .where(
+          and(eq(madrasahs.id, input.madrasahId), isNull(madrasahs.archivedAt))
+        )
+        .for("share");
+      if (!madrasah) return { status: "madrasah-not-found" };
+      const [kosk] = await tx
+        .select({ id: kosks.id })
+        .from(kosks)
+        .where(and(eq(kosks.id, input.koskId), isNull(kosks.archivedAt)))
+        .for("share");
+      if (!kosk) return { status: "kosk-not-found" };
+
+      const [created] = await tx
+        .insert(offsiteCourseRequests)
+        .values({
+          madrasahId: input.madrasahId,
+          koskId: input.koskId,
+          title: input.title,
+          reason: input.reason,
+          requestedBy: input.actorId,
+        })
+        .returning({ id: offsiteCourseRequests.id });
+      await tx.insert(auditLog).values({
+        actorId: input.actorId,
+        action: "offsite_course_request.create",
+        entity: "offsite_course_request",
+        entityId: created.id,
+        details: {
+          madrasahId: input.madrasahId,
+          koskId: input.koskId,
+          title: input.title,
+          reason: input.reason,
+        },
+      });
+      const [request] = await this.offsiteRequests(
+        eq(offsiteCourseRequests.id, created.id),
+        tx
+      );
+      return { status: "created", request };
+    });
+  }
+
+  /** The medrese's requests for a course outside it, newest first. */
+  findOffsiteRequests(madrasahId: string): Promise<IOffsiteCourseRequest[]> {
+    return this.offsiteRequests(
+      eq(offsiteCourseRequests.madrasahId, madrasahId)
+    );
+  }
+
+  private async offsiteRequests(
+    where: SQL,
+    executor: Pick<typeof this.db, "select"> = this.db
+  ): Promise<IOffsiteCourseRequest[]> {
+    const rows = await executor
+      .select({
+        id: offsiteCourseRequests.id,
+        madrasahId: offsiteCourseRequests.madrasahId,
+        koskId: offsiteCourseRequests.koskId,
+        koskName: kosks.name,
+        title: offsiteCourseRequests.title,
+        reason: offsiteCourseRequests.reason,
+        status: offsiteCourseRequests.status,
+        requestedById: offsiteCourseRequests.requestedBy,
+        givenName: users.givenName,
+        familyName: users.familyName,
+        createdAt: offsiteCourseRequests.createdAt,
+      })
+      .from(offsiteCourseRequests)
+      .innerJoin(kosks, eq(kosks.id, offsiteCourseRequests.koskId))
+      .leftJoin(users, eq(users.id, offsiteCourseRequests.requestedBy))
+      .where(where)
+      .orderBy(
+        desc(offsiteCourseRequests.createdAt),
+        desc(offsiteCourseRequests.id)
+      );
+    return rows.map(({ givenName, familyName, ...row }) => ({
+      ...row,
+      requestedByName:
+        [givenName, familyName].filter(Boolean).join(" ").trim() || null,
+    }));
   }
 }

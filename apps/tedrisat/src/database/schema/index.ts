@@ -9,6 +9,7 @@ export * from "./flashcard-label.schema";
 export * from "./kosk.schema";
 export * from "./madrasah.schema";
 export * from "./notification.schema";
+export * from "./offsite-course-request.schema";
 export * from "./permission.schema";
 export * from "./role-assignment.schema";
 export * from "./user.schema";

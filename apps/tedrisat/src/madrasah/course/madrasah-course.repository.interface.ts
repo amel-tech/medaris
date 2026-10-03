@@ -1,3 +1,5 @@
+import type { OffsiteRequestStatus } from "../../database/schema/offsite-course-request.schema";
+
 /** A köşk the medrese holds a hosting right in (nazir/07's side block, nazir/08's choice). */
 export interface IMadrasahHostingKosk {
   id: string;
@@ -47,3 +49,31 @@ export type HideMadrasahCourseResult =
   | "hidden"
   | "not-found"
   | "already-hidden";
+
+/** What a medrese's request for a course outside it writes (nazir/09). */
+export interface INewOffsiteCourseRequest {
+  madrasahId: string;
+  koskId: string;
+  title: string;
+  reason: string;
+  actorId: string;
+}
+
+/** A request as the medrese reads it back. */
+export interface IOffsiteCourseRequest {
+  id: string;
+  madrasahId: string;
+  koskId: string;
+  koskName: string;
+  title: string;
+  reason: string;
+  status: OffsiteRequestStatus;
+  requestedById: string;
+  requestedByName: string | null;
+  createdAt: Date;
+}
+
+export type NewOffsiteCourseRequestResult =
+  | { status: "created"; request: IOffsiteCourseRequest }
+  | { status: "madrasah-not-found" }
+  | { status: "kosk-not-found" };

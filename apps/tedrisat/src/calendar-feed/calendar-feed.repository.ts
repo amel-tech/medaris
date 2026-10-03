@@ -112,8 +112,9 @@ export class CalendarFeedRepository {
           eq(enrollments.userId, userId),
           inArray(enrollments.status, FEED_ENROLLMENT_STATES),
           // A barred talebe's sessions fall out of the feed (MDRS-177): the
-          // ban lifts, and they come back on the next poll.
-          sql`not exists (select 1 from ${bans} where ${bans.userId} = ${enrollments.userId} and ${bans.liftedAt} is null and ((${bans.scope} = 'COURSE' and ${bans.courseId} = ${enrollments.courseId}) or (${bans.scope} = 'KOSK' and ${bans.koskId} = (select ${courses.koskId} from ${courses} where ${courses.id} = ${enrollments.courseId}))))`
+          // ban lifts, and they come back on the next poll. A medrese-wide ban
+          // (MDRS-187) is the one with a `madrasah_id`, which only it has.
+          sql`not exists (select 1 from ${bans} where ${bans.userId} = ${enrollments.userId} and ${bans.liftedAt} is null and ((${bans.scope} = 'COURSE' and ${bans.courseId} = ${enrollments.courseId}) or (${bans.scope} = 'KOSK' and ${bans.koskId} = (select ${courses.koskId} from ${courses} where ${courses.id} = ${enrollments.courseId})) or ${bans.madrasahId} = (select ${courses.madrasahId} from ${courses} where ${courses.id} = ${enrollments.courseId})))`
         )
       );
     // The courses the user holds MUDERRIS on, and the köşks they hold

@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { BAN_SCOPES, type BanScope } from "../../database/schema/ban.schema";
 import { CourseLevel } from "../domain/course-level.enum";
 import { CourseStatus } from "../domain/course-status.enum";
 import { EnrollmentStatus } from "../domain/enrollment-status.enum";
@@ -121,8 +122,8 @@ export class EnrollmentResponse {
 
 export class EnrollmentBanResponse {
   @ApiProperty({ format: "uuid" }) id!: string;
-  @ApiProperty({ enum: ["COURSE", "KOSK"], enumName: "BanScope" })
-  scope!: "COURSE" | "KOSK";
+  @ApiProperty({ enum: Object.values(BAN_SCOPES), enumName: "BanScope" })
+  scope!: BanScope;
 }
 
 export class RosterEnrollmentResponse extends EnrollmentResponse {

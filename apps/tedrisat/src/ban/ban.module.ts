@@ -2,14 +2,19 @@ import { AuthGuardModule } from "@medaris/common";
 import { Module } from "@nestjs/common";
 import { DatabaseModule } from "../database/database.module";
 import { KoskModule } from "../kosk/kosk.module";
+import { MadrasahModule } from "../madrasah/madrasah.module";
 import { BanController } from "./ban.controller";
 import { BanRepository } from "./ban.repository";
 import { BanService } from "./ban.service";
+import { MadrasahBanController } from "./madrasah-ban.controller";
 
-/** Bans: barring a talebe from a course or a köşk, and lifting it (MDRS-177). */
+/**
+ * Bans: barring a talebe from a course, a köşk or a medrese, and lifting it
+ * (MDRS-177, MDRS-187).
+ */
 @Module({
-  imports: [AuthGuardModule, DatabaseModule, KoskModule],
-  controllers: [BanController],
+  imports: [AuthGuardModule, DatabaseModule, KoskModule, MadrasahModule],
+  controllers: [BanController, MadrasahBanController],
   providers: [BanService, BanRepository],
   exports: [BanService, BanRepository],
 })

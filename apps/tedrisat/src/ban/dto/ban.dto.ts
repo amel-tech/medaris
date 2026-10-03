@@ -4,18 +4,20 @@ import { BAN_SCOPES } from "../../database/schema/ban.schema";
 
 export const BAN_REASON_MAX = 500;
 
+/** What a ban placed from a course can be: the medrese-wide scope is the nazırs'. */
+export const COURSE_BAN_SCOPES = [BAN_SCOPES.COURSE, BAN_SCOPES.KOSK] as const;
+
 export class CreateBanDto {
   @ApiProperty({ format: "uuid", description: "The talebe to bar." })
   @IsUUID()
   userId!: string;
 
   @ApiProperty({
-    enum: Object.values(BAN_SCOPES),
-    enumName: "BanScope",
+    enum: COURSE_BAN_SCOPES,
     description:
       "COURSE bars the talebe from this course alone; KOSK from every course of its köşk, and they may not apply again. KOSK is the köşk nazımı's and above.",
   })
-  @IsIn(Object.values(BAN_SCOPES))
+  @IsIn(COURSE_BAN_SCOPES)
   scope!: string;
 
   @ApiProperty({
@@ -71,8 +73,13 @@ export class BanResponse {
   @ApiProperty({ enum: Object.values(BAN_SCOPES), enumName: "BanScope" })
   scope!: string;
 
-  @ApiProperty({ format: "uuid" })
-  koskId!: string;
+  @ApiProperty({
+    type: String,
+    format: "uuid",
+    nullable: true,
+    description: "Null for a MADRASAH ban, which belongs to no single köşk.",
+  })
+  koskId!: string | null;
 
   @ApiProperty({ type: String, format: "uuid", nullable: true })
   courseId!: string | null;
@@ -88,7 +95,7 @@ export class BanResponse {
     format: "uuid",
     nullable: true,
     description:
-      "For a KOSK ban widened from a course: that course. Null otherwise.",
+      "For a KOSK or MADRASAH ban widened from a course: that course. Null otherwise.",
   })
   extendedFromCourseId!: string | null;
 

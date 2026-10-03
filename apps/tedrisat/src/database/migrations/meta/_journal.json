@@ -253,6 +253,13 @@
       "when": 1790973689767,
       "tag": "0035_course_closed",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790979615944,
+      "tag": "0036_madrasah_bans_offsite_requests",
+      "breakpoints": true
     }
   ]
 }
