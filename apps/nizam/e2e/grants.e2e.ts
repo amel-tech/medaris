@@ -278,11 +278,11 @@ test("nizam/38 — a stray click on the scrim does not lose the boxes, and an en
   await expect(dialog).toBeHidden();
 });
 
-test("nizam/38 — before 4 Ekim 'Görevden al' is off, and nothing is said about why", async ({
+test("nizam/38 — 'Görevden al' is on whatever the date (MDRS-215: no version gate)", async ({
   page,
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
-  // the real clock of the run is 2 Ekim 2026; pin it so the spec says what it means
+  // a date before the old gate (4 Ekim 2026), to show it no longer applies
   await page.clock.setFixedTime(new Date("2026-10-02T09:00:00+03:00"));
   await signIn(page, KOSK_NAZIM);
   await openGrants(page);
@@ -290,8 +290,7 @@ test("nizam/38 — before 4 Ekim 'Görevden al' is off, and nothing is said abou
     page.getByRole("button", {
       name: `Görevden al: ${fixture.existing.name}`,
     })
-  ).toBeDisabled();
-  await expect(page.getByText(/4 Ekim|sürüm/i)).toHaveCount(0);
+  ).toBeEnabled();
 });
 
 test("nizam/38 — after the gate 'Görevden al' ends the post and every permission at once, and 'Vazgeç' changes nothing (criterion 4)", async ({

@@ -265,7 +265,7 @@ describe("GrantsView (nizam 38)", () => {
     expect(html).not.toContain("medrese kadrosu verir");
   });
 
-  it("names the edit and dismiss buttons for the person, and keeps 'Görevden al' shut before the gate (criterion 4)", () => {
+  it("names the edit and dismiss buttons for the person, and offers 'Görevden al' with no date gate (criterion 4, MDRS-215)", () => {
     const html = view();
     expect(html).toContain(
       'aria-label="İzinleri düzenle: Yusuf Kerem Aydınoğlu"'
@@ -274,8 +274,7 @@ describe("GrantsView (nizam 38)", () => {
       html.indexOf('aria-label="Görevden al: Yusuf Kerem Aydınoğlu"') - 400,
       html.indexOf('aria-label="Görevden al: Yusuf Kerem Aydınoğlu"') + 80
     );
-    // Static markup has not run the client's clock: the gate is closed.
-    expect(dismiss).toContain("disabled");
+    expect(dismiss).not.toContain("disabled");
   });
 
   it("says there is none yet when the list is empty", () => {

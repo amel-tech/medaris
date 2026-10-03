@@ -368,14 +368,13 @@ describe("MadrasahsView (nizam 07)", () => {
     expect(html.match(/Geri al: /g)).toHaveLength(1);
   });
 
-  it("offers 'Başmüderrisi değiştir' on an active medrese with a başmüderris, shut until the version gate (nizam/22)", () => {
+  it("offers 'Başmüderrisi değiştir' on an active medrese with a başmüderris, with no date gate (nizam/22, MDRS-215)", () => {
     const html = view(directory(three));
     const label = 'aria-label="Başmüderrisi değiştir: Süleymaniye Medresesi"';
     expect(html).toContain(label);
-    // Static markup has not run the client's clock: the gate is closed.
     expect(
       html.slice(html.indexOf(label) - 300, html.indexOf(label))
-    ).toContain("disabled");
+    ).not.toContain("disabled");
     expect(html).not.toContain("Başmüderrisi değiştir: Zeyrek");
     expect(html).not.toContain("Başmüderrisi değiştir: Vefa");
   });

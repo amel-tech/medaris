@@ -59,11 +59,11 @@ const daysFromNow = (n: number) => {
   return d.toISOString().slice(0, 10);
 };
 
-test("nizam/22 — before 4 Ekim 'Başmüderrisi değiştir' is off, and nothing is said about why", async ({
+test("nizam/22 — 'Başmüderrisi değiştir' is on whatever the date (MDRS-215: no version gate)", async ({
   page,
 }) => {
   test.skip(!(seedable && SYSTEM_ADMIN.password), "no SYSTEM_ADMIN account");
-  // the real clock of the run is 2 Ekim 2026; pin it so the spec says what it means
+  // a date before the old gate (4 Ekim 2026), to show it no longer applies
   await page.clock.setFixedTime(new Date("2026-10-02T09:00:00+03:00"));
   await signIn(page, SYSTEM_ADMIN);
   await openMedreseler(page);
@@ -71,9 +71,7 @@ test("nizam/22 — before 4 Ekim 'Başmüderrisi değiştir' is off, and nothing
     page.getByRole("button", {
       name: `Başmüderrisi değiştir: ${fixture.active.name}`,
     })
-  ).toBeDisabled();
-  await expect(page.getByText(/4 Ekim|sürüm/i)).toHaveCount(0);
-  // 'Başmüderris ata' on the passive one carries no gate: nobody is replaced
+  ).toBeEnabled();
   await expect(
     page.getByRole("button", {
       name: `Başmüderris ata: ${fixture.passive.name}`,
