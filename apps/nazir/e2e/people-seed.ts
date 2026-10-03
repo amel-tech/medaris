@@ -95,7 +95,7 @@ export interface StudentsFixture {
 /**
  * 48 talebe, each with a seat in one of the two courses (the newest in both: an
  * ongoing seat in the first and a completed one in the second), the newest
- * enrolment first. Their names are on the enrolment, as a talebe's are until
+ * first enrolment first. Their names are on the enrolment, as a talebe's are until
  * their account is read.
  */
 export async function seedStudents(
@@ -115,13 +115,15 @@ export async function seedStudents(
       const course = i % 2 === 0 ? base.first.id : base.second.id;
       await client.query(
         `insert into enrollments(user_id, course_id, student_name, student_email, status, created_at)
-          values ($1, $2, $3, $4, 'ENROLLED', now() - ($5 || ' hours')::interval)`,
+          values ($1, $2, $3, $4, 'ENROLLED', now() - ($5 || ' days')::interval)`,
         [
           person.id,
           course,
           person.name,
           `talebe.${i + 1}.${tail}@example.test`,
-          String(i + 1),
+          // the list is newest first by FIRST enrolment, and the first talebe's
+          // other seat (below) is three days old: every first seat is older
+          String(i + 4),
         ]
       );
     }
@@ -314,18 +316,21 @@ export async function seedPano(
 
   try {
     await client.query("begin");
-    const { rows } = await client.query(
-      `select user_id, course_id from enrollments
-        where course_id = any($1) and status = 'PENDING' order by course_id, user_id`,
-      [courses]
+    // A decision of an earlier spec used up some of `seedPortal`'s applications,
+    // so the three of the Pano are made anew: the first course's, the second's,
+    // the first course's again.
+    await client.query("delete from enrollments where course_id = any($1)", [
+      courses,
+    ]);
+    const order = [base.first.id, base.second.id, base.first.id].map(
+      (course_id) => ({ user_id: randomUUID(), course_id })
     );
-    const byCourse = (id: string) => rows.filter((row) => row.course_id === id);
-    // the first course's, the second's, the first course's again
-    const order = [
-      byCourse(base.first.id)[0],
-      byCourse(base.second.id)[0],
-      byCourse(base.first.id)[1],
-    ];
+    for (const row of order) {
+      await client.query(
+        "insert into enrollments(user_id, course_id, status) values ($1, $2, 'PENDING')",
+        [row.user_id, row.course_id]
+      );
+    }
     const applicants: Applicant[] = [];
     for (const [i, row] of order.entries()) {
       const name = `E2E Başvuran ${i + 1} ${tail}`;

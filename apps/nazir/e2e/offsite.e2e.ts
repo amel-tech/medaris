@@ -133,7 +133,9 @@ test("nazir/09 — köşk, name and reason are recorded as a pending request of 
   });
   // the request makes no course, and the list of Dersler does not show it
   expect(await offsite?.courseCount()).toBe(before);
-  await expect(page.getByText("E2E Erbaîn-i Nevevî okumaları")).toHaveCount(0);
+  await expect(
+    page.getByTestId("courses").getByText("E2E Erbaîn-i Nevevî okumaları")
+  ).toHaveCount(0);
 });
 
 test("nazir/09 — a medrese nazır is refused: a notice and no form", async ({
