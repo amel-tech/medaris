@@ -119,6 +119,22 @@ export class EnrollmentResponse {
   @ApiProperty() updatedAt!: Date;
 }
 
+export class EnrollmentBanResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty({ enum: ["COURSE", "KOSK"], enumName: "BanScope" })
+  scope!: "COURSE" | "KOSK";
+}
+
+export class RosterEnrollmentResponse extends EnrollmentResponse {
+  @ApiProperty({
+    type: () => EnrollmentBanResponse,
+    nullable: true,
+    description:
+      "The open ban that bars the talebe from this course (MDRS-177): its id and scope, never its reason. Null when none.",
+  })
+  ban!: EnrollmentBanResponse | null;
+}
+
 export class PendingEnrollmentResponse extends EnrollmentResponse {
   @ApiProperty() courseTitle!: string;
 }

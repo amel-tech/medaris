@@ -509,7 +509,15 @@
     "reasonHelp": "Required, at most 500 characters.",
     "reasonRequired": "Write a reason.",
     "cancel": "Cancel",
-    "confirmRemove": "Remove"
+    "confirmRemove": "Remove",
+    "ban_banned": "Barred",
+    "ban_bannedScopeCourse": "This course",
+    "ban_bannedScopeKosk": "Köşk",
+    "ban_banAction": "Bar",
+    "ban_banActionLabel": "Bar: {name}",
+    "ban_liftAction": "Lift ban",
+    "ban_liftActionLabel": "Lift ban: {name}",
+    "ban_bansLink": "Bans"
   },
   "KoskDetail": {
     "subtitle": "The courses in this köşk and their curriculum.",
@@ -523,7 +531,8 @@
     "resources": "{count, plural, one {# resource} other {# resources}}",
     "noCoursesTitle": "No courses yet",
     "noCoursesDescription": "Create a new course to get started.",
-    "noCoursesReadOnly": "There is no course in this köşk open to you."
+    "noCoursesReadOnly": "There is no course in this köşk open to you.",
+    "bans": "Bans"
   },
   "KoskForm": {
     "createTitle": "Create a new köşk",
@@ -582,5 +591,129 @@
     "bodyGeneric": "This section’s permission has not been given to your account. The Medaris başnazım gives permissions; if you need one, ask them.",
     "account": "Signed in as:",
     "back": "Back to the home page"
+  },
+  "BansPage": {
+    "title": "Bans",
+    "intro": "Bans placed in {kosk} and its courses, with their reasons. A ban is lifted only by the kademe that placed it or a higher one, and lifting takes a reason.",
+    "heading": "Bans",
+    "recent": "{count} new bans",
+    "tabsLabel": "Ban status",
+    "tabs": {
+      "ACTIVE": "Active",
+      "LIFTED": "Lifted"
+    },
+    "caption": {
+      "ACTIVE": "Active bans in {kosk}",
+      "LIFTED": "Lifted bans in {kosk}"
+    },
+    "columns": {
+      "person": "Person",
+      "scope": "Scope",
+      "reason": "Reason",
+      "bannedBy": "Barred by",
+      "when": "When",
+      "liftedBy": "Lifted by",
+      "liftReason": "Reason for lifting",
+      "actions": "Actions"
+    },
+    "new": "New",
+    "scope": {
+      "COURSE": "Course",
+      "KOSK": "Köşk"
+    },
+    "extendedFrom": "Widened from {course}",
+    "roles": {
+      "KOSK_NAZIM": "Köşk nazım",
+      "MUDERRIS": "Müderris",
+      "DERS_NAZIR": "Course nazır",
+      "MEDRESE_NAZIR": "Medrese nazır",
+      "MEDRESE_BASMUDERRIS": "Chief müderris",
+      "MEDARIS_NAZIM": "Medaris nazım",
+      "SYSTEM_ADMIN": "Medaris administration"
+    },
+    "rolePhrases": {
+      "KOSK_NAZIM": "köşk nazım",
+      "MUDERRIS": "müderris",
+      "DERS_NAZIR": "course nazır",
+      "MEDRESE_NAZIR": "medrese nazır",
+      "MEDRESE_BASMUDERRIS": "chief müderris",
+      "MEDARIS_NAZIM": "Medaris nazım",
+      "SYSTEM_ADMIN": "Medaris administration"
+    },
+    "you": "{role} (you)",
+    "unknownPerson": "Unknown",
+    "today": "Today {time}",
+    "yesterday": "Yesterday {time}",
+    "lift": "Lift ban",
+    "liftLabel": "Lift ban: {name}",
+    "extend": "Bar from the köşk too",
+    "extendLabel": "Bar from the köşk too: {name}",
+    "platformOnly": "Only Medaris administration can lift this ban.",
+    "higherOnly": "Only the kademe that placed this ban, or a higher one, can lift it.",
+    "empty": {
+      "ACTIVE": "No active bans",
+      "LIFTED": "No lifted bans"
+    },
+    "loading": "Loading",
+    "loadFailedTitle": "Bans could not be loaded",
+    "loadFailed": "The bans cannot be read right now. Try again in a moment.",
+    "retry": "Try again",
+    "extended": "Barred from the köşk too",
+    "extendedBody": "{name} can no longer apply to any course in {kosk}.",
+    "extendFailed": "The köşk ban could not be placed",
+    "errors": {
+      "BAN_FORBIDDEN": "You may not place this ban.",
+      "BAN_LIFT_FORBIDDEN": "Only the kademe that placed this ban, or a higher one, can lift it.",
+      "BAN_ALREADY_LIFTED": "This ban has already been lifted; refresh the page.",
+      "BAN_NOT_FOUND": "The ban no longer exists; refresh the page.",
+      "BAN_TARGET_INVALID": "This person cannot be barred.",
+      "AUTHZ_FORBIDDEN": "You may not do this.",
+      "generic": "The action could not be completed."
+    }
+  },
+  "BanDialog": {
+    "eyebrowFallback": "Bar",
+    "title": "Bar the student",
+    "close": "Close",
+    "intro": "The ban takes effect at once. The student can no longer reach the sessions, recordings and content in the scope you choose; those sessions drop out of their calendar. They cannot apply again or leave the course.",
+    "visibility": "The ban, with its reason, is visible to köşk nazıms and Medaris administration; the student does not see the reason, only that their access was removed.",
+    "requiredNote": "required field",
+    "scopeLegend": "Scope of the ban",
+    "scopeCourse": "This course only",
+    "scopeCourseDesc": "Cannot reach the sessions, recordings and content of {course}.",
+    "scopeKosk": "Bar from the köşk too",
+    "scopeKoskDesc": "Cannot reach or apply to any course of {kosk}.",
+    "scopeKoskOnlyNazim": "Only the köşk nazım can place a ban for all courses of the köşk.",
+    "reasonLabel": "Reason for the ban",
+    "reasonHelp": "Whoever sees the ban and whoever lifts it reads the reason; the student does not.",
+    "reasonRequired": "Write a reason.",
+    "rotateTitle": "Renew the next session's meeting link",
+    "rotateBody": "The student may know the meeting link of the {when} session.",
+    "cancel": "Cancel",
+    "submit": "Bar",
+    "saved": "Ban saved",
+    "savedBody": "{name} can no longer reach this course.",
+    "savedBodyKosk": "{name} can no longer reach any course of {kosk}.",
+    "failed": "The ban could not be placed"
+  },
+  "LiftDialog": {
+    "title": "Lift ban",
+    "close": "Close",
+    "scope": "Scope",
+    "bannedBy": "Barred by",
+    "reason": "Reason",
+    "scopeCourse": "Course · {course}",
+    "scopeKosk": "Köşk · {kosk}",
+    "info": "This ban was placed by a {role}; as {viewer} you can lift it. Once lifted, <b>{name}</b> can apply to this course again.",
+    "infoSimple": "Once lifted, <b>{name}</b> can apply to this course again.",
+    "requiredNote": "required field",
+    "reasonLabel": "Reason for lifting",
+    "reasonHelp": "Lifting is recorded with this reason and your name.",
+    "reasonRequired": "Write a reason.",
+    "cancel": "Cancel",
+    "submit": "Lift ban",
+    "lifted": "Ban lifted",
+    "liftedBody": "{name} can apply again.",
+    "failed": "The ban could not be lifted"
   }
 }

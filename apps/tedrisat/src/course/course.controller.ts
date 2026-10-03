@@ -49,6 +49,7 @@ import {
   EnrolledCourseResponse,
   EnrollmentResponse,
   PendingEnrollmentResponse,
+  RosterEnrollmentResponse,
 } from "./dto/course-response.dto";
 import { CreateCourseDto } from "./dto/create-course.dto";
 import {
@@ -357,14 +358,14 @@ export class CourseController {
       "For the course team: the köşk manager and the course's müderrisler (MDRS-105). Requests first, then active seats, then completions.",
     operationId: "getCourseEnrollments",
   })
-  @ApiOkResponse({ type: EnrollmentResponse, isArray: true })
+  @ApiOkResponse({ type: RosterEnrollmentResponse, isArray: true })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
   @Get("courses/:id/enrollments")
   async enrollments(
     @Param("id", ParseUUIDPipe) id: string
-  ): Promise<EnrollmentResponse[]> {
+  ): Promise<RosterEnrollmentResponse[]> {
     return this.courseService.findEnrollments(id);
   }
 

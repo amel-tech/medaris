@@ -509,7 +509,15 @@
     "reasonHelp": "مطلوب، 500 حرف كحد أقصى.",
     "reasonRequired": "اكتب سببًا.",
     "cancel": "إلغاء",
-    "confirmRemove": "إخراج"
+    "confirmRemove": "إخراج",
+    "ban_banned": "محظور",
+    "ban_bannedScopeCourse": "هذا الدرس",
+    "ban_bannedScopeKosk": "الكشك",
+    "ban_banAction": "حظر",
+    "ban_banActionLabel": "حظر: {name}",
+    "ban_liftAction": "رفع الحظر",
+    "ban_liftActionLabel": "رفع الحظر: {name}",
+    "ban_bansLink": "الحظر"
   },
   "KoskDetail": {
     "subtitle": "الدروس في هذا الكشك وإدارة مناهجها.",
@@ -523,7 +531,8 @@
     "resources": "{count, plural, zero {لا مصادر} one {مصدر واحد} two {مصدران} few {# مصادر} many {# مصدرًا} other {# مصدر}}",
     "noCoursesTitle": "لم يُنشأ أي درس بعد",
     "noCoursesDescription": "أنشئ درسًا جديدًا للبدء.",
-    "noCoursesReadOnly": "لا يوجد في هذا الكشك درس متاح لك."
+    "noCoursesReadOnly": "لا يوجد في هذا الكشك درس متاح لك.",
+    "bans": "الحظر"
   },
   "KoskForm": {
     "createTitle": "إنشاء كشك جديد",
@@ -582,5 +591,129 @@
     "bodyGeneric": "لم يُمنح حسابك إذن هذا القسم. يمنح الأذونات ناظم مداريس الأعلى؛ وإن احتجت فاطلب منه.",
     "account": "الحساب الذي سجّلت به الدخول:",
     "back": "العودة إلى الصفحة الرئيسية"
+  },
+  "BansPage": {
+    "title": "الحظر",
+    "intro": "حالات الحظر في {kosk} ودروسها مع أسبابها. لا يرفع الحظر إلا المستوى الذي فرضه أو مستوى أعلى منه، ويُكتب سبب عند الرفع.",
+    "heading": "حالات الحظر",
+    "recent": "{count} حظر جديد",
+    "tabsLabel": "حالة الحظر",
+    "tabs": {
+      "ACTIVE": "ساري",
+      "LIFTED": "مرفوع"
+    },
+    "caption": {
+      "ACTIVE": "حالات الحظر السارية في {kosk}",
+      "LIFTED": "حالات الحظر المرفوعة في {kosk}"
+    },
+    "columns": {
+      "person": "الشخص",
+      "scope": "النطاق",
+      "reason": "السبب",
+      "bannedBy": "فرضه",
+      "when": "الوقت",
+      "liftedBy": "رفعه",
+      "liftReason": "سبب الرفع",
+      "actions": "الإجراءات"
+    },
+    "new": "جديد",
+    "scope": {
+      "COURSE": "درس",
+      "KOSK": "كشك"
+    },
+    "extendedFrom": "وُسّع من درس {course}",
+    "roles": {
+      "KOSK_NAZIM": "ناظم الكشك",
+      "MUDERRIS": "مدرّس",
+      "DERS_NAZIR": "ناظر الدرس",
+      "MEDRESE_NAZIR": "ناظر المدرسة",
+      "MEDRESE_BASMUDERRIS": "كبير المدرّسين",
+      "MEDARIS_NAZIM": "ناظم مداريس",
+      "SYSTEM_ADMIN": "إدارة مداريس"
+    },
+    "rolePhrases": {
+      "KOSK_NAZIM": "ناظم الكشك",
+      "MUDERRIS": "مدرّس",
+      "DERS_NAZIR": "ناظر الدرس",
+      "MEDRESE_NAZIR": "ناظر المدرسة",
+      "MEDRESE_BASMUDERRIS": "كبير المدرّسين",
+      "MEDARIS_NAZIM": "ناظم مداريس",
+      "SYSTEM_ADMIN": "إدارة مداريس"
+    },
+    "you": "{role} (أنت)",
+    "unknownPerson": "غير معروف",
+    "today": "اليوم {time}",
+    "yesterday": "أمس {time}",
+    "lift": "رفع الحظر",
+    "liftLabel": "رفع الحظر: {name}",
+    "extend": "حظره من الكشك أيضًا",
+    "extendLabel": "حظره من الكشك أيضًا: {name}",
+    "platformOnly": "لا يرفع هذا الحظر إلا إدارة مداريس.",
+    "higherOnly": "لا يرفع هذا الحظر إلا المستوى الذي فرضه أو مستوى أعلى.",
+    "empty": {
+      "ACTIVE": "لا توجد حالات حظر سارية",
+      "LIFTED": "لا توجد حالات حظر مرفوعة"
+    },
+    "loading": "جارٍ التحميل",
+    "loadFailedTitle": "تعذّر تحميل حالات الحظر",
+    "loadFailed": "تعذّرت قراءة حالات الحظر الآن. حاول مجددًا بعد قليل.",
+    "retry": "إعادة المحاولة",
+    "extended": "حُظر من الكشك أيضًا",
+    "extendedBody": "لم يعد {name} قادرًا على التقديم إلى أي درس في {kosk}.",
+    "extendFailed": "تعذّر فرض حظر الكشك",
+    "errors": {
+      "BAN_FORBIDDEN": "ليست لديك صلاحية فرض هذا الحظر.",
+      "BAN_LIFT_FORBIDDEN": "لا يرفع هذا الحظر إلا المستوى الذي فرضه أو مستوى أعلى.",
+      "BAN_ALREADY_LIFTED": "رُفع هذا الحظر بالفعل؛ حدّث الصفحة.",
+      "BAN_NOT_FOUND": "لم يعد الحظر موجودًا؛ حدّث الصفحة.",
+      "BAN_TARGET_INVALID": "لا يمكن حظر هذا الشخص.",
+      "AUTHZ_FORBIDDEN": "ليست لديك صلاحية لهذا الإجراء.",
+      "generic": "تعذّر إكمال الإجراء."
+    }
+  },
+  "BanDialog": {
+    "eyebrowFallback": "حظر",
+    "title": "حظر الطالب",
+    "close": "إغلاق",
+    "intro": "يسري الحظر فورًا. لا يستطيع الطالب الوصول إلى الجلسات والتسجيلات والمحتوى ضمن النطاق الذي تختاره، وتسقط هذه الجلسات من تقويمه. ولا يستطيع التقديم من جديد ولا مغادرة الدرس.",
+    "visibility": "يظهر الحظر مع سببه لنظّام الكشك وإدارة مداريس؛ ولا يرى الطالب السبب، بل يرى فقط أن وصوله قد أُلغي.",
+    "requiredNote": "حقل مطلوب",
+    "scopeLegend": "نطاق الحظر",
+    "scopeCourse": "هذا الدرس فقط",
+    "scopeCourseDesc": "لا يستطيع الوصول إلى جلسات {course} وتسجيلاته ومحتواه.",
+    "scopeKosk": "حظره من الكشك أيضًا",
+    "scopeKoskDesc": "لا يستطيع الوصول إلى أي درس في {kosk} ولا التقديم إليه.",
+    "scopeKoskOnlyNazim": "لا يفرض الحظر على جميع دروس الكشك إلا ناظم الكشك.",
+    "reasonLabel": "سبب الحظر",
+    "reasonHelp": "يقرأ السبب من يرى الحظر ومن يرفعه؛ ولا يراه الطالب.",
+    "reasonRequired": "اكتب سببًا.",
+    "rotateTitle": "جدّد رابط اجتماع الجلسة التالية",
+    "rotateBody": "قد يعرف الطالب رابط اجتماع جلسة {when}.",
+    "cancel": "تراجع",
+    "submit": "حظر",
+    "saved": "سُجّل الحظر",
+    "savedBody": "لم يعد {name} قادرًا على الوصول إلى هذا الدرس.",
+    "savedBodyKosk": "لم يعد {name} قادرًا على الوصول إلى أي درس في {kosk}.",
+    "failed": "تعذّر فرض الحظر"
+  },
+  "LiftDialog": {
+    "title": "رفع الحظر",
+    "close": "إغلاق",
+    "scope": "النطاق",
+    "bannedBy": "فرضه",
+    "reason": "السبب",
+    "scopeCourse": "درس · {course}",
+    "scopeKosk": "كشك · {kosk}",
+    "info": "فرض هذا الحظر {role}؛ ويمكنك رفعه بصفتك {viewer}. وعند رفعه يستطيع <b>{name}</b> التقديم من جديد.",
+    "infoSimple": "وعند رفع الحظر يستطيع <b>{name}</b> التقديم من جديد.",
+    "requiredNote": "حقل مطلوب",
+    "reasonLabel": "سبب الرفع",
+    "reasonHelp": "يُسجَّل الرفع مع هذا السبب واسمك.",
+    "reasonRequired": "اكتب سببًا.",
+    "cancel": "تراجع",
+    "submit": "رفع الحظر",
+    "lifted": "رُفع الحظر",
+    "liftedBody": "يستطيع <b>{name}</b> التقديم من جديد.",
+    "failed": "تعذّر رفع الحظر"
   }
 }

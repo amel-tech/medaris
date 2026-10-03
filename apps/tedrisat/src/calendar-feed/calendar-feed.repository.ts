@@ -1,9 +1,10 @@
 import { Injectable } from "@nestjs/common";
-import { and, asc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { CourseStatus } from "../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { DatabaseService } from "../database/database.service";
 import { isHeld } from "../database/role-assignments";
+import { bans } from "../database/schema/ban.schema";
 import { calendarFeedTokens } from "../database/schema/calendar-feed.schema";
 import {
   courses,
@@ -109,7 +110,10 @@ export class CalendarFeedRepository {
       .where(
         and(
           eq(enrollments.userId, userId),
-          inArray(enrollments.status, FEED_ENROLLMENT_STATES)
+          inArray(enrollments.status, FEED_ENROLLMENT_STATES),
+          // A barred talebe's sessions fall out of the feed (MDRS-177): the
+          // ban lifts, and they come back on the next poll.
+          sql`not exists (select 1 from ${bans} where ${bans.userId} = ${enrollments.userId} and ${bans.liftedAt} is null and ((${bans.scope} = 'COURSE' and ${bans.courseId} = ${enrollments.courseId}) or (${bans.scope} = 'KOSK' and ${bans.koskId} = (select ${courses.koskId} from ${courses} where ${courses.id} = ${enrollments.courseId}))))`
         )
       );
     // The courses the user holds MUDERRIS on, and the köşks they hold

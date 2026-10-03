@@ -97,6 +97,9 @@ export function Table<Row extends object>({
         className={cx("mds-table", stack && "mds-table--stack")}
         role={role("table")}
         aria-labelledby={stack ? captionId : undefined}
+        style={
+          columns.some((c) => c.width) ? { tableLayout: "fixed" } : undefined
+        }
       >
         <caption
           id={captionId}

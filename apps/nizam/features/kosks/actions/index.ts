@@ -5,12 +5,12 @@ import {
   type CourseSummaryResponse,
   type CreateKoskDto,
   createServerTedrisatAPIs,
-  type EnrollmentResponse,
   KoskManagedBy,
   type KoskResponse,
   type MeResponse,
   type PaginatedKoskResponse,
   type PendingEnrollmentResponse,
+  type RosterEnrollmentResponse,
   type UpdateKoskDto,
 } from "@medaris/services/tedrisat";
 import { revalidatePath } from "next/cache";
@@ -140,7 +140,7 @@ export const getPendingEnrollments = async (
  */
 export const getCourseEnrollments = async (
   courseId: string
-): Promise<EnrollmentResponse[] | null> => {
+): Promise<RosterEnrollmentResponse[] | null> => {
   try {
     const accessToken = await getAccessToken();
     const { courses } = await createServerTedrisatAPIs(

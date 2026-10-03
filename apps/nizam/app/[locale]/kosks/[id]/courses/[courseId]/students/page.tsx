@@ -2,10 +2,12 @@ import { ArrowLeftIcon } from "@medaris/icons/ssr";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { mayBanWholeKosk, nextSessionAt } from "~/features/bans/present";
 import {
   getCourse,
   getCourseEnrollments,
   getKoskById,
+  getMe,
 } from "~/features/kosks/actions";
 import { CourseRoster } from "~/features/kosks/components/course-roster";
 
@@ -16,10 +18,11 @@ export default async function Page({
   params: Promise<{ id: string; courseId: string }>;
 }) {
   const { id, courseId } = await params;
-  const [kosk, course, enrollments] = await Promise.all([
+  const [kosk, course, enrollments, me] = await Promise.all([
     getKoskById(id),
     getCourse(courseId),
     getCourseEnrollments(courseId),
+    getMe(),
   ]);
   if (!kosk || !course || course.koskId !== kosk.id) notFound();
   const t = await getTranslations("nizam.CourseTeam");
@@ -47,8 +50,14 @@ export default async function Page({
       ) : (
         <CourseRoster
           koskId={kosk.id}
+          koskName={kosk.name}
           courseId={course.id}
+          courseTitle={course.title}
           enrollments={enrollments}
+          mayBanKosk={mayBanWholeKosk(me, kosk.id)}
+          nextSessionAt={
+            nextSessionAt(course, new Date())?.toISOString() ?? null
+          }
         />
       )}
     </div>

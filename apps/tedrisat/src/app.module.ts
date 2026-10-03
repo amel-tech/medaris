@@ -11,6 +11,7 @@ import { AppService } from "./app.service";
 import { ArchiveModule } from "./archive/archive.module";
 import { AssignmentModule } from "./assignment/assignment.module";
 import { AuthzBindingsModule } from "./authz/authz-bindings.module";
+import { BanModule } from "./ban/ban.module";
 import { CalendarFeedModule } from "./calendar-feed/calendar-feed.module";
 import { configuration } from "./config";
 import { CourseModule } from "./course/course.module";
@@ -47,6 +48,7 @@ import { UserModule } from "./user/user.module";
     NotificationModule,
     AssignmentModule,
     ArchiveModule,
+    BanModule,
     UserModule,
   ],
   controllers: [AppController],

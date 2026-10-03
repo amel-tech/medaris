@@ -509,7 +509,15 @@
     "reasonHelp": "Zorunlu, en fazla 500 karakter.",
     "reasonRequired": "Bir gerekçe yazın.",
     "cancel": "Vazgeç",
-    "confirmRemove": "Dersten çıkar"
+    "confirmRemove": "Dersten çıkar",
+    "ban_banned": "Yasaklı",
+    "ban_bannedScopeCourse": "Bu ders",
+    "ban_bannedScopeKosk": "Köşk",
+    "ban_banAction": "Yasakla",
+    "ban_banActionLabel": "Yasakla: {name}",
+    "ban_liftAction": "Yasağı kaldır",
+    "ban_liftActionLabel": "Yasağı kaldır: {name}",
+    "ban_bansLink": "Yasaklamalar"
   },
   "KoskDetail": {
     "subtitle": "Bu köşkte yer alan dersler ve müfredat yönetimi.",
@@ -523,7 +531,8 @@
     "resources": "{count} kaynak",
     "noCoursesTitle": "Henüz ders oluşturulmamış",
     "noCoursesDescription": "Yeni bir ders oluşturarak başlayın.",
-    "noCoursesReadOnly": "Bu köşkte size açık bir ders yok."
+    "noCoursesReadOnly": "Bu köşkte size açık bir ders yok.",
+    "bans": "Yasaklamalar"
   },
   "KoskForm": {
     "createTitle": "Yeni Köşk Oluştur",
@@ -582,5 +591,129 @@
     "bodyGeneric": "Bu bölümün izni hesabınıza verilmemiş. İzinleri Medaris başnazımı verir; gerekirse ondan isteyin.",
     "account": "Giriş yaptığınız hesap:",
     "back": "Ana sayfaya dön"
+  },
+  "BansPage": {
+    "title": "Yasaklamalar",
+    "intro": "{kosk} içinde ve derslerinde konan yasaklar, gerekçeleriyle. Bir yasağı yalnız onu koyan kademe ya da daha üst bir kademe kaldırır; kaldırırken gerekçe yazılır.",
+    "heading": "Yasaklar",
+    "recent": "{count} yeni yasak",
+    "tabsLabel": "Yasak durumu",
+    "tabs": {
+      "ACTIVE": "Etkin",
+      "LIFTED": "Kaldırılan"
+    },
+    "caption": {
+      "ACTIVE": "{kosk} içindeki etkin yasaklar",
+      "LIFTED": "{kosk} içinde kaldırılan yasaklar"
+    },
+    "columns": {
+      "person": "Kişi",
+      "scope": "Kapsam",
+      "reason": "Gerekçe",
+      "bannedBy": "Yasaklayan",
+      "when": "Zaman",
+      "liftedBy": "Kaldıran",
+      "liftReason": "Kaldırma gerekçesi",
+      "actions": "İşlemler"
+    },
+    "new": "Yeni",
+    "scope": {
+      "COURSE": "Ders",
+      "KOSK": "Köşk"
+    },
+    "extendedFrom": "{course} dersinden genişletildi",
+    "roles": {
+      "KOSK_NAZIM": "Köşk nazımı",
+      "MUDERRIS": "Müderris",
+      "DERS_NAZIR": "Ders nazırı",
+      "MEDRESE_NAZIR": "Medrese nâzırı",
+      "MEDRESE_BASMUDERRIS": "Başmüderris",
+      "MEDARIS_NAZIM": "Medaris nazımı",
+      "SYSTEM_ADMIN": "Medaris yönetimi"
+    },
+    "rolePhrases": {
+      "KOSK_NAZIM": "köşk nazımı",
+      "MUDERRIS": "dersin müderrisi",
+      "DERS_NAZIR": "dersin nazırı",
+      "MEDRESE_NAZIR": "medrese nâzırı",
+      "MEDRESE_BASMUDERRIS": "medresenin başmüderrisi",
+      "MEDARIS_NAZIM": "Medaris nazımı",
+      "SYSTEM_ADMIN": "Medaris yönetimi"
+    },
+    "you": "{role} (siz)",
+    "unknownPerson": "Bilinmiyor",
+    "today": "Bugün {time}",
+    "yesterday": "Dün {time}",
+    "lift": "Yasağı kaldır",
+    "liftLabel": "Yasağı kaldır: {name}",
+    "extend": "Köşkten de yasakla",
+    "extendLabel": "Köşkten de yasakla: {name}",
+    "platformOnly": "Bu yasağı yalnız Medaris yönetimi kaldırabilir.",
+    "higherOnly": "Bu yasağı yalnız onu koyan kademe ya da üstü kaldırabilir.",
+    "empty": {
+      "ACTIVE": "Etkin yasak yok",
+      "LIFTED": "Kaldırılan yasak yok"
+    },
+    "loading": "Yükleniyor",
+    "loadFailedTitle": "Yasaklar yüklenemedi",
+    "loadFailed": "Yasaklar şu an okunamıyor. Biraz sonra yeniden deneyin.",
+    "retry": "Yeniden dene",
+    "extended": "Köşkten de yasaklandı",
+    "extendedBody": "{name} artık {kosk} içindeki hiçbir derse başvuramaz.",
+    "extendFailed": "Köşk yasağı konamadı",
+    "errors": {
+      "BAN_FORBIDDEN": "Bu yasağı koymak için yetkiniz yok.",
+      "BAN_LIFT_FORBIDDEN": "Bu yasağı yalnız onu koyan kademe ya da üstü kaldırabilir.",
+      "BAN_ALREADY_LIFTED": "Bu yasak zaten kaldırılmış; sayfayı yenileyin.",
+      "BAN_NOT_FOUND": "Yasak artık yok; sayfayı yenileyin.",
+      "BAN_TARGET_INVALID": "Bu kişi yasaklanamaz.",
+      "AUTHZ_FORBIDDEN": "Bu işlem için yetkiniz yok.",
+      "generic": "İşlem tamamlanamadı."
+    }
+  },
+  "BanDialog": {
+    "eyebrowFallback": "Yasakla",
+    "title": "Talebeyi yasakla",
+    "close": "Kapat",
+    "intro": "Yasak hemen geçerli olur. Talebe seçtiğiniz kapsamdaki celselere, ders kayıtlarına ve içeriğe erişemez; bu celseler takviminden düşer. Yeniden başvuramaz, dersten de ayrılamaz.",
+    "visibility": "Yasak, gerekçesiyle köşk nazımlarına ve Medaris yönetimine görünür; talebe gerekçeyi görmez, yalnız erişiminin kaldırıldığını görür.",
+    "requiredNote": "zorunlu alan",
+    "scopeLegend": "Yasağın kapsamı",
+    "scopeCourse": "Yalnızca bu ders",
+    "scopeCourseDesc": "{course} dersinin celselerine, ders kayıtlarına ve içeriğine erişemez.",
+    "scopeKosk": "Köşkten de yasakla",
+    "scopeKoskDesc": "{kosk}’nün bütün derslerine erişemez ve başvuramaz.",
+    "scopeKoskOnlyNazim": "Köşkün bütün dersleri için yasağı yalnız köşk nazımı koyabilir.",
+    "reasonLabel": "Yasaklama gerekçesi",
+    "reasonHelp": "Gerekçeyi yasağı görenler ve kaldıracak kişi okur; talebe görmez.",
+    "reasonRequired": "Bir gerekçe yazın.",
+    "rotateTitle": "Sıradaki celsenin toplantı bağlantısını yenileyin",
+    "rotateBody": "Talebe {when} celsesinin toplantı bağlantısını biliyor olabilir.",
+    "cancel": "Vazgeç",
+    "submit": "Yasakla",
+    "saved": "Yasak kaydedildi",
+    "savedBody": "{name} artık bu derse erişemez.",
+    "savedBodyKosk": "{name} artık {kosk} içindeki hiçbir derse erişemez.",
+    "failed": "Yasak konamadı"
+  },
+  "LiftDialog": {
+    "title": "Yasağı kaldır",
+    "close": "Kapat",
+    "scope": "Kapsam",
+    "bannedBy": "Yasaklayan",
+    "reason": "Gerekçe",
+    "scopeCourse": "Ders · {course}",
+    "scopeKosk": "Köşk · {kosk}",
+    "info": "Bu yasağı {role} koydu; {viewer} olarak kaldırabilirsiniz. Yasak kalkınca <b>{name}</b> bu derse yeniden başvurabilir.",
+    "infoSimple": "Yasak kalkınca <b>{name}</b> bu derse yeniden başvurabilir.",
+    "requiredNote": "zorunlu alan",
+    "reasonLabel": "Kaldırma gerekçesi",
+    "reasonHelp": "Kaldırma, bu gerekçe ve adınızla kaydedilir.",
+    "reasonRequired": "Bir gerekçe yazın.",
+    "cancel": "Vazgeç",
+    "submit": "Yasağı kaldır",
+    "lifted": "Yasak kaldırıldı",
+    "liftedBody": "{name} yeniden başvurabilir.",
+    "failed": "Yasak kaldırılamadı"
   }
 }

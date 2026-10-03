@@ -5,6 +5,7 @@ import {
   SCOPES,
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
+import { BanService } from "../ban/ban.service";
 import { KoskForbiddenError } from "../kosk/errors/kosk-forbidden.error";
 import { KoskService } from "../kosk/kosk.service";
 import { CourseRepository } from "./course.repository";
@@ -23,6 +24,7 @@ import {
   IMuderris,
   IPendingEnrollment,
   IReplaceCourse,
+  IRosterEnrollment,
   ISessionBatchResult,
   IUpdateCourse,
   IUpdateLesson,
@@ -81,7 +83,8 @@ export class CourseService {
   constructor(
     private readonly courseRepo: CourseRepository,
     private readonly koskService: KoskService,
-    private readonly authz: AuthzService
+    private readonly authz: AuthzService,
+    private readonly banService: BanService
   ) {}
 
   /**
@@ -512,6 +515,8 @@ export class CourseService {
   ): Promise<IEnrollment> {
     const userId = user.sub;
     const course = await this.getDetail(courseId, user); // throws if missing
+    // A barred talebe does not apply again (MDRS-177).
+    await this.banService.assertNotBarred(userId, courseId);
     // A course of an unlisted köşk always waits for approval (MDRS-122),
     // whatever its own `requires_approval` says: the link is how the köşk is
     // found, and passing a link on must not hand out seats.
@@ -543,8 +548,24 @@ export class CourseService {
   // narrows it further here.
 
   /** Requests, active seats and completions, for the team's roster. */
-  async findEnrollments(courseId: string): Promise<IEnrollment[]> {
-    return this.courseRepo.findEnrollmentsByCourse(courseId);
+  async findEnrollments(courseId: string): Promise<IRosterEnrollment[]> {
+    const [rows, koskId] = await Promise.all([
+      this.courseRepo.findEnrollmentsByCourse(courseId),
+      this.courseRepo.findKoskId(courseId),
+    ]);
+    // Who is barred, so the roster marks them (MDRS-177). Only the scope
+    // travels, never the reason: that is for those who lift the ban.
+    const barred =
+      koskId === null
+        ? new Map()
+        : await this.banService.openBansIn(courseId, koskId);
+    return rows.map((row) => {
+      const ban = barred.get(row.userId);
+      return {
+        ...row,
+        ban: ban ? { id: ban.id, scope: ban.scope } : null,
+      };
+    });
   }
 
   /**
@@ -647,6 +668,9 @@ export class CourseService {
    * A completed course is not left: the completion is the talebe's record.
    */
   async leave(userId: string, courseId: string): Promise<boolean> {
+    // The seat stays while the ban does: leaving would drop the record the
+    // ban sits on, and the talebe is barred from applying again (MDRS-177).
+    await this.banService.assertNotBarred(userId, courseId);
     const existing = await this.courseRepo.findEnrollment(userId, courseId);
     if (!existing) throw new EnrollmentNotFoundError(courseId);
     if (existing.status === EnrollmentStatus.COMPLETED) {
