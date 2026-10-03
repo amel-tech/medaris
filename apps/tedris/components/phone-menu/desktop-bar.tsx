@@ -83,7 +83,13 @@ export function DesktopBar({
             >
               <Icon name="bell" />
             </a>
-            <a className="mds-nav-user" href={`/${locale}/account`}>
+            {/* The bell's ghost icon button, not `.mds-nav-user`: that is the
+                sidebar's footer row, with a top border, padding and a hover
+                fill as tall as the bar. */}
+            <a
+              className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
+              href={`/${locale}/account`}
+            >
               <Avatar name={name} size="sm" decorative />
               <span className="mds-visually-hidden">{t("account")}</span>
             </a>
