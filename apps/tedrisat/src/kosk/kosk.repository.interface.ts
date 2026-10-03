@@ -169,6 +169,8 @@ export interface IKoskVisibility {
   /** Hidden (MDRS-173): nobody but its nazımları and SYSTEM_ADMIN opens it. */
   hidden: boolean;
   alwaysRequireApproval: boolean;
+  /** No recording of this köşk is ever shown to everyone (MDRS-174, nizam/34). */
+  recordingsNeverPublic: boolean;
 }
 
 export interface IKoskRepository {

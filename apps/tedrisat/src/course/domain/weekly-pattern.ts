@@ -189,3 +189,53 @@ export const expandWeeklyPattern = (
   }
   return sessions;
 };
+
+/** The calendar date, "YYYY-MM-DD", that `instant` falls on in `timeZone`. */
+export const localDateOf = (instant: Date, timeZone: string): string => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(instant);
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+};
+
+/** A syllabus week that already holds dated sessions, as the planner sees it. */
+export interface IDatedWeek {
+  weekNumber: number;
+  /** Its earliest session's calendar date in the course's zone. */
+  from: string;
+}
+
+/**
+ * The syllabus week number of each planned session, placed against the weeks
+ * the course already has (nizam/55): a session lands in the week whose dates
+ * hold it, and the weeks after that count on from it in sevens. With no dated
+ * week to go by, the planner's own numbering stands.
+ *
+ * A week owns the seven days from its earliest session. The reference for a
+ * date is the week that starts latest on or before it, or, for a date before
+ * every week, the first one; the number is that week's plus the whole weeks
+ * between, never below 1.
+ */
+export const placeInWeeks = (
+  planned: Pick<IPlannedSession, "localDate" | "weekNumber">[],
+  existing: IDatedWeek[]
+): number[] => {
+  if (existing.length === 0) return planned.map((s) => s.weekNumber);
+  const weeks = existing
+    .map((w) => ({ weekNumber: w.weekNumber, day: toDayNumber(w.from) }))
+    .sort((a, b) => a.day - b.day || a.weekNumber - b.weekNumber);
+  return planned.map((s) => {
+    const day = toDayNumber(s.localDate);
+    let ref = weeks[0];
+    for (const w of weeks) {
+      if (w.day <= day) ref = w;
+      else break;
+    }
+    return Math.max(1, ref.weekNumber + Math.floor((day - ref.day) / 7));
+  });
+};

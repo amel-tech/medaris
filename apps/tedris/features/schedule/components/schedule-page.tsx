@@ -9,6 +9,7 @@ import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { CalendarMenu } from "~/features/courses/components/calendar-menu";
 import { sessionStateOf, zoneLabel } from "~/features/courses/session-model";
+import type { LooseTranslator } from "~/lib/i18n/loose";
 import {
   type DayLabel,
   dayLabel,
@@ -18,11 +19,8 @@ import {
   type ScheduleWindow,
 } from "../schedule-model";
 
-/** Loose on purpose: the full next-intl key union of the catalogue exceeds the instantiation depth (TS2589). */
-type Translate = (
-  key: string,
-  values?: Record<string, number | string>
-) => string;
+// Narrow on purpose: the full translator type hits TS2589 here (MDRS-176).
+type Translate = LooseTranslator;
 
 const hostOf = (url: string): string | undefined => {
   try {

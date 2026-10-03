@@ -31,6 +31,7 @@ import {
   UsePipes,
 } from "@nestjs/common";
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -59,6 +60,7 @@ import {
   RemoveEnrollmentDto,
   SetEnrollmentStatusDto,
 } from "./dto/enrollment-actions.dto";
+import { MuderrisListResponse, SetMuderrisDto } from "./dto/muderris-list.dto";
 import { ReplaceCourseDto } from "./dto/replace-course.dto";
 import { UpdateCourseDto } from "./dto/update-course.dto";
 import { UpdateProgressDto } from "./dto/update-progress.dto";
@@ -263,6 +265,34 @@ export class CourseController {
     @Body() courseDto: ReplaceCourseDto
   ): Promise<CourseDetailResponse> {
     return this.courseService.replace(id, request.user, courseDto);
+  }
+
+  @ApiOperation({
+    summary: "Replace a course's müderris list and pick its imam",
+    description:
+      "Partial update for the 'Müderrisleri düzenle' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `assign_muderris`; the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.",
+    operationId: "setCourseMuderris",
+  })
+  @ApiOkResponse({ type: MuderrisListResponse })
+  @ApiBadRequestResponse({
+    description:
+      "Empty list, an imam outside the list (MUDERRIS_LIST_INVALID), or the same account twice (MUDERRIS_DUPLICATE_USER).",
+  })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @ApiConflictResponse({
+    description:
+      "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT).",
+  })
+  @Authz(SCOPES.ASSIGN_MUDERRIS, byParam(ENTITIES.COURSE))
+  @Put("courses/:id/muderris")
+  @UsePipes(new MedarisValidationPipe({ transform: true }))
+  async setMuderris(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: SetMuderrisDto
+  ): Promise<MuderrisListResponse> {
+    return this.courseService.setMuderris(id, request.user, dto);
   }
 
   @ApiOperation({

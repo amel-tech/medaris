@@ -140,6 +140,18 @@ export interface CourseDetailResponse {
      */
     requiresApproval: boolean;
     /**
+     * Closed course (MDRS-176): its content and recordings are never opened to everyone; recordings marked PUBLIC are read by the course team and the enrolled talebe only.
+     * @type {boolean}
+     * @memberof CourseDetailResponse
+     */
+    isClosed: boolean;
+    /**
+     * The word printed on the cover; null when none.
+     * @type {string}
+     * @memberof CourseDetailResponse
+     */
+    coverLabel?: string | null;
+    /**
      * IANA time zone the course's sessions are authored in (MDRS-110).
      * @type {string}
      * @memberof CourseDetailResponse
@@ -248,6 +260,7 @@ export function instanceOfCourseDetailResponse(value: object): value is CourseDe
     if (!('status' in value) || value['status'] === undefined) return false;
     if (!('grantsCertificate' in value) || value['grantsCertificate'] === undefined) return false;
     if (!('requiresApproval' in value) || value['requiresApproval'] === undefined) return false;
+    if (!('isClosed' in value) || value['isClosed'] === undefined) return false;
     if (!('timeZone' in value) || value['timeZone'] === undefined) return false;
     if (!('version' in value) || value['version'] === undefined) return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
@@ -283,6 +296,8 @@ export function CourseDetailResponseFromJSONTyped(json: any, ignoreDiscriminator
         'status': json['status'],
         'grantsCertificate': json['grantsCertificate'],
         'requiresApproval': json['requiresApproval'],
+        'isClosed': json['isClosed'],
+        'coverLabel': json['coverLabel'] == null ? undefined : json['coverLabel'],
         'timeZone': json['timeZone'],
         'version': json['version'],
         'archivedAt': json['archivedAt'] == null ? undefined : (new Date(json['archivedAt'])),
@@ -323,6 +338,8 @@ export function CourseDetailResponseToJSONTyped(value?: CourseDetailResponse | n
         'status': value['status'],
         'grantsCertificate': value['grantsCertificate'],
         'requiresApproval': value['requiresApproval'],
+        'isClosed': value['isClosed'],
+        'coverLabel': value['coverLabel'],
         'timeZone': value['timeZone'],
         'version': value['version'],
         'archivedAt': value['archivedAt'] === null ? null : ((value['archivedAt'] as any)?.toISOString()),

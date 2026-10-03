@@ -45,6 +45,7 @@ src/models/BulkFlashcardErrorResponse.ts
 src/models/BulkFlashcardResponse.ts
 src/models/CalendarFeedLinkResponse.ts
 src/models/CalendarFeedStatusResponse.ts
+src/models/CancelLessonDto.ts
 src/models/CatalogSectionResponse.ts
 src/models/ChiefNazimResponse.ts
 src/models/CourseDetailMadrasahResponse.ts
@@ -170,6 +171,8 @@ src/models/ManagedKoskRef.ts
 src/models/MeResponse.ts
 src/models/MeRolesResponse.ts
 src/models/MedarisNazimResponse.ts
+src/models/MuderrisListItemDto.ts
+src/models/MuderrisListResponse.ts
 src/models/MuderrisResponse.ts
 src/models/MyAssignmentsResponse.ts
 src/models/MyEffectivePermissionsResponse.ts
@@ -226,6 +229,7 @@ src/models/SessionResponse.ts
 src/models/SessionStatus.ts
 src/models/SetEnrollmentStatusDto.ts
 src/models/SetHeadMuderrisDto.ts
+src/models/SetMuderrisDto.ts
 src/models/SetNazimGrantsDto.ts
 src/models/SummaryMuderrisResponse.ts
 src/models/TaughtCourseRef.ts

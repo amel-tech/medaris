@@ -75,6 +75,12 @@ export const courses = table("courses", {
   status: courseStatus().default(CourseStatus.DRAFT).notNull(),
   grantsCertificate: boolean("grants_certificate").default(false).notNull(),
   requiresApproval: boolean("requires_approval").default(false).notNull(),
+  // "Kapalı ders" (MDRS-176, nizam/32, nizam/34): its content and recordings
+  // are never opened to everyone, whatever a recording's own visibility says.
+  // The introduction page stays public.
+  isClosed: boolean("is_closed").default(false).notNull(),
+  // The short word printed on the cover ("Sarf", "Tecvid"); null: none.
+  coverLabel: text("cover_label"),
   // IANA zone the course's sessions are authored in (MDRS-110). An editor
   // types "21:00" meaning 21:00 here; talebe elsewhere see it converted.
   timeZone: text("time_zone").default("Europe/Istanbul").notNull(),

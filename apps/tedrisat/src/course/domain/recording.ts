@@ -43,16 +43,21 @@ export type IRecordingView = IRecordingRow;
  * latest recording first (tedris/24 "Haftalara göre, yeniden eskiye").
  *
  * `canReadContent` is the course's content rule (`view_details`). Without it
- * only a recording marked PUBLIC is listed. A recording that is still
+ * only a recording marked PUBLIC is listed, and none when `publicAllowed` is
+ * false: a closed course (MDRS-176) never opens its recordings to everyone.
+ * A recording that is still
  * PROCESSING has no link to give, whoever asks.
  */
 export function visibleRecordings(
   rows: IRecordingRow[],
-  canReadContent: boolean
+  canReadContent: boolean,
+  publicAllowed = true
 ): IRecordingView[] {
   return rows
     .filter(
-      (r) => canReadContent || r.visibility === RecordingVisibility.PUBLIC
+      (r) =>
+        canReadContent ||
+        (publicAllowed && r.visibility === RecordingVisibility.PUBLIC)
     )
     .map((r) => ({
       ...r,

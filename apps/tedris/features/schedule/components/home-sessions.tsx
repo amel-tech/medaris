@@ -15,6 +15,7 @@ import {
   trLocative,
   trNumberWord,
 } from "~/features/flashcards/deck-model";
+import type { LooseTranslator } from "~/lib/i18n/loose";
 import {
   type DayLabel,
   dayLabel,
@@ -22,11 +23,8 @@ import {
   formatDayHeading,
 } from "../schedule-model";
 
-/** Loose on purpose: the full next-intl key union of the catalogue exceeds the instantiation depth (TS2589). */
-type Translate = (
-  key: string,
-  values?: Record<string, number | string>
-) => string;
+// Narrow on purpose: the full translator type hits TS2589 here (MDRS-176).
+type Translate = LooseTranslator;
 
 const relativeText = (label: DayLabel, t: Translate): string =>
   label.kind === "inDays"

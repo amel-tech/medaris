@@ -11,6 +11,7 @@ import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
+import { MuderrisDialog } from "../../courses/components/muderris-dialog";
 import { dateWithCase } from "../../madrasahs/present";
 import { toneOfHue } from "../admin-present";
 import { restoreCourse } from "../course-actions";
@@ -63,6 +64,7 @@ export function KoskCourseTable({
   const [, startTransition] = useTransition();
   const [tab, setTab] = useState<CourseTab>("ALL");
   const [hiding, setHiding] = useState<KoskCourseRowResponse | null>(null);
+  const [team, setTeam] = useState<KoskCourseRowResponse | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const counts = countRows(rows);
@@ -237,7 +239,7 @@ export function KoskCourseTable({
                             key={action}
                             variant="ghost"
                             size="small"
-                            href={`/${locale}/kosks/${koskId}/courses/${row.id}/edit`}
+                            href={`/${locale}/kosks/${koskId}/courses/${row.id}/curriculum`}
                             aria-label={t("editLabel", { name: row.title })}
                           >
                             {t("edit")}
@@ -249,10 +251,10 @@ export function KoskCourseTable({
                             key={action}
                             variant="ghost"
                             size="small"
-                            href={`/${locale}/kosks/${koskId}/courses/${row.id}/edit`}
                             aria-label={t("editMuderrisLabel", {
                               name: row.title,
                             })}
+                            onClick={() => setTeam(row)}
                           >
                             {t("editMuderris")}
                           </Button>
@@ -335,6 +337,16 @@ export function KoskCourseTable({
           </TabsPanel>
         ))}
       </Tabs>
+      <MuderrisDialog
+        open={team !== null}
+        onOpenChange={(open) => {
+          if (!open) setTeam(null);
+        }}
+        koskId={koskId}
+        courseId={team?.id ?? ""}
+        courseTitle={team?.title ?? ""}
+        onSaved={refresh}
+      />
       <HideCourseDialog
         open={hiding !== null}
         onOpenChange={(open) => {
