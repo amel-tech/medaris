@@ -2,7 +2,11 @@ import { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
 import { kosks } from "../../src/database/schema/kosk.schema";
-import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
+import {
+  ASSIGNED_ROLES,
+  roleAssignments,
+} from "../../src/database/schema/role-assignment.schema";
+import { asSystemAdmin } from "../helpers/system-admin.helper";
 import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
 import {
   assignRole,
@@ -15,11 +19,13 @@ const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";
 
 describe("KoskController (e2e)", () => {
   let app: INestApplication;
+  let adminApp: INestApplication;
   let databaseService: DatabaseService;
   let dbUtils: TestDatabaseUtils;
 
   beforeAll(async () => {
     app = await createTestApp({ authUserId: TEST_USER_ID });
+    adminApp = await createTestApp();
     databaseService = app.get<DatabaseService>(DatabaseService);
     dbUtils = new TestDatabaseUtils(databaseService);
   });
@@ -31,11 +37,16 @@ describe("KoskController (e2e)", () => {
   afterAll(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
     await app.close();
+    await adminApp.close();
   });
 
+  // Opening a köşk is SYSTEM_ADMIN only (2026-10-02). The admin signs with
+  // TEST_USER_ID's own `sub`, so the köşk is TEST_USER_ID's to manage and
+  // every other request below runs as that ordinary manager.
   const createKosk = (overrides: Record<string, unknown> = {}) =>
-    request(app.getHttpServer())
+    request(adminApp.getHttpServer())
       .post("/kosks")
+      .set("Authorization", asSystemAdmin(TEST_USER_ID))
       .send({
         name: "Süleymaniye Köşkü",
         handle: "@suleymaniye",
@@ -43,7 +54,19 @@ describe("KoskController (e2e)", () => {
       });
 
   describe("/kosks (POST)", () => {
-    it("creates a köşk owned by the authenticated user", () => {
+    it("refuses an ordinary caller and writes nothing — only SYSTEM_ADMIN opens a köşk", async () => {
+      await request(app.getHttpServer())
+        .post("/kosks")
+        .send({ name: "Süleymaniye Köşkü", handle: "@suleymaniye" })
+        .expect(403);
+
+      expect(await databaseService.db.select().from(kosks)).toHaveLength(0);
+      expect(
+        await databaseService.db.select().from(roleAssignments)
+      ).toHaveLength(0);
+    });
+
+    it("lets SYSTEM_ADMIN create a köşk, owned by the signed-in admin", () => {
       return createKosk({ description: "Klasik medrese.", coverHue: 215 })
         .expect(201)
         .expect((res) => {
