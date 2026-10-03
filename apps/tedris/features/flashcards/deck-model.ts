@@ -9,8 +9,9 @@ import type {
  * and clock-free, so a spec can pin each of them.
  */
 
-export type DeckStatus = "PRIVATE" | "PENDING" | "PUBLISHED";
-export type MyDeckFilter = "all" | DeckStatus;
+/** `REJECTED` (MDRS-180): the reviewer refused the request; the deck is private and may ask again. */
+export type DeckStatus = "PRIVATE" | "PENDING" | "PUBLISHED" | "REJECTED";
+export type MyDeckFilter = "all" | "PRIVATE" | "PENDING" | "PUBLISHED";
 export type CardStatus = "NEW" | "LEARNING" | "MASTERED";
 export type CardKind = "VOCABULARY" | "HADEETH";
 
@@ -52,7 +53,10 @@ export const filterMyDecks = (
 ): FlashcardDeckSummaryResponse[] =>
   decks.filter(
     (d) =>
-      (filter === "all" || d.publishStatus === filter) &&
+      (filter === "all" ||
+        d.publishStatus === filter ||
+        // A refused deck is private: it is under the same chip.
+        (filter === "PRIVATE" && d.publishStatus === "REJECTED")) &&
       matchesQuery(d, query, locale)
   );
 

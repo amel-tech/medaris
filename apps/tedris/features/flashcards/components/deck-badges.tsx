@@ -25,11 +25,17 @@ export function StatusBadge({
 }) {
   return (
     <Badge
-      variant={status === "PENDING" ? "warning" : "secondary"}
+      variant={
+        status === "PENDING"
+          ? "warning"
+          : status === "REJECTED"
+            ? "error"
+            : "secondary"
+      }
       icon={
         status === "PENDING" ? (
           <Icon name="clock" size="sm" />
-        ) : status === "PRIVATE" ? (
+        ) : status === "PRIVATE" || status === "REJECTED" ? (
           <Icon name="lock" size="sm" />
         ) : undefined
       }
