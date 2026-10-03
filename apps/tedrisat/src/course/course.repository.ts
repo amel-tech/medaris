@@ -299,8 +299,15 @@ export class CourseRepository implements ICourseRepository {
         .select({ id: courseMuderris.id })
         .from(courseMuderris)
         .where(eq(courseMuderris.courseId, id));
+      // Ids are compared lowercased, the way `muderrisListChanged` compares
+      // them before the ASSIGN_MUDERRIS check. Postgres returns uuids in
+      // lowercase and `@IsUUID()` accepts uppercase, so an exact match here
+      // would delete and re-insert a row the check called unchanged — with
+      // every field the payload left out, `userId` included, reset.
       const muderrisKeep = new Set(
-        muderris.map((m) => m.id).filter((x): x is string => Boolean(x))
+        muderris
+          .map((m) => m.id?.toLowerCase())
+          .filter((x): x is string => Boolean(x))
       );
       const muderrisToDelete = existingMuderris
         .filter((e) => !muderrisKeep.has(e.id))
@@ -321,11 +328,12 @@ export class CourseRepository implements ICourseRepository {
           avatarHue: m.avatarHue,
           orderIndex: i,
         };
-        if (m.id && existingMuderrisIds.has(m.id)) {
+        const muderrisId = m.id?.toLowerCase();
+        if (muderrisId && existingMuderrisIds.has(muderrisId)) {
           await tx
             .update(courseMuderris)
             .set(values)
-            .where(eq(courseMuderris.id, m.id));
+            .where(eq(courseMuderris.id, muderrisId));
         } else {
           await tx.insert(courseMuderris).values(values);
         }

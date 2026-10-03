@@ -9,6 +9,7 @@ import {
   AuthzService,
   byParam,
   ENTITIES,
+  forNew,
   SCOPES,
 } from "@medaris/common";
 import {
@@ -167,17 +168,14 @@ export class KoskController {
     operationId: "createKosk",
   })
   @ApiCreatedResponse({ type: KoskResponse })
-  // Exempt by product decision (MDRS-43, 2026-09-23): any authenticated user
-  // may open a köşk and becomes its KOSK_MANAGER; opening dersler inside it
-  // stays with that owner (`MANAGE_COURSES`). Self-service is kept on purpose
-  // for now and may be narrowed later.
-  //
-  // The matrix still says otherwise: `CREATE_KOSK` is on NO kosk row, so
-  // köşk creation there is SYSTEM_ADMIN only, through the realm bypass. That
-  // is why this route is exempt rather than `@Authz(CREATE_KOSK, forNew(KOSK))`
-  // — the decorator would 403 every ordinary caller. Narrowing later means
-  // swapping in that decorator and hiding nizam's "Yeni Köşk" from non-admins.
-  @AuthzExempt()
+  @ApiForbiddenResponse()
+  // SYSTEM_ADMIN only (owner decision, 2026-10-02), replacing MDRS-43's
+  // self-service exemption of 2026-09-23. `CREATE_KOSK` is on NO kosk row of
+  // the matrix, so only the realm bypass passes. Self-service made any caller
+  // a köşk manager on demand, and `GET /users?email=` (MDRS-104) trusts
+  // "manages a köşk" as its gate, so an open create let anybody grant
+  // themselves that lookup.
+  @Authz(SCOPES.CREATE_KOSK, forNew(ENTITIES.KOSK))
   @Post()
   async create(
     @Req() request: AuthorizedRequest,
