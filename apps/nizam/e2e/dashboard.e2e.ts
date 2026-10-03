@@ -427,7 +427,7 @@ test("nizam/05 — a Medaris nazımı sees only the sections their permissions o
   );
 });
 
-test("nizam/05 — Köşk aç is drawn for the nazım who may open a köşk (criterion 6)", async ({
+test("nizam/05 — Köşk aç is never drawn to a nazım, only to the başnazım (criterion 6)", async ({
   page,
 }) => {
   test.skip(
@@ -444,5 +444,5 @@ test("nizam/05 — Köşk aç is drawn for the nazım who may open a köşk (cri
   ]);
   await signIn(page, MEDARIS_NAZIM);
   await page.goto("/tr");
-  await expect(page.locator('a[href$="/kosks?ac=1"]')).toHaveCount(1);
+  await expect(page.locator('a[href$="/kosks?ac=1"]')).toHaveCount(0);
 });
