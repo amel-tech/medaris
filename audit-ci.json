@@ -38,7 +38,15 @@
     "advisory — which is the property this file exists to provide. low/moderate",
     "stay ungated, as inherited.",
     "",
-    "When xlsx is replaced, delete both lines here in the same PR."
+    "When xlsx is replaced, delete both lines here in the same PR.",
+    "",
+    "GHSA-ch52-4w7c-c8xp (http-cache-semantics <=4.2.0) and GHSA-vfj7-8cjw-p6xm",
+    "(braces <=3.0.3) were published on 2026-10-03 with no patched version:",
+    "4.2.0 and 3.0.3 are the latest releases on npm, so no bump or override can",
+    "clear them. Every path is build-time tooling — @swc/cli's binary downloader",
+    "(via @nestjs/cli and @nx/js), depcheck, and onchange's chokidar in",
+    "libs/services — none of which ships in an image or serves a request.",
+    "Delete each line as soon as its package publishes a patched release."
   ],
   "low": false,
   "moderate": false,
@@ -50,7 +58,12 @@
   "skip-dev": false,
   "show-found": true,
   "show-not-found": false,
-  "allowlist": ["GHSA-4r6h-8v6p-xvw6", "GHSA-5pgg-2g8v-p4x9"],
+  "allowlist": [
+    "GHSA-4r6h-8v6p-xvw6",
+    "GHSA-5pgg-2g8v-p4x9",
+    "GHSA-ch52-4w7c-c8xp",
+    "GHSA-vfj7-8cjw-p6xm"
+  ],
   "retry": {
     "count": 3,
     "delay": 1000
