@@ -24,7 +24,8 @@ Backend (tedrisat)
 - `GET /flashcard/decks/due?limit=`: decks of the collection with cards waiting,
   then collected decks that grew since collecting (`limit` 3, at most 10).
 - `GET /kosks/followed/courses?limit=`: published courses of followed köşks the
-  caller has no enrollment in.
+  caller has no enrollment in; an unlisted (`is_private`) or hidden köşk is in no
+  list, so its courses are left out even for its followers (as `GET /kosks`).
 - `GET /flashcard/cards?deckId=` is now `@AuthzPublic`: a public deck's cards are
   readable with no token (the deck itself already was, MDRS-45); a private deck is
   the same 404 as an absent one; a caller with no token gets no `progress`. This
