@@ -183,7 +183,9 @@ test("nazir/15 — Devral keeps what was given under the başmüderris's name, D
     revoked: true,
   });
   // her own groups and permissions in the medrese went with the appointment
-  expect(await extra?.grantRow(extra.fatma.id, "course.edit")).toMatchObject({
+  expect(
+    await extra?.grantRow(extra.fatma.id, "course.settings")
+  ).toMatchObject({
     revoked: true,
   });
   expect(await extra?.audits("madrasah_nazir.dismiss")).toBe(1);
