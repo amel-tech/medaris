@@ -207,8 +207,20 @@ describe("the courses a policy applies to", () => {
         {
           koskName: "Nûruosmaniye Köşkü",
           muderris: [
-            { name: "Mehmet Emin Işıkoğlu", title: null, isImam: true },
-            { name: "Abdülhamit Karaosmanoğlu", title: null, isImam: false },
+            {
+              name: "Mehmet Emin Işıkoğlu",
+              title: null,
+              isImam: true,
+              userId: null,
+              email: null,
+            },
+            {
+              name: "Abdülhamit Karaosmanoğlu",
+              title: null,
+              isImam: false,
+              userId: null,
+              email: null,
+            },
           ],
         },
         words
@@ -227,6 +239,8 @@ describe("the courses a policy applies to", () => {
             name,
             title: null,
             isImam: false,
+            userId: null,
+            email: null,
           })),
         },
         words

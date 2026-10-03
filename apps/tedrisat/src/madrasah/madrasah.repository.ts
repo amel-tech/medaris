@@ -56,6 +56,7 @@ import {
   IMadrasah,
   IMadrasahBadgeCounts,
   IMadrasahCourse,
+  IMadrasahCourseFilter,
   IMadrasahCourseListItem,
   IMadrasahDirectoryFilter,
   IMadrasahDirectoryItem,
@@ -1173,11 +1174,15 @@ export class MadrasahRepository {
   }
 
   /**
-   * The medrese's courses for the settings screen's "Politikaların uygulandığı
-   * dersler": drafts and published ones, a hidden one not, by title. The köşk
+   * The medrese's courses for the nazırs' screens (nazir/04's "Politikaların
+   * uygulandığı dersler", nazir/07's table): drafts and published ones, a
+   * hidden one not, by title, with the talebe and the müderrisler. The köşk
    * can be unlisted — this is the nazırs' own view, not the public page's.
    */
-  async findCourseList(madrasahId: string): Promise<IMadrasahCourseListItem[]> {
+  async findCourseList(
+    madrasahId: string,
+    filter: IMadrasahCourseFilter = {}
+  ): Promise<IMadrasahCourseListItem[]> {
     const rows = await this.db
       .select({
         id: courses.id,
@@ -1185,21 +1190,82 @@ export class MadrasahRepository {
         koskId: courses.koskId,
         koskName: kosks.name,
         status: courses.status,
+        requiresApproval: courses.requiresApproval,
+        closed: courses.isClosed,
+        createdAt: courses.createdAt,
       })
       .from(courses)
       .innerJoin(kosks, eq(kosks.id, courses.koskId))
       .where(
-        and(eq(courses.madrasahId, madrasahId), isNull(courses.archivedAt))
+        and(
+          eq(courses.madrasahId, madrasahId),
+          isNull(courses.archivedAt),
+          filter.koskId ? eq(courses.koskId, filter.koskId) : undefined,
+          filter.status ? eq(courses.status, filter.status) : undefined,
+          filter.courseId ? eq(courses.id, filter.courseId) : undefined
+        )
       )
       .orderBy(asc(courses.title), asc(courses.id));
-    const muderris = await this.muderrisOf(rows.map((r) => r.id));
+    const ids = rows.map((r) => r.id);
+    const [muderris, counts] = await Promise.all([
+      this.muderrisOf(ids),
+      this.enrollmentCountsOf(ids),
+    ]);
+    const emails = await this.emailsOf(
+      muderris.flatMap((m) => (m.userId ? [m.userId] : []))
+    );
     return rows.map((r) => ({
       ...r,
       status: r.status as CourseStatus,
+      studentCount: counts.get(r.id)?.students ?? 0,
+      pendingCount: counts.get(r.id)?.pending ?? 0,
       muderris: muderris
         .filter((m) => m.courseId === r.id)
-        .map((m) => ({ name: m.name, title: m.title, isImam: m.isImam })),
+        .map((m) => ({
+          userId: m.userId,
+          name: m.name,
+          title: m.title,
+          email: m.userId ? (emails.get(m.userId) ?? null) : null,
+          isImam: m.isImam,
+        })),
     }));
+  }
+
+  /**
+   * Each course's enrolled talebe and its pending applications. A completed
+   * enrollment is neither, as in the hosting and archive counts, so the number
+   * nazir/18 names is the one the archive then shows.
+   */
+  private async enrollmentCountsOf(
+    ids: string[]
+  ): Promise<Map<string, { students: number; pending: number }>> {
+    const result = new Map<string, { students: number; pending: number }>();
+    if (ids.length === 0) return result;
+    const rows = await this.db
+      .select({
+        courseId: enrollments.courseId,
+        status: enrollments.status,
+        n: sql<number>`count(*)`.mapWith(Number),
+      })
+      .from(enrollments)
+      .where(inArray(enrollments.courseId, ids))
+      .groupBy(enrollments.courseId, enrollments.status);
+    for (const row of rows) {
+      const counts = result.get(row.courseId) ?? { students: 0, pending: 0 };
+      if (row.status === EnrollmentStatus.ENROLLED) counts.students += row.n;
+      else if (row.status === EnrollmentStatus.PENDING) counts.pending += row.n;
+      result.set(row.courseId, counts);
+    }
+    return result;
+  }
+
+  private async emailsOf(userIds: string[]): Promise<Map<string, string>> {
+    if (userIds.length === 0) return new Map();
+    const rows = await this.db
+      .select({ id: users.id, email: users.email })
+      .from(users)
+      .where(inArray(users.id, userIds));
+    return new Map(rows.flatMap((r) => (r.email ? [[r.id, r.email]] : [])));
   }
 
   /** The earliest session still ahead, per course; archived ones do not count. */

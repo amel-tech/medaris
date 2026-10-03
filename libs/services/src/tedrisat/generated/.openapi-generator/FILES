@@ -186,7 +186,9 @@ src/models/LiftBanDto.ts
 src/models/MadrasahArchiveCountsResponse.ts
 src/models/MadrasahArchiveItemResponse.ts
 src/models/MadrasahBadgeCountsResponse.ts
+src/models/MadrasahCourseKoskResponse.ts
 src/models/MadrasahCourseListItemResponse.ts
+src/models/MadrasahCourseListMuderrisResponse.ts
 src/models/MadrasahCourseMuderrisResponse.ts
 src/models/MadrasahCourseResponse.ts
 src/models/MadrasahDirectoryItemResponse.ts
@@ -237,6 +239,7 @@ src/models/NazirMadrasahRef.ts
 src/models/NextSessionResponse.ts
 src/models/NotificationCountsResponse.ts
 src/models/NotificationResponse.ts
+src/models/OpenMadrasahCourseDto.ts
 src/models/PaginatedArchiveResponse.ts
 src/models/PaginatedKoskResponse.ts
 src/models/PaginatedMadrasahArchiveResponse.ts
@@ -287,6 +290,7 @@ src/models/SessionResponse.ts
 src/models/SessionStatus.ts
 src/models/SetEnrollmentStatusDto.ts
 src/models/SetHeadMuderrisDto.ts
+src/models/SetMadrasahCourseMuderrisDto.ts
 src/models/SetMadrasahNazirPermissionsDto.ts
 src/models/SetMuderrisDto.ts
 src/models/SetNazimGrantsDto.ts

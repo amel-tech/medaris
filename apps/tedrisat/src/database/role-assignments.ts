@@ -6,6 +6,7 @@ import {
   inArray,
   isNull,
   lte,
+  ne,
   or,
   SQL,
   sql,
@@ -251,4 +252,36 @@ export async function syncMuderrisAssignments(
         );
     }
   }
+}
+
+/**
+ * Makes `userId` the course's imam (MDRS-186, nazir/08 and nazir/17), inside
+ * the caller's transaction, for a müderris who already holds MUDERRIS there.
+ * Whoever held the imam flag lets go of it first: the database allows one imam
+ * per course.
+ */
+export async function setCourseImam(
+  tx: Tx,
+  courseId: string,
+  userId: string
+): Promise<void> {
+  const course = and(
+    eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS),
+    eq(roleAssignments.scopeId, courseId),
+    isNull(roleAssignments.revokedAt)
+  );
+  await tx
+    .update(roleAssignments)
+    .set({ isImam: false })
+    .where(
+      and(
+        course,
+        eq(roleAssignments.isImam, true),
+        ne(roleAssignments.userId, userId)
+      )
+    );
+  await tx
+    .update(roleAssignments)
+    .set({ isImam: true })
+    .where(and(course, eq(roleAssignments.userId, userId)));
 }
