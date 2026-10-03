@@ -253,6 +253,13 @@
       "when": 1790966122608,
       "tag": "0036_decks_summary",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790967082621,
+      "tag": "0037_flashcard_review_schedule",
+      "breakpoints": true
     }
   ]
 }

@@ -15,12 +15,22 @@ const ownsItsMain = (pathname: string) =>
   pathname.startsWith("/discover") ||
   pathname.startsWith("/my-courses") ||
   pathname.startsWith("/schedule") ||
-  (pathname.startsWith("/decks") && !pathname.startsWith("/decks/study")) ||
+  pathname.startsWith("/decks") ||
   pathname.startsWith("/account/calendar") ||
   pathname === "/home" ||
   /^\/courses\/[^/]+\/lessons\//.test(pathname);
 
-export const TabView = ({ children }: { children: React.ReactNode }) => {
+/**
+ * `signedIn` false: a visitor is shown only the tab that is theirs (Öğrenme,
+ * the public Keşfet); Ev and Desteler are behind the sign-in (design tedris/32).
+ */
+export const TabView = ({
+  children,
+  signedIn = true,
+}: {
+  children: React.ReactNode;
+  signedIn?: boolean;
+}) => {
   const t = useTranslations("tedris");
   const pathname = usePathname();
 
@@ -28,16 +38,18 @@ export const TabView = ({ children }: { children: React.ReactNode }) => {
     <>
       <div data-legacy-tabs className="border-b border-b-gray-300 mb-8">
         <div className="flex gap-4 mx-auto w-full max-w-[80rem]">
-          <Link
-            href="/home"
-            className={cn(
-              "px-4 py-2 text-sm font-medium",
-              pathname.startsWith("/home") &&
-                "text-brand-primary border-b-2 border-brand-primary"
-            )}
-          >
-            <span>{t("TabView.home")}</span>
-          </Link>
+          {signedIn ? (
+            <Link
+              href="/home"
+              className={cn(
+                "px-4 py-2 text-sm font-medium",
+                pathname.startsWith("/home") &&
+                  "text-brand-primary border-b-2 border-brand-primary"
+              )}
+            >
+              <span>{t("TabView.home")}</span>
+            </Link>
+          ) : null}
           <Link
             prefetch
             href="/discover"
@@ -52,17 +64,19 @@ export const TabView = ({ children }: { children: React.ReactNode }) => {
           >
             <span>{t("TabView.learning")}</span>
           </Link>
-          <Link
-            prefetch
-            href="/decks"
-            className={cn(
-              "px-4 py-2 text-sm font-medium",
-              pathname.startsWith("/decks") &&
-                "text-brand-primary border-b-2 border-brand-primary"
-            )}
-          >
-            <span>{t("TabView.decks")}</span>
-          </Link>
+          {signedIn ? (
+            <Link
+              prefetch
+              href="/decks"
+              className={cn(
+                "px-4 py-2 text-sm font-medium",
+                pathname.startsWith("/decks") &&
+                  "text-brand-primary border-b-2 border-brand-primary"
+              )}
+            >
+              <span>{t("TabView.decks")}</span>
+            </Link>
+          ) : null}
         </div>
       </div>
       {ownsItsMain(pathname) ? (

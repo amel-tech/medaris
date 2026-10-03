@@ -19,10 +19,15 @@ export const translatorFor = (
   namespace: string
 ) => {
   const [root, ...rest] = namespace.split(".");
+  // The app's two catalogues (MDRS-165): `tedris` is read as the namespaces
+  // inside it, `tedrisLearn` (the study and home screens) as itself.
   return createTranslator({
     locale: "tr",
-    messages: resources.tr.tedris,
-    namespace: [root === "tedris" ? rest[0] : root, ...rest.slice(1)]
+    messages: {
+      ...resources.tr.tedris,
+      tedrisLearn: resources.tr.tedrisLearn,
+    },
+    namespace: (root === "tedris" ? rest : [root, ...rest])
       .filter(Boolean)
       .join(".") as never,
   });

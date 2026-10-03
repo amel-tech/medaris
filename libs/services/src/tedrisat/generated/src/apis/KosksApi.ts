@@ -18,6 +18,7 @@ import type {
   AddKoskNazimsDto,
   CreateKoskDto,
   CreateKoskGrantDto,
+  FollowedKoskCourseResponse,
   GrantHostingRightDto,
   HostingCoursesAction,
   HostingRightResponse,
@@ -44,6 +45,8 @@ import {
     CreateKoskDtoToJSON,
     CreateKoskGrantDtoFromJSON,
     CreateKoskGrantDtoToJSON,
+    FollowedKoskCourseResponseFromJSON,
+    FollowedKoskCourseResponseToJSON,
     GrantHostingRightDtoFromJSON,
     GrantHostingRightDtoToJSON,
     HostingCoursesActionFromJSON,
@@ -121,6 +124,10 @@ export interface GetAllKosksRequest {
     level?: GetAllKosksLevelEnum;
     field?: string;
     q?: string;
+}
+
+export interface GetFollowedKoskCoursesRequest {
+    limit?: number;
 }
 
 export interface GetKoskByIdRequest {
@@ -613,6 +620,46 @@ export class KosksApi extends runtime.BaseAPI {
      */
     async getAllKosks(requestParameters: GetAllKosksRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PaginatedKoskResponse> {
         const response = await this.getAllKosksRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Published courses of the köşks the caller follows, newest first, leaving out the courses they already applied to or are in (MDRS-165): Ana sayfa\'s \"Takip ettiğin köşklerden\".
+     * Courses of the köşks the caller follows
+     */
+    async getFollowedKoskCoursesRaw(requestParameters: GetFollowedKoskCoursesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<FollowedKoskCourseResponse>>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/followed/courses`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(FollowedKoskCourseResponseFromJSON));
+    }
+
+    /**
+     * Published courses of the köşks the caller follows, newest first, leaving out the courses they already applied to or are in (MDRS-165): Ana sayfa\'s \"Takip ettiğin köşklerden\".
+     * Courses of the köşks the caller follows
+     */
+    async getFollowedKoskCourses(requestParameters: GetFollowedKoskCoursesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<FollowedKoskCourseResponse>> {
+        const response = await this.getFollowedKoskCoursesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -12,6 +12,7 @@ import { madrasahs } from "../database/schema/madrasah.schema";
 import { deckSharedWith } from "./deck-sharing";
 import { DeckPublishStatus } from "./domain/deck-publish-status.enum";
 import { FlashcardType } from "./domain/flashcard-type.enum";
+import { isReviewDue } from "./review-due";
 
 /** A deck as a list reads it: the row, where it belongs, and the caller's tie to it. */
 export interface DeckListRow {
@@ -39,6 +40,8 @@ export interface DeckProgressStats {
   cardCount: number;
   masteredCount: number;
   learningCount: number;
+  /** Cards waiting for a repeat now (MDRS-165), see `isReviewDue`. */
+  dueCount: number;
   addedSinceCollectedCount: number;
 }
 
@@ -166,6 +169,10 @@ export class FlashcardDeckSummaryRepository {
           ),
         learningCount:
           sql<number>`count(*) FILTER (WHERE ${flashcardProgress.status} = 'LEARNING')`.mapWith(
+            Number
+          ),
+        dueCount:
+          sql<number>`count(*) FILTER (WHERE ${isReviewDue(new Date())})`.mapWith(
             Number
           ),
         addedSinceCollectedCount:
