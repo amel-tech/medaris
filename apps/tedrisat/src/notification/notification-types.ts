@@ -17,6 +17,9 @@ export const NOTIFICATION_TYPES = [
   "SESSION_ADDED",
   "KOSK_APPLICATION_RESULT",
   "DECK_PUBLISH_RESULT",
+  // Nizam side (MDRS-179): what a köşk nazımı or Medaris nazımı is told.
+  "COURSE_BAN_PLACED",
+  "KOSK_BAN_PLACED",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -42,6 +45,22 @@ export interface NotificationInput {
   targetId?: string | null;
   params?: NotificationParams;
 }
+
+/**
+ * Which stored types the optional `types` filter of `GET /notifications`
+ * accepts: any of `NOTIFICATION_TYPES`, comma separated.
+ */
+export const parseNotificationTypes = (
+  raw: string | undefined
+): NotificationType[] | null => {
+  if (raw === undefined || raw.trim() === "") return [];
+  const parts = raw.split(",").map((p) => p.trim());
+  return parts.every((p): p is NotificationType =>
+    (NOTIFICATION_TYPES as readonly string[]).includes(p)
+  )
+    ? (parts as NotificationType[])
+    : null;
+};
 
 /** The two filters of `GET /notifications`. */
 export const NOTIFICATION_STATUSES = ["all", "unread"] as const;

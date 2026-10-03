@@ -11,6 +11,7 @@ import {
   getCourseEnrollments,
   getKoskById,
   getMe,
+  getRemovedEnrollments,
 } from "~/features/kosks/actions";
 
 // Behind the sign-in middleware, and per caller.
@@ -23,8 +24,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /**
  * A course's Talebeler (design nizam/57, with the roster of MDRS-105 behind
- * its tabs): the waiting applications first, then the enrolled and the
- * talebe who completed the course.
+ * its tabs): the waiting applications first, then the enrolled, the talebe
+ * who completed the course and the ones taken out of it (nizam 58).
  */
 export default async function Page({
   params,
@@ -33,10 +34,11 @@ export default async function Page({
 }) {
   const { locale, id, courseId } = await params;
   setRequestLocale(locale);
-  const [kosk, course, enrollments, me] = await Promise.all([
+  const [kosk, course, enrollments, removed, me] = await Promise.all([
     getKoskById(id),
     getCourse(courseId),
     getCourseEnrollments(courseId),
+    getRemovedEnrollments(courseId),
     getMe(),
   ]);
   if (!kosk || !course || course.koskId !== kosk.id) notFound();
@@ -76,6 +78,7 @@ export default async function Page({
               )
             )}
           roster={enrollments.filter((e) => e.status !== "PENDING")}
+          removed={removed}
           mayBanKosk={mayBanWholeKosk(me, kosk.id)}
           nextSessionAt={
             nextSessionAt(course, new Date())?.toISOString() ?? null

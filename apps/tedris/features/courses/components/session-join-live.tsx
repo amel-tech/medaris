@@ -1,15 +1,9 @@
 "use client";
 
-import { Icon } from "@medaris/ui/mds/icon";
-import { Menu } from "@medaris/ui/mds/menu";
 import { SessionJoin } from "@medaris/ui/mds/session-join";
 import { useEffect, useState } from "react";
-import {
-  googleCalendarUrl,
-  icsDownloadPath,
-  sessionPagePath,
-} from "../calendar-links";
 import { sessionStateOf } from "../session-model";
+import { CalendarMenu, type CalendarMenuLabels } from "./calendar-menu";
 
 export interface SessionJoinLabels {
   label: string;
@@ -25,14 +19,12 @@ export interface SessionJoinLabels {
   revealLabel: string;
   localTimeLabel: string;
   minuteUnit: string;
+  recordingsLabel?: string;
+  /** keeps a literal `{minutes}`, which the card fills in while the celse runs */
+  elapsedText?: string;
 }
 
-export interface CalendarLabels {
-  button: string;
-  google: string;
-  apple: string;
-  linkIsOnPage: string;
-}
+export type CalendarLabels = CalendarMenuLabels;
 
 /**
  * The join card of the session page (design tedris/15, 18). `SessionJoin` is
@@ -60,6 +52,7 @@ export function SessionJoinLive({
   courseTimeZone,
   labels,
   calendar,
+  recordingsHref,
 }: {
   renderedAt: string;
   startsAt: string;
@@ -79,6 +72,8 @@ export function SessionJoinLive({
   labels: SessionJoinLabels;
   /** present for a session a talebe may still add to a calendar */
   calendar?: CalendarLabels;
+  /** where "Ders kayıtlarına git" goes once the celse is over; absent without a recording */
+  recordingsHref?: string;
 }) {
   const [now, setNow] = useState(() => new Date(renderedAt));
   useEffect(() => {
@@ -96,40 +91,31 @@ export function SessionJoinLive({
     now
   );
 
+  const { elapsedText, ...joinLabels } = labels;
+  const elapsed =
+    state === "live" && elapsedText
+      ? elapsedText.replace(
+          "{minutes}",
+          String(
+            Math.max(
+              0,
+              Math.floor(
+                (now.getTime() - new Date(startsAt).getTime()) / 60_000
+              )
+            )
+          )
+        )
+      : undefined;
+
   const addToCalendar =
     calendar && (state === "upcoming" || state === "live") ? (
-      <Menu
-        label={calendar.button}
-        text={calendar.button}
-        size="small"
-        icon={<Icon name="calendar" size="sm" />}
-        items={[
-          {
-            value: "google",
-            label: calendar.google,
-            onSelect: () => {
-              const url = googleCalendarUrl({
-                courseTitle,
-                lesson: {
-                  id: lessonId,
-                  title,
-                  scheduledAt: new Date(startsAt),
-                  durationMinutes: durationMinutes ?? null,
-                },
-                pageUrl: `${window.location.origin}${sessionPagePath(courseId, lessonId)}`,
-                linkIsOnPage: calendar.linkIsOnPage,
-              });
-              window.open(url, "_blank", "noopener,noreferrer");
-            },
-          },
-          {
-            value: "ics",
-            label: calendar.apple,
-            onSelect: () => {
-              window.location.assign(icsDownloadPath(lessonId, locale));
-            },
-          },
-        ]}
+      <CalendarMenu
+        text
+        courseId={courseId}
+        courseTitle={courseTitle}
+        lesson={{ id: lessonId, title, startsAt, durationMinutes }}
+        locale={locale}
+        labels={calendar}
       />
     ) : undefined;
 
@@ -144,9 +130,11 @@ export function SessionJoinLive({
       host={platformHost}
       href={meetingUrl}
       actions={addToCalendar}
+      recordingsHref={recordingsHref}
+      elapsedText={elapsed}
       now={now}
       locale={locale}
-      {...labels}
+      {...joinLabels}
     />
   );
 }

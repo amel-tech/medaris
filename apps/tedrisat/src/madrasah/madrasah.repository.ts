@@ -11,6 +11,9 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
+import { DismissDecisionsError } from "../assignment/admin/errors";
+import { grantHeld } from "../assignment/assignment.repository";
+import type { Tx } from "../course/course-purge";
 import { CourseStatus } from "../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { DatabaseService } from "../database/database.service";
@@ -36,6 +39,10 @@ import {
   madrasahs,
 } from "../database/schema/madrasah.schema";
 import {
+  permissionGrants,
+  permissionGroups,
+} from "../database/schema/permission.schema";
+import {
   ASSIGNED_ROLES,
   roleAssignments,
   SCOPE_TYPES,
@@ -44,6 +51,7 @@ import { users } from "../database/schema/user.schema";
 import {
   ICreateMadrasah,
   ICreateMadrasahWithHead,
+  IHeadDelegation,
   IMadrasah,
   IMadrasahBadgeCounts,
   IMadrasahCourse,
@@ -66,9 +74,9 @@ import {
 import { NO_POLICIES, planSettingsUpdate } from "./madrasah-settings";
 
 /**
- * A medrese's `nazirIds` are its MEDRESE_BASMUDERRIS holders since MDRS-134,
- * which moved `madrasah_nazirs` into `role_assignments`; MDRS-144 renames the
- * field. The medrese nazırs proper (MEDRESE_NAZIR) are `nazir/`'s.
+ * A medrese's "nazırs" in this API are its MEDRESE_BASMUDERRIS holders since
+ * MDRS-134, which moved `madrasah_nazirs` into `role_assignments`. MDRS-144
+ * renames the API; MDRS-136 adds the medrese nazırı proper.
  */
 const NAZIR_ROLE = ASSIGNED_ROLES.MEDRESE_BASMUDERRIS;
 
@@ -231,15 +239,150 @@ export class MadrasahRepository {
   }
 
   /**
+   * What the medrese's sitting başmüderris(ler) handed on that is still held:
+   * nazır roles and permission grants in this medrese's scope, `granted_by` one
+   * of them (nizam/22). `exceptUserId` leaves out the person who is about to
+   * head the medrese themselves.
+   */
+  /** Names for the people a screen lists, from the users table. */
+  async people(ids: string[]): Promise<
+    Map<
+      string,
+      {
+        id: string;
+        givenName: string | null;
+        familyName: string | null;
+        email: string | null;
+      }
+    >
+  > {
+    const result = new Map<
+      string,
+      {
+        id: string;
+        givenName: string | null;
+        familyName: string | null;
+        email: string | null;
+      }
+    >();
+    if (ids.length === 0) return result;
+    const rows = await this.db
+      .select({
+        id: users.id,
+        givenName: users.givenName,
+        familyName: users.familyName,
+        email: users.email,
+      })
+      .from(users)
+      .where(inArray(users.id, ids));
+    for (const row of rows) result.set(row.id, row);
+    return result;
+  }
+
+  async headDelegations(
+    madrasahId: string,
+    exceptUserId?: string,
+    db: Tx | DatabaseService["db"] = this.db
+  ): Promise<IHeadDelegation[]> {
+    const heads = (
+      await db
+        .select({ userId: roleAssignments.userId })
+        .from(roleAssignments)
+        .where(holdsIn(NAZIR_ROLE, madrasahId))
+    ).map((h) => h.userId);
+    if (heads.length === 0) return [];
+    const roles = await db
+      .select({
+        id: roleAssignments.id,
+        userId: roleAssignments.userId,
+        role: roleAssignments.role,
+        grantedAt: roleAssignments.createdAt,
+        expiresAt: roleAssignments.expiresAt,
+      })
+      .from(roleAssignments)
+      .where(
+        and(
+          eq(roleAssignments.scopeType, SCOPE_TYPES.MADRASAH),
+          eq(roleAssignments.scopeId, madrasahId),
+          inArray(roleAssignments.grantedBy, heads),
+          eq(roleAssignments.role, ASSIGNED_ROLES.MEDRESE_NAZIR),
+          isHeld()
+        )
+      )
+      .orderBy(asc(roleAssignments.createdAt), asc(roleAssignments.id));
+    const grants = await db
+      .select({
+        id: permissionGrants.id,
+        userId: permissionGrants.userId,
+        permission: permissionGrants.permission,
+        groupId: permissionGrants.groupId,
+        groupName: permissionGroups.name,
+        grantedAt: permissionGrants.createdAt,
+        expiresAt: permissionGrants.expiresAt,
+      })
+      .from(permissionGrants)
+      .leftJoin(
+        permissionGroups,
+        eq(permissionGroups.id, permissionGrants.groupId)
+      )
+      .where(
+        and(
+          eq(permissionGrants.scopeType, SCOPE_TYPES.MADRASAH),
+          eq(permissionGrants.scopeId, madrasahId),
+          inArray(permissionGrants.grantedBy, heads),
+          grantHeld()
+        )
+      )
+      .orderBy(asc(permissionGrants.createdAt), asc(permissionGrants.id));
+    const rows: IHeadDelegation[] = [
+      ...roles.map((r) => ({
+        kind: "ROLE" as const,
+        id: r.id,
+        userId: r.userId,
+        role: r.role as string,
+        permission: null,
+        groupName: null,
+        grantedAt: r.grantedAt,
+        expiresAt: r.expiresAt,
+      })),
+      ...grants.map((g) => ({
+        kind: "GRANT" as const,
+        id: g.id,
+        userId: g.userId,
+        role: null,
+        permission: g.permission,
+        groupName: g.groupName,
+        grantedAt: g.grantedAt,
+        expiresAt: g.expiresAt,
+      })),
+    ];
+    return rows.filter((r) => r.userId !== exceptUserId);
+  }
+
+  /**
    * Makes `userId` the medrese's only başmüderris (MDRS-170): the others'
    * grants are revoked in the actor's name, not deleted, and a passive medrese
    * is active again — that is what "bir başmüderris atadığınızda yeniden açılır"
    * means. Locks the medrese first, like `addNazir`. False when there is none.
+   *
+   * MDRS-172 (nizam/22): the outgoing başmüderris's hand-ons are decided here,
+   * one answer each — TAKE_OVER keeps the right under the actor's name, DROP
+   * revokes it — and a change that leaves any unanswered is refused whole
+   * (DismissDecisionsError). Appointing whoever already heads it asks nothing.
+   * `endsAt` is the new başmüderris's "Görev bitişi".
    */
   async setHeadMuderris(
     madrasahId: string,
     userId: string,
-    actorId: string
+    actorId: string,
+    options: {
+      endsAt?: Date | null;
+      decisions?: Array<{
+        kind: "ROLE" | "GRANT";
+        id: string;
+        action: "TAKE_OVER" | "DROP";
+      }>;
+    } = {}
   ): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const [madrasah] = await tx
@@ -253,6 +396,42 @@ export class MadrasahRepository {
         .from(roleAssignments)
         .where(holdsIn(NAZIR_ROLE, madrasahId));
       const previous = held.map((h) => h.userId);
+      const replacing = previous.some((id) => id !== userId);
+
+      let tookOver = 0;
+      let dropped = 0;
+      if (replacing) {
+        const given = await this.headDelegations(madrasahId, userId, tx);
+        const key = (kind: string, id: string) => `${kind}:${id}`;
+        const decisions = options.decisions ?? [];
+        const decided = new Map(decisions.map((d) => [key(d.kind, d.id), d]));
+        const complete =
+          decided.size === decisions.length &&
+          decided.size === given.length &&
+          given.every((g) => decided.has(key(g.kind, g.id)));
+        if (!complete) throw new DismissDecisionsError();
+        for (const item of given) {
+          const take =
+            decided.get(key(item.kind, item.id))?.action === "TAKE_OVER";
+          const change = take
+            ? { grantedBy: actorId }
+            : { revokedAt: sql`now()`, revokedBy: actorId };
+          if (take) tookOver += 1;
+          else dropped += 1;
+          if (item.kind === "ROLE") {
+            await tx
+              .update(roleAssignments)
+              .set(change)
+              .where(eq(roleAssignments.id, item.id));
+          } else {
+            await tx
+              .update(permissionGrants)
+              .set(change)
+              .where(eq(permissionGrants.id, item.id));
+          }
+        }
+      }
+
       for (const other of previous.filter((id) => id !== userId)) {
         await revokeRole(tx, {
           userId: other,
@@ -266,6 +445,7 @@ export class MadrasahRepository {
         role: NAZIR_ROLE,
         scopeId: madrasahId,
         grantedBy: actorId,
+        expiresAt: options.endsAt ?? null,
       });
       await tx
         .update(madrasahs)
@@ -280,7 +460,13 @@ export class MadrasahRepository {
         action: "madrasah.head_muderris.set",
         entity: "madrasah",
         entityId: madrasahId,
-        details: { headMuderrisUserId: userId, previous },
+        details: {
+          headMuderrisUserId: userId,
+          previous,
+          endsAt: options.endsAt?.toISOString() ?? null,
+          tookOver,
+          dropped,
+        },
       });
       return true;
     });
@@ -745,14 +931,28 @@ export class MadrasahRepository {
   private async enrollmentsOf(
     ids: string[],
     userId: string | null
-  ): Promise<{ courseId: string; status: EnrollmentStatus }[]> {
+  ): Promise<
+    {
+      courseId: string;
+      status:
+        | EnrollmentStatus.PENDING
+        | EnrollmentStatus.ENROLLED
+        | EnrollmentStatus.COMPLETED;
+    }[]
+  > {
     if (ids.length === 0 || userId === null) return [];
-    return this.db
+    // A seat the course team revoked shows no badge on the card (MDRS-161).
+    const rows = await this.db
       .select({ courseId: enrollments.courseId, status: enrollments.status })
       .from(enrollments)
       .where(
         and(eq(enrollments.userId, userId), inArray(enrollments.courseId, ids))
       );
+    return rows.flatMap((r) =>
+      r.status === EnrollmentStatus.REVOKED
+        ? []
+        : [{ courseId: r.courseId, status: r.status }]
+    );
   }
 
   /**

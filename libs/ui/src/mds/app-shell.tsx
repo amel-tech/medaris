@@ -14,7 +14,7 @@ export interface AppShellProps extends HTMLAttributes<HTMLDivElement> {
   sidebar: ReactNode;
   /** the `AppBar`, drawn below 768 only */
   appBar?: ReactNode;
-  /** `data-density` of the `<main>`: the yönetim apps (nizam, nazır) pass `compact` (MDS-LAY-02) */
+  /** `compact` is the yönetim apps' (nizam, nazır) `data-density` on the `<main>` */
   density?: "compact";
 }
 

@@ -54,6 +54,8 @@ export interface ProgrammeRow {
   lesson: LessonResponse;
   state: RowState;
   cancelled: boolean;
+  /** On air now: the row's marker reads "Sıradaki · Şu an canlı". */
+  live: boolean;
 }
 
 export interface ProgrammeWeek {
@@ -126,6 +128,7 @@ export const buildProgramme = (
       rows: week.lessons.map((lesson) => ({
         lesson,
         cancelled: Boolean(lesson.cancelledAt),
+        live: isLive(lesson) && stateOfLesson(lesson, now) === "live",
         state:
           lesson.id === next?.id
             ? "current"

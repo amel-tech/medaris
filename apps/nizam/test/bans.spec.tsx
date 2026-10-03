@@ -260,7 +260,8 @@ describe("BansView (nizam 42)", () => {
       expect(html).toContain(`--mds-col-w:${w}`);
     }
     expect(html).toContain("flex-nowrap");
-    expect(html).toContain("truncate");
+    expect(html).toContain("overflow-wrap:anywhere");
+    expect(html).not.toContain("truncate");
     expect(html).toContain("table-layout:fixed");
   });
 

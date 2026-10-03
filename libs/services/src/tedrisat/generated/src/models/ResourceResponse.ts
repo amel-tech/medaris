@@ -50,7 +50,7 @@ export interface ResourceResponse {
      */
     type?: string;
     /**
-     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103).
+     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.
      * @type {string}
      * @memberof ResourceResponse
      */

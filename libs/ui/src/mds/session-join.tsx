@@ -76,6 +76,8 @@ export interface SessionJoinProps
   href?: string;
   linkUpdatedAt?: string;
   recordingsHref?: string;
+  /** a live celse: how long it has been running, already worded ("14 dakikadır sürüyor"); sits after the length */
+  elapsedText?: string;
   actions?: ReactNode;
   access?: "enrolled" | "locked";
   lockedReason?: string;
@@ -116,6 +118,7 @@ export function SessionJoin({
   href,
   linkUpdatedAt,
   recordingsHref,
+  elapsedText,
   actions,
   access = "enrolled",
   lockedReason = "Bu celsenin bağlantısı kayıtlı talebelere açıktır.",
@@ -215,6 +218,14 @@ export function SessionJoin({
       >
         {formatNumber(durationMinutes, locale)} {minuteUnit}
       </time>
+    );
+  }
+
+  if (elapsedText && state === "live") {
+    times.push(
+      <span key="elapsed" className="mds-join__zone">
+        {elapsedText}
+      </span>
     );
   }
 

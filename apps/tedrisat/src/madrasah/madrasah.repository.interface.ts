@@ -72,6 +72,18 @@ export interface IMadrasahKoskRef {
   name: string;
 }
 
+/** One thing the outgoing başmüderris handed on and that is still held (nizam/22). */
+export interface IHeadDelegation {
+  kind: "ROLE" | "GRANT";
+  id: string;
+  userId: string;
+  role: string | null;
+  permission: string | null;
+  groupName: string | null;
+  grantedAt: Date;
+  expiresAt: Date | null;
+}
+
 /** What the nazır portal's menu badges count for one medrese (MDRS-183). */
 export interface IMadrasahBadgeCounts {
   /** PENDING enrollments across the medrese's courses. */
