@@ -16,6 +16,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -31,9 +32,8 @@ import { AuthenticatedUserRequest } from "../user/interfaces/authenticated-user-
 import {
   BanService,
   type IAllBansList,
-  type IBanList,
-  type IBanView,
 } from "./ban.service";
+import { presentBan, presentList, presentMadrasahBan } from "./ban-present";
 import {
   AllBansListResponse,
   BAN_LIST_LIMIT_MAX,
@@ -45,45 +45,7 @@ import {
   ExtendBanDto,
   LiftBanDto,
 } from "./dto/ban.dto";
-
-const person = (p: {
-  id: string;
-  name: string | null;
-  email: string | null;
-}) => ({
-  id: p.id,
-  name: p.name,
-  email: p.email,
-});
-
-export const presentBan = (b: IBanView): BanResponse => ({
-  id: b.id,
-  user: person(b.user),
-  scope: b.scope,
-  koskId: b.koskId,
-  koskName: b.koskName,
-  courseId: b.courseId,
-  courseTitle: b.courseTitle,
-  madrasahName: b.madrasahName,
-  extendedFromCourseId: b.extendedFromCourseId,
-  extendedFromCourseTitle: b.extendedFromCourseTitle,
-  reason: b.reason,
-  bannedBy: person(b.bannerPerson),
-  bannedRole: b.bannedRole,
-  createdAt: b.createdAt,
-  liftedAt: b.liftedAt,
-  liftedBy: b.lifterPerson ? person(b.lifterPerson) : null,
-  liftReason: b.liftReason,
-  viewerMayLift: b.viewerMayLift,
-  viewerMayExtend: b.viewerMayExtend,
-});
-
-const presentList = (list: IBanList): BanListResponse => ({
-  items: list.items.map(presentBan),
-  activeCount: list.activeCount,
-  liftedCount: list.liftedCount,
-  recentCount: list.recentCount,
-});
+import { BanReasonDto, MadrasahBanResponse } from "./dto/madrasah-ban.dto";
 
 const presentAll = (list: IAllBansList): AllBansListResponse => ({
   ...presentList(list),
@@ -222,7 +184,7 @@ export class BanController {
   @ApiOperation({
     summary: "Lift a ban with a reason (Yasağı kaldır)",
     description:
-      "Only the kademe that placed the ban, or a higher one: a Medaris nazımı's ban is lifted by Medaris administration alone. The reason and the lifter's name are kept with the ban.",
+      "Only the kademe that placed the ban, or a higher one: a Medaris nazımı's ban is lifted by Medaris administration alone. The reason and the lifter's name are kept with the ban. A medrese's nazır and başmüderris lift bans in the medrese's courses and over the medrese (MDRS-187).",
     operationId: "liftBan",
   })
   @ApiOkResponse({ type: BanResponse })
@@ -237,5 +199,54 @@ export class BanController {
     @Body() dto: LiftBanDto
   ): Promise<BanResponse> {
     return this.bans.lift(request.user, banId, dto).then(presentBan);
+  }
+
+  @ApiOperation({
+    summary: "Widen a course ban to the whole medrese (Medreseden de yasakla)",
+    description:
+      "For an open course ban in a course of a medrese: a second ban beside the first, which stays, barring the talebe from every course of the medrese, present and future. A medrese nazır or above of that medrese; a köşk nazımı or a müderris is not one. The person already barred from the medrese gets that ban back. 409 (BAN_NOT_ESCALATABLE) for any other ban.",
+    operationId: "escalateBan",
+  })
+  @ApiCreatedResponse({ type: MadrasahBanResponse })
+  @ApiBadRequestResponse()
+  @ApiForbiddenResponse({ description: "BAN_FORBIDDEN" })
+  @ApiNotFoundResponse()
+  @ApiConflictResponse({
+    description: "BAN_ALREADY_LIFTED or BAN_NOT_ESCALATABLE",
+  })
+  @Post("bans/:banId/escalate")
+  escalate(
+    @Req() request: AuthenticatedUserRequest,
+    @Param("banId", ParseUUIDPipe) banId: string,
+    @Body() dto: BanReasonDto
+  ): Promise<MadrasahBanResponse> {
+    return this.bans
+      .escalate(request.user, banId, dto)
+      .then(presentMadrasahBan);
+  }
+
+  @ApiOperation({
+    summary: "Ask for a ban to be made permanent (Kalıcı yasak talebi aç)",
+    description:
+      "Records the medrese's request, with its reason, for Medaris administration. Nothing is decided here: the ban stands as it was, and deciding the request is a later phase. A medrese nazır or above, on an open ban in a course of the medrese or over the medrese itself that Medaris administration did not place. One request per ban (409 BAN_PERMANENT_REQUEST_EXISTS).",
+    operationId: "requestPermanentBan",
+  })
+  @ApiCreatedResponse({ type: MadrasahBanResponse })
+  @ApiBadRequestResponse()
+  @ApiForbiddenResponse({ description: "BAN_FORBIDDEN" })
+  @ApiNotFoundResponse()
+  @ApiConflictResponse({
+    description:
+      "BAN_ALREADY_LIFTED, BAN_PERMANENT_REQUEST_INVALID or BAN_PERMANENT_REQUEST_EXISTS",
+  })
+  @Post("bans/:banId/permanent-request")
+  requestPermanent(
+    @Req() request: AuthenticatedUserRequest,
+    @Param("banId", ParseUUIDPipe) banId: string,
+    @Body() dto: BanReasonDto
+  ): Promise<MadrasahBanResponse> {
+    return this.bans
+      .requestPermanent(request.user, banId, dto)
+      .then(presentMadrasahBan);
   }
 }

@@ -19,7 +19,8 @@
  */
 export const BanScope = {
     Course: 'COURSE',
-    Kosk: 'KOSK'
+    Kosk: 'KOSK',
+    Madrasah: 'MADRASAH'
 } as const;
 export type BanScope = typeof BanScope[keyof typeof BanScope];
 

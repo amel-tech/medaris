@@ -25,6 +25,7 @@ const entry = (over: Partial<IBanEntry> = {}): IBanEntry => ({
   id: BAN_ID,
   userId: TALEBE,
   koskId: KOSK,
+  madrasahId: null,
   courseId: COURSE,
   scope: "COURSE",
   extendedFromCourseId: null,
@@ -43,6 +44,7 @@ const entry = (over: Partial<IBanEntry> = {}): IBanEntry => ({
   madrasahName: null,
   extendedFromCourseTitle: null,
   koskName: "Nûruosmaniye Köşkü",
+  permanentRequestedAt: null,
   ...over,
 });
 

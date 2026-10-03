@@ -1,7 +1,11 @@
 import { INestApplication } from "@nestjs/common";
+import { eq } from "drizzle-orm";
 import request from "supertest";
 import { FEED_POLL_LIMIT } from "../../src/calendar-feed/feed-poll-limiter";
 import { DatabaseService } from "../../src/database/database.service";
+import { BAN_SCOPES, bans } from "../../src/database/schema/ban.schema";
+import { courses } from "../../src/database/schema/course.schema";
+import { madrasahs } from "../../src/database/schema/madrasah.schema";
 import { asSystemAdmin } from "../helpers/system-admin.helper";
 import {
   createTestApp,
@@ -103,7 +107,12 @@ describe("calendar feed (e2e)", () => {
   });
 
   beforeEach(async () => {
-    await dbUtils.cleanTables("calendar_feed_tokens", ...COURSE_TREE_TABLES);
+    await dbUtils.cleanTables(
+      "calendar_feed_tokens",
+      ...COURSE_TREE_TABLES,
+      "bans",
+      "madrasahs"
+    );
     const kosk = await request(adminApp.getHttpServer())
       .post("/kosks")
       .set("Authorization", asSystemAdmin(TEST_USER_ID))
@@ -113,7 +122,12 @@ describe("calendar feed (e2e)", () => {
   });
 
   afterAll(async () => {
-    await dbUtils.cleanTables("calendar_feed_tokens", ...COURSE_TREE_TABLES);
+    await dbUtils.cleanTables(
+      "calendar_feed_tokens",
+      ...COURSE_TREE_TABLES,
+      "bans",
+      "madrasahs"
+    );
     await app.close();
     await adminApp.close();
     await otherApp.close();
@@ -237,6 +251,53 @@ describe("calendar feed (e2e)", () => {
     expect(
       eventFor((await fetchFeed(url)).body, firstLesson(pending).id)
     ).toBeDefined();
+  });
+
+  it("drops the sessions of a talebe barred from the whole medrese, and brings them back when the ban is lifted", async () => {
+    const db = app.get(DatabaseService).db;
+    const detail = await createCourse("Bina ve İzhar Şerhi");
+    await request(otherApp.getHttpServer())
+      .post(`/courses/${detail.id}/enroll`)
+      .expect(201);
+    const [madrasah] = await db
+      .insert(madrasahs)
+      .values({
+        handle: "vefa",
+        name: "Vefa Medresesi",
+        createdBy: THIRD_USER_ID,
+      })
+      .returning();
+    await db
+      .update(courses)
+      .set({ madrasahId: madrasah.id })
+      .where(eq(courses.id, detail.id));
+    const { url } = await issueFeed(otherApp);
+    const lesson = firstLesson(detail);
+    expect(eventFor((await fetchFeed(url)).body, lesson.id)).toBeDefined();
+
+    const [ban] = await db
+      .insert(bans)
+      .values({
+        userId: OTHER_USER_ID,
+        madrasahId: madrasah.id,
+        scope: BAN_SCOPES.MADRASAH,
+        reason: "Celselerde hakaret.",
+        bannedBy: THIRD_USER_ID,
+        bannedRole: "MEDRESE_BASMUDERRIS",
+        bannedTier: 2,
+      })
+      .returning();
+    expect(events((await fetchFeed(url)).body)).toHaveLength(0);
+
+    await db
+      .update(bans)
+      .set({
+        liftedAt: new Date(),
+        liftedBy: THIRD_USER_ID,
+        liftReason: "Söz verdi.",
+      })
+      .where(eq(bans.id, ban.id));
+    expect(eventFor((await fetchFeed(url)).body, lesson.id)).toBeDefined();
   });
 
   it("gives the köşk manager every course, drafts included; a hidden course is in no feed", async () => {

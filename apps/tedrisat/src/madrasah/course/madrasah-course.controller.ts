@@ -28,7 +28,9 @@ import { AuthorizedRequest } from "../../kosk/interfaces/authorized-request.inte
 import { MadrasahCourseListItemResponse } from "../dto/madrasah-settings.dto";
 import { byExistingMadrasah } from "../madrasah.controller";
 import {
+  CreateOffsiteCourseRequestDto,
   MadrasahCourseKoskResponse,
+  OffsiteCourseRequestResponse,
   OpenMadrasahCourseDto,
   SetMadrasahCourseMuderrisDto,
 } from "./dto/madrasah-course.dto";
@@ -36,7 +38,9 @@ import { MadrasahCourseService } from "./madrasah-course.service";
 
 /**
  * The medrese's own courses (nazir/07, 08, 17, 18) under
- * `/madrasahs/:id/courses`; the list itself is `GET /madrasahs/:id/courses` on
+ * `/madrasahs/:id/courses`, and its requests for a course outside it (nazir/09)
+ * under `/madrasahs/:id/offsite-course-requests`; the list itself is
+ * `GET /madrasahs/:id/courses` on
  * `MadrasahController`. The medrese's başmüderris and SYSTEM_ADMIN call these;
  * a nazır of the medrese, a köşk's nazım and a course's müderris are not on
  * the matrix row that holds `MANAGE_MADRASAH`, so they get 403.
@@ -133,5 +137,42 @@ export class MadrasahCourseController {
     @Param("courseId", ParseUUIDPipe) courseId: string
   ): Promise<void> {
     await this.courses.hide(id, courseId, request.user.sub);
+  }
+
+  @ApiOperation({
+    summary:
+      "Ask a köşk to open a course outside the medrese (its başmüderris)",
+    description:
+      "nazir/09's \"Talebi gönder\": the köşk, a suggested name and the reason, kept with the medrese that sent them. It creates no course and adds nothing to the medrese's list: the köşk's nazım reads the request and, on accepting it, opens the course, which stays a köşk course. The request is PENDING until then. Any köşk that is not hidden, whether or not the medrese holds a hosting right there. Written to the audit log.",
+    operationId: "requestOffsiteCourse",
+  })
+  @ApiCreatedResponse({ type: OffsiteCourseRequestResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse({ description: "The medrese or the köşk" })
+  @Post(":id/offsite-course-requests")
+  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  requestOffsite(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: CreateOffsiteCourseRequestDto
+  ): Promise<OffsiteCourseRequestResponse> {
+    return this.courses.requestOffsiteCourse(id, dto, request.user.sub);
+  }
+
+  @ApiOperation({
+    summary: "The medrese's requests for a course outside it (its başmüderris)",
+    description:
+      "Newest first, each with its köşk, its sender and its status. The köşk side's list of requests it received is the köşk nazımı's own screen (nizam/39), not this one.",
+    operationId: "getOffsiteCourseRequests",
+  })
+  @ApiOkResponse({ type: OffsiteCourseRequestResponse, isArray: true })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Get(":id/offsite-course-requests")
+  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  offsiteRequests(
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<OffsiteCourseRequestResponse[]> {
+    return this.courses.offsiteRequests(id);
   }
 }
