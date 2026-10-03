@@ -8,17 +8,22 @@ import { KoskService } from "./kosk.service";
 import { KoskAdminController } from "./kosk-admin.controller";
 import { KoskAdminRepository } from "./kosk-admin.repository";
 import { KoskAdminService } from "./kosk-admin.service";
+import { KoskGrantsController } from "./kosk-grants.controller";
+import { KoskGrantsRepository } from "./kosk-grants.repository";
+import { KoskGrantsService } from "./kosk-grants.service";
 
 @Module({
   imports: [AuthGuardModule, KeycloakAdminModule],
   // `KoskAdminController` first: `GET /kosks/directory` must be matched before
   // `GET /kosks/:id` reads "directory" as an id.
-  controllers: [KoskAdminController, KoskController],
+  controllers: [KoskAdminController, KoskGrantsController, KoskController],
   providers: [
     KoskService,
     KoskRepository,
     KoskAdminService,
     KoskAdminRepository,
+    KoskGrantsService,
+    KoskGrantsRepository,
     DatabaseService,
   ],
   exports: [KoskService],

@@ -18,6 +18,12 @@ interface Props {
   disabled?: boolean;
   /** shown when the form was sent without one */
   error?: string;
+  /** the field's label when it is not "Başmüderris" (nizam/22 "Yeni başmüderris", nizam/38 "Ders nazırı") */
+  label?: string;
+  /** the heading over the chosen account when it is not "Seçilen başmüderris" */
+  chosenTitle?: string;
+  /** a name for the form field, so two pickers on a page stay apart */
+  name?: string;
 }
 
 /**
@@ -33,6 +39,9 @@ export function HeadPicker({
   chosenNote,
   disabled,
   error,
+  label,
+  chosenTitle,
+  name = "headMuderrisEmail",
 }: Props) {
   const t = useTranslations("nizam.HeadPicker");
   const [email, setEmail] = useState("");
@@ -84,14 +93,14 @@ export function HeadPicker({
   return (
     <div className="flex flex-col gap-4">
       <Field
-        label={t("label")}
+        label={label ?? t("label")}
         required
         help={t("help")}
         error={value ? undefined : problem}
       >
         <Input
           type="email"
-          name="headMuderrisEmail"
+          name={name}
           mono
           autoComplete="off"
           spellCheck={false}
@@ -121,7 +130,7 @@ export function HeadPicker({
           data-testid="chosen-head"
         >
           <h3 id={`${noteId}-title`} className="mds-label">
-            {t("chosenTitle")}
+            {chosenTitle ?? t("chosenTitle")}
           </h3>
           <div className="flex items-center gap-3">
             <Avatar name={value.name} decorative />

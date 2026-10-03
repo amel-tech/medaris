@@ -17,12 +17,14 @@ import * as runtime from '../runtime';
 import type {
   AddKoskNazimsDto,
   CreateKoskDto,
+  CreateKoskGrantDto,
   GrantHostingRightDto,
   HostingCoursesAction,
   HostingRightResponse,
   KoskDecksResponse,
   KoskDirectoryItemResponse,
   KoskDirectoryResponse,
+  KoskGrantsResponse,
   KoskLevel,
   KoskListingFilter,
   KoskManagedBy,
@@ -31,12 +33,15 @@ import type {
   KoskStatusFilter,
   PaginatedKoskResponse,
   UpdateKoskDto,
+  UpdateKoskGrantDto,
 } from '../models/index';
 import {
     AddKoskNazimsDtoFromJSON,
     AddKoskNazimsDtoToJSON,
     CreateKoskDtoFromJSON,
     CreateKoskDtoToJSON,
+    CreateKoskGrantDtoFromJSON,
+    CreateKoskGrantDtoToJSON,
     GrantHostingRightDtoFromJSON,
     GrantHostingRightDtoToJSON,
     HostingCoursesActionFromJSON,
@@ -49,6 +54,8 @@ import {
     KoskDirectoryItemResponseToJSON,
     KoskDirectoryResponseFromJSON,
     KoskDirectoryResponseToJSON,
+    KoskGrantsResponseFromJSON,
+    KoskGrantsResponseToJSON,
     KoskLevelFromJSON,
     KoskLevelToJSON,
     KoskListingFilterFromJSON,
@@ -65,6 +72,8 @@ import {
     PaginatedKoskResponseToJSON,
     UpdateKoskDtoFromJSON,
     UpdateKoskDtoToJSON,
+    UpdateKoskGrantDtoFromJSON,
+    UpdateKoskGrantDtoToJSON,
 } from '../models/index';
 
 export interface AddKoskManagerRequest {
@@ -79,6 +88,11 @@ export interface AddKoskNazimsRequest {
 
 export interface CreateKoskRequest {
     createKoskDto: CreateKoskDto;
+}
+
+export interface CreateKoskGrantRequest {
+    id: string;
+    createKoskGrantDto: CreateKoskGrantDto;
 }
 
 export interface DeleteKoskRequest {
@@ -117,6 +131,10 @@ export interface GetKoskDirectoryRequest {
     level?: KoskLevel;
 }
 
+export interface GetKoskGrantsRequest {
+    id: string;
+}
+
 export interface GetKoskHostingRightsRequest {
     id: string;
 }
@@ -143,6 +161,11 @@ export interface RestoreKoskRequest {
     id: string;
 }
 
+export interface RevokeKoskGrantRequest {
+    id: string;
+    grantId: string;
+}
+
 export interface RevokeKoskHostingRightRequest {
     id: string;
     madrasahId: string;
@@ -156,6 +179,12 @@ export interface UnfollowKoskRequest {
 export interface UpdateKoskRequest {
     id: string;
     updateKoskDto: UpdateKoskDto;
+}
+
+export interface UpdateKoskGrantRequest {
+    id: string;
+    grantId: string;
+    updateKoskGrantDto: UpdateKoskGrantDto;
 }
 
 /**
@@ -310,6 +339,60 @@ export class KosksApi extends runtime.BaseAPI {
      */
     async createKosk(requestParameters: CreateKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
         const response = await this.createKoskRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/38 \'Ders nazırı ata\'. The post and the permissions end together at `endsAt`. 403 (GRANT_EXCEEDS_GIVER) for a permission the caller does not hold, 400 for a code outside the course catalog, a course that is not the köşk\'s or belongs to a medrese, or an end in the past; 409 (COURSE_NAZIR_EXISTS) when the person is one already. Written to the audit log. Answers the page as it is now.
+     * Make someone a ders nazırı and give them permissions
+     */
+    async createKoskGrantRaw(requestParameters: CreateKoskGrantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskGrantsResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling createKoskGrant().'
+            );
+        }
+
+        if (requestParameters['createKoskGrantDto'] == null) {
+            throw new runtime.RequiredError(
+                'createKoskGrantDto',
+                'Required parameter "createKoskGrantDto" was null or undefined when calling createKoskGrant().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/grants`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateKoskGrantDtoToJSON(requestParameters['createKoskGrantDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskGrantsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/38 \'Ders nazırı ata\'. The post and the permissions end together at `endsAt`. 403 (GRANT_EXCEEDS_GIVER) for a permission the caller does not hold, 400 for a code outside the course catalog, a course that is not the köşk\'s or belongs to a medrese, or an end in the past; 409 (COURSE_NAZIR_EXISTS) when the person is one already. Written to the audit log. Answers the page as it is now.
+     * Make someone a ders nazırı and give them permissions
+     */
+    async createKoskGrant(requestParameters: CreateKoskGrantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskGrantsResponse> {
+        const response = await this.createKoskGrantRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -660,6 +743,50 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
+     * nizam/38. The posts held in the köşk\'s medrese-free courses with their permission codes, end, giver and date; the courses of the köşk; and the codes the caller may hand out.
+     * The köşk\'s ders nazırları and what they may do
+     */
+    async getKoskGrantsRaw(requestParameters: GetKoskGrantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskGrantsResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getKoskGrants().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/grants`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskGrantsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/38. The posts held in the köşk\'s medrese-free courses with their permission codes, end, giver and date; the courses of the köşk; and the codes the caller may hand out.
+     * The köşk\'s ders nazırları and what they may do
+     */
+    async getKoskGrants(requestParameters: GetKoskGrantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskGrantsResponse> {
+        const response = await this.getKoskGrantsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * nizam/26. Each with its başmüderris, who granted the right and when, and the medrese\'s courses here that are not hidden (nizam/27 asks what becomes of them).
      * The medreses that hold a hosting right in the köşk
      */
@@ -942,6 +1069,57 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
+     * nizam/38 \'Görevden al\'. The post and every permission the person holds in the course end at once. Written to the audit log.
+     * Take a ders nazırı\'s post and permissions away
+     */
+    async revokeKoskGrantRaw(requestParameters: RevokeKoskGrantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling revokeKoskGrant().'
+            );
+        }
+
+        if (requestParameters['grantId'] == null) {
+            throw new runtime.RequiredError(
+                'grantId',
+                'Required parameter "grantId" was null or undefined when calling revokeKoskGrant().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/grants/{grantId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"grantId"}}`, encodeURIComponent(String(requestParameters['grantId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * nizam/38 \'Görevden al\'. The post and every permission the person holds in the course end at once. Written to the audit log.
+     * Take a ders nazırı\'s post and permissions away
+     */
+    async revokeKoskGrant(requestParameters: RevokeKoskGrantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.revokeKoskGrantRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * `coursesAction` decides what becomes of the medrese\'s courses in this köşk: KEEP leaves them as they are, HIDE hides each (they come back from the archive). The medrese can open no new course here. Written to the audit log.
      * Withdraw a medrese\'s hosting right
      */
@@ -1098,6 +1276,68 @@ export class KosksApi extends runtime.BaseAPI {
      */
     async updateKosk(requestParameters: UpdateKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
         const response = await this.updateKoskRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/38 \'İzinleri düzenle\'. Replaces the whole set; what stays keeps its giver and date. The post ends when the permissions do. Written to the audit log.
+     * Change a ders nazırı\'s permissions and end
+     */
+    async updateKoskGrantRaw(requestParameters: UpdateKoskGrantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskGrantsResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling updateKoskGrant().'
+            );
+        }
+
+        if (requestParameters['grantId'] == null) {
+            throw new runtime.RequiredError(
+                'grantId',
+                'Required parameter "grantId" was null or undefined when calling updateKoskGrant().'
+            );
+        }
+
+        if (requestParameters['updateKoskGrantDto'] == null) {
+            throw new runtime.RequiredError(
+                'updateKoskGrantDto',
+                'Required parameter "updateKoskGrantDto" was null or undefined when calling updateKoskGrant().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/grants/{grantId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"grantId"}}`, encodeURIComponent(String(requestParameters['grantId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdateKoskGrantDtoToJSON(requestParameters['updateKoskGrantDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskGrantsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/38 \'İzinleri düzenle\'. Replaces the whole set; what stays keeps its giver and date. The post ends when the permissions do. Written to the audit log.
+     * Change a ders nazırı\'s permissions and end
+     */
+    async updateKoskGrant(requestParameters: UpdateKoskGrantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskGrantsResponse> {
+        const response = await this.updateKoskGrantRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -70,6 +70,18 @@ export interface IMadrasahKoskRef {
   name: string;
 }
 
+/** One thing the outgoing başmüderris handed on and that is still held (nizam/22). */
+export interface IHeadDelegation {
+  kind: "ROLE" | "GRANT";
+  id: string;
+  userId: string;
+  role: string | null;
+  permission: string | null;
+  groupName: string | null;
+  grantedAt: Date;
+  expiresAt: Date | null;
+}
+
 export interface IMadrasahHeadMuderris {
   id: string;
   /** From the `users` row; null until that person has signed in once. */

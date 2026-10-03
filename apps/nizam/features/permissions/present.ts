@@ -300,14 +300,14 @@ export const givenKey = (item: Pick<GivenItemResponse, "kind" | "id">) =>
 
 /** The confirm button is off until every item has an answer (_kurallar 14, 15). */
 export function dismissReady(
-  items: readonly GivenItemResponse[],
+  items: readonly Pick<GivenItemResponse, "kind" | "id">[],
   answers: Readonly<Record<string, DismissAnswer | undefined>>
 ): boolean {
   return items.every((item) => answers[givenKey(item)] !== undefined);
 }
 
 export function dismissDecisions(
-  items: readonly GivenItemResponse[],
+  items: readonly Pick<GivenItemResponse, "kind" | "id">[],
   answers: Readonly<Record<string, DismissAnswer | undefined>>
 ) {
   return items.map((item) => ({

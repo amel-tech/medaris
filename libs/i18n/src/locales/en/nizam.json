@@ -912,8 +912,12 @@
       "handleTaken": "This short name is used by another medrese.",
       "notFound": "This medrese no longer exists.",
       "notHidden": "This medrese is not hidden.",
-      "forbidden": "You may not do this."
-    }
+      "forbidden": "You may not do this.",
+      "delegationsChanged": "What the head müderris handed on has changed; read the list again and repeat the choices.",
+      "expiryInvalid": "The end date is in the past."
+    },
+    "change": "Change head müderris",
+    "changeLabel": "Change head müderris: {name}"
   },
   "HeadPicker": {
     "label": "Head müderris",
@@ -959,7 +963,38 @@
     "close": "Close",
     "saved": "Head müderris appointed",
     "savedBody": "{head} is now the head müderris of {name}.",
-    "failed": "The head müderris could not be appointed"
+    "failed": "The head müderris could not be appointed",
+    "titleChange": "Change the head müderris",
+    "introChange": " is the head müderris of this medrese now. The new one takes their place and runs the medrese from the Nazır app.",
+    "requiredNote": "* required field",
+    "newHeadLabel": "New head müderris",
+    "chosenNoteChange": "They become the new head müderris; the former one's post ends.",
+    "sameHead": "This person is the head müderris of this medrese already.",
+    "endLabel": "End of the post (optional)",
+    "endHelp": "Left empty, the post lasts until you change it. If it runs out and nobody takes over, the medrese shows under Inactive scopes.",
+    "endPast": "The end date must be after today.",
+    "submitChange": "Change",
+    "answersNeeded": "The head müderris cannot be changed until every row has a choice.",
+    "changed": "Head müderris changed",
+    "changedBody": "{head} is now the head müderris of {name}.",
+    "changeFailed": "The head müderris could not be changed",
+    "unknownPerson": "Name unknown",
+    "groupName": "{name} group",
+    "noEnd": "no end",
+    "untilDate": "until {date}",
+    "givenOn": "given {date}",
+    "handedOnHeading": " gave roles and permissions to these people. Choose what happens to each.",
+    "nothingHandedOn": "The head müderris has given no permission or role to others.",
+    "personLegend": "Decision for {person}",
+    "groupsSummary": "{names} {count, plural, one {group} other {groups}}",
+    "permissionsSummary": "{count, plural, one {1 permission} other {# permissions}}: {names}",
+    "alsoSummary": "also {text}",
+    "takeOver": "Take over",
+    "drop": "Drop",
+    "answersNote": "Take over: the permission stays and you become the giver. Drop: the permission is taken back.",
+    "loadFailedTitle": "The list could not be read",
+    "loadFailed": "What the head müderris gave cannot be read right now. Try again in a moment.",
+    "retry": "Try again"
   },
   "HostingPage": {
     "title": "Hosting rights",
@@ -1140,6 +1175,26 @@
         "short": "Change platform policies",
         "help": "Narrows the registration and course enrolment policies platform-wide."
       }
+    },
+    "courseShort": {
+      "course_edit": "course editing",
+      "session_manage": "sessions",
+      "session_live_link": "live stream",
+      "week_hide": "week and session hiding",
+      "course_settings": "course settings",
+      "course_publish": "publishing",
+      "course_view_unpublished": "seeing a draft course",
+      "enrollment_decide": "applications",
+      "enrollment_remove": "removing a talebe",
+      "enrollment_complete": "marking as completed",
+      "recording_manage": "course recordings",
+      "recording_upload": "uploading recordings",
+      "recording_watch_restricted": "restricted recordings",
+      "session_view_content": "session content",
+      "ban_course": "course bans",
+      "ban_lift_course": "lifting bans",
+      "deck_manage_course": "course deck",
+      "course_nazir_assign": "appointing course nazırs"
     },
     "course": {
       "course_edit": "Edit the course: title, introduction, syllabus, time zone",
@@ -1505,7 +1560,7 @@
     "required": "Choose at least one köşk nazımı."
   },
   "KoskSettings": {
-    "loadFailedTitle": "Köşk settings could not be loaded",
+    "loadFailedTitle": "The köşk settings could not be loaded",
     "loadFailed": "The köşk settings cannot be read right now. Try again in a moment.",
     "retry": "Try again",
     "title": "Köşk settings",
@@ -1564,9 +1619,6 @@
     "dangerHeading": "Hide the köşk",
     "dangerBody": "The köşk and all its courses leave the lists; students, müderrisler, medreses and visitors cannot open the köşk's page or its courses. Nothing is deleted; the Medaris administration can restore it from the Archive.",
     "hide": "Hide the köşk",
-    "loadFailedTitle": "The köşk settings could not be loaded",
-    "loadFailed": "The köşk settings cannot be read right now. Try again in a moment.",
-    "retry": "Try again",
     "errors": {
       "nameRequired": "Write a name.",
       "nameShort": "The name needs at least 2 characters.",
@@ -1661,6 +1713,203 @@
       "generic": "Something went wrong. Try again in a moment.",
       "notFound": "This köşk no longer exists.",
       "forbidden": "You are not allowed to do this."
+    }
+  },
+  "KoskGrantsPage": {
+    "title": "Permissions",
+    "intro": "In this köşk's courses outside a medrese you appoint ders nazırs and give them permissions. A permission you give cannot go beyond your own.",
+    "assign": "Appoint a ders nazır",
+    "madrasahNote": "In medrese courses the medrese's staff give the permissions; they are not managed here. Courses of medreses in this köşk: {courses}.",
+    "heading": "Appointed ders nazırs",
+    "count": "{count, plural, one {# person} other {# people}}",
+    "caption": "Appointed ders nazırs",
+    "empty": "No ders nazır yet.",
+    "columns": {
+      "person": "Ders nazır",
+      "course": "Course",
+      "permissions": "Permissions",
+      "end": "Ends",
+      "giver": "Given by",
+      "actions": "Actions"
+    },
+    "permissionCount": "{count, plural, one {# permission} other {# permissions}}",
+    "never": "No end",
+    "sameDay": "The post and the permissions end on the same day.",
+    "you": "(you)",
+    "unknownPerson": "Name unknown",
+    "edit": "Edit permissions",
+    "editLabel": "Edit permissions: {name}",
+    "revoke": "Dismiss",
+    "revokeLabel": "Dismiss: {name}",
+    "loadFailedTitle": "The ders nazırs could not be loaded",
+    "loadFailed": "The ders nazırs cannot be read right now. Try again in a moment.",
+    "retry": "Try again",
+    "errors": {
+      "generic": "Something went wrong. Try again in a moment.",
+      "exceeds": "You cannot give a permission you do not hold yourself.",
+      "unknownPermission": "This permission cannot be given in courses.",
+      "courseInvalid": "This course is not one of this köşk's courses outside a medrese.",
+      "exists": "This person is a ders nazır of the course already.",
+      "notFound": "This ders nazır no longer exists.",
+      "expiryInvalid": "The end date is in the past.",
+      "unknownAccount": "This account was not found.",
+      "forbidden": "You may not do this."
+    }
+  },
+  "KoskGrantDialog": {
+    "eyebrow": "Köşk",
+    "titleAssign": "Appoint a ders nazır",
+    "titleEdit": "Edit permissions",
+    "close": "Close",
+    "cancel": "Cancel",
+    "save": "Save",
+    "unknownPerson": "Name unknown",
+    "cardLine": "Ders nazır · {course} · Given by: {by} · {date}",
+    "personLabel": "Ders nazır",
+    "chosenTitle": "Chosen ders nazır",
+    "chosenNote": "When you save they become a ders nazır of this course with the permissions you ticked.",
+    "courseLabel": "Course",
+    "courseHelp": "Only courses outside a medrese are listed.",
+    "coursePlaceholder": "Choose a course",
+    "permissionsHeading": "Permissions",
+    "endLabel": "End date (optional)",
+    "endHelp": "The post and the permissions end on the same day. Left empty, there is no end.",
+    "endPast": "The end date must be after today.",
+    "auditNote": "A permission you give cannot go beyond your own. Every permission given or taken back is written to the audit log.",
+    "summary": "{count, plural, one {# permission ticked} other {# permissions ticked}}",
+    "failed": "The permissions could not be saved",
+    "assignFailed": "The ders nazır could not be appointed",
+    "saved": "Permissions saved",
+    "savedBody": "The permissions of {name} were updated.",
+    "assigned": "Ders nazır appointed",
+    "assignedBody": "{name} is now a ders nazır."
+  },
+  "KoskRevokeDialog": {
+    "title": "Dismiss",
+    "intro": "{name} will be dismissed as ders nazır of {course}.",
+    "effect": "The post and all permissions end at the same moment.",
+    "submit": "Dismiss",
+    "cancel": "Cancel",
+    "close": "Close",
+    "auditNote": "The dismissal is written to the audit log.",
+    "failed": "The dismissal failed",
+    "revoked": "Dismissed",
+    "revokedBody": "{name} is no longer a ders nazır of {course}."
+  },
+  "InactivePage": {
+    "title": "Inactive scopes",
+    "intro": "Köşks, medreses and courses whose last manager was dismissed or whose term ran out.",
+    "noticeTitle": "When a manager is appointed the scope is active again",
+    "noticeBody": "Only the Medaris chief nazım and a Medaris nazım who is allowed to may open a passive scope; every opening is written to the audit log.",
+    "heading": "Scopes with no manager",
+    "count": "{count, plural, one {# scope} other {# scopes}}",
+    "filterLegend": "Kind of scope",
+    "filters": {
+      "ALL": "All",
+      "KOSK": "Köşk",
+      "MADRASAH": "Medrese",
+      "COURSE": "Course"
+    },
+    "caption": "Scopes with no manager",
+    "columns": {
+      "scope": "Scope",
+      "reason": "Reason",
+      "since": "Since",
+      "last": "Last manager",
+      "actions": "Actions"
+    },
+    "kinds": {
+      "KOSK": "Köşk",
+      "MADRASAH": "Medrese",
+      "COURSE": "Course"
+    },
+    "kindInKosk": "{kind} · {kosk}",
+    "reasons": {
+      "KOSK_EXPIRED": "The last köşk nazım's term ran out",
+      "KOSK_REMOVED": "The last köşk nazım was dismissed",
+      "MADRASAH_EXPIRED": "The head müderris's term ran out",
+      "MADRASAH_REMOVED": "The head müderris was dismissed",
+      "COURSE_EXPIRED": "The last müderris's term ran out",
+      "COURSE_REMOVED": "The last müderris was dismissed"
+    },
+    "removers": {
+      "SYSTEM_ADMIN": "Medaris chief nazım",
+      "MEDARIS_NAZIM": "Medaris nazım",
+      "KOSK_NAZIM": "köşk nazım"
+    },
+    "removedByRole": "{name}, {role}",
+    "daysPassive": "{count, plural, one {for # day} other {for # days}}",
+    "lastRoles": {
+      "KOSK_NAZIM": "Köşk nazım",
+      "MEDRESE_BASMUDERRIS": "Head müderris",
+      "MUDERRIS": "Müderris"
+    },
+    "imam": "Imam",
+    "assign": {
+      "KOSK": "Appoint a köşk nazım",
+      "MADRASAH": "Appoint a head müderris",
+      "COURSE": "Appoint a müderris"
+    },
+    "assignLabel": "{action}: {name}",
+    "view": "View content",
+    "viewLabel": "View content: {name}",
+    "viewFailed": "The content could not be opened",
+    "empty": "No scope without a manager.",
+    "unknownPerson": "Name unknown",
+    "loadFailedTitle": "The passive scopes could not be loaded",
+    "loadFailed": "The passive scopes cannot be read right now. Try again in a moment.",
+    "retry": "Try again",
+    "errors": {
+      "generic": "Something went wrong. Try again in a moment.",
+      "notFound": "This scope is no longer passive.",
+      "expiryInvalid": "The end date is in the past.",
+      "unknownAccount": "This account was not found.",
+      "forbidden": "You may not do this."
+    }
+  },
+  "InactiveAssignDialog": {
+    "title": {
+      "KOSK": "Appoint a köşk nazım",
+      "MADRASAH": "Appoint a head müderris",
+      "COURSE": "Appoint a müderris"
+    },
+    "intro": {
+      "KOSK": "Choose a köşk nazım for {name}. When you appoint one the köşk is active again.",
+      "MADRASAH": "Choose a head müderris for {name}. When you appoint one the medrese is active again.",
+      "COURSE": "Choose a müderris for {name}. When you appoint one the course is active again."
+    },
+    "personLabel": {
+      "KOSK": "Köşk nazım",
+      "MADRASAH": "Head müderris",
+      "COURSE": "Müderris"
+    },
+    "chosenTitle": {
+      "KOSK": "Chosen köşk nazım",
+      "MADRASAH": "Chosen head müderris",
+      "COURSE": "Chosen müderris"
+    },
+    "chosenNote": {
+      "KOSK": "They become the köşk nazım.",
+      "MADRASAH": "They become the head müderris.",
+      "COURSE": "They become the müderris and the imam of the course."
+    },
+    "submit": {
+      "KOSK": "Appoint a köşk nazım",
+      "MADRASAH": "Appoint a head müderris",
+      "COURSE": "Appoint a müderris"
+    },
+    "endLabel": "End of the post (optional)",
+    "endHelp": "Left empty, the post lasts until you change it.",
+    "endPast": "The end date must be after today.",
+    "cancel": "Cancel",
+    "close": "Close",
+    "auditNote": "The appointment is written to the audit log.",
+    "failed": "The appointment failed",
+    "saved": "Appointed",
+    "savedBody": {
+      "KOSK": "{person} was appointed köşk nazım for {name}.",
+      "MADRASAH": "{person} was appointed head müderris for {name}.",
+      "COURSE": "{person} was appointed müderris for {name}."
     }
   }
 }
