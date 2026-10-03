@@ -3342,5 +3342,176 @@
       "courseGone": "Bu ders bu köşkte bulunamadı.",
       "forbidden": "Bu işlem için izniniz yok."
     }
+  },
+  "Dashboard": {
+    "title": "Ana sayfa",
+    "greeting": "Selâmün aleyküm, {name} Bey.",
+    "greetingKosk": "Selâmün aleyküm, {name} Hoca.",
+    "greetingAnon": "Selâmün aleyküm.",
+    "pending": "Karar bekleyen {count} talep var.",
+    "pendingNone": "Karar bekleyen talep yok.",
+    "today": "Bugün",
+    "yesterday": "Dün",
+    "seeAll": "Tümünü gör",
+    "review": "İncele",
+    "reviewLabel": "İncele: {name}",
+    "unknownPerson": "Adı bilinmiyor",
+    "openKosk": "Köşk aç",
+    "openCourse": "Ders aç",
+    "retry": "Yeniden dene",
+    "loadFailedTitle": "Ana sayfa okunamadı",
+    "loadFailed": "Ana sayfanın bilgileri şu an okunamıyor. Biraz sonra yeniden deneyin.",
+    "week": {
+      "none": "Önümüzdeki yedi günde celse yok.",
+      "some": "Önümüzdeki yedi günde {count} celse var.",
+      "missing": "Önümüzdeki yedi günde {count} celse var; {missing, plural, =1 {birinin} other {# tanesinin}} toplantı bağlantısı eksik."
+    },
+    "counts": {
+      "title": "Platform sayıları",
+      "koskTitle": "Köşk sayıları",
+      "kosk": "Köşk",
+      "madrasah": "Medrese",
+      "course": "Ders",
+      "students": "Kayıtlı talebe",
+      "upcoming": "Yaklaşan celse",
+      "pendingApplications": "Bekleyen başvuru",
+      "unlisted": "{count, plural, =1 {Biri listelenmeyen} other {# tanesi listelenmeyen}}",
+      "passive": "{count, plural, =1 {Biri pasif} other {# tanesi pasif}}",
+      "goKosks": "Köşklere git",
+      "goMadrasahs": "Medreselere git"
+    },
+    "missingAlert": {
+      "title": "{count, plural, =1 {Bir celsenin toplantı bağlantısı eksik} other {# celsenin toplantı bağlantısı eksik}}",
+      "body": "{course}, {when}. Celse başlamadan ekleyin; bağlantı olmadan talebeler celseye katılamaz."
+    },
+    "applications": {
+      "title": "Köşk başvuruları",
+      "titleKosk": "Son başvurular",
+      "empty": "Bekleyen köşk başvurusu yok.",
+      "emptyKosk": "Bekleyen başvuru yok.",
+      "caption": "Son başvurular",
+      "columns": {
+        "student": "Talebe",
+        "when": "Başvuru",
+        "actions": "İşlemler"
+      },
+      "approve": "Onayla",
+      "reject": "Reddet",
+      "approveLabel": "Onayla: {name}, {course}",
+      "rejectLabel": "Reddet: {name}, {course}",
+      "approved": "Başvuru onaylandı",
+      "approvedBody": "{name}, {course} dersine kaydedildi.",
+      "rejected": "Başvuru reddedildi",
+      "rejectedBody": "{name} için {course} başvurusu reddedildi.",
+      "actionFailed": "Başvuru yanıtlanamadı",
+      "errorUnknown": "Beklenmeyen bir hata oldu. Biraz sonra yeniden deneyin."
+    },
+    "decks": {
+      "title": "Deste yayın istekleri",
+      "empty": "Bekleyen deste yayın isteği yok.",
+      "cards": "{count} ezber kartı"
+    },
+    "permanentBans": {
+      "title": "Kalıcı yasak talepleri",
+      "empty": "Bekleyen kalıcı yasak talebi yok."
+    },
+    "passive": {
+      "title": "Pasif kapsamlar",
+      "empty": "Yöneticisiz kapsam yok.",
+      "since": "{date} tarihinden beri",
+      "alertTitle": "{count, plural, =1 {Bir kapsamın yöneticisi yok} =2 {İki kapsamın yöneticisi yok} other {# kapsamın yöneticisi yok}}",
+      "alertBody": "{names} pasif; içerikleri kayıtlı talebelere de kapalı. Yönetici atadığınızda yeniden açılırlar.",
+      "assign": {
+        "KOSK": "Köşk nazımı ata",
+        "MADRASAH": "Başmüderris ata",
+        "COURSE": "Müderris ata"
+      },
+      "assignLabel": "{action}: {name}"
+    },
+    "bans": {
+      "title": "Yeni yasaklar",
+      "empty": "Açık yasak yok.",
+      "courseBan": "Ders yasağı: {name}",
+      "koskBan": "Köşk yasağı: {name}",
+      "placedBy": "koyan {name}",
+      "reason": "Gerekçe: {reason}",
+      "goTo": "Yasaklamalar’a git"
+    },
+    "grants": {
+      "title": "İzinleriniz",
+      "empty": "Size verilmiş bir izin yok.",
+      "loadFailedTitle": "İzinleriniz okunamadı",
+      "loadFailed": "İzinleriniz şu an okunamıyor. Biraz sonra yeniden deneyin.",
+      "group": "Hazır grup · {count} izin",
+      "single": "İzin",
+      "until": "{date} tarihine kadar",
+      "noEnd": "süresiz",
+      "chief": "Medaris başnazımı",
+      "noteOneDay": "İzinleri Medaris başnazımı {givers} verdi; {date} tarihinde verildi.",
+      "noteManyDays": "İzinleri Medaris başnazımı {givers} verdi; {others}, ötekiler {date} tarihinde verildi.",
+      "otherOne": "{name} {date} tarihinde"
+    },
+    "sessions": {
+      "title": "Celseler",
+      "tabsLabel": "Celse listesi",
+      "tabs": {
+        "UPCOMING": "Yaklaşan",
+        "PAST": "Geçmiş",
+        "CANCELLED": "İptal edilen"
+      },
+      "upcomingNote": "Önümüzdeki yedi günün celseleri",
+      "caption": {
+        "UPCOMING": "Önümüzdeki yedi günün celseleri",
+        "PAST": "Geçmiş celseler",
+        "CANCELLED": "İptal edilen celseler"
+      },
+      "empty": {
+        "UPCOMING": "Önümüzdeki yedi günde celse yok.",
+        "PAST": "Geçmiş celse yok.",
+        "CANCELLED": "İptal edilen celse yok."
+      },
+      "loading": "Celseler okunuyor…",
+      "loadFailedTitle": "Celseler okunamadı",
+      "loadFailed": "Bu listenin celseleri şu an okunamıyor. Biraz sonra yeniden deneyin.",
+      "columns": {
+        "course": "Ders",
+        "when": "Zaman",
+        "platform": "Platform",
+        "students": "Talebe",
+        "state": "Durum",
+        "actions": "İşlemler"
+      },
+      "week": "Hafta {number}",
+      "makeup": "telafi celsesi",
+      "imam": "imam",
+      "noLink": "Toplantı bağlantısı yok",
+      "state": {
+        "missingLink": "Bağlantı eksik",
+        "planned": "Planlandı",
+        "cancelled": "İptal edildi",
+        "past": "Yapıldı"
+      },
+      "action": {
+        "addLink": "Toplantı bağlantısı ekle",
+        "edit": "Düzenle",
+        "view": "Celseyi gör"
+      },
+      "actionLabel": "{action}: {course}, {when}"
+    },
+    "muderris": {
+      "title": "Müderrisler",
+      "empty": "Bu köşkte müderris yok.",
+      "courses": "{count} ders",
+      "students": "{count} talebe"
+    },
+    "reject": {
+      "title": "Başvuruyu reddet",
+      "body": "Başvuru listeden kalkar. İsterseniz nedenini yazın; gerekçe denetim kaydında tutulur, talebeye gönderilmez.",
+      "reasonLabel": "Ret gerekçesi (isteğe bağlı)",
+      "help": "En fazla 500 karakter.",
+      "submit": "Reddet",
+      "cancel": "Vazgeç",
+      "close": "Kapat"
+    }
   }
 }

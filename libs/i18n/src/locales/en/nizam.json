@@ -3342,5 +3342,176 @@
       "courseGone": "This course was not found in this köşk.",
       "forbidden": "You may not do this."
     }
+  },
+  "Dashboard": {
+    "title": "Home",
+    "greeting": "Peace be upon you, {name}.",
+    "greetingKosk": "Peace be upon you, {name}.",
+    "greetingAnon": "Peace be upon you.",
+    "pending": "{count, plural, one {# request is waiting for your decision.} other {# requests are waiting for your decision.}}",
+    "pendingNone": "No request is waiting for your decision.",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "seeAll": "See all",
+    "review": "Review",
+    "reviewLabel": "Review: {name}",
+    "unknownPerson": "Name unknown",
+    "openKosk": "Open a köşk",
+    "openCourse": "Open a course",
+    "retry": "Try again",
+    "loadFailedTitle": "The home page could not be read",
+    "loadFailed": "The home page's information cannot be read right now. Try again in a moment.",
+    "week": {
+      "none": "There is no session in the next seven days.",
+      "some": "{count, plural, one {There is # session in the next seven days.} other {There are # sessions in the next seven days.}}",
+      "missing": "{count, plural, one {There is # session in the next seven days} other {There are # sessions in the next seven days}}; {missing, plural, one {one is} other {# are}} missing a meeting link."
+    },
+    "counts": {
+      "title": "Platform numbers",
+      "koskTitle": "Köşk numbers",
+      "kosk": "Köşk",
+      "madrasah": "Madrasah",
+      "course": "Courses",
+      "students": "Enrolled students",
+      "upcoming": "Upcoming sessions",
+      "pendingApplications": "Waiting applications",
+      "unlisted": "{count, plural, one {# unlisted} other {# unlisted}}",
+      "passive": "{count, plural, one {# passive} other {# passive}}",
+      "goKosks": "Go to köşks",
+      "goMadrasahs": "Go to madrasahs"
+    },
+    "missingAlert": {
+      "title": "{count, plural, one {A session is missing its meeting link} other {# sessions are missing their meeting link}}",
+      "body": "{course}, {when}. Add it before the session starts; without a link students cannot join."
+    },
+    "applications": {
+      "title": "Köşk applications",
+      "titleKosk": "Latest applications",
+      "empty": "No köşk application is waiting.",
+      "emptyKosk": "No application is waiting.",
+      "caption": "Latest applications",
+      "columns": {
+        "student": "Student",
+        "when": "Applied",
+        "actions": "Actions"
+      },
+      "approve": "Approve",
+      "reject": "Reject",
+      "approveLabel": "Approve: {name}, {course}",
+      "rejectLabel": "Reject: {name}, {course}",
+      "approved": "Application approved",
+      "approvedBody": "{name} is enrolled in {course}.",
+      "rejected": "Application rejected",
+      "rejectedBody": "{name}'s application to {course} was rejected.",
+      "actionFailed": "The application could not be answered",
+      "errorUnknown": "Something unexpected went wrong. Try again in a moment."
+    },
+    "decks": {
+      "title": "Deck publish requests",
+      "empty": "No deck publish request is waiting.",
+      "cards": "{count, plural, one {# memorization card} other {# memorization cards}}"
+    },
+    "permanentBans": {
+      "title": "Permanent ban requests",
+      "empty": "No permanent ban request is waiting."
+    },
+    "passive": {
+      "title": "Passive scopes",
+      "empty": "No scope is without a manager.",
+      "since": "since {date}",
+      "alertTitle": "{count, plural, one {A scope has no manager} other {# scopes have no manager}}",
+      "alertBody": "{names} {count, plural, one {is} other {are}} passive and closed to enrolled students too. They reopen when you assign a manager.",
+      "assign": {
+        "KOSK": "Assign a köşk nazım",
+        "MADRASAH": "Assign a head müderris",
+        "COURSE": "Assign a müderris"
+      },
+      "assignLabel": "{action}: {name}"
+    },
+    "bans": {
+      "title": "New bans",
+      "empty": "No open ban.",
+      "courseBan": "Course ban: {name}",
+      "koskBan": "Köşk ban: {name}",
+      "placedBy": "placed by {name}",
+      "reason": "Reason: {reason}",
+      "goTo": "Go to Bans"
+    },
+    "grants": {
+      "title": "Your permissions",
+      "empty": "No permission has been given to you.",
+      "loadFailedTitle": "Your permissions could not be read",
+      "loadFailed": "Your permissions cannot be read right now. Try again in a moment.",
+      "group": "Ready-made group · {count, plural, one {# permission} other {# permissions}}",
+      "single": "Permission",
+      "until": "until {date}",
+      "noEnd": "no end date",
+      "chief": "Medaris chief nazım",
+      "noteOneDay": "The Medaris chief nazım {givers} gave these permissions on {date}.",
+      "noteManyDays": "The Medaris chief nazım {givers} gave these permissions; {others}, the rest on {date}.",
+      "otherOne": "{name} on {date}"
+    },
+    "sessions": {
+      "title": "Sessions",
+      "tabsLabel": "Session list",
+      "tabs": {
+        "UPCOMING": "Upcoming",
+        "PAST": "Past",
+        "CANCELLED": "Cancelled"
+      },
+      "upcomingNote": "Sessions of the next seven days",
+      "caption": {
+        "UPCOMING": "Sessions of the next seven days",
+        "PAST": "Past sessions",
+        "CANCELLED": "Cancelled sessions"
+      },
+      "empty": {
+        "UPCOMING": "There is no session in the next seven days.",
+        "PAST": "There is no past session.",
+        "CANCELLED": "There is no cancelled session."
+      },
+      "loading": "Reading the sessions…",
+      "loadFailedTitle": "The sessions could not be read",
+      "loadFailed": "This list's sessions cannot be read right now. Try again in a moment.",
+      "columns": {
+        "course": "Course",
+        "when": "Time",
+        "platform": "Platform",
+        "students": "Students",
+        "state": "Status",
+        "actions": "Actions"
+      },
+      "week": "Week {number}",
+      "makeup": "make-up session",
+      "imam": "imam",
+      "noLink": "No meeting link",
+      "state": {
+        "missingLink": "Link missing",
+        "planned": "Planned",
+        "cancelled": "Cancelled",
+        "past": "Held"
+      },
+      "action": {
+        "addLink": "Add meeting link",
+        "edit": "Edit",
+        "view": "View session"
+      },
+      "actionLabel": "{action}: {course}, {when}"
+    },
+    "muderris": {
+      "title": "Müderrises",
+      "empty": "This köşk has no müderris.",
+      "courses": "{count, plural, one {# course} other {# courses}}",
+      "students": "{count, plural, one {# student} other {# students}}"
+    },
+    "reject": {
+      "title": "Reject the application",
+      "body": "The application leaves the list. You may write why; the reason is kept in the audit log and is not sent to the student.",
+      "reasonLabel": "Reason for rejection (optional)",
+      "help": "At most 500 characters.",
+      "submit": "Reject",
+      "cancel": "Cancel",
+      "close": "Close"
+    }
   }
 }

@@ -29,6 +29,7 @@ import { MadrasahCourseModule } from "./madrasah/course/madrasah-course.module";
 import { MadrasahModule } from "./madrasah/madrasah.module";
 import { MadrasahNazirModule } from "./madrasah/nazir/madrasah-nazir.module";
 import { MadrasahPortalModule } from "./madrasah/portal/madrasah-portal.module";
+import { NizamDashboardModule } from "./nizam-dashboard/nizam-dashboard.module";
 import { NotificationModule } from "./notification/notification.module";
 import { PlatformPolicyModule } from "./platform-policy/platform-policy.module";
 import { ScheduleModule } from "./schedule/schedule.module";
@@ -73,6 +74,7 @@ import { UserModule } from "./user/user.module";
     PlatformPolicyModule,
     CourseRequestModule,
     BanModule,
+    NizamDashboardModule,
     UserModule,
   ],
   controllers: [AppController],

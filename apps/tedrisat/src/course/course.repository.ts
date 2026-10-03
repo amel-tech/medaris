@@ -55,6 +55,7 @@ import {
   ILessonMutation,
   IMuderris,
   IPendingEnrollment,
+  IRejectEnrollment,
   IRemovedEnrollment,
   IRemoveEnrollment,
   IReplaceCourse,
@@ -1621,6 +1622,51 @@ export class CourseRepository implements ICourseRepository {
           status: before.status,
           progress: before.progress,
           enrolledAt: before.createdAt.toISOString(),
+        },
+      });
+      return true;
+    });
+  }
+
+  /**
+   * Refuses a request that is still pending (MDRS-182): the row goes and the
+   * refusal, with the reason when one was given, is written to `audit_log` in
+   * the same transaction. False when there is no pending request any more (an
+   * approval or a withdrawal got there first).
+   */
+  async rejectEnrollment(entry: IRejectEnrollment): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const [before] = await tx
+        .select()
+        .from(enrollments)
+        .where(
+          and(
+            eq(enrollments.userId, entry.userId),
+            eq(enrollments.courseId, entry.courseId),
+            eq(enrollments.status, EnrollmentStatus.PENDING)
+          )
+        )
+        .for("update");
+      if (!before) return false;
+      await tx
+        .delete(enrollments)
+        .where(
+          and(
+            eq(enrollments.userId, entry.userId),
+            eq(enrollments.courseId, entry.courseId)
+          )
+        );
+      await tx.insert(auditLog).values({
+        actorId: entry.actorId,
+        action: "enrollment.reject",
+        entity: "course",
+        entityId: entry.courseId,
+        details: {
+          userId: before.userId,
+          studentName: before.studentName,
+          studentEmail: before.studentEmail,
+          reason: entry.reason,
+          requestedAt: before.createdAt.toISOString(),
         },
       });
       return true;

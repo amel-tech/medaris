@@ -10,6 +10,8 @@ import { KoskService } from "./kosk.service";
 import { KoskAdminController } from "./kosk-admin.controller";
 import { KoskAdminRepository } from "./kosk-admin.repository";
 import { KoskAdminService } from "./kosk-admin.service";
+import { KoskDashboardRepository } from "./kosk-dashboard.repository";
+import { KoskDashboardService } from "./kosk-dashboard.service";
 import { KoskGrantsController } from "./kosk-grants.controller";
 import { KoskGrantsRepository } from "./kosk-grants.repository";
 import { KoskGrantsService } from "./kosk-grants.service";
@@ -29,6 +31,8 @@ import { KoskGrantsService } from "./kosk-grants.service";
     KoskRepository,
     KoskAdminService,
     KoskAdminRepository,
+    KoskDashboardService,
+    KoskDashboardRepository,
     KoskGrantsService,
     KoskGrantsRepository,
     DatabaseService,

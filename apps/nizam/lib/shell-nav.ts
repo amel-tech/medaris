@@ -179,8 +179,25 @@ const medarisGroups: NavGroup[] = [
   chiefOnly("audit", ["bans"]),
 ];
 
+/**
+ * A köşk nazımı's Ana sayfa is their köşk's (nizam 02): it sits in the köşk's
+ * path so the menu and the scope picker stay on that köşk.
+ */
+const koskGeneral: NavGroup = {
+  id: "general",
+  items: [
+    {
+      id: "home",
+      label: "home",
+      path: "/kosks/:kosk/ana-sayfa",
+      icon: "home",
+    },
+    ...general.items.filter((item) => item.id !== "home"),
+  ],
+};
+
 const koskGroups: NavGroup[] = [
-  general,
+  koskGeneral,
   {
     id: "kosk",
     items: [
@@ -260,6 +277,56 @@ const koskGroups: NavGroup[] = [
     ],
   },
 ];
+
+/**
+ * The platform permissions behind a Medaris nazımı's menu items (nizam 05: "İzni
+ * olmayan menü öğeleri DOM'da bulunmaz"). An item that is not listed is open to
+ * every nazım: the home page, the bell and the account are no one's gift.
+ */
+const ITEM_PERMISSIONS: Record<string, readonly string[]> = {
+  madrasahs: [
+    "platform.madrasah_create",
+    "platform.head_muderris_manage",
+    "platform.madrasah_edit",
+    "platform.madrasah_nazir_grant",
+  ],
+  kosks: [
+    "platform.kosk_create",
+    "platform.kosk_nazim_manage",
+    "platform.kosk_edit",
+    "platform.hosting_grant",
+  ],
+  "kosk-applications": ["platform.kosk_application_decide"],
+  "deck-requests": ["platform.deck_publish"],
+  appeals: ["platform.appeal_decide"],
+  "permanent-bans": ["platform.ban_account"],
+  bans: ["platform.ban_scoped", "platform.ban_account"],
+  "audit-log": ["platform.audit_read"],
+  inactive: ["platform.inactive_scopes_manage"],
+  youtube: ["platform.youtube_manage"],
+  "platform-settings": ["platform.policy_edit"],
+};
+
+/**
+ * A Medaris nazımı's groups cut to what their permissions open; a group left
+ * with no item goes. `held` is `null` when the permissions could not be read:
+ * then nothing is hidden, and tedrisat refuses what is not theirs.
+ */
+export function filterByPermissions(
+  groups: NavGroup[],
+  held: ReadonlySet<string> | null
+): NavGroup[] {
+  if (!held) return groups;
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        const needs = ITEM_PERMISSIONS[item.id];
+        return !needs || needs.some((code) => held.has(code));
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
+}
 
 /** The groups of a variant's nav, in the order of its canvas; none has no nav. */
 export function navGroups(variant: ShellVariant): NavGroup[] {

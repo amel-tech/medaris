@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
   pending: {} as Record<string, number>,
   unread: 0,
   pathname: "/tr",
+  permissions: null as string[] | null,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -34,6 +35,8 @@ vi.mock("next-intl/server", () => ({
 vi.mock("~/lib/auth_options", () => ({ auth: async () => state.session }));
 vi.mock("~/features/assignments/reads", () => ({
   getMyAssignments: async () => state.me,
+  getMyPermissionCodes: async () =>
+    state.permissions ? new Set(state.permissions) : null,
 }));
 vi.mock("~/features/notifications/reads", () => ({
   getUnreadNotificationCount: async () => state.unread,
@@ -220,6 +223,40 @@ describe("the other menus", () => {
     expect(text(aside)).not.toContain("Denetim kaydı");
     expect(text(aside)).not.toContain("Platform ayarları");
     expect(text(aside)).toContain("Medaris nazımı");
+  });
+
+  it("shows a Medaris nazımı only the sections their permissions open (nizam/05, criterion 1)", async () => {
+    state.me = { systemAdmin: false, assignments: [{ role: "MEDARIS_NAZIM" }] };
+    state.permissions = [
+      "platform.kosk_create",
+      "platform.kosk_application_decide",
+      "platform.deck_publish",
+      "platform.ban_account",
+    ];
+    const aside = sidebarNav(await render());
+    for (const label of [
+      "Ana sayfa",
+      "Köşkler",
+      "Köşk başvuruları",
+      "Deste yayın istekleri",
+      "Kalıcı yasak talepleri",
+      "Yasaklamalar",
+    ]) {
+      expect(text(aside)).toContain(label);
+    }
+    // not given: the madrasah screens (the menu draws them only for their permissions)
+    expect(text(aside)).not.toContain("Medreseler");
+    state.permissions = null;
+  });
+
+  it("gives a köşk nazımı an Ana sayfa inside their köşk's path (nizam/02)", async () => {
+    state.me = { systemAdmin: false, assignments: [{ role: "KOSK_NAZIM" }] };
+    state.kosks = [{ id: "k1", name: "Nûruosmaniye Köşkü" }];
+    state.pathname = "/tr/kosks/k1/ana-sayfa";
+    const html = await render();
+    expect(html).toContain('href="/tr/kosks/k1/ana-sayfa"');
+    // it is the page the viewer is on
+    expect(html).toContain('aria-current="page" href="/tr/kosks/k1/ana-sayfa"');
   });
 
   it("gives an account with no role the brand and the person only (nizam/03)", async () => {

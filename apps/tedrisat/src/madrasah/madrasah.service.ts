@@ -7,7 +7,6 @@ import { MadrasahAlreadyHiddenError } from "./errors/madrasah-already-hidden.err
 import { MadrasahHandleTakenError } from "./errors/madrasah-handle-taken.error";
 import { MadrasahNotFoundError } from "./errors/madrasah-not-found.error";
 import { MadrasahNotHiddenError } from "./errors/madrasah-not-hidden.error";
-import { NazirNotFoundError } from "./errors/nazir-not-found.error";
 import { MadrasahRepository } from "./madrasah.repository";
 import {
   ICreateMadrasah,
