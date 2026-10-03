@@ -40,11 +40,7 @@ const me = (roles: Partial<NonNullable<Me>["roles"]> = {}): Me => ({
   },
 });
 
-const standalone = { id: KOSK, madrasah: null };
-const inMedrese = {
-  id: KOSK,
-  madrasah: { id: MEDRESE, name: "Medrese", handle: "medrese" },
-};
+const kosk = { id: KOSK };
 
 /** One caller for each role `/me` can express towards KOSK and COURSE. */
 const ROLES = {
@@ -64,36 +60,26 @@ const shownTo = (show: (caller: Me) => boolean): RoleName[] =>
   (Object.keys(ROLES) as RoleName[]).filter((role) => show(ROLES[role]));
 
 describe("koskAbilities (MDRS-108)", () => {
-  it("shows Köşkü Düzenle to the manager and the medrese's nazır", () => {
-    expect(shownTo((c) => koskAbilities(c, inMedrese).edit)).toEqual([
-      "KOSK_MANAGER",
-      "MADRASAH_NAZIR",
-      "SYSTEM_ADMIN",
-    ]);
-  });
-
-  it("does not make a nazır of some medrese a nazır of a standalone köşk", () => {
-    expect(shownTo((c) => koskAbilities(c, standalone).edit)).toEqual([
+  it("shows Köşkü Düzenle to the manager alone, never to a medrese's nazır", () => {
+    expect(shownTo((c) => koskAbilities(c, kosk).edit)).toEqual([
       "KOSK_MANAGER",
       "SYSTEM_ADMIN",
     ]);
   });
 
   it("shows Yeni Ders Aç and Bekleyen talepler to the manager alone", () => {
-    for (const kosk of [standalone, inMedrese]) {
-      expect(shownTo((c) => koskAbilities(c, kosk).openCourse)).toEqual([
-        "KOSK_MANAGER",
-        "SYSTEM_ADMIN",
-      ]);
-      expect(shownTo((c) => koskAbilities(c, kosk).reviewRequests)).toEqual([
-        "KOSK_MANAGER",
-        "SYSTEM_ADMIN",
-      ]);
-    }
+    expect(shownTo((c) => koskAbilities(c, kosk).openCourse)).toEqual([
+      "KOSK_MANAGER",
+      "SYSTEM_ADMIN",
+    ]);
+    expect(shownTo((c) => koskAbilities(c, kosk).reviewRequests)).toEqual([
+      "KOSK_MANAGER",
+      "SYSTEM_ADMIN",
+    ]);
   });
 
   it("shows nothing when /me could not be read", () => {
-    expect(koskAbilities(null, inMedrese)).toEqual({
+    expect(koskAbilities(null, kosk)).toEqual({
       edit: false,
       openCourse: false,
       reviewRequests: false,

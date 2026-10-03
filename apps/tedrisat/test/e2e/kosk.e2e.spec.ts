@@ -1,10 +1,15 @@
 import { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
-import { koskManagers, kosks } from "../../src/database/schema/kosk.schema";
+import { kosks } from "../../src/database/schema/kosk.schema";
+import {
+  ASSIGNED_ROLES,
+  roleAssignments,
+} from "../../src/database/schema/role-assignment.schema";
 import { asSystemAdmin } from "../helpers/system-admin.helper";
 import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
 import {
+  assignRole,
   COURSE_TREE_TABLES,
   TestDatabaseUtils,
 } from "../helpers/test-database.helper";
@@ -56,9 +61,9 @@ describe("KoskController (e2e)", () => {
         .expect(403);
 
       expect(await databaseService.db.select().from(kosks)).toHaveLength(0);
-      expect(await databaseService.db.select().from(koskManagers)).toHaveLength(
-        0
-      );
+      expect(
+        await databaseService.db.select().from(roleAssignments)
+      ).toHaveLength(0);
     });
 
     it("lets SYSTEM_ADMIN create a köşk, owned by the signed-in admin", () => {
@@ -186,10 +191,11 @@ describe("KoskController (e2e)", () => {
         .insert(kosks)
         .values({ ownerId: OTHER_USER_ID, name })
         .returning();
-      await databaseService.db.insert(koskManagers).values({
-        koskId: other.id,
+      await assignRole(databaseService.db, {
         userId: OTHER_USER_ID,
-        addedBy: OTHER_USER_ID,
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        scopeId: other.id,
+        grantedBy: OTHER_USER_ID,
       });
       return other;
     };
@@ -217,10 +223,11 @@ describe("KoskController (e2e)", () => {
 
     it("includes a köşk the caller was added to as a second manager", async () => {
       const other = await insertForeignKosk("Ortak Köşk");
-      await databaseService.db.insert(koskManagers).values({
-        koskId: other.id,
+      await assignRole(databaseService.db, {
         userId: TEST_USER_ID,
-        addedBy: OTHER_USER_ID,
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        scopeId: other.id,
+        grantedBy: OTHER_USER_ID,
       });
 
       return request(app.getHttpServer())
@@ -416,10 +423,11 @@ describe("KoskController (e2e)", () => {
         .insert(kosks)
         .values({ ownerId: OTHER_USER_ID, name: "Başka Köşk" })
         .returning();
-      await databaseService.db.insert(koskManagers).values({
-        koskId: other.id,
+      await assignRole(databaseService.db, {
         userId: OTHER_USER_ID,
-        addedBy: OTHER_USER_ID,
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        scopeId: other.id,
+        grantedBy: OTHER_USER_ID,
       });
 
       await request(app.getHttpServer())

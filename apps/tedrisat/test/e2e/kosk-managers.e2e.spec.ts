@@ -1,19 +1,21 @@
 import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import request from "supertest";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { DatabaseService } from "../../src/database/database.service";
 import { courses } from "../../src/database/schema/course.schema";
-import { koskManagers, kosks } from "../../src/database/schema/kosk.schema";
+import { madrasahs } from "../../src/database/schema/madrasah.schema";
 import {
-  madrasahNazirs,
-  madrasahs,
-} from "../../src/database/schema/madrasah.schema";
+  ASSIGNED_ROLES,
+  madrasahKoskHosting,
+  roleAssignments,
+} from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
 import { asSystemAdmin } from "../helpers/system-admin.helper";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
+  assignRole,
   COURSE_TREE_TABLES,
   TestDatabaseUtils,
 } from "../helpers/test-database.helper";
@@ -63,12 +65,31 @@ describe("Köşk managers (e2e)", () => {
       .set("Authorization", auth(as))
       .send({ name });
 
+  /** The köşk's KOSK_NAZIM rows (MDRS-134), revoked ones included. */
+  const managerRows = () =>
+    databaseService.db
+      .select()
+      .from(roleAssignments)
+      .where(
+        and(
+          eq(roleAssignments.scopeId, koskId),
+          eq(roleAssignments.role, ASSIGNED_ROLES.KOSK_NAZIM)
+        )
+      )
+      .orderBy(roleAssignments.createdAt, roleAssignments.id);
+
   const managersInDb = async () =>
     (
       await databaseService.db
-        .select({ userId: koskManagers.userId })
-        .from(koskManagers)
-        .where(eq(koskManagers.koskId, koskId))
+        .select({ userId: roleAssignments.userId })
+        .from(roleAssignments)
+        .where(
+          and(
+            eq(roleAssignments.scopeId, koskId),
+            eq(roleAssignments.role, ASSIGNED_ROLES.KOSK_NAZIM),
+            isNull(roleAssignments.revokedAt)
+          )
+        )
     )
       .map((r) => r.userId)
       .sort();
@@ -182,6 +203,46 @@ describe("Köşk managers (e2e)", () => {
       await rename(FIRST_ID, "Artık yönetmiyor").expect(403);
     });
 
+    // MDRS-134: a removal revokes the KOSK_NAZIM row in the remover's name
+    // instead of deleting it, and adding the person again opens a new row.
+    it("revokes rather than deletes, and a second grant opens a new row", async () => {
+      await removeManager(FIRST_ID, SECOND_ID).expect(200);
+      let rows = await managerRows();
+      expect(rows.map((r) => [r.userId, r.grantedBy, r.revokedBy])).toEqual([
+        [FIRST_ID, FIRST_ID, null],
+        [SECOND_ID, FIRST_ID, FIRST_ID],
+      ]);
+      expect(rows[1].revokedAt).toBeInstanceOf(Date);
+
+      const res = await addManager(FIRST_ID, SECOND_ID).expect(201);
+      expect(res.body.managerIds).toEqual([FIRST_ID, SECOND_ID]);
+      rows = await managerRows();
+      expect(rows).toHaveLength(3);
+      expect(rows[2]).toMatchObject({ userId: SECOND_ID, revokedAt: null });
+    });
+
+    // A grant that lapsed by `expires_at` is no management, and granting the
+    // same person again revokes the lapsed row so the new one can open.
+    it("treats a lapsed grant as none, and re-granting replaces it", async () => {
+      await databaseService.db
+        .update(roleAssignments)
+        .set({ expiresAt: new Date(Date.now() - 60_000) })
+        .where(
+          and(
+            eq(roleAssignments.scopeId, koskId),
+            eq(roleAssignments.userId, SECOND_ID)
+          )
+        );
+      await rename(SECOND_ID, "Süresi doldu").expect(403);
+
+      await addManager(FIRST_ID, SECOND_ID).expect(201);
+      await rename(SECOND_ID, "Yeniden yönetiyor").expect(200);
+      const lapsed = (await managerRows()).filter(
+        (r) => r.userId === SECOND_ID
+      );
+      expect(lapsed.map((r) => r.revokedBy)).toEqual([FIRST_ID, null]);
+    });
+
     it("lets a manager remove themselves while another remains", async () => {
       const res = await removeManager(SECOND_ID, SECOND_ID).expect(200);
       expect(res.body.managerIds).toEqual([FIRST_ID]);
@@ -237,10 +298,10 @@ describe("Köşk managers (e2e)", () => {
       expect(await managersInDb()).toEqual([FIRST_ID]);
     });
 
-    // A nazır has EDIT on the köşks of their medrese (MDRS-106). Adding
-    // managers is not EDIT: a nazır who made themselves a manager would get
-    // KOSK_MANAGER on the köşk's courses, which PRD §4.1 keeps from them.
-    it("refuses a nazır of the köşk's medrese", async () => {
+    // MDRS-106 gave a nazır of the köşk's medrese EDIT on the köşk; MDRS-134
+    // replaced that affiliation with a hosting right, which gives the medrese
+    // no power over the köşk (MDRS-133). Fails if the nazır path returns.
+    it("refuses a başmüderris of a medrese hosted in the köşk", async () => {
       const [madrasah] = await databaseService.db
         .insert(madrasahs)
         .values({
@@ -249,15 +310,17 @@ describe("Köşk managers (e2e)", () => {
           createdBy: ADMIN_ID,
         })
         .returning();
+      await assignRole(databaseService.db, {
+        userId: NAZIR_ID,
+        role: ASSIGNED_ROLES.MEDRESE_BASMUDERRIS,
+        scopeId: madrasah.id,
+        grantedBy: ADMIN_ID,
+      });
       await databaseService.db
-        .insert(madrasahNazirs)
-        .values({ madrasahId: madrasah.id, userId: NAZIR_ID });
-      await databaseService.db
-        .update(kosks)
-        .set({ madrasahId: madrasah.id })
-        .where(eq(kosks.id, koskId));
+        .insert(madrasahKoskHosting)
+        .values({ madrasahId: madrasah.id, koskId, grantedBy: ADMIN_ID });
 
-      await rename(NAZIR_ID, "Nazır düzenledi").expect(200);
+      await rename(NAZIR_ID, "Nazır düzenledi").expect(403);
       await addManager(NAZIR_ID, NAZIR_ID).expect(403);
       expect(await managersInDb()).toEqual([FIRST_ID]);
     });

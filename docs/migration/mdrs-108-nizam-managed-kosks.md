@@ -10,7 +10,8 @@ checked against the code and the earlier migration notes (MDRS-103, -105,
 ### tedrisat
 
 - **`GET /kosks?managedBy=me`.** The list, and its `total`, narrow to the
-  köşks the caller is in `kosk_managers` for. Same pagination contract as the
+  köşks the caller holds `KOSK_NAZIM` in (`role_assignments`, MDRS-134; it
+  was `kosk_managers` when this shipped). Same pagination contract as the
   plain list (`page`, `limit` capped at 50, `{ items, total, page, limit }`).
   `me` is the only accepted value (`ParseEnumPipe`, enum `KoskManagedBy`);
   anything else is a 400, so the route never answers "which köşks does user X
@@ -53,17 +54,17 @@ checked against the code and the earlier migration notes (MDRS-103, -105,
   | Button | Routes it calls | Shown to |
   | -- | -- | -- |
   | Yeni Köşk | `POST /kosks` (`CREATE_KOSK`, on no köşk row) | SYSTEM_ADMIN only (since 2026-10-02) |
-  | Köşkü Düzenle | `PATCH /kosks/:id` — kosk `EDIT` | köşk manager, nazır of its medrese |
+  | Köşkü Düzenle | `PATCH /kosks/:id` — kosk `EDIT` | köşk manager |
   | Yeni Ders Aç | `POST /kosks/:id/courses` — kosk `MANAGE_COURSES`; session batch — course `EDIT` | köşk manager |
   | Bekleyen talepler | pending list — kosk `MANAGE_COURSES`; approve/reject — course `MANAGE_ENROLLMENTS` | köşk manager |
   | course card → editor | `PUT /courses/:id`, sessions, lessons — course `EDIT` | köşk manager, that course's müderris |
   | Kayıtlar (roster) | enrollments — course `MANAGE_ENROLLMENTS` | köşk manager, that course's müderris |
   | müderris picker | `ASSIGN_MUDERRIS` inside the save | köşk manager (`mayAssignMuderris`, MDRS-105) |
 
-  SYSTEM_ADMIN sees all of them (realm bypass). A nazır gets only "Köşkü
-  Düzenle": the matrix gives `MADRASAH_NAZIR` `MANAGE_COURSES` on a köşk but
-  nothing on its courses, so "Yeni Ders Aç" and the pending-requests panel
-  would 403 half-way for them.
+  SYSTEM_ADMIN sees all of them (realm bypass). A medrese nazır gets none of
+  them: MDRS-134 removed the `kosk` `MADRASAH_NAZIR` row, because a medrese
+  holds only a hosting right in a köşk. (When this shipped, a nazır of the
+  köşk's medrese was shown "Köşkü Düzenle".)
 - The new-course and course-editor pages answer 404 to a caller the table
   does not show the button to (typed-in URL); the köşk page fetches pending
   requests only for those who see the panel.

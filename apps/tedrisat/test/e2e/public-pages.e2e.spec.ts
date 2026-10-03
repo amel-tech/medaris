@@ -10,10 +10,15 @@ import {
   courseWeeks,
   lessons,
 } from "../../src/database/schema/course.schema";
-import { koskManagers, kosks } from "../../src/database/schema/kosk.schema";
+import { kosks } from "../../src/database/schema/kosk.schema";
 import { madrasahs } from "../../src/database/schema/madrasah.schema";
+import {
+  ASSIGNED_ROLES,
+  madrasahKoskHosting,
+} from "../../src/database/schema/role-assignment.schema";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
+  assignRole,
   COURSE_TREE_TABLES,
   TestDatabaseUtils,
 } from "../helpers/test-database.helper";
@@ -53,9 +58,9 @@ describe("Public köşk, medrese and course pages (MDRS-122, e2e)", () => {
   let dbUtils: TestDatabaseUtils;
 
   let madrasahId: string;
-  /** Listed köşk, affiliated with the medrese. */
+  /** Listed köşk, hosting the medrese. */
   let listedKoskId: string;
-  /** Unlisted köşk (`is_private`), affiliated with the same medrese. */
+  /** Unlisted köşk (`is_private`), hosting the same medrese. */
   let unlistedKoskId: string;
   let publishedCourseId: string;
   let draftCourseId: string;
@@ -70,11 +75,18 @@ describe("Public köşk, medrese and course pages (MDRS-122, e2e)", () => {
   const insertKosk = async (name: string, isPrivate: boolean) => {
     const [kosk] = await db()
       .insert(kosks)
-      .values({ ownerId: MANAGER_ID, name, isPrivate, madrasahId })
+      .values({ ownerId: MANAGER_ID, name, isPrivate })
       .returning();
+    // The medrese's only link to a köşk is a hosting right (MDRS-134).
     await db()
-      .insert(koskManagers)
-      .values({ koskId: kosk.id, userId: MANAGER_ID, addedBy: MANAGER_ID });
+      .insert(madrasahKoskHosting)
+      .values({ madrasahId, koskId: kosk.id, grantedBy: MANAGER_ID });
+    await assignRole(db(), {
+      userId: MANAGER_ID,
+      role: ASSIGNED_ROLES.KOSK_NAZIM,
+      scopeId: kosk.id,
+      grantedBy: MANAGER_ID,
+    });
     return kosk.id;
   };
 
@@ -220,7 +232,6 @@ describe("Public köşk, medrese and course pages (MDRS-122, e2e)", () => {
         id: listedKoskId,
         name: "Süleymaniye Köşkü",
         isFollowing: false,
-        madrasah: { id: madrasahId },
       });
     });
 

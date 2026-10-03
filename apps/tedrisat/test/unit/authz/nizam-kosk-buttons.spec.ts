@@ -63,7 +63,8 @@ const NIZAM_KOSK_BUTTONS: Button[] = [
   {
     button: "Köşkü Düzenle (köşk detail)",
     routes: [kosk("update", SCOPES.EDIT)],
-    shownTo: [ROLES.KOSK_MANAGER, ROLES.MADRASAH_NAZIR],
+    // No MADRASAH_NAZIR: a hosting right gives no power over the köşk (MDRS-134).
+    shownTo: [ROLES.KOSK_MANAGER],
   },
   {
     // The new-course page creates the course, then plans its sessions on it.

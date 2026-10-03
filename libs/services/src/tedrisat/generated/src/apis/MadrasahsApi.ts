@@ -16,7 +16,6 @@
 import * as runtime from '../runtime';
 import type {
   CreateMadrasahDto,
-  KoskResponse,
   MadrasahResponse,
   PaginatedMadrasahResponse,
   UpdateMadrasahDto,
@@ -24,8 +23,6 @@ import type {
 import {
     CreateMadrasahDtoFromJSON,
     CreateMadrasahDtoToJSON,
-    KoskResponseFromJSON,
-    KoskResponseToJSON,
     MadrasahResponseFromJSON,
     MadrasahResponseToJSON,
     PaginatedMadrasahResponseFromJSON,
@@ -39,22 +36,12 @@ export interface AddMadrasahNazirRequest {
     userId: string;
 }
 
-export interface AffiliateMadrasahKoskRequest {
-    id: string;
-    koskId: string;
-}
-
 export interface CreateMadrasahRequest {
     createMadrasahDto: CreateMadrasahDto;
 }
 
 export interface DeleteMadrasahRequest {
     id: string;
-}
-
-export interface DetachMadrasahKoskRequest {
-    id: string;
-    koskId: string;
 }
 
 export interface GetAllMadrasahsRequest {
@@ -132,56 +119,6 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Affiliate a köşk with the medrese
-     */
-    async affiliateMadrasahKoskRaw(requestParameters: AffiliateMadrasahKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskResponse>> {
-        if (requestParameters['id'] == null) {
-            throw new runtime.RequiredError(
-                'id',
-                'Required parameter "id" was null or undefined when calling affiliateMadrasahKosk().'
-            );
-        }
-
-        if (requestParameters['koskId'] == null) {
-            throw new runtime.RequiredError(
-                'koskId',
-                'Required parameter "koskId" was null or undefined when calling affiliateMadrasahKosk().'
-            );
-        }
-
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        if (this.configuration && this.configuration.accessToken) {
-            // oauth required
-            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
-        }
-
-
-        let urlPath = `/madrasahs/{id}/kosks/{koskId}`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
-        urlPath = urlPath.replace(`{${"koskId"}}`, encodeURIComponent(String(requestParameters['koskId'])));
-
-        const response = await this.request({
-            path: urlPath,
-            method: 'POST',
-            headers: headerParameters,
-            query: queryParameters,
-        }, initOverrides);
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => KoskResponseFromJSON(jsonValue));
-    }
-
-    /**
-     * Affiliate a köşk with the medrese
-     */
-    async affiliateMadrasahKosk(requestParameters: AffiliateMadrasahKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
-        const response = await this.affiliateMadrasahKoskRaw(requestParameters, initOverrides);
-        return await response.value();
-    }
-
-    /**
      * Create a medrese (SYSTEM_ADMIN only)
      */
     async createMadrasahRaw(requestParameters: CreateMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahResponse>> {
@@ -226,7 +163,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Its nazır list goes with it; its köşks become standalone. Nazırs cannot delete (MDRS-124).
+     * Its nazır list and hosting rights go with it; its courses stay in their köşks with no medrese. Nazırs cannot delete (MDRS-124).
      * Delete a medrese (SYSTEM_ADMIN only)
      */
     async deleteMadrasahRaw(requestParameters: DeleteMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<boolean>> {
@@ -265,61 +202,11 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Its nazır list goes with it; its köşks become standalone. Nazırs cannot delete (MDRS-124).
+     * Its nazır list and hosting rights go with it; its courses stay in their köşks with no medrese. Nazırs cannot delete (MDRS-124).
      * Delete a medrese (SYSTEM_ADMIN only)
      */
     async deleteMadrasah(requestParameters: DeleteMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
         const response = await this.deleteMadrasahRaw(requestParameters, initOverrides);
-        return await response.value();
-    }
-
-    /**
-     * Detach a köşk from the medrese
-     */
-    async detachMadrasahKoskRaw(requestParameters: DetachMadrasahKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskResponse>> {
-        if (requestParameters['id'] == null) {
-            throw new runtime.RequiredError(
-                'id',
-                'Required parameter "id" was null or undefined when calling detachMadrasahKosk().'
-            );
-        }
-
-        if (requestParameters['koskId'] == null) {
-            throw new runtime.RequiredError(
-                'koskId',
-                'Required parameter "koskId" was null or undefined when calling detachMadrasahKosk().'
-            );
-        }
-
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        if (this.configuration && this.configuration.accessToken) {
-            // oauth required
-            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
-        }
-
-
-        let urlPath = `/madrasahs/{id}/kosks/{koskId}`;
-        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
-        urlPath = urlPath.replace(`{${"koskId"}}`, encodeURIComponent(String(requestParameters['koskId'])));
-
-        const response = await this.request({
-            path: urlPath,
-            method: 'DELETE',
-            headers: headerParameters,
-            query: queryParameters,
-        }, initOverrides);
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => KoskResponseFromJSON(jsonValue));
-    }
-
-    /**
-     * Detach a köşk from the medrese
-     */
-    async detachMadrasahKosk(requestParameters: DetachMadrasahKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
-        const response = await this.detachMadrasahKoskRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
