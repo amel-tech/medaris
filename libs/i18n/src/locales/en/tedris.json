@@ -203,6 +203,9 @@
     "home": "Home",
     "learning": "Learning"
   },
+  "Header": {
+    "searchPlaceholder": "Search…"
+  },
   "UserHeaderMenu": {
     "accountSettings": "Account Settings",
     "helpAndSupport": "Help and Support",
@@ -530,6 +533,10 @@
     "liveStreamPlaceholder": "The live stream plays here",
     "liveStreamOpen": "Open the stream",
     "liveStreamText": "You can watch the stream here. To ask questions and join the conversation, join the session.",
+    "liveChatTitle": "Live chat",
+    "liveChatShow": "Show chat",
+    "liveChatHide": "Hide",
+    "liveChatText": "The chat comes from YouTube and is visible there. To write, sign in to YouTube in this browser.",
     "noReplacement": "If the müderris sets a new time, you will see it in My schedule.",
     "recordingCardTitle": "Recording",
     "noRecording": "This session has no recording yet."

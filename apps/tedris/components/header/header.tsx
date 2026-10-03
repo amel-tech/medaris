@@ -1,5 +1,6 @@
 import { BellIcon, MadrasahLogoIcon } from "@medaris/icons/ssr";
 import { Input } from "@medaris/ui/components/input";
+import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 import { env } from "~/env";
 import KeycloakLogin from "~/features/keycloak/login";
@@ -10,6 +11,7 @@ import { UserNotifications } from "./user-notification-menu";
 
 export const Header = async () => {
   const session = await auth();
+  const t = await getTranslations("tedris.Header");
 
   return (
     <header
@@ -21,8 +23,12 @@ export const Header = async () => {
         <p className="text-xl font-medium text-brand-primary">Medaris</p>
       </div>
 
-      <div className="flex items-center space-x-4">
-        <Input placeholder="Search..." className="max-w-64 p-4" />
+      <div className="flex items-center gap-4">
+        <Input
+          placeholder={t("searchPlaceholder")}
+          aria-label={t("searchPlaceholder")}
+          className="max-w-64 p-4"
+        />
         {session ? (
           <>
             <Suspense

@@ -24,6 +24,7 @@ import {
   sessionJoinLabels,
 } from "../session-join-labels";
 import { splitArabic, zoneLabel } from "../session-model";
+import { LiveChat } from "./live-chat";
 import { MediaPlayer } from "./media-player";
 import { SessionJoinLive } from "./session-join-live";
 import { SessionProgramme } from "./session-programme";
@@ -335,6 +336,8 @@ export const SessionPage = async ({
               {t("SessionPage.liveStreamText")}
             </MediaPlayer>
           ) : null}
+
+          {liveStream && liveEmbed ? <LiveChat streamUrl={liveStream} /> : null}
 
           {session.previous || session.next ? (
             <nav

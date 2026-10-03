@@ -203,6 +203,9 @@
     "home": "الرئيسية",
     "learning": "التعلم"
   },
+  "Header": {
+    "searchPlaceholder": "ابحث…"
+  },
   "UserHeaderMenu": {
     "accountSettings": "إعدادات الحساب",
     "helpAndSupport": "المساعدة والدعم",
@@ -530,6 +533,10 @@
     "liveStreamPlaceholder": "يُعرض البث المباشر هنا",
     "liveStreamOpen": "فتح البث",
     "liveStreamText": "يمكنك متابعة البث من هنا. للسؤال والمشاركة في الحوار انضم إلى الجلسة.",
+    "liveChatTitle": "الدردشة المباشرة",
+    "liveChatShow": "إظهار الدردشة",
+    "liveChatHide": "إخفاء",
+    "liveChatText": "الدردشة من يوتيوب وتظهر فيه. للكتابة سجّل الدخول إلى يوتيوب في هذا المتصفح.",
     "noReplacement": "إن حدّد المدرّس موعدًا جديدًا فستراه في جدولي.",
     "recordingCardTitle": "تسجيل الدرس",
     "noRecording": "لا يوجد تسجيل لهذه الجلسة بعد."
