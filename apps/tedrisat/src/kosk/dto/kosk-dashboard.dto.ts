@@ -60,6 +60,11 @@ export class KoskDashboardSessionResponse {
   @ApiProperty()
   courseTitle!: string;
 
+  @ApiProperty({
+    description: "The course's cover hue: the colour square beside its title",
+  })
+  courseCoverHue!: number;
+
   @ApiProperty({ description: "'Hafta 5': the week the session belongs to" })
   weekNumber!: number;
 

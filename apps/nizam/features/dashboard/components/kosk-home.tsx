@@ -10,6 +10,7 @@ import { Alert } from "@medaris/ui/mds/alert";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
+import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
 import { PlatformChip } from "@medaris/ui/mds/platform-chip";
@@ -24,6 +25,7 @@ import {
   approveEnrollment,
   rejectEnrollment,
 } from "~/features/kosks/actions/courses";
+import { toneOfHue } from "../../kosks/admin-present";
 import { loadKoskSessions } from "../actions";
 import {
   type Messages,
@@ -200,19 +202,22 @@ export function KoskHome({ data, nowIso }: Props) {
       rowHeader: true,
       width: "29%",
       render: (s) => (
-        <span className="flex min-w-0 flex-col">
-          <bdi className="font-semibold">{s.courseTitle}</bdi>
-          <span className="mds-caption">
-            {[
-              weekLine(s, {
-                week: (n) => t("sessions.week", { number: n }),
-                makeup: t("sessions.makeup"),
-              }),
-              muderrisLine(s.muderris, t("sessions.imam")),
-              s.madrasahName ?? "",
-            ]
-              .filter(Boolean)
-              .join(" · ")}
+        <span className="flex min-w-0 items-center gap-3">
+          <CoverPattern tone={toneOfHue(s.courseCoverHue)} size="xs" />
+          <span className="flex min-w-0 flex-col">
+            <bdi className="font-semibold">{s.courseTitle}</bdi>
+            <span className="mds-caption">
+              {[
+                weekLine(s, {
+                  week: (n) => t("sessions.week", { number: n }),
+                  makeup: t("sessions.makeup"),
+                }),
+                muderrisLine(s.muderris, t("sessions.imam")),
+                s.madrasahName ?? "",
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
           </span>
         </span>
       ),

@@ -34,7 +34,7 @@ describe("sectionsFor (MDRS-182, nizam/01 and 05)", () => {
       "platform.ban_account",
     ]);
     expect(sectionsFor(false, held)).toMatchObject({
-      openKosk: true,
+      openKosk: false,
       applications: true,
       deckRequests: false,
       permanentBans: true,
@@ -42,6 +42,12 @@ describe("sectionsFor (MDRS-182, nizam/01 and 05)", () => {
       inactiveScopes: false,
       courseNumbers: false,
     });
+  });
+
+  it("never offers Köşk aç to a nazım: opening a köşk is the başnazım's alone", () => {
+    expect(sectionsFor(false, new Set(["platform.kosk_create"])).openKosk).toBe(
+      false
+    );
   });
 
   it("opens the bans card with either ban permission", () => {

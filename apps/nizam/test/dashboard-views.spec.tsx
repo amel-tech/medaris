@@ -239,6 +239,11 @@ describe("a Medaris nazımı's home page (nizam 05)", () => {
     expect(html).toContain("Medrese");
   });
 
+  it("draws neither Köşklere git nor Medreselere git: both pages are the başnazım's alone", () => {
+    expect(html).not.toContain("Köşklere git");
+    expect(html).not.toContain("Medreselere git");
+  });
+
   it("hides Köşk aç without the permission (criterion 6)", () => {
     expect(html).not.toContain("/tr/kosks?ac=1");
     const allowed = render(
@@ -288,6 +293,7 @@ const kosk: KoskDashboardResponse = {
       id: "s1",
       courseId: "c1",
       courseTitle: "Emsile ve Bina",
+      courseCoverHue: 220,
       weekNumber: 5,
       scheduledAt: new Date("2026-10-03T18:00:00Z"),
       durationMinutes: 60,
@@ -300,6 +306,7 @@ const kosk: KoskDashboardResponse = {
       id: "s2",
       courseId: "c2",
       courseTitle: "Bina ve İzhar Şerhi",
+      courseCoverHue: 220,
       weekNumber: 4,
       scheduledAt: new Date("2026-10-04T18:00:00Z"),
       durationMinutes: 60,
@@ -314,6 +321,7 @@ const kosk: KoskDashboardResponse = {
       id: "s3",
       courseId: "c1",
       courseTitle: "Emsile ve Bina",
+      courseCoverHue: 220,
       weekNumber: 5,
       scheduledAt: new Date("2026-10-07T18:00:00Z"),
       meetingUrl: "https://meet.google.com/abc",
@@ -327,6 +335,7 @@ const kosk: KoskDashboardResponse = {
     id: "s1",
     courseId: "c1",
     courseTitle: "Emsile ve Bina",
+    courseCoverHue: 220,
     weekNumber: 5,
     scheduledAt: new Date("2026-10-03T18:00:00Z"),
     isMakeup: false,

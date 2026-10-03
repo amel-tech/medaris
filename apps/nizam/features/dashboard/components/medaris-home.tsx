@@ -263,9 +263,11 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
             {t("counts.unlisted", { count: counts.unlistedKosk })}
           </span>
         ) : null}
-        <a className="mds-link" href={`${base}/kosks`}>
-          {t("counts.goKosks")}
-        </a>
+        {chief ? (
+          <a className="mds-link" href={`${base}/kosks`}>
+            {t("counts.goKosks")}
+          </a>
+        ) : null}
       </Stat>
       <Stat label={t("counts.madrasah")} value={counts.madrasah}>
         {counts.inactiveMadrasah > 0 ? (
@@ -273,9 +275,11 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
             {t("counts.passive", { count: counts.inactiveMadrasah })}
           </span>
         ) : null}
-        <a className="mds-link" href={`${base}/medreseler`}>
-          {t("counts.goMadrasahs")}
-        </a>
+        {chief ? (
+          <a className="mds-link" href={`${base}/medreseler`}>
+            {t("counts.goMadrasahs")}
+          </a>
+        ) : null}
       </Stat>
       {counts.course != null ? (
         <Stat label={t("counts.course")} value={counts.course}>

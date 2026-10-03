@@ -46,6 +46,12 @@ export interface KoskDashboardSessionResponse {
      */
     courseTitle: string;
     /**
+     * The course's cover hue: the colour square beside its title
+     * @type {number}
+     * @memberof KoskDashboardSessionResponse
+     */
+    courseCoverHue: number;
+    /**
      * 'Hafta 5': the week the session belongs to
      * @type {number}
      * @memberof KoskDashboardSessionResponse
@@ -108,6 +114,7 @@ export function instanceOfKoskDashboardSessionResponse(value: object): value is 
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('courseId' in value) || value['courseId'] === undefined) return false;
     if (!('courseTitle' in value) || value['courseTitle'] === undefined) return false;
+    if (!('courseCoverHue' in value) || value['courseCoverHue'] === undefined) return false;
     if (!('weekNumber' in value) || value['weekNumber'] === undefined) return false;
     if (!('scheduledAt' in value) || value['scheduledAt'] === undefined) return false;
     if (!('isMakeup' in value) || value['isMakeup'] === undefined) return false;
@@ -130,6 +137,7 @@ export function KoskDashboardSessionResponseFromJSONTyped(json: any, ignoreDiscr
         'id': json['id'],
         'courseId': json['courseId'],
         'courseTitle': json['courseTitle'],
+        'courseCoverHue': json['courseCoverHue'],
         'weekNumber': json['weekNumber'],
         'scheduledAt': (new Date(json['scheduledAt'])),
         'durationMinutes': json['durationMinutes'] == null ? undefined : json['durationMinutes'],
@@ -156,6 +164,7 @@ export function KoskDashboardSessionResponseToJSONTyped(value?: KoskDashboardSes
         'id': value['id'],
         'courseId': value['courseId'],
         'courseTitle': value['courseTitle'],
+        'courseCoverHue': value['courseCoverHue'],
         'weekNumber': value['weekNumber'],
         'scheduledAt': ((value['scheduledAt']).toISOString()),
         'durationMinutes': value['durationMinutes'],

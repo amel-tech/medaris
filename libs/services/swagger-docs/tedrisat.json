@@ -8992,6 +8992,10 @@
           "courseTitle": {
             "type": "string"
           },
+          "courseCoverHue": {
+            "type": "number",
+            "description": "The course's cover hue: the colour square beside its title"
+          },
           "weekNumber": {
             "type": "number",
             "description": "'Hafta 5': the week the session belongs to"
@@ -9036,6 +9040,7 @@
           "id",
           "courseId",
           "courseTitle",
+          "courseCoverHue",
           "weekNumber",
           "scheduledAt",
           "isMakeup",

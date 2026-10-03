@@ -140,6 +140,7 @@ export class KoskDashboardRepository {
       id: string;
       course_id: string;
       course_title: string;
+      course_cover_hue: number;
       week_number: number;
       scheduled_at: Date | string;
       duration_minutes: number | null;
@@ -149,7 +150,8 @@ export class KoskDashboardRepository {
       students: string;
       madrasah_name: string | null;
     }>(sql`
-      select l.id, c.id as course_id, c.title as course_title, w.week_number,
+      select l.id, c.id as course_id, c.title as course_title,
+             c.cover_hue as course_cover_hue, w.week_number,
              l.scheduled_at, l.duration_minutes, l.meeting_url,
              (l.cancelled_at is not null) as cancelled,
              exists (select 1 from lessons o
@@ -187,6 +189,7 @@ export class KoskDashboardRepository {
       id: r.id,
       courseId: r.course_id,
       courseTitle: r.course_title,
+      courseCoverHue: r.course_cover_hue,
       weekNumber: r.week_number,
       scheduledAt: asDate(r.scheduled_at),
       durationMinutes: r.duration_minutes,
@@ -217,7 +220,7 @@ export class KoskDashboardRepository {
              coalesce(e.student_name,
                       nullif(btrim(concat_ws(' ', u.given_name, u.family_name)), '')) as student_name,
              coalesce(e.student_email, u.email) as student_email,
-             e.created_at
+             e.created_at at time zone 'UTC' as created_at
         from enrollments e
         join courses c on c.id = e.course_id
         left join users u on u.id = e.user_id

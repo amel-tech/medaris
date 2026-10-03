@@ -436,7 +436,7 @@ describe("Nizam dashboards (e2e)", () => {
       const all = await get("/nizam/dashboard", NAZIM_ALL).expect(200);
       expect(all.body.viewer).toBe("MEDARIS_NAZIM");
       expect(all.body.greetingName).toBe("Hasan Basri");
-      expect(all.body.can.openKosk).toBe(true);
+      expect(all.body.can.openKosk).toBe(false);
       // Ders and Kayıtlı talebe are the başnazım's alone
       expect(all.body.platformCounts).toMatchObject({
         kosk: 2,
