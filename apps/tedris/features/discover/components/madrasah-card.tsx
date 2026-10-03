@@ -3,6 +3,7 @@ import { Avatar } from "@medaris/ui/mds/avatar";
 import { Card } from "@medaris/ui/mds/card";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import Link from "next/link";
+import { courseCover } from "~/features/courses/course-cover";
 import type { LooseTranslator } from "~/lib/i18n/loose";
 
 // Typed by what the card calls, not by the whole catalogue, like the köşk card
@@ -52,7 +53,11 @@ export const MadrasahCard = ({
       <ul className="mbs-4 flex grow flex-col gap-3">
         {madrasah.courses.map((course) => (
           <li key={course.id} className="flex items-center gap-3">
-            <CoverPattern seed={course.id} size="xs" aria-hidden="true" />
+            <CoverPattern
+              {...courseCover(course)}
+              size="xs"
+              aria-hidden="true"
+            />
             <Link href={`/courses/${course.id}`} className="relative z-10">
               <bdi>{course.title}</bdi>
             </Link>

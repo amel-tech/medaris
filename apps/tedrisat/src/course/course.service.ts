@@ -133,9 +133,14 @@ export class CourseService {
 
   async findEnrolledCourses(
     userId: string,
-    includePending = false
+    includePending = false,
+    includeRevoked = false
   ): Promise<IEnrolledCourse[]> {
-    return this.courseRepo.findEnrolledByUser(userId, includePending);
+    return this.courseRepo.findEnrolledByUser(
+      userId,
+      includePending,
+      includeRevoked
+    );
   }
 
   async getDetail(

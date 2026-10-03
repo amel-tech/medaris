@@ -30,7 +30,7 @@ export default async function Page() {
   // Canvas 43 names the roles in the subtitle; canvas 34, with none, does not.
   const hasRoles = (roles?.assignments.length ?? 0) > 0;
   return (
-    <div className="mx-auto flex max-w-[80rem] flex-col gap-section px-gutter py-8">
+    <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
       <header className="flex flex-col gap-1">
         <h1 className="mds-h1">{t("pageTitle")}</h1>
         <p className="mds-body">
@@ -50,6 +50,6 @@ export default async function Page() {
         </SystemState>
       )}
       <RolesSection />
-    </div>
+    </main>
   );
 }

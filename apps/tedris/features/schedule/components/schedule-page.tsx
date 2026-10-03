@@ -112,22 +112,37 @@ const ScheduleRow = ({
           </span>
         ) : (
           <>
-            <span
-              className={
-                state === "live"
-                  ? "mds-badge mds-badge--live"
-                  : "mds-badge mds-badge--secondary"
-              }
-            >
-              {t(
-                state === "live"
-                  ? "SchedulePage.statusLive"
-                  : state === "ended"
+            {state === "live" ? (
+              // Design tedris/21 "şu an canlı": the live badge and the way in.
+              <>
+                <span className="mds-badge mds-badge--live">
+                  <span className="mds-badge__dot" aria-hidden="true" />
+                  {t("SessionPage.liveLabel")}
+                </span>
+                {session.meetingUrl ? (
+                  <a
+                    className="mds-btn mds-btn--small mds-btn--primary mds-join__link"
+                    href={session.meetingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {t("SessionPage.joinAction")}
+                    <span className="mds-visually-hidden">
+                      {t("SessionPage.newTab")}
+                    </span>
+                  </a>
+                ) : null}
+              </>
+            ) : (
+              <span className="mds-badge mds-badge--secondary">
+                {t(
+                  state === "ended"
                     ? "SchedulePage.statusEnded"
                     : "SchedulePage.statusScheduled"
-              )}
-            </span>
-            {state === "upcoming" || state === "live" ? (
+                )}
+              </span>
+            )}
+            {state === "upcoming" ? (
               <CalendarMenu
                 courseId={session.courseId}
                 courseTitle={session.courseTitle}

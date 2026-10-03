@@ -5,14 +5,17 @@ import type {
   SessionResponse,
 } from "@medaris/services/tedrisat";
 import { toast } from "@medaris/ui/components/sonner";
+import { Badge } from "@medaris/ui/mds/badge";
 import { Breadcrumb } from "@medaris/ui/mds/breadcrumb";
 import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
+import { Icon } from "@medaris/ui/mds/icon";
 import { SessionJoin } from "@medaris/ui/mds/session-join";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
+import { courseCover } from "~/features/courses/course-cover";
 import { courseActionErrorKey } from "../action-error";
 import { enrollInCourse } from "../actions";
 import { courseTotals, courseViewState } from "../course-view";
@@ -85,9 +88,13 @@ export function LessonLocked({
         {t("apply")}
       </Button>
     ) : reason === "pending" ? (
-      <Button size="large" variant="secondary" fullWidth disabled>
-        {t("pending")}
-      </Button>
+      // Design tedris/18 "onay bekliyor": no button, the state and what it waits for.
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="warning" icon={<Icon name="clock" size="sm" />}>
+          {courseText("pendingApproval")}
+        </Badge>
+        <span className="mds-caption">{t("pendingNote")}</span>
+      </div>
     ) : undefined;
 
   const crumbs: { label: string; href?: string }[] = [];
@@ -192,13 +199,7 @@ export function LessonLocked({
             title={course.title}
             headingLevel={2}
             href={`/courses/${course.id}`}
-            media={
-              <CoverPattern
-                seed={course.id}
-                size="md"
-                label={course.category ?? ""}
-              />
-            }
+            media={<CoverPattern {...courseCover(course)} size="md" />}
             footer={[
               koskName,
               sessionText("weeksCount", { count: totals.weeks }),

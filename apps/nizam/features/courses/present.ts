@@ -20,29 +20,11 @@ import {
 
 // ---- the cover -------------------------------------------------------------
 
-/**
- * nizam/32 "Kapak ibaresi": the science printed under the cover, in Arabic.
- * The Turkish name is what `coverLabel` stores.
- */
-export const COVER_LABELS = [
-  { value: "Sarf", arabic: "الصرف" },
-  { value: "Nahiv", arabic: "النحو" },
-  { value: "Mantık", arabic: "المنطق" },
-  { value: "Akaid", arabic: "العقائد" },
-  { value: "Hadis", arabic: "الحديث" },
-  { value: "Siyer", arabic: "السيرة" },
-  { value: "Fıkıh", arabic: "الفقه" },
-  { value: "Tefsir", arabic: "التفسير" },
-  { value: "Belâgat", arabic: "البلاغة" },
-  { value: "Tecvid", arabic: "التجويد" },
-] as const;
-
-/** The Arabic name printed for a stored cover word; undefined for none or an unknown one. */
-export function arabicOfCoverLabel(
-  label: string | null | undefined
-): string | undefined {
-  return COVER_LABELS.find((l) => l.value === label)?.arabic;
-}
+/** nizam/32 "Kapak ibaresi": the list and its Arabic live with the cover itself, shared with tedris. */
+export {
+  arabicOfCoverLabel,
+  COVER_LABELS,
+} from "@medaris/ui/mds/cover-pattern";
 
 export const COVER_TONE_ORDER: CoverTone[] = [
   "laciverd",

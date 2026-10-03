@@ -3,6 +3,7 @@ import type {
   LessonResponse,
   WeekResponse,
 } from "@medaris/services/tedrisat";
+import { atTime, trLocative, trNumberWord } from "../flashcards/deck-model";
 
 /**
  * The five states of the course page (designs tedris/05, 06, 08, 12 and 13),
@@ -84,7 +85,8 @@ export const courseTotals = (
  */
 export const nextSession = (
   course: Pick<CourseDetailResponse, "weeks">,
-  now: number
+  now: number,
+  { includeRunning = false }: { includeRunning?: boolean } = {}
 ): {
   lesson: LessonResponse & { scheduledAt: Date };
   weekNumber: number;
@@ -97,7 +99,11 @@ export const nextSession = (
   for (const week of course.weeks) {
     for (const lesson of week.lessons) {
       const time = at(lesson);
-      if (time === null || time <= now || isCancelled(lesson)) continue;
+      if (time === null || isCancelled(lesson)) continue;
+      // A celse on air is the next one where the caller asks for it (the
+      // course card: "Sıradaki celse" is the live one while it runs).
+      const running = includeRunning && isRunning(lesson, now);
+      if (time <= now && !running) continue;
       if (best === null || time < best.time) {
         best = {
           lesson: lesson as LessonResponse & { scheduledAt: Date },
@@ -202,6 +208,25 @@ const parts = (
   options: Intl.DateTimeFormatOptions
 ) => new Intl.DateTimeFormat(locale, { ...options, timeZone }).format(time);
 
+/**
+ * "28 Eylül 2026’da": a date as a sentence says when, the year carrying the
+ * Turkish locative (design tedris/12 "tamamladı"). Other locales get the date.
+ */
+export const dateWithLocative = (
+  time: number,
+  locale: string,
+  timeZone: string
+): string => {
+  const date = parts(time, locale, timeZone, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  if (!locale.startsWith("tr")) return date;
+  const year = Number(parts(time, "en", timeZone, { year: "numeric" }));
+  return `${date}’${trLocative(trNumberWord(year), true)}`;
+};
+
 /** The course's span, "13 Eylül – 29 Kasım 2026", from its first to its last session. */
 export const courseSpan = (
   course: Pick<CourseDetailResponse, "weeks" | "timeZone">,
@@ -265,11 +290,15 @@ export const sentAt = (
   timeZone: string,
   todayWord: string
 ): string => {
-  const clock = parts(time, locale, timeZone, {
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  });
+  // "10:02’de": Turkish says when with the locative (design tedris/08).
+  const clock = atTime(
+    parts(time, locale, timeZone, {
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }),
+    locale
+  );
   if (calendarDaysUntil(time, now, timeZone) === 0) {
     return `${todayWord} ${clock}`;
   }

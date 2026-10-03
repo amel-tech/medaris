@@ -43,6 +43,7 @@
     "publicTitle": "Public profile",
     "publicText": "Decide how others see you and which details you make public.",
     "publicManage": "Edit public profile",
+    "signOutTitle": "Sign out",
     "signOutText": "You sign out of Medaris in this browser. Your courses and preferences stay in your account.",
     "signOut": "Sign out",
     "profileFailedTitle": "Your account could not be loaded",

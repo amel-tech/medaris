@@ -397,7 +397,8 @@ export interface ICourseRepository {
   ): Promise<ICourseDetail | null>;
   findEnrolledByUser(
     userId: string,
-    includePending?: boolean
+    includePending?: boolean,
+    includeRevoked?: boolean
   ): Promise<IEnrolledCourse[]>;
   create(course: ICreateCourse): Promise<ICourseDetail>;
   findKoskId(id: string): Promise<string | null>;

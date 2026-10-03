@@ -13,6 +13,7 @@ import { Progress } from "@medaris/ui/mds/progress";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
+import { courseCover } from "~/features/courses/course-cover";
 import { joinRun } from "~/features/courses/join-run";
 import { coursesToContinue, deckLine } from "../model";
 import { getHomeCourses, getHomeDecks, getHomeFollowedCourses } from "../reads";
@@ -126,9 +127,7 @@ const ContinueCard = ({
     className="flex flex-col"
     href={`/courses/${course.id}`}
     title={course.title}
-    media={
-      <CoverPattern seed={course.id} size="sm" label={course.category ?? ""} />
-    }
+    media={<CoverPattern {...courseCover(course)} size="sm" />}
     footer={
       <span>
         {joinRun(
@@ -317,7 +316,7 @@ const FollowedLine = ({
   t: Translate;
 }) => (
   <li className="flex items-center gap-3 py-3 border-be border-neutral-subtle first:pbs-0 last:pbe-0 last:border-be-0">
-    <CoverPattern seed={course.id} size="xs" aria-hidden="true" />
+    <CoverPattern {...courseCover(course)} size="xs" aria-hidden="true" />
     <div className="flex min-inline-0 flex-col">
       <Link
         href={`/courses/${course.id}`}

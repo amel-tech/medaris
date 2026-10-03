@@ -85,3 +85,64 @@ export function CoverPattern({
     </div>
   );
 }
+
+/** The hue each cover tone is stored as. A course's `coverHue` is a number; the design names four. */
+export const TONE_HUE: Record<CoverTone, number> = {
+  laciverd: 250,
+  bordo: 20,
+  zumrut: 155,
+  murekkep: 285,
+};
+
+/** The tone nearest to a stored hue, so a cover made before the names keeps looking like itself. */
+export function toneOfHue(hue: number): CoverTone {
+  const distance = (a: number, b: number) => {
+    const d = Math.abs(a - b) % 360;
+    return Math.min(d, 360 - d);
+  };
+  let best: CoverTone = "laciverd";
+  for (const tone of tones) {
+    if (distance(hue, TONE_HUE[tone]) < distance(hue, TONE_HUE[best])) {
+      best = tone;
+    }
+  }
+  return best;
+}
+
+/**
+ * The sciences a course cover may name (nizam/32 "Kapak ibaresi"): the
+ * Turkish word is what `coverLabel` stores, the Arabic is what the cover prints.
+ */
+export const COVER_LABELS = [
+  { value: "Sarf", arabic: "الصرف" },
+  { value: "Nahiv", arabic: "النحو" },
+  { value: "Mantık", arabic: "المنطق" },
+  { value: "Akaid", arabic: "العقائد" },
+  { value: "Hadis", arabic: "الحديث" },
+  { value: "Siyer", arabic: "السيرة" },
+  { value: "Fıkıh", arabic: "الفقه" },
+  { value: "Tefsir", arabic: "التفسير" },
+  { value: "Belâgat", arabic: "البلاغة" },
+  { value: "Tecvid", arabic: "التجويد" },
+] as const;
+
+/** The Arabic name printed for a stored cover word; undefined for none or an unknown one. */
+export function arabicOfCoverLabel(
+  label: string | null | undefined
+): string | undefined {
+  return COVER_LABELS.find((l) => l.value === label)?.arabic;
+}
+
+/**
+ * What a course's cover prints: the Arabic of its stored word, the word itself
+ * when it is already Arabic, and nothing otherwise (the design never prints a
+ * Latin category on the bookcloth).
+ */
+export function coverLabelText(
+  label: string | null | undefined
+): string | undefined {
+  if (!label) return undefined;
+  return (
+    arabicOfCoverLabel(label) ?? (arabicScript.test(label) ? label : undefined)
+  );
+}

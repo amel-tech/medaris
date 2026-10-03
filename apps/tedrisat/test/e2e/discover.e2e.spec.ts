@@ -509,6 +509,7 @@ describe("Keşfet, köşk page and Derslerim reads (e2e)", () => {
         ["running", EnrollmentStatus.ENROLLED, 40],
         ["waiting", EnrollmentStatus.PENDING, 0],
         ["done", EnrollmentStatus.COMPLETED, 100],
+        ["removed", EnrollmentStatus.REVOKED, 10],
       ] as const) {
         const course = await makeCourse(koskId, key);
         idOf[key] = course.id;
@@ -582,6 +583,24 @@ describe("Keşfet, köşk page and Derslerim reads (e2e)", () => {
       expect(byTitle.waiting.enrollment.status).toBe("PENDING");
       expect(byTitle.running.enrollment.status).toBe("ENROLLED");
       expect(byTitle.done.enrollment.status).toBe("COMPLETED");
+      expect(byTitle.removed).toBeUndefined();
+    });
+
+    it("adds the courses whose access was withdrawn only when asked", async () => {
+      const res = await http()
+        .get("/courses/enrolled?includePending=true&includeRevoked=true")
+        .set("Authorization", auth(TALEBE_ID))
+        .expect(200);
+      expect(res.body.map((c: { title: string }) => c.title).sort()).toEqual([
+        "done",
+        "removed",
+        "running",
+        "waiting",
+      ]);
+      const removed = res.body.find(
+        (c: { title: string }) => c.title === "removed"
+      );
+      expect(removed.enrollment.status).toBe("REVOKED");
     });
 
     it("gives the next standing session and its week", async () => {

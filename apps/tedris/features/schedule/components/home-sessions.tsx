@@ -1,14 +1,18 @@
 import type { ScheduleSessionResponse } from "@medaris/services/tedrisat";
 import { Card } from "@medaris/ui/mds/card";
 import { Icon } from "@medaris/ui/mds/icon";
-import { PlatformChip } from "@medaris/ui/mds/platform-chip";
 import { resolveMeetingPlatform } from "@medaris/utils";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
-import { CalendarMenu } from "~/features/courses/components/calendar-menu";
+import { SessionJoinLive } from "~/features/courses/components/session-join-live";
 import { joinRun } from "~/features/courses/join-run";
 import { formatSessionMoment } from "~/features/courses/my-courses";
+import {
+  calendarLabels,
+  hostOf,
+  sessionJoinLabels,
+} from "~/features/courses/session-join-labels";
 import { dayInZone } from "~/features/courses/session-model";
 import {
   atTime,
@@ -16,12 +20,7 @@ import {
   trNumberWord,
 } from "~/features/flashcards/deck-model";
 import type { LooseTranslator } from "~/lib/i18n/loose";
-import {
-  type DayLabel,
-  dayLabel,
-  formatClock,
-  formatDayHeading,
-} from "../schedule-model";
+import { type DayLabel, dayLabel, formatClock } from "../schedule-model";
 
 // Narrow on purpose: the full translator type hits TS2589 here (MDRS-176).
 type Translate = LooseTranslator;
@@ -96,11 +95,13 @@ export const HomeSessions = async ({
         <p className="mds-body">
           {sessions === null
             ? t("PhoneMenu.loadFailed")
-            : next
-              ? t("PhoneMenu.nextIntro", {
-                  when: whenText(next, now, t, locale, timeZone),
-                })
-              : t("PhoneMenu.noNext")}
+            : next?.status === "LIVE"
+              ? t("PhoneMenu.liveIntro", { course: next.courseTitle })
+              : next
+                ? t("PhoneMenu.nextIntro", {
+                    when: whenText(next, now, t, locale, timeZone),
+                  })
+                : t("PhoneMenu.noNext")}
         </p>
       </header>
 
@@ -135,80 +136,30 @@ export const HomeSessions = async ({
                   <bdi key="k">{next.koskName}</bdi>,
                 ])}
               </p>
-              <Card className="flex flex-col">
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <span className="mds-eyebrow">
-                      {next.status === "LIVE"
-                        ? t("SchedulePage.statusLive")
-                        : t("PhoneMenu.liveBadge")}
-                    </span>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="mds-badge mds-badge--secondary">
-                        {relativeText(
-                          dayLabel(
-                            dayInZone(new Date(next.startsAt), timeZone),
-                            dayInZone(now, timeZone)
-                          ),
-                          t
-                        )}
-                      </span>
-                      <CalendarMenu
-                        text
-                        courseId={next.courseId}
-                        courseTitle={next.courseTitle}
-                        lesson={{
-                          id: next.id,
-                          title: next.title,
-                          startsAt: new Date(next.startsAt).toISOString(),
-                          durationMinutes: next.durationMinutes ?? undefined,
-                        }}
-                        locale={locale}
-                        labels={{
-                          button: t("AddToCalendar.button"),
-                          google: t("AddToCalendar.google"),
-                          apple: t("AddToCalendar.apple"),
-                          downloadFailed: t("AddToCalendar.downloadFailed"),
-                          subscribe: t("AddToCalendar.subscribe"),
-                          note: t("AddToCalendar.note"),
-                          linkIsOnPage: t("AddToCalendar.linkIsOnPage"),
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <p className="mds-h3" dir="auto">
-                    {next.title}
-                  </p>
-                  <p className="mds-body-sm">
-                    <span className="block font-medium">
-                      {joinRun([
-                        formatDayHeading(
-                          dayInZone(new Date(next.startsAt), timeZone),
-                          locale,
-                          timeZone
-                        ),
-                        formatClock(next.startsAt, locale, timeZone),
-                      ])}
-                    </span>
-                    {next.durationMinutes ? (
-                      <span className="block">
-                        {t("SchedulePage.minutes", {
-                          count: next.durationMinutes,
-                        })}
-                      </span>
-                    ) : null}
-                  </p>
-                  {platform && next.meetingUrl ? (
-                    <p>
-                      <PlatformChip platform={platform.id} />
-                    </p>
-                  ) : (
-                    <p className="mds-body-sm rounded-control bg-neutral-sunken p-4">
-                      {t("SchedulePage.noLink")}
-                    </p>
-                  )}
-                </div>
-              </Card>
+              <SessionJoinLive
+                renderedAt={now.toISOString()}
+                startsAt={new Date(next.startsAt).toISOString()}
+                durationMinutes={next.durationMinutes ?? undefined}
+                cancelled={false}
+                title={next.title}
+                headingLevel={3}
+                courseId={next.courseId}
+                courseTitle={next.courseTitle}
+                lessonId={next.id}
+                meetingUrl={next.meetingUrl ?? undefined}
+                platform={platform?.id}
+                platformHost={
+                  next.meetingUrl ? hostOf(next.meetingUrl) : undefined
+                }
+                locale={locale}
+                timeZone={timeZone}
+                courseTimeZone={timeZone}
+                calendar={calendarLabels(t)}
+                labels={{
+                  ...sessionJoinLabels(t),
+                  noLinkText: t("SchedulePage.noLink"),
+                }}
+              />
             </section>
           ) : null}
 

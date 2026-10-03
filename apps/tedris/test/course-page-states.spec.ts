@@ -202,7 +202,7 @@ describe("tedris/08: waiting for approval", () => {
   it("shows the badge, when the application was sent, and the way to withdraw it", async () => {
     const html = await render("PENDING");
     expect(html).toContain(tr.pendingApproval);
-    expect(html).toContain("Başvurun bugün 10:02 ders kadrosuna iletildi");
+    expect(html).toContain("Başvurun bugün 10:02’de ders kadrosuna iletildi");
     expect(html).toContain(tr.withdrawRequest);
     expect(html).not.toContain(`>${tr.apply}</button>`);
     expect(html).not.toContain(MEETING);

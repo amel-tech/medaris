@@ -7,6 +7,7 @@ import { Alert } from "@medaris/ui/mds/alert";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Breadcrumb } from "@medaris/ui/mds/breadcrumb";
 import { Card } from "@medaris/ui/mds/card";
+import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
 import { resolveMeetingPlatform } from "@medaris/utils";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
@@ -17,6 +18,11 @@ import {
   liveEmbedUrlOf,
   recordingsTabPath,
 } from "../recordings-model";
+import {
+  calendarLabels,
+  hostOf,
+  sessionJoinLabels,
+} from "../session-join-labels";
 import { splitArabic, zoneLabel } from "../session-model";
 import { MediaPlayer } from "./media-player";
 import { SessionJoinLive } from "./session-join-live";
@@ -41,14 +47,6 @@ const ArabicText = ({ text }: { text: string }) => (
     )}
   </>
 );
-
-const hostOf = (url: string): string | undefined => {
-  try {
-    return new URL(url.includes("://") ? url : `https://${url}`).hostname;
-  } catch {
-    return undefined;
-  }
-};
 
 const NeighbourCard = ({
   session,
@@ -187,17 +185,7 @@ export const SessionPage = async ({
   crumbs.push({ label: session.title });
 
   const calendar =
-    !session.contentLocked && session.startsAt
-      ? {
-          button: t("AddToCalendar.button"),
-          google: t("AddToCalendar.google"),
-          apple: t("AddToCalendar.apple"),
-          downloadFailed: t("AddToCalendar.downloadFailed"),
-          subscribe: t("AddToCalendar.subscribe"),
-          note: t("AddToCalendar.note"),
-          linkIsOnPage: t("AddToCalendar.linkIsOnPage"),
-        }
-      : undefined;
+    !session.contentLocked && session.startsAt ? calendarLabels(t) : undefined;
 
   const join: ReactNode = session.startsAt ? (
     <SessionJoinLive
@@ -217,22 +205,7 @@ export const SessionPage = async ({
       courseTimeZone={course.timeZone}
       calendar={calendar}
       recordingsHref={recording ? recordingsTabPath(course.id) : undefined}
-      labels={{
-        label: t("SessionPage.joinLabel"),
-        liveLabel: t("SessionPage.liveLabel"),
-        endedLabel: t("SessionPage.endedLabel"),
-        cancelledLabel: t("SessionPage.cancelledLabel"),
-        cancelledText: t("SessionPage.cancelledJoinText"),
-        noLinkText: t("SessionPage.noLinkText"),
-        joinOpensText: t("SessionPage.joinOpensText", { minutes: "{minutes}" }),
-        joinLabel: t("SessionPage.joinAction"),
-        newTabLabel: t("SessionPage.newTab"),
-        revealLabel: t("SessionPage.reveal"),
-        localTimeLabel: t("SessionPage.localTime"),
-        minuteUnit: t("SessionPage.minuteUnit"),
-        recordingsLabel: t("SessionPage.recordingsGo"),
-        elapsedText: t("SessionPage.elapsed", { minutes: "{minutes}" }),
-      }}
+      labels={sessionJoinLabels(t)}
     />
   ) : null;
 
@@ -273,7 +246,9 @@ export const SessionPage = async ({
                     {t("SessionPage.replacementGo")}
                   </a>
                 </>
-              ) : null}
+              ) : (
+                t("SessionPage.noReplacement")
+              )}
             </Alert>
           ) : null}
 
@@ -298,6 +273,15 @@ export const SessionPage = async ({
                 .filter(Boolean)
                 .join(" · ")}
             </MediaPlayer>
+          ) : session.status === "ENDED" &&
+            !recording &&
+            !session.contentLocked ? (
+            // Design tedris/17 "ders kaydı yok": the place the recording will take.
+            <Card title={t("SessionPage.recordingCardTitle")} headingLevel={2}>
+              <EmptyState icon={<Icon name="playCircle" />}>
+                {t("SessionPage.noRecording")}
+              </EmptyState>
+            </Card>
           ) : null}
 
           <div className="grid items-start gap-6 grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] max-md:grid-cols-1">

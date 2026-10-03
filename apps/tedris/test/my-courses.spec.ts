@@ -33,11 +33,12 @@ describe("Derslerim's sections (MDRS-159, design tedris/20)", () => {
     );
   });
 
-  it("is three empty sections for no courses", () => {
+  it("is four empty sections for no courses", () => {
     expect(splitMyCourses([])).toEqual({
       ongoing: [],
       applications: [],
       completed: [],
+      revoked: [],
     });
   });
 });

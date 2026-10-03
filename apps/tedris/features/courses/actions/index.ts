@@ -95,8 +95,8 @@ export const getMyCourses = async (): Promise<EnrolledCourseResponse[]> => {
 };
 
 /**
- * The caller's courses for Derslerim (MDRS-159): enrolled, completed and the
- * requests still waiting for approval. A failure throws: an empty list would
+ * The caller's courses for Derslerim (MDRS-159): enrolled, completed, the
+ * requests still waiting for approval and the courses whose access was withdrawn. A failure throws: an empty list would
  * read as "you have no courses" (design tedris/20).
  */
 export const getMyCoursesWithApplications = async (): Promise<
@@ -107,7 +107,10 @@ export const getMyCoursesWithApplications = async (): Promise<
     accessToken,
     env.TEDRISAT_API_BASE_URL
   );
-  return courses.getEnrolledCourses({ includePending: true });
+  return courses.getEnrolledCourses({
+    includePending: true,
+    includeRevoked: true,
+  });
 };
 
 /** Where a köşk's follow state shows: Keşfet and the köşk's own page (MDRS-159). */

@@ -9,7 +9,9 @@ import { Icon } from "@medaris/ui/mds/icon";
 import { Progress } from "@medaris/ui/mds/progress";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
+import { courseCover } from "~/features/courses/course-cover";
 import type { LooseTranslator } from "~/lib/i18n/loose";
+import { courseActionsLabels } from "../course-actions-labels";
 import { joinRun } from "../join-run";
 import {
   formatLongDate,
@@ -17,6 +19,7 @@ import {
   splitMyCourses,
 } from "../my-courses";
 import { ApplicationRow } from "./application-row";
+import { CourseActionsMenu } from "./course-actions-menu";
 
 // Narrow on purpose: the full translator type hits TS2589 here (MDRS-162).
 type Translate = LooseTranslator;
@@ -77,10 +80,20 @@ const OngoingCard = ({
     className="flex flex-col"
     href={`/courses/${course.id}`}
     title={course.title}
-    media={
-      <CoverPattern seed={course.id} size="sm" label={course.category ?? ""} />
+    media={<CoverPattern {...courseCover(course)} size="sm" />}
+    action={
+      <div className="flex items-center gap-1">
+        <Badge variant="brand">{t("MyCoursesPage.statusEnrolled")}</Badge>
+        <CourseActionsMenu
+          courseId={course.id}
+          courseTitle={course.title}
+          labels={courseActionsLabels(t as never, course.title, {
+            named: true,
+          })}
+          size="mini"
+        />
+      </div>
     }
-    action={<Badge variant="brand">{t("MyCoursesPage.statusEnrolled")}</Badge>}
     footer={
       course.nextSession ? (
         <span>
@@ -156,7 +169,8 @@ export const MyCoursesPage = async ({
   const none =
     sections.ongoing.length +
       sections.applications.length +
-      sections.completed.length ===
+      sections.completed.length +
+      sections.revoked.length ===
     0;
 
   return (
@@ -246,7 +260,7 @@ export const MyCoursesPage = async ({
                     courseTitle={course.title}
                     cover={
                       <CoverPattern
-                        seed={course.id}
+                        {...courseCover(course)}
                         size="xs"
                         aria-hidden="true"
                       />
@@ -281,6 +295,44 @@ export const MyCoursesPage = async ({
             )}
           </section>
 
+          {sections.revoked.length > 0 ? (
+            <section
+              className="flex min-inline-0 flex-col gap-3"
+              aria-labelledby="my-revoked"
+            >
+              <SectionHead
+                id="my-revoked"
+                title={t("MyCoursesPage.revokedTitle")}
+                note={t("MyCoursesPage.revokedCount", {
+                  count: sections.revoked.length,
+                })}
+              />
+              <Card>
+                <ul className="m-0 flex list-none flex-col p-0">
+                  {sections.revoked.map((course) => (
+                    <li
+                      key={course.id}
+                      className="flex flex-wrap items-start gap-4 py-3 border-be border-neutral-subtle first:pbs-0 last:pbe-0 last:border-be-0"
+                    >
+                      <CoverPattern
+                        {...courseCover(course)}
+                        size="xs"
+                        aria-hidden="true"
+                      />
+                      <div className="flex min-inline-0 grow basis-64 flex-col gap-1">
+                        <CourseLine
+                          course={course}
+                          t={t}
+                          note={t("CoursePage.revokedTitle")}
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            </section>
+          ) : null}
+
           <section
             className="flex min-inline-0 flex-col gap-3"
             aria-labelledby="my-completed"
@@ -300,7 +352,7 @@ export const MyCoursesPage = async ({
                   <li key={course.id}>
                     <Card className="flex flex-row flex-wrap items-center gap-4">
                       <CoverPattern
-                        seed={course.id}
+                        {...courseCover(course)}
                         size="xs"
                         aria-hidden="true"
                       />
