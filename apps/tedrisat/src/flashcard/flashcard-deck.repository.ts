@@ -15,6 +15,13 @@ import {
   IUpdateFlashcardDeck,
 } from "./flashcard-deck.repository.interface";
 
+/** What a new request or a change of visibility wipes: the last reviewer's answer (MDRS-180). */
+const CLEARED_DECISION = {
+  publishDecidedAt: null,
+  publishDecidedBy: null,
+  publishRejectReason: null,
+} as const;
+
 @Injectable()
 export class FlashcardDeckRepository implements IFlashcardDeckRepository {
   private readonly includeMap: Record<string, Record<string, any>> = {
@@ -211,6 +218,7 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
               ? DeckPublishStatus.PUBLISHED
               : DeckPublishStatus.PRIVATE,
             publishRequestedAt: null,
+            ...CLEARED_DECISION,
           };
     return this.databaseService.db
       .update(decks)
@@ -228,7 +236,11 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
     // Not `updatedAt`: asking for a review does not edit the deck.
     return this.databaseService.db
       .update(decks)
-      .set({ publishStatus, publishRequestedAt: requestedAt })
+      .set({
+        publishStatus,
+        publishRequestedAt: requestedAt,
+        ...CLEARED_DECISION,
+      })
       .where(eq(decks.id, id))
       .returning()
       .then((result) => result[0] || null);

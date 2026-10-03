@@ -288,6 +288,13 @@
       "when": 1790978792429,
       "tag": "0042_course_closed_cover_label",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1790986989893,
+      "tag": "0043_deck_review_and_proposals",
+      "breakpoints": true
     }
   ]
 }

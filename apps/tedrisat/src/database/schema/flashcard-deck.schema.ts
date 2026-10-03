@@ -39,6 +39,11 @@ export const decks = table(
     publishRequestedAt: timestamp("publish_requested_at", {
       withTimezone: true,
     }),
+    // The Medaris başnazımı's answer (MDRS-180): when and by whom, and the
+    // reason of a refusal. Cleared when the author asks again.
+    publishDecidedAt: timestamp("publish_decided_at", { withTimezone: true }),
+    publishDecidedBy: uuid("publish_decided_by"),
+    publishRejectReason: text("publish_reject_reason"),
     // Free labels the author types on the create form; only the author reads
     // them back. Not the `deck_label` tables: those need a title of five
     // characters and a second request per label.

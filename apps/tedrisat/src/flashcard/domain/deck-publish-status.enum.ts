@@ -8,4 +8,6 @@ export enum DeckPublishStatus {
   PRIVATE = "PRIVATE",
   PENDING = "PENDING",
   PUBLISHED = "PUBLISHED",
+  /** The reviewer refused (MDRS-180); the deck stays private and may ask again. */
+  REJECTED = "REJECTED",
 }

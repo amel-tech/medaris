@@ -2,6 +2,7 @@ export * from "./audit.schema";
 export * from "./ban.schema";
 export * from "./calendar-feed.schema";
 export * from "./course.schema";
+export * from "./deck-proposal.schema";
 export * from "./flashcard.schema";
 export * from "./flashcard-deck.schema";
 export * from "./flashcard-deck-label.schema";

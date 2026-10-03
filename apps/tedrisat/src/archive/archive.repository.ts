@@ -77,7 +77,7 @@ const HIDDEN = sql`
     join courses c on c.id = w.course_id
    where l.archived_at is not null and w.archived_at is null and c.archived_at is null
   union all
-  select 'deck', d.id, d.title, null::uuid, null::uuid, null::uuid, null::uuid,
+  select 'deck', d.id, d.title, d.kosk_id, null::uuid, null::uuid, null::uuid,
          d.archived_at, d.archived_by
     from decks d where d.archived_at is not null
 `;

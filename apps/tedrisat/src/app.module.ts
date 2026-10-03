@@ -16,6 +16,7 @@ import { CalendarFeedModule } from "./calendar-feed/calendar-feed.module";
 import { configuration } from "./config";
 import { CourseModule } from "./course/course.module";
 import { DatabaseModule } from "./database/database.module";
+import { DeckReviewModule } from "./deck-review/deck-review.module";
 import { FlashcardModule } from "./flashcard/flashcard.module";
 import { FlashcardLabelModule } from "./flashcard/flashcard-label.module";
 import { HostingModule } from "./hosting/hosting.module";
@@ -56,6 +57,7 @@ import { UserModule } from "./user/user.module";
     AssignmentModule,
     InactiveScopeModule,
     ArchiveModule,
+    DeckReviewModule,
     BanModule,
     UserModule,
   ],
