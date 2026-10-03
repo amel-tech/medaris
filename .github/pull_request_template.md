@@ -1,17 +1,13 @@
 <!--
-BEFORE ANYTHING ELSE: put the Linear key in the PR TITLE or the BRANCH NAME.
+This pull request is the record of the change: work is no longer tracked in
+Linear. Write the body so that someone who was not in the conversation can tell
+what changed, why, how it was verified, what could not be verified, and what is
+left as follow-up.
 
-Those are the two places the `Traceability` check reads. A key written only in
-this description does NOT satisfy it — the line below is for humans, not the
-gate. If you branched from Linear the branch already carries it and there is
-nothing to do.
-
-Why it matters: Linear's integration attaches pull requests, not commits, so a
-PR with no key closes its issue leaving no trace of the work. That is how
-MDRS-16 came to be marked Done with nothing behind it.
+Keep a pull request to at most 100 changed files (CodeRabbit skips larger ones);
+split bigger work into several pull requests, stacked if they depend on each
+other, and say in each body where it sits in the series.
 -->
-
-Linear: MDRS-<!-- issue number, e.g. 49 -->
 
 ## What changed
 
@@ -27,13 +23,17 @@ Linear: MDRS-<!-- issue number, e.g. 49 -->
 <!-- What you actually ran and what it printed. "CI is green" is not
      verification of behaviour — CI proves the gates below, nothing more. -->
 
+## Not verified, and follow-ups
+
+<!-- Anything you could not run or check, and work deliberately left for a
+     later pull request. -->
+
 ---
 
 - [ ] Title passes commitlint — a `type(scope): subject` with a scope from the
       enum in `commitlint.config.mjs`. Enforced by the **Commit hygiene** check,
       which lints both this title and every commit in the range.
-- [ ] This PR names its Linear issue, in the title or the branch name. Enforced
-      by the **Traceability** check.
+- [ ] At most 100 changed files; larger work is split across pull requests.
 - [ ] `pnpm run affected` is green locally — the same five targets (`lint`,
       `typecheck`, `test`, `build`, `module-boundaries`) the **Verify** check
       runs on CI.

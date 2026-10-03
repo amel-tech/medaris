@@ -1,44 +1,35 @@
 #!/usr/bin/env node
 /**
- * Asserts that a pull request carries its Linear issue key (MDRS-49).
+ * Reports whether a pull request names a Linear issue. Since 3 October 2026 it
+ * no longer requires one.
  *
- * The problem this closes, measured on this repo: Linear's GitHub integration
- * attaches PULL REQUESTS, not bare commits. MDRS-15 shipped through PR #15 and
- * has an attachment; MDRS-24 shipped as three direct pushes with the key in two
- * commit subjects and has `attachments: []`. So the key in a commit message buys
- * nothing on the Linear side — the key has to be somewhere the integration reads,
- * which is the PR title and the head branch name.
+ * History: MDRS-49 made this a hard gate, because Linear's GitHub integration
+ * attaches PULL REQUESTS, not bare commits, and an issue closed with no PR key
+ * left no trace of the work. The project has since stopped tracking work in
+ * Linear: a change is described in full in its own pull request body (what
+ * changed, why, how it was verified, what could not be verified, follow-ups).
+ * A PR with no key is therefore the normal case, not a mistake, and failing it
+ * would block every pull request.
  *
- * Hence the two accepted carriers, either of which satisfies the gate:
+ * The job is kept, and kept green, rather than deleted: its name `Traceability`
+ * is a required status check in the "main protection" ruleset, and a required
+ * check that never reports leaves every PR waiting forever. Removing the
+ * workflow is safe only after that ruleset entry is removed.
  *
- *   * the PR title contains MDRS-<n>   — what the integration matches, and what
- *     lands on main as the squash subject;
- *   * the head branch name contains mdrs-<n> — what Linear's "copy branch name"
- *     produces, and what the integration also matches.
+ * What it still does:
  *
- * Two kinds of PR are exempt because no human titled them and no issue exists
- * to name: dependabot's (by author), and release-please's release PRs (by head
- * branch shape — see RELEASE_BRANCH for why the author is not usable there).
+ *   * fails on a misconfigured trigger (no event payload, no `pull_request`);
+ *   * when an older-style `MDRS-<n>` key IS present in the title or the head
+ *     branch, says so in the step summary, so a PR that still links an issue is
+ *     visible as such;
+ *   * otherwise passes, with a summary saying the PR body is the record.
  *
- * Deliberately NOT checked: a per-commit key. All 21 commits on main since the
- * 24 July history merge already carry one, so such a rule would fire on nothing,
- * and it would not have caught the one commit that did slip (4305356, whose body
- * says "(MDRS-24)" and which still left MDRS-24 with no attachment).
+ * Dependabot and release-please PRs keep their explicit exemption lines so the
+ * step summary tells a reader why no description is expected there.
  *
  * This reads $GITHUB_EVENT_PATH rather than calling the GitHub API: the payload
  * already contains the title, the branch and the actor, so the job needs no
  * token beyond `contents: read` and cannot fail on a 403 or a rate limit.
- *
- * KNOWN LIMIT — this is a SHAPE check, not an existence check. It proves the
- * text `MDRS-<n>` is where Linear's integration will look; it does NOT prove
- * that issue exists, is open, or has anything to do with the diff. `MDRS-1` on
- * a PR about something else passes, and nothing reconciles a bogus key back
- * (reconcile-linear.mjs walks FROM Linear's Done column, so a key Linear never
- * heard of is never visited). `MDRS-0` is rejected because Linear numbers issues
- * from 1, which is the only nonexistence this check can see for free. Closing
- * the rest needs a Linear `issue(id:)` lookup behind a LINEAR_API_KEY secret,
- * degrading to this shape check when the key is absent; that is not wired yet,
- * so do not read a green Traceability as "the issue exists".
  *
  * Usage:
  *   node tools/ci/assert-traceability.mjs             # reads $GITHUB_EVENT_PATH
@@ -226,28 +217,13 @@ if (titleHasKey || branchHasKey) {
   process.exit();
 }
 
-fail([
-  "## Traceability — no Linear issue key",
+summary([
+  "## Traceability — ok, no Linear issue",
   "",
   `**Title:** \`${title}\``,
   `**Branch:** \`${branch}\``,
   "",
-  "This PR carries no `MDRS-<n>` key, so Linear's GitHub integration will not",
-  "attach it to any issue and the issue it implements will close with no link",
-  "back to the work. Fix it either way — one is enough:",
-  "",
-  "1. **Put the key in the PR title**, e.g.",
-  "   `fix(nizam-web): MDRS-49 give NextAuth cookies an app-specific name`.",
-  "   Editing the title re-runs this check (it listens for `edited`).",
-  "2. **Or use the Linear-generated branch name** — open the issue, *Copy git",
-  "   branch name*, and push to that branch, e.g. `taha/mdrs-49-traceability-gates`.",
-  "",
-  "If this PR genuinely has no Linear issue, create one first. That is the",
-  "point of the gate: MDRS-16 was closed with nothing in this repo pointing at",
-  "it, and nobody noticed.",
-  "",
-  "Use a real key. This check only matches the `MDRS-<n>` *shape* — it cannot",
-  "tell an issue that exists from one that does not (`MDRS-0` is the only value",
-  "it rejects outright, because Linear numbers from 1). Passing it with an",
-  "invented number defeats the gate and nothing downstream will catch that.",
+  "This PR names no `MDRS-<n>` issue, which is expected: work is no longer",
+  "tracked in Linear, and the pull request body is the record of what changed,",
+  "why, and how it was verified.",
 ]);
