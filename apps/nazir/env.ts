@@ -13,7 +13,9 @@ export const env = createEnv({
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().min(1).url().optional(),
     OTEL_SERVICE_NAME: z.string().min(1).optional(),
     API_MOCKING: z.enum(["enabled", "disabled"]).default("disabled"),
-    TEDRISAT_API_BASE_URL: z.string().min(1).url().optional(),
+    TEDRISAT_API_BASE_URL: z.string().min(1).url(),
+    // Where "Tedris’e dön" goes (nazir 02). Empty or absent hides the link.
+    TEDRIS_URL: z.union([z.string().url(), z.literal("")]).optional(),
   },
   // MDRS-86: no `client` block on purpose — see apps/tedris/env.ts.
   client: {},
@@ -28,5 +30,6 @@ export const env = createEnv({
     API_MOCKING: process.env.API_MOCKING,
 
     TEDRISAT_API_BASE_URL: process.env.TEDRISAT_API_BASE_URL,
+    TEDRIS_URL: process.env.TEDRIS_URL,
   },
 });

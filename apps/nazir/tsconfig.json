@@ -15,7 +15,7 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "~/*": ["./*"]
     },
     "moduleDetection": "auto",
     "noUncheckedIndexedAccess": false,
@@ -32,10 +32,19 @@
     "next.config.js",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", ".next/**"],
+  "exclude": ["node_modules", ".next/**", "vitest.config.ts"],
   "references": [
     {
+      "path": "../../libs/i18n"
+    },
+    {
+      "path": "../../libs/services"
+    },
+    {
       "path": "../../libs/ui"
+    },
+    {
+      "path": "../../libs/utils"
     }
   ]
 }
