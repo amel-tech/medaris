@@ -150,7 +150,7 @@ $ cd apps/tedrisat && ./node_modules/.bin/vitest run test/unit/passivation
       Tests  25 passed (25)
 $ cd apps/tedrisat && /home/taha/medaris-wt/.bin/e2e-slot.sh ./node_modules/.bin/vitest run test/e2e/scope-passivation.e2e.spec.ts
  Test Files  1 passed (1)
-      Tests  22 passed (22)
+      Tests  23 passed (23)
 $ cd apps/tedrisat && /home/taha/medaris-wt/.bin/e2e-slot.sh ./node_modules/.bin/vitest run test/e2e/kosk-overview.e2e.spec.ts
  Test Files  1 passed (1)
       Tests  17 passed (17)
@@ -178,7 +178,8 @@ non-string confirmation; the token of the preview passivates and the audit row's
 scheduled, a nazım is added) is 409 with the fresh preview, different from the old token and equal to a
 new preview, nothing written, and the fresh token then passes; a token made for one Medaris nazımı is
 refused for another who may passivate too; `KOSK_ALREADY_PASSIVE` and `MADRASAH_ALREADY_PASSIVE`; a
-never-attended köşk: `closesContent: false`, passivation allowed, the course below stays open; who may
+never-attended köşk: `closesContent: false`, passivation allowed, the course below stays open; a köşk whose
+only nazım was revoked: `closesContent: true`, `staffLeaving: 0`, not `alreadyPassive`; who may
 (başnazım and a Medaris nazımı holding the code pass, the köşk's nazımı, the başmüderris, a medrese nazırı,
 a Medaris nazımı with no grant or with the other code and a talebe get 403 on both preview and call, and
 nothing was written); 404 for an unknown id and 401 without a token; the point of the issue: after the
@@ -197,6 +198,7 @@ copy to confirm the restore). Run against `scope-passivation.e2e.spec.ts`:
 | the session predicate loses `cancelled_at is null` (alone) | the köşk preview: `sessions.count` 3, expected 2 |
 | the session predicate loses its upper bound (alone) | the köşk preview: `sessions.count` 3, expected 2 |
 | `closesContent` always true | the never-attended köşk preview |
+| `closesContent` held-only (`ever_managed` read through `holdsIn`) | the köşk whose only nazım left: `closesContent` false, expected true (1 failed, 22 passed) |
 | `POST /madrasahs/:id/deactivate` also takes `madrasah.hide` | the medrese permissions test (the başmüderris passes) |
 | the köşk call revokes nobody | the passivate-with-token test and the "closes a course below" test |
 

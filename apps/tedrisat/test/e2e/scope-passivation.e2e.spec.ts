@@ -443,6 +443,19 @@ describe("Passivating a köşk or medrese (e2e)", () => {
       });
     });
 
+    it("says a köşk whose only nazım left still closes its content, though nobody is leaving", async () => {
+      await db
+        .update(roleAssignments)
+        .set({ revokedAt: new Date(), revokedBy: ADMIN })
+        .where(eq(roleAssignments.scopeId, otherKoskId));
+      const body = await koskPreview(ADMIN, otherKoskId);
+      expect(body).toMatchObject({
+        alreadyPassive: false,
+        closesContent: true,
+        staffLeaving: 0,
+      });
+    });
+
     it("answers 200 with alreadyPassive for a köşk that is passive", async () => {
       await deactivateKosk((await koskPreview()).confirmation).expect(200);
       const body = await koskPreview();
