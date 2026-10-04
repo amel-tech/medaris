@@ -1062,7 +1062,7 @@
     },
     "/kosks/{id}/decks": {
       "get": {
-        "description": "The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk's existence is never denied to them here, `GET /kosks/:id` answers that.",
+        "description": "The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk's existence is never denied to them here, `GET /kosks/:id` answers that. A hidden köşk answers 404 to all but its nazımları, Medaris yönetimi holding `platform.kosk_edit` and the başnazım, as `GET /kosks/:id` does.",
         "operationId": "getKoskDecks",
         "parameters": [
           {
@@ -11112,6 +11112,19 @@
             "type": "string",
             "nullable": true
           },
+          "hiddenLevel": {
+            "nullable": true,
+            "description": "The level that hid it (course, madrasah, kosk, platform); null while it is shown. A course hidden before levels were recorded counts as the lowest level that could have hidden it: the medrese's for a medrese course, the köşk's for its own.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HideLevel"
+              }
+            ]
+          },
+          "canRestore": {
+            "type": "boolean",
+            "description": "Whether the caller may bring the course back: it is hidden, they hold a code of the course ladder on it and act at the level that hid it or above."
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -11142,6 +11155,8 @@
           "coverHue",
           "weekCount",
           "status",
+          "hiddenLevel",
+          "canRestore",
           "createdAt",
           "muderris",
           "studentCount",
