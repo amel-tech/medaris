@@ -64,7 +64,9 @@ which does not hold it. Grants (`madrasah.*` codes from `GET
 - Matrix pin: `apps/tedrisat/test/unit/authz/nazir-medrese-menu.spec.ts` (new,
   36 cases): each route above carries `MANAGE_MADRASAH`, the `MADRASAH_NAZIR`
   row holds it, `PUBLIC` does not. When MDRS-135 opens a route to a nazır, the
-  `PUBLIC` case fails and points here.
+  `PUBLIC` case fails and points here. Count measured with
+  `pnpm exec vitest run test/unit/authz/nazir-medrese-menu.spec.ts` from
+  `apps/tedrisat`: `Tests  36 passed (36)`, `Test Files  1 passed (1)`.
 - The full gate (typecheck, test, build, lint, module-boundaries) — numbers in
   the PR.
 
