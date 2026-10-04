@@ -6,6 +6,7 @@ import { Button } from "@medaris/ui/mds/button";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
+import { Markdown } from "@medaris/ui/mds/markdown";
 import { Select } from "@medaris/ui/mds/select";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useLocale, useTranslations } from "next-intl";
@@ -16,7 +17,6 @@ import {
   listMyCourseQuestions,
   updateLessonQuestion,
 } from "../actions/questions";
-import { NoteMarkdown } from "../note-markdown";
 import {
   appendQuestions,
   canEditQuestion,
@@ -297,7 +297,7 @@ const QuestionCard = ({
       ) : (
         <>
           <div className="flex flex-col gap-1">
-            <NoteMarkdown source={question.body} />
+            <Markdown source={question.body} />
             <p className="mds-caption mds-num">
               {t("askedAt", {
                 when: questionWhen(question.createdAt, locale, timeZone),
@@ -311,7 +311,7 @@ const QuestionCard = ({
                   ? t("answerBy", { name: question.answer.answeredBy.name })
                   : t("answer")}
               </p>
-              <NoteMarkdown source={question.answer.body} />
+              <Markdown source={question.answer.body} />
               <p className="mds-caption mds-num">
                 {questionWhen(question.answer.answeredAt, locale, timeZone)}
               </p>

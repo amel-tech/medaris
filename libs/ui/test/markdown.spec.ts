@@ -1,10 +1,10 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { NoteMarkdown } from "~/features/courses/note-markdown";
+import { Markdown } from "../src/mds/markdown";
 
 const html = (source: string) =>
-  renderToStaticMarkup(createElement(NoteMarkdown, { source }));
+  renderToStaticMarkup(createElement(Markdown, { source }));
 
 /**
  * A note is stored as typed and drawn as React elements (MDRS-150): raw HTML
