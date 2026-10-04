@@ -179,14 +179,17 @@ passive, only how a passive one is read.
   enrolled talebe nor one of the course's müderrisler; its `details` now name the permission
   (`course.view_details`) and whether the realm bypass was used. Test:
   `authz-engine.e2e.spec.ts` › "a köşk nazımı reads a medrese course's content in their köşk, and the
-  read is on the record".
+  read is on the record". `GET /kosks/:id/dashboard` writes one per course whose meeting link it hands
+  out, unless the caller teaches that course (`via: "kosk-dashboard"`; `kosk-dashboard.e2e.spec.ts`).
 - `course.roster_read` (owner, d-1003-09, **"Kayda alınsın"**): a read of a course's roster by anyone who
   is neither an enrolled talebe nor one of the course's müderrisler writes a row, by the same rule as
   the content read (an enrolled talebe who also holds a role in the course's chain stays audited). The
   routes: `GET /courses/:id/enrollments` (the talebe list, with names and e-mail addresses),
   `…/enrollments/removed`, `/stats`, `/badge-counts`, and the köşk-wide
   `GET /kosks/:koskId/enrollments/pending`, which belongs to no one course and so writes a row for
-  every read, with the köşk as its entity. `details` has `via` (which route), `systemAdmin` and the
+  every read, with the köşk as its entity, and so does the köşk home page's list of the newest
+  applicants (`GET /kosks/:id/dashboard`, `via: "kosk-dashboard"`, naming the courses in `courseIds`).
+  `details` has `via` (which route), `systemAdmin` and the
   permission it read through (`course.staff_read`, `course.manage_all` for the köşk's list). The row is
   awaited before the data is read (`CourseService.auditRosterRead`, called after the guard and the
   service's own narrowing), so a write that fails fails the read. On the audit page it is a
@@ -197,6 +200,12 @@ passive, only how a passive one is read.
   **Not covered:** `GET /madrasahs/:id/students` (the medrese's talebe, names and e-mail addresses, for
   its başmüderris) and the medrese's badge counts are not course roster reads and write no row; say if
   they should.
+- The köşk home page (`GET /kosks/:id/dashboard`) opens to `platform.kosk_edit` as well as
+  `kosk.manage`. A caller who reads it by `platform.kosk_edit` alone ("Köşkü düzenle, gizle ya da geri
+  al") gets it without the meeting links and the applicants' e-mail addresses, and `contentLocked` says
+  so. A course in a passive scope is left off the page (its sessions, their counts and its applicants)
+  for everyone but the köşk's nazımları (owner, 4 October) and holders of
+  `platform.inactive_scopes_manage`. Test: `kosk-dashboard.e2e.spec.ts`.
 - `scope.passive_open` and `deck.admin_read` are written by `AuthzService` itself through the audit
   sink (`TedrisatAuthzAudit`, straight to `audit_log`). On the audit page `scope.passive_open` is an
   "İçerik okuma" (`CONTENT_READ`) and `deck.admin_read` an "Özel deste okuma" (`PRIVATE_DECK_READ`);
@@ -266,11 +275,11 @@ The mapping, where a route was not a one-to-one rename:
 | `POST /kosks/:koskId/courses` | `MANAGE_COURSES` | `course.open_standalone` | "Medrese dışı ders aç" |
 | `PUT /courses/:id/muderris` and the müderris list inside a whole-course save | `ASSIGN_MUDERRIS` | `course.open_standalone` or `madrasah.muderris_manage` | one permission opens a course and chooses its müderrisler; in a medrese course it is the medrese's (owner, 1 October) |
 | hide / restore a course | `ARCHIVE` | `course.hide`, `madrasah.course_hide` or `platform.course_hide` | who may restore is decided by kademe, see "Hide and restore by kademe" |
-| `PATCH|PUT /courses/:id`, lesson routes | `EDIT` | `course.edit`, `session.manage` | the lesson routes are session work |
+| `PATCH|PUT /courses/:id`, lesson routes | `EDIT` | `course.edit`, `session.manage` | the lesson routes are session work, adding one session included; inside a whole-course save, adding or dropping a session or changing its time, link, agenda or preview flag also needs `session.manage` (`CourseService.replace`), while titles, texts, order and weeks stay `course.edit` |
 | enrollment decide / complete / remove | `MANAGE_ENROLLMENTS` | `enrollment.decide`, `enrollment.complete`, `enrollment.remove` | the catalogue already told them apart |
 | roster, stats, badge counts | `MANAGE_ENROLLMENTS` | `course.staff_read` | "ders kadrosu talebenin adını ve e-postasını varsayılan görür; bu ayrı bir izin değildir"; each read is audited (`course.roster_read`), see "Audit" |
 | `PUT /courses/:id/progress` | `VIEW_DETAILS` | `course.view_details` | unchanged: "the enrolled and the course staff" |
-| medrese list for management, create, head müderris | `CREATE_MADRASAH` | `platform.madrasah_create` / `platform.madrasah_edit` / `platform.head_muderris_manage` | the başnazım by the bypass, a Medaris nazımı by grant |
+| medrese list for management, create, head müderris | `CREATE_MADRASAH` | the list: any of `platform.madrasah_create`, `platform.madrasah_edit`, `platform.head_muderris_manage`; create: `platform.madrasah_create`; head müderris: `platform.head_muderris_manage` | the başnazım by the bypass, a Medaris nazımı by grant; the list opens to every code the page acts on, nizam's Medreseler item shows for the same three, and the page draws only the buttons the viewer holds (MDRS-108) |
 | restore a medrese | `CREATE_MADRASAH` | `madrasah.hide` or `platform.madrasah_edit` | the başmüderris joins the Medaris administration, by kademe: see "Hide and restore by kademe" |
 | medrese delete | `DELETE` | `madrasah.delete` | held by nobody; the realm bypass alone (MDRS-124) |
 | medrese portal reads | `MANAGE_MADRASAH` | `madrasah.students_view` | |
