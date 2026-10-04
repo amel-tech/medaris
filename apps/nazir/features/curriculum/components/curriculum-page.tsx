@@ -1,21 +1,30 @@
 import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { DEFAULT_TIME_ZONE, resolveTimeZone } from "@medaris/utils";
 import { getLocale } from "next-intl/server";
+import { courseAccess } from "~/features/account/course-standing";
 import { getViewer } from "~/features/account/reads";
 import { PageProblem } from "~/features/shell/components/page-problem";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
 import { CurriculumEditor } from "./curriculum-editor";
 
+/** The permissions that open Müfredat to a caller who holds no course role. */
+const CURRICULUM_CODES = ["course.edit", "session.manage"];
+
 /**
  * Müfredat of a course: its details, weeks and sessions as one form. The
  * course read is the page's probe: `GET /courses/:id` answers every signed-in
- * caller, but strips the programme's content (links, agendas) from anyone who
- * is not course staff, and says so with `contentLocked`; that is the "Bu
- * sayfaya izniniz yok" state here, as a 403 is on the other pages. Saving is
- * the API's own check (`PUT /courses/:id`), and its refusal is worded from the
- * code. The editor is keyed by the course version, so reading the course again
- * (after a save, or after a conflict) starts a fresh form.
+ * caller, and `contentLocked` says the caller does not hold `view_details`
+ * (links and agendas are left out). That is not a staff test: the müderris
+ * and the enrolled talebe are not locked, a ders nazırı always is. A locked
+ * caller therefore opens the page only when their permissions name
+ * `course.edit` or `session.manage` in this course (`courseAccess`); otherwise
+ * it is the "Bu sayfaya izniniz yok" state, as a 403 is on the other pages.
+ * An enrolled talebe is not locked, so the page opens for them and the API
+ * refuses their save. Saving is the API's own check (`PUT /courses/:id`), and
+ * its refusal is worded from the code. The editor is keyed by the course
+ * version, so reading the course again (after a save, or after a conflict)
+ * starts a fresh form.
  */
 export async function CurriculumPage({ courseId }: { courseId: string }) {
   const [t, locale, me, course] = await Promise.all([
@@ -30,11 +39,9 @@ export async function CurriculumPage({ courseId }: { courseId: string }) {
   const problem =
     course.status !== "ok"
       ? course.status
-      : course.data.contentLocked
-        ? "forbidden"
-        : null;
+      : await courseAccess(course.data, courseId, CURRICULUM_CODES);
 
-  if (course.status !== "ok" || problem !== null) {
+  if (course.status !== "ok" || problem !== "ok") {
     return (
       <>
         <header className="flex max-inline-measure flex-col gap-1">
