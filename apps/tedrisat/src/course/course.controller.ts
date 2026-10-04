@@ -255,7 +255,7 @@ export class CourseController {
   })
   @ApiForbiddenResponse({
     description:
-      "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN).",
+      "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN). SELF_GRANT_REFUSED: a changed list names the caller, who does not already hold every müderris permission on the course (SYSTEM_ADMIN excepted).",
   })
   @ApiConflictResponse({
     description:
@@ -279,7 +279,7 @@ export class CourseController {
   @ApiOperation({
     summary: "Replace a course's müderris list and pick its imam",
     description:
-      "Partial update for the 'Müderrisleri düzenle' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `assign_muderris`; the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.",
+      "Partial update for the 'Müderrisleri düzenle' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course); the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.",
     operationId: "setCourseMuderris",
   })
   @ApiOkResponse({ type: MuderrisListResponse })
@@ -287,7 +287,10 @@ export class CourseController {
     description:
       "Empty list, an imam outside the list (MUDERRIS_LIST_INVALID), or the same account twice (MUDERRIS_DUPLICATE_USER).",
   })
-  @ApiForbiddenResponse()
+  @ApiForbiddenResponse({
+    description:
+      "SELF_GRANT_REFUSED: the list names the caller, who does not already hold every müderris permission on the course (SYSTEM_ADMIN excepted). Written to the audit log.",
+  })
   @ApiNotFoundResponse()
   @ApiConflictResponse({
     description:

@@ -1,10 +1,12 @@
 import {
+  ASSIGNED_ROLES,
   AuthenticatedUser,
   AuthzForbiddenError,
   AuthzService,
   ENTITIES,
   PERMISSIONS,
   type PermissionCode,
+  SelfGrantGuard,
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { ArchiveRestoreLevelError } from "../archive/errors/archive-errors";
@@ -117,7 +119,8 @@ export class CourseService {
     private readonly recordingRepo: RecordingRepository,
     private readonly platformPolicies: PlatformPolicyService,
     private readonly notifier: CourseNotifier,
-    private readonly directory: UserDirectoryService
+    private readonly directory: UserDirectoryService,
+    private readonly selfGrant: SelfGrantGuard
   ) {}
 
   /**
@@ -650,14 +653,21 @@ export class CourseService {
     await this.assertMayChangeSettings(id, user, stored, data, false);
     const next = data.muderris ?? [];
     const current = await this.courseRepo.findMuderris(id);
-    if (
-      muderrisListChanged(current, next) &&
-      !(await this.authz.can(user, { entity: ENTITIES.COURSE, id }, [
-        PERMISSIONS.COURSE_OPEN_STANDALONE,
-        PERMISSIONS.MADRASAH_MUDERRIS_MANAGE,
-      ]))
-    ) {
-      throw new MuderrisAssignmentForbiddenError(id);
+    if (muderrisListChanged(current, next)) {
+      if (
+        !(await this.authz.can(user, { entity: ENTITIES.COURSE, id }, [
+          PERMISSIONS.COURSE_OPEN_STANDALONE,
+          PERMISSIONS.MADRASAH_MUDERRIS_MANAGE,
+        ]))
+      ) {
+        throw new MuderrisAssignmentForbiddenError(id);
+      }
+      await this.assertNotNamingSelf(
+        user,
+        id,
+        next.flatMap((m) => (m.userId ? [m.userId] : [])),
+        "course.replace.muderris"
+      );
     }
     await this.assertMuderrisLinks(current, next);
     const replaced = await this.courseRepo.replace(
@@ -688,6 +698,26 @@ export class CourseService {
     if (linking.length === 0) return;
     const [unknown] = await this.directory.findUnknownAccounts(linking);
     if (unknown) throw new MuderrisUnknownUserError(unknown);
+  }
+
+  /**
+   * Naming yourself müderris is for someone who already holds every course
+   * permission here (the köşk nazımı, the medrese's başmüderris), not for a
+   * grantee of `madrasah.muderris_manage`, as on the medrese's own route.
+   */
+  private assertNotNamingSelf(
+    user: AuthenticatedUser,
+    courseId: string,
+    userIds: readonly string[],
+    action: string
+  ): Promise<void> {
+    return this.selfGrant.assertNotSelf(
+      user,
+      userIds,
+      { entity: ENTITIES.COURSE, id: courseId },
+      { role: ASSIGNED_ROLES.MUDERRIS },
+      action
+    );
   }
 
   // ---- session-level writes (MDRS-95) ----
@@ -769,6 +799,12 @@ export class CourseService {
         "The imam must be one of the listed muderris"
       );
     }
+    await this.assertNotNamingSelf(
+      user,
+      courseId,
+      list.map((m) => m.userId),
+      "course.muderris.set"
+    );
     const current = await this.courseRepo.findMuderris(courseId);
     const asRows = list.map((m) => ({ userId: m.userId, name: m.name }));
     const duplicate = duplicateUserId(asRows);
