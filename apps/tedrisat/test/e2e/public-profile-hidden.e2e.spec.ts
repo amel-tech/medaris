@@ -20,6 +20,10 @@ const ZEYNEP = "c1000000-0000-4000-8000-000000000001";
 const OMER = "c1000000-0000-4000-8000-000000000002";
 const ADMIN = "c1000000-0000-4000-8000-0000000000aa";
 const NOBODY = "c1000000-0000-4000-8000-0000000000ff";
+// Used by "writes nothing" only. UserSyncService keeps a per-process cache of
+// recent syncs that cleanTables does not clear, so a caller another test already
+// sent through the interceptor would be skipped there and hide a write.
+const LOOKER = "c1000000-0000-4000-8000-0000000000bb";
 
 const talebe = (sub: string) =>
   bearerFor({
@@ -130,12 +134,12 @@ describe("Public profile hidden (e2e, MDRS-141)", () => {
 
     await request(server())
       .patch("/me/public-profile")
-      .set({ Authorization: talebe(OMER) })
+      .set({ Authorization: talebe(LOOKER) })
       .send({ kunye: "Yeni Künye", city: "Konya", visibility: { city: true } })
       .expect(404);
     await request(server())
       .get("/me/public-profile")
-      .set({ Authorization: talebe(OMER) })
+      .set({ Authorization: talebe(LOOKER) })
       .expect(404);
 
     expect(await databaseService.db.select().from(userProfiles)).toEqual(
