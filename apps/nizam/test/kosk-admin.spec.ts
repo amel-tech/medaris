@@ -8,13 +8,11 @@ import {
   directoryPath,
   emptyOpenForm,
   endsAtOf,
-  fieldOptions,
   filtersFromParams,
   handleLabel,
   isDirty,
   isNazimOf,
   isPastDay,
-  KOSK_FIELDS,
   koskCase,
   koskErrorKey,
   nazimNames,
@@ -41,26 +39,18 @@ describe("filters in the URL (nizam/09, criterion 2)", () => {
     expect(
       filtersFromParams({
         durum: "gizli",
-        seviye: "baslangic",
-        alan: "Hadis",
         gorunurluk: "listelenmeyen",
         q: "  bey ",
         sayfa: "3",
       })
     ).toEqual({
       status: "HIDDEN",
-      level: "BEGINNER",
-      field: "Hadis",
       listing: "UNLISTED",
       q: "bey",
       page: 3,
     });
-    expect(
-      filtersFromParams({ durum: "yok", seviye: "x", sayfa: "-4" })
-    ).toEqual({
+    expect(filtersFromParams({ durum: "yok", sayfa: "-4" })).toEqual({
       status: "ALL",
-      level: undefined,
-      field: undefined,
       listing: "ALL",
       q: "",
       page: 1,
@@ -70,8 +60,6 @@ describe("filters in the URL (nizam/09, criterion 2)", () => {
   it("writes them back, so a reload restores the same view", () => {
     const filters = filtersFromParams({
       durum: "etkin",
-      seviye: "ileri",
-      alan: "Fıkıh",
       gorunurluk: "listelenen",
       q: "fatih",
       sayfa: "2",
@@ -80,6 +68,10 @@ describe("filters in the URL (nizam/09, criterion 2)", () => {
       filters
     );
     expect(directoryPath(filtersFromParams({}))).toBe("/kosks");
+    // An old link's ?seviye= and ?alan= are no longer filters (MDRS-252).
+    expect(
+      directoryPath(filtersFromParams({ seviye: "ileri", alan: "Fıkıh" }))
+    ).toBe("/kosks");
   });
 
   it("starts the pages over when a filter changes", () => {
@@ -207,27 +199,22 @@ describe("Köşk aç (nizam/10)", () => {
     ...emptyOpenForm(),
     name: "  Davutpaşa Köşkü ",
     handle: "@davutpasa",
-    field: "Akaid ve kelâm",
-    level: "BEGINNER" as const,
     tags: "Akaid, Kelâm",
     nazimIds: ["u1"],
   });
 
-  it("keeps the button off until name, field, level and a nazım are right (criterion 1)", () => {
+  it("keeps the button off until the name and a nazım are right (criterion 1)", () => {
     expect(canOpen(emptyOpenForm())).toBe(false);
     expect(canOpen(ready())).toBe(true);
     expect(canOpen({ ...ready(), name: " " })).toBe(false);
-    expect(canOpen({ ...ready(), field: "" })).toBe(false);
-    expect(canOpen({ ...ready(), level: "" })).toBe(false);
     expect(canOpen({ ...ready(), nazimIds: [] })).toBe(false);
   });
 
   it("says what is wrong, field by field", () => {
     expect(openErrors(emptyOpenForm())).toMatchObject({
       name: "nameRequired",
-      field: "fieldRequired",
-      level: "levelRequired",
     });
+    expect(Object.keys(openErrors(emptyOpenForm()))).toEqual(["name"]);
     expect(openErrors({ ...ready(), name: "A" }).name).toBe("nameShort");
     expect(openErrors({ ...ready(), handle: "Davut Paşa" }).handle).toBe(
       "handleInvalid"
@@ -246,8 +233,6 @@ describe("Köşk aç (nizam/10)", () => {
       {
         name: "Davutpaşa Köşkü",
         handle: "davutpasa",
-        field: "Akaid ve kelâm",
-        level: "BEGINNER",
         tags: ["Akaid", "Kelâm"],
         coverHue: TONE_HUE.zumrut,
         isPrivate: true,
@@ -271,19 +256,16 @@ describe("Köşk aç (nizam/10)", () => {
     expect(addNazim(list, { id: "b", name: "Ömer" })).toHaveLength(2);
   });
 
-  it("offers the eleven fields of the design, and keeps an older köşk's own", () => {
-    expect(KOSK_FIELDS).toHaveLength(11);
-    expect(fieldOptions("Hadis")).toEqual(KOSK_FIELDS);
-    expect(fieldOptions("Tefsir & Hadis")[0]).toBe("Tefsir & Hadis");
-    expect(fieldOptions(null)).toEqual(KOSK_FIELDS);
+  it("sends no field or level: the form does not carry them (MDRS-252)", () => {
+    const body = openPayload(ready());
+    expect(body).not.toHaveProperty("field");
+    expect(body).not.toHaveProperty("level");
   });
 });
 
 describe("Köşk ayarları (nizam/24)", () => {
   const kosk = {
     name: "Nûruosmaniye Köşkü",
-    field: "Arapça dil ilimleri",
-    level: "BEGINNER",
     tags: ["Sarf", "Nahiv"],
     coverHue: 250,
     description: "Arapça dil ilimlerinin köşkü.",
@@ -295,8 +277,6 @@ describe("Köşk ayarları (nizam/24)", () => {
   it("opens filled with the köşk's values (criterion 1)", () => {
     expect(settingsFromKosk(kosk)).toEqual({
       name: "Nûruosmaniye Köşkü",
-      field: "Arapça dil ilimleri",
-      level: "BEGINNER",
       tags: "Sarf, Nahiv",
       tone: "laciverd",
       description: "Arapça dil ilimlerinin köşkü.",
@@ -349,13 +329,17 @@ describe("Köşk ayarları (nizam/24)", () => {
     const form = settingsFromKosk(kosk);
     expect(settingsErrors(form)).toEqual({});
     expect(settingsErrors({ ...form, name: "  " }).name).toBe("nameRequired");
-    expect(settingsErrors({ ...form, field: "" }).field).toBe("fieldRequired");
     expect(isDirty({ ...form, name: "" }, kosk)).toBe(true);
   });
 
-  it("shows a level the lists do not know as not chosen", () => {
-    expect(settingsFromKosk({ ...kosk, level: "EXPERT" }).level).toBe("");
-    expect(settingsFromKosk({ ...kosk, level: undefined }).level).toBe("");
+  it("leaves the köşk's own field and level alone, whatever they hold (MDRS-252)", () => {
+    const old = { ...kosk, field: "Tefsir & Hadis", level: "EXPERT" };
+    const form = settingsFromKosk(old);
+    expect(form).not.toHaveProperty("field");
+    expect(form).not.toHaveProperty("level");
+    expect(settingsPayload({ ...form, name: "Başka" }, old)).toEqual({
+      name: "Başka",
+    });
   });
 });
 
@@ -427,7 +411,7 @@ describe("the catalogue", () => {
     }
   });
 
-  it("names the four covers and the four levels in all three languages", () => {
+  it("names the four covers in all three languages", () => {
     for (const locale of ["tr", "en", "ar"] as const) {
       const nizam = resources[locale].nizam as unknown as Record<
         string,
@@ -436,9 +420,6 @@ describe("the catalogue", () => {
       for (const ns of ["OpenKoskDialog", "KoskSettings"] as const) {
         for (const tone of COVER_TONES) {
           expect(nizam[ns]?.covers?.[tone]).toBeTruthy();
-        }
-        for (const level of ["ALL", "BEGINNER", "INTERMEDIATE", "ADVANCED"]) {
-          expect(nizam[ns]?.levels?.[level]).toBeTruthy();
         }
       }
     }

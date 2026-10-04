@@ -3,7 +3,6 @@
 import type {
   KoskDirectoryItemResponse,
   KoskDirectoryResponse,
-  KoskLevel,
   KoskListingFilter,
   KoskStatusFilter,
 } from "@medaris/services/tedrisat";
@@ -16,7 +15,6 @@ import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
-import { Select } from "@medaris/ui/mds/select";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import { useRouter } from "next/navigation";
@@ -30,7 +28,6 @@ import {
   handleLabel,
   isNazimOf,
   koskErrorKey,
-  LEVEL_FILTERS,
   LISTING_CHIPS,
   type Messages,
   nazimNames,
@@ -55,12 +52,11 @@ interface Props {
 }
 
 const SEARCH_DELAY_MS = 300;
-const ALL = "all";
 
 /**
- * Köşkler (nizam 09): every köşk with its nazımları, field, course count and
- * status, the status tabs with their counts, a search, a level select, the
- * Alan and Görünürlük chips and a pager. The URL is the one source of the
+ * Köşkler (nizam 09): every köşk with its nazımları, course count and status,
+ * the status tabs with their counts, a search, the Görünürlük chips and a
+ * pager (a köşk's alan and level are not shown or filtered, MDRS-252). The URL is the one source of the
  * filters: a tab, a chip or a search navigates, the server reads again, so
  * the counts and the rows always come from the same answer. "Geri al" brings
  * a hidden köşk back; "Köşk aç" is nizam/10. A köşk nazımı sees only their
@@ -201,12 +197,6 @@ export function KosksDirectory({
         ),
     },
     {
-      key: "field",
-      header: t("columns.field"),
-      width: "16%",
-      render: (k) => <bdi>{k.field ?? ""}</bdi>,
-    },
-    {
       key: "courses",
       header: t("columns.courses"),
       align: "right",
@@ -279,15 +269,6 @@ export function KosksDirectory({
   const emptyText =
     directory && directory.counts.all === 0 ? t("emptyAll") : t("emptyFilter");
 
-  const fieldChoices = [
-    { value: ALL, label: t("allChip") },
-    ...(directory?.fields ?? []).map((f) => ({ value: f, label: f })),
-  ];
-  // A field in the URL that no köşk carries any more still shows as chosen.
-  if (filters.field && !fieldChoices.some((c) => c.value === filters.field)) {
-    fieldChoices.push({ value: filters.field, label: filters.field });
-  }
-
   return (
     <div
       className="flex flex-col gap-section [font-family:var(--font-ui)]"
@@ -353,42 +334,8 @@ export function KosksDirectory({
                         />
                       </Field>
                     </div>
-                    <div className="w-[14rem]">
-                      <Select
-                        aria-label={t("levelLabel")}
-                        value={filters.level ?? ALL}
-                        options={[
-                          { value: ALL, label: t("levelAll") },
-                          ...LEVEL_FILTERS.map((level) => ({
-                            value: level,
-                            label: t("levelValue", {
-                              level: t(`levels.${level}`),
-                            }),
-                          })),
-                        ]}
-                        onChange={(next) =>
-                          change({
-                            level:
-                              !next || next === ALL
-                                ? undefined
-                                : (next as KoskLevel),
-                          })
-                        }
-                      />
-                    </div>
                   </div>
                   <div className="flex flex-wrap gap-x-10 gap-y-4">
-                    <ChoiceChips
-                      legend={t("fieldLegend")}
-                      legendVisible
-                      options={fieldChoices}
-                      value={filters.field ?? ALL}
-                      onChange={(next) =>
-                        change({
-                          field: !next || next === ALL ? undefined : next,
-                        })
-                      }
-                    />
                     <ChoiceChips
                       legend={t("listingLegend")}
                       legendVisible

@@ -1,6 +1,5 @@
 "use client";
 
-import type { KoskLevel } from "@medaris/services/tedrisat";
 import { toast } from "@medaris/ui/components/sonner";
 import { Button } from "@medaris/ui/mds/button";
 import { Checkbox } from "@medaris/ui/mds/checkbox";
@@ -10,7 +9,6 @@ import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
-import { Select } from "@medaris/ui/mds/select";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
@@ -20,8 +18,6 @@ import {
   COVER_TONES,
   canOpen,
   emptyOpenForm,
-  FORM_LEVELS,
-  fieldOptions,
   koskErrorKey,
   type OpenKoskForm,
   openErrors,
@@ -36,18 +32,17 @@ interface Props {
   /** called with the new köşk's name and id once it is saved */
   onOpened?: (name: string, id: string) => void;
   /** what the form starts with: a köşk application's values (nizam/15 "Köşkü aç") */
-  initial?: Partial<Pick<OpenKoskForm, "name" | "field" | "description">>;
+  initial?: Partial<Pick<OpenKoskForm, "name" | "description">>;
   /** the nazımları the form starts with: the applicant */
   initialPeople?: PickedUser[];
 }
 
-type Touched = Partial<Record<"name" | "handle" | "field" | "level", boolean>>;
+type Touched = Partial<Record<"name" | "handle", boolean>>;
 
 /**
- * "Köşk aç" (nizam 10): a Dialog with a Form — ad, kısa ad, alan, seviye,
- * etiketler, açıklama, kapak rengi, listeleme and the köşk nazımları found by
- * e-mail. The button stays off until the name, field, level and at least one
- * nazım are right; a short name the server finds taken answers under its own
+ * "Köşk aç" (nizam 10): a Dialog with a Form — ad, kısa ad, etiketler,
+ * açıklama, kapak rengi, listeleme and the köşk nazımları found by e-mail.
+ * The button stays off until the name and at least one nazım are right; a short name the server finds taken answers under its own
  * field. The scrim does not close it, so typed input is not lost to a stray
  * click, and a failure keeps it open. The name has the focus.
  */
@@ -189,45 +184,6 @@ export function OpenKoskDialog({
               setTaken(false);
             }}
             onBlur={() => touch("handle")}
-          />
-        </Field>
-        <Field
-          label={t("fieldLabel")}
-          required
-          help={t("fieldHelp")}
-          error={show("field")}
-        >
-          <Select
-            name="field"
-            placeholder={t("fieldPlaceholder")}
-            options={fieldOptions(null)}
-            value={form.field || null}
-            disabled={saving}
-            onChange={(value) => {
-              set("field", value ?? "");
-              touch("field");
-            }}
-          />
-        </Field>
-        <Field
-          label={t("levelLabel")}
-          required
-          help={t("levelHelp")}
-          error={show("level")}
-        >
-          <Select
-            name="level"
-            placeholder={t("levelPlaceholder")}
-            options={FORM_LEVELS.map((level) => ({
-              value: level,
-              label: t(`levels.${level}`),
-            }))}
-            value={form.level || null}
-            disabled={saving}
-            onChange={(value) => {
-              set("level", (value ?? "") as KoskLevel | "");
-              touch("level");
-            }}
           />
         </Field>
       </div>

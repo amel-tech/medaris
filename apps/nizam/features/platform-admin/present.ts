@@ -50,7 +50,7 @@ export const isSettled = (body: unknown): boolean =>
 
 // ---- köşk applications (nizam 15) ---------------------------------------------------
 
-/** The köşk form's own spelling of an application's field code. */
+/** An application's field code as the screens spell it. */
 export const FIELD_LABELS: Record<string, string> = {
   ARABIC_LANGUAGE_SCIENCES: "Arapça dil ilimleri",
   RHETORIC: "Belâgat",
@@ -72,14 +72,9 @@ export const phoneOrNull = (phone: string | null | undefined): string | null =>
   phone && phone.trim() !== "" ? phone : null;
 
 /** What the "Köşk aç" form is filled with from an application. */
-export function openFormFromApplication(a: {
-  name: string;
-  field: string;
-  summary: string;
-}) {
+export function openFormFromApplication(a: { name: string; summary: string }) {
   return {
     name: a.name,
-    field: fieldLabel(a.field),
     description: a.summary,
   };
 }

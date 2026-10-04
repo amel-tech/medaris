@@ -1,6 +1,6 @@
 "use client";
 
-import type { KoskLevel, KoskResponse } from "@medaris/services/tedrisat";
+import type { KoskResponse } from "@medaris/services/tedrisat";
 import { toast } from "@medaris/ui/components/sonner";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Button } from "@medaris/ui/mds/button";
@@ -10,7 +10,6 @@ import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
-import { Select } from "@medaris/ui/mds/select";
 import { Tabs } from "@medaris/ui/mds/tabs";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useRouter } from "next/navigation";
@@ -19,8 +18,6 @@ import { type FormEvent, useState, useTransition } from "react";
 import { updateKosk } from "../actions";
 import {
   COVER_TONES,
-  FORM_LEVELS,
-  fieldOptions,
   handleLabel,
   isDirty,
   koskCase,
@@ -159,41 +156,6 @@ export function KoskSettings({ kosk, nazimCount, hostingCount }: Props) {
                   mono
                   readOnly
                   value={handleLabel(base.handle) ?? ""}
-                />
-              </Field>
-              <Field
-                label={t("fieldLabel")}
-                required
-                help={t("fieldHelp")}
-                error={show("field")}
-              >
-                <Select
-                  name="field"
-                  placeholder={t("fieldPlaceholder")}
-                  options={fieldOptions(base.field)}
-                  value={form.field || null}
-                  disabled={saving}
-                  onChange={(value) => set("field", value ?? "")}
-                />
-              </Field>
-              <Field
-                label={t("levelLabel")}
-                required
-                help={t("levelHelp")}
-                error={show("level")}
-              >
-                <Select
-                  name="level"
-                  placeholder={t("levelPlaceholder")}
-                  options={FORM_LEVELS.map((level) => ({
-                    value: level,
-                    label: t(`levels.${level}`),
-                  }))}
-                  value={form.level || null}
-                  disabled={saving}
-                  onChange={(value) =>
-                    set("level", (value ?? "") as KoskLevel | "")
-                  }
                 />
               </Field>
             </div>
