@@ -15,7 +15,10 @@ interface AuditTypeRule {
 
 export const AUDIT_TYPE_RULES = {
   CONTENT_READ: { like: ["course.content_read"] },
-  PRIVATE_DECK_READ: { like: ["deck.private-read"] },
+  // Two acts, one kind: the nizam preview of a requested deck writes
+  // `deck.private-read`, the başnazım's read through the deck routes writes
+  // `deck.admin_read` (MDRS-148).
+  PRIVATE_DECK_READ: { like: ["deck.private-read", "deck.admin_read"] },
   PERSONAL_DATA_READ: {
     like: ["kosk_application.contact_read", "course.roster_read"],
   },
@@ -36,7 +39,7 @@ export const AUDIT_TYPE_RULES = {
   POLICY_CHANGE: { like: ["platform_policy.%", "kosk.policy_change"] },
   BAN: { like: ["ban.%"] },
   HIDE: {
-    like: ["%.hide", "%.restore"],
+    like: ["%.hide", "%.restore", "deck.unpublish"],
   },
   HOSTING: { like: ["hosting_right.%"] },
   APPEAL: { like: ["appeal.%"] },

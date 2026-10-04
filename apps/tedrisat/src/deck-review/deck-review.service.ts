@@ -18,6 +18,7 @@ import {
   IRequestCounts,
 } from "./deck-review.repository";
 import {
+  DeckNotPublishedError,
   DeckProposalNotFoundError,
   DeckProposalNotPendingError,
   DeckRequestNotFoundError,
@@ -50,9 +51,10 @@ export interface ICreateKoskDeck {
  * and the Gizle action (nizam/30 and 35).
  *
  * Authorization is here, not in `@Authz`: the engine has no entity for either
- * question. Reviewing publish requests is the Medaris başnazımı's
- * (SYSTEM_ADMIN) alone, since `platform.deck_publish` is not enforced
- * anywhere yet; a köşk's decks are its nazımları's and the başnazım's.
+ * question. Reviewing publish requests is the Medaris başnazımı's and that of
+ * a Medaris nazımı holding `platform.deck_publish`; taking a published deck
+ * down again is the başnazım's alone (MDRS-148); a köşk's decks are its
+ * nazımları's and the başnazım's.
  */
 @Injectable()
 export class DeckReviewService {
@@ -140,6 +142,38 @@ export class DeckReviewService {
     }
     await this.tell(deck.authorId, deckId, {
       outcome: "rejected",
+      deckTitle: deck.title,
+      reason: trimmed,
+    });
+  }
+
+  /**
+   * The başnazım takes a published deck back to private (MDRS-148). The reason
+   * is the owner's to read, and the audit row is written with the change.
+   */
+  async unpublish(
+    user: AuthenticatedUser,
+    deckId: string,
+    reason: string
+  ): Promise<void> {
+    if (!this.authz.isSystemAdmin(user)) {
+      throw new DeckReviewForbiddenError(
+        "Only the Medaris başnazımı may unpublish a deck"
+      );
+    }
+    const deck = await this.repo.findDeck(deckId);
+    if (!deck || deck.archivedAt !== null) {
+      throw new DeckRequestNotFoundError(deckId);
+    }
+    const trimmed = reason.trim();
+    if (
+      deck.publishStatus !== DeckPublishStatus.PUBLISHED ||
+      !(await this.repo.unpublish(deck, user.sub, trimmed))
+    ) {
+      throw new DeckNotPublishedError(deckId);
+    }
+    await this.tell(deck.authorId, deckId, {
+      outcome: "unpublished",
       deckTitle: deck.title,
       reason: trimmed,
     });

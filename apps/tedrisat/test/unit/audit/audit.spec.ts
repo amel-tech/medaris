@@ -25,6 +25,8 @@ describe("the kind of an audit row", () => {
   it.each([
     ["course.content_read", "CONTENT_READ"],
     ["deck.private-read", "PRIVATE_DECK_READ"],
+    ["deck.admin_read", "PRIVATE_DECK_READ"],
+    ["deck.unpublish", "HIDE"],
     ["kosk_application.contact_read", "PERSONAL_DATA_READ"],
     ["course.roster_read", "PERSONAL_DATA_READ"],
     ["user.lookup", "USER_LOOKUP"],
