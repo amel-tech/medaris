@@ -7,7 +7,7 @@
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
-  "rememberMe": false,
+  "rememberMe": true,
   "sslRequired": "external",
   "bruteForceProtected": true,
   "permanentLockout": false,

@@ -408,6 +408,7 @@ describe("Keycloak configuration package (e2e)", () => {
       loginTheme: "medaris-keycloak-theme",
       emailTheme: "medaris-keycloak-theme",
       accessTokenLifespan: 300,
+      rememberMe: true,
       ssoSessionIdleTimeout: 18000,
       ssoSessionMaxLifespan: 36000,
     });
