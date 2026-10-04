@@ -188,6 +188,7 @@ POST /madrasahs/:id/restore -> madrasah.hide | platform.madrasah_edit on byExist
 POST /me/calendar-feed -> no AuthzGuard
 POST /nizam/deck-publish-requests/:id/approve -> no AuthzGuard
 POST /nizam/deck-publish-requests/:id/reject -> no AuthzGuard
+POST /nizam/deck-publish-requests/:id/unpublish -> no AuthzGuard
 POST /nizam/inactive-scopes/:type/:id/assign -> no AuthzGuard
 POST /nizam/inactive-scopes/:type/:id/view -> no AuthzGuard
 POST /nizam/kosk-applications/:id/approve -> no AuthzGuard
