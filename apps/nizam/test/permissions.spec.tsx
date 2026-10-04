@@ -36,6 +36,7 @@ import {
   orderByCatalog,
   permissionErrorKey,
   platformGroupOf,
+  selfMadeItems,
   summaryCounts,
   toggleExtra,
   withoutGroupCodes,
@@ -71,6 +72,7 @@ describe("codes and messages", () => {
       "platform.kosk_create",
       "platform.kosk_nazim_manage",
       "platform.kosk_edit",
+      "platform.course_hide",
       "platform.hosting_grant",
       "platform.madrasah_create",
       "platform.head_muderris_manage",
@@ -304,6 +306,33 @@ describe("the dismissal question (nizam 11, _kurallar 14, 15)", () => {
       dismissDecisions(decisionItems(given), all).map((d) => d.kind)
     ).toEqual(["ROLE", "GRANT"]);
   });
+
+  it("asks nothing about a row the person made for themselves: the API revokes it and takes no answer for it", () => {
+    const person = "AAAAAAAA-0000-4000-8000-000000000001";
+    const given = [
+      { kind: "ROLE", id: "r1", to: { id: "u-rabia" } },
+      { kind: "ROLE", id: "r2", to: { id: person.toLowerCase() } },
+      { kind: "GRANT", id: "g1", to: { id: person.toLowerCase() } },
+      { kind: "GROUP", id: "p1", to: null },
+    ] as GivenItemResponse[];
+    expect(decisionItems(given, person).map(givenKey)).toEqual(["ROLE:r1"]);
+    expect(selfMadeItems(given, person).map(givenKey)).toEqual([
+      "ROLE:r2",
+      "GRANT:g1",
+    ]);
+    const answers = { "ROLE:r1": "TAKE_OVER" } as const;
+    expect(dismissReady(decisionItems(given, person), answers)).toBe(true);
+    expect(dismissDecisions(decisionItems(given, person), answers)).toEqual([
+      { kind: "ROLE", id: "r1", action: "TAKE_OVER" },
+    ]);
+    // Without the person, nothing is set apart (the older call still works).
+    expect(decisionItems(given).map(givenKey)).toEqual([
+      "ROLE:r1",
+      "ROLE:r2",
+      "GRANT:g1",
+    ]);
+    expect(selfMadeItems(given, undefined)).toEqual([]);
+  });
 });
 
 describe("the group form (nizam 13 criteria 2, 3, 4)", () => {
@@ -363,6 +392,12 @@ describe("the group form (nizam 13 criteria 2, 3, 4)", () => {
     );
     expect(permissionErrorKey({ code: "WHATEVER" })).toBe("errors.generic");
     expect(permissionErrorKey(undefined)).toBe("errors.generic");
+    expect(permissionErrorKey({ code: "DISMISS_SEAT_HANDED_ON" })).toBe(
+      "errors.dismissCascade"
+    );
+    expect(permissionErrorKey({ code: "DISMISS_TAKE_OVER_WITHOUT_SEAT" })).toBe(
+      "errors.dismissSeatless"
+    );
   });
 });
 

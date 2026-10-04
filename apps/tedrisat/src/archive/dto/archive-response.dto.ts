@@ -90,6 +90,12 @@ export class ArchiveItemResponse {
 
   @ApiProperty({ type: ArchiverResponse, nullable: true })
   archivedBy!: ArchiverResponse | null;
+
+  @ApiProperty({
+    description:
+      "Whether the caller may bring it back (Geri al): false when it was hidden at a level above the one the caller acts at (MDRS-135), so no button leads to a 403 ARCHIVE_RESTORE_LEVEL. A hidden parent still answers 409 on restore.",
+  })
+  canRestore!: boolean;
 }
 
 export class PaginatedArchiveResponse {
@@ -108,14 +114,8 @@ export class PaginatedArchiveResponse {
   limit!: number;
 }
 
-/** One row of nazir/12's table. */
-export class MadrasahArchiveItemResponse extends ArchiveItemResponse {
-  @ApiProperty({
-    description:
-      "Whether the caller may bring it back (Geri al). False when the hider's kademe is above theirs; the hider's role is in `archivedBy.role`. A hidden parent still answers 409 on restore.",
-  })
-  canRestore!: boolean;
-}
+/** One row of nazir/12's table: an archive item; `canRestore` comes with every one. */
+export class MadrasahArchiveItemResponse extends ArchiveItemResponse {}
 
 export class MadrasahArchiveCountsResponse {
   @ApiProperty({ description: "Everything hidden in the medrese (Tümü)." })

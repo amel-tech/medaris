@@ -115,6 +115,12 @@ export class KoskCourseRowResponse {
   @ApiPropertyOptional({ type: Date, nullable: true })
   hiddenAt!: Date | null;
 
+  @ApiProperty({
+    description:
+      "Whether the caller may bring this hidden course back (Geri al): false for a shown course and for one hidden at a level above the caller's (MDRS-135), which would answer 403 ARCHIVE_RESTORE_LEVEL.",
+  })
+  canRestore!: boolean;
+
   @ApiProperty({ type: Date })
   createdAt!: Date;
 

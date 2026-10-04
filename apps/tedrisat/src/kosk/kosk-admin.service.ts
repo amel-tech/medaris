@@ -8,7 +8,13 @@ import {
   ROLES,
 } from "@medaris/common";
 import { Injectable, Logger } from "@nestjs/common";
-import { actingLevel, type IHideStep } from "../archive/hide-level";
+import {
+  actingLevel,
+  COURSE_HIDE_LADDER,
+  hiderLevelOf,
+  type IHideStep,
+  mayRestoreAt,
+} from "../archive/hide-level";
 import { GrantExpiryInvalidError } from "../assignment/admin/errors";
 import { checkGrantExpiry } from "../assignment/admin/grant-plan";
 import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
@@ -269,11 +275,41 @@ export class KoskAdminService {
     return { ...rest, openedBy: this.person(ownerId, people) };
   }
 
-  async courseRoster(koskId: string): Promise<KoskCourseRosterResponse> {
+  /**
+   * Each hidden course says whether the caller may bring it back: the level they
+   * act at on it (`COURSE_HIDE_LADDER`, as `POST /courses/:id/restore` decides)
+   * is at or above the level it was hidden at (MDRS-135). So a köşk nazımı is
+   * not shown "Geri al" for a course the platform hid (MDRS-108).
+   */
+  async courseRoster(
+    user: AuthenticatedUser,
+    koskId: string
+  ): Promise<KoskCourseRosterResponse> {
     if (!(await this.repo.koskName(koskId))) {
       throw new KoskNotFoundError(koskId);
     }
-    const items = await this.repo.courseRoster(koskId);
+    const rows = await this.repo.courseRoster(koskId);
+    const items = await Promise.all(
+      rows.map(async ({ hiddenLevel, ...row }) => ({
+        ...row,
+        canRestore:
+          row.status === "HIDDEN" &&
+          mayRestoreAt(
+            await actingLevel(
+              this.authz,
+              user,
+              { entity: ENTITIES.COURSE, id: row.id },
+              COURSE_HIDE_LADDER,
+              SCOPE_TYPES.COURSE
+            ),
+            hiderLevelOf({
+              type: "course",
+              madrasahId: row.madrasah?.id ?? null,
+              archivedLevel: hiddenLevel,
+            })
+          ),
+      }))
+    );
     return {
       items,
       counts: {

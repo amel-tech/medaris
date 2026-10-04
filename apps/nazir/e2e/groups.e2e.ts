@@ -94,7 +94,7 @@ test("nazir/16 — 'Grup tanımla': a name and two permissions are saved and the
   const dialog = dialogOf(page, "İzin grubu tanımla");
   await expect(dialog).toContainText(base?.madrasah.name ?? "");
   await expect(dialog).toContainText("Medrese kapsamı · 0 izin seçili");
-  await expect(dialog.getByRole("checkbox")).toHaveCount(30);
+  await expect(dialog.getByRole("checkbox")).toHaveCount(32);
 
   // nothing yet: refused on the page, nothing written
   await dialog.getByRole("button", { name: "Grubu kaydet" }).click();
