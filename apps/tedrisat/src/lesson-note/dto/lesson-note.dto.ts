@@ -8,6 +8,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from "class-validator";
 
 /** Longest note, in characters of Markdown source. */
@@ -64,7 +65,7 @@ export class UpdateLessonNoteDto {
     maxLength: LESSON_NOTE_BODY_MAX,
     description: BODY_DESCRIPTION,
   })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @Transform(trimmed)
   @IsString()
   @MinLength(1)

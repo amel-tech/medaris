@@ -15,7 +15,8 @@ import { lessons } from "./course.schema";
  * only reader and writer: no route returns a note to anyone else, and every
  * query on this table filters by it. Not a foreign key, like every other user
  * column. RESTRICT like every foreign key under a course;
- * `course/course-purge.ts` removes these before the lessons.
+ * `course/course-purge.ts` and the week and session cases of
+ * `archive/archive.repository.ts` remove these before the lessons.
  *
  * `offset_seconds` is the player position from the start of the video, so a
  * note taken on the live stream points at the same moment in the recording
