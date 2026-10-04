@@ -5,6 +5,7 @@ import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { hideCourse } from "../course-actions";
+import { courseHideOutcome, errorCodeOf } from "../overview-present";
 
 interface Props {
   open: boolean;
@@ -35,7 +36,11 @@ export function HideCourseDialog({
     setSaving(true);
     const result = await hideCourse(courseId);
     setSaving(false);
-    if (!result.success) {
+    // Hidden by another hand meanwhile (409 COURSE_ALREADY_HIDDEN): what the click wanted is done.
+    if (
+      !result.success &&
+      courseHideOutcome(errorCodeOf(result.errorBody)) !== "done"
+    ) {
       toast.error(t("failed"), {
         description: t("failedBody"),
         duration: Number.POSITIVE_INFINITY,

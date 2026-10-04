@@ -1,7 +1,17 @@
-import { AuthzService, type ScopeRef } from "@medaris/common";
+import {
+  AuthzService,
+  ENTITIES,
+  type Entity,
+  NotFoundError,
+  type ScopeRef,
+} from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { TedrisatAuthzContext } from "../authz/tedrisat-authz-context.service";
-import { SCOPE_TYPES } from "../database/schema/role-assignment.schema";
+import {
+  type AssignedRole,
+  SCOPE_TYPES,
+  type ScopeType,
+} from "../database/schema/role-assignment.schema";
 import { MeScopePermissions } from "../user/dto/me-response.dto";
 import { TokenClaims } from "../user/interfaces/token-claims.interface";
 import { identityFromClaims } from "../user/user-identity";
@@ -25,6 +35,16 @@ import {
 } from "./effective-permissions";
 import { permissionsPerScope } from "./me-permissions";
 import { isPermissionCode } from "./permission-catalog";
+
+/** The resource the engine is asked about for a scope with an id. */
+const ENTITY_OF: Record<Exclude<ScopeType, "platform">, Entity> = {
+  kosk: ENTITIES.KOSK,
+  madrasah: ENTITIES.MADRASAH,
+  course: ENTITIES.COURSE,
+};
+
+/** No row: the loader answers the platform's chain alone, as for the create sentinels. */
+const PLATFORM_SENTINEL = "platform";
 
 export function displayNameOf(person: IPersonName | undefined): string | null {
   if (!person) return null;
@@ -147,6 +167,14 @@ export class AssignmentService {
     return { grants };
   }
 
+  /**
+   * The account screen (MDRS-169): every scope a held role or grant names,
+   * with what the engine gives the person there. The engine's own
+   * computation, scope by scope (`AuthzService.effective`), so the screen
+   * shows exactly what the routes decide: a passive scope's closed content, a
+   * grant to "every course", the başmüderris's course work, a grant no role
+   * covers and a code whose scope tag does not reach the scope.
+   */
   async myEffectivePermissions(
     claims: TokenClaims
   ): Promise<MyEffectivePermissionsResponse> {
@@ -156,51 +184,65 @@ export class AssignmentService {
       this.repo.findHeldAssignments(userId),
       this.repo.findHeldGrants(userId),
     ]);
-    const [names, groups] = await Promise.all([
-      this.repo.findScopeNames([
-        ...heldRows.map((r) => ({ type: r.scopeType, id: r.scopeId })),
-        ...heldGrants.map((r) => ({ type: r.scopeType, id: r.scopeId })),
-      ]),
-      this.repo.findGroups(
-        heldGrants.flatMap((r) => (r.groupId ? [r.groupId] : []))
-      ),
+    const names = await this.repo.findScopeNames([
+      ...heldRows.map((r) => ({ type: r.scopeType, id: r.scopeId })),
+      ...heldGrants.map((r) => ({ type: r.scopeType, id: r.scopeId })),
     ]);
-    const assignmentRows = heldRows.filter((r) => scopeExists(r, names));
-    const grantRows = heldGrants.filter((g) => scopeExists(g, names));
     const nameOf = (type: string, id: string | null) =>
       type === SCOPE_TYPES.PLATFORM
         ? null
         : (names.get(scopeKey(type, id))?.name ?? null);
 
-    const courseParents = new Map<
+    // Every scope a role or a grant names, in the order they were given.
+    const scopes = new Map<
       string,
-      { koskId: string; madrasahId: string | null }
+      { type: ScopeType; id: string | null; roles: AssignedRole[] }
     >();
-    for (const [key, named] of names) {
-      if (named.course && key.startsWith(`${SCOPE_TYPES.COURSE}:`)) {
-        courseParents.set(key.slice(SCOPE_TYPES.COURSE.length + 1), {
-          koskId: named.course.koskId,
-          madrasahId: named.course.madrasahId,
-        });
+    for (const row of [...heldRows, ...heldGrants]) {
+      if (!scopeExists(row, names)) continue;
+      const key = scopeKey(row.scopeType, row.scopeId);
+      const scope = scopes.get(key) ?? {
+        type: row.scopeType,
+        id: row.scopeId,
+        roles: [],
+      };
+      if ("role" in row && !scope.roles.includes(row.role)) {
+        scope.roles.push(row.role);
       }
+      scopes.set(key, scope);
     }
+
+    const user = { ...claims, sub: userId };
+    const held = new Map<string, Promise<ReadonlySet<string>>>();
+    const heldIn = (type: ScopeType, id: string | null) => {
+      const resource =
+        type === SCOPE_TYPES.PLATFORM || id === null
+          ? // The platform, or "every course": no row, the platform's chain
+            // with a course of no id under it.
+            { entity: ENTITIES.KOSK, id: PLATFORM_SENTINEL }
+          : { entity: ENTITY_OF[type], id };
+      const key = `${resource.entity}:${resource.id}`;
+      const known = held.get(key);
+      if (known) return known;
+      const codes = this.authz
+        .effective(user, resource, { acrossCourses: true })
+        .then((effective) => effective?.codes ?? new Set<string>())
+        .catch((error: unknown) => {
+          // The scope went between the two reads: nothing is held there.
+          if (error instanceof NotFoundError) return new Set<string>();
+          throw error;
+        });
+      held.set(key, codes);
+      return codes;
+    };
     const built = buildEffectivePermissions(
-      assignmentRows.map((r) => ({
-        role: r.role,
-        type: r.scopeType,
-        id: r.scopeId,
-        name: nameOf(r.scopeType, r.scopeId),
-      })),
-      grantRows.map((g) => ({
-        type: g.scopeType,
-        id: g.scopeId,
-        name: nameOf(g.scopeType, g.scopeId),
-        codes: (g.permission
-          ? [g.permission]
-          : (groups.get(g.groupId ?? "")?.permissions ?? [])
-        ).filter(isPermissionCode),
-      })),
-      (courseId) => courseParents.get(courseId) ?? null
+      await Promise.all(
+        [...scopes.values()].map(async (scope) => ({
+          ...scope,
+          name: nameOf(scope.type, scope.id),
+          codes: await heldIn(scope.type, scope.id),
+        }))
+      )
     );
     return {
       groups: built.map((group) => ({
@@ -222,6 +264,7 @@ export class AssignmentService {
  * `scope_id` is no foreign key, so a role can outlive the scope it names (a
  * köşk, a medrese or a course deleted outside the purge path). Such a row says
  * nothing a person can act on and is left out, never shown as a nameless scope.
+ * The platform and "every course" (a grant with no id) always exist.
  */
 function scopeExists(
   row: { scopeType: string; scopeId: string | null },
@@ -229,6 +272,7 @@ function scopeExists(
 ): boolean {
   return (
     row.scopeType === SCOPE_TYPES.PLATFORM ||
+    row.scopeId === null ||
     names.has(scopeKey(row.scopeType, row.scopeId))
   );
 }

@@ -1,4 +1,5 @@
 import type { HideLevel } from "../archive/hide-level";
+import type { CourseRestoreOutcome } from "../archive/restore-course";
 import type { IPurgeCounts } from "./course-purge";
 import { CourseLevel } from "./domain/course-level.enum";
 import { CourseStatus } from "./domain/course-status.enum";
@@ -429,14 +430,13 @@ export interface ICourseRepository {
     id: string,
     userId: string,
     level: HideLevel
-  ): Promise<ICourse | null>;
-  restore(id: string): Promise<ICourse | null>;
-  /** What a restore needs to know of a course: whether it is hidden, at which level, and its medrese. */
-  findHideState(id: string): Promise<{
-    archivedAt: Date | null;
-    archivedLevel: HideLevel | null;
-    madrasahId: string | null;
-  } | null>;
+  ): Promise<"archived" | "already-hidden" | "not-found">;
+  /** The kademe and the hidden parent decided under the row lock (`restoreCourseIn`). */
+  restore(
+    id: string,
+    restorer: HideLevel,
+    actorId: string
+  ): Promise<CourseRestoreOutcome>;
   /** SYSTEM_ADMIN's delete: the course, its children and an audit entry. */
   purge(id: string, actorId: string): Promise<IPurgeCounts | null>;
   /** The course a lesson belongs to, archived or not; null if no such lesson. */

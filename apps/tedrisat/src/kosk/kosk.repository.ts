@@ -511,7 +511,10 @@ export class KoskRepository implements IKoskRepository {
     return rows.length > 0;
   }
 
-  /** The köşk and its first manager land together or not at all. */
+  /**
+   * The köşk, its first manager and the record of both land together or not at
+   * all; the record is the one `KoskAdminRepository.createWithNazims` writes.
+   */
   async create(kosk: ICreateKosk): Promise<IKosk> {
     return this.db.transaction(async (tx) => {
       const [created] = await tx.insert(kosks).values(kosk).returning();
@@ -520,6 +523,17 @@ export class KoskRepository implements IKoskRepository {
         role: ASSIGNED_ROLES.KOSK_NAZIM,
         scopeId: created.id,
         grantedBy: kosk.ownerId,
+      });
+      await tx.insert(auditLog).values({
+        actorId: kosk.ownerId,
+        action: "kosk.create",
+        entity: "kosk",
+        entityId: created.id,
+        details: {
+          name: created.name,
+          handle: created.handle,
+          nazimIds: [kosk.ownerId.toLowerCase()],
+        },
       });
       return created;
     });

@@ -278,6 +278,20 @@ describe("GrantsView (nizam 38)", () => {
     expect(dismiss).toContain("disabled");
   });
 
+  it("offers no 'İzinleri düzenle' on the viewer's own post, which the API refuses, but keeps it for the başnazım (MDRS-108)", () => {
+    const own = {
+      ...data,
+      items: [{ ...grant, user: { ...grant.user, id: "ME" } }],
+    };
+    const edit = 'aria-label="İzinleri düzenle: Yusuf Kerem Aydınoğlu"';
+    const html = view(own);
+    expect(html).not.toContain(edit);
+    expect(html).toContain('aria-label="Görevden al: Yusuf Kerem Aydınoğlu"');
+    expect(
+      render(<GrantsView koskId="k1" data={own} viewerId="me" viewerIsChief />)
+    ).toContain(edit);
+  });
+
   it("says there is none yet when the list is empty", () => {
     expect(view({ ...data, items: [] })).toContain("Henüz ders nazırı yok.");
   });
