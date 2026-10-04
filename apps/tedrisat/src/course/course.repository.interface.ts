@@ -1,3 +1,4 @@
+import type { ScopeRef } from "@medaris/common";
 import type { HideLevel } from "../archive/hide-level";
 import type { CourseRestoreOutcome } from "../archive/restore-course";
 import type { IPurgeCounts } from "./course-purge";
@@ -451,6 +452,8 @@ export interface ICourseRepository {
   ): Promise<CourseRestoreOutcome>;
   /** Whether the course's köşk is hidden, which closes the course (MDRS-143); null for no such course. */
   findHideState(id: string): Promise<{ koskArchivedAt: Date | null } | null>;
+  /** The first passive scope the course sits in, which closes its content (MDRS-136); null when it is open. */
+  findPassiveScope(id: string): Promise<ScopeRef | null>;
   /** SYSTEM_ADMIN's delete: the course, its children and an audit entry. */
   purge(id: string, actorId: string): Promise<IPurgeCounts | null>;
   /** The course a lesson belongs to, archived or not; null if no such lesson. */

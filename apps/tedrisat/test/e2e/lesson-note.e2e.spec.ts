@@ -1,12 +1,13 @@
 import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import request from "supertest";
 import { purgeCourses } from "../../src/course/course-purge";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { LessonType } from "../../src/course/domain/lesson-type.enum";
 import { DatabaseService } from "../../src/database/database.service";
+import { auditLog } from "../../src/database/schema/audit.schema";
 import { bans } from "../../src/database/schema/ban.schema";
 import {
   courses,
@@ -16,7 +17,10 @@ import {
 } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { lessonNotes } from "../../src/database/schema/lesson-note.schema";
-import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
+import {
+  ASSIGNED_ROLES,
+  roleAssignments,
+} from "../../src/database/schema/role-assignment.schema";
 import {
   LESSON_NOTE_BODY_MAX,
   LESSON_NOTE_OFFSET_MAX,
@@ -56,6 +60,7 @@ describe("a talebe's private notes (MDRS-150, e2e)", () => {
   let databaseService: DatabaseService;
   let dbUtils: TestDatabaseUtils;
 
+  let koskId: string;
   let courseId: string;
   let liveLessonId: string;
   let videoLessonId: string;
@@ -123,6 +128,7 @@ describe("a talebe's private notes (MDRS-150, e2e)", () => {
       .insert(kosks)
       .values({ ownerId: MANAGER_ID, name: "Nûruosmaniye Köşkü" })
       .returning();
+    koskId = kosk.id;
     await assignRole(db(), {
       userId: MANAGER_ID,
       role: ASSIGNED_ROLES.KOSK_NAZIM,
@@ -418,6 +424,177 @@ describe("a talebe's private notes (MDRS-150, e2e)", () => {
     it("does not let a talebe of one course write on another course's session", async () => {
       await create(foreignLessonId, TALEBE_ID, { body: "x" }).expect(403);
       expect(await stored()).toHaveLength(0);
+    });
+  });
+
+  describe("a course the engine closes (MDRS-135)", () => {
+    const leaveWithoutMuderris = () =>
+      db()
+        .update(roleAssignments)
+        .set({ revokedAt: new Date(), revokedBy: MANAGER_ID })
+        .where(
+          and(
+            eq(roleAssignments.scopeId, courseId),
+            eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
+          )
+        );
+
+    /** Every route, as the talebe who wrote `noteId`, with what each answered. */
+    const everyRoute = async (noteId: string, sub = TALEBE_ID) => ({
+      list: (await list(liveLessonId, sub)).status,
+      create: (await create(liveLessonId, sub, { body: "yeni" })).status,
+      edit: (await edit(liveLessonId, noteId, sub, { body: "yeni" })).status,
+      remove: (await remove(liveLessonId, noteId, sub)).status,
+    });
+
+    it("answers a course of a hidden köşk as not found on every route, and writes nothing", async () => {
+      const note = await seed(TALEBE_ID, { body: "kalır" });
+      await db()
+        .update(kosks)
+        .set({ archivedAt: new Date() })
+        .where(eq(kosks.id, koskId));
+
+      expect(await everyRoute(note.id)).toEqual({
+        list: 404,
+        create: 404,
+        edit: 404,
+        remove: 404,
+      });
+      const rows = await stored();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ id: note.id, body: "kalır" });
+    });
+
+    it("answers a hidden course as a session that is not there, and writes nothing", async () => {
+      const note = await seed(TALEBE_ID, { body: "kalır" });
+      await db()
+        .update(courses)
+        .set({ archivedAt: new Date() })
+        .where(eq(courses.id, courseId));
+
+      const res = await list(liveLessonId, TALEBE_ID).expect(404);
+      expect(res.body.code ?? res.body.error?.code).toBe("LESSON_NOT_FOUND");
+      expect(await everyRoute(note.id)).toEqual({
+        list: 404,
+        create: 404,
+        edit: 404,
+        remove: 404,
+      });
+      expect(await stored()).toHaveLength(1);
+    });
+
+    it("closes a passive course to its enrolled talebe on every route, and leaves their notes where they are", async () => {
+      const note = await seed(TALEBE_ID, { body: "kalır" });
+      await leaveWithoutMuderris();
+
+      expect(await everyRoute(note.id)).toEqual({
+        list: 403,
+        create: 403,
+        edit: 403,
+        remove: 403,
+      });
+      const refused = await create(liveLessonId, TALEBE_ID, { body: "x" });
+      expect(refused.body.code ?? refused.body.error?.code).toBe(
+        "LESSON_NOTE_FORBIDDEN"
+      );
+      const rows = await stored();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ id: note.id, body: "kalır" });
+    });
+
+    it("closes a passive course to a talebe who lost their seat as well, and opens it again with the müderris", async () => {
+      await seed(REVOKED_ID, { body: "çıkarılmadan önce" });
+      await leaveWithoutMuderris();
+      await list(liveLessonId, REVOKED_ID).expect(403);
+
+      await assignRole(db(), {
+        userId: MUDERRIS_ID,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeId: courseId,
+        grantedBy: MANAGER_ID,
+      });
+      expect(
+        (await list(liveLessonId, REVOKED_ID).expect(200)).body
+      ).toHaveLength(1);
+      await create(liveLessonId, TALEBE_ID, { body: "yeniden açıldı" }).expect(
+        201
+      );
+    });
+
+    it("leaves a passive course open to the köşk's nazımı who is enrolled in it, on the record", async () => {
+      await db().insert(enrollments).values({
+        userId: MANAGER_ID,
+        courseId,
+        status: EnrollmentStatus.ENROLLED,
+      });
+      await leaveWithoutMuderris();
+
+      const written = await create(liveLessonId, MANAGER_ID, {
+        body: "nazımın notu",
+      }).expect(201);
+      await edit(liveLessonId, written.body.id, MANAGER_ID, {
+        body: "düzeltildi",
+      }).expect(200);
+      expect(
+        (await list(liveLessonId, MANAGER_ID).expect(200)).body
+      ).toHaveLength(1);
+
+      const opened = await db()
+        .select()
+        .from(auditLog)
+        .where(
+          and(
+            eq(auditLog.actorId, MANAGER_ID),
+            eq(auditLog.action, "scope.passive_open")
+          )
+        );
+      expect(opened.length).toBeGreaterThan(0);
+    });
+
+    it("refuses a talebe barred from the whole köşk, and still lets them read and delete their own", async () => {
+      const mine = await seed(TALEBE_ID, { body: "yasaktan önce" });
+      await db().insert(bans).values({
+        userId: TALEBE_ID,
+        koskId,
+        scope: "KOSK",
+        reason: "Düzeni bozdu.",
+        bannedBy: MANAGER_ID,
+        bannedRole: "KOSK_NAZIM",
+        bannedTier: 2,
+      });
+
+      await create(liveLessonId, TALEBE_ID, { body: "x" }).expect(403);
+      await edit(liveLessonId, mine.id, TALEBE_ID, { body: "x" }).expect(403);
+      expect(
+        (await list(liveLessonId, TALEBE_ID).expect(200)).body
+      ).toHaveLength(1);
+      await remove(liveLessonId, mine.id, TALEBE_ID).expect(204);
+    });
+
+    it("refuses a barred talebe even where a role of theirs holds the course's content", async () => {
+      // `course.view_details` is the müderris's by role, so the engine alone
+      // would let a barred müderris who is also enrolled write.
+      await db().insert(enrollments).values({
+        userId: MUDERRIS_ID,
+        courseId,
+        status: EnrollmentStatus.ENROLLED,
+      });
+      await create(liveLessonId, MUDERRIS_ID, {
+        body: "müderrisin notu",
+      }).expect(201);
+      await db().insert(bans).values({
+        userId: MUDERRIS_ID,
+        koskId,
+        courseId,
+        scope: "COURSE",
+        reason: "Düzeni bozdu.",
+        bannedBy: MANAGER_ID,
+        bannedRole: "KOSK_NAZIM",
+        bannedTier: 2,
+      });
+
+      await create(liveLessonId, MUDERRIS_ID, { body: "x" }).expect(403);
+      expect(await stored()).toHaveLength(1);
     });
   });
 
