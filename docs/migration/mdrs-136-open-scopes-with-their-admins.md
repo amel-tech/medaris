@@ -20,6 +20,13 @@ the command that printed it; commands run from `apps/tedrisat` unless a `cd` say
    `CourseService.create` no longer calls `KoskService.assertManager` (a role check on top of the route's
    `course.open_standalone`), so the başnazım opens a course in any köşk, as the route's realm bypass always
    promised; it keeps the 404 for a köşk that does not exist. A Medaris nazımı still cannot (decision D2 below).
+   With the service check gone, the route's permission was the only one left, so `CourseController.create` now
+   asks `SelfGrantGuard` (MUDERRIS role, köşk scope) about every account in `muderris` and `imamUserId`: a
+   grantee of `course.open_standalone` opens a course for others, not for themselves (403 `SELF_GRANT_REFUSED`,
+   audited, nothing written), as `MadrasahCourseController.open` already did. The köşk nazımı holds every
+   MUDERRIS code in the köşk and passes; the başnazım is not asked. The same hole on an existing course
+   (`PUT /courses/:id/muderris`, the müderris branch of `PUT /courses/:id`) is recorded, not closed: see
+   "Decided by default" 8.
 3. **Köşk nazımları are changed by `platform.kosk_nazim_manage`, not by being a nazım** (owner decision
    d-1004-12, "role göre değil, yetkiye göre"). `POST|DELETE /kosks/:id/managers/:userId` ask that one code
    (the başnazım passes by the realm bypass). The köşk nazımı does not hold it by `ROLE_DEFAULT_PERMISSIONS`
@@ -37,7 +44,9 @@ the command that printed it; commands run from `apps/tedrisat` unless a `cd` say
    it is (it used to delete everyone and revoke their MUDERRIS rows); with a list that would leave the course
    with no müderris who has an account it is refused, 400 `MUDERRIS_LIST_INVALID`, before anything is written.
    A payload row that names a stored row by `id` and leaves `userId` out keeps the stored account, as the
-   repository always did. `ReplaceCourseDto` is now `OmitType(CreateCourseDto, ["muderris", "imamUserId"])`
+   repository always did; a row that carries `userId: null` is counted as unbound, because the repository writes
+   the NULL (an earlier version of the guard counted it as the stored account, so such a save passed the guard,
+   unbound the last müderris and left the course passive with 200). `ReplaceCourseDto` is now `OmitType(CreateCourseDto, ["muderris", "imamUserId"])`
    plus an optional `muderris`; `UpdateCourseDto` also omits `imamUserId`.
 6. **A whole-course save that hides a week or a session needs `week.hide`** (403 `WEEK_HIDE_FORBIDDEN`, checked
    against the stored syllabus before any write). The save already hid every week and session its payload
@@ -62,7 +71,8 @@ or opened courses with no müderris, go through it.
 | --- | --- | --- |
 | `POST /kosks` | `managerUserIds` optional; omitted, the caller (a Medaris nazımı included) became the nazım | required, at least one: 400 without it; the caller is never seated (a Medaris nazımı naming themselves: 403 `SELF_GRANT_REFUSED`, was 500) |
 | `POST /kosks/:koskId/courses` | `muderris` optional; the başnazım got 403 `KOSK_FORBIDDEN` from the service | `muderris` required with at least one account (400 `MUDERRIS_LIST_INVALID`), `imamUserId` optional; the başnazım opens in any köşk |
-| `PUT /courses/:id` | `muderris` omitted emptied the team; `[]` emptied it; a payload with no account left the course with no müderris | omitted keeps the team; `[]` or no account left: 400 `MUDERRIS_LIST_INVALID`, nothing written |
+| `POST /kosks/:koskId/courses` | a holder of `course.open_standalone` who was not the köşk's nazımı got 403 from the service, whoever was named | such a holder (a grantee) may open a course for others; naming themselves as müderris or imam is 403 `SELF_GRANT_REFUSED`; the başnazım and the köşk's nazımı may list themselves |
+| `PUT /courses/:id` | `muderris` omitted emptied the team; `[]` emptied it; a payload with no account left the course with no müderris | omitted keeps the team; `[]`, no account left, or the last account sent as `userId: null`: 400 `MUDERRIS_LIST_INVALID`, nothing written |
 | `PUT /courses/:id` | dropping a week or a session needed only `course.edit` | also `week.hide` (403 `WEEK_HIDE_FORBIDDEN`); müderris and köşk nazımı hold it by default |
 | `PATCH /courses/:id`, `PUT /courses/:id` | no `imamUserId` | the field is not accepted (400) |
 | `POST /kosks/:id/managers/:userId` | `kosk.manage` or `platform.kosk_nazim_manage`: a köşk nazımı added peers | `platform.kosk_nazim_manage` only: a köşk nazımı gets 403 |
@@ -105,32 +115,38 @@ The route inventory snapshot changes in two lines, read off `git diff`:
 6. **A course already without an account on its team** (legacy) is not blocked from saving: the refusal is only
    for a save that takes the last account away.
 7. **Resigning is refused to a köşk nazımı** (dossier D1(a)); a nazım who wants out asks the başnazım.
+8. **Self-seat on an existing course is not closed here.** `PUT /courses/:id/muderris` and the müderris branch of
+   `PUT /courses/:id` let a grantee of `course.open_standalone` (köşk scope, with a role on the chain) name
+   themselves müderris. This part did not create the hole, and closing it needs the guard to see only the
+   accounts the save adds: asking it about every listed account would refuse a grantee who re-saves a list
+   they already sit in. Default: left as it was, recorded for the owner; the fix is a `SelfGrantGuard` call on
+   `newlyLinkedUserIds(current, next)` inside `CourseService`.
 
 ## Tests, and what each is red without
 
-New: `test/e2e/scope-opening.e2e.spec.ts` (47 tests), `test/unit/course/syllabus-drops.spec.ts` and three new
+New: `test/e2e/scope-opening.e2e.spec.ts` (53 tests), `test/unit/course/syllabus-drops.spec.ts` and three new
 describes in `test/unit/course/muderris-list.spec.ts`. Rewritten (the old tests encoded the old rules):
 `kosk-managers.e2e.spec.ts` (the creator test, peers adding and removing, resigning, the last-two race),
 `course.e2e.spec.ts` ("replaces a course": the team is kept), `muderris-assignments.e2e.spec.ts` (name-only
 team and the "no account left" save are refused), `course-team.e2e.spec.ts` ("takes the role away with the row"
 names a successor), `schedule.e2e.spec.ts` (the passive course revokes its real müderris).
 
-Final run:
+Final run (the review-fix pass re-ran these on the final tree, one spec file at a time, counts read off each
+summary):
 
 ```
 $ ./node_modules/.bin/vitest run test/unit
  Test Files  66 passed (66)
-      Tests  847 passed (847)
-$ …/e2e-slot.sh ./node_modules/.bin/vitest run test/e2e/scope-opening.e2e.spec.ts test/e2e/authz-route-inventory.e2e.spec.ts test/e2e/kosk-managers.e2e.spec.ts
- Test Files  3 passed (3)
-      Tests  69 passed (69)
-$ …/e2e-slot.sh ./node_modules/.bin/vitest run test/e2e/{course,course-staff,course-team,muderris-assignments,muderris-realm-account,kosk,kosk-admin,authz-engine,schedule,calendar-feed,session-batch,lesson-calendar}.e2e.spec.ts
- Test Files  12 passed (12)
-      Tests  283 passed (283)
+      Tests  848 passed (848)
+$ …/e2e-slot.sh ./node_modules/.bin/vitest run test/e2e/<file>.e2e.spec.ts      (one file per run, every one passed)
+ scope-opening 53, authz-route-inventory 1, kosk-managers 21, authz-query-count 11,
+ course 56, course-staff 9, course-team 43, muderris-assignments 8, muderris-realm-account 4,
+ kosk 36, kosk-admin 36, authz-engine 54, schedule 8, calendar-feed 13, session-batch 9, lesson-calendar 7,
+ madrasah-course 38, hide-instead-of-delete 9, discover 25, public-pages 30, flashcard-study 14
 ```
 
 Red-then-green, each by putting the pre-change source (`git show 7533d432:<file>`) or one mutation back and
-running `scope-opening.e2e.spec.ts` (46 tests when the first three ran; 47 now), then restoring from `HEAD`:
+running `scope-opening.e2e.spec.ts` (46 tests when the first three ran; 53 now), then restoring from `HEAD`. The review-fix rows at the end of the table were written test first: the new tests ran against the unfixed source, failed, and the fix made them pass:
 
 | Put back | Result | Tests that went red |
 | --- | --- | --- |
@@ -142,6 +158,10 @@ running `scope-opening.e2e.spec.ts` (46 tests when the first three ran; 47 now),
 | only the "no account left" refusal in `CourseService.replace` | `Tests  2 failed \| 6 passed \| 38 skipped (46)` | "refuses an empty team", "refuses a team left with no account…" |
 | `UpdateCourseDto` as it was (`imamUserId` accepted) | `Tests  1 failed \| 46 skipped (47)` (`-t "does not take an imam"`) | "does not take an imam from a save or a patch" (PATCH answered 200) |
 | route guards of `POST /kosks` (`platform.kosk_create` → `kosk.manage`) and `POST /madrasahs/:id/courses` (`madrasah.course_open` → `madrasah.course_hide`) | `Tests  6 failed \| 40 passed (46)` | the Medaris-with-grant opening, its self refusal, the omitted / empty list, "a nazır … opened by one holding madrasah.course_open", "refused … in a köşk that gave the medrese no right" |
+| review fix 1: `boundAccountsAfterSave` as it was (`row.userId ??`) | e2e `Tests  4 failed \| 49 passed (53)` on the whole file (two of the four were my own miscount of the archived weeks after the fixture grew a third week, fixed in the test); unit `Tests  1 failed \| 25 passed (26)` on `muderris-list.spec.ts` | "refuses a stored row saved with userId null…" (expected 400, got 200), unit "drops the account of a row named by id that carries userId null…" |
+| review fix 2: no `selfGrant.assertNotSelf` in `CourseController.create` | same e2e run | "is opened by a grantee of course.open_standalone for someone else, but not for themselves" (expected 403, got 201) |
+| review fix 3: `assertMayHideWithSave` returns on `hidden.weeks === 0` (mutation, `-t week.hide`) | `Tests  1 failed \| 5 passed \| 47 skipped (53)` | "refuses a saver without week.hide who drops only a session of a week they keep" |
+| review fix 3: the same line returns on `hidden.sessions === 0` (mutation, `-t week.hide`) | `Tests  1 failed \| 5 passed \| 47 skipped (53)` | "refuses a saver without week.hide who drops only an empty week" |
 
 Honest limits of that table. These are red without the change, per criterion:
 
