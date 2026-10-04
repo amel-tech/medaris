@@ -60,12 +60,12 @@ test("nazir/04 — the form shows what is saved, the last change, the four level
   const page = await as("MEDRESE_BASMUDERRIS");
   await open(page);
 
-  await expect(page.getByLabel("Medrese adı")).toHaveValue(
-    base?.madrasah.name ?? ""
-  );
-  await expect(page.getByLabel("Açıklama")).toHaveValue(
-    extra?.description ?? ""
-  );
+  await expect(
+    page.getByLabel("Medrese adı").filter({ visible: true })
+  ).toHaveValue(base?.madrasah.name ?? "");
+  await expect(
+    page.getByLabel("Açıklama").filter({ visible: true })
+  ).toHaveValue(extra?.description ?? "");
   await expect(
     page.getByRole("checkbox", { name: "Kayıt her zaman onaylı" })
   ).toBeChecked();
@@ -75,9 +75,9 @@ test("nazir/04 — the form shows what is saved, the last change, the four level
   await expect(
     page.getByRole("checkbox", { name: "Ders kayıtları herkese açılamaz" })
   ).not.toBeChecked();
-  await expect(page.getByTestId("last-change")).toHaveText(
-    `Son değişiklik 29 Eylül 2026 · ${extra?.lastChange.by.name}`
-  );
+  await expect(
+    page.getByTestId("last-change").filter({ visible: true })
+  ).toHaveText(`Son değişiklik 29 Eylül 2026 · ${extra?.lastChange.by.name}`);
 
   // criterion 5: the four levels, in order, the medrese's own marked
   const tiers = page.getByTestId("policy-tiers").getByRole("listitem");
@@ -124,13 +124,16 @@ test("nazir/04 — Kaydet waits for a change, and Vazgeç takes it back", async 
   await expect(save).toBeDisabled();
   await expect(cancel).toBeDisabled();
 
-  await page.getByLabel("Medrese adı").fill("Başka bir ad");
+  await page
+    .getByLabel("Medrese adı")
+    .filter({ visible: true })
+    .fill("Başka bir ad");
   await page.getByRole("checkbox", { name: "Kapalı ders zorunlu" }).check();
   await expect(save).toBeEnabled();
   await cancel.click();
-  await expect(page.getByLabel("Medrese adı")).toHaveValue(
-    base?.madrasah.name ?? ""
-  );
+  await expect(
+    page.getByLabel("Medrese adı").filter({ visible: true })
+  ).toHaveValue(base?.madrasah.name ?? "");
   await expect(
     page.getByRole("checkbox", { name: "Kapalı ders zorunlu" })
   ).not.toBeChecked();
@@ -145,13 +148,14 @@ test("nazir/04 — a blank name is refused under its field and nothing is saved 
   const page = await as("MEDRESE_BASMUDERRIS");
   await open(page);
 
-  await page.getByLabel("Medrese adı").fill("   ");
+  await page.getByLabel("Medrese adı").filter({ visible: true }).fill("   ");
   await page.getByRole("button", { name: "Kaydet" }).click();
-  await expect(page.getByText("Medrese adı boş olamaz.")).toBeVisible();
-  await expect(page.getByLabel("Medrese adı")).toHaveAttribute(
-    "aria-invalid",
-    "true"
-  );
+  await expect(
+    page.getByText("Medrese adı boş olamaz.").filter({ visible: true })
+  ).toBeVisible();
+  await expect(
+    page.getByLabel("Medrese adı").filter({ visible: true })
+  ).toHaveAttribute("aria-invalid", "true");
   expect((await extra?.medreseName())?.name).toBe(base?.madrasah.name);
   expect(await extra?.audits("madrasah.settings.update")).toBe(0);
 });
@@ -164,15 +168,20 @@ test("nazir/04 — Kaydet writes the name, the description and a policy, moves '
   await open(page);
 
   const name = `${base?.madrasah.name} (yeni)`;
-  await page.getByLabel("Medrese adı").fill(name);
-  await page.getByLabel("Açıklama").fill("Yeni açıklama.");
+  await page.getByLabel("Medrese adı").filter({ visible: true }).fill(name);
+  await page
+    .getByLabel("Açıklama")
+    .filter({ visible: true })
+    .fill("Yeni açıklama.");
   await page.getByRole("checkbox", { name: "Kapalı ders zorunlu" }).check();
   await page.getByRole("button", { name: "Kaydet" }).click();
 
-  await expect(page.getByText("Ayarlar kaydedildi.")).toBeVisible();
-  await expect(page.getByTestId("last-change")).toContainText(
-    `Son değişiklik ${day(new Date())}`
-  );
+  await expect(
+    page.getByText("Ayarlar kaydedildi.").filter({ visible: true })
+  ).toBeVisible();
+  await expect(
+    page.getByTestId("last-change").filter({ visible: true })
+  ).toContainText(`Son değişiklik ${day(new Date())}`);
   await expect(page.getByRole("button", { name: "Kaydet" })).toBeDisabled();
 
   // the sidebar's scope carries the new name, and the database holds all three
@@ -189,14 +198,18 @@ test("nazir/04 — Kaydet writes the name, the description and a policy, moves '
   expect(await extra?.audits("madrasah.settings.update")).toBe(1);
 
   await page.reload();
-  await expect(page.getByLabel("Medrese adı")).toHaveValue(name);
-  await expect(page.getByLabel("Açıklama")).toHaveValue("Yeni açıklama.");
+  await expect(
+    page.getByLabel("Medrese adı").filter({ visible: true })
+  ).toHaveValue(name);
+  await expect(
+    page.getByLabel("Açıklama").filter({ visible: true })
+  ).toHaveValue("Yeni açıklama.");
   await expect(
     page.getByRole("checkbox", { name: "Kapalı ders zorunlu" })
   ).toBeChecked();
-  await expect(page.getByTestId("last-change")).toContainText(
-    `Son değişiklik ${day(new Date())}`
-  );
+  await expect(
+    page.getByTestId("last-change").filter({ visible: true })
+  ).toContainText(`Son değişiklik ${day(new Date())}`);
 });
 
 test("nazir/04 — emptying the description clears it, and switching a policy off keeps the others", async ({
@@ -209,7 +222,7 @@ test("nazir/04 — emptying the description clears it, and switching a policy of
   // A value typed before the page has hydrated is put back by React; Kaydet
   // only turns on once the change has been seen, so repeat until it has.
   await expect(async () => {
-    await page.getByLabel("Açıklama").fill("");
+    await page.getByLabel("Açıklama").filter({ visible: true }).fill("");
     await expect(page.getByRole("button", { name: "Kaydet" })).toBeEnabled({
       timeout: 1000,
     });
@@ -218,7 +231,9 @@ test("nazir/04 — emptying the description clears it, and switching a policy of
     .getByRole("checkbox", { name: "Kayıt her zaman onaylı" })
     .uncheck();
   await page.getByRole("button", { name: "Kaydet" }).click();
-  await expect(page.getByText("Ayarlar kaydedildi.")).toBeVisible();
+  await expect(
+    page.getByText("Ayarlar kaydedildi.").filter({ visible: true })
+  ).toBeVisible();
 
   expect((await extra?.medreseName())?.description).toBeNull();
   expect((await extra?.settingsRow())?.policies).toEqual({
@@ -238,7 +253,9 @@ test("nazir/04 — a medrese nazır is refused: a notice, no form (criterion 4)"
   await expect(
     page.getByRole("heading", { level: 1, name: "Medrese ayarları" })
   ).toBeVisible();
-  await expect(page.getByText("Bu sayfaya izniniz yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu sayfaya izniniz yok").filter({ visible: true })
+  ).toBeVisible();
   await expect(page.getByTestId("settings-form")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Kaydet" })).toHaveCount(0);
 });
