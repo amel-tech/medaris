@@ -19,7 +19,13 @@ import { dirname, extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const REPO = process.env.MEDARIS_REPO || resolve(HERE, "../..");
+const KOK = resolve(HERE, "../..");
+// local_docs gitignored: worktree'den çalışınca ana checkout'unkini oku (yoksa turlar ve onay imzaları düşer)
+const REPO =
+  process.env.MEDARIS_REPO ||
+  (existsSync(join(KOK, "local_docs"))
+    ? KOK
+    : KOK.split("/.claude/worktrees/")[0]);
 const EKRANLAR = join(REPO, "local_docs/ekranlar");
 const KONTROL = join(EKRANLAR, "_kontrol");
 const DURUM = join(HERE, "durum");
@@ -743,10 +749,6 @@ function etkilerHesapla(items, acilis, dmap, onaylar) {
 function planHesapla(items, etkiler, acilis, dmap) {
   const t = { ...tahminVarsayilan(), ...readJson("tahmin.json", {}) };
   const oran = hizOlc(items).oran;
-  const sonKayit = (k) => {
-    const g = t.gorev[k];
-    return g?.length && g.at(-1).dk ? g.at(-1).dk : null;
-  };
   const acilisNo = new Set(acilis?.adimlar.flatMap((a) => a.paketler) || []);
   // "Sorun var" denmiş ve kod değişmemiş kart kuyruktan çıkar (düzeltme bekler); kod değişirse imza düşer, geri gelir
   const sorunda = (x) => !!x.sorunNotu && x.onay?.imza === x.imza;
@@ -771,7 +773,7 @@ function planHesapla(items, etkiler, acilis, dmap) {
         proje: projeBul(i, dmap),
         acilis: acilisNo.has(i.no),
         puan: i.onem.puan,
-        dk: sonKayit(`p${i.no}`) ?? gorevDk(i, oran),
+        dk: gorevDk(i, oran),
       })),
   ].sort(
     (a, b) =>
@@ -782,11 +784,25 @@ function planHesapla(items, etkiler, acilis, dmap) {
       a.no - b.no
   );
   const simdi = Date.now();
+  const bittiMi = (x) => x.onayGecerli || sorunda(x);
+  // Tempo: 09:00'dan beri geçen duvar saati ÷ biten işlerin kart süresi. Molalar ve boş geçen saatler buradan
+  // tahmine girer; hiç iş bitmediyse en iyi ihtimal alınır (sıradaki iş şu an bitseydi). Her onayda yeniden ölçülür.
+  const gecenDk = Math.max(0, (simdi - Date.parse(GUN_BASLANGIC)) / 60_000);
+  const bitenDk =
+    items
+      .filter((i) => bittiMi(i) && i.onem.kapsam !== "taha")
+      .reduce((x, i) => x + gorevDk(i, oran), 0) +
+    etkiler.filter(bittiMi).reduce((x, e) => x + e.dk, 0);
+  const tempo = Math.max(1, gecenDk / (bitenDk || gorevler[0]?.dk || 1));
+  // baslangic/bitis = odaklı çalışırsan (kart saati); tBitis = bu tempoyla gerçekte
   let imlec = simdi;
+  let tImlec = simdi;
   for (const g of gorevler) {
     g.baslangic = new Date(imlec).toISOString();
     imlec += g.dk * 60_000;
     g.bitis = new Date(imlec).toISOString();
+    tImlec += g.dk * tempo * 60_000;
+    g.tBitis = new Date(tImlec).toISOString();
   }
   const zorunlu = (g) => !PROJELER[PROJE_SIRA[g.proje]].istege;
   for (const g of gorevler) {
@@ -848,7 +864,7 @@ function planHesapla(items, etkiler, acilis, dmap) {
     let n = 0;
     let top = 0;
     for (const g of bekleyen) {
-      top += g.dk;
+      top += g.dk * tempo;
       if (top <= kalanDk) n++;
     }
     return toplam ? Math.round((100 * (biten + n)) / toplam) : 100;
@@ -883,7 +899,7 @@ function planHesapla(items, etkiler, acilis, dmap) {
       kodsuz,
       baslangic: gs[0]?.baslangic || null,
       bitis: gs.at(-1)?.bitis || null,
-      asar: gs.some((g) => Date.parse(g.bitis) > Date.parse(hedef.saat)),
+      asar: gs.some((g) => Date.parse(g.tBitis) > Date.parse(hedef.saat)),
       gorevler: gs,
     };
   });
@@ -909,16 +925,20 @@ function planHesapla(items, etkiler, acilis, dmap) {
           : Math.round((100 * biten) / Math.max(1, toplam)),
       zamanOrani: Math.round(zamanOrani * 100) / 100,
       hepsiBitti: !bekleyen.length,
-      tumBitis: bekleyen.at(-1)?.bitis || null,
+      tumBitis: bekleyen.at(-1)?.tBitis || null,
+      odakBitis: bekleyen.at(-1)?.bitis || null,
       kalanDk: bekleyen.reduce((x, g) => x + g.dk, 0),
+      tempo: Math.round(tempo * 10) / 10,
+      gecenDk: Math.round(gecenDk),
+      bitenDk,
     },
     acilis: {
       sayi: ag.length,
       dk: ag.reduce((x, g) => x + g.dk, 0),
-      bitis: ag.at(-1)?.bitis || null,
+      bitis: ag.at(-1)?.tBitis || null,
       netBitis: ag.length
         ? new Date(
-            simdi + ag.reduce((x, g) => x + g.dk, 0) * 60_000
+            simdi + ag.reduce((x, g) => x + g.dk, 0) * tempo * 60_000
           ).toISOString()
         : null,
       biten: acilisPaket.filter((i) => i.onayGecerli).length,
