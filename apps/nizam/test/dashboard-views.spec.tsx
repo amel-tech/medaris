@@ -350,6 +350,8 @@ const kosk: KoskDashboardResponse = {
       courseTitle: "Bina ve İzhar Şerhi",
       studentName: "Rümeysa Nur Karaca",
       requestedAt: new Date("2026-10-03T07:02:00Z"),
+      canDecide: true,
+      scopePassive: false,
     },
   ],
   muderris: [

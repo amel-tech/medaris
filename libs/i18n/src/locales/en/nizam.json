@@ -3481,7 +3481,10 @@
       "rejected": "Application rejected",
       "rejectedBody": "{name}'s application to {course} was rejected.",
       "actionFailed": "The application could not be answered",
-      "errorUnknown": "Something unexpected went wrong. Try again in a moment."
+      "errorUnknown": "Something unexpected went wrong. Try again in a moment.",
+      "errorForbidden": "You may not decide this application.",
+      "errorGone": "This application is no longer pending; the list was refreshed.",
+      "passiveScope": "This course's scope is passive: it has no manager left. The application cannot be decided until one is appointed."
     },
     "decks": {
       "title": "Deck publish requests",
