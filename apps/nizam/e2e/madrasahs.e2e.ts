@@ -78,13 +78,17 @@ test("nizam/07 — the tabs' numbers are the database's totals, and each medrese
   await expect(active).toContainText("Etkin");
   await expect(active).toContainText(`@${fixture.active.handle}`);
   await expect(active).toContainText(fixture.koskName);
-  // the only button of an active row is nizam/22's, shut until the version gate
-  await expect(active.getByRole("button")).toHaveCount(1);
+  // an active row has nizam/22's button, shut until the version gate, and
+  // MDRS-227's "Pasife al"
+  await expect(active.getByRole("button")).toHaveCount(2);
   await expect(
     active.getByRole("button", {
       name: `Başmüderrisi değiştir: ${fixture.active.name}`,
     })
   ).toBeDisabled();
+  await expect(
+    active.getByRole("button", { name: `Pasife al: ${fixture.active.name}` })
+  ).toBeEnabled();
 
   const passive = rowOf(page, fixture.passive.name);
   await expect(passive).toContainText("Atanmamış");
@@ -148,8 +152,8 @@ test("nizam/07 — 'Geri al' brings a hidden medrese back as Etkin (criterion 3)
   await expect(page.getByText("Geri alındı")).toBeVisible();
   await expect(row).toContainText("Etkin");
   await expect(row).not.toContainText("Gizli");
-  // it is an active medrese with a başmüderris now: only nizam/22's shut button is left
-  await expect(row.getByRole("button")).toHaveCount(1);
+  // it is an active medrese with a başmüderris now: nizam/22's shut button and "Pasife al"
+  await expect(row.getByRole("button")).toHaveCount(2);
   await expect(
     row.getByRole("button", {
       name: `Başmüderrisi değiştir: ${fixture.hidden.name}`,
@@ -162,6 +166,32 @@ test("nizam/07 — 'Geri al' brings a hidden medrese back as Etkin (criterion 3)
   // the tab numbers follow the same answer
   const counts = await fixture.counts();
   await expect(tabCount(page, "Gizli")).toHaveText(String(counts.hidden));
+});
+
+test("nizam/07 — 'Pasife al' shows what it takes along, asks to confirm and the medrese turns Pasif (MDRS-227)", async ({
+  page,
+}) => {
+  test.skip(!(seedable && SYSTEM_ADMIN.password), "no SYSTEM_ADMIN account");
+  await signIn(page, SYSTEM_ADMIN);
+  await openMedreseler(page);
+
+  const row = rowOf(page, fixture.active.name);
+  await row
+    .getByRole("button", { name: `Pasife al: ${fixture.active.name}` })
+    .click();
+  const dialog = page.getByRole("dialog");
+  // the seed's two courses (one published, one draft) and three talebe
+  await expect(dialog).toContainText("Pasife almak yanında şunları götürür");
+  await expect(dialog).toContainText("Başmüderris görevden alınır");
+  await expect(dialog).toContainText("2 ders kapanır (1 yayında, 1 taslak)");
+  await expect(dialog).toContainText("3 kayıtlı talebe içeriğe erişemez");
+  await expect(
+    dialog.getByRole("button", { name: "Yine de pasife al" })
+  ).toBeEnabled();
+  await dialog.getByRole("button", { name: "Yine de pasife al" }).click();
+  await expect(page.getByText("Medrese pasife alındı")).toBeVisible();
+  await expect(row).toContainText("Pasif");
+  expect(await fixture.audits("madrasah.deactivate")).toBe(1);
 });
 
 test("nizam/07 — 'Başmüderris ata' finds an account by e-mail and the passive medrese is active again", async ({

@@ -19,8 +19,8 @@ import { FlashcardService } from "../flashcard.service";
  * `AuthzGuard.resolveResource` propagates untouched: the same
  * `CARD_NOT_FOUND` 404 for both, so the status code does not tell a
  * stranger which card ids exist (MDRS-43 AC-4). A card in a PUBLIC deck the
- * caller does not own still resolves, and the matrix then denies the write
- * scopes with a 403 — that caller can already see the card.
+ * caller does not own still resolves, and the engine then denies the write
+ * permissions with a 403 — that caller can already see the card.
  *
  * `strict: false` on the `ModuleRef.get`: the guard is provided by the global
  * `AuthzModule` in `@medaris/common`, so it resolves from a different module

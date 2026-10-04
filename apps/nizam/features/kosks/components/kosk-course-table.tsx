@@ -11,6 +11,7 @@ import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
+import { hideLevelOf } from "../../archive/hide-level";
 import { MuderrisDialog } from "../../courses/components/muderris-dialog";
 import { dateWithCase } from "../../madrasahs/present";
 import { toneOfHue } from "../admin-present";
@@ -20,6 +21,8 @@ import {
   COURSE_TABS,
   type CourseTab,
   countRows,
+  courseHideOutcome,
+  errorCodeOf,
   filterCourses,
   type Messages,
   registrationChips,
@@ -57,6 +60,7 @@ export function KoskCourseTable({
   caption,
 }: Props) {
   const tm = useTranslations("nizam.KoskCourses");
+  const tl = useTranslations("nizam.HideLevel");
   const t = tm as unknown as Messages;
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
@@ -74,11 +78,18 @@ export function KoskCourseTable({
     setBusyId(row.id);
     const result = await restoreCourse(row.id);
     setBusyId(null);
-    if (!result.success) {
+    const outcome = result.success
+      ? "done"
+      : courseHideOutcome(errorCodeOf(result.errorBody));
+    if (outcome !== "done") {
       toast.error(t("restoreFailed"), {
-        description: t("restoreFailedBody"),
+        description: t(
+          outcome === "failed" ? "restoreFailedBody" : `${outcome}Body`
+        ),
         duration: Number.POSITIVE_INFINITY,
       });
+      // A higher level hid it since the table was read: the row loses its button.
+      if (outcome === "restoreLevel") refresh();
       return;
     }
     toast.success(t("restored"), {
@@ -229,6 +240,17 @@ export function KoskCourseTable({
             width: "28%",
             render: (row: KoskCourseRowResponse) => {
               const href = viewHref?.(row.id) ?? null;
+              // Whoever hid it, or a level above, brings it back: say who,
+              // rather than offer a button the API would refuse (MDRS-143).
+              if (row.status === "HIDDEN" && !row.canRestore) {
+                return (
+                  <span className="mds-caption">
+                    {tl("locked", {
+                      level: tl(hideLevelOf(row.hiddenLevel, "kosk")),
+                    })}
+                  </span>
+                );
+              }
               return (
                 <span className="flex flex-nowrap items-center justify-end gap-1 whitespace-nowrap">
                   {rowActions(row).map((action) => {

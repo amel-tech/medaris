@@ -67,6 +67,49 @@ export function searchFromParam(value: string | string[] | undefined): string {
   return (first ?? "").trim().slice(0, 100);
 }
 
+/** What the page offers its viewer: each is a button or link tedrisat lets through. */
+export interface MadrasahAbilities {
+  /** "Medrese aç": `platform.madrasah_create` */
+  open: boolean;
+  /** "Başmüderris ata" and "Başmüderrisi değiştir": `platform.head_muderris_manage` */
+  assign: boolean;
+  /** "Geri al": `platform.madrasah_edit` brings back whatever a level hid */
+  restore: boolean;
+  /** "Pasife al": `platform.madrasah_edit` */
+  passivate: boolean;
+  /** "Arşiv": the platform's archive is the başnazım's alone */
+  archive: boolean;
+}
+
+export const ALL_MADRASAH_ABILITIES: MadrasahAbilities = {
+  open: true,
+  assign: true,
+  restore: true,
+  passivate: true,
+  archive: true,
+};
+
+/**
+ * The page's buttons for its viewer (MDRS-108: no button may lead to a 403).
+ * The başnazım holds everything. A Medaris nazımı is offered what their
+ * platform permissions open, and never the archive. When the roles or the
+ * permissions could not be read nothing is hidden, as in the menu: tedrisat
+ * refuses what is not theirs.
+ */
+export function madrasahAbilities(
+  me: { systemAdmin: boolean } | null,
+  held: ReadonlySet<string> | null
+): MadrasahAbilities {
+  if (!me || me.systemAdmin || !held) return ALL_MADRASAH_ABILITIES;
+  return {
+    open: held.has("platform.madrasah_create"),
+    assign: held.has("platform.head_muderris_manage"),
+    restore: held.has("platform.madrasah_edit"),
+    passivate: held.has("platform.madrasah_edit"),
+    archive: false,
+  };
+}
+
 /** How a status is drawn in the Durum column. Hidden is plain text with its glyph, as in the design. */
 export const STATUS_LOOK: Record<
   MadrasahStatus,
@@ -241,8 +284,13 @@ const KNOWN: Record<string, string> = {
   MADRASAH_NOT_FOUND: "errors.notFound",
   MADRASAH_NOT_HIDDEN: "errors.notHidden",
   DISMISS_DECISIONS_INCOMPLETE: "errors.delegationsChanged",
+  DISMISS_SEAT_HANDED_ON: "errors.delegationsCascade",
+  DISMISS_TAKE_OVER_WITHOUT_SEAT: "errors.delegationsSeatless",
+  SELF_GRANT_REFUSED: "errors.selfTakeOver",
   GRANT_EXPIRY_INVALID: "errors.expiryInvalid",
   AUTHZ_FORBIDDEN: "errors.forbidden",
+  // A restore by a lower level than the one that hid it (MDRS-143).
+  ARCHIVE_RESTORE_LEVEL: "errors.restoreLevel",
 };
 
 /** The `nizam.MadrasahsPage` key for a refusal's code, or the generic one. */
@@ -309,6 +357,29 @@ export function groupByPerson(
     else groups.set(item.to.id, { person: item.to, items: [item] });
   }
   return [...groups.values()];
+}
+
+/**
+ * Where a hand-on is held, as nizam/22 names it: the course it is limited to,
+ * or the medrese itself. Two grants of one code for two courses must not read
+ * alike, nor a müderris seat like a nazır seat of the medrese.
+ */
+export function handOnPlace(
+  item: Pick<HeadDelegationResponse, "scopeType" | "courseTitle">,
+  madrasahName: string
+): string {
+  return item.scopeType === "course" && item.courseTitle
+    ? item.courseTitle
+    : madrasahName;
+}
+
+/** " (Course)" after a group or a permission held in one course; nothing for the medrese's own. */
+export function handOnCourseSuffix(
+  item: Pick<HeadDelegationResponse, "scopeType" | "courseTitle">
+): string {
+  return item.scopeType === "course" && item.courseTitle
+    ? ` (${item.courseTitle})`
+    : "";
 }
 
 /** Every item of a person gets that person's answer. */

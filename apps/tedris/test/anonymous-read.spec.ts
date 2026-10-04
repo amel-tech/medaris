@@ -140,7 +140,6 @@ const discoverData = (over: Record<string, unknown> = {}) => ({
   koskTotal: 1,
   madrasahs: [madrasah()],
   allMadrasahs: [madrasah()],
-  fields: ["Arapça dil ilimleri"],
   ...over,
 });
 
@@ -203,13 +202,13 @@ describe("Keşfet for a visitor (design tedris/09)", () => {
     );
     const html = renderToStaticMarkup(
       await DiscoverPage({
-        query: parseDiscoverQuery({ level: "BEGINNER" }),
+        query: parseDiscoverQuery({ q: "sarf" }),
         data: discoverData() as never,
         signedIn: false,
       })
     );
     expect(html).toContain(
-      `callbackUrl=${encodeURIComponent("/discover?level=BEGINNER")}`
+      `callbackUrl=${encodeURIComponent("/discover?q=sarf")}`
     );
   });
 

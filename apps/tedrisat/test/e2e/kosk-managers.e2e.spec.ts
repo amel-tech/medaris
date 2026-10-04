@@ -11,8 +11,7 @@ import {
   madrasahKoskHosting,
   roleAssignments,
 } from "../../src/database/schema/role-assignment.schema";
-import { users } from "../../src/database/schema/user.schema";
-import { asSystemAdmin } from "../helpers/system-admin.helper";
+import { openKosk, seedAccounts } from "../helpers/open-scopes.helper";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
   assignRole,
@@ -102,18 +101,16 @@ describe("Köşk managers (e2e)", () => {
 
   beforeEach(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES, "madrasahs", "users");
-    const res = await http()
-      .post("/kosks")
-      .set("Authorization", asSystemAdmin(FIRST_ID))
-      .send({ name: "Süleymaniye Köşkü" })
-      .expect(201);
-    koskId = res.body.id;
     // Only someone who has signed in (a `users` row, MDRS-104) can be made a
-    // manager; these are the people the tests add.
-    await databaseService.db
-      .insert(users)
-      .values([SECOND_ID, NAZIR_ID, STRANGER_ID].map((id) => ({ id })))
-      .onConflictDoNothing();
+    // manager; these are the people the tests add. The başnazım opens the
+    // köşk for FIRST_ID and is not one of its managers (MDRS-136).
+    await seedAccounts(app, [SECOND_ID, NAZIR_ID, STRANGER_ID]);
+    const res = await openKosk(
+      app,
+      { managerUserIds: [FIRST_ID] },
+      { as: ADMIN_ID }
+    );
+    koskId = res.body.id;
   });
 
   afterAll(async () => {
@@ -121,13 +118,16 @@ describe("Köşk managers (e2e)", () => {
     await app.close();
   });
 
-  it("makes the creator the köşk's first manager", async () => {
+  // MDRS-136: the köşk is opened for the nazım the başnazım names, and the
+  // başnazım who opens it is not one (it used to make the caller the first
+  // manager, which let a Medaris nazımı seat themselves by leaving the list out).
+  it("opens the köşk for the manager named, not for the one who opened it", async () => {
     const res = await http()
       .get(`/kosks/${koskId}`)
       .set("Authorization", auth(STRANGER_ID))
       .expect(200);
     expect(res.body).toMatchObject({
-      ownerId: FIRST_ID,
+      ownerId: ADMIN_ID,
       managerIds: [FIRST_ID],
     });
     expect(await managersInDb()).toEqual([FIRST_ID]);
@@ -135,7 +135,7 @@ describe("Köşk managers (e2e)", () => {
 
   describe("two managers of the same köşk can both manage it", () => {
     beforeEach(async () => {
-      const res = await addManager(FIRST_ID, SECOND_ID).expect(201);
+      const res = await addManager(ADMIN_ID, SECOND_ID).expect(201);
       expect(res.body.managerIds).toEqual([FIRST_ID, SECOND_ID]);
     });
 
@@ -182,20 +182,22 @@ describe("Köşk managers (e2e)", () => {
       }
     });
 
-    it("lets the second manager add a third, and adding twice is a no-op", async () => {
-      await addManager(SECOND_ID, STRANGER_ID).expect(201);
-      const res = await addManager(SECOND_ID, STRANGER_ID).expect(201);
+    // MDRS-136, d-1004-12: adding is decided by `platform.kosk_nazim_manage`,
+    // which the köşk's nazımı does not hold, so a manager no longer adds peers.
+    it("lets the başnazım add a third, and adding twice is a no-op", async () => {
+      await addManager(ADMIN_ID, STRANGER_ID).expect(201);
+      const res = await addManager(ADMIN_ID, STRANGER_ID).expect(201);
       expect(res.body.managerIds).toEqual([FIRST_ID, SECOND_ID, STRANGER_ID]);
     });
   });
 
   describe("removing one manager leaves the other in place", () => {
     beforeEach(async () => {
-      await addManager(FIRST_ID, SECOND_ID).expect(201);
+      await addManager(ADMIN_ID, SECOND_ID).expect(201);
     });
 
     it("keeps the second manager when the first is removed", async () => {
-      const res = await removeManager(SECOND_ID, FIRST_ID).expect(200);
+      const res = await removeManager(ADMIN_ID, FIRST_ID).expect(200);
       expect(res.body.managerIds).toEqual([SECOND_ID]);
       expect(await managersInDb()).toEqual([SECOND_ID]);
 
@@ -206,15 +208,15 @@ describe("Köşk managers (e2e)", () => {
     // MDRS-134: a removal revokes the KOSK_NAZIM row in the remover's name
     // instead of deleting it, and adding the person again opens a new row.
     it("revokes rather than deletes, and a second grant opens a new row", async () => {
-      await removeManager(FIRST_ID, SECOND_ID).expect(200);
+      await removeManager(ADMIN_ID, SECOND_ID).expect(200);
       let rows = await managerRows();
       expect(rows.map((r) => [r.userId, r.grantedBy, r.revokedBy])).toEqual([
-        [FIRST_ID, FIRST_ID, null],
-        [SECOND_ID, FIRST_ID, FIRST_ID],
+        [FIRST_ID, ADMIN_ID, null],
+        [SECOND_ID, ADMIN_ID, ADMIN_ID],
       ]);
       expect(rows[1].revokedAt).toBeInstanceOf(Date);
 
-      const res = await addManager(FIRST_ID, SECOND_ID).expect(201);
+      const res = await addManager(ADMIN_ID, SECOND_ID).expect(201);
       expect(res.body.managerIds).toEqual([FIRST_ID, SECOND_ID]);
       rows = await managerRows();
       expect(rows).toHaveLength(3);
@@ -235,53 +237,46 @@ describe("Köşk managers (e2e)", () => {
         );
       await rename(SECOND_ID, "Süresi doldu").expect(403);
 
-      await addManager(FIRST_ID, SECOND_ID).expect(201);
+      await addManager(ADMIN_ID, SECOND_ID).expect(201);
       await rename(SECOND_ID, "Yeniden yönetiyor").expect(200);
       const lapsed = (await managerRows()).filter(
         (r) => r.userId === SECOND_ID
       );
-      expect(lapsed.map((r) => r.revokedBy)).toEqual([FIRST_ID, null]);
+      expect(lapsed.map((r) => r.revokedBy)).toEqual([ADMIN_ID, null]);
     });
 
-    it("lets a manager remove themselves while another remains", async () => {
-      const res = await removeManager(SECOND_ID, SECOND_ID).expect(200);
-      expect(res.body.managerIds).toEqual([FIRST_ID]);
-      await rename(FIRST_ID, "Yine tek").expect(200);
+    // MDRS-136, d-1004-12: resigning is a removal, decided by the permission
+    // and not by being a manager, so a manager cannot resign.
+    it("refuses a manager removing themselves or a peer, and removes nobody", async () => {
+      await removeManager(SECOND_ID, SECOND_ID).expect(403);
+      await removeManager(FIRST_ID, SECOND_ID).expect(403);
+      expect(await managersInDb()).toEqual([FIRST_ID, SECOND_ID].sort());
     });
 
     it("answers 404 for a user who is not a manager", async () => {
-      const res = await removeManager(FIRST_ID, STRANGER_ID).expect(404);
+      const res = await removeManager(ADMIN_ID, STRANGER_ID).expect(404);
       expect(res.body.code).toBe("KOSK_MANAGER_NOT_FOUND");
       expect(await managersInDb()).toEqual([FIRST_ID, SECOND_ID].sort());
     });
   });
 
   describe("the last manager cannot be removed", () => {
-    it.each([
-      ["by themselves", FIRST_ID],
-      ["by SYSTEM_ADMIN", ADMIN_ID],
-    ])("refuses %s with 409", async (_who, sub) => {
-      const res = await removeManager(sub, FIRST_ID).expect(409);
+    it("refuses SYSTEM_ADMIN with 409 when no successor is named", async () => {
+      const res = await removeManager(ADMIN_ID, FIRST_ID).expect(409);
       expect(res.body.code).toBe("KOSK_LAST_MANAGER");
       expect(await managersInDb()).toEqual([FIRST_ID]);
       await rename(FIRST_ID, "Hâlâ yönetici").expect(200);
     });
 
-    it("keeps exactly one when the last two remove each other at once", async () => {
-      await addManager(FIRST_ID, SECOND_ID).expect(201);
+    it("keeps exactly one when the last two are removed at once", async () => {
+      await addManager(ADMIN_ID, SECOND_ID).expect(201);
       const [a, b] = await Promise.all([
-        removeManager(FIRST_ID, SECOND_ID),
-        removeManager(SECOND_ID, FIRST_ID),
+        removeManager(ADMIN_ID, SECOND_ID),
+        removeManager(ADMIN_ID, FIRST_ID),
       ]);
-      // Whichever removal went second finds no one else to leave in charge.
-      // It is refused (409), or — if the first removal took its caller's
-      // right away before its guard ran — denied (403). Either way exactly
-      // one manager remains.
-      const statuses = [a.status, b.status].sort();
-      expect([
-        [200, 403],
-        [200, 409],
-      ]).toContainEqual(statuses);
+      // Whichever removal went second finds no one else to leave in charge
+      // and is refused (409).
+      expect([a.status, b.status].sort()).toEqual([200, 409]);
       expect(await managersInDb()).toHaveLength(1);
     });
   });
@@ -331,15 +326,15 @@ describe("Köşk managers (e2e)", () => {
     });
 
     it("refuses to add someone who has never signed in", async () => {
-      const res = await addManager(FIRST_ID, UNKNOWN_ID).expect(404);
+      const res = await addManager(ADMIN_ID, UNKNOWN_ID).expect(404);
       expect(res.body.code).toBe("KOSK_MANAGER_UNKNOWN_USER");
       expect(await managersInDb()).toEqual([FIRST_ID]);
     });
 
     it("stores an upper-case user id as the same manager, and removes it", async () => {
-      await addManager(FIRST_ID, SECOND_ID.toUpperCase()).expect(201);
+      await addManager(ADMIN_ID, SECOND_ID.toUpperCase()).expect(201);
       expect(await managersInDb()).toEqual([FIRST_ID, SECOND_ID]);
-      const res = await removeManager(FIRST_ID, SECOND_ID.toUpperCase()).expect(
+      const res = await removeManager(ADMIN_ID, SECOND_ID.toUpperCase()).expect(
         200
       );
       expect(res.body.managerIds).toEqual([FIRST_ID]);
@@ -348,7 +343,7 @@ describe("Köşk managers (e2e)", () => {
     it("answers 400 for a malformed user id", async () => {
       await http()
         .post(`/kosks/${koskId}/managers/not-a-uuid`)
-        .set("Authorization", auth(FIRST_ID))
+        .set("Authorization", auth(ADMIN_ID))
         .expect(400);
     });
   });

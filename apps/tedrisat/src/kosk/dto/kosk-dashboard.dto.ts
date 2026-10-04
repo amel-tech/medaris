@@ -78,9 +78,9 @@ export class KoskDashboardSessionResponse {
     type: String,
     nullable: true,
     description:
-      "Where talebe join. The köşk nazımı is the course team, so it is shown; null: no link yet (Bağlantı eksik).",
+      "Where talebe join. The köşk nazımı is the course team, so it is shown; null: no link yet (Bağlantı eksik). Absent when `contentLocked` is true.",
   })
-  meetingUrl!: string | null;
+  meetingUrl?: string | null;
 
   @ApiProperty({ description: "It makes up for a cancelled session (telafi)" })
   isMakeup!: boolean;
@@ -111,11 +111,28 @@ export class KoskDashboardApplicationResponse {
   @ApiPropertyOptional({ type: String, nullable: true })
   studentName!: string | null;
 
-  @ApiPropertyOptional({ type: String, nullable: true })
-  studentEmail!: string | null;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description:
+      "The applicant's e-mail address. No application is sent at all when `contentLocked` is true (`latestApplications` is empty)",
+  })
+  studentEmail?: string | null;
 
   @ApiProperty({ type: Date })
   requestedAt!: Date;
+
+  @ApiProperty({
+    description:
+      "Whether the viewer holds `enrollment.decide` on this course, as the engine decides it: false in a passive scope, or when their role carries no course work. When false the screen offers no Onayla or Reddet; the route refuses all the same",
+  })
+  canDecide!: boolean;
+
+  @ApiProperty({
+    description:
+      "The course, its köşk or its medrese once had a manager and has none now, so its content is closed (MDRS-135). It is the reason a köşk nazımı's `canDecide` is false",
+  })
+  scopePassive!: boolean;
 }
 
 export class KoskDashboardMuderrisResponse {
@@ -181,6 +198,12 @@ export class KoskDashboardResponse {
   tab!: DashboardSessionTab;
 
   @ApiProperty({
+    description:
+      "True when the meeting links and the applicants were left out (`latestApplications` is empty; `counts.pendingApplications` still says how many wait): the caller reads the page by `platform.kosk_edit` alone, which covers neither course content nor personal data",
+  })
+  contentLocked!: boolean;
+
+  @ApiProperty({
     type: KoskDashboardSessionResponse,
     isArray: true,
     description:
@@ -191,7 +214,8 @@ export class KoskDashboardResponse {
   @ApiProperty({
     type: KoskDashboardApplicationResponse,
     isArray: true,
-    description: "The newest waiting applications, five at most",
+    description:
+      "The newest waiting applications, five at most; empty when `contentLocked` is true",
   })
   latestApplications!: KoskDashboardApplicationResponse[];
 

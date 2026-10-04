@@ -162,17 +162,8 @@ const filterLabels = {
   filters: "Filtreler",
   search: "Köşk ya da medrese ara",
   searchPlaceholder: "Köşk ya da medrese ara",
-  level: "Seviye",
-  allLevels: "Bütün seviyeler",
   madrasah: "Medrese",
   allMadrasahs: "Bütün medreseler",
-  field: "Alan",
-  allFields: "Tümü",
-  levelNames: {
-    BEGINNER: "Başlangıç",
-    INTERMEDIATE: "Orta",
-    ADVANCED: "İleri",
-  },
 };
 
 const mountFilters = async (raw: Record<string, string> = {}) => {
@@ -182,45 +173,25 @@ const mountFilters = async (raw: Record<string, string> = {}) => {
   await render(
     createElement(DiscoverFilters, {
       query: parseDiscoverQuery(raw),
-      fields: ["Arapça dil ilimleri", "Fıkıh", "Hadis"],
       madrasahs: [{ id: "m1", name: "Süleymaniye Medresesi" }],
       labels: filterLabels,
     })
   );
 };
 
-const chip = (name: string) =>
-  [...document.body.querySelectorAll("button.mds-chip")].find(
-    (b) => b.textContent === name
-  ) as HTMLElement;
-
 describe("Keşfet's filters write the address (design tedris/02, criterion 6)", () => {
-  it("shows 'Tümü' pressed with no field, and the fields of the köşks as chips", async () => {
+  it("offers a search and the medrese select, and no chips or level select for a köşk's alan and level (MDRS-252)", async () => {
     await mountFilters();
-    expect(chip("Tümü").getAttribute("aria-pressed")).toBe("true");
-    expect(chip("Fıkıh").getAttribute("aria-pressed")).toBe("false");
-    expect(chip("Hadis")).toBeTruthy();
-  });
-
-  it("pushes the field when a chip is pressed, and starts again at page one", async () => {
-    await mountFilters({ page: "3", level: "BEGINNER" });
-    await click(chip("Fıkıh"));
-    expect(mocks.push).toHaveBeenCalledWith(
-      "/tr/discover?level=BEGINNER&field=F%C4%B1k%C4%B1h"
-    );
-  });
-
-  it("drops the field when the pressed chip is pressed again", async () => {
-    await mountFilters({ field: "Fıkıh" });
-    expect(chip("Fıkıh").getAttribute("aria-pressed")).toBe("true");
-    await click(chip("Fıkıh"));
-    expect(mocks.push).toHaveBeenCalledWith("/tr/discover");
+    expect(document.body.querySelector('input[type="search"]')).toBeTruthy();
+    expect(document.body.querySelectorAll("button.mds-chip")).toHaveLength(0);
+    expect(document.body.textContent).toContain("Bütün medreseler");
+    expect(document.body.textContent).not.toContain("Bütün seviyeler");
   });
 
   it("searches after a pause in typing, replacing rather than pushing", async () => {
     vi.useFakeTimers();
     try {
-      await mountFilters({ level: "ADVANCED" });
+      await mountFilters({ madrasah: "0f6b8f74-3b61-4a63-9d3c-6bd7f8d8e1a2" });
       const input = document.body.querySelector(
         'input[type="search"]'
       ) as HTMLInputElement;
@@ -237,7 +208,7 @@ describe("Keşfet's filters write the address (design tedris/02, criterion 6)", 
         vi.advanceTimersByTime(500);
       });
       expect(mocks.replace).toHaveBeenCalledWith(
-        "/tr/discover?q=sarf&level=ADVANCED"
+        "/tr/discover?q=sarf&madrasah=0f6b8f74-3b61-4a63-9d3c-6bd7f8d8e1a2"
       );
       expect(mocks.push).not.toHaveBeenCalled();
     } finally {

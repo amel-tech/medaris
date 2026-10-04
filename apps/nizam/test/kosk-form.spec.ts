@@ -3,9 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   addTag,
   clampHue,
-  isKoskLevel,
   KOSK_FORM_LIMITS,
-  KOSK_LEVELS,
   type KoskFormState,
   toKoskDto,
 } from "~/features/kosks/kosk-form";
@@ -18,8 +16,6 @@ const state = (overrides: Partial<KoskFormState> = {}): KoskFormState => ({
   name: "  Süleymaniye Köşkü ",
   handle: "",
   description: "",
-  field: "",
-  level: "",
   tags: [],
   coverHue: 215,
   isPrivate: true,
@@ -32,39 +28,24 @@ describe("toKoskDto (MDRS-108)", () => {
       name: "Süleymaniye Köşkü",
       handle: undefined,
       description: undefined,
-      field: undefined,
-      level: undefined,
       tags: [],
       coverHue: 215,
       isPrivate: true,
     });
   });
 
-  it("sends an emptied field as null on edit, which is how the API clears it", () => {
-    const dto = toKoskDto(state({ field: "  " }), "edit");
-    expect(dto.field).toBeNull();
-    expect(dto.level).toBeNull();
+  it("sends an emptied optional field as null on edit, which is how the API clears it", () => {
+    const dto = toKoskDto(state({ handle: "  " }), "edit");
     expect(dto.handle).toBeNull();
     expect(dto.description).toBeNull();
   });
 
-  it("sends the four form fields as typed", () => {
-    expect(
-      toKoskDto(
-        state({
-          field: " Fıkıh ",
-          level: "ADVANCED",
-          tags: ["Usûl"],
-          coverHue: 30.4,
-        }),
-        "edit"
-      )
-    ).toMatchObject({
-      field: "Fıkıh",
-      level: "ADVANCED",
-      tags: ["Usûl"],
-      coverHue: 30,
-    });
+  it("sends the form fields as typed, and never the köşk's field or level (MDRS-252)", () => {
+    const dto = toKoskDto(state({ tags: ["Usûl"], coverHue: 30.4 }), "edit");
+    expect(dto).toMatchObject({ tags: ["Usûl"], coverHue: 30 });
+    expect(dto).not.toHaveProperty("field");
+    expect(dto).not.toHaveProperty("level");
+    expect(toKoskDto(state(), "create")).not.toHaveProperty("field");
   });
 });
 
@@ -92,24 +73,12 @@ describe("addTag", () => {
   });
 });
 
-describe("clampHue / isKoskLevel", () => {
+describe("clampHue", () => {
   it("keeps a hue a whole number of degrees in 0…360", () => {
     expect(clampHue(-5)).toBe(0);
     expect(clampHue(400)).toBe(360);
     expect(clampHue(12.6)).toBe(13);
     expect(clampHue(Number.NaN)).toBe(215);
-  });
-
-  it("knows the four levels tedrisat accepts", () => {
-    expect(KOSK_LEVELS).toEqual([
-      "ALL",
-      "BEGINNER",
-      "INTERMEDIATE",
-      "ADVANCED",
-    ]);
-    expect(isKoskLevel("BEGINNER")).toBe(true);
-    expect(isKoskLevel("EXPERT")).toBe(false);
-    expect(isKoskLevel(null)).toBe(false);
   });
 });
 
@@ -118,7 +87,6 @@ describe("köşk screen catalogue", () => {
     "KosksPage",
     "KoskDetail",
     "KoskForm",
-    "Levels",
   ])("%s has the same keys, all filled, in tr, en and ar", (ns) => {
     const keys = (locale: "tr" | "en" | "ar") =>
       Object.keys(nizamCatalogue(locale)[ns] ?? {}).sort();
@@ -128,14 +96,6 @@ describe("köşk screen catalogue", () => {
     for (const locale of ["tr", "en", "ar"] as const) {
       for (const key of keys(locale)) {
         expect(nizamCatalogue(locale)[ns]?.[key]).toBeTruthy();
-      }
-    }
-  });
-
-  it("labels every level the form offers", () => {
-    for (const locale of ["tr", "en", "ar"] as const) {
-      for (const level of KOSK_LEVELS) {
-        expect(nizamCatalogue(locale).Levels?.[level]).toBeTruthy();
       }
     }
   });

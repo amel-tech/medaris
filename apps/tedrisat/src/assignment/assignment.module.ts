@@ -1,5 +1,6 @@
 import { AuthGuardModule } from "@medaris/common";
 import { Module } from "@nestjs/common";
+import { TedrisatAuthzContext } from "../authz/tedrisat-authz-context.service";
 import { DatabaseModule } from "../database/database.module";
 import { KeycloakAdminModule } from "../keycloak-admin/keycloak-admin.module";
 import { PermissionAdminController } from "./admin/permission-admin.controller";
@@ -19,6 +20,7 @@ import { UserDirectoryService } from "./user-directory.service";
     PermissionAdminController,
   ],
   providers: [
+    TedrisatAuthzContext,
     AssignmentRepository,
     AssignmentService,
     UserDirectoryService,

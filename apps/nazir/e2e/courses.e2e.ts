@@ -136,7 +136,7 @@ test("nazir/07 — the köşk and the state filters work together, and the count
   await expect(page.getByTestId("counter")).toHaveText("1 ders · 1 köşkte");
 });
 
-test("nazir/07 — beside the list: the köşks that host the medrese, with their field and courses, and the two buttons", async ({
+test("nazir/07 — beside the list: the köşks that host the medrese, with their courses, and the two buttons", async ({
   as,
 }) => {
   test.skip(!ready(), "no medrese başmüderris");
@@ -147,10 +147,13 @@ test("nazir/07 — beside the list: the köşks that host the medrese, with thei
   await expect(hosts).toHaveCount(2);
   await expect(
     hosts.filter({ hasText: courses?.kosk.name ?? "" })
-  ).toContainText("Arapça dil ilimleri · 3 medrese dersi");
+  ).toContainText("3 medrese dersi");
+  await expect(
+    hosts.filter({ hasText: courses?.kosk.name ?? "" })
+  ).not.toContainText("Arapça dil ilimleri");
   await expect(
     hosts.filter({ hasText: courses?.fatih.name ?? "" })
-  ).toContainText("Fıkıh · 1 medrese dersi");
+  ).toContainText("1 medrese dersi");
   // a köşk that gave no right and a hidden one are not offered
   await expect(page.getByText(courses?.noRight.name ?? "")).toHaveCount(0);
   await expect(page.getByText(courses?.hiddenKosk.name ?? "")).toHaveCount(0);

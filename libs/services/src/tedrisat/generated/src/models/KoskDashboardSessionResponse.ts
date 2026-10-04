@@ -70,7 +70,7 @@ export interface KoskDashboardSessionResponse {
      */
     durationMinutes?: number | null;
     /**
-     * Where talebe join. The köşk nazımı is the course team, so it is shown; null: no link yet (Bağlantı eksik).
+     * Where talebe join. The köşk nazımı is the course team, so it is shown; null: no link yet (Bağlantı eksik). Absent when `contentLocked` is true.
      * @type {string}
      * @memberof KoskDashboardSessionResponse
      */

@@ -13,10 +13,17 @@ import {
   sql,
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { courseParents, recordHide } from "../archive/hide-audit";
+import type { HideLevel } from "../archive/hide-level";
+import {
+  type CourseRestoreOutcome,
+  restoreCourseIn,
+} from "../archive/restore-course";
 import { DatabaseService } from "../database/database.service";
 import {
   holdsIn,
   isHeld,
+  setCourseImam,
   syncMuderrisAssignments,
 } from "../database/role-assignments";
 import { auditLog } from "../database/schema/audit.schema";
@@ -37,6 +44,7 @@ import {
   ASSIGNED_ROLES,
   roleAssignments,
 } from "../database/schema/role-assignment.schema";
+import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { users } from "../database/schema/user.schema";
 import {
   ICourse,
@@ -47,6 +55,7 @@ import {
   ICourseSummary,
   ICreateCourse,
   ICreateLesson,
+  ICreateMuderris,
   ICreateSessionBatch,
   IEnrolledCourse,
   IEnrollment,
@@ -62,8 +71,10 @@ import {
   ISessionBatchWeek,
   IUpdateCourse,
   IUpdateLesson,
+  IWeekHide,
 } from "./course.repository.interface";
 import { IPurgeCounts, purgeCourses, recordDeletion, Tx } from "./course-purge";
+import { ROSTER_READ_ACTION } from "./domain/course-content";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import { LessonType } from "./domain/lesson-type.enum";
@@ -295,7 +306,7 @@ export class CourseRepository implements ICourseRepository {
       with: {
         course: {
           with: {
-            kosk: { columns: { name: true } },
+            kosk: { columns: { name: true, archivedAt: true } },
             weeks: {
               where: (w, { isNull }) => isNull(w.archivedAt),
               with: {
@@ -314,9 +325,13 @@ export class CourseRepository implements ICourseRepository {
       orderBy: (e, { asc }) => [asc(e.createdAt)],
     });
 
-    // A hidden course drops out of its talebe's list too (MDRS-124); the
-    // enrollment row stays, so restoring the course brings it back.
-    const live = rows.filter((row) => row.course.archivedAt === null);
+    // A hidden course drops out of its talebe's list too (MDRS-124), and so
+    // does every course of a hidden köşk (MDRS-143); the enrollment row stays,
+    // so restoring the course or the köşk brings it back.
+    const live = rows.filter(
+      (row) =>
+        row.course.archivedAt === null && row.course.kosk.archivedAt === null
+    );
     const { madrasahName, imamKeys } = await this.madrasahsAndImamsOf(
       live.map((row) => row.course)
     );
@@ -351,7 +366,7 @@ export class CourseRepository implements ICourseRepository {
   }
 
   async create(course: ICreateCourse): Promise<ICourseDetail> {
-    const { weeks, muderris, resources, ...courseData } = course;
+    const { weeks, muderris, imamUserId, resources, ...courseData } = course;
 
     const courseId = await this.db.transaction(async (tx) => {
       const [createdCourse] = await tx
@@ -372,6 +387,7 @@ export class CourseRepository implements ICourseRepository {
           }))
         );
         await syncMuderrisAssignments(tx, createdCourse.id, course.authorId);
+        if (imamUserId) await setCourseImam(tx, createdCourse.id, imamUserId);
       }
 
       if (resources?.length) {
@@ -429,11 +445,12 @@ export class CourseRepository implements ICourseRepository {
   async replace(
     id: string,
     userId: string,
-    data: IReplaceCourse
+    data: IReplaceCourse,
+    level?: HideLevel
   ): Promise<ICourseDetail> {
     const {
       weeks = [],
-      muderris = [],
+      muderris,
       resources = [],
       version: expectedVersion,
       ...courseData
@@ -447,50 +464,10 @@ export class CourseRepository implements ICourseRepository {
       await this.bumpVersion(tx, id, expectedVersion, courseData);
 
       // ---- müderris: upsert by id, delete the rest ----
-      const existingMuderris = await tx
-        .select({ id: courseMuderris.id })
-        .from(courseMuderris)
-        .where(eq(courseMuderris.courseId, id));
-      // Ids are compared lowercased, the way `muderrisListChanged` compares
-      // them before the ASSIGN_MUDERRIS check. Postgres returns uuids in
-      // lowercase and `@IsUUID()` accepts uppercase, so an exact match here
-      // would delete and re-insert a row the check called unchanged — with
-      // every field the payload left out, `userId` included, reset.
-      const muderrisKeep = new Set(
-        muderris
-          .map((m) => m.id?.toLowerCase())
-          .filter((x): x is string => Boolean(x))
-      );
-      const muderrisToDelete = existingMuderris
-        .filter((e) => !muderrisKeep.has(e.id))
-        .map((e) => e.id);
-      if (muderrisToDelete.length) {
-        await tx
-          .delete(courseMuderris)
-          .where(inArray(courseMuderris.id, muderrisToDelete));
+      // Left out of the payload, the team is left alone (MDRS-136).
+      if (muderris !== undefined) {
+        await this.replaceMuderris(tx, id, muderris, userId);
       }
-      const existingMuderrisIds = new Set(existingMuderris.map((e) => e.id));
-      for (const [i, m] of muderris.entries()) {
-        const values = {
-          courseId: id,
-          userId: m.userId,
-          name: m.name,
-          title: m.title,
-          bio: m.bio,
-          avatarHue: m.avatarHue,
-          orderIndex: i,
-        };
-        const muderrisId = m.id?.toLowerCase();
-        if (muderrisId && existingMuderrisIds.has(muderrisId)) {
-          await tx
-            .update(courseMuderris)
-            .set(values)
-            .where(eq(courseMuderris.id, muderrisId));
-        } else {
-          await tx.insert(courseMuderris).values(values);
-        }
-      }
-      await syncMuderrisAssignments(tx, id, userId);
 
       // ---- resources: upsert by id, delete the rest ----
       const existingResources = await tx
@@ -540,7 +517,7 @@ export class CourseRepository implements ICourseRepository {
       //     fires either.
       const now = new Date();
       const existingWeeks = await tx
-        .select({ id: courseWeeks.id })
+        .select({ id: courseWeeks.id, title: courseWeeks.title })
         .from(courseWeeks)
         .where(
           and(eq(courseWeeks.courseId, id), isNull(courseWeeks.archivedAt))
@@ -548,7 +525,11 @@ export class CourseRepository implements ICourseRepository {
       const existingWeekIds = new Set(existingWeeks.map((w) => w.id));
 
       const existingLessons = await tx
-        .select({ id: lessons.id })
+        .select({
+          id: lessons.id,
+          title: lessons.title,
+          weekId: lessons.weekId,
+        })
         .from(lessons)
         .innerJoin(courseWeeks, eq(lessons.weekId, courseWeeks.id))
         .where(and(eq(courseWeeks.courseId, id), isNull(lessons.archivedAt)));
@@ -619,7 +600,12 @@ export class CourseRepository implements ICourseRepository {
       if (unclaimedLessonIds.size) {
         await tx
           .update(lessons)
-          .set({ archivedAt: now, archivedBy: userId, updatedAt: now })
+          .set({
+            archivedAt: now,
+            archivedBy: userId,
+            archivedLevel: level ?? null,
+            updatedAt: now,
+          })
           .where(inArray(lessons.id, [...unclaimedLessonIds]));
       }
 
@@ -629,8 +615,53 @@ export class CourseRepository implements ICourseRepository {
       if (weeksToArchive.length) {
         await tx
           .update(courseWeeks)
-          .set({ archivedAt: now, archivedBy: userId, updatedAt: now })
+          .set({
+            archivedAt: now,
+            archivedBy: userId,
+            archivedLevel: level ?? null,
+            updatedAt: now,
+          })
           .where(inArray(courseWeeks.id, weeksToArchive));
+      }
+
+      // One audit row per week dropped, counting the sessions that went with
+      // it, and one per session dropped from a week that stays (MDRS-143).
+      if (unclaimedLessonIds.size || weeksToArchive.length) {
+        const where = await courseParents(tx, id);
+        const dropped = existingLessons.filter((l) =>
+          unclaimedLessonIds.has(l.id)
+        );
+        const weekTitles = new Map(existingWeeks.map((w) => [w.id, w.title]));
+        const hidden = {
+          actorId: userId,
+          verb: "hide",
+          level: level ?? SCOPE_TYPES.COURSE,
+          courseId: id,
+          ...where,
+        } as const;
+        for (const weekId of weeksToArchive) {
+          await recordHide(tx, {
+            ...hidden,
+            entity: "week",
+            entityId: weekId,
+            title: weekTitles.get(weekId) ?? "",
+            extra: {
+              sessions: dropped.filter((l) => l.weekId === weekId).length,
+              via: "course.replace",
+            },
+          });
+        }
+        for (const lesson of dropped) {
+          if (weeksToArchive.includes(lesson.weekId)) continue;
+          await recordHide(tx, {
+            ...hidden,
+            entity: "session",
+            entityId: lesson.id,
+            title: lesson.title,
+            weekId: lesson.weekId,
+            extra: { via: "course.replace" },
+          });
+        }
       }
     });
 
@@ -746,6 +777,81 @@ export class CourseRepository implements ICourseRepository {
       replacementLessonId: row.replacementLessonId,
       courseVersion,
     };
+  }
+
+  /** The müderris half of a whole-course save, inside its transaction. */
+  private async replaceMuderris(
+    tx: Tx,
+    courseId: string,
+    muderris: ICreateMuderris[],
+    actorId: string
+  ): Promise<void> {
+    const existingMuderris = await tx
+      .select({ id: courseMuderris.id, userId: courseMuderris.userId })
+      .from(courseMuderris)
+      .where(eq(courseMuderris.courseId, courseId));
+    // Ids are compared lowercased, the way `muderrisListChanged` compares
+    // them before the check on the müderris list. Postgres returns uuids in
+    // lowercase and `@IsUUID()` accepts uppercase, so an exact match here
+    // would delete and re-insert a row the check called unchanged — with
+    // every field the payload left out, `userId` included, reset.
+    const muderrisKeep = new Set(
+      muderris
+        .map((m) => m.id?.toLowerCase())
+        .filter((x): x is string => Boolean(x))
+    );
+    const muderrisToDelete = existingMuderris
+      .filter((e) => !muderrisKeep.has(e.id))
+      .map((e) => e.id);
+    if (muderrisToDelete.length) {
+      await tx
+        .delete(courseMuderris)
+        .where(inArray(courseMuderris.id, muderrisToDelete));
+    }
+    const existingMuderrisIds = new Set(existingMuderris.map((e) => e.id));
+    for (const [i, m] of muderris.entries()) {
+      const values = {
+        courseId,
+        userId: m.userId,
+        name: m.name,
+        title: m.title,
+        bio: m.bio,
+        avatarHue: m.avatarHue,
+        orderIndex: i,
+      };
+      const muderrisId = m.id?.toLowerCase();
+      if (muderrisId && existingMuderrisIds.has(muderrisId)) {
+        await tx
+          .update(courseMuderris)
+          .set(values)
+          .where(eq(courseMuderris.id, muderrisId));
+      } else {
+        await tx.insert(courseMuderris).values(values);
+      }
+    }
+    // Whoever was listed already keeps the seat they have, none if it lapsed
+    // or was revoked: saving the syllabus seats nobody again, in the saver's
+    // name and with no end (MDRS-135). A seat this save gives or takes is on
+    // the record.
+    const listedBefore = existingMuderris.flatMap((e) =>
+      e.userId ? [e.userId] : []
+    );
+    const seats = await syncMuderrisAssignments(tx, courseId, actorId, {
+      listedBefore,
+    });
+    if (seats.seated.length > 0 || seats.revoked.length > 0) {
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "course.muderris_update",
+        entity: "course",
+        entityId: courseId,
+        details: {
+          via: "course.replace",
+          seated: seats.seated,
+          revoked: seats.revoked,
+        },
+      });
+    }
   }
 
   async findLessonCourseId(lessonId: string): Promise<string | null> {
@@ -954,7 +1060,8 @@ export class CourseRepository implements ICourseRepository {
 
   async archiveLesson(
     lessonId: string,
-    actorId: string | null = null
+    actorId: string | null = null,
+    level?: HideLevel
   ): Promise<ILessonMutation> {
     return this.db.transaction(async (tx) => {
       const courseId = await this.findLiveLessonCourseId(tx, lessonId);
@@ -962,12 +1069,85 @@ export class CourseRepository implements ICourseRepository {
       const now = new Date();
       const [row] = await tx
         .update(lessons)
-        .set({ archivedAt: now, archivedBy: actorId, updatedAt: now })
+        .set({
+          archivedAt: now,
+          archivedBy: actorId,
+          archivedLevel: level ?? null,
+          updatedAt: now,
+        })
         .where(and(eq(lessons.id, lessonId), isNull(lessons.archivedAt)))
         .returning();
       // Archived by a concurrent request between the read and the lock.
       if (!row) throw new LessonNotFoundError(lessonId);
+      if (actorId !== null) {
+        await recordHide(tx, {
+          actorId,
+          verb: "hide",
+          entity: "session",
+          entityId: lessonId,
+          title: row.title,
+          level: level ?? SCOPE_TYPES.COURSE,
+          courseId,
+          weekId: row.weekId,
+          ...(await courseParents(tx, courseId)),
+        });
+      }
       return this.toLessonMutation(row, courseVersion);
+    });
+  }
+
+  /**
+   * Hides a week with its live sessions (MDRS-143), all at one instant: a
+   * restore of the week brings back exactly the sessions hidden with it, never
+   * one hidden on its own earlier. Takes the course row's lock first, like
+   * every syllabus write, so an editor holding the old `version` is refused
+   * (409) rather than saving the week back.
+   */
+  async archiveWeek(
+    courseId: string,
+    weekId: string,
+    actorId: string,
+    level: HideLevel
+  ): Promise<IWeekHide> {
+    return this.db.transaction(async (tx) => {
+      const courseVersion = await this.bumpVersion(tx, courseId, undefined);
+      const [week] = await tx
+        .select({ title: courseWeeks.title })
+        .from(courseWeeks)
+        .where(
+          and(
+            eq(courseWeeks.id, weekId),
+            eq(courseWeeks.courseId, courseId),
+            isNull(courseWeeks.archivedAt)
+          )
+        )
+        .limit(1);
+      if (!week) throw new WeekNotFoundError(weekId, courseId);
+      const now = new Date();
+      const stamp = {
+        archivedAt: now,
+        archivedBy: actorId,
+        archivedLevel: level,
+        updatedAt: now,
+      };
+      const sessions = await tx
+        .update(lessons)
+        .set(stamp)
+        .where(and(eq(lessons.weekId, weekId), isNull(lessons.archivedAt)))
+        .returning({ id: lessons.id });
+      await tx.update(courseWeeks).set(stamp).where(eq(courseWeeks.id, weekId));
+      await recordHide(tx, {
+        actorId,
+        verb: "hide",
+        entity: "week",
+        entityId: weekId,
+        title: week.title,
+        level,
+        courseId,
+        ...(await courseParents(tx, courseId)),
+        extra: { sessions: sessions.length },
+      });
+      return { id: weekId, courseVersion, hiddenSessions: sessions.length };
     });
   }
 
@@ -1225,36 +1405,74 @@ export class CourseRepository implements ICourseRepository {
    * Hides the course (MDRS-124): stamps `archived_at`/`archived_by` and bumps
    * the version, so an editor still holding the old one cannot save over the
    * hide unawares. Hiding a hidden course changes nothing — not the first
-   * stamp, not the version. Null when no such course exists.
+   * stamp, not the version — and says so ("already-hidden").
    */
-  async archive(id: string, userId: string): Promise<ICourse | null> {
-    const now = new Date();
-    const [row] = await this.db
-      .update(courses)
-      .set({
-        archivedAt: now,
-        archivedBy: userId,
-        version: sql`${courses.version} + 1`,
-        updatedAt: now,
-      })
-      .where(and(eq(courses.id, id), isNull(courses.archivedAt)))
-      .returning();
-    return row ?? this.findCourseRow(id);
+  /** Hides the course at `level`, with its `course.hide` row in the same transaction. */
+  async archive(
+    id: string,
+    userId: string,
+    level: HideLevel
+  ): Promise<"archived" | "already-hidden" | "not-found"> {
+    const outcome = await this.db.transaction(async (tx) => {
+      const now = new Date();
+      const [row] = await tx
+        .update(courses)
+        .set({
+          archivedAt: now,
+          archivedBy: userId,
+          archivedLevel: level,
+          version: sql`${courses.version} + 1`,
+          updatedAt: now,
+        })
+        .where(and(eq(courses.id, id), isNull(courses.archivedAt)))
+        .returning({ id: courses.id, title: courses.title });
+      if (!row) return null;
+      await tx.insert(auditLog).values({
+        actorId: userId,
+        action: "course.hide",
+        entity: "course",
+        entityId: id,
+        details: { title: row.title, level },
+      });
+      return "archived" as const;
+    });
+    if (outcome) return outcome;
+    return (await this.findCourseRow(id)) ? "already-hidden" : "not-found";
   }
 
-  /** Brings a hidden course back; a no-op on a live one. Null if missing. */
-  async restore(id: string): Promise<ICourse | null> {
+  /**
+   * Brings a hidden course back for a restorer acting at `restorer`, deciding
+   * the kademe and the hidden parent under the row lock (`restoreCourseIn`),
+   * with its `course.restore` row in the same transaction.
+   */
+  async restore(
+    id: string,
+    restorer: HideLevel,
+    actorId: string
+  ): Promise<CourseRestoreOutcome> {
+    return this.db.transaction(async (tx) => {
+      const outcome = await restoreCourseIn(tx, id, restorer);
+      if (outcome.status === "restored") {
+        await tx.insert(auditLog).values({
+          actorId,
+          action: "course.restore",
+          entity: "course",
+          entityId: id,
+          details: { title: outcome.title, level: restorer },
+        });
+      }
+      return outcome;
+    });
+  }
+
+  async findHideState(id: string) {
     const [row] = await this.db
-      .update(courses)
-      .set({
-        archivedAt: null,
-        archivedBy: null,
-        version: sql`${courses.version} + 1`,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(courses.id, id), isNotNull(courses.archivedAt)))
-      .returning();
-    return row ?? this.findCourseRow(id);
+      .select({ koskArchivedAt: kosks.archivedAt })
+      .from(courses)
+      .innerJoin(kosks, eq(kosks.id, courses.koskId))
+      .where(eq(courses.id, id))
+      .limit(1);
+    return row ?? null;
   }
 
   private async findCourseRow(id: string): Promise<ICourse | null> {
@@ -1485,12 +1703,41 @@ export class CourseRepository implements ICourseRepository {
         })
         .from(roleAssignments)
         .innerJoin(courses, holdsIn(ASSIGNED_ROLES.MUDERRIS, courses.id))
-        // A hidden course is not in anyone's `GET /me` either (MDRS-124).
+        .innerJoin(kosks, eq(kosks.id, courses.koskId))
+        // A hidden course is not in anyone's `GET /me` either (MDRS-124), nor
+        // is a course of a hidden köşk (MDRS-143).
         .where(
-          and(eq(roleAssignments.userId, userId), isNull(courses.archivedAt))
+          and(
+            eq(roleAssignments.userId, userId),
+            isNull(courses.archivedAt),
+            isNull(kosks.archivedAt)
+          )
         )
         .orderBy(courses.title, courses.id)
     );
+  }
+
+  async holdsRoleOnCourse(userId: string, courseId: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: roleAssignments.id })
+      .from(roleAssignments)
+      .where(
+        and(
+          eq(roleAssignments.userId, userId),
+          isHeld(),
+          // The platform's roles as `scope_id is null` (the same rows, by the
+          // CHECK `role_assignments_scope_id_present`) and the course's scopes
+          // as one array, as `TedrisatAuthzContext.heldRoles` asks: the two
+          // partial indexes on `user_id` then serve both arms instead of a
+          // scan of every row ever assigned, on every audited content read.
+          or(
+            isNull(roleAssignments.scopeId),
+            sql`${roleAssignments.scopeId} = any(array[${courseId}::uuid, (select ${courses.koskId} from ${courses} where ${courses.id} = ${courseId}), (select ${courses.madrasahId} from ${courses} where ${courses.id} = ${courseId})])`
+          )
+        )
+      )
+      .limit(1);
+    return rows.length > 0;
   }
 
   /**
@@ -1509,6 +1756,21 @@ export class CourseRepository implements ICourseRepository {
       action: "course.content_read",
       entity: "course",
       entityId: entry.courseId,
+      details: entry.details,
+    });
+  }
+
+  async recordRosterRead(entry: {
+    actorId: string;
+    entity: "course" | "kosk";
+    entityId: string;
+    details: Record<string, unknown>;
+  }): Promise<void> {
+    await this.db.insert(auditLog).values({
+      actorId: entry.actorId,
+      action: ROSTER_READ_ACTION,
+      entity: entry.entity,
+      entityId: entry.entityId,
       details: entry.details,
     });
   }

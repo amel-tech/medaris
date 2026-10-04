@@ -7,6 +7,7 @@ import {
   type HeadDelegationResponse,
   type MadrasahDirectoryItemResponse,
   type MadrasahResponse,
+  type PassivationImpactResponse,
   ResponseError,
 } from "@medaris/services/tedrisat";
 import { revalidatePath } from "next/cache";
@@ -36,6 +37,33 @@ export const restoreMadrasah = async (
 ): Promise<AuthenticatedActionResult<MadrasahDirectoryItemResponse>> => {
   const result = await authenticatedAction((api) =>
     api.madrasahs.restoreMadrasah({ id })
+  );
+  if (result.success) revalidatePath("/", "layout");
+  return result;
+};
+
+/** What "Medreseyi pasife al" takes along (nizam 07, MDRS-227), with the confirmation to post back. */
+export const previewMadrasahDeactivation = async (
+  id: string
+): Promise<AuthenticatedActionResult<PassivationImpactResponse>> =>
+  authenticatedAction((api) =>
+    api.madrasahs.getMadrasahDeactivationPreview({ id })
+  );
+
+/**
+ * "Medreseyi pasife al" (nizam 07): the başmüderris is off the post and the
+ * courses below close, once `confirmation` is the preview's. A stale one comes
+ * back as 409 with the fresh preview in `errorBody.context.impact`.
+ */
+export const deactivateMadrasah = async (
+  id: string,
+  confirmation: string
+): Promise<AuthenticatedActionResult<MadrasahDirectoryItemResponse>> => {
+  const result = await authenticatedAction((api) =>
+    api.madrasahs.deactivateMadrasah({
+      id,
+      passivateScopeDto: { confirmation },
+    })
   );
   if (result.success) revalidatePath("/", "layout");
   return result;

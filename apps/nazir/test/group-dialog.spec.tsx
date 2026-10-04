@@ -487,6 +487,7 @@ describe("the groups under the nazırs (nazir 05, 16)", () => {
           madrasahId="m-1"
           madrasahName="Süleymaniye Medresesi"
           cards={cards}
+          manages
         />
       )
     );

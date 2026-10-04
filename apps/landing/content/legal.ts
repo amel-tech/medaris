@@ -1,10 +1,10 @@
 // The values the landing's legal pages share (MDRS-102, MDRS-151): Aydınlatma
-// Metni, Kullanım şartları and Çerezler. The controller's contact is written
-// once, in content/aydinlatma-metni.ts, and reused here by reference.
-import { CONTROLLER } from "./aydinlatma-metni";
+// Metni, Kullanım şartları and Çerezler. The support address is the contact
+// form's own (`lib/contact.ts`).
+import { CONTACT_ADDRESS } from "~/lib/contact";
 
 export const legal = {
-  supportEmail: CONTROLLER.email,
+  supportEmail: CONTACT_ADDRESS,
   hostingProvider: "Hosting Dünyam (Türkiye)",
   retentionPeriod: "ilgili mevzuatta öngörülen azami süre",
   // There is no self-service deletion (no tedrisat route, no Keycloak

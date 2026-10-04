@@ -1,9 +1,15 @@
 import { Injectable, Logger } from "@nestjs/common";
+import type { HideLevel } from "../archive/hide-level";
 import { GrantExpiryInvalidError } from "../assignment/admin/errors";
 import { checkGrantExpiry } from "../assignment/admin/grant-plan";
+import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { KeycloakAdminService } from "../keycloak-admin/keycloak-admin.service";
+import type { PassivationImpactResponse } from "../passivation/dto/passivation.dto";
+import { presentImpact } from "../passivation/passivation-impact";
+import { PassivationImpactRepository } from "../passivation/passivation-impact.repository";
 import type { HeadDelegationResponse } from "./dto/set-head-muderris.dto";
 import { MadrasahAlreadyHiddenError } from "./errors/madrasah-already-hidden.error";
+import { MadrasahAlreadyPassiveError } from "./errors/madrasah-already-passive.error";
 import { MadrasahHandleTakenError } from "./errors/madrasah-handle-taken.error";
 import { MadrasahNotFoundError } from "./errors/madrasah-not-found.error";
 import { MadrasahNotHiddenError } from "./errors/madrasah-not-hidden.error";
@@ -46,7 +52,7 @@ function isUniqueViolation(error: unknown): boolean {
 
 /**
  * The medrese layer (MDRS-106, ADR-003). Every method here is reached through
- * `MadrasahController`, whose `@Authz` scopes decide who may call it; nothing
+ * `MadrasahController`, whose `@Authz` permissions decide who may call it; nothing
  * here re-checks the caller's role.
  */
 @Injectable()
@@ -57,7 +63,8 @@ export class MadrasahService {
   // `design:paramtypes` and Nest can no longer inject them.
   constructor(
     private readonly madrasahRepo: MadrasahRepository,
-    private readonly keycloak: KeycloakAdminService
+    private readonly keycloak: KeycloakAdminService,
+    private readonly impact: PassivationImpactRepository
   ) {}
 
   async findAll(page: number, limit: number): Promise<IPaginatedMadrasahs> {
@@ -77,26 +84,36 @@ export class MadrasahService {
 
   /**
    * What `GET /madrasahs/:id` serves, to callers with no token too: a hidden
-   * medrese is not-found, closed like its listing and its page (MDRS-170).
-   * `findById` stays open to it for the writes that return the medrese they
-   * changed.
+   * medrese is not-found, closed like its listing and its page (MDRS-170),
+   * except to the people above it, which `mayOpenHidden` decides (it is asked
+   * only for a hidden one). `findById` stays open to it for the writes that
+   * return the medrese they changed.
    */
-  async findOpenById(id: string): Promise<IMadrasahWithNazirs> {
+  async findOpenById(
+    id: string,
+    mayOpenHidden: () => Promise<boolean> = async () => false
+  ): Promise<IMadrasahWithNazirs> {
     const madrasah = await this.findById(id);
-    if (madrasah.archivedAt) throw new MadrasahNotFoundError(id);
+    if (madrasah.archivedAt && !(await mayOpenHidden())) {
+      throw new MadrasahNotFoundError(id);
+    }
     return madrasah;
   }
 
-  /** The medrese page's data (MDRS-157); not-found for an unknown medrese. */
+  /**
+   * The medrese page's data (MDRS-157); not-found for an unknown medrese, and
+   * for a hidden one unless `mayOpenHidden` lets the caller in (MDRS-143: the
+   * medrese's başmüderris and Medaris yönetimi).
+   */
   async findOverview(
     id: string,
-    userId: string | null
+    userId: string | null,
+    mayOpenHidden: () => Promise<boolean> = async () => false
   ): Promise<IMadrasahOverview> {
-    // A hidden medrese's page is closed like its listing (MDRS-170).
-    if (
-      !(await this.madrasahRepo.exists(id)) ||
-      (await this.madrasahRepo.isHidden(id))
-    ) {
+    if (!(await this.madrasahRepo.exists(id))) {
+      throw new MadrasahNotFoundError(id);
+    }
+    if ((await this.madrasahRepo.isHidden(id)) && !(await mayOpenHidden())) {
       throw new MadrasahNotFoundError(id);
     }
     return this.madrasahRepo.findOverview(id, userId);
@@ -228,20 +245,32 @@ export class MadrasahService {
   }
 
   /**
-   * What the sitting başmüderris handed on (nizam/22's "şu kişilere rol ve
-   * izin vermişti"), named. `exceptUserId` is the person about to take over.
+   * Who received the rows a head change answers TAKE_OVER, read by the rows'
+   * ids (a row's recipient never changes), for the self-grant guard: taking
+   * over a row given to oneself makes it a row one gave oneself.
    */
-  async headDelegations(
-    madrasahId: string,
-    exceptUserId?: string
-  ): Promise<HeadDelegationResponse[]> {
+  takeOverRecipients(
+    decisions: ReadonlyArray<{
+      kind: "ROLE" | "GRANT";
+      id: string;
+      action: "TAKE_OVER" | "DROP";
+    }>
+  ): Promise<string[]> {
+    return this.madrasahRepo.recipientsOf(
+      decisions.filter((d) => d.action === "TAKE_OVER")
+    );
+  }
+
+  /**
+   * What the sitting başmüderris handed on (nizam/22's "şu kişilere rol ve
+   * izin vermişti"), named: to anyone, the one about to take over included,
+   * since a head change decides every row.
+   */
+  async headDelegations(madrasahId: string): Promise<HeadDelegationResponse[]> {
     if (!(await this.madrasahRepo.exists(madrasahId))) {
       throw new MadrasahNotFoundError(madrasahId);
     }
-    const rows = await this.madrasahRepo.headDelegations(
-      madrasahId,
-      exceptUserId
-    );
+    const rows = await this.madrasahRepo.headDelegations(madrasahId);
     const ids = [...new Set(rows.map((r) => r.userId))];
     const people = await this.madrasahRepo.people(ids);
     const missing = ids.filter((id) => !people.has(id));
@@ -269,6 +298,12 @@ export class MadrasahService {
         role: r.role,
         permission: r.permission,
         groupName: r.groupName,
+        scopeType:
+          r.scopeType === SCOPE_TYPES.COURSE
+            ? SCOPE_TYPES.COURSE
+            : SCOPE_TYPES.MADRASAH,
+        scopeId: r.scopeId,
+        courseTitle: r.courseTitle,
         to: { id: r.userId, name: name || null, email: person?.email ?? null },
         grantedAt: r.grantedAt,
         expiresAt: r.expiresAt,
@@ -279,9 +314,10 @@ export class MadrasahService {
   /** "Medreseyi gizle" (nazir/12): out of every list, its courses with it; nothing is deleted. */
   async hide(
     madrasahId: string,
-    actorId: string
+    actorId: string,
+    level: HideLevel
   ): Promise<IMadrasahDirectoryItem> {
-    const result = await this.madrasahRepo.hide(madrasahId, actorId);
+    const result = await this.madrasahRepo.hide(madrasahId, actorId, level);
     if (result === "not-found") throw new MadrasahNotFoundError(madrasahId);
     if (result === "already-hidden") {
       throw new MadrasahAlreadyHiddenError(madrasahId);
@@ -289,12 +325,48 @@ export class MadrasahService {
     return this.directoryItem(madrasahId);
   }
 
+  /**
+   * What "Medreseyi pasife al" takes along, with the confirmation to post
+   * back (MDRS-227). `@Authz(platform.madrasah_edit)` on the route decided who
+   * may read.
+   */
+  async previewDeactivation(
+    madrasahId: string,
+    actorId: string
+  ): Promise<PassivationImpactResponse> {
+    const impact = await this.impact.measure({
+      type: "MADRASAH",
+      id: madrasahId,
+    });
+    if (!impact) throw new MadrasahNotFoundError(madrasahId);
+    return presentImpact(impact, actorId);
+  }
+
+  /** "Medreseyi pasife al": the başmüderris leaves the post and the courses below close, once the confirmation is the preview's. */
+  async deactivate(
+    madrasahId: string,
+    actorId: string,
+    confirmation: string
+  ): Promise<IMadrasahDirectoryItem> {
+    const result = await this.madrasahRepo.deactivate(
+      madrasahId,
+      actorId,
+      confirmation
+    );
+    if (result === "not-found") throw new MadrasahNotFoundError(madrasahId);
+    if (result === "already-passive") {
+      throw new MadrasahAlreadyPassiveError(madrasahId);
+    }
+    return this.directoryItem(madrasahId);
+  }
+
   /** "Geri al": a hidden medrese is listed again. */
   async restore(
     madrasahId: string,
-    actorId: string
+    actorId: string,
+    level: HideLevel
   ): Promise<IMadrasahDirectoryItem> {
-    const result = await this.madrasahRepo.restore(madrasahId, actorId);
+    const result = await this.madrasahRepo.restore(madrasahId, actorId, level);
     if (result === "not-found") throw new MadrasahNotFoundError(madrasahId);
     if (result === "not-hidden") throw new MadrasahNotHiddenError(madrasahId);
     return this.directoryItem(madrasahId);
@@ -359,8 +431,8 @@ export class MadrasahService {
     return this.madrasahRepo.findCourseList(id, filter);
   }
 
-  async delete(id: string): Promise<boolean> {
-    if (!(await this.madrasahRepo.delete(id))) {
+  async delete(id: string, actorId: string): Promise<boolean> {
+    if (!(await this.madrasahRepo.delete(id, actorId))) {
       throw new MadrasahNotFoundError(id);
     }
     return true;

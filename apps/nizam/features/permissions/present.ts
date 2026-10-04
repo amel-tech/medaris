@@ -1,5 +1,6 @@
 import type {
   GivenItemResponse,
+  GivenKind,
   MedarisNazimResponse,
   PermissionCatalogResponse,
   PermissionGroupResponse,
@@ -9,10 +10,10 @@ import type {
 /**
  * Pure helpers behind Medaris nazımları, İzin ver and İzin grupları (nizam 11,
  * 12 and 13, MDRS-171): what the "Bitiş" column says, how the permissions of a
- * person are summed up, the dialog's checked and locked boxes, the date the
- * "Bitiş tarihi" field turns into, the rules of the dismissal and of the group
- * form. No React and no I/O, so the sentences and rules the designs show can be
- * pinned by plain specs.
+ * person are summed up, the dialog's checked and locked boxes, the rules of the
+ * dismissal and of the group form. No React and no I/O, so the sentences and
+ * rules the designs show can be pinned by plain specs. The end of a role or a
+ * permission is an instant, read and compared by `@medaris/utils` (MDRS-254).
  */
 export type Messages = (
   key: string,
@@ -104,83 +105,6 @@ export function endLabel(
     date: formatDay(date, opts.locale, opts.timeZone),
     warnDays: left <= WARN_DAYS ? Math.max(left, 0) : null,
   };
-}
-
-/** The offset of a zone from UTC at an instant, in milliseconds. */
-function zoneOffset(instant: number, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hourCycle: "h23",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).formatToParts(new Date(instant));
-  const get = (type: string) =>
-    Number(parts.find((p) => p.type === type)?.value ?? 0);
-  const asUtc = Date.UTC(
-    get("year"),
-    get("month") - 1,
-    get("day"),
-    get("hour"),
-    get("minute"),
-    get("second")
-  );
-  return asUtc - Math.floor(instant / 1000) * 1000;
-}
-
-/**
- * The last second of a calendar day in a zone, as an ISO instant: what an end
- * date typed as `YYYY-MM-DD` means ("until the end of that day"). `null` for
- * anything that is not a date.
- */
-export function endOfDayIso(day: string, timeZone: string): string | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
-  if (!match) return null;
-  const [, y = 0, m = 1, d = 1] = match.map(Number);
-  const wall = Date.UTC(y, m - 1, d, 23, 59, 59);
-  let instant = wall - zoneOffset(wall, timeZone);
-  // Across a change of offset the first guess can be an hour out.
-  instant = wall - zoneOffset(instant, timeZone);
-  const result = new Date(instant);
-  return Number.isNaN(result.getTime()) ? null : result.toISOString();
-}
-
-export type EndError = "past" | "afterAssignment";
-
-/**
- * The first thing wrong with the end date typed: not after today, or after
- * the appointment's own end (nizam/12 criterion 3). Empty is fine: the
- * permissions end with the appointment.
- */
-export function endError(
-  day: string,
-  opts: { now: Date; timeZone: string; assignmentEnd: Date | string | null }
-): EndError | null {
-  if (day.trim() === "") return null;
-  const iso = endOfDayIso(day, opts.timeZone);
-  if (!iso) return "past";
-  const instant = new Date(iso);
-  // "Gelecekte": today is not, even though its last second still lies ahead.
-  if (day <= dayIn(opts.now, opts.timeZone)) return "past";
-  if (
-    opts.assignmentEnd !== null &&
-    dayIn(instant, opts.timeZone) >
-      dayIn(new Date(opts.assignmentEnd), opts.timeZone)
-  ) {
-    return "afterAssignment";
-  }
-  return null;
-}
-
-/** The value the date input holds for an end the API gave. */
-export function dayInputValue(
-  end: Date | string | null,
-  timeZone: string
-): string {
-  return end === null ? "" : dayIn(new Date(end), timeZone);
 }
 
 // ---- the dismissal gate ----------------------------------------------------
@@ -298,6 +222,45 @@ export type DismissAnswer = "TAKE_OVER" | "DROP";
 export const givenKey = (item: Pick<GivenItemResponse, "kind" | "id">) =>
   `${item.kind}:${item.id}`;
 
+/** A role or a grant: what a dismissal asks an answer for. */
+export type DecisionItem = GivenItemResponse & { kind: GivenKind };
+
+/**
+ * What the person handed on to others and the başnazım must decide about, in
+ * the order listed. A row the person made for themselves goes with the
+ * dismissal whatever the answer, so the API takes no answer for it and none is
+ * asked (`selfMadeItems` lists those apart).
+ */
+export const decisionItems = (
+  items: readonly GivenItemResponse[],
+  personId?: string
+): DecisionItem[] =>
+  items.filter(
+    (item): item is DecisionItem =>
+      item.kind !== "GROUP" && !madeForThemselves(item, personId)
+  );
+
+/** The roles and grants the person gave themselves: shown as revoked with the dismissal, never asked about. */
+export const selfMadeItems = (
+  items: readonly GivenItemResponse[],
+  personId: string | undefined
+): DecisionItem[] =>
+  items.filter(
+    (item): item is DecisionItem =>
+      item.kind !== "GROUP" && madeForThemselves(item, personId)
+  );
+
+const madeForThemselves = (
+  item: Pick<GivenItemResponse, "to">,
+  personId: string | undefined
+) =>
+  personId !== undefined &&
+  item.to?.id.toLowerCase() === personId.toLowerCase();
+
+/** The permission groups the person defined or changed: shown, never asked about. */
+export const groupItems = (items: readonly GivenItemResponse[]) =>
+  items.filter((item) => item.kind === "GROUP");
+
 /** The confirm button is off until every item has an answer (_kurallar 14, 15). */
 export function dismissReady(
   items: readonly Pick<GivenItemResponse, "kind" | "id">[],
@@ -307,7 +270,7 @@ export function dismissReady(
 }
 
 export function dismissDecisions(
-  items: readonly Pick<GivenItemResponse, "kind" | "id">[],
+  items: readonly Pick<DecisionItem, "kind" | "id">[],
   answers: Readonly<Record<string, DismissAnswer | undefined>>
 ) {
   return items.map((item) => ({
@@ -399,6 +362,8 @@ const KNOWN: Record<string, string> = {
   MEDARIS_NAZIM_ALREADY_APPOINTED: "errors.alreadyAppointed",
   GRANT_EXPIRY_INVALID: "errors.expiryInvalid",
   DISMISS_DECISIONS_INCOMPLETE: "errors.dismissChanged",
+  DISMISS_SEAT_HANDED_ON: "errors.dismissCascade",
+  DISMISS_TAKE_OVER_WITHOUT_SEAT: "errors.dismissSeatless",
   USERS_POLICY_REQUIRED: "errors.usersPolicy",
   AUTHZ_FORBIDDEN: "errors.forbidden",
 };

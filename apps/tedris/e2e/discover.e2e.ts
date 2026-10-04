@@ -85,10 +85,12 @@ test.describe("Keşfet", () => {
       await expect(main.getByRole("link", { name: k.name })).toBeVisible();
     }
     const nur = card(page, fx.kosks.nur.name);
-    await expect(nur).toContainText(fx.kosks.nur.field);
-    await expect(nur).toContainText("Başlangıç seviyesi");
     await expect(nur).toContainText("3 ders");
-    await expect(card(page, fx.kosks.fatih.name)).toContainText("Orta seviye");
+    await expect(nur).not.toContainText(fx.kosks.nur.field);
+    await expect(nur).not.toContainText("Başlangıç seviyesi");
+    await expect(card(page, fx.kosks.fatih.name)).not.toContainText(
+      "Orta seviye"
+    );
   });
 
   test("shows a medrese's başmüderris and courses, and says so when it has none", async ({
@@ -119,43 +121,19 @@ test.describe("Keşfet", () => {
     await expect(page.getByText(fx.courses.draft.title)).toHaveCount(0);
   });
 
-  test("a level chosen in the select narrows the köşks and the count, and the back button undoes it", async ({
+  test("has no level select and no alan chips: a köşk is not filtered by them (MDRS-252)", async ({
     page,
   }) => {
     await page.goto(`/tr/discover?q=${fx.tag}`);
-    await page.getByRole("combobox", { name: "Seviye" }).click();
-    await page.getByRole("option", { name: "Orta", exact: true }).click();
-    await expect(page).toHaveURL(/level=INTERMEDIATE/);
-    const main = page.getByRole("main");
-    await expect(main.getByText("1 köşk ve 1 medrese")).toBeVisible();
-    await expect(
-      main.getByRole("link", { name: fx.kosks.fatih.name })
-    ).toBeVisible();
-    await expect(
-      main.getByRole("link", { name: fx.kosks.nur.name })
-    ).toHaveCount(0);
-    await page.goBack();
-    await expect(page).not.toHaveURL(/level=/);
-    await expect(main.getByText("3 köşk ve 2 medrese")).toBeVisible();
-  });
-
-  test("an alan chip keeps the köşks of that alan, in the address", async ({
-    page,
-  }) => {
-    await page.goto(`/tr/discover?q=${fx.tag}`);
-    await page
-      .getByRole("button", { name: fx.kosks.fatih.field, exact: true })
-      .click();
-    await expect(page).toHaveURL(/field=/);
-    const main = page.getByRole("main");
-    await expect(main.getByText("1 köşk ve 1 medrese")).toBeVisible();
-    await expect(
-      main.getByRole("link", { name: fx.kosks.fatih.name })
-    ).toBeVisible();
-    await page.reload();
+    await expect(page.getByRole("combobox", { name: "Medrese" })).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Seviye" })).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: fx.kosks.fatih.field, exact: true })
-    ).toHaveAttribute("aria-pressed", "true");
+    ).toHaveCount(0);
+    await page.goto(`/tr/discover?q=${fx.tag}&level=INTERMEDIATE`);
+    await expect(
+      page.getByRole("main").getByText("3 köşk ve 2 medrese")
+    ).toBeVisible();
   });
 
   test("a medrese chosen in the select keeps the köşks it hosts courses in", async ({
@@ -300,8 +278,7 @@ test.describe("the köşk page", () => {
     await expect(
       main.getByRole("heading", { level: 1, name: fx.kosks.nur.name })
     ).toBeVisible();
-    await expect(main.getByText(fx.kosks.nur.field).first()).toBeVisible();
-    await expect(main.getByText(/Başlangıç seviyesi/)).toBeVisible();
+    await expect(main.getByText(/Başlangıç seviyesi/)).toHaveCount(0);
     await expect(main.locator(".mds-card--interactive")).toHaveCount(4);
     for (const key of ["emsile", "avamil", "bina"] as const) {
       await expect(

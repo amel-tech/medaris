@@ -89,7 +89,7 @@ describe("Flashcard bulk create (e2e)", () => {
 
     const deck = await request(app.getHttpServer())
       .post("/flashcard/decks")
-      .send({ title: "Colours - Vocabulary Deck", isPublic: false });
+      .send({ title: "Colours - Vocabulary Deck" });
     expect(deck.status).toBe(201);
     deckId = deck.body.id;
   });
@@ -235,6 +235,21 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
   let dbUtils: TestDatabaseUtils;
   let deckId: string;
 
+  // A deck is born private and only the başnazım publishes (MDRS-148), so a
+  // public one is written as his approval would leave it.
+  const createPublicDeck = async (title: string) => {
+    const created = await request(ownerApp.getHttpServer())
+      .post("/flashcard/decks")
+      .send({ title });
+    expect(created.status).toBe(201);
+    await dbUtils.publishDeck(created.body.id);
+    const deck = await request(ownerApp.getHttpServer()).get(
+      `/flashcard/decks/${created.body.id}`
+    );
+    expect(deck.status).toBe(200);
+    return deck.body as { id: string; isPublic: boolean };
+  };
+
   beforeAll(async () => {
     ownerApp = await createTestApp({ authUserId: TEST_USER_ID });
     attackerApp = await createTestApp({ authUserId: OTHER_USER_ID });
@@ -248,7 +263,7 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
 
     const deck = await request(ownerApp.getHttpServer())
       .post("/flashcard/decks")
-      .send({ title: "Owner's Private Deck", isPublic: false });
+      .send({ title: "Owner's Private Deck" });
     expect(deck.status).toBe(201);
     expect(deck.body.authorId).toBe(TEST_USER_ID);
     deckId = deck.body.id;
@@ -352,21 +367,18 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
    * test rather than slip through.
    */
   it("refuses a bulk create even when the deck is public", async () => {
-    const publicDeck = await request(ownerApp.getHttpServer())
-      .post("/flashcard/decks")
-      .send({ title: "Owner's Public Deck", isPublic: true });
-    expect(publicDeck.status).toBe(201);
-    expect(publicDeck.body.isPublic).toBe(true);
+    const publicDeck = await createPublicDeck("Owner's Public Deck");
+    expect(publicDeck.isPublic).toBe(true);
 
     const response = await request(attackerApp.getHttpServer())
-      .post(`/flashcard/decks/${publicDeck.body.id}/cards/bulk`)
+      .post(`/flashcard/decks/${publicDeck.id}/cards/bulk`)
       .send(cards(3));
 
     expect(response.status).toBe(403);
     expect(response.body.code).toBe(AUTHZ_FORBIDDEN);
 
     const cardsInPublicDeck = await request(ownerApp.getHttpServer()).get(
-      `/flashcard/cards?deckId=${publicDeck.body.id}`
+      `/flashcard/cards?deckId=${publicDeck.id}`
     );
     expect(cardsInPublicDeck.status).toBe(200);
     expect(cardsInPublicDeck.body).toHaveLength(0);
@@ -384,11 +396,8 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
    * Postgres rather than from a mock that could agree with the bug.
    */
   it("keeps every owner scope on the owner's own PUBLIC deck", async () => {
-    const publicDeck = await request(ownerApp.getHttpServer())
-      .post("/flashcard/decks")
-      .send({ title: "Owner Goes Public", isPublic: true });
-    expect(publicDeck.status).toBe(201);
-    const id = publicDeck.body.id;
+    const publicDeck = await createPublicDeck("Owner Goes Public");
+    const id = publicDeck.id;
 
     // create_flashcard
     const created = await request(ownerApp.getHttpServer())
@@ -406,22 +415,24 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
       .send({ contentFront: "still mine" });
     expect(patchedCard.status).toBe(200);
 
-    // manage_private_deck — including the flag itself, which is the way back.
-    // The owner may flip it either way at any time (#7 decision b: the brief's
-    // "not accepted by the DTO at all" is declined, because no one but the
-    // owner reaches this route).
-    const backToPrivate = await request(ownerApp.getHttpServer())
+    // manage_private_deck. The flag is no longer the owner's to write
+    // (MDRS-148): the way back to private is withdrawing the publication.
+    const renamed = await request(ownerApp.getHttpServer())
       .patch(`/flashcard/decks/${id}`)
-      .send({ title: "Back To Mine", isPublic: false });
-    expect(backToPrivate.status).toBe(200);
-    expect(backToPrivate.body.title).toBe("Back To Mine");
-    expect(backToPrivate.body.isPublic).toBe(false);
+      .send({ title: "Still Mine" });
+    expect(renamed.status).toBe(200);
+    expect(renamed.body.isPublic).toBe(true);
 
-    const publicAgain = await request(ownerApp.getHttpServer())
+    const flag = await request(ownerApp.getHttpServer())
       .patch(`/flashcard/decks/${id}`)
-      .send({ isPublic: true });
-    expect(publicAgain.status).toBe(200);
-    expect(publicAgain.body.isPublic).toBe(true);
+      .send({ isPublic: false });
+    expect(flag.status).toBe(400);
+
+    const backToPrivate = await request(ownerApp.getHttpServer()).delete(
+      `/flashcard/decks/${id}/publish-request`
+    );
+    expect(backToPrivate.status).toBe(200);
+    expect(backToPrivate.body.isPublic).toBe(false);
 
     const removed = await request(ownerApp.getHttpServer()).delete(
       `/flashcard/decks/${id}`
@@ -474,15 +485,16 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
   });
 
   /**
-   * `UpdateFlashcardDeckDto` exposes `isPublic`, so an unowned PATCH is not
-   * merely vandalism: `TedrisatRoleResolver.resolveDeckRole` reads the flag,
-   * and flipping a victim's private deck to public turns the resolver's answer
-   * for every other caller from `null` (deny) into `ROLES.PUBLIC`.
+   * An unowned PATCH is more than vandalism: `TedrisatRoleResolver
+   * .resolveDeckRole` reads `isPublic`, and a victim's private deck turned
+   * public would change the resolver's answer for every other caller from
+   * `null` (deny) into `ROLES.PUBLIC`. The body no longer carries the flag
+   * (MDRS-148), and the deck must stay private all the same.
    */
   it("refuses to change another user's private deck, and the visibility holds", async () => {
     const response = await request(attackerApp.getHttpServer())
       .patch(`/flashcard/decks/${deckId}`)
-      .send({ isPublic: true, title: "Hijacked" });
+      .send({ title: "Hijacked" });
 
     expect(response.status).toBe(404);
     expect(response.body.code).toBe(DECK_NOT_FOUND);
@@ -498,24 +510,21 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
   /**
    * MDRS-43 AC-2, on the deck where a 403 is still the honest answer: the
    * caller can see a PUBLIC deck, so there is nothing to hide, but its owner
-   * scopes — the title, and the visibility flag the owner may flip at will
-   * (#7 decision b) — stay the owner's alone.
+   * scopes — the title, and taking the deck back to private — stay the owner's
+   * alone.
    */
   it("refuses to change another user's PUBLIC deck with a 403, and nothing moves", async () => {
-    const publicDeck = await request(ownerApp.getHttpServer())
-      .post("/flashcard/decks")
-      .send({ title: "Owner's Public Deck", isPublic: true });
-    expect(publicDeck.status).toBe(201);
+    const publicDeck = await createPublicDeck("Owner's Public Deck");
 
     const response = await request(attackerApp.getHttpServer())
-      .patch(`/flashcard/decks/${publicDeck.body.id}`)
-      .send({ isPublic: false, title: "Hijacked" });
+      .patch(`/flashcard/decks/${publicDeck.id}`)
+      .send({ title: "Hijacked" });
 
     expect(response.status).toBe(403);
     expect(response.body.code).toBe(AUTHZ_FORBIDDEN);
 
     const unchanged = await request(ownerApp.getHttpServer()).get(
-      `/flashcard/decks/${publicDeck.body.id}`
+      `/flashcard/decks/${publicDeck.id}`
     );
     expect(unchanged.status).toBe(200);
     expect(unchanged.body.isPublic).toBe(true);
@@ -525,7 +534,7 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
   it("refuses to replace another user's deck", async () => {
     const response = await request(attackerApp.getHttpServer())
       .put(`/flashcard/decks/${deckId}`)
-      .send({ title: "Hijacked", isPublic: true });
+      .send({ title: "Hijacked" });
 
     expect(response.status).toBe(404);
     expect(response.body.code).toBe(DECK_NOT_FOUND);
@@ -613,15 +622,13 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
   // in a PUBLIC deck — resolves, and the write is then denied by the matrix
   // with a 403. A 404 here would mean the resolver hides public cards too.
   it("refuses to rewrite a card in another user's PUBLIC deck with a 403", async () => {
-    const publicDeck = await request(ownerApp.getHttpServer())
-      .post("/flashcard/decks")
-      .send({ title: "Owner's Public Deck", isPublic: true });
+    const publicDeck = await createPublicDeck("Owner's Public Deck");
     const seeded = await request(ownerApp.getHttpServer())
-      .post(`/flashcard/decks/${publicDeck.body.id}/cards/bulk`)
+      .post(`/flashcard/decks/${publicDeck.id}/cards/bulk`)
       .send(cards(1));
     expect(seeded.status).toBe(201);
     const listed = await request(attackerApp.getHttpServer()).get(
-      `/flashcard/cards?deckId=${publicDeck.body.id}`
+      `/flashcard/cards?deckId=${publicDeck.id}`
     );
     expect(listed.status).toBe(200);
 
@@ -639,23 +646,20 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
    * study flows out with it, so that regression has to argue with a test.
    */
   it("still lets a non-owner read a PUBLIC deck and its cards", async () => {
-    const publicDeck = await request(ownerApp.getHttpServer())
-      .post("/flashcard/decks")
-      .send({ title: "Owner's Public Deck", isPublic: true });
-    expect(publicDeck.status).toBe(201);
+    const publicDeck = await createPublicDeck("Owner's Public Deck");
 
     const seeded = await request(ownerApp.getHttpServer())
-      .post(`/flashcard/decks/${publicDeck.body.id}/cards/bulk`)
+      .post(`/flashcard/decks/${publicDeck.id}/cards/bulk`)
       .send(cards(2));
     expect(seeded.status).toBe(201);
 
     const deck = await request(attackerApp.getHttpServer()).get(
-      `/flashcard/decks/${publicDeck.body.id}`
+      `/flashcard/decks/${publicDeck.id}`
     );
     expect(deck.status).toBe(200);
 
     const visible = await request(attackerApp.getHttpServer()).get(
-      `/flashcard/cards?deckId=${publicDeck.body.id}`
+      `/flashcard/cards?deckId=${publicDeck.id}`
     );
     expect(visible.status).toBe(200);
     expect(visible.body).toHaveLength(2);
@@ -683,13 +687,10 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
   });
 
   it("still lets a non-owner collect a PUBLIC deck", async () => {
-    const publicDeck = await request(ownerApp.getHttpServer())
-      .post("/flashcard/decks")
-      .send({ title: "Owner's Public Deck", isPublic: true });
-    expect(publicDeck.status).toBe(201);
+    const publicDeck = await createPublicDeck("Owner's Public Deck");
 
     const response = await request(attackerApp.getHttpServer()).post(
-      `/flashcard/decks/${publicDeck.body.id}/collections`
+      `/flashcard/decks/${publicDeck.id}/collections`
     );
     expect(response.status).toBe(201);
 
@@ -708,13 +709,10 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
    * read rather than trusting the `decks_users` row.
    */
   it("drops a collected deck out of /collections once its author makes it private", async () => {
-    const publicDeck = await request(ownerApp.getHttpServer())
-      .post("/flashcard/decks")
-      .send({ title: "Owner's Public Deck", isPublic: true });
-    expect(publicDeck.status).toBe(201);
+    const publicDeck = await createPublicDeck("Owner's Public Deck");
 
     const collected = await request(attackerApp.getHttpServer()).post(
-      `/flashcard/decks/${publicDeck.body.id}/collections`
+      `/flashcard/decks/${publicDeck.id}/collections`
     );
     expect(collected.status).toBe(201);
 
@@ -723,9 +721,9 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
     );
     expect(before.body).toHaveLength(1);
 
-    const madePrivate = await request(ownerApp.getHttpServer())
-      .patch(`/flashcard/decks/${publicDeck.body.id}`)
-      .send({ isPublic: false });
+    const madePrivate = await request(ownerApp.getHttpServer()).delete(
+      `/flashcard/decks/${publicDeck.id}/publish-request`
+    );
     expect(madePrivate.status).toBe(200);
 
     const after = await request(attackerApp.getHttpServer()).get(
@@ -736,7 +734,7 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
 
     // The owner keeps their own deck in their own collection view.
     const ownerCollected = await request(ownerApp.getHttpServer()).post(
-      `/flashcard/decks/${publicDeck.body.id}/collections`
+      `/flashcard/decks/${publicDeck.id}/collections`
     );
     expect(ownerCollected.status).toBe(201);
     const ownerList = await request(ownerApp.getHttpServer()).get(
@@ -754,14 +752,11 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
    * actionable elsewhere in this API.
    */
   it("does not disclose other collectors in /collections", async () => {
-    const publicDeck = await request(ownerApp.getHttpServer())
-      .post("/flashcard/decks")
-      .send({ title: "Owner's Public Deck", isPublic: true });
-    expect(publicDeck.status).toBe(201);
+    const publicDeck = await createPublicDeck("Owner's Public Deck");
 
     for (const app of [attackerApp, ownerApp]) {
       const collected = await request(app.getHttpServer()).post(
-        `/flashcard/decks/${publicDeck.body.id}/collections`
+        `/flashcard/decks/${publicDeck.id}/collections`
       );
       expect(collected.status).toBe(201);
     }
@@ -819,16 +814,14 @@ describe("Flashcard bulk write and export — deck ownership (e2e)", () => {
 
   // Studying somebody else's PUBLIC deck is exactly what this route is for.
   it("still records progress against a card in a PUBLIC deck", async () => {
-    const publicDeck = await request(ownerApp.getHttpServer())
-      .post("/flashcard/decks")
-      .send({ title: "Owner's Public Deck", isPublic: true });
+    const publicDeck = await createPublicDeck("Owner's Public Deck");
     const seeded = await request(ownerApp.getHttpServer())
-      .post(`/flashcard/decks/${publicDeck.body.id}/cards/bulk`)
+      .post(`/flashcard/decks/${publicDeck.id}/cards/bulk`)
       .send(cards(1));
     expect(seeded.status).toBe(201);
 
     const visible = await request(attackerApp.getHttpServer()).get(
-      `/flashcard/cards?deckId=${publicDeck.body.id}`
+      `/flashcard/cards?deckId=${publicDeck.id}`
     );
     expect(visible.status).toBe(200);
 

@@ -82,35 +82,25 @@ export interface IUpdateKosk {
 }
 
 /**
- * Who is changing a köşk's managers (MDRS-126). `bypass` is SYSTEM_ADMIN,
- * who may do so without being a manager.
+ * What adding a manager came to (MDRS-126). `unknown-user` — no `users` row,
+ * i.e. that person has never signed in.
  */
-export interface IManagerActor {
-  id: string;
-  bypass: boolean;
-}
-
-/**
- * What adding a manager came to (MDRS-126). `forbidden` — the actor was no
- * longer a manager by the time the köşk was locked; `unknown-user` — no
- * `users` row, i.e. that person has never signed in.
- */
-export type AddManagerOutcome =
-  | "added"
-  | "no-kosk"
-  | "forbidden"
-  | "unknown-user";
+export type AddManagerOutcome = "added" | "no-kosk" | "unknown-user";
 
 /**
  * What removing a manager came to (MDRS-126). `last` — the user is the köşk's
- * only manager and stays; `not-manager` — the user was not one to begin with.
+ * only manager and no successor was named, so they stay; `not-manager` — the
+ * user was not one to begin with; `successor-is-removed` — the successor named
+ * is the manager being removed; `unknown-user` — the successor has never
+ * signed in (MDRS-136).
  */
 export type RemoveManagerOutcome =
   | "removed"
   | "no-kosk"
-  | "forbidden"
   | "last"
-  | "not-manager";
+  | "not-manager"
+  | "successor-is-removed"
+  | "unknown-user";
 
 /** A köşk as it appears in a caller's role summary (`GET /me`, MDRS-104). */
 export interface IKoskRef {
@@ -198,18 +188,17 @@ export interface IKoskRepository {
   isManager(koskId: string, userId: string): Promise<boolean>;
   findManagedBy(userId: string): Promise<IKoskRef[]>;
   managesAny(userId: string): Promise<boolean>;
-  /** Creates the köşk with its creator (`ownerId`) as its first manager. */
-  create(kosk: ICreateKosk): Promise<IKosk>;
   /** Idempotent: adding a manager twice leaves one row. */
   addManager(
     koskId: string,
     userId: string,
-    actor: IManagerActor
+    actorId: string
   ): Promise<AddManagerOutcome>;
   removeManager(
     koskId: string,
     userId: string,
-    actor: IManagerActor
+    actorId: string,
+    successorUserId?: string
   ): Promise<RemoveManagerOutcome>;
   update(id: string, updates: IUpdateKosk): Promise<IKosk | null>;
   /** SYSTEM_ADMIN's delete: the köşk, its courses, their children, an audit entry. */

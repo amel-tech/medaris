@@ -42,7 +42,7 @@ export type IRecordingView = IRecordingRow;
  * The recordings a caller may see, newest week first and, inside a week, the
  * latest recording first (tedris/24 "Haftalara göre, yeniden eskiye").
  *
- * `canReadContent` is the course's content rule (`view_details`). Without it
+ * `canReadContent` is the course's content rule (`course.view_details`). Without it
  * only a recording marked PUBLIC is listed, and none when `publicAllowed` is
  * false: a closed course (MDRS-176) never opens its recordings to everyone.
  * A recording that is still

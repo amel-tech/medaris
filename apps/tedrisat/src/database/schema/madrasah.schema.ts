@@ -6,6 +6,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+import { scopeType } from "./scope-type.schema";
 
 // Medrese = the optional top layer of the hierarchy (PRD §4.1, ADR-003). It
 // lives in tedrisat, beside `kosks` and the authorization resolver, until a
@@ -34,6 +35,11 @@ export const madrasahs = table("madrasahs", {
   // other user column. Null while shown.
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   archivedBy: uuid("archived_by"),
+  // The level the hider acted at (MDRS-135): platform, köşk, medrese or course.
+  // A restore is by that level or above (the ban rule, "elbette kademe var");
+  // null on a row hidden before it was recorded, which counts as the lowest
+  // level that could have hidden it. Null while shown.
+  archivedLevel: scopeType("archived_level"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

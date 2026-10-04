@@ -26,6 +26,7 @@ import type {
   SessionResponse,
   SetLiveStreamDto,
   UpdateLessonDto,
+  WeekHideResponse,
   WeeklyPatternDto,
 } from '../models/index';
 import {
@@ -51,6 +52,8 @@ import {
     SetLiveStreamDtoToJSON,
     UpdateLessonDtoFromJSON,
     UpdateLessonDtoToJSON,
+    WeekHideResponseFromJSON,
+    WeekHideResponseToJSON,
     WeeklyPatternDtoFromJSON,
     WeeklyPatternDtoToJSON,
 } from '../models/index';
@@ -85,6 +88,11 @@ export interface GetSessionRequest {
     sessionId: string;
 }
 
+export interface HideCourseWeekRequest {
+    courseId: string;
+    weekId: string;
+}
+
 export interface ListCourseLiveStreamsRequest {
     id: string;
 }
@@ -114,6 +122,7 @@ export interface UpdateLessonRequest {
 export class LessonsApi extends runtime.BaseAPI {
 
     /**
+     * `week.hide` (Hafta ve celse gizle, geri al) or `session.manage`. The level the caller acts at is recorded with the hide and decides who may bring it back (MDRS-135); written to `audit_log` as `lesson.hide` (MDRS-143).
      * Remove a lesson from the course; it is archived, never deleted
      */
     async archiveLessonRaw(requestParameters: ArchiveLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonMutationResponse>> {
@@ -148,6 +157,7 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
+     * `week.hide` (Hafta ve celse gizle, geri al) or `session.manage`. The level the caller acts at is recorded with the hide and decides who may bring it back (MDRS-135); written to `audit_log` as `lesson.hide` (MDRS-143).
      * Remove a lesson from the course; it is archived, never deleted
      */
     async archiveLesson(requestParameters: ArchiveLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonMutationResponse> {
@@ -424,6 +434,58 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async getSession(requestParameters: GetSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionResponse> {
         const response = await this.getSessionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Nothing is deleted: the week and its live sessions leave the course at one instant, at the level the caller acts at (the course team\'s, the köşk\'s, the medrese\'s), and the course `version` is bumped, so an editor that loaded the course before is refused with 409. Brought back by that level or one above, through `POST /archive/week/:id/restore`; the course\'s Arşiv lists it (`GET /courses/:id/archive`). Written to `audit_log` as `week.hide` (MDRS-143).
+     * Hide a week with its sessions (Gizle)
+     */
+    async hideCourseWeekRaw(requestParameters: HideCourseWeekRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<WeekHideResponse>> {
+        if (requestParameters['courseId'] == null) {
+            throw new runtime.RequiredError(
+                'courseId',
+                'Required parameter "courseId" was null or undefined when calling hideCourseWeek().'
+            );
+        }
+
+        if (requestParameters['weekId'] == null) {
+            throw new runtime.RequiredError(
+                'weekId',
+                'Required parameter "weekId" was null or undefined when calling hideCourseWeek().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{courseId}/weeks/{weekId}/hide`;
+        urlPath = urlPath.replace(`{${"courseId"}}`, encodeURIComponent(String(requestParameters['courseId'])));
+        urlPath = urlPath.replace(`{${"weekId"}}`, encodeURIComponent(String(requestParameters['weekId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => WeekHideResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Nothing is deleted: the week and its live sessions leave the course at one instant, at the level the caller acts at (the course team\'s, the köşk\'s, the medrese\'s), and the course `version` is bumped, so an editor that loaded the course before is refused with 409. Brought back by that level or one above, through `POST /archive/week/:id/restore`; the course\'s Arşiv lists it (`GET /courses/:id/archive`). Written to `audit_log` as `week.hide` (MDRS-143).
+     * Hide a week with its sessions (Gizle)
+     */
+    async hideCourseWeek(requestParameters: HideCourseWeekRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<WeekHideResponse> {
+        const response = await this.hideCourseWeekRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

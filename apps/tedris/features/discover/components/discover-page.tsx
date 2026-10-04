@@ -64,9 +64,8 @@ const Pagination = ({
 };
 
 /**
- * Keşfet (MDRS-159, design tedris/02): the listed köşks and medreses, with the
- * level, medrese and ilim alanı filters and a search, and below them the way
- * to ask for a new köşk. A failed read is an Alert with a way to try again,
+ * Keşfet (MDRS-159, design tedris/02): the listed köşks and medreses, with a
+ * medrese filter and a search, and below them the way to ask for a new köşk. A failed read is an Alert with a way to try again,
  * never an empty list.
  */
 export const DiscoverPage = async ({
@@ -108,7 +107,6 @@ export const DiscoverPage = async ({
           <div className="flex min-inline-0 flex-col gap-3">
             <DiscoverFilters
               query={query}
-              fields={data.fields}
               madrasahs={data.allMadrasahs.map((m) => ({
                 id: m.id,
                 name: m.name,
@@ -117,17 +115,8 @@ export const DiscoverPage = async ({
                 filters: t("DiscoverPage.filters"),
                 search: t("DiscoverPage.searchLabel"),
                 searchPlaceholder: t("DiscoverPage.searchPlaceholder"),
-                level: t("DiscoverPage.levelLabel"),
-                allLevels: t("DiscoverPage.allLevels"),
                 madrasah: t("DiscoverPage.madrasahLabel"),
                 allMadrasahs: t("DiscoverPage.allMadrasahs"),
-                field: t("DiscoverPage.fieldLabel"),
-                allFields: t("DiscoverPage.allFields"),
-                levelNames: {
-                  BEGINNER: t("Levels.BEGINNER"),
-                  INTERMEDIATE: t("Levels.INTERMEDIATE"),
-                  ADVANCED: t("Levels.ADVANCED"),
-                },
               }}
             />
             <output className="mds-caption" aria-live="polite">
