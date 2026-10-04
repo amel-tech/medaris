@@ -21,6 +21,7 @@ DELETE /madrasahs/:id/nazirs/:userId -> madrasah.nazir_appoint | platform.madras
 DELETE /madrasahs/:id/permission-groups/:groupId -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
 DELETE /nizam/medaris-nazims/:userId -> no AuthzGuard
 DELETE /nizam/permission-groups/:id -> no AuthzGuard
+DELETE /questions/:questionId -> course.view on byQuestionCourse
 GET / -> public
 GET /archive -> exempt
 GET /archive/:type/:id/impact -> exempt
@@ -34,6 +35,8 @@ GET /courses/:id/badge-counts -> course.staff_read on byExistingCourse
 GET /courses/:id/enrollments -> course.staff_read on course
 GET /courses/:id/enrollments/removed -> course.staff_read on course
 GET /courses/:id/live-streams -> session.live_link on course
+GET /courses/:id/questions -> question.answer on byExistingCourse
+GET /courses/:id/questions/mine -> course.view on course
 GET /courses/:id/recordings -> course.view on course (public)
 GET /courses/:id/stats -> course.staff_read on byExistingCourse
 GET /courses/enrolled -> exempt
@@ -139,6 +142,7 @@ PATCH /madrasahs/:id/permission-groups/:groupId -> madrasah.nazir_appoint | plat
 PATCH /madrasahs/:id/settings -> madrasah.settings_edit on byExistingMadrasah
 PATCH /me -> no AuthzGuard
 PATCH /me/public-profile -> no AuthzGuard
+PATCH /questions/:questionId -> course.view on byQuestionCourse
 POST /archive/:type/:id/restore -> exempt
 POST /bans/:banId/escalate -> no AuthzGuard
 POST /bans/:banId/extend -> no AuthzGuard
@@ -184,6 +188,7 @@ POST /kosks/:id/restore -> exempt
 POST /kosks/:koskId/courses -> course.open_standalone on kosk
 POST /lessons/:id/cancel -> session.manage on byLessonCourse
 POST /lessons/:id/notes -> course.view on byLessonCourse
+POST /lessons/:id/questions -> course.view on byLessonCourse
 POST /madrasahs -> platform.madrasah_create on madrasah
 POST /madrasahs/:id/bans -> madrasah.ban | platform.ban_scoped on byExistingMadrasah
 POST /madrasahs/:id/courses -> madrasah.course_open on byExistingMadrasah
@@ -219,3 +224,4 @@ PUT /madrasahs/:id/nazirs/:userId/permissions -> madrasah.nazir_appoint | platfo
 PUT /nizam/medaris-nazims/:userId/grants -> no AuthzGuard
 PUT /nizam/permission-groups/:id -> no AuthzGuard
 PUT /nizam/platform-policies/:key -> no AuthzGuard
+PUT /questions/:questionId/answer -> course.view on byQuestionCourse

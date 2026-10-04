@@ -99,9 +99,9 @@ describe("codes and messages", () => {
         expect(entry?.title, `${lang} ${code}`).toBeTruthy();
         expect(entry?.short, `${lang} ${code}`).toBeTruthy();
       }
-      // The 18 course permissions of nizam/13 and the owner's 1 October entry
-      // "propose a köşk deck".
-      expect(Object.keys(catalog.course)).toHaveLength(19);
+      // The 18 course permissions of nizam/13, the owner's 1 October entry
+      // "propose a köşk deck" and `question.answer` (MDRS-150).
+      expect(Object.keys(catalog.course)).toHaveLength(20);
     }
   });
 });

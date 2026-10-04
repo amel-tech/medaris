@@ -26,8 +26,10 @@ import {
 } from "../course-view";
 import { canWriteNotes } from "../lesson-note-model";
 import { firstSessionAt, formatFirstSession, isPreview } from "../preview";
+import { sessionChoices } from "../question-model";
 import { CourseAside } from "./course-aside";
 import { CourseProgramme, SAMPLE_ANCHOR } from "./course-programme";
+import { CourseQuestions } from "./course-questions";
 import { RecordingsTab } from "./recordings-tab";
 
 const joinNames = (names: string[], locale: string) =>
@@ -97,6 +99,10 @@ export const CoursePage = ({
 
   const firstSession = preview ? firstSessionAt(course) : null;
 
+  // A question is asked by an enrolled talebe (MDRS-150); the tab is theirs.
+  const asksQuestions =
+    !course.contentLocked && canWriteNotes(course.enrollment?.status);
+
   const tabs = [
     { value: "mufredat", label: t("tabCurriculum") },
     {
@@ -107,6 +113,9 @@ export const CoursePage = ({
         : {}),
     },
     ...(seat ? [{ value: "deste", label: t("tabDeck") }] : []),
+    ...(asksQuestions
+      ? [{ value: "sorularim", label: t("tabMyQuestions") }]
+      : []),
     { value: "muderrisler", label: t("tabTeachers") },
   ];
 
@@ -309,6 +318,16 @@ export const CoursePage = ({
             {seat ? (
               <TabsPanel value="deste" className="pbs-4">
                 <EmptyState>{t("deckEmpty")}</EmptyState>
+              </TabsPanel>
+            ) : null}
+            {asksQuestions ? (
+              <TabsPanel value="sorularim" className="pbs-4">
+                <CourseQuestions
+                  courseId={course.id}
+                  sessions={sessionChoices(course)}
+                  timeZone={zone}
+                  canAsk
+                />
               </TabsPanel>
             ) : null}
             <TabsPanel

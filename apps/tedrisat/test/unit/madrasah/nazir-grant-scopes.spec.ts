@@ -29,10 +29,11 @@ const courseGroup = { id: G, permissions: ["course.edit", "session.manage"] };
 describe("the medrese's permission dictionary", () => {
   // nazir/06 prints ten medrese permissions and the twenty a müderris holds by
   // default; the owner's 1 October list adds "request a non-medrese course in a
-  // köşk" (medrese) and "propose a köşk deck" (course).
-  it("has the eleven medrese permissions and the twenty-one course permissions the dialogs print", () => {
+  // köşk" (medrese) and "propose a köşk deck" (course); `question.answer`
+  // (MDRS-150) is the twenty-second course permission.
+  it("has the eleven medrese permissions and the twenty-two course permissions the dialogs print", () => {
     expect(MADRASAH_CATALOG).toHaveLength(11);
-    expect(MADRASAH_COURSE_CATALOG).toHaveLength(21);
+    expect(MADRASAH_COURSE_CATALOG).toHaveLength(22);
   });
 
   it("offers a nazır every course permission a müderris holds, but the one to give permissions", () => {

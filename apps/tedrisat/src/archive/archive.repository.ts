@@ -21,6 +21,7 @@ import {
 import { decks } from "../database/schema/flashcard-deck.schema";
 import { koskFollowers, kosks } from "../database/schema/kosk.schema";
 import { lessonNotes } from "../database/schema/lesson-note.schema";
+import { lessonQuestions } from "../database/schema/lesson-question.schema";
 import { madrasahs } from "../database/schema/madrasah.schema";
 import {
   roleAssignments,
@@ -750,17 +751,16 @@ export class ArchiveRepository {
           .where(and(eq(courseWeeks.id, id), isNotNull(courseWeeks.archivedAt)))
           .for("update");
         if (!week) return null;
+        const weekLessonIds = tx
+          .select({ id: lessons.id })
+          .from(lessons)
+          .where(eq(lessons.weekId, id));
         await tx
           .delete(lessonNotes)
-          .where(
-            inArray(
-              lessonNotes.lessonId,
-              tx
-                .select({ id: lessons.id })
-                .from(lessons)
-                .where(eq(lessons.weekId, id))
-            )
-          );
+          .where(inArray(lessonNotes.lessonId, weekLessonIds));
+        await tx
+          .delete(lessonQuestions)
+          .where(inArray(lessonQuestions.lessonId, weekLessonIds));
         const removedSessions = (
           await tx
             .delete(lessons)
@@ -783,6 +783,9 @@ export class ArchiveRepository {
           .for("update");
         if (!lesson) return null;
         await tx.delete(lessonNotes).where(eq(lessonNotes.lessonId, id));
+        await tx
+          .delete(lessonQuestions)
+          .where(eq(lessonQuestions.lessonId, id));
         await tx.delete(lessons).where(eq(lessons.id, id));
         const [week] = await tx
           .select({ courseId: courseWeeks.courseId })

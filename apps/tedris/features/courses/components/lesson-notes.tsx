@@ -5,6 +5,7 @@ import { Button } from "@medaris/ui/mds/button";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
+import { Markdown } from "@medaris/ui/mds/markdown";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
@@ -20,7 +21,6 @@ import {
   parseOffset,
   sortNotes,
 } from "../lesson-note-model";
-import { NoteMarkdown } from "../note-markdown";
 import { type PlayerControl, useYouTubePlayer } from "../youtube-player";
 
 type Load = { state: "loading" } | { state: "failed" } | { state: "ready" };
@@ -437,7 +437,7 @@ const NoteItem = ({
           </span>
         )}
       </div>
-      <NoteMarkdown source={note.body} />
+      <Markdown source={note.body} />
       {error ? (
         <p className="mds-error" role="alert">
           {error}

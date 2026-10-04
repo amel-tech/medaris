@@ -197,6 +197,7 @@ describe("the phone bar (nazir 21, 22)", () => {
       "Müfredat",
       "Celseler",
       "Talebeler",
+      "Sorular",
       "Ders kayıtları",
       "Ders destesi",
       "Yasaklamalar",
