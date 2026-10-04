@@ -1,7 +1,7 @@
 import { AuthzService, PERMISSIONS, ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { and, eq, isNull } from "drizzle-orm";
-import { Pool } from "pg";
+import { Client, Pool } from "pg";
 import request from "supertest";
 import {
   MADRASAH_CATALOG,
@@ -1990,6 +1990,65 @@ describe("The permission engine (MDRS-135, e2e)", () => {
         version,
       }).expect(409);
       expect(stale.body.code).toBe("COURSE_VERSION_CONFLICT");
+    });
+
+    it("holds a save sent without a version to the course it was checked against, so a session added meanwhile is not hidden (review D2-7-replace-toctou)", async () => {
+      const { weekId, save } = await seedSession();
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.COURSE_EDIT },
+        { grantedBy: NAZIM_ID }
+      );
+      const holder = new Client({
+        host: process.env.DB_HOST,
+        port: Number(process.env.DB_PORT),
+        user: process.env.DB_USERNAME,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME,
+      });
+      await holder.connect();
+      try {
+        await holder.query("begin");
+        await holder.query("select id from courses where id = $1 for update", [
+          ownCourse,
+        ]);
+        // The ders nazırı's save is checked and then waits for the row.
+        const pending = put(DERS_ID, `/courses/${ownCourse}`, {
+          ...save(),
+          title: "Yeni ad",
+        }).then((res) => res);
+        const deadline = Date.now() + 10_000;
+        for (;;) {
+          const { rows } = await holder.query(
+            "select count(*)::int as n from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock'"
+          );
+          if (rows[0].n > 0) break;
+          if (Date.now() > deadline) throw new Error("the save never waited");
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        }
+        // Meanwhile a session.manage holder adds a session, as POST
+        // …/lessons does: the row and a new version.
+        await holder.query(
+          "insert into lessons (week_id, title, type) values ($1, 'Eklenen celse', 'LIVE')",
+          [weekId]
+        );
+        await holder.query(
+          "update courses set version = version + 1 where id = $1",
+          [ownCourse]
+        );
+        await holder.query("commit");
+        const res = await pending;
+        expect(res.status).toBe(409);
+        expect(res.body.code).toBe("COURSE_VERSION_CONFLICT");
+      } finally {
+        await holder.end();
+      }
+      const [added] = await db()
+        .select()
+        .from(lessons)
+        .where(eq(lessons.title, "Eklenen celse"));
+      expect(added.archivedAt).toBeNull();
     });
 
     it("session.manage alone adds one session, as it adds a batch of them", async () => {

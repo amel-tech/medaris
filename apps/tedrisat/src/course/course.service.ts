@@ -667,10 +667,13 @@ export class CourseService {
    * the payload differs from the stored one in any way the save would write,
    * the save is refused whole with 403 before anything is written.
    *
-   * The comparison reads the list outside the save's transaction. A list
-   * changed by the köşk manager in between is caught by `version` when the
-   * editor sends it (409, MDRS-95); without it the müderris' save would put
-   * the old list back, which is the lost update `version` exists to stop.
+   * Every comparison here (the müderris list, the sessions, the policy
+   * settings) reads the course outside the save's transaction, so the save is
+   * held to the version those reads saw: the editor's own when it sends one
+   * (409, MDRS-95), otherwise the one read here. A change by someone else in
+   * between — a session added, a list changed — is then a 409 under the row
+   * lock instead of being hidden or written back by a caller who was let
+   * through because it was not there yet.
    */
   async replace(
     id: string,
@@ -716,7 +719,7 @@ export class CourseService {
     const replaced = await this.courseRepo.replace(
       id,
       user.sub,
-      withCanonicalTimeZone(data),
+      withCanonicalTimeZone({ ...data, version: stored.version }),
       // The weeks and sessions the save drops are hidden at the saver's level.
       await this.courseLevel(user, id)
     );
