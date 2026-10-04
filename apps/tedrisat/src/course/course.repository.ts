@@ -13,6 +13,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import type { HideLevel } from "../archive/hide-level";
 import { DatabaseService } from "../database/database.service";
 import {
   holdsIn,
@@ -36,6 +37,7 @@ import {
 import {
   ASSIGNED_ROLES,
   roleAssignments,
+  SCOPE_TYPES,
 } from "../database/schema/role-assignment.schema";
 import { users } from "../database/schema/user.schema";
 import {
@@ -64,6 +66,7 @@ import {
   IUpdateLesson,
 } from "./course.repository.interface";
 import { IPurgeCounts, purgeCourses, recordDeletion, Tx } from "./course-purge";
+import { ROSTER_READ_ACTION } from "./domain/course-content";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import { LessonType } from "./domain/lesson-type.enum";
@@ -429,7 +432,8 @@ export class CourseRepository implements ICourseRepository {
   async replace(
     id: string,
     userId: string,
-    data: IReplaceCourse
+    data: IReplaceCourse,
+    level?: HideLevel
   ): Promise<ICourseDetail> {
     const {
       weeks = [],
@@ -452,7 +456,7 @@ export class CourseRepository implements ICourseRepository {
         .from(courseMuderris)
         .where(eq(courseMuderris.courseId, id));
       // Ids are compared lowercased, the way `muderrisListChanged` compares
-      // them before the ASSIGN_MUDERRIS check. Postgres returns uuids in
+      // them before the check on the müderris list. Postgres returns uuids in
       // lowercase and `@IsUUID()` accepts uppercase, so an exact match here
       // would delete and re-insert a row the check called unchanged — with
       // every field the payload left out, `userId` included, reset.
@@ -619,7 +623,12 @@ export class CourseRepository implements ICourseRepository {
       if (unclaimedLessonIds.size) {
         await tx
           .update(lessons)
-          .set({ archivedAt: now, archivedBy: userId, updatedAt: now })
+          .set({
+            archivedAt: now,
+            archivedBy: userId,
+            archivedLevel: level ?? null,
+            updatedAt: now,
+          })
           .where(inArray(lessons.id, [...unclaimedLessonIds]));
       }
 
@@ -629,7 +638,12 @@ export class CourseRepository implements ICourseRepository {
       if (weeksToArchive.length) {
         await tx
           .update(courseWeeks)
-          .set({ archivedAt: now, archivedBy: userId, updatedAt: now })
+          .set({
+            archivedAt: now,
+            archivedBy: userId,
+            archivedLevel: level ?? null,
+            updatedAt: now,
+          })
           .where(inArray(courseWeeks.id, weeksToArchive));
       }
     });
@@ -954,7 +968,8 @@ export class CourseRepository implements ICourseRepository {
 
   async archiveLesson(
     lessonId: string,
-    actorId: string | null = null
+    actorId: string | null = null,
+    level?: HideLevel
   ): Promise<ILessonMutation> {
     return this.db.transaction(async (tx) => {
       const courseId = await this.findLiveLessonCourseId(tx, lessonId);
@@ -962,7 +977,12 @@ export class CourseRepository implements ICourseRepository {
       const now = new Date();
       const [row] = await tx
         .update(lessons)
-        .set({ archivedAt: now, archivedBy: actorId, updatedAt: now })
+        .set({
+          archivedAt: now,
+          archivedBy: actorId,
+          archivedLevel: level ?? null,
+          updatedAt: now,
+        })
         .where(and(eq(lessons.id, lessonId), isNull(lessons.archivedAt)))
         .returning();
       // Archived by a concurrent request between the read and the lock.
@@ -1227,13 +1247,18 @@ export class CourseRepository implements ICourseRepository {
    * hide unawares. Hiding a hidden course changes nothing — not the first
    * stamp, not the version. Null when no such course exists.
    */
-  async archive(id: string, userId: string): Promise<ICourse | null> {
+  async archive(
+    id: string,
+    userId: string,
+    level: HideLevel
+  ): Promise<ICourse | null> {
     const now = new Date();
     const [row] = await this.db
       .update(courses)
       .set({
         archivedAt: now,
         archivedBy: userId,
+        archivedLevel: level,
         version: sql`${courses.version} + 1`,
         updatedAt: now,
       })
@@ -1249,12 +1274,26 @@ export class CourseRepository implements ICourseRepository {
       .set({
         archivedAt: null,
         archivedBy: null,
+        archivedLevel: null,
         version: sql`${courses.version} + 1`,
         updatedAt: new Date(),
       })
       .where(and(eq(courses.id, id), isNotNull(courses.archivedAt)))
       .returning();
     return row ?? this.findCourseRow(id);
+  }
+
+  async findHideState(id: string) {
+    const [row] = await this.db
+      .select({
+        archivedAt: courses.archivedAt,
+        archivedLevel: courses.archivedLevel,
+        madrasahId: courses.madrasahId,
+      })
+      .from(courses)
+      .where(eq(courses.id, id))
+      .limit(1);
+    return row ?? null;
   }
 
   private async findCourseRow(id: string): Promise<ICourse | null> {
@@ -1493,6 +1532,32 @@ export class CourseRepository implements ICourseRepository {
     );
   }
 
+  async holdsRoleOnCourse(userId: string, courseId: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: roleAssignments.id })
+      .from(roleAssignments)
+      .where(
+        and(
+          eq(roleAssignments.userId, userId),
+          isHeld(),
+          or(
+            eq(roleAssignments.scopeType, SCOPE_TYPES.PLATFORM),
+            eq(roleAssignments.scopeId, courseId),
+            eq(
+              roleAssignments.scopeId,
+              sql`(select ${courses.koskId} from ${courses} where ${courses.id} = ${courseId})`
+            ),
+            eq(
+              roleAssignments.scopeId,
+              sql`(select ${courses.madrasahId} from ${courses} where ${courses.id} = ${courseId})`
+            )
+          )
+        )
+      )
+      .limit(1);
+    return rows.length > 0;
+  }
+
   /**
    * A read of a course's content by someone who is neither its enrolled
    * talebe nor one of its müderrisler (MDRS-103) — the köşk manager, or
@@ -1509,6 +1574,21 @@ export class CourseRepository implements ICourseRepository {
       action: "course.content_read",
       entity: "course",
       entityId: entry.courseId,
+      details: entry.details,
+    });
+  }
+
+  async recordRosterRead(entry: {
+    actorId: string;
+    entity: "course" | "kosk";
+    entityId: string;
+    details: Record<string, unknown>;
+  }): Promise<void> {
+    await this.db.insert(auditLog).values({
+      actorId: entry.actorId,
+      action: ROSTER_READ_ACTION,
+      entity: entry.entity,
+      entityId: entry.entityId,
       details: entry.details,
     });
   }

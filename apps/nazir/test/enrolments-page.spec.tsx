@@ -482,12 +482,15 @@ describe("'Dersten çıkar'", () => {
   };
   const submit = () => buttonIn(dialog(), "Dersten çıkar");
 
-  it("opens a dialog for that talebe in that course, and says they may apply again", async () => {
+  it("opens a dialog for that talebe in that course, and says they cannot apply again until the team approves the seat", async () => {
     await open();
     expect(dialog().textContent).toContain(
       "Talebe 3 adlı talebe Bina ve İzhar Şerhi dersinden çıkarılacak."
     );
-    expect(dialog().textContent).toContain("Talebe yeniden başvurabilir.");
+    expect(dialog().textContent).toContain(
+      "Talebe bu derse yeniden başvuramaz; yeri ancak ders kadrosu onaylarsa geri gelir."
+    );
+    expect(dialog().textContent).not.toContain("yeniden başvurabilir");
   });
 
   it("takes a reason: the button stays off until there is one, and the field says so once it has been left empty", async () => {
@@ -575,6 +578,17 @@ describe("Erişimi kaldırılanlar", () => {
     expect(text).toContain("29 Eyl");
     expect(text).toContain("Üç haftadır derslere katılmıyor.");
     expect(text).toContain("Yusuf Ziya Ertuğrul");
+  });
+
+  it("says a removed talebe cannot apply again until the team approves the seat", async () => {
+    await mount();
+    await click(tab("Erişimi kaldırılanlar"));
+    await settle(40);
+    const text = panelText("Erişimi kaldırılanlar");
+    expect(text).toContain(
+      "Çıkarılan talebe yeniden başvuramaz; yeri ancak ders kadrosu onaylarsa geri gelir."
+    );
+    expect(text).not.toContain("yeniden başvurabilir");
   });
 
   it("says nobody has been removed when the list is empty", async () => {

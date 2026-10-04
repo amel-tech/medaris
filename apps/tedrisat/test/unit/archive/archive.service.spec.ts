@@ -1,15 +1,14 @@
 import type { AuthzService } from "@medaris/common";
 import type { ArchiveRepository } from "../../../src/archive/archive.repository";
-import {
-  ArchiveService,
-  hiderTier,
-} from "../../../src/archive/archive.service";
+import { ArchiveService } from "../../../src/archive/archive.service";
 import type { IArchiveItem } from "../../../src/archive/archive-types";
 import {
   ArchiveForbiddenError,
   ArchiveItemNotFoundError,
   ArchiveParentHiddenError,
+  ArchiveRestoreLevelError,
 } from "../../../src/archive/errors/archive-errors";
+import type { HideLevel } from "../../../src/archive/hide-level";
 import type { KoskService } from "../../../src/kosk/kosk.service";
 import type { MadrasahService } from "../../../src/madrasah/madrasah.service";
 
@@ -37,6 +36,7 @@ const item = (over: Partial<IArchiveItem> = {}): IArchiveItem => ({
   studentCount: null,
   archivedAt: new Date("2026-10-01T10:00:00Z"),
   archivedBy: "a2",
+  archivedLevel: null,
   ...over,
 });
 
@@ -212,31 +212,12 @@ describe("ArchiveService (MDRS-173)", () => {
     });
   });
 
-  describe("hiderTier", () => {
-    it("ranks the hider by the role they held where the item sits", () => {
-      const hidden = { archivedBy: "a2" };
-      expect(hiderTier(hidden, { role: "MUDERRIS" })).toBe(1);
-      expect(hiderTier(hidden, { role: "MEDRESE_BASMUDERRIS" })).toBe(2);
-      expect(hiderTier(hidden, { role: "MEDRESE_NAZIR" })).toBe(2);
-      expect(hiderTier(hidden, { role: "KOSK_NAZIM" })).toBe(3);
-    });
-
-    it("treats a hider without a role as the Medaris administration, and no hider as nobody", () => {
-      expect(hiderTier({ archivedBy: "a1" }, { role: null })).toBe(4);
-      expect(hiderTier({ archivedBy: "a1" }, null)).toBe(4);
-      expect(hiderTier({ archivedBy: null }, null)).toBe(1);
-    });
-  });
-
   describe("a medrese's archive", () => {
     const hiddenIn = (over: Partial<IArchiveItem> = {}) =>
       item({ koskId: KOSK, madrasahId: MADRASAH, ...over });
-    const archivers = (role: string | null) =>
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Map([[`course:${ID}`, { id: "a2", name: "Ömer", role }]])
-        );
+    const archivers = () => vi.fn().mockResolvedValue(new Map());
+    const hiddenAt = (archivedLevel: HideLevel | null) =>
+      hiddenIn({ archivedLevel });
 
     it("lists the medrese's courses and what is in them, with the tabs' numbers", async () => {
       const list = vi.fn().mockResolvedValue([]);
@@ -291,13 +272,16 @@ describe("ArchiveService (MDRS-173)", () => {
       expect(page.counts.all).toBe(2);
     });
 
-    it("says an item hidden by a lower or equal kademe can be brought back by the başmüderris", async () => {
+    it.each([
+      ["a müderris", "course"],
+      ["a başmüderris", "madrasah"],
+    ] as const)("says an item %s hid can be brought back by the başmüderris", async (_who, level) => {
       const { service } = serviceWith(
         {
-          list: vi.fn().mockResolvedValue([hiddenIn()]),
+          list: vi.fn().mockResolvedValue([hiddenAt(level)]),
           count: vi.fn().mockResolvedValue(1),
           countByType: vi.fn().mockResolvedValue(new Map()),
-          archivers: archivers("MUDERRIS"),
+          archivers: archivers(),
         },
         false,
         true
@@ -310,15 +294,15 @@ describe("ArchiveService (MDRS-173)", () => {
     });
 
     it.each([
-      ["a köşk nazımı", "KOSK_NAZIM"],
-      ["the Medaris administration", null],
-    ])("says an item %s hid cannot be brought back by the başmüderris", async (_who, role) => {
+      ["a köşk nazımı", "kosk"],
+      ["the Medaris administration", "platform"],
+    ] as const)("says an item %s hid cannot be brought back by the başmüderris", async (_who, level) => {
       const { service } = serviceWith(
         {
-          list: vi.fn().mockResolvedValue([hiddenIn()]),
+          list: vi.fn().mockResolvedValue([hiddenAt(level)]),
           count: vi.fn().mockResolvedValue(1),
           countByType: vi.fn().mockResolvedValue(new Map()),
-          archivers: archivers(role),
+          archivers: archivers(),
         },
         false,
         true
@@ -330,19 +314,29 @@ describe("ArchiveService (MDRS-173)", () => {
       expect(page.items[0].canRestore).toBe(false);
     });
 
-    it("leaves the köşk nazımı's own restore as it was, and the başnazım's open", async () => {
-      const listing = (user: typeof NAZIM) =>
+    it("lets the köşk nazımı restore what the medrese's level hid, and the başnazım anything", async () => {
+      const listing = (user: typeof NAZIM, level: HideLevel) =>
         serviceWith(
           {
-            list: vi.fn().mockResolvedValue([hiddenIn()]),
+            list: vi.fn().mockResolvedValue([hiddenAt(level)]),
             count: vi.fn().mockResolvedValue(1),
             countByType: vi.fn().mockResolvedValue(new Map()),
-            archivers: archivers(null),
+            archivers: archivers(),
           },
           true
         ).service.listForMadrasah(user, MADRASAH, { page: 1, limit: 10 });
-      expect((await listing(NAZIM)).items[0].canRestore).toBe(true);
-      expect((await listing(ADMIN as never)).items[0].canRestore).toBe(true);
+      for (const level of ["course", "madrasah", "kosk"] as const) {
+        expect((await listing(NAZIM, level)).items[0].canRestore).toBe(true);
+      }
+      // What the platform hid is above the köşk's nazımı.
+      expect((await listing(NAZIM, "platform")).items[0].canRestore).toBe(
+        false
+      );
+      for (const level of ["course", "madrasah", "kosk", "platform"] as const) {
+        expect((await listing(ADMIN as never, level)).items[0].canRestore).toBe(
+          true
+        );
+      }
     });
 
     it("lets the başmüderris restore what a lower kademe hid, and refuses what a higher one did", async () => {
@@ -351,8 +345,7 @@ describe("ArchiveService (MDRS-173)", () => {
         .mockResolvedValue({ status: "restored", title: "Maksûd okumaları" });
       const allowed = serviceWith(
         {
-          findOne: vi.fn().mockResolvedValue(hiddenIn()),
-          archivers: archivers("MEDRESE_NAZIR"),
+          findOne: vi.fn().mockResolvedValue(hiddenAt("course")),
           restore,
         },
         false,
@@ -364,23 +357,62 @@ describe("ArchiveService (MDRS-173)", () => {
 
       const refused = serviceWith(
         {
-          findOne: vi.fn().mockResolvedValue(hiddenIn()),
-          archivers: archivers("KOSK_NAZIM"),
+          findOne: vi.fn().mockResolvedValue(hiddenAt("kosk")),
           restore: vi.fn(),
         },
         false,
         true
       ).service;
-      await expect(refused.restore(HEAD, "course", ID)).rejects.toBeInstanceOf(
-        ArchiveForbiddenError
-      );
+      await expect(refused.restore(HEAD, "course", ID)).rejects.toMatchObject({
+        constructor: ArchiveRestoreLevelError,
+        code: "ARCHIVE_RESTORE_LEVEL",
+        context: { hiddenAt: "kosk", yourLevel: "madrasah" },
+      });
+    });
+
+    it("counts a row hidden before the level was recorded as the lowest level that could have hidden it", async () => {
+      // A medrese's course: the medrese could hide it, so the başmüderris may restore it.
+      const legacyMedrese = serviceWith(
+        {
+          findOne: vi.fn().mockResolvedValue(hiddenAt(null)),
+          restore: vi
+            .fn()
+            .mockResolvedValue({ status: "restored", title: "Maksûd" }),
+        },
+        false,
+        true
+      ).service;
+      await expect(
+        legacyMedrese.restore(HEAD, "course", ID)
+      ).resolves.toMatchObject({ id: ID });
+
+      // A köşk's own course: only the köşk could have hidden it; a köşk nazımı restores it.
+      const legacyKosk = serviceWith({
+        findOne: vi.fn().mockResolvedValue(item()),
+        restore: vi
+          .fn()
+          .mockResolvedValue({ status: "restored", title: "Maksûd" }),
+      }).service;
+      await expect(
+        legacyKosk.restore(NAZIM, "course", ID)
+      ).resolves.toMatchObject({ id: ID });
+    });
+
+    it("names the köşk nazımı's level when a platform hide is not theirs to undo", async () => {
+      const { service } = serviceWith({
+        findOne: vi.fn().mockResolvedValue(item({ archivedLevel: "platform" })),
+        restore: vi.fn(),
+      });
+      await expect(service.restore(NAZIM, "course", ID)).rejects.toMatchObject({
+        constructor: ArchiveRestoreLevelError,
+        context: { hiddenAt: "platform", yourLevel: "kosk" },
+      });
     });
 
     it("does not let the başmüderris of another medrese, or a stranger, restore", async () => {
       const { service, madrasahService } = serviceWith(
         {
-          findOne: vi.fn().mockResolvedValue(hiddenIn()),
-          archivers: archivers("MUDERRIS"),
+          findOne: vi.fn().mockResolvedValue(hiddenAt("course")),
         },
         false,
         false

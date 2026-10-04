@@ -9,7 +9,10 @@ import {
   type IPersonName,
 } from "../../assignment/assignment.repository";
 import { UserDirectoryService } from "../../assignment/user-directory.service";
-import { SCOPE_TYPES } from "../../database/schema/role-assignment.schema";
+import {
+  SCOPE_TYPES,
+  type ScopeType,
+} from "../../database/schema/role-assignment.schema";
 import { MadrasahNotFoundError } from "../errors/madrasah-not-found.error";
 import { NazirNotFoundError } from "../errors/nazir-not-found.error";
 import type {
@@ -37,8 +40,8 @@ function personOf(
 /**
  * The medrese's nazırs (nazir/05 and nazir/15): the MEDRESE_NAZIR appointments
  * and what hangs on them in the medrese. Reached through
- * `MadrasahNazirController`, whose `@Authz` scopes decide who may call it —
- * the medrese's başmüderris and SYSTEM_ADMIN; nothing here re-checks the
+ * `MadrasahNazirController`, whose `@Authz` permissions decide who may call it —
+ * the medrese's başmüderris and SYSTEM_ADMIN, or a nazır given the permission; nothing here re-checks the
  * caller. A nazır holds nothing until someone gives it (nazir/06).
  */
 @Injectable()
@@ -69,10 +72,11 @@ export class MadrasahNazirService {
   async appoint(
     madrasahId: string,
     userId: string,
-    actorId: string
+    actorId: string,
+    authority: ScopeType
   ): Promise<MadrasahNazirResponse> {
     const id = userId.toLowerCase();
-    if (!(await this.repo.appoint(madrasahId, id, actorId))) {
+    if (!(await this.repo.appoint(madrasahId, id, actorId, authority))) {
       throw new MadrasahNotFoundError(madrasahId);
     }
     const [nazir] = await this.present(

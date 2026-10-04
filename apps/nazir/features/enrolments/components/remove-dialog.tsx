@@ -18,9 +18,9 @@ import { enrolmentErrorKey, seatMoved } from "../enrolments";
  * in the reason, whose button stays off until there is one ("Bir gerekçe
  * yazın." once the field has been left empty) and which the scrim does not
  * close, so a typed reason is not lost to a stray click. The seat goes and the
- * reason is kept for the course team; the talebe may apply again, and a ban is
- * what stops that. A seat that is no longer as the page showed it closes the
- * dialog and the list is read again.
+ * reason is kept for the course team; the talebe cannot apply again, and only
+ * the team's approval brings the seat back. A seat that is no longer as the
+ * page showed it closes the dialog and the list is read again.
  */
 export function RemoveDialog({
   courseId,

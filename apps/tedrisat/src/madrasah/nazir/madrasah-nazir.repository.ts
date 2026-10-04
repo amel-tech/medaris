@@ -174,7 +174,8 @@ export class MadrasahNazirRepository {
   async appoint(
     madrasahId: string,
     userId: string,
-    actorId: string
+    actorId: string,
+    authority: ScopeType
   ): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const [madrasah] = await tx
@@ -200,12 +201,31 @@ export class MadrasahNazirRepository {
           scopeId: madrasahId,
           grantedBy: actorId,
         });
+        // The row the başnazım finds under "what they handed on": its id, who
+        // it went to, where, and at which level the giver acted.
+        const [seat] = await tx
+          .select({ id: roleAssignments.id })
+          .from(roleAssignments)
+          .where(
+            and(
+              eq(roleAssignments.userId, userId),
+              holdsIn(NAZIR_ROLE, madrasahId)
+            )
+          )
+          .limit(1);
         await tx.insert(auditLog).values({
           actorId,
           action: "madrasah_nazir.appoint",
           entity: "madrasah",
           entityId: madrasahId,
-          details: { userId },
+          details: {
+            userId,
+            role: NAZIR_ROLE,
+            roleAssignmentId: seat?.id ?? null,
+            scopeType: SCOPE_TYPES.MADRASAH,
+            scopeId: madrasahId,
+            authority,
+          },
         });
       }
       return true;
@@ -262,7 +282,25 @@ export class MadrasahNazirRepository {
     madrasahId: string,
     nazirId: string,
     actorId: string,
-    wanted: { scopes: IWantedScope[]; expiresAt: Date | null }
+    wanted: {
+      scopes: IWantedScope[];
+      expiresAt: Date | null;
+      /** The level of the authority the giver acts under (MDRS-135). */
+      authority: ScopeType;
+      /**
+       * The giver's ceiling, asked inside the transaction of what is really
+       * handed on: the rows about to be inserted and the kept rows that get a
+       * new end. It throws to refuse; nothing has been written by then.
+       */
+      ceiling?: (
+        given: ReadonlyArray<{
+          scopeType: ScopeType;
+          scopeId: string;
+          permission: string | null;
+          groupId: string | null;
+        }>
+      ) => void;
+    }
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
       const [madrasah] = await tx
@@ -361,6 +399,28 @@ export class MadrasahNazirRepository {
         }
       }
 
+      // A kept row whose end moves later is handed on again, for more time; one
+      // whose end moves earlier is not a gift (and anyone may revoke by leaving
+      // it out), so only the first counts.
+      const extended = (row: { expiresAt: Date | null }) =>
+        expiresAt === null
+          ? row.expiresAt !== null
+          : row.expiresAt !== null && expiresAt > row.expiresAt;
+      wanted.ceiling?.([
+        ...insert,
+        ...held.flatMap((row) =>
+          retime.includes(row.id) && row.scopeId && extended(row)
+            ? [
+                {
+                  scopeType: row.scopeType,
+                  scopeId: row.scopeId,
+                  permission: row.permission,
+                  groupId: row.groupId,
+                },
+              ]
+            : []
+        ),
+      ]);
       if (revoke.length > 0) {
         await tx
           .update(permissionGrants)
@@ -374,14 +434,24 @@ export class MadrasahNazirRepository {
           .where(inArray(permissionGrants.id, retime));
       }
       if (insert.length > 0) {
-        await tx.insert(permissionGrants).values(
-          insert.map((row) => ({
-            userId: nazirId,
-            ...row,
-            grantedBy: actorId,
-            expiresAt,
-          }))
-        );
+        const inserted = await tx
+          .insert(permissionGrants)
+          .values(
+            insert.map((row) => ({
+              userId: nazirId,
+              ...row,
+              grantedBy: actorId,
+              authorityScopeType: wanted.authority,
+              expiresAt,
+            }))
+          )
+          .returning({
+            id: permissionGrants.id,
+            permission: permissionGrants.permission,
+            groupId: permissionGrants.groupId,
+            scopeType: permissionGrants.scopeType,
+            scopeId: permissionGrants.scopeId,
+          });
         await tx.insert(auditLog).values({
           actorId,
           action: "permission.grant",
@@ -389,6 +459,17 @@ export class MadrasahNazirRepository {
           entityId: nazirId,
           details: {
             madrasahId,
+            // The rows themselves, so the başnazım's list of what a Medaris
+            // nazımı handed on and this record name the same grants, and the
+            // level the giver acted at (a Medaris nazımı acts as the platform).
+            authority: wanted.authority,
+            grants: inserted.map((g) => ({
+              id: g.id,
+              permission: g.permission,
+              groupId: g.groupId,
+              scopeType: g.scopeType,
+              scopeId: g.scopeId,
+            })),
             permissions: insert.flatMap((i) =>
               i.permission ? [{ code: i.permission, scopeId: i.scopeId }] : []
             ),
@@ -408,6 +489,8 @@ export class MadrasahNazirRepository {
           entityId: nazirId,
           details: {
             madrasahId,
+            authority: wanted.authority,
+            grantIds: gone.map((r) => r.id),
             permissions: gone.flatMap((r) =>
               r.permission ? [{ code: r.permission, scopeId: r.scopeId }] : []
             ),

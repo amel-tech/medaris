@@ -1,9 +1,12 @@
 import {
+  ASSIGNED_ROLES,
   AuthGuard,
   Authz,
   AuthzExempt,
   AuthzGuard,
-  SCOPES,
+  ENTITIES,
+  PERMISSIONS,
+  SelfGrantGuard,
 } from "@medaris/common";
 import {
   Body,
@@ -72,6 +75,7 @@ const MAX_TEXT_LENGTH = 100;
 export class KoskAdminController {
   constructor(
     private readonly admin: KoskAdminService,
+    private readonly selfGrant: SelfGrantGuard,
     private readonly dashboard: KoskDashboardService
   ) {}
 
@@ -117,7 +121,7 @@ export class KoskAdminController {
   @ApiOkResponse({ type: KoskDirectoryResponse })
   @ApiForbiddenResponse()
   // Exempt: who may see which rows is the service's decision (`scopeOf`) — a
-  // table has no single köşk for the matrix to judge.
+  // table has no single köşk for the engine to judge.
   @AuthzExempt()
   @Get("directory")
   directory(
@@ -166,7 +170,10 @@ export class KoskAdminController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/overview")
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(
+    [PERMISSIONS.KOSK_MANAGE, PERMISSIONS.PLATFORM_KOSK_EDIT],
+    byExistingKosk
+  )
   overview(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskOverviewResponse> {
@@ -189,7 +196,12 @@ export class KoskAdminController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/dashboard")
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  // Authorized like the köşk overview: the köşk's nazımları and, by the platform
+  // permission, a Medaris nazımı; the başnazım passes by the bypass.
+  @Authz(
+    [PERMISSIONS.KOSK_MANAGE, PERMISSIONS.PLATFORM_KOSK_EDIT],
+    byExistingKosk
+  )
   koskDashboard(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -213,7 +225,10 @@ export class KoskAdminController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/course-roster")
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(
+    [PERMISSIONS.KOSK_MANAGE, PERMISSIONS.PLATFORM_KOSK_EDIT],
+    byExistingKosk
+  )
   courseRoster(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskCourseRosterResponse> {
@@ -251,7 +266,10 @@ export class KoskAdminController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/nazims")
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(
+    [PERMISSIONS.KOSK_MANAGE, PERMISSIONS.PLATFORM_KOSK_EDIT],
+    byExistingKosk
+  )
   listNazims(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string
@@ -271,16 +289,25 @@ export class KoskAdminController {
     description: "No such köşk, or an account the directory does not know",
   })
   @ApiConflictResponse({ description: "KOSK_NAZIM_EXISTS" })
-  // Exempt: the matrix has no "appoint a köşk nazımı" scope — a köşk's own
-  // nazımları may add managers by `POST /kosks/:id/managers/:userId`, while
-  // this screen is the Medaris yönetimi's, so the service asks for SYSTEM_ADMIN.
+  // Exempt: this screen is the Medaris yönetimi's and has no köşk to judge yet
+  // when it opens one, so the service asks the engine for
+  // `platform.kosk_nazim_manage` (the başnazım passes); a köşk's own nazımları
+  // add managers by `POST /kosks/:id/managers/:userId`.
   @AuthzExempt()
   @Post(":id/nazims")
-  addNazims(
+  async addNazims(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: AddKoskNazimsDto
   ): Promise<KoskNazimResponse[]> {
+    // A Medaris nazımı does not seat themselves as a köşk's nazımı.
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      dto.userIds,
+      { entity: ENTITIES.KOSK, id },
+      { role: ASSIGNED_ROLES.KOSK_NAZIM, always: true },
+      "kosk.nazims.add"
+    );
     return this.admin.addNazims(request.user, id, dto);
   }
 
@@ -296,26 +323,31 @@ export class KoskAdminController {
   @ApiConflictResponse({ description: "KOSK_ALREADY_HIDDEN" })
   @Post(":id/hide")
   @HttpCode(HttpStatus.OK)
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(
+    [PERMISSIONS.KOSK_MANAGE, PERMISSIONS.PLATFORM_KOSK_EDIT],
+    byExistingKosk
+  )
   hide(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskDirectoryItemResponse> {
-    return this.admin.hide(id, request.user.sub);
+    return this.admin.hide(id, request.user);
   }
 
   @ApiOperation({
-    summary: "Bring a hidden köşk back (SYSTEM_ADMIN only)",
+    summary: "Bring a hidden köşk back (by the level that hid it, or above)",
     description:
-      'nizam/09 "Geri al". 409 (KOSK_NOT_HIDDEN) when it is not hidden. Written to the audit log.',
+      'nizam/09 "Geri al". By the kademe rule the bans follow: the level that hid it or any level above it (the köşk\'s own nazımı for what they hid, the Medaris administration for anything); 403 ARCHIVE_RESTORE_LEVEL names both levels otherwise. 409 (KOSK_NOT_HIDDEN) when it is not hidden. Written to the audit log.',
+
     operationId: "restoreKosk",
   })
   @ApiOkResponse({ type: KoskDirectoryItemResponse })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @ApiConflictResponse({ description: "KOSK_NOT_HIDDEN" })
-  // Exempt: SYSTEM_ADMIN's, checked by the service — the same decision the
-  // archive makes for a köşk (`archive/kosk/:id/restore`).
+  // Exempt: the service decides, because the level the caller acts at is what
+  // the rule needs (the başnazım and `platform.kosk_edit` as the platform, the
+  // köşk's nazımı as the köşk), and then compares it with the one that hid.
   @AuthzExempt()
   @Post(":id/restore")
   @HttpCode(HttpStatus.OK)

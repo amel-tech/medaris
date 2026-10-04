@@ -34,6 +34,7 @@ import {
   IArchiveScopes,
   STORED_ARCHIVE_ITEM_TYPES,
 } from "./archive-types";
+import type { HideLevel } from "./hide-level";
 
 /** Who hid something, as the screens print it. */
 export interface IArchiver {
@@ -59,27 +60,27 @@ export type RestoreOutcome =
 const HIDDEN = sql`
   select 'kosk'::text as type, k.id, k.name as title, k.id as kosk_id,
          null::uuid as madrasah_id, null::uuid as course_id, null::uuid as week_id,
-         k.archived_at, k.archived_by
+         k.archived_at, k.archived_by, k.archived_level
     from kosks k where k.archived_at is not null
   union all
   select 'course', c.id, c.title, c.kosk_id, c.madrasah_id, c.id, null::uuid,
-         c.archived_at, c.archived_by
+         c.archived_at, c.archived_by, c.archived_level
     from courses c where c.archived_at is not null
   union all
   select 'week', w.id, w.title, c.kosk_id, c.madrasah_id, c.id, w.id,
-         w.archived_at, w.archived_by
+         w.archived_at, w.archived_by, w.archived_level
     from course_weeks w join courses c on c.id = w.course_id
    where w.archived_at is not null and c.archived_at is null
   union all
   select 'session', l.id, l.title, c.kosk_id, c.madrasah_id, c.id, w.id,
-         l.archived_at, l.archived_by
+         l.archived_at, l.archived_by, l.archived_level
     from lessons l
     join course_weeks w on w.id = l.week_id
     join courses c on c.id = w.course_id
    where l.archived_at is not null and w.archived_at is null and c.archived_at is null
   union all
   select 'deck', d.id, d.title, d.kosk_id, null::uuid, null::uuid, null::uuid,
-         d.archived_at, d.archived_by
+         d.archived_at, d.archived_by, d.archived_level
     from decks d where d.archived_at is not null
 `;
 
@@ -103,6 +104,7 @@ type IArchiveRow = {
   student_count: number | null;
   archived_at: Date;
   archived_by: string | null;
+  archived_level: HideLevel | null;
 };
 
 @Injectable()
@@ -179,7 +181,7 @@ export class ArchiveRepository {
              case when h.type = 'course'
                   then (select count(*)::int from enrollments e
                          where e.course_id = h.id and e.status = 'ENROLLED') end as student_count,
-             h.archived_at, h.archived_by
+             h.archived_at, h.archived_by, h.archived_level
         from (${HIDDEN}) h
         left join kosks k on k.id = h.kosk_id
         left join madrasahs m on m.id = h.madrasah_id
@@ -206,6 +208,7 @@ export class ArchiveRepository {
       studentCount: r.student_count,
       archivedAt: r.archived_at,
       archivedBy: r.archived_by,
+      archivedLevel: r.archived_level,
     }));
   }
 
@@ -344,7 +347,12 @@ export class ArchiveRepository {
   ): Promise<RestoreOutcome> {
     const [row] = await tx
       .update(table)
-      .set({ archivedAt: null, archivedBy: null, updatedAt: new Date() })
+      .set({
+        archivedAt: null,
+        archivedBy: null,
+        archivedLevel: null,
+        updatedAt: new Date(),
+      })
       .where(and(eq(table.id, id), isNotNull(table.archivedAt)))
       .returning({ title: titleColumn });
     return row
@@ -374,6 +382,7 @@ export class ArchiveRepository {
       .set({
         archivedAt: null,
         archivedBy: null,
+        archivedLevel: null,
         version: sql`${courses.version} + 1`,
         updatedAt: new Date(),
       })
@@ -400,13 +409,23 @@ export class ArchiveRepository {
     // at the same instant; one hidden on its own earlier stays hidden.
     await tx
       .update(lessons)
-      .set({ archivedAt: null, archivedBy: null, updatedAt: now })
+      .set({
+        archivedAt: null,
+        archivedBy: null,
+        archivedLevel: null,
+        updatedAt: now,
+      })
       .where(
         and(eq(lessons.weekId, id), eq(lessons.archivedAt, week.archivedAt))
       );
     await tx
       .update(courseWeeks)
-      .set({ archivedAt: null, archivedBy: null, updatedAt: now })
+      .set({
+        archivedAt: null,
+        archivedBy: null,
+        archivedLevel: null,
+        updatedAt: now,
+      })
       .where(eq(courseWeeks.id, id));
     await this.bumpCourseVersion(tx, week.courseId, now);
     return { status: "restored", title: week.title };
@@ -432,7 +451,12 @@ export class ArchiveRepository {
     const now = new Date();
     await tx
       .update(lessons)
-      .set({ archivedAt: null, archivedBy: null, updatedAt: now })
+      .set({
+        archivedAt: null,
+        archivedBy: null,
+        archivedLevel: null,
+        updatedAt: now,
+      })
       .where(eq(lessons.id, id));
     await this.bumpCourseVersion(tx, lesson.courseId, now);
     return { status: "restored", title: lesson.title };

@@ -44,7 +44,7 @@ import { PermissionAdminService } from "./permission-admin.service";
 /**
  * Medaris nazımları, the permission catalog and the permission groups
  * (MDRS-171; screens nizam/11, 12 and 13). Like `NizamController` there is no
- * `AuthzGuard`: the matrix knows no such entity, and `PermissionAdminService`
+ * `AuthzGuard`: the engine knows no such entity, and `PermissionAdminService`
  * makes the one decision every route shares — only the SYSTEM_ADMIN realm role
  * passes.
  */

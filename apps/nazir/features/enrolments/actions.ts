@@ -44,7 +44,9 @@ export async function setCompleted(
 /**
  * "Dersten çıkar" (`POST /courses/:id/enrollments/:userId/remove`): the seat
  * goes and the reason, which the API requires and keeps in its audit log, is
- * shown to the course team. Not a ban: the talebe may apply again.
+ * shown to the course team. The removal itself bars re-entry: tedrisat answers
+ * a REVOKED seat's `enroll` with 409, and only the team's approval brings it
+ * back.
  */
 export async function removeStudent(
   courseId: string,

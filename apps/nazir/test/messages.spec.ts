@@ -44,6 +44,25 @@ describe("the nazir message catalogue", () => {
     }
   });
 
+  it("never tells a removed talebe they may apply again, as tedrisat answers 409 to it", () => {
+    // MDRS-247: the copy came from nizam unchanged and promised a way back
+    // that does not exist; only the course team's approval reinstates a seat.
+    const mayApply: Record<(typeof locales)[number], RegExp> = {
+      tr: /yeniden başvurabilir/,
+      en: /may apply again/,
+      ar: /(?<!لا )يستطيع الطالب (?:المُخرَج أن يتقدّم|التقدّم) من جديد/,
+    };
+    for (const locale of locales) {
+      const students = resources[locale].nazir.CourseStudents as {
+        removedNote: string;
+        remove: { info: string };
+      };
+      for (const text of [students.removedNote, students.remove.info]) {
+        expect(text, locale).not.toMatch(mayApply[locale]);
+      }
+    }
+  });
+
   it("has a message for every NextAuth error the sign-in pages can show", () => {
     // `authErrorMessageKey` builds the key at run time, so nothing else pins it.
     const codes = [

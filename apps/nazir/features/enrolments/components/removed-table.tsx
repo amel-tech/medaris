@@ -7,10 +7,10 @@ import type { RemovedRow } from "../enrolments";
 
 /**
  * "Erişimi kaldırılanlar": the talebe the course team took out, newest first,
- * with the reason written when they went and who wrote it. A talebe may have
- * applied again since; the row is the record of the removal, not of where they
- * stand now. `rows` is null when the list could not be read, and the tab says
- * so instead of showing an empty record.
+ * with the reason written when they went and who wrote it. A removed talebe
+ * cannot apply again; the row is the record of the removal. `rows` is null when
+ * the list could not be read, and the tab says so instead of showing an empty
+ * record.
  */
 export function RemovedTable({ rows }: { rows: RemovedRow[] | null }) {
   const t = useTranslations("nazir");

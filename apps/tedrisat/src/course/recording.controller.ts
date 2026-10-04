@@ -5,7 +5,7 @@ import {
   type AuthzResolve,
   ENTITIES,
   MedarisValidationPipe,
-  SCOPES,
+  PERMISSIONS,
 } from "@medaris/common";
 import {
   Body,
@@ -61,10 +61,11 @@ const byRecordingCourse: AuthzResolve = async (req, moduleRef) => {
 };
 
 /**
- * Adding and changing a session's recording link (MDRS-247). The guard asks
- * only `VIEW` of the course, to answer a missing lesson or recording with 404
- * before the handler runs; the decision is `recording.manage`, asked by
- * `RecordingService` through the permission catalogue (see the service).
+ * Adding and changing a session's recording link (MDRS-247). Both routes ask
+ * `recording.manage` of the course in their `@Authz`: the müderris and the
+ * köşk nazımı hold it by default, a ders nazırı when given it. A missing
+ * lesson or recording is answered 404 by the resolver, and by the service for
+ * the başnazım, whose bypass skips the resolver.
  */
 @ApiTags("lessons")
 @ApiBearerAuth()
@@ -92,7 +93,7 @@ export class RecordingController {
     description:
       "The session already has a recording (RECORDING_EXISTS) or is cancelled (LESSON_CANCELLED).",
   })
-  @Authz(SCOPES.VIEW, byLessonCourse)
+  @Authz(PERMISSIONS.RECORDING_MANAGE, byLessonCourse)
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   @Post("lessons/:id/recordings")
   add(
@@ -116,7 +117,7 @@ export class RecordingController {
   })
   @ApiForbiddenResponse({ description: "AUTHZ_FORBIDDEN" })
   @ApiNotFoundResponse({ description: "RECORDING_NOT_FOUND" })
-  @Authz(SCOPES.VIEW, byRecordingCourse)
+  @Authz(PERMISSIONS.RECORDING_MANAGE, byRecordingCourse)
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   @Patch("recordings/:id")
   change(

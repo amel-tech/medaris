@@ -1672,8 +1672,8 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * The courses hidden with it come back too. 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.
-     * Bring a hidden medrese back (SYSTEM_ADMIN only)
+     * The courses hidden with it come back too. By the kademe rule the bans follow: the level that hid it or any level above it (the medrese\'s başmüderris for what they hid, the Medaris administration for anything); 403 ARCHIVE_RESTORE_LEVEL names both levels otherwise. 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.
+     * Bring a hidden medrese back (by the level that hid it, or above)
      */
     async restoreMadrasahRaw(requestParameters: RestoreMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahDirectoryItemResponse>> {
         if (requestParameters['id'] == null) {
@@ -1707,8 +1707,8 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * The courses hidden with it come back too. 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.
-     * Bring a hidden medrese back (SYSTEM_ADMIN only)
+     * The courses hidden with it come back too. By the kademe rule the bans follow: the level that hid it or any level above it (the medrese\'s başmüderris for what they hid, the Medaris administration for anything); 403 ARCHIVE_RESTORE_LEVEL names both levels otherwise. 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.
+     * Bring a hidden medrese back (by the level that hid it, or above)
      */
     async restoreMadrasah(requestParameters: RestoreMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahDirectoryItemResponse> {
         const response = await this.restoreMadrasahRaw(requestParameters, initOverrides);

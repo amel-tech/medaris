@@ -171,7 +171,7 @@ export class KoskService {
 
   /**
    * Makes `userId` a manager of the köşk (MDRS-126). Idempotent. The route's
-   * `@Authz(SCOPES.MANAGE_KOSK_MANAGERS, byExistingKosk)` checks the actor
+   * `@Authz([kosk.manage, platform.kosk_nazim_manage], byExistingKosk)` checks the actor
    * first; the repository checks again under the köşk lock. 404 when that
    * user has never signed in.
    */
@@ -209,8 +209,8 @@ export class KoskService {
   }
 
   /**
-   * Authorization is `@Authz(SCOPES.EDIT, …)` on `KoskController.update`: the
-   * köşk's managers. A medrese has no say over a köşk since MDRS-134.
+   * Authorization is `@Authz([kosk.manage, platform.kosk_edit], …)` on
+   * `KoskController.update`: the köşk's nazımları and a Medaris nazımı given it. A medrese has no say over a köşk since MDRS-134.
    */
   async update(
     id: string,
@@ -245,8 +245,9 @@ export class KoskService {
   }
 
   /**
-   * SYSTEM_ADMIN's delete (MDRS-124) — `@Authz(SCOPES.DELETE, …)` on the
-   * controller, and DELETE is on no role row, so nobody else reaches this.
+   * SYSTEM_ADMIN's delete (MDRS-124) — `@Authz(kosk.delete, …)` on the
+   * controller, and `kosk.delete` is held by no role or grant, so nobody else
+   * reaches this.
    * Removes the köşk's courses and everything under them explicitly and
    * writes an audit entry; see `KoskRepository.purge`.
    */

@@ -1,3 +1,5 @@
+import type { HideLevel } from "./hide-level";
+
 /**
  * What the archive lists (MDRS-173, screens nizam/28 and nizam/29). A hidden
  * thing is never deleted: it keeps its row, carries `archived_at` and
@@ -75,6 +77,8 @@ export interface IArchiveItem {
   studentCount: number | null;
   archivedAt: Date;
   archivedBy: string | null;
+  /** The level the hider acted at; null on a row hidden before it was recorded. */
+  archivedLevel: HideLevel | null;
 }
 
 export interface IArchiveFilter {

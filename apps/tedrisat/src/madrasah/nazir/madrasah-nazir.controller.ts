@@ -1,4 +1,12 @@
-import { AuthGuard, Authz, AuthzGuard, SCOPES } from "@medaris/common";
+import {
+  AuthGuard,
+  Authz,
+  AuthzGuard,
+  AuthzService,
+  ENTITIES,
+  PERMISSIONS,
+  SelfGrantGuard,
+} from "@medaris/common";
 import {
   Body,
   Controller,
@@ -23,6 +31,7 @@ import {
   ApiOperation,
   ApiTags,
 } from "@nestjs/swagger";
+import { SCOPE_TYPES } from "../../database/schema/role-assignment.schema";
 import { AuthorizedRequest } from "../../kosk/interfaces/authorized-request.interface";
 import { byExistingMadrasah } from "../madrasah.controller";
 import {
@@ -35,15 +44,20 @@ import { MadrasahNazirService } from "./madrasah-nazir.service";
 /**
  * The medrese's nazırs (nazir/05, nazir/15): the MEDRESE_NAZIR appointments
  * under `/madrasahs/:id/nazirs`. The medrese's başmüderris and SYSTEM_ADMIN
- * manage them; a nazır of the medrese is not on the matrix yet, so the roster
- * is a 403 to them like every other matrix-guarded route.
+ * manage them, and so does a Medaris nazımı given `platform.madrasah_nazir_grant`;
+ * a nazır of the medrese holds `madrasah.nazir_appoint` only if it was given
+ * and is a 403 otherwise, like every other guarded route.
  */
 @ApiTags("madrasahs")
 @ApiBearerAuth()
 @UseGuards(AuthGuard, AuthzGuard)
 @Controller("madrasahs")
 export class MadrasahNazirController {
-  constructor(private readonly nazirs: MadrasahNazirService) {}
+  constructor(
+    private readonly nazirs: MadrasahNazirService,
+    private readonly selfGrant: SelfGrantGuard,
+    private readonly authz: AuthzService
+  ) {}
 
   @ApiOperation({
     summary: "The medrese's nazırs (its başmüderris)",
@@ -55,7 +69,13 @@ export class MadrasahNazirController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/nazirs")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(
+    [
+      PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT,
+    ],
+    byExistingMadrasah
+  )
   list(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahNazirResponse[]> {
@@ -72,13 +92,38 @@ export class MadrasahNazirController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Post(":id/nazirs/:userId")
-  @Authz(SCOPES.INVITE_NAZIR, byExistingMadrasah)
-  addNazir(
+  @Authz(
+    [
+      PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT,
+    ],
+    byExistingMadrasah
+  )
+  async addNazir(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("userId", ParseUUIDPipe) userId: string
   ): Promise<MadrasahNazirResponse> {
-    return this.nazirs.appoint(id, userId, request.user.sub);
+    // Nobody appoints themselves a nazır, whatever route let them in.
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      [userId],
+      { entity: ENTITIES.MADRASAH, id },
+      { always: true },
+      "madrasah.nazir.appoint"
+    );
+    // The level the caller acts at, for the audit row and the başnazım's list:
+    // the başnazım and a Medaris nazımı holding the permission act as the
+    // platform, the medrese's own başmüderris (or a nazır given the permission)
+    // as the medrese.
+    const authority = (await this.authz.can(
+      request.user,
+      { entity: ENTITIES.MADRASAH, id },
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT
+    ))
+      ? SCOPE_TYPES.PLATFORM
+      : SCOPE_TYPES.MADRASAH;
+    return this.nazirs.appoint(id, userId, request.user.sub, authority);
   }
 
   @ApiOperation({
@@ -91,7 +136,13 @@ export class MadrasahNazirController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/nazirs/:userId/grants")
-  @Authz(SCOPES.REMOVE_NAZIR, byExistingMadrasah)
+  @Authz(
+    [
+      PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT,
+    ],
+    byExistingMadrasah
+  )
   grants(
     @Param("id", ParseUUIDPipe) id: string,
     @Param("userId", ParseUUIDPipe) userId: string
@@ -111,7 +162,13 @@ export class MadrasahNazirController {
   @ApiNotFoundResponse()
   @Delete(":id/nazirs/:userId")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Authz(SCOPES.REMOVE_NAZIR, byExistingMadrasah)
+  @Authz(
+    [
+      PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT,
+    ],
+    byExistingMadrasah
+  )
   async removeNazir(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,

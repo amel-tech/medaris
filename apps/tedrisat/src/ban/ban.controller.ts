@@ -51,7 +51,7 @@ const presentAll = (list: IAllBansList): AllBansListResponse => ({
 
 /**
  * Bans (MDRS-177, screens nizam/41 and nizam/42). Like `ArchiveController`,
- * no `AuthzGuard`: the matrix has no ban entity, and `BanService` makes the
+ * no `AuthzGuard`: the engine has no ban entity, and `BanService` makes the
  * one decision every route shares, the kademe rule.
  *
  * The reason of a ban is returned here, to people who place and lift bans,
