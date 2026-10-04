@@ -5,10 +5,8 @@ import {
   PERMISSIONS,
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
-import { BanRepository } from "../ban/ban.repository";
 import { CourseRepository } from "../course/course.repository";
 import { CourseService } from "../course/course.service";
-import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { CourseNotFoundError } from "../course/errors/course-not-found.error";
 import { LessonNotFoundError } from "../course/errors/lesson-not-found.error";
 import type {
@@ -46,13 +44,12 @@ import {
  */
 @Injectable()
 export class LessonNoteService {
-  // All five must stay value imports: `import type` erases them from
+  // All four must stay value imports: `import type` erases them from
   // `design:paramtypes` and Nest can no longer inject them.
   constructor(
     private readonly notes: LessonNoteRepository,
     private readonly courseRepo: CourseRepository,
     private readonly courseService: CourseService,
-    private readonly banRepo: BanRepository,
     private readonly authz: AuthzService
   ) {}
 
@@ -143,7 +140,7 @@ export class LessonNoteService {
     courseId: string
   ): Promise<void> {
     if (
-      !(await this.isActiveTalebe(user.sub, courseId)) ||
+      !(await this.courseService.isActiveTalebe(user.sub, courseId)) ||
       !(await this.contentIsOpen(user, courseId))
     ) {
       throw new LessonNoteForbiddenError();
@@ -159,16 +156,5 @@ export class LessonNoteService {
       { entity: ENTITIES.COURSE, id: courseId },
       PERMISSIONS.COURSE_VIEW_DETAILS
     );
-  }
-
-  private async isActiveTalebe(
-    userId: string,
-    courseId: string
-  ): Promise<boolean> {
-    const enrollment = await this.courseRepo.findEnrollment(userId, courseId);
-    const active =
-      enrollment?.status === EnrollmentStatus.ENROLLED ||
-      enrollment?.status === EnrollmentStatus.COMPLETED;
-    return active && !(await this.banRepo.isBarredFromCourse(userId, courseId));
   }
 }

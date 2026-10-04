@@ -396,6 +396,22 @@ export class CourseService {
   }
 
   /**
+   * Whether the person is a talebe of the course right now: an ENROLLED or
+   * COMPLETED enrollment that no ban bars (MDRS-150). What a write made by a
+   * talebe alone (a note, a question) asks besides the engine, because no
+   * catalogue code says "enrolled and not staff": the başnazım passes every
+   * decision and the course team holds `course.view_details` without being
+   * talebe.
+   */
+  async isActiveTalebe(userId: string, courseId: string): Promise<boolean> {
+    const enrollment = await this.courseRepo.findEnrollment(userId, courseId);
+    const active =
+      enrollment?.status === EnrollmentStatus.ENROLLED ||
+      enrollment?.status === EnrollmentStatus.COMPLETED;
+    return active && !(await this.banService.isBarred(userId, courseId));
+  }
+
+  /**
    * A scheduled session and its course, for a calendar entry (MDRS-117).
    *
    * Authorized exactly like the session page, which is rendered from
