@@ -1,7 +1,6 @@
+import { AuthenticatedUser } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
-import { ActiveTalebeService } from "../course/active-talebe.service";
-import { CourseRepository } from "../course/course.repository";
-import { LessonNotFoundError } from "../course/errors/lesson-not-found.error";
+import { CourseService } from "../course/course.service";
 import type {
   CreateLessonNoteDto,
   UpdateLessonNoteDto,
@@ -17,74 +16,91 @@ import {
  * A talebe's private notes on a session's video (MDRS-150).
  *
  * Whose they are is decided by the repository, which never reads a note
- * without its author. What this decides is who may write: an active talebe of
- * the session's course (`ActiveTalebeService`), asked here and not through the
- * route matrix. Reading and deleting one's own notes ask nothing more, so a
- * talebe who was removed or barred can still read and remove what they wrote.
+ * without its author. Whether the caller may reach the course at all is the
+ * engine's, through `CourseService`, as for every read of course content: the
+ * course must be one they may see (a hidden köşk, a hidden course and a draft
+ * answer as a session that is not there), and its content must not be closed
+ * to them (a passive scope closes it to the enrolled talebe too).
+ *
+ * Writing takes an active talebe on top of that (`mayWriteAsTalebe`). Reading
+ * and deleting one's own notes take only an open course, so a talebe who was
+ * removed or barred can still read and remove what they wrote
+ * (`mayReachOwnWriting`).
  */
 @Injectable()
 export class LessonNoteService {
-  // All three must stay value imports: `import type` erases them from
-  // `design:paramtypes` and Nest can no longer inject them.
+  // Must stay a value import: `import type` erases it from
+  // `design:paramtypes` and Nest can no longer inject it.
   constructor(
     private readonly notes: LessonNoteRepository,
-    private readonly courseRepo: CourseRepository,
-    private readonly talebe: ActiveTalebeService
+    private readonly courseService: CourseService
   ) {}
 
-  async list(lessonId: string, userId: string): Promise<ILessonNote[]> {
-    await this.existing(lessonId);
-    return this.notes.findByAuthor(lessonId, userId);
+  async list(
+    user: AuthenticatedUser,
+    lessonId: string
+  ): Promise<ILessonNote[]> {
+    await this.assertReachable(user, lessonId);
+    return this.notes.findByAuthor(lessonId, user.sub);
   }
 
   async create(
+    user: AuthenticatedUser,
     lessonId: string,
-    userId: string,
     dto: CreateLessonNoteDto
   ): Promise<ILessonNote> {
-    await this.assertMayWrite(lessonId, userId);
-    return this.notes.insert(lessonId, userId, {
+    await this.assertMayWrite(user, lessonId);
+    return this.notes.insert(lessonId, user.sub, {
       body: dto.body,
       offsetSeconds: dto.offsetSeconds ?? null,
     });
   }
 
   async update(
+    user: AuthenticatedUser,
     lessonId: string,
     noteId: string,
-    userId: string,
     dto: UpdateLessonNoteDto
   ): Promise<ILessonNote> {
-    await this.assertMayWrite(lessonId, userId);
-    const saved = await this.notes.update(noteId, lessonId, userId, dto);
+    await this.assertMayWrite(user, lessonId);
+    const saved = await this.notes.update(noteId, lessonId, user.sub, dto);
     if (!saved) throw new LessonNoteNotFoundError(noteId);
     return saved;
   }
 
   async remove(
+    user: AuthenticatedUser,
     lessonId: string,
-    noteId: string,
-    userId: string
+    noteId: string
   ): Promise<void> {
-    await this.existing(lessonId);
-    if (!(await this.notes.remove(noteId, lessonId, userId))) {
+    await this.assertReachable(user, lessonId);
+    if (!(await this.notes.remove(noteId, lessonId, user.sub))) {
       throw new LessonNoteNotFoundError(noteId);
     }
   }
 
-  /** The course the session belongs to; 404 when there is no such session. */
-  private async existing(lessonId: string): Promise<string> {
-    const courseId = await this.courseRepo.findLessonCourseId(lessonId);
-    if (!courseId) throw new LessonNotFoundError(lessonId);
-    return courseId;
+  private async assertMayWrite(
+    user: AuthenticatedUser,
+    lessonId: string
+  ): Promise<void> {
+    const courseId = await this.courseService.findVisibleLessonCourse(
+      lessonId,
+      user
+    );
+    if (!(await this.courseService.mayWriteAsTalebe(user, courseId))) {
+      throw new LessonNoteForbiddenError();
+    }
   }
 
-  private async assertMayWrite(
-    lessonId: string,
-    userId: string
+  private async assertReachable(
+    user: AuthenticatedUser,
+    lessonId: string
   ): Promise<void> {
-    const courseId = await this.existing(lessonId);
-    if (!(await this.talebe.isActive(userId, courseId))) {
+    const courseId = await this.courseService.findVisibleLessonCourse(
+      lessonId,
+      user
+    );
+    if (!(await this.courseService.mayReachOwnWriting(user, courseId))) {
       throw new LessonNoteForbiddenError();
     }
   }

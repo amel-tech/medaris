@@ -1,9 +1,11 @@
 import {
-  AnonymousRole,
+  AnonymousRelation,
   ENTITIES,
+  PERMISSIONS,
+  RELATIONS,
+  Relation,
+  ResourceClosure,
   ResourceRef,
-  ROLES,
-  Role,
   RoleResolver,
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
@@ -23,50 +25,35 @@ const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Resolves the caller's role on a given resource by consulting the
- * domain's ownership/enrollment tables — through the feature modules'
- * services where one already answers the question (`KoskService.isManager`,
- * `FlashcardDeckService.findVisibility`) and through `CourseRepository` for
- * the course lookups no service exposes, never through `DatabaseService`
- * directly. Authorization and the domain code therefore read ownership from
- * one code path: when the rule or the storage shape changes (a membership
- * table for köşk ownership, say), the one owner changes and both readers
- * follow.
+ * Resolves what the caller is to a given resource — enrolled in it, waiting to
+ * be, the author of it, or just any signed-in caller — by consulting the
+ * domain's own tables, through the feature modules' services where one already
+ * answers the question (`KoskService.exists`, `FlashcardDeckService.findVisibility`)
+ * and through `CourseRepository` for the course lookups no service exposes,
+ * never through `DatabaseService` directly.
+ *
+ * Since MDRS-135 it no longer resolves ROLES. The köşk nazımı, the başmüderris,
+ * the müderris and the rest are `role_assignments` rows, and what they and
+ * their grants allow is `AuthzService`'s computation over the scope chain
+ * (`TedrisatAuthzContext`). A relationship adds to what a person holds there;
+ * it never replaces it, so a müderris who is also enrolled in a sibling
+ * course keeps both.
  *
  * A resource that is **not there** raises the module's own 404 from inside
  * the resolver (`DeckNotFoundError`, `KoskNotFoundError`,
  * `CourseNotFoundError`), which `AuthzGuard.resolveResource` propagates
- * untouched. Before MDRS-43 these branches answered `ROLES.PUBLIC` and left
- * the 404 to the handler, on the grounds that the resolver should not leak
- * existence — but once the guard decides in FRONT of the handler, a missing
- * resource on a write route never reaches the code that would 404 it, and
- * "absent" collapsed into the same 403 as "forbidden". MDRS-56 and MDRS-63
- * decided the opposite on purpose, and `flashcard-bulk.e2e.spec.ts` pins it:
- * ids here are v4 UUIDs, so 404 leaks nothing anyone could enumerate, while
- * folding it into 403 makes a mistyped id indistinguishable from a real
- * permission problem. So the 404 moves forward with the decision.
+ * untouched: the guard decides in FRONT of the handler, so a missing resource
+ * on a write route must not collapse into the same 403 as "forbidden".
+ * MDRS-56 and MDRS-63 decided this on purpose, and `flashcard-bulk.e2e.spec.ts`
+ * pins it: ids are v4 UUIDs, so a 404 leaks nothing anyone could enumerate.
  *
- * Returning `null` means **deny** — the caller has no role on this
- * resource and no public access is intended either. `AuthzService.can`
- * treats null as a hard deny (no `PUBLIC` fallback), so when a resource
- * is meant to be open to any authenticated caller (a public deck, a
- * non-existent ID on a create endpoint, the donate scope on a
- * madrasah), the resolver must explicitly return `ROLES.PUBLIC`.
+ * Returning `null` means **deny** — no relationship applies and no public
+ * access is intended. When a resource is meant to be open to any authenticated
+ * caller (a public deck, a non-existent id on a create endpoint), the resolver
+ * returns `RELATIONS.PUBLIC` explicitly.
  *
- * Wired entities so far: `flashcard-deck` (owner), `kosk` (manager),
- * `course` (manager / muderris / enrolled / pending), `madrasah` (nazır,
- * MDRS-106). Since MDRS-134 the manager, müderris and nazır answers come
- * from `role_assignments` (KOSK_NAZIM, MUDERRIS, MEDRESE_BASMUDERRIS), read
- * through the same services. `ijazah` returns `PUBLIC` provisionally; its
- * restricted scopes deny because PUBLIC does not list them.
- *
- * Priority rules for multi-role situations:
- *   - KOSK_MANAGER > MUDERRIS > ENROLLED > PENDING
- *   - A medrese's nazır gets nothing on a köşk or a course from being one:
- *     neither path consults the medrese (MDRS-133 — medreses never moderate
- *     köşks; MDRS-134 removed the köşk affiliation that once did).
- *   - SYSTEM_ADMIN bypass is handled upstream in `AuthzService.isSystemAdmin`,
- *     not here.
+ * Wired entities: `flashcard-deck` (author), `kosk`, `course` (enrolled /
+ * pending / public) and `madrasah`.
  */
 @Injectable()
 export class TedrisatRoleResolver implements RoleResolver {
@@ -78,7 +65,10 @@ export class TedrisatRoleResolver implements RoleResolver {
     private readonly banRepo: BanRepository
   ) {}
 
-  async resolve(userId: string, resource: ResourceRef): Promise<Role | null> {
+  async resolve(
+    userId: string,
+    resource: ResourceRef
+  ): Promise<Relation | null> {
     switch (resource.entity) {
       case ENTITIES.FLASHCARD_DECK:
         return this.resolveDeckRole(userId, resource);
@@ -88,13 +78,34 @@ export class TedrisatRoleResolver implements RoleResolver {
         return this.resolveCourseRole(userId, resource);
       case ENTITIES.MADRASAH:
         return this.resolveMadrasahRole(userId, resource);
-      case ENTITIES.IJAZAH:
-        // TODO(authz): wire the ijazah tables as they land. Until then,
-        // restricted scopes are denied because PUBLIC does not list them.
-        return ROLES.PUBLIC;
       default:
         return null;
     }
+  }
+
+  /**
+   * A course is shown only while its köşk is (MDRS-143): a hidden köşk closes
+   * its courses, to the talebe enrolled in them and to a müderris or a
+   * başmüderris too, and only the people above the courses still open them:
+   * the köşk's nazımları (`course.hide` on the course by nesting), Medaris
+   * yönetimi holding `platform.kosk_edit`, and the başnazım. A medrese is not
+   * above a köşk. Read from the köşk's own state, not from a cascade, so a
+   * course opened after the hide is closed as well and a restore reopens
+   * exactly what the hide closed. `AuthzGuard` asks it in front of every
+   * signed-in route on a course, so the closure is one rule, not one check per
+   * route.
+   */
+  async closure(resource: ResourceRef): Promise<ResourceClosure | null> {
+    if (resource.entity !== ENTITIES.COURSE || !UUID_REGEX.test(resource.id)) {
+      return null;
+    }
+    if (!(await this.courseRepo.findHideState(resource.id))?.koskArchivedAt) {
+      return null;
+    }
+    return {
+      openTo: [PERMISSIONS.COURSE_HIDE, PERMISSIONS.PLATFORM_KOSK_EDIT],
+      notFound: new CourseNotFoundError(resource.id),
+    };
   }
 
   /**
@@ -107,7 +118,9 @@ export class TedrisatRoleResolver implements RoleResolver {
    * module's own 404 — the same code and message as a resource that is not
    * there — so a guessed id tells them nothing about what exists.
    */
-  async resolveAnonymous(resource: ResourceRef): Promise<AnonymousRole | null> {
+  async resolveAnonymous(
+    resource: ResourceRef
+  ): Promise<AnonymousRelation | null> {
     switch (resource.entity) {
       case ENTITIES.FLASHCARD_DECK:
         return this.resolveAnonymousDeckRole(resource);
@@ -135,14 +148,14 @@ export class TedrisatRoleResolver implements RoleResolver {
    */
   private async resolveAnonymousKoskRole(
     resource: ResourceRef
-  ): Promise<AnonymousRole> {
-    if (!UUID_REGEX.test(resource.id)) return ROLES.ANONYMOUS;
+  ): Promise<AnonymousRelation> {
+    if (!UUID_REGEX.test(resource.id)) return RELATIONS.ANONYMOUS;
 
     const kosk = await this.koskService.findVisibility(resource.id);
     if (!kosk || kosk.isPrivate || kosk.hidden) {
       throw new KoskNotFoundError(resource.id);
     }
-    return ROLES.ANONYMOUS;
+    return RELATIONS.ANONYMOUS;
   }
 
   /**
@@ -160,8 +173,8 @@ export class TedrisatRoleResolver implements RoleResolver {
    */
   private async resolveAnonymousCourseRole(
     resource: ResourceRef
-  ): Promise<AnonymousRole> {
-    if (!UUID_REGEX.test(resource.id)) return ROLES.ANONYMOUS;
+  ): Promise<AnonymousRelation> {
+    if (!UUID_REGEX.test(resource.id)) return RELATIONS.ANONYMOUS;
 
     const course = await this.courseRepo.findPublicVisibility(resource.id);
     if (
@@ -173,7 +186,7 @@ export class TedrisatRoleResolver implements RoleResolver {
     ) {
       throw new CourseNotFoundError(resource.id);
     }
-    return ROLES.ANONYMOUS;
+    return RELATIONS.ANONYMOUS;
   }
 
   /**
@@ -188,13 +201,13 @@ export class TedrisatRoleResolver implements RoleResolver {
    */
   private async resolveAnonymousMadrasahRole(
     resource: ResourceRef
-  ): Promise<AnonymousRole> {
-    if (!UUID_REGEX.test(resource.id)) return ROLES.ANONYMOUS;
+  ): Promise<AnonymousRelation> {
+    if (!UUID_REGEX.test(resource.id)) return RELATIONS.ANONYMOUS;
 
     if (!(await this.madrasahService.exists(resource.id))) {
       throw new MadrasahNotFoundError(resource.id);
     }
-    return ROLES.ANONYMOUS;
+    return RELATIONS.ANONYMOUS;
   }
 
   /**
@@ -213,12 +226,12 @@ export class TedrisatRoleResolver implements RoleResolver {
    */
   private async resolveAnonymousDeckRole(
     resource: ResourceRef
-  ): Promise<AnonymousRole> {
-    if (!UUID_REGEX.test(resource.id)) return ROLES.ANONYMOUS;
+  ): Promise<AnonymousRelation> {
+    if (!UUID_REGEX.test(resource.id)) return RELATIONS.ANONYMOUS;
 
     const deck = await this.deckService.findVisibility(resource.id);
     if (!deck || !deck.isPublic) throw new DeckNotFoundError(resource.id);
-    return ROLES.ANONYMOUS;
+    return RELATIONS.ANONYMOUS;
   }
 
   /**
@@ -227,7 +240,7 @@ export class TedrisatRoleResolver implements RoleResolver {
    * §4.2 will land with their foreign keys.
    *
    * - Non-UUID id (the `forNew` sentinel, malformed input): return PUBLIC so
-   *   `CREATE_PRIVATE_DECK` on the matrix's PUBLIC row applies. Defends
+   *   `deck.create_private`, which any signed-in caller holds, applies. Defends
    *   against Postgres 22P02. This branch must stay AHEAD of the existence
    *   check — a create endpoint names no deck and must not 404.
    * - Deck missing: `DeckNotFoundError`. See the class comment: the guard
@@ -240,10 +253,10 @@ export class TedrisatRoleResolver implements RoleResolver {
    *   owner-scoped (review finding on MDRS-41). That last clause is an
    *   invariant of `FlashcardDeckController`, not of the schema: `PATCH`
    *   and `PUT /flashcard/decks/:id` are both
-   *   `@Authz(MANAGE_PRIVATE_DECK)`, a scope only DECK_OWNER carries, so
+   *   `@Authz(deck.manage_private)`, a permission only DECK_OWNER holds, so
    *   nobody but the author can flip the flag — which is also what stops an
    *   attacker from turning this resolver's answer for every other caller
-   *   from `null` (deny) into `ROLES.PUBLIC`. Weaken that scope and this
+   *   from `null` (deny) into `RELATIONS.PUBLIC`. Weaken that permission and this
    *   priority order becomes unsound with it. (Before MDRS-43 the same
    *   invariant was held up by an `assertOwner` call in the handler.)
    * - Public deck, not the author: PUBLIC (any authenticated caller may view).
@@ -255,7 +268,7 @@ export class TedrisatRoleResolver implements RoleResolver {
    *   A 403 here told a stranger the UUID was somebody's private deck;
    *   MDRS-43 AC-4 requires that "private" and "absent" look the same. The
    *   403 is kept for what the caller can already see: a public deck they
-   *   do not own, whose owner scopes the matrix denies.
+   *   do not own, whose owner permissions the engine denies.
    *
    * Two columns, one row, LIMIT 1 — `findVisibility`, not `findById`. This
    * runs inside the guard on every deck request, before the handler has done
@@ -266,141 +279,104 @@ export class TedrisatRoleResolver implements RoleResolver {
   private async resolveDeckRole(
     userId: string,
     resource: ResourceRef
-  ): Promise<Role> {
-    if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
+  ): Promise<Relation> {
+    if (!UUID_REGEX.test(resource.id)) return RELATIONS.PUBLIC;
 
     const deck = await this.deckService.findVisibility(resource.id, userId);
     if (!deck) throw new DeckNotFoundError(resource.id);
-    if (deck.authorId === userId) return ROLES.DECK_OWNER;
+    if (deck.authorId === userId) return RELATIONS.DECK_OWNER;
     // A deck that belongs to a course the caller is enrolled in (MDRS-164) is
     // read like a public one: PUBLIC holds VIEW and nothing that writes.
     if (!deck.isPublic && !deck.sharedWithViewer) {
       throw new DeckNotFoundError(resource.id);
     }
-    return ROLES.PUBLIC;
+    return RELATIONS.PUBLIC;
   }
 
   /**
-   * Köşk role dispatch.
+   * Köşk relationship.
    *
-   * - Non-UUID id ("new" sentinel, malformed input): PUBLIC, which grants
-   *   VIEW only. `CREATE_KOSK` is deliberately on NO kosk matrix row (see
-   *   auth-matrix.ts, the comment above the kosk PUBLIC row): köşk
-   *   creation is SYSTEM_ADMIN-only through the realm bypass. Do NOT add
-   *   `CREATE_KOSK` to the PUBLIC row to make a create endpoint pass —
-   *   that hands köşk creation to every authenticated user.
-   * - Köşk missing: `KoskNotFoundError` (MDRS-43). Mirrors the deck branch
-   *   above.
-   * - Caller is one of the köşk's managers: KOSK_MANAGER.
-   * - Otherwise: PUBLIC. Anyone authenticated may VIEW; EDIT/DELETE
-   *   are not on the PUBLIC row so non-owners are denied.
-   *
-   * There is no MADRASAH_NAZIR path any more (MDRS-134): a medrese's only
-   * link to a köşk is a hosting right, which gives it no power over the
-   * köşk (MDRS-133).
+   * - Non-UUID id ("new" sentinel, malformed input): PUBLIC. Creating a köşk
+   *   is `platform.kosk_create`, which no relationship holds (see
+   *   relations.ts): the başnazım passes by the realm bypass and a Medaris
+   *   nazımı by that grant.
+   * - Köşk missing: `KoskNotFoundError` (MDRS-43). Mirrors the deck branch.
+   * - Otherwise: PUBLIC. What a köşk nazımı may do is not a relationship: it
+   *   is the KOSK_NAZIM role's defaults, read from `role_assignments`.
    */
   private async resolveKoskRole(
-    userId: string,
+    _userId: string,
     resource: ResourceRef
-  ): Promise<Role | null> {
-    if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
+  ): Promise<Relation | null> {
+    if (!UUID_REGEX.test(resource.id)) return RELATIONS.PUBLIC;
 
-    // `KoskService.isManager` is the module's one management predicate
-    // (KOSK_NAZIM, MDRS-134), and it answers `false` for a missing köşk
-    // as well as for a non-manager. Those are a 404 and a 403 respectively
-    // (MDRS-43), so existence is read alongside it rather than folded in.
-    const [exists, isManager] = await Promise.all([
-      this.koskService.exists(resource.id),
-      this.koskService.isManager(resource.id, userId),
-    ]);
-    if (!exists) throw new KoskNotFoundError(resource.id);
-    return isManager ? ROLES.KOSK_MANAGER : ROLES.PUBLIC;
+    if (!(await this.koskService.exists(resource.id))) {
+      throw new KoskNotFoundError(resource.id);
+    }
+    return RELATIONS.PUBLIC;
   }
 
   /**
-   * Medrese role dispatch (MDRS-106).
-   *
-   * - Non-UUID id (the list and create routes): PUBLIC — VIEW and DONATE.
-   *   `CREATE_MADRASAH` is on no row, so creating stays SYSTEM_ADMIN's.
-   * - Caller holds MEDRESE_BASMUDERRIS there (MDRS-134): MADRASAH_NAZIR.
-   * - Otherwise, including a medrese that does not exist: PUBLIC. The
-   *   controller's resolver answers a missing medrese with 404 first.
+   * Medrese relationship. Every caller is PUBLIC here, including on a medrese
+   * that does not exist: the controller's resolver answers a missing medrese
+   * with 404 first. The başmüderris and the nazırs are `role_assignments` and
+   * `permission_grants`, not relationships (MDRS-135).
    */
   private async resolveMadrasahRole(
-    userId: string,
-    resource: ResourceRef
-  ): Promise<Role | null> {
-    if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
-
-    return (await this.madrasahService.isNazir(resource.id, userId))
-      ? ROLES.MADRASAH_NAZIR
-      : ROLES.PUBLIC;
+    _userId: string,
+    _resource: ResourceRef
+  ): Promise<Relation | null> {
+    return RELATIONS.PUBLIC;
   }
 
   /**
-   * Course role dispatch.
+   * Course relationship, from the caller's enrollment alone:
    *
-   * Priority (highest first):
-   *   1. KOSK_MANAGER — caller manages the course's parent köşk
-   *   2. MUDERRIS     — caller holds MUDERRIS on this course (MDRS-134)
-   *   3. ENROLLED     — caller has an `ENROLLED` (or `COMPLETED`) enrollment
-   *   4. PENDING      — caller has a `PENDING` enrollment awaiting approval
-   *   5. PUBLIC       — any authenticated caller (covers ENROLL on a course
-   *                     that exists)
+   *   1. ENROLLED — an `ENROLLED` or `COMPLETED` enrollment
+   *   2. PENDING  — a `PENDING` enrollment awaiting approval
+   *   3. PUBLIC   — any authenticated caller (covers ENROLL on a course that
+   *                 exists), and what a barred or removed talebe falls back to
    *
-   * Two round trips, not four: only the parent-köşk lookup depends on the
-   * course row (it needs `koskId`); the muderris and enrollment lookups
-   * need nothing but the course id and the caller, so the three run
-   * concurrently once the course is known. It could be one hop with a
-   * courses⋈kosks join, but that would re-implement köşk ownership beside
-   * `KoskService.isManager` — one owner of that predicate was judged worth
-   * the extra hop; revisit if the guard shows up in a profile. The most common caller — an
-   * authenticated visitor with no relationship to the course, who ends at
-   * PUBLIC — used to pay all four in series, inside the guard, before the
-   * handler had done any work. The priority order is applied to the
-   * results, not to the queries, so a KOSK_MANAGER now issues two lookups
-   * it would have skipped; they run in parallel on the pool, which is the
-   * cheaper trade.
+   * Whoever runs the course (the köşk's nazımı, the müderris, a başmüderris
+   * whose medrese holds it, anyone granted something there) is not decided
+   * here: `AuthzService` adds what their roles and grants allow along the
+   * scope chain, and a person who is both enrolled and staff holds both.
    *
-   * There is deliberately no MADRASAH_NAZIR path: a medrese's nazır has no
-   * direct authority over a course (PRD §4.1). MDRS-135 replaces this with
-   * the permission catalogue, where a başmüderris reaches the medrese's
-   * courses through `courses.madrasah_id`.
+   * Two round trips, not three: `findKoskId` doubles as the existence check
+   * (the FK to `kosks` is not nullable, so it is null only for an absent
+   * course), then the enrollment is read.
    */
   private async resolveCourseRole(
     userId: string,
     resource: ResourceRef
-  ): Promise<Role | null> {
-    if (!UUID_REGEX.test(resource.id)) return ROLES.PUBLIC;
+  ): Promise<Relation | null> {
+    if (!UUID_REGEX.test(resource.id)) return RELATIONS.PUBLIC;
 
-    // `findKoskId` is null only when the course row is absent — the FK to
-    // `kosks` is not nullable — so this doubles as the existence check.
     const koskId = await this.courseRepo.findKoskId(resource.id);
     if (koskId === null) throw new CourseNotFoundError(resource.id);
 
-    const [ownsParentKosk, isMuderris, enrollment] = await Promise.all([
-      this.koskService.isManager(koskId, userId),
-      this.courseRepo.isMuderris(resource.id, userId),
-      this.courseRepo.findEnrollment(userId, resource.id),
-    ]);
-
-    if (ownsParentKosk) return ROLES.KOSK_MANAGER;
-    if (isMuderris) return ROLES.MUDERRIS;
+    const enrollment = await this.courseRepo.findEnrollment(
+      userId,
+      resource.id
+    );
     // A barred talebe is a stranger to the course (MDRS-177): they keep the
-    // public page and lose what only the enrolled hold. Staff are never
-    // barred (`BanService.create` refuses it), so this sits after them. It
-    // asks the repository, not `BanService`: the service needs `AuthzService`,
-    // which needs this resolver, and that cycle never resolves.
+    // public page and lose what only the enrolled hold. It asks the
+    // repository, not `BanService`: the service needs `AuthzService`, which
+    // needs this resolver, and that cycle never resolves.
     if (
       enrollment &&
       (await this.banRepo.isBarredFromCourse(userId, resource.id))
     ) {
-      return ROLES.PUBLIC;
+      return RELATIONS.PUBLIC;
     }
     // A talebe the course team took out keeps the public page too (MDRS-161).
-    if (enrollment?.status === EnrollmentStatus.REVOKED) return ROLES.PUBLIC;
-    if (enrollment?.status === EnrollmentStatus.PENDING) return ROLES.PENDING;
-    if (enrollment) return ROLES.ENROLLED; // ENROLLED or COMPLETED
-    return ROLES.PUBLIC;
+    if (enrollment?.status === EnrollmentStatus.REVOKED) {
+      return RELATIONS.PUBLIC;
+    }
+    if (enrollment?.status === EnrollmentStatus.PENDING) {
+      return RELATIONS.PENDING;
+    }
+    if (enrollment) return RELATIONS.ENROLLED; // ENROLLED or COMPLETED
+    return RELATIONS.PUBLIC;
   }
 }

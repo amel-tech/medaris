@@ -65,6 +65,7 @@
     "restoreFailed": "Geri alınamadı",
     "restoreParentHidden": "Bağlı olduğu öğe hâlâ gizli; önce onu geri alın.",
     "restoreGone": "Bu öğe artık arşivde değil.",
+    "restoreLevel": "Bunu geri alamazsınız: daha üst bir kademe gizledi; yalnız o kademe ya da üstü geri alabilir.",
     "deleted": "Kalıcı olarak silindi",
     "deletedBody": "{title} ve bağlı kayıtları silindi.",
     "deleteFailed": "Silinemedi",
@@ -314,7 +315,6 @@
     "description": "Açıklama",
     "descriptionPlaceholder": "Deste açıklaması girin...",
     "flashcardDecks": "Bilgi Kartı Desteleri",
-    "makePublic": "Bu sunumu herkese açık yap",
     "manageDecks": "Bilgi kartı destelerinizi ve çalışma materyallerinizi yönetin.",
     "newDeck": "Yeni Güverte",
     "title": "Başlık",
@@ -906,7 +906,7 @@
     "passiveTitleMany": "{count} medrese pasif",
     "passiveBodyOne": "Başmüderrisin görev süresi {dateLocative} doldu. Medresenin sayfası ziyaretçilere, içeriği kayıtlı talebelere de kapalıdır; bir başmüderris atadığınızda yeniden açılır.",
     "passiveBodyMany": "{names}. Pasif bir medresenin sayfası ziyaretçilere, içeriği kayıtlı talebelere de kapalıdır; bir başmüderris atadığınızda yeniden açılır.",
-    "footnote": "Gizlenen medrese, dersleriyle birlikte talebelerin ve ziyaretçilerin gördüğü bütün listelerden çıkar. Arşiv’den geri alınır ya da kalıcı olarak silinir.",
+    "footnote": "Gizlenen medrese, dersleriyle birlikte talebelerin ve ziyaretçilerin gördüğü bütün listelerden çıkar. Medreseyi gizleyen kademe ya da üstü bu tablodan geri alır.",
     "emptyAll": "Henüz medrese yok.",
     "emptySearch": "Aramaya uyan medrese yok.",
     "emptyStatus": "Bu durumda medrese yok.",
@@ -919,12 +919,18 @@
       "handleTaken": "Bu kısa ad başka bir medresede kullanılıyor.",
       "notFound": "Bu medrese artık yok.",
       "notHidden": "Bu medrese zaten gizli değil.",
+      "restoreLevel": "Bunu daha üst bir kademe gizlemiş; yalnız o kademe ya da üstü geri alabilir.",
       "forbidden": "Bunu yapma izniniz yok.",
       "delegationsChanged": "Başmüderrisin verdikleri değişmiş; listeyi yeniden okuyup seçimleri tekrar yapın.",
+      "delegationsCascade": "Düşürdüğünüz görevlerden birinin sahibi başkalarına rol ya da izin vermiş; onlar sorulmadan kalırdı. Önce o kişiyi görevden alın ya da görevini devralın.",
+      "delegationsSeatless": "Görevi düşürülen birinin iznini devralamazsınız: izin görevinden uzun yaşamaz. O izni de düşürün ya da görevi devralın.",
+      "selfTakeOver": "Size verilmiş bir rolü ya da izni devralamazsınız; kendinize rol ya da izin vermek olur. Onu düşürün.",
       "expiryInvalid": "Bitiş tarihi geçmişte."
     },
     "change": "Başmüderrisi değiştir",
-    "changeLabel": "Başmüderrisi değiştir: {name}"
+    "changeLabel": "Başmüderrisi değiştir: {name}",
+    "passivate": "Pasife al",
+    "passivateLabel": "Pasife al: {name}"
   },
   "HeadPicker": {
     "label": "Başmüderris",
@@ -977,9 +983,10 @@
     "newHeadLabel": "Yeni başmüderris",
     "chosenNoteChange": "Atandığında yeni başmüderris olur; eski başmüderrisin görevi biter.",
     "sameHead": "Bu kişi zaten bu medresenin başmüderrisi.",
-    "endLabel": "Görev bitişi (isteğe bağlı)",
+    "endLabel": "Görev bitiş tarihi ve saati (isteğe bağlı)",
     "endHelp": "Boş bırakırsanız görev siz değiştirene dek sürer. Süre dolup ardıl atanmazsa medrese Pasif kapsamlar’da görünür.",
-    "endPast": "Bitiş tarihi bugünden sonra olmalı.",
+    "endPast": "Bitiş zamanı şu andan sonra olmalı.",
+    "endUnfinished": "Bitiş tarihini ve saatini tamamlayın.",
     "submitChange": "Değiştir",
     "answersNeeded": "Her satır için seçim yapılmadan başmüderris değiştirilemez.",
     "changed": "Başmüderris değiştirildi",
@@ -1030,6 +1037,7 @@
     "unknownPerson": "Adı bilinmiyor",
     "roles": {
       "SYSTEM_ADMIN": "Medaris başnazımı",
+      "MEDARIS_NAZIM": "Medaris nazımı",
       "KOSK_NAZIM": "Köşk nazımı"
     },
     "published": "{count} yayında",
@@ -1113,6 +1121,11 @@
         "title": "Köşkü düzenle, gizle ya da geri al",
         "short": "Köşkü düzenle",
         "help": "Gizlenen köşk Arşiv’den geri alınır."
+      },
+      "platform_course_hide": {
+        "title": "Herhangi bir dersi gizle ya da geri al",
+        "short": "Ders gizle",
+        "help": "Medaris yönetimi düzeyinde gizlenen dersi yalnız bu düzey geri alır."
       },
       "platform_hosting_grant": {
         "title": "Barındırma hakkı ver ya da geri al",
@@ -1202,6 +1215,7 @@
       "ban_course": "ders yasağı",
       "ban_lift_course": "yasağı kaldırma",
       "deck_manage_course": "ders destesi",
+      "deck_propose_kosk": "köşk destesi önerisi",
       "course_nazir_assign": "ders nazırı atama"
     },
     "course": {
@@ -1223,6 +1237,7 @@
       "ban_course": "Talebeyi dersten yasakla (dersin yasak listesini görmeyi kapsar)",
       "ban_lift_course": "Ders yasağını gerekçeyle kaldır",
       "deck_manage_course": "Ders destesini aç ve düzenle",
+      "deck_propose_kosk": "Köşk destesi öner",
       "course_nazir_assign": "Ders nazırı ata; izin ya da grup ver, kendi izinlerini aşmadan"
     }
   },
@@ -1268,6 +1283,8 @@
       "alreadyAppointed": "Bu kişi zaten Medaris nazımı.",
       "expiryInvalid": "Bitiş tarihi geçmişte ya da atamanın bitişinden sonra.",
       "dismissChanged": "Bu kişinin verdikleri değişmiş; listeyi yeniden okuyup seçimleri tekrar yapın.",
+      "dismissCascade": "Düşürdüğünüz görevlerden birinin sahibi başkalarına rol ya da izin vermiş; onlar sorulmadan kalırdı. Önce o kişiyi görevden alın ya da görevini devralın.",
+      "dismissSeatless": "Görevi düşürülen birinin iznini devralamazsınız: izin görevinden uzun yaşamaz. O izni de düşürün ya da görevi devralın.",
       "usersPolicy": "Grubu kullananların izinleri için bir seçim yapın.",
       "forbidden": "Bunu yapma izniniz yok."
     }
@@ -1302,11 +1319,12 @@
     "permissionsHeading": "İzinler",
     "fromGroup": "Gruptan gelir.",
     "grantedAt": "Verilme zamanı: {moment}.",
-    "endLabel": "Bitiş tarihi (isteğe bağlı)",
-    "endHelpAssignment": "Atamanız {date} tarihinde bittiği için izin de en geç o gün biter.",
+    "endLabel": "Bitiş tarihi ve saati (isteğe bağlı)",
+    "endHelpAssignment": "Atamanız {moment} tarihinde bittiği için izin de en geç o zaman biter.",
     "endHelpNone": "Boş bırakırsanız süresiz olur.",
-    "endPast": "Bitiş tarihi bugünden sonra olmalı.",
-    "endAfterAssignment": "Bitiş tarihi atamanın bitişinden ({date}) sonra olamaz.",
+    "endPast": "Bitiş zamanı şu andan sonra olmalı.",
+    "endUnfinished": "Bitiş tarihini ve saatini tamamlayın.",
+    "endAfterAssignment": "Bitiş zamanı atamanın bitişinden ({moment}) sonra olamaz.",
     "auditNote": "Aldığı izni başkasına veremez. Verilen ve geri alınan her izin denetim kaydına yazılır.",
     "summaryGroup": "Gruptan {fromGroup} izin ve {extra} ek izin",
     "summaryPlain": "{extra} izin",
@@ -1322,6 +1340,7 @@
     "intro": "{name} Medaris nazımı görevinden alınacak; platform izinleri kalkacak.",
     "question": "Bu kişi başkalarına {count} izin ya da rol vermiş. Her biri için bir seçim yapın.",
     "answersNote": "Devral: izin yerinde kalır, veren siz olursunuz. Düşür: izin geri alınır.",
+    "selfMadeQuestion": "Bu kişi kendine {count} izin ya da rol vermiş. Bunlar görevden almayla birlikte geri alınır; seçilecek bir şey yok.",
     "takeOver": "Devral",
     "drop": "Düşür",
     "answerLegend": "{what}, {person}",
@@ -1337,7 +1356,15 @@
     "dismissedBody": "{name} artık Medaris nazımı değil.",
     "loadFailedTitle": "Liste okunamadı",
     "loadFailed": "Bu kişinin verdikleri şu an okunamıyor. Biraz sonra yeniden deneyin.",
-    "retry": "Yeniden dene"
+    "retry": "Yeniden dene",
+    "groupsQuestion": "Bu kişi {count} izin grubu tanımlamış ya da değiştirmiş. Gruplar yerinde kalır; kimin neyi tuttuğu değişmez.",
+    "groupLine": "{action}",
+    "groupLineScoped": "{action} · {scope}",
+    "groupAction": {
+      "create": "Tanımladı",
+      "update": "Değiştirdi"
+    },
+    "groupsNote": "Grubun içeriği denetim kaydında, önceki ve sonraki haliyle durur."
   },
   "UsersPolicyDialog": {
     "titleUsers": "Bu grubu {count} kişi kullanıyor",
@@ -1486,7 +1513,7 @@
     "caption": "Köşkler",
     "emptyAll": "Henüz köşk yok.",
     "emptyFilter": "Sonuç yok",
-    "footnote": "Ders sayısı taslak, gizli ve pasif dersleri de içerir. Listelenmeyen köşk Keşfet’te ve aramada görünmez; bağlantısıyla yalnız giriş yapmış kişiler açar ve derslerine kayıt her zaman onaylanır. Gizlenen köşk, dersleriyle birlikte talebelerin ve ziyaretçilerin gördüğü bütün listelerden çıkar; Arşiv’den geri alınır ya da kalıcı olarak silinir.",
+    "footnote": "Ders sayısı taslak, gizli ve pasif dersleri de içerir. Listelenmeyen köşk Keşfet’te ve aramada görünmez; bağlantısıyla yalnız giriş yapmış kişiler açar ve derslerine kayıt her zaman onaylanır. Gizlenen köşk, dersleriyle birlikte talebelerin ve ziyaretçilerin gördüğü bütün listelerden çıkar; gizleyen kademe ya da üstü geri alır, kalıcı silme Arşiv’dedir.",
     "loadFailedTitle": "Köşkler yüklenemedi",
     "loadFailed": "Köşkler şu an okunamıyor. Biraz sonra yeniden deneyin.",
     "retry": "Yeniden dene",
@@ -1498,6 +1525,7 @@
       "generic": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
       "notHidden": "Bu köşk zaten gizli değil.",
       "notFound": "Bu köşk artık yok.",
+      "restoreLevel": "Bunu daha üst bir kademe gizlemiş; yalnız o kademe ya da üstü geri alabilir.",
       "forbidden": "Bunu yapma izniniz yok."
     }
   },
@@ -1626,7 +1654,7 @@
     "savedBody": "{name} için değişiklikler kaydedildi.",
     "failed": "Ayarlar kaydedilemedi",
     "dangerHeading": "Köşkü gizle",
-    "dangerBody": "Köşk ve bütün dersleri listelerden çıkar; talebeler, müderrisler, medreseler ve ziyaretçiler köşk sayfasını ve derslerini açamaz. Hiçbir şey silinmez; Medaris yönetimi Arşiv’den geri alabilir.",
+    "dangerBody": "Köşk ve bütün dersleri listelerden çıkar; talebeler, müderrisler, medreseler ve ziyaretçiler köşk sayfasını ve derslerini açamaz. Hiçbir şey silinmez; köşkü siz gizlediyseniz siz, Medaris yönetimi ise her durumda geri alabilir.",
     "hide": "Köşkü gizle",
     "errors": {
       "nameRequired": "Bir ad yazın.",
@@ -1643,7 +1671,7 @@
   "HideKoskDialog": {
     "title": "Köşkü gizle",
     "body": "{name} talebelerden, müderrislerden, medreselerden ve ziyaretçilerden gizlenecek; köşk ve bütün dersleri her listeden çıkar.",
-    "way": "Hiçbir şey silinmez; Medaris yönetimi Arşiv’den geri alabilir.",
+    "way": "Hiçbir şey silinmez. Köşkü siz gizlediyseniz siz, Medaris yönetimi ise her durumda geri alabilir.",
     "confirm": "Gizle",
     "cancel": "Vazgeç",
     "close": "Kapat",
@@ -1656,6 +1684,13 @@
       "notFound": "Bu köşk artık yok.",
       "forbidden": "Bunu yapma izniniz yok."
     }
+  },
+  "HideLevel": {
+    "course": "ders kadrosu",
+    "madrasah": "medrese yönetimi",
+    "kosk": "köşk nazımı",
+    "platform": "Medaris yönetimi",
+    "locked": "Bunu {level} gizledi; yalnız o kademe ya da üstü geri alabilir."
   },
   "KoskNazims": {
     "title": "Köşk nazımları",
@@ -1706,7 +1741,7 @@
     "title": "Köşk nazımı ekle",
     "intro": "Köşk nazımı, köşkü ve oradaki dersleri yönetir. Eklediğiniz kişi hemen {koskGenitive} köşk nazımı olur.",
     "requiredNote": "zorunlu alan",
-    "endLabel": "Görev bitişi (isteğe bağlı)",
+    "endLabel": "Görev bitiş tarihi ve saati (isteğe bağlı)",
     "endHelp": "Boş bırakırsanız görev siz çıkarana dek sürer. Süre dolunca başka köşk nazımı yoksa köşk pasifleşir.",
     "footnote": "Köşk nazımının yapabildikleri “Köşk nazımı bu köşkte” bölümünde listelenir. Her ekleme denetim kaydına yazılır.",
     "cancel": "Vazgeç",
@@ -1716,7 +1751,8 @@
     "savedBody": "{names} artık {kosk} köşk nazımı.",
     "failed": "Köşk nazımı eklenemedi",
     "errors": {
-      "endPast": "Bitiş tarihi geçmişte olamaz.",
+      "endPast": "Bitiş zamanı şu andan sonra olmalı.",
+      "endUnfinished": "Bitiş tarihini ve saatini tamamlayın.",
       "nazimExists": "Seçilen kişi zaten bu köşkün nazımı.",
       "unknownAccount": "Bu hesap Medaris’te bulunamadı.",
       "generic": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
@@ -1781,9 +1817,10 @@
     "courseHelp": "Yalnız medrese dışı dersler listelenir.",
     "coursePlaceholder": "Ders seçin",
     "permissionsHeading": "İzinler",
-    "endLabel": "Bitiş tarihi (isteğe bağlı)",
-    "endHelp": "Görev ve izinler aynı gün biter. Boş bırakırsanız süresiz olur.",
-    "endPast": "Bitiş tarihi bugünden sonra olmalı.",
+    "endLabel": "Bitiş tarihi ve saati (isteğe bağlı)",
+    "endHelp": "Görev ve izinler aynı anda biter. Boş bırakırsanız süresiz olur.",
+    "endPast": "Bitiş zamanı şu andan sonra olmalı.",
+    "endUnfinished": "Bitiş tarihini ve saatini tamamlayın.",
     "auditNote": "Verdiğiniz izin, kendi izinlerinizi aşamaz. Verilen ve geri alınan her izin denetim kaydına yazılır.",
     "summary": "{count} izin seçili",
     "failed": "İzinler kaydedilemedi",
@@ -1907,9 +1944,10 @@
       "MADRASAH": "Başmüderris ata",
       "COURSE": "Müderris ata"
     },
-    "endLabel": "Görev bitişi (isteğe bağlı)",
+    "endLabel": "Görev bitiş tarihi ve saati (isteğe bağlı)",
     "endHelp": "Boş bırakırsanız görev siz değiştirene dek sürer.",
-    "endPast": "Bitiş tarihi bugünden sonra olmalı.",
+    "endPast": "Bitiş zamanı şu andan sonra olmalı.",
+    "endUnfinished": "Bitiş tarihini ve saatini tamamlayın.",
     "cancel": "Vazgeç",
     "close": "Kapat",
     "auditNote": "Atama denetim kaydına yazılır.",
@@ -2106,6 +2144,7 @@
       "ban_course": "Talebeyi dersten yasakla (dersin yasak listesini görmeyi kapsar)",
       "ban_lift_course": "Ders yasağını gerekçeyle kaldır",
       "deck_manage_course": "Ders destesini aç ve düzenle",
+      "deck_propose_kosk": "Köşk destesi öner",
       "course_nazir_assign": "Ders nazırı ata; izin ya da grup ver, kendi izinlerini aşmadan",
       "permission_group_define": "İzin grubu tanımla"
     },
@@ -2196,7 +2235,7 @@
     "publicPage": "Köşk sayfasını gör",
     "newTab": "(yeni sekmede açılır)",
     "notice": "Bu, Medaris yönetimi görünümüdür. Ders işlerini köşk nazımı yapar; burada köşkün nazımları, medreseleri ve durumu yönetilir.",
-    "hiddenNote": "Bu köşk gizli ({since}). Hiçbir listede görünmez; Arşiv’den geri alınabilir.",
+    "hiddenNote": "Bu köşk gizli ({since}). Hiçbir listede görünmez; gizleyen kademe ya da üstü geri alabilir.",
     "passiveNote": "Bu köşk pasif ({since}). Köşk nazımı yok; köşk nazımı eklenince yeniden etkin olur.",
     "summaryLabel": "Köşkün özeti",
     "published": "{count} yayında",
@@ -2233,8 +2272,14 @@
     "actionsHeading": "Yönetim eylemleri",
     "actionsIntro": "Bu eylemler köşkü Medaris yönetimi olarak etkiler; her biri denetim kaydına yazılır.",
     "hideHeading": "Listelerden gizle",
-    "hideBody": "Köşk, dersleriyle birlikte talebelerin ve ziyaretçilerin gördüğü bütün listelerden çıkar. Arşiv’den geri alınır.",
+    "hideBody": "Köşk, dersleriyle birlikte talebelerin ve ziyaretçilerin gördüğü bütün listelerden çıkar. Gizleyen kademe ya da üstü geri alır.",
     "hide": "Köşkü gizle",
+    "restoreHeading": "Geri al",
+    "restoreBody": "Köşk dersleriyle birlikte listelere döner; talebeler ve ziyaretçiler yeniden açabilir.",
+    "restore": "Köşkü geri al",
+    "restored": "Köşk geri alındı",
+    "restoredBody": "{name} yeniden listelerde.",
+    "restoreFailed": "Köşk geri alınamadı",
     "deactivateHeading": "Pasife al",
     "deactivateBody": "Köşk nazımı görevden alınır ve köşk nazımsız kalır. Pasif köşkün içeriğini, talebeler dahil, Medaris yönetimi dışında kimse göremez.",
     "deactivate": "Köşkü pasife al",
@@ -2253,7 +2298,14 @@
     "hiddenInArchive": "Gizli dersler Arşiv’de de listelenir.",
     "loadFailedTitle": "Bölüm yüklenemedi",
     "loadFailed": "Bu bölüm şu an okunamıyor. Biraz sonra yeniden deneyin.",
-    "retry": "Yeniden dene"
+    "retry": "Yeniden dene",
+    "errors": {
+      "generic": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
+      "restoreLevel": "Bunu daha üst bir kademe gizlemiş; yalnız o kademe ya da üstü geri alabilir.",
+      "notHidden": "Bu köşk zaten gizli değil.",
+      "notFound": "Bu köşk artık yok.",
+      "forbidden": "Bunu yapma izniniz yok."
+    }
   },
   "KoskCourses": {
     "title": "Dersler",
@@ -2319,6 +2371,8 @@
     "restoredBody": "{name} yeniden listelerde.",
     "restoreFailed": "Ders geri alınamadı",
     "restoreFailedBody": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
+    "restoreLevelBody": "Bu dersi daha üst bir kademe gizledi; yalnız o kademe ya da üstü geri alabilir.",
+    "restoreParentHiddenBody": "Dersin medresesi ya da köşkü hâlâ gizli; ders onlarla birlikte geri gelir.",
     "emptyAll": "Henüz ders yok.",
     "emptyTab": "Bu durumda ders yok.",
     "hiddenInArchive": "Gizli dersler Arşiv’de de listelenir.",
@@ -2338,28 +2392,46 @@
     "failed": "Ders gizlenemedi",
     "failedBody": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin."
   },
-  "DeactivateKoskDialog": {
-    "title": "Köşkü pasife al",
-    "bodyNazims": "{name} pasife alınacak; {count} köşk nazımı görevden alınacak ve köşk nazımsız kalacak. Pasif köşkün içeriğini, talebeler dahil, Medaris yönetimi dışında kimse göremez.",
-    "bodyNoNazim": "{name} pasife alınacak. Pasif köşkün içeriğini, talebeler dahil, Medaris yönetimi dışında kimse göremez.",
-    "way": "Köşke yeniden köşk nazımı eklenince köşk yeniden etkin olur. Hiçbir şey silinmez.",
-    "confirm": "Pasife al",
+  "PassivateScopeDialog": {
+    "titleKosk": "Köşkü pasife al",
+    "titleMadrasah": "Medreseyi pasife al",
+    "loading": "Pasife almanın neleri götüreceği hesaplanıyor…",
+    "loadFailed": "Etki hesaplanamadı. Biraz sonra yeniden deneyin.",
+    "retry": "Yeniden dene",
+    "warningTitle": "Pasife almak yanında şunları götürür",
+    "staffKosk": "{count} köşk nazımı görevden alınır",
+    "staffMadrasah": "Başmüderris görevden alınır",
+    "noStaffKosk": "Görevde köşk nazımı yok",
+    "noStaffMadrasah": "Görevde başmüderris yok",
+    "courses": "{count} ders kapanır ({published} yayında, {draft} taslak)",
+    "coursesLive": "{count} dersin görevde müderrisi var",
+    "coursesNone": "Altında kapanacak ders yok",
+    "students": "{count} kayıtlı talebe içeriğe erişemez",
+    "studentsCompleted": "{count} talebe dersi bitirmiş; onlar da içeriğe erişemez",
+    "studentsNote": "Müderrisi olmayan derslerin içeriği zaten kapalı; sayı en çok bu kadar talebeyi kapsar.",
+    "sessions": "Önümüzdeki {days} günde {count} canlı celse takvimlerden düşer",
+    "sessionsNone": "Önümüzdeki {days} günde canlı celse yok",
+    "sessionItem": "{title} ({course}), {when}",
+    "courseItem": "{title} ({kosk}): {enrolled} talebe",
+    "moreCourses": "ve {count} ders daha",
+    "neverAttended": "Bu kapsamın hiç yöneticisi olmadı; pasife almak içeriği kapatmaz.",
+    "wayKosk": "Köşke yeniden köşk nazımı eklenince köşk yeniden açılır. Hiçbir şey silinmez.",
+    "wayMadrasah": "Medreseye yeniden başmüderris atanınca medrese yeniden açılır. Hiçbir şey silinmez.",
+    "confirm": "Yine de pasife al",
     "cancel": "Vazgeç",
     "close": "Kapat",
-    "done": "Köşk pasife alındı",
-    "doneBody": "{name} artık pasif.",
-    "failed": "Köşk pasife alınamadı",
+    "changed": "Etki siz bakarken değişti; sayılar yenilendi. Yeni sayıları okuyup yeniden onaylayın.",
+    "doneKosk": "Köşk pasife alındı",
+    "doneKoskBody": "{name} artık pasif.",
+    "doneMadrasah": "Medrese pasife alındı",
+    "doneMadrasahBody": "{name} artık pasif.",
+    "failed": "Pasife alınamadı",
     "errors": {
       "generic": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
-      "alreadyPassive": "Bu köşk zaten pasif.",
-      "alreadyHidden": "Bu köşk gizli.",
-      "notHidden": "Bu köşk gizli değil.",
-      "notFound": "Bu köşk artık yok.",
+      "alreadyPassive": "Bu kapsam zaten pasif.",
+      "changed": "Etki değişti; sayıları yeniden okuyun.",
       "forbidden": "Bunu yapma izniniz yok.",
-      "handleTaken": "Bu kısa ad kullanımda.",
-      "nazimExists": "Bu kişi zaten köşk nazımı.",
-      "unknownAccount": "Bu hesap bulunamadı.",
-      "endPast": "Bitiş tarihi geçmişte olamaz."
+      "notFound": "Bu kapsam artık yok."
     }
   },
   "CourseOverview": {
@@ -2946,6 +3018,10 @@
     "publishedBody": "{title} artık herkese açık; sahibine haber verildi.",
     "rejected": "İstek reddedildi",
     "rejectedBody": "{title} özel kaldı; gerekçe sahibine iletildi.",
+    "unpublish": "Yayından kaldır",
+    "unpublished": "Deste yayından kaldırıldı",
+    "unpublishedBody": "{title} özel oldu; gerekçe sahibine iletildi.",
+    "unpublishNote": "Yayından kaldırılan deste herkese açık listeden çıkar ve sahibine özel olarak kalır; gerekçe sahibine bildirilir. Sahibi isterse yeniden yayın isteyebilir.",
     "answerFailed": "Karar kaydedilemedi",
     "errors": {
       "generic": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin.",
@@ -2954,7 +3030,8 @@
       "proposalAnswered": "Bu öneri az önce karara bağlanmış.",
       "proposalGone": "Bu öneri artık yok.",
       "deckGone": "Bu deste artık yok ya da zaten gizli.",
-      "forbidden": "Bu işlem için izniniz yok."
+      "forbidden": "Bu işlem için izniniz yok.",
+      "notPublished": "Bu deste artık yayında değil."
     }
   },
   "DeckReject": {
@@ -2983,6 +3060,13 @@
       "title": "Talebi reddet",
       "body": "Talep kapanır. Gerekçeyi medresenin başmüderrisi görür.",
       "help": "Başmüderris bu gerekçeyi okuyacak."
+    },
+    "unpublish": {
+      "title": "Desteyi yayından kaldır",
+      "body": "Deste herkese açık listeden çıkar ve sahibine özel olarak kalır. Gerekçe, deste sahibine bildirimle iletilir.",
+      "help": "Sahibi bu gerekçeyi okuyacak.",
+      "submit": "Yayından kaldır",
+      "reasonLabel": "Gerekçe"
     }
   },
   "KoskDecksPage": {
@@ -3211,6 +3295,7 @@
       "HIDE": "Gizleme ve geri alma",
       "HOSTING": "Barındırma hakkı",
       "TAKEOVER": "Devral ya da düşür",
+      "SELF_GRANT_REFUSED": "Kendine izin ya da görev verme girişimi",
       "APPEAL": "İtiraz ve kararı",
       "PERMANENT_BAN": "Kalıcı yasak talebi ve kararı",
       "PERMANENT_DELETE": "Kalıcı silme",
@@ -3438,7 +3523,10 @@
       "rejected": "Başvuru reddedildi",
       "rejectedBody": "{name} için {course} başvurusu reddedildi.",
       "actionFailed": "Başvuru yanıtlanamadı",
-      "errorUnknown": "Beklenmeyen bir hata oldu. Biraz sonra yeniden deneyin."
+      "errorUnknown": "Beklenmeyen bir hata oldu. Biraz sonra yeniden deneyin.",
+      "errorForbidden": "Bu başvuruya karar verme yetkiniz yok.",
+      "errorGone": "Bu başvuru artık bekleyenler arasında değil; liste yenilendi.",
+      "passiveScope": "Bu dersin kapsamı pasif: yöneticisi kalmadı. Yönetici atanana dek başvuruya karar verilemez."
     },
     "decks": {
       "title": "Deste yayın istekleri",

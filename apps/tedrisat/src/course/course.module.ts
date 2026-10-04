@@ -6,11 +6,9 @@ import { DatabaseService } from "../database/database.service";
 import { KoskModule } from "../kosk/kosk.module";
 import { NotificationModule } from "../notification/notification.module";
 import { PlatformPolicyModule } from "../platform-policy/platform-policy.module";
-import { ActiveTalebeService } from "./active-talebe.service";
 import { CourseController } from "./course.controller";
 import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
-import { CourseAccessService } from "./course-access.service";
 import { CourseNotificationRepository } from "./course-notification.repository";
 import { CourseNotifier } from "./course-notifier";
 import { CourseStatsRepository } from "./course-stats.repository";
@@ -32,8 +30,6 @@ import { RecordingRepository } from "./recording.repository";
   providers: [
     CourseService,
     CourseRepository,
-    CourseAccessService,
-    ActiveTalebeService,
     LiveStreamService,
     RecordingRepository,
     CourseStatsRepository,
@@ -43,8 +39,8 @@ import { RecordingRepository } from "./recording.repository";
   ],
   // For AuthzBindingsModule's role resolver (MDRS-41): findKoskId,
   // isMuderris and findEnrollment have no CourseService counterpart, so the
-  // repository is what is exported here. The two services are the course
-  // questions' (MDRS-150): who may ask, and who holds a catalogue permission.
-  exports: [CourseRepository, CourseAccessService, ActiveTalebeService],
+  // repository is what is exported here. The service is the lesson notes'
+  // (MDRS-150): whether the caller may see the course at all is `getDetail`'s.
+  exports: [CourseRepository, CourseService],
 })
 export class CourseModule {}

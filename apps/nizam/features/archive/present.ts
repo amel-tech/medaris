@@ -204,6 +204,30 @@ export function hasMore(loaded: number, total: number): boolean {
   return loaded < total;
 }
 
+/**
+ * Whether "Geri al" is drawn for an item (MDRS-108: no button leads to a 403).
+ * The API says `canRestore: false` when the item was hidden at a level above
+ * the viewer's (MDRS-135); a response that does not say draws the button.
+ */
+export function mayRestore(item: ArchiveItemResponse): boolean {
+  return (item as { canRestore?: boolean }).canRestore !== false;
+}
+
+/** The toast's sentence for a refused "Geri al", by the code the API answered with. */
+export function restoreErrorKey(code: string | null): string | null {
+  switch (code) {
+    case "ARCHIVE_PARENT_HIDDEN":
+      return "restoreParentHidden";
+    case "ARCHIVE_ITEM_NOT_FOUND":
+      return "restoreGone";
+    case "ARCHIVE_RESTORE_LEVEL":
+    case "ARCHIVE_FORBIDDEN":
+      return "restoreLevel";
+    default:
+      return null;
+  }
+}
+
 /** The first line under the hider's name; null reads as unknown. */
 export function archiverLine(
   item: Pick<ArchiveItemResponse, "archivedBy">,

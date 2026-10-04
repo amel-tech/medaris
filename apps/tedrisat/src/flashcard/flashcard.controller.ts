@@ -8,7 +8,7 @@ import {
   byQuery,
   ENTITIES,
   ExcelService,
-  SCOPES,
+  PERMISSIONS,
 } from "@medaris/common";
 import {
   Body,
@@ -102,7 +102,7 @@ export class FlashcardController {
     description: "Deck is private and owned by another user",
   })
   @IncludeApiQuery(CardIncludeEnum)
-  @Authz(SCOPES.VIEW, byParentDeckOfCard())
+  @Authz(PERMISSIONS.DECK_VIEW, byParentDeckOfCard())
   @Get("cards/:id")
   async findById(
     @Req() request: AuthorizedRequest,
@@ -138,7 +138,7 @@ export class FlashcardController {
   })
   @ApiQuery({ name: "deckId", required: true, type: String })
   @IncludeApiQuery(CardIncludeEnum)
-  @Authz(SCOPES.VIEW, byQuery(ENTITIES.FLASHCARD_DECK, "deckId"))
+  @Authz(PERMISSIONS.DECK_VIEW, byQuery(ENTITIES.FLASHCARD_DECK, "deckId"))
   // MDRS-165: the cards of a PUBLIC deck are readable with no token, as the
   // deck is (`GET /flashcard/decks/:id`, MDRS-45) — the signed-out visitor's
   // deck page (design tedris/32) needs them. `resolveAnonymous` answers a
@@ -156,7 +156,7 @@ export class FlashcardController {
     // it only narrows the optional `progress` relation, and the rows come
     // back filtered on `deckId` alone either way. The guard is what scopes
     // this route, off the `deckId` QUERY param rather than a route param;
-    // `VIEW` and not an owner scope, because a public deck is browsable.
+    // `deck.view` and not an owner permission, because a public deck is browsable.
     return this.cardService.findByDeckId(deckId, userId, include);
   }
 
@@ -171,7 +171,7 @@ export class FlashcardController {
     description:
       "No such deck, or a private deck owned by another user — deliberately the same answer",
   })
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.FLASHCARD_DECK))
+  @Authz(PERMISSIONS.DECK_VIEW, byParam(ENTITIES.FLASHCARD_DECK))
   @Get("decks/:id/due")
   async studyRound(
     @Req() request: AuthorizedRequest,
@@ -192,7 +192,10 @@ export class FlashcardController {
   @ApiCreatedResponse({ type: FlashcardResponse, isArray: true })
   @ApiNotFoundResponse({ description: "Deck not found" })
   @ApiForbiddenResponse({ description: "Deck belongs to another user" })
-  @Authz(SCOPES.CREATE_FLASHCARD, byParam(ENTITIES.FLASHCARD_DECK, "deckId"))
+  @Authz(
+    PERMISSIONS.DECK_CREATE_CARD,
+    byParam(ENTITIES.FLASHCARD_DECK, "deckId")
+  )
   @Post("decks/:deckId/cards")
   async createMany(
     @Req() request: AuthorizedRequest,
@@ -201,10 +204,10 @@ export class FlashcardController {
     cardsDto: CreateFlashcardDto[]
   ): Promise<FlashcardResponse[]> {
     // The MDRS-63 `assertOwner` stopgap is now the `@Authz` above — this is
-    // the replacement that comment promised. `CREATE_FLASHCARD` rather than a
-    // manage scope: on today's reachable matrix only DECK_OWNER carries it,
-    // so behaviour is unchanged, but the kosk/medrese/course deck variants
-    // land on this same row when their resolver dispatch does.
+    // the replacement that comment promised. `deck.create_card` rather than a
+    // manage permission: only DECK_OWNER holds it today, so behaviour is
+    // unchanged, but the kosk/medrese/course deck variants land on the same
+    // code when their resolver dispatch does.
     const authorId = request.user.sub;
     return this.cardService.createMany(deckId, authorId, cardsDto);
   }
@@ -234,9 +237,9 @@ export class FlashcardController {
     @Body(new ParseArrayPipe({ items: CreateFlashcardProgressDto }))
     progressDto: CreateFlashcardProgressDto[]
   ): Promise<FlashcardProgressResponse[]> {
-    // The whole `AuthenticatedUser`, not just `sub`: the check inside needs
-    // `realm_access` for the SYSTEM_ADMIN bypass that `AuthzService.can`
-    // applies on every decorated route, and this route has no decorator.
+    // The SYSTEM_ADMIN bypass that `AuthzService.can` applies on every
+    // decorated route does not hold here: the başnazım's progress on somebody
+    // else's private deck is refused like anyone's (MDRS-148).
     //
     // The MDRS-63 stopgap that stood here — `deckOf` then `assertReadable`,
     // two queries per distinct card — is now one batched query in the service,
@@ -255,13 +258,13 @@ export class FlashcardController {
   @ApiOkResponse({ type: FlashcardResponse })
   @ApiNotFoundResponse()
   @ApiForbiddenResponse({ description: "Deck belongs to another user" })
-  @Authz(SCOPES.MANAGE_FLASHCARDS, byParentDeckOfCard())
+  @Authz(PERMISSIONS.DECK_MANAGE_CARDS, byParentDeckOfCard())
   @Put("cards/:id")
   async replace(
     @Param("id", ParseUUIDPipe) cardId: string,
     @Body() cardDto: CreateFlashcardDto
   ): Promise<FlashcardResponse> {
-    // `MANAGE_FLASHCARDS` on the parent deck — the guard walks `deckId` for
+    // `deck.manage_cards` on the parent deck — the guard walks `deckId` for
     // us, so the `deckOf` + `assertOwner` pair this used to open with is gone.
     const updatedCard = await this.cardService.update(cardId, cardDto);
     if (!updatedCard) {
@@ -284,7 +287,7 @@ export class FlashcardController {
   @ApiOkResponse({ type: FlashcardResponse })
   @ApiNotFoundResponse()
   @ApiForbiddenResponse({ description: "Deck belongs to another user" })
-  @Authz(SCOPES.MANAGE_FLASHCARDS, byParentDeckOfCard())
+  @Authz(PERMISSIONS.DECK_MANAGE_CARDS, byParentDeckOfCard())
   @Patch("cards/:id")
   async update(
     @Param("id", ParseUUIDPipe) cardId: string,
@@ -311,7 +314,7 @@ export class FlashcardController {
   @ApiOkResponse()
   @ApiNotFoundResponse()
   @ApiForbiddenResponse({ description: "Deck belongs to another user" })
-  @Authz(SCOPES.MANAGE_FLASHCARDS, byParentDeckOfCard())
+  @Authz(PERMISSIONS.DECK_MANAGE_CARDS, byParentDeckOfCard())
   @Delete("cards/:id")
   async deleteCard(
     @Param("id", ParseUUIDPipe) cardId: string
@@ -339,7 +342,10 @@ export class FlashcardController {
     description: "Bulk rate limit exceeded — see the Retry-After header",
   })
   @Throttle({ default: BULK_THROTTLE })
-  @Authz(SCOPES.CREATE_FLASHCARD, byParam(ENTITIES.FLASHCARD_DECK, "deckId"))
+  @Authz(
+    PERMISSIONS.DECK_CREATE_CARD,
+    byParam(ENTITIES.FLASHCARD_DECK, "deckId")
+  )
   @Post("decks/:deckId/cards/bulk")
   async bulk(
     @Req() request: AuthorizedRequest,
@@ -397,7 +403,10 @@ export class FlashcardController {
 
   // Get Export File
   @Throttle({ default: BULK_THROTTLE })
-  @Authz(SCOPES.MANAGE_FLASHCARDS, byParam(ENTITIES.FLASHCARD_DECK, "deckId"))
+  @Authz(
+    PERMISSIONS.DECK_MANAGE_CARDS,
+    byParam(ENTITIES.FLASHCARD_DECK, "deckId")
+  )
   @Get("decks/:deckId/cards/bulk/export")
   @ApiOperation({
     summary: "Export flashcards from a deck",
@@ -427,7 +436,7 @@ export class FlashcardController {
     // an `include` it would only scope the progress relation — the rows come
     // back filtered on `deckId` alone either way.
     //
-    // `MANAGE_FLASHCARDS`, not `VIEW`: a whole-deck export is an owner
+    // `deck.manage_cards`, not `deck.view`: a whole-deck export is an owner
     // affordance, and widening it to every public-deck reader would be a
     // behaviour change this task has no mandate for. `findOwned` stays for the
     // `title` the filename needs — the guard has already settled access, so it
@@ -444,7 +453,10 @@ export class FlashcardController {
 
   // Post Import File
   @Throttle({ default: BULK_THROTTLE })
-  @Authz(SCOPES.CREATE_FLASHCARD, byParam(ENTITIES.FLASHCARD_DECK, "deckId"))
+  @Authz(
+    PERMISSIONS.DECK_CREATE_CARD,
+    byParam(ENTITIES.FLASHCARD_DECK, "deckId")
+  )
   @Post("decks/:deckId/cards/bulk/import")
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({

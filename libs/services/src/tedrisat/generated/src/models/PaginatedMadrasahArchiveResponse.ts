@@ -20,13 +20,20 @@ import {
     MadrasahArchiveCountsResponseToJSON,
     MadrasahArchiveCountsResponseToJSONTyped,
 } from './MadrasahArchiveCountsResponse';
-import type { MadrasahArchiveItemResponse } from './MadrasahArchiveItemResponse';
+import type { ArchiveItemResponse } from './ArchiveItemResponse';
 import {
-    MadrasahArchiveItemResponseFromJSON,
-    MadrasahArchiveItemResponseFromJSONTyped,
-    MadrasahArchiveItemResponseToJSON,
-    MadrasahArchiveItemResponseToJSONTyped,
-} from './MadrasahArchiveItemResponse';
+    ArchiveItemResponseFromJSON,
+    ArchiveItemResponseFromJSONTyped,
+    ArchiveItemResponseToJSON,
+    ArchiveItemResponseToJSONTyped,
+} from './ArchiveItemResponse';
+import type { MadrasahArchiveStateResponse } from './MadrasahArchiveStateResponse';
+import {
+    MadrasahArchiveStateResponseFromJSON,
+    MadrasahArchiveStateResponseFromJSONTyped,
+    MadrasahArchiveStateResponseToJSON,
+    MadrasahArchiveStateResponseToJSONTyped,
+} from './MadrasahArchiveStateResponse';
 
 /**
  * 
@@ -36,10 +43,10 @@ import {
 export interface PaginatedMadrasahArchiveResponse {
     /**
      * 
-     * @type {Array<MadrasahArchiveItemResponse>}
+     * @type {Array<ArchiveItemResponse>}
      * @memberof PaginatedMadrasahArchiveResponse
      */
-    items: Array<MadrasahArchiveItemResponse>;
+    items: Array<ArchiveItemResponse>;
     /**
      * All hidden items matching `types`, not just this page.
      * @type {number}
@@ -59,6 +66,12 @@ export interface PaginatedMadrasahArchiveResponse {
      */
     limit: number;
     /**
+     * The medrese itself: the page cannot read a hidden medrese anywhere else it may not open.
+     * @type {MadrasahArchiveStateResponse}
+     * @memberof PaginatedMadrasahArchiveResponse
+     */
+    madrasah: MadrasahArchiveStateResponse;
+    /**
      * The tabs' numbers: everything hidden in the medrese, whatever `types` says.
      * @type {MadrasahArchiveCountsResponse}
      * @memberof PaginatedMadrasahArchiveResponse
@@ -74,6 +87,7 @@ export function instanceOfPaginatedMadrasahArchiveResponse(value: object): value
     if (!('total' in value) || value['total'] === undefined) return false;
     if (!('page' in value) || value['page'] === undefined) return false;
     if (!('limit' in value) || value['limit'] === undefined) return false;
+    if (!('madrasah' in value) || value['madrasah'] === undefined) return false;
     if (!('counts' in value) || value['counts'] === undefined) return false;
     return true;
 }
@@ -88,10 +102,11 @@ export function PaginatedMadrasahArchiveResponseFromJSONTyped(json: any, ignoreD
     }
     return {
         
-        'items': ((json['items'] as Array<any>).map(MadrasahArchiveItemResponseFromJSON)),
+        'items': ((json['items'] as Array<any>).map(ArchiveItemResponseFromJSON)),
         'total': json['total'],
         'page': json['page'],
         'limit': json['limit'],
+        'madrasah': MadrasahArchiveStateResponseFromJSON(json['madrasah']),
         'counts': MadrasahArchiveCountsResponseFromJSON(json['counts']),
     };
 }
@@ -107,10 +122,11 @@ export function PaginatedMadrasahArchiveResponseToJSONTyped(value?: PaginatedMad
 
     return {
         
-        'items': ((value['items'] as Array<any>).map(MadrasahArchiveItemResponseToJSON)),
+        'items': ((value['items'] as Array<any>).map(ArchiveItemResponseToJSON)),
         'total': value['total'],
         'page': value['page'],
         'limit': value['limit'],
+        'madrasah': MadrasahArchiveStateResponseToJSON(value['madrasah']),
         'counts': MadrasahArchiveCountsResponseToJSON(value['counts']),
     };
 }

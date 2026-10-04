@@ -21,11 +21,14 @@ import {
 import { dismissNazim, getGivenItems } from "../actions";
 import {
   type DismissAnswer,
+  decisionItems,
   dismissDecisions,
   dismissReady,
   givenKey,
+  groupItems,
   type Messages,
   permissionErrorKey,
+  selfMadeItems,
 } from "../present";
 
 /** The Shell's role names, for the two roles it spells differently. */
@@ -85,7 +88,9 @@ export function DismissDialog({
     void load();
   }, [open, load]);
 
-  const list = Array.isArray(items) ? items : [];
+  const list = Array.isArray(items) ? decisionItems(items, userId) : [];
+  const selfMade = Array.isArray(items) ? selfMadeItems(items, userId) : [];
+  const groups = Array.isArray(items) ? groupItems(items) : [];
   const ready = Array.isArray(items) && dismissReady(list, answers);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -121,6 +126,7 @@ export function DismissDialog({
   };
 
   const what = (item: GivenItemResponse): string => {
+    if (item.kind === "GROUP") return item.groupName ?? "";
     if (item.kind === "ROLE") {
       const role = ROLE_KEY[item.role ?? ""] ?? item.role ?? "";
       return tr.has(role as never) ? tr(role as never) : role;
@@ -172,18 +178,22 @@ export function DismissDialog({
             {t("retry")}
           </Button>
         </Alert>
-      ) : list.length === 0 ? (
+      ) : list.length === 0 && groups.length === 0 && selfMade.length === 0 ? (
         <p className="mds-caption">{t("nothingHandedOn")}</p>
       ) : (
         <>
-          <p>{t("question", { count: list.length })}</p>
+          {list.length > 0 ? (
+            <p>{t("question", { count: list.length })}</p>
+          ) : (
+            <p className="mds-caption">{t("nothingHandedOn")}</p>
+          )}
           <ul
             className="mds-card flex flex-col divide-y divide-[var(--border-neutral-subtle)] p-0"
             data-testid="given-items"
           >
             {list.map((item) => {
               const key = givenKey(item);
-              const person = item.to.name ?? item.to.email ?? "";
+              const person = item.to?.name ?? item.to?.email ?? "";
               return (
                 <li
                   key={key}
@@ -222,7 +232,58 @@ export function DismissDialog({
               );
             })}
           </ul>
-          <p className="mds-caption">{t("answersNote")}</p>
+          {list.length > 0 ? (
+            <p className="mds-caption">{t("answersNote")}</p>
+          ) : null}
+          {selfMade.length > 0 ? (
+            <section
+              className="flex flex-col gap-2"
+              data-testid="given-self-made"
+            >
+              <p>{t("selfMadeQuestion", { count: selfMade.length })}</p>
+              <ul className="mds-card flex flex-col divide-y divide-[var(--border-neutral-subtle)] p-0">
+                {selfMade.map((item) => (
+                  <li
+                    key={givenKey(item)}
+                    className="flex flex-col px-card py-3"
+                    data-testid="given-self-made-item"
+                  >
+                    <bdi className="font-semibold">{what(item)}</bdi>
+                    {item.scopeName ? (
+                      <bdi className="mds-caption">{item.scopeName}</bdi>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+          {groups.length > 0 ? (
+            <section className="flex flex-col gap-2" data-testid="given-groups">
+              <p>{t("groupsQuestion", { count: groups.length })}</p>
+              <ul className="mds-card flex flex-col divide-y divide-[var(--border-neutral-subtle)] p-0">
+                {groups.map((group) => (
+                  <li
+                    key={givenKey(group)}
+                    className="flex flex-col px-card py-3"
+                    data-testid="given-group"
+                  >
+                    <bdi className="font-semibold">{group.groupName}</bdi>
+                    <bdi className="mds-caption">
+                      {group.scopeName
+                        ? t("groupLineScoped", {
+                            action: t(`groupAction.${group.groupAction}`),
+                            scope: group.scopeName,
+                          })
+                        : t("groupLine", {
+                            action: t(`groupAction.${group.groupAction}`),
+                          })}
+                    </bdi>
+                  </li>
+                ))}
+              </ul>
+              <p className="mds-caption">{t("groupsNote")}</p>
+            </section>
+          ) : null}
         </>
       )}
     </Dialog>

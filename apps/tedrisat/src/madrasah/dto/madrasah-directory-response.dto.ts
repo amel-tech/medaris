@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { HIDE_LEVELS } from "../../archive/hide-level";
 
 export const MADRASAH_STATUSES = ["ACTIVE", "PASSIVE", "HIDDEN"] as const;
 export type MadrasahStatus = (typeof MADRASAH_STATUSES)[number];
@@ -53,6 +54,21 @@ export class MadrasahDirectoryItemResponse {
     description: "Since when it is hidden or passive; null while active",
   })
   since!: Date | null;
+
+  @ApiPropertyOptional({
+    enum: [...HIDE_LEVELS],
+    enumName: "HideLevel",
+    nullable: true,
+    description:
+      "The level that hid it (course, madrasah, kosk, platform); null while it is shown. Only that level or above brings it back.",
+  })
+  hiddenLevel!: string | null;
+
+  @ApiProperty({
+    description:
+      "Whether the caller may bring it back (Geri al): it is hidden, they hold `madrasah.hide` or `platform.madrasah_edit` on it and act at the level that hid it or above. A başmüderris cannot reopen what Medaris yönetimi hid.",
+  })
+  canRestore!: boolean;
 
   @ApiPropertyOptional({
     type: MadrasahPersonResponse,

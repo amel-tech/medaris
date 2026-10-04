@@ -9,6 +9,7 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
+import type { HideLevel } from "../../archive/hide-level";
 import { DatabaseService } from "../../database/database.service";
 import {
   isHeld,
@@ -88,6 +89,23 @@ export class MadrasahCourseRepository {
       .groupBy(courses.koskId);
     const countOf = new Map(counts.map((c) => [c.koskId, c.n]));
     return rows.map((r) => ({ ...r, courseCount: countOf.get(r.id) ?? 0 }));
+  }
+
+  /** Whether `userId` holds a MUDERRIS seat on the course now (MDRS-134). */
+  async holdsMuderrisSeat(courseId: string, userId: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: roleAssignments.id })
+      .from(roleAssignments)
+      .where(
+        and(
+          eq(roleAssignments.userId, userId),
+          eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS),
+          eq(roleAssignments.scopeId, courseId),
+          isHeld()
+        )
+      )
+      .limit(1);
+    return rows.length > 0;
   }
 
   /**
@@ -310,12 +328,14 @@ export class MadrasahCourseRepository {
    * Hides a course of the medrese (nazir/18): `archived_at` and `archived_by`
    * are stamped and the version moves, as `CourseRepository.archive` does, and
    * nothing is deleted. The first hider's stamp is never overwritten, so the
-   * kademe rule of the archive keeps judging the one who hid it first.
+   * kademe rule of the archive keeps judging the one who hid it first, at the
+   * level they acted at (`level`, MDRS-135).
    */
   async hideCourse(
     madrasahId: string,
     courseId: string,
-    actorId: string
+    actorId: string,
+    level: HideLevel
   ): Promise<HideMadrasahCourseResult> {
     return this.db.transaction(async (tx) => {
       const [course] = await tx
@@ -333,6 +353,7 @@ export class MadrasahCourseRepository {
         .set({
           archivedAt: now,
           archivedBy: actorId,
+          archivedLevel: level,
           version: sql`${courses.version} + 1`,
           updatedAt: now,
         })
@@ -342,7 +363,7 @@ export class MadrasahCourseRepository {
         action: "course.hide",
         entity: "course",
         entityId: courseId,
-        details: { madrasahId, title: course.title },
+        details: { madrasahId, title: course.title, level },
       });
       return "hidden";
     });

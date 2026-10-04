@@ -26,7 +26,6 @@ src/models/AddKoskNazimsDto.ts
 src/models/AgendaStepDto.ts
 src/models/AgendaStepResponse.ts
 src/models/AllBansListResponse.ts
-src/models/AnswerLessonQuestionDto.ts
 src/models/AppointMedarisNazimDto.ts
 src/models/ApproveKoskApplicationDto.ts
 src/models/ArchiveImpactResponse.ts
@@ -36,7 +35,6 @@ src/models/ArchiveRestoreResponse.ts
 src/models/ArchiveScopeRefResponse.ts
 src/models/ArchiveScopesResponse.ts
 src/models/ArchiverResponse.ts
-src/models/AskLessonQuestionDto.ts
 src/models/AssignInactiveScopeDto.ts
 src/models/AssignedCourseInfo.ts
 src/models/AssignmentResponse.ts
@@ -59,11 +57,11 @@ src/models/CalendarFeedStatusResponse.ts
 src/models/CancelLessonDto.ts
 src/models/CatalogSectionResponse.ts
 src/models/ChiefNazimResponse.ts
+src/models/CourseArchiveCountsResponse.ts
 src/models/CourseBadgeCountsResponse.ts
 src/models/CourseDetailMadrasahResponse.ts
 src/models/CourseDetailResponse.ts
 src/models/CourseMadrasahResponse.ts
-src/models/CourseQuestionResponse.ts
 src/models/CourseRequestListResponse.ts
 src/models/CourseRequestPersonResponse.ts
 src/models/CourseRequestRefResponse.ts
@@ -148,6 +146,7 @@ src/models/FlashcardResponse.ts
 src/models/FlashcardStudyRoundResponse.ts
 src/models/FlashcardType.ts
 src/models/FollowedKoskCourseResponse.ts
+src/models/GivenItemKind.ts
 src/models/GivenItemResponse.ts
 src/models/GivenKind.ts
 src/models/GrantHostingRightDto.ts
@@ -155,7 +154,9 @@ src/models/GrantResponse.ts
 src/models/GroupUserResponse.ts
 src/models/HeadDelegationKind.ts
 src/models/HeadDelegationResponse.ts
+src/models/HeadDelegationScopeType.ts
 src/models/HealthCheckDto.ts
+src/models/HideLevel.ts
 src/models/HostingCourseStatus.ts
 src/models/HostingCoursesAction.ts
 src/models/HostingGrantedByResponse.ts
@@ -206,12 +207,11 @@ src/models/KoskStatusFilter.ts
 src/models/LabelStatsResponse.ts
 src/models/LessonMutationResponse.ts
 src/models/LessonNoteResponse.ts
-src/models/LessonQuestionResponse.ts
 src/models/LessonResponse.ts
 src/models/LiftBanDto.ts
 src/models/LiveStreamResponse.ts
 src/models/MadrasahArchiveCountsResponse.ts
-src/models/MadrasahArchiveItemResponse.ts
+src/models/MadrasahArchiveStateResponse.ts
 src/models/MadrasahBadgeCountsResponse.ts
 src/models/MadrasahBanListResponse.ts
 src/models/MadrasahBanResponse.ts
@@ -254,6 +254,7 @@ src/models/ManagedKoskDecksResponse.ts
 src/models/ManagedKoskRef.ts
 src/models/MeResponse.ts
 src/models/MeRolesResponse.ts
+src/models/MeScopePermissions.ts
 src/models/MedarisNazimResponse.ts
 src/models/MuderrisListItemDto.ts
 src/models/MuderrisListResponse.ts
@@ -277,12 +278,20 @@ src/models/NotificationResponse.ts
 src/models/OffsiteCourseRequestResponse.ts
 src/models/OpenMadrasahCourseDto.ts
 src/models/PaginatedArchiveResponse.ts
-src/models/PaginatedCourseQuestionResponse.ts
+src/models/PaginatedCourseArchiveResponse.ts
 src/models/PaginatedKoskResponse.ts
-src/models/PaginatedLessonQuestionResponse.ts
 src/models/PaginatedMadrasahArchiveResponse.ts
 src/models/PaginatedMadrasahResponse.ts
 src/models/PaginatedNotificationResponse.ts
+src/models/PassivateScopeDto.ts
+src/models/PassivationCourseResponse.ts
+src/models/PassivationCoursesResponse.ts
+src/models/PassivationImpactResponse.ts
+src/models/PassivationScopeResponse.ts
+src/models/PassivationScopeType.ts
+src/models/PassivationSessionResponse.ts
+src/models/PassivationSessionsResponse.ts
+src/models/PassivationStudentsResponse.ts
 src/models/PassiveMadrasahResponse.ts
 src/models/PendingEnrollmentResponse.ts
 src/models/PermissionCatalogResponse.ts
@@ -297,8 +306,6 @@ src/models/PlatformPolicyResponse.ts
 src/models/PolicyPersonResponse.ts
 src/models/ProfileVisibility.ts
 src/models/PublicProfileResponse.ts
-src/models/QuestionAnswerResponse.ts
-src/models/QuestionPersonResponse.ts
 src/models/ReadAllNotificationsResponse.ts
 src/models/RecordingProvider.ts
 src/models/RecordingResponse.ts
@@ -347,7 +354,6 @@ src/models/UpdateKoskDto.ts
 src/models/UpdateKoskGrantDto.ts
 src/models/UpdateLessonDto.ts
 src/models/UpdateLessonNoteDto.ts
-src/models/UpdateLessonQuestionDto.ts
 src/models/UpdateMadrasahDto.ts
 src/models/UpdateMadrasahPermissionGroupDto.ts
 src/models/UpdateMadrasahSettingsDto.ts
@@ -358,6 +364,7 @@ src/models/UpdateProgressDto.ts
 src/models/UpdatePublicProfileDto.ts
 src/models/UserSummaryResponse.ts
 src/models/UsersPolicy.ts
+src/models/WeekHideResponse.ts
 src/models/WeekResponse.ts
 src/models/WeeklyPatternDto.ts
 src/models/index.ts

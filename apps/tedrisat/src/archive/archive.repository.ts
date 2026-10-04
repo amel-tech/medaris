@@ -8,6 +8,7 @@ import {
 } from "../course/course-purge";
 import { DatabaseService } from "../database/database.service";
 import { deleteAssignmentsIn } from "../database/role-assignments";
+import { auditLog } from "../database/schema/audit.schema";
 import {
   courses,
   courseWeeks,
@@ -36,6 +37,8 @@ import {
   IArchiveScopes,
   STORED_ARCHIVE_ITEM_TYPES,
 } from "./archive-types";
+import { type HideLevel, hiderLevelOf, mayRestoreAt } from "./hide-level";
+import { restoreCourseIn } from "./restore-course";
 
 /** Who hid something, as the screens print it. */
 export interface IArchiver {
@@ -44,10 +47,27 @@ export interface IArchiver {
   role: string | null;
 }
 
+/** A medrese's own hide, as the medrese archive's banner needs it. */
+export interface IMadrasahHide {
+  hidden: boolean;
+  archivedAt: Date | null;
+  archivedBy: string | null;
+  archivedLevel: HideLevel | null;
+}
+
 export type RestoreOutcome =
-  | { status: "restored"; title: string }
+  | {
+      status: "restored";
+      title: string;
+      /** Where it sits, for the audit page's filters: a week's or session's course, a deck's köşk. */
+      where?: { courseId?: string; koskId?: string | null };
+    }
   | { status: "parent-hidden" }
-  | { status: "not-found" };
+  | { status: "not-found" }
+  /** A week whose restore would bring sessions back, for a caller who does no session work there. */
+  | { status: "forbidden" }
+  /** Hidden at a level above the restorer's, as read under the row lock. */
+  | { status: "level"; hiddenAt: HideLevel };
 
 /**
  * Everything hidden in one query: each table that can hide something
@@ -61,27 +81,27 @@ export type RestoreOutcome =
 const HIDDEN = sql`
   select 'kosk'::text as type, k.id, k.name as title, k.id as kosk_id,
          null::uuid as madrasah_id, null::uuid as course_id, null::uuid as week_id,
-         k.archived_at, k.archived_by
+         k.archived_at, k.archived_by, k.archived_level
     from kosks k where k.archived_at is not null
   union all
   select 'course', c.id, c.title, c.kosk_id, c.madrasah_id, c.id, null::uuid,
-         c.archived_at, c.archived_by
+         c.archived_at, c.archived_by, c.archived_level
     from courses c where c.archived_at is not null
   union all
   select 'week', w.id, w.title, c.kosk_id, c.madrasah_id, c.id, w.id,
-         w.archived_at, w.archived_by
+         w.archived_at, w.archived_by, w.archived_level
     from course_weeks w join courses c on c.id = w.course_id
    where w.archived_at is not null and c.archived_at is null
   union all
   select 'session', l.id, l.title, c.kosk_id, c.madrasah_id, c.id, w.id,
-         l.archived_at, l.archived_by
+         l.archived_at, l.archived_by, l.archived_level
     from lessons l
     join course_weeks w on w.id = l.week_id
     join courses c on c.id = w.course_id
    where l.archived_at is not null and w.archived_at is null and c.archived_at is null
   union all
   select 'deck', d.id, d.title, d.kosk_id, null::uuid, null::uuid, null::uuid,
-         d.archived_at, d.archived_by
+         d.archived_at, d.archived_by, d.archived_level
     from decks d where d.archived_at is not null
 `;
 
@@ -105,6 +125,7 @@ type IArchiveRow = {
   student_count: number | null;
   archived_at: Date;
   archived_by: string | null;
+  archived_level: HideLevel | null;
 };
 
 @Injectable()
@@ -124,6 +145,7 @@ export class ArchiveRepository {
     if (filter.madrasahId) {
       parts.push(sql`h.madrasah_id = ${filter.madrasahId}`);
     }
+    if (filter.courseId) parts.push(sql`h.course_id = ${filter.courseId}`);
     if (filter.type) parts.push(sql`h.type = ${filter.type}`);
     if (filter.types) {
       parts.push(
@@ -181,7 +203,7 @@ export class ArchiveRepository {
              case when h.type = 'course'
                   then (select count(*)::int from enrollments e
                          where e.course_id = h.id and e.status = 'ENROLLED') end as student_count,
-             h.archived_at, h.archived_by
+             h.archived_at, h.archived_by, h.archived_level
         from (${HIDDEN}) h
         left join kosks k on k.id = h.kosk_id
         left join madrasahs m on m.id = h.madrasah_id
@@ -208,7 +230,30 @@ export class ArchiveRepository {
       studentCount: r.student_count,
       archivedAt: r.archived_at,
       archivedBy: r.archived_by,
+      archivedLevel: r.archived_level,
     }));
+  }
+
+  /**
+   * Whether restoring the hidden week brings sessions back with it: the ones
+   * hidden at the same instant as the week (`restoreWeek`). While the week is
+   * hidden that set cannot change, since a session under a hidden week is
+   * neither listed nor restored on its own.
+   */
+  async weekRestoresSessions(weekId: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: lessons.id })
+      .from(lessons)
+      .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
+      .where(
+        and(
+          eq(courseWeeks.id, weekId),
+          isNotNull(courseWeeks.archivedAt),
+          eq(lessons.archivedAt, courseWeeks.archivedAt)
+        )
+      )
+      .limit(1);
+    return rows.length > 0;
   }
 
   /** One hidden item, or null when it is missing, shown, or has no storage. */
@@ -250,7 +295,12 @@ export class ArchiveRepository {
    * the hider holds — or held, revoked rows count — where the item sits,
    * nearest scope first (`ARCHIVER_ROLE_ORDER`); SYSTEM_ADMIN holds none.
    */
-  async archivers(items: IArchiveItem[]): Promise<Map<string, IArchiver>> {
+  async archivers(
+    items: Pick<
+      IArchiveItem,
+      "type" | "id" | "archivedBy" | "koskId" | "madrasahId" | "courseId"
+    >[]
+  ): Promise<Map<string, IArchiver>> {
     const byId = new Map<string, IArchiver>();
     const ids = [
       ...new Set(
@@ -319,76 +369,157 @@ export class ArchiveRepository {
     return byId;
   }
 
-  async restore(type: ArchiveItemType, id: string): Promise<RestoreOutcome> {
+  /**
+   * Brings a hidden item back for a restorer acting at `restorer`. The kademe
+   * (MDRS-135) is compared with the level read under the item's row lock, in the
+   * same transaction as the write, so a concurrent re-hide at a higher level is
+   * never undone by a lower one. A restore is on the record as
+   * `<type>.restore`, with the level, in the same transaction, exactly as the
+   * course's and the köşk's own restore routes write theirs.
+   */
+  async restore(
+    type: ArchiveItemType,
+    id: string,
+    restorer: HideLevel,
+    actorId: string,
+    /**
+     * For a week whose restore brings sessions back: the level the restorer
+     * does session work at, or null for none (then it is refused). Without it,
+     * `restorer`.
+     */
+    sessionRestorer: HideLevel | null = restorer
+  ): Promise<RestoreOutcome> {
     return this.db.transaction(async (tx) => {
-      switch (type) {
-        case "course":
-          return this.restoreCourse(tx, id);
-        case "week":
-          return this.restoreWeek(tx, id);
-        case "session":
-          return this.restoreSession(tx, id);
-        case "kosk":
-          return this.restoreSimple(tx, kosks, id, kosks.name);
-        case "deck":
-          return this.restoreSimple(tx, decks, id, decks.title);
-        default:
-          return { status: "not-found" };
+      const outcome = await this.restoreIn(
+        tx,
+        type,
+        id,
+        restorer,
+        sessionRestorer
+      );
+      if (outcome.status === "restored") {
+        await tx.insert(auditLog).values({
+          actorId,
+          action: `${type}.restore`,
+          entity: type,
+          entityId: id,
+          details: {
+            title: outcome.title,
+            level: restorer,
+            ...outcome.where,
+            fromArchive: true,
+          },
+        });
       }
+      return outcome;
     });
+  }
+
+  private restoreIn(
+    tx: Tx,
+    type: ArchiveItemType,
+    id: string,
+    restorer: HideLevel,
+    sessionRestorer: HideLevel | null
+  ): Promise<RestoreOutcome> {
+    switch (type) {
+      case "course":
+        return this.restoreCourse(tx, id, restorer);
+      case "week":
+        return this.restoreWeek(tx, id, restorer, sessionRestorer);
+      case "session":
+        return this.restoreSession(tx, id, restorer);
+      case "kosk":
+        return this.restoreSimple(
+          tx,
+          "kosk",
+          kosks,
+          id,
+          kosks.name,
+          restorer,
+          kosks.id
+        );
+      case "deck":
+        return this.restoreSimple(
+          tx,
+          "deck",
+          decks,
+          id,
+          decks.title,
+          restorer,
+          decks.koskId
+        );
+      default:
+        return Promise.resolve({ status: "not-found" });
+    }
+  }
+
+  /** The kademe, for a row already locked: null when the restorer may bring it back. */
+  private refusal(
+    type: ArchiveItemType,
+    archivedLevel: HideLevel | null,
+    restorer: HideLevel
+  ): RestoreOutcome | null {
+    const hiddenAt = hiderLevelOf({ type, madrasahId: null, archivedLevel });
+    return mayRestoreAt(restorer, hiddenAt)
+      ? null
+      : { status: "level", hiddenAt };
   }
 
   private async restoreSimple(
     tx: Tx,
+    type: "kosk" | "deck",
     table: typeof kosks | typeof decks,
     id: string,
-    titleColumn: typeof kosks.name | typeof decks.title
+    titleColumn: typeof kosks.name | typeof decks.title,
+    restorer: HideLevel,
+    koskColumn: typeof kosks.id | typeof decks.koskId
   ): Promise<RestoreOutcome> {
+    const locked = await tx.execute<{ archived_level: HideLevel | null }>(
+      sql`select archived_level from ${table} where id = ${id} and archived_at is not null for update`
+    );
+    const hidden = locked.rows[0];
+    if (!hidden) return { status: "not-found" };
+    const refused = this.refusal(type, hidden.archived_level, restorer);
+    if (refused) return refused;
     const [row] = await tx
       .update(table)
-      .set({ archivedAt: null, archivedBy: null, updatedAt: new Date() })
-      .where(and(eq(table.id, id), isNotNull(table.archivedAt)))
-      .returning({ title: titleColumn });
-    return row
-      ? { status: "restored", title: row.title }
-      : { status: "not-found" };
-  }
-
-  private async restoreCourse(tx: Tx, id: string): Promise<RestoreOutcome> {
-    const [course] = await tx
-      .select({
-        title: courses.title,
-        koskArchivedAt: kosks.archivedAt,
-        madrasahArchivedAt: madrasahs.archivedAt,
-      })
-      .from(courses)
-      .innerJoin(kosks, eq(kosks.id, courses.koskId))
-      .leftJoin(madrasahs, eq(madrasahs.id, courses.madrasahId))
-      .where(and(eq(courses.id, id), isNotNull(courses.archivedAt)))
-      .for("update", { of: courses });
-    if (!course) return { status: "not-found" };
-    // A course hidden with its medrese comes back with the medrese.
-    if (course.koskArchivedAt !== null || course.madrasahArchivedAt !== null) {
-      return { status: "parent-hidden" };
-    }
-    await tx
-      .update(courses)
       .set({
         archivedAt: null,
         archivedBy: null,
-        version: sql`${courses.version} + 1`,
+        archivedLevel: null,
         updatedAt: new Date(),
       })
-      .where(eq(courses.id, id));
-    return { status: "restored", title: course.title };
+      .where(and(eq(table.id, id), isNotNull(table.archivedAt)))
+      .returning({ title: titleColumn, koskId: koskColumn });
+    if (!row) return { status: "not-found" };
+    return type === "deck"
+      ? { status: "restored", title: row.title, where: { koskId: row.koskId } }
+      : { status: "restored", title: row.title };
   }
 
-  private async restoreWeek(tx: Tx, id: string): Promise<RestoreOutcome> {
+  /** The same decision as `POST /courses/:id/restore` (`restoreCourseIn`); a shown course is not in the archive. */
+  private async restoreCourse(
+    tx: Tx,
+    id: string,
+    restorer: HideLevel
+  ): Promise<RestoreOutcome> {
+    const outcome = await restoreCourseIn(tx, id, restorer);
+    return outcome.status === "not-hidden" ? { status: "not-found" } : outcome;
+  }
+
+  private async restoreWeek(
+    tx: Tx,
+    id: string,
+    bareRestorer: HideLevel,
+    sessionRestorer: HideLevel | null
+  ): Promise<RestoreOutcome> {
     const [week] = await tx
       .select({
         title: courseWeeks.title,
         courseId: courseWeeks.courseId,
         archivedAt: courseWeeks.archivedAt,
+        archivedLevel: courseWeeks.archivedLevel,
         courseArchivedAt: courses.archivedAt,
       })
       .from(courseWeeks)
@@ -396,29 +527,61 @@ export class ArchiveRepository {
       .where(and(eq(courseWeeks.id, id), isNotNull(courseWeeks.archivedAt)))
       .for("update", { of: courseWeeks });
     if (!week || week.archivedAt === null) return { status: "not-found" };
+    // Bringing sessions back with the week is session work: the level the
+    // caller does it at, decided on the rows this lock keeps as they are.
+    const [withSession] = await tx
+      .select({ id: lessons.id })
+      .from(lessons)
+      .where(
+        and(eq(lessons.weekId, id), eq(lessons.archivedAt, week.archivedAt))
+      )
+      .limit(1);
+    const restorer = withSession ? sessionRestorer : bareRestorer;
+    if (restorer === null) return { status: "forbidden" };
+    const refused = this.refusal("week", week.archivedLevel, restorer);
+    if (refused) return refused;
     if (week.courseArchivedAt !== null) return { status: "parent-hidden" };
     const now = new Date();
     // The sessions a whole-course save hid together with the week were hidden
     // at the same instant; one hidden on its own earlier stays hidden.
     await tx
       .update(lessons)
-      .set({ archivedAt: null, archivedBy: null, updatedAt: now })
+      .set({
+        archivedAt: null,
+        archivedBy: null,
+        archivedLevel: null,
+        updatedAt: now,
+      })
       .where(
         and(eq(lessons.weekId, id), eq(lessons.archivedAt, week.archivedAt))
       );
     await tx
       .update(courseWeeks)
-      .set({ archivedAt: null, archivedBy: null, updatedAt: now })
+      .set({
+        archivedAt: null,
+        archivedBy: null,
+        archivedLevel: null,
+        updatedAt: now,
+      })
       .where(eq(courseWeeks.id, id));
     await this.bumpCourseVersion(tx, week.courseId, now);
-    return { status: "restored", title: week.title };
+    return {
+      status: "restored",
+      title: week.title,
+      where: { courseId: week.courseId },
+    };
   }
 
-  private async restoreSession(tx: Tx, id: string): Promise<RestoreOutcome> {
+  private async restoreSession(
+    tx: Tx,
+    id: string,
+    restorer: HideLevel
+  ): Promise<RestoreOutcome> {
     const [lesson] = await tx
       .select({
         title: lessons.title,
         courseId: courses.id,
+        archivedLevel: lessons.archivedLevel,
         weekArchivedAt: courseWeeks.archivedAt,
         courseArchivedAt: courses.archivedAt,
       })
@@ -428,16 +591,27 @@ export class ArchiveRepository {
       .where(and(eq(lessons.id, id), isNotNull(lessons.archivedAt)))
       .for("update", { of: lessons });
     if (!lesson) return { status: "not-found" };
+    const refused = this.refusal("session", lesson.archivedLevel, restorer);
+    if (refused) return refused;
     if (lesson.weekArchivedAt !== null || lesson.courseArchivedAt !== null) {
       return { status: "parent-hidden" };
     }
     const now = new Date();
     await tx
       .update(lessons)
-      .set({ archivedAt: null, archivedBy: null, updatedAt: now })
+      .set({
+        archivedAt: null,
+        archivedBy: null,
+        archivedLevel: null,
+        updatedAt: now,
+      })
       .where(eq(lessons.id, id));
     await this.bumpCourseVersion(tx, lesson.courseId, now);
-    return { status: "restored", title: lesson.title };
+    return {
+      status: "restored",
+      title: lesson.title,
+      where: { courseId: lesson.courseId },
+    };
   }
 
   /** A syllabus write bumps the course version so an editor holding the old one is refused (MDRS-95). */
@@ -669,6 +843,29 @@ export class ArchiveRepository {
     return (
       [row.givenName, row.familyName].filter(Boolean).join(" ").trim() || null
     );
+  }
+
+  /**
+   * Whether a medrese is hidden, and the facts about its hide. The medrese is
+   * not a row of the archive's union (it is listed in nizam/07 and nazir/12's
+   * banner instead), so the medrese archive reads it here.
+   */
+  async madrasahHide(id: string): Promise<IMadrasahHide> {
+    const [row] = await this.db
+      .select({
+        archivedAt: madrasahs.archivedAt,
+        archivedBy: madrasahs.archivedBy,
+        archivedLevel: madrasahs.archivedLevel,
+      })
+      .from(madrasahs)
+      .where(eq(madrasahs.id, id))
+      .limit(1);
+    return {
+      hidden: Boolean(row?.archivedAt),
+      archivedAt: row?.archivedAt ?? null,
+      archivedBy: row?.archivedBy ?? null,
+      archivedLevel: row?.archivedLevel ?? null,
+    };
   }
 
   /** Whether the köşk exists, for the köşk archive's 404. */

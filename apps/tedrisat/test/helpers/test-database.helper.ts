@@ -1,9 +1,12 @@
+import { eq } from "drizzle-orm";
 import { DatabaseService } from "../../src/database/database.service";
+import { decks } from "../../src/database/schema/flashcard-deck.schema";
 import {
   AssignedRole,
   ROLE_SCOPE_TYPES,
   roleAssignments,
 } from "../../src/database/schema/role-assignment.schema";
+import { DeckPublishStatus } from "../../src/flashcard/domain/deck-publish-status.enum";
 
 /**
  * Gives `userId` a role in a scope with a direct insert (MDRS-134) — what a
@@ -129,6 +132,25 @@ export class TestDatabaseUtils {
     } catch (error) {
       console.warn("Table cleanup failed:", error);
     }
+  }
+
+  /**
+   * Makes a deck public the way the başnazım's approval does (MDRS-148). A
+   * deck can no longer be created public over HTTP, so a test that needs one
+   * writes the row directly; `isPublic` and `publishStatus` move together.
+   */
+  async publishDeck(deckId: string, decidedBy?: string): Promise<void> {
+    await this.databaseService.db
+      .update(decks)
+      .set({
+        isPublic: true,
+        publishStatus: DeckPublishStatus.PUBLISHED,
+        publishRequestedAt: null,
+        publishDecidedAt: new Date(),
+        publishDecidedBy: decidedBy ?? null,
+        publishRejectReason: null,
+      })
+      .where(eq(decks.id, deckId));
   }
 
   /**

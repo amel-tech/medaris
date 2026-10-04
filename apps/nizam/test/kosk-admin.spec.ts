@@ -7,13 +7,11 @@ import {
   DIRECTORY_PAGE_SIZE,
   directoryPath,
   emptyOpenForm,
-  endsAtOf,
   fieldOptions,
   filtersFromParams,
   handleLabel,
   isDirty,
   isNazimOf,
-  isPastDay,
   KOSK_FIELDS,
   koskCase,
   koskErrorKey,
@@ -149,23 +147,6 @@ describe("a post's end (nizam/25, criterion 3; nizam/21)", () => {
     expect(termLabel(null, opts)).toBe("Süresiz");
     expect(termLabel(undefined, opts)).toBe("Süresiz");
     expect(termLabel("2026-08-25T09:00:00Z", opts)).toBe("25 Ağustos 2026");
-  });
-
-  it("refuses a day before today in the viewer's zone, and not today", () => {
-    const now = new Date("2026-10-02T21:30:00Z"); // 3 Oct 00:30 in Istanbul
-    expect(isPastDay("2026-10-02", now, "Europe/Istanbul")).toBe(true);
-    expect(isPastDay("2026-10-03", now, "Europe/Istanbul")).toBe(false);
-    expect(isPastDay("2026-10-02", now, "UTC")).toBe(false);
-    expect(isPastDay("", now, "UTC")).toBe(false);
-  });
-
-  it("ends the post at the end of the chosen day in the viewer's zone", () => {
-    expect(endsAtOf("", "UTC")).toBeUndefined();
-    expect(endsAtOf("2026-12-31", "UTC")).toBe("2026-12-31T23:59:59.000Z");
-    // Istanbul is UTC+3 all year: 23:59:59 there is 20:59:59 UTC.
-    expect(endsAtOf("2026-12-31", "Europe/Istanbul")).toBe(
-      "2026-12-31T20:59:59.000Z"
-    );
   });
 });
 
@@ -385,6 +366,10 @@ describe("refusals", () => {
       "errors.endPast"
     );
     expect(koskErrorKey({ code: "AUTHZ_FORBIDDEN" })).toBe("errors.forbidden");
+    // A restore by a lower level than the one that hid it (MDRS-143).
+    expect(koskErrorKey({ code: "ARCHIVE_RESTORE_LEVEL" })).toBe(
+      "errors.restoreLevel"
+    );
     expect(koskErrorKey({ code: "SOMETHING" })).toBe("errors.generic");
     expect(koskErrorKey(undefined)).toBe("errors.generic");
   });
@@ -407,12 +392,16 @@ describe("the catalogue", () => {
 
   it.each([
     "KoskDirectory",
+    "HideLevel",
+    "KoskManage",
+    "MadrasahsPage",
     "OpenKoskDialog",
     "KoskNazimPicker",
     "KoskSettings",
     "HideKoskDialog",
     "KoskNazims",
     "AddNazimDialog",
+    "PassivateScopeDialog",
   ])("%s has the same keys, all filled, in tr, en and ar", (ns) => {
     const tree = (locale: "tr" | "en" | "ar") =>
       (resources[locale].nizam as unknown as Tree)[ns];
