@@ -18,6 +18,7 @@ import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { hideLevelOf } from "../../archive/hide-level";
 import { dismissOpen } from "../../permissions/present";
 import { restoreMadrasah } from "../actions";
 import {
@@ -53,9 +54,10 @@ const SEARCH_DELAY_MS = 300;
  * with their counts (`?durum=`) and a search (`?q=`). The URL is the one
  * source of the filter: a tab or a search navigates, the server reads again,
  * so the counts and the rows always come from the same answer. "Geri al"
- * brings a hidden medrese back; "Başmüderris ata" opens the appointment of a
- * passive one; "Medrese aç" is nizam/08. Each is drawn only for a viewer
- * whose permissions open it (`can`), so none leads to a 403 (MDRS-108).
+ * brings a hidden medrese back, to whoever hid it or a level above (the row's
+ * `canRestore`); "Başmüderris ata" opens the appointment of a passive one;
+ * "Medrese aç" is nizam/08. Each is drawn only for a viewer whose permissions
+ * open it (`can`), so none leads to a 403 (MDRS-108).
  */
 export function MadrasahsView({
   directory,
@@ -65,6 +67,7 @@ export function MadrasahsView({
 }: Props) {
   const tm = useTranslations("nizam.MadrasahsPage");
   const t = tm as unknown as Messages;
+  const tl = useTranslations("nizam.HideLevel");
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
   const router = useRouter();
@@ -226,17 +229,26 @@ export function MadrasahsView({
       align: "right",
       width: "18%",
       render: (m) =>
-        m.status === "HIDDEN" && can.restore ? (
-          <Button
-            variant="outline"
-            size="small"
-            iconLeft={<Icon name="undo" size="sm" />}
-            loading={busyId === m.id}
-            aria-label={t("restoreLabel", { name: m.name })}
-            onClick={() => void restore(m)}
-          >
-            {t("restore")}
-          </Button>
+        m.status === "HIDDEN" ? (
+          !can.restore ? null : m.canRestore ? (
+            <Button
+              variant="outline"
+              size="small"
+              iconLeft={<Icon name="undo" size="sm" />}
+              loading={busyId === m.id}
+              aria-label={t("restoreLabel", { name: m.name })}
+              onClick={() => void restore(m)}
+            >
+              {t("restore")}
+            </Button>
+          ) : (
+            // Whoever hid it, or a level above, brings it back (MDRS-143).
+            <span className="mds-caption">
+              {tl("locked", {
+                level: tl(hideLevelOf(m.hiddenLevel, "madrasah")),
+              })}
+            </span>
+          )
         ) : m.status === "PASSIVE" && can.assign ? (
           <Button
             variant="outline"

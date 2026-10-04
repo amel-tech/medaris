@@ -27,6 +27,7 @@ import {
   loadArchiveImpact,
   restoreArchiveItem,
 } from "../actions";
+import { hideLevelOf } from "../hide-level";
 import {
   actionName,
   archiverLine,
@@ -83,6 +84,7 @@ const errorCode = (body: unknown): string | null =>
 export function ArchiveView({ mode, initial, scopes, pageSize }: Props) {
   const tm = useTranslations("nizam.ArchivePage");
   const t = tm as unknown as Messages;
+  const tl = useTranslations("nizam.HideLevel");
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
   const platform = mode.kind === "platform";
@@ -350,8 +352,11 @@ export function ArchiveView({ mode, initial, scopes, pageSize }: Props) {
                 {t("restore")}
               </Button>
             ) : (
-              <span className="mds-caption max-w-[16rem] text-end">
-                {t("restoreLocked")}
+              // Whoever hid it, or a level above, brings it back (MDRS-143).
+              <span className="mds-caption">
+                {tl("locked", {
+                  level: tl(hideLevelOf(item.hiddenLevel, "kosk")),
+                })}
               </span>
             )}
             {platform ? (

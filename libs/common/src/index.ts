@@ -25,6 +25,7 @@ export type {
   PermissionCode,
   PolicyKey,
   Relation,
+  ResourceClosure,
   ResourceRef,
   Role,
   RoleResolver,

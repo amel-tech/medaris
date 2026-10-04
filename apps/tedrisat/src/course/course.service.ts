@@ -22,6 +22,7 @@ import { UserDirectoryService } from "../assignment/user-directory.service";
 import { BanService } from "../ban/ban.service";
 import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { KoskForbiddenError } from "../kosk/errors/kosk-forbidden.error";
+import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
 import { KoskService } from "../kosk/kosk.service";
 import {
   PlatformPolicyLockedError,
@@ -49,6 +50,7 @@ import {
   ISessionBatchResult,
   IUpdateCourse,
   IUpdateLesson,
+  IWeekHide,
 } from "./course.repository.interface";
 import { CourseNotifier } from "./course-notifier";
 import {
@@ -146,10 +148,23 @@ export class CourseService {
   ): Promise<ICourseSummary[]> {
     if (user === null) {
       if (archived) throw new KoskForbiddenError();
-      await this.koskService.findById(koskId, null); // throws if köşk is missing
+      const kosk = await this.koskService.findById(koskId, null); // throws if köşk is missing
+      // Hidden, the köşk is one that does not exist to someone with no token.
+      if (kosk.archivedAt !== null) throw new KoskNotFoundError(koskId);
       return this.courseRepo.findSummariesByKosk(koskId, null, false);
     }
-    await this.koskService.findById(koskId, user.sub); // throws if köşk is missing
+    const kosk = await this.koskService.findById(koskId, user.sub); // throws if köşk is missing
+    // A hidden köşk closes its courses in every list (MDRS-143): not-found to
+    // everyone but the people above it.
+    if (
+      kosk.archivedAt !== null &&
+      !(await this.authz.can(user, { entity: ENTITIES.KOSK, id: koskId }, [
+        PERMISSIONS.KOSK_MANAGE,
+        PERMISSIONS.PLATFORM_KOSK_EDIT,
+      ]))
+    ) {
+      throw new KoskNotFoundError(koskId);
+    }
     const isManager = await this.koskService.isManager(koskId, user.sub);
     if (archived) {
       if (!isManager && !this.authz.isSystemAdmin(user)) {
@@ -187,6 +202,11 @@ export class CourseService {
     if (!course) {
       throw new CourseNotFoundError(id);
     }
+    // A course of a hidden köşk is closed to all but the people above it
+    // (MDRS-143). `AuthzGuard` asks the same of every signed-in route; this
+    // is for the reads and writes that reach `getDetail` without a guard on
+    // the course, and for a caller with no token.
+    await this.authz.assertOpen(user, { entity: ENTITIES.COURSE, id });
     // A caller with no token (MDRS-122) holds neither `ARCHIVE` nor `EDIT`,
     // so a hidden course and a draft are both not-found to them, as below.
     // `resolveAnonymous` has already said so in front of the handler, and
@@ -919,6 +939,23 @@ export class CourseService {
       ? await this.courseLevel(user, courseId)
       : SCOPE_TYPES.COURSE;
     return this.courseRepo.archiveLesson(lessonId, user.sub, level);
+  }
+
+  /**
+   * Hides a week with its live sessions, at the level the caller acts at
+   * (MDRS-143). Authorization is `week.hide` on the route.
+   */
+  async archiveWeek(
+    courseId: string,
+    weekId: string,
+    user: AuthenticatedUser
+  ): Promise<IWeekHide> {
+    return this.courseRepo.archiveWeek(
+      courseId,
+      weekId,
+      user.sub,
+      await this.courseLevel(user, courseId)
+    );
   }
 
   // ---- weekly pattern → sessions (MDRS-109) ----

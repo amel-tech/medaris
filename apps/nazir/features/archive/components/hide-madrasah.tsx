@@ -9,8 +9,8 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
-import { hideMedrese, restoreMedrese } from "../actions";
-import { archiveErrorKey, madrasahRestoreErrorKey } from "../archive";
+import { hideMedrese } from "../actions";
+import { archiveErrorKey } from "../archive";
 
 /**
  * "Medreseyi gizle" (nazir 12): the section under the list and its question.
@@ -19,13 +19,12 @@ import { archiveErrorKey, madrasahRestoreErrorKey } from "../archive";
  * "Gizle" (_kurallar 11, 13). It says what the design's own sentence leaves out:
  * a hidden medrese is brought back by the level that hid it or one above
  * (MDRS-135: the başmüderris who hid it, or Medaris yönetimi), and until then the
- * courses in the Arşiv cannot be brought back. Once it is done the section says
- * so where the button was, with "Medreseyi geri getir" beside it: what every
- * sentence here promises is on the page. A medrese that was hidden already
- * (MADRASAH_ALREADY_HIDDEN) was hidden by someone else, perhaps Medaris
- * yönetimi, so the section says it is hidden and offers no button the API
- * could answer with 403 (MDRS-108). Should the API still refuse a restore
- * (ARCHIVE_RESTORE_LEVEL), the toast says why.
+ * courses in the Arşiv cannot be brought back. Once it is done the page is read
+ * again and shows the hidden medrese's banner with "Medreseyi geri getir"
+ * (`RestoreMadrasah`), which is where what every sentence here promises is
+ * offered; until it lands the section says so where the button was. A medrese
+ * that was hidden already (MADRASAH_ALREADY_HIDDEN) was hidden by someone else,
+ * perhaps Medaris yönetimi, so the section only says it is hidden (MDRS-108).
  */
 export function HideMadrasah({
   madrasahId,
@@ -40,10 +39,8 @@ export function HideMadrasah({
   const { notify } = useToaster();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
-  // "mine": hidden by this click, so "Medreseyi geri getir" is offered;
-  // "already": hidden by someone else before it, so it is not.
+  // "mine": hidden by this click; "already": hidden by someone else before it.
   const [hidden, setHidden] = useState<"mine" | "already" | null>(null);
-  const [restoring, startRestore] = useTransition();
 
   const hide = () =>
     startTransition(async () => {
@@ -69,26 +66,6 @@ export function HideMadrasah({
       });
     });
 
-  const restore = () =>
-    startRestore(async () => {
-      const result = await restoreMedrese(madrasahId);
-      if (result.success || result.code === "MADRASAH_NOT_HIDDEN") {
-        setHidden(null);
-        notify({
-          tone: "success",
-          title: t("Archive.hide.restored"),
-          description: t("Archive.hide.restoredBody", { name: madrasahName }),
-        });
-        router.refresh();
-        return;
-      }
-      notify({
-        tone: "error",
-        title: t("Archive.hide.restoreFailedTitle"),
-        description: words(madrasahRestoreErrorKey(result.code)),
-      });
-    });
-
   return (
     <section
       aria-labelledby="hide-heading"
@@ -100,25 +77,13 @@ export function HideMadrasah({
       </h2>
       <div className="mds-card flex flex-wrap items-center justify-between gap-4 p-card">
         {hidden ? (
-          <>
-            <Alert tone="warning" title={t("Archive.hide.done")}>
-              <p>
-                {hidden === "mine"
-                  ? t("Archive.hide.doneBody", { name: madrasahName })
-                  : t("Archive.hide.already")}
-              </p>
-            </Alert>
-            {hidden === "mine" ? (
-              <Button
-                variant="outline"
-                iconLeft={<Icon name="undo" size="sm" />}
-                loading={restoring}
-                onClick={restore}
-              >
-                {t("Archive.hide.restore")}
-              </Button>
-            ) : null}
-          </>
+          <Alert tone="warning" title={t("Archive.hide.done")}>
+            <p>
+              {hidden === "mine"
+                ? t("Archive.hide.doneBody", { name: madrasahName })
+                : t("Archive.hide.already")}
+            </p>
+          </Alert>
         ) : (
           <>
             <p className="max-inline-measure">

@@ -552,12 +552,63 @@
       "doneBody": "{name} ve dersleri artık siz ve Medaris yönetimi dışında kimseye görünmüyor. Medreseyi siz ya da Medaris yönetimi geri getirebilir.",
       "already": "Bu medrese zaten gizli. Onu gizleyen kademe ya da üstü geri getirebilir.",
       "failedTitle": "Medrese gizlenemedi",
+      "restoreLevel": "Bu medreseyi Medaris yönetimi gizledi; yalnız Medaris yönetimi geri getirebilir."
+    },
+    "hidden": {
+      "title": "Medrese gizli",
+      "body": "{name} ve dersleri bütün listelerden ve aramadan kalktı; sayfalarını yalnız siz ve Medaris yönetimi açabilir. Geri getirilince dersleri de birlikte döner.",
       "restore": "Medreseyi geri getir",
+      "restoreLabel": "Geri getir: {name}",
       "restored": "Medrese geri getirildi",
       "restoredBody": "{name} ve onunla gizlenen dersleri yeniden görünür.",
-      "restoreFailedTitle": "Medrese geri getirilemedi",
-      "restoreLevel": "Bu medreseyi Medaris yönetimi gizledi; yalnız Medaris yönetimi geri getirebilir."
+      "failedTitle": "Medrese geri getirilemedi",
+      "notHidden": "Bu medrese zaten gizli değil. Sayfa yenilendi."
     }
+  },
+  "CourseArchive": {
+    "title": "Arşiv",
+    "intro": "Bu derste gizlenen haftalar ve celseler. Hiçbiri silinmez; öğeyi gizleyen kademe ya da üstü geri alır.",
+    "tabs": {
+      "all": "Tümü",
+      "weeks": "Haftalar",
+      "sessions": "Celseler"
+    },
+    "empty": {
+      "all": "Bu derste gizlenmiş bir hafta ya da celse yok.",
+      "weeks": "Bu derste gizlenmiş bir hafta yok.",
+      "sessions": "Bu derste gizlenmiş bir celse yok."
+    }
+  },
+  "Curriculum": {
+    "title": "Müfredat",
+    "intro": "Haftaları ve celseleri buradan gizlersiniz; hiçbiri silinmez, Arşiv’den geri alınır. Müfredatı düzenlemek bu sayfanın işi değil.",
+    "weekLabel": "Hafta {number}",
+    "sessionCount": "{count} celse",
+    "noSessions": "Bu haftada celse yok.",
+    "empty": "Bu dersin henüz haftası yok.",
+    "hideWeek": "Haftayı gizle",
+    "hideWeekLabel": "Haftayı gizle: {title}",
+    "hideSession": "Celseyi gizle",
+    "hideSessionLabel": "Celseyi gizle: {title}",
+    "week": {
+      "title": "Haftayı gizle",
+      "body": "{title} ve içindeki {count} celse dersten kalkar; talebeler görmez. Hiçbir şey silinmez; gizleyen kademe ya da üstü Arşiv’den geri alır.",
+      "done": "Hafta gizlendi",
+      "doneBody": "{title} ve celseleri dersten kalktı. Arşiv’den geri alabilirsiniz.",
+      "failedTitle": "Hafta gizlenemedi"
+    },
+    "session": {
+      "title": "Celseyi gizle",
+      "body": "{title} dersten kalkar; talebeler görmez. Hiçbir şey silinmez; gizleyen kademe ya da üstü Arşiv’den geri alır.",
+      "done": "Celse gizlendi",
+      "doneBody": "{title} dersten kalktı. Arşiv’den geri alabilirsiniz.",
+      "failedTitle": "Celse gizlenemedi"
+    },
+    "confirm": "Gizle",
+    "cancel": "Vazgeç",
+    "gone": "Bu hafta ya da celse artık yok. Sayfa yenilendi.",
+    "loadFailedTitle": "Müfredat okunamadı",
+    "loadFailed": "Müfredat şu an okunamadı. Birkaç saniye sonra yeniden deneyin."
   },
   "Courses": {
     "title": "Dersler",

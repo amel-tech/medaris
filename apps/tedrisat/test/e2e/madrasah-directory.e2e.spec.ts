@@ -335,12 +335,12 @@ describe("Medrese directory (e2e)", () => {
       await http().get(`/madrasahs/${active}/overview`).expect(200);
     });
 
-    it("closes a hidden medrese's own read, for a caller with no token and for the başnazım alike", async () => {
+    it("closes a hidden medrese's own read to a caller with no token and keeps it open to the başnazım (MDRS-143)", async () => {
       await http().get(`/madrasahs/${hidden}`).expect(404);
       await http()
         .get(`/madrasahs/${hidden}`)
         .set("Authorization", auth(ADMIN_ID))
-        .expect(404);
+        .expect(200);
       await http().get(`/madrasahs/${active}`).expect(200);
       await http().get(`/madrasahs/${passive}`).expect(200);
     });

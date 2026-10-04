@@ -42,7 +42,11 @@ import {
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
-import { actingLevel } from "../archive/hide-level";
+import {
+  actingLevel,
+  MADRASAH_HIDE_LADDER,
+  mayRestoreHidden,
+} from "../archive/hide-level";
 import { CourseStatus } from "../course/domain/course-status.enum";
 import { PublicRequest } from "../course/interfaces/authorized-request.interface";
 import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
@@ -71,6 +75,7 @@ import {
 } from "./dto/set-head-muderris.dto";
 import { UpdateMadrasahDto } from "./dto/update-madrasah.dto";
 import { MadrasahNotFoundError } from "./errors/madrasah-not-found.error";
+import type { IMadrasahDirectoryItem } from "./madrasah.repository.interface";
 import { MadrasahService } from "./madrasah.service";
 
 const MAX_PAGE_SIZE = 50;
@@ -141,15 +146,47 @@ export class MadrasahController {
       this.authz,
       user,
       { entity: ENTITIES.MADRASAH, id: madrasahId },
-      [
-        {
-          level: SCOPE_TYPES.PLATFORM,
-          codes: [PERMISSIONS.PLATFORM_MADRASAH_EDIT],
-        },
-        { level: SCOPE_TYPES.MADRASAH, codes: [PERMISSIONS.MADRASAH_HIDE] },
-      ],
+      MADRASAH_HIDE_LADDER,
       SCOPE_TYPES.MADRASAH
     );
+  }
+
+  /**
+   * A hidden medrese stays open to the people above its courses: its
+   * başmüderris and Medaris yönetimi, who may hide and restore it. Everyone
+   * else, anonymous callers included, gets the 404 of a medrese that is not
+   * there (MDRS-143; nazir/12: "siz ve Medaris yönetimi dışında herkese kapanır").
+   */
+  private mayOpenHidden(
+    user: AuthenticatedUser | undefined,
+    madrasahId: string
+  ) {
+    return async () =>
+      user !== undefined &&
+      (await this.authz.can(
+        user,
+        { entity: ENTITIES.MADRASAH, id: madrasahId },
+        [PERMISSIONS.MADRASAH_HIDE, PERMISSIONS.PLATFORM_MADRASAH_EDIT]
+      ));
+  }
+
+  /** A directory item with whether the caller may bring a hidden medrese back, by the ladder the restore asks. */
+  private async withRestore(
+    user: AuthenticatedUser,
+    item: IMadrasahDirectoryItem
+  ): Promise<MadrasahDirectoryItemResponse> {
+    return {
+      ...item,
+      canRestore:
+        item.hiddenLevel !== null &&
+        (await mayRestoreHidden(
+          this.authz,
+          user,
+          { entity: ENTITIES.MADRASAH, id: item.id },
+          MADRASAH_HIDE_LADDER,
+          item.hiddenLevel
+        )),
+    };
   }
 
   @ApiOperation({
@@ -252,6 +289,7 @@ export class MadrasahController {
     anyMadrasah
   )
   async directory(
+    @Req() request: AuthorizedRequest,
     @Query(
       "status",
       new DefaultValuePipe("ALL"),
@@ -264,7 +302,7 @@ export class MadrasahController {
   ): Promise<MadrasahDirectoryResponse> {
     const safePage = page < 1 ? 1 : page;
     const safeLimit = Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
-    return this.madrasahService.directory(
+    const directory = await this.madrasahService.directory(
       // A repeated query key arrives as an array; only a single value is read.
       {
         status,
@@ -273,6 +311,12 @@ export class MadrasahController {
       safePage,
       safeLimit
     );
+    return {
+      ...directory,
+      items: await Promise.all(
+        directory.items.map((item) => this.withRestore(request.user, item))
+      ),
+    };
   }
 
   @ApiOperation({
@@ -289,7 +333,10 @@ export class MadrasahController {
     @Req() request: PublicRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahResponse> {
-    const madrasah = await this.madrasahService.findOpenById(id);
+    const madrasah = await this.madrasahService.findOpenById(
+      id,
+      this.mayOpenHidden(request.user, id)
+    );
     return request.user ? madrasah : maskMadrasahForAnonymous(madrasah);
   }
 
@@ -308,7 +355,11 @@ export class MadrasahController {
     @Req() request: PublicRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahOverviewResponse> {
-    return this.madrasahService.findOverview(id, request.user?.sub ?? null);
+    return this.madrasahService.findOverview(
+      id,
+      request.user?.sub ?? null,
+      this.mayOpenHidden(request.user, id)
+    );
   }
 
   @ApiOperation({
@@ -413,14 +464,17 @@ export class MadrasahController {
       { always: true },
       "madrasah.head_muderris.take_over"
     );
-    return this.madrasahService.setHeadMuderris(
-      id,
-      dto.userId.toLowerCase(),
-      request.user.sub,
-      {
-        endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
-        decisions: dto.delegations,
-      }
+    return this.withRestore(
+      request.user,
+      await this.madrasahService.setHeadMuderris(
+        id,
+        dto.userId.toLowerCase(),
+        request.user.sub,
+        {
+          endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
+          decisions: dto.delegations,
+        }
+      )
     );
   }
 
@@ -447,10 +501,13 @@ export class MadrasahController {
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahDirectoryItemResponse> {
-    return this.madrasahService.hide(
-      id,
-      request.user.sub,
-      await this.hideLevel(request.user, id)
+    return this.withRestore(
+      request.user,
+      await this.madrasahService.hide(
+        id,
+        request.user.sub,
+        await this.hideLevel(request.user, id)
+      )
     );
   }
 
@@ -474,10 +531,13 @@ export class MadrasahController {
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahDirectoryItemResponse> {
-    return this.madrasahService.restore(
-      id,
-      request.user.sub,
-      await this.hideLevel(request.user, id)
+    return this.withRestore(
+      request.user,
+      await this.madrasahService.restore(
+        id,
+        request.user.sub,
+        await this.hideLevel(request.user, id)
+      )
     );
   }
 
@@ -569,7 +629,7 @@ export class MadrasahController {
   @ApiOperation({
     summary: "Delete a medrese (SYSTEM_ADMIN only)",
     description:
-      "Its nazır list and hosting rights go with it; its courses stay in their köşks with no medrese. Nazırs cannot delete (MDRS-124).",
+      "Its nazır list and hosting rights go with it; its courses stay in their köşks with no medrese. Nazırs cannot delete (MDRS-124). Written to the audit log as `madrasah.delete`, naming the caller (MDRS-143).",
     operationId: "deleteMadrasah",
   })
   @ApiOkResponse({ type: Boolean })
@@ -577,7 +637,10 @@ export class MadrasahController {
   @ApiNotFoundResponse()
   @Delete(":id")
   @Authz(PERMISSIONS.MADRASAH_DELETE, byExistingMadrasah)
-  async delete(@Param("id", ParseUUIDPipe) id: string): Promise<boolean> {
-    return this.madrasahService.delete(id);
+  async delete(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<boolean> {
+    return this.madrasahService.delete(id, request.user.sub);
   }
 }

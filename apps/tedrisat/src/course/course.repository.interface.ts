@@ -336,6 +336,13 @@ export interface ILessonMutation extends ILesson {
   courseVersion: number;
 }
 
+/** What hiding a week produced: the course version, and how many live sessions went with it (MDRS-143). */
+export interface IWeekHide {
+  id: string;
+  courseVersion: number;
+  hiddenSessions: number;
+}
+
 /** One session of a weekly-pattern batch (MDRS-109), already expanded. */
 export interface IBatchSession {
   scheduledAt: Date;
@@ -437,6 +444,8 @@ export interface ICourseRepository {
     restorer: HideLevel,
     actorId: string
   ): Promise<CourseRestoreOutcome>;
+  /** Whether the course's köşk is hidden, which closes the course (MDRS-143); null for no such course. */
+  findHideState(id: string): Promise<{ koskArchivedAt: Date | null } | null>;
   /** SYSTEM_ADMIN's delete: the course, its children and an audit entry. */
   purge(id: string, actorId: string): Promise<IPurgeCounts | null>;
   /** The course a lesson belongs to, archived or not; null if no such lesson. */
@@ -456,6 +465,12 @@ export interface ICourseRepository {
     actorId?: string | null,
     level?: HideLevel
   ): Promise<ILessonMutation>;
+  archiveWeek(
+    courseId: string,
+    weekId: string,
+    actorId: string,
+    level: HideLevel
+  ): Promise<IWeekHide>;
   /** Marks the session cancelled, keeping its slot (MDRS-176). */
   cancelLesson(
     lessonId: string,

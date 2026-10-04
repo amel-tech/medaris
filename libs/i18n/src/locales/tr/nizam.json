@@ -66,7 +66,6 @@
     "restoreParentHidden": "Bağlı olduğu öğe hâlâ gizli; önce onu geri alın.",
     "restoreGone": "Bu öğe artık arşivde değil.",
     "restoreLevel": "Bunu geri alamazsınız: daha üst bir kademe gizledi; yalnız o kademe ya da üstü geri alabilir.",
-    "restoreLocked": "Bunu Medaris yönetimi gizledi; yalnız o kademe geri alabilir.",
     "deleted": "Kalıcı olarak silindi",
     "deletedBody": "{title} ve bağlı kayıtları silindi.",
     "deleteFailed": "Silinemedi",
@@ -907,7 +906,7 @@
     "passiveTitleMany": "{count} medrese pasif",
     "passiveBodyOne": "Başmüderrisin görev süresi {dateLocative} doldu. Medresenin sayfası ziyaretçilere, içeriği kayıtlı talebelere de kapalıdır; bir başmüderris atadığınızda yeniden açılır.",
     "passiveBodyMany": "{names}. Pasif bir medresenin sayfası ziyaretçilere, içeriği kayıtlı talebelere de kapalıdır; bir başmüderris atadığınızda yeniden açılır.",
-    "footnote": "Gizlenen medrese, dersleriyle birlikte talebelerin ve ziyaretçilerin gördüğü bütün listelerden çıkar. Arşiv’den geri alınır ya da kalıcı olarak silinir.",
+    "footnote": "Gizlenen medrese, dersleriyle birlikte talebelerin ve ziyaretçilerin gördüğü bütün listelerden çıkar. Medreseyi gizleyen kademe ya da üstü bu tablodan geri alır.",
     "emptyAll": "Henüz medrese yok.",
     "emptySearch": "Aramaya uyan medrese yok.",
     "emptyStatus": "Bu durumda medrese yok.",
@@ -920,6 +919,7 @@
       "handleTaken": "Bu kısa ad başka bir medresede kullanılıyor.",
       "notFound": "Bu medrese artık yok.",
       "notHidden": "Bu medrese zaten gizli değil.",
+      "restoreLevel": "Bunu daha üst bir kademe gizlemiş; yalnız o kademe ya da üstü geri alabilir.",
       "forbidden": "Bunu yapma izniniz yok.",
       "delegationsChanged": "Başmüderrisin verdikleri değişmiş; listeyi yeniden okuyup seçimleri tekrar yapın.",
       "delegationsCascade": "Düşürdüğünüz görevlerden birinin sahibi başkalarına rol ya da izin vermiş; onlar sorulmadan kalırdı. Önce o kişiyi görevden alın ya da görevini devralın.",
@@ -1507,7 +1507,7 @@
     "caption": "Köşkler",
     "emptyAll": "Henüz köşk yok.",
     "emptyFilter": "Sonuç yok",
-    "footnote": "Ders sayısı taslak, gizli ve pasif dersleri de içerir. Listelenmeyen köşk Keşfet’te ve aramada görünmez; bağlantısıyla yalnız giriş yapmış kişiler açar ve derslerine kayıt her zaman onaylanır. Gizlenen köşk, dersleriyle birlikte talebelerin ve ziyaretçilerin gördüğü bütün listelerden çıkar; Arşiv’den geri alınır ya da kalıcı olarak silinir.",
+    "footnote": "Ders sayısı taslak, gizli ve pasif dersleri de içerir. Listelenmeyen köşk Keşfet’te ve aramada görünmez; bağlantısıyla yalnız giriş yapmış kişiler açar ve derslerine kayıt her zaman onaylanır. Gizlenen köşk, dersleriyle birlikte talebelerin ve ziyaretçilerin gördüğü bütün listelerden çıkar; gizleyen kademe ya da üstü geri alır, kalıcı silme Arşiv’dedir.",
     "loadFailedTitle": "Köşkler yüklenemedi",
     "loadFailed": "Köşkler şu an okunamıyor. Biraz sonra yeniden deneyin.",
     "retry": "Yeniden dene",
@@ -1519,6 +1519,7 @@
       "generic": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
       "notHidden": "Bu köşk zaten gizli değil.",
       "notFound": "Bu köşk artık yok.",
+      "restoreLevel": "Bunu daha üst bir kademe gizlemiş; yalnız o kademe ya da üstü geri alabilir.",
       "forbidden": "Bunu yapma izniniz yok."
     }
   },
@@ -1647,7 +1648,7 @@
     "savedBody": "{name} için değişiklikler kaydedildi.",
     "failed": "Ayarlar kaydedilemedi",
     "dangerHeading": "Köşkü gizle",
-    "dangerBody": "Köşk ve bütün dersleri listelerden çıkar; talebeler, müderrisler, medreseler ve ziyaretçiler köşk sayfasını ve derslerini açamaz. Hiçbir şey silinmez; Medaris yönetimi Arşiv’den geri alabilir.",
+    "dangerBody": "Köşk ve bütün dersleri listelerden çıkar; talebeler, müderrisler, medreseler ve ziyaretçiler köşk sayfasını ve derslerini açamaz. Hiçbir şey silinmez; köşkü siz gizlediyseniz siz, Medaris yönetimi ise her durumda geri alabilir.",
     "hide": "Köşkü gizle",
     "errors": {
       "nameRequired": "Bir ad yazın.",
@@ -1664,7 +1665,7 @@
   "HideKoskDialog": {
     "title": "Köşkü gizle",
     "body": "{name} talebelerden, müderrislerden, medreselerden ve ziyaretçilerden gizlenecek; köşk ve bütün dersleri her listeden çıkar.",
-    "way": "Hiçbir şey silinmez; Medaris yönetimi Arşiv’den geri alabilir.",
+    "way": "Hiçbir şey silinmez. Köşkü siz gizlediyseniz siz, Medaris yönetimi ise her durumda geri alabilir.",
     "confirm": "Gizle",
     "cancel": "Vazgeç",
     "close": "Kapat",
@@ -1677,6 +1678,13 @@
       "notFound": "Bu köşk artık yok.",
       "forbidden": "Bunu yapma izniniz yok."
     }
+  },
+  "HideLevel": {
+    "course": "ders kadrosu",
+    "madrasah": "medrese yönetimi",
+    "kosk": "köşk nazımı",
+    "platform": "Medaris yönetimi",
+    "locked": "Bunu {level} gizledi; yalnız o kademe ya da üstü geri alabilir."
   },
   "KoskNazims": {
     "title": "Köşk nazımları",
@@ -2217,7 +2225,7 @@
     "publicPage": "Köşk sayfasını gör",
     "newTab": "(yeni sekmede açılır)",
     "notice": "Bu, Medaris yönetimi görünümüdür. Ders işlerini köşk nazımı yapar; burada köşkün nazımları, medreseleri ve durumu yönetilir.",
-    "hiddenNote": "Bu köşk gizli ({since}). Hiçbir listede görünmez; Arşiv’den geri alınabilir.",
+    "hiddenNote": "Bu köşk gizli ({since}). Hiçbir listede görünmez; gizleyen kademe ya da üstü geri alabilir.",
     "passiveNote": "Bu köşk pasif ({since}). Köşk nazımı yok; köşk nazımı eklenince yeniden etkin olur.",
     "summaryLabel": "Köşkün özeti",
     "published": "{count} yayında",
@@ -2254,8 +2262,14 @@
     "actionsHeading": "Yönetim eylemleri",
     "actionsIntro": "Bu eylemler köşkü Medaris yönetimi olarak etkiler; her biri denetim kaydına yazılır.",
     "hideHeading": "Listelerden gizle",
-    "hideBody": "Köşk, dersleriyle birlikte talebelerin ve ziyaretçilerin gördüğü bütün listelerden çıkar. Arşiv’den geri alınır.",
+    "hideBody": "Köşk, dersleriyle birlikte talebelerin ve ziyaretçilerin gördüğü bütün listelerden çıkar. Gizleyen kademe ya da üstü geri alır.",
     "hide": "Köşkü gizle",
+    "restoreHeading": "Geri al",
+    "restoreBody": "Köşk dersleriyle birlikte listelere döner; talebeler ve ziyaretçiler yeniden açabilir.",
+    "restore": "Köşkü geri al",
+    "restored": "Köşk geri alındı",
+    "restoredBody": "{name} yeniden listelerde.",
+    "restoreFailed": "Köşk geri alınamadı",
     "deactivateHeading": "Pasife al",
     "deactivateBody": "Köşk nazımı görevden alınır ve köşk nazımsız kalır. Pasif köşkün içeriğini, talebeler dahil, Medaris yönetimi dışında kimse göremez.",
     "deactivate": "Köşkü pasife al",
@@ -2274,7 +2288,14 @@
     "hiddenInArchive": "Gizli dersler Arşiv’de de listelenir.",
     "loadFailedTitle": "Bölüm yüklenemedi",
     "loadFailed": "Bu bölüm şu an okunamıyor. Biraz sonra yeniden deneyin.",
-    "retry": "Yeniden dene"
+    "retry": "Yeniden dene",
+    "errors": {
+      "generic": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
+      "restoreLevel": "Bunu daha üst bir kademe gizlemiş; yalnız o kademe ya da üstü geri alabilir.",
+      "notHidden": "Bu köşk zaten gizli değil.",
+      "notFound": "Bu köşk artık yok.",
+      "forbidden": "Bunu yapma izniniz yok."
+    }
   },
   "KoskCourses": {
     "title": "Dersler",

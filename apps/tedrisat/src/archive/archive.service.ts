@@ -6,6 +6,7 @@ import { KoskService } from "../kosk/kosk.service";
 import { ArchiveRepository, IArchiver } from "./archive.repository";
 import {
   ArchiveItemType,
+  COURSE_ARCHIVE_ITEM_TYPES,
   IArchiveFilter,
   IArchiveImpact,
   IArchiveItem,
@@ -25,7 +26,9 @@ import {
   COURSE_HIDE_LADDER,
   type HideLevel,
   hiderLevelOf,
+  MADRASAH_HIDE_LADDER,
   mayRestoreAt,
+  mayRestoreHidden,
   SECTION_HIDE_LADDER,
 } from "./hide-level";
 
@@ -50,10 +53,28 @@ const COURSE_SCOPED: readonly ArchiveItemType[] = ["course", "week", "session"];
 
 export type IMadrasahArchiveEntry = IRestorableArchiveEntry;
 
+/** The medrese itself, for the banner nazir/12 shows when it is hidden. */
+export interface IMadrasahArchiveState {
+  hidden: boolean;
+  hiddenAt: Date | null;
+  /** The level that hid it; null while it is shown. */
+  hiddenLevel: HideLevel | null;
+  hiddenBy: IArchiver | null;
+  /** Whether the caller may bring it back (`POST /madrasahs/:id/restore`). */
+  canRestore: boolean;
+}
+
 export interface IMadrasahArchivePage
   extends IArchivePage<IMadrasahArchiveEntry> {
+  madrasah: IMadrasahArchiveState;
   /** Everything hidden in the medrese, per type, whatever the page was asked for. */
   counts: Record<"all" | "course" | "week" | "session" | "recording", number>;
+}
+
+export interface ICourseArchivePage
+  extends IArchivePage<IRestorableArchiveEntry> {
+  /** Everything hidden in the course, per type, whatever the page was asked for. */
+  counts: Record<"all" | "week" | "session", number>;
 }
 
 /**
@@ -70,10 +91,11 @@ type Memo = <V>(key: string, ask: () => Promise<V>) => Promise<V>;
  * The archive (MDRS-173): what nazımlar hid, listed, restored and, for the
  * Medaris başnazımı alone, deleted for real.
  *
- * Listing is here, not in `@Authz`: the engine has no archive entity. A köşk's
- * archive is its managers' and SYSTEM_ADMIN's, the platform's the başnazım's.
- * A restore asks the engine on the item's course (`restoreRoute`). Anything
- * else is `ArchiveForbiddenError`.
+ * Reading a köşk's, a medrese's or a course's archive is an `@Authz` on its
+ * route. The platform-wide reads and the real delete are the başnazım's (the
+ * service refuses anyone else). A restore asks the engine on the item's course
+ * (`restoreRoute`), since which codes count depends on what the item is.
+ * Anything else is `ArchiveForbiddenError`.
  */
 @Injectable()
 export class ArchiveService {
@@ -87,6 +109,7 @@ export class ArchiveService {
 
   /**
    * One köşk's archive: its courses, weeks, sessions and decks, never the köşk.
+   * Reached through `@Authz(kosk.manage | platform.kosk_edit)` on the route.
    * Each item says whether the caller may bring it back: a köşk nazımı cannot
    * bring back what the platform hid (MDRS-108: no button leads to a 403).
    */
@@ -98,7 +121,6 @@ export class ArchiveService {
     if (!(await this.repo.koskExists(koskId))) {
       throw new KoskNotFoundError(koskId);
     }
-    await this.assertKoskManager(user, koskId);
     const page = await this.page(
       { koskId, type: query.type, q: query.q },
       KOSK_ARCHIVE_ITEM_TYPES,
@@ -111,9 +133,9 @@ export class ArchiveService {
   /**
    * One medrese's archive (nazir/12): the hidden courses of the medrese and
    * the weeks and sessions in them, `types` narrowing what is listed. Reached
-   * through `MadrasahArchiveController`, whose `@Authz` scope lets the
-   * medrese's başmüderris and SYSTEM_ADMIN in. Each item says whether the
-   * caller may bring it back.
+   * through `MadrasahArchiveController`, whose `@Authz` lets in whoever may
+   * hide in the medrese or bring something back. Each item says whether the
+   * caller may bring it back, and so does the medrese itself (`madrasah`).
    */
   async listForMadrasah(
     user: AuthenticatedUser,
@@ -132,16 +154,104 @@ export class ArchiveService {
       this.repo.countByType({ ...filter, types: MADRASAH_ARCHIVE_ITEM_TYPES }),
     ]);
     const items = await this.withCanRestore(user, page.items);
+    const madrasah = await this.madrasahState(user, madrasahId);
     const count = (type: ArchiveItemType) => counted.get(type) ?? 0;
     return {
       ...page,
       items,
+      madrasah,
       counts: {
         all: [...counted.values()].reduce((sum, n) => sum + n, 0),
         course: count("course"),
         week: count("week"),
         session: count("session"),
         recording: count("recording"),
+      },
+    };
+  }
+
+  /**
+   * The medrese's own hide, for the banner nazir/12 shows: the page cannot read
+   * a hidden medrese anywhere else it may not open. `canRestore` asks the ladder
+   * `POST /madrasahs/:id/restore` asks, then the kademe.
+   */
+  private async madrasahState(
+    user: AuthenticatedUser,
+    madrasahId: string
+  ): Promise<IMadrasahArchiveState> {
+    const hide = await this.repo.madrasahHide(madrasahId);
+    if (!hide.hidden) {
+      return {
+        hidden: false,
+        hiddenAt: null,
+        hiddenLevel: null,
+        hiddenBy: null,
+        canRestore: false,
+      };
+    }
+    const hiddenLevel = hiderLevelOf({
+      type: "madrasah",
+      madrasahId,
+      archivedLevel: hide.archivedLevel,
+    });
+    const hiddenBy =
+      (
+        await this.repo.archivers([
+          {
+            type: "madrasah",
+            id: madrasahId,
+            archivedBy: hide.archivedBy,
+            koskId: null,
+            madrasahId,
+            courseId: null,
+          },
+        ])
+      ).get(`madrasah:${madrasahId}`) ?? null;
+    return {
+      hidden: true,
+      hiddenAt: hide.archivedAt,
+      hiddenLevel,
+      hiddenBy,
+      canRestore: await mayRestoreHidden(
+        this.authz,
+        user,
+        { entity: ENTITIES.MADRASAH, id: madrasahId },
+        MADRASAH_HIDE_LADDER,
+        hiddenLevel
+      ),
+    };
+  }
+
+  /**
+   * One course's archive: the weeks and sessions of it that are hidden, for
+   * the course team (`week.hide`, on the route), `types` narrowing what is
+   * listed. `counts` are the tabs' numbers. Each says whether the caller may
+   * bring it back.
+   */
+  async listForCourse(
+    user: AuthenticatedUser,
+    courseId: string,
+    query: { types?: ArchiveItemType[]; page: number; limit: number }
+  ): Promise<ICourseArchivePage> {
+    const types = query.types
+      ? COURSE_ARCHIVE_ITEM_TYPES.filter((t) => query.types?.includes(t))
+      : COURSE_ARCHIVE_ITEM_TYPES;
+    const filter = { courseId };
+    const [page, counted] = await Promise.all([
+      // Asked only for types a course's archive does not hold: nothing to read.
+      types.length === 0
+        ? { items: [], total: 0, page: query.page, limit: query.limit }
+        : this.page(filter, types, query.page, query.limit),
+      this.repo.countByType({ ...filter, types: COURSE_ARCHIVE_ITEM_TYPES }),
+    ]);
+    const count = (type: ArchiveItemType) => counted.get(type) ?? 0;
+    return {
+      ...page,
+      items: await this.withCanRestore(user, page.items),
+      counts: {
+        all: count("week") + count("session"),
+        week: count("week"),
+        session: count("session"),
       },
     };
   }
@@ -184,6 +294,10 @@ export class ArchiveService {
    * kademe rule: the level that hid it or one above (`ArchiveRestoreLevelError`
    * names both levels otherwise). The level is compared under the row lock, in
    * the repository's transaction.
+   *
+   * A course, a week and a session of a hidden köşk are closed to all but the
+   * people above the köşk, so restoring one is a 404 to the rest, as the
+   * course's own routes answer (MDRS-143).
    */
   async restore(
     user: AuthenticatedUser,
@@ -191,6 +305,12 @@ export class ArchiveService {
     id: string
   ): Promise<{ type: ArchiveItemType; id: string; title: string }> {
     const item = await this.requireItem(type, id);
+    if (COURSE_SCOPED.includes(item.type) && item.courseId !== null) {
+      await this.authz.assertOpen(user, {
+        entity: ENTITIES.COURSE,
+        id: item.courseId,
+      });
+    }
     const ask: Memo = (_key, answer) => answer();
     // A week is asked on both of its ladders: whether its restore brings
     // sessions back is decided under the row lock, and the repository takes
@@ -376,15 +496,6 @@ export class ArchiveService {
       return SCOPE_TYPES.KOSK;
     }
     return null;
-  }
-
-  private async assertKoskManager(
-    user: AuthenticatedUser,
-    koskId: string
-  ): Promise<void> {
-    if (this.authz.isSystemAdmin(user)) return;
-    if (await this.koskService.isManager(koskId, user.sub)) return;
-    throw new ArchiveForbiddenError("You are not a manager of this köşk");
   }
 
   private assertChiefNazim(user: AuthenticatedUser): void {

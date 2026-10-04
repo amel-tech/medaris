@@ -539,6 +539,64 @@ describe("the decision and its audit rows (review T5, T8, L1)", () => {
   });
 });
 
+describe("AuthzService.assertOpen", () => {
+  class Closed extends Error {}
+  const closure = (): RoleResolver["closure"] =>
+    vi.fn().mockResolvedValue({
+      openTo: [PERMISSIONS.COURSE_HIDE],
+      notFound: new Closed("closed"),
+    });
+  const closedResolver = (
+    relation: Relation | null = RELATIONS.PUBLIC
+  ): RoleResolver => ({
+    resolve: vi.fn().mockResolvedValue(relation),
+    closure: closure(),
+  });
+  const above = emptyContext({
+    chain: [{ type: SCOPE_TYPES.KOSK, id: KOSK }, platform],
+    roles: [
+      {
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        scope: { type: SCOPE_TYPES.KOSK, id: KOSK },
+      },
+    ],
+  });
+
+  it("does nothing when the resolver has no closure, or the resource is not closed", async () => {
+    await expect(
+      service(resolverReturning(RELATIONS.PUBLIC)).assertOpen(user(), course)
+    ).resolves.toBeUndefined();
+    const open: RoleResolver = {
+      resolve: vi.fn().mockResolvedValue(RELATIONS.PUBLIC),
+      closure: vi.fn().mockResolvedValue(null),
+    };
+    await expect(
+      service(open).assertOpen(user(), course)
+    ).resolves.toBeUndefined();
+  });
+
+  it("throws the closure's not-found for a caller who holds none of the codes that keep it open", async () => {
+    const svc = service(closedResolver(), loaderOf());
+    await expect(svc.assertOpen(user(), course)).rejects.toBeInstanceOf(Closed);
+    await expect(svc.assertOpen(null, course)).rejects.toBeInstanceOf(Closed);
+  });
+
+  it("lets through the people above (a held code) and the başnazım", async () => {
+    await expect(
+      service(closedResolver(), loaderOf(above)).assertOpen(
+        user("nazim"),
+        course
+      )
+    ).resolves.toBeUndefined();
+    await expect(
+      service(closedResolver(), loaderOf()).assertOpen(
+        user("admin", ["SYSTEM_ADMIN"]),
+        course
+      )
+    ).resolves.toBeUndefined();
+  });
+});
+
 describe("AuthzService.effective across a medrese's courses (review D1-27-33)", () => {
   const MADRASAH = "33333333-3333-4333-8333-333333333333";
   const madrasah = { type: SCOPE_TYPES.MADRASAH, id: MADRASAH } as const;

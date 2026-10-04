@@ -552,12 +552,63 @@
       "doneBody": "{name} and its courses are now visible to nobody except you and Medaris administration. You or Medaris administration can bring the medrese back.",
       "already": "This medrese is already hidden. The level that hid it, or one above it, can bring it back.",
       "failedTitle": "The medrese could not be hidden",
+      "restoreLevel": "Medaris administration hid this medrese; only Medaris administration can bring it back."
+    },
+    "hidden": {
+      "title": "The medrese is hidden",
+      "body": "{name} and its courses have left every list and the search; only you and the Medaris administration can open its pages. Its courses return with it when it is restored.",
       "restore": "Bring the medrese back",
+      "restoreLabel": "Bring back: {name}",
       "restored": "Medrese brought back",
       "restoredBody": "{name} and the courses hidden with it are visible again.",
-      "restoreFailedTitle": "The medrese could not be brought back",
-      "restoreLevel": "Medaris administration hid this medrese; only Medaris administration can bring it back."
+      "failedTitle": "The medrese could not be brought back",
+      "notHidden": "This medrese is not hidden any more. The page was refreshed."
     }
+  },
+  "CourseArchive": {
+    "title": "Archive",
+    "intro": "The weeks and sessions hidden in this course. None is deleted; the level that hid an item, or one above, restores it.",
+    "tabs": {
+      "all": "All",
+      "weeks": "Weeks",
+      "sessions": "Sessions"
+    },
+    "empty": {
+      "all": "Nothing is hidden in this course.",
+      "weeks": "No week is hidden in this course.",
+      "sessions": "No session is hidden in this course."
+    }
+  },
+  "Curriculum": {
+    "title": "Curriculum",
+    "intro": "Here you hide weeks and sessions; none is deleted, and the Archive brings them back. Editing the curriculum is not this page’s job.",
+    "weekLabel": "Week {number}",
+    "sessionCount": "{count, plural, one {# session} other {# sessions}}",
+    "noSessions": "This week has no sessions.",
+    "empty": "This course has no weeks yet.",
+    "hideWeek": "Hide the week",
+    "hideWeekLabel": "Hide the week: {title}",
+    "hideSession": "Hide the session",
+    "hideSessionLabel": "Hide the session: {title}",
+    "week": {
+      "title": "Hide the week",
+      "body": "{title} and its {count, plural, one {# session} other {# sessions}} leave the course; talebe do not see them. Nothing is deleted; the level that hid it, or one above, restores it from the Archive.",
+      "done": "Week hidden",
+      "doneBody": "{title} and its sessions have left the course. You can restore them from the Archive.",
+      "failedTitle": "Could not hide the week"
+    },
+    "session": {
+      "title": "Hide the session",
+      "body": "{title} leaves the course; talebe do not see it. Nothing is deleted; the level that hid it, or one above, restores it from the Archive.",
+      "done": "Session hidden",
+      "doneBody": "{title} has left the course. You can restore it from the Archive.",
+      "failedTitle": "Could not hide the session"
+    },
+    "confirm": "Hide",
+    "cancel": "Cancel",
+    "gone": "This week or session no longer exists. The page was refreshed.",
+    "loadFailedTitle": "Could not read the curriculum",
+    "loadFailed": "The curriculum could not be read just now. Try again in a few seconds."
   },
   "Courses": {
     "title": "Courses",

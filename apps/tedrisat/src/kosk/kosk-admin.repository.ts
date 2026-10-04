@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { ArchiveRestoreLevelError } from "../archive/errors/archive-errors";
+import { recordHide } from "../archive/hide-audit";
 import {
   type HideLevel,
   hiderLevelOf,
@@ -51,6 +52,8 @@ export interface IKoskDirectoryRow {
   isPrivate: boolean;
   status: KoskStatus;
   since: Date | null;
+  /** The level the köşk was hidden at; null while it is shown. A row hidden before it was recorded counts as the köşk's own. */
+  hiddenLevel: HideLevel | null;
   nazimIds: string[];
   courseCount: number;
 }
@@ -58,6 +61,8 @@ export interface IKoskDirectoryRow {
 export interface IKoskOverviewRow {
   status: KoskStatus;
   since: Date | null;
+  /** The level the köşk was hidden at; null while it is shown. */
+  hiddenLevel: HideLevel | null;
   openedAt: Date;
   ownerId: string;
   courses: { all: number; published: number; draft: number; hidden: number };
@@ -192,12 +197,15 @@ export class KoskAdminRepository {
       is_private: boolean;
       status: KoskStatus;
       since: Date | string | null;
+      hidden_level: HideLevel | null;
       nazim_ids: string[];
       course_count: string;
     }>(sql`
       select k.id, k.handle, k.name, k.cover_hue, k.field, k.level, k.is_private,
              ${this.statusSql()} as status,
              coalesce(k.archived_at, k.passive_since) as since,
+             case when k.archived_at is not null
+                  then coalesce(k.archived_level::text, 'kosk') end as hidden_level,
              coalesce((select json_agg(ra.user_id::text order by ra.created_at, ra.user_id)
                          from role_assignments ra where ${this.heldNazimSql()}),
                       '[]'::json) as nazim_ids,
@@ -223,6 +231,7 @@ export class KoskAdminRepository {
         status: r.status,
         // A raw `execute` skips drizzle's column mappers: timestamps arrive as text.
         since: r.since ? new Date(r.since) : null,
+        hiddenLevel: r.hidden_level,
         nazimIds: r.nazim_ids,
         courseCount: Number(r.course_count),
       })),
@@ -454,12 +463,15 @@ export class KoskAdminRepository {
           updatedAt: new Date(),
         })
         .where(eq(kosks.id, koskId));
-      await tx.insert(auditLog).values({
+      await recordHide(tx, {
         actorId,
-        action: "kosk.hide",
+        verb: "hide",
         entity: "kosk",
         entityId: koskId,
-        details: { name: row.name },
+        title: row.name,
+        level,
+        koskId,
+        extra: { name: row.name },
       });
       return "hidden";
     });
@@ -502,12 +514,16 @@ export class KoskAdminRepository {
           updatedAt: new Date(),
         })
         .where(eq(kosks.id, koskId));
-      await tx.insert(auditLog).values({
+      await recordHide(tx, {
         actorId,
-        action: "kosk.restore",
+        verb: "restore",
         entity: "kosk",
         entityId: koskId,
-        details: {
+        title: row.name,
+        level,
+        hiddenLevel: hiddenAt,
+        koskId,
+        extra: {
           name: row.name,
           hiddenSince: row.archivedAt.toISOString(),
         },
@@ -524,11 +540,14 @@ export class KoskAdminRepository {
       await this.db.execute<{
         status: KoskStatus;
         since: Date | string | null;
+        hidden_level: HideLevel | null;
         created_at: Date | string;
         owner_id: string;
       }>(sql`
         select ${this.statusSql()} as status,
                coalesce(k.archived_at, k.passive_since) as since,
+               case when k.archived_at is not null
+                    then coalesce(k.archived_level::text, 'kosk') end as hidden_level,
                k.created_at, k.owner_id
           from kosks k where k.id = ${koskId}`)
     ).rows;
@@ -572,6 +591,7 @@ export class KoskAdminRepository {
     return {
       status: head.status,
       since: head.since ? new Date(head.since) : null,
+      hiddenLevel: head.hidden_level,
       openedAt: new Date(head.created_at),
       ownerId: head.owner_id,
       courses: {

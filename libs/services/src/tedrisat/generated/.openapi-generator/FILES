@@ -57,6 +57,7 @@ src/models/CalendarFeedStatusResponse.ts
 src/models/CancelLessonDto.ts
 src/models/CatalogSectionResponse.ts
 src/models/ChiefNazimResponse.ts
+src/models/CourseArchiveCountsResponse.ts
 src/models/CourseBadgeCountsResponse.ts
 src/models/CourseDetailMadrasahResponse.ts
 src/models/CourseDetailResponse.ts
@@ -154,6 +155,7 @@ src/models/HeadDelegationKind.ts
 src/models/HeadDelegationResponse.ts
 src/models/HeadDelegationScopeType.ts
 src/models/HealthCheckDto.ts
+src/models/HideLevel.ts
 src/models/HostingCourseStatus.ts
 src/models/HostingCoursesAction.ts
 src/models/HostingGrantedByResponse.ts
@@ -207,7 +209,7 @@ src/models/LessonResponse.ts
 src/models/LiftBanDto.ts
 src/models/LiveStreamResponse.ts
 src/models/MadrasahArchiveCountsResponse.ts
-src/models/MadrasahArchiveItemResponse.ts
+src/models/MadrasahArchiveStateResponse.ts
 src/models/MadrasahBadgeCountsResponse.ts
 src/models/MadrasahBanListResponse.ts
 src/models/MadrasahBanResponse.ts
@@ -274,6 +276,7 @@ src/models/NotificationResponse.ts
 src/models/OffsiteCourseRequestResponse.ts
 src/models/OpenMadrasahCourseDto.ts
 src/models/PaginatedArchiveResponse.ts
+src/models/PaginatedCourseArchiveResponse.ts
 src/models/PaginatedKoskResponse.ts
 src/models/PaginatedMadrasahArchiveResponse.ts
 src/models/PaginatedMadrasahResponse.ts
@@ -349,6 +352,7 @@ src/models/UpdateProgressDto.ts
 src/models/UpdatePublicProfileDto.ts
 src/models/UserSummaryResponse.ts
 src/models/UsersPolicy.ts
+src/models/WeekHideResponse.ts
 src/models/WeekResponse.ts
 src/models/WeeklyPatternDto.ts
 src/models/index.ts

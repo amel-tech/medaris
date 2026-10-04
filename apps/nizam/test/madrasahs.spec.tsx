@@ -253,6 +253,9 @@ describe("the Medrese aç form (nizam 08, criteria 1 to 3)", () => {
     expect(madrasahErrorKey({ code: "MADRASAH_HANDLE_TAKEN" })).toBe(
       "errors.handleTaken"
     );
+    expect(madrasahErrorKey({ code: "ARCHIVE_RESTORE_LEVEL" })).toBe(
+      "errors.restoreLevel"
+    );
     expect(madrasahErrorKey({ code: "AUTHZ_FORBIDDEN" })).toBe(
       "errors.forbidden"
     );
@@ -293,6 +296,8 @@ const item = (
   coverHue: 215,
   status: "ACTIVE",
   since: null,
+  hiddenLevel: null,
+  canRestore: false,
   headMuderris: { id: "h1", name: "Mehmet Emin Işıkoğlu" },
   courseCount: 4,
   hostingKosks: [
@@ -329,6 +334,8 @@ const three = [
     name: "Vefa Medresesi",
     status: "HIDDEN",
     since: new Date("2026-09-24T09:00:00Z"),
+    hiddenLevel: "madrasah",
+    canRestore: true,
     headMuderris: { id: "h2", name: "Mustafa Râsim Erdemoğlu" },
     courseCount: 0,
     hostingKosks: [],
@@ -382,6 +389,25 @@ describe("MadrasahsView (nizam 07)", () => {
     expect(html).not.toContain("Geri al: Süleymaniye");
     expect(html).not.toContain("Başmüderris ata: Süleymaniye");
     expect(html.match(/Geri al: /g)).toHaveLength(1);
+  });
+
+  it("names who hid a medrese, and offers no 'Geri al', when the viewer's level is below (MDRS-143)", () => {
+    const html = view(
+      directory([
+        item({
+          id: "m9",
+          name: "Vefa Medresesi",
+          status: "HIDDEN",
+          since: new Date("2026-09-24T09:00:00Z"),
+          hiddenLevel: "platform",
+          canRestore: false,
+        }),
+      ])
+    );
+    expect(html).not.toContain("Geri al: Vefa Medresesi");
+    expect(html).toContain(
+      "Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir."
+    );
   });
 
   it("offers 'Başmüderrisi değiştir' on an active medrese with a başmüderris, shut until the version gate (nizam/22)", () => {

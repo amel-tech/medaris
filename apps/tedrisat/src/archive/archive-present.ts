@@ -3,6 +3,7 @@ import type {
   ArchiveItemResponse,
   PaginatedArchiveResponse,
 } from "./dto/archive-response.dto";
+import { hiderLevelOf } from "./hide-level";
 
 export const presentItem = (
   i: IRestorableArchiveEntry
@@ -23,6 +24,7 @@ export const presentItem = (
   studentCount: i.studentCount,
   archivedAt: i.archivedAt,
   archivedBy: i.archiver,
+  hiddenLevel: hiderLevelOf(i),
   canRestore: i.canRestore,
 });
 

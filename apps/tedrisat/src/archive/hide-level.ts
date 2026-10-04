@@ -33,6 +33,14 @@ export const HIDE_RANK: Record<HideLevel, BanTier> = {
   [SCOPE_TYPES.PLATFORM]: BAN_TIERS.PLATFORM,
 };
 
+/** The levels, lowest first: the order `HIDE_RANK` gives them. */
+export const HIDE_LEVELS: readonly HideLevel[] = [
+  SCOPE_TYPES.COURSE,
+  SCOPE_TYPES.MADRASAH,
+  SCOPE_TYPES.KOSK,
+  SCOPE_TYPES.PLATFORM,
+];
+
 /** A restore by `restorer` is allowed when it is at, or above, the level that hid. */
 export const mayRestoreAt = (restorer: HideLevel, hider: HideLevel): boolean =>
   HIDE_RANK[restorer] >= HIDE_RANK[hider];
@@ -75,6 +83,27 @@ export interface IHideStep {
 }
 
 /**
+ * The ladders (MDRS-135, MDRS-143): per level, the codes that mean "I act at
+ * this level here". `actingLevel` takes the highest rung the caller holds, and
+ * `mayRestoreAt` then decides who may bring back what. They are the one place
+ * that says who hides and restores which kind of item, so whoever could hide
+ * something can bring it back and nobody has a way to hide that they cannot
+ * undo.
+ */
+
+/** A köşk is hidden and restored with the platform's `platform.kosk_edit` or the köşk's own `kosk.manage`. */
+export const KOSK_HIDE_LADDER: readonly IHideStep[] = [
+  { level: SCOPE_TYPES.PLATFORM, codes: [PERMISSIONS.PLATFORM_KOSK_EDIT] },
+  { level: SCOPE_TYPES.KOSK, codes: [PERMISSIONS.KOSK_MANAGE] },
+];
+
+/** A medrese: `platform.madrasah_edit`, or the başmüderris's `madrasah.hide`. */
+export const MADRASAH_HIDE_LADDER: readonly IHideStep[] = [
+  { level: SCOPE_TYPES.PLATFORM, codes: [PERMISSIONS.PLATFORM_MADRASAH_EDIT] },
+  { level: SCOPE_TYPES.MADRASAH, codes: [PERMISSIONS.MADRASAH_HIDE] },
+];
+
+/**
  * Who hides and restores a course, and the weeks and sessions in it, at which
  * level (MDRS-143), asked of the engine on the course: platform management
  * holding `platform.course_hide` as the platform, the köşk's nazımı
@@ -92,8 +121,10 @@ export const COURSE_HIDE_LADDER: readonly IHideStep[] = [
 /**
  * The weeks and sessions of a course: the course ladder with its lowest rung,
  * the course itself, held by whoever does the session work there
- * (`week.hide`, "Hafta ve celse gizle, geri al", and `session.manage`, which
- * `DELETE /lessons/:id` and a whole-course save that drops a session ask).
+ * (`week.hide`, "Hafta ve celse gizle, geri al", which
+ * `POST /courses/:courseId/weeks/:weekId/hide` and `DELETE /lessons/:id` ask,
+ * and `session.manage`, which `DELETE /lessons/:id` and a whole-course save
+ * that drops a session ask).
  * They bring back at that level what was hidden at it (MDRS-143: the level
  * that hid it, or one above). `course.edit` alone is no rung here: bringing a
  * session back is session work, refused to it everywhere else.
@@ -162,4 +193,20 @@ export async function actingLevel(
     steps.find((step) => step.codes.some((code) => held?.has(code)))?.level ??
     fallback
   );
+}
+
+/**
+ * Whether the caller may bring back something hidden at `hiddenAt`: they hold a
+ * rung of the ladder on the resource and act at that level or above. The
+ * question the screens ask to draw "Geri al"; the restore itself asks it again.
+ */
+export async function mayRestoreHidden(
+  authz: AuthzService,
+  user: AuthenticatedUser,
+  resource: ResourceRef,
+  ladder: readonly IHideStep[],
+  hiddenAt: HideLevel
+): Promise<boolean> {
+  const level = await actingLevel(authz, user, resource, ladder, null);
+  return level !== null && mayRestoreAt(level, hiddenAt);
 }

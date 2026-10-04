@@ -80,17 +80,14 @@ export type RowAction = "edit" | "editMuderris" | "view" | "hide" | "restore";
 /**
  * The buttons of a row in the Dersler table (nizam 23). A hidden course has
  * only "Geri al", and not even that when the API says the viewer may not bring
- * it back (`canRestore: false`: hidden at a level above theirs, MDRS-135), so no
- * button leads to a 403 (MDRS-108). A medrese's course has no "Düzenle" and no
- * müderris editing — the medrese opens the course and picks its müderrisler —
- * but may be viewed and hidden by the köşk's nazım.
+ * it back (`canRestore: false`: hidden at a level above theirs, MDRS-135,
+ * MDRS-143), so no button leads to a 403 (MDRS-108). A medrese's course has no
+ * "Düzenle" and no müderris editing — the medrese opens the course and picks
+ * its müderrisler — but may be viewed and hidden by the köşk's nazım.
  */
 export function rowActions(row: KoskCourseRowResponse): RowAction[] {
-  if (row.status === "HIDDEN") {
-    return (row as { canRestore?: boolean }).canRestore === false
-      ? []
-      : ["restore"];
-  }
+  if (row.status === "HIDDEN")
+    return row.canRestore === false ? [] : ["restore"];
   if (row.madrasah) return ["view", "hide"];
   return ["edit", "editMuderris", "hide"];
 }

@@ -28,14 +28,26 @@ export const needsHostingRead = (me: Me, koskId: string): boolean =>
   !me.roles.systemAdmin &&
   !me.roles.manages.some((k) => k.id === koskId);
 
+/**
+ * The permission that opens a köşk's management view to someone who is not its
+ * nazımı: Medaris yönetimi's `platform.kosk_edit`, the one that hides and
+ * restores it (MDRS-143). Names the code the API decides by; the API still
+ * refuses every read and action the person does not hold.
+ */
+export const KOSK_EDIT = "platform.kosk_edit";
+
 export const koskEntry = (
   me: Me,
   koskId: string,
-  rights: HostingRead<readonly unknown[]>
+  rights: HostingRead<readonly unknown[]>,
+  held: ReadonlySet<string> | null = null
 ): KoskEntry => {
   // The roles could not be read: render the management view and let tedrisat
   // refuse each of its reads, as before.
   if (me === null || me.roles.systemAdmin) return { to: "management" };
   if (me.roles.manages.some((k) => k.id === koskId)) return { to: "dersler" };
+  // A Medaris nazımı who may edit köşks reaches the page where a köşk is
+  // hidden and brought back; `getMyPermissionCodes` is what they hold anywhere.
+  if (held?.has(KOSK_EDIT)) return { to: "management" };
   return Array.isArray(rights) ? { to: "hosting" } : { to: "forbidden" };
 };

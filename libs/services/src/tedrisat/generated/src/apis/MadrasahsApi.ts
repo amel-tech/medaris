@@ -447,7 +447,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Its nazır list and hosting rights go with it; its courses stay in their köşks with no medrese. Nazırs cannot delete (MDRS-124).
+     * Its nazır list and hosting rights go with it; its courses stay in their köşks with no medrese. Nazırs cannot delete (MDRS-124). Written to the audit log as `madrasah.delete`, naming the caller (MDRS-143).
      * Delete a medrese (SYSTEM_ADMIN only)
      */
     async deleteMadrasahRaw(requestParameters: DeleteMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<boolean>> {
@@ -486,7 +486,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Its nazır list and hosting rights go with it; its courses stay in their köşks with no medrese. Nazırs cannot delete (MDRS-124).
+     * Its nazır list and hosting rights go with it; its courses stay in their köşks with no medrese. Nazırs cannot delete (MDRS-124). Written to the audit log as `madrasah.delete`, naming the caller (MDRS-143).
      * Delete a medrese (SYSTEM_ADMIN only)
      */
     async deleteMadrasah(requestParameters: DeleteMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {

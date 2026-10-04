@@ -285,6 +285,8 @@ const KNOWN: Record<string, string> = {
   SELF_GRANT_REFUSED: "errors.selfTakeOver",
   GRANT_EXPIRY_INVALID: "errors.expiryInvalid",
   AUTHZ_FORBIDDEN: "errors.forbidden",
+  // A restore by a lower level than the one that hid it (MDRS-143).
+  ARCHIVE_RESTORE_LEVEL: "errors.restoreLevel",
 };
 
 /** The `nizam.MadrasahsPage` key for a refusal's code, or the generic one. */

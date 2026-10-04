@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { HIDE_LEVELS } from "../../archive/hide-level";
 import {
   KOSK_STATUSES,
   KoskPersonResponse,
@@ -37,6 +38,21 @@ export class KoskOverviewResponse {
     description: "Since when it is hidden or passive; null while active",
   })
   since!: Date | null;
+
+  @ApiPropertyOptional({
+    enum: [...HIDE_LEVELS],
+    enumName: "HideLevel",
+    nullable: true,
+    description:
+      "The level that hid it (course, madrasah, kosk, platform); null while it is shown.",
+  })
+  hiddenLevel!: string | null;
+
+  @ApiProperty({
+    description:
+      "Whether the caller may bring the köşk back: it is hidden, they hold `kosk.manage` or `platform.kosk_edit` on it and act at the level that hid it or above.",
+  })
+  canRestore!: boolean;
 
   @ApiProperty({ type: Date, description: "When the köşk was opened" })
   openedAt!: Date;
@@ -116,8 +132,17 @@ export class KoskCourseRowResponse {
   hiddenAt!: Date | null;
 
   @ApiProperty({
+    enum: [...HIDE_LEVELS],
+    enumName: "HideLevel",
+    nullable: true,
     description:
-      "Whether the caller may bring this hidden course back (Geri al): false for a shown course and for one hidden at a level above the caller's (MDRS-135), which would answer 403 ARCHIVE_RESTORE_LEVEL.",
+      "The level that hid it (course, madrasah, kosk, platform); null while it is shown. A course hidden before levels were recorded counts as the lowest level that could have hidden it: the medrese's for a medrese course, the köşk's for its own.",
+  })
+  hiddenLevel!: string | null;
+
+  @ApiProperty({
+    description:
+      "Whether the caller may bring this hidden course back (Geri al): it is hidden and they act at the level that hid it or above; false for a shown course and for one hidden at a level above theirs, which would answer 403 ARCHIVE_RESTORE_LEVEL.",
   })
   canRestore!: boolean;
 

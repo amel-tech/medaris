@@ -142,6 +142,12 @@ export class MadrasahCourseController {
     @Param("courseId", ParseUUIDPipe) courseId: string,
     @Body() dto: SetMadrasahCourseMuderrisDto
   ): Promise<MadrasahCourseListItemResponse> {
+    // A medrese is not above the köşk that hosts the course: while the köşk
+    // is hidden the course is closed to it, before anything is written.
+    await this.authz.assertOpen(request.user, {
+      entity: ENTITIES.COURSE,
+      id: courseId,
+    });
     // Only an account the save seats is asked about: a müderris of the course
     // keeping themselves on its list seats nobody, as on `PUT /courses/:id`.
     await this.selfGrant.assertNotSelf(
@@ -176,6 +182,12 @@ export class MadrasahCourseController {
     @Param("id", ParseUUIDPipe) id: string,
     @Param("courseId", ParseUUIDPipe) courseId: string
   ): Promise<void> {
+    // A medrese is not above the köşk that hosts the course: while the köşk
+    // is hidden the course is closed to it, before anything is written.
+    await this.authz.assertOpen(request.user, {
+      entity: ENTITIES.COURSE,
+      id: courseId,
+    });
     // The one ladder every course hide reads (`COURSE_HIDE_LADDER`), so
     // someone holding more than one rung hides at the highest here too: the
     // başnazım and platform management as the platform, the course's köşk

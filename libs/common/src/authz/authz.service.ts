@@ -116,6 +116,25 @@ export class AuthzService {
   }
 
   /**
+   * Refuses a resource the resolver says is closed (`RoleResolver.closure`) to
+   * a caller who holds none of the codes that keep it open, with the closure's
+   * own 404, and does nothing for an open resource. `AuthzGuard` runs it in
+   * front of every signed-in decision; services that decide outside a route
+   * (an archive restore, a read with no guard) call it themselves. A null
+   * caller holds nothing.
+   */
+  async assertOpen(
+    user: AuthenticatedUser | null,
+    rawResource: ResourceRef
+  ): Promise<void> {
+    const resource = normalized(rawResource);
+    const closure = await this.relations.closure?.(resource);
+    if (!closure) return;
+    if (user && (await this.can(user, resource, closure.openTo))) return;
+    throw closure.notFound;
+  }
+
+  /**
    * What the caller holds on a resource, for the screens and the tests: the
    * same computation `can` runs, without its audit rows.
    *

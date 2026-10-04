@@ -1,5 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { ARCHIVE_ITEM_TYPES } from "../archive-types";
+import { HIDE_LEVELS } from "../hide-level";
 
 export class ArchiverResponse {
   @ApiProperty({ type: String, format: "uuid" })
@@ -92,8 +93,16 @@ export class ArchiveItemResponse {
   archivedBy!: ArchiverResponse | null;
 
   @ApiProperty({
+    enum: [...HIDE_LEVELS],
+    enumName: "HideLevel",
     description:
-      "Whether the caller may bring it back (Geri al): false when it was hidden at a level above the one the caller acts at (MDRS-135), so no button leads to a 403 ARCHIVE_RESTORE_LEVEL. A hidden parent still answers 409 on restore.",
+      "The level the hider acted at (course, madrasah, kosk, platform); a row hidden before it was recorded counts as the lowest level that could have hidden it. Only that level or above brings it back.",
+  })
+  hiddenLevel!: string;
+
+  @ApiProperty({
+    description:
+      "Whether the caller may bring it back (Geri al): they hold a code that hides it where it sits and act at the hider's level or above. False when a higher level hid it. A hidden parent still answers 409 on restore.",
   })
   canRestore!: boolean;
 }
@@ -114,9 +123,6 @@ export class PaginatedArchiveResponse {
   limit!: number;
 }
 
-/** One row of nazir/12's table: an archive item; `canRestore` comes with every one. */
-export class MadrasahArchiveItemResponse extends ArchiveItemResponse {}
-
 export class MadrasahArchiveCountsResponse {
   @ApiProperty({ description: "Everything hidden in the medrese (Tümü)." })
   all!: number;
@@ -134,9 +140,35 @@ export class MadrasahArchiveCountsResponse {
   recording!: number;
 }
 
+/** The medrese itself, for the banner nazir/12 shows when it is hidden. */
+export class MadrasahArchiveStateResponse {
+  @ApiProperty({ description: "Whether the medrese is hidden." })
+  hidden!: boolean;
+
+  @ApiProperty({ type: String, format: "date-time", nullable: true })
+  hiddenAt!: Date | null;
+
+  @ApiProperty({
+    enum: [...HIDE_LEVELS],
+    enumName: "HideLevel",
+    nullable: true,
+    description: "The level that hid it; null while it is shown.",
+  })
+  hiddenLevel!: string | null;
+
+  @ApiProperty({ type: ArchiverResponse, nullable: true })
+  hiddenBy!: ArchiverResponse | null;
+
+  @ApiProperty({
+    description:
+      "Whether the caller may bring the medrese back (`POST /madrasahs/:id/restore`): it is hidden, they hold `madrasah.hide` or `platform.madrasah_edit` on it and act at the level that hid it or above.",
+  })
+  canRestore!: boolean;
+}
+
 export class PaginatedMadrasahArchiveResponse {
-  @ApiProperty({ type: [MadrasahArchiveItemResponse] })
-  items!: MadrasahArchiveItemResponse[];
+  @ApiProperty({ type: [ArchiveItemResponse] })
+  items!: ArchiveItemResponse[];
 
   @ApiProperty({
     description: "All hidden items matching `types`, not just this page.",
@@ -150,11 +182,38 @@ export class PaginatedMadrasahArchiveResponse {
   limit!: number;
 
   @ApiProperty({
+    type: MadrasahArchiveStateResponse,
+    description:
+      "The medrese itself: the page cannot read a hidden medrese anywhere else it may not open.",
+  })
+  madrasah!: MadrasahArchiveStateResponse;
+
+  @ApiProperty({
     type: MadrasahArchiveCountsResponse,
     description:
       "The tabs' numbers: everything hidden in the medrese, whatever `types` says.",
   })
   counts!: MadrasahArchiveCountsResponse;
+}
+
+export class CourseArchiveCountsResponse {
+  @ApiProperty({ description: "Every hidden week and session of the course." })
+  all!: number;
+
+  @ApiProperty()
+  week!: number;
+
+  @ApiProperty()
+  session!: number;
+}
+
+export class PaginatedCourseArchiveResponse extends PaginatedArchiveResponse {
+  @ApiProperty({
+    type: CourseArchiveCountsResponse,
+    description:
+      "The tabs' numbers: everything hidden in the course, whatever `types` says.",
+  })
+  counts!: CourseArchiveCountsResponse;
 }
 
 export class ArchiveRestoreResponse {

@@ -20,6 +20,7 @@ import {
 } from "../database/schema/flashcard.schema";
 import { decks } from "../database/schema/flashcard-deck.schema";
 import { koskFollowers, kosks } from "../database/schema/kosk.schema";
+import { madrasahs } from "../database/schema/madrasah.schema";
 import {
   roleAssignments,
   SCOPE_TYPES,
@@ -42,6 +43,14 @@ export interface IArchiver {
   id: string;
   name: string | null;
   role: string | null;
+}
+
+/** A medrese's own hide, as the medrese archive's banner needs it. */
+export interface IMadrasahHide {
+  hidden: boolean;
+  archivedAt: Date | null;
+  archivedBy: string | null;
+  archivedLevel: HideLevel | null;
 }
 
 export type RestoreOutcome =
@@ -134,6 +143,7 @@ export class ArchiveRepository {
     if (filter.madrasahId) {
       parts.push(sql`h.madrasah_id = ${filter.madrasahId}`);
     }
+    if (filter.courseId) parts.push(sql`h.course_id = ${filter.courseId}`);
     if (filter.type) parts.push(sql`h.type = ${filter.type}`);
     if (filter.types) {
       parts.push(
@@ -283,7 +293,12 @@ export class ArchiveRepository {
    * the hider holds — or held, revoked rows count — where the item sits,
    * nearest scope first (`ARCHIVER_ROLE_ORDER`); SYSTEM_ADMIN holds none.
    */
-  async archivers(items: IArchiveItem[]): Promise<Map<string, IArchiver>> {
+  async archivers(
+    items: Pick<
+      IArchiveItem,
+      "type" | "id" | "archivedBy" | "koskId" | "madrasahId" | "courseId"
+    >[]
+  ): Promise<Map<string, IArchiver>> {
     const byId = new Map<string, IArchiver>();
     const ids = [
       ...new Set(
@@ -812,6 +827,29 @@ export class ArchiveRepository {
     return (
       [row.givenName, row.familyName].filter(Boolean).join(" ").trim() || null
     );
+  }
+
+  /**
+   * Whether a medrese is hidden, and the facts about its hide. The medrese is
+   * not a row of the archive's union (it is listed in nizam/07 and nazir/12's
+   * banner instead), so the medrese archive reads it here.
+   */
+  async madrasahHide(id: string): Promise<IMadrasahHide> {
+    const [row] = await this.db
+      .select({
+        archivedAt: madrasahs.archivedAt,
+        archivedBy: madrasahs.archivedBy,
+        archivedLevel: madrasahs.archivedLevel,
+      })
+      .from(madrasahs)
+      .where(eq(madrasahs.id, id))
+      .limit(1);
+    return {
+      hidden: Boolean(row?.archivedAt),
+      archivedAt: row?.archivedAt ?? null,
+      archivedBy: row?.archivedBy ?? null,
+      archivedLevel: row?.archivedLevel ?? null,
+    };
   }
 
   /** Whether the köşk exists, for the köşk archive's 404. */
