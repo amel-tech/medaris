@@ -294,7 +294,7 @@ describe("A hidden köşk closes its courses (MDRS-143, e2e)", () => {
     await get(STRANGER_ID, `/courses/${opened.body.id}`).expect(200);
   });
 
-  it("drops the courses from the talebe's lists, the profile and the müderris's /me", async () => {
+  describe("leaves every list", () => {
     const enrolledIds = async () =>
       (await get(TALEBE_ID, "/courses/enrolled").expect(200)).body.map(
         (c: { id: string }) => c.id
@@ -309,26 +309,41 @@ describe("A hidden köşk closes its courses (MDRS-143, e2e)", () => {
       );
     const titles = () => app.get(UserProfileRepository).courseTitles(TALEBE_ID);
 
-    expect(await enrolledIds()).toEqual(
-      expect.arrayContaining([courseId, medreseCourseId])
-    );
-    expect(await upcoming()).toContain(sessionId);
-    expect(await teaches()).toContain(courseId);
-    expect(await titles()).toContain("Bina ve İzhar Şerhi");
+    it("the talebe's enrolled courses", async () => {
+      expect(await enrolledIds()).toEqual(
+        expect.arrayContaining([courseId, medreseCourseId])
+      );
+      await hide(NAZIM_ID).expect(200);
+      expect(await enrolledIds()).toEqual([]);
+      await restore(NAZIM_ID).expect(200);
+      expect(await enrolledIds()).toEqual(
+        expect.arrayContaining([courseId, medreseCourseId])
+      );
+    });
 
-    await hide(NAZIM_ID).expect(200);
-    expect(await enrolledIds()).toEqual([]);
-    expect(await upcoming()).toEqual([]);
-    expect(await teaches()).toEqual([]);
-    expect(await titles()).toEqual([]);
+    it("the talebe's upcoming sessions", async () => {
+      expect(await upcoming()).toContain(sessionId);
+      await hide(NAZIM_ID).expect(200);
+      expect(await upcoming()).toEqual([]);
+      await restore(NAZIM_ID).expect(200);
+      expect(await upcoming()).toContain(sessionId);
+    });
 
-    await restore(NAZIM_ID).expect(200);
-    expect(await enrolledIds()).toEqual(
-      expect.arrayContaining([courseId, medreseCourseId])
-    );
-    expect(await upcoming()).toContain(sessionId);
-    expect(await teaches()).toContain(courseId);
-    expect(await titles()).toContain("Bina ve İzhar Şerhi");
+    it("what the müderris teaches, on GET /me", async () => {
+      expect(await teaches()).toContain(courseId);
+      await hide(NAZIM_ID).expect(200);
+      expect(await teaches()).toEqual([]);
+      await restore(NAZIM_ID).expect(200);
+      expect(await teaches()).toContain(courseId);
+    });
+
+    it("the course titles on the talebe's public profile", async () => {
+      expect(await titles()).toContain("Bina ve İzhar Şerhi");
+      await hide(NAZIM_ID).expect(200);
+      expect(await titles()).toEqual([]);
+      await restore(NAZIM_ID).expect(200);
+      expect(await titles()).toContain("Bina ve İzhar Şerhi");
+    });
   });
 
   it("drops the sessions from the feed of the talebe and the müderris, and keeps them for the köşk's own nazımı", async () => {
