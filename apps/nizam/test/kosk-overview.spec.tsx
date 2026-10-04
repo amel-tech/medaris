@@ -376,6 +376,8 @@ const kosk = {
 const overview: KoskOverviewResponse = {
   status: "ACTIVE",
   since: null,
+  hiddenLevel: null,
+  canRestore: false,
   openedAt: new Date("2026-08-25T09:00:00Z"),
   openedBy: { id: "u1", name: "Yusuf Ziya Ertuğrul", email: null },
   courses: { all: 5, published: 3, draft: 1, hidden: 1 },
@@ -457,6 +459,50 @@ describe("Köşk — Medaris yönetimi görünümü (nizam 20)", () => {
         },
       })
     ).toContain("Bu köşk pasif");
+  });
+});
+
+describe("Köşk — Geri al on the management page (MDRS-143)", () => {
+  const hidden = (
+    over: Partial<KoskOverviewResponse>
+  ): KoskOverviewResponse => ({
+    ...overview,
+    status: "HIDDEN",
+    since: new Date("2026-09-24T09:00:00Z"),
+    ...over,
+  });
+  const view = (o: KoskOverviewResponse) =>
+    render(
+      <KoskManagePage
+        kosk={kosk}
+        overview={o}
+        nazims={[]}
+        rights={[]}
+        rows={[]}
+        viewerId="u1"
+        koskPublicHref={null}
+      />
+    );
+
+  it("offers 'Köşkü geri al' in place of the hide to whoever may bring it back", () => {
+    const html = view(hidden({ hiddenLevel: "kosk", canRestore: true }));
+    expect(html).toContain("Köşkü geri al");
+    expect(html).not.toContain(">Köşkü gizle<");
+    expect(html).not.toContain("Bunu köşk nazımı gizledi");
+  });
+
+  it("names who hid it, and offers no button, to a reader whose level is below", () => {
+    const html = view(hidden({ hiddenLevel: "platform", canRestore: false }));
+    expect(html).not.toContain("Köşkü geri al");
+    expect(html).toContain(
+      "Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir."
+    );
+  });
+
+  it("offers the hide, and no restore, while the köşk is shown", () => {
+    const html = view(overview);
+    expect(html).toContain("Köşkü gizle");
+    expect(html).not.toContain("Köşkü geri al");
   });
 });
 

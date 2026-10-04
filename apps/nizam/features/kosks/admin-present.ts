@@ -560,6 +560,8 @@ const KNOWN: Record<string, string> = {
   KOSK_NOT_FOUND: "errors.notFound",
   GRANT_EXPIRY_INVALID: "errors.endPast",
   AUTHZ_FORBIDDEN: "errors.forbidden",
+  // A restore by a lower level than the one that hid it (MDRS-143).
+  ARCHIVE_RESTORE_LEVEL: "errors.restoreLevel",
 };
 
 /** The namespace key for a refusal's code, or the generic one. */

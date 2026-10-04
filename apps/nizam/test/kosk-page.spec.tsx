@@ -12,6 +12,7 @@ const OTHER_KOSK = "a0000000-0000-4000-8000-000000000002";
 const calls = vi.hoisted(() => ({
   me: vi.fn(),
   rights: vi.fn(),
+  held: vi.fn(),
   overview: vi.fn(),
 }));
 
@@ -35,6 +36,9 @@ vi.mock("~/features/kosks/actions", () => ({
   getKoskById: async () => ({ id: KOSK }),
 }));
 vi.mock("~/features/hosting/reads", () => ({ getHostingRights: calls.rights }));
+vi.mock("~/features/assignments/reads", () => ({
+  getMyPermissionCodes: calls.held,
+}));
 vi.mock("~/features/kosks/admin-reads", () => ({
   getKoskNazims: async () => [],
 }));
@@ -65,6 +69,7 @@ const open = async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   calls.overview.mockResolvedValue({});
+  calls.held.mockResolvedValue(new Set<string>());
 });
 
 describe("the köşk page's entry", () => {
@@ -91,6 +96,20 @@ describe("the köşk page's entry", () => {
     calls.me.mockResolvedValue(meOf({ manages: [KOSK] }));
     await expect(open()).rejects.toThrow(`redirect:/tr/kosks/${KOSK}/dersler`);
     expect(calls.rights).not.toHaveBeenCalled();
+  });
+
+  it("shows a Medaris nazımı holding platform.kosk_edit the management view, where a köşk is hidden and brought back (MDRS-143)", async () => {
+    calls.me.mockResolvedValue(meOf());
+    calls.rights.mockResolvedValue("forbidden");
+    calls.held.mockResolvedValue(new Set(["platform.kosk_edit"]));
+    await expect(open()).resolves.toBeTruthy();
+  });
+
+  it("does not open it to a Medaris nazımı who holds only another köşk permission", async () => {
+    calls.me.mockResolvedValue(meOf());
+    calls.rights.mockResolvedValue("forbidden");
+    calls.held.mockResolvedValue(new Set(["platform.hosting_grant"]));
+    await expect(open()).rejects.toThrow("forbidden");
   });
 
   it("shows the başnazım the management view, reading the rights once for it", async () => {

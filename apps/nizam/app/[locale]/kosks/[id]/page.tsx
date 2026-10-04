@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { forbidden, notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { env } from "~/env";
+import { getMyPermissionCodes } from "~/features/assignments/reads";
 import { getHostingRights } from "~/features/hosting/reads";
 import { getKoskById, getMe } from "~/features/kosks/actions";
 import { getKoskNazims } from "~/features/kosks/admin-reads";
@@ -26,8 +27,9 @@ export async function generateMetadata(): Promise<Metadata> {
  * The başnazım gets the management view — numbers, details, the hide and
  * take-out-of-service actions, nazımları, hosting rights and the courses. A
  * köşk nazımı gets the Dersler page, where the course work is. A Medaris
- * nazımı whom tedrisat lets read the köşk's hosting rights goes to Barındırma
- * hakları (MDRS-137). Anyone else, or a köşk that is not there, gets the "Bu
+ * nazımı holding `platform.kosk_edit` gets the management view too, for the
+ * hide and the restore (MDRS-143); one whom tedrisat only lets read the köşk's
+ * hosting rights goes to Barındırma hakları (MDRS-137). Anyone else, or a köşk that is not there, gets the "Bu
  * bölüm için izniniz yok" screen (nizam/06): the 403 and the 404 look the same
  * on purpose.
  */
@@ -40,11 +42,12 @@ export default async function Page({
   setRequestLocale(locale);
   const me = await getMe();
 
-  const entry = koskEntry(
-    me,
-    id,
-    needsHostingRead(me, id) ? await getHostingRights(id) : null
-  );
+  const readsHosting = needsHostingRead(me, id);
+  const [entryRights, held] = await Promise.all([
+    readsHosting ? getHostingRights(id) : null,
+    readsHosting ? getMyPermissionCodes() : null,
+  ]);
+  const entry = koskEntry(me, id, entryRights, held);
   if (entry.to === "dersler") redirect(`/${locale}/kosks/${id}/dersler`);
   if (entry.to === "hosting") {
     redirect(`/${locale}/kosks/${id}/ayarlar/barindirma`);

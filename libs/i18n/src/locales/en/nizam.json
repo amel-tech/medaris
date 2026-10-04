@@ -905,7 +905,7 @@
     "passiveTitleMany": "{count} medreses are passive",
     "passiveBodyOne": "The head müderris's term ended on {date}. The medrese's page is closed to visitors and its content to enrolled talebe too; it reopens when you appoint a head müderris.",
     "passiveBodyMany": "{names}. A passive medrese's page is closed to visitors and its content to enrolled talebe too; it reopens when you appoint a head müderris.",
-    "footnote": "A hidden medrese, with its courses, leaves every list talebe and visitors see. It is restored from the Archive or deleted for good.",
+    "footnote": "A hidden medrese, with its courses, leaves every list talebe and visitors see. The level that hid it, or one above, restores it from this table.",
     "emptyAll": "There are no medreses yet.",
     "emptySearch": "No medrese matches the search.",
     "emptyStatus": "No medrese has this status.",
@@ -918,6 +918,7 @@
       "handleTaken": "This short name is used by another medrese.",
       "notFound": "This medrese no longer exists.",
       "notHidden": "This medrese is not hidden.",
+      "restoreLevel": "A higher level hid this; only that level or one above can bring it back.",
       "forbidden": "You may not do this.",
       "delegationsChanged": "What the head müderris handed on has changed; read the list again and repeat the choices.",
       "expiryInvalid": "The end date is in the past."
@@ -1494,7 +1495,7 @@
     "caption": "Köşks",
     "emptyAll": "There is no köşk yet.",
     "emptyFilter": "No results",
-    "footnote": "The course count includes draft, hidden and passive courses. An unlisted köşk does not appear in Discover or in search; only signed-in people open it by its link, and enrollment in its courses is always approved. A hidden köşk leaves every list that students and visitors see, together with its courses; it is restored from the Archive or deleted for good.",
+    "footnote": "The course count includes draft, hidden and passive courses. An unlisted köşk does not appear in Discover or in search; only signed-in people open it by its link, and enrollment in its courses is always approved. A hidden köşk leaves every list that students and visitors see, together with its courses; the level that hid it, or one above, restores it, and deleting for good is in the Archive.",
     "loadFailedTitle": "The köşks could not be loaded",
     "loadFailed": "The köşks cannot be read right now. Try again in a moment.",
     "retry": "Try again",
@@ -1506,6 +1507,7 @@
       "generic": "Something went wrong. Try again in a moment.",
       "notHidden": "This köşk is not hidden.",
       "notFound": "This köşk no longer exists.",
+      "restoreLevel": "A higher level hid this; only that level or one above can bring it back.",
       "forbidden": "You are not allowed to do this."
     }
   },
@@ -1634,7 +1636,7 @@
     "savedBody": "The changes to {name} are saved.",
     "failed": "The settings could not be saved",
     "dangerHeading": "Hide the köşk",
-    "dangerBody": "The köşk and all its courses leave the lists; students, müderrisler, medreses and visitors cannot open the köşk's page or its courses. Nothing is deleted; the Medaris administration can restore it from the Archive.",
+    "dangerBody": "The köşk and all its courses leave the lists; students, müderrisler, medreses and visitors cannot open the köşk's page or its courses. Nothing is deleted; if you hid the köşk, you can restore it, and the Medaris administration can in every case.",
     "hide": "Hide the köşk",
     "errors": {
       "nameRequired": "Write a name.",
@@ -1651,7 +1653,7 @@
   "HideKoskDialog": {
     "title": "Hide the köşk",
     "body": "{name} will be hidden from students, müderrisler, medreses and visitors; the köşk and all its courses leave every list.",
-    "way": "Nothing is deleted; the Medaris administration can restore it from the Archive.",
+    "way": "Nothing is deleted. If you hid the köşk, you can restore it; the Medaris administration can in every case.",
     "confirm": "Hide",
     "cancel": "Cancel",
     "close": "Close",
@@ -1664,6 +1666,14 @@
       "notFound": "This köşk no longer exists.",
       "forbidden": "You are not allowed to do this."
     }
+  },
+  "HideLevel": {
+    "course": "the course team",
+    "madrasah": "the medrese administration",
+    "kosk": "the köşk nazım",
+    "platform": "the Medaris administration",
+    "locked": "Hidden by {level}; only that level or one above can bring it back.",
+    "restoreLevel": "A higher level hid this; only that level or one above can bring it back."
   },
   "KoskNazims": {
     "title": "Köşk nazımları",
@@ -2204,7 +2214,7 @@
     "publicPage": "View köşk page",
     "newTab": "(opens in a new tab)",
     "notice": "This is the Medaris administration view. The köşk nazım does the course work; here the köşk's nazıms, medreses and status are managed.",
-    "hiddenNote": "This köşk is hidden ({since}). It is in no list; it can be restored from the Archive.",
+    "hiddenNote": "This köşk is hidden ({since}). It is in no list; the level that hid it, or one above, can restore it.",
     "passiveNote": "This köşk is passive ({since}). It has no köşk nazım; adding one makes it active again.",
     "summaryLabel": "Köşk summary",
     "published": "{count} published",
@@ -2241,8 +2251,14 @@
     "actionsHeading": "Administration actions",
     "actionsIntro": "These actions affect the köşk as the Medaris administration; each one is written to the audit log.",
     "hideHeading": "Hide from lists",
-    "hideBody": "The köşk and its courses leave every list talebe and visitors see. It is restored from the Archive.",
+    "hideBody": "The köşk and its courses leave every list talebe and visitors see. The level that hid it, or one above, restores it.",
     "hide": "Hide köşk",
+    "restoreHeading": "Restore",
+    "restoreBody": "The köşk returns to the lists with its courses; talebe and visitors can open it again.",
+    "restore": "Restore the köşk",
+    "restored": "Köşk restored",
+    "restoredBody": "{name} is in the lists again.",
+    "restoreFailed": "Could not restore the köşk",
     "deactivateHeading": "Take out of service",
     "deactivateBody": "The köşk nazım is taken off the post and the köşk is left without one. Nobody but the Medaris administration can see what a passive köşk holds, talebe included.",
     "deactivate": "Take köşk out of service",
@@ -2261,7 +2277,14 @@
     "hiddenInArchive": "Hidden courses are listed in the Archive too.",
     "loadFailedTitle": "This section could not be loaded",
     "loadFailed": "This section cannot be read right now. Try again in a moment.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "errors": {
+      "generic": "Something went wrong. Try again in a moment.",
+      "restoreLevel": "A higher level hid this; only that level or one above can bring it back.",
+      "notHidden": "This köşk is not hidden.",
+      "notFound": "This köşk no longer exists.",
+      "forbidden": "You are not allowed to do this."
+    }
   },
   "KoskCourses": {
     "title": "Courses",

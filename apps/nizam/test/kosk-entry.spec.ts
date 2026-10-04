@@ -54,6 +54,33 @@ describe("koskEntry", () => {
     expect(koskEntry(me(), KOSK, rights)).toEqual({ to: "forbidden" });
   });
 
+  it("gives a Medaris nazımı holding platform.kosk_edit the management view, whatever the hosting read said (MDRS-143)", () => {
+    const held = new Set(["platform.kosk_edit"]);
+    for (const rights of [[], "forbidden", null] as const) {
+      expect(koskEntry(me(), KOSK, rights, held)).toEqual({
+        to: "management",
+      });
+    }
+    // Another permission, or none read, changes nothing.
+    expect(
+      koskEntry(me(), KOSK, [], new Set(["platform.kosk_create"]))
+    ).toEqual({ to: "hosting" });
+    expect(koskEntry(me(), KOSK, "forbidden", null)).toEqual({
+      to: "forbidden",
+    });
+  });
+
+  it("keeps a köşk's own nazımı on Dersler even when they also hold platform.kosk_edit", () => {
+    expect(
+      koskEntry(
+        me({ manages: [KOSK] }),
+        KOSK,
+        null,
+        new Set(["platform.kosk_edit"])
+      )
+    ).toEqual({ to: "dersler" });
+  });
+
   it("keeps the management view when the roles could not be read, and lets the API refuse", () => {
     expect(koskEntry(null, KOSK, null)).toEqual({ to: "management" });
   });
