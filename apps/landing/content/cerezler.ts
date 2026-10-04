@@ -2,14 +2,14 @@
 // code on 4 October (main together with the open pull requests): NextAuth 4's
 // cookies in apps/*/lib/auth_cookies.ts, Keycloak 26's own cookies with the
 // realm's lifetimes in config/keycloak/realms/_base.json (rememberMe off,
-// SSO idle 1800 s, SSO max 36000 s), the apps' own cookies and storage keys.
+// SSO idle 18000 s since #226, SSO max 36000 s), the apps' own cookies and storage keys.
 // A cookie that is not set by any code is not listed: the device cookie of
 // MDRS-125 is not built yet.
 //
 // When the realm's session lifetimes change, `sessionIdle` and `sessionMax`
 // change with them.
 
-export const sessionIdle = "30 dakika";
+export const sessionIdle = "5 saat";
 export const sessionMax = "10 saat";
 
 export type CookieRow = {
