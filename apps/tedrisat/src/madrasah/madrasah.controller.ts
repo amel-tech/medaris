@@ -218,9 +218,9 @@ export class MadrasahController {
   }
 
   @ApiOperation({
-    summary: "Every medrese for the platform's table (SYSTEM_ADMIN only)",
+    summary: "Every medrese for the platform's table (the Medaris yönetimi)",
     description:
-      "nizam/07: hidden and passive medreses too, each with its başmüderris, course count and hosting köşks, and the per-status counts the tabs show. The open list above leaves hidden medreses out; this one is the başnazım's.",
+      "nizam/07: hidden and passive medreses too, each with its başmüderris, course count and hosting köşks, and the per-status counts the tabs show. The open list above leaves hidden medreses out; this one is the başnazım's and a Medaris nazımı's who holds one of the permissions the page acts on: `platform.madrasah_create` (Medrese aç), `platform.madrasah_edit` (Geri al) or `platform.head_muderris_manage` (Başmüderris ata).",
     operationId: "getMadrasahDirectory",
   })
   @ApiQuery({
@@ -240,8 +240,15 @@ export class MadrasahController {
   @ApiOkResponse({ type: MadrasahDirectoryResponse })
   @ApiForbiddenResponse()
   @Get("directory")
+  // Every permission the page acts on opens it, and nizam's menu shows it for
+  // the same three (MDRS-108): "Başmüderris ata" has no other screen.
+  // `platform.madrasah_nazir_grant` acts on no row of it, so it opens nothing.
   @Authz(
-    [PERMISSIONS.PLATFORM_MADRASAH_CREATE, PERMISSIONS.PLATFORM_MADRASAH_EDIT],
+    [
+      PERMISSIONS.PLATFORM_MADRASAH_CREATE,
+      PERMISSIONS.PLATFORM_MADRASAH_EDIT,
+      PERMISSIONS.PLATFORM_HEAD_MUDERRIS_MANAGE,
+    ],
     anyMadrasah
   )
   async directory(

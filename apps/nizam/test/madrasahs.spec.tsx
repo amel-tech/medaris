@@ -9,6 +9,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { MadrasahsView } from "~/features/madrasahs/components/madrasahs-view";
 import {
+  ALL_MADRASAH_ABILITIES,
   canOpen,
   cleanHandle,
   dateWithCase,
@@ -18,6 +19,7 @@ import {
   hostingLabel,
   isEmailLike,
   type Messages,
+  madrasahAbilities,
   madrasahErrorKey,
   nameError,
   openPayload,
@@ -460,6 +462,60 @@ describe("MadrasahsView (nizam 07)", () => {
 
   it("keeps the search term in the field", () => {
     expect(view(directory(three), "ALL", "zeyrek")).toContain('value="zeyrek"');
+  });
+
+  it("draws only the buttons the viewer's permissions open, so none leads to a 403 (MDRS-108)", () => {
+    const html = render(
+      <MadrasahsView
+        directory={directory(three)}
+        status="ALL"
+        q=""
+        can={madrasahAbilities(
+          { systemAdmin: false },
+          new Set(["platform.head_muderris_manage"])
+        )}
+      />
+    );
+    expect(html).toContain("Başmüderris ata: Zeyrek Medresesi");
+    expect(html).toContain("Başmüderrisi değiştir: Süleymaniye Medresesi");
+    expect(html).not.toContain("Medrese aç");
+    expect(html).not.toContain("Geri al: ");
+    expect(html).not.toContain('href="/tr/arsiv"');
+  });
+});
+
+describe("what Medreseler offers its viewer (MDRS-108)", () => {
+  it("is everything for the başnazım, and when the roles or the permissions could not be read", () => {
+    expect(madrasahAbilities({ systemAdmin: true }, new Set())).toEqual(
+      ALL_MADRASAH_ABILITIES
+    );
+    expect(madrasahAbilities(null, new Set())).toEqual(ALL_MADRASAH_ABILITIES);
+    expect(madrasahAbilities({ systemAdmin: false }, null)).toEqual(
+      ALL_MADRASAH_ABILITIES
+    );
+  });
+
+  it("is one button per platform permission for a Medaris nazımı, and never the başnazım's archive", () => {
+    const of = (...codes: string[]) =>
+      madrasahAbilities({ systemAdmin: false }, new Set(codes));
+    expect(of("platform.madrasah_create")).toEqual({
+      open: true,
+      assign: false,
+      restore: false,
+      archive: false,
+    });
+    expect(of("platform.madrasah_edit")).toEqual({
+      open: false,
+      assign: false,
+      restore: true,
+      archive: false,
+    });
+    expect(of("platform.head_muderris_manage")).toEqual({
+      open: false,
+      assign: true,
+      restore: false,
+      archive: false,
+    });
   });
 });
 

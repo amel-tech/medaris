@@ -67,6 +67,45 @@ export function searchFromParam(value: string | string[] | undefined): string {
   return (first ?? "").trim().slice(0, 100);
 }
 
+/** What the page offers its viewer: each is a button or link tedrisat lets through. */
+export interface MadrasahAbilities {
+  /** "Medrese aç": `platform.madrasah_create` */
+  open: boolean;
+  /** "Başmüderris ata" and "Başmüderrisi değiştir": `platform.head_muderris_manage` */
+  assign: boolean;
+  /** "Geri al": `platform.madrasah_edit` brings back whatever a level hid */
+  restore: boolean;
+  /** "Arşiv": the platform's archive is the başnazım's alone */
+  archive: boolean;
+}
+
+export const ALL_MADRASAH_ABILITIES: MadrasahAbilities = {
+  open: true,
+  assign: true,
+  restore: true,
+  archive: true,
+};
+
+/**
+ * The page's buttons for its viewer (MDRS-108: no button may lead to a 403).
+ * The başnazım holds everything. A Medaris nazımı is offered what their
+ * platform permissions open, and never the archive. When the roles or the
+ * permissions could not be read nothing is hidden, as in the menu: tedrisat
+ * refuses what is not theirs.
+ */
+export function madrasahAbilities(
+  me: { systemAdmin: boolean } | null,
+  held: ReadonlySet<string> | null
+): MadrasahAbilities {
+  if (!me || me.systemAdmin || !held) return ALL_MADRASAH_ABILITIES;
+  return {
+    open: held.has("platform.madrasah_create"),
+    assign: held.has("platform.head_muderris_manage"),
+    restore: held.has("platform.madrasah_edit"),
+    archive: false,
+  };
+}
+
 /** How a status is drawn in the Durum column. Hidden is plain text with its glyph, as in the design. */
 export const STATUS_LOOK: Record<
   MadrasahStatus,
