@@ -534,6 +534,7 @@ describe("MadrasahsView (nizam 07)", () => {
     expect(html).toContain("Başmüderrisi değiştir: Süleymaniye Medresesi");
     expect(html).not.toContain("Medrese aç");
     expect(html).not.toContain("Geri al: ");
+    expect(html).not.toContain("Pasife al: ");
     expect(html).not.toContain('href="/tr/arsiv"');
   });
 });
@@ -556,18 +557,21 @@ describe("what Medreseler offers its viewer (MDRS-108)", () => {
       open: true,
       assign: false,
       restore: false,
+      passivate: false,
       archive: false,
     });
     expect(of("platform.madrasah_edit")).toEqual({
       open: false,
       assign: false,
       restore: true,
+      passivate: true,
       archive: false,
     });
     expect(of("platform.head_muderris_manage")).toEqual({
       open: false,
       assign: true,
       restore: false,
+      passivate: false,
       archive: false,
     });
   });
