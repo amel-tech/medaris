@@ -131,6 +131,21 @@ export class KoskCourseRowResponse {
   @ApiPropertyOptional({ type: Date, nullable: true })
   hiddenAt!: Date | null;
 
+  @ApiProperty({
+    enum: [...HIDE_LEVELS],
+    enumName: "HideLevel",
+    nullable: true,
+    description:
+      "The level that hid it (course, madrasah, kosk, platform); null while it is shown. A course hidden before levels were recorded counts as the lowest level that could have hidden it: the medrese's for a medrese course, the köşk's for its own.",
+  })
+  hiddenLevel!: string | null;
+
+  @ApiProperty({
+    description:
+      "Whether the caller may bring the course back: it is hidden, they hold a code of the course ladder on it and act at the level that hid it or above.",
+  })
+  canRestore!: boolean;
+
   @ApiProperty({ type: Date })
   createdAt!: Date;
 

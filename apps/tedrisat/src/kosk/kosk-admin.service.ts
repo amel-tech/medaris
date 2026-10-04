@@ -8,8 +8,12 @@ import {
   ROLES,
 } from "@medaris/common";
 import { Injectable, Logger } from "@nestjs/common";
-import { KOSK_HIDE_LADDER } from "../archive/hide-codes";
-import { actingLevel, mayRestoreHidden } from "../archive/hide-level";
+import { COURSE_HIDE_LADDER, KOSK_HIDE_LADDER } from "../archive/hide-codes";
+import {
+  actingLevel,
+  hiderLevelOf,
+  mayRestoreHidden,
+} from "../archive/hide-level";
 import { GrantExpiryInvalidError } from "../assignment/admin/errors";
 import { checkGrantExpiry } from "../assignment/admin/grant-plan";
 import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
@@ -299,11 +303,42 @@ export class KoskAdminService {
     };
   }
 
-  async courseRoster(koskId: string): Promise<KoskCourseRosterResponse> {
+  /**
+   * The Dersler table. A hidden course says the level that hid it and whether
+   * the caller may bring it back, so the table offers "Geri al" only where the
+   * API would accept it (MDRS-143), the question the Arşiv rows answer too.
+   */
+  async courseRoster(
+    user: AuthenticatedUser,
+    koskId: string
+  ): Promise<KoskCourseRosterResponse> {
     if (!(await this.repo.koskName(koskId))) {
       throw new KoskNotFoundError(koskId);
     }
-    const items = await this.repo.courseRoster(koskId);
+    const rows = await this.repo.courseRoster(koskId);
+    const items = await Promise.all(
+      rows.map(async ({ archivedLevel, ...row }) => {
+        if (row.status !== "HIDDEN") {
+          return { ...row, hiddenLevel: null, canRestore: false };
+        }
+        const hiddenLevel = hiderLevelOf({
+          type: "course",
+          madrasahId: row.madrasah?.id ?? null,
+          archivedLevel,
+        });
+        return {
+          ...row,
+          hiddenLevel,
+          canRestore: await mayRestoreHidden(
+            this.authz,
+            user,
+            { entity: ENTITIES.COURSE, id: row.id },
+            COURSE_HIDE_LADDER,
+            hiddenLevel
+          ),
+        };
+      })
+    );
     return {
       items,
       counts: {

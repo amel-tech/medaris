@@ -231,9 +231,10 @@ export class KoskAdminController {
     byExistingKosk
   )
   courseRoster(
+    @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskCourseRosterResponse> {
-    return this.admin.courseRoster(id);
+    return this.admin.courseRoster(request.user, id);
   }
 
   @ApiOperation({
