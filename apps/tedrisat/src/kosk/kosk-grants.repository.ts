@@ -13,6 +13,7 @@ import {
   ASSIGNED_ROLES,
   roleAssignments,
   SCOPE_TYPES,
+  type ScopeType,
 } from "../database/schema/role-assignment.schema";
 import { users } from "../database/schema/user.schema";
 import {
@@ -246,6 +247,8 @@ export class KoskGrantsRepository {
       courseId: string;
       permissions: string[];
       endsAt: Date | null;
+      /** The level the giver acts under: the köşk, or the platform for the başnazım. */
+      authority: ScopeType;
     }
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
@@ -309,6 +312,7 @@ export class KoskGrantsRepository {
           permission,
           groupId: null,
           grantedBy: actorId,
+          authorityScopeType: input.authority,
           expiresAt: input.endsAt,
         }))
       );
@@ -336,7 +340,11 @@ export class KoskGrantsRepository {
     actorId: string,
     koskId: string,
     postId: string,
-    wanted: { permissions: string[]; endsAt: Date | null }
+    wanted: {
+      permissions: string[];
+      endsAt: Date | null;
+      authority: ScopeType;
+    }
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
       const post = await this.lockPost(tx, koskId, postId);
@@ -370,6 +378,7 @@ export class KoskGrantsRepository {
                     permission: item.permission,
                     groupId: null,
                     grantedBy: actorId,
+                    authorityScopeType: wanted.authority,
                     expiresAt: wanted.endsAt,
                   },
                 ]

@@ -37,7 +37,7 @@ import { InactiveScopeService } from "./inactive-scope.service";
 
 /**
  * Pasif kapsamlar (MDRS-172, nizam/14). Like `NizamController` there is no
- * `AuthzGuard`: the matrix knows no such entity, and the service decides — the
+ * `AuthzGuard`: the engine knows no such entity, and the service decides — the
  * başnazım, or a Medaris nazımı holding "Pasif kapsamları yönet".
  */
 @ApiTags("nizam")

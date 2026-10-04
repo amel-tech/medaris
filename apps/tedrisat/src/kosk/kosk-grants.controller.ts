@@ -1,4 +1,11 @@
-import { AuthGuard, Authz, AuthzGuard, SCOPES } from "@medaris/common";
+import {
+  AuthGuard,
+  Authz,
+  AuthzGuard,
+  ENTITIES,
+  PERMISSIONS,
+  SelfGrantGuard,
+} from "@medaris/common";
 import {
   Body,
   Controller,
@@ -36,7 +43,7 @@ import { KoskGrantsService } from "./kosk-grants.service";
 
 /**
  * The köşk's İzinler page (MDRS-172, nizam/38): ders nazırları of its
- * medrese-free courses and the course permissions they hold. `@Authz(EDIT)`
+ * medrese-free courses and the course permissions they hold. `@Authz(course_nazir.assign_kosk)`
  * lets a nazım of the köşk and the başnazım in; the service limits what they
  * may give to what they hold themselves.
  */
@@ -45,7 +52,10 @@ import { KoskGrantsService } from "./kosk-grants.service";
 @UseGuards(AuthGuard, AuthzGuard)
 @Controller("kosks")
 export class KoskGrantsController {
-  constructor(private readonly service: KoskGrantsService) {}
+  constructor(
+    private readonly service: KoskGrantsService,
+    private readonly selfGrant: SelfGrantGuard
+  ) {}
 
   @ApiOperation({
     summary: "The köşk's ders nazırları and what they may do",
@@ -57,7 +67,7 @@ export class KoskGrantsController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/grants")
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(PERMISSIONS.COURSE_NAZIR_ASSIGN_KOSK, byExistingKosk)
   list(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string
@@ -77,12 +87,21 @@ export class KoskGrantsController {
   @ApiNotFoundResponse()
   @ApiConflictResponse({ description: "COURSE_NAZIR_EXISTS" })
   @Post(":id/grants")
-  @Authz(SCOPES.EDIT, byExistingKosk)
-  create(
+  @Authz(PERMISSIONS.COURSE_NAZIR_ASSIGN_KOSK, byExistingKosk)
+  async create(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: CreateKoskGrantDto
   ): Promise<KoskGrantsResponse> {
+    // A köşk nazımı already holds every course permission in the köşk; a post
+    // they seat themselves in would only outlive their own dismissal.
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      [dto.userId],
+      { entity: ENTITIES.KOSK, id },
+      { always: true },
+      "kosk.grants.create"
+    );
     return this.service.create(request.user, id, dto);
   }
 
@@ -97,7 +116,7 @@ export class KoskGrantsController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Patch(":id/grants/:grantId")
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(PERMISSIONS.COURSE_NAZIR_ASSIGN_KOSK, byExistingKosk)
   update(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -118,7 +137,7 @@ export class KoskGrantsController {
   @ApiNotFoundResponse()
   @Delete(":id/grants/:grantId")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(PERMISSIONS.COURSE_NAZIR_ASSIGN_KOSK, byExistingKosk)
   async revoke(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,

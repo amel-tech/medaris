@@ -1,15 +1,28 @@
 import {
   AuthenticatedUser,
+  AuthzForbiddenError,
   AuthzService,
   ENTITIES,
-  SCOPES,
+  PERMISSIONS,
+  type PermissionCode,
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
+import { ArchiveRestoreLevelError } from "../archive/errors/archive-errors";
+import {
+  actingLevel,
+  type HideLevel,
+  hiderLevelOf,
+  mayRestoreAt,
+} from "../archive/hide-level";
 import { UserDirectoryService } from "../assignment/user-directory.service";
 import { BanService } from "../ban/ban.service";
+import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { KoskForbiddenError } from "../kosk/errors/kosk-forbidden.error";
 import { KoskService } from "../kosk/kosk.service";
-import { PlatformPolicyService } from "../platform-policy/platform-policy.service";
+import {
+  PlatformPolicyLockedError,
+  PlatformPolicyService,
+} from "../platform-policy/platform-policy.service";
 import { CourseRepository } from "./course.repository";
 import {
   ICourse,
@@ -35,7 +48,9 @@ import {
 } from "./course.repository.interface";
 import { CourseNotifier } from "./course-notifier";
 import {
-  isCourseParticipant,
+  isCourseMuderris,
+  isEnrolledTalebe,
+  type RosterRead,
   withContent,
   withoutContent,
 } from "./domain/course-content";
@@ -172,11 +187,10 @@ export class CourseService {
     // which is what the `ARCHIVE` scope says.
     if (
       course.archivedAt !== null &&
-      !(await this.authz.can(
-        user,
-        { entity: ENTITIES.COURSE, id },
-        SCOPES.ARCHIVE
-      ))
+      !(await this.authz.can(user, { entity: ENTITIES.COURSE, id }, [
+        PERMISSIONS.COURSE_HIDE,
+        PERMISSIONS.MADRASAH_COURSE_HIDE,
+      ]))
     ) {
       throw new CourseNotFoundError(id);
     }
@@ -187,11 +201,10 @@ export class CourseService {
     // while this read "köşk manager only") and SYSTEM_ADMIN.
     if (
       course.status === CourseStatus.DRAFT &&
-      !(await this.authz.can(
-        user,
-        { entity: ENTITIES.COURSE, id },
-        SCOPES.EDIT
-      ))
+      !(await this.authz.can(user, { entity: ENTITIES.COURSE, id }, [
+        PERMISSIONS.COURSE_EDIT,
+        PERMISSIONS.COURSE_VIEW_UNPUBLISHED,
+      ]))
     ) {
       throw new CourseNotFoundError(id);
     }
@@ -213,43 +226,116 @@ export class CourseService {
   async viewDetail(
     id: string,
     user: AuthenticatedUser | null,
-    options: { audit: boolean } = { audit: true }
+    options: { audit: boolean; via?: string } = { audit: true }
   ): Promise<ICourseDetailView> {
     return this.present(await this.getDetail(id, user), user, options);
   }
 
   /**
    * The content rule alone, for a detail the caller is already allowed. A
-   * caller with no token (MDRS-122) never reads content: the ANONYMOUS row
-   * holds no `VIEW_DETAILS`, so they get exactly the body a signed-in
-   * stranger gets.
+   * caller with no token (MDRS-122) never reads content: the anonymous
+   * codes hold no `course.view_details`, so they get exactly the body a
+   * signed-in stranger gets.
    */
   async present(
     course: ICourseDetail,
     user: AuthenticatedUser | null,
-    { audit }: { audit: boolean }
+    { audit, via }: { audit: boolean; via?: string }
   ): Promise<ICourseDetailView> {
     if (user === null) return withoutContent(course);
     const mayReadContent = await this.authz.can(
       user,
       { entity: ENTITIES.COURSE, id: course.id },
-      SCOPES.VIEW_DETAILS
+      PERMISSIONS.COURSE_VIEW_DETAILS
     );
     if (!mayReadContent) return withoutContent(course);
 
-    if (audit && !isCourseParticipant(course, user.sub)) {
+    if (audit && (await this.readIsAudited(course, user))) {
       await this.courseRepo.recordContentRead({
         actorId: user.sub,
         courseId: course.id,
         details: {
           title: course.title,
-          // Who read it, as far as today's model can say. Role model v2
-          // (MDRS-135) will name the permission the read went through.
+          ...(via ? { via } : {}),
+          // Who read it: the başnazım through the realm bypass, anyone else
+          // through the permission named here (a köşk nazımı's course
+          // permissions, a başmüderris's, a grant).
           systemAdmin: this.authz.isSystemAdmin(user),
+          permission: PERMISSIONS.COURSE_VIEW_DETAILS,
         },
       });
     }
     return withContent(course);
+  }
+
+  /**
+   * Whether this content read goes on the record: everyone but the course's
+   * müderrisler and its enrolled talebe. An enrolled talebe who also holds a
+   * role in the course's chain (a köşk nazımı, a başmüderris, a nazır, the
+   * başnazım who enrolled themselves) is not off the record: enrolling is not
+   * a way out of the audit (review L3).
+   */
+  private async readIsAudited(
+    course: ICourseDetail,
+    user: AuthenticatedUser
+  ): Promise<boolean> {
+    return this.readerIsAudited(course.id, user, {
+      muderris: isCourseMuderris(course, user.sub),
+      enrolled: isEnrolledTalebe(course, user.sub),
+    });
+  }
+
+  /** The rule behind `readIsAudited`, for a reader whose standing is already known. */
+  private async readerIsAudited(
+    courseId: string,
+    user: AuthenticatedUser,
+    standing: { muderris: boolean; enrolled: boolean }
+  ): Promise<boolean> {
+    if (standing.muderris) return false;
+    if (!standing.enrolled) return true;
+    if (this.authz.isSystemAdmin(user)) return true;
+    return this.courseRepo.holdsRoleOnCourse(user.sub, courseId);
+  }
+
+  /**
+   * A read of a course's roster goes on the record like a read of its content
+   * (MDRS-135; owner, d-1003-09 "Kayda alınsın"): the talebe list carries names
+   * and e-mail addresses, and its numbers, its removals and its waiting requests
+   * are the same list summarised. The rule is the content read's: the course's
+   * müderrisler and its enrolled talebe are not written; everyone else is, the
+   * başnazım through the realm bypass included, and an enrolled talebe who also
+   * holds a role in the course's chain.
+   *
+   * Call it after the caller is authorized and before the data is read. The row
+   * is awaited, so a write that fails fails the read instead of leaving it
+   * unrecorded.
+   */
+  async auditRosterRead(
+    courseId: string,
+    user: AuthenticatedUser,
+    via: RosterRead
+  ): Promise<void> {
+    const [muderris, enrollment] = await Promise.all([
+      this.courseRepo.isMuderris(courseId, user.sub),
+      this.courseRepo.findEnrollment(user.sub, courseId),
+    ]);
+    const audited = await this.readerIsAudited(courseId, user, {
+      muderris,
+      enrolled:
+        enrollment?.status === EnrollmentStatus.ENROLLED ||
+        enrollment?.status === EnrollmentStatus.COMPLETED,
+    });
+    if (!audited) return;
+    await this.courseRepo.recordRosterRead({
+      actorId: user.sub,
+      entity: "course",
+      entityId: courseId,
+      details: {
+        via,
+        systemAdmin: this.authz.isSystemAdmin(user),
+        permission: PERMISSIONS.COURSE_STAFF_READ,
+      },
+    });
   }
 
   /**
@@ -375,7 +461,13 @@ export class CourseService {
     courseId: string,
     user: AuthenticatedUser | null
   ): Promise<IRecordingView[]> {
-    const detail = await this.viewDetail(courseId, user, { audit: false });
+    // The recording links are course content: a reader who is neither a
+    // müderris nor an enrolled talebe goes on the record like a page read
+    // (review M6).
+    const detail = await this.viewDetail(courseId, user, {
+      audit: true,
+      via: "recordings",
+    });
     const placed = detail.weeks.flatMap((week) =>
       week.lessons.map((lesson) => ({ week, lesson }))
     );
@@ -420,11 +512,12 @@ export class CourseService {
   }
 
   // ---- course writes (MDRS-105) ----
-  // Authorization is the matrix's, on CourseController: `EDIT` for the
-  // course's fields and syllabus — the köşk manager and the course's
-  // müderrisler — and, inside a whole-course save, `ASSIGN_MUDERRIS` for the
-  // müderris list, which only the köşk manager holds. The `assertCourseOwner`
-  // that narrowed every write to the köşk manager is gone.
+  // Authorization is the engine's, on CourseController: `course.edit` for the
+  // course's fields and syllabus — the köşk nazımı and the course's
+  // müderrisler — and, inside a whole-course save, `course.open_standalone`
+  // (or the medrese's `madrasah.muderris_manage`) for the müderris list, which
+  // a müderris does not hold. The `assertCourseOwner` that narrowed every write
+  // to the köşk manager is gone.
 
   async create(
     koskId: string,
@@ -452,8 +545,12 @@ export class CourseService {
     user: AuthenticatedUser,
     updates: IUpdateCourse
   ): Promise<ICourse> {
-    await this.getDetail(id, user);
-    await this.platformPolicies.assertCourseMayChange(updates);
+    const stored = await this.getDetail(id, user);
+    // A PATCH names the fields it means to set: a switch-off it carries is
+    // refused while a policy holds the rule on, even when the stored value is
+    // already off (a policy that came on later), as the platform policy always
+    // did.
+    await this.assertMayChangeSettings(id, user, stored, updates, true);
     const updated = await this.courseRepo.update(
       id,
       withCanonicalTimeZone(updates)
@@ -465,8 +562,74 @@ export class CourseService {
   }
 
   /**
-   * The whole-course save. A caller with `EDIT` but not `ASSIGN_MUDERRIS` —
-   * a müderris — may save everything but the müderris list: if the list in
+   * The fields of a save that need more than `course.edit` (MDRS-135, review
+   * H3): publishing or unpublishing needs `course.publish`; the enrollment and
+   * openness settings need `course.settings`; switching "requires approval" or
+   * "closed" off needs the ability a policy on the köşk, the medrese or the
+   * platform may have closed (`setting.approval_off`, `setting.course_open`).
+   * The engine decides, so a grant from an authority above the policy opens
+   * the ability for the person it was made to, and no other.
+   *
+   * A ability a policy closes answers 409 PLATFORM_POLICY_LOCKED, as the
+   * platform policy always did; a missing `course.publish` or `course.settings`
+   * is a plain 403.
+   */
+  private async assertMayChangeSettings(
+    id: string,
+    user: AuthenticatedUser,
+    stored: Pick<ICourse, "status" | "requiresApproval" | "isClosed">,
+    change: {
+      status?: CourseStatus;
+      requiresApproval?: boolean;
+      isClosed?: boolean;
+    },
+    /** A PATCH: a field it carries is a change. A whole-course save: only a field that differs from what is stored. */
+    carried: boolean
+  ): Promise<void> {
+    const resource = { entity: ENTITIES.COURSE, id };
+    const needs: PermissionCode[] = [];
+    if (change.status !== undefined && change.status !== stored.status) {
+      needs.push(PERMISSIONS.COURSE_PUBLISH);
+    }
+    const approval =
+      change.requiresApproval !== undefined &&
+      (carried || change.requiresApproval !== stored.requiresApproval);
+    const closed =
+      change.isClosed !== undefined &&
+      (carried || change.isClosed !== stored.isClosed);
+    if (approval || closed) needs.push(PERMISSIONS.COURSE_SETTINGS);
+    for (const code of needs) {
+      if (!(await this.authz.can(user, resource, code))) {
+        throw new AuthzForbiddenError(
+          `This change needs the permission ${code}`,
+          { courseId: id, permission: code }
+        );
+      }
+    }
+    if (approval && change.requiresApproval === false) {
+      if (
+        !(await this.authz.can(
+          user,
+          resource,
+          PERMISSIONS.SETTING_APPROVAL_OFF
+        ))
+      ) {
+        throw new PlatformPolicyLockedError("ALWAYS_REQUIRE_APPROVAL");
+      }
+    }
+    if (closed && change.isClosed === false) {
+      if (
+        !(await this.authz.can(user, resource, PERMISSIONS.SETTING_COURSE_OPEN))
+      ) {
+        throw new PlatformPolicyLockedError("CLOSED_COURSE_REQUIRED");
+      }
+    }
+  }
+
+  /**
+   * The whole-course save. A caller with `course.edit` but not the permission
+   * to choose müderrisler — a müderris — may save everything but the müderris
+   * list: if the list in
    * the payload differs from the stored one in any way the save would write,
    * the save is refused whole with 403 before anything is written.
    *
@@ -481,21 +644,18 @@ export class CourseService {
     data: IReplaceCourse
   ): Promise<ICourseDetailView> {
     const stored = await this.getDetail(id, user); // a hidden course is not saved by a müderris
-    // The whole-course save carries every field, so only a switch-off of a
-    // stored "requires approval" is refused; an unrelated save of a course
-    // that never required it must still go through.
-    if (stored.requiresApproval) {
-      await this.platformPolicies.assertCourseMayChange(data);
-    }
+    // The whole-course save carries every field, so only a field that differs
+    // from what is stored is a change; an unrelated save of a course must still
+    // go through.
+    await this.assertMayChangeSettings(id, user, stored, data, false);
     const next = data.muderris ?? [];
     const current = await this.courseRepo.findMuderris(id);
     if (
       muderrisListChanged(current, next) &&
-      !(await this.authz.can(
-        user,
-        { entity: ENTITIES.COURSE, id },
-        SCOPES.ASSIGN_MUDERRIS
-      ))
+      !(await this.authz.can(user, { entity: ENTITIES.COURSE, id }, [
+        PERMISSIONS.COURSE_OPEN_STANDALONE,
+        PERMISSIONS.MADRASAH_MUDERRIS_MANAGE,
+      ]))
     ) {
       throw new MuderrisAssignmentForbiddenError(id);
     }
@@ -503,7 +663,9 @@ export class CourseService {
     const replaced = await this.courseRepo.replace(
       id,
       user.sub,
-      withCanonicalTimeZone(data)
+      withCanonicalTimeZone(data),
+      // The weeks and sessions the save drops are hidden at the saver's level.
+      await this.courseLevel(user, id)
     );
     return this.present(replaced, user, { audit: false });
   }
@@ -529,7 +691,7 @@ export class CourseService {
   }
 
   // ---- session-level writes (MDRS-95) ----
-  // Authorization for these three is `@Authz(SCOPES.EDIT, …)` on
+  // Authorization for these three is `@Authz(PERMISSIONS.COURSE_EDIT, …)` on
   // LessonController, resolved against the lesson's parent course, so no
   // ownership assertion is repeated here.
 
@@ -580,7 +742,7 @@ export class CourseService {
   /**
    * Replaces the muderris list and picks the imam (MDRS-176, nizam/33). The
    * list is never empty and the imam is one of its accounts. Authorization is
-   * `ASSIGN_MUDERRIS` on the route.
+   * `course.open_standalone` (or `madrasah.muderris_manage`) on the route.
    */
   async setMuderris(
     courseId: string,
@@ -624,13 +786,17 @@ export class CourseService {
   /** Hides the lesson; nothing attached to it is deleted (MDRS-124). */
   async archiveLesson(
     lessonId: string,
-    actorId: string | null = null
+    user: AuthenticatedUser
   ): Promise<ILessonMutation> {
-    return this.courseRepo.archiveLesson(lessonId, actorId);
+    const courseId = await this.courseRepo.findLessonCourseId(lessonId);
+    const level = courseId
+      ? await this.courseLevel(user, courseId)
+      : SCOPE_TYPES.COURSE;
+    return this.courseRepo.archiveLesson(lessonId, user.sub, level);
   }
 
   // ---- weekly pattern → sessions (MDRS-109) ----
-  // Authorized by `@Authz(SCOPES.EDIT, …)` on LessonController, like the
+  // Authorized by `@Authz(SESSION_MANAGE, …)` on LessonController, like the
   // three writes above.
 
   /** The sessions a pattern would create; nothing is written. */
@@ -697,13 +863,59 @@ export class CourseService {
   // manager) for hide and restore, `DELETE` (SYSTEM_ADMIN only — it is on no
   // role row) for the real delete. Nothing is re-checked here.
 
-  async archive(id: string, userId: string): Promise<void> {
-    if (!(await this.courseRepo.archive(id, userId))) {
+  /**
+   * The level the caller hides and restores a course at: the köşk's nazımı hides
+   * as the köşk (`course.hide`, theirs by role default), a başmüderris or a
+   * nazır given `madrasah.course_hide` as the medrese, the başnazım as the
+   * platform; whoever merely runs the course acts at the course.
+   */
+  private courseLevel(
+    user: AuthenticatedUser,
+    courseId: string
+  ): Promise<HideLevel> {
+    return actingLevel(
+      this.authz,
+      user,
+      { entity: ENTITIES.COURSE, id: courseId },
+      [
+        { level: SCOPE_TYPES.KOSK, codes: [PERMISSIONS.COURSE_HIDE] },
+        {
+          level: SCOPE_TYPES.MADRASAH,
+          codes: [PERMISSIONS.MADRASAH_COURSE_HIDE],
+        },
+      ],
+      SCOPE_TYPES.COURSE
+    );
+  }
+
+  async archive(id: string, user: AuthenticatedUser): Promise<void> {
+    const level = await this.courseLevel(user, id);
+    if (!(await this.courseRepo.archive(id, user.sub, level))) {
       throw new CourseNotFoundError(id);
     }
   }
 
-  async restore(id: string): Promise<void> {
+  /**
+   * Brings a hidden course back, by the level that hid it or one above it
+   * (MDRS-135, the ban rule): a medrese's başmüderris cannot bring back what the
+   * köşk's nazımı hid, and the other way round it can be done. A course hidden
+   * before the level was recorded counts as hidden at the lowest level that
+   * could have hidden it. Restoring a shown course changes nothing.
+   */
+  async restore(id: string, user: AuthenticatedUser): Promise<void> {
+    const state = await this.courseRepo.findHideState(id);
+    if (!state) throw new CourseNotFoundError(id);
+    if (state.archivedAt !== null) {
+      const restorer = await this.courseLevel(user, id);
+      const hiddenAt = hiderLevelOf({
+        type: "course",
+        madrasahId: state.madrasahId,
+        archivedLevel: state.archivedLevel,
+      });
+      if (!mayRestoreAt(restorer, hiddenAt)) {
+        throw new ArchiveRestoreLevelError(hiddenAt, restorer);
+      }
+    }
     if (!(await this.courseRepo.restore(id))) {
       throw new CourseNotFoundError(id);
     }
@@ -757,14 +969,26 @@ export class CourseService {
 
   async findPendingEnrollments(
     koskId: string,
-    userId: string
+    user: AuthenticatedUser
   ): Promise<IPendingEnrollment[]> {
-    await this.koskService.assertManager(koskId, userId); // köşk managers only
+    await this.koskService.assertManager(koskId, user.sub); // köşk managers only
+    // The köşk-wide list belongs to no one course, so it has no müderris and
+    // no enrolled talebe to leave out: every read of it is written.
+    await this.courseRepo.recordRosterRead({
+      actorId: user.sub,
+      entity: "kosk",
+      entityId: koskId,
+      details: {
+        via: "pending" satisfies RosterRead,
+        systemAdmin: this.authz.isSystemAdmin(user),
+        permission: PERMISSIONS.COURSE_MANAGE_ALL,
+      },
+    });
     return this.courseRepo.findPendingByKosk(koskId);
   }
 
   // ---- the course team's enrollment actions (MDRS-105) ----
-  // Authorization is `@Authz(SCOPES.MANAGE_ENROLLMENTS, …)` on
+  // Authorization is `@Authz(ENROLLMENT_DECIDE, …)` on
   // CourseController: the köşk manager and the course's müderrisler. Nothing
   // narrows it further here.
 

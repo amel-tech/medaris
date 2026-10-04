@@ -158,9 +158,11 @@
       "ban_course": "Ban a talebe from the course (includes seeing the course's ban list)",
       "ban_lift_course": "Lift a course ban, with a reason",
       "deck_manage_course": "Create and edit the course's deck",
+      "deck_propose_kosk": "Propose a köşk deck",
       "course_nazir_assign": "Appoint a course nazır; grant a permission or a group, within your own permissions",
       "permission_group_define": "Define a permission group",
       "madrasah_course_open": "Open a medrese course",
+      "madrasah_offsite_course_request": "Send a request for a course outside the medrese",
       "madrasah_muderris_manage": "Add or remove a müderris; change the imam",
       "madrasah_students_view": "See the medrese's talebe",
       "madrasah_ban": "Ban at medrese level; widen a course ban to the medrese",
@@ -207,7 +209,8 @@
     "courseScope": "The courses you chose do not fit these permissions. Check the courses and try again.",
     "expiryInvalid": "The end date cannot be in the past or after the end of the appointment.",
     "groupGone": "This group no longer exists. The groups were refreshed; choose again.",
-    "groupNameTaken": "Another group has this name. Choose a different name."
+    "groupNameTaken": "Another group has this name. Choose a different name.",
+    "exceedsGiver": "You do not hold some of these permissions; you can only give what you hold yourself. Ask the Medaris administration for the ones you need."
   },
   "Settings": {
     "title": "Medrese settings",

@@ -1,8 +1,13 @@
+import {
+  GRANTABLE_CODES,
+  roleCodesAt,
+  roleCoversScope,
+  type ScopeRef,
+} from "@medaris/common";
 import type {
   AssignedRole,
   ScopeType,
 } from "../database/schema/role-assignment.schema";
-import { ROLE_DEFAULT_PERMISSIONS } from "./permission-catalog";
 
 export interface IScopeRef {
   type: ScopeType;
@@ -30,8 +35,10 @@ export interface IEffectiveGroup {
 const keyOf = (scope: IScopeRef) => `${scope.type}:${scope.id ?? ""}`;
 
 /**
- * What a person may do, sorted by where. A role contributes its defaults in
- * the scopes it is held in; a grant contributes its codes in its own scope.
+ * What a person may do, sorted by where. A role contributes the defaults
+ * tagged for the kind of scope it is held in (`roleCodesAt`, the catalogue's
+ * own rule, which the engine's `effectivePermissions` builds on and extends
+ * with nesting); a grant contributes its codes in its own scope.
  * Scopes held under the same role are one group, so a müderris of four
  * courses reads as one set of sentences, not four (tedris 43). A grant in a
  * scope where no role is held forms a group with `role: null`.
@@ -40,8 +47,25 @@ const keyOf = (scope: IScopeRef) => `${scope.type}:${scope.id ?? ""}`;
  */
 export function buildEffectivePermissions(
   roles: readonly IHeldRole[],
-  grants: readonly IHeldPermissions[]
+  allGrants: readonly IHeldPermissions[],
+  /** Where each course sits, so a grant on a course counts under the köşk's or medrese's role. */
+  parentsOfCourse?: Parameters<typeof roleCoversScope>[2]
 ): IEffectiveGroup[] {
+  // The engine's two rules on grants, so this screen and a request cannot
+  // disagree: a permission never outlasts its role (a grant counts only while
+  // a role held here covers its scope), and only a grantable code is ever
+  // carried by one.
+  const asScope = (s: IScopeRef): ScopeRef => ({ type: s.type, id: s.id });
+  const grants = allGrants
+    .filter((grant) =>
+      roles.some((held) =>
+        roleCoversScope(asScope(held), asScope(grant), parentsOfCourse)
+      )
+    )
+    .map((grant) => ({
+      ...grant,
+      codes: grant.codes.filter((code) => GRANTABLE_CODES.has(code)),
+    }));
   const grantedByScope = new Map<string, Set<string>>();
   const scopeOfGrant = new Map<string, IScopeRef>();
   for (const grant of grants) {
@@ -71,7 +95,7 @@ export function buildEffectivePermissions(
       group.scopes.push({ type: held.type, id: held.id, name: held.name });
     }
     const merged = new Set<string>(group.permissions);
-    for (const code of ROLE_DEFAULT_PERMISSIONS[held.role]) merged.add(code);
+    for (const code of roleCodesAt(held.role, held.type)) merged.add(code);
     for (const code of grantedByScope.get(keyOf(held)) ?? []) merged.add(code);
     group.permissions = [...merged];
     groups.set(key, group);

@@ -109,7 +109,9 @@ export class CalendarFeedRepository {
     const enrolledIn = enrolledCourseIds(
       this.db,
       userId,
-      FEED_ENROLLMENT_STATES
+      FEED_ENROLLMENT_STATES,
+      // A passive course is closed even to its talebe: no live link in a feed.
+      { excludePassive: true }
     );
     // The courses the user holds MUDERRIS on, and the köşks they hold
     // KOSK_NAZIM in (MDRS-126, MDRS-134).

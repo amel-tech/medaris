@@ -158,9 +158,11 @@
       "ban_course": "Talebeyi dersten yasakla (dersin yasak listesini görmeyi kapsar)",
       "ban_lift_course": "Ders yasağını gerekçeyle kaldır",
       "deck_manage_course": "Ders destesini aç ve düzenle",
+      "deck_propose_kosk": "Köşk destesi öner",
       "course_nazir_assign": "Ders nazırı ata; izin ya da grup ver, kendi izinlerinizi aşmadan",
       "permission_group_define": "İzin grubu tanımla",
       "madrasah_course_open": "Medrese dersi aç",
+      "madrasah_offsite_course_request": "Medrese dışı ders talebi gönder",
       "madrasah_muderris_manage": "Müderris ekle ya da çıkar; imamı değiştir",
       "madrasah_students_view": "Medresenin talebelerini gör",
       "madrasah_ban": "Medrese düzeyinde yasakla; ders yasağını medreseye genişlet",
@@ -207,7 +209,8 @@
     "courseScope": "Seçtiğiniz dersler bu izinlerle bağdaşmıyor. Dersleri denetleyip yeniden deneyin.",
     "expiryInvalid": "Bitiş tarihi geçmişte ya da görevin bitişinden sonra olamaz.",
     "groupGone": "Bu grup artık yok. Gruplar yenilendi; yeniden seçin.",
-    "groupNameTaken": "Bu adla başka bir grup var. Başka bir ad seçin."
+    "groupNameTaken": "Bu adla başka bir grup var. Başka bir ad seçin.",
+    "exceedsGiver": "Bu izinlerin bir kısmı sizde yok; yalnız kendi izinlerinizi verebilirsiniz. Verebileceğiniz izinleri başnazıma sorun."
   },
   "Settings": {
     "title": "Medrese ayarları",

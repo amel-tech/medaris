@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { and, asc, eq, inArray, isNull, type SQL, sql } from "drizzle-orm";
+import type { HideLevel } from "../archive/hide-level";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { DatabaseService } from "../database/database.service";
 import { isHeld } from "../database/role-assignments";
@@ -20,7 +21,7 @@ import { MadrasahNotFoundError } from "../madrasah/errors/madrasah-not-found.err
 import type { CoursesAction } from "./dto/hosting-right.dto";
 import { HostingRightNotFoundError } from "./errors/hosting-right-not-found.error";
 
-export type GrantedByRole = "SYSTEM_ADMIN" | "KOSK_NAZIM";
+export type GrantedByRole = "SYSTEM_ADMIN" | "MEDARIS_NAZIM" | "KOSK_NAZIM";
 
 export interface IHostingRight {
   madrasahId: string;
@@ -128,6 +129,7 @@ export class HostingRepository {
           name: people.get(r.grantedBy) ?? null,
           role:
             r.grantedByRole === "SYSTEM_ADMIN" ||
+            r.grantedByRole === "MEDARIS_NAZIM" ||
             r.grantedByRole === "KOSK_NAZIM"
               ? r.grantedByRole
               : null,
@@ -293,7 +295,8 @@ export class HostingRepository {
     koskId: string,
     madrasahId: string,
     coursesAction: CoursesAction,
-    actorId: string
+    actorId: string,
+    level: HideLevel
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
       const revoked = await tx
@@ -318,6 +321,7 @@ export class HostingRepository {
           .set({
             archivedAt: now,
             archivedBy: actorId,
+            archivedLevel: level,
             version: sql`${courses.version} + 1`,
             updatedAt: now,
           })

@@ -11,6 +11,12 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
+import { ArchiveRestoreLevelError } from "../archive/errors/archive-errors";
+import {
+  type HideLevel,
+  hiderLevelOf,
+  mayRestoreAt,
+} from "../archive/hide-level";
 import { DismissDecisionsError } from "../assignment/admin/errors";
 import { grantHeld } from "../assignment/assignment.repository";
 import type { Tx } from "../course/course-purge";
@@ -478,9 +484,14 @@ export class MadrasahRepository {
    * Hides the medrese (nazir/12 "Medreseyi gizle") together with its courses,
    * in one transaction with an audit row. The courses that were shown get the
    * medrese's own instant, which is how `restore` finds them again: one hidden
-   * on its own earlier stays hidden. Nothing is deleted.
+   * on its own earlier stays hidden. Nothing is deleted. `level` is the level
+   * the hider acted at (MDRS-135); the courses carry it too.
    */
-  async hide(madrasahId: string, actorId: string): Promise<HideMadrasahResult> {
+  async hide(
+    madrasahId: string,
+    actorId: string,
+    level: HideLevel
+  ): Promise<HideMadrasahResult> {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
         .select({ archivedAt: madrasahs.archivedAt })
@@ -492,13 +503,20 @@ export class MadrasahRepository {
       const now = new Date();
       await tx
         .update(madrasahs)
-        .set({ archivedAt: now, archivedBy: actorId, updatedAt: now })
+        .set({
+          archivedAt: now,
+          archivedBy: actorId,
+          archivedLevel: level,
+          updatedAt: now,
+        })
         .where(eq(madrasahs.id, madrasahId));
+      // The courses go with it, and are brought back by the same level.
       const hidden = await tx
         .update(courses)
         .set({
           archivedAt: now,
           archivedBy: actorId,
+          archivedLevel: level,
           version: sql`${courses.version} + 1`,
           updatedAt: now,
         })
@@ -523,26 +541,47 @@ export class MadrasahRepository {
    */
   async restore(
     madrasahId: string,
-    actorId: string
+    actorId: string,
+    level: HideLevel
   ): Promise<RestoreMadrasahResult> {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
-        .select({ archivedAt: madrasahs.archivedAt })
+        .select({
+          archivedAt: madrasahs.archivedAt,
+          archivedLevel: madrasahs.archivedLevel,
+        })
         .from(madrasahs)
         .where(eq(madrasahs.id, madrasahId))
         .for("no key update");
       if (!row) return "not-found";
       if (row.archivedAt === null) return "not-hidden";
+      // By the level that hid it or one above (MDRS-135, the ban rule); a
+      // medrese hidden before the level was recorded counts as hidden by the
+      // medrese itself.
+      const hiddenAt = hiderLevelOf({
+        type: "madrasah",
+        madrasahId,
+        archivedLevel: row.archivedLevel,
+      });
+      if (!mayRestoreAt(level, hiddenAt)) {
+        throw new ArchiveRestoreLevelError(hiddenAt, level);
+      }
       const now = new Date();
       await tx
         .update(madrasahs)
-        .set({ archivedAt: null, archivedBy: null, updatedAt: now })
+        .set({
+          archivedAt: null,
+          archivedBy: null,
+          archivedLevel: null,
+          updatedAt: now,
+        })
         .where(eq(madrasahs.id, madrasahId));
       const shown = await tx
         .update(courses)
         .set({
           archivedAt: null,
           archivedBy: null,
+          archivedLevel: null,
           version: sql`${courses.version} + 1`,
           updatedAt: now,
         })

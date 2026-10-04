@@ -249,6 +249,8 @@ export function archiveRows(
 export function archiveErrorKey(code: string): string {
   switch (code) {
     case "ARCHIVE_FORBIDDEN":
+    // A lower level than the one that hid it (MDRS-135): the same words, "a higher level may have hidden it".
+    case "ARCHIVE_RESTORE_LEVEL":
       return "Archive.errors.forbidden";
     case "ARCHIVE_ITEM_NOT_FOUND":
       return "Archive.errors.gone";

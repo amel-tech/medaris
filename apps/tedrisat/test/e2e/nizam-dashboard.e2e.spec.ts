@@ -531,6 +531,22 @@ describe("Nizam dashboards (e2e)", () => {
       );
     });
 
+    // The catalogue's words for "EDIT on the köşk" (MDRS-135): kosk.manage for the
+    // köşk's nazımı, platform.kosk_edit for a Medaris nazımı.
+    it("lets a Medaris nazımı read a köşk's page only with platform.kosk_edit", async () => {
+      await get(`/kosks/${koskA}/dashboard`, NAZIM_ALL).expect(403);
+      await get(`/kosks/${koskA}/dashboard`, NAZIM_FEW).expect(403);
+      await db().insert(permissionGrants).values({
+        userId: NAZIM_ALL,
+        scopeType: SCOPE_TYPES.PLATFORM,
+        scopeId: null,
+        permission: "platform.kosk_edit",
+        grantedBy: ADMIN,
+      });
+      await get(`/kosks/${koskA}/dashboard`, NAZIM_ALL).expect(200);
+      await get(`/kosks/${koskA}/dashboard`, NAZIM_FEW).expect(403);
+    });
+
     it("lets the başnazım read any köşk, and refuses a nazım of another", async () => {
       await get(`/kosks/${koskA}/dashboard`, ADMIN).expect(200);
       await get(`/kosks/${koskA}/dashboard`, OTHER_NAZIM).expect(403);

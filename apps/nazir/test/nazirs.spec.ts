@@ -510,6 +510,7 @@ describe("a refused appointment or dismissal", () => {
     expect(nazirErrorKey("PERMISSION_UNKNOWN")).toBe(
       "Problems.permissionUnknown"
     );
+    expect(nazirErrorKey("GRANT_EXCEEDS_GIVER")).toBe("Problems.exceedsGiver");
     expect(nazirErrorKey("NAZIR_COURSE_SCOPE_INVALID")).toBe(
       "Problems.courseScope"
     );
@@ -543,6 +544,7 @@ describe("message keys of the nazır screens", () => {
         "AUTHZ_FORBIDDEN",
         "PERMISSION_NOT_GIVABLE",
         "PERMISSION_UNKNOWN",
+        "GRANT_EXCEEDS_GIVER",
         "NAZIR_COURSE_SCOPE_INVALID",
         "GRANT_EXPIRY_INVALID",
         "PERMISSION_GROUP_NOT_FOUND",

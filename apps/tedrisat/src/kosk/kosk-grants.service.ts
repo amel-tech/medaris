@@ -13,7 +13,11 @@ import {
   COURSE_CATALOG,
   ROLE_DEFAULT_PERMISSIONS,
 } from "../assignment/permission-catalog";
-import { ASSIGNED_ROLES } from "../database/schema/role-assignment.schema";
+import {
+  ASSIGNED_ROLES,
+  SCOPE_TYPES,
+  type ScopeType,
+} from "../database/schema/role-assignment.schema";
 import { KeycloakAdminService } from "../keycloak-admin/keycloak-admin.service";
 import type { KoskPersonResponse } from "./dto/kosk-admin.dto";
 import type {
@@ -36,7 +40,7 @@ const nameOf = (row: IGrantPersonRow | undefined): string | null =>
 /**
  * The köşk's İzinler page (MDRS-172, nizam/38): the köşk nazımı makes ders
  * nazırları in the köşk's medrese-free courses and gives them course
- * permissions, none beyond their own. The route's `@Authz(EDIT)` decides who
+ * permissions, none beyond their own. The route's `@Authz(course_nazir.assign_kosk)` decides who
  * may open the page (a nazım of the köşk, and the başnazım); this decides what
  * they may hand out.
  */
@@ -51,6 +55,17 @@ export class KoskGrantsService {
     private readonly authz: AuthzService,
     private readonly keycloak: KeycloakAdminService
   ) {}
+
+  /**
+   * The level the caller gives permissions at (MDRS-135): the başnazım as the
+   * platform, a köşk nazımı as the köşk. A grant made from above a policy's
+   * level survives that policy.
+   */
+  private authorityOf(user: AuthenticatedUser): ScopeType {
+    return this.authz.isSystemAdmin(user)
+      ? SCOPE_TYPES.PLATFORM
+      : SCOPE_TYPES.KOSK;
+  }
 
   /** The course permission codes the caller may hand out in this köşk. */
   private async grantable(
@@ -182,6 +197,7 @@ export class KoskGrantsService {
       courseId: dto.courseId.toLowerCase(),
       permissions,
       endsAt,
+      authority: this.authorityOf(user),
     });
     return this.list(user, koskId);
   }
@@ -194,7 +210,11 @@ export class KoskGrantsService {
   ): Promise<KoskGrantsResponse> {
     const permissions = await this.checked(user, koskId, dto.permissions);
     const endsAt = this.endOf(dto.endsAt);
-    await this.repo.update(user.sub, koskId, grantId, { permissions, endsAt });
+    await this.repo.update(user.sub, koskId, grantId, {
+      permissions,
+      endsAt,
+      authority: this.authorityOf(user),
+    });
     return this.list(user, koskId);
   }
 

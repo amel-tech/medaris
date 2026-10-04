@@ -58,6 +58,27 @@ export function holdsIn(
 }
 
 /**
+ * Whether the scope is passive (MDRS-136): `role` was held in it once and
+ * nobody holds it now. A scope that never had one is new, not passive. As a
+ * correlated condition for a query: `scopeId` is a column or an expression of
+ * the outer row. The engine reads the same fact for a single resource
+ * (`TedrisatAuthzContext.managerStats`); a list that hands out content has to
+ * read it too.
+ */
+export function isPassiveScope(
+  role: AssignedRole,
+  scopeId: string | Column | SQL
+): SQL {
+  return sql`(exists (select 1 from ${roleAssignments} where ${and(
+    eq(roleAssignments.role, role),
+    eq(roleAssignments.scopeId, scopeId)
+  )}) and not exists (select 1 from ${roleAssignments} where ${holdsIn(
+    role,
+    scopeId
+  )}))`;
+}
+
+/**
  * The ids of the users who hold `role` in the scope, oldest grant first, as a
  * correlated subquery for a select list. `::text` so node-postgres parses the
  * array; it has no parser for uuid[] and would hand back the literal "{…}".
