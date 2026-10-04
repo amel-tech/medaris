@@ -26,6 +26,7 @@ import { InactiveScopeModule } from "./inactive-scope/inactive-scope.module";
 import { KoskModule } from "./kosk/kosk.module";
 import { KoskApplicationModule } from "./kosk-application/kosk-application.module";
 import { LessonNoteModule } from "./lesson-note/lesson-note.module";
+import { LessonQuestionModule } from "./lesson-question/lesson-question.module";
 import { MadrasahCourseModule } from "./madrasah/course/madrasah-course.module";
 import { MadrasahModule } from "./madrasah/madrasah.module";
 import { MadrasahNazirModule } from "./madrasah/nazir/madrasah-nazir.module";
@@ -59,6 +60,7 @@ import { UserModule } from "./user/user.module";
     HostingModule,
     CourseModule,
     LessonNoteModule,
+    LessonQuestionModule,
     CalendarFeedModule,
     KoskApplicationModule,
     NotificationModule,

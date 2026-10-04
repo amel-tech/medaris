@@ -1,4 +1,8 @@
-import { PERMISSIONS } from "../../../src/assignment/permission-catalog";
+import {
+  COURSE_CODES,
+  PERMISSIONS,
+  ROLE_DEFAULT_PERMISSIONS,
+} from "../../../src/assignment/permission-catalog";
 import { standingCarries } from "../../../src/course/course-access.service";
 
 /**
@@ -53,5 +57,28 @@ describe("standingCarries — course permissions by role default", () => {
         PERMISSIONS.PLATFORM_AUDIT_READ
       )
     ).toBe(false);
+  });
+
+  it("gives question.answer to the müderris and the köşk nazımı, to no other role", () => {
+    expect(
+      standingCarries({ ...none, muderris: true }, PERMISSIONS.QUESTION_ANSWER)
+    ).toBe(true);
+    expect(
+      standingCarries({ ...none, koskNazim: true }, PERMISSIONS.QUESTION_ANSWER)
+    ).toBe(true);
+    expect(standingCarries(none, PERMISSIONS.QUESTION_ANSWER)).toBe(false);
+  });
+});
+
+describe("question.answer in the catalogue (MDRS-150)", () => {
+  it("is a course permission: the müderris holds it and may hand it to a ders nazırı", () => {
+    expect(ROLE_DEFAULT_PERMISSIONS.MUDERRIS).toContain("question.answer");
+    expect(COURSE_CODES.has("question.answer")).toBe(true);
+  });
+
+  it("is held by no ders nazırı by default", () => {
+    expect(ROLE_DEFAULT_PERMISSIONS.DERS_NAZIR).not.toContain(
+      "question.answer"
+    );
   });
 });

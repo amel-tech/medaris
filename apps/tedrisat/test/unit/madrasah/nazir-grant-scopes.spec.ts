@@ -26,9 +26,9 @@ const mixedGroup = { id: G, permissions: ["madrasah.ban", "course.edit"] };
 const courseGroup = { id: G, permissions: ["course.edit", "session.manage"] };
 
 describe("the medrese's permission dictionary", () => {
-  it("has the ten medrese permissions and the twenty course permissions the dialogs print", () => {
+  it("has the ten medrese permissions and every course permission the müderris holds", () => {
     expect(MADRASAH_CATALOG).toHaveLength(10);
-    expect(MADRASAH_COURSE_CATALOG).toHaveLength(20);
+    expect(MADRASAH_COURSE_CATALOG).toHaveLength(21);
     expect(MADRASAH_COURSE_CATALOG).toEqual(ROLE_DEFAULT_PERMISSIONS.MUDERRIS);
   });
 

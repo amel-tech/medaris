@@ -21,6 +21,7 @@ import {
 
 // Re-export types that are used in other apps
 export type {
+  AnswerLessonQuestionDto,
   AppointMedarisNazimDto,
   ArchiveImpactResponse,
   ArchiveItemResponse,
@@ -28,6 +29,7 @@ export type {
   ArchiveRestoreResponse,
   ArchiverResponse,
   ArchiveScopesResponse,
+  AskLessonQuestionDto,
   AssignmentResponse,
   BanListResponse,
   BanPersonResponse,
@@ -37,6 +39,7 @@ export type {
   CatalogSectionResponse,
   ChiefNazimResponse,
   CourseDetailResponse,
+  CourseQuestionResponse,
   CourseSummaryResponse,
   CreateCourseDto,
   CreateFlashcardDeckDto,
@@ -94,6 +97,7 @@ export type {
   LabelStatsResponse,
   LessonMutationResponse,
   LessonNoteResponse,
+  LessonQuestionResponse,
   LessonResponse,
   MadrasahBanListResponse,
   MadrasahBanResponse,
@@ -141,6 +145,8 @@ export type {
   PermissionGroupScope,
   ProfileVisibility,
   PublicProfileResponse,
+  QuestionAnswerResponse,
+  QuestionPersonResponse,
   ReadAllNotificationsResponse,
   RemoveEnrollmentDto,
   ReplaceCourseDto,
