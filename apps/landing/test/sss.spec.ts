@@ -2,8 +2,6 @@ import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import Page from "../app/[locale]/sss/page";
-import { isPlaceholder } from "../content/karsilama";
-import { legal } from "../content/legal";
 
 vi.mock("next-intl/server", () => ({ setRequestLocale: () => undefined }));
 
@@ -24,10 +22,10 @@ describe("Sık sorulan sorular", () => {
     expect(textOf(await render())).not.toMatch(/\[[^\]]+\]/);
   });
 
-  it("leaves the fee question out until the owner gives its answer", async () => {
-    expect(isPlaceholder(legal.feeInformation)).toBe(true);
+  // d-1004-29, the owner: "bir şey yazma, soran olursa bize sorsun".
+  it("says nothing about fees", async () => {
     const text = textOf(await render());
-    expect(text).not.toContain("Medaris ücretli mi?");
+    expect(text).not.toMatch(/ücret/i);
     expect(text).toContain("Hesabımı nasıl silerim?");
   });
 

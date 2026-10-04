@@ -2,7 +2,6 @@ import { setRequestLocale } from "next-intl/server";
 import { FaqItem } from "~/components/faq-item";
 import { SiteFooter } from "~/components/site-footer";
 import { SiteHeader } from "~/components/site-header";
-import { isPlaceholder } from "~/content/karsilama";
 import { legal } from "~/content/legal";
 
 export const metadata = { title: "Sık sorulan sorular · Medaris" };
@@ -15,10 +14,6 @@ export default async function Page({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-
-  // A bracketed placeholder never reaches a visitor: the fee question waits
-  // for the owner's answer.
-  const feeKnown = !isPlaceholder(legal.feeInformation);
 
   return (
     <>
@@ -206,14 +201,9 @@ export default async function Page({
                 Hesap
               </h2>
               <div className="mds-weeks">
-                {feeKnown && (
-                  <FaqItem id="s11" number={11} question="Medaris ücretli mi?">
-                    <p className="mds-body">{legal.feeInformation}</p>
-                  </FaqItem>
-                )}
                 <FaqItem
-                  id="s12"
-                  number={feeKnown ? 12 : 11}
+                  id="s11"
+                  number={11}
                   question="Hesabımı nasıl silerim?"
                 >
                   <p className="mds-body">

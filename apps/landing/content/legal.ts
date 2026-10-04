@@ -24,5 +24,4 @@ export const legal = {
   accountDeletionPath:
     "Aydınlatma Metni’nin 7. bölümünde yazan yollardan biriyle veri sorumlusuna yazarak",
   termsEffectiveDate: "[Yürürlük tarihi]",
-  feeInformation: "[Ücret bilgisi]",
 } as const;
