@@ -25,11 +25,12 @@ roles read the roster with no grant; DERS_NAZIR has no defaults and reads it onl
 three. The screens say so (`account.defaultsNote.MUDERRIS`: "bu ayrı bir izin değildir").
 
 One closure the default has: `course.staff_read` is content-flagged, so a **passive course** (every MUDERRIS
-assignment of the course revoked: the engine's passive-scope rule) closes the roster to
-its köşk nazımı (pinned in `authz-engine.e2e.spec.ts`, "a passive course stays closed to its köşk nazımı", and
-in the spec of this change) and, by the same engine rule, to every reader but the başnazım's realm bypass; the
-other readers' closure was not exercised here. The köşk-wide pending list
-does not follow that closure, see "The köşk-wide pending list and a passive course" below.
+assignment of the course revoked: the engine's passive-scope rule) is closed by the engine to every reader but
+the başnazım's realm bypass, **with one exception the reviewed MDRS-135 made (owner, 4 October): a köşk nazımı
+keeps a passive course of their köşk open**. So the köşk nazımı still reads its roster (pinned in
+`authz-engine.e2e.spec.ts`, "a passive course stays closed to its enrolled talebe ... and open to its köşk
+nazımı", and in the spec of this change); the other readers' closure was not exercised here. The köşk-wide
+pending list agrees with the roster for that reader, see "The köşk-wide pending list and a passive course".
 
 ## What changed
 
@@ -59,16 +60,14 @@ be null or stale). "Snapshot" is that column; "user row" is `users.email`.
 ### The köşk-wide pending list and a passive course
 
 `GET /kosks/:koskId/enrollments/pending` resolves `course.manage_all` on the köşk (`listed([KOSK])`, no
-`content` flag), so the engine never looks at the course's passive state, and
-`CourseRepository.findPendingByKosk` filters on `koskId`, `archivedAt` and `status` only. A passive course
-therefore closes its roster to the köşk nazımı (403 on `GET /courses/:id/enrollments`) while the same köşk
-nazımı still reads that course's pending names and e-mails from the köşk-wide list (200). Not introduced by
-this change (this branch changes no source), and the reader is the köşk nazımı, who manages the köşk and can
-assign a müderris to reopen the course; the read is audited as `course.roster_read`. It is pinned as it is in
-`roster-contact.e2e.spec.ts` ("closes the roster to the köşk nazımı, but the köşk-wide pending list still lists
-its requests") so that closing it is a visible, deliberate change. Open decision, default: leave as is and
-follow up with either a passive-course filter in `findPendingByKosk` or a content-flagged code for this list;
-the test's second half flips with it.
+`content` flag), so the engine does not look at the course's passive state, and
+`CourseRepository.findPendingByKosk` filters on `koskId`, `archivedAt` and `status` only. Before the review of
+MDRS-135 that disagreed with the roster, which a passive course closed to the köşk nazımı. The reviewed engine
+keeps a passive course of their köşk open to the köşk nazımı, so the two now agree: the köşk nazımı reads the
+course's names and e-mails from both, and the read is audited (`course.roster_read`, and the engine's
+`scope.passive_open` on the roster). It is pinned in `roster-contact.e2e.spec.ts` ("keeps the roster and the
+köşk-wide pending list open to the köşk nazımı, whose course it still is"). The pending list is still not
+closed for anyone else, because only the köşk nazımı holds `course.manage_all` there.
 
 `course.roster_read` is written by `CourseService.auditRosterRead` for four course routes and by `findPendingEnrollments` for the
 köşk-wide list: five routes in all, three of them in the table (the stats and `badge-counts` routes write it
@@ -96,7 +95,7 @@ the exact strings, never `toBeDefined`.
 | An enrolled talebe and a stranger get 403 on the roster and the removed list; a talebe's course page carries their own seat's address and nobody else's | "refuses an enrolled talebe and a stranger, …" | yes, mutation 6 |
 | The removed list gives the müderris and a ders nazırı holding `enrollment.remove` the removed talebe's address; `week.hide` alone is refused | three "GET …/enrollments/removed" tests | yes, mutations 2 and 7 |
 | The köşk-wide pending list carries addresses for the köşk nazımı and refuses a müderris and a ders nazırı even with enrollment work | two "GET /kosks/:koskId/enrollments/pending" tests | yes, mutation 3 |
-| A passive course closes the roster to the köşk nazımı but not the köşk-wide pending list (today's behaviour, an open decision) | "closes the roster to the köşk nazımı, but the köşk-wide pending list still lists its requests" | yes, mutation 8 |
+| A passive course stays open to the köşk nazımı on the roster and on the köşk-wide pending list (the reviewed engine rule) | "keeps the roster and the köşk-wide pending list open to the köşk nazımı, whose course it still is" | pins the reviewed rule: it fails if the engine closes the roster to them again |
 | The köşk nazımı, a başmüderris of the course's medrese and the başnazım read the addresses, each on the record; a başmüderris is refused a course outside the medrese | four tests under "the köşk nazımı, the başmüderris and the başnazım" | yes, mutation 1 |
 
 ### Red-then-green
@@ -115,7 +114,6 @@ Each mutation was applied to the source on its own, the spec run, and the file r
 | 6 | `rosterWork` is true for any held code (libs/common rebuilt, then rebuilt again after restoring) | `Tests  8 failed | 12 passed (20)`: the no-grant, `week.hide`, `course.edit`, expired, own-course-only, talebe/stranger, removed `week.hide` and başmüderris-outside refusals |
 | 7 | `ENROLLMENT_REMOVE` taken out of `ROSTER_WORK` (libs/common rebuilt) | `Tests  2 failed | 18 passed (20)`: the `enrollment.remove` alone case and the removed-list read |
 
-| 8 | `findPendingByKosk` skips courses with no live MUDERRIS assignment (the passive-course filter the follow-up would add) | `Tests  2 failed | 19 passed (21)`: the passive-course test, and the köşk nazımı pending test (the medrese course of the seed has no müderris assignment, so the filter drops it too) |
 
 The refusal cases for a talebe, a stranger and the başmüderris outside the medrese ride on the same
 engine mutation (7) because a guard mutation specific to them would only restate it.
@@ -138,9 +136,8 @@ These are the dossier's open decisions with the default taken (none is built):
 5. **Should the medrese students list, the two dashboards and the ban lists be audited like the roster?**
    Default: no change here; it is MDRS-141's question (see the table).
 
-6. **Does the köşk-wide pending list close on a passive course?** Default: no change here (the behaviour
-   predates this branch and the reader already manages the köşk); the open follow-up is a passive-course
-   filter in `findPendingByKosk` or a content-flagged code, and it flips the pinned test.
+6. **Does the köşk-wide pending list close on a passive course?** Settled by the reviewed engine: a köşk nazımı
+   keeps a passive course of their köşk open, so no.
 
 The Linear comment the planner asked for (quote d-1001-28 and d-1003-09 on MDRS-203 and say the revisit is
 open) was not posted: the wave rules forbid writing to Linear. The text for the coordinator is in the PR
