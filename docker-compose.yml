@@ -105,6 +105,9 @@ services:
       # calendar files (MDRS-117). Empty is allowed: only GET
       # /lessons/:id/calendar.ics needs it, and it answers 503 until it is set.
       TEDRIS_WEB_URL: ${TEDRISAT__TEDRIS_WEB_URL:-}
+      # Hides the talebe's public profile while it is not `true` (MDRS-141): the
+      # three /public-profile routes answer 404 PUBLIC_PROFILE_UNAVAILABLE.
+      PUBLIC_PROFILE_ENABLED: ${TEDRISAT__PUBLIC_PROFILE_ENABLED:-${API__PUBLIC_PROFILE_ENABLED:-false}}
 
       # The service account that reads the realm's users (MDRS-169). Both
       # empty is allowed: only GET /users/lookup needs them, and it answers 503.
