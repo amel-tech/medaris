@@ -135,7 +135,9 @@ test("nizam/11 — the list shows who is in office, in order, with their groups,
   await expect(seyyid).toContainText(
     "Pasif kapsamları yönet, YouTube bağlantısını yönet"
   );
-  await expect(page.getByTestId("nazim-count")).toContainText(/\d kişi/);
+  await expect(
+    page.getByTestId("nazim-count").filter({ visible: true })
+  ).toContainText(/\d kişi/);
 });
 
 test("nizam/11 — a Medaris nazımı gets the 'izniniz yok' screen on both pages, not the list (criterion 4)", async ({
@@ -169,8 +171,13 @@ test("nizam/11 — before 4 Ekim 'Görevden al' is off on every row, and nothing
     await expect(
       page.getByRole("button", { name: `Görevden al: ${person.name}` })
     ).toBeDisabled();
+    // nothing in their row says why; other rows may carry a real "4 Ekim" of their
+    // own (the standing Medaris nazımı of the shared test seed was given its role then)
+    await expect(
+      rowOf(page, person.name).getByText(/4 Ekim|sürüm/i)
+    ).toHaveCount(0);
   }
-  await expect(page.getByText(/4 Ekim|sürüm/i)).toHaveCount(0);
+  await expect(page.getByText(/sürüm/i)).toHaveCount(0);
 });
 
 test("nizam/11 — after the gate 'Görevden al' asks what to do with what the person handed on, and removes them (criterion 5)", async ({

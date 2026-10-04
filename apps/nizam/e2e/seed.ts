@@ -13,6 +13,11 @@ export interface NizamFixture {
   published: { id: string; title: string };
   draft: { id: string; title: string };
   enrolled: number;
+  /**
+   * The seats the müderris already holds outside this fixture (the shared test
+   * seed gives the account one): each is one more row on the page.
+   */
+  standing: number;
   remove: () => Promise<void>;
 }
 
@@ -71,12 +76,23 @@ export async function seedMuderris(subs: {
     await client.end();
     throw error;
   }
+  const {
+    rows: [held],
+  } = await client.query(
+    `select count(*)::int as n from role_assignments
+      where user_id = $1 and revoked_at is null
+        and (expires_at is null or expires_at > now())
+        and role in ('MUDERRIS', 'MEDRESE_BASMUDERRIS', 'MEDRESE_NAZIR', 'DERS_NAZIR')
+        and scope_id <> all($2)`,
+    [subs.muderris, [published.id, draft.id, madrasahId]]
+  );
   return {
     madrasahName,
     koskName,
     published,
     draft,
     enrolled: students.length,
+    standing: held.n,
     remove: async () => {
       const courseIds = [published.id, draft.id];
       try {

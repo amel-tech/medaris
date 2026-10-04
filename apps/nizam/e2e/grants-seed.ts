@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import pg from "pg";
+import { type HeldMedarisNazim, holdMedarisNazim } from "./medaris-nazim";
 
 /**
  * What the İzinler specs put in tedrisat's database (MDRS-172, nizam/38),
@@ -73,7 +74,7 @@ export async function seedGrants(subs: {
     email: `yusufkerem.${tail}@example.test`,
     postId: ids.post,
   };
-  const medarisNazimSubs: string[] = [];
+  const medarisNazims: HeldMedarisNazim[] = [];
 
   try {
     await client.query("begin");
@@ -186,14 +187,11 @@ export async function seedGrants(subs: {
         ).rows[0].count
       ),
     makeMedarisNazim: async (sub) => {
-      medarisNazimSubs.push(sub);
-      await client.query(
-        "insert into role_assignments(user_id, role, scope_type, granted_by) values ($1, 'MEDARIS_NAZIM', 'platform', $1)",
-        [sub]
-      );
+      medarisNazims.push(await holdMedarisNazim(sub));
     },
     remove: async () => {
       try {
+        for (const held of medarisNazims.reverse()) await held.release();
         await client.query("begin");
         await client.query(
           "delete from permission_grants where scope_id = any($1)",
@@ -203,12 +201,6 @@ export async function seedGrants(subs: {
           "delete from role_assignments where scope_id = any($1)",
           [[...courseIds, ids.kosk, ids.otherKosk]]
         );
-        if (medarisNazimSubs.length > 0) {
-          await client.query(
-            "delete from role_assignments where role = 'MEDARIS_NAZIM' and user_id = any($1)",
-            [medarisNazimSubs]
-          );
-        }
         await client.query("delete from courses where id = any($1)", [
           courseIds,
         ]);
