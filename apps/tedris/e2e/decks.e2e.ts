@@ -576,13 +576,16 @@ test.describe("Deste ayrıntısı, sahibi (tedris/28)", () => {
   });
 
   test("an id that is not there is the not-found page", async ({ page }) => {
-    const response = await page.goto(`/tr/decks/${randomUUID()}`);
-    expect(response?.status()).toBe(404);
+    // The status stays 200: the segment's loading.tsx streams its shell before
+    // the page decides (MDRS-141, MDRS-160); a signed-in page is not indexed.
+    await page.goto(`/tr/decks/${randomUUID()}`);
     await expect(
       page.getByRole("heading", { name: "Sayfa bulunamadı" })
     ).toBeVisible();
-    const hidden = await page.goto(`/tr/decks/${fx.ids.strangerPrivate}`);
-    expect(hidden?.status()).toBe(404);
+    await page.goto(`/tr/decks/${fx.ids.strangerPrivate}`);
+    await expect(
+      page.getByRole("heading", { name: "Sayfa bulunamadı" })
+    ).toBeVisible();
   });
 });
 

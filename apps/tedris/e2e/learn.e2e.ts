@@ -259,10 +259,12 @@ test.describe("Çalışma (tedris/30)", () => {
   test("another person's private deck is the not-found page", async ({
     page,
   }) => {
-    const response = await page.goto(
-      `/tr/decks/study/${fx.ids.strangerPrivate}`
-    );
-    expect(response?.status()).toBe(404);
+    // The status stays 200: the segment's loading.tsx streams its shell before
+    // the page decides (MDRS-141, MDRS-160); a signed-in page is not indexed.
+    await page.goto(`/tr/decks/study/${fx.ids.strangerPrivate}`);
+    await expect(
+      page.getByText("Sayfa bulunamadı").filter({ visible: true })
+    ).toBeVisible();
   });
 });
 
