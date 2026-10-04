@@ -2,9 +2,8 @@ import { describe, expect, it } from "vitest";
 import { koskEntry, needsHostingRead } from "~/features/kosks/kosk-entry";
 
 /**
- * Where `/kosks/:id` sends the person (MDRS-137). The page itself, a server
- * component behind the sign-in, is not rendered here; this pins the decision it
- * takes, and Playwright covers the redirect where an account exists.
+ * Where `/kosks/:id` sends the person (MDRS-137). This pins the pure decision;
+ * the page's own wiring of it is in `kosk-page.spec.tsx`.
  */
 const KOSK = "a0000000-0000-4000-8000-000000000001";
 const OTHER_KOSK = "a0000000-0000-4000-8000-000000000002";
