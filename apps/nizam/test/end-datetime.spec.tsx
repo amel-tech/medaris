@@ -6,7 +6,7 @@ import type {
   PermissionCatalogResponse,
 } from "@medaris/services/tedrisat";
 import { NextIntlClientProvider } from "next-intl";
-import type { ReactElement } from "react";
+import { act, type ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GrantDialog } from "~/features/grants/components/grant-dialog";
 import { AssignScopeDialog } from "~/features/inactive-scopes/components/assign-scope-dialog";
@@ -378,5 +378,136 @@ describe("Köşk nazımı ekle", () => {
       ["u9"],
       "2026-10-05T15:00:00.000Z",
     ]);
+  });
+});
+
+// ---- A half-typed end ------------------------------------------------------
+
+// A datetime-local field keeps "" until every segment is filled, so a date
+// typed without its time looks like "no end" to the value alone. The browser
+// says so in validity.badInput; happy-dom has no widget, so the flag is set on
+// the field by hand.
+const halfTyped = (field: HTMLInputElement, on: boolean) =>
+  Object.defineProperty(field, "validity", {
+    configurable: true,
+    get: () => ({ badInput: on }),
+  });
+const leaveField = async (field: Element) => {
+  await act(async () => {
+    field.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+  });
+};
+
+const UNFINISHED = "Bitiş tarihini ve saatini tamamlayın.";
+
+describe.each([
+  [
+    "İzinleri düzenle (Medaris nazımı)",
+    () =>
+      openPermissions("Europe/Istanbul", {
+        expiresAt: null,
+        assignmentExpiresAt: null,
+      }),
+    setNazimGrants,
+  ],
+  [
+    "Ders nazırı: İzinleri düzenle",
+    () => openGrant("Europe/Istanbul", { endsAt: null }),
+    updateGrant,
+  ],
+  [
+    "Başmüderris ata",
+    async () => {
+      await render(
+        wrap(
+          "Europe/Istanbul",
+          <AssignHeadDialog
+            open
+            onOpenChange={vi.fn()}
+            target={{ id: "m1", name: "Zeyrek Medresesi" }}
+          />
+        )
+      );
+      await settle(40);
+      await pick("u9", "Abdurrahman Şeref Tunalıoğlu");
+    },
+    setHeadMuderris,
+  ],
+  [
+    "Pasif kapsamlar: ata",
+    async () => {
+      await render(
+        wrap(
+          "Europe/Istanbul",
+          <AssignScopeDialog
+            open
+            onOpenChange={vi.fn()}
+            target={{ type: "KOSK", id: "k1", name: "Beyazıt Köşkü" } as never}
+          />
+        )
+      );
+      await settle(40);
+      await pick("u9", "Fatma Zehra Çelebioğlu");
+    },
+    assignScope,
+  ],
+  [
+    "Köşk nazımı ekle",
+    async () => {
+      await render(
+        wrap(
+          "Europe/Istanbul",
+          <AddNazimDialog
+            open
+            onOpenChange={vi.fn()}
+            koskId="k1"
+            koskName="Beyazıt Köşkü"
+          />
+        )
+      );
+      await settle(40);
+      await pick("u9", "Fatma Zehra Çelebioğlu");
+    },
+    addKoskNazims,
+  ],
+] as const)("an end left half typed: %s", (_name, open, action) => {
+  it("is refused when the field is left, and Kaydet is off", async () => {
+    await open();
+    expect(submit().disabled).toBe(false);
+    halfTyped(picker() as HTMLInputElement, true);
+    await leaveField(picker() as Element);
+    expect(dialog().textContent).toContain(UNFINISHED);
+    expect(submit().disabled).toBe(true);
+    await send();
+    expect(action).not.toHaveBeenCalled();
+  });
+
+  it("is refused on sending, even when the field was never left", async () => {
+    await open();
+    halfTyped(picker() as HTMLInputElement, true);
+    await send();
+    expect(action).not.toHaveBeenCalled();
+    expect(dialog().textContent).toContain(UNFINISHED);
+  });
+
+  it("is allowed again once the time is typed", async () => {
+    await open();
+    halfTyped(picker() as HTMLInputElement, true);
+    await leaveField(picker() as Element);
+    halfTyped(picker() as HTMLInputElement, false);
+    await typeInto(picker() as Element, "2026-12-01T09:30");
+    expect(dialog().textContent).not.toContain(UNFINISHED);
+    expect(submit().disabled).toBe(false);
+    await send();
+    expect(action).toHaveBeenCalledOnce();
+  });
+
+  it("is not in the way of an end that is empty on purpose", async () => {
+    await open();
+    halfTyped(picker() as HTMLInputElement, false);
+    await leaveField(picker() as Element);
+    expect(submit().disabled).toBe(false);
+    await send();
+    expect(action).toHaveBeenCalledOnce();
   });
 });

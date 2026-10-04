@@ -11,7 +11,7 @@ import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
 import { Field } from "@medaris/ui/mds/field";
 import { Input } from "@medaris/ui/mds/input";
 import { Select } from "@medaris/ui/mds/select";
-import { isoToZonedLocal, resolveEnd } from "@medaris/utils";
+import { isoToZonedLocal, isUnfinishedEnd, resolveEnd } from "@medaris/utils";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { HeadPicker } from "../../madrasahs/components/head-picker";
@@ -61,6 +61,7 @@ export function GrantDialog({
   const [courseId, setCourseId] = useState<string | null>(null);
   const [codes, setCodes] = useState<string[]>([]);
   const [end, setEnd] = useState("");
+  const [unfinished, setUnfinished] = useState(false);
   const [saving, setSaving] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
@@ -71,6 +72,7 @@ export function GrantDialog({
     setCourseId(grant ? grant.course.id : null);
     setCodes(grant ? [...grant.permissions] : []);
     setEnd(isoToZonedLocal(grant?.endsAt, timeZone));
+    setUnfinished(false);
     setNow(new Date());
     setSaving(false);
   }, [open, grant, timeZone]);
@@ -86,6 +88,7 @@ export function GrantDialog({
     timeZone,
     now,
     assignmentEnd: null,
+    unfinished,
   });
   const canSave = canSaveGrant({
     editing: grant !== null,
@@ -97,6 +100,11 @@ export function GrantDialog({
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // A half-typed picker reads "" and may never have been left, so it is read again here.
+    if (isUnfinishedEnd(event.currentTarget.elements.namedItem("end"))) {
+      setUnfinished(true);
+      return;
+    }
     if (!canSave) return;
     setSaving(true);
     const endsAt = endIso ? new Date(endIso) : null;
@@ -208,14 +216,22 @@ export function GrantDialog({
       <Field
         label={t("endLabel")}
         help={t("endHelp")}
-        error={problem ? t("endPast") : undefined}
+        error={
+          problem
+            ? t(problem === "unfinished" ? "endUnfinished" : "endPast")
+            : undefined
+        }
       >
         <Input
           type="datetime-local"
           name="end"
           value={end}
           disabled={saving}
-          onChange={(event) => setEnd(event.target.value)}
+          onChange={(event) => {
+            setEnd(event.target.value);
+            setUnfinished(isUnfinishedEnd(event.target));
+          }}
+          onBlur={(event) => setUnfinished(isUnfinishedEnd(event.target))}
         />
       </Field>
       <p className="mds-caption">{t("auditNote")}</p>

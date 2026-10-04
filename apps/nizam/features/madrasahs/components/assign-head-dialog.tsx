@@ -10,7 +10,7 @@ import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
 import { Field } from "@medaris/ui/mds/field";
 import { Input } from "@medaris/ui/mds/input";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
-import { resolveEnd } from "@medaris/utils";
+import { isUnfinishedEnd, resolveEnd } from "@medaris/utils";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { type DismissAnswer, formatDay } from "../../permissions/present";
@@ -71,6 +71,7 @@ export function AssignHeadDialog({
   const changing = Boolean(target?.headId);
   const [head, setHead] = useState<PickedUser | null>(null);
   const [end, setEnd] = useState("");
+  const [unfinished, setUnfinished] = useState(false);
   const [items, setItems] = useState<
     HeadDelegationResponse[] | "failed" | null
   >(null);
@@ -94,6 +95,7 @@ export function AssignHeadDialog({
     if (!open) return;
     setHead(null);
     setEnd("");
+    setUnfinished(false);
     setAnswers({});
     setSaving(false);
     setNow(new Date());
@@ -111,6 +113,7 @@ export function AssignHeadDialog({
     timeZone,
     now,
     assignmentEnd: null,
+    unfinished,
   });
   const people = groupByPerson(list);
   const answered =
@@ -119,6 +122,11 @@ export function AssignHeadDialog({
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // A half-typed picker reads "" and may never have been left, so it is read again here.
+    if (isUnfinishedEnd(event.currentTarget.elements.namedItem("end"))) {
+      setUnfinished(true);
+      return;
+    }
     if (!target || !head || !ready) return;
     setSaving(true);
     const result = await setHeadMuderris(target.id, head.id, {
@@ -255,14 +263,22 @@ export function AssignHeadDialog({
       <Field
         label={t("endLabel")}
         help={t("endHelp")}
-        error={problem ? t("endPast") : undefined}
+        error={
+          problem
+            ? t(problem === "unfinished" ? "endUnfinished" : "endPast")
+            : undefined
+        }
       >
         <Input
           type="datetime-local"
           name="end"
           value={end}
           disabled={saving}
-          onChange={(event) => setEnd(event.target.value)}
+          onChange={(event) => {
+            setEnd(event.target.value);
+            setUnfinished(isUnfinishedEnd(event.target));
+          }}
+          onBlur={(event) => setUnfinished(isUnfinishedEnd(event.target))}
         />
       </Field>
 

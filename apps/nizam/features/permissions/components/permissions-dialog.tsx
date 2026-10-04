@@ -12,7 +12,7 @@ import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
 import { Field } from "@medaris/ui/mds/field";
 import { Input } from "@medaris/ui/mds/input";
 import { Select } from "@medaris/ui/mds/select";
-import { isoToZonedLocal, resolveEnd } from "@medaris/utils";
+import { isoToZonedLocal, isUnfinishedEnd, resolveEnd } from "@medaris/utils";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import type { PickedUser } from "../../madrasahs/present";
@@ -73,6 +73,7 @@ export function PermissionsDialog({
   const [groupId, setGroupId] = useState<string>(NO_GROUP);
   const [extras, setExtras] = useState<string[]>([]);
   const [end, setEnd] = useState("");
+  const [unfinished, setUnfinished] = useState(false);
   const [saving, setSaving] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
@@ -86,6 +87,7 @@ export function PermissionsDialog({
     );
     setExtras(nazim ? nazim.permissions.map((p) => p.code) : []);
     setEnd(isoToZonedLocal(nazim?.expiresAt, timeZone));
+    setUnfinished(false);
     setNow(new Date());
     setSaving(false);
   }, [open, nazim, usable, timeZone]);
@@ -106,6 +108,7 @@ export function PermissionsDialog({
     timeZone,
     now,
     assignmentEnd,
+    unfinished,
   });
   const grantedAt = useMemo(
     () =>
@@ -131,6 +134,11 @@ export function PermissionsDialog({
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // A half-typed picker reads "" and may never have been left, so it is read again here.
+    if (isUnfinishedEnd(event.currentTarget.elements.namedItem("end"))) {
+      setUnfinished(true);
+      return;
+    }
     if (!canSave) return;
     setSaving(true);
     const body = {
@@ -277,13 +285,15 @@ export function PermissionsDialog({
             : t("endHelpNone")
         }
         error={
-          problem === "past"
-            ? t("endPast")
-            : problem === "afterAssignment" && assignmentEnd
-              ? t("endAfterAssignment", {
-                  moment: formatMoment(assignmentEnd, locale, timeZone),
-                })
-              : undefined
+          problem === "unfinished"
+            ? t("endUnfinished")
+            : problem === "past"
+              ? t("endPast")
+              : problem === "afterAssignment" && assignmentEnd
+                ? t("endAfterAssignment", {
+                    moment: formatMoment(assignmentEnd, locale, timeZone),
+                  })
+                : undefined
         }
       >
         <Input
@@ -291,7 +301,11 @@ export function PermissionsDialog({
           name="end"
           value={end}
           disabled={saving}
-          onChange={(event) => setEnd(event.target.value)}
+          onChange={(event) => {
+            setEnd(event.target.value);
+            setUnfinished(isUnfinishedEnd(event.target));
+          }}
+          onBlur={(event) => setUnfinished(isUnfinishedEnd(event.target))}
         />
       </Field>
       <p className="mds-caption">{t("auditNote")}</p>

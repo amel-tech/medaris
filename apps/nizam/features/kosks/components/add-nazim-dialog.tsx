@@ -5,7 +5,7 @@ import { Button } from "@medaris/ui/mds/button";
 import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
 import { Field } from "@medaris/ui/mds/field";
 import { Input } from "@medaris/ui/mds/input";
-import { resolveEnd } from "@medaris/utils";
+import { isUnfinishedEnd, resolveEnd } from "@medaris/utils";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { PickedUser } from "../../madrasahs/present";
@@ -43,6 +43,7 @@ export function AddNazimDialog({
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
   const [people, setPeople] = useState<PickedUser[]>([]);
   const [end, setEnd] = useState("");
+  const [unfinished, setUnfinished] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sent, setSent] = useState(false);
   const emailRef = useRef<HTMLElement | null>(null);
@@ -52,6 +53,7 @@ export function AddNazimDialog({
     if (open) {
       setPeople([]);
       setEnd("");
+      setUnfinished(false);
       setSent(false);
     }
   }, [open]);
@@ -62,11 +64,17 @@ export function AddNazimDialog({
     timeZone,
     now: new Date(),
     assignmentEnd: null,
+    unfinished,
   });
   const ready = people.length > 0 && problem === null;
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // A half-typed picker reads "" and may never have been left, so it is read again here.
+    if (isUnfinishedEnd(event.currentTarget.elements.namedItem("endsAt"))) {
+      setUnfinished(true);
+      return;
+    }
     if (!ready) {
       setSent(true);
       return;
@@ -132,14 +140,26 @@ export function AddNazimDialog({
         <Field
           label={t("endLabel")}
           help={t("endHelp")}
-          error={problem ? t("errors.endPast") : undefined}
+          error={
+            problem
+              ? t(
+                  problem === "unfinished"
+                    ? "errors.endUnfinished"
+                    : "errors.endPast"
+                )
+              : undefined
+          }
         >
           <Input
             type="datetime-local"
             name="endsAt"
             value={end}
             disabled={saving}
-            onChange={(e) => setEnd(e.target.value)}
+            onChange={(e) => {
+              setEnd(e.target.value);
+              setUnfinished(isUnfinishedEnd(e.target));
+            }}
+            onBlur={(e) => setUnfinished(isUnfinishedEnd(e.target))}
           />
         </Field>
       </div>
