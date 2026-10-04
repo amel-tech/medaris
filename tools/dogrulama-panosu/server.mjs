@@ -784,18 +784,18 @@ function planHesapla(items, etkiler, acilis, dmap) {
       a.no - b.no
   );
   const simdi = Date.now();
-  // Gün sıfırdan sayılır: başlangıçtan önce onaylanan iş bugünün toplamına da bitenine de girmez
+  // Yüzde tüm onayları sayar; tempo yalnız gün başlangıcından (00:00) sonraki onaylardan ölçülür
   const gunBas = Date.parse(GUN_BASLANGIC);
-  const bugun = (x) => Date.parse(x.onay?.tarih) >= gunBas;
-  const bittiMi = (x) => (x.onayGecerli || sorunda(x)) && bugun(x);
+  const bittiMi = (x) => x.onayGecerli || sorunda(x);
+  const bugunBitti = (x) => bittiMi(x) && Date.parse(x.onay?.tarih) >= gunBas;
   // Tempo: 09:00'dan beri geçen duvar saati ÷ biten işlerin kart süresi. Molalar ve boş geçen saatler buradan
   // tahmine girer; hiç iş bitmediyse en iyi ihtimal alınır (sıradaki iş şu an bitseydi). Her onayda yeniden ölçülür.
   const gecenDk = Math.max(0, (simdi - Date.parse(GUN_BASLANGIC)) / 60_000);
   const bitenDk =
     items
-      .filter((i) => bittiMi(i) && i.onem.kapsam !== "taha")
+      .filter((i) => bugunBitti(i) && i.onem.kapsam !== "taha")
       .reduce((x, i) => x + gorevDk(i, oran), 0) +
-    etkiler.filter(bittiMi).reduce((x, e) => x + e.dk, 0);
+    etkiler.filter(bugunBitti).reduce((x, e) => x + e.dk, 0);
   const tempo = Math.max(1, gecenDk / (bitenDk || gorevler[0]?.dk || 1));
   // baslangic/bitis = odaklı çalışırsan (kart saati); tBitis = bu tempoyla gerçekte
   let imlec = simdi;
