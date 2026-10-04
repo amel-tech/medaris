@@ -220,6 +220,12 @@ async function paketler() {
     }));
   const tekil = new Map();
   for (const p of [...onceki, ...plan]) tekil.set(p.dal, p);
+  // PLAN.md'de olmayan tasarım ekranları (landing, telefon görünümleri…) commit'li ek-ekranlar.json'dan gelir; PLAN.md'siz makinede de görünür
+  const ekEkranlar = readJson("ek-ekranlar.json", {});
+  for (const p of tekil.values()) {
+    const ek = ekEkranlar[p.no]?.ekranlar || [];
+    p.ekranlar = [...new Set([...p.ekranlar, ...ek])];
+  }
 
   const items = [...tekil.values()]
     .sort((a, b) => a.no - b.no)

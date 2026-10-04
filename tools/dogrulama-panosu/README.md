@@ -28,7 +28,9 @@ Then open http://localhost:5320. Requirements: Node 20+, `gh` logged in to
   check reports and screenshots. Without that folder, the package list comes
   from `gh` only and the cards have no screenshots.
 - **`durum/`**: `acilis.json` (launch scope), `kapilar.json` (gates),
-  `onem.json` (importance base scores) and `surec.json` (AI work plan) are
+  `onem.json` (importance base scores), `surec.json` (AI work plan) and
+  `ek-ekranlar.json` (design screens `PLAN.md` does not list: landing, phone
+  views, unassigned sign-in screens, merged into each package's screens) are
   committed seed config. `onaylar.json` (your approvals) and `tahmin.json`
   (hourly estimate history) are written at runtime and git-ignored, so each
   tester keeps their own.
