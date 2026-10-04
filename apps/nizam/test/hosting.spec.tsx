@@ -211,6 +211,33 @@ describe("HostingView (nizam 26)", () => {
     expect(html).toContain("Barındırma hakkını geri al: Süleymaniye Medresesi");
   });
 
+  it("draws the settings tabs and the way back to them by default, for whom both pages open for", () => {
+    const html = view([right()]);
+    expect(html).toContain('href="/tr/kosks/k1/ayarlar/nazimlar"');
+    expect(html).toContain("Köşk nazımları");
+    expect(html).toContain("Genel");
+  });
+
+  it("leaves out the settings tabs and their links when they would be a 403 (MDRS-137)", () => {
+    const html = render(
+      <HostingView
+        koskId="k1"
+        koskName="Nûruosmaniye Köşkü"
+        rights={[right()]}
+        madrasahs={[]}
+        settingsTabs={false}
+      />
+    );
+    expect(html).not.toContain('href="/tr/kosks/k1/ayarlar"');
+    expect(html).not.toContain("/ayarlar/nazimlar");
+    expect(html).not.toContain("Köşk nazımları");
+    // The page, its words and both actions are still there.
+    expect(html).toContain("Köşk ayarları");
+    expect(html).toContain("Barındırma hakları");
+    expect(html).toContain("Barındırma hakkı ver");
+    expect(html).toContain("Barındırma hakkını geri al: Süleymaniye Medresesi");
+  });
+
   it("says the right gives no authority, and that open courses do not close", () => {
     const html = view([right()]);
     expect(html).toContain("hiçbir yetki vermez");
