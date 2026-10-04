@@ -56,12 +56,13 @@ a toast with the server's English message. This note records the fix. No migrati
 
 | Criterion | Test | Without the change |
 | --- | --- | --- |
-| `canDecide` is the engine's answer, false in a passive scope and for a role with no course work | `apps/tedrisat/test/e2e/kosk-dashboard-passive.e2e.spec.ts`: "marks the application of a medrese course passive once its head's post has ended", "... a course whose müderris left passive too", "says a Medaris nazımı who holds no course work cannot decide ..." | `canDecide: true` hard-coded in the service: 3 failed, 4 passed |
-| `scopePassive` reads the three scopes | same spec: the same two passive cases and "keeps the başnazım's bypass" | `scopePassive: false` hard-coded in the repository: 3 failed, 4 passed |
+| `canDecide` is the engine's answer, false in a passive scope and for a role with no course work | `apps/tedrisat/test/e2e/kosk-dashboard-passive.e2e.spec.ts`: "marks the application of a medrese course passive once its head's post has ended", "... a course whose müderris left passive too", "says a Medaris nazımı who holds no course work cannot decide ..." | `canDecide: true` hard-coded in the service: 4 failed, 5 passed |
+| `scopePassive` reads the three scopes (course müderris, köşk nazımı, medrese başmüderris) | same spec: the medrese-head and course-müderris cases, "marks every application of a köşk whose nazımı left passive ..." (read as the başnazım and as a Medaris nazımı) and "keeps the başnazım's bypass" | `scopePassive: false` hard-coded in the repository: 4 failed, 5 passed; deleting only the köşk-nazım term: 1 failed, 8 passed (the köşk case) |
 | open course and a medrese with an active head again keep the decision | "offers the decision where ...", "offers the decision again once the medrese has an active head" | pins existing behaviour; passes with and without the change |
-| the API refusal stays, nothing is written | "still refuses the decision on the route, and writes nothing": 403 `AUTHZ_FORBIDDEN`, the enrollment still `PENDING`, the köşk's own course still approvable | pins existing behaviour; passes with and without the change |
-| a passive row shows the reason, not the buttons; an open row keeps them | `apps/nizam/test/kosk-home-decisions.spec.tsx` (happy-dom): "shows the reason in place of both buttons ...", "says plainly that the viewer may not decide ...", "keeps Onayla and Reddet ..." | the file run against the unchanged `kosk-home.tsx`: 6 failed, 1 passed (the "keeps" case) |
+| the API refusal stays, nothing is written, for Onayla and for Reddet | "still refuses the decision on the route, and writes nothing" (approve on the passive medrese course) and "still refuses Reddet on the route wherever the screen hides it ..." (`DELETE /courses/:id/enrollments/:userId` on the passive medrese course, on the course whose müderris left, and as a Medaris nazımı on a köşk course): each 403 `AUTHZ_FORBIDDEN`, the enrollment still `PENDING`, the köşk's own course still decidable by the köşk nazımı | pins existing behaviour; passes with and without the screen change. Pointing the reject route's `@Authz` at `COURSE_VIEW` instead of `ENROLLMENT_DECIDE`: the Reddet case fails (1 failed, 8 passed) |
+| a passive row shows the reason, not the buttons; an open row keeps them | `apps/nizam/test/kosk-home-decisions.spec.tsx` (happy-dom): "shows the reason in place of both buttons ...", "says plainly that the viewer may not decide ...", "keeps Onayla and Reddet ..." | the file run against `kosk-home.tsx` as it was before the web fix (`1039b583`): 7 failed, 2 passed (9). The two that pass are "keeps Onayla and Reddet ..." and the stays-open case below, which pin behaviour the old component already had |
 | the refusal is in Turkish on Onayla and on Reddet | same spec: "is worded in Turkish on Onayla ...", "... on Reddet too", "falls back to the unknown sentence ..." | same run: the description was the server's text |
+| a refusal that is not "gone" keeps the Reddet dialog (and the typed reason) and the row | same spec: "keeps the Reddet dialog and the row open on a refusal ..." | `reject` changed to close the dialog on every refusal (`failure(...); return true;`): 1 failed, 8 passed |
 | a decided-by-someone-else row is dropped, and closes the Reddet dialog | same spec: "drops the row ...", "closes the Reddet dialog ..." | removing `settled(a)` on `errorGone`: both fail; making `reject` return `false`: the dialog test fails; swapping the passive and generic sentence: 2 fail |
 
 The unit-level `decisionErrorKey` cases stay where they were (`apps/nizam/test/applications.spec.tsx`).
@@ -69,10 +70,10 @@ The unit-level `decisionErrorKey` cases stay where they were (`apps/nizam/test/a
 ## Verified, with the commands
 
 - `cd apps/tedrisat && e2e-slot.sh vitest run test/e2e/kosk-dashboard-passive.e2e.spec.ts test/e2e/nizam-dashboard.e2e.spec.ts test/e2e/authz-route-inventory.e2e.spec.ts`:
-  3 files, 19 tests passed (the new spec has 7). The route inventory is unchanged: no route's decision moved.
+  3 files, 21 tests passed (the new spec has 9). The route inventory is unchanged: no route's decision moved.
 - `node tools/ci/assert-openapi-spec-fresh.mjs`: fresh (169 paths) after `pnpm run openapi:tedrisat`.
 - `apps/tedrisat/test/unit/openapi-document.spec.ts`: 6 passed.
-- `cd apps/nizam && vitest run`: 41 files, 686 tests passed (the new spec has 8).
+- `cd apps/nizam && vitest run`: 41 files, 687 tests passed (the new spec has 9).
 - `nx run nizam-web:typecheck`, `tsc --noEmit` in `apps/tedrisat`, `biome check` and commitlint on each commit: clean.
 - i18n key parity of `nizam.json` across tr, en, ar by script: 2945 keys each, no difference.
 
@@ -83,8 +84,6 @@ The unit-level `decisionErrorKey` cases stay where they were (`apps/nizam/test/a
   only word the refusal (as before). Their read models are not the köşk home's and were not in this cut.
 - **Playwright.** `apps/nizam/e2e/dashboard.e2e.ts:245` and `:271` press Onayla on a passive course; they
   were not touched or run (the seed and the specs are a later pass). They need a running stack.
-- **A passive köşk seen by a Medaris nazımı** (`scopePassive` through the köşk's nazım role) is read by the
-  same SQL as the medrese and course cases but has no case of its own.
 - **Medaris nazımı who opens passive scopes.** `canDecide` follows the engine, which keeps content codes
   for a holder of `platform.inactive_scopes_manage` in a passive scope; no test seats that person.
 - The scout dossier handed over for this issue is the MDRS-143 one (hide and restore); it does not
