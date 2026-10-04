@@ -34,7 +34,6 @@ import {
   flattenPermissions,
 } from "./effective-permissions";
 import { permissionsPerScope } from "./me-permissions";
-import { isPermissionCode } from "./permission-catalog";
 
 /** The resource the engine is asked about for a scope with an id. */
 const ENTITY_OF: Record<Exclude<ScopeType, "platform">, Entity> = {
