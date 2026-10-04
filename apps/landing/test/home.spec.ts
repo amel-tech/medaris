@@ -90,9 +90,20 @@ describe("what the home page says (MDRS-245)", () => {
     }
   });
 
-  it("does not claim notes or questions, which are not on main", async () => {
+  // The reference is main together with the open pull requests (owner, 4
+  // October): notes and questions (MDRS-150) and recordings (MDRS-116/119/247)
+  // may be claimed; icâzet and certificates may not (SPEC-D3-09).
+  it("claims no icâzet or certificate", async () => {
     const text = textOf(renderToStaticMarkup(await renderHome()));
-    expect(text).not.toMatch(/not al|soru sor|ders kayıt|icâzet|sertifika/i);
+    expect(text).not.toMatch(/icâzet|icazet|sertifika|katılım belgesi/i);
+  });
+
+  it("keeps the notes private and gives the recordings their closed-course rule", async () => {
+    const text = textOf(renderToStaticMarkup(await renderHome()));
+    expect(text).toContain("notlarınızı sizden başkası görmez");
+    expect(text).toContain(
+      "kapalı derslerin kayıtları hiçbir zaman herkese açılmaz"
+    );
   });
 
   it("does not put köşks under a medrese: köşks hold courses, medreses open them there", async () => {

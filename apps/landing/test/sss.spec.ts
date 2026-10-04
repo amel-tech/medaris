@@ -43,6 +43,22 @@ describe("Sık sorulan sorular", () => {
     expect(text).not.toMatch(/Nûruosmaniye|Fatih Köşkü/);
   });
 
+  it("says the course staff add the live stream, and times follow the course's time zone", async () => {
+    const text = textOf(await render());
+    expect(text).not.toMatch(/Müderris canlı yayın/);
+    expect(text).toContain(
+      "Ders kadrosu bir YouTube canlı yayın bağlantısı eklediyse"
+    );
+    expect(text).not.toMatch(/İstanbul saatiyle, tek saat olarak/);
+    expect(text).toContain("Celse saatleri dersin saat diliminde yazılır.");
+  });
+
+  it("answers notes and questions, which the open pull requests add", async () => {
+    const text = textOf(await render());
+    expect(text).toContain("Celse videosuna not alabilir miyim?");
+    expect(text).toContain("Ders kadrosuna nasıl soru sorarım?");
+  });
+
   it("does not promise a reply the contact form cannot deliver yet", async () => {
     expect(textOf(await render())).not.toMatch(/cevap verilir/);
   });

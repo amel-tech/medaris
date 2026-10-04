@@ -1,8 +1,8 @@
 // Content of the Karşılama page: the marketing page for talebe and for
 // medreses. Every claim about the product describes something tedris or the
-// medrese portal does on main; the PR that last changed this file lists where
-// each one was checked. Notes and questions on lessons (MDRS-150) and lesson
-// recordings are not on main and are not mentioned.
+// medrese portal does on main together with the open pull requests (the
+// owner's reference, 4 October); the PR that last changed this file lists
+// where each one was checked.
 
 export const hero = {
   eyebrow: "Çevrim içi medrese",
@@ -37,7 +37,7 @@ export const promises = [
   },
   {
     title: "Okuduğunuzu koruyun",
-    body: "Kelime ve hadisleri ezber kartlarıyla tekrar edersiniz.",
+    body: "Celsenin kaydını izler, notlarınıza döner, kelime ve hadisleri ezber kartlarıyla tekrar edersiniz.",
   },
 ];
 
@@ -56,6 +56,14 @@ export const talebe = {
     {
       lead: "Hiçbir celseyi kaçırmayın.",
       text: "Celseler Google Takvim’e, Apple Takvim’e ya da Outlook’a düşer; Programım hepsini gün gün sıralar.",
+    },
+    {
+      lead: "Kaçırdığınız celse kaybolmaz.",
+      text: "Ders kadrosu celsenin kaydını eklediğinde ders sayfasından izlersiniz.",
+    },
+    {
+      lead: "Not alın, sorunuzu sorun.",
+      text: "Celse videosuna dakikasıyla notlar alırsınız; notlarınızı sizden başkası görmez. Takıldığınız yeri ders kadrosuna sorarsınız.",
     },
     {
       lead: "Unutmadan ilerleyin.",
@@ -87,8 +95,12 @@ export const medrese = {
       text: "Kayıtları onaya bağlayın, derslerinizi kapalı tutun; koyduğunuz kural bütün derslerinize birden uygulanır.",
     },
     {
+      lead: "Ders bitince de sürsün.",
+      text: "Celselerin kayıtlarını ekleyin, talebenin sorularını cevaplayın; kapalı derslerin kayıtları hiçbir zaman herkese açılmaz.",
+    },
+    {
       lead: "Yükü paylaşın.",
-      text: "Medrese nazırları atayın, işi onlarla bölüşün.",
+      text: "Medrese nazırları atayın, her birine hangi işi yapacağını siz verin.",
     },
   ],
   contact: "Bize yazın",

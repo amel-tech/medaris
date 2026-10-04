@@ -121,9 +121,11 @@ export default async function Page({
                     Kayıtlı olduğunuz dersin celse sayfasında, celse başlamadan
                     10 dakika önce “Celseye katıl” düğmesi görünür; toplantı
                     yeni sekmede açılır. Her celsenin toplantı bağlantısı
-                    ayrıdır ve yalnız derse kayıtlı talebelere gösterilir.
-                    Müderris canlı yayın yapıyorsa yayın da celse sayfasında
-                    oynar.
+                    ayrıdır ve yalnız derse kayıtlı talebelere gösterilir. Ders
+                    kadrosu bir YouTube canlı yayın bağlantısı eklediyse, celse
+                    sürerken yayın ve altında canlı sohbet celse sayfasında
+                    açılır; sohbette yazmak için tarayıcıda YouTube’a giriş
+                    yapmış olmanız gerekir.
                   </p>
                 </FaqItem>
                 <FaqItem
@@ -132,14 +134,16 @@ export default async function Page({
                   question="Celse saatleri hangi saat dilimine göre yazılır?"
                 >
                   <p className="mds-body">
-                    Celse saatleri İstanbul saatiyle, tek saat olarak yazılır.
+                    Celse saatleri dersin saat diliminde yazılır. Sizin saat
+                    diliminiz farklıysa yanında kendi saatiniz de görünür; saat
+                    diliminizi Hesap sayfasından seçebilirsiniz. Programım
+                    sayfası şimdilik İstanbul saatini gösterir.
                   </p>
                   <p className="mds-body">
-                    Saat diliminiz İstanbul’dan farklıysa celse davet
-                    e-postasında iki saat yan yana yazılır: önce dersin saati,
-                    sonra sizin saatiniz. Örneğin saat diliminiz Berlin ise
-                    İstanbul’da 21:00 olan bir celse, davette 20:00 olarak da
-                    yazılır.
+                    Celse eklendiğinde, değiştiğinde ya da iptal edildiğinde
+                    gelen davet e-postasında saat sizin saat diliminizle
+                    yazılır. Davet takviminize eklenebilir; toplantı bağlantısı
+                    davette yer almaz, celse sayfasına bağlantı verilir.
                   </p>
                 </FaqItem>
                 <FaqItem
@@ -148,12 +152,37 @@ export default async function Page({
                   question="Ders kayıtları kimlere açık?"
                 >
                   <p className="mds-body">
-                    Celselerin ders kayıtları o dersin kayıtlı talebelerine
-                    açıktır. Herkese açık olarak işaretlenen ders kayıtlarını
-                    ise herkes, hesap açmadan da izleyebilir.
+                    Ders kadrosu bir celsenin kaydını eklediğinde, kayıt o
+                    dersin kayıtlı talebelerine açılır; kaçırdığınız celseyi
+                    ders sayfasından izleyebilirsiniz. Herkese açık olarak
+                    işaretlenen kayıtları herkes, hesap açmadan da izleyebilir.
+                    Kapalı derslerin kayıtları hiçbir zaman herkese açılmaz.
                   </p>
                 </FaqItem>
-                <FaqItem id="s8" number={8} question="Deste nedir?">
+                <FaqItem
+                  id="s8"
+                  number={8}
+                  question="Celse videosuna not alabilir miyim?"
+                >
+                  <p className="mds-body">
+                    Evet. Kayıtlı olduğunuz dersin celse videosunda, videonun
+                    dakikasına bağlı notlar alabilirsiniz. Notlarınızı sizden
+                    başkası göremez; ders kadrosu da göremez.
+                  </p>
+                </FaqItem>
+                <FaqItem
+                  id="s9"
+                  number={9}
+                  question="Ders kadrosuna nasıl soru sorarım?"
+                >
+                  <p className="mds-body">
+                    Kayıtlı olduğunuz dersin sayfasındaki “Sorularım”
+                    sekmesinden ders kadrosuna soru sorabilirsiniz. Sorunuzu
+                    yalnız siz ve ders kadrosu görür; cevap gelene kadar
+                    düzenleyebilir ya da silebilirsiniz.
+                  </p>
+                </FaqItem>
+                <FaqItem id="s10" number={10} question="Deste nedir?">
                   <p className="mds-body">
                     Ezber kartlarından oluşan bir tekrar destesi: kartın önünde
                     Arapça bir kelime ya da metin, arkasında anlamı yazar.
@@ -162,7 +191,9 @@ export default async function Page({
                   </p>
                   <p className="mds-body">
                     Herkese açık desteleri hesap açmadan da çalışabilirsiniz;
-                    hesapsız çalışmanın ilerlemesi kaydedilmez.
+                    hesapsız çalışmanın ilerlemesi kaydedilmez. Kendi destenizi
+                    herkese açmak isterseniz yayın isteği gönderirsiniz; Medaris
+                    yönetimi onaylarsa deste herkese açılır.
                   </p>
                 </FaqItem>
               </div>
@@ -176,13 +207,13 @@ export default async function Page({
               </h2>
               <div className="mds-weeks">
                 {feeKnown && (
-                  <FaqItem id="s9" number={9} question="Medaris ücretli mi?">
+                  <FaqItem id="s11" number={11} question="Medaris ücretli mi?">
                     <p className="mds-body">{legal.feeInformation}</p>
                   </FaqItem>
                 )}
                 <FaqItem
-                  id="s10"
-                  number={feeKnown ? 10 : 9}
+                  id="s12"
+                  number={feeKnown ? 12 : 11}
                   question="Hesabımı nasıl silerim?"
                 >
                   <p className="mds-body">
