@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { HideLevel } from './HideLevel';
+import {
+    HideLevelFromJSON,
+    HideLevelFromJSONTyped,
+    HideLevelToJSON,
+    HideLevelToJSONTyped,
+} from './HideLevel';
 import type { ArchiverResponse } from './ArchiverResponse';
 import {
     ArchiverResponseFromJSON,
@@ -131,7 +138,13 @@ export interface ArchiveItemResponse {
      */
     archivedBy: ArchiverResponse | null;
     /**
-     * Whether the caller may bring it back (Geri al): false when it was hidden at a level above the one the caller acts at (MDRS-135), so no button leads to a 403 ARCHIVE_RESTORE_LEVEL. A hidden parent still answers 409 on restore.
+     * The level the hider acted at (course, madrasah, kosk, platform); a row hidden before it was recorded counts as the lowest level that could have hidden it. Only that level or above brings it back.
+     * @type {HideLevel}
+     * @memberof ArchiveItemResponse
+     */
+    hiddenLevel: HideLevel;
+    /**
+     * Whether the caller may bring it back (Geri al): they hold a code that hides it where it sits and act at the hider's level or above. False when a higher level hid it. A hidden parent still answers 409 on restore.
      * @type {boolean}
      * @memberof ArchiveItemResponse
      */
@@ -160,6 +173,7 @@ export function instanceOfArchiveItemResponse(value: object): value is ArchiveIt
     if (!('studentCount' in value) || value['studentCount'] === undefined) return false;
     if (!('archivedAt' in value) || value['archivedAt'] === undefined) return false;
     if (!('archivedBy' in value) || value['archivedBy'] === undefined) return false;
+    if (!('hiddenLevel' in value) || value['hiddenLevel'] === undefined) return false;
     if (!('canRestore' in value) || value['canRestore'] === undefined) return false;
     return true;
 }
@@ -190,6 +204,7 @@ export function ArchiveItemResponseFromJSONTyped(json: any, ignoreDiscriminator:
         'studentCount': json['studentCount'],
         'archivedAt': (new Date(json['archivedAt'])),
         'archivedBy': ArchiverResponseFromJSON(json['archivedBy']),
+        'hiddenLevel': HideLevelFromJSON(json['hiddenLevel']),
         'canRestore': json['canRestore'],
     };
 }
@@ -221,6 +236,7 @@ export function ArchiveItemResponseToJSONTyped(value?: ArchiveItemResponse | nul
         'studentCount': value['studentCount'],
         'archivedAt': ((value['archivedAt']).toISOString()),
         'archivedBy': ArchiverResponseToJSON(value['archivedBy']),
+        'hiddenLevel': HideLevelToJSON(value['hiddenLevel']),
         'canRestore': value['canRestore'],
     };
 }
